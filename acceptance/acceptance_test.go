@@ -11,18 +11,18 @@ import (
 	"os"
 	"strings"
 	"time"
+	"math/rand"
 )
 
 func TestPack(t *testing.T) {
+	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "pack", testPack, spec.Report(report.Terminal{}))
 }
 
 func testPack(t *testing.T, when spec.G, it spec.S) {
-	var sourceCodePath string
 	var pack string
 
 	it.Before(func() {
-		sourceCodePath = filepath.Join("fixtures", "node_app")
 		pack = os.Getenv("PACK_PATH")
 		if pack == "" {
 			t.Fatal("PACK_PATH environment variable is not set")
@@ -42,20 +42,30 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("build", func() {
+	when("build on daemon", func() {
+		var sourceCodePath, repoName, containerName string
+		it.Before(func() {
+			sourceCodePath = filepath.Join("fixtures", "node_app")
+			repoName = "some-org/" + randString(10)
+			containerName = "test-" + randString(10)
+		})
+		it.After(func() {
+			exec.Command("docker", "kill", containerName).Run()
+			exec.Command("docker", "rmi", repoName).Run()
+		})
+
 		it("builds and exports an image", func() {
-			cmd := exec.Command(pack, "-dir", sourceCodePath, "-name", "some-org/some-image", "-daemon", "build")
+			cmd := exec.Command(pack, "-dir", sourceCodePath, "-name", repoName, "-daemon", "build")
 			if output, err := cmd.CombinedOutput(); err != nil {
 				t.Fatalf("Failed to build the image: %s, %s", output, err)
 			}
-			cmd = exec.Command("docker", "run", "--name=some-container", "--rm=true", "-d", "-e", "PORT=8080", "-p", "8080:8080", "some-org/some-image")
+			cmd = exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", "8091:8080", repoName)
 			if err := cmd.Run(); err != nil {
 				t.Fatal("Failed to run the image", err)
 			}
-			defer exec.Command("docker", "kill", "some-container").Run()
 
 			time.Sleep(2 * time.Second)
-			resp, err := http.Get("http://localhost:8080")
+			resp, err := http.Get("http://localhost:8091")
 			if err != nil {
 				t.Fatal("Container is not running", err)
 			}
@@ -63,5 +73,14 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Request returned bad status code: %d", resp.StatusCode)
 			}
 		})
-	})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+}
+
+
+func randString(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = 'a' + byte(rand.Intn(26))
+	}
+	return string(b)
 }
