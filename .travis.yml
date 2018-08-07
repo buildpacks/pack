@@ -1,0 +1,14 @@
+sudo: required
+language: go
+services:
+- docker
+go:
+- 1.10.x
+go_import_path: github.com/buildpack/pack
+before_install:
+- go get -u github.com/golang/dep/cmd/dep
+- dep ensure
+install:
+- go build
+script:
+- PACK_PATH=$PWD/pack go test -v ./acceptance

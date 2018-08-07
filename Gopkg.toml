@@ -1,0 +1,7 @@
+[prune]
+  go-tests = true
+  unused-packages = true
+
+[[constraint]]
+  name = "github.com/sclevine/spec"
+  version = "1.0.0"
