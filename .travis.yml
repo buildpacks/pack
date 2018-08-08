@@ -9,6 +9,6 @@ before_install:
 - go get -u github.com/golang/dep/cmd/dep
 - dep ensure
 install:
-- go build
+- go build github.com/buildpack/pack/cmd/pack
 script:
 - PACK_PATH=$PWD/pack go test -v ./acceptance
