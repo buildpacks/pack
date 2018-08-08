@@ -33,15 +33,12 @@ func Build(appDir string, stackName, repoName string, useDaemon bool) error {
 	}
 
 	fmt.Println("*** DETECTING:")
-	if out, err := exec.Command("docker", "run", "-v", filepath.Join(tempDir, "launch", "app")+":/launch/app", "-v", filepath.Join(tempDir, "workspace")+":/workspace", stackName+":detect").CombinedOutput(); err != nil {
-		fmt.Println(string(out))
+	cmd := exec.Command("docker", "run", "-v", filepath.Join(tempDir, "launch", "app")+":/launch/app", "-v", filepath.Join(tempDir, "workspace")+":/workspace", stackName+":detect")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
 		return err
 	}
-	groupToml, err := ioutil.ReadFile(filepath.Join(tempDir, "workspace", "group.toml"))
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(groupToml))
 
 	fmt.Println("*** ANALYZING: Reading information from previous image for possible re-use")
 	// TODO: We assume this will need root to saccess docker.sock, (if so need to chown afterwards)
@@ -51,7 +48,7 @@ func Build(appDir string, stackName, repoName string, useDaemon bool) error {
 	}
 
 	fmt.Println("*** BUILDING:")
-	cmd := exec.Command("docker", "run", "-v", filepath.Join(tempDir, "launch")+":/launch", "-v", filepath.Join(tempDir, "workspace")+":/workspace", "-v", filepath.Join(tempDir, "cache")+":/cache", "-v", filepath.Join(tempDir, "platform")+":/platform", stackName+":build")
+	cmd = exec.Command("docker", "run", "-v", filepath.Join(tempDir, "launch")+":/launch", "-v", filepath.Join(tempDir, "workspace")+":/workspace", "-v", filepath.Join(tempDir, "cache")+":/cache", "-v", filepath.Join(tempDir, "platform")+":/platform", stackName+":build")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
