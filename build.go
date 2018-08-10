@@ -1,15 +1,17 @@
 package pack
 
 import (
+	"crypto/md5"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 )
 
-func Build(appDir string, stackName, repoName string, useDaemon bool) error {
+func Build(appDir, stackName, repoName string, useDaemon bool) error {
 	if !useDaemon {
 		return errors.New("NOT IMPLEMENTED (must use daemon)")
 	}
@@ -20,7 +22,12 @@ func Build(appDir string, stackName, repoName string, useDaemon bool) error {
 	}
 	defer os.Remove(tempDir)
 
-	for _, name := range []string{"platform", "cache", "launch", "workspace"} {
+	cacheDir, err := cacheDir(appDir)
+	if err != nil {
+		return err
+	}
+
+	for _, name := range []string{"platform", "launch", "workspace"} {
 		if err := os.Mkdir(filepath.Join(tempDir, name), 0755); err != nil {
 			return err
 		}
@@ -42,13 +49,26 @@ func Build(appDir string, stackName, repoName string, useDaemon bool) error {
 
 	fmt.Println("*** ANALYZING: Reading information from previous image for possible re-use")
 	// TODO: We assume this will need root to saccess docker.sock, (if so need to chown afterwards)
-	if out, err := exec.Command("docker", "run", "-v", "/var/run/docker.sock:/var/run/docker.sock", "-v", filepath.Join(tempDir, "launch")+":/launch", "-v", filepath.Join(tempDir, "workspace")+":/workspace:ro", stackName+":analyze", "-daemon", repoName).CombinedOutput(); err != nil {
+	if out, err := exec.Command("docker", "run",
+		"-v", "/var/run/docker.sock:/var/run/docker.sock",
+		"-v", filepath.Join(tempDir, "launch")+":/launch",
+		"-v", filepath.Join(tempDir, "workspace")+":/workspace:ro",
+		stackName+":analyze",
+		"-daemon",
+		repoName,
+	).CombinedOutput(); err != nil {
 		fmt.Println(string(out))
 		return err
 	}
 
 	fmt.Println("*** BUILDING:")
-	cmd = exec.Command("docker", "run", "-v", filepath.Join(tempDir, "launch")+":/launch", "-v", filepath.Join(tempDir, "workspace")+":/workspace", "-v", filepath.Join(tempDir, "cache")+":/cache", "-v", filepath.Join(tempDir, "platform")+":/platform", stackName+":build")
+	cmd = exec.Command("docker", "run",
+		"-v", filepath.Join(tempDir, "launch")+":/launch",
+		"-v", filepath.Join(tempDir, "workspace")+":/workspace",
+		"-v", cacheDir+":/cache",
+		"-v", filepath.Join(tempDir, "platform")+":/platform",
+		stackName+":build",
+	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -63,4 +83,24 @@ func Build(appDir string, stackName, repoName string, useDaemon bool) error {
 	}
 
 	return nil
+}
+
+func cacheDir(appDir string) (string, error) {
+	homeDir := os.Getenv("HOME")
+	if runtime.GOOS == "windows" {
+		homeDir = filepath.Join(os.Getenv("HOMEDRIVE"), os.Getenv("HOMEPATH"))
+	}
+
+	appDir, err := filepath.Abs(appDir)
+	if err != nil {
+		return "", err
+	}
+	appSHA := fmt.Sprintf("%x", md5.Sum([]byte(appDir)))
+	cacheDir := filepath.Join(homeDir, ".pack", "cache", appSHA)
+
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return "", err
+	}
+
+	return cacheDir, nil
 }

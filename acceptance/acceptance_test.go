@@ -1,17 +1,20 @@
 package acceptance_test
 
 import (
+	"io/ioutil"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"testing"
 
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
 	"time"
-	"math/rand"
+
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
 )
 
 func TestPack(t *testing.T) {
@@ -20,7 +23,7 @@ func TestPack(t *testing.T) {
 }
 
 func testPack(t *testing.T, when spec.G, it spec.S) {
-	var pack string
+	var pack, homeDir string
 
 	it.Before(func() {
 		pack = os.Getenv("PACK_PATH")
@@ -30,13 +33,26 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		if _, err := os.Stat(pack); os.IsNotExist(err) {
 			t.Fatal("No file found at PACK_PATH environment variable")
 		}
+
+		var err error
+		homeDir, err = ioutil.TempDir("", "buildpack.pack.build.homedir.")
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+	it.After(func() {
+		os.RemoveAll(homeDir)
 	})
 
 	when("subcommand is invalid", func() {
 		it("prints usage", func() {
 			cmd := exec.Command(pack, "some-bad-command")
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
 			output, _ := cmd.CombinedOutput()
-			if !strings.Contains(string(output), "USAGE: pack build -daemon [ -dir <app-dir> ] -name <image-repo-name>") {
+			if !strings.Contains(string(output), `unknown command "some-bad-command" for "pack"`) {
+				t.Fatal("Failed to print usage", string(output))
+			}
+			if !strings.Contains(string(output), `Run 'pack --help' for usage.`) {
 				t.Fatal("Failed to print usage", string(output))
 			}
 		})
@@ -55,7 +71,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("builds and exports an image", func() {
-			cmd := exec.Command(pack, "-dir", sourceCodePath, "-name", repoName, "-daemon", "build")
+			cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "-d")
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
 			if output, err := cmd.CombinedOutput(); err != nil {
 				t.Fatalf("Failed to build the image: %s, %s", output, err)
 			}
@@ -72,10 +89,22 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			if resp.StatusCode != http.StatusOK {
 				t.Fatalf("Request returned bad status code: %d", resp.StatusCode)
 			}
+
+			t.Log("uses the cache on subsequent run")
+			cmd = exec.Command(pack, "build", repoName, "-p", sourceCodePath, "-d")
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("Failed to build the image: %s, %s", output, err)
+			}
+
+			regex := regexp.MustCompile(`moved \d+ packages`)
+			if !regex.MatchString(string(output)) {
+				t.Fatalf("Build failed to use cache: %s", output)
+			}
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 }
-
 
 func randString(n int) string {
 	b := make([]byte, n)
