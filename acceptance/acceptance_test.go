@@ -77,8 +77,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("Failed to build the image: %s, %s", output, err)
 			}
 			cmd = exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", "8091:8080", repoName)
-			if err := cmd.Run(); err != nil {
-				t.Fatal("Failed to run the image", err)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("Failed to run the image: %s, %s", err, output)
 			}
 
 			time.Sleep(2 * time.Second)

@@ -26,5 +26,7 @@ func main() {
 
 	rootCmd := &cobra.Command{Use: "pack"}
 	rootCmd.AddCommand(buildCommand)
-	rootCmd.Execute()
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }

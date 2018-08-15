@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"io"
 )
 
 func Build(appDir, stackName, repoName string, useDaemon bool) error {
@@ -33,9 +34,7 @@ func Build(appDir, stackName, repoName string, useDaemon bool) error {
 		}
 	}
 
-	// TODO implement in go
-	if out, err := exec.Command("cp", "-r", appDir, filepath.Join(tempDir, "launch", "app")).CombinedOutput(); err != nil {
-		fmt.Println(string(out))
+	if err := recursiveCopy(appDir, filepath.Join(tempDir, "launch", "app")); err != nil {
 		return err
 	}
 
@@ -48,7 +47,7 @@ func Build(appDir, stackName, repoName string, useDaemon bool) error {
 	}
 
 	fmt.Println("*** ANALYZING: Reading information from previous image for possible re-use")
-	// TODO: We assume this will need root to saccess docker.sock, (if so need to chown afterwards)
+	// TODO: We assume this will need root to access docker.sock, (if so need to chown afterwards)
 	if out, err := exec.Command("docker", "run",
 		"-v", "/var/run/docker.sock:/var/run/docker.sock",
 		"-v", filepath.Join(tempDir, "launch")+":/launch",
@@ -103,4 +102,36 @@ func cacheDir(appDir string) (string, error) {
 	}
 
 	return cacheDir, nil
+}
+
+func recursiveCopy(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+
+		dest := filepath.Join(dst, relPath)
+		if info.IsDir() {
+			return os.Mkdir(dest, info.Mode())
+		}
+
+		destFile, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE|os.O_TRUNC, info.Mode())
+		defer destFile.Close()
+		if err != nil {
+			return err
+		}
+
+		srcFile, err := os.Open(path)
+		defer srcFile.Close()
+		if err != nil {
+			return err
+		}
+
+		if _, err := io.Copy(destFile, srcFile); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
