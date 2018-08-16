@@ -2,21 +2,16 @@ package pack
 
 import (
 	"crypto/md5"
-	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"io"
 )
 
-func Build(appDir, stackName, repoName string, useDaemon bool) error {
-	if !useDaemon {
-		return errors.New("NOT IMPLEMENTED (must use daemon)")
-	}
-
+func Build(appDir, stackName, repoName, hostMachineIP string, publish bool) error {
 	tempDir, err := ioutil.TempDir("/tmp", "lifecycle.pack.build.")
 	if err != nil {
 		return err
@@ -38,6 +33,10 @@ func Build(appDir, stackName, repoName string, useDaemon bool) error {
 		return err
 	}
 
+	if err := ioutil.WriteFile(filepath.Join(tempDir, "docker-config.json"), []byte(`{}`), 0644); err != nil {
+		return err
+	}
+
 	fmt.Println("*** DETECTING:")
 	cmd := exec.Command("docker", "run", "-v", filepath.Join(tempDir, "launch", "app")+":/launch/app", "-v", filepath.Join(tempDir, "workspace")+":/workspace", stackName+":detect")
 	cmd.Stdout = os.Stdout
@@ -48,14 +47,23 @@ func Build(appDir, stackName, repoName string, useDaemon bool) error {
 
 	fmt.Println("*** ANALYZING: Reading information from previous image for possible re-use")
 	// TODO: We assume this will need root to access docker.sock, (if so need to chown afterwards)
-	if out, err := exec.Command("docker", "run",
+	args := []string{
+		"run",
 		"-v", "/var/run/docker.sock:/var/run/docker.sock",
-		"-v", filepath.Join(tempDir, "launch")+":/launch",
-		"-v", filepath.Join(tempDir, "workspace")+":/workspace:ro",
-		stackName+":analyze",
-		"-daemon",
-		repoName,
-	).CombinedOutput(); err != nil {
+		"-v", filepath.Join(tempDir, "docker-config.json") + ":/home/packs/.docker/config.json",
+		"-v", filepath.Join(tempDir, "docker-config.json") + ":/etc/docker/daemon.json",
+		"-v", filepath.Join(tempDir, "launch") + ":/launch",
+		"-v", filepath.Join(tempDir, "workspace") + ":/workspace:ro",
+		stackName + ":analyze",
+	}
+	if hostMachineIP != "" {
+		args = append([]string{args[0], "--add-host", "host-machine.local:" + hostMachineIP}, args[1:]...)
+	}
+	if !publish {
+		args = append(args, "-daemon")
+	}
+	args = append(args, repoName)
+	if out, err := exec.Command("docker", args...).CombinedOutput(); err != nil {
 		fmt.Println(string(out))
 		return err
 	}
@@ -75,7 +83,25 @@ func Build(appDir, stackName, repoName string, useDaemon bool) error {
 	}
 
 	fmt.Println("*** EXPORTING:")
-	args := []string{"run", "--user", "0", "-v", "/var/run/docker.sock:/var/run/docker.sock", "-v", filepath.Join(tempDir, "launch") + ":/launch:ro", "-v", filepath.Join(tempDir, "workspace") + ":/workspace:ro", stackName + ":export", "-daemon", "-daemon-stack", "-stack", stackName, repoName}
+	args = []string{
+		"run",
+		"--user", "0",
+		"-v", "/var/run/docker.sock:/var/run/docker.sock",
+		"-v", filepath.Join(tempDir, "docker-config.json") + ":/root/.docker/config.json",
+		"-v", filepath.Join(tempDir, "docker-config.json") + ":/etc/docker/daemon.json",
+		"-v", filepath.Join(tempDir, "launch") + ":/launch:ro",
+		"-v", filepath.Join(tempDir, "workspace") + ":/workspace:ro",
+		stackName + ":export",
+		"-stack", stackName,
+	}
+	if hostMachineIP != "" {
+		args = append([]string{args[0], "--add-host", "host-machine.local:" + hostMachineIP}, args[1:]...)
+	}
+	if !publish {
+		// TODO: We probably don't want daemon-stack by default
+		args = append(args, "-daemon", "-daemon-stack")
+	}
+	args = append(args, repoName)
 	if out, err := exec.Command("docker", args...).CombinedOutput(); err != nil {
 		fmt.Println(string(out))
 		return err
@@ -117,16 +143,16 @@ func recursiveCopy(src, dst string) error {
 		}
 
 		destFile, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE|os.O_TRUNC, info.Mode())
-		defer destFile.Close()
 		if err != nil {
 			return err
 		}
+		defer destFile.Close()
 
 		srcFile, err := os.Open(path)
-		defer srcFile.Close()
 		if err != nil {
 			return err
 		}
+		defer srcFile.Close()
 
 		if _, err := io.Copy(destFile, srcFile); err != nil {
 			return err
