@@ -17,21 +17,34 @@ import (
 	"github.com/sclevine/spec/report"
 )
 
+var pack string
+
 func TestPack(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
+
+	pack = os.Getenv("PACK_PATH")
+	if pack == "" {
+		packTmpDir, err := ioutil.TempDir("", "pack.acceptance.binary.")
+		if err != nil {
+			panic(err)
+		}
+		if txt, err := exec.Command("go", "build", "-o", filepath.Join(packTmpDir, "pack"), "../cmd/pack").CombinedOutput(); err != nil {
+			fmt.Println(string(txt))
+			panic(err)
+		}
+		pack = filepath.Join(packTmpDir, "pack")
+		defer os.RemoveAll(packTmpDir)
+	}
+
 	spec.Run(t, "pack", testPack, spec.Report(report.Terminal{}))
 }
 
 func testPack(t *testing.T, when spec.G, it spec.S) {
-	var pack, homeDir string
+	var homeDir string
 
 	it.Before(func() {
-		pack = os.Getenv("PACK_PATH")
-		if pack == "" {
-			t.Fatal("PACK_PATH environment variable is not set")
-		}
 		if _, err := os.Stat(pack); os.IsNotExist(err) {
-			t.Fatal("No file found at PACK_PATH environment variable")
+			t.Fatal("No file found at PACK_PATH environment variable:", pack)
 		}
 
 		var err error
