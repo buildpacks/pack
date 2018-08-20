@@ -3,12 +3,14 @@ language: go
 services:
 - docker
 go:
-- 1.10.x
-go_import_path: github.com/buildpack/pack
-before_install:
-- go get -u github.com/golang/dep/cmd/dep
-- dep ensure
-install:
-- go build github.com/buildpack/pack/cmd/pack
+## Convert to 1.11.x once it is released
+- go1.11rc1
+env:
+  global:
+  - GO111MODULE=on
+  - TMPDIR=$HOME/mytmp
 script:
-- PACK_PATH=$PWD/pack go test -v ./acceptance
+- echo "MY TMPDIR=$TMPDIR"
+- mkdir -p $TMPDIR
+- go build ./cmd/pack
+- go test -v ./acceptance
