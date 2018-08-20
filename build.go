@@ -69,9 +69,11 @@ func Build(appDir, detectImage, repoName string, publish bool) error {
 		return err
 	}
 
-	if out, err := exec.Command("docker", "pull", groupRepoImage+":run").CombinedOutput(); err != nil {
-		fmt.Println(string(out))
-		return err
+	if !publish {
+		if out, err := exec.Command("docker", "pull", group.Repository+":run").CombinedOutput(); err != nil {
+			fmt.Println(string(out))
+			return err
+		}
 	}
 
 	fmt.Println("*** EXPORTING:")
