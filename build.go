@@ -91,6 +91,11 @@ func Build(appDir, detectImage, analyzeImage, exportImage, repoName, hostMachine
 		return err
 	}
 
+	if out, err := exec.Command("docker", "pull", groupRepoImage+":run").CombinedOutput(); err != nil {
+		fmt.Println(string(out))
+		return err
+	}
+
 	fmt.Println("*** EXPORTING:")
 	args = []string{
 		"run",
