@@ -1,6 +1,7 @@
 package pack
 
 import (
+	"bytes"
 	"crypto/md5"
 	"fmt"
 	"io"
@@ -9,9 +10,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"github.com/BurntSushi/toml"
 )
 
-func Build(appDir, stackName, repoName, hostMachineIP string, publish bool) error {
+func Build(appDir, detectImage, analyzeImage, exportImage, repoName, hostMachineIP string, publish bool) error {
 	tempDir, err := ioutil.TempDir("/tmp", "lifecycle.pack.build.")
 	if err != nil {
 		return err
@@ -38,7 +41,7 @@ func Build(appDir, stackName, repoName, hostMachineIP string, publish bool) erro
 	}
 
 	fmt.Println("*** DETECTING:")
-	cmd := exec.Command("docker", "run", "-v", filepath.Join(tempDir, "launch", "app")+":/launch/app", "-v", filepath.Join(tempDir, "workspace")+":/workspace", stackName+":detect")
+	cmd := exec.Command("docker", "run", "-v", filepath.Join(tempDir, "launch", "app")+":/launch/app", "-v", filepath.Join(tempDir, "workspace")+":/workspace", detectImage)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -54,7 +57,7 @@ func Build(appDir, stackName, repoName, hostMachineIP string, publish bool) erro
 		"-v", filepath.Join(tempDir, "docker-config.json") + ":/etc/docker/daemon.json",
 		"-v", filepath.Join(tempDir, "launch") + ":/launch",
 		"-v", filepath.Join(tempDir, "workspace") + ":/workspace:ro",
-		stackName + ":analyze",
+		analyzeImage,
 	}
 	if hostMachineIP != "" {
 		args = append([]string{args[0], "--add-host", "host-machine.local:" + hostMachineIP}, args[1:]...)
@@ -68,13 +71,19 @@ func Build(appDir, stackName, repoName, hostMachineIP string, publish bool) erro
 		return err
 	}
 
+	// Read groupRepoImage from ENV:PACK_BP_GROUP_PATH
+	groupRepoImage, err := groupTomlRepository(tempDir, detectImage)
+	if err != nil {
+		return err
+	}
+
 	fmt.Println("*** BUILDING:")
 	cmd = exec.Command("docker", "run",
 		"-v", filepath.Join(tempDir, "launch")+":/launch",
 		"-v", filepath.Join(tempDir, "workspace")+":/workspace",
 		"-v", cacheDir+":/cache",
 		"-v", filepath.Join(tempDir, "platform")+":/platform",
-		stackName+":build",
+		groupRepoImage+":build",
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -91,8 +100,8 @@ func Build(appDir, stackName, repoName, hostMachineIP string, publish bool) erro
 		"-v", filepath.Join(tempDir, "docker-config.json") + ":/etc/docker/daemon.json",
 		"-v", filepath.Join(tempDir, "launch") + ":/launch:ro",
 		"-v", filepath.Join(tempDir, "workspace") + ":/workspace:ro",
-		stackName + ":export",
-		"-stack", stackName,
+		exportImage,
+		"-stack", groupRepoImage,
 	}
 	if hostMachineIP != "" {
 		args = append([]string{args[0], "--add-host", "host-machine.local:" + hostMachineIP}, args[1:]...)
@@ -108,6 +117,25 @@ func Build(appDir, stackName, repoName, hostMachineIP string, publish bool) erro
 	}
 
 	return nil
+}
+
+func groupTomlRepository(tempDir, detectImage string) (string, error) {
+	var buf bytes.Buffer
+	cmd := exec.Command("docker", "run", "-v", filepath.Join(tempDir, "workspace")+":/workspace:ro", "--entrypoint", "", detectImage, "bash", "-c", "cat $PACK_BP_GROUP_PATH")
+	cmd.Stdout = &buf
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+
+	var groupToml struct {
+		Repository string `toml:"repository"`
+	}
+	if _, err := toml.Decode(buf.String(), &groupToml); err != nil {
+		return "", err
+	}
+
+	return groupToml.Repository, nil
 }
 
 func cacheDir(appDir string) (string, error) {
