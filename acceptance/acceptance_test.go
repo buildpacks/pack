@@ -2,8 +2,6 @@ package acceptance_test
 
 import (
 	"bytes"
-	"encoding/hex"
-	"errors"
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
@@ -42,12 +40,6 @@ func TestPack(t *testing.T) {
 		defer os.RemoveAll(packTmpDir)
 	}
 
-	hostMachineIP, err := findHostMachineIP()
-	if err != nil {
-		panic(err)
-	}
-	os.Setenv("PACK_HOST_MACHINE_IP", hostMachineIP)
-
 	spec.Run(t, "pack", testPack, spec.Report(report.Terminal{}))
 }
 
@@ -62,6 +54,12 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		var err error
 		homeDir, err = ioutil.TempDir("", "buildpack.pack.build.homedir.")
 		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Mkdir(filepath.Join(homeDir, ".docker"), 0777); err != nil {
+			t.Fatal(err)
+		}
+		if err := ioutil.WriteFile(filepath.Join(homeDir, ".docker", "config.json"), []byte("{}"), 0666); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -141,19 +139,18 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		when("'--publish' flag is specified", func() {
 			it.Before(func() {
 				t.Log("push v3/packs:run to local registry")
-				for _, name := range []string{"analyze", "build", "export", "run"} {
-					run(t, exec.Command("docker", "tag", "packs/v3:"+name, fmt.Sprintf("host-machine.local:%s/packs/v3:%s", registryPort, name)))
+				for _, name := range []string{"build", "run"} {
+					run(t, exec.Command("docker", "tag", "packs/v3:"+name, fmt.Sprintf("localhost:%s/packs/v3:%s", registryPort, name)))
 				}
-				run(t, exec.Command("docker", "tag", "packs/v3:run", fmt.Sprintf("localhost:%s/packs/v3:run", registryPort)))
 				run(t, exec.Command("docker", "push", fmt.Sprintf("localhost:%s/packs/v3:run", registryPort)))
 
 				// Build copy of packs/v3:detect with all group repositories pointing to image in local registry
-				cmd := exec.Command("docker", "build", "-t", fmt.Sprintf("host-machine.local:%s/packs/v3:detect", registryPort), "-")
+				cmd := exec.Command("docker", "build", "-t", fmt.Sprintf("localhost:%s/packs/v3:detect", registryPort), "-")
 				cmd.Stdin = bytes.NewReader([]byte(fmt.Sprintf(`
 					FROM packs/v3:detect
 
 					USER root
-					RUN sed -i 's/"packs\/v3"/"host-machine.local:%s\/packs\/v3"/' /buildpacks/order.toml
+					RUN sed -i 's/"packs\/v3"/"localhost:%s\/packs\/v3"/' /buildpacks/order.toml
 
 					USER packs
 				`, registryPort)))
@@ -161,8 +158,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				for _, name := range []string{"detect", "analyze", "build", "export", "run"} {
-					exec.Command("docker", "rmi", fmt.Sprintf("host-machine.local:%s/packs/v3:%s", registryPort, name)).Run()
+				for _, name := range []string{"detect", "build", "run"} {
+					exec.Command("docker", "rmi", fmt.Sprintf("localhost:%s/packs/v3:%s", registryPort, name)).Run()
 				}
 			})
 
@@ -173,14 +170,13 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				t.Log("run pack build")
 				cmd := exec.Command(
 					pack, "build",
-					fmt.Sprintf("host-machine.local:%s/%s", registryPort, repo),
+					fmt.Sprintf("localhost:%s/%s", registryPort, repo),
 					"-p", sourceCodePath,
-					"--detect-image", fmt.Sprintf("host-machine.local:%s/packs/v3:detect", registryPort),
-					"--analyze-image", fmt.Sprintf("host-machine.local:%s/packs/v3:analyze", registryPort),
-					"--export-image", fmt.Sprintf("host-machine.local:%s/packs/v3:export", registryPort),
+					"--detect-image", fmt.Sprintf("localhost:%s/packs/v3:detect", registryPort),
 					"--publish",
 				)
 				cmd.Env = append(os.Environ(), "HOME="+homeDir)
+
 				run(t, cmd)
 
 				t.Log("Checking that registry has contents")
@@ -262,22 +258,4 @@ func assertEq(t *testing.T, actual, expected interface{}) {
 	if diff := cmp.Diff(actual, expected); diff != "" {
 		t.Fatal(diff)
 	}
-}
-
-func findHostMachineIP() (string, error) {
-	txt, err := exec.Command("docker", "run", "ubuntu:18.04", "cat", "/proc/net/route").Output()
-	if err != nil {
-		return "", err
-	}
-	for _, line := range strings.Split(string(txt), "\n") {
-		arr := strings.Split(line, "\t")
-		if len(arr) > 2 && arr[1] == "00000000" {
-			b, err := hex.DecodeString(arr[2])
-			if err != nil {
-				return "", err
-			}
-			return fmt.Sprintf("%d.%d.%d.%d", b[3], b[2], b[1], b[0]), nil
-		}
-	}
-	return "", errors.New("Could not determine host machine ip")
 }
