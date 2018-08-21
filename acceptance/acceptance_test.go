@@ -40,6 +40,8 @@ func TestPack(t *testing.T) {
 		defer os.RemoveAll(packTmpDir)
 	}
 
+	run(t, exec.Command("docker", "pull", "registry:2"))
+
 	spec.Run(t, "pack", testPack, spec.Report(report.Terminal{}))
 }
 
@@ -92,9 +94,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			containerName = "test-" + randString(10)
 			registryContainerName = "test-registry-" + randString(10)
 
-			cmd := exec.Command("docker", "run", "-d", "--rm", "-p", ":5000", "--name", registryContainerName, "registry:2")
-			run(t, cmd)
-
+			run(t, exec.Command("docker", "run", "-d", "--rm", "-p", ":5000", "--name", registryContainerName, "registry:2"))
 			registryPort = fetchHostPort(t, registryContainerName)
 		})
 		it.After(func() {
@@ -108,7 +108,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				repo := "some-org/" + randString(10)
 				repoName := "localhost:" + registryPort + "/" + repo
 
-				cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath)
+				cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--detect-image", "packsdev/v3:detect")
 				cmd.Env = append(os.Environ(), "HOME="+homeDir)
 				run(t, cmd)
 
@@ -119,7 +119,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked!")
 
 				t.Log("uses the cache on subsequent run")
-				cmd = exec.Command(pack, "build", repoName, "-p", sourceCodePath)
+				cmd = exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--detect-image", "packsdev/v3:detect")
 				cmd.Env = append(os.Environ(), "HOME="+homeDir)
 				output := run(t, cmd)
 
@@ -140,17 +140,18 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				t.Log("push v3/packs:run to local registry")
 				for _, name := range []string{"build", "run"} {
-					run(t, exec.Command("docker", "tag", "packs/v3:"+name, fmt.Sprintf("localhost:%s/packs/v3:%s", registryPort, name)))
+					run(t, exec.Command("docker", "pull", "packsdev/v3:"+name))
+					run(t, exec.Command("docker", "tag", "packsdev/v3:"+name, fmt.Sprintf("localhost:%s/packsdev/v3:%s", registryPort, name)))
 				}
-				run(t, exec.Command("docker", "push", fmt.Sprintf("localhost:%s/packs/v3:run", registryPort)))
+				run(t, exec.Command("docker", "push", fmt.Sprintf("localhost:%s/packsdev/v3:run", registryPort)))
 
-				// Build copy of packs/v3:detect with all group repositories pointing to image in local registry
-				cmd := exec.Command("docker", "build", "-t", fmt.Sprintf("localhost:%s/packs/v3:detect", registryPort), "-")
+				// Build copy of packsdev/v3:detect with all group repositories pointing to image in local registry
+				cmd := exec.Command("docker", "build", "-t", fmt.Sprintf("localhost:%s/packsdev/v3:detect", registryPort), "-")
 				cmd.Stdin = bytes.NewReader([]byte(fmt.Sprintf(`
-					FROM packs/v3:detect
+					FROM packsdev/v3:detect
 
 					USER root
-					RUN sed -i 's/"packs\/v3"/"localhost:%s\/packs\/v3"/' /buildpacks/order.toml
+					RUN sed -i 's/"packsdev\/v3"/"localhost:%s\/packsdev\/v3"/' /buildpacks/order.toml
 
 					USER packs
 				`, registryPort)))
@@ -159,7 +160,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 			it.After(func() {
 				for _, name := range []string{"detect", "build", "run"} {
-					exec.Command("docker", "rmi", fmt.Sprintf("localhost:%s/packs/v3:%s", registryPort, name)).Run()
+					exec.Command("docker", "rmi", fmt.Sprintf("localhost:%s/packsdev/v3:%s", registryPort, name)).Run()
 				}
 			})
 
@@ -172,7 +173,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 					pack, "build",
 					fmt.Sprintf("localhost:%s/%s", registryPort, repo),
 					"-p", sourceCodePath,
-					"--detect-image", fmt.Sprintf("localhost:%s/packs/v3:detect", registryPort),
+					"--detect-image", fmt.Sprintf("localhost:%s/packsdev/v3:detect", registryPort),
 					"--publish",
 				)
 				cmd.Env = append(os.Environ(), "HOME="+homeDir)
