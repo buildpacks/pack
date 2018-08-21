@@ -90,7 +90,13 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			run(t, exec.Command("docker", "run", "-d", "--rm", "-p", ":5000", "--name", registryContainerName, "registry:2"))
 			registryPort = fetchHostPort(t, registryContainerName)
 
-			sourceCodePath = filepath.Join("fixtures", "node_app")
+			var err error
+			sourceCodePath, err = ioutil.TempDir("", "pack.build.node_app.")
+			if err != nil {
+				t.Fatal(err)
+			}
+			exec.Command("cp", "-r", "fixtures/node_app/.", sourceCodePath).Run()
+
 			repo = "some-org/" + randString(10)
 			repoName = "localhost:" + registryPort + "/" + repo
 			containerName = "test-" + randString(10)
@@ -99,6 +105,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			exec.Command("docker", "kill", containerName).Run()
 			exec.Command("docker", "rmi", repoName).Run()
 			exec.Command("docker", "kill", registryContainerName).Run()
+			if sourceCodePath != "" {
+				os.RemoveAll(sourceCodePath)
+			}
 		})
 
 		when("'--publish' flag is not specified'", func() {
@@ -113,16 +122,6 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				time.Sleep(2 * time.Second)
 				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked!")
 
-				t.Log("uses the cache on subsequent run")
-				cmd = exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--detect-image", "packsdev/v3:detect")
-				cmd.Env = append(os.Environ(), "HOME="+homeDir)
-				output := run(t, cmd)
-
-				regex := regexp.MustCompile(`moved \d+ packages`)
-				if !regex.MatchString(output) {
-					t.Fatalf("Build failed to use cache: %s", output)
-				}
-
 				t.Log("Checking that registry is empty")
 				contents := fetch(t, fmt.Sprintf("http://localhost:%s/v2/_catalog", registryPort))
 				if strings.Contains(string(contents), repo) {
@@ -133,10 +132,13 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 		when("'--publish' flag is specified", func() {
 			it("builds and exports an image", func() {
-				t.Log("run pack build")
-				cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--detect-image", "packsdev/v3:detect", "--publish")
-				cmd.Env = append(os.Environ(), "HOME="+homeDir)
-				run(t, cmd)
+				runPackBuild := func() string {
+					t.Helper()
+					cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--detect-image", "packsdev/v3:detect", "--publish")
+					cmd.Env = append(os.Environ(), "HOME="+homeDir)
+					return run(t, cmd)
+				}
+				runPackBuild()
 
 				t.Log("Checking that registry has contents")
 				contents := fetch(t, fmt.Sprintf("http://localhost:%s/v2/_catalog", registryPort))
@@ -151,6 +153,14 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 				time.Sleep(2 * time.Second)
 				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked!")
+
+				t.Log("uses the cache on subsequent run")
+				output := runPackBuild()
+
+				regex := regexp.MustCompile(`moved \d+ packages`)
+				if !regex.MatchString(output) {
+					t.Fatalf("Build failed to use cache: %s", output)
+				}
 			})
 		}, spec.Parallel(), spec.Report(report.Terminal{}))
 	})

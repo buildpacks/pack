@@ -1,62 +1,69 @@
 package pack
 
 import (
+	"bytes"
 	"crypto/md5"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
+
+	"github.com/BurntSushi/toml"
+	"github.com/buildpack/lifecycle"
+	"github.com/google/uuid"
 )
 
 func Build(appDir, detectImage, repoName string, publish bool) error {
-	tempDir, err := ioutil.TempDir("/tmp", "lifecycle.pack.build.")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tempDir)
-
-	cacheDir, err := cacheDir(appDir)
+	appDir, err := filepath.Abs(appDir)
 	if err != nil {
 		return err
 	}
 
-	for _, name := range []string{"platform", "launch", "workspace"} {
-		if err := os.Mkdir(filepath.Join(tempDir, name), 0755); err != nil {
-			return err
-		}
-	}
+	uid := uuid.New().String()
+	launchVolume := fmt.Sprintf("pack-launch-%x", uid)
+	workspaceVolume := fmt.Sprintf("pack-workspace-%x", uid)
+	cacheVolume := fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(appDir)))
+	defer exec.Command("docker", "volume", "rm", "-f", launchVolume).Run()
+	defer exec.Command("docker", "volume", "rm", "-f", workspaceVolume).Run()
 
-	if err := recursiveCopy(appDir, filepath.Join(tempDir, "launch", "app")); err != nil {
+	// fmt.Println("*** COPY APP TO VOLUME:")
+	if err := copyToVolume(detectImage, launchVolume, appDir, "app"); err != nil {
 		return err
 	}
 
 	fmt.Println("*** DETECTING:")
-	cmd := exec.Command("docker", "run", "-v", filepath.Join(tempDir, "launch", "app")+":/launch/app", "-v", filepath.Join(tempDir, "workspace")+":/workspace", detectImage)
+	cmd := exec.Command("docker", "run", "--rm", "-v", launchVolume+":/launch", "-v", workspaceVolume+":/workspace", detectImage)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return err
 	}
 
-	group, err := groupToml(tempDir, detectImage)
+	group, err := groupToml(workspaceVolume, detectImage)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println("*** ANALYZING: Reading information from previous image for possible re-use")
-	if err := analyzer(group, filepath.Join(tempDir, "launch"), repoName, !publish); err != nil {
+	analyzeTmpDir, err := ioutil.TempDir("", "pack.build.")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(analyzeTmpDir)
+	if err := analyzer(group, analyzeTmpDir, repoName, !publish); err != nil {
+		return err
+	}
+	if err := copyToVolume(detectImage, launchVolume, analyzeTmpDir, ""); err != nil {
 		return err
 	}
 
 	fmt.Println("*** BUILDING:")
 	cmd = exec.Command("docker", "run",
-		"-v", filepath.Join(tempDir, "launch")+":/launch",
-		"-v", filepath.Join(tempDir, "workspace")+":/workspace",
-		"-v", cacheDir+":/cache",
-		"-v", filepath.Join(tempDir, "platform")+":/platform",
+		"--rm",
+		"-v", launchVolume+":/launch",
+		"-v", workspaceVolume+":/workspace",
+		"-v", cacheVolume+":/cache",
 		group.Repository+":build",
 	)
 	cmd.Stdout = os.Stdout
@@ -73,61 +80,74 @@ func Build(appDir, detectImage, repoName string, publish bool) error {
 	}
 
 	fmt.Println("*** EXPORTING:")
-	if err := export(group, filepath.Join(tempDir, "launch"), repoName, group.Repository+":run", !publish, !publish); err != nil {
+	localLaunchDir, cleanup, err := exportVolume(detectImage, launchVolume)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	if err := export(group, localLaunchDir, repoName, group.Repository+":run", !publish, !publish); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func cacheDir(appDir string) (string, error) {
-	homeDir := os.Getenv("HOME")
-	if runtime.GOOS == "windows" {
-		homeDir = filepath.Join(os.Getenv("HOMEDRIVE"), os.Getenv("HOMEPATH"))
-	}
-
-	appDir, err := filepath.Abs(appDir)
+func exportVolume(image, volName string) (string, func(), error) {
+	tmpDir, err := ioutil.TempDir("", "pack.build.")
 	if err != nil {
-		return "", err
+		return "", func() {}, err
 	}
-	appSHA := fmt.Sprintf("%x", md5.Sum([]byte(appDir)))
-	cacheDir := filepath.Join(homeDir, ".pack", "cache", appSHA)
+	cleanup := func() { os.RemoveAll(tmpDir) }
 
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
-		return "", err
+	containerName := uuid.New().String()
+	if output, err := exec.Command("docker", "container", "create", "--name", containerName, "-v", volName+":/launch:ro", image).CombinedOutput(); err != nil {
+		cleanup()
+		fmt.Println(string(output))
+		return "", func() {}, err
+	}
+	defer exec.Command("docker", "rm", containerName).Run()
+	if output, err := exec.Command("docker", "cp", containerName+":/launch/.", tmpDir).CombinedOutput(); err != nil {
+		cleanup()
+		fmt.Println(string(output))
+		return "", func() {}, err
 	}
 
-	return cacheDir, nil
+	return tmpDir, cleanup, nil
 }
 
-func recursiveCopy(src, dst string) error {
-	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
-		relPath, err := filepath.Rel(src, path)
-		if err != nil {
-			return err
-		}
+func copyToVolume(image, volName, srcDir, destDir string) error {
+	containerName := uuid.New().String()
+	if output, err := exec.Command("docker", "container", "create", "--user", "0", "--name", containerName, "--entrypoint", "", "-v", volName+":/launch", image, "chown", "-R", "packs:packs", "/launch").CombinedOutput(); err != nil {
+		fmt.Println(string(output))
+		return err
+	}
+	defer exec.Command("docker", "rm", containerName).Run()
+	if output, err := exec.Command("docker", "cp", srcDir+"/.", containerName+":"+filepath.Join("/launch", destDir)).CombinedOutput(); err != nil {
+		fmt.Println(string(output))
+		return err
+	}
 
-		dest := filepath.Join(dst, relPath)
-		if info.IsDir() {
-			return os.Mkdir(dest, info.Mode())
-		}
+	if output, err := exec.Command("docker", "start", containerName).CombinedOutput(); err != nil {
+		fmt.Println(string(output))
+		return err
+	}
+	return nil
+}
 
-		destFile, err := os.OpenFile(dest, os.O_RDWR|os.O_CREATE|os.O_TRUNC, info.Mode())
-		if err != nil {
-			return err
-		}
-		defer destFile.Close()
+func groupToml(workspaceVolume, detectImage string) (lifecycle.BuildpackGroup, error) {
+	var buf bytes.Buffer
+	cmd := exec.Command("docker", "run", "--rm", "-v", workspaceVolume+":/workspace:ro", "--entrypoint", "", detectImage, "bash", "-c", "cat $PACK_BP_GROUP_PATH")
+	cmd.Stdout = &buf
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return lifecycle.BuildpackGroup{}, err
+	}
 
-		srcFile, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer srcFile.Close()
+	var group lifecycle.BuildpackGroup
+	if _, err := toml.Decode(buf.String(), &group); err != nil {
+		return lifecycle.BuildpackGroup{}, err
+	}
 
-		if _, err := io.Copy(destFile, srcFile); err != nil {
-			return err
-		}
-
-		return nil
-	})
+	return group, nil
 }

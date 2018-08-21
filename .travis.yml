@@ -8,9 +8,6 @@ go:
 env:
   global:
   - GO111MODULE=on
-  - TMPDIR=$HOME/mytmp
 script:
-- echo "MY TMPDIR=$TMPDIR"
-- mkdir -p $TMPDIR
 - go build ./cmd/pack
-- go test -v ./acceptance
+- go test -parallel 1 -v ./acceptance
