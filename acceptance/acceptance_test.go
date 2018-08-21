@@ -1,7 +1,6 @@
 package acceptance_test
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
@@ -84,18 +83,17 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("build on daemon", func() {
-		var (
-			sourceCodePath, repoName, containerName, registryContainerName, registryPort string
-		)
+		var sourceCodePath, repo, repoName, containerName, registryContainerName, registryPort string
 
 		it.Before(func() {
-			sourceCodePath = filepath.Join("fixtures", "node_app")
-			repoName = "http://localhost:5000/some-org/" + randString(10)
-			containerName = "test-" + randString(10)
 			registryContainerName = "test-registry-" + randString(10)
-
 			run(t, exec.Command("docker", "run", "-d", "--rm", "-p", ":5000", "--name", registryContainerName, "registry:2"))
 			registryPort = fetchHostPort(t, registryContainerName)
+
+			sourceCodePath = filepath.Join("fixtures", "node_app")
+			repo = "some-org/" + randString(10)
+			repoName = "localhost:" + registryPort + "/" + repo
+			containerName = "test-" + randString(10)
 		})
 		it.After(func() {
 			exec.Command("docker", "kill", containerName).Run()
@@ -105,9 +103,6 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 		when("'--publish' flag is not specified'", func() {
 			it("builds and exports an image", func() {
-				repo := "some-org/" + randString(10)
-				repoName := "localhost:" + registryPort + "/" + repo
-
 				cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--detect-image", "packsdev/v3:detect")
 				cmd.Env = append(os.Environ(), "HOME="+homeDir)
 				run(t, cmd)
@@ -137,47 +132,10 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		}, spec.Parallel(), spec.Report(report.Terminal{}))
 
 		when("'--publish' flag is specified", func() {
-			it.Before(func() {
-				t.Log("push v3/packs:run to local registry")
-				for _, name := range []string{"build", "run"} {
-					run(t, exec.Command("docker", "pull", "packsdev/v3:"+name))
-					run(t, exec.Command("docker", "tag", "packsdev/v3:"+name, fmt.Sprintf("localhost:%s/packsdev/v3:%s", registryPort, name)))
-				}
-				run(t, exec.Command("docker", "push", fmt.Sprintf("localhost:%s/packsdev/v3:run", registryPort)))
-
-				// Build copy of packsdev/v3:detect with all group repositories pointing to image in local registry
-				cmd := exec.Command("docker", "build", "-t", fmt.Sprintf("localhost:%s/packsdev/v3:detect", registryPort), "-")
-				cmd.Stdin = bytes.NewReader([]byte(fmt.Sprintf(`
-					FROM packsdev/v3:detect
-
-					USER root
-					RUN sed -i 's/"packsdev\/v3"/"localhost:%s\/packsdev\/v3"/' /buildpacks/order.toml
-
-					USER packs
-				`, registryPort)))
-				run(t, cmd)
-			})
-
-			it.After(func() {
-				for _, name := range []string{"detect", "build", "run"} {
-					exec.Command("docker", "rmi", fmt.Sprintf("localhost:%s/packsdev/v3:%s", registryPort, name)).Run()
-				}
-			})
-
 			it("builds and exports an image", func() {
-				repo := "some-org/" + randString(10)
-				repoName := fmt.Sprintf("localhost:%s/%s", registryPort, repo)
-
 				t.Log("run pack build")
-				cmd := exec.Command(
-					pack, "build",
-					fmt.Sprintf("localhost:%s/%s", registryPort, repo),
-					"-p", sourceCodePath,
-					"--detect-image", fmt.Sprintf("localhost:%s/packsdev/v3:detect", registryPort),
-					"--publish",
-				)
+				cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--detect-image", "packsdev/v3:detect", "--publish")
 				cmd.Env = append(os.Environ(), "HOME="+homeDir)
-
 				run(t, cmd)
 
 				t.Log("Checking that registry has contents")
