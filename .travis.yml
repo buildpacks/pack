@@ -9,5 +9,18 @@ env:
   global:
   - GO111MODULE=on
 script:
-- go build ./cmd/pack
-- go test -parallel 1 -v ./acceptance
+- go build -o artifacts/pack-linux ./cmd/pack
+- GOOS=darwin go build -o artifacts/pack-darwin ./cmd/pack
+- PACK_PATH=$PWD/artifacts/pack-linux go test -parallel 1 -v ./acceptance
+deploy:
+  provider: gcs
+  access_key_id: GOOGDF4RIFV7QEAMMYTZENJA
+  secret_access_key:
+    secure: Vgi9ZBgNB/LvVoKq9xFBo8HK6Sd06uyw1yksYpiFOay4slYSJegEcnQK5WqJxInhQ4QOqylERI7DzElodu6Cmq+YCJlBo/8COb5pjHHOlCkqRyO/fzV2chSWvOj9UAATSveWdcADtlF5PZvJJCdPPQxCzwNtf6Q688WD0sL6eUEDqfR3wOOOKLCYemfCKYT6Rs2FecZApcCPex13qlMPp6tkscLbimOTgdnfav28ie6sy2IiWCmJXdLQAmrk8/THJPgu07RnjUH9Bsr+W+hd6wovB54/iDIsgbmA+7pm/0D5U28zMN1zHcGcjz4+kS+JpmOii0yV4L2wGMCFAdq6EjGTZ5Q/1K4vIedpLxAndenH/cDP7dAlo0u1tO9vLvW/5UARdPy56BzWxkQ+j7ZRz8p45rm/0lem5RQU6O8K2DfMFHmJVUcj/BPl+NQr6LrPZZAJNFKC3qEDnH9Gt4SuJXN+z9/t/Riie+ywTZzUVniD+M6GUImGk7onOdYk/R4yp33tr2c5+2TI22EudpdMUo01mto3jlJpesG+ueDDWO3qlIJh6ZMCwcldor8YecLCzC1h9MaX/2unkARshyfrDBUnqwEQfF/jsq7pVBgFXInFCHyufcqcX/UXkA9GPRukE5Y9i243ixsHn0HxsR87Z+qwAJW+E6WaKyVphmzGFMs=
+  bucket: pack-cli
+  skip_cleanup: true
+  acl: public-read
+  local-dir: ./artifacts/
+  on:
+    repo: buildpack/pack
+    branch: master
