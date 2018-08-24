@@ -165,7 +165,6 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		}, spec.Parallel(), spec.Report(report.Terminal{}))
 	})
 }
-
 func run(t *testing.T, cmd *exec.Cmd) string {
 	t.Helper()
 

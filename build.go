@@ -64,7 +64,7 @@ func Build(appDir, detectImage, repoName string, publish bool) error {
 		"-v", launchVolume+":/launch",
 		"-v", workspaceVolume+":/workspace",
 		"-v", cacheVolume+":/cache",
-		group.Repository+":build",
+		group.BuildImage,
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -73,7 +73,7 @@ func Build(appDir, detectImage, repoName string, publish bool) error {
 	}
 
 	if !publish {
-		if out, err := exec.Command("docker", "pull", group.Repository+":run").CombinedOutput(); err != nil {
+		if out, err := exec.Command("docker", "pull", group.RunImage).CombinedOutput(); err != nil {
 			fmt.Println(string(out))
 			return err
 		}
@@ -86,7 +86,7 @@ func Build(appDir, detectImage, repoName string, publish bool) error {
 	}
 	defer cleanup()
 
-	if err := export(group, localLaunchDir, repoName, group.Repository+":run", !publish, !publish); err != nil {
+	if err := export(group, localLaunchDir, repoName, group.RunImage, !publish, !publish); err != nil {
 		return err
 	}
 
