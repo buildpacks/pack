@@ -9,15 +9,15 @@ import (
 	"github.com/buildpack/packs/img"
 )
 
-func export(group lifecycle.BuildpackGroup, launchDir, repoName, stackName string, useDaemon, useDaemonStack bool) error {
+func export(group lifecycle.BuildpackGroup, launchDir, repoName, stackName string, useDaemon, useDaemonStack bool) (string, error) {
 	origImage, err := readImage(repoName, useDaemon)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	stackImage, err := readImage(stackName, useDaemonStack)
 	if err != nil || stackImage == nil {
-		return packs.FailErr(err, "get image for", stackName)
+		return "", packs.FailErr(err, "get image for", stackName)
 	}
 
 	var repoStore img.Store
@@ -27,12 +27,12 @@ func export(group lifecycle.BuildpackGroup, launchDir, repoName, stackName strin
 		repoStore, err = img.NewRegistry(repoName)
 	}
 	if err != nil {
-		return packs.FailErr(err, "access", repoName)
+		return "", packs.FailErr(err, "access", repoName)
 	}
 
 	tmpDir, err := ioutil.TempDir("", "lifecycle.exporter.layer")
 	if err != nil {
-		return packs.FailErr(err, "create temp directory")
+		return "", packs.FailErr(err, "create temp directory")
 	}
 	defer os.RemoveAll(tmpDir)
 
@@ -48,12 +48,17 @@ func export(group lifecycle.BuildpackGroup, launchDir, repoName, stackName strin
 		origImage,
 	)
 	if err != nil {
-		return packs.FailErrCode(err, packs.CodeFailedBuild)
+		return "", packs.FailErrCode(err, packs.CodeFailedBuild)
 	}
 
 	if err := repoStore.Write(newImage); err != nil {
-		return packs.FailErrCode(err, packs.CodeFailedUpdate, "write")
+		return "", packs.FailErrCode(err, packs.CodeFailedUpdate, "write")
 	}
 
-	return nil
+	sha, err := newImage.Digest()
+	if err != nil {
+		return "", packs.FailErr(err, "calculating image digest")
+	}
+
+	return sha.String(), nil
 }

@@ -73,6 +73,7 @@ func Build(appDir, detectImage, repoName string, publish bool) error {
 	}
 
 	if !publish {
+		fmt.Println("*** PULLING RUN IMAGE LOCALLY:")
 		if out, err := exec.Command("docker", "pull", group.RunImage).CombinedOutput(); err != nil {
 			fmt.Println(string(out))
 			return err
@@ -86,8 +87,13 @@ func Build(appDir, detectImage, repoName string, publish bool) error {
 	}
 	defer cleanup()
 
-	if err := export(group, localLaunchDir, repoName, group.RunImage, !publish, !publish); err != nil {
+	imgSHA, err := export(group, localLaunchDir, repoName, group.RunImage, !publish, !publish)
+	if err != nil {
 		return err
+	}
+
+	if publish {
+		fmt.Printf("\n*** Image: %s@%s\n", repoName, imgSHA)
 	}
 
 	return nil

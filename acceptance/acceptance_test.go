@@ -138,7 +138,12 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 					cmd.Env = append(os.Environ(), "HOME="+homeDir)
 					return run(t, cmd)
 				}
-				runPackBuild()
+				output := runPackBuild()
+				imgSHA, err := imgSHAFromOutput(output, repoName)
+				if err != nil {
+					fmt.Println(output)
+					t.Fatal("Could not determine sha for built image")
+				}
 
 				t.Log("Checking that registry has contents")
 				contents := fetch(t, fmt.Sprintf("http://localhost:%s/v2/_catalog", registryPort))
@@ -147,15 +152,15 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				t.Log("run image:", repoName)
-				run(t, exec.Command("docker", "pull", repoName))
-				run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", repoName))
+				run(t, exec.Command("docker", "pull", fmt.Sprintf("%s@%s", repoName, imgSHA)))
+				run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", fmt.Sprintf("%s@%s", repoName, imgSHA)))
 				launchPort := fetchHostPort(t, containerName)
 
 				time.Sleep(2 * time.Second)
 				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked!")
 
 				t.Log("uses the cache on subsequent run")
-				output := runPackBuild()
+				output = runPackBuild()
 
 				regex := regexp.MustCompile(`moved \d+ packages`)
 				if !regex.MatchString(output) {
@@ -211,6 +216,15 @@ func fetchHostPort(t *testing.T, dockerID string) string {
 	}
 
 	return strings.TrimSpace(string(output))
+}
+
+func imgSHAFromOutput(txt, repoName string) (string, error) {
+	for _, m := range regexp.MustCompile(`\*\*\* Image: (.+)@(.+)`).FindAllStringSubmatch(txt, -1) {
+		if m[1] == repoName {
+			return m[2], nil
+		}
+	}
+	return "", fmt.Errorf("could not find Image: %s@[SHA] in output", repoName)
 }
 
 func randString(n int) string {
