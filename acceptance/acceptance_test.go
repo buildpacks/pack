@@ -1,19 +1,18 @@
 package acceptance_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
-	"os/exec"
-	"path/filepath"
-	"regexp"
-	"testing"
-
 	"math/rand"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
+	"testing"
 	"time"
-
-	"fmt"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
@@ -39,18 +38,21 @@ func TestPack(t *testing.T) {
 		defer os.RemoveAll(packTmpDir)
 	}
 
-	run(t, exec.Command("docker", "pull", "registry:2"))
+	NewDockerDaemon().Pull(t, "registry", "2")
+	NewDockerDaemon().Pull(t, "sclevine/test", "latest")
 
 	spec.Run(t, "pack", testPack, spec.Report(report.Terminal{}))
 }
 
 func testPack(t *testing.T, when spec.G, it spec.S) {
 	var homeDir string
+	var docker *DockerDaemon
 
 	it.Before(func() {
 		if _, err := os.Stat(pack); os.IsNotExist(err) {
 			t.Fatal("No file found at PACK_PATH environment variable:", pack)
 		}
+		docker = NewDockerDaemon()
 
 		var err error
 		homeDir, err = ioutil.TempDir("", "buildpack.pack.build.homedir.")
@@ -80,7 +82,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal("Failed to print usage", string(output))
 			}
 		})
-	})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
 	when("build on daemon", func() {
 		var sourceCodePath, repo, repoName, containerName, registryContainerName, registryPort string
@@ -102,9 +104,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			containerName = "test-" + randString(10)
 		})
 		it.After(func() {
-			exec.Command("docker", "kill", containerName).Run()
-			exec.Command("docker", "rmi", repoName).Run()
-			exec.Command("docker", "kill", registryContainerName).Run()
+			docker.Kill(containerName, registryContainerName)
+			docker.RemoveImage(repoName)
 			if sourceCodePath != "" {
 				os.RemoveAll(sourceCodePath)
 			}
@@ -152,7 +153,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				t.Log("run image:", repoName)
-				run(t, exec.Command("docker", "pull", fmt.Sprintf("%s@%s", repoName, imgSHA)))
+				docker.Pull(t, repoName, imgSHA)
 				run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", fmt.Sprintf("%s@%s", repoName, imgSHA)))
 				launchPort := fetchHostPort(t, containerName)
 
@@ -168,8 +169,107 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 		}, spec.Parallel(), spec.Report(report.Terminal{}))
-	})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+
+	when("create", func() {
+		var detectImageName, buildImageName string
+
+		it.Before(func() {
+			detectImageName = "some-org/detect-" + randString(10)
+			buildImageName = "some-org/build-" + randString(10)
+			docker = NewDockerDaemon()
+		})
+		it.After(func() {
+			docker.RemoveImage(detectImageName, buildImageName)
+		})
+
+		when("provided with output detect and build images", func() {
+			it("creates detect and build images on the daemon", func() {
+				cmd := exec.Command(pack, "create", detectImageName, buildImageName, "--from-base-image", "sclevine/test")
+				cmd.Env = append(os.Environ(), "HOME="+homeDir)
+				cmd.Dir = "./fixtures/buildpacks"
+				run(t, cmd)
+
+				t.Log("images exist")
+				detectConfig := docker.InspectImage(t, detectImageName)
+				buildConfig := docker.InspectImage(t, buildImageName)
+
+				t.Log("both images have buildpacks")
+				for _, image := range []string{detectImageName, buildImageName} {
+					info := docker.FileFromImage(t, image, "/buildpacks/order.toml")
+					if info.Name != "order.toml" || info.Size != 127 {
+						t.Fatalf("Expected %s to contain /buildpacks/order.toml: %v", image, info)
+					}
+				}
+
+				t.Log("both images have ENTRYPOINTs")
+				if diff := cmp.Diff(detectConfig.Config.Entrypoint, []string{"/packs/detector"}); diff != "" {
+					t.Fatal(diff)
+				}
+				if diff := cmp.Diff(buildConfig.Config.Entrypoint, []string{"/packs/builder"}); diff != "" {
+					t.Fatal(diff)
+				}
+
+				t.Log("detect image has desired ENV variables")
+				if contains(detectConfig.Config.Env, `"PACK_BP_ORDER_PATH=/buildpacks/order.toml"`) {
+					t.Fatalf("Expected %v to contain %s", detectConfig.Config.Env, `"PACK_BP_ORDER_PATH=/buildpacks/order.toml"`)
+				}
+
+				t.Log("build image has desired extra ENV variables")
+				if contains(buildConfig.Config.Env, `"PACK_METADATA_PATH=/launch/config/metadata.toml"`) {
+					t.Fatalf("Expected %v to contain %s", buildConfig.Config.Env, `"PACK_METADATA_PATH=/launch/config/metadata.toml"`)
+				}
+			})
+
+			when("publishing", func() {
+				var registryContainerName, registryPort string
+				var registry *DockerRegistry
+				it.Before(func() {
+					registryContainerName = "test-registry-" + randString(10)
+					run(t, exec.Command("docker", "run", "-d", "--rm", "-p", ":5000", "--name", registryContainerName, "registry:2"))
+					registryPort = fetchHostPort(t, registryContainerName)
+					registry = NewDockerRegistry()
+
+					detectImageName = "localhost:" + registryPort + "/" + detectImageName
+					buildImageName = "localhost:" + registryPort + "/" + buildImageName
+				})
+				it.After(func() {
+					docker.Kill(registryContainerName)
+				})
+
+				it("creates detect and build images on the registry", func() {
+					cmd := exec.Command(pack, "create", detectImageName, buildImageName, "--publish", "--from-base-image", "sclevine/test")
+					cmd.Env = append(os.Environ(), "HOME="+homeDir)
+					cmd.Dir = "./fixtures/buildpacks"
+					run(t, cmd)
+
+					t.Log("images exist on registry")
+					detectConfig := registry.InspectImage(t, detectImageName)
+					buildConfig := registry.InspectImage(t, buildImageName)
+
+					t.Log("both images have ENTRYPOINTs")
+					if diff := cmp.Diff(detectConfig.Config.Entrypoint, []string{"/packs/detector"}); diff != "" {
+						t.Fatal(diff)
+					}
+					if diff := cmp.Diff(buildConfig.Config.Entrypoint, []string{"/packs/builder"}); diff != "" {
+						t.Fatal(diff)
+					}
+
+					t.Log("detect image has desired ENV variables")
+					if contains(detectConfig.Config.Env, `"PACK_BP_ORDER_PATH=/buildpacks/order.toml"`) {
+						t.Fatalf("Expected %v to contain %s", detectConfig.Config.Env, `"PACK_BP_ORDER_PATH=/buildpacks/order.toml"`)
+					}
+
+					t.Log("build image has desired extra ENV variables")
+					if contains(buildConfig.Config.Env, `"PACK_METADATA_PATH=/launch/config/metadata.toml"`) {
+						t.Fatalf("Expected %v to contain %s", buildConfig.Config.Env, `"PACK_METADATA_PATH=/launch/config/metadata.toml"`)
+					}
+				})
+			})
+		})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
 }
+
 func run(t *testing.T, cmd *exec.Cmd) string {
 	t.Helper()
 
@@ -204,18 +304,27 @@ func fetch(t *testing.T, url string) string {
 func fetchHostPort(t *testing.T, dockerID string) string {
 	t.Helper()
 
-	output, err := exec.Command(
-		"docker",
-		"inspect",
-		`--format={{range $p, $conf := .NetworkSettings.Ports}} {{(index $conf 0).HostPort}} {{end}}`,
-		dockerID,
-	).Output()
-
+	body, _, err := NewDockerDaemon().Do("GET", fmt.Sprintf("/containers/%s/json", dockerID), nil, nil)
 	if err != nil {
-		t.Fatalf("Failed to fetch registry host port: %s", err)
+		t.Fatalf("Failed to fetch host port for %s: %s", dockerID, err)
 	}
-
-	return strings.TrimSpace(string(output))
+	var out struct {
+		NetworkSettings struct {
+			Ports map[string][]struct {
+				HostPort string
+			}
+		}
+	}
+	if err := json.NewDecoder(body).Decode(&out); err != nil {
+		t.Fatalf("Failed to fetch host port for %s: %s", dockerID, err)
+	}
+	for _, p := range out.NetworkSettings.Ports {
+		if len(p) > 0 {
+			return p[0].HostPort
+		}
+	}
+	t.Fatalf("Failed to fetch host port for %s: no ports exposed", dockerID)
+	return ""
 }
 
 func imgSHAFromOutput(txt, repoName string) (string, error) {
@@ -240,4 +349,20 @@ func assertEq(t *testing.T, actual, expected interface{}) {
 	if diff := cmp.Diff(actual, expected); diff != "" {
 		t.Fatal(diff)
 	}
+}
+
+func assertNil(t *testing.T, actual interface{}) {
+	t.Helper()
+	if actual != nil {
+		t.Fatalf("Expected nil: %s", actual)
+	}
+}
+
+func contains(arr []string, val string) bool {
+	for _, v := range arr {
+		if v == val {
+			return true
+		}
+	}
+	return false
 }

@@ -7,13 +7,9 @@ import (
 )
 
 func readImage(repoName string, useDaemon bool) (v1.Image, error) {
-	newRepoStore := img.NewRegistry
-	if useDaemon {
-		newRepoStore = img.NewDaemon
-	}
-	repoStore, err := newRepoStore(repoName)
+	repoStore, err := repoStore(repoName, useDaemon)
 	if err != nil {
-		return nil, packs.FailErr(err, "access", repoName)
+		return nil, err
 	}
 
 	origImage, err := repoStore.Image()
@@ -28,4 +24,16 @@ func readImage(repoName string, useDaemon bool) (v1.Image, error) {
 	}
 
 	return origImage, nil
+}
+
+func repoStore(repoName string, useDaemon bool) (img.Store, error) {
+	newRepoStore := img.NewRegistry
+	if useDaemon {
+		newRepoStore = img.NewDaemon
+	}
+	repoStore, err := newRepoStore(repoName)
+	if err != nil {
+		return nil, packs.FailErr(err, "access", repoName)
+	}
+	return repoStore, nil
 }
