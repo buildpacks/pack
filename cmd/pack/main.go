@@ -10,22 +10,18 @@ import (
 func main() {
 	wd, _ := os.Getwd()
 
-	var buildFlags struct {
-		appDir      string
-		detectImage string
-		publish     bool
-	}
+	var buildFlags pack.BuildFlags
 	buildCommand := &cobra.Command{
 		Use:  "build [IMAGE NAME]",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			repoName := args[0]
-			return pack.Build(buildFlags.appDir, buildFlags.detectImage, repoName, buildFlags.publish)
+			buildFlags.RepoName = args[0]
+			return buildFlags.Run()
 		},
 	}
-	buildCommand.Flags().StringVarP(&buildFlags.appDir, "path", "p", wd, "path to app dir")
-	buildCommand.Flags().StringVar(&buildFlags.detectImage, "detect-image", "packs/v3:detect", "detect image")
-	buildCommand.Flags().BoolVar(&buildFlags.publish, "publish", false, "publish to registry")
+	buildCommand.Flags().StringVarP(&buildFlags.AppDir, "path", "p", wd, "path to app dir")
+	buildCommand.Flags().StringVar(&buildFlags.DetectImage, "detect-image", "packs/v3:detect", "detect image")
+	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
 
 	var createFlags pack.Create
 	createCommand := &cobra.Command{
