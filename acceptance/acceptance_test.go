@@ -197,7 +197,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				t.Log("both images have buildpacks")
 				for _, image := range []string{detectImageName, buildImageName} {
 					info := docker.FileFromImage(t, image, "/buildpacks/order.toml")
-					if info.Name != "order.toml" || info.Size != 127 {
+					if info.Name != "order.toml" || info.Size != 130 {
 						t.Fatalf("Expected %s to contain /buildpacks/order.toml: %v", image, info)
 					}
 				}
