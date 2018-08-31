@@ -305,7 +305,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it.Focus("run works", func() {
+		it("run works", func() {
 			t.Log("create detect image:")
 			cmd := exec.Command(pack, "create", detectImageName, buildImageName, "--from-base-image", "packsdev/v3:latest", "-p", filepath.Join(tmpDir, "buildpacks"), "--publish")
 			cmd.Env = append(os.Environ(), "HOME="+homeDir)
