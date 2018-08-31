@@ -50,6 +50,8 @@ func (c *Create) Run() error {
 		return err
 	}
 	config := *configFile.Config.DeepCopy()
+	config.Cmd = []string{}
+	config.User = "packs"
 	config.Entrypoint = []string{"/packs/detector"}
 	config.Env = append(
 		config.Env,
