@@ -7,6 +7,9 @@ go:
 env:
   global:
   - GO111MODULE=on
+cache:
+  directories:
+  - $GOROOT/pkg/mod
 script:
 - go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-linux ./cmd/pack
 - GOOS=darwin go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-darwin ./cmd/pack
