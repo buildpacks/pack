@@ -11,6 +11,7 @@ script:
 - go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-linux ./cmd/pack
 - GOOS=darwin go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-darwin ./cmd/pack
 - PACK_PATH=$PWD/artifacts/pack-$TRAVIS_BUILD_NUMBER-linux go test -parallel 1 -v ./acceptance
+- [ $TRAVIS_BRANCH == 'master' ] && echo "Darwin: https://storage.cloud.google.com/pack-cli/pack-$TRAVIS_BUILD_NUMBER-darwin ;; Linunx: https://storage.cloud.google.com/pack-cli/pack-$TRAVIS_BUILD_NUMBER-linux"
 deploy:
   provider: gcs
   access_key_id: GOOGDF4RIFV7QEAMMYTZENJA
@@ -24,4 +25,3 @@ deploy:
     repo: buildpack/pack
     branch: master
 after_deploy:
-- [ $TRAVIS_BRANCH == 'master' ] && echo "Darwin: https://storage.cloud.google.com/pack-cli/pack-$TRAVIS_BUILD_NUMBER-darwin ;; Linunx: https://storage.cloud.google.com/pack-cli/pack-$TRAVIS_BUILD_NUMBER-linux"
