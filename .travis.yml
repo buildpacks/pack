@@ -23,3 +23,5 @@ deploy:
   on:
     repo: buildpack/pack
     branch: master
+after_deploy:
+- [ $TRAVIS_BRANCH == 'master' ] && echo "Darwin: https://storage.cloud.google.com/pack-cli/pack-$TRAVIS_BUILD_NUMBER-darwin ;; Linunx: https://storage.cloud.google.com/pack-cli/pack-$TRAVIS_BUILD_NUMBER-linux"
