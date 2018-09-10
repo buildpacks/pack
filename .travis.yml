@@ -8,9 +8,9 @@ env:
   global:
   - GO111MODULE=on
 script:
-- go build -o artifacts/pack-linux ./cmd/pack
-- GOOS=darwin go build -o artifacts/pack-darwin ./cmd/pack
-- PACK_PATH=$PWD/artifacts/pack-linux go test -parallel 1 -v ./acceptance
+- go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-linux ./cmd/pack
+- GOOS=darwin go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-darwin ./cmd/pack
+- PACK_PATH=$PWD/artifacts/pack-$TRAVIS_BUILD_NUMBER-linux go test -parallel 1 -v ./acceptance
 deploy:
   provider: gcs
   access_key_id: GOOGDF4RIFV7QEAMMYTZENJA
