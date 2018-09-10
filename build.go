@@ -98,19 +98,27 @@ func (b *BuildFlags) Run() error {
 	}
 
 	fmt.Println("*** EXPORTING:")
-	localLaunchDir, cleanup, err := exportVolume(b.DetectImage, launchVolume)
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	imgSHA, err := export(group, localLaunchDir, b.RepoName, group.RunImage, !b.Publish, !b.Publish)
-	if err != nil {
-		return err
-	}
-
 	if b.Publish {
+		localLaunchDir, cleanup, err := exportVolume(b.DetectImage, launchVolume)
+		if err != nil {
+			return err
+		}
+		defer cleanup()
+
+		imgSHA, err := exportRegistry(&group, localLaunchDir, b.RepoName, group.RunImage)
+		if err != nil {
+			return err
+		}
 		fmt.Printf("\n*** Image: %s@%s\n", b.RepoName, imgSHA)
+	} else {
+		var buildpacks []string
+		for _, b := range group.Buildpacks {
+			buildpacks = append(buildpacks, b.ID)
+		}
+
+		if err := exportDaemon(buildpacks, launchVolume, b.RepoName, group.RunImage); err != nil {
+			return err
+		}
 	}
 
 	return nil
