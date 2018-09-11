@@ -254,10 +254,6 @@ func addDockerfileToTar(runImage, repoName string, buildpacks []string, r io.Rea
 				dirs[arr[1]][arr[2]] = true
 			}
 
-			if hdr.Typeflag == tar.TypeDir {
-				fmt.Println(len(arr), arr)
-			}
-
 			// TODO is it OK to do this if we have already read it above? eg. toml file
 			if _, err := io.Copy(tw, tr); err != nil {
 				layerChan <- nil
