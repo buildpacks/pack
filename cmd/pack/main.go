@@ -20,7 +20,8 @@ func main() {
 		},
 	}
 	buildCommand.Flags().StringVarP(&buildFlags.AppDir, "path", "p", wd, "path to app dir")
-	buildCommand.Flags().StringVar(&buildFlags.DetectImage, "detect-image", "packs/v3:detect", "detect image")
+	buildCommand.Flags().StringVar(&buildFlags.BuildImage, "build-image", "packs/build:0.0.1-rc.170", "build image")
+	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "packs/run:0.0.1-rc.170", "run image")
 	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
 
 	var createFlags pack.Create

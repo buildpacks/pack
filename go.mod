@@ -3,7 +3,7 @@ module github.com/buildpack/pack
 require (
 	github.com/BurntSushi/toml v0.3.0
 	github.com/Microsoft/go-winio v0.4.9
-	github.com/buildpack/lifecycle v0.0.0-20180824000627-2f640c42a336dbb896d0935c8adffdb72b1c558d
+	github.com/buildpack/lifecycle v0.0.0-20180824000627-5afbc99a71b820aaffc43b148d3fa47b1587e3e3
 	github.com/buildpack/packs v0.0.0-20180824001031-aa30a412923763df37e83f14a6e4e0fe07e11f25
 	github.com/docker/distribution v2.6.2+incompatible
 	github.com/docker/docker v1.13.1

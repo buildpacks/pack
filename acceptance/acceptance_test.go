@@ -113,7 +113,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 		when("'--publish' flag is not specified'", func() {
 			it("builds and exports an image", func() {
-				cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--detect-image", "packsdev/v3:detect")
+				cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath)
 				cmd.Env = append(os.Environ(), "HOME="+homeDir)
 				run(t, cmd)
 
@@ -135,7 +135,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			it("builds and exports an image", func() {
 				runPackBuild := func() string {
 					t.Helper()
-					cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--detect-image", "packsdev/v3:detect", "--publish")
+					cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--publish")
 					cmd.Env = append(os.Environ(), "HOME="+homeDir)
 					return run(t, cmd)
 				}
@@ -269,7 +269,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
-	when("create, build, run", func() {
+	when.Pend("create, build, run", func() {
 		var tmpDir, detectImageName, buildImageName, repoName, containerName, registryContainerName, registry string
 
 		it.Before(func() {
