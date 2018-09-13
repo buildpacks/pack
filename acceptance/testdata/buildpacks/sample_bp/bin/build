@@ -7,6 +7,7 @@ launch_dir=$3
 
 mkdir -p "$launch_dir/layer/bin"
 echo -e "#!/usr/bin/env bash\necho Hi from Sample BP" > "$launch_dir/layer/bin/my-run"
+chmod +x "$launch_dir/layer/bin/my-run"
 touch "$launch_dir/layer.toml"
 
 echo 'processes = [{ type = "web", command = "my-run"}]' > "$launch_dir/launch.toml"

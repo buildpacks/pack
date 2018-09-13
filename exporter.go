@@ -201,7 +201,6 @@ func addDockerfileToTar(runImage, repoName string, buildpacks []string, r io.Rea
 	for _, b := range buildpacks {
 		isBuildpack[b] = true
 	}
-	// fmt.Println(isBuildpack)
 
 	go func() {
 		defer pw.Close()
@@ -218,7 +217,6 @@ func addDockerfileToTar(runImage, repoName string, buildpacks []string, r io.Rea
 				errChan <- errors.Wrap(err, "tr.Next")
 				return
 			}
-			// fmt.Printf("File: %s\n", hdr.Name)
 
 			tw.WriteHeader(hdr)
 
@@ -267,7 +265,6 @@ func addDockerfileToTar(runImage, repoName string, buildpacks []string, r io.Rea
 			layers := sortedKeys(tomlFiles[buildpack])
 			for _, layer := range layers {
 				layerNames = append(layerNames, dockerfileLayer{buildpack, layer, tomlFiles[buildpack][layer]})
-				// fmt.Println("Buildpack:", buildpack, "Layer:", layer, "DIRS:", dirs)
 				if dirs[buildpack][layer] {
 					dockerFile += fmt.Sprintf("ADD --chown=pack:pack /workspace/%s/%s /workspace/%s/%s\n", buildpack, layer, buildpack, layer)
 				} else {
@@ -279,10 +276,6 @@ func addDockerfileToTar(runImage, repoName string, buildpacks []string, r io.Rea
 		if copyFromPrev {
 			dockerFile = "FROM " + repoName + " AS prev\n\n" + dockerFile
 		}
-
-		fmt.Println(tomlFiles)
-		fmt.Println(dirs)
-		// fmt.Println(dockerFile)
 
 		if err := tw.WriteHeader(&tar.Header{Name: "Dockerfile", Size: int64(len(dockerFile)), Mode: 0666}); err != nil {
 			layerChan <- nil

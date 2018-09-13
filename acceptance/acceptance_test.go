@@ -97,7 +97,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			exec.Command("cp", "-r", "fixtures/node_app/.", sourceCodePath).Run()
+			exec.Command("cp", "-r", "testdata/node_app/.", sourceCodePath).Run()
 
 			repo = "some-org/" + randString(10)
 			repoName = "localhost:" + registryPort + "/" + repo
@@ -171,156 +171,77 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		}, spec.Parallel(), spec.Report(report.Terminal{}))
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
-	when("create", func() {
-		var detectImageName, buildImageName string
+	when("create-builder", func() {
+		var (
+			builderTOML     string
+			builderRepoName string
+			appRepoName     string
+			containerName   string
+			tmpDir          string
+		)
 
 		it.Before(func() {
-			detectImageName = "some-org/detect-" + randString(10)
-			buildImageName = "some-org/build-" + randString(10)
-			docker = NewDockerDaemon()
-		})
-		it.After(func() {
-			docker.RemoveImage(detectImageName, buildImageName)
-		})
-
-		when("provided with output detect and build images", func() {
-			it("creates detect and build images on the daemon", func() {
-				cmd := exec.Command(pack, "create", detectImageName, buildImageName, "--from-base-image", "sclevine/test")
-				cmd.Env = append(os.Environ(), "HOME="+homeDir)
-				cmd.Dir = "./fixtures/buildpacks"
-				run(t, cmd)
-
-				t.Log("images exist")
-				detectConfig := docker.InspectImage(t, detectImageName)
-				buildConfig := docker.InspectImage(t, buildImageName)
-
-				t.Log("both images have buildpacks")
-				for _, image := range []string{detectImageName, buildImageName} {
-					info := docker.FileFromImage(t, image, "/buildpacks/order.toml")
-					if info.Name != "order.toml" || info.Size != 130 {
-						t.Fatalf("Expected %s to contain /buildpacks/order.toml: %v", image, info)
-					}
-				}
-
-				t.Log("both images have ENTRYPOINTs")
-				if diff := cmp.Diff(detectConfig.Config.Entrypoint, []string{"/packs/detector"}); diff != "" {
-					t.Fatal(diff)
-				}
-				if diff := cmp.Diff(buildConfig.Config.Entrypoint, []string{"/packs/builder"}); diff != "" {
-					t.Fatal(diff)
-				}
-
-				t.Log("detect image has desired ENV variables")
-				if contains(detectConfig.Config.Env, `"PACK_BP_ORDER_PATH=/buildpacks/order.toml"`) {
-					t.Fatalf("Expected %v to contain %s", detectConfig.Config.Env, `"PACK_BP_ORDER_PATH=/buildpacks/order.toml"`)
-				}
-
-				t.Log("build image has desired extra ENV variables")
-				if contains(buildConfig.Config.Env, `"PACK_METADATA_PATH=/launch/config/metadata.toml"`) {
-					t.Fatalf("Expected %v to contain %s", buildConfig.Config.Env, `"PACK_METADATA_PATH=/launch/config/metadata.toml"`)
-				}
-			})
-
-			when("publishing", func() {
-				var registryContainerName, registryPort string
-				var registry *DockerRegistry
-				it.Before(func() {
-					registryContainerName = "test-registry-" + randString(10)
-					run(t, exec.Command("docker", "run", "-d", "--rm", "-p", ":5000", "--name", registryContainerName, "registry:2"))
-					registryPort = fetchHostPort(t, registryContainerName)
-					registry = NewDockerRegistry()
-
-					detectImageName = "localhost:" + registryPort + "/" + detectImageName
-					buildImageName = "localhost:" + registryPort + "/" + buildImageName
-				})
-				it.After(func() {
-					docker.Kill(registryContainerName)
-				})
-
-				it("creates detect and build images on the registry", func() {
-					cmd := exec.Command(pack, "create", detectImageName, buildImageName, "--publish", "--from-base-image", "sclevine/test")
-					cmd.Env = append(os.Environ(), "HOME="+homeDir)
-					cmd.Dir = "./fixtures/buildpacks"
-					run(t, cmd)
-
-					t.Log("images exist on registry")
-					detectConfig := registry.InspectImage(t, detectImageName)
-					buildConfig := registry.InspectImage(t, buildImageName)
-
-					t.Log("both images have ENTRYPOINTs")
-					if diff := cmp.Diff(detectConfig.Config.Entrypoint, []string{"/packs/detector"}); diff != "" {
-						t.Fatal(diff)
-					}
-					if diff := cmp.Diff(buildConfig.Config.Entrypoint, []string{"/packs/builder"}); diff != "" {
-						t.Fatal(diff)
-					}
-
-					t.Log("detect image has desired ENV variables")
-					if contains(detectConfig.Config.Env, `"PACK_BP_ORDER_PATH=/buildpacks/order.toml"`) {
-						t.Fatalf("Expected %v to contain %s", detectConfig.Config.Env, `"PACK_BP_ORDER_PATH=/buildpacks/order.toml"`)
-					}
-
-					t.Log("build image has desired extra ENV variables")
-					if contains(buildConfig.Config.Env, `"PACK_METADATA_PATH=/launch/config/metadata.toml"`) {
-						t.Fatalf("Expected %v to contain %s", buildConfig.Config.Env, `"PACK_METADATA_PATH=/launch/config/metadata.toml"`)
-					}
-				})
-			})
-		})
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
-
-	when.Pend("create, build, run", func() {
-		var tmpDir, detectImageName, buildImageName, repoName, containerName, registryContainerName, registry string
-
-		it.Before(func() {
-			uid := randString(10)
-			registryContainerName = "test-registry-" + uid
-			run(t, exec.Command("docker", "run", "-d", "--rm", "-p", ":5000", "--name", registryContainerName, "registry:2"))
-			registry = "localhost:" + fetchHostPort(t, registryContainerName) + "/"
+			builderTOML = filepath.Join("testdata", "builder.toml")
 
 			var err error
 			tmpDir, err = ioutil.TempDir("", "pack.build.node_app.")
 			assertNil(t, err)
 			assertNil(t, os.Mkdir(filepath.Join(tmpDir, "app"), 0755))
-			run(t, exec.Command("cp", "-r", "fixtures/node_app/.", filepath.Join(tmpDir, "app")))
-			assertNil(t, os.Mkdir(filepath.Join(tmpDir, "buildpacks"), 0755))
-			run(t, exec.Command("cp", "-r", "fixtures/buildpacks/.", filepath.Join(tmpDir, "buildpacks")))
+			run(t, exec.Command("cp", "-r", "testdata/node_app/.", filepath.Join(tmpDir, "app")))
 
-			repoName = registry + "some-org/output-" + uid
-			detectImageName = registry + "some-org/detect-" + uid
-			buildImageName = registry + "some-org/build-" + uid
-			containerName = "test-" + uid
-
-			txt, err := ioutil.ReadFile(filepath.Join(tmpDir, "buildpacks", "order.toml"))
-			assertNil(t, err)
-			txt2 := strings.Replace(string(txt), "some-build-image", buildImageName, -1)
-			txt2 = strings.Replace(txt2, "some-run-image", buildImageName, -1)
-			assertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "buildpacks", "order.toml"), []byte(txt2), 0644))
+			builderRepoName = "some-org/" + randString(10)
+			appRepoName = "some-org/" + randString(10)
+			containerName = "test-" + randString(10)
 		})
 		it.After(func() {
-			docker.Kill(containerName, registryContainerName)
-			docker.RemoveImage(repoName, detectImageName, buildImageName)
+			docker.Kill(containerName)
+			docker.RemoveImage(builderRepoName, appRepoName)
 			if tmpDir != "" {
 				os.RemoveAll(tmpDir)
 			}
 		})
 
-		it("run works", func() {
-			t.Log("create detect image:")
-			cmd := exec.Command(pack, "create", detectImageName, buildImageName, "--from-base-image", "packsdev/v3:latest", "-p", filepath.Join(tmpDir, "buildpacks"), "--publish")
+		it("creates a builder image", func() {
+			t.Log("create builder image")
+			cmd := exec.Command(pack, "create-builder", builderRepoName, "-b", builderTOML)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("create-builder command failed: %s: %s", output, err)
+			}
+
+			t.Log("builder image has order toml and buildpacks")
+			dockerRunOutput := run(t, exec.Command("docker", "run", "--rm=true", "-t", builderRepoName, "ls", "/buildpacks"))
+
+			if !strings.Contains(dockerRunOutput, "order.toml") {
+				t.Fatalf("expected /buildpacks to contain order.toml, got '%s'", dockerRunOutput)
+			}
+			if !strings.Contains(dockerRunOutput, "com.example.sample.bp") {
+				t.Fatalf("expected /buildpacks to contain com.example.sample.bp, got '%s'", dockerRunOutput)
+			}
+
+			dockerRunOutput = run(t, exec.Command("docker", "run", "--rm=true", "-t", builderRepoName, "cat", "/buildpacks/order.toml"))
+			sanitzedOutput := strings.Replace(dockerRunOutput, "\r", "", -1)
+			expectedGroups := `[[groups]]
+
+  [[groups.buildpacks]]
+    id = "com.example.sample.bp"
+    version = "1.2.3"
+`
+
+			if diff := cmp.Diff(sanitzedOutput, expectedGroups); diff != "" {
+				t.Fatalf("expected order.toml to contain '%s', got diff '%s'", expectedGroups, diff)
+			}
+
+			t.Log("build app with builder:", builderRepoName)
+			cmd = exec.Command(pack, "build", appRepoName, "-p", filepath.Join(tmpDir, "app"), "--builder", builderRepoName)
 			cmd.Env = append(os.Environ(), "HOME="+homeDir)
 			run(t, cmd)
 
-			t.Log("build image from detect:")
-			docker.Pull(t, detectImageName, "latest")
-			docker.Pull(t, buildImageName, "latest")
-			cmd = exec.Command(pack, "build", repoName, "-p", filepath.Join(tmpDir, "app"), "--detect-image", detectImageName, "--publish")
-			cmd.Env = append(os.Environ(), "HOME="+homeDir)
-			run(t, cmd)
-
-			t.Log("run image:", repoName)
-			docker.Pull(t, repoName, "latest")
-			run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", repoName))
+			t.Log("run image:", appRepoName)
+			txt := run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", appRepoName))
+			if !strings.Contains(txt, "Hi from Sample BP") {
+				t.Fatalf("expected '%s' to be contained in:\n%s", "Hi from Sample BP", txt)
+			}
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 }

@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-echo "sample_bp = { version = \"latest\" }"
-exit 0

@@ -16,20 +16,20 @@ import (
 
 func Build(appDir, buildImage, runImage, repoName string, publish bool) error {
 	return (&BuildFlags{
-		AppDir:     appDir,
-		BuildImage: buildImage,
-		RunImage:   runImage,
-		RepoName:   repoName,
-		Publish:    publish,
+		AppDir:   appDir,
+		Builder:  buildImage,
+		RunImage: runImage,
+		RepoName: repoName,
+		Publish:  publish,
 	}).Run()
 }
 
 type BuildFlags struct {
-	AppDir     string
-	BuildImage string
-	RunImage   string
-	RepoName   string
-	Publish    bool
+	AppDir   string
+	Builder  string
+	RunImage string
+	RepoName string
+	Publish  bool
 }
 
 func (b *BuildFlags) Run() error {
@@ -45,19 +45,19 @@ func (b *BuildFlags) Run() error {
 	defer exec.Command("docker", "volume", "rm", "-f", workspaceVolume).Run()
 
 	fmt.Println("*** COPY APP TO VOLUME:")
-	if err := copyToVolume(b.BuildImage, workspaceVolume, b.AppDir, "app"); err != nil {
+	if err := copyToVolume(b.Builder, workspaceVolume, b.AppDir, "app"); err != nil {
 		return err
 	}
 
 	fmt.Println("*** DETECTING:")
-	cmd := exec.Command("docker", "run", "--rm", "-v", workspaceVolume+":/workspace", b.BuildImage, "/lifecycle/detector")
+	cmd := exec.Command("docker", "run", "--rm", "-v", workspaceVolume+":/workspace", b.Builder, "/lifecycle/detector")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return err
 	}
 
-	group, err := groupToml(workspaceVolume, b.BuildImage)
+	group, err := groupToml(workspaceVolume, b.Builder)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (b *BuildFlags) Run() error {
 	if err := analyzer(group, analyzeTmpDir, b.RepoName, !b.Publish); err != nil {
 		return err
 	}
-	if err := copyToVolume(b.BuildImage, workspaceVolume, analyzeTmpDir, ""); err != nil {
+	if err := copyToVolume(b.Builder, workspaceVolume, analyzeTmpDir, ""); err != nil {
 		return err
 	}
 
@@ -80,7 +80,7 @@ func (b *BuildFlags) Run() error {
 		"--rm",
 		"-v", workspaceVolume+":/workspace",
 		"-v", cacheVolume+":/cache",
-		b.BuildImage,
+		b.Builder,
 		"/lifecycle/builder",
 	)
 	cmd.Stdout = os.Stdout
@@ -99,7 +99,7 @@ func (b *BuildFlags) Run() error {
 
 	fmt.Println("*** EXPORTING:")
 	if b.Publish {
-		localWorkspaceDir, cleanup, err := exportVolume(b.BuildImage, workspaceVolume)
+		localWorkspaceDir, cleanup, err := exportVolume(b.Builder, workspaceVolume)
 		if err != nil {
 			return err
 		}

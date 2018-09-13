@@ -1,5 +1,0 @@
-[[groups]]
-build-image = "some-build-image"
-run-image = "some-run-image"
-buildpacks = [{ id = "sample_bp", version = "latest" }]
-

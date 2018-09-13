@@ -42,7 +42,6 @@ func NewDockerDaemon() *DockerDaemon {
 }
 
 func (d *DockerDaemon) Do(method, path string, query map[string]string, data interface{}) (io.ReadCloser, http.Header, error) {
-	// fmt.Println("DOCKER:", method, path, query, data)
 	var postData io.Reader
 	if data != nil {
 		b, err := json.Marshal(data)
@@ -164,7 +163,6 @@ func (d *DockerDaemon) Pull(t *testing.T, imageName, tag string) {
 		if err := json.NewDecoder(body).Decode(&out); err != nil {
 			break
 		}
-		// fmt.Printf("OUT: %#v\n", out)
 		if out["message"] != nil {
 			t.Fatal(out["message"])
 		}
