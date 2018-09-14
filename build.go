@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,8 +15,11 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/pack/docker"
+	"github.com/buildpack/packs/img"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	dockercli "github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
@@ -82,15 +86,7 @@ func (b *BuildFlags) Run() error {
 	}
 
 	fmt.Println("*** ANALYZING: Reading information from previous image for possible re-use")
-	analyzeTmpDir, err := ioutil.TempDir("", "pack.build.")
-	if err != nil {
-		return err
-	}
-	defer os.RemoveAll(analyzeTmpDir)
-	if err := analyzer(b.Cli, *group, analyzeTmpDir, b.RepoName, !b.Publish); err != nil {
-		return err
-	}
-	if err := copyToVolume(b.Builder, b.WorkspaceVolume, analyzeTmpDir, ""); err != nil {
+	if err := b.Analyze(); err != nil {
 		return err
 	}
 
@@ -191,6 +187,32 @@ func (b *BuildFlags) groupToml(ctrID string) (*lifecycle.BuildpackGroup, error) 
 	return &group, nil
 }
 
+func (b *BuildFlags) Analyze() error {
+	metadata, err := b.imageLabel(lifecycle.MetadataLabel)
+	if err != nil {
+		return err
+	}
+	if metadata == "" {
+		return nil
+	}
+
+	ctx := context.Background()
+	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
+		Image: b.Builder,
+		Cmd:   []string{"/lifecycle/analyzer", "-metadata", metadata, "-launch", "/workspace", b.RepoName},
+	}, &container.HostConfig{
+		Binds: []string{
+			b.WorkspaceVolume + ":/workspace",
+		},
+	}, nil, "")
+	if err != nil {
+		return errors.Wrap(err, "analyze container create")
+	}
+	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+
+	return b.Cli.RunContainer(ctx, ctr.ID, os.Stdout, os.Stderr)
+}
+
 func (b *BuildFlags) Build() error {
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
@@ -208,6 +230,42 @@ func (b *BuildFlags) Build() error {
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
 	return b.Cli.RunContainer(ctx, ctr.ID, os.Stdout, os.Stderr)
+}
+
+func (b *BuildFlags) imageLabel(key string) (string, error) {
+	if b.Publish {
+		repoStore, err := img.NewRegistry(b.RepoName)
+		if err != nil {
+			log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", err)
+			return "", nil
+		}
+		origImage, err := repoStore.Image()
+		if err != nil {
+			log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", err)
+			return "", nil
+		}
+		config, err := origImage.ConfigFile()
+		if err != nil {
+			if remoteErr, ok := err.(*remote.Error); ok && len(remoteErr.Errors) > 0 {
+				switch remoteErr.Errors[0].Code {
+				case remote.UnauthorizedErrorCode, remote.ManifestUnknownErrorCode:
+					log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", remoteErr)
+					return "", nil
+				}
+			}
+			return "", errors.Wrapf(err, "access manifest: %s", b.RepoName)
+		}
+		return config.Config.Labels[key], nil
+	}
+
+	i, _, err := b.Cli.ImageInspectWithRaw(context.Background(), b.RepoName)
+	if dockercli.IsErrNotFound(err) {
+		log.Printf("WARNING: skipping analyze, image not found")
+		return "", nil
+	} else if err != nil {
+		return "", errors.Wrap(err, "analyze read previous image config")
+	}
+	return i.Config.Labels[key], nil
 }
 
 func exportVolume(image, volName string) (string, func(), error) {

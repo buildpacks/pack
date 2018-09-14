@@ -36,8 +36,8 @@ func buildCommand() *cobra.Command {
 		},
 	}
 	buildCommand.Flags().StringVarP(&buildFlags.AppDir, "path", "p", wd, "path to app dir")
-	buildCommand.Flags().StringVar(&buildFlags.Builder, "builder", "packs/samples", "builder image")
-	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "packs/run", "run image")
+	buildCommand.Flags().StringVar(&buildFlags.Builder, "build-image", "dgodd/packsv3build:dev", "build image")
+	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "dgodd/packsv3run:dev", "run image")
 	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
 	return buildCommand
 }
@@ -45,9 +45,9 @@ func buildCommand() *cobra.Command {
 func createBuilderCommand() *cobra.Command {
 	builderFactory := pack.BuilderFactory{
 		DefaultStack: pack.Stack{
-			ID:         "",
-			BuildImage: "packs/build",
-			RunImage:   "packs/run",
+			ID:       "",
+			Builder:  "packs/build",
+			RunImage: "packs/run",
 		},
 	}
 
