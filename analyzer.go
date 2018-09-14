@@ -6,11 +6,12 @@ import (
 	"os"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/packs"
 	dockercli "github.com/docker/docker/client"
 )
 
-func analyzer(group lifecycle.BuildpackGroup, workspaceDir, repoName string, useDaemon bool) error {
+func analyzer(cli *docker.Docker, group lifecycle.BuildpackGroup, workspaceDir, repoName string, useDaemon bool) error {
 	analyzer := &lifecycle.Analyzer{
 		Buildpacks: group.Buildpacks,
 		Out:        os.Stdout,
@@ -18,10 +19,6 @@ func analyzer(group lifecycle.BuildpackGroup, workspaceDir, repoName string, use
 	}
 
 	if useDaemon {
-		cli, err := dockercli.NewEnvClient()
-		if err != nil {
-			return packs.FailErrCode(err, packs.CodeFailedBuild)
-		}
 		i, _, err := cli.ImageInspectWithRaw(context.Background(), repoName)
 		if err != nil {
 			if dockercli.IsErrNotFound(err) {
@@ -31,7 +28,7 @@ func analyzer(group lifecycle.BuildpackGroup, workspaceDir, repoName string, use
 			return packs.FailErrCode(err, packs.CodeFailedBuild)
 		}
 		var config lifecycle.AppImageMetadata
-		if err := json.Unmarshal([]byte(i.Config.Labels["sh.packs.build"]), &config); err != nil {
+		if err := json.Unmarshal([]byte(i.Config.Labels[lifecycle.MetadataLabel]), &config); err != nil {
 			return packs.FailErrCode(err, packs.CodeFailedBuild)
 		}
 		if err := analyzer.AnalyzeConfig(workspaceDir, config); err != nil {

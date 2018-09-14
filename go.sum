@@ -1,8 +1,11 @@
 github.com/BurntSushi/toml v0.3.0 h1:e1/Ivsx3Z0FVTV0NSOv/aVgbUWyQuzj7DDnFblkRvsY=
 github.com/BurntSushi/toml v0.3.0/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/Microsoft/go-winio v0.4.9/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
+github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/buildpack/lifecycle v0.0.0-20180820122535-fa5968b9c0a6 h1:xKmOZ86KOEXIAMDylRQR5Ns4b3sGgpWt3vL0fxbbhEw=
 github.com/buildpack/lifecycle v0.0.0-20180820122535-fa5968b9c0a6/go.mod h1:tKBHRckd8Oq05rG6PDrZnOAINA0NkZxlMmUAOxzweAQ=
+github.com/buildpack/lifecycle v0.0.0-20180824000627-1fe614565217b026a0fb5158241bb299b0da1a5e h1:TpkQ4vBOh7v2H6zJst0imIjgIdFIhde6KOOmeki4T1E=
+github.com/buildpack/lifecycle v0.0.0-20180824000627-1fe614565217b026a0fb5158241bb299b0da1a5e/go.mod h1:rmQIWPE7ORJsSn/gHoT5fQAbsK7zV0X9yttd0cuGv5M=
 github.com/buildpack/lifecycle v0.0.0-20180824000627-2f640c42a336dbb896d0935c8adffdb72b1c558d h1:vg2oufiNo9DwNdOx4sXpv2n1Gq9gKP9XQdnvmXKsw70=
 github.com/buildpack/lifecycle v0.0.0-20180824000627-2f640c42a336dbb896d0935c8adffdb72b1c558d/go.mod h1:tKBHRckd8Oq05rG6PDrZnOAINA0NkZxlMmUAOxzweAQ=
 github.com/buildpack/lifecycle v0.0.0-20180824000627-4afeeba810a3 h1:+8bhC03vXrHIdhu82ECs+0YKXtl8DkFhTYVF/OnUd2Q=
@@ -18,9 +21,11 @@ github.com/buildpack/packs v0.0.0-20180824001031-44341001317e/go.mod h1:jcquCT5a
 github.com/buildpack/packs v0.0.0-20180824001031-aa30a412923763df37e83f14a6e4e0fe07e11f25 h1:gaFgBRK9mKLhfH26GLqMYmriWawmcUvYYgta73tHVJ4=
 github.com/buildpack/packs v0.0.0-20180824001031-aa30a412923763df37e83f14a6e4e0fe07e11f25/go.mod h1:jcquCT5a2gbyJw8WMkfgq36g7yc5VDSABVnCctIUKs8=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/docker/distribution v0.0.0-20180327202408-83389a148052 h1:bYklS+YB8BZreSEY+/WqaH+S8upfuYf0Hq/EmNOQMIA=
 github.com/docker/distribution v0.0.0-20180327202408-83389a148052/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
 github.com/docker/distribution v2.6.2+incompatible h1:4FI6af79dfCS/CYb+RRtkSHw3q1L/bnDjG1PcPZtQhM=
 github.com/docker/distribution v2.6.2+incompatible/go.mod h1:J2gT2udsDAN96Uj4KfcMRqY0/ypR+oyYUYmja8H+y+w=
+github.com/docker/docker v0.7.3-0.20180531152204-71cd53e4a197 h1:MuoHurKAPwdDBHScO79akveR0nbIUlWWebjWIqK+DqM=
 github.com/docker/docker v0.7.3-0.20180531152204-71cd53e4a197/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/docker/docker v1.13.1 h1:5VBhsO6ckUxB0A8CE5LlUJdXzik9cbEbBTQ/ggeml7M=
 github.com/docker/docker v1.13.1/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
@@ -28,6 +33,7 @@ github.com/docker/go-connections v0.4.0 h1:El9xVISelRB7BuFusrZozjnkIM5YnzCViNKoh
 github.com/docker/go-connections v0.4.0/go.mod h1:Gbd7IOopHjR8Iph03tsViu4nIes5XhDvyHbTtUxmeec=
 github.com/docker/go-units v0.3.3 h1:Xk8S3Xj5sLGlG5g67hJmYMmUgXv5N4PhkjJHHqrwnTk=
 github.com/docker/go-units v0.3.3/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDDbaIK4Dk=
+github.com/gogo/protobuf v1.1.1 h1:72R+M5VuhED/KujmZVcIquuo8mBgX4oVda//DQb3PXo=
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/golang/mock v1.1.1/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfbm0A=
 github.com/google/go-cmp v0.2.0 h1:+dTQ8DZQJz0Mb/HjFlkptS1FeQ4cWSnN941F8aEG4SQ=
@@ -36,11 +42,15 @@ github.com/google/go-containerregistry v0.0.0-20180731221751-697ee0b3d46e h1:r4P
 github.com/google/go-containerregistry v0.0.0-20180731221751-697ee0b3d46e/go.mod h1:yZAFP63pRshzrEYLXLGPmUt0Ay+2zdjmMN1loCnRLUk=
 github.com/google/go-containerregistry v0.0.0-20180815195620-3165313d6d3f h1:r0kIiA6uoeBOCVhOI09PTJ1qNGRBxXnVAZqPkTk9QVI=
 github.com/google/go-containerregistry v0.0.0-20180815195620-3165313d6d3f/go.mod h1:yZAFP63pRshzrEYLXLGPmUt0Ay+2zdjmMN1loCnRLUk=
+github.com/google/go-containerregistry v0.0.0-20180912122137-74aef1a35cfa h1:y5nQyHOakPnCb896SFEyhQ2hx6vRqZ5uDUyiw/7BLxI=
+github.com/google/go-containerregistry v0.0.0-20180912122137-74aef1a35cfa/go.mod h1:yZAFP63pRshzrEYLXLGPmUt0Ay+2zdjmMN1loCnRLUk=
 github.com/google/uuid v0.0.0-20171129191014-dec09d789f3d h1:rXQlD9GXkjA/PQZhmEaF/8Pj/sJfdZJK7GJG0gkS8I0=
 github.com/google/uuid v0.0.0-20171129191014-dec09d789f3d/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/gotestyourself/gotestyourself v2.1.0+incompatible/go.mod h1:zZKM6oeNM8k+FRljX1mnzVYeS8wiGgQyvST1/GafPbY=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
+github.com/opencontainers/go-digest v1.0.0-rc1 h1:WzifXhOVOEOuFYOJAW6aQqW0TooG2iki3E3Ii+WN7gQ=
 github.com/opencontainers/go-digest v1.0.0-rc1/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
+github.com/opencontainers/image-spec v1.0.1 h1:JMemWkRwHx4Zj+fVxWoMCFm/8sYGGrUVojFA6h/TRcI=
 github.com/opencontainers/image-spec v1.0.1/go.mod h1:BtxoFyWECRxE4U/7sNtV5W15zMzWCbyJoFRP3s7yZA0=
 github.com/pkg/errors v0.8.0 h1:WdK/asTD0HN+q6hsWO3/vpuAkAr+tw6aNJNDFFf0+qw=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
@@ -60,5 +70,8 @@ golang.org/x/net v0.0.0-20180611182652-db08ff08e862 h1:JZi6BqOZ+iSgmLWe6llhGrNnE
 golang.org/x/net v0.0.0-20180611182652-db08ff08e862/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/net v0.0.0-20180816102801-aaf60122140d h1:211XH5RPVP5tOBkz6xm3/b7KxtjqVf6PYG+evqJpE08=
 golang.org/x/net v0.0.0-20180816102801-aaf60122140d/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
+golang.org/x/net v0.0.0-20180911220305-26e67e76b6c3 h1:czFLhve3vsQetD6JOJ8NZZvGQIXlnN3/yXxbT6/awxI=
+golang.org/x/net v0.0.0-20180911220305-26e67e76b6c3/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/sys v0.0.0-20180724212812-e072cadbbdc8/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/sys v0.0.0-20180909124046-d0be0721c37e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 gotest.tools v2.1.0+incompatible/go.mod h1:DsYFclhRJ6vuDpmuTbkuFWG+y2sxOXAzmJt81HFBacw=

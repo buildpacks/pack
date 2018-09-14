@@ -1,9 +1,11 @@
 package pack
 
 import (
-	"bytes"
+	"archive/tar"
+	"context"
 	"crypto/md5"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -11,17 +13,26 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/pack/docker"
+	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 )
 
 func Build(appDir, buildImage, runImage, repoName string, publish bool) error {
-	return (&BuildFlags{
+	b := &BuildFlags{
 		AppDir:   appDir,
 		Builder:  buildImage,
 		RunImage: runImage,
 		RepoName: repoName,
 		Publish:  publish,
-	}).Run()
+	}
+	if err := b.Init(); err != nil {
+		return err
+	}
+	defer b.Close()
+	return b.Run()
 }
 
 type BuildFlags struct {
@@ -30,34 +41,42 @@ type BuildFlags struct {
 	RunImage string
 	RepoName string
 	Publish  bool
+	// Below are set by init
+	Cli             *docker.Docker
+	WorkspaceVolume string
+	CacheVolume     string
 }
 
-func (b *BuildFlags) Run() error {
+func (b *BuildFlags) Init() error {
 	var err error
 	b.AppDir, err = filepath.Abs(b.AppDir)
 	if err != nil {
 		return err
 	}
 
-	uid := uuid.New().String()
-	workspaceVolume := fmt.Sprintf("pack-workspace-%x", uid)
-	cacheVolume := fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(b.AppDir)))
-	defer exec.Command("docker", "volume", "rm", "-f", workspaceVolume).Run()
-
-	fmt.Println("*** COPY APP TO VOLUME:")
-	if err := copyToVolume(b.Builder, workspaceVolume, b.AppDir, "app"); err != nil {
+	b.Cli, err = docker.New()
+	if err != nil {
 		return err
+	}
+
+	b.WorkspaceVolume = fmt.Sprintf("pack-workspace-%x", uuid.New().String())
+	b.CacheVolume = fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(b.AppDir)))
+
+	return nil
+}
+
+func (b *BuildFlags) Close() error {
+	return b.Cli.VolumeRemove(context.Background(), b.WorkspaceVolume, true)
+}
+
+func (b *BuildFlags) Run() error {
+	fmt.Println("*** PULLING BUILDER IMAGE LOCALLY:")
+	if err := b.PullImage(b.Builder); err != nil {
+		return errors.Wrapf(err, "pull image: %s", b.Builder)
 	}
 
 	fmt.Println("*** DETECTING:")
-	cmd := exec.Command("docker", "run", "--rm", "-v", workspaceVolume+":/workspace", b.Builder, "/lifecycle/detector")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	group, err := groupToml(workspaceVolume, b.Builder)
+	group, err := b.Detect()
 	if err != nil {
 		return err
 	}
@@ -68,44 +87,34 @@ func (b *BuildFlags) Run() error {
 		return err
 	}
 	defer os.RemoveAll(analyzeTmpDir)
-	if err := analyzer(group, analyzeTmpDir, b.RepoName, !b.Publish); err != nil {
+	if err := analyzer(b.Cli, *group, analyzeTmpDir, b.RepoName, !b.Publish); err != nil {
 		return err
 	}
-	if err := copyToVolume(b.Builder, workspaceVolume, analyzeTmpDir, ""); err != nil {
+	if err := copyToVolume(b.Builder, b.WorkspaceVolume, analyzeTmpDir, ""); err != nil {
 		return err
 	}
 
 	fmt.Println("*** BUILDING:")
-	cmd = exec.Command("docker", "run",
-		"--rm",
-		"-v", workspaceVolume+":/workspace",
-		"-v", cacheVolume+":/cache",
-		b.Builder,
-		"/lifecycle/builder",
-	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	if err := b.Build(); err != nil {
 		return err
 	}
 
 	if !b.Publish {
 		fmt.Println("*** PULLING RUN IMAGE LOCALLY:")
-		if out, err := exec.Command("docker", "pull", b.RunImage).CombinedOutput(); err != nil {
-			fmt.Println(string(out))
-			return err
+		if err := b.PullImage(b.RunImage); err != nil {
+			return errors.Wrapf(err, "pull image: %s", b.RunImage)
 		}
 	}
 
 	fmt.Println("*** EXPORTING:")
 	if b.Publish {
-		localWorkspaceDir, cleanup, err := exportVolume(b.Builder, workspaceVolume)
+		localWorkspaceDir, cleanup, err := exportVolume(b.Builder, b.WorkspaceVolume)
 		if err != nil {
 			return err
 		}
 		defer cleanup()
 
-		imgSHA, err := exportRegistry(&group, localWorkspaceDir, b.RepoName, b.RunImage)
+		imgSHA, err := exportRegistry(group, localWorkspaceDir, b.RepoName, b.RunImage)
 		if err != nil {
 			return err
 		}
@@ -116,12 +125,89 @@ func (b *BuildFlags) Run() error {
 			buildpacks = append(buildpacks, b.ID)
 		}
 
-		if err := exportDaemon(buildpacks, workspaceVolume, b.RepoName, b.RunImage); err != nil {
+		if err := exportDaemon(b.Cli, buildpacks, b.WorkspaceVolume, b.RepoName, b.RunImage); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (b *BuildFlags) PullImage(ref string) error {
+	rc, err := b.Cli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
+		return err
+	}
+	return rc.Close()
+}
+
+func (b *BuildFlags) Detect() (*lifecycle.BuildpackGroup, error) {
+	ctx := context.Background()
+	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
+		Image: b.Builder,
+		Cmd:   []string{"/lifecycle/detector"},
+	}, &container.HostConfig{
+		Binds: []string{
+			b.WorkspaceVolume + ":/workspace",
+		},
+	}, nil, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "container create")
+	}
+	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+
+	tr, errChan := createTarReader(b.AppDir, "/workspace/app")
+	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
+		return nil, errors.Wrap(err, "copy app to workspace volume")
+	}
+	if err := <-errChan; err != nil {
+		return nil, errors.Wrap(err, "copy app to workspace volume")
+	}
+
+	if err := b.Cli.RunContainer(ctx, ctr.ID, os.Stdout, os.Stderr); err != nil {
+		return nil, errors.Wrap(err, "run detect container")
+	}
+	return b.groupToml(ctr.ID)
+}
+
+func (b *BuildFlags) groupToml(ctrID string) (*lifecycle.BuildpackGroup, error) {
+	trc, _, err := b.Cli.CopyFromContainer(context.Background(), ctrID, "/workspace/group.toml")
+	if err != nil {
+		return nil, errors.Wrap(err, "reading group.toml from container")
+	}
+	defer trc.Close()
+	tr := tar.NewReader(trc)
+	_, err = tr.Next()
+	if err != nil {
+		return nil, errors.Wrap(err, "reading group.toml from container")
+	}
+	var group lifecycle.BuildpackGroup
+	if _, err := toml.DecodeReader(tr, &group); err != nil {
+		return nil, errors.Wrap(err, "reading group.toml from container")
+	}
+	return &group, nil
+}
+
+func (b *BuildFlags) Build() error {
+	ctx := context.Background()
+	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
+		Image: b.Builder,
+		Cmd:   []string{"/lifecycle/builder"},
+	}, &container.HostConfig{
+		Binds: []string{
+			b.WorkspaceVolume + ":/workspace",
+			b.CacheVolume + ":/cache",
+		},
+	}, nil, "")
+	if err != nil {
+		return errors.Wrap(err, "build container create")
+	}
+	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+
+	return b.Cli.RunContainer(ctx, ctr.ID, os.Stdout, os.Stderr)
 }
 
 func exportVolume(image, volName string) (string, func(), error) {
@@ -164,21 +250,4 @@ func copyToVolume(image, volName, srcDir, destDir string) error {
 		return err
 	}
 	return nil
-}
-
-func groupToml(workspaceVolume, buildImage string) (lifecycle.BuildpackGroup, error) {
-	var buf bytes.Buffer
-	cmd := exec.Command("docker", "run", "--rm", "-v", workspaceVolume+":/workspace:ro", "--entrypoint", "", buildImage, "bash", "-c", "cat $PACK_GROUP_PATH")
-	cmd.Stdout = &buf
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return lifecycle.BuildpackGroup{}, err
-	}
-
-	var group lifecycle.BuildpackGroup
-	if _, err := toml.Decode(buf.String(), &group); err != nil {
-		return lifecycle.BuildpackGroup{}, err
-	}
-
-	return group, nil
 }

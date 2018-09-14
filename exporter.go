@@ -14,11 +14,11 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/packs"
 	"github.com/buildpack/packs/img"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	dockercli "github.com/docker/docker/client"
 	"github.com/pkg/errors"
 )
 
@@ -71,11 +71,7 @@ func exportRegistry(group *lifecycle.BuildpackGroup, workspaceDir, repoName, sta
 	return sha.String(), nil
 }
 
-func exportDaemon(buildpacks []string, workspaceVolume, repoName, runImage string) error {
-	cli, err := dockercli.NewEnvClient()
-	if err != nil {
-		return errors.Wrap(err, "new docker client")
-	}
+func exportDaemon(cli *docker.Docker, buildpacks []string, workspaceVolume, repoName, runImage string) error {
 	ctx := context.Background()
 	ctr, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:      runImage,
@@ -149,14 +145,14 @@ func exportDaemon(buildpacks []string, workspaceVolume, repoName, runImage strin
 	if err != nil {
 		return errors.Wrap(err, "marshal metadata to json")
 	}
-	if err := addLabelToImage(cli, repoName, map[string]string{"sh.packs.build": string(metadataJSON)}); err != nil {
-		return errors.Wrap(err, "add sh.packs.build label to image")
+	if err := addLabelToImage(cli, repoName, map[string]string{lifecycle.MetadataLabel: string(metadataJSON)}); err != nil {
+		return errors.Wrapf(err, "adding %s label to image", lifecycle.MetadataLabel)
 	}
 
 	return nil
 }
 
-func addLabelToImage(cli *dockercli.Client, repoName string, labels map[string]string) error {
+func addLabelToImage(cli *docker.Docker, repoName string, labels map[string]string) error {
 	dockerfile := "FROM " + repoName + "\n"
 	for k, v := range labels {
 		dockerfile += fmt.Sprintf("LABEL %s='%s'\n", k, v)

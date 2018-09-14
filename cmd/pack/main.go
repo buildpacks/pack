@@ -28,6 +28,10 @@ func buildCommand() *cobra.Command {
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			buildFlags.RepoName = args[0]
+			if err := buildFlags.Init(); err != nil {
+				return err
+			}
+			defer buildFlags.Close()
 			return buildFlags.Run()
 		},
 	}
