@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
@@ -104,7 +103,7 @@ func (b *BuildFlags) Run() error {
 
 	fmt.Println("*** EXPORTING:")
 	if b.Publish {
-		localWorkspaceDir, cleanup, err := exportVolume(b.Builder, b.WorkspaceVolume)
+		localWorkspaceDir, cleanup, err := b.exportVolume(b.Builder, b.WorkspaceVolume)
 		if err != nil {
 			return err
 		}
@@ -268,25 +267,37 @@ func (b *BuildFlags) imageLabel(key string) (string, error) {
 	return i.Config.Labels[key], nil
 }
 
-func exportVolume(image, volName string) (string, func(), error) {
+func (b *BuildFlags) exportVolume(image, volName string) (string, func(), error) {
+	ctx := context.Background()
+	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
+		Image: b.Builder,
+		Cmd:   []string{"true"},
+	}, &container.HostConfig{
+		Binds: []string{
+			b.WorkspaceVolume + ":/workspace:ro",
+		},
+	}, nil, "")
+	if err != nil {
+		return "", func() {}, errors.Wrap(err, "export container create")
+	}
+	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+
+	r, _, err := b.Cli.CopyFromContainer(ctx, ctr.ID, "/workspace")
+	if err != nil {
+		return "", func() {}, err
+	}
+	defer r.Close()
+
 	tmpDir, err := ioutil.TempDir("", "pack.build.")
 	if err != nil {
 		return "", func() {}, err
 	}
 	cleanup := func() { os.RemoveAll(tmpDir) }
 
-	containerName := uuid.New().String()
-	if output, err := exec.Command("docker", "container", "create", "--name", containerName, "-v", volName+":/workspace:ro", image).CombinedOutput(); err != nil {
+	if err := Untar(r, tmpDir); err != nil {
 		cleanup()
-		fmt.Println(string(output))
-		return "", func() {}, err
-	}
-	defer exec.Command("docker", "rm", containerName).Run()
-	if output, err := exec.Command("docker", "cp", containerName+":/workspace/.", tmpDir).CombinedOutput(); err != nil {
-		cleanup()
-		fmt.Println(string(output))
 		return "", func() {}, err
 	}
 
-	return tmpDir, cleanup, nil
+	return filepath.Join(tmpDir, "workspace"), cleanup, nil
 }

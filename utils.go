@@ -2,6 +2,7 @@ package pack
 
 import (
 	"archive/tar"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -103,4 +104,43 @@ func createTarReader(fsDir, tarDir string) (io.Reader, chan error) {
 	}()
 
 	return r, errChan
+}
+
+func Untar(r io.Reader, dest string) error {
+	tr := tar.NewReader(r)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			// end of tar archive
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		path := filepath.Join(dest, hdr.Name)
+
+		switch hdr.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(path, hdr.FileInfo().Mode()); err != nil {
+				return err
+			}
+		case tar.TypeReg, tar.TypeRegA:
+			fh, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, hdr.FileInfo().Mode())
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(fh, tr); err != nil {
+				fh.Close()
+				return err
+			}
+			fh.Close()
+		case tar.TypeSymlink:
+			if err := os.Symlink(hdr.Linkname, path); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unknown file type in tar %d", hdr.Typeflag)
+		}
+	}
 }
