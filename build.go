@@ -290,22 +290,3 @@ func exportVolume(image, volName string) (string, func(), error) {
 
 	return tmpDir, cleanup, nil
 }
-
-func copyToVolume(image, volName, srcDir, destDir string) error {
-	containerName := uuid.New().String()
-	if output, err := exec.Command("docker", "container", "create", "--user", "0", "--name", containerName, "--entrypoint", "", "-v", volName+":/workspace", image, "chown", "-R", "pack:pack", "/workspace").CombinedOutput(); err != nil {
-		fmt.Println(string(output))
-		return err
-	}
-	defer exec.Command("docker", "rm", containerName).Run()
-	if output, err := exec.Command("docker", "cp", srcDir+"/.", containerName+":"+filepath.Join("/workspace", destDir)).CombinedOutput(); err != nil {
-		fmt.Println(string(output))
-		return err
-	}
-
-	if output, err := exec.Command("docker", "start", containerName).CombinedOutput(); err != nil {
-		fmt.Println(string(output))
-		return err
-	}
-	return nil
-}
