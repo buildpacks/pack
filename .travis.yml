@@ -13,7 +13,7 @@ cache:
 script:
 - go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-linux ./cmd/pack
 - GOOS=darwin go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-darwin ./cmd/pack
-- PACK_PATH=$PWD/artifacts/pack-$TRAVIS_BUILD_NUMBER-linux go test -parallel 1 -v ./acceptance
+- PACK_PATH=$PWD/artifacts/pack-$TRAVIS_BUILD_NUMBER-linux go test -parallel 1 -v ./ ./acceptance
 deploy:
   provider: gcs
   access_key_id: GOOGDF4RIFV7QEAMMYTZENJA

@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func exportRegistry(group *lifecycle.BuildpackGroup, workspaceDir, repoName, stackName string) (string, error) {
+func exportRegistry(group *lifecycle.BuildpackGroup, workspaceDir, repoName, stackName string, stdout, stderr io.Writer) (string, error) {
 	origImage, err := readImage(repoName, false)
 	if err != nil {
 		return "", err
@@ -47,8 +47,8 @@ func exportRegistry(group *lifecycle.BuildpackGroup, workspaceDir, repoName, sta
 	exporter := &lifecycle.Exporter{
 		Buildpacks: group.Buildpacks,
 		TmpDir:     tmpDir,
-		Out:        os.Stdout,
-		Err:        os.Stderr,
+		Out:        stdout,
+		Err:        stderr,
 	}
 	newImage, err := exporter.Export(
 		workspaceDir,
@@ -71,7 +71,7 @@ func exportRegistry(group *lifecycle.BuildpackGroup, workspaceDir, repoName, sta
 	return sha.String(), nil
 }
 
-func exportDaemon(cli *docker.Docker, buildpacks []string, workspaceVolume, repoName, runImage string) error {
+func exportDaemon(cli *docker.Docker, buildpacks []string, workspaceVolume, repoName, runImage string, stdout io.Writer) error {
 	ctx := context.Background()
 	ctr, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:      runImage,
@@ -99,7 +99,7 @@ func exportDaemon(cli *docker.Docker, buildpacks []string, workspaceVolume, repo
 		return errors.Wrap(err, "image build")
 	}
 	defer res.Body.Close()
-	if _, err := parseImageBuildBody(res.Body, os.Stdout); err != nil {
+	if _, err := parseImageBuildBody(res.Body, stdout); err != nil {
 		return errors.Wrap(err, "image build")
 	}
 	res.Body.Close()
@@ -145,14 +145,14 @@ func exportDaemon(cli *docker.Docker, buildpacks []string, workspaceVolume, repo
 	if err != nil {
 		return errors.Wrap(err, "marshal metadata to json")
 	}
-	if err := addLabelToImage(cli, repoName, map[string]string{lifecycle.MetadataLabel: string(metadataJSON)}); err != nil {
+	if err := addLabelToImage(cli, repoName, map[string]string{lifecycle.MetadataLabel: string(metadataJSON)}, stdout); err != nil {
 		return errors.Wrapf(err, "adding %s label to image", lifecycle.MetadataLabel)
 	}
 
 	return nil
 }
 
-func addLabelToImage(cli *docker.Docker, repoName string, labels map[string]string) error {
+func addLabelToImage(cli *docker.Docker, repoName string, labels map[string]string, stdout io.Writer) error {
 	dockerfile := "FROM " + repoName + "\n"
 	for k, v := range labels {
 		dockerfile += fmt.Sprintf("LABEL %s='%s'\n", k, v)
@@ -170,7 +170,7 @@ func addLabelToImage(cli *docker.Docker, repoName string, labels map[string]stri
 		return err
 	}
 	defer res.Body.Close()
-	if _, err := parseImageBuildBody(res.Body, os.Stdout); err != nil {
+	if _, err := parseImageBuildBody(res.Body, stdout); err != nil {
 		return errors.Wrap(err, "image build")
 	}
 	return err

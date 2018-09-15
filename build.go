@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 
@@ -48,6 +49,9 @@ type BuildFlags struct {
 	Cli             *docker.Docker
 	WorkspaceVolume string
 	CacheVolume     string
+	Stdout          io.Writer
+	Stderr          io.Writer
+	Log             *log.Logger
 }
 
 func (b *BuildFlags) Init() error {
@@ -64,6 +68,10 @@ func (b *BuildFlags) Init() error {
 
 	b.WorkspaceVolume = fmt.Sprintf("pack-workspace-%x", uuid.New().String())
 	b.CacheVolume = fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(b.AppDir)))
+
+	b.Stdout = os.Stdout
+	b.Stderr = os.Stderr
+	b.Log = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
 
 	return nil
 }
@@ -102,27 +110,8 @@ func (b *BuildFlags) Run() error {
 	}
 
 	fmt.Println("*** EXPORTING:")
-	if b.Publish {
-		localWorkspaceDir, cleanup, err := b.exportVolume(b.Builder, b.WorkspaceVolume)
-		if err != nil {
-			return err
-		}
-		defer cleanup()
-
-		imgSHA, err := exportRegistry(group, localWorkspaceDir, b.RepoName, b.RunImage)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("\n*** Image: %s@%s\n", b.RepoName, imgSHA)
-	} else {
-		var buildpacks []string
-		for _, b := range group.Buildpacks {
-			buildpacks = append(buildpacks, b.ID)
-		}
-
-		if err := exportDaemon(b.Cli, buildpacks, b.WorkspaceVolume, b.RepoName, b.RunImage); err != nil {
-			return err
-		}
+	if err := b.Export(group); err != nil {
+		return err
 	}
 
 	return nil
@@ -162,7 +151,7 @@ func (b *BuildFlags) Detect() (*lifecycle.BuildpackGroup, error) {
 		return nil, errors.Wrap(err, "copy app to workspace volume")
 	}
 
-	if err := b.Cli.RunContainer(ctx, ctr.ID, os.Stdout, os.Stderr); err != nil {
+	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
 		return nil, errors.Wrap(err, "run detect container")
 	}
 	return b.groupToml(ctr.ID)
@@ -189,7 +178,7 @@ func (b *BuildFlags) groupToml(ctrID string) (*lifecycle.BuildpackGroup, error) 
 func (b *BuildFlags) Analyze() error {
 	metadata, err := b.imageLabel(lifecycle.MetadataLabel)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "analyze image label")
 	}
 	if metadata == "" {
 		return nil
@@ -209,7 +198,10 @@ func (b *BuildFlags) Analyze() error {
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
-	return b.Cli.RunContainer(ctx, ctr.ID, os.Stdout, os.Stderr)
+	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
+		return errors.Wrap(err, "analyze run container")
+	}
+	return nil
 }
 
 func (b *BuildFlags) Build() error {
@@ -228,19 +220,46 @@ func (b *BuildFlags) Build() error {
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
-	return b.Cli.RunContainer(ctx, ctr.ID, os.Stdout, os.Stderr)
+	return b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr)
+}
+
+func (b *BuildFlags) Export(group *lifecycle.BuildpackGroup) error {
+	if b.Publish {
+		localWorkspaceDir, cleanup, err := b.exportVolume(b.Builder, b.WorkspaceVolume)
+		if err != nil {
+			return err
+		}
+		defer cleanup()
+
+		imgSHA, err := exportRegistry(group, localWorkspaceDir, b.RepoName, b.RunImage, b.Stdout, b.Stderr)
+		if err != nil {
+			return err
+		}
+		b.Log.Printf("\n*** Image: %s@%s\n", b.RepoName, imgSHA)
+	} else {
+		var buildpacks []string
+		for _, b := range group.Buildpacks {
+			buildpacks = append(buildpacks, b.ID)
+		}
+
+		if err := exportDaemon(b.Cli, buildpacks, b.WorkspaceVolume, b.RepoName, b.RunImage, b.Stdout); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (b *BuildFlags) imageLabel(key string) (string, error) {
 	if b.Publish {
 		repoStore, err := img.NewRegistry(b.RepoName)
 		if err != nil {
-			log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", err)
+			b.Log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", err)
 			return "", nil
 		}
 		origImage, err := repoStore.Image()
 		if err != nil {
-			log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", err)
+			b.Log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", err)
 			return "", nil
 		}
 		config, err := origImage.ConfigFile()
@@ -248,7 +267,7 @@ func (b *BuildFlags) imageLabel(key string) (string, error) {
 			if remoteErr, ok := err.(*remote.Error); ok && len(remoteErr.Errors) > 0 {
 				switch remoteErr.Errors[0].Code {
 				case remote.UnauthorizedErrorCode, remote.ManifestUnknownErrorCode:
-					log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", remoteErr)
+					b.Log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", remoteErr)
 					return "", nil
 				}
 			}
@@ -259,7 +278,7 @@ func (b *BuildFlags) imageLabel(key string) (string, error) {
 
 	i, _, err := b.Cli.ImageInspectWithRaw(context.Background(), b.RepoName)
 	if dockercli.IsErrNotFound(err) {
-		log.Printf("WARNING: skipping analyze, image not found")
+		b.Log.Printf("WARNING: skipping analyze, image not found")
 		return "", nil
 	} else if err != nil {
 		return "", errors.Wrap(err, "analyze read previous image config")
@@ -300,4 +319,11 @@ func (b *BuildFlags) exportVolume(image, volName string) (string, func(), error)
 	}
 
 	return filepath.Join(tmpDir, "workspace"), cleanup, nil
+}
+func randString(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = 'a' + byte(rand.Intn(26))
+	}
+	return string(b)
 }

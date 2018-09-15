@@ -28,14 +28,14 @@ func (d *Docker) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 	bodyChan, errChan := d.ContainerWait(ctx, id, container.WaitConditionNextExit)
 
 	if err := d.ContainerStart(ctx, id, dockertypes.ContainerStartOptions{}); err != nil {
-		return err
+		return errors.Wrap(err, "container start")
 	}
 	stdout2, err := d.ContainerLogs(ctx, id, dockertypes.ContainerLogsOptions{
 		ShowStdout: true,
 		Follow:     true,
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "container logs stdout")
 	}
 	go func() {
 		for {
@@ -51,7 +51,7 @@ func (d *Docker) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 		Follow:     true,
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "container logs stderr")
 	}
 	go func() {
 		for {
