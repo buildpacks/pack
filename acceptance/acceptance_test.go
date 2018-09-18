@@ -233,7 +233,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			t.Log("build app with builder:", builderRepoName)
-			cmd = exec.Command(pack, "build", appRepoName, "-p", filepath.Join(tmpDir, "app"), "--builder", builderRepoName)
+			NewDockerDaemon().Pull(t, "packs/run", "latest")
+			cmd = exec.Command(pack, "build", appRepoName, "-p", filepath.Join(tmpDir, "app"), "--builder", builderRepoName, "--no-pull", "--run-image", "packs/run")
 			cmd.Env = append(os.Environ(), "HOME="+homeDir)
 			run(t, cmd)
 

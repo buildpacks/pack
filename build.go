@@ -45,6 +45,7 @@ type BuildFlags struct {
 	RunImage string
 	RepoName string
 	Publish  bool
+	NoPull   bool
 	// Below are set by init
 	Cli             *docker.Docker
 	WorkspaceVolume string
@@ -81,9 +82,11 @@ func (b *BuildFlags) Close() error {
 }
 
 func (b *BuildFlags) Run() error {
-	fmt.Println("*** PULLING BUILDER IMAGE LOCALLY:")
-	if err := b.PullImage(b.Builder); err != nil {
-		return errors.Wrapf(err, "pull image: %s", b.Builder)
+	if !b.NoPull {
+		fmt.Println("*** PULLING BUILDER IMAGE LOCALLY:")
+		if err := b.PullImage(b.Builder); err != nil {
+			return errors.Wrapf(err, "pull image: %s", b.Builder)
+		}
 	}
 
 	fmt.Println("*** DETECTING:")
@@ -102,7 +105,7 @@ func (b *BuildFlags) Run() error {
 		return err
 	}
 
-	if !b.Publish {
+	if !b.Publish && !b.NoPull {
 		fmt.Println("*** PULLING RUN IMAGE LOCALLY:")
 		if err := b.PullImage(b.RunImage); err != nil {
 			return errors.Wrapf(err, "pull image: %s", b.RunImage)
