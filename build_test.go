@@ -3,6 +3,7 @@ package pack_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -18,6 +19,7 @@ import (
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/docker"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/uuid"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 )
@@ -32,21 +34,18 @@ func TestBuild(t *testing.T) {
 
 func testBuild(t *testing.T, when spec.G, it spec.S) {
 	var subject *pack.BuildFlags
-	var tmpDir string
 	var buf bytes.Buffer
 
 	it.Before(func() {
 		var err error
-		tmpDir, err = ioutil.TempDir("/tmp", "pack.build.")
-		assertNil(t, err)
 		subject = &pack.BuildFlags{
 			AppDir:          "acceptance/testdata/node_app",
 			Builder:         "packs/samples",
 			RunImage:        "packs/run",
 			RepoName:        "pack.build." + randString(10),
 			Publish:         false,
-			WorkspaceVolume: filepath.Join(tmpDir, "workspace"),
-			CacheVolume:     filepath.Join(tmpDir, "cache"),
+			WorkspaceVolume: fmt.Sprintf("pack-workspace-%x", uuid.New().String()),
+			CacheVolume:     fmt.Sprintf("pack-cache-%x", uuid.New().String()),
 			Stdout:          &buf,
 			Stderr:          &buf,
 			Log:             log.New(&buf, "", log.LstdFlags|log.Lshortfile),
@@ -54,16 +53,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		log.SetOutput(ioutil.Discard)
 		subject.Cli, err = docker.New()
 		assertNil(t, err)
-		assertNil(t, os.MkdirAll(filepath.Join(tmpDir, "workspace", "app"), 0777))
-		assertNil(t, os.MkdirAll(filepath.Join(tmpDir, "cache"), 0777))
-	})
-	it.After(func() {
-		os.RemoveAll(tmpDir)
 	})
 
 	when("#Detect", func() {
 		when("app is detected", func() {
-			it.Pend("returns the successful group with node", func() {
+			it("returns the successful group with node", func() {
 				group, err := subject.Detect()
 				assertNil(t, err)
 				assertEq(t, group.Buildpacks[0].ID, "io.buildpacks.samples.nodejs")
@@ -71,11 +65,15 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("app is not detectable", func() {
+			var badappDir string
 			it.Before(func() {
-				assertNil(t, os.Mkdir(filepath.Join(tmpDir, "badapp"), 0777))
-				assertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "badapp", "file.txt"), []byte("content"), 0644))
-				subject.AppDir = filepath.Join(tmpDir, "badapp")
+				var err error
+				badappDir, err = ioutil.TempDir("/tmp", "pack.build.badapp.")
+				assertNil(t, err)
+				assertNil(t, ioutil.WriteFile(filepath.Join(badappDir, "file.txt"), []byte("content"), 0644))
+				subject.AppDir = badappDir
 			})
+			it.After(func() { os.RemoveAll(badappDir) })
 			it("returns the successful group with node", func() {
 				_, err := subject.Detect()
 
@@ -87,10 +85,15 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Analyze", func() {
 		it.Before(func() {
-			assertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "workspace", "group.toml"), []byte(`[[buildpacks]]
+			tmpDir, err := ioutil.TempDir("/tmp", "pack.build.analyze.")
+			assertNil(t, err)
+			defer os.RemoveAll(tmpDir)
+			assertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "group.toml"), []byte(`[[buildpacks]]
 			  id = "io.buildpacks.samples.nodejs"
 				version = "0.0.1"
 			`), 0666))
+
+			copyWorkspaceToDocker(t, tmpDir, subject.WorkspaceVolume)
 		})
 		when("no previous image exists", func() {
 			when("publish", func() {
@@ -144,38 +147,37 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					assertNil(t, exec.Command("docker", "kill", registryContainerName).Run())
 				})
 
-				it.Pend("tells the user nothing", func() {
+				it("tells the user nothing", func() {
 					assertNil(t, subject.Analyze())
 
 					txt := string(bytes.Trim(buf.Bytes(), "\x00"))
 					assertEq(t, txt, "")
 				})
 
-				it.Pend("places files in workspace", func() {
+				it("places files in workspace", func() {
 					assertNil(t, subject.Analyze())
 
-					txt, err := ioutil.ReadFile(filepath.Join(tmpDir, "workspace", "io.buildpacks.samples.nodejs", "node_modules.toml"))
-					assertNil(t, err)
-					assertEq(t, string(txt), "lock_checksum = \"eb04ed1b461f1812f0f4233ef997cdb5\"\n")
+					txt := readFromDocker(t, subject.WorkspaceVolume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+
+					assertEq(t, txt, "lock_checksum = \"eb04ed1b461f1812f0f4233ef997cdb5\"\n")
 				})
 			})
 
 			when("daemon", func() {
 				it.Before(func() { subject.Publish = false })
 
-				it.Pend("tells the user nothing", func() {
+				it("tells the user nothing", func() {
 					assertNil(t, subject.Analyze())
 
 					txt := string(bytes.Trim(buf.Bytes(), "\x00"))
 					assertEq(t, txt, "")
 				})
 
-				it.Pend("places files in workspace", func() {
+				it("places files in workspace", func() {
 					assertNil(t, subject.Analyze())
 
-					txt, err := ioutil.ReadFile(filepath.Join(tmpDir, "workspace", "io.buildpacks.samples.nodejs", "node_modules.toml"))
-					assertNil(t, err)
-					assertEq(t, string(txt), "lock_checksum = \"eb04ed1b461f1812f0f4233ef997cdb5\"\n")
+					txt := readFromDocker(t, subject.WorkspaceVolume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+					assertEq(t, txt, "lock_checksum = \"eb04ed1b461f1812f0f4233ef997cdb5\"\n")
 				})
 			})
 		})
@@ -184,6 +186,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	when("#Export", func() {
 		var group *lifecycle.BuildpackGroup
 		it.Before(func() {
+			tmpDir, err := ioutil.TempDir("/tmp", "pack.build.export.")
+			assertNil(t, err)
+			defer os.RemoveAll(tmpDir)
 			files := map[string]string{
 				"group.toml":           "[[buildpacks]]\n" + `id = "io.buildpacks.samples.nodejs"` + "\n" + `version = "0.0.1"`,
 				"app/file.txt":         "some text",
@@ -194,9 +199,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				"io.buildpacks.samples.nodejs/other/file.txt":   "something",
 			}
 			for name, txt := range files {
-				assertNil(t, os.MkdirAll(filepath.Dir(filepath.Join(tmpDir, "workspace", name)), 0777))
-				assertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "workspace", name), []byte(txt), 0666))
+				assertNil(t, os.MkdirAll(filepath.Dir(filepath.Join(tmpDir, name)), 0777))
+				assertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, name), []byte(txt), 0666))
 			}
+			copyWorkspaceToDocker(t, tmpDir, subject.WorkspaceVolume)
 
 			group = &lifecycle.BuildpackGroup{
 				Buildpacks: []*lifecycle.Buildpack{
@@ -296,12 +302,15 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				addLayer := "ADD --chown=pack:pack /workspace/io.buildpacks.samples.nodejs/mylayer /workspace/io.buildpacks.samples.nodejs/mylayer"
 				copyLayer := "COPY --from=prev --chown=pack:pack /workspace/io.buildpacks.samples.nodejs/mylayer /workspace/io.buildpacks.samples.nodejs/mylayer"
 
+				t.Log("create image and assert add new layer")
 				assertNil(t, subject.Export(group))
 				assertContains(t, buf.String(), addLayer)
 
+				t.Log("setup workspace to reuse layer")
 				buf.Reset()
-				assertNil(t, os.RemoveAll(filepath.Join(tmpDir, "workspace", "io.buildpacks.samples.nodejs", "mylayer")))
+				assertNil(t, exec.Command("docker", "run", "--user=root", "-v", subject.WorkspaceVolume+":/workspace", "packs/samples", "rm", "-rf", "/workspace/io.buildpacks.samples.nodejs/mylayer").Run())
 
+				t.Log("recreate image and assert copying layer from previous image")
 				assertNil(t, subject.Export(group))
 				assertContains(t, buf.String(), copyLayer)
 			})
@@ -374,4 +383,22 @@ func httpGet(t *testing.T, url string) string {
 	b, err := ioutil.ReadAll(resp.Body)
 	assertNil(t, err)
 	return string(b)
+}
+
+func copyWorkspaceToDocker(t *testing.T, srcPath, destVolume string) {
+	t.Helper()
+	ctrName := uuid.New().String()
+	defer exec.Command("docker", "rm", ctrName).Run()
+	assertNil(t, exec.Command("docker", "create", "--name", ctrName, "-v", destVolume+":/workspace", "packs/samples", "true").Run())
+	assertNil(t, exec.Command("docker", "cp", srcPath+"/.", ctrName+":/workspace/").Run())
+}
+
+func readFromDocker(t *testing.T, volume, path string) string {
+	t.Helper()
+
+	var buf bytes.Buffer
+	cmd := exec.Command("docker", "run", "-v", volume+":/workspace", "packs/samples", "cat", path)
+	cmd.Stdout = &buf
+	assertNil(t, cmd.Run())
+	return buf.String()
 }
