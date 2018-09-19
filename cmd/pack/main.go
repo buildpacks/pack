@@ -36,8 +36,8 @@ func buildCommand() *cobra.Command {
 		},
 	}
 	buildCommand.Flags().StringVarP(&buildFlags.AppDir, "path", "p", wd, "path to app dir")
-	buildCommand.Flags().StringVar(&buildFlags.Builder, "builder", "dgodd/packsv3samples:dev", "builder")
-	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "dgodd/packsv3run:dev", "run image")
+	buildCommand.Flags().StringVar(&buildFlags.Builder, "builder", "packs/samples", "builder")
+	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "packs/run", "run image")
 	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
 	buildCommand.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
 	return buildCommand

@@ -25,8 +25,8 @@ import (
 func TestBuild(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 	assertNil(t, exec.Command("docker", "pull", "registry:2").Run())
-	assertNil(t, exec.Command("docker", "pull", "dgodd/packsv3samples:dev").Run())
-	assertNil(t, exec.Command("docker", "pull", "dgodd/packsv3run:dev").Run())
+	assertNil(t, exec.Command("docker", "pull", "packs/samples").Run())
+	assertNil(t, exec.Command("docker", "pull", "packs/run").Run())
 	spec.Run(t, "build", testBuild, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -41,8 +41,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		assertNil(t, err)
 		subject = &pack.BuildFlags{
 			AppDir:          "acceptance/testdata/node_app",
-			Builder:         "dgodd/packsv3samples:dev",
-			RunImage:        "dgodd/packsv3run:dev",
+			Builder:         "packs/samples",
+			RunImage:        "packs/run",
 			RepoName:        "pack.build." + randString(10),
 			Publish:         false,
 			WorkspaceVolume: filepath.Join(tmpDir, "workspace"),
@@ -244,24 +244,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					assertNil(t, err)
 					assertNil(t, json.Unmarshal(metadataJSON, &metadata))
 
-					// assertEq(t, metadata.RunImage.Name, "dgodd/packsv3run:dev") // TODO add to lifecycle (and remove pending test below)
 					assertContains(t, metadata.App.SHA, "sha256:")
 					assertContains(t, metadata.Config.SHA, "sha256:")
 					assertEq(t, len(metadata.Buildpacks), 1)
 					assertContains(t, metadata.Buildpacks[0].Layers["mylayer"].SHA, "sha256:")
 					assertEq(t, metadata.Buildpacks[0].Layers["mylayer"].Data, map[string]interface{}{"key": "myval"})
 					assertContains(t, metadata.Buildpacks[0].Layers["other"].SHA, "sha256:")
-				})
-				it.Pend("sets the run image name on the metadata on the image", func() {
-					assertNil(t, subject.Export(group))
-
-					assertNil(t, exec.Command("docker", "pull", subject.RepoName).Run())
-					var metadata lifecycle.AppImageMetadata
-					metadataJSON, err := exec.Command("docker", "inspect", subject.RepoName, "--format", `{{index .Config.Labels "io.buildpacks.lifecycle.metadata"}}`).Output()
-					assertNil(t, err)
-					assertNil(t, json.Unmarshal(metadataJSON, &metadata))
-
-					assertEq(t, metadata.RunImage.Name, "dgodd/packsv3run:dev")
 				})
 			})
 
@@ -292,7 +280,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					assertNil(t, err)
 					assertNil(t, json.Unmarshal(metadataJSON, &metadata))
 
-					assertEq(t, metadata.RunImage.Name, "dgodd/packsv3run:dev")
+					assertEq(t, metadata.RunImage.Name, "packs/run")
 					assertContains(t, metadata.App.SHA, "sha256:")
 					assertContains(t, metadata.Config.SHA, "sha256:")
 					assertEq(t, len(metadata.Buildpacks), 1)
