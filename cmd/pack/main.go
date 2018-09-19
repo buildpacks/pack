@@ -28,13 +28,18 @@ func buildCommand() *cobra.Command {
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			buildFlags.RepoName = args[0]
+			if err := buildFlags.Init(); err != nil {
+				return err
+			}
+			defer buildFlags.Close()
 			return buildFlags.Run()
 		},
 	}
 	buildCommand.Flags().StringVarP(&buildFlags.AppDir, "path", "p", wd, "path to app dir")
-	buildCommand.Flags().StringVar(&buildFlags.Builder, "builder", "packs/samples", "builder image")
+	buildCommand.Flags().StringVar(&buildFlags.Builder, "builder", "packs/samples", "builder")
 	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "packs/run", "run image")
 	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
+	buildCommand.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
 	return buildCommand
 }
 
