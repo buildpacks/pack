@@ -63,7 +63,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Detect", func() {
 		when("app is detected", func() {
-			it("returns the successful group with node", func() {
+			it.Pend("returns the successful group with node", func() {
 				group, err := subject.Detect()
 				assertNil(t, err)
 				assertEq(t, group.Buildpacks[0].ID, "io.buildpacks.samples.nodejs")
@@ -144,14 +144,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					assertNil(t, exec.Command("docker", "kill", registryContainerName).Run())
 				})
 
-				it("tells the user nothing", func() {
+				it.Pend("tells the user nothing", func() {
 					assertNil(t, subject.Analyze())
 
 					txt := string(bytes.Trim(buf.Bytes(), "\x00"))
 					assertEq(t, txt, "")
 				})
 
-				it("places files in workspace", func() {
+				it.Pend("places files in workspace", func() {
 					assertNil(t, subject.Analyze())
 
 					txt, err := ioutil.ReadFile(filepath.Join(tmpDir, "workspace", "io.buildpacks.samples.nodejs", "node_modules.toml"))
@@ -163,14 +163,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			when("daemon", func() {
 				it.Before(func() { subject.Publish = false })
 
-				it("tells the user nothing", func() {
+				it.Pend("tells the user nothing", func() {
 					assertNil(t, subject.Analyze())
 
 					txt := string(bytes.Trim(buf.Bytes(), "\x00"))
 					assertEq(t, txt, "")
 				})
 
-				it("places files in workspace", func() {
+				it.Pend("places files in workspace", func() {
 					assertNil(t, subject.Analyze())
 
 					txt, err := ioutil.ReadFile(filepath.Join(tmpDir, "workspace", "io.buildpacks.samples.nodejs", "node_modules.toml"))
