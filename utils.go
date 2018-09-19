@@ -2,6 +2,7 @@ package pack
 
 import (
 	"archive/tar"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -143,4 +144,19 @@ func Untar(r io.Reader, dest string) error {
 			return fmt.Errorf("unknown file type in tar %d", hdr.Typeflag)
 		}
 	}
+}
+
+func createSingleFileTar(path, txt string) (io.Reader, error) {
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	if err := tw.WriteHeader(&tar.Header{Name: path, Size: int64(len(txt)), Mode: 0666}); err != nil {
+		return nil, err
+	}
+	if _, err := tw.Write([]byte(txt)); err != nil {
+		return nil, err
+	}
+	if err := tw.Close(); err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(buf.Bytes()), nil
 }

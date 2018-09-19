@@ -2,7 +2,6 @@ package pack
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -157,13 +156,11 @@ func addLabelToImage(cli *docker.Docker, repoName string, labels map[string]stri
 	for k, v := range labels {
 		dockerfile += fmt.Sprintf("LABEL %s='%s'\n", k, v)
 	}
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	tw.WriteHeader(&tar.Header{Name: "Dockerfile", Size: int64(len(dockerfile)), Mode: 0666})
-	tw.Write([]byte(dockerfile))
-	tw.Close()
-
-	res, err := cli.ImageBuild(context.Background(), bytes.NewReader(buf.Bytes()), dockertypes.ImageBuildOptions{
+	tr, err := createSingleFileTar("Dockerfile", dockerfile)
+	if err != nil {
+		return err
+	}
+	res, err := cli.ImageBuild(context.Background(), tr, dockertypes.ImageBuildOptions{
 		Tags: []string{repoName},
 	})
 	if err != nil {

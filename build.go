@@ -190,7 +190,7 @@ func (b *BuildFlags) Analyze() error {
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
-		Cmd:   []string{"/lifecycle/analyzer", "-metadata", metadata, "-launch", "/workspace", b.RepoName},
+		Cmd:   []string{"/lifecycle/analyzer", "-metadata", "/workspace/imagemetadata.json", "-launch", "/workspace", b.RepoName},
 	}, &container.HostConfig{
 		Binds: []string{
 			b.WorkspaceVolume + ":/workspace",
@@ -200,6 +200,14 @@ func (b *BuildFlags) Analyze() error {
 		return errors.Wrap(err, "analyze container create")
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+
+	tr, err := createSingleFileTar("/workspace/imagemetadata.json", metadata)
+	if err != nil {
+		return errors.Wrap(err, "create tar with image metadata")
+	}
+	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
+		return errors.Wrap(err, "copy image metadata to workspace volume")
+	}
 
 	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
 		return errors.Wrap(err, "analyze run container")
