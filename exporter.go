@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/buildpack/pack/fs"
 	"io"
 	"io/ioutil"
 	"os"
@@ -156,7 +157,8 @@ func addLabelToImage(cli *docker.Docker, repoName string, labels map[string]stri
 	for k, v := range labels {
 		dockerfile += fmt.Sprintf("LABEL %s='%s'\n", k, v)
 	}
-	tr, err := createSingleFileTar("Dockerfile", dockerfile)
+	f := &fs.FS{}
+	tr, err := f.CreateSingleFileTar("Dockerfile", dockerfile)
 	if err != nil {
 		return err
 	}

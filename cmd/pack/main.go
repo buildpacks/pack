@@ -3,6 +3,9 @@ package main
 import (
 	"os"
 
+	"github.com/BurntSushi/toml"
+	"github.com/buildpack/pack/fs"
+
 	"github.com/buildpack/pack"
 	"github.com/spf13/cobra"
 )
@@ -44,24 +47,32 @@ func buildCommand() *cobra.Command {
 }
 
 func createBuilderCommand() *cobra.Command {
+	var builderTomlPath string
+	var noPull bool
+
 	builderFactory := pack.BuilderFactory{
-		DefaultStack: pack.Stack{
-			ID:         "",
-			BuildImage: "packs/build",
-			RunImage:   "packs/run",
-		},
+		FS: &fs.FS{},
 	}
 
-	var createBuilderFlags pack.CreateBuilderFlags
 	createBuilderCommand := &cobra.Command{
 		Use:  "create-builder <image-name> -b <path-to-builder-toml>",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			createBuilderFlags.RepoName = args[0]
-			return builderFactory.Create(createBuilderFlags)
+			var builderConfig pack.BuilderConfig
+			_, err := toml.DecodeFile(builderTomlPath, &builderConfig)
+			if err != nil {
+				return err
+			}
+			builderConfig.RepoName = args[0]
+			stack, err := pack.DefaultStack(noPull)
+			if err != nil {
+				return err
+			}
+			builderConfig.Stack = stack
+			return builderFactory.Create(builderConfig)
 		},
 	}
-	createBuilderCommand.Flags().StringVarP(&createBuilderFlags.BuilderTomlPath, "builder-config", "b", "", "path to builder.toml file")
-	createBuilderCommand.Flags().BoolVar(&createBuilderFlags.NoPull, "no-pull", false, "don't pull images before use")
+	createBuilderCommand.Flags().BoolVar(&noPull, "no-pull", false, "don't pull images before use")
+	createBuilderCommand.Flags().StringVarP(&builderTomlPath, "builder-config", "b", "", "path to builder.toml file")
 	return createBuilderCommand
 }

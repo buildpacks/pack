@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
+	"github.com/buildpack/pack/fs"
 	"io"
 	"io/ioutil"
 	"log"
@@ -53,6 +54,7 @@ type BuildFlags struct {
 	Stdout          io.Writer
 	Stderr          io.Writer
 	Log             *log.Logger
+	FS              FS
 }
 
 func (b *BuildFlags) Init() error {
@@ -73,6 +75,7 @@ func (b *BuildFlags) Init() error {
 	b.Stdout = os.Stdout
 	b.Stderr = os.Stderr
 	b.Log = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
+	b.FS = &fs.FS{}
 
 	return nil
 }
@@ -84,7 +87,7 @@ func (b *BuildFlags) Close() error {
 func (b *BuildFlags) Run() error {
 	if !b.NoPull {
 		fmt.Println("*** PULLING BUILDER IMAGE LOCALLY:")
-		if err := b.PullImage(b.Builder); err != nil {
+		if err := b.Cli.PullImage(b.Builder); err != nil {
 			return errors.Wrapf(err, "pull image: %s", b.Builder)
 		}
 	}
@@ -107,7 +110,7 @@ func (b *BuildFlags) Run() error {
 
 	if !b.Publish && !b.NoPull {
 		fmt.Println("*** PULLING RUN IMAGE LOCALLY:")
-		if err := b.PullImage(b.RunImage); err != nil {
+		if err := b.Cli.PullImage(b.RunImage); err != nil {
 			return errors.Wrapf(err, "pull image: %s", b.RunImage)
 		}
 	}
@@ -118,17 +121,6 @@ func (b *BuildFlags) Run() error {
 	}
 
 	return nil
-}
-
-func (b *BuildFlags) PullImage(ref string) error {
-	rc, err := b.Cli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
-		return err
-	}
-	return rc.Close()
 }
 
 func (b *BuildFlags) Detect() (*lifecycle.BuildpackGroup, error) {
@@ -146,7 +138,7 @@ func (b *BuildFlags) Detect() (*lifecycle.BuildpackGroup, error) {
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
-	tr, errChan := createTarReader(b.AppDir, "/workspace/app")
+	tr, errChan := b.FS.CreateTarReader(b.AppDir, "/workspace/app")
 	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
 		return nil, errors.Wrap(err, "copy app to workspace volume")
 	}
@@ -201,7 +193,7 @@ func (b *BuildFlags) Analyze() error {
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
-	tr, err := createSingleFileTar("/workspace/imagemetadata.json", metadata)
+	tr, err := b.FS.CreateSingleFileTar("/workspace/imagemetadata.json", metadata)
 	if err != nil {
 		return errors.Wrap(err, "create tar with image metadata")
 	}
@@ -324,7 +316,7 @@ func (b *BuildFlags) exportVolume(image, volName string) (string, func(), error)
 	}
 	cleanup := func() { os.RemoveAll(tmpDir) }
 
-	if err := Untar(r, tmpDir); err != nil {
+	if err := b.FS.Untar(r, tmpDir); err != nil {
 		cleanup()
 		return "", func() {}, err
 	}

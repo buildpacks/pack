@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/buildpack/pack/fs"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -49,6 +50,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			Stdout:          &buf,
 			Stderr:          &buf,
 			Log:             log.New(&buf, "", log.LstdFlags|log.Lshortfile),
+			FS:              &fs.FS{},
 		}
 		log.SetOutput(ioutil.Discard)
 		subject.Cli, err = docker.New()

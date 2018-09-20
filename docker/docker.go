@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -73,4 +74,15 @@ func (d *Docker) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 		return err
 	}
 	return nil
+}
+
+func (d *Docker) PullImage(ref string) error {
+	rc, err := d.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
+		return err
+	}
+	return rc.Close()
 }
