@@ -62,5 +62,6 @@ func createBuilderCommand() *cobra.Command {
 		},
 	}
 	createBuilderCommand.Flags().StringVarP(&createBuilderFlags.BuilderTomlPath, "builder-config", "b", "", "path to builder.toml file")
+	createBuilderCommand.Flags().BoolVar(&createBuilderFlags.NoPull, "no-pull", false, "don't pull images before use")
 	return createBuilderCommand
 }

@@ -4,21 +4,23 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
-	"github.com/BurntSushi/toml"
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/img"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/BurntSushi/toml"
+	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/img"
+	"github.com/pkg/errors"
 )
 
 type CreateBuilderFlags struct {
 	RepoName        string
 	BuilderTomlPath string
+	NoPull          bool
 }
 
 type Buildpack struct {
@@ -36,9 +38,11 @@ type BuilderFactory struct {
 }
 
 func (f *BuilderFactory) Create(flags CreateBuilderFlags) error {
-	if out, err := exec.Command("docker", "pull", f.DefaultStack.BuildImage).CombinedOutput(); err != nil {
-		fmt.Println(string(out))
-		return err
+	if !flags.NoPull {
+		if out, err := exec.Command("docker", "pull", f.DefaultStack.BuildImage).CombinedOutput(); err != nil {
+			fmt.Println(string(out))
+			return err
+		}
 	}
 	builderStore, err := repoStore(flags.RepoName, true)
 	if err != nil {
