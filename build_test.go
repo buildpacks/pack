@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/buildpack/pack/fs"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -15,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/buildpack/pack/fs"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/pack"
@@ -50,7 +51,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			Stdout:          &buf,
 			Stderr:          &buf,
 			Log:             log.New(&buf, "", log.LstdFlags|log.Lshortfile),
-			FS:              &fs.FS{},
+			FS:              &fs.FS{UID: 1000, GID: 1000},
 		}
 		log.SetOutput(ioutil.Discard)
 		subject.Cli, err = docker.New()
@@ -58,6 +59,17 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Detect", func() {
+		it("copies the app in to docker and chowns it", func() {
+			_, err := subject.Detect()
+			assertNil(t, err)
+
+			for _, name := range []string{"/workspace/app", "/workspace/app/app.js"} {
+				txt, err := exec.Command("docker", "run", "-v", subject.WorkspaceVolume+":/workspace", subject.Builder, "ls", "-ld", name).Output()
+				assertNil(t, err)
+				assertContains(t, string(txt), "pack pack")
+			}
+		})
+
 		when("app is detected", func() {
 			it("returns the successful group with node", func() {
 				group, err := subject.Detect()

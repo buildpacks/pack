@@ -5,13 +5,14 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
-	"github.com/buildpack/pack/fs"
 	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
+
+	"github.com/buildpack/pack/fs"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
@@ -75,7 +76,7 @@ func (b *BuildFlags) Init() error {
 	b.Stdout = os.Stdout
 	b.Stderr = os.Stderr
 	b.Log = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
-	b.FS = &fs.FS{}
+	b.FS = &fs.FS{UID: 1000, GID: 1000}
 
 	return nil
 }
