@@ -59,11 +59,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Detect", func() {
-		it("copies the app in to docker and chowns it", func() {
+		it("copies the app in to docker and chowns it (including directories)", func() {
 			_, err := subject.Detect()
 			assertNil(t, err)
 
-			for _, name := range []string{"/workspace/app", "/workspace/app/app.js"} {
+			for _, name := range []string{"/workspace/app", "/workspace/app/app.js", "/workspace/app/mydir", "/workspace/app/mydir/myfile.txt"} {
 				txt, err := exec.Command("docker", "run", "-v", subject.WorkspaceVolume+":/workspace", subject.Builder, "ls", "-ld", name).Output()
 				assertNil(t, err)
 				assertContains(t, string(txt), "pack pack")

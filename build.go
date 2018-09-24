@@ -154,6 +154,10 @@ func (b *BuildFlags) Detect() (*lifecycle.BuildpackGroup, error) {
 		return nil, errors.Wrap(err, "copy app to workspace volume")
 	}
 
+	if err := b.chownDir("/workspace/app", uid, gid); err != nil {
+		return nil, errors.Wrap(err, "chown app to workspace volume")
+	}
+
 	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
 		return nil, errors.Wrap(err, "run detect container")
 	}
@@ -323,6 +327,27 @@ func (b *BuildFlags) packUidGid(builder string) (int, int, error) {
 		return uid, gid, errors.New("not found pack uid & gid")
 	}
 	return uid, gid, nil
+}
+
+func (b *BuildFlags) chownDir(path string, uid, gid int) error {
+	ctx := context.Background()
+	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
+		Image: b.Builder,
+		Cmd:   []string{"chown", "-R", fmt.Sprintf("%d:%d", uid, gid), path},
+		User:  "root",
+	}, &container.HostConfig{
+		Binds: []string{
+			b.WorkspaceVolume + ":/workspace",
+		},
+	}, nil, "")
+	if err != nil {
+		return err
+	}
+	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *BuildFlags) exportVolume(image, volName string) (string, func(), error) {
