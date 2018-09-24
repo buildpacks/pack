@@ -41,7 +41,9 @@ func (d *Docker) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 	go func() {
 		for {
 			header := make([]byte, 8)
-			stdout2.Read(header)
+			if n, err := stdout2.Read(header); err != nil || n != 8 {
+				continue
+			}
 			if _, err := io.CopyN(stdout, stdout2, int64(binary.BigEndian.Uint32(header[4:]))); err != nil {
 				break
 			}
@@ -57,7 +59,9 @@ func (d *Docker) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 	go func() {
 		for {
 			header := make([]byte, 8)
-			stderr2.Read(header)
+			if n, err := stderr2.Read(header); err != nil || n != 8 {
+				continue
+			}
 			if _, err := io.CopyN(stderr, stderr2, int64(binary.BigEndian.Uint32(header[4:]))); err != nil {
 				break
 			}
