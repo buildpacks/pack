@@ -14,7 +14,8 @@ install: true
 script:
 - go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-linux ./cmd/pack
 - GOOS=darwin go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-darwin ./cmd/pack
-- PACK_PATH=$PWD/artifacts/pack-$TRAVIS_BUILD_NUMBER-linux go test -parallel 1 -v ./ ./acceptance
+- GOOS=windows go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-windows ./cmd/pack
+- PACK_PATH=$PWD/artifacts/pack-$TRAVIS_BUILD_NUMBER-linux go test -parallel 1 -v ./...
 deploy:
   provider: gcs
   access_key_id: GOOGDF4RIFV7QEAMMYTZENJA
@@ -28,4 +29,4 @@ deploy:
     repo: buildpack/pack
     branch: master
 after_deploy:
-- echo https://storage.cloud.google.com/pack-cli/pack-$TRAVIS_BUILD_NUMBER-darwin https://storage.cloud.google.com/pack-cli/pack-$TRAVIS_BUILD_NUMBER-linux
+- echo https://storage.cloud.google.com/pack-cli/pack-$TRAVIS_BUILD_NUMBER-darwin https://storage.cloud.google.com/pack-cli/pack-$TRAVIS_BUILD_NUMBER-windows https://storage.cloud.google.com/pack-cli/pack-$TRAVIS_BUILD_NUMBER-linux
