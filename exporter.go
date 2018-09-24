@@ -158,7 +158,7 @@ func addLabelToImage(cli *docker.Docker, repoName string, labels map[string]stri
 	for k, v := range labels {
 		dockerfile += fmt.Sprintf("LABEL %s='%s'\n", k, v)
 	}
-	f := &fs.FS{UID: 0, GID: 0}
+	f := &fs.FS{}
 	tr, err := f.CreateSingleFileTar("Dockerfile", dockerfile)
 	if err != nil {
 		return err

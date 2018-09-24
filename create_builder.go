@@ -33,8 +33,8 @@ type BuilderFactory struct {
 
 //go:generate mockgen -package mocks -destination mocks/fs.go github.com/buildpack/pack FS
 type FS interface {
-	CreateTGZFile(tarFile, srcDir, tarDir string) error
-	CreateTarReader(srcDir, tarDir string) (io.Reader, chan error)
+	CreateTGZFile(tarFile, srcDir, tarDir string, uid, gid int) error
+	CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error)
 	Untar(r io.Reader, dest string) error
 	CreateSingleFileTar(path, txt string) (io.Reader, error)
 }
@@ -94,7 +94,7 @@ func (f *BuilderFactory) orderLayer(dest string, groups []lifecycle.BuildpackGro
 		return "", err
 	}
 	layerTar = filepath.Join(dest, "order.tar")
-	if err := f.FS.CreateTGZFile(layerTar, buildpackDir, "/buildpacks"); err != nil {
+	if err := f.FS.CreateTGZFile(layerTar, buildpackDir, "/buildpacks", 0, 0); err != nil {
 		return "", err
 	}
 	return layerTar, nil
@@ -120,7 +120,7 @@ func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack) (layer
 		return "", fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(dir, "buildpack.toml"))
 	}
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.ID, bp.Version))
-	if err := f.FS.CreateTGZFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.ID, bp.Version)); err != nil {
+	if err := f.FS.CreateTGZFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.ID, bp.Version), 0, 0); err != nil {
 		return "", err
 	}
 	return tarFile, err

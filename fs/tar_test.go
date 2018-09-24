@@ -33,9 +33,6 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 			t.Fatalf("failed to create tmp dir %s: %s", tmpDir, err)
 		}
 		src = filepath.Join("testdata", "dir-to-tar")
-
-		fs.UID = 1234
-		fs.GID = 2345
 	})
 
 	it.After(func() {
@@ -46,7 +43,7 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 
 	it("writes a tar to the dest dir", func() {
 		tarFile := filepath.Join(tmpDir, "some.tar")
-		err := fs.CreateTGZFile(tarFile, src, "/dir-in-archive")
+		err := fs.CreateTGZFile(tarFile, src, "/dir-in-archive", 1234, 2345)
 		if err != nil {
 			t.Fatalf("CreateTGZFile failed: %s", err)
 		}

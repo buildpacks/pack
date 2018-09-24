@@ -11,6 +11,8 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/buildpack/pack/fs"
 
@@ -76,7 +78,7 @@ func (b *BuildFlags) Init() error {
 	b.Stdout = os.Stdout
 	b.Stderr = os.Stderr
 	b.Log = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
-	b.FS = &fs.FS{UID: 1000, GID: 1000}
+	b.FS = &fs.FS{}
 
 	return nil
 }
@@ -139,7 +141,12 @@ func (b *BuildFlags) Detect() (*lifecycle.BuildpackGroup, error) {
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
-	tr, errChan := b.FS.CreateTarReader(b.AppDir, "/workspace/app")
+	uid, gid, err := b.packUidGid(b.Builder)
+	if err != nil {
+		return nil, errors.Wrap(err, "detect")
+	}
+
+	tr, errChan := b.FS.CreateTarReader(b.AppDir, "/workspace/app", uid, gid)
 	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
 		return nil, errors.Wrap(err, "copy app to workspace volume")
 	}
@@ -288,6 +295,34 @@ func (b *BuildFlags) imageLabel(key string) (string, error) {
 		return "", errors.Wrap(err, "analyze read previous image config")
 	}
 	return i.Config.Labels[key], nil
+}
+
+func (b *BuildFlags) packUidGid(builder string) (int, int, error) {
+	i, _, err := b.Cli.ImageInspectWithRaw(context.Background(), builder)
+	if err != nil {
+		return 0, 0, errors.Wrap(err, "reading builder env variables")
+	}
+	var found, uid, gid int
+	for _, kv := range i.Config.Env {
+		kv2 := strings.SplitN(kv, "=", 2)
+		if len(kv2) == 2 && kv2[0] == "PACK_USER_ID" {
+			uid, err = strconv.Atoi(kv2[1])
+			if err != nil {
+				return 0, 0, errors.Wrapf(err, "parsing pack uid: %s", kv2[1])
+			}
+			found++
+		} else if len(kv2) == 2 && kv2[0] == "PACK_USER_GID" {
+			gid, err = strconv.Atoi(kv2[1])
+			if err != nil {
+				return 0, 0, errors.Wrapf(err, "parsing pack gid: %s", kv2[1])
+			}
+			found++
+		}
+	}
+	if found < 2 {
+		return uid, gid, errors.New("not found pack uid & gid")
+	}
+	return uid, gid, nil
 }
 
 func (b *BuildFlags) exportVolume(image, volName string) (string, func(), error) {

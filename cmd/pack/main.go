@@ -51,7 +51,7 @@ func createBuilderCommand() *cobra.Command {
 	var noPull bool
 
 	builderFactory := pack.BuilderFactory{
-		FS: &fs.FS{UID: 0, GID: 0},
+		FS: &fs.FS{},
 	}
 
 	createBuilderCommand := &cobra.Command{

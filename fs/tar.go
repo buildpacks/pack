@@ -11,11 +11,9 @@ import (
 )
 
 type FS struct {
-	UID int
-	GID int
 }
 
-func (fs *FS) CreateTGZFile(tarFile, srcDir, tarDir string) error {
+func (*FS) CreateTGZFile(tarFile, srcDir, tarDir string, uid, gid int) error {
 	fh, err := os.Create(tarFile)
 	if err != nil {
 		return fmt.Errorf("create file for tar: %s", err)
@@ -23,16 +21,16 @@ func (fs *FS) CreateTGZFile(tarFile, srcDir, tarDir string) error {
 	defer fh.Close()
 	gzw := gzip.NewWriter(fh)
 	defer gzw.Close()
-	return fs.writeTarArchive(gzw, srcDir, tarDir)
+	return writeTarArchive(gzw, srcDir, tarDir, uid, gid)
 }
 
-func (fs *FS) CreateTarReader(srcDir, tarDir string) (io.Reader, chan error) {
+func (*FS) CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error) {
 	r, w := io.Pipe()
 	errChan := make(chan error, 1)
 
 	go func() {
 		defer w.Close()
-		err := fs.writeTarArchive(w, srcDir, tarDir)
+		err := writeTarArchive(w, srcDir, tarDir, uid, gid)
 		w.Close()
 		errChan <- err
 	}()
@@ -54,7 +52,7 @@ func (*FS) CreateSingleFileTar(path, txt string) (io.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-func (fs *FS) writeTarArchive(w io.Writer, srcDir, tarDir string) error {
+func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
 
@@ -87,8 +85,8 @@ func (fs *FS) writeTarArchive(w io.Writer, srcDir, tarDir string) error {
 			}
 		}
 		header.Name = filepath.Join(tarDir, relPath)
-		header.Uid = fs.UID
-		header.Gid = fs.GID
+		header.Uid = uid
+		header.Gid = gid
 
 		if err := tw.WriteHeader(header); err != nil {
 			return err
