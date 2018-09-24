@@ -77,7 +77,7 @@ func (b *BuildFlags) Init() error {
 
 	b.Stdout = os.Stdout
 	b.Stderr = os.Stderr
-	b.Log = log.New(os.Stdout, "", log.LstdFlags|log.Lshortfile)
+	b.Log = log.New(os.Stdout, "", log.LstdFlags)
 	b.FS = &fs.FS{}
 
 	return nil
