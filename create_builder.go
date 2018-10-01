@@ -2,8 +2,10 @@ package pack
 
 import (
 	"fmt"
+	"github.com/google/go-containerregistry/pkg/v1"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,11 +17,10 @@ import (
 )
 
 type BuilderConfig struct {
-	RepoName   string
+	Repo       img.Store
 	Buildpacks []Buildpack                `toml:"buildpacks"`
 	Groups     []lifecycle.BuildpackGroup `toml:"groups"`
-	Stack      Stack
-	NoPull     bool
+	BaseImage  v1.Image
 }
 
 type Buildpack struct {
@@ -27,7 +28,14 @@ type Buildpack struct {
 	URI string
 }
 
+//go:generate mockgen -package mocks -destination mocks/docker.go github.com/buildpack/pack Docker
+type Docker interface {
+	PullImage(ref string) error
+}
+
 type BuilderFactory struct {
+	Log *log.Logger
+	Docker Docker
 	FS FS
 }
 
@@ -39,38 +47,69 @@ type FS interface {
 	CreateSingleFileTar(path, txt string) (io.Reader, error)
 }
 
-func (f *BuilderFactory) Create(config BuilderConfig) error {
-	builderStore, err := repoStore(config.RepoName, true)
-	if err != nil {
-		return err
-	}
+type CreateBuilderFlags struct {
+	RepoName    string
+	BuilderTomlPath string
+	Publish bool
+	NoPull bool
+}
 
+const defaultBuildImage = "packs/build"
+
+func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (BuilderConfig, error) {
+	if !flags.NoPull && !flags.Publish {
+		f.Log.Println("Pulling builder base image ", defaultBuildImage)
+		err := f.Docker.PullImage(defaultBuildImage)
+		if err != nil {
+			return BuilderConfig{}, fmt.Errorf(`failed to pull stack build image "%s": %s`, defaultBuildImage, err)
+		}
+	}
+	var builderConfig BuilderConfig
+	_, err := toml.DecodeFile(flags.BuilderTomlPath, &builderConfig)
+	if err != nil {
+		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file "%s": %s`, flags.BuilderTomlPath, err)
+	}
+	builderConfig.BaseImage, err = readImage(defaultBuildImage, !flags.Publish)
+	if err != nil {
+		return BuilderConfig{}, fmt.Errorf(`failed to read base image "%s": %s`, defaultBuildImage, err)
+	}
+	if builderConfig.BaseImage == nil {
+		return BuilderConfig{}, fmt.Errorf(`base image "%s" was not found`, defaultBuildImage)
+	}
+	builderConfig.Repo, err = repoStore(flags.RepoName, !flags.Publish)
+	if err != nil {
+		return BuilderConfig{}, fmt.Errorf(`failed to create repository store for builder image "%s": %s`, flags.RepoName, err)
+	}
+	return builderConfig, nil
+}
+
+func (f *BuilderFactory) Create(config BuilderConfig) error {
 	tmpDir, err := ioutil.TempDir("", "create-builder")
 	if err != nil {
-		return err
+		return fmt.Errorf(`failed to create temporary directory: %s`, err)
 	}
 	defer os.Remove(tmpDir)
 
 	orderTar, err := f.orderLayer(tmpDir, config.Groups)
 	if err != nil {
-		return err
+		return fmt.Errorf(`failed generate order.toml layer: %s`, err)
 	}
-	builderImage, _, err := img.Append(config.Stack.BuildImage, orderTar)
+	builderImage, _, err := img.Append(config.BaseImage, orderTar)
 	if err != nil {
-		return err
+		return fmt.Errorf(`failed append order.toml layer to image: %s`, err)
 	}
 	for _, buildpack := range config.Buildpacks {
 		tarFile, err := f.buildpackLayer(tmpDir, buildpack)
 		if err != nil {
-			return err
+			return fmt.Errorf(`failed generate layer for buildpack "%s": %s`, buildpack.ID, err)
 		}
 		builderImage, _, err = img.Append(builderImage, tarFile)
 		if err != nil {
-			return err
+			return fmt.Errorf(`failed append buildpack layer to image: %s`, err)
 		}
 	}
 
-	return builderStore.Write(builderImage)
+	return config.Repo.Write(builderImage)
 }
 
 type order struct {

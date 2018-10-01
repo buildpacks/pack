@@ -39,7 +39,6 @@ func Build(appDir, buildImage, runImage, repoName string, publish bool) error {
 	if err := b.Init(); err != nil {
 		return err
 	}
-	defer b.Close()
 	return b.Run()
 }
 
@@ -51,7 +50,7 @@ type BuildFlags struct {
 	Publish  bool
 	NoPull   bool
 	// Below are set by init
-	Cli             *docker.Docker
+	Cli             *docker.Client
 	WorkspaceVolume string
 	CacheVolume     string
 	Stdout          io.Writer
@@ -83,11 +82,8 @@ func (b *BuildFlags) Init() error {
 	return nil
 }
 
-func (b *BuildFlags) Close() error {
-	return b.Cli.VolumeRemove(context.Background(), b.WorkspaceVolume, true)
-}
-
 func (b *BuildFlags) Run() error {
+	defer b.Cli.VolumeRemove(context.Background(), b.WorkspaceVolume, true)
 	if !b.NoPull {
 		fmt.Println("*** PULLING BUILDER IMAGE LOCALLY:")
 		if err := b.Cli.PullImage(b.Builder); err != nil {

@@ -1,0 +1,18 @@
+[[buildpacks]]
+id = "com.example.sample.bp1"
+uri = "file://testdata/buildpacks/sample_bp1"
+
+[[buildpacks]]
+id = "com.example.sample.bp2"
+uri = "file://testdata/buildpacks/sample_bp2"
+
+[[groups]]
+buildpacks = [
+  { id = "com.example.sample.bp1", version = "1.2.3" },
+  { id = "com.example.sample.bp2", version = "1.2.4" },
+]
+
+[[groups]]
+buildpacks = [
+  { id = "com.example.sample.bp1", version = "1.2.3" },
+]

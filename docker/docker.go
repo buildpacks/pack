@@ -13,19 +13,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Docker struct {
+type Client struct {
 	*dockercli.Client
 }
 
-func New() (*Docker, error) {
+func New() (*Client, error) {
 	cli, err := dockercli.NewEnvClient()
 	if err != nil {
 		return nil, errors.Wrap(err, "new docker client")
 	}
-	return &Docker{cli}, nil
+	return &Client{cli}, nil
 }
 
-func (d *Docker) RunContainer(ctx context.Context, id string, stdout io.Writer, stderr io.Writer) error {
+func (d *Client) RunContainer(ctx context.Context, id string, stdout io.Writer, stderr io.Writer) error {
 	bodyChan, errChan := d.ContainerWait(ctx, id, container.WaitConditionNextExit)
 
 	if err := d.ContainerStart(ctx, id, dockertypes.ContainerStartOptions{}); err != nil {
@@ -80,7 +80,7 @@ func (d *Docker) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 	return nil
 }
 
-func (d *Docker) PullImage(ref string) error {
+func (d *Client) PullImage(ref string) error {
 	rc, err := d.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
 	if err != nil {
 		return err
