@@ -3,3 +3,6 @@
 
 # Jetbrains Goland
 .idea/
+
+# Build outputs
+artifacts/
