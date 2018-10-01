@@ -21,6 +21,7 @@ func main() {
 	rootCmd := &cobra.Command{Use: "pack"}
 	for _, f := range [](func() *cobra.Command){
 		buildCommand,
+		runCommand,
 		rebaseCommand,
 		createBuilderCommand,
 		addStackCommand,
@@ -62,6 +63,28 @@ func buildCommand() *cobra.Command {
 	buildCommand.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
 	buildCommand.Flags().StringArrayVar(&buildFlags.Buildpacks, "buildpack", []string{}, "buildpack ID to skip detection")
 	return buildCommand
+}
+
+func runCommand() *cobra.Command {
+	wd, _ := os.Getwd()
+
+	var runFlags pack.RunFlags
+	runCommand := &cobra.Command{
+		Use:  "run",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := runFlags.Init(); err != nil {
+				return err
+			}
+			defer runFlags.Close()
+			return runFlags.Run()
+		},
+	}
+	runCommand.Flags().StringVarP(&runFlags.AppDir, "path", "p", wd, "path to app dir")
+	runCommand.Flags().StringVar(&runFlags.Builder, "builder", "packs/samples", "builder")
+	runCommand.Flags().StringVar(&runFlags.RunImage, "run-image", "packs/run", "run image")
+	runCommand.Flags().StringVar(&runFlags.Port, "port", "8080", "local port to bind")
+	return runCommand
 }
 
 func rebaseCommand() *cobra.Command {
