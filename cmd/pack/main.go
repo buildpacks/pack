@@ -76,7 +76,6 @@ func runCommand() *cobra.Command {
 			if err := runFlags.Init(); err != nil {
 				return err
 			}
-			defer runFlags.Close()
 			return runFlags.Run()
 		},
 	}

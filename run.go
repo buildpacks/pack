@@ -24,7 +24,6 @@ func Run(appDir, buildImage, runImage string) error {
 	if err := r.Init(); err != nil {
 		return err
 	}
-	defer r.Close()
 	return r.Run()
 }
 
@@ -58,10 +57,6 @@ func (r *RunFlags) Init() error {
 	}
 
 	return r.Build.Init()
-}
-
-func (r *RunFlags) Close() error {
-	return r.Build.Close()
 }
 
 func (r *RunFlags) Run() error {
