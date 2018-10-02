@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -68,9 +70,7 @@ func (r *RunFlags) Run() error {
 	}
 
 	fmt.Println("*** RUNNING:")
-	exposedPorts, portBindings, err := nat.ParsePortSpecs([]string{
-		fmt.Sprintf("127.0.0.1:%s:8080/tcp", r.Port),
-	})
+	exposedPorts, portBindings, err := parsePorts(r.Port)
 	if err != nil {
 		return err
 	}
@@ -96,10 +96,42 @@ func (r *RunFlags) Run() error {
 		}
 	}()
 
-	fmt.Printf("Starting container listing at http://localhost:%s/\n", r.Port)
+	logContainerListening(portBindings)
 	if err = r.Build.Cli.RunContainer(ctx, ctr.ID, r.Build.Stdout, r.Build.Stderr); err != nil && !stopped {
 		return errors.Wrap(err, "run built container")
 	}
 
 	return nil
+}
+
+func parsePorts(port string) (nat.PortSet, nat.PortMap, error) {
+	ports := strings.Split(port, ",")
+	for i, p := range ports {
+		p = strings.TrimSpace(p)
+		if _, err := strconv.Atoi(p); err == nil {
+			// default simple port to localhost and 8080 inside the container
+			p = fmt.Sprintf("127.0.0.1:%s:8080/tcp", p)
+		}
+		ports[i] = p
+	}
+
+	return nat.ParsePortSpecs(ports)
+}
+
+func logContainerListening(portBindings nat.PortMap) {
+	// TODO handle case with multiple ports, for now we assume you know what
+	// you're doing and don't need guidance
+	if len(portBindings) == 1 {
+		for _, bindings := range portBindings {
+			if len(bindings) == 1 {
+				binding := bindings[0]
+				host := binding.HostIP
+				port := binding.HostPort
+				if host == "127.0.0.1" {
+					host = "localhost"
+				}
+				fmt.Printf("Starting container listening at http://%s:%s/\n", host, port)
+			}
+		}
+	}
 }
