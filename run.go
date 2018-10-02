@@ -68,21 +68,20 @@ func (r *RunFlags) Run() error {
 	}
 
 	fmt.Println("*** RUNNING:")
-	fmt.Printf("Starting container listing at http://localhost:%s/\n", r.Port)
+	exposedPorts, portBindings, err := nat.ParsePortSpecs([]string{
+		fmt.Sprintf("127.0.0.1:%s:8080/tcp", r.Port),
+	})
+	if err != nil {
+		return err
+	}
 	ctr, err := r.Build.Cli.ContainerCreate(ctx, &container.Config{
 		Image:        r.Build.RepoName,
 		AttachStdout: true,
 		AttachStderr: true,
-		ExposedPorts: nat.PortSet{
-			"8080/tcp": struct{}{},
-		},
+		ExposedPorts: exposedPorts,
 	}, &container.HostConfig{
-		AutoRemove: true,
-		PortBindings: nat.PortMap{
-			"8080/tcp": []nat.PortBinding{
-				{HostIP: "127.0.0.1", HostPort: fmt.Sprintf("%s/tcp", r.Port)},
-			},
-		},
+		AutoRemove:   true,
+		PortBindings: portBindings,
 	}, nil, "")
 
 	// TODO cleanup signal flow
@@ -97,6 +96,7 @@ func (r *RunFlags) Run() error {
 		}
 	}()
 
+	fmt.Printf("Starting container listing at http://localhost:%s/\n", r.Port)
 	if err = r.Build.Cli.RunContainer(ctx, ctr.ID, r.Build.Stdout, r.Build.Stderr); err != nil && !stopped {
 		return errors.Wrap(err, "run built container")
 	}
