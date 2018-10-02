@@ -68,6 +68,7 @@ func (r *RunFlags) Run() error {
 	}
 
 	fmt.Println("*** RUNNING:")
+	fmt.Printf("Starting container listing at http://localhost:%s/\n", r.Port)
 	ctr, err := r.Build.Cli.ContainerCreate(ctx, &container.Config{
 		Image:        r.Build.RepoName,
 		AttachStdout: true,
