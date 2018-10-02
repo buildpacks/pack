@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
@@ -76,7 +78,8 @@ func runCommand() *cobra.Command {
 			if err := runFlags.Init(); err != nil {
 				return err
 			}
-			return runFlags.Run()
+			stopCh := makeStopChannelForSignals()
+			return runFlags.Run(stopCh)
 		},
 	}
 	runCommand.Flags().StringVarP(&runFlags.AppDir, "path", "p", wd, "path to app dir")
@@ -266,4 +269,18 @@ func versionCommand() *cobra.Command {
 			fmt.Printf("VERSION: %s\n", strings.TrimSpace(Version))
 		},
 	}
+}
+
+func makeStopChannelForSignals() <-chan struct{} {
+	sigsCh := make(chan os.Signal, 1)
+	stopCh := make(chan struct{}, 1)
+	signal.Notify(sigsCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		// convert chan os.Signal to chan struct{}
+		for {
+			<-sigsCh
+			stopCh <- struct{}{}
+		}
+	}()
+	return stopCh
 }

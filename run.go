@@ -5,12 +5,9 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
-	"os"
-	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -18,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Run(appDir, buildImage, runImage string) error {
+func Run(appDir, buildImage, runImage string, stopCh <-chan struct{}) error {
 	r := &RunFlags{
 		AppDir:   appDir,
 		Builder:  buildImage,
@@ -27,7 +24,7 @@ func Run(appDir, buildImage, runImage string) error {
 	if err := r.Init(); err != nil {
 		return err
 	}
-	return r.Run()
+	return r.Run(stopCh)
 }
 
 type RunFlags struct {
@@ -52,7 +49,7 @@ func (r *RunFlags) Init() error {
 	return r.Build.Init()
 }
 
-func (r *RunFlags) Run() error {
+func (r *RunFlags) Run(stopCh <-chan struct{}) error {
 	ctx := context.Background()
 
 	err := r.Build.Run()
@@ -75,10 +72,9 @@ func (r *RunFlags) Run() error {
 		PortBindings: portBindings,
 	}, nil, "")
 
-	sigs := makeSignalChan()
 	stopped := false
 	go func() {
-		<-sigs
+		<-stopCh
 		stopped = true
 		d := time.Duration(5) * time.Second
 		r.Build.Cli.ContainerStop(ctx, ctr.ID, &d)
@@ -100,12 +96,6 @@ func (r *RunFlags) repoName() string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func makeSignalChan() <-chan os.Signal {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	return sigs
-}
-
 func parsePorts(port string) (nat.PortSet, nat.PortMap, error) {
 	ports := strings.Split(port, ",")
 	for i, p := range ports {
@@ -121,8 +111,8 @@ func parsePorts(port string) (nat.PortSet, nat.PortMap, error) {
 }
 
 func logContainerListening(portBindings nat.PortMap) {
-	// TODO handle case with multiple ports, for now we assume you know what
-	// you're doing and don't need guidance
+	// TODO handle case with multiple ports, for now when there is more than
+	// one port we assume you know what you're doing and don't need guidance
 	if len(portBindings) == 1 {
 		for _, bindings := range portBindings {
 			if len(bindings) == 1 {
