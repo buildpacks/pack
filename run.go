@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -39,21 +40,11 @@ type RunFlags struct {
 }
 
 func (r *RunFlags) Init() error {
-	var err error
-	r.AppDir, err = filepath.Abs(r.AppDir)
-	if err != nil {
-		return err
-	}
-
-	h := md5.New()
-	io.WriteString(h, r.AppDir)
-	repoName := fmt.Sprintf("%x", h.Sum(nil))
-
 	r.Build = BuildFlags{
 		AppDir:   r.AppDir,
 		Builder:  r.Builder,
 		RunImage: r.RunImage,
-		RepoName: repoName,
+		RepoName: r.repoName(),
 		Publish:  false,
 		NoPull:   false,
 	}
@@ -84,16 +75,13 @@ func (r *RunFlags) Run() error {
 		PortBindings: portBindings,
 	}, nil, "")
 
-	// TODO cleanup signal flow
-	var stopped bool
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	sigs := makeSignalChan()
+	stopped := false
 	go func() {
-		for range c {
-			d := time.Duration(5) * time.Second
-			stopped = true
-			r.Build.Cli.ContainerStop(ctx, ctr.ID, &d)
-		}
+		<-sigs
+		stopped = true
+		d := time.Duration(5) * time.Second
+		r.Build.Cli.ContainerStop(ctx, ctr.ID, &d)
 	}()
 
 	logContainerListening(portBindings)
@@ -102,6 +90,20 @@ func (r *RunFlags) Run() error {
 	}
 
 	return nil
+}
+
+func (r *RunFlags) repoName() string {
+	dir, _ := filepath.Abs(r.AppDir)
+	// we can ignore errors here because they will be caught later by the Build command
+	h := md5.New()
+	io.WriteString(h, dir)
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func makeSignalChan() <-chan os.Signal {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	return sigs
 }
 
 func parsePorts(port string) (nat.PortSet, nat.PortMap, error) {
