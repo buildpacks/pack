@@ -1,13 +1,15 @@
-package pack
+package image
 
 import (
+	"github.com/buildpack/lifecycle/img"
 	"github.com/buildpack/packs"
-	"github.com/buildpack/packs/img"
 	"github.com/google/go-containerregistry/pkg/v1"
 )
 
-func readImage(repoName string, useDaemon bool) (v1.Image, error) {
-	repoStore, err := repoStore(repoName, useDaemon)
+type Client struct{}
+
+func (c *Client) ReadImage(repoName string, useDaemon bool) (v1.Image, error) {
+	repoStore, err := c.RepoStore(repoName, useDaemon)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +28,7 @@ func readImage(repoName string, useDaemon bool) (v1.Image, error) {
 	return origImage, nil
 }
 
-func repoStore(repoName string, useDaemon bool) (img.Store, error) {
+func (c *Client) RepoStore(repoName string, useDaemon bool) (img.Store, error) {
 	newRepoStore := img.NewRegistry
 	if useDaemon {
 		newRepoStore = img.NewDaemon

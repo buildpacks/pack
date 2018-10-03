@@ -1,8 +1,11 @@
 package pack
 
 import (
+	"context"
 	"fmt"
-	"github.com/google/go-containerregistry/pkg/v1"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"io"
 	"io/ioutil"
 	"log"
@@ -13,6 +16,8 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/img"
+	"github.com/buildpack/pack/config"
+	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 )
 
@@ -31,12 +36,28 @@ type Buildpack struct {
 //go:generate mockgen -package mocks -destination mocks/docker.go github.com/buildpack/pack Docker
 type Docker interface {
 	PullImage(ref string) error
+	RunContainer(ctx context.Context, id string, stdout io.Writer, stderr io.Writer) error
+	VolumeRemove(ctx context.Context, volumeID string, force bool) error
+	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (container.ContainerCreateCreatedBody, error)
+	ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error
+	CopyToContainer(ctx context.Context, containerID, dstPath string, content io.Reader, options types.CopyToContainerOptions) error
+	CopyFromContainer(ctx context.Context, containerID, srcPath string) (io.ReadCloser, types.ContainerPathStat, error)
+	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
+	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
+}
+
+//go:generate mockgen -package mocks -destination mocks/images.go github.com/buildpack/pack Images
+type Images interface {
+	ReadImage(repoName string, useDaemon bool) (v1.Image, error)
+	RepoStore(repoName string, useDaemon bool) (img.Store, error)
 }
 
 type BuilderFactory struct {
-	Log *log.Logger
+	Log    *log.Logger
 	Docker Docker
-	FS FS
+	FS     FS
+	Config *config.Config
+	Images Images
 }
 
 //go:generate mockgen -package mocks -destination mocks/fs.go github.com/buildpack/pack FS
@@ -48,39 +69,57 @@ type FS interface {
 }
 
 type CreateBuilderFlags struct {
-	RepoName    string
+	RepoName        string
 	BuilderTomlPath string
-	Publish bool
-	NoPull bool
+	StackID         string
+	Publish         bool
+	NoPull          bool
 }
 
-const defaultBuildImage = "packs/build"
-
 func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (BuilderConfig, error) {
+	baseImage, err := f.baseImageName(flags.StackID, flags.RepoName)
+	if err != nil {
+		return BuilderConfig{}, err
+	}
 	if !flags.NoPull && !flags.Publish {
-		f.Log.Println("Pulling builder base image ", defaultBuildImage)
-		err := f.Docker.PullImage(defaultBuildImage)
+		f.Log.Println("Pulling builder base image ", baseImage)
+		err := f.Docker.PullImage(baseImage)
 		if err != nil {
-			return BuilderConfig{}, fmt.Errorf(`failed to pull stack build image "%s": %s`, defaultBuildImage, err)
+			return BuilderConfig{}, fmt.Errorf(`failed to pull stack build image "%s": %s`, baseImage, err)
 		}
 	}
 	var builderConfig BuilderConfig
-	_, err := toml.DecodeFile(flags.BuilderTomlPath, &builderConfig)
+	_, err = toml.DecodeFile(flags.BuilderTomlPath, &builderConfig)
 	if err != nil {
 		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file "%s": %s`, flags.BuilderTomlPath, err)
 	}
-	builderConfig.BaseImage, err = readImage(defaultBuildImage, !flags.Publish)
+	builderConfig.BaseImage, err = f.Images.ReadImage(baseImage, !flags.Publish)
 	if err != nil {
-		return BuilderConfig{}, fmt.Errorf(`failed to read base image "%s": %s`, defaultBuildImage, err)
+		return BuilderConfig{}, fmt.Errorf(`failed to read base image "%s": %s`, baseImage, err)
 	}
 	if builderConfig.BaseImage == nil {
-		return BuilderConfig{}, fmt.Errorf(`base image "%s" was not found`, defaultBuildImage)
+		return BuilderConfig{}, fmt.Errorf(`base image "%s" was not found`, baseImage)
 	}
-	builderConfig.Repo, err = repoStore(flags.RepoName, !flags.Publish)
+	builderConfig.Repo, err = f.Images.RepoStore(flags.RepoName, !flags.Publish)
 	if err != nil {
 		return BuilderConfig{}, fmt.Errorf(`failed to create repository store for builder image "%s": %s`, flags.RepoName, err)
 	}
 	return builderConfig, nil
+}
+
+func (f *BuilderFactory) baseImageName(stackID, repoName string) (string, error) {
+	stack, err := f.Config.Get(stackID)
+	if err != nil {
+		return "", err
+	}
+	if len(stack.BuildImages) == 0 {
+		return "", fmt.Errorf(`Invalid stack: stack "%s" requies at least one build image`, stack.ID)
+	}
+	registry, err := config.Registry(repoName)
+	if err != nil {
+		return "", err
+	}
+	return config.ImageByRegistry(registry, stack.BuildImages)
 }
 
 func (f *BuilderFactory) Create(config BuilderConfig) error {

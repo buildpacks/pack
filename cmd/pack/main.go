@@ -1,9 +1,13 @@
 package main
 
 import (
-	"github.com/buildpack/pack/docker"
 	"log"
 	"os"
+	"path/filepath"
+
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/docker"
+	"github.com/buildpack/pack/image"
 
 	"github.com/buildpack/pack/fs"
 
@@ -32,15 +36,20 @@ func buildCommand() *cobra.Command {
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			buildFlags.RepoName = args[0]
-			if err := buildFlags.Init(); err != nil {
+			bf, err := pack.DefaultBuildFactory()
+			if err != nil {
 				return err
 			}
-			return buildFlags.Run()
+			b, err := bf.BuildConfigFromFlags(&buildFlags)
+			if err != nil {
+				return err
+			}
+			return b.Run()
 		},
 	}
 	buildCommand.Flags().StringVarP(&buildFlags.AppDir, "path", "p", wd, "path to app dir")
 	buildCommand.Flags().StringVar(&buildFlags.Builder, "builder", "packs/samples", "builder")
-	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "packs/run", "run image")
+	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "run image")
 	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
 	buildCommand.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
 	return buildCommand
@@ -58,10 +67,16 @@ func createBuilderCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
+			if err != nil {
+				return err
+			}
 			builderFactory := pack.BuilderFactory{
-				FS: &fs.FS{},
-				Log: log.New(os.Stdout, "", log.LstdFlags),
+				FS:     &fs.FS{},
+				Log:    log.New(os.Stdout, "", log.LstdFlags),
 				Docker: docker,
+				Config: cfg,
+				Images: &image.Client{},
 			}
 			builderConfig, err := builderFactory.BuilderConfigFromFlags(flags)
 			if err != nil {
@@ -72,5 +87,6 @@ func createBuilderCommand() *cobra.Command {
 	}
 	createBuilderCommand.Flags().BoolVar(&flags.NoPull, "no-pull", false, "don't pull stack image before use")
 	createBuilderCommand.Flags().StringVarP(&flags.BuilderTomlPath, "builder-config", "b", "", "path to builder.toml file")
+	createBuilderCommand.Flags().StringVarP(&flags.StackID, "stack", "s", "", "stack ID")
 	return createBuilderCommand
 }

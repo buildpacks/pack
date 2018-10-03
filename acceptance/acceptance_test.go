@@ -204,6 +204,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		it("creates a builder image", func() {
 			t.Log("create builder image")
 			cmd := exec.Command(pack, "create-builder", builderRepoName, "-b", builderTOML)
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("create-builder command failed: %s: %s", output, err)

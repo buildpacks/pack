@@ -14,12 +14,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/buildpack/pack/image"
+
+	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/fs"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/packs/img"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockercli "github.com/docker/docker/client"
@@ -28,18 +30,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Build(appDir, buildImage, runImage, repoName string, publish bool) error {
-	b := &BuildFlags{
-		AppDir:   appDir,
-		Builder:  buildImage,
-		RunImage: runImage,
-		RepoName: repoName,
-		Publish:  publish,
-	}
-	if err := b.Init(); err != nil {
-		return err
-	}
-	return b.Run()
+type BuildFactory struct {
+	Cli    Docker
+	Stdout io.Writer
+	Stderr io.Writer
+	Log    *log.Logger
+	FS     FS
+	Config *config.Config
+	Images Images
 }
 
 type BuildFlags struct {
@@ -49,47 +47,143 @@ type BuildFlags struct {
 	RepoName string
 	Publish  bool
 	NoPull   bool
-	// Below are set by init
-	Cli             *docker.Client
+}
+
+type BuildConfig struct {
+	AppDir   string
+	Builder  string
+	RunImage string
+	RepoName string
+	Publish  bool
+	// Above are copied from BuildFlags are set by init
+	Cli    Docker
+	Stdout io.Writer
+	Stderr io.Writer
+	Log    *log.Logger
+	FS     FS
+	Config *config.Config
+	Images Images
+	// Above are copied from BuildFactory
 	WorkspaceVolume string
 	CacheVolume     string
-	Stdout          io.Writer
-	Stderr          io.Writer
-	Log             *log.Logger
-	FS              FS
 }
 
-func (b *BuildFlags) Init() error {
+func DefaultBuildFactory() (*BuildFactory, error) {
+	f := &BuildFactory{
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+		Log:    log.New(os.Stdout, "", log.LstdFlags),
+		FS:     &fs.FS{},
+		Images: &image.Client{},
+	}
+
 	var err error
-	b.AppDir, err = filepath.Abs(b.AppDir)
+	f.Cli, err = docker.New()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	b.Cli, err = docker.New()
+	f.Config, err = config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	b.WorkspaceVolume = fmt.Sprintf("pack-workspace-%x", uuid.New().String())
-	b.CacheVolume = fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(b.AppDir)))
-
-	b.Stdout = os.Stdout
-	b.Stderr = os.Stderr
-	b.Log = log.New(os.Stdout, "", log.LstdFlags)
-	b.FS = &fs.FS{}
-
-	return nil
+	return f, nil
 }
 
-func (b *BuildFlags) Run() error {
-	defer b.Cli.VolumeRemove(context.Background(), b.WorkspaceVolume, true)
-	if !b.NoPull {
-		fmt.Println("*** PULLING BUILDER IMAGE LOCALLY:")
-		if err := b.Cli.PullImage(b.Builder); err != nil {
-			return errors.Wrapf(err, "pull image: %s", b.Builder)
+func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error) {
+	appDir, err := filepath.Abs(f.AppDir)
+	if err != nil {
+		return nil, err
+	}
+	if !f.NoPull {
+		bf.Log.Printf("Pulling builder image '%s' (use --no-pull flag to skip this step)", f.Builder)
+		if err := bf.Cli.PullImage(f.Builder); err != nil {
+			return nil, err
 		}
 	}
+
+	b := &BuildConfig{
+		AppDir:  appDir,
+		Builder: f.Builder,
+		RepoName:        f.RepoName,
+		Publish:         f.Publish,
+		Cli:             bf.Cli,
+		Stdout:          bf.Stdout,
+		Stderr:          bf.Stderr,
+		Log:             bf.Log,
+		FS:              bf.FS,
+		Config:          bf.Config,
+		Images:          bf.Images,
+		WorkspaceVolume: fmt.Sprintf("pack-workspace-%x", uuid.New().String()),
+		CacheVolume:     fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(appDir))),
+	}
+
+	builderStackID, err := b.imageLabel(f.Builder, "io.buildpacks.stack.id", true)
+	if err != nil {
+		return nil, fmt.Errorf(`invalid builder image "%s": %s`, b.Builder, err)
+	}
+	if builderStackID == "" {
+		return nil, fmt.Errorf(`invalid builder image "%s": missing required label "io.buildpacks.stack.id"`, b.Builder)
+	}
+	stack, err := bf.Config.Get(builderStackID)
+	if err != nil {
+		return nil, err
+	}
+
+	if f.RunImage != "" {
+		bf.Log.Printf("Using user provided run image '%s'", f.RunImage)
+		b.RunImage = f.RunImage
+	} else {
+		reg, err := config.Registry(f.RepoName)
+		if err != nil {
+			return nil, err
+		}
+		b.RunImage, err = config.ImageByRegistry(reg, stack.RunImages)
+		if err != nil {
+			return nil, err
+		}
+		b.Log.Printf("Selected run image '%s' from stack '%s'\n", b.RunImage, builderStackID)
+	}
+
+	if !f.NoPull && !f.Publish {
+		bf.Log.Printf("Pulling run image '%s' (use --no-pull flag to skip this step)", b.RunImage)
+		if err := bf.Cli.PullImage(b.RunImage); err != nil {
+			return nil, err
+		}
+	}
+
+	if runStackID, err := b.imageLabel(b.RunImage, "io.buildpacks.stack.id", !f.Publish); err != nil {
+		return nil, fmt.Errorf(`invalid run image "%s": %s`, b.RunImage, err)
+	} else if runStackID == "" {
+		return nil, fmt.Errorf(`invalid run image "%s": missing required label "io.buildpacks.stack.id"`, b.RunImage)
+	} else if builderStackID != runStackID {
+		return nil, fmt.Errorf(`invalid stack: stack "%s" from run image "%s" does not match stack "%s" from builder image "%s"`, runStackID, b.RunImage, builderStackID, b.Builder)
+	}
+
+	return b, nil
+}
+
+func Build(appDir, buildImage, runImage, repoName string, publish bool) error {
+	bf, err := DefaultBuildFactory()
+	if err != nil {
+		return err
+	}
+	b, err := bf.BuildConfigFromFlags(&BuildFlags{
+		AppDir:   appDir,
+		Builder:  buildImage,
+		RunImage: runImage,
+		RepoName: repoName,
+		Publish:  publish,
+	})
+	if err != nil {
+		return err
+	}
+	return b.Run()
+}
+
+func (b *BuildConfig) Run() error {
+	defer b.Cli.VolumeRemove(context.Background(), b.WorkspaceVolume, true)
 
 	fmt.Println("*** DETECTING:")
 	group, err := b.Detect()
@@ -107,13 +201,6 @@ func (b *BuildFlags) Run() error {
 		return err
 	}
 
-	if !b.Publish && !b.NoPull {
-		fmt.Println("*** PULLING RUN IMAGE LOCALLY:")
-		if err := b.Cli.PullImage(b.RunImage); err != nil {
-			return errors.Wrapf(err, "pull image: %s", b.RunImage)
-		}
-	}
-
 	fmt.Println("*** EXPORTING:")
 	if err := b.Export(group); err != nil {
 		return err
@@ -122,7 +209,7 @@ func (b *BuildFlags) Run() error {
 	return nil
 }
 
-func (b *BuildFlags) Detect() (*lifecycle.BuildpackGroup, error) {
+func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
@@ -160,7 +247,7 @@ func (b *BuildFlags) Detect() (*lifecycle.BuildpackGroup, error) {
 	return b.groupToml(ctr.ID)
 }
 
-func (b *BuildFlags) groupToml(ctrID string) (*lifecycle.BuildpackGroup, error) {
+func (b *BuildConfig) groupToml(ctrID string) (*lifecycle.BuildpackGroup, error) {
 	trc, _, err := b.Cli.CopyFromContainer(context.Background(), ctrID, "/workspace/group.toml")
 	if err != nil {
 		return nil, errors.Wrap(err, "reading group.toml from container")
@@ -178,12 +265,17 @@ func (b *BuildFlags) groupToml(ctrID string) (*lifecycle.BuildpackGroup, error) 
 	return &group, nil
 }
 
-func (b *BuildFlags) Analyze() error {
-	metadata, err := b.imageLabel(lifecycle.MetadataLabel)
+func (b *BuildConfig) Analyze() error {
+	metadata, err := b.imageLabel(b.RepoName, lifecycle.MetadataLabel, !b.Publish)
 	if err != nil {
 		return errors.Wrap(err, "analyze image label")
 	}
 	if metadata == "" {
+		if b.Publish {
+			b.Log.Printf("WARNING: skipping analyze, image not found or requires authentication to access")
+		} else {
+			b.Log.Printf("WARNING: skipping analyze, image not found")
+		}
 		return nil
 	}
 
@@ -215,7 +307,7 @@ func (b *BuildFlags) Analyze() error {
 	return nil
 }
 
-func (b *BuildFlags) Build() error {
+func (b *BuildConfig) Build() error {
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
@@ -234,7 +326,7 @@ func (b *BuildFlags) Build() error {
 	return b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr)
 }
 
-func (b *BuildFlags) Export(group *lifecycle.BuildpackGroup) error {
+func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
 	if b.Publish {
 		localWorkspaceDir, cleanup, err := b.exportVolume(b.Builder, b.WorkspaceVolume)
 		if err != nil {
@@ -261,43 +353,38 @@ func (b *BuildFlags) Export(group *lifecycle.BuildpackGroup) error {
 	return nil
 }
 
-func (b *BuildFlags) imageLabel(key string) (string, error) {
-	if b.Publish {
-		repoStore, err := img.NewRegistry(b.RepoName)
-		if err != nil {
-			b.Log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", err)
+func (b *BuildConfig) imageLabel(repoName, key string, useDaemon bool) (string, error) {
+	var labels map[string]string
+	if useDaemon {
+		i, _, err := b.Cli.ImageInspectWithRaw(context.Background(), repoName)
+		if dockercli.IsErrNotFound(err) {
 			return "", nil
+		} else if err != nil {
+			return "", errors.Wrap(err, "analyze read previous image config")
 		}
-		origImage, err := repoStore.Image()
-		if err != nil {
-			b.Log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", err)
-			return "", nil
+		labels = i.Config.Labels
+	} else {
+		origImage, err := b.Images.ReadImage(repoName, false)
+		if err != nil || origImage == nil {
+			return "", err
 		}
 		config, err := origImage.ConfigFile()
 		if err != nil {
 			if remoteErr, ok := err.(*remote.Error); ok && len(remoteErr.Errors) > 0 {
 				switch remoteErr.Errors[0].Code {
 				case remote.UnauthorizedErrorCode, remote.ManifestUnknownErrorCode:
-					b.Log.Printf("WARNING: skipping analyze, image not found or requires authentication to access: %s", remoteErr)
 					return "", nil
 				}
 			}
-			return "", errors.Wrapf(err, "access manifest: %s", b.RepoName)
+			return "", errors.Wrapf(err, "access manifest: %s", repoName)
 		}
-		return config.Config.Labels[key], nil
+		labels = config.Config.Labels
 	}
 
-	i, _, err := b.Cli.ImageInspectWithRaw(context.Background(), b.RepoName)
-	if dockercli.IsErrNotFound(err) {
-		b.Log.Printf("WARNING: skipping analyze, image not found")
-		return "", nil
-	} else if err != nil {
-		return "", errors.Wrap(err, "analyze read previous image config")
-	}
-	return i.Config.Labels[key], nil
+	return labels[key], nil
 }
 
-func (b *BuildFlags) packUidGid(builder string) (int, int, error) {
+func (b *BuildConfig) packUidGid(builder string) (int, int, error) {
 	i, _, err := b.Cli.ImageInspectWithRaw(context.Background(), builder)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "reading builder env variables")
@@ -325,7 +412,7 @@ func (b *BuildFlags) packUidGid(builder string) (int, int, error) {
 	return uid, gid, nil
 }
 
-func (b *BuildFlags) chownDir(path string, uid, gid int) error {
+func (b *BuildConfig) chownDir(path string, uid, gid int) error {
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
@@ -346,7 +433,7 @@ func (b *BuildFlags) chownDir(path string, uid, gid int) error {
 	return nil
 }
 
-func (b *BuildFlags) exportVolume(image, volName string) (string, func(), error) {
+func (b *BuildConfig) exportVolume(image, volName string) (string, func(), error) {
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
