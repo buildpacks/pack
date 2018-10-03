@@ -26,6 +26,7 @@ type BuilderConfig struct {
 	Buildpacks []Buildpack                `toml:"buildpacks"`
 	Groups     []lifecycle.BuildpackGroup `toml:"groups"`
 	BaseImage  v1.Image
+	BuilderDir string //original location of builder.toml, used for interpreting relative paths in buildpack URIs
 }
 
 type Buildpack struct {
@@ -93,6 +94,7 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 	if err != nil {
 		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file "%s": %s`, flags.BuilderTomlPath, err)
 	}
+	builderConfig.BuilderDir = filepath.Dir(flags.BuilderTomlPath)
 	builderConfig.BaseImage, err = f.Images.ReadImage(baseImage, !flags.Publish)
 	if err != nil {
 		return BuilderConfig{}, fmt.Errorf(`failed to read base image "%s": %s`, baseImage, err)
@@ -138,7 +140,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return fmt.Errorf(`failed append order.toml layer to image: %s`, err)
 	}
 	for _, buildpack := range config.Buildpacks {
-		tarFile, err := f.buildpackLayer(tmpDir, buildpack)
+		tarFile, err := f.buildpackLayer(tmpDir, buildpack, config.BuilderDir)
 		if err != nil {
 			return fmt.Errorf(`failed generate layer for buildpack "%s": %s`, buildpack.ID, err)
 		}
@@ -178,8 +180,11 @@ func (f *BuilderFactory) orderLayer(dest string, groups []lifecycle.BuildpackGro
 	return layerTar, nil
 }
 
-func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack) (layerTar string, err error) {
+func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builderDir string) (layerTar string, err error) {
 	dir := strings.TrimPrefix(buildpack.URI, "file://")
+	if !filepath.IsAbs(dir) {
+		dir = filepath.Join(builderDir, dir)
+	}
 	var data struct {
 		BP struct {
 			ID      string `toml:"id"`
