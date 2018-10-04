@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -18,10 +19,12 @@ import (
 func main() {
 	buildCmd := buildCommand()
 	createBuilderCmd := createBuilderCommand()
+	addStackCmd := addStackCommand()
 
 	rootCmd := &cobra.Command{Use: "pack"}
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(createBuilderCmd)
+	rootCmd.AddCommand(addStackCmd)
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
@@ -89,4 +92,33 @@ func createBuilderCommand() *cobra.Command {
 	createBuilderCommand.Flags().StringVarP(&flags.BuilderTomlPath, "builder-config", "b", "", "path to builder.toml file")
 	createBuilderCommand.Flags().StringVarP(&flags.StackID, "stack", "s", "", "stack ID")
 	return createBuilderCommand
+}
+
+func addStackCommand() *cobra.Command {
+	flags := struct {
+		BuildImage string
+		RunImage   string
+	}{}
+	addStackCommand := &cobra.Command{
+		Use:  "add-stack <stack-name> --run-image=<name> --build-image=<name>",
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
+			if err != nil {
+				return err
+			}
+			if err := cfg.Add(config.Stack{
+				ID:          args[0],
+				BuildImages: []string{flags.BuildImage},
+				RunImages:   []string{flags.RunImage},
+			}); err != nil {
+				return err
+			}
+			fmt.Printf("%s successfully added\n", args[0])
+			return nil
+		},
+	}
+	addStackCommand.Flags().StringVar(&flags.BuildImage, "build-image", "", "build image to be used for bulder images built with the stack")
+	addStackCommand.Flags().StringVar(&flags.RunImage, "run-image", "", "run image to be used for runnable images built with the stack")
+	return addStackCommand
 }

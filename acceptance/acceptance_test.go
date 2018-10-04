@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -244,6 +245,34 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			if !strings.Contains(txt, "Hi from Sample BP") {
 				t.Fatalf("expected '%s' to be contained in:\n%s", "Hi from Sample BP", txt)
 			}
+		})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+
+	when("add-stack", func() {
+		it("adds a custom stack to ~/.pack/config.toml", func() {
+			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("add-stack command failed: %s: %s", output, err)
+			}
+
+			assertEq(t, string(output), "my.custom.stack successfully added\n")
+
+			var config struct {
+				Stacks []struct {
+					ID          string   `toml:"id"`
+					BuildImages []string `toml:"build-images"`
+					RunImages   []string `toml:"run-images"`
+				} `toml:"stacks"`
+			}
+			_, err = toml.DecodeFile(filepath.Join(homeDir, ".pack", "config.toml"), &config)
+			assertNil(t, err)
+
+			stack := config.Stacks[len(config.Stacks)-1]
+			assertEq(t, stack.ID, "my.custom.stack")
+			assertEq(t, stack.BuildImages, []string{"my-org/build"})
+			assertEq(t, stack.RunImages, []string{"my-org/run"})
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 }

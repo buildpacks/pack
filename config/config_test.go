@@ -201,6 +201,71 @@ default-stack-id = "my.stack"
 		})
 	})
 
+	when("Config#Add", func() {
+		var subject *config.Config
+		it.Before(func() {
+			assertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
+default-stack-id = "my.stack"
+[[stacks]]
+  id = "stack-1"
+[[stacks]]
+  id = "my.stack"
+[[stacks]]
+  id = "stack-3"
+`), 0666))
+			var err error
+			subject, err = config.New(tmpDir)
+			assertNil(t, err)
+		})
+
+		when("stack to be added is new", func() {
+			it("adds the stack and writes to file", func() {
+				err := subject.Add(config.Stack{
+					ID:          "new-stack",
+					BuildImages: []string{"neworg/build"},
+					RunImages:   []string{"neworg/run"},
+				})
+				assertNil(t, err)
+
+				stack, err := subject.Get("new-stack")
+				assertNil(t, err)
+				assertEq(t, stack.ID, "new-stack")
+				assertEq(t, stack.BuildImages, []string{"neworg/build"})
+				assertEq(t, stack.RunImages, []string{"neworg/run"})
+
+				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
+				assertNil(t, err)
+				assertContains(t, string(b), "new-stack")
+				assertContains(t, string(b), "neworg/build")
+				assertContains(t, string(b), "neworg/run")
+			})
+		})
+
+		when("stack to be added is already in file", func() {
+			it("errors and leaves file unchanged", func() {
+				stat, err := os.Stat(filepath.Join(tmpDir, "config.toml"))
+				assertNil(t, err)
+				origSize := stat.Size()
+
+				err = subject.Add(config.Stack{
+					ID:          "my.stack",
+					BuildImages: []string{"neworg/build"},
+					RunImages:   []string{"neworg/run"},
+				})
+				assertNotNil(t, err)
+				assertEq(t, err.Error(), `stack "my.stack" already exists`)
+
+				stack, err := subject.Get("my.stack")
+				assertNil(t, err)
+				assertEq(t, stack.BuildImages, []string(nil))
+
+				stat, err = os.Stat(filepath.Join(tmpDir, "config.toml"))
+				assertNil(t, err)
+				assertEq(t, stat.Size(), origSize)
+			})
+		})
+	})
+
 	when("ImageByRegistry", func() {
 		var images []string
 		it.Before(func() {

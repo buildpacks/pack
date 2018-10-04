@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Stacks         []Stack `toml:"stacks"`
 	DefaultStackID string  `toml:"default-stack-id"`
+	configPath     string
 }
 
 type Stack struct {
@@ -37,20 +38,25 @@ func New(path string) (*Config, error) {
 		RunImages:   []string{"packs/run"},
 	})
 
-	if err := os.MkdirAll(filepath.Dir(configPath), 0777); err != nil {
-		return nil, err
-	}
-	w, err := os.OpenFile(configPath, os.O_CREATE|os.O_RDWR, 0644)
-	if err != nil {
-		return nil, err
-	}
-	defer w.Close()
-
-	if err := toml.NewEncoder(w).Encode(config); err != nil {
+	config.configPath = configPath
+	if err := config.save(); err != nil {
 		return nil, err
 	}
 
 	return config, nil
+}
+
+func (c *Config) save() error {
+	if err := os.MkdirAll(filepath.Dir(c.configPath), 0777); err != nil {
+		return err
+	}
+	w, err := os.OpenFile(c.configPath, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	return toml.NewEncoder(w).Encode(c)
 }
 
 func previousConfig(path string) (*Config, error) {
@@ -82,6 +88,14 @@ func (c *Config) Get(stackID string) (*Stack, error) {
 		}
 	}
 	return nil, fmt.Errorf(`Missing stack: stack with id "%s" not found in pack config.toml`, stackID)
+}
+
+func (c *Config) Add(stack Stack) error {
+	if _, err := c.Get(stack.ID); err == nil {
+		return fmt.Errorf(`stack "%s" already exists`, stack.ID)
+	}
+	c.Stacks = append(c.Stacks, stack)
+	return c.save()
 }
 
 func ImageByRegistry(registry string, images []string) (string, error) {
