@@ -98,8 +98,8 @@ func createBuilderCommand() *cobra.Command {
 
 func addStackCommand() *cobra.Command {
 	flags := struct {
-		BuildImage string
-		RunImage   string
+		BuildImages []string
+		RunImages   []string
 	}{}
 	addStackCommand := &cobra.Command{
 		Use:  "add-stack <stack-name> --run-image=<name> --build-image=<name>",
@@ -111,8 +111,8 @@ func addStackCommand() *cobra.Command {
 			}
 			if err := cfg.Add(config.Stack{
 				ID:          args[0],
-				BuildImages: []string{flags.BuildImage},
-				RunImages:   []string{flags.RunImage},
+				BuildImages: flags.BuildImages,
+				RunImages:   flags.RunImages,
 			}); err != nil {
 				return err
 			}
@@ -120,8 +120,8 @@ func addStackCommand() *cobra.Command {
 			return nil
 		},
 	}
-	addStackCommand.Flags().StringVar(&flags.BuildImage, "build-image", "", "build image to be used for bulder images built with the stack")
-	addStackCommand.Flags().StringVar(&flags.RunImage, "run-image", "", "run image to be used for runnable images built with the stack")
+	addStackCommand.Flags().StringSliceVarP(&flags.BuildImages, "build-image", "b", []string{}, "build image to be used for bulder images built with the stack")
+	addStackCommand.Flags().StringSliceVarP(&flags.RunImages, "run-image", "r", []string{}, "run image to be used for runnable images built with the stack")
 	return addStackCommand
 }
 
