@@ -98,17 +98,33 @@ func (c *Config) Add(stack Stack) error {
 	return c.save()
 }
 
-func (c *Config) Delete(stackName string) error {
-	if c.DefaultStackID == stackName {
-		return fmt.Errorf(`%s cannot be deleted when it is the default stack. You can change your default stack by running "pack set-default-stack".`, stackName)
+func (c *Config) Update(stackID string, stack Stack) error {
+	for i, stk := range c.Stacks {
+		if stk.ID == stackID {
+			if len(stack.BuildImages) > 0 {
+				stk.BuildImages = stack.BuildImages
+			}
+			if len(stack.RunImages) > 0 {
+				stk.RunImages = stack.RunImages
+			}
+			c.Stacks[i] = stk
+			return c.save()
+		}
+	}
+	return fmt.Errorf(`Missing stack: stack with id "%s" not found in pack config.toml`, stackID)
+}
+
+func (c *Config) Delete(stackID string) error {
+	if c.DefaultStackID == stackID {
+		return fmt.Errorf(`%s cannot be deleted when it is the default stack. You can change your default stack by running "pack set-default-stack".`, stackID)
 	}
 	for i, s := range c.Stacks {
-		if s.ID == stackName {
+		if s.ID == stackID {
 			c.Stacks = append(c.Stacks[:i], c.Stacks[i+1:]...)
 			return c.save()
 		}
 	}
-	return fmt.Errorf(`stack "%s" does not exist`, stackName)
+	return fmt.Errorf(`Missing stack: stack with id "%s" not found in pack config.toml`, stackID)
 }
 
 func ImageByRegistry(registry string, images []string) (string, error) {

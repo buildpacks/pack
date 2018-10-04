@@ -266,6 +266,76 @@ default-stack-id = "my.stack"
 		})
 	})
 
+	when("Config#Update", func() {
+		var subject *config.Config
+		it.Before(func() {
+			assertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
+default-stack-id = "stack-1"
+[[stacks]]
+  id = "stack-1"
+[[stacks]]
+  id = "my.stack"
+	build-images = ["packs/build"]
+	run-images = ["packs/run"]
+[[stacks]]
+  id = "stack-3"
+`), 0666))
+			var err error
+			subject, err = config.New(tmpDir)
+			assertNil(t, err)
+		})
+
+		when("stack to be updated exists", func() {
+			it("updates the stack and writes the file", func() {
+				err := subject.Update("my.stack", config.Stack{
+					BuildImages: []string{"packs/build-2", "fred"},
+					RunImages:   []string{"packs/run-2", "jane"},
+				})
+				assertNil(t, err)
+
+				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
+				assertNil(t, err)
+				if !strings.Contains(string(b), "packs/build-2") {
+					t.Fatalf(`expected "packs/build-2" to be in config.toml: %s`, b)
+				}
+				if !strings.Contains(string(b), "packs/run-2") {
+					t.Fatalf(`expected "packs/run-2" to be in config.toml: %s`, b)
+				}
+			})
+
+			it("updates only the fields entered", func() {
+				err := subject.Update("my.stack", config.Stack{
+					BuildImages: []string{"packs/build-2"},
+				})
+				assertNil(t, err)
+				stack, err := subject.Get("my.stack")
+				assertNil(t, err)
+				assertEq(t, stack.BuildImages, []string{"packs/build-2"})
+				assertEq(t, stack.RunImages, []string{"packs/run"})
+
+				err = subject.Update("my.stack", config.Stack{
+					RunImages: []string{"packs/run-3"},
+				})
+				assertNil(t, err)
+				stack, err = subject.Get("my.stack")
+				assertNil(t, err)
+				assertEq(t, stack.BuildImages, []string{"packs/build-2"})
+				assertEq(t, stack.RunImages, []string{"packs/run-3"})
+			})
+		})
+
+		when("stack to be updated is NOT in file", func() {
+			it("errors and leaves file unchanged", func() {
+				err := subject.Update("other.stack", config.Stack{
+					BuildImages: []string{"packs/build-2"},
+					RunImages:   []string{"packs/run-2"},
+				})
+				assertNotNil(t, err)
+				assertEq(t, err.Error(), `Missing stack: stack with id "other.stack" not found in pack config.toml`)
+			})
+		})
+	})
+
 	when("Config#Delete", func() {
 		var subject *config.Config
 		it.Before(func() {
@@ -306,7 +376,7 @@ default-stack-id = "stack-1"
 			it("errors and leaves file unchanged", func() {
 				err := subject.Delete("other.stack")
 				assertNotNil(t, err)
-				assertEq(t, err.Error(), `stack "other.stack" does not exist`)
+				assertEq(t, err.Error(), `Missing stack: stack with id "other.stack" not found in pack config.toml`)
 			})
 		})
 

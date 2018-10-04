@@ -276,6 +276,44 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
+	when("update-stack", func() {
+		type config struct {
+			Stacks []struct {
+				ID          string   `toml:"id"`
+				BuildImages []string `toml:"build-images"`
+				RunImages   []string `toml:"run-images"`
+			} `toml:"stacks"`
+		}
+
+		it.Before(func() {
+			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("add-stack command failed: %s: %s", output, err)
+			}
+		})
+
+		it("updates an existing custom stack in ~/.pack/config.toml", func() {
+			cmd := exec.Command(pack, "update-stack", "my.custom.stack", "--run-image", "my-org/run-2", "--run-image", "my-org/run-3", "--build-image", "my-org/build-2", "--build-image", "my-org/build-3")
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("update-stack command failed: %s: %s", output, err)
+			}
+			assertEq(t, string(output), "my.custom.stack successfully updated\n")
+
+			var config config
+			_, err = toml.DecodeFile(filepath.Join(homeDir, ".pack", "config.toml"), &config)
+			assertNil(t, err)
+
+			stack := config.Stacks[len(config.Stacks)-1]
+			assertEq(t, stack.ID, "my.custom.stack")
+			assertEq(t, stack.BuildImages, []string{"my-org/build-2", "my-org/build-3"})
+			assertEq(t, stack.RunImages, []string{"my-org/run-2", "my-org/run-3"})
+		})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+
 	when("delete-stack", func() {
 		type config struct {
 			Stacks []struct {
