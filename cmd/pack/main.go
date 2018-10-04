@@ -93,6 +93,7 @@ func createBuilderCommand() *cobra.Command {
 	createBuilderCommand.Flags().BoolVar(&flags.NoPull, "no-pull", false, "don't pull stack image before use")
 	createBuilderCommand.Flags().StringVarP(&flags.BuilderTomlPath, "builder-config", "b", "", "path to builder.toml file")
 	createBuilderCommand.Flags().StringVarP(&flags.StackID, "stack", "s", "", "stack ID")
+	createBuilderCommand.Flags().BoolVar(&flags.Publish, "publish", false, "publish to registry")
 	return createBuilderCommand
 }
 
