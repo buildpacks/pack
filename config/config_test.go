@@ -270,6 +270,7 @@ default-stack-id = "my.stack"
 		var subject *config.Config
 		it.Before(func() {
 			assertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
+default-stack-id = "stack-1"
 [[stacks]]
   id = "stack-1"
 [[stacks]]
@@ -306,6 +307,14 @@ default-stack-id = "my.stack"
 				err := subject.Delete("other.stack")
 				assertNotNil(t, err)
 				assertEq(t, err.Error(), `stack "other.stack" does not exist`)
+			})
+		})
+
+		when("stack to be deleted is the default-stack-id", func() {
+			it("errors and leaves file unchanged", func() {
+				err := subject.Delete("stack-1")
+				assertNotNil(t, err)
+				assertEq(t, err.Error(), `stack-1 cannot be deleted when it is the default stack. You can change your default stack by running "pack set-default-stack".`)
 			})
 		})
 	})

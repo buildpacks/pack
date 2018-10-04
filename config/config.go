@@ -99,6 +99,9 @@ func (c *Config) Add(stack Stack) error {
 }
 
 func (c *Config) Delete(stackName string) error {
+	if c.DefaultStackID == stackName {
+		return fmt.Errorf(`%s cannot be deleted when it is the default stack. You can change your default stack by running "pack set-default-stack".`, stackName)
+	}
 	for i, s := range c.Stacks {
 		if s.ID == stackName {
 			c.Stacks = append(c.Stacks[:i], c.Stacks[i+1:]...)
