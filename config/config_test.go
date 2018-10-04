@@ -266,6 +266,50 @@ default-stack-id = "my.stack"
 		})
 	})
 
+	when("Config#Delete", func() {
+		var subject *config.Config
+		it.Before(func() {
+			assertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
+[[stacks]]
+  id = "stack-1"
+[[stacks]]
+  id = "my.stack"
+[[stacks]]
+  id = "stack-3"
+`), 0666))
+			var err error
+			subject, err = config.New(tmpDir)
+			assertNil(t, err)
+		})
+
+		when("stack to be deleted exists", func() {
+			it("deletes the stack and writes the file", func() {
+				_, err := subject.Get("my.stack")
+				assertNil(t, err)
+
+				err = subject.Delete("my.stack")
+				assertNil(t, err)
+
+				_, err = subject.Get("my.stack")
+				assertNotNil(t, err)
+
+				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
+				assertNil(t, err)
+				if strings.Contains(string(b), "my.stack") {
+					t.Fatal(`expected "my.stack" to longer be in config.toml`)
+				}
+			})
+		})
+
+		when("stack to be deleted is NOT in file", func() {
+			it("errors and leaves file unchanged", func() {
+				err := subject.Delete("other.stack")
+				assertNotNil(t, err)
+				assertEq(t, err.Error(), `stack "other.stack" does not exist`)
+			})
+		})
+	})
+
 	when("ImageByRegistry", func() {
 		var images []string
 		it.Before(func() {

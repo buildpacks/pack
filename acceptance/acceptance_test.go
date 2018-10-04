@@ -275,6 +275,54 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			assertEq(t, stack.RunImages, []string{"my-org/run"})
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
+
+	when("delete-stack", func() {
+		type config struct {
+			Stacks []struct {
+				ID          string   `toml:"id"`
+				BuildImages []string `toml:"build-images"`
+				RunImages   []string `toml:"run-images"`
+			} `toml:"stacks"`
+		}
+		containsStack := func(c config, stackID string) bool {
+			for _, s := range c.Stacks {
+				if s.ID == stackID {
+					return true
+				}
+			}
+			return false
+		}
+
+		it.Before(func() {
+			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("add-stack command failed: %s: %s", output, err)
+			}
+		})
+
+		it("deletes a custom stack from ~/.pack/config.toml", func() {
+			var config config
+			_, err := toml.DecodeFile(filepath.Join(homeDir, ".pack", "config.toml"), &config)
+			assertNil(t, err)
+			numStacks := len(config.Stacks)
+			assertEq(t, containsStack(config, "my.custom.stack"), true)
+
+			cmd := exec.Command(pack, "delete-stack", "my.custom.stack")
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("add-stack command failed: %s: %s", output, err)
+			}
+			assertEq(t, string(output), "my.custom.stack has been successfully deleted\n")
+
+			_, err = toml.DecodeFile(filepath.Join(homeDir, ".pack", "config.toml"), &config)
+			assertNil(t, err)
+			assertEq(t, len(config.Stacks), numStacks-1)
+			assertEq(t, containsStack(config, "my.custom.stack"), false)
+		})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func run(t *testing.T, cmd *exec.Cmd) string {

@@ -50,7 +50,7 @@ func (c *Config) save() error {
 	if err := os.MkdirAll(filepath.Dir(c.configPath), 0777); err != nil {
 		return err
 	}
-	w, err := os.OpenFile(c.configPath, os.O_CREATE|os.O_RDWR, 0644)
+	w, err := os.Create(c.configPath)
 	if err != nil {
 		return err
 	}
@@ -96,6 +96,16 @@ func (c *Config) Add(stack Stack) error {
 	}
 	c.Stacks = append(c.Stacks, stack)
 	return c.save()
+}
+
+func (c *Config) Delete(stackName string) error {
+	for i, s := range c.Stacks {
+		if s.ID == stackName {
+			c.Stacks = append(c.Stacks[:i], c.Stacks[i+1:]...)
+			return c.save()
+		}
+	}
+	return fmt.Errorf(`stack "%s" does not exist`, stackName)
 }
 
 func ImageByRegistry(registry string, images []string) (string, error) {

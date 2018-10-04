@@ -20,11 +20,13 @@ func main() {
 	buildCmd := buildCommand()
 	createBuilderCmd := createBuilderCommand()
 	addStackCmd := addStackCommand()
+	deleteStackCmd := deleteStackCommand()
 
 	rootCmd := &cobra.Command{Use: "pack"}
 	rootCmd.AddCommand(buildCmd)
 	rootCmd.AddCommand(createBuilderCmd)
 	rootCmd.AddCommand(addStackCmd)
+	rootCmd.AddCommand(deleteStackCmd)
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
@@ -101,7 +103,7 @@ func addStackCommand() *cobra.Command {
 	}{}
 	addStackCommand := &cobra.Command{
 		Use:  "add-stack <stack-name> --run-image=<name> --build-image=<name>",
-		Args: cobra.MinimumNArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
 			if err != nil {
@@ -120,5 +122,24 @@ func addStackCommand() *cobra.Command {
 	}
 	addStackCommand.Flags().StringVar(&flags.BuildImage, "build-image", "", "build image to be used for bulder images built with the stack")
 	addStackCommand.Flags().StringVar(&flags.RunImage, "run-image", "", "run image to be used for runnable images built with the stack")
+	return addStackCommand
+}
+
+func deleteStackCommand() *cobra.Command {
+	addStackCommand := &cobra.Command{
+		Use:  "delete-stack <stack-name>",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
+			if err != nil {
+				return err
+			}
+			if err := cfg.Delete(args[0]); err != nil {
+				return err
+			}
+			fmt.Printf("%s has been successfully deleted\n", args[0])
+			return nil
+		},
+	}
 	return addStackCommand
 }
