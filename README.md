@@ -15,5 +15,5 @@ Currently we recommend using the development detect image
 The above will create images on your local daemon. If you wish to create images on a docker registry, use the `--publish` flag.
 
 ```
-./pack build myorg/myapp -p fixtures/node_app --detect-image packsdev/v3:detect --publish
+./pack build myorg/myapp -p acceptance/fixtures/node_app --detect-image packsdev/v3:detect --publish
 ```
