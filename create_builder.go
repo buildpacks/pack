@@ -3,9 +3,6 @@ package pack
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
 	"io"
 	"io/ioutil"
 	"log"
@@ -17,11 +14,15 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/img"
 	"github.com/buildpack/pack/config"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
 )
 
 type BuilderConfig struct {
+	RepoName   string
 	Repo       img.Store
 	Buildpacks []Buildpack                `toml:"buildpacks"`
 	Groups     []lifecycle.BuildpackGroup `toml:"groups"`
@@ -89,7 +90,7 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 			return BuilderConfig{}, fmt.Errorf(`failed to pull stack build image "%s": %s`, baseImage, err)
 		}
 	}
-	var builderConfig BuilderConfig
+	builderConfig := BuilderConfig{RepoName: flags.RepoName}
 	_, err = toml.DecodeFile(flags.BuilderTomlPath, &builderConfig)
 	if err != nil {
 		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file "%s": %s`, flags.BuilderTomlPath, err)
@@ -149,8 +150,15 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 			return fmt.Errorf(`failed append buildpack layer to image: %s`, err)
 		}
 	}
+	if err := config.Repo.Write(builderImage); err != nil {
+		return err
+	}
 
-	return config.Repo.Write(builderImage)
+	f.Log.Println("Successfully created builder image:", config.RepoName)
+	f.Log.Println("")
+	f.Log.Println(`Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+
+	return nil
 }
 
 type order struct {

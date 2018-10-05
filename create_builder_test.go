@@ -1,8 +1,8 @@
 package pack_test
 
 import (
+	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os/exec"
 	"path/filepath"
@@ -11,9 +11,11 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 )
@@ -32,6 +34,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDocker     *mocks.MockDocker
 			mockImages     *mocks.MockImages
 			factory        pack.BuilderFactory
+			buf            bytes.Buffer
 		)
 		it.Before(func() {
 			mockController = gomock.NewController(t)
@@ -39,8 +42,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockImages = mocks.NewMockImages(mockController)
 
 			factory = pack.BuilderFactory{
+				FS:     &fs.FS{},
 				Docker: mockDocker,
-				Log:    log.New(ioutil.Discard, "", log.LstdFlags),
+				Log:    log.New(&buf, "", log.LstdFlags),
 				Config: &config.Config{
 					DefaultStackID: "some.default.stack",
 					Stacks: []config.Stack{
@@ -89,6 +93,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				checkBuildpacks(t, config.Buildpacks)
 				checkGroups(t, config.Groups)
 				assertEq(t, config.BuilderDir, "testdata")
+				assertEq(t, config.RepoName, "some/image")
 			})
 
 			it("select the build image with matching registry", func() {
@@ -110,6 +115,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				checkBuildpacks(t, config.Buildpacks)
 				checkGroups(t, config.Groups)
 				assertEq(t, config.BuilderDir, "testdata")
+				assertEq(t, config.RepoName, "registry.com/some/image")
 			})
 
 			it("doesn't pull base a new image when --no-pull flag is provided", func() {
@@ -230,6 +236,32 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					checkBuildpacks(t, config.Buildpacks)
 					checkGroups(t, config.Groups)
 					assertEq(t, config.BuilderDir, "testdata")
+				})
+			})
+		})
+
+		when.Focus("#Create", func() {
+			when("successful", func() {
+				it("logs usage tip", func() {
+					mockBaseImage := mocks.NewMockImage(mockController)
+					mockImageStore := mocks.NewMockStore(mockController)
+
+					mockBaseImage.EXPECT().Manifest().Return(&v1.Manifest{}, nil)
+					mockBaseImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{}, nil)
+					mockImageStore.EXPECT().Write(gomock.Any())
+
+					err := factory.Create(pack.BuilderConfig{
+						RepoName:   "myorg/mybuilder",
+						Repo:       mockImageStore,
+						Buildpacks: []pack.Buildpack{},
+						Groups:     []lifecycle.BuildpackGroup{},
+						BaseImage:  mockBaseImage,
+						BuilderDir: "",
+					})
+					assertNil(t, err)
+
+					assertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
+					assertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
 				})
 			})
 		})
