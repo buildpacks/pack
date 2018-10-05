@@ -376,7 +376,7 @@ default-stack-id = "stack-1"
 			it("errors and leaves file unchanged", func() {
 				err := subject.Delete("other.stack")
 				assertNotNil(t, err)
-				assertEq(t, err.Error(), `Missing stack: stack with id "other.stack" not found in pack config.toml`)
+				assertEq(t, err.Error(), `"other.stack" does not exist. Please pass in a valid stack ID.`)
 			})
 		})
 

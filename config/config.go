@@ -124,7 +124,7 @@ func (c *Config) Delete(stackID string) error {
 			return c.save()
 		}
 	}
-	return fmt.Errorf(`Missing stack: stack with id "%s" not found in pack config.toml`, stackID)
+	return fmt.Errorf(`"%s" does not exist. Please pass in a valid stack ID.`, stackID)
 }
 
 func ImageByRegistry(registry string, images []string) (string, error) {
