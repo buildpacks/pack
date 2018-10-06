@@ -6,14 +6,12 @@ For information on buildpacks: [buildpacks.io](https://buildpacks.io/)
 
 ## Example Usage
 
-Currently we recommend using the development detect image
-
 ```
-./pack build <REPONAME> [-p <PATH to APP>] --detect-image packsdev/v3:detect
+./pack build packs/myimage:mytag --path ./myapp
 ```
 
-The above will create images on your local daemon. If you wish to create images on a docker registry, use the `--publish` flag.
+The above will create images on your local daemon. If you wish to export images directly to a docker registry, use the `--publish` flag.
 
 ```
-./pack build myorg/myapp -p fixtures/node_app --detect-image packsdev/v3:detect --publish
+./pack build packs/myimage:mytag --path ./myapp --publish
 ```
