@@ -5,51 +5,102 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
+	"log"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
+	"github.com/buildpack/pack/config"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
 )
-
-func Run(appDir, buildImage, runImage string, stopCh <-chan struct{}) error {
-	r := &RunFlags{
-		AppDir:   appDir,
-		Builder:  buildImage,
-		RunImage: runImage,
-	}
-	if err := r.Init(); err != nil {
-		return err
-	}
-	return r.Run(stopCh)
-}
 
 type RunFlags struct {
 	AppDir   string
 	Builder  string
 	RunImage string
 	Port     string
-	// Below are set by init
-	Build BuildFlags
 }
 
-func (r *RunFlags) Init() error {
-	r.Build = BuildFlags{
-		AppDir:   r.AppDir,
-		Builder:  r.Builder,
-		RunImage: r.RunImage,
-		RepoName: r.repoName(),
+type RunConfig struct {
+	Port  string
+	Build *BuildConfig
+	// All below are from BuildConfig
+	AppDir   string
+	Builder  string
+	RunImage string
+	RepoName string
+	Publish  bool
+	// Above are copied from BuildFlags are set by init
+	Cli    Docker
+	Stdout io.Writer
+	Stderr io.Writer
+	Log    *log.Logger
+	FS     FS
+	Config *config.Config
+	Images Images
+	// Above are copied from BuildFactory
+	WorkspaceVolume string
+	CacheVolume     string
+}
+
+func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
+	bc, err := bf.BuildConfigFromFlags(&BuildFlags{
+		AppDir:   f.AppDir,
+		Builder:  f.Builder,
+		RunImage: f.RunImage,
+		RepoName: f.repoName(),
 		Publish:  false,
 		NoPull:   false,
+	})
+	if err != nil {
+		return nil, err
+	}
+	rc := &RunConfig{
+		Build: bc,
+		Port:  f.Port,
+		// All below are from BuildConfig
+		AppDir:   bc.AppDir,
+		Builder:  bc.Builder,
+		RunImage: bc.RunImage,
+		RepoName: bc.RepoName,
+		Publish:  bc.Publish,
+		// Above are copied from BuildFlags are set by init
+		Cli:    bc.Cli,
+		Stdout: bc.Stdout,
+		Stderr: bc.Stderr,
+		Log:    bc.Log,
+		FS:     bc.FS,
+		Config: bc.Config,
+		Images: bc.Images,
+		// Above are copied from BuildFactory
+		WorkspaceVolume: bc.WorkspaceVolume,
+		CacheVolume:     bc.CacheVolume,
 	}
 
-	return r.Build.Init()
+	return rc, nil
 }
 
-func (r *RunFlags) Run(stopCh <-chan struct{}) error {
+func Run(appDir, buildImage, runImage, port string, makeStopCh func() <-chan struct{}) error {
+	bf, err := DefaultBuildFactory()
+	if err != nil {
+		return err
+	}
+	r, err := bf.RunConfigFromFlags(&RunFlags{
+		AppDir:   appDir,
+		Builder:  buildImage,
+		RunImage: runImage,
+		Port:     port,
+	})
+	if err != nil {
+		return err
+	}
+	return r.Run(makeStopCh)
+}
+
+func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 	ctx := context.Background()
 
 	err := r.Build.Run()
@@ -62,8 +113,8 @@ func (r *RunFlags) Run(stopCh <-chan struct{}) error {
 	if err != nil {
 		return err
 	}
-	ctr, err := r.Build.Cli.ContainerCreate(ctx, &container.Config{
-		Image:        r.Build.RepoName,
+	ctr, err := r.Cli.ContainerCreate(ctx, &container.Config{
+		Image:        r.RepoName,
 		AttachStdout: true,
 		AttachStderr: true,
 		ExposedPorts: exposedPorts,
@@ -72,17 +123,18 @@ func (r *RunFlags) Run(stopCh <-chan struct{}) error {
 		PortBindings: portBindings,
 	}, nil, "")
 
-	stopped := false
+	logContainerListening(portBindings)
+	running := true
+	stopCh := makeStopCh()
 	go func() {
 		<-stopCh
-		stopped = true
-		d := time.Duration(5) * time.Second
-		r.Build.Cli.ContainerStop(ctx, ctr.ID, &d)
+		running = false
+		r.Cli.ContainerRemove(ctx, ctr.ID, types.ContainerRemoveOptions{
+			Force: true,
+		})
 	}()
-
-	logContainerListening(portBindings)
-	if err = r.Build.Cli.RunContainer(ctx, ctr.ID, r.Build.Stdout, r.Build.Stderr); err != nil && !stopped {
-		return errors.Wrap(err, "run built container")
+	if err = r.Cli.RunContainer(ctx, ctr.ID, r.Stdout, r.Stderr); err != nil && running {
+		return errors.Wrap(err, "run container")
 	}
 
 	return nil

@@ -75,11 +75,16 @@ func runCommand() *cobra.Command {
 		Use:  "run",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := runFlags.Init(); err != nil {
+			bf, err := pack.DefaultBuildFactory()
+			if err != nil {
 				return err
 			}
-			stopCh := makeStopChannelForSignals()
-			return runFlags.Run(stopCh)
+			r, err := bf.RunConfigFromFlags(&runFlags)
+			if err != nil {
+				return err
+			}
+			cmd.SilenceUsage = true
+			return r.Run(makeStopChannelForSignals)
 		},
 	}
 	runCommand.Flags().StringVarP(&runFlags.AppDir, "path", "p", wd, "path to app dir")
