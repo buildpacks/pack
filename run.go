@@ -26,13 +26,12 @@ type RunFlags struct {
 
 type RunConfig struct {
 	Port  string
-	Build *BuildConfig
+	Build Task
 	// All below are from BuildConfig
 	AppDir   string
 	Builder  string
 	RunImage string
 	RepoName string
-	Publish  bool
 	// Above are copied from BuildFlags are set by init
 	Cli    Docker
 	Stdout io.Writer
@@ -66,7 +65,6 @@ func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
 		Builder:  bc.Builder,
 		RunImage: bc.RunImage,
 		RepoName: bc.RepoName,
-		Publish:  bc.Publish,
 		// Above are copied from BuildFlags are set by init
 		Cli:    bc.Cli,
 		Stdout: bc.Stdout,
@@ -123,7 +121,7 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 		PortBindings: portBindings,
 	}, nil, "")
 
-	logContainerListening(portBindings)
+	logContainerListening(r.Log, portBindings)
 	running := true
 	stopCh := makeStopCh()
 	go func() {
@@ -162,7 +160,7 @@ func parsePorts(port string) (nat.PortSet, nat.PortMap, error) {
 	return nat.ParsePortSpecs(ports)
 }
 
-func logContainerListening(portBindings nat.PortMap) {
+func logContainerListening(log *log.Logger, portBindings nat.PortMap) {
 	// TODO handle case with multiple ports, for now when there is more than
 	// one port we assume you know what you're doing and don't need guidance
 	if len(portBindings) == 1 {
@@ -174,7 +172,7 @@ func logContainerListening(portBindings nat.PortMap) {
 				if host == "127.0.0.1" {
 					host = "localhost"
 				}
-				fmt.Printf("Starting container listening at http://%s:%s/\n", host, port)
+				log.Printf("Starting container listening at http://%s:%s/\n", host, port)
 			}
 		}
 	}
