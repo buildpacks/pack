@@ -1,0 +1,9 @@
+
+[buildpack]
+id = "com.acme.foobar"
+name = "My Buildpack"
+version = "1.0.0"
+
+[[stacks]]
+id = "io.buildpacks.stacks.bionic"
+

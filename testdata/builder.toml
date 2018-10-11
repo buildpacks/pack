@@ -1,10 +1,10 @@
 [[buildpacks]]
 id = "com.example.sample.bp1"
-uri = "file://testdata/buildpacks/sample_bp1"
+uri = "testdata/buildpacks/sample_bp1"
 
 [[buildpacks]]
 id = "com.example.sample.bp2"
-uri = "file://testdata/buildpacks/sample_bp2"
+uri = "testdata/buildpacks/sample_bp2"
 
 [[groups]]
 buildpacks = [

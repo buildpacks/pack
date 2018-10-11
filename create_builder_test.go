@@ -2,11 +2,15 @@ package pack_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
+	"math/rand"
+	"net/http"
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/pack"
@@ -240,7 +244,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when.Focus("#Create", func() {
+		when("#Create", func() {
 			when("successful", func() {
 				it("logs usage tip", func() {
 					mockBaseImage := mocks.NewMockImage(mockController)
@@ -262,6 +266,190 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					assertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
 					assertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+				})
+			})
+			when("a buildpack location uses no scheme uris", func() {
+				it("supports relative directories", func() {
+					mockBaseImage := mocks.NewMockImage(mockController)
+					mockImageStore := mocks.NewMockStore(mockController)
+
+					mockBaseImage.EXPECT().Manifest().Return(&v1.Manifest{}, nil)
+					mockBaseImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{}, nil)
+					mockImageStore.EXPECT().Write(gomock.Any())
+
+					err := factory.Create(pack.BuilderConfig{
+						RepoName:   "myorg/mybuilder",
+						Repo:       mockImageStore,
+						Buildpacks: []pack.Buildpack{{ID: "com.acme.foobar", URI: "testdata/foobar"}},
+						Groups:     []lifecycle.BuildpackGroup{},
+						BaseImage:  mockBaseImage,
+						BuilderDir: "",
+					})
+					assertNil(t, err)
+
+					assertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
+					assertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+				})
+				it("supports relative archives", func() {
+					mockBaseImage := mocks.NewMockImage(mockController)
+					mockImageStore := mocks.NewMockStore(mockController)
+
+					mockBaseImage.EXPECT().Manifest().Return(&v1.Manifest{}, nil)
+					mockBaseImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{}, nil)
+					mockImageStore.EXPECT().Write(gomock.Any())
+
+					err := factory.Create(pack.BuilderConfig{
+						RepoName:   "myorg/mybuilder",
+						Repo:       mockImageStore,
+						Buildpacks: []pack.Buildpack{{ID: "com.acme.foobar", URI: "testdata/foobar.tgz"}},
+						Groups:     []lifecycle.BuildpackGroup{},
+						BaseImage:  mockBaseImage,
+						BuilderDir: "",
+					})
+					assertNil(t, err)
+
+					assertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
+					assertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+				})
+				it("supports absolute directories", func() {
+					mockBaseImage := mocks.NewMockImage(mockController)
+					mockImageStore := mocks.NewMockStore(mockController)
+
+					mockBaseImage.EXPECT().Manifest().Return(&v1.Manifest{}, nil)
+					mockBaseImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{}, nil)
+					mockImageStore.EXPECT().Write(gomock.Any())
+
+					uri, err := filepath.Abs("testdata/foobar")
+					assertNil(t, err)
+
+					err = factory.Create(pack.BuilderConfig{
+						RepoName:   "myorg/mybuilder",
+						Repo:       mockImageStore,
+						Buildpacks: []pack.Buildpack{{ID: "com.acme.foobar", URI: uri}},
+						Groups:     []lifecycle.BuildpackGroup{},
+						BaseImage:  mockBaseImage,
+						BuilderDir: "",
+					})
+					assertNil(t, err)
+
+					assertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
+					assertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+				})
+				it("supports absolute archives", func() {
+					mockBaseImage := mocks.NewMockImage(mockController)
+					mockImageStore := mocks.NewMockStore(mockController)
+
+					mockBaseImage.EXPECT().Manifest().Return(&v1.Manifest{}, nil)
+					mockBaseImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{}, nil)
+					mockImageStore.EXPECT().Write(gomock.Any())
+
+					uri, err := filepath.Abs("testdata/foobar.tgz")
+					assertNil(t, err)
+
+
+					err = factory.Create(pack.BuilderConfig{
+						RepoName:   "myorg/mybuilder",
+						Repo:       mockImageStore,
+						Buildpacks: []pack.Buildpack{{ID: "com.acme.foobar", URI: uri}},
+						Groups:     []lifecycle.BuildpackGroup{},
+						BaseImage:  mockBaseImage,
+						BuilderDir: "",
+					})
+					assertNil(t, err)
+
+					assertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
+					assertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+				})
+			})
+			when("a buildpack location uses file:// uris", func() {
+				it("supports directories", func() {
+					mockBaseImage := mocks.NewMockImage(mockController)
+					mockImageStore := mocks.NewMockStore(mockController)
+
+					mockBaseImage.EXPECT().Manifest().Return(&v1.Manifest{}, nil)
+					mockBaseImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{}, nil)
+					mockImageStore.EXPECT().Write(gomock.Any())
+
+					uri, err := filepath.Abs("testdata/foobar")
+					assertNil(t, err)
+					uri = "file://" + uri
+
+
+					err = factory.Create(pack.BuilderConfig{
+						RepoName:   "myorg/mybuilder",
+						Repo:       mockImageStore,
+						Buildpacks: []pack.Buildpack{{ID: "com.acme.foobar", URI: uri}},
+						Groups:     []lifecycle.BuildpackGroup{},
+						BaseImage:  mockBaseImage,
+						BuilderDir: "",
+					})
+					assertNil(t, err)
+
+					assertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
+					assertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+				})
+				it("supports archives", func() {
+					mockBaseImage := mocks.NewMockImage(mockController)
+					mockImageStore := mocks.NewMockStore(mockController)
+
+					mockBaseImage.EXPECT().Manifest().Return(&v1.Manifest{}, nil)
+					mockBaseImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{}, nil)
+					mockImageStore.EXPECT().Write(gomock.Any())
+
+					uri, err := filepath.Abs("testdata/foobar.tgz")
+					assertNil(t, err)
+					uri = "file://" + uri
+
+					err = factory.Create(pack.BuilderConfig{
+						RepoName:   "myorg/mybuilder",
+						Repo:       mockImageStore,
+						Buildpacks: []pack.Buildpack{{ID: "com.acme.foobar", URI: uri}},
+						Groups:     []lifecycle.BuildpackGroup{},
+						BaseImage:  mockBaseImage,
+						BuilderDir: "",
+					})
+					assertNil(t, err)
+
+					assertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
+					assertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+				})
+			})
+			when.Focus("a buildpack location uses http(s):// uris", func() {
+				var (
+					server *http.Server
+				)
+				it("downloads an archive", func() {
+					mockBaseImage := mocks.NewMockImage(mockController)
+					mockImageStore := mocks.NewMockStore(mockController)
+
+					mockBaseImage.EXPECT().Manifest().Return(&v1.Manifest{}, nil)
+					mockBaseImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{}, nil)
+					mockImageStore.EXPECT().Write(gomock.Any())
+
+					port := rand.Int31n(65536 - 1024) + 1024
+					fs := http.FileServer(http.Dir("testdata"))
+
+					server = &http.Server{Addr:fmt.Sprintf(":%d", port), Handler:fs}
+					go server.ListenAndServe()
+
+					err := factory.Create(pack.BuilderConfig{
+						RepoName:   "myorg/mybuilder",
+						Repo:       mockImageStore,
+						Buildpacks: []pack.Buildpack{{ID: "com.acme.foobar", URI: fmt.Sprintf("http://localhost:%d/foobar.tgz", port)}},
+						Groups:     []lifecycle.BuildpackGroup{},
+						BaseImage:  mockBaseImage,
+						BuilderDir: "",
+					})
+					assertNil(t, err)
+
+					assertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
+					assertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+				})
+				it.After(func() {
+					if server != nil {
+						ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
+						server.Shutdown(ctx)
+					}
 				})
 			})
 		})
@@ -296,11 +484,11 @@ func checkBuildpacks(t *testing.T, buildpacks []pack.Buildpack) {
 	if diff := cmp.Diff(buildpacks, []pack.Buildpack{
 		{
 			ID:  "com.example.sample.bp1",
-			URI: "file://testdata/buildpacks/sample_bp1",
+			URI: "testdata/buildpacks/sample_bp1",
 		},
 		{
 			ID:  "com.example.sample.bp2",
-			URI: "file://testdata/buildpacks/sample_bp2",
+			URI: "testdata/buildpacks/sample_bp2",
 		},
 	}); diff != "" {
 		t.Fatalf("config has incorrect buildpacks, %s", diff)
