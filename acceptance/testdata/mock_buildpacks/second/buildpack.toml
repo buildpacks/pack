@@ -1,0 +1,7 @@
+[buildpack]
+id = "mock.bp.second"
+version = "0.0.2-mock"
+name = "Second Mock Buildpack"
+
+[[stacks]]
+id = "io.buildpacks.stacks.bionic"

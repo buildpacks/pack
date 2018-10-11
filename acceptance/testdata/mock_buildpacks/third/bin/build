@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+echo "---> Third mock buildpack"
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+launch_dir=$3
+
+mkdir "$launch_dir/third-layer"
+echo "Third Dep Contents" > "$launch_dir/third-layer/third-dep"
+ln -snf "$launch_dir/third-layer/third-dep" third-dep
+
+touch "$launch_dir/third-layer.toml"
+echo 'processes = [{ type = "web", command = "./run"}]' > "$launch_dir/launch.toml"
+
+echo "---> Done"

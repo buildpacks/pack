@@ -1,0 +1,24 @@
+[[buildpacks]]
+id = "mock.bp.first"
+uri = "file://first"
+
+[[buildpacks]]
+id = "mock.bp.second"
+uri = "file://second"
+
+[[buildpacks]]
+id = "mock.bp.third"
+uri = "file://third"
+
+[[groups]]
+  [[groups.buildpacks]]
+    id = "mock.bp.first"
+    version = "0.0.1-mock"
+
+  [[groups.buildpacks]]
+    id = "mock.bp.second"
+    version = "0.0.2-mock"
+
+  [[groups.buildpacks]]
+    id = "mock.bp.third"
+    version = "0.0.3-mock"

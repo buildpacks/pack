@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+echo Here are the deps:
+
+cat "$PWD"/*-dep
+
+echo "I hope they're what you wanted"

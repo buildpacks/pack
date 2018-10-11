@@ -41,20 +41,22 @@ type BuildFactory struct {
 }
 
 type BuildFlags struct {
-	AppDir   string
-	Builder  string
-	RunImage string
-	RepoName string
-	Publish  bool
-	NoPull   bool
+	AppDir     string
+	Builder    string
+	RunImage   string
+	RepoName   string
+	Publish    bool
+	NoPull     bool
+	Buildpacks []string
 }
 
 type BuildConfig struct {
-	AppDir   string
-	Builder  string
-	RunImage string
-	RepoName string
-	Publish  bool
+	AppDir     string
+	Builder    string
+	RunImage   string
+	RepoName   string
+	Publish    bool
+	Buildpacks []string
 	// Above are copied from BuildFlags are set by init
 	Cli    Docker
 	Stdout io.Writer
@@ -104,10 +106,11 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 
 	b := &BuildConfig{
-		AppDir:  appDir,
-		Builder: f.Builder,
+		AppDir:          appDir,
+		Builder:         f.Builder,
 		RepoName:        f.RepoName,
 		Publish:         f.Publish,
+		Buildpacks:      f.Buildpacks,
 		Cli:             bf.Cli,
 		Stdout:          bf.Stdout,
 		Stderr:          bf.Stderr,
@@ -185,7 +188,6 @@ func Build(appDir, buildImage, runImage, repoName string, publish bool) error {
 func (b *BuildConfig) Run() error {
 	defer b.Cli.VolumeRemove(context.Background(), b.WorkspaceVolume, true)
 
-	fmt.Println("*** DETECTING:")
 	group, err := b.Detect()
 	if err != nil {
 		return err
@@ -209,11 +211,60 @@ func (b *BuildConfig) Run() error {
 	return nil
 }
 
+func parseBuildpack(ref string) (string, string) {
+	parts := strings.Split(ref, "@")
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	fmt.Printf("No version for '%s' buildpack provided, will use '%s@latest'\n", parts[0], parts[0])
+	return parts[0], "latest"
+}
+
 func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
+	var orderToml string
+	if len(b.Buildpacks) == 0 {
+		fmt.Println("*** DETECTING:")
+		orderToml = "" // use order toml already in image
+	} else {
+		fmt.Println("*** DETECTING WITH MANUALLY-PROVIDED GROUP:")
+		var order struct {
+			Groups lifecycle.BuildpackOrder `toml:"groups"`
+		}
+		order.Groups = lifecycle.BuildpackOrder{
+			lifecycle.BuildpackGroup{
+				Buildpacks: []*lifecycle.Buildpack{
+				},
+			},
+		}
+
+		for _, bp := range b.Buildpacks {
+			id, version := parseBuildpack(bp)
+			order.Groups[0].Buildpacks = append(
+				order.Groups[0].Buildpacks,
+				&lifecycle.Buildpack{ID: id, Version: version, Optional: false},
+			)
+		}
+
+		tomlBuilder := &strings.Builder{}
+		err := toml.NewEncoder(tomlBuilder).Encode(order)
+		if err != nil {
+			return nil, errors.Wrapf(err, "encoding order.toml: %#v", order)
+		}
+
+		orderToml = tomlBuilder.String()
+	}
+
+	var cmd []string
+	if orderToml != "" {
+		cmd = []string{"/lifecycle/detector", "-order", "/workspace/app/pack-order.toml"}
+	} else {
+		cmd = []string{"/lifecycle/detector"}
+	}
+
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
-		Cmd:   []string{"/lifecycle/detector"},
+		Cmd:   cmd,
 	}, &container.HostConfig{
 		Binds: []string{
 			b.WorkspaceVolume + ":/workspace",
@@ -241,6 +292,16 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 		return nil, errors.Wrap(err, "chown app to workspace volume")
 	}
 
+	if orderToml != "" {
+		ftr, err := b.FS.CreateSingleFileTar("/workspace/app/pack-order.toml", orderToml)
+		if err != nil {
+			return nil, errors.Wrap(err, "converting order TOML to tar reader")
+		}
+		if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
+			return nil, errors.Wrap(err, "creating /workspace/app/pack-order.toml")
+		}
+	}
+
 	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
 		return nil, errors.Wrap(err, "run detect container")
 	}
@@ -256,11 +317,11 @@ func (b *BuildConfig) groupToml(ctrID string) (*lifecycle.BuildpackGroup, error)
 	tr := tar.NewReader(trc)
 	_, err = tr.Next()
 	if err != nil {
-		return nil, errors.Wrap(err, "reading group.toml from container")
+		return nil, errors.Wrap(err, "extracting group.toml from tar")
 	}
 	var group lifecycle.BuildpackGroup
 	if _, err := toml.DecodeReader(tr, &group); err != nil {
-		return nil, errors.Wrap(err, "reading group.toml from container")
+		return nil, errors.Wrap(err, "decoding group.toml")
 	}
 	return &group, nil
 }
