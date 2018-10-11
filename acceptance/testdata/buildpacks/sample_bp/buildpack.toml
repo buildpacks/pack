@@ -1,4 +1,0 @@
-[buildpack]
-id = "com.example.sample.bp"
-version = "1.2.3"
-name = "Sample Buildpack"
