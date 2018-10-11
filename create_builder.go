@@ -1,15 +1,9 @@
 package pack
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"log"
-	"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/img"
@@ -19,6 +13,13 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
 )
 
 type BuilderConfig struct {
@@ -188,31 +189,110 @@ func (f *BuilderFactory) orderLayer(dest string, groups []lifecycle.BuildpackGro
 	return layerTar, nil
 }
 
+// buildpackLayer creates and returns the location of a tgz file for a buildpack layer. That file will reside in the `dest` directory.
+// The tgz file is either created from an initially local directory, or it is downloaded (and validated) from
+// a remote location if the buildpack uri uses the http(s) protocol.
 func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builderDir string) (layerTar string, err error) {
-	dir := strings.TrimPrefix(buildpack.URI, "file://")
-	if !filepath.IsAbs(dir) {
-		dir = filepath.Join(builderDir, dir)
-	}
-	var data struct {
-		BP struct {
-			ID      string `toml:"id"`
-			Version string `toml:"version"`
-		} `toml:"buildpack"`
-	}
-	_, err = toml.DecodeFile(filepath.Join(dir, "buildpack.toml"), &data)
+	tmpDir, err := ioutil.TempDir("", "create-builder-")
 	if err != nil {
-		return "", errors.Wrapf(err, "reading buildpack.toml from buildpack: %s", filepath.Join(dir, "buildpack.toml"))
+		return "", fmt.Errorf(`failed to create temporary directory: %s`, err)
 	}
-	bp := data.BP
-	if buildpack.ID != bp.ID {
-		return "", fmt.Errorf("buildpack ids did not match: %s != %s", buildpack.ID, bp.ID)
+	defer os.RemoveAll(tmpDir)
+
+	var dir string
+
+	asurl, err := url.Parse(buildpack.URI)
+	if err != nil {
+		return "", err
 	}
-	if bp.Version == "" {
-		return "", fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(dir, "buildpack.toml"))
+	switch asurl.Scheme {
+	case "",    // This is the only way to support relative filepaths
+		"file": // URIs with file:// protocol force the use of absolute paths. Host=localhost may be implied with file:///
+
+		path := asurl.Path
+		if !asurl.IsAbs() && !filepath.IsAbs(path){
+			path =  filepath.Join(builderDir, path)
+		}
+
+		if filepath.Ext(path) == ".tgz" {
+			file, err := os.Open(path)
+			if err != nil {
+				return "", errors.Wrapf(err, "could not open file to untar: %q", path)
+			}
+			defer file.Close()
+			if err = f.untarZ(file, tmpDir); err != nil {
+				return "", err
+			}
+			dir = tmpDir
+		} else {
+			dir = path
+		}
+	case "http", "https":
+		reader, err := downloadAsStream(buildpack.URI)
+		if err != nil {
+			return "", errors.Wrapf(err, "failed to download from %q", buildpack.URI)
+		}
+		if err = f.untarZ(reader, tmpDir); err != nil {
+			return "", err
+		}
+		dir = tmpDir
+	default:
+		return "", fmt.Errorf("unsupported protocol in uri %q", buildpack.URI)
 	}
+
+	bp, err := readAndValidateBuildpack(dir, buildpack)
+
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.ID, bp.Version))
 	if err := f.FS.CreateTGZFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.ID, bp.Version), 0, 0); err != nil {
 		return "", err
 	}
 	return tarFile, err
+}
+
+func downloadAsStream(uri string) (io.Reader, error) {
+	c := http.Client{}
+	if resp, err := c.Get(uri) ; err != nil {
+		return nil, err
+	} else {
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return resp.Body, nil
+		} else {
+			return nil, fmt.Errorf("could not download from %q, code http status %d", uri, resp.StatusCode)
+		}
+	}
+}
+
+
+func  (f *BuilderFactory) untarZ(r io.Reader, dir string) error {
+	gzr, err := gzip.NewReader(r)
+	if err != nil {
+		return errors.Wrapf(err, "could not unzip")
+	}
+	defer gzr.Close()
+	return f.FS.Untar(gzr, dir)
+}
+
+type buildpackCoordinates struct {
+	ID      string `toml:"id"`
+	Version string `toml:"version"`
+}
+
+// readAndValidateBuildpack reads the buildpack.toml file in the given directory, checks that it is valid and matches
+// info in the provided Buildpack struct and returns a struct representation of it.
+func readAndValidateBuildpack(dir string, buildpack Buildpack) (buildpackCoordinates, error) {
+	var data struct {
+		BP buildpackCoordinates `toml:"buildpack"`
+	}
+	_, err := toml.DecodeFile(filepath.Join(dir, "buildpack.toml"), &data)
+	if err != nil {
+		return buildpackCoordinates{}, errors.Wrapf(err, "reading buildpack.toml from buildpack: %s", filepath.Join(dir, "buildpack.toml"))
+	}
+	bp := data.BP
+	if buildpack.ID != bp.ID {
+		return buildpackCoordinates{}, fmt.Errorf("buildpack ids did not match: %s != %s", buildpack.ID, bp.ID)
+	}
+	if bp.Version == "" {
+		return buildpackCoordinates{}, fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(dir, "buildpack.toml"))
+	}
+	return bp, nil
 }
