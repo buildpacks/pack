@@ -86,124 +86,124 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
 	when("pack build", func() {
-			var sourceCodePath, repo, repoName, containerName, registryContainerName, registryPort string
+		var sourceCodePath, repo, repoName, containerName, registryContainerName, registryPort string
 
+		it.Before(func() {
+			registryContainerName = "test-registry-" + randString(10)
+			run(t, exec.Command("docker", "run", "-d", "--rm", "-p", ":5000", "--name", registryContainerName, "registry:2"))
+			registryPort = fetchHostPort(t, registryContainerName)
+
+			var err error
+			sourceCodePath, err = ioutil.TempDir("", "pack.build.node_app.")
+			if err != nil {
+				t.Fatal(err)
+			}
+			exec.Command("cp", "-r", "testdata/node_app/.", sourceCodePath).Run()
+
+			repo = "some-org/" + randString(10)
+			repoName = "localhost:" + registryPort + "/" + repo
+			containerName = "test-" + randString(10)
+		})
+		it.After(func() {
+			docker.Kill(containerName, registryContainerName)
+			docker.RemoveImage(repoName)
+			if sourceCodePath != "" {
+				os.RemoveAll(sourceCodePath)
+			}
+		})
+
+		when("'--publish' flag is not specified'", func() {
+			it("builds and exports an image", func() {
+				cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath)
+				cmd.Env = append(os.Environ(), "HOME="+homeDir)
+				run(t, cmd)
+
+				run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", repoName))
+				launchPort := fetchHostPort(t, containerName)
+
+				time.Sleep(5 * time.Second)
+				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked!")
+
+				t.Log("Checking that registry is empty")
+				contents := fetch(t, fmt.Sprintf("http://localhost:%s/v2/_catalog", registryPort))
+				if strings.Contains(string(contents), repo) {
+					t.Fatalf("Should not have published image without the '--publish' flag: got %s", contents)
+				}
+			})
+		}, spec.Parallel(), spec.Report(report.Terminal{}))
+
+		when("'--buildpack' flag is specified", func() {
+			javaBpId := "io.buildpacks.samples.java"
 			it.Before(func() {
-				registryContainerName = "test-registry-" + randString(10)
-				run(t, exec.Command("docker", "run", "-d", "--rm", "-p", ":5000", "--name", registryContainerName, "registry:2"))
-				registryPort = fetchHostPort(t, registryContainerName)
-
 				var err error
-				sourceCodePath, err = ioutil.TempDir("", "pack.build.node_app.")
+				sourceCodePath, err = ioutil.TempDir("", "pack.build.maven_app.")
 				if err != nil {
 					t.Fatal(err)
 				}
-				exec.Command("cp", "-r", "testdata/node_app/.", sourceCodePath).Run()
-
-				repo = "some-org/" + randString(10)
-				repoName = "localhost:" + registryPort + "/" + repo
-				containerName = "test-" + randString(10)
+				exec.Command("cp", "-r", "testdata/maven_app/.", sourceCodePath).Run()
 			})
-			it.After(func() {
-				docker.Kill(containerName, registryContainerName)
-				docker.RemoveImage(repoName)
-				if sourceCodePath != "" {
-					os.RemoveAll(sourceCodePath)
+
+			it("assumes latest if no version is provided", func() {
+				cmd := exec.Command(pack, "build", repoName, "--buildpack", javaBpId, "-p", sourceCodePath)
+				cmd.Env = append(os.Environ(), "HOME="+homeDir)
+				buildOutput := run(t, cmd)
+
+				assertEq(t, strings.Contains(buildOutput, "DETECTING WITH MANUALLY-PROVIDED GROUP:"), true)
+				if strings.Contains(buildOutput, "Node.js Buildpack") {
+					t.Fatalf("should have skipped Node.js buildpack because --buildpack flag was provided")
+				}
+				latestInfo := fmt.Sprintf(`No version for '%s' buildpack provided, will use '%s@latest'`, javaBpId, javaBpId)
+				if !strings.Contains(buildOutput, latestInfo) {
+					t.Fatalf(`expected build output to contain "%s", got "%s"`, latestInfo, buildOutput)
+				}
+				assertEq(t, strings.Contains(buildOutput, "Sample Java Buildpack: pass"), true)
+
+				run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", repoName))
+				launchPort := fetchHostPort(t, containerName)
+
+				time.Sleep(2 * time.Second)
+				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Maven buildpack worked!")
+			})
+		})
+
+		when("'--publish' flag is specified", func() {
+			it("builds and exports an image", func() {
+				runPackBuild := func() string {
+					t.Helper()
+					cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--publish")
+					cmd.Env = append(os.Environ(), "HOME="+homeDir)
+					return run(t, cmd)
+				}
+				output := runPackBuild()
+				imgSHA, err := imgSHAFromOutput(output, repoName)
+				if err != nil {
+					fmt.Println(output)
+					t.Fatal("Could not determine sha for built image")
+				}
+
+				t.Log("Checking that registry has contents")
+				contents := fetch(t, fmt.Sprintf("http://localhost:%s/v2/_catalog", registryPort))
+				if !strings.Contains(string(contents), repo) {
+					t.Fatalf("Expected to see image %s in %s", repo, contents)
+				}
+
+				t.Log("run image:", repoName)
+				docker.Pull(t, repoName, imgSHA)
+				run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", fmt.Sprintf("%s@%s", repoName, imgSHA)))
+				launchPort := fetchHostPort(t, containerName)
+
+				time.Sleep(5 * time.Second)
+				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked!")
+
+				t.Log("uses the cache on subsequent run")
+				output = runPackBuild()
+
+				regex := regexp.MustCompile(`moved \d+ packages`)
+				if !regex.MatchString(output) {
+					t.Fatalf("Build failed to use cache: %s", output)
 				}
 			})
-
-			when("'--publish' flag is not specified'", func() {
-				it("builds and exports an image", func() {
-					cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath)
-					cmd.Env = append(os.Environ(), "HOME="+homeDir)
-					run(t, cmd)
-
-					run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", repoName))
-					launchPort := fetchHostPort(t, containerName)
-
-					time.Sleep(5 * time.Second)
-					assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked!")
-
-					t.Log("Checking that registry is empty")
-					contents := fetch(t, fmt.Sprintf("http://localhost:%s/v2/_catalog", registryPort))
-					if strings.Contains(string(contents), repo) {
-						t.Fatalf("Should not have published image without the '--publish' flag: got %s", contents)
-					}
-				})
-			}, spec.Parallel(), spec.Report(report.Terminal{}))
-
-			when("'--buildpack' flag is specified", func() {
-				javaBpId := "io.buildpacks.samples.java"
-				it.Before(func() {
-					var err error
-					sourceCodePath, err = ioutil.TempDir("", "pack.build.maven_app.")
-					if err != nil {
-						t.Fatal(err)
-					}
-					exec.Command("cp", "-r", "testdata/maven_app/.", sourceCodePath).Run()
-				})
-
-				it("assumes latest if no version is provided", func() {
-					cmd := exec.Command(pack, "build", repoName, "--buildpack", javaBpId, "-p", sourceCodePath)
-					cmd.Env = append(os.Environ(), "HOME="+homeDir)
-					buildOutput := run(t, cmd)
-
-					assertEq(t, strings.Contains(buildOutput, "DETECTING WITH MANUALLY-PROVIDED GROUP:"), true)
-					if strings.Contains(buildOutput, "Node.js Buildpack") {
-						t.Fatalf("should have skipped Node.js buildpack because --buildpack flag was provided")
-					}
-					latestInfo := fmt.Sprintf(`No version for '%s' buildpack provided, will use '%s@latest'`, javaBpId, javaBpId)
-					if !strings.Contains(buildOutput, latestInfo) {
-						t.Fatalf(`expected build output to contain "%s", got "%s"`, latestInfo, buildOutput)
-					}
-					assertEq(t, strings.Contains(buildOutput, "Sample Java Buildpack: pass"), true)
-
-					run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", repoName))
-					launchPort := fetchHostPort(t, containerName)
-
-					time.Sleep(2 * time.Second)
-					assertEq(t, fetch(t, "http://localhost:"+launchPort), "Maven buildpack worked!")
-				})
-			})
-
-			when("'--publish' flag is specified", func() {
-				it("builds and exports an image", func() {
-					runPackBuild := func() string {
-						t.Helper()
-						cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--publish")
-						cmd.Env = append(os.Environ(), "HOME="+homeDir)
-						return run(t, cmd)
-					}
-					output := runPackBuild()
-					imgSHA, err := imgSHAFromOutput(output, repoName)
-					if err != nil {
-						fmt.Println(output)
-						t.Fatal("Could not determine sha for built image")
-					}
-
-					t.Log("Checking that registry has contents")
-					contents := fetch(t, fmt.Sprintf("http://localhost:%s/v2/_catalog", registryPort))
-					if !strings.Contains(string(contents), repo) {
-						t.Fatalf("Expected to see image %s in %s", repo, contents)
-					}
-
-					t.Log("run image:", repoName)
-					docker.Pull(t, repoName, imgSHA)
-					run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", fmt.Sprintf("%s@%s", repoName, imgSHA)))
-					launchPort := fetchHostPort(t, containerName)
-
-					time.Sleep(5 * time.Second)
-					assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked!")
-
-					t.Log("uses the cache on subsequent run")
-					output = runPackBuild()
-
-					regex := regexp.MustCompile(`moved \d+ packages`)
-					if !regex.MatchString(output) {
-						t.Fatalf("Build failed to use cache: %s", output)
-					}
-				})
-			}, spec.Parallel(), spec.Report(report.Terminal{}))
+		}, spec.Parallel(), spec.Report(report.Terminal{}))
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
 	when("pack create-builder", func() {
