@@ -240,7 +240,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when.Focus("#Create", func() {
+		when("#Create", func() {
 			when("successful", func() {
 				it("logs usage tip", func() {
 					mockBaseImage := mocks.NewMockImage(mockController)
