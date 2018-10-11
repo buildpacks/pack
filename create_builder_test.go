@@ -178,7 +178,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
 					NoPull:          true,
 				})
-				assertError(t, err, `Invalid stack: stack "some.bad.stack" requies at least one build image`)
+				assertError(t, err, `Invalid stack: stack "some.bad.stack" requires at least one build image`)
 			})
 
 			it("uses the build image that matches the repoName registry", func() {})
@@ -273,17 +273,17 @@ func checkGroups(t *testing.T, groups []lifecycle.BuildpackGroup) {
 	if diff := cmp.Diff(groups, []lifecycle.BuildpackGroup{
 		{Buildpacks: []*lifecycle.Buildpack{
 			{
-				ID:      "com.example.sample.bp1",
+				ID:      "some.bp1",
 				Version: "1.2.3",
 			},
 			{
-				ID:      "com.example.sample.bp2",
+				ID:      "some.bp2",
 				Version: "1.2.4",
 			},
 		}},
 		{Buildpacks: []*lifecycle.Buildpack{
 			{
-				ID:      "com.example.sample.bp1",
+				ID:      "some.bp1",
 				Version: "1.2.3",
 			},
 		}},
@@ -295,12 +295,19 @@ func checkGroups(t *testing.T, groups []lifecycle.BuildpackGroup) {
 func checkBuildpacks(t *testing.T, buildpacks []pack.Buildpack) {
 	if diff := cmp.Diff(buildpacks, []pack.Buildpack{
 		{
-			ID:  "com.example.sample.bp1",
-			URI: "file://testdata/buildpacks/sample_bp1",
+			ID:  "some.bp1",
+			URI: "file://some-path-1",
+			// Latest will default to false
 		},
 		{
-			ID:  "com.example.sample.bp2",
-			URI: "file://testdata/buildpacks/sample_bp2",
+			ID:  "some.bp2",
+			URI: "file://some-path-2",
+			Latest: false,
+		},
+		{
+			ID:  "some.bp2",
+			URI: "file://some-latest-path-2",
+			Latest: true,
 		},
 	}); diff != "" {
 		t.Fatalf("config has incorrect buildpacks, %s", diff)

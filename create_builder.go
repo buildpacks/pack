@@ -31,8 +31,9 @@ type BuilderConfig struct {
 }
 
 type Buildpack struct {
-	ID  string
-	URI string
+	ID     string
+	URI    string
+	Latest bool
 }
 
 //go:generate mockgen -package mocks -destination mocks/docker.go github.com/buildpack/pack Docker
@@ -116,7 +117,7 @@ func (f *BuilderFactory) baseImageName(stackID, repoName string) (string, error)
 		return "", err
 	}
 	if len(stack.BuildImages) == 0 {
-		return "", fmt.Errorf(`Invalid stack: stack "%s" requies at least one build image`, stack.ID)
+		return "", fmt.Errorf(`Invalid stack: stack "%s" requires at least one build image`, stack.ID)
 	}
 	registry, err := config.Registry(repoName)
 	if err != nil {
@@ -126,11 +127,11 @@ func (f *BuilderFactory) baseImageName(stackID, repoName string) (string, error)
 }
 
 func (f *BuilderFactory) Create(config BuilderConfig) error {
-	tmpDir, err := ioutil.TempDir("", "create-builder")
+	tmpDir, err := ioutil.TempDir("", "create-builder") // TODO
 	if err != nil {
 		return fmt.Errorf(`failed to create temporary directory: %s`, err)
 	}
-	defer os.Remove(tmpDir)
+	defer os.Remove(tmpDir) // TODO
 
 	orderTar, err := f.orderLayer(tmpDir, config.Groups)
 	if err != nil {
@@ -150,6 +151,15 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 			return fmt.Errorf(`failed append buildpack layer to image: %s`, err)
 		}
 	}
+	tarFile, err := f.latestLayer(config.Buildpacks, tmpDir, config.BuilderDir)
+	if err != nil {
+		return fmt.Errorf(`failed generate layer for latest links: %s`, err)
+	}
+	builderImage, _, err = img.Append(builderImage, tarFile)
+	if err != nil {
+		return fmt.Errorf(`failed append latest link layer to image: %s`, err)
+	}
+
 	if err := config.Repo.Write(builderImage); err != nil {
 		return err
 	}
@@ -188,20 +198,18 @@ func (f *BuilderFactory) orderLayer(dest string, groups []lifecycle.BuildpackGro
 	return layerTar, nil
 }
 
+type BuildpackData struct {
+	BP struct {
+		ID      string `toml:"id"`
+		Version string `toml:"version"`
+	} `toml:"buildpack"`
+}
+
 func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builderDir string) (layerTar string, err error) {
-	dir := strings.TrimPrefix(buildpack.URI, "file://")
-	if !filepath.IsAbs(dir) {
-		dir = filepath.Join(builderDir, dir)
-	}
-	var data struct {
-		BP struct {
-			ID      string `toml:"id"`
-			Version string `toml:"version"`
-		} `toml:"buildpack"`
-	}
-	_, err = toml.DecodeFile(filepath.Join(dir, "buildpack.toml"), &data)
+	dir := f.buildpackDir(buildpack, builderDir)
+	data, err := f.buildpackData(buildpack, dir)
 	if err != nil {
-		return "", errors.Wrapf(err, "reading buildpack.toml from buildpack: %s", filepath.Join(dir, "buildpack.toml"))
+		return "", err
 	}
 	bp := data.BP
 	if buildpack.ID != bp.ID {
@@ -212,6 +220,51 @@ func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builde
 	}
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.ID, bp.Version))
 	if err := f.FS.CreateTGZFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.ID, bp.Version), 0, 0); err != nil {
+		return "", err
+	}
+	return tarFile, err
+}
+
+func (f *BuilderFactory) buildpackDir(buildpack Buildpack, builderDir string) string {
+	dir := strings.TrimPrefix(buildpack.URI, "file://")
+	if !filepath.IsAbs(dir) {
+		dir = filepath.Join(builderDir, dir)
+	}
+	return dir
+}
+
+func (f *BuilderFactory) buildpackData(buildpack Buildpack, dir string) (*BuildpackData, error) {
+	data := &BuildpackData{}
+	_, err := toml.DecodeFile(filepath.Join(dir, "buildpack.toml"), &data)
+	if err != nil {
+		return nil, errors.Wrapf(err, "reading buildpack.toml from buildpack: %s", dir)
+	}
+	return data, nil
+}
+
+func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir string) (string, error) {
+	tmpDir, err := ioutil.TempDir(dest, "create-builder-latest")
+	if err != nil {
+		return "", err
+	}
+	for _, bp := range buildpacks {
+		if bp.Latest {
+			data, err := f.buildpackData(bp, f.buildpackDir(bp, builderDir))
+			if err != nil {
+				return "", err
+			}
+			err = os.Mkdir(filepath.Join(tmpDir, bp.ID), 0755)
+			if err != nil {
+				return "", err
+			}
+			err = os.Symlink(filepath.Join("/", "buildpacks", bp.ID, data.BP.Version), filepath.Join(tmpDir, bp.ID, "latest"))
+			if err != nil {
+				fmt.Println("E")
+			}
+		}
+	}
+	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", "latest", "buildpacks"))
+	if err := f.FS.CreateTGZFile(tarFile, tmpDir, filepath.Join("/buildpacks"), 0, 0); err != nil {
 		return "", err
 	}
 	return tarFile, err

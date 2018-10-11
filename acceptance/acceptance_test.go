@@ -264,18 +264,22 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				pack, "build", repoName,
 				"--builder", builderRepoName,
 				"--no-pull",
-				"--buildpack", "mock.bp.first@0.0.1-mock",
+				"--buildpack", "mock.bp.first",
 				"--buildpack", "mock.bp.third@0.0.3-mock",
 				"--path", sourceCodePath,
 			))
-			expectedDetectOutput = "First Mock Buildpack: pass | Third Mock Buildpack: pass"
+			latestInfo := `No version for 'mock.bp.first' buildpack provided, will use 'mock.bp.first@latest'`
+			if !strings.Contains(buildOutput, latestInfo) {
+				t.Fatalf(`expected build output to contain "%s", got "%s"`, latestInfo, buildOutput)
+			}
+			expectedDetectOutput = "Latest First Mock Buildpack: pass | Third Mock Buildpack: pass"
 			if !strings.Contains(buildOutput, expectedDetectOutput) {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, expectedDetectOutput, buildOutput)
 			}
 
 			t.Log("run app container")
 			runOutput = run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", repoName))
-			if !strings.Contains(runOutput, "First Dep Contents") {
+			if !strings.Contains(runOutput, "Latest First Dep Contents") {
 				t.Fatalf(`Expected output to contain "First Dep Contents", got "%s"`, runOutput)
 			}
 			if strings.Contains(runOutput, "Second Dep Contents") {

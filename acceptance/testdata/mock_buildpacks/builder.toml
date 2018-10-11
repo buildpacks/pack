@@ -3,6 +3,11 @@ id = "mock.bp.first"
 uri = "file://first"
 
 [[buildpacks]]
+id = "mock.bp.first"
+uri = "file://first-latest"
+latest = true
+
+[[buildpacks]]
 id = "mock.bp.second"
 uri = "file://second"
 
