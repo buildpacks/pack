@@ -89,7 +89,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 				Cli: mockDocker,
-				Log:             log.New(&buf, "", log.LstdFlags|log.Lshortfile),
+				Log: log.New(&buf, "", log.LstdFlags|log.Lshortfile),
 			}
 		})
 
@@ -519,10 +519,29 @@ func randString(n int) string {
 	return string(b)
 }
 
+// Assert deep equality (and provide useful difference as a test failure)
 func assertEq(t *testing.T, actual, expected interface{}) {
 	t.Helper()
 	if diff := cmp.Diff(actual, expected); diff != "" {
 		t.Fatal(diff)
+	}
+}
+
+// Assert the simplistic pointer (or literal value) equality
+func assertSameInstance(t *testing.T, actual, expected interface{}) {
+	t.Helper()
+	if actual != expected {
+		t.Fatalf("Expected %s and %s to be pointers to the variable", actual, expected)
+	}
+}
+
+func assertError(t *testing.T, actual error, expected string) {
+	t.Helper()
+	if actual == nil {
+		t.Fatalf("Expected an error but got nil")
+	}
+	if actual.Error() != expected {
+		t.Fatalf(`Expected error to equal "%s", got "%s"`, expected, actual.Error())
 	}
 }
 

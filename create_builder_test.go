@@ -306,20 +306,3 @@ func checkBuildpacks(t *testing.T, buildpacks []pack.Buildpack) {
 		t.Fatalf("config has incorrect buildpacks, %s", diff)
 	}
 }
-
-func assertSameInstance(t *testing.T, actual, expected interface{}) {
-	t.Helper()
-	if actual != expected {
-		t.Fatalf("Expected %s and %s to be pointers to the variable", actual, expected)
-	}
-}
-
-func assertError(t *testing.T, actual error, expected string) {
-	t.Helper()
-	if actual == nil {
-		t.Fatalf("Expected an error but got nil")
-	}
-	if actual.Error() != expected {
-		t.Fatalf(`Expected error to equal "%s", got "%s"`, expected, actual.Error())
-	}
-}

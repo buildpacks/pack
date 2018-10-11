@@ -20,6 +20,7 @@ func main() {
 	rootCmd := &cobra.Command{Use: "pack"}
 	for _, f := range [](func() *cobra.Command){
 		buildCommand,
+		rebaseCommand,
 		createBuilderCommand,
 		addStackCommand,
 		updateStackCommand,
@@ -58,6 +59,40 @@ func buildCommand() *cobra.Command {
 	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
 	buildCommand.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
 	return buildCommand
+}
+
+func rebaseCommand() *cobra.Command {
+	var flags pack.RebaseFlags
+	cmd := &cobra.Command{
+		Use:  "rebase <stack-name>",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			flags.RepoName = args[0]
+
+			docker, err := docker.New()
+			if err != nil {
+				return err
+			}
+			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
+			if err != nil {
+				return err
+			}
+			factory := pack.RebaseFactory{
+				Log:    log.New(os.Stdout, "", log.LstdFlags),
+				Docker: docker,
+				Config: cfg,
+				Images: &image.Client{},
+			}
+			rebaseConfig, err := factory.RebaseConfigFromFlags(flags)
+			if err != nil {
+				return err
+			}
+			return factory.Rebase(rebaseConfig)
+		},
+	}
+	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "publish to registry")
+	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "don't pull images before use")
+	return cmd
 }
 
 func createBuilderCommand() *cobra.Command {
