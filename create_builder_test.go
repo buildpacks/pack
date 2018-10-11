@@ -296,17 +296,17 @@ func checkBuildpacks(t *testing.T, buildpacks []pack.Buildpack) {
 	if diff := cmp.Diff(buildpacks, []pack.Buildpack{
 		{
 			ID:  "some.bp1",
-			URI: "file://some-path-1",
+			Dir: filepath.Join("testdata", "some-path-1"),
 			// Latest will default to false
 		},
 		{
-			ID:  "some.bp2",
-			URI: "file://some-path-2",
+			ID:     "some.bp2",
+			Dir:    filepath.Join("testdata", "some-path-2"),
 			Latest: false,
 		},
 		{
-			ID:  "some.bp2",
-			URI: "file://some-latest-path-2",
+			ID:     "some.bp2",
+			Dir:    filepath.Join("testdata", "some-latest-path-2"),
 			Latest: true,
 		},
 	}); diff != "" {

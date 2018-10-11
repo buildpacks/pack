@@ -3,13 +3,6 @@ package pack
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"log"
-	"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/img"
@@ -19,22 +12,37 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
 )
+
+type BuilderTOML struct {
+	Buildpacks []struct{
+		ID     string `toml:"id"`
+		URI    string `toml:"uri"`
+		Latest bool   `toml:"latest"`
+	}                `toml:"buildpacks"`
+	Groups     []lifecycle.BuildpackGroup `toml:"groups"`
+}
 
 type BuilderConfig struct {
 	RepoName   string
 	Repo       img.Store
-	Buildpacks []Buildpack                `toml:"buildpacks"`
-	Groups     []lifecycle.BuildpackGroup `toml:"groups"`
+	Buildpacks []Buildpack
+	Groups     []lifecycle.BuildpackGroup
 	BaseImage  v1.Image
 	BuilderDir string //original location of builder.toml, used for interpreting relative paths in buildpack URIs
 }
-
 type Buildpack struct {
 	ID     string
-	URI    string
+	Dir    string
 	Latest bool
 }
+
 
 //go:generate mockgen -package mocks -destination mocks/docker.go github.com/buildpack/pack Docker
 type Docker interface {
@@ -91,11 +99,8 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 			return BuilderConfig{}, fmt.Errorf(`failed to pull stack build image "%s": %s`, baseImage, err)
 		}
 	}
+
 	builderConfig := BuilderConfig{RepoName: flags.RepoName}
-	_, err = toml.DecodeFile(flags.BuilderTomlPath, &builderConfig)
-	if err != nil {
-		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file "%s": %s`, flags.BuilderTomlPath, err)
-	}
 	builderConfig.BuilderDir = filepath.Dir(flags.BuilderTomlPath)
 	builderConfig.BaseImage, err = f.Images.ReadImage(baseImage, !flags.Publish)
 	if err != nil {
@@ -107,6 +112,24 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 	builderConfig.Repo, err = f.Images.RepoStore(flags.RepoName, !flags.Publish)
 	if err != nil {
 		return BuilderConfig{}, fmt.Errorf(`failed to create repository store for builder image "%s": %s`, flags.RepoName, err)
+	}
+
+	builderTOML := &BuilderTOML{}
+	_, err = toml.DecodeFile(flags.BuilderTomlPath, &builderTOML)
+	if err != nil {
+		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file "%s": %s`, flags.BuilderTomlPath, err)
+	}
+	builderConfig.Groups = builderTOML.Groups
+	for _, b := range builderTOML.Buildpacks {
+		dir := strings.TrimPrefix(b.URI, "file://")
+		if !filepath.IsAbs(dir) {
+			dir = filepath.Join(builderConfig.BuilderDir, dir)
+		}
+		builderConfig.Buildpacks = append(builderConfig.Buildpacks, Buildpack{
+			ID: b.ID,
+			Latest: b.Latest,
+			Dir: dir,
+		})
 	}
 	return builderConfig, nil
 }
@@ -206,8 +229,7 @@ type BuildpackData struct {
 }
 
 func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builderDir string) (layerTar string, err error) {
-	dir := f.buildpackDir(buildpack, builderDir)
-	data, err := f.buildpackData(buildpack, dir)
+	data, err := f.buildpackData(buildpack, buildpack.Dir)
 	if err != nil {
 		return "", err
 	}
@@ -216,21 +238,13 @@ func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builde
 		return "", fmt.Errorf("buildpack ids did not match: %s != %s", buildpack.ID, bp.ID)
 	}
 	if bp.Version == "" {
-		return "", fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(dir, "buildpack.toml"))
+		return "", fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(buildpack.Dir, "buildpack.toml"))
 	}
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.ID, bp.Version))
-	if err := f.FS.CreateTGZFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.ID, bp.Version), 0, 0); err != nil {
+	if err := f.FS.CreateTGZFile(tarFile, buildpack.Dir, filepath.Join("/buildpacks", buildpack.ID, bp.Version), 0, 0); err != nil {
 		return "", err
 	}
 	return tarFile, err
-}
-
-func (f *BuilderFactory) buildpackDir(buildpack Buildpack, builderDir string) string {
-	dir := strings.TrimPrefix(buildpack.URI, "file://")
-	if !filepath.IsAbs(dir) {
-		dir = filepath.Join(builderDir, dir)
-	}
-	return dir
 }
 
 func (f *BuilderFactory) buildpackData(buildpack Buildpack, dir string) (*BuildpackData, error) {
@@ -249,7 +263,7 @@ func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir st
 	}
 	for _, bp := range buildpacks {
 		if bp.Latest {
-			data, err := f.buildpackData(bp, f.buildpackDir(bp, builderDir))
+			data, err := f.buildpackData(bp, bp.Dir)
 			if err != nil {
 				return "", err
 			}
