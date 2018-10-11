@@ -94,6 +94,14 @@ func DefaultBuildFactory() (*BuildFactory, error) {
 }
 
 func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error) {
+	if f.AppDir == "current working directory" { // default placeholder
+		var err error
+		f.AppDir, err = os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+		bf.Log.Printf("Defaulting app directory to current working directory '%s' (use --path to override)", f.AppDir)
+	}
 	appDir, err := filepath.Abs(f.AppDir)
 	if err != nil {
 		return nil, err

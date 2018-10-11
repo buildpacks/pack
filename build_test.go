@@ -220,6 +220,35 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			assertError(t, err, `invalid stack: stack "other.stack.id" from run image "override/run" does not match stack "some.stack.id" from builder image "some/builder"`)
 		})
 
+		it("uses working dir if appDir is set to placeholder value", func() {
+			mockDocker.EXPECT().PullImage("some/builder")
+			mockDocker.EXPECT().ImageInspectWithRaw(gomock.Any(), "some/builder").Return(dockertypes.ImageInspect{
+				Config: &dockercontainer.Config{
+					Labels: map[string]string{"io.buildpacks.stack.id": "some.stack.id"},
+				},
+			}, nil, nil)
+			mockRunImage := mocks.NewMockImage(mockController)
+			mockImages.EXPECT().ReadImage("override/run", false).Return(mockRunImage, nil)
+			mockRunImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{
+				Config: v1.Config{
+					Labels: map[string]string{
+						"io.buildpacks.stack.id": "some.stack.id",
+					},
+				},
+			}, nil)
+
+			config, err := factory.BuildConfigFromFlags(&pack.BuildFlags{
+				RepoName: "some/app",
+				Builder:  "some/builder",
+				RunImage: "override/run",
+				Publish:  true,
+				AppDir:   "current working directory",
+			})
+			assertNil(t, err)
+			assertEq(t, config.RunImage, "override/run")
+			assertEq(t, config.AppDir, os.Getenv("PWD"))
+		})
+
 		it("returns an errors when the builder stack label is missing", func() {
 			mockDocker.EXPECT().PullImage("some/builder")
 			mockDocker.EXPECT().ImageInspectWithRaw(gomock.Any(), "some/builder").Return(dockertypes.ImageInspect{

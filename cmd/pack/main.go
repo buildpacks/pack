@@ -34,8 +34,6 @@ func main() {
 }
 
 func buildCommand() *cobra.Command {
-	wd, _ := os.Getwd()
-
 	var buildFlags pack.BuildFlags
 	buildCommand := &cobra.Command{
 		Use:  "build <image-name>",
@@ -53,7 +51,7 @@ func buildCommand() *cobra.Command {
 			return b.Run()
 		},
 	}
-	buildCommand.Flags().StringVarP(&buildFlags.AppDir, "path", "p", wd, "path to app dir")
+	buildCommand.Flags().StringVarP(&buildFlags.AppDir, "path", "p", "current working directory", "path to app dir")
 	buildCommand.Flags().StringVar(&buildFlags.Builder, "builder", "packs/samples", "builder")
 	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "run image")
 	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
