@@ -25,6 +25,7 @@ func main() {
 		addStackCommand,
 		updateStackCommand,
 		deleteStackCommand,
+		setDefaultStackCommand,
 	} {
 		rootCmd.AddCommand(f())
 	}
@@ -158,6 +159,25 @@ func addStackCommand() *cobra.Command {
 	addStackCommand.Flags().StringSliceVarP(&flags.BuildImages, "build-image", "b", []string{}, "build image to be used for bulder images built with the stack")
 	addStackCommand.Flags().StringSliceVarP(&flags.RunImages, "run-image", "r", []string{}, "run image to be used for runnable images built with the stack")
 	return addStackCommand
+}
+
+func setDefaultStackCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:  "set-default-stack <stack-name>",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
+			if err != nil {
+				return err
+			}
+			err = cfg.SetDefaultStack(args[0])
+			if err != nil {
+				return err
+			}
+			fmt.Printf("%s is now the default stack\n", args[0])
+			return nil
+		},
+	}
 }
 
 func updateStackCommand() *cobra.Command {

@@ -201,6 +201,40 @@ default-stack-id = "my.stack"
 		})
 	})
 
+	when("Config#SetDefaultStack", func() {
+		var subject *config.Config
+		it.Before(func() {
+			assertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
+default-stack-id = "old.default.stack"
+[[stacks]]
+  id = "some.stack"
+`), 0666))
+			var err error
+			subject, err = config.New(tmpDir)
+			assertNil(t, err)
+		})
+
+		when("the stack exists", func() {
+			it("sets the default-stack-id", func() {
+				err := subject.SetDefaultStack("some.stack")
+				assertNil(t, err)
+				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
+				assertNil(t, err)
+				assertContains(t, string(b), `default-stack-id = "some.stack"`)
+			})
+		})
+
+		when("the stack doesn't exist", func() {
+			it("returns an error and leaves the original default", func() {
+				err := subject.SetDefaultStack("some.missing.stack")
+				assertError(t, err, `"some.missing.stack" does not exist. Please pass in a valid stack ID.`)
+				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
+				assertNil(t, err)
+				assertContains(t, string(b), `default-stack-id = "old.default.stack"`)
+			})
+		})
+	})
+
 	when("Config#Add", func() {
 		var subject *config.Config
 		it.Before(func() {
@@ -473,5 +507,15 @@ func assertEq(t *testing.T, actual, expected interface{}) {
 	t.Helper()
 	if diff := cmp.Diff(actual, expected); diff != "" {
 		t.Fatal(diff)
+	}
+}
+
+func assertError(t *testing.T, actual error, expected string) {
+	t.Helper()
+	if actual == nil {
+		t.Fatalf("Expected an error but got nil")
+	}
+	if actual.Error() != expected {
+		t.Fatalf(`Expected error to equal "%s", got "%s"`, expected, actual.Error())
 	}
 }

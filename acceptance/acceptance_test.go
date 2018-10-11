@@ -357,6 +357,40 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
+	when("pack update-stack", func() {
+		type config struct {
+			DefaultStackID string  `toml:"default-stack-id"`
+		}
+
+		it.Before(func() {
+			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("add-stack command failed: %s: %s", output, err)
+			}
+		})
+
+		it("sets the default-stack-id in ~/.pack/config.toml", func() {
+			cmd := exec.Command(
+				pack,
+				"set-default-stack",
+				"my.custom.stack",
+			)
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("set-default-stack command failed: %s: %s", output, err)
+			}
+			assertEq(t, string(output), "my.custom.stack is now the default stack\n")
+
+			var config config
+			_, err = toml.DecodeFile(filepath.Join(homeDir, ".pack", "config.toml"), &config)
+			assertNil(t, err)
+			assertEq(t, config.DefaultStackID, "my.custom.stack")
+		})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+
 	when("pack delete-stack", func() {
 		type config struct {
 			Stacks []struct {

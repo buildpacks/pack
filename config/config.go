@@ -126,6 +126,15 @@ func (c *Config) Delete(stackID string) error {
 	}
 	return fmt.Errorf(`"%s" does not exist. Please pass in a valid stack ID.`, stackID)
 }
+func (c *Config) SetDefaultStack(stackID string) error {
+	for _, s := range c.Stacks {
+		if s.ID == stackID {
+			c.DefaultStackID = stackID
+			return c.save()
+		}
+	}
+	return fmt.Errorf(`"%s" does not exist. Please pass in a valid stack ID.`, stackID)
+}
 
 func ImageByRegistry(registry string, images []string) (string, error) {
 	if len(images) == 0 {
