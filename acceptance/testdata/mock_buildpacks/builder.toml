@@ -1,19 +1,19 @@
 [[buildpacks]]
 id = "mock.bp.first"
-uri = "file://first"
+uri = "first"
 
 [[buildpacks]]
 id = "mock.bp.first"
-uri = "file://first-latest"
+uri = "first-latest"
 latest = true
 
 [[buildpacks]]
 id = "mock.bp.second"
-uri = "file://second"
+uri = "second"
 
 [[buildpacks]]
 id = "mock.bp.third"
-uri = "file://third"
+uri = "third"
 
 [[groups]]
   [[groups.buildpacks]]
