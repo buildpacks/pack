@@ -1,6 +1,6 @@
 [[buildpacks]]
 id = "com.example.sample.bp"
-uri = "file://buildpacks/sample_bp"
+uri = "buildpacks/sample_bp"
 
 [[groups]]
 buildpacks = [{ id = "com.example.sample.bp", version = "1.2.3" }]

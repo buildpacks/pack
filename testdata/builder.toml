@@ -1,14 +1,14 @@
 [[buildpacks]]
 id = "some.bp1"
-uri = "file://some-path-1"
+uri = "some-path-1"
 
 [[buildpacks]]
 id = "some.bp2"
-uri = "file://some-path-2"
+uri = "some-path-2"
 
 [[buildpacks]]
 id = "some.bp2"
-uri = "file://some-latest-path-2"
+uri = "some-latest-path-2"
 latest = true
 
 [[groups]]
