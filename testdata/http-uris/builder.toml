@@ -1,0 +1,8 @@
+[[buildpacks]]
+id = "some.bp.with.http.and.tgz"
+uri = "http://localhost:59898/http-uris/buildpack.tgz"
+
+[[groups]]
+buildpacks = [
+  { id = "some.bp.with.http.and.tgz", version = "1.2.3" },
+]

@@ -135,7 +135,7 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
 	ID     string `toml:"id"`
 	URI    string `toml:"uri"`
-	Latest bool `toml:"latest"`
+	Latest bool   `toml:"latest"`
 }) (Buildpack, error) {
 
 	tmpDir, err := ioutil.TempDir("", fmt.Sprintf("create-builder-%s-", b.ID))
@@ -156,8 +156,16 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
 	case "",    // This is the only way to support relative filepaths
 		"file": // URIs with file:// protocol force the use of absolute paths. Host=localhost may be implied with file:///
 
-		path := asurl.Path
-		if !asurl.IsAbs() && !filepath.IsAbs(path) {
+		var path string
+		if asurl.Host != "" { // the first directory in the path has been parsed as a hostname
+			path = filepath.Join(asurl.Host, asurl.Path)
+		} else {
+			path = asurl.Path
+		}
+
+		if !asurl.IsAbs() && !filepath.IsAbs(path) && // deal with relative paths ...
+			asurl.Scheme != "" { // ... but not when there's no URI scheme, otherwise it winds up doubling the builder dir
+
 			path = filepath.Join(builderDir, path)
 		}
 
