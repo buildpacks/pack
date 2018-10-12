@@ -129,14 +129,14 @@ func (f *RebaseFactory) baseImageName(stackID, repoName string) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	if len(stack.BuildImages) == 0 {
+	if len(stack.RunImages) == 0 {
 		return "", fmt.Errorf(`Invalid stack: stack "%s" requies at least one build image`, stack.ID)
 	}
 	registry, err := config.Registry(repoName)
 	if err != nil {
 		return "", err
 	}
-	return config.ImageByRegistry(registry, stack.BuildImages)
+	return config.ImageByRegistry(registry, stack.RunImages)
 }
 
 // TODO copied from build.go

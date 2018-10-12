@@ -83,7 +83,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 			when("publish is false", func() {
 				it.Before(func() {
-					mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
+					mockImages.EXPECT().ReadImage("default/run", true).Return(mockBaseImage, nil)
 					mockImages.EXPECT().RepoStore("myorg/myrepo", true).Return(mockRepoStore, nil)
 					mockImages.EXPECT().ReadImage("myorg/myrepo", true).Return(mockRepoImage, nil)
 
@@ -99,7 +99,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 				when("no-pull is false", func() {
 					it("XXXX", func() {
-						mockDocker.EXPECT().PullImage("default/build")
+						mockDocker.EXPECT().PullImage("default/run")
 						mockDocker.EXPECT().PullImage("myorg/myrepo")
 
 						cfg, err := factory.RebaseConfigFromFlags(pack.RebaseFlags{
@@ -139,7 +139,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 			when("publish is true", func() {
 				it.Before(func() {
-					mockImages.EXPECT().ReadImage("default/build", false).Return(mockBaseImage, nil).AnyTimes()
+					mockImages.EXPECT().ReadImage("default/run", false).Return(mockBaseImage, nil).AnyTimes()
 					mockImages.EXPECT().RepoStore("myorg/myrepo", false).Return(mockRepoStore, nil).AnyTimes()
 					mockImages.EXPECT().ReadImage("myorg/myrepo", false).Return(mockRepoImage, nil).AnyTimes()
 
