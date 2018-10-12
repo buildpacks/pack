@@ -423,9 +423,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				mockBaseImage := mocks.NewMockImage(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
 
-				mockBaseImage.EXPECT().Manifest().Return(&v1.Manifest{}, nil)
-				mockBaseImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{}, nil)
-				mockImageStore.EXPECT().Write(gomock.Any())
+				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
+				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
 
 				port := rand.Int31n(65536 - 1024) + 1024
 				fs := http.FileServer(http.Dir("testdata"))
@@ -433,18 +432,18 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				server = &http.Server{Addr:fmt.Sprintf(":%d", port), Handler:fs}
 				go server.ListenAndServe()
 
-				err := factory.Create(pack.BuilderConfig{
-					RepoName:   "myorg/mybuilder",
-					Repo:       mockImageStore,
-					Buildpacks: []pack.Buildpack{{ID: "com.acme.foobar", Dir: fmt.Sprintf("http://localhost:%d/foobar.tgz", port)}},
-					Groups:     []lifecycle.BuildpackGroup{},
-					BaseImage:  mockBaseImage,
-					BuilderDir: "",
-				})
+				flags := pack.CreateBuilderFlags{
+					RepoName:        "myorg/mybuilder",
+					BuilderTomlPath: "testdata/builder.toml",
+					StackID:         "some.default.stack",
+					Publish:         false,
+					NoPull:          true,
+				}
+
+				builderConfig, err := factory.BuilderConfigFromFlags(flags)
 				assertNil(t, err)
 
-				assertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
-				assertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+				assertEq(t, builderConfig.Buildpacks[0].Dir, "testdata/some-path-1")
 			})
 			it.After(func() {
 				if server != nil {
