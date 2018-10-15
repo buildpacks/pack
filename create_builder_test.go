@@ -270,7 +270,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
-		when.Focus("a buildpack location uses no scheme uris", func() {
+		when("a buildpack location uses no scheme uris", func() {
 			it("supports relative directories as well as archives", func() {
 				mockBaseImage := mocks.NewMockImage(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
@@ -340,7 +340,7 @@ buildpacks = [
 				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
 			})
 		})
-		when.Focus("a buildpack location uses file:// uris", func() {
+		when("a buildpack location uses file:// uris", func() {
 			it("supports absolute directories as well as archives", func() {
 				mockBaseImage := mocks.NewMockImage(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
