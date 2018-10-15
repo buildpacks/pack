@@ -389,15 +389,20 @@ buildpacks = [
 				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
 			})
 		})
-		when.Focus("a buildpack location uses http(s):// uris", func() {
+		when("a buildpack location uses http(s):// uris", func() {
 			var (
 				server *http.Server
 			)
 			it.Before(func() {
 				port := 1024 + rand.Int31n(65536-1024)
 				fs := http.FileServer(http.Dir("testdata"))
-				server = &http.Server{Addr:fmt.Sprintf(":%d", port), Handler:fs}
-				go server.ListenAndServe()
+				server = &http.Server{Addr:fmt.Sprintf("localhost:%d", port), Handler:fs}
+				go func() {
+					err := server.ListenAndServe()
+					if err != http.ErrServerClosed {
+						t.Fatalf("could not create http server: %v", err)
+					}
+				}()
 			})
 			it("downloads and extracts the archive", func() {
 				mockBaseImage := mocks.NewMockImage(mockController)
@@ -410,7 +415,7 @@ buildpacks = [
 				assertNil(t, err)
 				ioutil.WriteFile(f.Name(), []byte(fmt.Sprintf(`[[buildpacks]]
 id = "some.bp.with.no.uri.scheme"
-uri = "http://localhost%s/used-to-test-various-uri-schemes/buildpack.tgz"
+uri = "http://%s/used-to-test-various-uri-schemes/buildpack.tgz"
 
 [[groups]]
 buildpacks = [
