@@ -6,3 +6,4 @@
 
 # Build outputs
 artifacts/
+.DS_Store
