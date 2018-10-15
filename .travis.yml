@@ -12,9 +12,11 @@ cache:
   - $GOPATH/pkg/mod
 install: true
 script:
-- go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-linux ./cmd/pack
-- GOOS=darwin go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-darwin ./cmd/pack
-- GOOS=windows go build -o artifacts/pack-$TRAVIS_BUILD_NUMBER-windows ./cmd/pack
+- export PACK_VERSION="$TRAVIS_TAG (git sha: $(git log -1 '--pretty=%H'))"
+- go build -ldflags "-X 'main.Version=$PACK_VERSION'" -o artifacts/pack-$TRAVIS_BUILD_NUMBER-linux ./cmd/pack
+- GOOS=darwin go build -ldflags "-X 'main.Version=$PACK_VERSION'" -o artifacts/pack-$TRAVIS_BUILD_NUMBER-darwin ./cmd/pack
+- GOOS=windows go build -ldflags "-X 'main.Version=$PACK_VERSION'" -o artifacts/pack-$TRAVIS_BUILD_NUMBER-windows ./cmd/pack
+- ./artifacts/pack-$TRAVIS_BUILD_NUMBER-linux version
 - PACK_PATH=$PWD/artifacts/pack-$TRAVIS_BUILD_NUMBER-linux go test -parallel 1 -v ./...
 deploy:
   provider: gcs

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
@@ -13,6 +14,8 @@ import (
 	"github.com/buildpack/pack/image"
 	"github.com/spf13/cobra"
 )
+
+var Version = "UNKNOWN"
 
 func main() {
 	rootCmd := &cobra.Command{Use: "pack"}
@@ -24,6 +27,7 @@ func main() {
 		updateStackCommand,
 		deleteStackCommand,
 		setDefaultStackCommand,
+		versionCommand,
 	} {
 		rootCmd.AddCommand(f())
 	}
@@ -230,4 +234,14 @@ func deleteStackCommand() *cobra.Command {
 		},
 	}
 	return addStackCommand
+}
+
+func versionCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:  "version",
+		Args: cobra.ExactArgs(0),
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("VERSION: %s\n", strings.TrimSpace(Version))
+		},
+	}
 }
