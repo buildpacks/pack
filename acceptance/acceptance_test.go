@@ -359,7 +359,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 	when("pack update-stack", func() {
 		type config struct {
-			DefaultStackID string  `toml:"default-stack-id"`
+			DefaultStackID string `toml:"default-stack-id"`
 		}
 
 		it.Before(func() {

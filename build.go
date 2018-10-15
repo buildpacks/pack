@@ -240,8 +240,7 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 		}
 		order.Groups = lifecycle.BuildpackOrder{
 			lifecycle.BuildpackGroup{
-				Buildpacks: []*lifecycle.Buildpack{
-				},
+				Buildpacks: []*lifecycle.Buildpack{},
 			},
 		}
 

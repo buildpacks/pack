@@ -3,6 +3,13 @@ package pack
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/img"
@@ -12,21 +19,15 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
-	"io"
-	"io/ioutil"
-	"log"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 type BuilderTOML struct {
-	Buildpacks []struct{
+	Buildpacks []struct {
 		ID     string `toml:"id"`
 		URI    string `toml:"uri"`
 		Latest bool   `toml:"latest"`
-	}                `toml:"buildpacks"`
-	Groups     []lifecycle.BuildpackGroup `toml:"groups"`
+	} `toml:"buildpacks"`
+	Groups []lifecycle.BuildpackGroup `toml:"groups"`
 }
 
 type BuilderConfig struct {
@@ -42,7 +43,6 @@ type Buildpack struct {
 	Dir    string
 	Latest bool
 }
-
 
 //go:generate mockgen -package mocks -destination mocks/docker.go github.com/buildpack/pack Docker
 type Docker interface {
@@ -126,9 +126,9 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 			dir = filepath.Join(builderConfig.BuilderDir, dir)
 		}
 		builderConfig.Buildpacks = append(builderConfig.Buildpacks, Buildpack{
-			ID: b.ID,
+			ID:     b.ID,
 			Latest: b.Latest,
-			Dir: dir,
+			Dir:    dir,
 		})
 	}
 	return builderConfig, nil
