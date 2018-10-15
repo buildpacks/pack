@@ -154,7 +154,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 	if err != nil {
 		return fmt.Errorf(`failed to create temporary directory: %s`, err)
 	}
-	defer os.Remove(tmpDir) // TODO
+	defer os.RemoveAll(tmpDir) // TODO
 
 	orderTar, err := f.orderLayer(tmpDir, config.Groups)
 	if err != nil {
