@@ -12,7 +12,7 @@ cache:
   - $GOPATH/pkg/mod
 install: true
 script:
-- export PACK_VERSION="$TRAVIS_TAG (git sha: $(git log -1 '--pretty=%H'))"
+- 'export PACK_VERSION="$TRAVIS_TAG (git sha: $(git log -1 --pretty=%H))"'
 - go build -ldflags "-X 'main.Version=$PACK_VERSION'" -o artifacts/pack-$TRAVIS_BUILD_NUMBER-linux ./cmd/pack
 - GOOS=darwin go build -ldflags "-X 'main.Version=$PACK_VERSION'" -o artifacts/pack-$TRAVIS_BUILD_NUMBER-darwin ./cmd/pack
 - GOOS=windows go build -ldflags "-X 'main.Version=$PACK_VERSION'" -o artifacts/pack-$TRAVIS_BUILD_NUMBER-windows ./cmd/pack
