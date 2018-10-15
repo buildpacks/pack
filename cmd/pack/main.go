@@ -63,7 +63,7 @@ func buildCommand() *cobra.Command {
 func rebaseCommand() *cobra.Command {
 	var flags pack.RebaseFlags
 	cmd := &cobra.Command{
-		Use:  "rebase <stack-name>",
+		Use:  "rebase <image-name:tag>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
