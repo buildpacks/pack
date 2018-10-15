@@ -6,13 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/image"
-
 	"github.com/buildpack/pack/fs"
-
-	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/image"
 	"github.com/spf13/cobra"
 )
 
@@ -40,6 +38,7 @@ func buildCommand() *cobra.Command {
 		Use:  "build <image-name>",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			buildFlags.RepoName = args[0]
 			bf, err := pack.DefaultBuildFactory()
 			if err != nil {
@@ -67,6 +66,7 @@ func rebaseCommand() *cobra.Command {
 		Use:  "rebase <stack-name>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			flags.RepoName = args[0]
 
 			docker, err := docker.New()
@@ -101,6 +101,7 @@ func createBuilderCommand() *cobra.Command {
 		Use:  "create-builder <image-name> -b <path-to-builder-toml>",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			flags.RepoName = args[0]
 
 			docker, err := docker.New()
@@ -141,6 +142,7 @@ func addStackCommand() *cobra.Command {
 		Use:  "add-stack <stack-name> --run-image=<name> --build-image=<name>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
 			if err != nil {
 				return err
@@ -166,6 +168,7 @@ func setDefaultStackCommand() *cobra.Command {
 		Use:  "set-default-stack <stack-name>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
 			if err != nil {
 				return err
@@ -189,6 +192,7 @@ func updateStackCommand() *cobra.Command {
 		Use:  "update-stack <stack-name> --run-image=<name> --build-image=<name>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
 			if err != nil {
 				return err
@@ -213,6 +217,7 @@ func deleteStackCommand() *cobra.Command {
 		Use:  "delete-stack <stack-name>",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
 			if err != nil {
 				return err
