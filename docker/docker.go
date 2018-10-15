@@ -31,39 +31,28 @@ func (d *Client) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 	if err := d.ContainerStart(ctx, id, dockertypes.ContainerStartOptions{}); err != nil {
 		return errors.Wrap(err, "container start")
 	}
-	stdout2, err := d.ContainerLogs(ctx, id, dockertypes.ContainerLogsOptions{
+	logs, err := d.ContainerLogs(ctx, id, dockertypes.ContainerLogsOptions{
 		ShowStdout: true,
+		ShowStderr: true,
 		Follow:     true,
 	})
 	if err != nil {
 		return errors.Wrap(err, "container logs stdout")
 	}
 	go func() {
+		header := make([]byte, 8)
 		for {
-			header := make([]byte, 8)
-			if n, err := stdout2.Read(header); err != nil || n != 8 {
+			if n, err := logs.Read(header); err != nil || n != 8 {
 				continue
 			}
-			if _, err := io.CopyN(stdout, stdout2, int64(binary.BigEndian.Uint32(header[4:]))); err != nil {
-				break
-			}
-		}
-	}()
-	stderr2, err := d.ContainerLogs(ctx, id, dockertypes.ContainerLogsOptions{
-		ShowStderr: true,
-		Follow:     true,
-	})
-	if err != nil {
-		return errors.Wrap(err, "container logs stderr")
-	}
-	go func() {
-		for {
-			header := make([]byte, 8)
-			if n, err := stderr2.Read(header); err != nil || n != 8 {
-				continue
-			}
-			if _, err := io.CopyN(stderr, stderr2, int64(binary.BigEndian.Uint32(header[4:]))); err != nil {
-				break
+			if header[0] == uint8(1) {
+				if _, err := io.CopyN(stdout, logs, int64(binary.BigEndian.Uint32(header[4:]))); err != nil {
+					break
+				}
+			} else if header[0] == uint8(2) {
+				if _, err := io.CopyN(stderr, logs, int64(binary.BigEndian.Uint32(header[4:]))); err != nil {
+					break
+				}
 			}
 		}
 	}()
