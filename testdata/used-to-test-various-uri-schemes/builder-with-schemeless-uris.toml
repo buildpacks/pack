@@ -1,0 +1,13 @@
+[[buildpacks]]
+id = "some.bp"
+uri = "buildpack" #this is relative to this .toml file
+
+[[buildpacks]]
+id = "some.other.bp.using.tgz"
+uri = "buildpack.tgz" #this is relative to this .toml file
+
+[[groups]]
+buildpacks = [
+  { id = "some.bp", version = "1.2.3" },
+  { id = "some.other.bp.using.tgz", version = "1.2.4" },
+]
