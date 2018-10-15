@@ -165,7 +165,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 		it("builds an image and runs it", func() {
 			mockBuild.EXPECT().Run().Return(nil)
 
-			exposedPorts, portBindings, _ := nat.ParsePortSpecs([]string{"127.0.0.1:1370:8080/tcp"})
+			exposedPorts, portBindings, _ := nat.ParsePortSpecs([]string{"127.0.0.1:1370:1370/tcp"})
 			mockDocker.EXPECT().ContainerCreate(gomock.Any(), &container.Config{
 				Image:        subject.RepoName,
 				AttachStdout: true,
@@ -222,13 +222,46 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("the port is not specified", func() {
+			it.Before(func() {
+				subject.Port = ""
+			})
+
+			it("gets exposed ports from the built image", func() {
+				mockBuild.EXPECT().Run().Return(nil)
+
+				exposedPorts, portBindings, _ := nat.ParsePortSpecs([]string{
+					"127.0.0.1:8080:8080/tcp",
+				})
+				mockDocker.EXPECT().ImageInspectWithRaw(gomock.Any(), subject.RepoName).Return(types.ImageInspect{
+					Config: &container.Config{
+						ExposedPorts: exposedPorts,
+					},
+				}, []byte{}, nil)
+
+				mockDocker.EXPECT().ContainerCreate(gomock.Any(), &container.Config{
+					Image:        subject.RepoName,
+					AttachStdout: true,
+					AttachStderr: true,
+					ExposedPorts: exposedPorts,
+				}, &container.HostConfig{
+					AutoRemove:   true,
+					PortBindings: portBindings,
+				}, nil, "").Return(ctr, nil)
+
+				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, subject.Stdout, subject.Stderr).Return(nil)
+
+				err := subject.Run(makeStopCh)
+				assertNil(t, err)
+			})
+		})
 		when("custom ports bindings are defined", func() {
-			it("binds simple ports from localhost to the container on 8080", func() {
+			it("binds simple ports from localhost to the container on the same port", func() {
 				mockBuild.EXPECT().Run().Return(nil)
 
 				subject.Port = "1370"
 				exposedPorts, portBindings, _ := nat.ParsePortSpecs([]string{
-					"127.0.0.1:1370:8080/tcp",
+					"127.0.0.1:1370:1370/tcp",
 				})
 				mockDocker.EXPECT().ContainerCreate(gomock.Any(), &container.Config{
 					Image:        subject.RepoName,

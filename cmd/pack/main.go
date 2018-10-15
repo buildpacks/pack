@@ -90,7 +90,7 @@ func runCommand() *cobra.Command {
 	runCommand.Flags().StringVarP(&runFlags.AppDir, "path", "p", wd, "path to app dir")
 	runCommand.Flags().StringVar(&runFlags.Builder, "builder", "packs/samples", "builder")
 	runCommand.Flags().StringVar(&runFlags.RunImage, "run-image", "packs/run", "run image")
-	runCommand.Flags().StringVar(&runFlags.Port, "port", "8080", "local port to bind")
+	runCommand.Flags().StringVar(&runFlags.Port, "port", "", "comma separated ports to publish, defaults to ports exposed by the container")
 	return runCommand
 }
 

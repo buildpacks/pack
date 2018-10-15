@@ -107,6 +107,12 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 	}
 
 	fmt.Println("*** RUNNING:")
+	if r.Port == "" {
+		r.Port, err = r.exposedPorts(ctx, r.RepoName)
+		if err != nil {
+			return err
+		}
+	}
 	exposedPorts, portBindings, err := parsePorts(r.Port)
 	if err != nil {
 		return err
@@ -146,13 +152,25 @@ func (r *RunFlags) repoName() string {
 	return fmt.Sprintf("pack.local/run/%x", h.Sum(nil))
 }
 
+func (r *RunConfig) exposedPorts(ctx context.Context, imageID string) (string, error) {
+	i, _, err := r.Cli.ImageInspectWithRaw(ctx, imageID)
+	if err != nil {
+		return "", err
+	}
+	ports := []string{}
+	for port := range i.Config.ExposedPorts {
+		ports = append(ports, port.Port())
+	}
+	return strings.Join(ports, ","), nil
+}
+
 func parsePorts(port string) (nat.PortSet, nat.PortMap, error) {
 	ports := strings.Split(port, ",")
 	for i, p := range ports {
 		p = strings.TrimSpace(p)
 		if _, err := strconv.Atoi(p); err == nil {
-			// default simple port to localhost and 8080 inside the container
-			p = fmt.Sprintf("127.0.0.1:%s:8080/tcp", p)
+			// default simple port to localhost and inside the container
+			p = fmt.Sprintf("127.0.0.1:%s:%s/tcp", p, p)
 		}
 		ports[i] = p
 	}
@@ -172,6 +190,7 @@ func logContainerListening(log *log.Logger, portBindings nat.PortMap) {
 				if host == "127.0.0.1" {
 					host = "localhost"
 				}
+				// TODO the service may not be http based
 				log.Printf("Starting container listening at http://%s:%s/\n", host, port)
 			}
 		}
