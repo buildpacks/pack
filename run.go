@@ -143,7 +143,7 @@ func (r *RunFlags) repoName() string {
 	// we can ignore errors here because they will be caught later by the Build command
 	h := md5.New()
 	io.WriteString(h, dir)
-	return fmt.Sprintf("%x", h.Sum(nil))
+	return fmt.Sprintf("pack.local/run/%x", h.Sum(nil))
 }
 
 func parsePorts(port string) (nat.PortSet, nat.PortMap, error) {

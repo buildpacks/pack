@@ -100,7 +100,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			absAppDir, _ := filepath.Abs("acceptance/testdata/node_app")
 			h := md5.New()
 			io.WriteString(h, absAppDir)
-			absAppDirMd5 := fmt.Sprintf("%x", h.Sum(nil))
+			absAppDirMd5 := fmt.Sprintf("pack.local/run/%x", h.Sum(nil))
 			assertEq(t, run.AppDir, absAppDir)
 			assertEq(t, run.RepoName, absAppDirMd5)
 			assertEq(t, run.Builder, "some/builder")
@@ -150,7 +150,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 
 			subject = &pack.RunConfig{
 				Build:    mockBuild,
-				RepoName: "346ffb210a2c6d138c8d058d6d4025a0",
+				RepoName: "pack.local/run/346ffb210a2c6d138c8d058d6d4025a0",
 				Port:     "1370",
 				Cli:      mockDocker,
 				Log:      log.New(&buf, "", log.LstdFlags|log.Lshortfile),
