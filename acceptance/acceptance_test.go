@@ -228,6 +228,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("builds and exports an image", func() {
+			NewDockerDaemon().Pull(t, "packs/build", "latest") // TODO: control version, 'latest' is not stable across test runs.
+
 			builderTOML := filepath.Join("testdata", "mock_buildpacks", "builder.toml")
 			sourceCodePath := filepath.Join("testdata", "mock_app")
 
