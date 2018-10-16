@@ -144,9 +144,6 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
 		return Buildpack{}, fmt.Errorf(`failed to create temporary directory: %s`, err)
 	}
 
-	fmt.Printf("Creating %s\n", tmpDir)
-	//defer os.RemoveAll(tmpDir)
-
 	var dir string
 
 	asurl, err := url.Parse(b.URI)

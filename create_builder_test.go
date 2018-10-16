@@ -324,7 +324,6 @@ buildpacks = [
 ]`, absPath, absPath)), 0644)
 				f.Name()
 
-
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
 					BuilderTomlPath: f.Name(),
@@ -373,7 +372,6 @@ buildpacks = [
 ]`, absPath, absPath)), 0644)
 				f.Name()
 
-
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
 					BuilderTomlPath: f.Name(),
@@ -396,15 +394,28 @@ buildpacks = [
 			it.Before(func() {
 				port := 1024 + rand.Int31n(65536-1024)
 				fs := http.FileServer(http.Dir("testdata"))
-				server = &http.Server{Addr:fmt.Sprintf("127.0.0.1:%d", port), Handler:fs}
+				server = &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: fs}
 				go func() {
 					err := server.ListenAndServe()
 					if err != http.ErrServerClosed {
 						t.Fatalf("could not create http server: %v", err)
 					}
 				}()
+				serverReady := false
+				for i := 0; i < 10; i++ {
+					resp, err := http.Get(fmt.Sprintf("http://%s/used-to-test-various-uri-schemes/buildpack.tgz", server.Addr))
+					if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+						serverReady = true
+						break
+					}
+					fmt.Printf("Waiting for server to become ready on %s. Currently %v\n", server.Addr, err)
+					time.Sleep(1 * time.Second)
+				}
+				if !serverReady {
+					t.Fatal("http server does not seem to be up")
+				}
 			})
-			it.Focus("downloads and extracts the archive", func() {
+			it("downloads and extracts the archive", func() {
 				mockBaseImage := mocks.NewMockImage(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
 
@@ -427,7 +438,6 @@ buildpacks = [
   { id = "some.bp1", version = "1.2.3" },
 ]`, server.Addr)), 0644)
 				f.Name()
-
 
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
