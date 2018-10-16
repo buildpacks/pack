@@ -396,7 +396,7 @@ buildpacks = [
 			it.Before(func() {
 				port := 1024 + rand.Int31n(65536-1024)
 				fs := http.FileServer(http.Dir("testdata"))
-				server = &http.Server{Addr:fmt.Sprintf("localhost:%d", port), Handler:fs}
+				server = &http.Server{Addr:fmt.Sprintf("127.0.0.1:%d", port), Handler:fs}
 				go func() {
 					err := server.ListenAndServe()
 					if err != http.ErrServerClosed {
@@ -404,7 +404,7 @@ buildpacks = [
 					}
 				}()
 			})
-			it("downloads and extracts the archive", func() {
+			it.Focus("downloads and extracts the archive", func() {
 				mockBaseImage := mocks.NewMockImage(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
 
