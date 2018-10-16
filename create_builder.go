@@ -1,6 +1,7 @@
 package pack
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -8,7 +9,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
@@ -19,6 +19,8 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
+	"net/http"
+	"net/url"
 )
 
 type BuilderTOML struct {
@@ -120,18 +122,75 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file "%s": %s`, flags.BuilderTomlPath, err)
 	}
 	builderConfig.Groups = builderTOML.Groups
+
 	for _, b := range builderTOML.Buildpacks {
-		dir := strings.TrimPrefix(b.URI, "file://")
-		if !filepath.IsAbs(dir) {
-			dir = filepath.Join(builderConfig.BuilderDir, dir)
+		bp, err := f.resolveBuildpackURI(builderConfig.BuilderDir, b)
+		if err != nil {
+			return BuilderConfig{}, err
 		}
-		builderConfig.Buildpacks = append(builderConfig.Buildpacks, Buildpack{
-			ID:     b.ID,
-			Latest: b.Latest,
-			Dir:    dir,
-		})
+		builderConfig.Buildpacks = append(builderConfig.Buildpacks, bp)
 	}
 	return builderConfig, nil
+}
+
+func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
+	ID     string `toml:"id"`
+	URI    string `toml:"uri"`
+	Latest bool   `toml:"latest"`
+}) (Buildpack, error) {
+
+	tmpDir, err := ioutil.TempDir("", fmt.Sprintf("create-builder-%s-", b.ID))
+	if err != nil {
+		return Buildpack{}, fmt.Errorf(`failed to create temporary directory: %s`, err)
+	}
+
+	var dir string
+
+	asurl, err := url.Parse(b.URI)
+	if err != nil {
+		return Buildpack{}, err
+	}
+	switch asurl.Scheme {
+	case "",    // This is the only way to support relative filepaths
+		"file": // URIs with file:// protocol force the use of absolute paths. Host=localhost may be implied with file:///
+
+		path := asurl.Path
+
+		if !asurl.IsAbs() && !filepath.IsAbs(path) {
+			path = filepath.Join(builderDir, path)
+		}
+
+		if filepath.Ext(path) == ".tgz" {
+			file, err := os.Open(path)
+			if err != nil {
+				return Buildpack{}, errors.Wrapf(err, "could not open file to untar: %q", path)
+			}
+			defer file.Close()
+			if err = f.untarZ(file, tmpDir); err != nil {
+				return Buildpack{}, err
+			}
+			dir = tmpDir
+		} else {
+			dir = path
+		}
+	case "http", "https":
+		reader, err := downloadAsStream(b.URI)
+		if err != nil {
+			return Buildpack{}, errors.Wrapf(err, "failed to download from %q", b.URI)
+		}
+		if err = f.untarZ(reader, tmpDir); err != nil {
+			return Buildpack{}, err
+		}
+		dir = tmpDir
+	default:
+		return Buildpack{}, fmt.Errorf("unsupported protocol in uri %q", b.URI)
+	}
+
+	return Buildpack{
+		ID:     b.ID,
+		Latest: b.Latest,
+		Dir:    dir,
+	}, nil
 }
 
 func (f *BuilderFactory) baseImageName(stackID, repoName string) (string, error) {
@@ -228,8 +287,13 @@ type BuildpackData struct {
 	} `toml:"buildpack"`
 }
 
+// buildpackLayer creates and returns the location of a tgz file for a buildpack layer. That file will reside in the `dest` directory.
+// The tgz file is either created from an initially local directory, or it is downloaded (and validated) from
+// a remote location if the buildpack uri uses the http(s) protocol.
 func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builderDir string) (layerTar string, err error) {
-	data, err := f.buildpackData(buildpack, buildpack.Dir)
+	dir := buildpack.Dir
+
+	data, err := f.buildpackData(buildpack, dir)
 	if err != nil {
 		return "", err
 	}
@@ -238,10 +302,11 @@ func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builde
 		return "", fmt.Errorf("buildpack ids did not match: %s != %s", buildpack.ID, bp.ID)
 	}
 	if bp.Version == "" {
-		return "", fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(buildpack.Dir, "buildpack.toml"))
+		return "", fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(buildpack.Dir, "!/buildpack.toml"))
 	}
+
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.ID, bp.Version))
-	if err := f.FS.CreateTGZFile(tarFile, buildpack.Dir, filepath.Join("/buildpacks", buildpack.ID, bp.Version), 0, 0); err != nil {
+	if err := f.FS.CreateTGZFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.ID, bp.Version), 0, 0); err != nil {
 		return "", err
 	}
 	return tarFile, err
@@ -282,4 +347,26 @@ func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir st
 		return "", err
 	}
 	return tarFile, err
+}
+
+func downloadAsStream(uri string) (io.Reader, error) {
+	c := http.Client{}
+	if resp, err := c.Get(uri); err != nil {
+		return nil, err
+	} else {
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return resp.Body, nil
+		} else {
+			return nil, fmt.Errorf("could not download from %q, code http status %d", uri, resp.StatusCode)
+		}
+	}
+}
+
+func (f *BuilderFactory) untarZ(r io.Reader, dir string) error {
+	gzr, err := gzip.NewReader(r)
+	if err != nil {
+		return errors.Wrapf(err, "could not unzip")
+	}
+	defer gzr.Close()
+	return f.FS.Untar(gzr, dir)
 }

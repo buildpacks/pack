@@ -2,11 +2,16 @@ package pack_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"math/rand"
+	"net/http"
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/pack"
@@ -265,6 +270,195 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+		when("a buildpack location uses no scheme uris", func() {
+			it("supports relative directories as well as archives", func() {
+				mockBaseImage := mocks.NewMockImage(mockController)
+				mockImageStore := mocks.NewMockStore(mockController)
+
+				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
+				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
+
+				flags := pack.CreateBuilderFlags{
+					RepoName:        "myorg/mybuilder",
+					BuilderTomlPath: "testdata/used-to-test-various-uri-schemes/builder-with-schemeless-uris.toml",
+					StackID:         "some.default.stack",
+					Publish:         false,
+					NoPull:          true,
+				}
+
+				builderConfig, err := factory.BuilderConfigFromFlags(flags)
+				assertNil(t, err)
+
+				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
+				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
+			})
+			it("supports absolute directories as well as archives", func() {
+				mockBaseImage := mocks.NewMockImage(mockController)
+				mockImageStore := mocks.NewMockStore(mockController)
+
+				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
+				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
+
+				absPath, err := filepath.Abs("testdata/used-to-test-various-uri-schemes/buildpack")
+				assertNil(t, err)
+
+				f, err := ioutil.TempFile("", "*.toml")
+				assertNil(t, err)
+				ioutil.WriteFile(f.Name(), []byte(fmt.Sprintf(`[[buildpacks]]
+id = "some.bp.with.no.uri.scheme"
+uri = "%s"
+
+[[buildpacks]]
+id = "some.bp.with.no.uri.scheme.and.tgz"
+uri = "%s.tgz"
+
+[[groups]]
+buildpacks = [
+  { id = "some.bp.with.no.uri.scheme", version = "1.2.3" },
+  { id = "some.bp.with.no.uri.scheme.and.tgz", version = "1.2.4" },
+]
+
+[[groups]]
+buildpacks = [
+  { id = "some.bp1", version = "1.2.3" },
+]`, absPath, absPath)), 0644)
+				f.Name()
+
+				flags := pack.CreateBuilderFlags{
+					RepoName:        "myorg/mybuilder",
+					BuilderTomlPath: f.Name(),
+					StackID:         "some.default.stack",
+					Publish:         false,
+					NoPull:          true,
+				}
+
+				builderConfig, err := factory.BuilderConfigFromFlags(flags)
+				assertNil(t, err)
+
+				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
+				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
+			})
+		})
+		when("a buildpack location uses file:// uris", func() {
+			it("supports absolute directories as well as archives", func() {
+				mockBaseImage := mocks.NewMockImage(mockController)
+				mockImageStore := mocks.NewMockStore(mockController)
+
+				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
+				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
+
+				absPath, err := filepath.Abs("testdata/used-to-test-various-uri-schemes/buildpack")
+				assertNil(t, err)
+
+				f, err := ioutil.TempFile("", "*.toml")
+				assertNil(t, err)
+				ioutil.WriteFile(f.Name(), []byte(fmt.Sprintf(`[[buildpacks]]
+id = "some.bp.with.no.uri.scheme"
+uri = "file://%s"
+
+[[buildpacks]]
+id = "some.bp.with.no.uri.scheme.and.tgz"
+uri = "file://%s.tgz"
+
+[[groups]]
+buildpacks = [
+  { id = "some.bp.with.no.uri.scheme", version = "1.2.3" },
+  { id = "some.bp.with.no.uri.scheme.and.tgz", version = "1.2.4" },
+]
+
+[[groups]]
+buildpacks = [
+  { id = "some.bp1", version = "1.2.3" },
+]`, absPath, absPath)), 0644)
+				f.Name()
+
+				flags := pack.CreateBuilderFlags{
+					RepoName:        "myorg/mybuilder",
+					BuilderTomlPath: f.Name(),
+					StackID:         "some.default.stack",
+					Publish:         false,
+					NoPull:          true,
+				}
+
+				builderConfig, err := factory.BuilderConfigFromFlags(flags)
+				assertNil(t, err)
+
+				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
+				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
+			})
+		})
+		when("a buildpack location uses http(s):// uris", func() {
+			var (
+				server *http.Server
+			)
+			it.Before(func() {
+				port := 1024 + rand.Int31n(65536-1024)
+				fs := http.FileServer(http.Dir("testdata"))
+				server = &http.Server{Addr: fmt.Sprintf("127.0.0.1:%d", port), Handler: fs}
+				go func() {
+					err := server.ListenAndServe()
+					if err != http.ErrServerClosed {
+						t.Fatalf("could not create http server: %v", err)
+					}
+				}()
+				serverReady := false
+				for i := 0; i < 10; i++ {
+					resp, err := http.Get(fmt.Sprintf("http://%s/used-to-test-various-uri-schemes/buildpack.tgz", server.Addr))
+					if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+						serverReady = true
+						break
+					}
+					fmt.Printf("Waiting for server to become ready on %s. Currently %v\n", server.Addr, err)
+					time.Sleep(1 * time.Second)
+				}
+				if !serverReady {
+					t.Fatal("http server does not seem to be up")
+				}
+			})
+			it("downloads and extracts the archive", func() {
+				mockBaseImage := mocks.NewMockImage(mockController)
+				mockImageStore := mocks.NewMockStore(mockController)
+
+				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
+				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
+
+				f, err := ioutil.TempFile("", "*.toml")
+				assertNil(t, err)
+				ioutil.WriteFile(f.Name(), []byte(fmt.Sprintf(`[[buildpacks]]
+id = "some.bp.with.no.uri.scheme"
+uri = "http://%s/used-to-test-various-uri-schemes/buildpack.tgz"
+
+[[groups]]
+buildpacks = [
+  { id = "some.bp.with.no.uri.scheme", version = "1.2.3" },
+]
+
+[[groups]]
+buildpacks = [
+  { id = "some.bp1", version = "1.2.3" },
+]`, server.Addr)), 0644)
+				f.Name()
+
+				flags := pack.CreateBuilderFlags{
+					RepoName:        "myorg/mybuilder",
+					BuilderTomlPath: f.Name(),
+					StackID:         "some.default.stack",
+					Publish:         false,
+					NoPull:          true,
+				}
+
+				builderConfig, err := factory.BuilderConfigFromFlags(flags)
+				assertNil(t, err)
+
+				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/build", "I come from an archive")
+			})
+			it.After(func() {
+				if server != nil {
+					ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
+					server.Shutdown(ctx)
+				}
+			})
+		})
 	})
 }
 
@@ -311,5 +505,15 @@ func checkBuildpacks(t *testing.T, buildpacks []pack.Buildpack) {
 		},
 	}); diff != "" {
 		t.Fatalf("config has incorrect buildpacks, %s", diff)
+	}
+}
+
+func assertDirContainsFileWithContents(t *testing.T, dir string, file string, expected string) {
+	t.Helper()
+	path := filepath.Join(dir, file)
+	bytes, err := ioutil.ReadFile(path)
+	assertNil(t, err)
+	if string(bytes) != expected {
+		t.Fatalf("file %s in dir %s has wrong contents: %s != %s", file, dir, string(bytes), expected)
 	}
 }
