@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
@@ -21,6 +23,7 @@ func main() {
 	rootCmd := &cobra.Command{Use: "pack"}
 	for _, f := range [](func() *cobra.Command){
 		buildCommand,
+		runCommand,
 		rebaseCommand,
 		createBuilderCommand,
 		addStackCommand,
@@ -62,6 +65,33 @@ func buildCommand() *cobra.Command {
 	buildCommand.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
 	buildCommand.Flags().StringArrayVar(&buildFlags.Buildpacks, "buildpack", []string{}, "buildpack ID to skip detection")
 	return buildCommand
+}
+
+func runCommand() *cobra.Command {
+	wd, _ := os.Getwd()
+
+	var runFlags pack.RunFlags
+	runCommand := &cobra.Command{
+		Use:  "run",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			bf, err := pack.DefaultBuildFactory()
+			if err != nil {
+				return err
+			}
+			r, err := bf.RunConfigFromFlags(&runFlags)
+			if err != nil {
+				return err
+			}
+			cmd.SilenceUsage = true
+			return r.Run(makeStopChannelForSignals)
+		},
+	}
+	runCommand.Flags().StringVarP(&runFlags.AppDir, "path", "p", wd, "path to app dir")
+	runCommand.Flags().StringVar(&runFlags.Builder, "builder", "packs/samples", "builder")
+	runCommand.Flags().StringVar(&runFlags.RunImage, "run-image", "packs/run", "run image")
+	runCommand.Flags().StringVar(&runFlags.Port, "port", "", "comma separated ports to publish, defaults to ports exposed by the container")
+	return runCommand
 }
 
 func rebaseCommand() *cobra.Command {
@@ -244,4 +274,18 @@ func versionCommand() *cobra.Command {
 			fmt.Printf("VERSION: %s\n", strings.TrimSpace(Version))
 		},
 	}
+}
+
+func makeStopChannelForSignals() <-chan struct{} {
+	sigsCh := make(chan os.Signal, 1)
+	stopCh := make(chan struct{}, 1)
+	signal.Notify(sigsCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		// convert chan os.Signal to chan struct{}
+		for {
+			<-sigsCh
+			stopCh <- struct{}{}
+		}
+	}()
+	return stopCh
 }

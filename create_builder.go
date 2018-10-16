@@ -65,6 +65,11 @@ type Images interface {
 	RepoStore(repoName string, useDaemon bool) (img.Store, error)
 }
 
+//go:generate mockgen -package mocks -destination mocks/task.go github.com/buildpack/pack Task
+type Task interface {
+	Run() error
+}
+
 type BuilderFactory struct {
 	Log    *log.Logger
 	Docker Docker
