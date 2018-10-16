@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/buildpack/pack/config"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
@@ -28,19 +27,11 @@ type RunConfig struct {
 	Port  string
 	Build Task
 	// All below are from BuildConfig
-	AppDir          string
-	Builder         string
-	RunImage        string
-	RepoName        string
-	Cli             Docker
-	Stdout          io.Writer
-	Stderr          io.Writer
-	Log             *log.Logger
-	FS              FS
-	Config          *config.Config
-	Images          Images
-	WorkspaceVolume string
-	CacheVolume     string
+	RepoName string
+	Cli      Docker
+	Stdout   io.Writer
+	Stderr   io.Writer
+	Log      *log.Logger
 }
 
 func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
@@ -59,19 +50,11 @@ func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
 		Build: bc,
 		Port:  f.Port,
 		// All below are from BuildConfig
-		AppDir:          bc.AppDir,
-		Builder:         bc.Builder,
-		RunImage:        bc.RunImage,
-		RepoName:        bc.RepoName,
-		Cli:             bc.Cli,
-		Stdout:          bc.Stdout,
-		Stderr:          bc.Stderr,
-		Log:             bc.Log,
-		FS:              bc.FS,
-		Config:          bc.Config,
-		Images:          bc.Images,
-		WorkspaceVolume: bc.WorkspaceVolume,
-		CacheVolume:     bc.CacheVolume,
+		RepoName: bc.RepoName,
+		Cli:      bc.Cli,
+		Stdout:   bc.Stdout,
+		Stderr:   bc.Stderr,
+		Log:      bc.Log,
 	}
 
 	return rc, nil

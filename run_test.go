@@ -101,28 +101,17 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			h := md5.New()
 			io.WriteString(h, absAppDir)
 			absAppDirMd5 := fmt.Sprintf("pack.local/run/%x", h.Sum(nil))
-			assertEq(t, run.AppDir, absAppDir)
 			assertEq(t, run.RepoName, absAppDirMd5)
-			assertEq(t, run.Builder, "some/builder")
-			assertEq(t, run.RunImage, "some/run")
 			assertEq(t, run.Port, "1370")
 
 			build, ok := run.Build.(*pack.BuildConfig)
 			assertEq(t, ok, true)
 			for _, field := range []string{
-				"AppDir",
-				"Builder",
-				"RunImage",
 				"RepoName",
 				"Cli",
 				"Stdout",
 				"Stderr",
 				"Log",
-				"FS",
-				"Config",
-				"Images",
-				"WorkspaceVolume",
-				"CacheVolume",
 			} {
 				assertSameInstance(
 					t,
