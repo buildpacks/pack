@@ -104,7 +104,7 @@ func (f *RebaseFactory) Rebase(cfg RebaseConfig) error {
 	}
 
 	// TODO : set runimage/sha on image metadata
-	if err := f.setRunImageSHA(newImage, cfg.NewBase); err != nil {
+	if newImage, err = f.setRunImageSHA(newImage, cfg.NewBase); err != nil {
 		return err
 	}
 
@@ -113,12 +113,11 @@ func (f *RebaseFactory) Rebase(cfg RebaseConfig) error {
 		return err
 	}
 
-	// TODO write image
+
 	if err := cfg.Repo.Write(newImage); err != nil {
 		return err
 	}
 
-	// TODO make sure hash is correct (I think it is currently wrong)
 	f.Log.Printf("Successfully replaced %s with %s\n", cfg.RepoName, h)
 	return nil
 }
@@ -171,32 +170,32 @@ func (f *RebaseFactory) imageLabel(repoName, key string, useDaemon bool) (string
 	return labels[key], nil
 }
 
-func (f *RebaseFactory) setRunImageSHA(img, runImage v1.Image) error {
+func (f *RebaseFactory) setRunImageSHA(img, runImage v1.Image) (v1.Image, error) {
 	layers, err := runImage.Layers()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	topSHA, err := layers[len(layers)-1].DiffID()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	cfg, err := img.ConfigFile()
+	origConfig, err := img.ConfigFile()
 	if err != nil {
-		return err
+		return nil, err
 	}
+	cfg := origConfig.Config.DeepCopy()
 	var metadata map[string]interface{}
-	if err = json.Unmarshal([]byte(cfg.Config.Labels["io.buildpacks.lifecycle.metadata"]), &metadata); err != nil {
-		return err
+	if err = json.Unmarshal([]byte(cfg.Labels["io.buildpacks.lifecycle.metadata"]), &metadata); err != nil {
+		return nil, err
 	}
 	metadata["runimage"] = map[string]string{"sha": topSHA.String()}
 	b, err := json.Marshal(metadata)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	cfg.Config.Labels["io.buildpacks.lifecycle.metadata"] = string(b)
-
-	return nil
+	cfg.Labels["io.buildpacks.lifecycle.metadata"] = string(b)
+	return mutate.Config(img, *cfg)
 }
 
 func (f *RebaseFactory) fakeBaseImage(repoName string, repoImage v1.Image, useDaemon bool) (v1.Image, error) {
