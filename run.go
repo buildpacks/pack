@@ -28,19 +28,17 @@ type RunConfig struct {
 	Port  string
 	Build Task
 	// All below are from BuildConfig
-	AppDir   string
-	Builder  string
-	RunImage string
-	RepoName string
-	// Above are copied from BuildFlags are set by init
-	Cli    Docker
-	Stdout io.Writer
-	Stderr io.Writer
-	Log    *log.Logger
-	FS     FS
-	Config *config.Config
-	Images Images
-	// Above are copied from BuildFactory
+	AppDir          string
+	Builder         string
+	RunImage        string
+	RepoName        string
+	Cli             Docker
+	Stdout          io.Writer
+	Stderr          io.Writer
+	Log             *log.Logger
+	FS              FS
+	Config          *config.Config
+	Images          Images
 	WorkspaceVolume string
 	CacheVolume     string
 }
@@ -61,19 +59,17 @@ func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
 		Build: bc,
 		Port:  f.Port,
 		// All below are from BuildConfig
-		AppDir:   bc.AppDir,
-		Builder:  bc.Builder,
-		RunImage: bc.RunImage,
-		RepoName: bc.RepoName,
-		// Above are copied from BuildFlags are set by init
-		Cli:    bc.Cli,
-		Stdout: bc.Stdout,
-		Stderr: bc.Stderr,
-		Log:    bc.Log,
-		FS:     bc.FS,
-		Config: bc.Config,
-		Images: bc.Images,
-		// Above are copied from BuildFactory
+		AppDir:          bc.AppDir,
+		Builder:         bc.Builder,
+		RunImage:        bc.RunImage,
+		RepoName:        bc.RepoName,
+		Cli:             bc.Cli,
+		Stdout:          bc.Stdout,
+		Stderr:          bc.Stderr,
+		Log:             bc.Log,
+		FS:              bc.FS,
+		Config:          bc.Config,
+		Images:          bc.Images,
 		WorkspaceVolume: bc.WorkspaceVolume,
 		CacheVolume:     bc.CacheVolume,
 	}
