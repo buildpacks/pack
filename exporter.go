@@ -21,8 +21,6 @@ import (
 	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/image"
 	"github.com/buildpack/packs"
-
-	"github.com/buildpack/packs"
 )
 
 func exportRegistry(group *lifecycle.BuildpackGroup, workspaceDir, repoName, stackName string, stdout, stderr io.Writer) (string, error) {
@@ -75,26 +73,7 @@ func exportRegistry(group *lifecycle.BuildpackGroup, workspaceDir, repoName, sta
 	return sha.String(), nil
 }
 
-func runImageUIDGID(cli Docker, ctx context.Context, runImage string) (string, error) {
-	i, _, err := cli.ImageInspectWithRaw(ctx, runImage)
-	if err != nil {
-		return "", errors.Wrap(err, "inspect image to find UID & GID")
-	}
-	var uid, gid string
-	for _, e := range i.Config.Env {
-		if strings.HasPrefix(e, "PACK_USER_ID=") {
-			uid = e[13:]
-		} else if strings.HasPrefix(e, "PACK_USER_GID=") {
-			gid = e[14:]
-		}
-	}
-	if uid == "" || gid == "" {
-		return "", errors.New("could not find PACK_USER_ID && PACK_USER_GID from run image")
-	}
-	return uid + ":" + gid, nil
-}
-
-func exportDaemon(cli Docker, buildpacks []string, workspaceVolume, repoName, runImage string, stdout io.Writer) error {
+func exportDaemon(cli Docker, buildpacks []string, workspaceVolume, repoName, runImage string, stdout io.Writer, uid, gid int) error {
 	ctx := context.Background()
 	ctr, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:      runImage,
@@ -115,12 +94,7 @@ func exportDaemon(cli Docker, buildpacks []string, workspaceVolume, repoName, ru
 		return errors.Wrap(err, "copy from container")
 	}
 
-	chownUser, err := runImageUIDGID(cli, ctx, runImage)
-	if err != nil {
-		return errors.Wrap(err, "export uid/gid")
-	}
-
-	r2, layerChan, errChan := addDockerfileToTar(chownUser, runImage, repoName, buildpacks, r)
+	r2, layerChan, errChan := addDockerfileToTar(uid, gid, runImage, repoName, buildpacks, r)
 
 	res, err := cli.ImageBuild(ctx, r2, dockertypes.ImageBuildOptions{Tags: []string{repoName}})
 	if err != nil {
@@ -209,7 +183,8 @@ type dockerfileLayer struct {
 	data      interface{}
 }
 
-func addDockerfileToTar(chownUser, runImage, repoName string, buildpacks []string, r io.Reader) (io.Reader, chan []dockerfileLayer, chan error) {
+func addDockerfileToTar(uid, gid int, runImage, repoName string, buildpacks []string, r io.Reader) (io.Reader, chan []dockerfileLayer, chan error) {
+	chownUser := fmt.Sprintf("%d:%d", uid, gid)
 	dockerFile := "FROM " + runImage + "\n"
 	dockerFile += fmt.Sprintf("ADD --chown=%s /workspace/app /workspace/app\n", chownUser)
 	dockerFile += fmt.Sprintf("ADD --chown=%s /workspace/config /workspace/config\n", chownUser)

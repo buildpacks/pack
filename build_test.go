@@ -517,14 +517,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					assertContains(t, metadata.Buildpacks[0].Layers["other"].SHA, "sha256:")
 				})
 
-				it("sets owner of layer files to PACK_USER_ID:PACK_USER_GID", func() {
+				it("sets owner of layer files to PACK_USER_ID:PACK_GROUP_ID", func() {
 					subject.RunImage = "packs/run-" + randString(8)
 					defer exec.Command("docker", "rmi", subject.RunImage)
 					cmd := exec.Command("docker", "build", "-t", subject.RunImage, "-")
 					cmd.Stdin = strings.NewReader(`
 						FROM packs/run
 						ENV PACK_USER_ID 1234
-						ENV PACK_USER_GID 5678
+						ENV PACK_GROUP_ID 5678
 					`)
 					assertNil(t, cmd.Run())
 
@@ -541,20 +541,37 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					cmd.Stdin = strings.NewReader(`
 						FROM packs/run
 						ENV PACK_USER_ID ''
-						ENV PACK_USER_GID 5678
+						ENV PACK_GROUP_ID 5678
 					`)
 					assertNil(t, cmd.Run())
 
 					err := subject.Export(group)
-					assertError(t, err, "export uid/gid: could not find PACK_USER_ID && PACK_USER_GID from run image")
+					assertError(t, err, "export: not found pack uid & gid")
+				})
+
+				it("falls back to PACK_USER_GID sets owner of layer files", func() {
+					subject.RunImage = "packs/run-" + randString(8)
+					defer exec.Command("docker", "rmi", subject.RunImage)
+					cmd := exec.Command("docker", "build", "-t", subject.RunImage, "-")
+					cmd.Stdin = strings.NewReader(`
+						FROM packs/run
+						ENV PACK_USER_ID 1234
+						ENV PACK_USER_GID 5678
+					`)
+					assertNil(t, cmd.Run())
+
+					assertNil(t, subject.Export(group))
+					txt, err := exec.Command("docker", "run", subject.RepoName, "ls", "-la", "/workspace/app/file.txt").Output()
+					assertNil(t, err)
+					assertContains(t, string(txt), " 1234 5678 ")
 				})
 			})
 		})
 
 		when("previous image exists", func() {
 			it("reuses images from previous layers", func() {
-				addLayer := "ADD --chown=pack:pack /workspace/io.buildpacks.samples.nodejs/mylayer /workspace/io.buildpacks.samples.nodejs/mylayer"
-				copyLayer := "COPY --from=prev --chown=pack:pack /workspace/io.buildpacks.samples.nodejs/mylayer /workspace/io.buildpacks.samples.nodejs/mylayer"
+				addLayer := "ADD --chown=1000:1000 /workspace/io.buildpacks.samples.nodejs/mylayer /workspace/io.buildpacks.samples.nodejs/mylayer"
+				copyLayer := "COPY --from=prev --chown=1000:1000 /workspace/io.buildpacks.samples.nodejs/mylayer /workspace/io.buildpacks.samples.nodejs/mylayer"
 
 				t.Log("create image and assert add new layer")
 				assertNil(t, subject.Export(group))
