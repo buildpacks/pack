@@ -229,50 +229,47 @@ func parseBuildpack(ref string) (string, string) {
 	return parts[0], "latest"
 }
 
+func (b *BuildConfig) copyBuildpacksToContainer(ctx context.Context, ctrID string) ([]*lifecycle.Buildpack, error) {
+	var buildpacks []*lifecycle.Buildpack
+	for _, bp := range b.Buildpacks {
+		var id, version string
+		if _, err := os.Stat(filepath.Join(bp, "buildpack.toml")); !os.IsNotExist(err) {
+			var buildpackTOML struct {
+				Buildpack struct {
+					ID      string `toml:"id"`
+					Version string `toml:"version"`
+				} `toml:"buildpack"`
+			}
+			_, err = toml.DecodeFile(filepath.Join(bp, "buildpack.toml"), &buildpackTOML)
+			if err != nil {
+				return nil, fmt.Errorf(`failed to decode buildpack.toml from "%s": %s`, bp, err)
+			}
+			id = buildpackTOML.Buildpack.ID
+			version = buildpackTOML.Buildpack.Version
+			bpDir := filepath.Join("/buildpacks", id, version)
+			ftr, errChan := b.FS.CreateTarReader(bp, bpDir, 0, 0)
+			if err := b.Cli.CopyToContainer(ctx, ctrID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
+				return nil, errors.Wrapf(err, "copying buildpack '%s' to container", bp)
+			}
+			if err := <-errChan; err != nil {
+				return nil, errors.Wrapf(err, "copying buildpack '%s' to container", bp)
+			}
+		} else {
+			id, version = parseBuildpack(bp)
+		}
+		buildpacks = append(
+			buildpacks,
+			&lifecycle.Buildpack{ID: id, Version: version, Optional: false},
+		)
+	}
+	return buildpacks, nil
+}
+
 func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
-	var orderToml string
-	if len(b.Buildpacks) == 0 {
-		fmt.Println("*** DETECTING:")
-		orderToml = "" // use order toml already in image
-	} else {
-		fmt.Println("*** DETECTING WITH MANUALLY-PROVIDED GROUP:")
-		var order struct {
-			Groups lifecycle.BuildpackOrder `toml:"groups"`
-		}
-		order.Groups = lifecycle.BuildpackOrder{
-			lifecycle.BuildpackGroup{
-				Buildpacks: []*lifecycle.Buildpack{},
-			},
-		}
-
-		for _, bp := range b.Buildpacks {
-			id, version := parseBuildpack(bp)
-			order.Groups[0].Buildpacks = append(
-				order.Groups[0].Buildpacks,
-				&lifecycle.Buildpack{ID: id, Version: version, Optional: false},
-			)
-		}
-
-		tomlBuilder := &strings.Builder{}
-		err := toml.NewEncoder(tomlBuilder).Encode(order)
-		if err != nil {
-			return nil, errors.Wrapf(err, "encoding order.toml: %#v", order)
-		}
-
-		orderToml = tomlBuilder.String()
-	}
-
-	var cmd []string
-	if orderToml != "" {
-		cmd = []string{"/lifecycle/detector", "-order", "/workspace/app/pack-order.toml"}
-	} else {
-		cmd = []string{"/lifecycle/detector"}
-	}
-
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
-		Cmd:   cmd,
+		Cmd:   []string{"/lifecycle/detector"},
 	}, &container.HostConfig{
 		Binds: []string{
 			b.WorkspaceVolume + ":/workspace",
@@ -282,6 +279,32 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 		return nil, errors.Wrap(err, "container create")
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+
+	var orderToml string
+	if len(b.Buildpacks) == 0 {
+		fmt.Fprintln(b.Stdout, "*** DETECTING:")
+		orderToml = "" // use order toml already in image
+	} else {
+		fmt.Fprintln(b.Stdout, "*** DETECTING WITH MANUALLY-PROVIDED GROUP:")
+
+		buildpacks, err := b.copyBuildpacksToContainer(ctx, ctr.ID)
+		if err != nil {
+			return nil, errors.Wrap(err, "copy buildpacks to container")
+		}
+
+		groups := lifecycle.BuildpackOrder{
+			lifecycle.BuildpackGroup{
+				Buildpacks: buildpacks,
+			},
+		}
+
+		var tomlBuilder strings.Builder
+		if err := toml.NewEncoder(&tomlBuilder).Encode(map[string]interface{}{"groups": groups}); err != nil {
+			return nil, errors.Wrapf(err, "encoding order.toml: %#v", groups)
+		}
+
+		orderToml = tomlBuilder.String()
+	}
 
 	uid, gid, err := b.packUidGid(b.Builder)
 	if err != nil {
@@ -301,12 +324,12 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 	}
 
 	if orderToml != "" {
-		ftr, err := b.FS.CreateSingleFileTar("/workspace/app/pack-order.toml", orderToml)
+		ftr, err := b.FS.CreateSingleFileTar("/buildpacks/order.toml", orderToml)
 		if err != nil {
 			return nil, errors.Wrap(err, "converting order TOML to tar reader")
 		}
 		if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
-			return nil, errors.Wrap(err, "creating /workspace/app/pack-order.toml")
+			return nil, errors.Wrap(err, "creating /buildpacks/order.toml")
 		}
 	}
 
@@ -391,6 +414,13 @@ func (b *BuildConfig) Build() error {
 		return errors.Wrap(err, "build container create")
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+
+	if len(b.Buildpacks) > 0 {
+		_, err = b.copyBuildpacksToContainer(ctx, ctr.ID)
+		if err != nil {
+			return errors.Wrap(err, "copy buildpacks to container")
+		}
+	}
 
 	return b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr)
 }

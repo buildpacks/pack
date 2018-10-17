@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -35,9 +36,11 @@ import (
 
 func TestBuild(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
+
 	assertNil(t, exec.Command("docker", "pull", "registry:2").Run())
 	assertNil(t, exec.Command("docker", "pull", "packs/samples").Run())
 	assertNil(t, exec.Command("docker", "pull", "packs/run").Run())
+
 	spec.Run(t, "build", testBuild, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -303,6 +306,54 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				assertEq(t, err.Error(), "run detect container: failed with status code: 6")
 			})
 		})
+
+		when("buildpacks are specified", func() {
+			when("directory buildpack", func() {
+				var bpDir string
+				it.Before(func() {
+					var err error
+					bpDir, err = ioutil.TempDir("/tmp", "pack.build.bpdir.")
+					assertNil(t, err)
+					assertNil(t, ioutil.WriteFile(filepath.Join(bpDir, "buildpack.toml"), []byte(`
+					[buildpack]
+					id = "com.example.mybuildpack"
+					version = "1.2.3"
+					name = "My Sample Buildpack"
+
+					[[stacks]]
+					id = "io.buildpacks.stacks.bionic"
+					`), 0666))
+					assertNil(t, os.MkdirAll(filepath.Join(bpDir, "bin"), 0777))
+					assertNil(t, ioutil.WriteFile(filepath.Join(bpDir, "bin", "detect"), []byte(`#!/usr/bin/env bash
+					exit 0
+					`), 0777))
+				})
+				it.After(func() { os.RemoveAll(bpDir) })
+
+				it("copies directories to workspace and sets order.toml", func() {
+					subject.Buildpacks = []string{
+						bpDir,
+					}
+
+					_, err := subject.Detect()
+					assertNil(t, err)
+
+					assertMatch(t, buf.String(), regexp.MustCompile(`DETECTING WITH MANUALLY-PROVIDED GROUP:\n[0-9\s:\/]* Group: My Sample Buildpack: pass\n`))
+				})
+			})
+			when("id@version buildpack", func() {
+				it("symlinks directories to workspace and sets order.toml", func() {
+					subject.Buildpacks = []string{
+						"io.buildpacks.samples.nodejs@latest",
+					}
+
+					_, err := subject.Detect()
+					assertNil(t, err)
+
+					assertMatch(t, buf.String(), regexp.MustCompile(`DETECTING WITH MANUALLY-PROVIDED GROUP:\n[0-9\s:\/]* Group: Sample Node.js Buildpack: pass\n`))
+				})
+			})
+		})
 	})
 
 	when("#Analyze", func() {
@@ -400,6 +451,60 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					txt := readFromDocker(t, subject.WorkspaceVolume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 					assertEq(t, txt, "lock_checksum = \"eb04ed1b461f1812f0f4233ef997cdb5\"\n")
+				})
+			})
+		})
+	})
+
+	when("#Build", func() {
+		when("buildpacks are specified", func() {
+			when("directory buildpack", func() {
+				var bpDir string
+				it.Before(func() {
+					var err error
+					bpDir, err = ioutil.TempDir("/tmp", "pack.build.bpdir.")
+					assertNil(t, err)
+					assertNil(t, ioutil.WriteFile(filepath.Join(bpDir, "buildpack.toml"), []byte(`
+					[buildpack]
+					id = "com.example.mybuildpack"
+					version = "1.2.3"
+					name = "My Sample Buildpack"
+
+					[[stacks]]
+					id = "io.buildpacks.stacks.bionic"
+					`), 0666))
+					assertNil(t, os.MkdirAll(filepath.Join(bpDir, "bin"), 0777))
+					assertNil(t, ioutil.WriteFile(filepath.Join(bpDir, "bin", "detect"), []byte(`#!/usr/bin/env bash
+					exit 0
+					`), 0777))
+					assertNil(t, ioutil.WriteFile(filepath.Join(bpDir, "bin", "build"), []byte(`#!/usr/bin/env bash
+					echo "BUILD OUTPUT FROM MY SAMPLE BUILDPACK"
+					exit 0
+					`), 0777))
+				})
+				it.After(func() { os.RemoveAll(bpDir) })
+
+				it("runs the buildpacks bin/build", func() {
+					subject.Buildpacks = []string{bpDir}
+					_, err := subject.Detect()
+					assertNil(t, err)
+
+					err = subject.Build()
+					assertNil(t, err)
+
+					assertContains(t, buf.String(), "BUILD OUTPUT FROM MY SAMPLE BUILDPACK")
+				})
+			})
+			when("id@version buildpack", func() {
+				it("runs the buildpacks bin/build", func() {
+					subject.Buildpacks = []string{"io.buildpacks.samples.nodejs@latest"}
+					_, err := subject.Detect()
+					assertNil(t, err)
+
+					err = subject.Build()
+					assertNil(t, err)
+
+					assertContains(t, buf.String(), "npm notice created a lockfile as package-lock.json. You should commit this file.")
 				})
 			})
 		})
@@ -611,6 +716,13 @@ func assertSameInstance(t *testing.T, actual, expected interface{}) {
 	t.Helper()
 	if actual != expected {
 		t.Fatalf("Expected %s and %s to be pointers to the variable", actual, expected)
+	}
+}
+
+func assertMatch(t *testing.T, actual string, expected *regexp.Regexp) {
+	t.Helper()
+	if !expected.Match([]byte(actual)) {
+		t.Fatal(cmp.Diff(actual, expected))
 	}
 }
 
