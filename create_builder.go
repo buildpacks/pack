@@ -3,6 +3,7 @@ package pack
 import (
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -144,10 +145,6 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
 	Latest bool   `toml:"latest"`
 }) (Buildpack, error) {
 
-	tmpDir, err := ioutil.TempDir("", fmt.Sprintf("create-builder-%s-", b.ID))
-	if err != nil {
-		return Buildpack{}, fmt.Errorf(`failed to create temporary directory: %s`, err)
-	}
 
 	var dir string
 
@@ -171,6 +168,10 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
 				return Buildpack{}, errors.Wrapf(err, "could not open file to untar: %q", path)
 			}
 			defer file.Close()
+			tmpDir, err := ioutil.TempDir("", fmt.Sprintf("create-builder-%s-", b.ID))
+			if err != nil {
+				return Buildpack{}, fmt.Errorf(`failed to create temporary directory: %s`, err)
+			}
 			if err = f.untarZ(file, tmpDir); err != nil {
 				return Buildpack{}, err
 			}
@@ -179,14 +180,38 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
 			dir = path
 		}
 	case "http", "https":
-		reader, err := downloadAsStream(b.URI)
+		uriDigest := fmt.Sprintf("%x", sha256.Sum256([]byte(b.URI)))
+		cachedDir := filepath.Join(f.Config.Path(), "dl-cache", uriDigest)
+		_, err := os.Stat(cachedDir)
+		if os.IsNotExist(err) {
+			if err = os.MkdirAll(cachedDir, 0744) ; err != nil {
+				return  Buildpack{}, err
+			}
+		}
+		etagFile := cachedDir + ".etag"
+		bytes, err := ioutil.ReadFile(etagFile)
+		etag := ""
+		if err == nil {
+			etag = string(bytes)
+		}
+
+		reader, etag, err := f.downloadAsStream(b.URI, etag)
 		if err != nil {
 			return Buildpack{}, errors.Wrapf(err, "failed to download from %q", b.URI)
+		} else if reader == nil {
+			// can use cached content
+			dir = cachedDir
+			break
+		} else {
+			if err = f.untarZ(reader, cachedDir); err != nil {
+				return Buildpack{}, err
+			}
+			if err = ioutil.WriteFile(etagFile, []byte(etag), 0744) ; err != nil {
+				return Buildpack{}, err
+			}
 		}
-		if err = f.untarZ(reader, tmpDir); err != nil {
-			return Buildpack{}, err
-		}
-		dir = tmpDir
+
+		dir = cachedDir
 	default:
 		return Buildpack{}, fmt.Errorf("unsupported protocol in uri %q", b.URI)
 	}
@@ -354,15 +379,26 @@ func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir st
 	return tarFile, err
 }
 
-func downloadAsStream(uri string) (io.Reader, error) {
+func (f *BuilderFactory) downloadAsStream(uri string, etag string) (io.Reader, string, error) {
 	c := http.Client{}
-	if resp, err := c.Get(uri); err != nil {
-		return nil, err
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		return nil, "", err
+	}
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
+	if resp, err := c.Do(req); err != nil {
+		return nil, "", err
 	} else {
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			return resp.Body, nil
+			f.Log.Printf("Downloading from %q\n", uri)
+			return resp.Body, resp.Header.Get("Etag"), nil
+		} else if resp.StatusCode == 304 {
+			f.Log.Printf("Using cached version of %q\n", uri)
+			return nil, etag, nil
 		} else {
-			return nil, fmt.Errorf("could not download from %q, code http status %d", uri, resp.StatusCode)
+			return nil, "", fmt.Errorf("could not download from %q, code http status %d", uri, resp.StatusCode)
 		}
 	}
 }
