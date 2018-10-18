@@ -1,7 +1,7 @@
 package acceptance
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -15,12 +15,16 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack/docker"
 )
 
 var pack string
+var dockerCli *docker.Client
 
 func TestPack(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -39,21 +43,22 @@ func TestPack(t *testing.T) {
 		defer os.RemoveAll(packTmpDir)
 	}
 
-	NewDockerDaemon().Pull(t, "registry", "2")
-	NewDockerDaemon().Pull(t, "sclevine/test", "latest")
+	var err error
+	dockerCli, err = docker.New()
+	assertNil(t, err)
+	assertNil(t, dockerCli.PullImage("registry:2"))
+	assertNil(t, dockerCli.PullImage("sclevine/test"))
 
 	spec.Run(t, "pack", testPack, spec.Report(report.Terminal{}))
 }
 
 func testPack(t *testing.T, when spec.G, it spec.S) {
 	var homeDir string
-	var docker *DockerDaemon
 
 	it.Before(func() {
 		if _, err := os.Stat(pack); os.IsNotExist(err) {
 			t.Fatal("No file found at PACK_PATH environment variable:", pack)
 		}
-		docker = NewDockerDaemon()
 
 		var err error
 		homeDir, err = ioutil.TempDir("", "buildpack.pack.build.homedir.")
@@ -105,8 +110,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			containerName = "test-" + randString(10)
 		})
 		it.After(func() {
-			docker.Kill(containerName, registryContainerName)
-			docker.RemoveImage(repoName)
+			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
+			dockerCli.ContainerKill(context.TODO(), registryContainerName, "SIGKILL")
+			dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
 			if sourceCodePath != "" {
 				os.RemoveAll(sourceCodePath)
 			}
@@ -191,7 +197,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				t.Log("run image:", repoName)
-				docker.Pull(t, repoName, imgSHA)
+				assertNil(t, dockerCli.PullImage(repoName+"@"+imgSHA))
 				run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", fmt.Sprintf("%s@%s", repoName, imgSHA)))
 				launchPort := fetchHostPort(t, containerName)
 
@@ -223,12 +229,12 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it.After(func() {
-			docker.Kill(containerName)
-			docker.RemoveImage(builderRepoName)
+			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
+			dockerCli.ImageRemove(context.TODO(), builderRepoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
 		})
 
 		it("builds and exports an image", func() {
-			NewDockerDaemon().Pull(t, "packs/build", "latest") // TODO: control version, 'latest' is not stable across test runs.
+			assertNil(t, dockerCli.PullImage("packs/build")) // TODO: control version, 'latest' is not stable across test runs.
 
 			builderTOML := filepath.Join("testdata", "mock_buildpacks", "builder.toml")
 			sourceCodePath := filepath.Join("testdata", "mock_app")
@@ -479,25 +485,14 @@ func fetch(t *testing.T, url string) string {
 func fetchHostPort(t *testing.T, dockerID string) string {
 	t.Helper()
 
-	body, _, err := NewDockerDaemon().Do("GET", fmt.Sprintf("/containers/%s/json", dockerID), nil, nil)
-	if err != nil {
-		t.Fatalf("Failed to fetch host port for %s: %s", dockerID, err)
-	}
-	var out struct {
-		NetworkSettings struct {
-			Ports map[string][]struct {
-				HostPort string
-			}
+	i, err := dockerCli.ContainerInspect(context.Background(), dockerID)
+	assertNil(t, err)
+	for _, port := range i.NetworkSettings.Ports {
+		for _, binding := range port {
+			return binding.HostPort
 		}
 	}
-	if err := json.NewDecoder(body).Decode(&out); err != nil {
-		t.Fatalf("Failed to fetch host port for %s: %s", dockerID, err)
-	}
-	for _, p := range out.NetworkSettings.Ports {
-		if len(p) > 0 {
-			return p[0].HostPort
-		}
-	}
+
 	t.Fatalf("Failed to fetch host port for %s: no ports exposed", dockerID)
 	return ""
 }
