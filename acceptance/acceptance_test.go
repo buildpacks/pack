@@ -240,26 +240,32 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			sourceCodePath := filepath.Join("testdata", "mock_app")
 
 			t.Log("create builder image")
-			run(t, exec.Command(
+			cmd := exec.Command(
 				pack, "create-builder",
 				builderRepoName, "-b",
 				builderTOML, "--no-pull",
-			))
+			)
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			run(t, cmd)
 
 			t.Log("build uses order defined in builder.toml")
-			buildOutput := run(t, exec.Command(
+			cmd = exec.Command(
 				pack, "build", repoName,
 				"--builder", builderRepoName,
 				"--no-pull",
 				"--path", sourceCodePath,
-			))
+			)
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			buildOutput := run(t, cmd)
 			expectedDetectOutput := "First Mock Buildpack: pass | Second Mock Buildpack: pass | Third Mock Buildpack: pass"
 			if !strings.Contains(buildOutput, expectedDetectOutput) {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, expectedDetectOutput, buildOutput)
 			}
 
 			t.Log("run app container")
-			runOutput := run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", repoName))
+			cmd = exec.Command("docker", "run", "--name="+containerName, "--rm=true", repoName)
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			runOutput := run(t, cmd)
 			if !strings.Contains(runOutput, "First Dep Contents") {
 				t.Fatalf(`Expected output to contain "First Dep Contents", got "%s"`, runOutput)
 			}
@@ -271,14 +277,16 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			t.Log("build with multiple --buildpack flags")
-			buildOutput = run(t, exec.Command(
+			cmd = exec.Command(
 				pack, "build", repoName,
 				"--builder", builderRepoName,
 				"--no-pull",
 				"--buildpack", "mock.bp.first",
 				"--buildpack", "mock.bp.third@0.0.3-mock",
 				"--path", sourceCodePath,
-			))
+			)
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			buildOutput = run(t, cmd)
 			latestInfo := `No version for 'mock.bp.first' buildpack provided, will use 'mock.bp.first@latest'`
 			if !strings.Contains(buildOutput, latestInfo) {
 				t.Fatalf(`expected build output to contain "%s", got "%s"`, latestInfo, buildOutput)
@@ -289,7 +297,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			t.Log("run app container")
-			runOutput = run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", repoName))
+			cmd = exec.Command("docker", "run", "--name="+containerName, "--rm=true", repoName)
+			cmd.Env = append(os.Environ(), "HOME="+homeDir)
+			runOutput = run(t, cmd)
 			if !strings.Contains(runOutput, "Latest First Dep Contents") {
 				t.Fatalf(`Expected output to contain "First Dep Contents", got "%s"`, runOutput)
 			}
