@@ -2,8 +2,9 @@ package image
 
 import (
 	"github.com/buildpack/lifecycle/img"
-	"github.com/buildpack/packs"
 	"github.com/google/go-containerregistry/pkg/v1"
+
+	"github.com/buildpack/packs"
 )
 
 type Client struct{}

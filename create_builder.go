@@ -8,20 +8,21 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/img"
-	"github.com/buildpack/pack/config"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
-	"net/http"
-	"net/url"
+
+	"github.com/buildpack/pack/config"
 )
 
 type BuilderTOML struct {
@@ -145,7 +146,6 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
 	Latest bool   `toml:"latest"`
 }) (Buildpack, error) {
 
-
 	var dir string
 
 	asurl, err := url.Parse(b.URI)
@@ -153,7 +153,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
 		return Buildpack{}, err
 	}
 	switch asurl.Scheme {
-	case "",    // This is the only way to support relative filepaths
+	case "", // This is the only way to support relative filepaths
 		"file": // URIs with file:// protocol force the use of absolute paths. Host=localhost may be implied with file:///
 
 		path := asurl.Path
@@ -184,8 +184,8 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
 		cachedDir := filepath.Join(f.Config.Path(), "dl-cache", uriDigest)
 		_, err := os.Stat(cachedDir)
 		if os.IsNotExist(err) {
-			if err = os.MkdirAll(cachedDir, 0744) ; err != nil {
-				return  Buildpack{}, err
+			if err = os.MkdirAll(cachedDir, 0744); err != nil {
+				return Buildpack{}, err
 			}
 		}
 		etagFile := cachedDir + ".etag"
@@ -206,7 +206,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
 			if err = f.untarZ(reader, cachedDir); err != nil {
 				return Buildpack{}, err
 			}
-			if err = ioutil.WriteFile(etagFile, []byte(etag), 0744) ; err != nil {
+			if err = ioutil.WriteFile(etagFile, []byte(etag), 0744); err != nil {
 				return Buildpack{}, err
 			}
 		}

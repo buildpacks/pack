@@ -7,15 +7,16 @@ import (
 	"log"
 	"testing"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/mocks"
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/golang/mock/gomock"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/mocks"
 )
 
 func TestRebase(t *testing.T) {

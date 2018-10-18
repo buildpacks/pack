@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/buildpack/pack/config"
 	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/config"
 )
 
 type RebaseConfig struct {
@@ -112,7 +113,6 @@ func (f *RebaseFactory) Rebase(cfg RebaseConfig) error {
 	if err != nil {
 		return err
 	}
-
 
 	if err := cfg.Repo.Write(newImage); err != nil {
 		return err

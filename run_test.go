@@ -13,10 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/fs"
-	"github.com/buildpack/pack/mocks"
 	"github.com/docker/docker/api/types"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -25,6 +21,11 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/fs"
+	"github.com/buildpack/pack/mocks"
 )
 
 func TestRun(t *testing.T) {

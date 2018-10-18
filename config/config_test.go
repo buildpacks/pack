@@ -7,10 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/buildpack/pack/config"
 	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack/config"
 )
 
 func TestConfig(t *testing.T) {

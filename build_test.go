@@ -16,12 +16,6 @@ import (
 	"time"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/fs"
-	"github.com/buildpack/pack/image"
-	"github.com/buildpack/pack/mocks"
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/golang/mock/gomock"
@@ -30,6 +24,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/docker"
+	"github.com/buildpack/pack/fs"
+	"github.com/buildpack/pack/image"
+	"github.com/buildpack/pack/mocks"
 )
 
 func TestBuild(t *testing.T) {

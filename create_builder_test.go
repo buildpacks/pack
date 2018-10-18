@@ -14,15 +14,16 @@ import (
 	"time"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/fs"
-	"github.com/buildpack/pack/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/fs"
+	"github.com/buildpack/pack/mocks"
 )
 
 func TestCreateBuilder(t *testing.T) {
@@ -67,7 +68,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			}); err != nil {
 				t.Fatalf("failed to create config: %v", err)
 			}
-			if err = cfg.SetDefaultStack("some.default.stack") ; err != nil {
+			if err = cfg.SetDefaultStack("some.default.stack"); err != nil {
 				t.Fatalf("failed to create config: %v", err)
 			}
 

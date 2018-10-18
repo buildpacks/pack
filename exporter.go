@@ -11,17 +11,16 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/buildpack/pack/image"
-
-	"github.com/buildpack/pack/fs"
-
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/img"
-	"github.com/buildpack/packs"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/fs"
+	"github.com/buildpack/pack/image"
+	"github.com/buildpack/packs"
 )
 
 func exportRegistry(group *lifecycle.BuildpackGroup, workspaceDir, repoName, stackName string, stdout, stderr io.Writer) (string, error) {

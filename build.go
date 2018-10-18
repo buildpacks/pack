@@ -14,20 +14,19 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/buildpack/pack/image"
-
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/fs"
-
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/pack/docker"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/docker"
+	"github.com/buildpack/pack/fs"
+	"github.com/buildpack/pack/image"
 )
 
 type BuildFactory struct {
