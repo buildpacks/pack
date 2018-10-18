@@ -136,6 +136,12 @@ func (c *Config) SetDefaultStack(stackID string) error {
 	return fmt.Errorf(`"%s" does not exist. Please pass in a valid stack ID.`, stackID)
 }
 
+// Path returns the directory path where the config is stored as a toml file.
+// That directory may also contain other `pack` related files.
+func (c *Config) Path() string {
+	return filepath.Dir(c.configPath)
+}
+
 func ImageByRegistry(registry string, images []string) (string, error) {
 	if len(images) == 0 {
 		return "", errors.New("empty images")

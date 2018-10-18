@@ -46,25 +46,36 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDocker = mocks.NewMockDocker(mockController)
 			mockImages = mocks.NewMockImages(mockController)
 
+			home, err := ioutil.TempDir("", ".pack")
+			if err != nil {
+				t.Fatalf("failed to create temp homedir: %v", err)
+			}
+			cfg, err := config.New(home)
+			if err != nil {
+				t.Fatalf("failed to create config: %v", err)
+			}
+			if err = cfg.Add(config.Stack{
+				ID:          "some.default.stack",
+				BuildImages: []string{"default/build", "registry.com/build/image"},
+				RunImages:   []string{"default/run"},
+			}); err != nil {
+				t.Fatalf("failed to create config: %v", err)
+			}
+			if err = cfg.Add(config.Stack{ID: "some.other.stack",
+				BuildImages: []string{"other/build"},
+				RunImages:   []string{"other/run"},
+			}); err != nil {
+				t.Fatalf("failed to create config: %v", err)
+			}
+			if err = cfg.SetDefaultStack("some.default.stack") ; err != nil {
+				t.Fatalf("failed to create config: %v", err)
+			}
+
 			factory = pack.BuilderFactory{
 				FS:     &fs.FS{},
 				Docker: mockDocker,
 				Log:    log.New(&buf, "", log.LstdFlags),
-				Config: &config.Config{
-					DefaultStackID: "some.default.stack",
-					Stacks: []config.Stack{
-						{
-							ID:          "some.default.stack",
-							BuildImages: []string{"default/build", "registry.com/build/image"},
-							RunImages:   []string{"default/run"},
-						},
-						{
-							ID:          "some.other.stack",
-							BuildImages: []string{"other/build"},
-							RunImages:   []string{"other/run"},
-						},
-					},
-				},
+				Config: cfg,
 				Images: mockImages,
 			}
 
