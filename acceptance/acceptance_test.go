@@ -128,7 +128,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				launchPort := fetchHostPort(t, containerName)
 
 				time.Sleep(5 * time.Second)
-				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked!")
+				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked! - 1000:1000")
 
 				t.Log("Checking that registry is empty")
 				contents := fetch(t, fmt.Sprintf("http://localhost:%s/v2/_catalog", registryPort))
@@ -202,7 +202,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				launchPort := fetchHostPort(t, containerName)
 
 				time.Sleep(5 * time.Second)
-				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked!")
+				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked! - 1000:1000")
 
 				t.Log("uses the cache on subsequent run")
 				output = runPackBuild()
