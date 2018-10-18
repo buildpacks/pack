@@ -394,6 +394,11 @@ func (b *BuildConfig) Build() error {
 }
 
 func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
+	uid, gid, err := b.packUidGid(b.RunImage)
+	if err != nil {
+		return errors.Wrap(err, "export")
+	}
+
 	if b.Publish {
 		localWorkspaceDir, cleanup, err := b.exportVolume(b.Builder, b.WorkspaceVolume)
 		if err != nil {
@@ -401,7 +406,7 @@ func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
 		}
 		defer cleanup()
 
-		imgSHA, err := exportRegistry(group, localWorkspaceDir, b.RepoName, b.RunImage, b.Stdout, b.Stderr)
+		imgSHA, err := exportRegistry(group, uid, gid, localWorkspaceDir, b.RepoName, b.RunImage, b.Stdout, b.Stderr)
 		if err != nil {
 			return err
 		}
@@ -410,11 +415,6 @@ func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
 		var buildpacks []string
 		for _, b := range group.Buildpacks {
 			buildpacks = append(buildpacks, b.ID)
-		}
-
-		uid, gid, err := b.packUidGid(b.RunImage)
-		if err != nil {
-			return errors.Wrap(err, "export")
 		}
 
 		if err := exportDaemon(b.Cli, buildpacks, b.WorkspaceVolume, b.RepoName, b.RunImage, b.Stdout, uid, gid); err != nil {

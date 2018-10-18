@@ -2,7 +2,7 @@ module github.com/buildpack/pack
 
 require (
 	github.com/BurntSushi/toml v0.3.0
-	github.com/buildpack/lifecycle v0.0.0-20181011114133-95ef09f241cc
+	github.com/buildpack/lifecycle v0.0.0-20181011114133-50cfd4a07e58afc6b903611b5963f9825fd68af0
 	github.com/buildpack/packs v0.0.0-20180824001031-aa30a412923763df37e83f14a6e4e0fe07e11f25
 	github.com/docker/docker v0.7.3-0.20180531152204-71cd53e4a197
 	github.com/docker/go-connections v0.4.0
