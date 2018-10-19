@@ -69,6 +69,8 @@ type BuildConfig struct {
 	CacheVolume     string
 }
 
+const defaultLaunchDir = "/workspace"
+
 func DefaultBuildFactory() (*BuildFactory, error) {
 	f := &BuildFactory{
 		Stdout: os.Stdout,

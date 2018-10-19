@@ -23,16 +23,16 @@ import (
 	"github.com/buildpack/packs"
 )
 
-func exportRegistry(group *lifecycle.BuildpackGroup, uid, gid int, workspaceDir, repoName, stackName string, stdout, stderr io.Writer) (string, error) {
+func exportRegistry(group *lifecycle.BuildpackGroup, uid, gid int, launchDirSrc, repoName, runImage string, stdout, stderr io.Writer) (string, error) {
 	images := &image.Client{}
 	origImage, err := images.ReadImage(repoName, false)
 	if err != nil {
 		return "", err
 	}
 
-	stackImage, err := images.ReadImage(stackName, false)
+	stackImage, err := images.ReadImage(runImage, false)
 	if err != nil || stackImage == nil {
-		return "", packs.FailErr(err, "get image for", stackName)
+		return "", packs.FailErr(err, "get image for", runImage)
 	}
 
 	repoStore, err := img.NewRegistry(repoName)
@@ -55,7 +55,8 @@ func exportRegistry(group *lifecycle.BuildpackGroup, uid, gid int, workspaceDir,
 		GID:        gid,
 	}
 	newImage, err := exporter.Export(
-		workspaceDir,
+		launchDirSrc,
+		defaultLaunchDir,
 		stackImage,
 		origImage,
 	)
