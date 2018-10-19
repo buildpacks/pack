@@ -7,8 +7,8 @@ github.com/Microsoft/go-winio v0.4.9/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyv
 github.com/Microsoft/go-winio v0.4.11 h1:zoIOcVf0xPN1tnMVbTtEdI+P8OofVk3NObnwOQ6nK2Q=
 github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/aws/aws-sdk-go v1.15.2/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZoCYDt7FT0=
-github.com/buildpack/lifecycle v0.0.0-20181011114133-95ef09f241cc h1:WdPXFkg1RI9Pvtev+DU4SyLSWZ0Rb2DzZv9ihXruARc=
-github.com/buildpack/lifecycle v0.0.0-20181011114133-95ef09f241cc/go.mod h1:rmQIWPE7ORJsSn/gHoT5fQAbsK7zV0X9yttd0cuGv5M=
+github.com/buildpack/lifecycle v0.0.0-20181011114133-50cfd4a07e58afc6b903611b5963f9825fd68af0 h1:XtnaP3JhxGFf7jeGheMozHsXY2d19+XPL2SSGO5q568=
+github.com/buildpack/lifecycle v0.0.0-20181011114133-50cfd4a07e58afc6b903611b5963f9825fd68af0/go.mod h1:rmQIWPE7ORJsSn/gHoT5fQAbsK7zV0X9yttd0cuGv5M=
 github.com/buildpack/packs v0.0.0-20180824001031-aa30a412923763df37e83f14a6e4e0fe07e11f25 h1:gaFgBRK9mKLhfH26GLqMYmriWawmcUvYYgta73tHVJ4=
 github.com/buildpack/packs v0.0.0-20180824001031-aa30a412923763df37e83f14a6e4e0fe07e11f25/go.mod h1:jcquCT5a2gbyJw8WMkfgq36g7yc5VDSABVnCctIUKs8=
 github.com/cpuguy83/go-md2man v1.0.8/go.mod h1:N6JayAiVKtlHSnuTCeuLSQVs75hb8q+dYQLjr7cDsKY=

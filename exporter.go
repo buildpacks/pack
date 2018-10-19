@@ -23,7 +23,7 @@ import (
 	"github.com/buildpack/packs"
 )
 
-func exportRegistry(group *lifecycle.BuildpackGroup, workspaceDir, repoName, stackName string, stdout, stderr io.Writer) (string, error) {
+func exportRegistry(group *lifecycle.BuildpackGroup, uid, gid int, workspaceDir, repoName, stackName string, stdout, stderr io.Writer) (string, error) {
 	images := &image.Client{}
 	origImage, err := images.ReadImage(repoName, false)
 	if err != nil {
@@ -51,6 +51,8 @@ func exportRegistry(group *lifecycle.BuildpackGroup, workspaceDir, repoName, sta
 		TmpDir:     tmpDir,
 		Out:        stdout,
 		Err:        stderr,
+		UID:        uid,
+		GID:        gid,
 	}
 	newImage, err := exporter.Export(
 		workspaceDir,
@@ -73,7 +75,7 @@ func exportRegistry(group *lifecycle.BuildpackGroup, workspaceDir, repoName, sta
 	return sha.String(), nil
 }
 
-func exportDaemon(cli Docker, buildpacks []string, workspaceVolume, repoName, runImage string, stdout io.Writer) error {
+func exportDaemon(cli Docker, buildpacks []string, workspaceVolume, repoName, runImage string, stdout io.Writer, uid, gid int) error {
 	ctx := context.Background()
 	ctr, err := cli.ContainerCreate(ctx, &container.Config{
 		Image:      runImage,
@@ -94,7 +96,7 @@ func exportDaemon(cli Docker, buildpacks []string, workspaceVolume, repoName, ru
 		return errors.Wrap(err, "copy from container")
 	}
 
-	r2, layerChan, errChan := addDockerfileToTar(runImage, repoName, buildpacks, r)
+	r2, layerChan, errChan := addDockerfileToTar(uid, gid, runImage, repoName, buildpacks, r)
 
 	res, err := cli.ImageBuild(ctx, r2, dockertypes.ImageBuildOptions{Tags: []string{repoName}})
 	if err != nil {
@@ -183,10 +185,11 @@ type dockerfileLayer struct {
 	data      interface{}
 }
 
-func addDockerfileToTar(runImage, repoName string, buildpacks []string, r io.Reader) (io.Reader, chan []dockerfileLayer, chan error) {
+func addDockerfileToTar(uid, gid int, runImage, repoName string, buildpacks []string, r io.Reader) (io.Reader, chan []dockerfileLayer, chan error) {
+	chownUser := fmt.Sprintf("%d:%d", uid, gid)
 	dockerFile := "FROM " + runImage + "\n"
-	dockerFile += "ADD --chown=pack:pack /workspace/app /workspace/app\n"
-	dockerFile += "ADD --chown=pack:pack /workspace/config /workspace/config\n"
+	dockerFile += fmt.Sprintf("ADD --chown=%s /workspace/app /workspace/app\n", chownUser)
+	dockerFile += fmt.Sprintf("ADD --chown=%s /workspace/config /workspace/config\n", chownUser)
 	layerChan := make(chan []dockerfileLayer, 1)
 	var layerNames []dockerfileLayer
 	errChan := make(chan error, 1)
@@ -263,9 +266,9 @@ func addDockerfileToTar(runImage, repoName string, buildpacks []string, r io.Rea
 			for _, layer := range layers {
 				layerNames = append(layerNames, dockerfileLayer{buildpack, layer, tomlFiles[buildpack][layer]})
 				if dirs[buildpack][layer] {
-					dockerFile += fmt.Sprintf("ADD --chown=pack:pack /workspace/%s/%s /workspace/%s/%s\n", buildpack, layer, buildpack, layer)
+					dockerFile += fmt.Sprintf("ADD --chown=%s /workspace/%s/%s /workspace/%s/%s\n", chownUser, buildpack, layer, buildpack, layer)
 				} else {
-					dockerFile += fmt.Sprintf("COPY --from=prev --chown=pack:pack /workspace/%s/%s /workspace/%s/%s\n", buildpack, layer, buildpack, layer)
+					dockerFile += fmt.Sprintf("COPY --from=prev --chown=%s /workspace/%s/%s /workspace/%s/%s\n", chownUser, buildpack, layer, buildpack, layer)
 					copyFromPrev = true
 				}
 			}

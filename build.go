@@ -394,6 +394,11 @@ func (b *BuildConfig) Build() error {
 }
 
 func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
+	uid, gid, err := b.packUidGid(b.RunImage)
+	if err != nil {
+		return errors.Wrap(err, "export")
+	}
+
 	if b.Publish {
 		localWorkspaceDir, cleanup, err := b.exportVolume(b.Builder, b.WorkspaceVolume)
 		if err != nil {
@@ -401,7 +406,7 @@ func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
 		}
 		defer cleanup()
 
-		imgSHA, err := exportRegistry(group, localWorkspaceDir, b.RepoName, b.RunImage, b.Stdout, b.Stderr)
+		imgSHA, err := exportRegistry(group, uid, gid, localWorkspaceDir, b.RepoName, b.RunImage, b.Stdout, b.Stderr)
 		if err != nil {
 			return err
 		}
@@ -412,7 +417,7 @@ func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
 			buildpacks = append(buildpacks, b.ID)
 		}
 
-		if err := exportDaemon(b.Cli, buildpacks, b.WorkspaceVolume, b.RepoName, b.RunImage, b.Stdout); err != nil {
+		if err := exportDaemon(b.Cli, buildpacks, b.WorkspaceVolume, b.RepoName, b.RunImage, b.Stdout, uid, gid); err != nil {
 			return err
 		}
 	}
@@ -456,25 +461,30 @@ func (b *BuildConfig) packUidGid(builder string) (int, int, error) {
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "reading builder env variables")
 	}
-	var found, uid, gid int
+	var sUID, sGID string
 	for _, kv := range i.Config.Env {
 		kv2 := strings.SplitN(kv, "=", 2)
 		if len(kv2) == 2 && kv2[0] == "PACK_USER_ID" {
-			uid, err = strconv.Atoi(kv2[1])
-			if err != nil {
-				return 0, 0, errors.Wrapf(err, "parsing pack uid: %s", kv2[1])
-			}
-			found++
+			sUID = kv2[1]
+		} else if len(kv2) == 2 && kv2[0] == "PACK_GROUP_ID" {
+			sGID = kv2[1]
 		} else if len(kv2) == 2 && kv2[0] == "PACK_USER_GID" {
-			gid, err = strconv.Atoi(kv2[1])
-			if err != nil {
-				return 0, 0, errors.Wrapf(err, "parsing pack gid: %s", kv2[1])
+			if sGID == "" {
+				sGID = kv2[1]
 			}
-			found++
 		}
 	}
-	if found < 2 {
-		return uid, gid, errors.New("not found pack uid & gid")
+	if sUID == "" || sGID == "" {
+		return 0, 0, errors.New("not found pack uid & gid")
+	}
+	var uid, gid int
+	uid, err = strconv.Atoi(sUID)
+	if err != nil {
+		return 0, 0, errors.Wrapf(err, "parsing pack uid: %s", sUID)
+	}
+	gid, err = strconv.Atoi(sGID)
+	if err != nil {
+		return 0, 0, errors.Wrapf(err, "parsing pack gid: %s", sGID)
 	}
 	return uid, gid, nil
 }
