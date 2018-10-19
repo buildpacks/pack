@@ -518,11 +518,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("sets owner of layer files to PACK_USER_ID:PACK_GROUP_ID", func() {
-					subject.RunImage = "packs/run-" + randString(8)
-					defer exec.Command("docker", "rmi", subject.RunImage)
-					cmd := exec.Command("docker", "build", "-t", subject.RunImage, "-")
+					subject.Builder = "packs/samples-" + randString(8)
+					defer exec.Command("docker", "rmi", subject.Builder)
+					cmd := exec.Command("docker", "build", "-t", subject.Builder, "-")
 					cmd.Stdin = strings.NewReader(`
-						FROM packs/run
+						FROM packs/samples
 						ENV PACK_USER_ID 1234
 						ENV PACK_GROUP_ID 5678
 					`)
@@ -535,11 +535,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("errors if run image is missing PACK_USER_ID", func() {
-					subject.RunImage = "packs/run-" + randString(8)
-					defer exec.Command("docker", "rmi", subject.RunImage)
-					cmd := exec.Command("docker", "build", "-t", subject.RunImage, "-")
+					subject.Builder = "packs/samples-" + randString(8)
+					defer exec.Command("docker", "rmi", subject.Builder)
+					cmd := exec.Command("docker", "build", "-t", subject.Builder, "-")
 					cmd.Stdin = strings.NewReader(`
-						FROM packs/run
+						FROM packs/samples
 						ENV PACK_USER_ID ''
 						ENV PACK_GROUP_ID 5678
 					`)
@@ -550,11 +550,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("falls back to PACK_USER_GID sets owner of layer files", func() {
-					subject.RunImage = "packs/run-" + randString(8)
-					defer exec.Command("docker", "rmi", subject.RunImage)
-					cmd := exec.Command("docker", "build", "-t", subject.RunImage, "-")
+					subject.Builder = "packs/samples-" + randString(8)
+					defer exec.Command("docker", "rmi", subject.Builder)
+					cmd := exec.Command("docker", "build", "-t", subject.Builder, "-")
 					cmd.Stdin = strings.NewReader(`
-						FROM packs/run
+						FROM packs/samples
 						ENV PACK_USER_ID 1234
 						ENV PACK_USER_GID 5678
 					`)

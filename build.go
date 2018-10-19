@@ -394,7 +394,7 @@ func (b *BuildConfig) Build() error {
 }
 
 func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
-	uid, gid, err := b.packUidGid(b.RunImage)
+	uid, gid, err := b.packUidGid(b.Builder)
 	if err != nil {
 		return errors.Wrap(err, "export")
 	}
