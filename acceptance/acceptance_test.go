@@ -48,6 +48,7 @@ func TestPack(t *testing.T) {
 	assertNil(t, err)
 	assertNil(t, dockerCli.PullImage("registry:2"))
 	assertNil(t, dockerCli.PullImage("sclevine/test"))
+	assertNil(t, dockerCli.PullImage("packs/samples"))
 
 	spec.Run(t, "pack", testPack, spec.Report(report.Terminal{}))
 }
@@ -213,6 +214,107 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 		}, spec.Parallel(), spec.Report(report.Terminal{}))
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+
+	when("pack rebase", func() {
+		var repoName, containerName, runBefore, runAfter string
+		var buildAndSetRunImage func(runImage, contents1, contents2 string)
+		var rootContents1 func() string
+		it.Before(func() {
+			if err := os.Mkdir(filepath.Join(homeDir, ".pack"), 0777); err != nil {
+				t.Fatal(err)
+			}
+
+			containerName = "test-" + randString(10)
+			repoName = "some-org/" + randString(10)
+			runBefore = "run-before/" + randString(10)
+			runAfter = "run-after/" + randString(10)
+
+			buildAndSetRunImage = func(runImage, contents1, contents2 string) {
+				cmd := exec.Command("docker", "build", "-t", runImage, "-")
+				cmd.Stdin = strings.NewReader(fmt.Sprintf("FROM packs/run\nUSER root\nRUN echo %s > /contents1.txt\nRUN echo %s > /contents2.txt\nUSER pack\n", contents1, contents2))
+				run(t, cmd)
+
+				assertNil(t, ioutil.WriteFile(filepath.Join(homeDir, ".pack", "config.toml"), []byte(fmt.Sprintf(`
+				default-stack-id = "io.buildpacks.stacks.bionic"
+
+				[[stacks]]
+				  id = "io.buildpacks.stacks.bionic"
+				  build-images = ["packs/build"]
+				  run-images = ["%s"]
+			`, runImage)), 0666))
+			}
+			rootContents1 = func() string {
+				run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", repoName))
+				launchPort := fetchHostPort(t, containerName)
+				time.Sleep(5 * time.Second)
+				assertEq(t, fetch(t, "http://localhost:"+launchPort), "Buildpacks Worked! - 1000:1000")
+				txt := fetch(t, "http://localhost:"+launchPort+"/rootcontents1")
+				assertNil(t, dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL"))
+				return txt
+			}
+		})
+		it.After(func() {
+			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
+			for _, name := range []string{repoName, runBefore, runAfter} {
+				dockerCli.ImageRemove(context.TODO(), name, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
+			}
+		})
+
+		when("run on daemon", func() {
+			it("rebases", func() {
+				buildAndSetRunImage(runBefore, "contents-before-1", "contents-before-2")
+
+				cmd := exec.Command(pack, "build", repoName, "-p", "testdata/node_app/", "--no-pull") // , "--publish")
+				cmd.Env = append(os.Environ(), "HOME="+homeDir)
+				run(t, cmd)
+
+				assertEq(t, rootContents1(), "contents-before-1\n")
+
+				buildAndSetRunImage(runAfter, "contents-after-1", "contents-after-2")
+
+				cmd = exec.Command(pack, "rebase", repoName, "--no-pull") // , "--publish")
+				cmd.Env = append(os.Environ(), "HOME="+homeDir)
+				run(t, cmd)
+
+				assertEq(t, rootContents1(), "contents-after-1\n")
+			})
+		})
+
+		when.Pend("run on registry", func() {
+			var registryContainerName, registryPort string
+			it.Before(func() {
+				registryContainerName = "test-registry-" + randString(10)
+				run(t, exec.Command("docker", "run", "-d", "--rm", "-p", ":5000", "--name", registryContainerName, "registry:2"))
+				registryPort = fetchHostPort(t, registryContainerName)
+
+				repoName = "localhost:" + registryPort + "/" + repoName
+				runBefore = "localhost:" + registryPort + "/" + runBefore
+				runAfter = "localhost:" + registryPort + "/" + runAfter
+			})
+			it.After(func() {
+				dockerCli.ContainerKill(context.TODO(), registryContainerName, "SIGKILL")
+			})
+			it("rebases", func() {
+				buildAndSetRunImage(runBefore, "contents-before-1", "contents-before-2")
+				run(t, exec.Command("docker", "push", runBefore))
+
+				cmd := exec.Command(pack, "build", repoName, "-p", "testdata/node_app/", "--publish")
+				cmd.Env = append(os.Environ(), "HOME="+homeDir)
+				run(t, cmd)
+
+				assertEq(t, rootContents1(), "contents-before-1\n")
+
+				buildAndSetRunImage(runAfter, "contents-after-1", "contents-after-2")
+				run(t, exec.Command("docker", "push", runAfter))
+
+				cmd = exec.Command(pack, "rebase", repoName, "--publish")
+				cmd.Env = append(os.Environ(), "HOME="+homeDir)
+				run(t, cmd)
+
+				assertEq(t, rootContents1(), "contents-after-1\n")
+			})
+		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
 	when("pack create-builder", func() {

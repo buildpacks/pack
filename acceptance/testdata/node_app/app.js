@@ -19,6 +19,16 @@ app.get('/', function (req, res) {
     });
 });
 
+app.get('/rootcontents1', function(req, res) {
+    fs.readFile('/contents1.txt', 'utf8', function(err, contents) {
+        if (err) {
+            res.send('Failed to stat ./');
+            return
+        }
+        res.send(contents);
+    })
+})
+
 app.listen(PORT, function () {
     console.log(`Example app listening on port ${PORT}!`);
 });
