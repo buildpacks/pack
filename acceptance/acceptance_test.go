@@ -344,8 +344,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			t.Log("create builder image")
 			cmd := exec.Command(
 				pack, "create-builder",
-				builderRepoName, "-b",
-				builderTOML, "--no-pull",
+				builderRepoName,
+				"-b", builderTOML,
 			)
 			cmd.Env = append(os.Environ(), "HOME="+homeDir)
 			run(t, cmd)
