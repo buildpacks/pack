@@ -22,6 +22,14 @@ type Stack struct {
 	RunImages   []string `toml:"run-images"`
 }
 
+func NewDefault() (*Config, error) {
+	packHome := os.Getenv("PACK_HOME")
+	if packHome == "" {
+		packHome = filepath.Join(os.Getenv("HOME"), ".pack")
+	}
+	return New(packHome)
+}
+
 func New(path string) (*Config, error) {
 	configPath := filepath.Join(path, "config.toml")
 	config, err := previousConfig(path)
