@@ -216,7 +216,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		}, spec.Parallel(), spec.Report(report.Terminal{}))
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
-	when("pack rebase", func() {
+	when.Pend("pack rebase", func() {
 		var repoName, containerName, runBefore, runAfter string
 		var buildAndSetRunImage func(runImage, contents1, contents2 string)
 		var rootContents1 func() string
@@ -281,7 +281,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when.Pend("run on registry", func() {
+		when("run on registry", func() {
 			var registryContainerName, registryPort string
 			it.Before(func() {
 				registryContainerName = "test-registry-" + randString(10)
