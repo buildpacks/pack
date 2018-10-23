@@ -24,6 +24,7 @@ import (
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/mocks"
+	h "github.com/buildpack/pack/testhelpers"
 )
 
 func TestCreateBuilder(t *testing.T) {
@@ -105,12 +106,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				if err != nil {
 					t.Fatalf("error creating builder config: %s", err)
 				}
-				assertSameInstance(t, config.BaseImage, mockBaseImage)
-				assertSameInstance(t, config.Repo, mockImageStore)
+				h.AssertSameInstance(t, config.BaseImage, mockBaseImage)
+				h.AssertSameInstance(t, config.Repo, mockImageStore)
 				checkBuildpacks(t, config.Buildpacks)
 				checkGroups(t, config.Groups)
-				assertEq(t, config.BuilderDir, "testdata")
-				assertEq(t, config.RepoName, "some/image")
+				h.AssertEq(t, config.BuilderDir, "testdata")
+				h.AssertEq(t, config.RepoName, "some/image")
 			})
 
 			it("select the build image with matching registry", func() {
@@ -127,12 +128,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				if err != nil {
 					t.Fatalf("error creating builder config: %s", err)
 				}
-				assertSameInstance(t, config.BaseImage, mockBaseImage)
-				assertSameInstance(t, config.Repo, mockImageStore)
+				h.AssertSameInstance(t, config.BaseImage, mockBaseImage)
+				h.AssertSameInstance(t, config.Repo, mockImageStore)
 				checkBuildpacks(t, config.Buildpacks)
 				checkGroups(t, config.Groups)
-				assertEq(t, config.BuilderDir, "testdata")
-				assertEq(t, config.RepoName, "registry.com/some/image")
+				h.AssertEq(t, config.BuilderDir, "testdata")
+				h.AssertEq(t, config.RepoName, "registry.com/some/image")
 			})
 
 			it("doesn't pull base a new image when --no-pull flag is provided", func() {
@@ -149,11 +150,11 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				if err != nil {
 					t.Fatalf("error creating builder config: %s", err)
 				}
-				assertSameInstance(t, config.BaseImage, mockBaseImage)
-				assertSameInstance(t, config.Repo, mockImageStore)
+				h.AssertSameInstance(t, config.BaseImage, mockBaseImage)
+				h.AssertSameInstance(t, config.Repo, mockImageStore)
 				checkBuildpacks(t, config.Buildpacks)
 				checkGroups(t, config.Groups)
-				assertEq(t, config.BuilderDir, "testdata")
+				h.AssertEq(t, config.BuilderDir, "testdata")
 			})
 
 			it("fails if the base image cannot be found", func() {
@@ -195,7 +196,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
 					NoPull:          true,
 				})
-				assertError(t, err, `Invalid stack: stack "some.bad.stack" requires at least one build image`)
+				h.AssertError(t, err, `Invalid stack: stack "some.bad.stack" requires at least one build image`)
 			})
 
 			it("uses the build image that matches the repoName registry", func() {})
@@ -216,8 +217,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					if err != nil {
 						t.Fatalf("error creating builder config: %s", err)
 					}
-					assertSameInstance(t, config.BaseImage, mockBaseImage)
-					assertSameInstance(t, config.Repo, mockImageStore)
+					h.AssertSameInstance(t, config.BaseImage, mockBaseImage)
+					h.AssertSameInstance(t, config.Repo, mockImageStore)
 					checkBuildpacks(t, config.Buildpacks)
 					checkGroups(t, config.Groups)
 				})
@@ -229,7 +230,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						NoPull:          true,
 						StackID:         "some.missing.stack",
 					})
-					assertError(t, err, `Missing stack: stack with id "some.missing.stack" not found in pack config.toml`)
+					h.AssertError(t, err, `Missing stack: stack with id "some.missing.stack" not found in pack config.toml`)
 				})
 			})
 
@@ -248,11 +249,11 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					if err != nil {
 						t.Fatalf("error creating builder config: %s", err)
 					}
-					assertSameInstance(t, config.BaseImage, mockBaseImage)
-					assertSameInstance(t, config.Repo, mockImageStore)
+					h.AssertSameInstance(t, config.BaseImage, mockBaseImage)
+					h.AssertSameInstance(t, config.Repo, mockImageStore)
 					checkBuildpacks(t, config.Buildpacks)
 					checkGroups(t, config.Groups)
-					assertEq(t, config.BuilderDir, "testdata")
+					h.AssertEq(t, config.BuilderDir, "testdata")
 				})
 			})
 		})
@@ -275,10 +276,10 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						BaseImage:  mockBaseImage,
 						BuilderDir: "",
 					})
-					assertNil(t, err)
+					h.AssertNil(t, err)
 
-					assertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
-					assertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
+					h.AssertContains(t, buf.String(), "Successfully created builder image: myorg/mybuilder")
+					h.AssertContains(t, buf.String(), `Tip: Run "pack build <image name> --builder <builder image> --path <app source code>" to use this builder`)
 				})
 			})
 		})
@@ -299,10 +300,10 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				builderConfig, err := factory.BuilderConfigFromFlags(flags)
-				assertNil(t, err)
+				h.AssertNil(t, err)
 
-				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
-				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
+				h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
+				h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
 			})
 			it("supports absolute directories as well as archives", func() {
 				mockBaseImage := mocks.NewMockV1Image(mockController)
@@ -312,10 +313,10 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
 
 				absPath, err := filepath.Abs("testdata/used-to-test-various-uri-schemes/buildpack")
-				assertNil(t, err)
+				h.AssertNil(t, err)
 
 				f, err := ioutil.TempFile("", "*.toml")
-				assertNil(t, err)
+				h.AssertNil(t, err)
 				ioutil.WriteFile(f.Name(), []byte(fmt.Sprintf(`[[buildpacks]]
 id = "some.bp.with.no.uri.scheme"
 uri = "%s"
@@ -345,10 +346,10 @@ buildpacks = [
 				}
 
 				builderConfig, err := factory.BuilderConfigFromFlags(flags)
-				assertNil(t, err)
+				h.AssertNil(t, err)
 
-				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
-				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
+				h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
+				h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
 			})
 		})
 		when("a buildpack location uses file:// uris", func() {
@@ -360,10 +361,10 @@ buildpacks = [
 				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
 
 				absPath, err := filepath.Abs("testdata/used-to-test-various-uri-schemes/buildpack")
-				assertNil(t, err)
+				h.AssertNil(t, err)
 
 				f, err := ioutil.TempFile("", "*.toml")
-				assertNil(t, err)
+				h.AssertNil(t, err)
 				ioutil.WriteFile(f.Name(), []byte(fmt.Sprintf(`[[buildpacks]]
 id = "some.bp.with.no.uri.scheme"
 uri = "file://%s"
@@ -393,10 +394,10 @@ buildpacks = [
 				}
 
 				builderConfig, err := factory.BuilderConfigFromFlags(flags)
-				assertNil(t, err)
+				h.AssertNil(t, err)
 
-				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
-				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
+				h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
+				h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
 			})
 		})
 		when("a buildpack location uses http(s):// uris", func() {
@@ -435,7 +436,7 @@ buildpacks = [
 				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
 
 				f, err := ioutil.TempFile("", "*.toml")
-				assertNil(t, err)
+				h.AssertNil(t, err)
 				ioutil.WriteFile(f.Name(), []byte(fmt.Sprintf(`[[buildpacks]]
 id = "some.bp.with.no.uri.scheme"
 uri = "http://%s/used-to-test-various-uri-schemes/buildpack.tgz"
@@ -460,9 +461,9 @@ buildpacks = [
 				}
 
 				builderConfig, err := factory.BuilderConfigFromFlags(flags)
-				assertNil(t, err)
+				h.AssertNil(t, err)
 
-				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/build", "I come from an archive")
+				h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/build", "I come from an archive")
 			})
 			it.After(func() {
 				if server != nil {
@@ -517,15 +518,5 @@ func checkBuildpacks(t *testing.T, buildpacks []pack.Buildpack) {
 		},
 	}); diff != "" {
 		t.Fatalf("config has incorrect buildpacks, %s", diff)
-	}
-}
-
-func assertDirContainsFileWithContents(t *testing.T, dir string, file string, expected string) {
-	t.Helper()
-	path := filepath.Join(dir, file)
-	bytes, err := ioutil.ReadFile(path)
-	assertNil(t, err)
-	if string(bytes) != expected {
-		t.Fatalf("file %s in dir %s has wrong contents: %s != %s", file, dir, string(bytes), expected)
 	}
 }

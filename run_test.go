@@ -26,6 +26,7 @@ import (
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/mocks"
+	h "github.com/buildpack/pack/testhelpers"
 )
 
 func TestRun(t *testing.T) {
@@ -96,17 +97,15 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				RunImage: "some/run",
 				Port:     "1370",
 			})
-			assertNil(t, err)
+			h.AssertNil(t, err)
 
 			absAppDir, _ := filepath.Abs("acceptance/testdata/node_app")
-			h := md5.New()
-			io.WriteString(h, absAppDir)
-			absAppDirMd5 := fmt.Sprintf("pack.local/run/%x", h.Sum(nil))
-			assertEq(t, run.RepoName, absAppDirMd5)
-			assertEq(t, run.Port, "1370")
+			absAppDirMd5 := fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(absAppDir)))
+			h.AssertEq(t, run.RepoName, absAppDirMd5)
+			h.AssertEq(t, run.Port, "1370")
 
 			build, ok := run.Build.(*pack.BuildConfig)
-			assertEq(t, ok, true)
+			h.AssertEq(t, ok, true)
 			for _, field := range []string{
 				"RepoName",
 				"Cli",
@@ -114,7 +113,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				"Stderr",
 				"Log",
 			} {
-				assertSameInstance(
+				h.AssertSameInstance(
 					t,
 					reflect.Indirect(reflect.ValueOf(run)).FieldByName(field).Interface(),
 					reflect.Indirect(reflect.ValueOf(build)).FieldByName(field).Interface(),
@@ -170,9 +169,9 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, subject.Stdout, subject.Stderr).Return(nil)
 
 			err := subject.Run(makeStopCh)
-			assertNil(t, err)
+			h.AssertNil(t, err)
 
-			assertContains(t, buf.String(), "Starting container listening at http://localhost:1370/")
+			h.AssertContains(t, buf.String(), "Starting container listening at http://localhost:1370/")
 		})
 
 		when("the build fails", func() {
@@ -185,7 +184,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				mockDocker.EXPECT().RunContainer(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 				err := subject.Run(makeStopCh)
-				assertSameInstance(t, err, expected)
+				h.AssertSameInstance(t, err, expected)
 			})
 		})
 
@@ -208,7 +207,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				err := subject.Run(makeStopCh)
-				assertNil(t, err)
+				h.AssertNil(t, err)
 			})
 		})
 
@@ -242,7 +241,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, subject.Stdout, subject.Stderr).Return(nil)
 
 				err := subject.Run(makeStopCh)
-				assertNil(t, err)
+				h.AssertNil(t, err)
 			})
 		})
 		when("custom ports bindings are defined", func() {
@@ -266,7 +265,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, subject.Stdout, subject.Stderr).Return(nil)
 
 				err := subject.Run(makeStopCh)
-				assertNil(t, err)
+				h.AssertNil(t, err)
 			})
 			it("binds each port to the container", func() {
 				mockBuild.EXPECT().Run().Return(nil)
@@ -289,9 +288,8 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, subject.Stdout, subject.Stderr).Return(nil)
 
 				err := subject.Run(makeStopCh)
-				assertNil(t, err)
+				h.AssertNil(t, err)
 			})
 		})
 	})
-
 }

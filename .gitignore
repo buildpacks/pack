@@ -7,3 +7,6 @@
 # Build outputs
 artifacts/
 .DS_Store
+
+# Travis unencrypted file
+.travis/key.pem

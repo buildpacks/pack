@@ -1,17 +1,22 @@
-sudo: required
 language: go
-services:
-- docker
 go:
 - 1.11.x
+os:
+- linux
 env:
   global:
   - GO111MODULE=on
+  - DOCKER_TLS_VERIFY=1
+  - DOCKER_HOST=tcp://35.193.22.81:2376
 cache:
   directories:
   - $GOPATH/pkg/mod
+before_install:
+- openssl aes-256-cbc -K $encrypted_c7ea36ef0bae_key -iv $encrypted_c7ea36ef0bae_iv -in .travis/key.pem.enc -out .travis/key.pem -d
+- export DOCKER_CERT_PATH=$PWD/.travis/
 install: true
 script:
+- export DOCKER_CERT_PATH=$PWD/.travis/
 - 'export PACK_VERSION="$TRAVIS_TAG (git sha: $(git log -1 --pretty=%H))"'
 - go build -ldflags "-X 'main.Version=$PACK_VERSION'" -o artifacts/pack-$TRAVIS_BUILD_NUMBER-linux ./cmd/pack
 - GOOS=darwin go build -ldflags "-X 'main.Version=$PACK_VERSION'" -o artifacts/pack-$TRAVIS_BUILD_NUMBER-darwin ./cmd/pack

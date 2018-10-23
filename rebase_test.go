@@ -10,6 +10,7 @@ import (
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/mocks"
+	h "github.com/buildpack/pack/testhelpers"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -75,10 +76,10 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 							Publish:  false,
 							NoPull:   false,
 						})
-						assertNil(t, err)
+						h.AssertNil(t, err)
 
-						assertSameInstance(t, cfg.Image, mockImage)
-						assertSameInstance(t, cfg.NewBaseImage, mockBaseImage)
+						h.AssertSameInstance(t, cfg.Image, mockImage)
+						h.AssertSameInstance(t, cfg.NewBaseImage, mockBaseImage)
 					})
 				})
 
@@ -95,10 +96,10 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 							Publish:  false,
 							NoPull:   true,
 						})
-						assertNil(t, err)
+						h.AssertNil(t, err)
 
-						assertSameInstance(t, cfg.Image, mockImage)
-						assertSameInstance(t, cfg.NewBaseImage, mockBaseImage)
+						h.AssertSameInstance(t, cfg.Image, mockImage)
+						h.AssertSameInstance(t, cfg.NewBaseImage, mockBaseImage)
 					})
 				})
 			})
@@ -117,10 +118,10 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 							Publish:  true,
 							NoPull:   false,
 						})
-						assertNil(t, err)
+						h.AssertNil(t, err)
 
-						assertSameInstance(t, cfg.Image, mockImage)
-						assertSameInstance(t, cfg.NewBaseImage, mockBaseImage)
+						h.AssertSameInstance(t, cfg.Image, mockImage)
+						h.AssertSameInstance(t, cfg.NewBaseImage, mockBaseImage)
 					})
 				})
 			})
@@ -139,10 +140,10 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				setLabel := mockImage.EXPECT().SetLabel("io.buildpacks.lifecycle.metadata", gomock.Any()).
 					Do(func(_, label string) {
 						var metadata lifecycle.AppImageMetadata
-						assertNil(t, json.Unmarshal([]byte(label), &metadata))
-						assertEq(t, metadata.RunImage.TopLayer, "some-top-layer")
-						assertEq(t, metadata.RunImage.SHA, "some-sha")
-						assertEq(t, metadata.App.SHA, "data")
+						h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
+						h.AssertEq(t, metadata.RunImage.TopLayer, "some-top-layer")
+						h.AssertEq(t, metadata.RunImage.SHA, "some-sha")
+						h.AssertEq(t, metadata.App.SHA, "data")
 					})
 				mockImage.EXPECT().Save().After(setLabel).Return("some-digest", nil)
 
@@ -151,8 +152,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 					NewBaseImage: mockBaseImage,
 				}
 				err := factory.Rebase(rebaseConfig)
-				assertNil(t, err)
-				assertContains(t, buf.String(), "Successfully replaced my-org/my-repo with some-digest\n")
+				h.AssertNil(t, err)
+				h.AssertContains(t, buf.String(), "Successfully replaced my-org/my-repo with some-digest\n")
 			})
 		})
 	})
