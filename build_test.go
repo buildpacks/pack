@@ -653,23 +653,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					err := subject.Export(group)
 					assertError(t, err, "export: not found pack uid & gid")
 				})
-
-				it("falls back to PACK_USER_GID sets owner of layer files", func() {
-					subject.Builder = "packs/samples-" + randString(8)
-					defer exec.Command("docker", "rmi", subject.Builder)
-					cmd := exec.Command("docker", "build", "-t", subject.Builder, "-")
-					cmd.Stdin = strings.NewReader(`
-						FROM packs/samples
-						ENV PACK_USER_ID 1234
-						ENV PACK_USER_GID 5678
-					`)
-					assertNil(t, cmd.Run())
-
-					assertNil(t, subject.Export(group))
-					txt, err := exec.Command("docker", "run", subject.RepoName, "ls", "-la", "/workspace/app/file.txt").Output()
-					assertNil(t, err)
-					assertContains(t, string(txt), " 1234 5678 ")
-				})
 			})
 		})
 

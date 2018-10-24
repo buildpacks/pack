@@ -500,10 +500,6 @@ func (b *BuildConfig) packUidGid(builder string) (int, int, error) {
 			sUID = kv2[1]
 		} else if len(kv2) == 2 && kv2[0] == "PACK_GROUP_ID" {
 			sGID = kv2[1]
-		} else if len(kv2) == 2 && kv2[0] == "PACK_USER_GID" {
-			if sGID == "" {
-				sGID = kv2[1]
-			}
 		}
 	}
 	if sUID == "" || sGID == "" {
