@@ -93,7 +93,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Digest", func() {
-		when("image exists", func() {
+		when("image exists and has a digest", func() {
 			var expectedDigest string
 			it.Before(func() {
 				var buf bytes.Buffer
@@ -118,6 +118,29 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				digest, err := img.Digest()
 				assertNil(t, err)
 				assertEq(t, digest, expectedDigest)
+			})
+		})
+
+		when("image exists but has no digest", func() {
+			it.Before(func() {
+				cmd := exec.Command("docker", "build", "-t", repoName, "-")
+				cmd.Stdin = strings.NewReader(`
+					FROM scratch
+					LABEL key=val
+				`)
+				assertNil(t, cmd.Run())
+			})
+
+			it.After(func() {
+				cmd := exec.Command("docker", "rmi", repoName)
+				assertNil(t, cmd.Run())
+			})
+
+			it("returns an empty string", func() {
+				img, _ := factory.NewLocal(repoName, false)
+				digest, err := img.Digest()
+				assertNil(t, err)
+				assertEq(t, digest, "")
 			})
 		})
 	})

@@ -65,7 +65,7 @@ func (l *local) Digest() (string, error) {
 		return "", fmt.Errorf("failed to get digest, image '%s' does not exist", l.RepoName)
 	}
 	if len(l.Inspect.RepoDigests) == 0 {
-		return "", fmt.Errorf("failed to get digest, image '%s' has no repo digests", l.RepoName)
+		return "", nil
 	}
 	parts := strings.Split(l.Inspect.RepoDigests[0], "@")
 	if len(parts) != 2 {
