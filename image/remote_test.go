@@ -27,6 +27,7 @@ func TestRemote(t *testing.T) {
 
 	registryContainerName := "test-registry-" + randString(10)
 	defer exec.Command("docker", "kill", registryContainerName).Run()
+	defer exec.Command("docker", "container", "rm", registryContainerName).Run()
 	run(t, exec.Command("docker", "run", "-d", "--rm", "-p", ":5000", "--name", registryContainerName, "registry:2"))
 	b, err := exec.Command("docker", "inspect", registryContainerName, "-f", `{{(index (index .NetworkSettings.Ports "5000/tcp") 0).HostPort}}`).Output()
 	assertNil(t, err)

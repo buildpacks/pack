@@ -69,7 +69,15 @@ type BuildConfig struct {
 	CacheVolume     string
 }
 
-const defaultLaunchDir = "/workspace"
+const (
+	launchDir      = "/workspace"
+	cacheDir       = "/cache"
+	buildpacksDir  = "/buildpacks"
+	platformDir    = "/platform"
+	orderPath      = "/buildpacks/order.toml"
+	groupPath      = `/workspace/group.toml`
+	planPath       = "/workspace/plan.toml"
+)
 
 func DefaultBuildFactory() (*BuildFactory, error) {
 	f := &BuildFactory{
@@ -246,7 +254,7 @@ func (b *BuildConfig) copyBuildpacksToContainer(ctx context.Context, ctrID strin
 			}
 			id = buildpackTOML.Buildpack.ID
 			version = buildpackTOML.Buildpack.Version
-			bpDir := filepath.Join("/buildpacks", id, version)
+			bpDir := filepath.Join(buildpacksDir, id, version)
 			ftr, errChan := b.FS.CreateTarReader(bp, bpDir, 0, 0)
 			if err := b.Cli.CopyToContainer(ctx, ctrID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
 				return nil, errors.Wrapf(err, "copying buildpack '%s' to container", bp)
@@ -269,10 +277,17 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
-		Cmd:   []string{"/lifecycle/detector"},
+		Cmd: []string{
+			"/lifecycle/detector",
+			"-buildpacks", buildpacksDir,
+			"-launch", launchDir,
+			"-order", orderPath,
+			"-group", groupPath,
+			"-plan", planPath,
+		},
 	}, &container.HostConfig{
 		Binds: []string{
-			b.WorkspaceVolume + ":/workspace",
+			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {
@@ -311,7 +326,7 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 		return nil, errors.Wrap(err, "detect")
 	}
 
-	tr, errChan := b.FS.CreateTarReader(b.AppDir, "/workspace/app", uid, gid)
+	tr, errChan := b.FS.CreateTarReader(b.AppDir, filepath.Join(launchDir, "app"), uid, gid)
 	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
 		return nil, errors.Wrap(err, "copy app to workspace volume")
 	}
@@ -319,17 +334,17 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 		return nil, errors.Wrap(err, "copy app to workspace volume")
 	}
 
-	if err := b.chownDir("/workspace/app", uid, gid); err != nil {
+	if err := b.chownDir(filepath.Join(launchDir, "app"), uid, gid); err != nil {
 		return nil, errors.Wrap(err, "chown app to workspace volume")
 	}
 
 	if orderToml != "" {
-		ftr, err := b.FS.CreateSingleFileTar("/buildpacks/order.toml", orderToml)
+		ftr, err := b.FS.CreateSingleFileTar(orderPath, orderToml)
 		if err != nil {
 			return nil, errors.Wrap(err, "converting order TOML to tar reader")
 		}
 		if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
-			return nil, errors.Wrap(err, "creating /buildpacks/order.toml")
+			return nil, errors.Wrap(err, fmt.Sprintf("creating %s", orderPath))
 		}
 	}
 
@@ -340,7 +355,7 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 }
 
 func (b *BuildConfig) groupToml(ctrID string) (*lifecycle.BuildpackGroup, error) {
-	trc, _, err := b.Cli.CopyFromContainer(context.Background(), ctrID, "/workspace/group.toml")
+	trc, _, err := b.Cli.CopyFromContainer(context.Background(), ctrID, groupPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading group.toml from container")
 	}
@@ -374,10 +389,16 @@ func (b *BuildConfig) Analyze() error {
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
-		Cmd:   []string{"/lifecycle/analyzer", "-metadata", "/workspace/imagemetadata.json", "-launch", "/workspace", b.RepoName},
+		Cmd: []string{
+			"/lifecycle/analyzer",
+			"-launch", launchDir,
+			"-group", groupPath,
+			"-metadata", filepath.Join(launchDir, "imagemetadata.json"),
+			b.RepoName,
+		},
 	}, &container.HostConfig{
 		Binds: []string{
-			b.WorkspaceVolume + ":/workspace",
+			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {
@@ -385,7 +406,7 @@ func (b *BuildConfig) Analyze() error {
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
-	tr, err := b.FS.CreateSingleFileTar("/workspace/imagemetadata.json", metadata)
+	tr, err := b.FS.CreateSingleFileTar(filepath.Join(launchDir, "imagemetadata.json"), metadata)
 	if err != nil {
 		return errors.Wrap(err, "create tar with image metadata")
 	}
@@ -403,11 +424,19 @@ func (b *BuildConfig) Build() error {
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
-		Cmd:   []string{"/lifecycle/builder"},
+		Cmd: []string{
+			"/lifecycle/builder",
+			"-buildpacks", buildpacksDir,
+			"-launch", launchDir,
+			"-cache", cacheDir,
+			"-group", groupPath,
+			"-plan", planPath,
+			"-platform", platformDir,
+		},
 	}, &container.HostConfig{
 		Binds: []string{
-			b.WorkspaceVolume + ":/workspace",
-			b.CacheVolume + ":/cache",
+			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
+			fmt.Sprintf("%s:%s:", b.CacheVolume, cacheDir),
 		},
 	}, nil, "")
 	if err != nil {
@@ -525,7 +554,7 @@ func (b *BuildConfig) chownDir(path string, uid, gid int) error {
 		User:  "root",
 	}, &container.HostConfig{
 		Binds: []string{
-			b.WorkspaceVolume + ":/workspace",
+			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {
@@ -545,7 +574,7 @@ func (b *BuildConfig) exportVolume(image, volName string) (string, func(), error
 		Cmd:   []string{"true"},
 	}, &container.HostConfig{
 		Binds: []string{
-			b.WorkspaceVolume + ":/workspace:ro",
+			fmt.Sprintf("%s:%s:ro", b.WorkspaceVolume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {
@@ -553,7 +582,7 @@ func (b *BuildConfig) exportVolume(image, volName string) (string, func(), error
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
-	r, _, err := b.Cli.CopyFromContainer(ctx, ctr.ID, "/workspace")
+	r, _, err := b.Cli.CopyFromContainer(ctx, ctr.ID, launchDir)
 	if err != nil {
 		return "", func() {}, err
 	}

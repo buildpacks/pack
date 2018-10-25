@@ -42,7 +42,8 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		repoName = "pack-image-test-" + randString(10)
 	})
 	it.After(func() {
-		// exec.Command("docker", "rmi", "-f", repoName).Run()
+		exec.Command("docker", "rmi", "-f", repoName).Run()
+		exec.Command("bash", "-c", fmt.Sprintf(`docker rmi -f $(docker images --format='{{.ID}}' %s)`, repoName)).Run()
 	})
 
 	when("#Label", func() {

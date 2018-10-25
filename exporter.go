@@ -56,7 +56,7 @@ func exportRegistry(group *lifecycle.BuildpackGroup, uid, gid int, launchDirSrc,
 	}
 	newImage, err := exporter.Export(
 		launchDirSrc,
-		defaultLaunchDir,
+		launchDir,
 		stackImage,
 		origImage,
 	)
@@ -85,14 +85,14 @@ func exportDaemon(cli Docker, buildpacks []string, workspaceVolume, repoName, ru
 		Cmd:        []string{"echo", "hi"},
 	}, &container.HostConfig{
 		Binds: []string{
-			workspaceVolume + ":/workspace",
+			fmt.Sprintf("%s:%s:", workspaceVolume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {
 		return errors.Wrap(err, "container create")
 	}
 
-	r, _, err := cli.CopyFromContainer(ctx, ctr.ID, "/workspace")
+	r, _, err := cli.CopyFromContainer(ctx, ctr.ID, launchDir)
 	if err != nil {
 		return errors.Wrap(err, "copy from container")
 	}
@@ -208,8 +208,8 @@ type dockerfileLayer struct {
 func addDockerfileToTar(uid, gid int, runImage, repoName string, buildpacks []string, r io.Reader) (io.Reader, chan []dockerfileLayer, chan error) {
 	chownUser := fmt.Sprintf("%d:%d", uid, gid)
 	dockerFile := "FROM " + runImage + "\n"
-	dockerFile += fmt.Sprintf("ADD --chown=%s /workspace/app /workspace/app\n", chownUser)
-	dockerFile += fmt.Sprintf("ADD --chown=%s /workspace/config /workspace/config\n", chownUser)
+	dockerFile += fmt.Sprintf("ADD --chown=%s %s/app %s/app\n", chownUser, launchDir, launchDir)
+	dockerFile += fmt.Sprintf("ADD --chown=%s %s/config %s/config\n", chownUser, launchDir, launchDir)
 	layerChan := make(chan []dockerfileLayer, 1)
 	var layerNames []dockerfileLayer
 	errChan := make(chan error, 1)
@@ -286,9 +286,9 @@ func addDockerfileToTar(uid, gid int, runImage, repoName string, buildpacks []st
 			for _, layer := range layers {
 				layerNames = append(layerNames, dockerfileLayer{buildpack, layer, tomlFiles[buildpack][layer]})
 				if dirs[buildpack][layer] {
-					dockerFile += fmt.Sprintf("ADD --chown=%s /workspace/%s/%s /workspace/%s/%s\n", chownUser, buildpack, layer, buildpack, layer)
+					dockerFile += fmt.Sprintf("ADD --chown=%s %s/%s/%s %s/%s/%s\n", chownUser, launchDir, buildpack, layer, launchDir, buildpack, layer)
 				} else {
-					dockerFile += fmt.Sprintf("COPY --from=prev --chown=%s /workspace/%s/%s /workspace/%s/%s\n", chownUser, buildpack, layer, buildpack, layer)
+					dockerFile += fmt.Sprintf("COPY --from=prev --chown=%s %s/%s/%s %s/%s/%s\n", chownUser, launchDir, buildpack, layer, launchDir, buildpack, layer)
 					copyFromPrev = true
 				}
 			}
