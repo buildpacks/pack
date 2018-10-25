@@ -104,7 +104,7 @@ func rebaseCommand() *cobra.Command {
 			cmd.SilenceUsage = true
 			flags.RepoName = args[0]
 
-			docker, err := docker.New()
+			imageFactory, err := image.DefaultFactory()
 			if err != nil {
 				return err
 			}
@@ -113,10 +113,9 @@ func rebaseCommand() *cobra.Command {
 				return err
 			}
 			factory := pack.RebaseFactory{
-				Log:    log.New(os.Stdout, "", log.LstdFlags),
-				Docker: docker,
-				Config: cfg,
-				Images: &image.Client{},
+				Log:          log.New(os.Stdout, "", log.LstdFlags),
+				Config:       cfg,
+				ImageFactory: imageFactory,
 			}
 			rebaseConfig, err := factory.RebaseConfigFromFlags(flags)
 			if err != nil {

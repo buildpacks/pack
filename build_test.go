@@ -152,7 +152,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					Labels: map[string]string{"io.buildpacks.stack.id": "some.stack.id"},
 				},
 			}, nil, nil)
-			mockRunImage := mocks.NewMockImage(mockController)
+			mockRunImage := mocks.NewMockV1Image(mockController)
 			mockImages.EXPECT().ReadImage("some/run", false).Return(mockRunImage, nil)
 			mockRunImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{
 				Config: v1.Config{
@@ -178,7 +178,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					Labels: map[string]string{"io.buildpacks.stack.id": "some.stack.id"},
 				},
 			}, nil, nil)
-			mockRunImage := mocks.NewMockImage(mockController)
+			mockRunImage := mocks.NewMockV1Image(mockController)
 			mockImages.EXPECT().ReadImage("override/run", false).Return(mockRunImage, nil)
 			mockRunImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{
 				Config: v1.Config{
@@ -205,7 +205,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					Labels: map[string]string{"io.buildpacks.stack.id": "some.stack.id"},
 				},
 			}, nil, nil)
-			mockRunImage := mocks.NewMockImage(mockController)
+			mockRunImage := mocks.NewMockV1Image(mockController)
 			mockImages.EXPECT().ReadImage("override/run", false).Return(mockRunImage, nil)
 			mockRunImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{
 				Config: v1.Config{
@@ -231,7 +231,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					Labels: map[string]string{"io.buildpacks.stack.id": "some.stack.id"},
 				},
 			}, nil, nil)
-			mockRunImage := mocks.NewMockImage(mockController)
+			mockRunImage := mocks.NewMockV1Image(mockController)
 			mockImages.EXPECT().ReadImage("override/run", false).Return(mockRunImage, nil)
 			mockRunImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{
 				Config: v1.Config{

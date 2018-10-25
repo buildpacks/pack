@@ -30,7 +30,7 @@ func TestCreateBuilder(t *testing.T) {
 	spec.Run(t, "create-builder", testCreateBuilder, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
-//go:generate mockgen -package mocks -destination mocks/img.go github.com/google/go-containerregistry/pkg/v1 Image
+//go:generate mockgen -package mocks -destination mocks/img.go -mock_names Image=MockV1Image github.com/google/go-containerregistry/pkg/v1 Image
 //go:generate mockgen -package mocks -destination mocks/store.go github.com/buildpack/lifecycle/img Store
 
 func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
@@ -92,7 +92,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("#BuilderConfigFromFlags", func() {
 			it("uses default stack build image as base image", func() {
-				mockBaseImage := mocks.NewMockImage(mockController)
+				mockBaseImage := mocks.NewMockV1Image(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
 				mockDocker.EXPECT().PullImage("default/build")
 				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
@@ -114,7 +114,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("select the build image with matching registry", func() {
-				mockBaseImage := mocks.NewMockImage(mockController)
+				mockBaseImage := mocks.NewMockV1Image(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
 				mockDocker.EXPECT().PullImage("registry.com/build/image")
 				mockImages.EXPECT().ReadImage("registry.com/build/image", true).Return(mockBaseImage, nil)
@@ -136,7 +136,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("doesn't pull base a new image when --no-pull flag is provided", func() {
-				mockBaseImage := mocks.NewMockImage(mockController)
+				mockBaseImage := mocks.NewMockV1Image(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
 				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
 				mockImages.EXPECT().RepoStore("some/image", true).Return(mockImageStore, nil)
@@ -202,7 +202,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("-s flag is provided", func() {
 				it("used the build image from the selected stack", func() {
-					mockBaseImage := mocks.NewMockImage(mockController)
+					mockBaseImage := mocks.NewMockV1Image(mockController)
 					mockImageStore := mocks.NewMockStore(mockController)
 					mockDocker.EXPECT().PullImage("other/build")
 					mockImages.EXPECT().ReadImage("other/build", true).Return(mockBaseImage, nil)
@@ -235,7 +235,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("--publish is passed", func() {
 				it("uses a registry store and doesn't pull base image", func() {
-					mockBaseImage := mocks.NewMockImage(mockController)
+					mockBaseImage := mocks.NewMockV1Image(mockController)
 					mockImageStore := mocks.NewMockStore(mockController)
 					mockImages.EXPECT().ReadImage("default/build", false).Return(mockBaseImage, nil)
 					mockImages.EXPECT().RepoStore("some/image", false).Return(mockImageStore, nil)
@@ -260,7 +260,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("#Create", func() {
 			when("successful", func() {
 				it("logs usage tip", func() {
-					mockBaseImage := mocks.NewMockImage(mockController)
+					mockBaseImage := mocks.NewMockV1Image(mockController)
 					mockImageStore := mocks.NewMockStore(mockController)
 
 					mockBaseImage.EXPECT().Manifest().Return(&v1.Manifest{}, nil)
@@ -284,7 +284,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 		when("a buildpack location uses no scheme uris", func() {
 			it("supports relative directories as well as archives", func() {
-				mockBaseImage := mocks.NewMockImage(mockController)
+				mockBaseImage := mocks.NewMockV1Image(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
 
 				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
@@ -305,7 +305,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				assertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
 			})
 			it("supports absolute directories as well as archives", func() {
-				mockBaseImage := mocks.NewMockImage(mockController)
+				mockBaseImage := mocks.NewMockV1Image(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
 
 				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
@@ -353,7 +353,7 @@ buildpacks = [
 		})
 		when("a buildpack location uses file:// uris", func() {
 			it("supports absolute directories as well as archives", func() {
-				mockBaseImage := mocks.NewMockImage(mockController)
+				mockBaseImage := mocks.NewMockV1Image(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
 
 				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
@@ -428,7 +428,7 @@ buildpacks = [
 				}
 			})
 			it("downloads and extracts the archive", func() {
-				mockBaseImage := mocks.NewMockImage(mockController)
+				mockBaseImage := mocks.NewMockV1Image(mockController)
 				mockImageStore := mocks.NewMockStore(mockController)
 
 				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)

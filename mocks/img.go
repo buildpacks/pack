@@ -11,31 +11,31 @@ import (
 	reflect "reflect"
 )
 
-// MockImage is a mock of Image interface
-type MockImage struct {
+// MockV1Image is a mock of Image interface
+type MockV1Image struct {
 	ctrl     *gomock.Controller
-	recorder *MockImageMockRecorder
+	recorder *MockV1ImageMockRecorder
 }
 
-// MockImageMockRecorder is the mock recorder for MockImage
-type MockImageMockRecorder struct {
-	mock *MockImage
+// MockV1ImageMockRecorder is the mock recorder for MockV1Image
+type MockV1ImageMockRecorder struct {
+	mock *MockV1Image
 }
 
-// NewMockImage creates a new mock instance
-func NewMockImage(ctrl *gomock.Controller) *MockImage {
-	mock := &MockImage{ctrl: ctrl}
-	mock.recorder = &MockImageMockRecorder{mock}
+// NewMockV1Image creates a new mock instance
+func NewMockV1Image(ctrl *gomock.Controller) *MockV1Image {
+	mock := &MockV1Image{ctrl: ctrl}
+	mock.recorder = &MockV1ImageMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockImage) EXPECT() *MockImageMockRecorder {
+func (m *MockV1Image) EXPECT() *MockV1ImageMockRecorder {
 	return m.recorder
 }
 
 // BlobSet mocks base method
-func (m *MockImage) BlobSet() (map[v1.Hash]struct{}, error) {
+func (m *MockV1Image) BlobSet() (map[v1.Hash]struct{}, error) {
 	ret := m.ctrl.Call(m, "BlobSet")
 	ret0, _ := ret[0].(map[v1.Hash]struct{})
 	ret1, _ := ret[1].(error)
@@ -43,12 +43,12 @@ func (m *MockImage) BlobSet() (map[v1.Hash]struct{}, error) {
 }
 
 // BlobSet indicates an expected call of BlobSet
-func (mr *MockImageMockRecorder) BlobSet() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BlobSet", reflect.TypeOf((*MockImage)(nil).BlobSet))
+func (mr *MockV1ImageMockRecorder) BlobSet() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BlobSet", reflect.TypeOf((*MockV1Image)(nil).BlobSet))
 }
 
 // ConfigFile mocks base method
-func (m *MockImage) ConfigFile() (*v1.ConfigFile, error) {
+func (m *MockV1Image) ConfigFile() (*v1.ConfigFile, error) {
 	ret := m.ctrl.Call(m, "ConfigFile")
 	ret0, _ := ret[0].(*v1.ConfigFile)
 	ret1, _ := ret[1].(error)
@@ -56,12 +56,12 @@ func (m *MockImage) ConfigFile() (*v1.ConfigFile, error) {
 }
 
 // ConfigFile indicates an expected call of ConfigFile
-func (mr *MockImageMockRecorder) ConfigFile() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigFile", reflect.TypeOf((*MockImage)(nil).ConfigFile))
+func (mr *MockV1ImageMockRecorder) ConfigFile() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigFile", reflect.TypeOf((*MockV1Image)(nil).ConfigFile))
 }
 
 // ConfigName mocks base method
-func (m *MockImage) ConfigName() (v1.Hash, error) {
+func (m *MockV1Image) ConfigName() (v1.Hash, error) {
 	ret := m.ctrl.Call(m, "ConfigName")
 	ret0, _ := ret[0].(v1.Hash)
 	ret1, _ := ret[1].(error)
@@ -69,12 +69,12 @@ func (m *MockImage) ConfigName() (v1.Hash, error) {
 }
 
 // ConfigName indicates an expected call of ConfigName
-func (mr *MockImageMockRecorder) ConfigName() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigName", reflect.TypeOf((*MockImage)(nil).ConfigName))
+func (mr *MockV1ImageMockRecorder) ConfigName() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigName", reflect.TypeOf((*MockV1Image)(nil).ConfigName))
 }
 
 // Digest mocks base method
-func (m *MockImage) Digest() (v1.Hash, error) {
+func (m *MockV1Image) Digest() (v1.Hash, error) {
 	ret := m.ctrl.Call(m, "Digest")
 	ret0, _ := ret[0].(v1.Hash)
 	ret1, _ := ret[1].(error)
@@ -82,12 +82,12 @@ func (m *MockImage) Digest() (v1.Hash, error) {
 }
 
 // Digest indicates an expected call of Digest
-func (mr *MockImageMockRecorder) Digest() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Digest", reflect.TypeOf((*MockImage)(nil).Digest))
+func (mr *MockV1ImageMockRecorder) Digest() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Digest", reflect.TypeOf((*MockV1Image)(nil).Digest))
 }
 
 // LayerByDiffID mocks base method
-func (m *MockImage) LayerByDiffID(arg0 v1.Hash) (v1.Layer, error) {
+func (m *MockV1Image) LayerByDiffID(arg0 v1.Hash) (v1.Layer, error) {
 	ret := m.ctrl.Call(m, "LayerByDiffID", arg0)
 	ret0, _ := ret[0].(v1.Layer)
 	ret1, _ := ret[1].(error)
@@ -95,12 +95,12 @@ func (m *MockImage) LayerByDiffID(arg0 v1.Hash) (v1.Layer, error) {
 }
 
 // LayerByDiffID indicates an expected call of LayerByDiffID
-func (mr *MockImageMockRecorder) LayerByDiffID(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LayerByDiffID", reflect.TypeOf((*MockImage)(nil).LayerByDiffID), arg0)
+func (mr *MockV1ImageMockRecorder) LayerByDiffID(arg0 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LayerByDiffID", reflect.TypeOf((*MockV1Image)(nil).LayerByDiffID), arg0)
 }
 
 // LayerByDigest mocks base method
-func (m *MockImage) LayerByDigest(arg0 v1.Hash) (v1.Layer, error) {
+func (m *MockV1Image) LayerByDigest(arg0 v1.Hash) (v1.Layer, error) {
 	ret := m.ctrl.Call(m, "LayerByDigest", arg0)
 	ret0, _ := ret[0].(v1.Layer)
 	ret1, _ := ret[1].(error)
@@ -108,12 +108,12 @@ func (m *MockImage) LayerByDigest(arg0 v1.Hash) (v1.Layer, error) {
 }
 
 // LayerByDigest indicates an expected call of LayerByDigest
-func (mr *MockImageMockRecorder) LayerByDigest(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LayerByDigest", reflect.TypeOf((*MockImage)(nil).LayerByDigest), arg0)
+func (mr *MockV1ImageMockRecorder) LayerByDigest(arg0 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LayerByDigest", reflect.TypeOf((*MockV1Image)(nil).LayerByDigest), arg0)
 }
 
 // Layers mocks base method
-func (m *MockImage) Layers() ([]v1.Layer, error) {
+func (m *MockV1Image) Layers() ([]v1.Layer, error) {
 	ret := m.ctrl.Call(m, "Layers")
 	ret0, _ := ret[0].([]v1.Layer)
 	ret1, _ := ret[1].(error)
@@ -121,12 +121,12 @@ func (m *MockImage) Layers() ([]v1.Layer, error) {
 }
 
 // Layers indicates an expected call of Layers
-func (mr *MockImageMockRecorder) Layers() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Layers", reflect.TypeOf((*MockImage)(nil).Layers))
+func (mr *MockV1ImageMockRecorder) Layers() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Layers", reflect.TypeOf((*MockV1Image)(nil).Layers))
 }
 
 // Manifest mocks base method
-func (m *MockImage) Manifest() (*v1.Manifest, error) {
+func (m *MockV1Image) Manifest() (*v1.Manifest, error) {
 	ret := m.ctrl.Call(m, "Manifest")
 	ret0, _ := ret[0].(*v1.Manifest)
 	ret1, _ := ret[1].(error)
@@ -134,12 +134,12 @@ func (m *MockImage) Manifest() (*v1.Manifest, error) {
 }
 
 // Manifest indicates an expected call of Manifest
-func (mr *MockImageMockRecorder) Manifest() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Manifest", reflect.TypeOf((*MockImage)(nil).Manifest))
+func (mr *MockV1ImageMockRecorder) Manifest() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Manifest", reflect.TypeOf((*MockV1Image)(nil).Manifest))
 }
 
 // MediaType mocks base method
-func (m *MockImage) MediaType() (types.MediaType, error) {
+func (m *MockV1Image) MediaType() (types.MediaType, error) {
 	ret := m.ctrl.Call(m, "MediaType")
 	ret0, _ := ret[0].(types.MediaType)
 	ret1, _ := ret[1].(error)
@@ -147,12 +147,12 @@ func (m *MockImage) MediaType() (types.MediaType, error) {
 }
 
 // MediaType indicates an expected call of MediaType
-func (mr *MockImageMockRecorder) MediaType() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MediaType", reflect.TypeOf((*MockImage)(nil).MediaType))
+func (mr *MockV1ImageMockRecorder) MediaType() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MediaType", reflect.TypeOf((*MockV1Image)(nil).MediaType))
 }
 
 // RawConfigFile mocks base method
-func (m *MockImage) RawConfigFile() ([]byte, error) {
+func (m *MockV1Image) RawConfigFile() ([]byte, error) {
 	ret := m.ctrl.Call(m, "RawConfigFile")
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
@@ -160,12 +160,12 @@ func (m *MockImage) RawConfigFile() ([]byte, error) {
 }
 
 // RawConfigFile indicates an expected call of RawConfigFile
-func (mr *MockImageMockRecorder) RawConfigFile() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RawConfigFile", reflect.TypeOf((*MockImage)(nil).RawConfigFile))
+func (mr *MockV1ImageMockRecorder) RawConfigFile() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RawConfigFile", reflect.TypeOf((*MockV1Image)(nil).RawConfigFile))
 }
 
 // RawManifest mocks base method
-func (m *MockImage) RawManifest() ([]byte, error) {
+func (m *MockV1Image) RawManifest() ([]byte, error) {
 	ret := m.ctrl.Call(m, "RawManifest")
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
@@ -173,6 +173,6 @@ func (m *MockImage) RawManifest() ([]byte, error) {
 }
 
 // RawManifest indicates an expected call of RawManifest
-func (mr *MockImageMockRecorder) RawManifest() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RawManifest", reflect.TypeOf((*MockImage)(nil).RawManifest))
+func (mr *MockV1ImageMockRecorder) RawManifest() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RawManifest", reflect.TypeOf((*MockV1Image)(nil).RawManifest))
 }
