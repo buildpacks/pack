@@ -92,7 +92,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						Config: &dockercontainer.Config{
 							Labels: map[string]string{
 								"io.buildpacks.stack.id":           "some.default.stack",
-								"io.buildpacks.lifecycle.metadata": `{"runimage":{"sha":"sha256:abcdef"}}`,
+								"io.buildpacks.lifecycle.metadata": `{"runimage":{"topLayer":"sha256:abcdef"}}`,
 							},
 						},
 					}, nil, nil).AnyTimes()
@@ -148,7 +148,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						Config: v1.Config{
 							Labels: map[string]string{
 								"io.buildpacks.stack.id":           "some.default.stack",
-								"io.buildpacks.lifecycle.metadata": `{"runimage":{"sha":"sha256:abcdef"}}`,
+								"io.buildpacks.lifecycle.metadata": `{"runImage":{"topLayer":"sha256:abcdef"}}`,
 							},
 						},
 					}, nil).AnyTimes()
@@ -186,7 +186,14 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				newBaseLayer2 = mocks.NewMockLayer(mockController)
 				appLayer1 = mocks.NewMockLayer(mockController)
 				appLayer2 = mocks.NewMockLayer(mockController)
-				for i, layer := range []*mocks.MockLayer{oldBaseLayer1, oldBaseLayer2, newBaseLayer1, newBaseLayer2, appLayer1, appLayer2} {
+				for i, layer := range []*mocks.MockLayer{
+					oldBaseLayer1,
+					oldBaseLayer2,
+					newBaseLayer1,
+					newBaseLayer2,
+					appLayer1,
+					appLayer2,
+				} {
 					layer.EXPECT().Digest().Return(v1.Hash{Algorithm: "sha", Hex: fmt.Sprintf("%d", i)}, nil).AnyTimes()
 					layer.EXPECT().DiffID().Return(v1.Hash{Algorithm: "sha", Hex: fmt.Sprintf("%d", i)}, nil).AnyTimes()
 					layer.EXPECT().Size().Return(int64(1022), nil).AnyTimes()
@@ -206,6 +213,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				mockNewBaseImage.EXPECT().Layers().Return([]v1.Layer{
 					newBaseLayer1, newBaseLayer2,
 				}, nil).AnyTimes()
+				mockNewBaseImage.EXPECT().Digest().Return(v1.Hash{Algorithm: "sha", Hex: "new-base-sha"}, nil)
 
 				rebaseConfig = &pack.RebaseConfig{
 					Repo:      mockRepoStore,
@@ -220,7 +228,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						Config: v1.Config{
 							Labels: map[string]string{
 								"io.buildpacks.stack.id":           "some.default.stack",
-								"io.buildpacks.lifecycle.metadata": `{"runimage":{"sha":"sha256:abcdef"},"otherkey":"randomvalue"}`,
+								"io.buildpacks.lifecycle.metadata": `{"runImage":{"topLayer":"sha256:abcdef"},"otherkey":"randomvalue"}`,
 							},
 						},
 					}, nil
@@ -252,7 +260,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			it("stores new sha for new runimage", func() {
+			it("stores new sha for new runImage", func() {
 				err := factory.Rebase(*rebaseConfig)
 				assertNil(t, err)
 
@@ -261,14 +269,16 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				var metadata struct {
 					RunImage struct {
 						SHA string `json:"sha"`
-					} `json:"runimage"`
+						TopLayer string `json:"topLayer"`
+					} `json:"runImage"`
 					OtherKey string `json:"otherkey"`
 				}
 				assertNil(t, json.Unmarshal([]byte(cfg.Config.Labels["io.buildpacks.lifecycle.metadata"]), &metadata))
 
 				newBaseTopSHA, err := newBaseLayer2.DiffID()
 				assertNil(t, err)
-				assertEq(t, metadata.RunImage.SHA, newBaseTopSHA.String())
+				assertEq(t, metadata.RunImage.TopLayer, newBaseTopSHA.String())
+				assertEq(t, metadata.RunImage.SHA, "sha:new-base-sha")
 				assertEq(t, metadata.OtherKey, "randomvalue")
 			})
 		})

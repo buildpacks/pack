@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/buildpack/lifecycle"
 	"log"
 
 	dockercli "github.com/docker/docker/client"
@@ -105,7 +106,7 @@ func (f *RebaseFactory) Rebase(cfg RebaseConfig) error {
 	}
 
 	// TODO : set runimage/sha on image metadata
-	if newImage, err = f.setRunImageSHA(newImage, cfg.NewBase); err != nil {
+	if newImage, err = f.setRunImageMetadata(newImage, cfg.NewBase); err != nil {
 		return err
 	}
 
@@ -170,7 +171,11 @@ func (f *RebaseFactory) imageLabel(repoName, key string, useDaemon bool) (string
 	return labels[key], nil
 }
 
-func (f *RebaseFactory) setRunImageSHA(img, runImage v1.Image) (v1.Image, error) {
+func (f *RebaseFactory) setRunImageMetadata(img, runImage v1.Image) (v1.Image, error) {
+	digest, err := runImage.Digest()
+	if err != nil {
+		return nil, err
+	}
 	layers, err := runImage.Layers()
 	if err != nil {
 		return nil, err
@@ -189,7 +194,9 @@ func (f *RebaseFactory) setRunImageSHA(img, runImage v1.Image) (v1.Image, error)
 	if err = json.Unmarshal([]byte(cfg.Labels["io.buildpacks.lifecycle.metadata"]), &metadata); err != nil {
 		return nil, err
 	}
-	metadata["runimage"] = map[string]string{"sha": topSHA.String()}
+	metadata["runImage"] = map[string]string{
+		"sha": digest.String(),
+		"topLayer": topSHA.String()}
 	b, err := json.Marshal(metadata)
 	if err != nil {
 		return nil, err
@@ -203,16 +210,12 @@ func (f *RebaseFactory) fakeBaseImage(repoName string, repoImage v1.Image, useDa
 	if err != nil {
 		return nil, err
 	}
-	var metadata struct {
-		RunImage struct {
-			SHA string `toml:"sha"`
-		} `toml:"runimage"`
-	}
+	metadata := lifecycle.AppImageMetadata{}
 	if err := json.Unmarshal([]byte(str), &metadata); err != nil {
 		return nil, err
 	}
 
-	return &SubImage{img: repoImage, topSHA: metadata.RunImage.SHA}, nil
+	return &SubImage{img: repoImage, topSHA: metadata.RunImage.TopLayer}, nil
 }
 
 type SubImage struct {

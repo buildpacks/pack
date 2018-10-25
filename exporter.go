@@ -119,25 +119,30 @@ func exportDaemon(cli Docker, buildpacks []string, workspaceVolume, repoName, ru
 	if err != nil {
 		return errors.Wrap(err, "inspect image to find layers")
 	}
+	runImageDigest, err := daemonImageDigest(cli, runImage)
+	if err != nil {
+		return errors.Wrap(err, "find run image digest")
+	}
+
 	layerIDX := len(i.RootFS.Layers) - len(layerNames)
-	metadata := packs.BuildMetadata{
-		RunImage: packs.RunImageMetadata{
-			Name: runImage,
-			SHA:  i.RootFS.Layers[layerIDX-3],
+	metadata := lifecycle.AppImageMetadata{
+		RunImage: lifecycle.RunImageMetadata{
+			SHA:      runImageDigest,
+			TopLayer: i.RootFS.Layers[layerIDX-3],
 		},
-		App: packs.AppMetadata{
+		App: lifecycle.AppMetadata{
 			SHA: i.RootFS.Layers[layerIDX-2],
 		},
-		Config: packs.ConfigMetadata{
+		Config: lifecycle.ConfigMetadata{
 			SHA: i.RootFS.Layers[layerIDX-1],
 		},
-		Buildpacks: []packs.BuildpackMetadata{},
+		Buildpacks: []lifecycle.BuildpackMetadata{},
 	}
 	for _, buildpack := range buildpacks {
-		data := packs.BuildpackMetadata{Key: buildpack, Layers: make(map[string]packs.LayerMetadata)}
+		data := lifecycle.BuildpackMetadata{ID: buildpack, Layers: make(map[string]lifecycle.LayerMetadata)}
 		for _, layer := range layerNames {
 			if layer.buildpack == buildpack {
-				data.Layers[layer.layer] = packs.LayerMetadata{
+				data.Layers[layer.layer] = lifecycle.LayerMetadata{
 					SHA:  i.RootFS.Layers[layerIDX],
 					Data: layer.data,
 				}
@@ -155,6 +160,20 @@ func exportDaemon(cli Docker, buildpacks []string, workspaceVolume, repoName, ru
 	}
 
 	return nil
+}
+func daemonImageDigest(cli Docker, repoName string) (string, error) {
+	i, _, err := cli.ImageInspectWithRaw(context.Background(), repoName)
+	if err != nil {
+		return "", errors.Wrap(err, "inspect image")
+	}
+	if len(i.RepoDigests) < 1 {
+		return "", errors.Wrap(err, "missing digest")
+	}
+	parts := strings.Split(i.RepoDigests[0], "@")
+	if len(parts) != 2 {
+		return "", errors.Wrap(err, "bad digest")
+	}
+	return parts[1], nil
 }
 
 func addLabelToImage(cli Docker, repoName string, labels map[string]string, stdout io.Writer) error {

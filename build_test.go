@@ -511,7 +511,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Export", func() {
-		var group *lifecycle.BuildpackGroup
+		var (
+			group       *lifecycle.BuildpackGroup
+			runSHA      string
+			runTopLayer string
+		)
 		it.Before(func() {
 			tmpDir, err := ioutil.TempDir("/tmp", "pack.build.export.")
 			assertNil(t, err)
@@ -536,6 +540,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					{ID: "io.buildpacks.samples.nodejs", Version: "0.0.1"},
 				},
 			}
+			assertNil(t, exec.Command("docker", "pull", "packs/run").Run())
+			runSHA = imageSHA(t, subject.RunImage)
+			runTopLayer = topLayer(t, subject.RunImage)
 		})
 		it.After(func() { exec.Command("docker", "rmi", subject.RepoName).Run() })
 
@@ -577,6 +584,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					assertNil(t, err)
 					assertNil(t, json.Unmarshal(metadataJSON, &metadata))
 
+					assertEq(t, metadata.RunImage.SHA, runSHA)
+					assertEq(t, metadata.RunImage.TopLayer, runTopLayer)
 					assertContains(t, metadata.App.SHA, "sha256:")
 					assertContains(t, metadata.Config.SHA, "sha256:")
 					assertEq(t, len(metadata.Buildpacks), 1)
@@ -613,7 +622,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					assertNil(t, err)
 					assertNil(t, json.Unmarshal(metadataJSON, &metadata))
 
-					assertEq(t, metadata.RunImage.Name, "packs/run")
+					assertEq(t, metadata.RunImage.SHA, runSHA)
+					assertEq(t, metadata.RunImage.TopLayer, runTopLayer)
 					assertContains(t, metadata.App.SHA, "sha256:")
 					assertContains(t, metadata.Config.SHA, "sha256:")
 					assertEq(t, len(metadata.Buildpacks), 1)
@@ -786,4 +796,21 @@ func readFromDocker(t *testing.T, volume, path string) string {
 	cmd.Stdout = &buf
 	assertNil(t, cmd.Run())
 	return buf.String()
+}
+
+func imageSHA(t *testing.T, repoName string) string {
+	digests := make([]string, 1, 1)
+	data, err := exec.Command("docker", "inspect", repoName, "--format", `{{json .RepoDigests}}`).Output()
+	json.Unmarshal(data, &digests)
+	sha := strings.Split(digests[0], "@")[1]
+	assertNil(t, err)
+	return sha
+}
+
+func topLayer(t *testing.T, repoName string) string {
+	layers := make([]string, 1, 1)
+	layerData, err := exec.Command("docker", "inspect", repoName, "--format", `{{json .RootFS.Layers}}`).Output()
+	assertNil(t, err)
+	json.Unmarshal(layerData, &layers)
+	return strings.TrimSpace(layers[len(layers) - 1])
 }

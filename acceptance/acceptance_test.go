@@ -216,7 +216,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		}, spec.Parallel(), spec.Report(report.Terminal{}))
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
-	when.Pend("pack rebase", func() {
+	when("pack rebase", func() {
 		var repoName, containerName, runBefore, runAfter string
 		var buildAndSetRunImage func(runImage, contents1, contents2 string)
 		var rootContents1 func() string
@@ -311,6 +311,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				cmd = exec.Command(pack, "rebase", repoName, "--publish")
 				cmd.Env = append(os.Environ(), "HOME="+homeDir)
 				run(t, cmd)
+				run(t, exec.Command("docker", "pull", repoName))
 
 				assertEq(t, rootContents1(), "contents-after-1\n")
 			})
