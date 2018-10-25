@@ -64,7 +64,7 @@ func buildCommand() *cobra.Command {
 	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "run image")
 	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
 	buildCommand.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
-	buildCommand.Flags().StringArrayVar(&buildFlags.Buildpacks, "buildpack", []string{}, "buildpack ID to skip detection")
+	buildCommand.Flags().StringArrayVar(&buildFlags.Buildpacks, "buildpack", []string{}, "buildpack ID or host directory path, \n\t\t repeat for each buildpack in order")
 	return buildCommand
 }
 
