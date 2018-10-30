@@ -30,7 +30,7 @@
 
 `pack build` enables app developers to create runnable app images from source code using buildpacks.
 
-```
+```bash
 $ pack build <image-name>
 ```
 
@@ -38,7 +38,7 @@ $ pack build <image-name>
 
 In the following example, an app image is created from Node source code.
 
-```
+```bash
 $ cd /path/to/node/app
 $ pack build my-app:my-tag
 
@@ -56,7 +56,7 @@ how to create or use them, see the
 To publish the produced image to an image registry, include the `--publish` flag (this is most useful
 for private registries):
 
-```
+```bash
 $ pack build private-registry.example.com/my-app:my-tag --publish
 ```
 
@@ -64,7 +64,7 @@ $ pack build private-registry.example.com/my-app:my-tag --publish
 
 In the following example, an app image is created from Node source code, using a buildpack chosen by the user.
 
-```
+```bash
 $ cd /path/to/node/app
 $ pack build my-app:my-tag --buildpack path/to/some/buildpack
 
@@ -109,7 +109,7 @@ convenient way to distribute buildpacks for a given stack. For more information 
 The `pack rebase` command allows app developers to rapidly update an app image when its stack's run image has changed.
 By using image layer rebasing, this command avoids the need to fully rebuild the app.
 
-```
+```bash
 $ pack rebase <image-name>
 ```
 
@@ -119,7 +119,7 @@ Consider an app image `my-app:my-tag` that was originally built using the defaul
 run image called `pack/run`. Running the following will update the base of `my-app:my-tag` with the latest version of
 `pack/run`.
 
-```
+```bash
 $ pack rebase my-app:my-tag
 ```
 
@@ -139,7 +139,7 @@ layer metadata to reference the newer base image version.
 `pack create-builder` enables buildpack authors and platform operators to bundle a collection of buildpacks into a
 single image for distribution and use with a specified stack.
 
-```
+```bash
 $ pack create-builder --builder-config <path-to-builder-toml>
 ```
 
@@ -169,7 +169,7 @@ A `builder.toml` file provides necessary configuration to the command.
 
 Running `create-builder` while supplying this configuration file will produce the builder image.
 
-```
+```bash
 $ pack create-builder my-builder:my-tag --builder-config path/to/builder.toml
 
 2018/10/29 15:35:47 Pulling builder base image packs/build
@@ -186,7 +186,7 @@ the generated builder image to a registry.
 
 The builder can then be used in `build` by running:
 
-```
+```bash
 $ pack build my-app:my-tag --builder my-builder:my-tag --buildpack org.example.buildpack-1
 ```
 
@@ -207,19 +207,19 @@ It's important to note that the buildpacks in a builder are not actually execute
 As mentioned [previously](#building-explained), a stack is associated with a build image and a run image. Stacks in
 `pack`'s configuration can be managed using the following commands:
 
-```
+```bash
 $ pack add-stack <stack-name> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
 ```
 
-```
+```bash
 $ pack update-stack <stack-name> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
 ```
 
-```
+```bash
 $ pack delete-stack <stack-name>
 ```
 
-```
+```bash
 $ pack set-default-stack <stack-name>
 ```
 
@@ -231,7 +231,7 @@ $ pack set-default-stack <stack-name>
 In this example, a new stack called `org.example.my-stack` is added and associated with build image `my-stack/build`
 and run image `my-stack/run`.
 
-```
+```bash
 $ pack add-stack org.example.my-stack --build-image my-stack/build --run-image my-stack/run
 ```
 
@@ -240,7 +240,7 @@ $ pack add-stack org.example.my-stack --build-image my-stack/build --run-image m
 In this example, an existing stack called `org.example.my-stack` is updated with a new build image `my-stack/build:v2`
 and a new run image `my-stack/run:v2`.
 
-```
+```bash
 $ pack add-stack org.example.my-stack --build-image my-stack/build:v2 --run-image my-stack/run:v2
 ```
 
@@ -248,7 +248,7 @@ $ pack add-stack org.example.my-stack --build-image my-stack/build:v2 --run-imag
 
 In this example, the existing stack `org.example.my-stack` is deleted from `pack`'s configuration.
 
-```
+```bash
 $ pack delete-stack org.example.my-stack
 ```
 
@@ -257,7 +257,7 @@ $ pack delete-stack org.example.my-stack
 In this example, the default stack, used by [`create-builder`](#working-with-builders-using-create-builder), is set to
 `org.example.my-stack`.
 
-```
+```bash
 $ pack set-default-stack org.example.my-stack
 ```
 
@@ -265,7 +265,7 @@ $ pack set-default-stack org.example.my-stack
 
 To inspect available stacks an their names (denoted by `id`), run:
 
-```
+```bash
 $ cat ~/.pack/config.toml
 
 ...
@@ -296,6 +296,6 @@ $ cat ~/.pack/config.toml
 
 To run the tests, simply run:
 
-```
+```bash
 $ go test
 ```
