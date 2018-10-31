@@ -140,7 +140,7 @@ layer metadata to reference the newer base image version.
 single image for distribution and use with a specified stack.
 
 ```bash
-$ pack create-builder --builder-config <path-to-builder-toml>
+$ pack create-builder <image-name> --builder-config <path-to-builder-toml>
 ```
 
 ### Example: Creating a builder from buildpacks
