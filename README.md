@@ -263,7 +263,7 @@ $ pack set-default-stack org.example.my-stack
 
 ### Listing stacks
 
-To inspect available stacks an their names (denoted by `id`), run:
+To inspect available stacks and their names (denoted by `id`), run:
 
 ```bash
 $ cat ~/.pack/config.toml
