@@ -7,7 +7,7 @@ env:
   global:
   - GO111MODULE=on
   - DOCKER_TLS_VERIFY=1
-  - DOCKER_HOST=tcp://35.193.22.81:2376
+  - DOCKER_HOST=tcp://35.188.149.156:2376
 cache:
   directories:
   - $GOPATH/pkg/mod
