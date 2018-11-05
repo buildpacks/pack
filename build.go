@@ -115,16 +115,9 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	if err != nil {
 		return nil, err
 	}
-	if !f.NoPull {
-		bf.Log.Printf("Pulling builder image '%s' (use --no-pull flag to skip this step)", f.Builder)
-		if err := bf.Cli.PullImage(f.Builder); err != nil {
-			return nil, err
-		}
-	}
 
 	b := &BuildConfig{
 		AppDir:          appDir,
-		Builder:         f.Builder,
 		RepoName:        f.RepoName,
 		Publish:         f.Publish,
 		Buildpacks:      f.Buildpacks,
@@ -139,7 +132,21 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		CacheVolume:     fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(appDir))),
 	}
 
-	builderStackID, err := b.imageLabel(f.Builder, "io.buildpacks.stack.id", true)
+	if f.Builder == "" {
+		bf.Log.Printf("Using default builder image '%s'\n", bf.Config.DefaultBuilder)
+		b.Builder = bf.Config.DefaultBuilder
+	} else {
+		bf.Log.Printf("Using user provided builder image '%s'\n", f.Builder)
+		b.Builder = f.Builder
+	}
+	if !f.NoPull {
+		bf.Log.Printf("Pulling builder image '%s' (use --no-pull flag to skip this step)", f.Builder)
+		if err := bf.Cli.PullImage(b.Builder); err != nil {
+			return nil, err
+		}
+	}
+
+	builderStackID, err := b.imageLabel(b.Builder, "io.buildpacks.stack.id", true)
 	if err != nil {
 		return nil, fmt.Errorf(`invalid builder image "%s": %s`, b.Builder, err)
 	}
@@ -152,7 +159,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 
 	if f.RunImage != "" {
-		bf.Log.Printf("Using user provided run image '%s'", f.RunImage)
+		bf.Log.Printf("Using user provided run image '%s'\n", f.RunImage)
 		b.RunImage = f.RunImage
 	} else {
 		reg, err := config.Registry(f.RepoName)

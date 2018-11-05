@@ -41,6 +41,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
 				h.AssertNil(t, err)
 				h.AssertContains(t, string(b), `default-stack-id = "io.buildpacks.stacks.bionic"`)
+				h.AssertContains(t, string(b), `default-builder = "packs/samples"`)
 				h.AssertContains(t, string(b), strings.TrimSpace(`
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
@@ -55,6 +56,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(subject.Stacks[0].RunImages), 1)
 				h.AssertEq(t, subject.Stacks[0].RunImages[0], "packs/run")
 				h.AssertEq(t, subject.DefaultStackID, "io.buildpacks.stacks.bionic")
+				h.AssertEq(t, subject.DefaultBuilder, "packs/samples")
 			})
 
 			when("path is missing", func() {
@@ -76,6 +78,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				defer w.Close()
 				w.Write([]byte(`
 default-stack-id = "some.user.provided.stack"
+default-builder = "some/builder"
 
 [[stacks]]
   id = "some.user.provided.stack"
@@ -84,13 +87,14 @@ default-stack-id = "some.user.provided.stack"
 `))
 			})
 
-			it("add built-in stack while preserving custom stack and custom default-stack-id", func() {
+			it("add built-in stack while preserving custom stack, custom default-stack-id, and custom default-builder", func() {
 				subject, err := config.New(tmpDir)
 				h.AssertNil(t, err)
 
 				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
 				h.AssertNil(t, err)
 				h.AssertContains(t, string(b), `default-stack-id = "some.user.provided.stack"`)
+				h.AssertContains(t, string(b), `default-builder = "some/builder"`)
 				h.AssertContains(t, string(b), strings.TrimSpace(`
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
@@ -104,6 +108,7 @@ default-stack-id = "some.user.provided.stack"
   run-images = ["some/run"]
 `))
 				h.AssertEq(t, subject.DefaultStackID, "some.user.provided.stack")
+				h.AssertEq(t, subject.DefaultBuilder, "some/builder")
 
 				h.AssertEq(t, len(subject.Stacks), 2)
 				h.AssertEq(t, subject.Stacks[0].ID, "some.user.provided.stack")
@@ -233,6 +238,27 @@ default-stack-id = "old.default.stack"
 				h.AssertNil(t, err)
 				h.AssertContains(t, string(b), `default-stack-id = "old.default.stack"`)
 			})
+		})
+	})
+
+	when("Config#SetDefaultBuilder", func() {
+		var subject *config.Config
+		it.Before(func() {
+			h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
+default-stack-id = "old/builder"
+`), 0666))
+			var err error
+			subject, err = config.New(tmpDir)
+			h.AssertNil(t, err)
+		})
+
+		it("sets the default-builder", func() {
+			err := subject.SetDefaultBuilder("new/builder")
+			h.AssertNil(t, err)
+			b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
+			h.AssertNil(t, err)
+			h.AssertContains(t, string(b), `default-builder = "new/builder"`)
+			h.AssertEq(t, subject.DefaultBuilder, "new/builder")
 		})
 	})
 

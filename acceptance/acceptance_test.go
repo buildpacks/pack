@@ -522,6 +522,30 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, containsStack(config, "my.custom.stack"), false)
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
+
+	when("pack set-default-builder", func() {
+		type config struct {
+			DefaultBuilder string `toml:"default-builder"`
+		}
+
+		it("sets the default-stack-id in ~/.pack/config.toml", func() {
+			cmd := exec.Command(
+				pack,
+				"set-default-builder",
+				"some/builder",
+			)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("set-default-builder command failed: %s: %s", output, err)
+			}
+			h.AssertEq(t, string(output), "Successfully set 'some/builder' as default builder.\n")
+
+			var config config
+			_, err = toml.DecodeFile(filepath.Join(packHome, "config.toml"), &config)
+			h.AssertNil(t, err)
+			h.AssertEq(t, config.DefaultBuilder, "some/builder")
+		})
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 // TODO: fetchHostPort, proxyDockerHostPort, and runRegistry are duplicated

@@ -143,25 +143,23 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				cmd := exec.Command("docker", "build", "-t", repoName, "-")
 				cmd.Stdin = strings.NewReader(`
 					FROM scratch
-					LABEL mykey=myvalue other=data
+					LABEL some-key=some-value
 				`)
 				h.Run(t, cmd)
 			})
-			it("sets label on img object", func() {
+
+			it("sets label and saves label to docker daemon", func() {
 				img, _ := factory.NewLocal(repoName, false)
-				h.AssertNil(t, img.SetLabel("mykey", "new-val"))
-				label, err := img.Label("mykey")
+				h.AssertNil(t, img.SetLabel("somekey", "new-val"))
+				t.Log("set label")
+				label, err := img.Label("somekey")
 				h.AssertNil(t, err)
 				h.AssertEq(t, label, "new-val")
-			})
-
-			it("saves label to docker daemon", func() {
-				img, _ := factory.NewLocal(repoName, false)
-				h.AssertNil(t, img.SetLabel("mykey", "new-val"))
-				_, err := img.Save()
+				t.Log("save label")
+				_, err = img.Save()
 				h.AssertNil(t, err)
 
-				label := h.Run(t, exec.Command("docker", "inspect", repoName, "-f", `{{.Config.Labels.mykey}}`))
+				label = h.Run(t, exec.Command("docker", "inspect", repoName, "-f", `{{.Config.Labels.somekey}}`))
 				h.AssertEq(t, strings.TrimSpace(label), "new-val")
 			})
 		})

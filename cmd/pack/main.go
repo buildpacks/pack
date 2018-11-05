@@ -30,6 +30,7 @@ func main() {
 		updateStackCommand,
 		deleteStackCommand,
 		setDefaultStackCommand,
+		setDefaultBuilderCommand,
 		versionCommand,
 	} {
 		rootCmd.AddCommand(f())
@@ -59,7 +60,7 @@ func buildCommand() *cobra.Command {
 		},
 	}
 	buildCommand.Flags().StringVarP(&buildFlags.AppDir, "path", "p", "current working directory", "path to app dir")
-	buildCommand.Flags().StringVar(&buildFlags.Builder, "builder", "packs/samples", "builder")
+	buildCommand.Flags().StringVar(&buildFlags.Builder, "builder", "", "builder")
 	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "run image")
 	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
 	buildCommand.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
@@ -216,6 +217,26 @@ func setDefaultStackCommand() *cobra.Command {
 	}
 }
 
+func setDefaultBuilderCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:  "set-default-builder <builder-name>",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
+			cfg, err := config.NewDefault()
+			if err != nil {
+				return err
+			}
+			err = cfg.SetDefaultBuilder(args[0])
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Successfully set '%s' as default builder.\n", args[0])
+			return nil
+		},
+	}
+}
+
 func updateStackCommand() *cobra.Command {
 	flags := struct {
 		BuildImages []string
@@ -240,7 +261,7 @@ func updateStackCommand() *cobra.Command {
 			return nil
 		},
 	}
-	updateStackCommand.Flags().StringSliceVarP(&flags.BuildImages, "build-image", "b", []string{}, "build image to be used for bulder images built with the stack")
+	updateStackCommand.Flags().StringSliceVarP(&flags.BuildImages, "build-image", "b", []string{}, "build image to be used for builder images built with the stack")
 	updateStackCommand.Flags().StringSliceVarP(&flags.RunImages, "run-image", "r", []string{}, "run image to be used for runnable images built with the stack")
 	return updateStackCommand
 }

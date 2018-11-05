@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Stacks         []Stack `toml:"stacks"`
 	DefaultStackID string  `toml:"default-stack-id"`
+	DefaultBuilder string  `toml:"default-builder"`
 	configPath     string
 }
 
@@ -39,6 +40,9 @@ func New(path string) (*Config, error) {
 
 	if config.DefaultStackID == "" {
 		config.DefaultStackID = "io.buildpacks.stacks.bionic"
+	}
+	if config.DefaultBuilder == "" {
+		config.DefaultBuilder ="packs/samples"
 	}
 	appendStackIfMissing(config, Stack{
 		ID:          "io.buildpacks.stacks.bionic",
@@ -148,6 +152,11 @@ func (c *Config) SetDefaultStack(stackID string) error {
 // That directory may also contain other `pack` related files.
 func (c *Config) Path() string {
 	return filepath.Dir(c.configPath)
+}
+
+func (c *Config) SetDefaultBuilder(builder string) error {
+	c.DefaultBuilder = builder
+	return c.save()
 }
 
 func ImageByRegistry(registry string, images []string) (string, error) {
