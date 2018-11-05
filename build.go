@@ -94,7 +94,7 @@ func DefaultBuildFactory() (*BuildFactory, error) {
 		return nil, err
 	}
 
-	f.Config, err = config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
+	f.Config, err = config.NewDefault()
 	if err != nil {
 		return nil, err
 	}

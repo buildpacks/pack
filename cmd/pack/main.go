@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -203,7 +202,7 @@ func setDefaultStackCommand() *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
-			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
+			cfg, err := config.NewDefault()
 			if err != nil {
 				return err
 			}
@@ -227,7 +226,7 @@ func updateStackCommand() *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
-			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
+			cfg, err := config.NewDefault()
 			if err != nil {
 				return err
 			}
@@ -252,7 +251,7 @@ func deleteStackCommand() *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
-			cfg, err := config.New(filepath.Join(os.Getenv("HOME"), ".pack"))
+			cfg, err := config.NewDefault()
 			if err != nil {
 				return err
 			}
