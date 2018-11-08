@@ -44,6 +44,7 @@ func buildCommand() *cobra.Command {
 	var buildFlags pack.BuildFlags
 	buildCommand := &cobra.Command{
 		Use:  "build <image-name>",
+		Short: "Create runnable app image from source code using buildpacks",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -74,6 +75,7 @@ func runCommand() *cobra.Command {
 	var runFlags pack.RunFlags
 	runCommand := &cobra.Command{
 		Use:  "run",
+		Short: "Create and immediately run an app image from source code using buildpacks",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			bf, err := pack.DefaultBuildFactory()
@@ -99,6 +101,7 @@ func rebaseCommand() *cobra.Command {
 	var flags pack.RebaseFlags
 	cmd := &cobra.Command{
 		Use:  "rebase <image-name>",
+		Short: "Update an app image to an new underlying stack",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -133,6 +136,7 @@ func createBuilderCommand() *cobra.Command {
 	flags := pack.CreateBuilderFlags{}
 	createBuilderCommand := &cobra.Command{
 		Use:  "create-builder <image-name> -b <path-to-builder-toml>",
+		Short: "Compose several buildpacks into a builder image",
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -174,6 +178,7 @@ func addStackCommand() *cobra.Command {
 	}{}
 	addStackCommand := &cobra.Command{
 		Use:  "add-stack <stack-name> --run-image=<name> --build-image=<name>",
+		Short: "Create a new stack with the provided build and run image(s)",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -200,6 +205,7 @@ func addStackCommand() *cobra.Command {
 func setDefaultStackCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:  "set-default-stack <stack-name>",
+		Short: "Set the default stack used by `pack create-builder`",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -220,6 +226,7 @@ func setDefaultStackCommand() *cobra.Command {
 func setDefaultBuilderCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:  "set-default-builder <builder-name>",
+		Short: "Set the default builder used by `pack build`",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -244,6 +251,7 @@ func updateStackCommand() *cobra.Command {
 	}{}
 	updateStackCommand := &cobra.Command{
 		Use:  "update-stack <stack-name> --run-image=<name> --build-image=<name>",
+		Short: "Update a stack with the provided versions of build and run image(s)",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -269,6 +277,7 @@ func updateStackCommand() *cobra.Command {
 func deleteStackCommand() *cobra.Command {
 	addStackCommand := &cobra.Command{
 		Use:  "delete-stack <stack-name>",
+		Short: "Delete a named stack",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -289,6 +298,7 @@ func deleteStackCommand() *cobra.Command {
 func versionCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:  "version",
+		Short: "Display the version of the `pack` tool",
 		Args: cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Printf("VERSION: %s\n", strings.TrimSpace(Version))
