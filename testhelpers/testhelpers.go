@@ -82,6 +82,13 @@ func AssertNotNil(t *testing.T, actual interface{}) {
 	}
 }
 
+func AssertNotEq(t *testing.T, actual, expected interface{}) {
+	t.Helper()
+	if diff := cmp.Diff(actual, expected); diff == "" {
+		t.Fatalf("Expected values to differ: %s", actual)
+	}
+}
+
 func AssertDirContainsFileWithContents(t *testing.T, dir string, file string, expected string) {
 	t.Helper()
 	path := filepath.Join(dir, file)
@@ -182,7 +189,7 @@ func CopyWorkspaceToDocker(t *testing.T, srcPath, destVolume string) {
 
 func ReadFromDocker(t *testing.T, volume, path string) string {
 	t.Helper()
-	return Run(t, exec.Command("docker", "run", "--log-driver=none", "-v", volume+":/workspace", "packs/samples", "cat", path))
+	return Run(t, exec.Command("docker", "run", "--rm", "--log-driver=none", "-v", volume+":/workspace", "packs/samples", "cat", path))
 }
 
 func ReplaceLocalDockerPortWithRemotePort(s string) string {

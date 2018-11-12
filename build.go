@@ -2,6 +2,7 @@ package pack
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"crypto/md5"
 	"fmt"
@@ -13,20 +14,20 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/docker"
+	"github.com/buildpack/pack/fs"
+	"github.com/buildpack/pack/image"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockercli "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/fs"
-	"github.com/buildpack/pack/image"
 )
 
 type BuildFactory struct {
@@ -43,6 +44,7 @@ type BuildFlags struct {
 	AppDir     string
 	Builder    string
 	RunImage   string
+	EnvFile    string
 	RepoName   string
 	Publish    bool
 	NoPull     bool
@@ -53,6 +55,7 @@ type BuildConfig struct {
 	AppDir     string
 	Builder    string
 	RunImage   string
+	EnvFile    map[string]string
 	RepoName   string
 	Publish    bool
 	Buildpacks []string
@@ -70,13 +73,13 @@ type BuildConfig struct {
 }
 
 const (
-	launchDir      = "/workspace"
-	cacheDir       = "/cache"
-	buildpacksDir  = "/buildpacks"
-	platformDir    = "/platform"
-	orderPath      = "/buildpacks/order.toml"
-	groupPath      = `/workspace/group.toml`
-	planPath       = "/workspace/plan.toml"
+	launchDir     = "/workspace"
+	cacheDir      = "/cache"
+	buildpacksDir = "/buildpacks"
+	platformDir   = "/platform"
+	orderPath     = "/buildpacks/order.toml"
+	groupPath     = `/workspace/group.toml`
+	planPath      = "/workspace/plan.toml"
 )
 
 func DefaultBuildFactory() (*BuildFactory, error) {
@@ -116,6 +119,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		return nil, err
 	}
 
+
 	b := &BuildConfig{
 		AppDir:          appDir,
 		RepoName:        f.RepoName,
@@ -130,6 +134,14 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		Images:          bf.Images,
 		WorkspaceVolume: fmt.Sprintf("pack-workspace-%x", uuid.New().String()),
 		CacheVolume:     fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(appDir))),
+	}
+
+
+	if f.EnvFile != "" {
+		b.EnvFile, err = parseEnvFile(f.EnvFile)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if f.Builder == "" {
@@ -458,7 +470,59 @@ func (b *BuildConfig) Build() error {
 		}
 	}
 
+	if len(b.EnvFile) > 0 {
+		platformEnvTar, err := b.tarEnvFile()
+		if err != nil {
+			return errors.Wrap(err, "create env files")
+		}
+		if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", platformEnvTar, dockertypes.CopyToContainerOptions{}); err != nil {
+			return errors.Wrap(err, "create env files")
+		}
+	}
+
 	return b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr)
+}
+
+func parseEnvFile(envFile string) (map[string]string, error) {
+	out := make(map[string]string, 0)
+	f, err := ioutil.ReadFile(envFile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "open %s", envFile)
+	}
+	for _, line := range strings.Split(string(f), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		arr := strings.SplitN(line, "=", 2)
+		if len(arr) > 1 {
+			out[arr[0]] = arr[1]
+		} else {
+			out[arr[0]] = os.Getenv(arr[0])
+		}
+	}
+	return out, nil
+}
+
+func (b *BuildConfig) tarEnvFile() (io.Reader, error) {
+	now := time.Now()
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	for k, v := range b.EnvFile {
+		if err := tw.WriteHeader(&tar.Header{Name: "/platform/env/" + k, Size: int64(len(v)), Mode: 0444, ModTime: now}); err != nil {
+			return nil, err
+		}
+		if _, err := tw.Write([]byte(v)); err != nil {
+			return nil, err
+		}
+	}
+	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: "/platform/env/", Mode: 0555, ModTime: now}); err != nil {
+		return nil, err
+	}
+	if err := tw.Close(); err != nil {
+		return nil, err
+	}
+	return bytes.NewReader(buf.Bytes()), nil
 }
 
 func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {

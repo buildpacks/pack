@@ -66,6 +66,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		subject.Cli, err = docker.New()
 		h.AssertNil(t, err)
 	})
+	it.After(func() {
+		exec.Command("docker", "volume", "rm", subject.WorkspaceVolume, subject.CacheVolume).Run()
+	})
 
 	when("#BuildConfigFromFlags", func() {
 		var (
@@ -287,6 +290,46 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				Builder:  "some/builder",
 			})
 			h.AssertError(t, err, `invalid builder image "some/builder": missing required label "io.buildpacks.stack.id"`)
+		})
+
+		it("sets EnvFile", func() {
+			mockDocker.EXPECT().PullImage("some/builder")
+			mockDocker.EXPECT().ImageInspectWithRaw(gomock.Any(), "some/builder").Return(dockertypes.ImageInspect{
+				Config: &dockercontainer.Config{
+					Labels: map[string]string{"io.buildpacks.stack.id": "some.stack.id"},
+				},
+			}, nil, nil)
+			mockDocker.EXPECT().PullImage("some/run")
+			mockDocker.EXPECT().ImageInspectWithRaw(gomock.Any(), "some/run").Return(dockertypes.ImageInspect{
+				Config: &dockercontainer.Config{
+					Labels: map[string]string{"io.buildpacks.stack.id": "some.stack.id"},
+				},
+			}, nil, nil)
+
+			envFile, err := ioutil.TempFile("", "pack.build.enfile")
+			h.AssertNil(t, err)
+			defer os.Remove(envFile.Name())
+
+			_, err = envFile.Write([]byte(`
+VAR1=value1
+VAR2=value2 with spaces	
+USER
+				`))
+			h.AssertNil(t, err)
+			envFile.Close()
+
+			config, err := factory.BuildConfigFromFlags(&pack.BuildFlags{
+				RepoName: "some/app",
+				Builder:  "some/builder",
+				EnvFile:  envFile.Name(),
+			})
+			h.AssertNil(t, err)
+			h.AssertEq(t, config.EnvFile, map[string]string{
+				"VAR1": "value1",
+				"VAR2": "value2 with spaces",
+				"USER": os.Getenv("USER"),
+			})
+			h.AssertNotEq(t, os.Getenv("USER"), "")
 		})
 	})
 
@@ -524,6 +567,24 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertContains(t, buf.String(), "npm notice created a lockfile as package-lock.json. You should commit this file.")
 				})
+			})
+		})
+
+		when("EnvFile is specified", func() {
+			it("sets specified env variables in /platform/env/...", func() {
+				subject.EnvFile = map[string]string{
+					"VAR1": "value1",
+					"VAR2": "value2 with spaces",
+				}
+				subject.Buildpacks = []string{"acceptance/testdata/mock_buildpacks/printenv"}
+				_, err := subject.Detect()
+				h.AssertNil(t, err)
+
+				err = subject.Build()
+				h.AssertNil(t, err)
+
+				h.AssertContains(t, buf.String(), "ENV: VAR1 is value1;")
+				h.AssertContains(t, buf.String(), "ENV: VAR2 is value2 with spaces;")
 			})
 		})
 	})
