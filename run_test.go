@@ -92,10 +92,12 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			}, nil, nil)
 
 			run, err := factory.RunConfigFromFlags(&pack.RunFlags{
-				AppDir:   "acceptance/testdata/node_app",
-				Builder:  "some/builder",
-				RunImage: "some/run",
-				Port:     "1370",
+				BuildFlags: pack.BuildFlags{
+					AppDir:   "acceptance/testdata/node_app",
+					Builder:  "some/builder",
+					RunImage: "some/run",
+				},
+				Port: "1370",
 			})
 			h.AssertNil(t, err)
 

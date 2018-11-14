@@ -59,19 +59,11 @@ func buildCommand() *cobra.Command {
 			return b.Run()
 		},
 	}
-	buildCommand.Flags().StringVarP(&buildFlags.AppDir, "path", "p", "current working directory", "path to app dir")
-	buildCommand.Flags().StringVar(&buildFlags.Builder, "builder", "", "builder")
-	buildCommand.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "run image")
-	buildCommand.Flags().StringVar(&buildFlags.EnvFile, "env-file", "", "env file")
-	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
-	buildCommand.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
-	buildCommand.Flags().StringArrayVar(&buildFlags.Buildpacks, "buildpack", []string{}, "buildpack ID or host directory path, \n\t\t repeat for each buildpack in order")
+	buildCommandFlags(buildCommand, &buildFlags)
 	return buildCommand
 }
 
 func runCommand() *cobra.Command {
-	wd, _ := os.Getwd()
-
 	var runFlags pack.RunFlags
 	runCommand := &cobra.Command{
 		Use:   "run",
@@ -90,11 +82,20 @@ func runCommand() *cobra.Command {
 			return r.Run(makeStopChannelForSignals)
 		},
 	}
-	runCommand.Flags().StringVarP(&runFlags.AppDir, "path", "p", wd, "path to app dir")
-	runCommand.Flags().StringVar(&runFlags.Builder, "builder", "packs/samples", "builder")
-	runCommand.Flags().StringVar(&runFlags.RunImage, "run-image", "packs/run", "run image")
+
+	buildCommandFlags(runCommand, &runFlags.BuildFlags)
 	runCommand.Flags().StringVar(&runFlags.Port, "port", "", "comma separated ports to publish, defaults to ports exposed by the container")
 	return runCommand
+}
+
+func buildCommandFlags(cmd *cobra.Command, buildFlags *pack.BuildFlags) {
+	cmd.Flags().StringVarP(&buildFlags.AppDir, "path", "p", "current working directory", "path to app dir")
+	cmd.Flags().StringVar(&buildFlags.Builder, "builder", "", "builder")
+	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "run image")
+	cmd.Flags().StringVar(&buildFlags.EnvFile, "env-file", "", "env file")
+	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
+	cmd.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
+	cmd.Flags().StringArrayVar(&buildFlags.Buildpacks, "buildpack", []string{}, "buildpack ID or host directory path, \n\t\t repeat for each buildpack in order")
 }
 
 func rebaseCommand() *cobra.Command {

@@ -2,11 +2,9 @@ package pack
 
 import (
 	"context"
-	"crypto/md5"
 	"fmt"
 	"io"
 	"log"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -17,9 +15,7 @@ import (
 )
 
 type RunFlags struct {
-	AppDir   string
-	Builder  string
-	RunImage string
+	BuildFlags BuildFlags
 	Port     string
 }
 
@@ -34,15 +30,8 @@ type RunConfig struct {
 	Log      *log.Logger
 }
 
-func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
-	bc, err := bf.BuildConfigFromFlags(&BuildFlags{
-		AppDir:   f.AppDir,
-		Builder:  f.Builder,
-		RunImage: f.RunImage,
-		RepoName: f.repoName(),
-		Publish:  false,
-		NoPull:   false,
-	})
+func (bf *BuildFactory) RunConfigFromFlags( f *RunFlags) (*RunConfig, error) {
+	bc, err := bf.BuildConfigFromFlags(&f.BuildFlags)
 	if err != nil {
 		return nil, err
 	}
@@ -66,9 +55,11 @@ func Run(appDir, buildImage, runImage, port string, makeStopCh func() <-chan str
 		return err
 	}
 	r, err := bf.RunConfigFromFlags(&RunFlags{
-		AppDir:   appDir,
-		Builder:  buildImage,
-		RunImage: runImage,
+		BuildFlags: BuildFlags{
+			AppDir:   appDir,
+			Builder:  buildImage,
+			RunImage: runImage,
+		},
 		Port:     port,
 	})
 	if err != nil {
@@ -121,14 +112,6 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 	}
 
 	return nil
-}
-
-func (r *RunFlags) repoName() string {
-	dir, _ := filepath.Abs(r.AppDir)
-	// we can ignore errors here because they will be caught later by the Build command
-	h := md5.New()
-	io.WriteString(h, dir)
-	return fmt.Sprintf("pack.local/run/%x", h.Sum(nil))
 }
 
 func (r *RunConfig) exposedPorts(ctx context.Context, imageID string) (string, error) {

@@ -1,7 +1,9 @@
 package acceptance
 
 import (
+	"bytes"
 	"context"
+	"crypto/md5"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -202,6 +204,63 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 		}, spec.Parallel(), spec.Report(report.Terminal{}))
+	}, spec.Parallel(), spec.Report(report.Terminal{}))
+
+	when("pack run", func() {
+		var sourceCodePath string
+
+		it.Before(func() {
+			var err error
+			sourceCodePath, err = ioutil.TempDir("", "pack.build.node_app.")
+			if err != nil {
+				t.Fatal(err)
+			}
+			h.Run(t, exec.Command("cp", "-r", "testdata/node_app/.", sourceCodePath))
+
+		})
+		it.After(func() {
+			repoName := fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(sourceCodePath)))
+			dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
+
+			if sourceCodePath != "" {
+				os.RemoveAll(sourceCodePath)
+			}
+		})
+
+		it("starts an image", func() {
+			var buf bytes.Buffer
+			cmd := exec.Command(pack, "run", "--port", "3000")
+			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Stdout = &buf
+			cmd.Stderr = &buf
+			cmd.Dir = sourceCodePath
+			cmd.Start()
+
+			defer func() {
+				h.AssertNil(t, cmd.Process.Signal(os.Interrupt))
+			}()
+
+			ticker := time.NewTicker(time.Second)
+			defer ticker.Stop()
+			timer := time.NewTimer(2 * time.Minute)
+			defer timer.Stop()
+
+		Loop:
+			for {
+				select {
+				case <-ticker.C:
+					if strings.Contains(buf.String(), "Example app listening on port 3000!") {
+						break Loop
+					}
+				case <-timer.C:
+					t.Fatal("timeout waiting for app to be up:\n", buf.String())
+				}
+			}
+
+			txt := h.HttpGet(t, "http://localhost:3000")
+			h.AssertEq(t, txt, "Buildpacks Worked! - 1000:1000")
+		})
+
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
 	when("pack rebase", func() {

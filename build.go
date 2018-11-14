@@ -119,6 +119,9 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		return nil, err
 	}
 
+	if f.RepoName == "" {
+		f.RepoName = fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(appDir)))
+	}
 
 	b := &BuildConfig{
 		AppDir:          appDir,
