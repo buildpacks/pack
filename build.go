@@ -302,7 +302,6 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 		Cmd: []string{
 			"/lifecycle/detector",
 			"-buildpacks", buildpacksDir,
-			"-launch", launchDir,
 			"-order", orderPath,
 			"-group", groupPath,
 			"-plan", planPath,
