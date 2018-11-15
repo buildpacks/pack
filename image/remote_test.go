@@ -28,7 +28,7 @@ func TestRemote(t *testing.T) {
 	log.SetOutput(ioutil.Discard)
 
 	defer h.StopRegistry(t)
-	registryPort = h.RunRegistry(t, false)
+	registryPort = h.RunRegistry(t)
 
 	spec.Run(t, "remote", testRemote, spec.Parallel(), spec.Report(report.Terminal{}))
 }

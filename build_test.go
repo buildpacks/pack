@@ -32,18 +32,12 @@ import (
 	"github.com/sclevine/spec/report"
 )
 
-var registryPort string
-
 func TestBuild(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	registryPort = h.RunRegistry(t, true)
+	h.AssertNil(t, exec.Command("docker", "pull", "packs/samples").Run())
+	h.AssertNil(t, exec.Command("docker", "pull", "packs/run").Run())
 	defer h.StopRegistry(t)
-	packHome, err := ioutil.TempDir("", "build-test-pack-home")
-	h.AssertNil(t, err)
-	defer os.RemoveAll(packHome)
-	h.ConfigurePackHome(t, packHome, registryPort)
-	defer h.CleanDefaultImages(t, registryPort)
 
 	spec.Run(t, "build", testBuild, spec.Parallel(), spec.Report(report.Terminal{}))
 }
@@ -56,8 +50,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		var err error
 		subject = &pack.BuildConfig{
 			AppDir:          "acceptance/testdata/node_app",
-			Builder:         h.DefaultBuilderImage(t, registryPort),
-			RunImage:        h.DefaultRunImage(t, registryPort),
+			Builder:         "packs/samples",
+			RunImage:        "packs/run",
 			RepoName:        "pack.build." + h.RandString(10),
 			Publish:         false,
 			WorkspaceVolume: fmt.Sprintf("pack-workspace-%x", uuid.New().String()),
@@ -440,7 +434,9 @@ USER
 		})
 		when("no previous image exists", func() {
 			when("publish", func() {
+				var registryPort string
 				it.Before(func() {
+					registryPort = h.RunRegistry(t)
 					subject.RepoName = "localhost:" + registryPort + "/" + subject.RepoName
 					subject.Publish = true
 				})
@@ -472,8 +468,10 @@ USER
 			})
 
 			when("publish", func() {
+				var registryPort string
 				it.Before(func() {
 					oldRepoName := subject.RepoName
+					registryPort = h.RunRegistry(t)
 
 					subject.RepoName = "localhost:" + registryPort + "/" + oldRepoName
 					subject.Publish = true
@@ -621,6 +619,7 @@ USER
 					{ID: "io.buildpacks.samples.nodejs", Version: "0.0.1"},
 				},
 			}
+			h.AssertNil(t, exec.Command("docker", "pull", "packs/run").Run())
 			runSHA = imageSHA(t, subject.RunImage)
 			runTopLayer = topLayer(t, subject.RunImage)
 		})
@@ -628,9 +627,10 @@ USER
 
 		when("no previous image exists", func() {
 			when("publish", func() {
-				var oldRepoName string
+				var oldRepoName, registryPort string
 				it.Before(func() {
 					oldRepoName = subject.RepoName
+					registryPort = h.RunRegistry(t)
 
 					subject.RepoName = "localhost:" + registryPort + "/" + oldRepoName
 					subject.Publish = true
@@ -671,6 +671,11 @@ USER
 
 			when("daemon", func() {
 				it.Before(func() { subject.Publish = false })
+				it.After(func() {
+					if subject.Builder != "" {
+						h.RemoveImage(subject.Builder)
+					}
+				})
 
 				it("creates the image on the daemon", func() {
 					h.AssertNil(t, subject.Export(group))
@@ -706,11 +711,11 @@ USER
 				it("sets owner of layer files to PACK_USER_ID:PACK_GROUP_ID", func() {
 					subject.Builder = "packs/samples-" + h.RandString(8)
 					cmd := exec.Command("docker", "build", "-t", subject.Builder, "-")
-					cmd.Stdin = strings.NewReader(fmt.Sprintf(`
-						FROM %s
+					cmd.Stdin = strings.NewReader(`
+						FROM packs/samples
 						ENV PACK_USER_ID 1234
 						ENV PACK_GROUP_ID 5678
-					`, h.DefaultBuilderImage(t, registryPort)))
+					`)
 					h.Run(t, cmd)
 
 					h.AssertNil(t, subject.Export(group))
@@ -721,11 +726,11 @@ USER
 				it("errors if run image is missing PACK_USER_ID", func() {
 					subject.Builder = "packs/samples-" + h.RandString(8)
 					cmd := exec.Command("docker", "build", "-t", subject.Builder, "-")
-					cmd.Stdin = strings.NewReader(fmt.Sprintf(`
-						FROM %s
+					cmd.Stdin = strings.NewReader(`
+						FROM packs/samples
 						ENV PACK_USER_ID ''
 						ENV PACK_GROUP_ID 5678
-					`, h.DefaultBuilderImage(t, registryPort)))
+					`)
 					h.Run(t, cmd)
 
 					err := subject.Export(group)
@@ -745,7 +750,7 @@ USER
 
 				t.Log("setup workspace to reuse layer")
 				buf.Reset()
-				h.Run(t, exec.Command("docker", "run", "--user=root", "-v", subject.WorkspaceVolume+":/workspace", h.DefaultBuilderImage(t, registryPort), "rm", "-rf", "/workspace/io.buildpacks.samples.nodejs/mylayer"))
+				h.Run(t, exec.Command("docker", "run", "--user=root", "-v", subject.WorkspaceVolume+":/workspace", "packs/samples", "rm", "-rf", "/workspace/io.buildpacks.samples.nodejs/mylayer"))
 
 				t.Log("recreate image and h.Assert copying layer from previous image")
 				h.AssertNil(t, subject.Export(group))

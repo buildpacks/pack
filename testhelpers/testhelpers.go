@@ -137,8 +137,7 @@ func proxyDockerHostPort(port string) (string, error) {
 var runRegistryName, runRegistryLocalPort, runRegistryRemotePort string
 var runRegistryOnce sync.Once
 
-func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
-	t.Log("run registry")
+func RunRegistry(t *testing.T) (localPort string) {
 	t.Helper()
 	runRegistryOnce.Do(func() {
 		runRegistryName = "test-registry-" + RandString(10)
@@ -152,94 +151,15 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 		} else {
 			runRegistryLocalPort = runRegistryRemotePort
 		}
-		if seedRegistry {
-			t.Log("seed registry")
-			for _, f := range []func(*testing.T, string) string{DefaultBuildImage, DefaultRunImage, DefaultBuilderImage} {
-				Run(t, exec.Command(
-					"docker",
-					"push",
-					f(t, runRegistryLocalPort),
-				))
-			}
-		}
 	})
 	return runRegistryLocalPort
 }
 
-func ConfigurePackHome(t *testing.T, packHome, registryPort string) {
-	t.Helper()
-	AssertNil(t, ioutil.WriteFile(filepath.Join(packHome, "config.toml"), []byte(fmt.Sprintf(`
-				default-stack-id = "io.buildpacks.stacks.bionic"
-                default-builder = "%s"
-
-				[[stacks]]
-				  id = "io.buildpacks.stacks.bionic"
-				  build-images = ["%s"]
-				  run-images = ["%s"]
-			`, DefaultBuilderImage(t, registryPort), DefaultBuildImage(t, registryPort), DefaultRunImage(t, registryPort))), 0666))
-}
-
 func StopRegistry(t *testing.T) {
-	t.Log("stop registry")
-	t.Helper()
 	if runRegistryName != "" {
 		Run(t, exec.Command("docker", "kill", runRegistryName))
 		RunE(exec.Command("bash", "-c", fmt.Sprintf(`docker rmi -f $(docker images --format='{{.ID}}' 'localhost:%s/*')`, runRegistryRemotePort)))
 	}
-}
-
-var getBuildImageOnce sync.Once
-
-func DefaultBuildImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := packTag()
-	getBuildImageOnce.Do(func() {
-		if tag == "latest" {
-			Run(t, exec.Command("docker", "pull", fmt.Sprintf("packs/build:%s", tag)))
-		}
-		Run(t, exec.Command(
-			"docker", "tag",
-			fmt.Sprintf("packs/build:%s", tag),
-			fmt.Sprintf("localhost:%s/packs/build:%s", registryPort, tag),
-		))
-	})
-	return fmt.Sprintf("localhost:%s/packs/build:%s", registryPort, tag)
-}
-
-var getRunImageOnce sync.Once
-
-func DefaultRunImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := packTag()
-	getRunImageOnce.Do(func() {
-		if tag == "latest" {
-			Run(t, exec.Command("docker", "pull", fmt.Sprintf("packs/run:%s", tag)))
-		}
-		Run(t, exec.Command("docker", "tag", fmt.Sprintf("packs/run:%s", tag), fmt.Sprintf("localhost:%s/packs/run:%s", registryPort, tag)))
-	})
-	return fmt.Sprintf("localhost:%s/packs/run:%s", registryPort, tag)
-}
-
-var getBuilderImageOnce sync.Once
-
-func DefaultBuilderImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := packTag()
-	getBuilderImageOnce.Do(func() {
-		if tag == "latest" {
-			Run(t, exec.Command("docker", "pull", fmt.Sprintf("packs/samples:%s", tag)))
-		}
-		Run(t, exec.Command("docker", "tag", fmt.Sprintf("packs/samples:%s", tag), fmt.Sprintf("localhost:%s/packs/samples:%s", registryPort, tag)))
-	})
-	return fmt.Sprintf("localhost:%s/packs/samples:%s", registryPort, tag)
-}
-
-func packTag() string {
-	tag := os.Getenv("PACK_TAG")
-	if tag == "" {
-		return "latest"
-	}
-	return tag
 }
 
 func HttpGet(t *testing.T, url string) string {
@@ -295,13 +215,6 @@ func Run(t *testing.T, cmd *exec.Cmd) string {
 	txt, err := RunE(cmd)
 	AssertNil(t, err)
 	return txt
-}
-
-func CleanDefaultImages(t *testing.T, registryPort string) {
-	t.Helper()
-	Run(t, exec.Command("docker", "rmi", DefaultRunImage(t, registryPort)))
-	Run(t, exec.Command("docker", "rmi", DefaultBuildImage(t, registryPort)))
-	Run(t, exec.Command("docker", "rmi", DefaultBuilderImage(t, registryPort)))
 }
 
 func RunE(cmd *exec.Cmd) (string, error) {

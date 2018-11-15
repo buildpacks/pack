@@ -25,8 +25,6 @@ import (
 
 var pack string
 var dockerCli *docker.Client
-var registryPort string
-var packTag string
 
 func TestPack(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -48,9 +46,9 @@ func TestPack(t *testing.T) {
 	var err error
 	dockerCli, err = docker.New()
 	h.AssertNil(t, err)
-	registryPort = h.RunRegistry(t, true)
+	h.AssertNil(t, dockerCli.PullImage("sclevine/test"))
+	h.AssertNil(t, dockerCli.PullImage("packs/samples"))
 	defer h.StopRegistry(t)
-	defer h.CleanDefaultImages(t, registryPort)
 
 	spec.Run(t, "pack", testPack, spec.Report(report.Terminal{}))
 }
@@ -66,9 +64,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		var err error
 		packHome, err = ioutil.TempDir("", "buildpack.pack.home.")
 		h.AssertNil(t, err)
-		h.ConfigurePackHome(t, packHome, registryPort)
 	})
-
 	it.After(func() {
 		os.RemoveAll(packHome)
 	})
@@ -88,9 +84,10 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
 	when("pack build", func() {
-		var sourceCodePath, repo, repoName, containerName string
+		var sourceCodePath, repo, repoName, containerName, registryPort string
 
 		it.Before(func() {
+			registryPort = h.RunRegistry(t)
 			repo = "some-org/" + h.RandString(10)
 			repoName = "localhost:" + registryPort + "/" + repo
 			containerName = "test-" + h.RandString(10)
@@ -278,22 +275,17 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 			buildAndSetRunImage = func(runImage, contents1, contents2 string) {
 				cmd := exec.Command("docker", "build", "-t", runImage, "-")
-				cmd.Stdin = strings.NewReader(fmt.Sprintf(`
-					FROM %s
-					USER root
-					RUN echo %s > /contents1.txt
-					RUN echo %s > /contents2.txt
-					USER pack
-					`, h.DefaultRunImage(t, registryPort), contents1, contents2))
+				cmd.Stdin = strings.NewReader(fmt.Sprintf("FROM packs/run\nUSER root\nRUN echo %s > /contents1.txt\nRUN echo %s > /contents2.txt\nUSER pack\n", contents1, contents2))
 				h.Run(t, cmd)
 
-				cmd = exec.Command(
-					pack, "update-stack",
-					"io.buildpacks.stacks.bionic",
-					"--build-image", h.DefaultBuildImage(t, registryPort),
-					"--run-image", runImage)
-				cmd.Env = []string{"PACK_HOME=" + packHome}
-				h.Run(t, cmd)
+				h.AssertNil(t, ioutil.WriteFile(filepath.Join(packHome, "config.toml"), []byte(fmt.Sprintf(`
+				default-stack-id = "io.buildpacks.stacks.bionic"
+
+				[[stacks]]
+				  id = "io.buildpacks.stacks.bionic"
+				  build-images = ["packs/build"]
+				  run-images = ["%s"]
+			`, runImage)), 0666))
 			}
 			rootContents1 = func() string {
 				h.Run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", repoName))
@@ -316,7 +308,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			it("rebases", func() {
 				buildAndSetRunImage(runBefore, "contents-before-1", "contents-before-2")
 
-				cmd := exec.Command(pack, "build", repoName, "-p", "testdata/node_app/", "--no-pull")
+				cmd := exec.Command(pack, "build", repoName, "-p", "testdata/node_app/", "--no-pull") // , "--publish")
 				cmd.Env = []string{"PACK_HOME=" + packHome}
 				h.Run(t, cmd)
 
@@ -324,7 +316,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 				buildAndSetRunImage(runAfter, "contents-after-1", "contents-after-2")
 
-				cmd = exec.Command(pack, "rebase", repoName, "--no-pull")
+				cmd = exec.Command(pack, "rebase", repoName, "--no-pull") // , "--publish")
 				cmd.Env = []string{"PACK_HOME=" + packHome}
 				h.Run(t, cmd)
 
@@ -333,7 +325,10 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("run on registry", func() {
+			var registryPort string
 			it.Before(func() {
+				registryPort = h.RunRegistry(t)
+
 				repoName = "localhost:" + registryPort + "/" + repoName
 				runBefore = "localhost:" + registryPort + "/" + runBefore
 				runAfter = "localhost:" + registryPort + "/" + runAfter
@@ -380,6 +375,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("builds and exports an image", func() {
+			h.AssertNil(t, dockerCli.PullImage("packs/build")) // TODO: control version, 'latest' is not stable across test runs.
+
 			builderTOML := filepath.Join("testdata", "mock_buildpacks", "builder.toml")
 			sourceCodePath := filepath.Join("testdata", "mock_app")
 
