@@ -72,7 +72,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	when("subcommand is invalid", func() {
 		it("prints usage", func() {
 			cmd := exec.Command(pack, "some-bad-command")
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, _ := cmd.CombinedOutput()
 			if !strings.Contains(string(output), `unknown command "some-bad-command" for "pack"`) {
 				t.Fatal("Failed to print usage", string(output))
@@ -111,7 +111,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		when("'--publish' flag is not specified'", func() {
 			it("builds and exports an image", func() {
 				cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath)
-				cmd.Env = []string{"PACK_HOME=" + packHome}
+				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
 
 				// NOTE: avoid using h.Run as it will convert repoName to include the remote registry port, which is irrelevant given this was done on the daemon
@@ -145,7 +145,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			// up exiting immediately
 			it.Pend("assumes latest if no version is provided", func() {
 				cmd := exec.Command(pack, "build", repoName, "--buildpack", javaBpId, "-p", sourceCodePath)
-				cmd.Env = []string{"PACK_HOME=" + packHome}
+				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				buildOutput := h.Run(t, cmd)
 
 				h.AssertEq(t, strings.Contains(buildOutput, "DETECTING WITH MANUALLY-PROVIDED GROUP:"), true)
@@ -171,7 +171,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				runPackBuild := func() string {
 					t.Helper()
 					cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--publish")
-					cmd.Env = []string{"PACK_HOME=" + packHome}
+					cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 					return h.Run(t, cmd)
 				}
 				output := runPackBuild()
@@ -230,7 +230,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		it("starts an image", func() {
 			var buf bytes.Buffer
 			cmd := exec.Command(pack, "run", "--port", "3000")
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			cmd.Stdout = &buf
 			cmd.Stderr = &buf
 			cmd.Dir = sourceCodePath
@@ -309,7 +309,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				buildAndSetRunImage(runBefore, "contents-before-1", "contents-before-2")
 
 				cmd := exec.Command(pack, "build", repoName, "-p", "testdata/node_app/", "--no-pull") // , "--publish")
-				cmd.Env = []string{"PACK_HOME=" + packHome}
+				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
 
 				h.AssertEq(t, rootContents1(), "contents-before-1\n")
@@ -317,7 +317,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				buildAndSetRunImage(runAfter, "contents-after-1", "contents-after-2")
 
 				cmd = exec.Command(pack, "rebase", repoName, "--no-pull") // , "--publish")
-				cmd.Env = []string{"PACK_HOME=" + packHome}
+				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
 
 				h.AssertEq(t, rootContents1(), "contents-after-1\n")
@@ -338,7 +338,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				h.Run(t, exec.Command("docker", "push", runBefore))
 
 				cmd := exec.Command(pack, "build", repoName, "-p", "testdata/node_app/", "--publish")
-				cmd.Env = []string{"PACK_HOME=" + packHome}
+				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
 
 				h.AssertEq(t, rootContents1(), "contents-before-1\n")
@@ -347,7 +347,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				h.Run(t, exec.Command("docker", "push", runAfter))
 
 				cmd = exec.Command(pack, "rebase", repoName, "--publish")
-				cmd.Env = []string{"PACK_HOME=" + packHome}
+				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
 				h.Run(t, exec.Command("docker", "pull", repoName))
 
@@ -386,7 +386,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				builderRepoName,
 				"-b", builderTOML,
 			)
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			h.Run(t, cmd)
 
 			t.Log("build uses order defined in builder.toml")
@@ -396,7 +396,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				"--no-pull",
 				"--path", sourceCodePath,
 			)
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			buildOutput, err := cmd.CombinedOutput()
 			h.AssertNil(t, err)
 			expectedDetectOutput := "First Mock Buildpack: pass | Second Mock Buildpack: pass | Third Mock Buildpack: pass"
@@ -426,7 +426,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				"--buildpack", "mock.bp.third@0.0.3-mock",
 				"--path", sourceCodePath,
 			)
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			buildOutput, err = cmd.CombinedOutput()
 			h.AssertNil(t, err)
 			latestInfo := `No version for 'mock.bp.first' buildpack provided, will use 'mock.bp.first@latest'`
@@ -456,7 +456,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	when("pack add-stack", func() {
 		it("adds a custom stack to ~/.pack/config.toml", func() {
 			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output := h.Run(t, cmd)
 
 			h.AssertEq(t, string(output), "my.custom.stack successfully added\n")
@@ -489,7 +489,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("add-stack command failed: %s: %s", output, err)
@@ -498,7 +498,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 		it("updates an existing custom stack in ~/.pack/config.toml", func() {
 			cmd := exec.Command(pack, "update-stack", "my.custom.stack", "--run-image", "my-org/run-2", "--run-image", "my-org/run-3", "--build-image", "my-org/build-2", "--build-image", "my-org/build-3")
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("update-stack command failed: %s: %s", output, err)
@@ -523,7 +523,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("add-stack command failed: %s: %s", output, err)
@@ -536,7 +536,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				"set-default-stack",
 				"my.custom.stack",
 			)
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("set-default-stack command failed: %s: %s", output, err)
@@ -569,7 +569,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("add-stack command failed: %s: %s", output, err)
@@ -584,7 +584,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, containsStack(config, "my.custom.stack"), true)
 
 			cmd := exec.Command(pack, "delete-stack", "my.custom.stack")
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("add-stack command failed: %s: %s", output, err)
@@ -609,7 +609,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				"set-default-builder",
 				"some/builder",
 			)
-			cmd.Env = []string{"PACK_HOME=" + packHome}
+			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("set-default-builder command failed: %s: %s", output, err)
