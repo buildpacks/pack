@@ -60,6 +60,7 @@ func buildCommand() *cobra.Command {
 		},
 	}
 	buildCommandFlags(buildCommand, &buildFlags)
+	buildCommand.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
 	return buildCommand
 }
 
@@ -93,7 +94,6 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *pack.BuildFlags) {
 	cmd.Flags().StringVar(&buildFlags.Builder, "builder", "", "builder")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "run image")
 	cmd.Flags().StringVar(&buildFlags.EnvFile, "env-file", "", "env file")
-	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "publish to registry")
 	cmd.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
 	cmd.Flags().StringArrayVar(&buildFlags.Buildpacks, "buildpack", []string{}, "buildpack ID or host directory path, \n\t\t repeat for each buildpack in order")
 }
