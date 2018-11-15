@@ -12,13 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-
 	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/image"
 	h "github.com/buildpack/pack/testhelpers"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
 )
 
 var registryPort string
@@ -257,8 +256,6 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 func createImageOnRemote(t *testing.T, repoName, dockerFile string) string {
 	t.Helper()
 	defer h.RemoveImage(repoName)
-
-	dockerFile = h.ReplaceLocalDockerPortWithRemotePort(dockerFile)
 
 	cmd := exec.Command("docker", "build", "-t", repoName+":latest", "-")
 	cmd.Stdin = strings.NewReader(dockerFile)
