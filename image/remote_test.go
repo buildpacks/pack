@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os/exec"
@@ -24,8 +23,8 @@ var registryPort string
 
 func TestRemote(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
-	log.SetOutput(ioutil.Discard)
 
+	registryPort = h.RunRegistry(t, false)
 	defer h.StopRegistry(t)
 	registryPort = h.RunRegistry(t, false)
 
@@ -48,12 +47,10 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		}
 		repoName = "localhost:" + registryPort + "/pack-image-test-" + h.RandString(10)
 	})
-	it.After(func() {
-		h.RemoveImage(repoName)
-	})
 
 	when("#Label", func() {
 		when("image exists", func() {
+			var img image.Image
 			it.Before(func() {
 				cmd := exec.Command("docker", "build", "-t", repoName, "-")
 				cmd.Stdin = strings.NewReader(`
@@ -62,22 +59,20 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 				`)
 				h.Run(t, cmd)
 				h.Run(t, exec.Command("docker", "push", repoName))
-				h.RemoveImage(repoName)
+				h.Run(t, exec.Command("docker", "rmi", repoName))
+
+				var err error
+				img, err = factory.NewRemote(repoName)
+				h.AssertNil(t, err)
 			})
 
 			it("returns the label value", func() {
-				img, err := factory.NewRemote(repoName)
-				h.AssertNil(t, err)
-
 				label, err := img.Label("mykey")
 				h.AssertNil(t, err)
 				h.AssertEq(t, label, "myvalue")
 			})
 
 			it("returns an empty string for a missing label", func() {
-				img, err := factory.NewRemote(repoName)
-				h.AssertNil(t, err)
-
 				label, err := img.Label("missing-label")
 				h.AssertNil(t, err)
 				h.AssertEq(t, label, "")
@@ -113,6 +108,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#SetLabel", func() {
+		var img image.Image
 		when("image exists", func() {
 			it.Before(func() {
 				cmd := exec.Command("docker", "build", "-t", repoName, "-")
@@ -122,34 +118,29 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 				`)
 				h.Run(t, cmd)
 				h.Run(t, exec.Command("docker", "push", repoName))
-				h.RemoveImage(repoName)
-			})
-			it.After(func() {
-				h.RemoveImage(repoName)
+				h.Run(t, exec.Command("docker", "rmi", repoName))
+
+				var err error
+				img, err = factory.NewRemote(repoName)
+				h.AssertNil(t, err)
 			})
 
 			it("sets label on img object", func() {
-				img, _ := factory.NewRemote(repoName)
 				h.AssertNil(t, img.SetLabel("mykey", "new-val"))
 				label, err := img.Label("mykey")
 				h.AssertNil(t, err)
 				h.AssertEq(t, label, "new-val")
 			})
 
-			it("saves label to docker daemon", func() {
-				img, _ := factory.NewRemote(repoName)
+			it("saves label", func() {
 				h.AssertNil(t, img.SetLabel("mykey", "new-val"))
 				_, err := img.Save()
 				h.AssertNil(t, err)
 
-				// Before Pull
-				label, err := h.RunE(exec.Command("docker", "inspect", repoName, "-f", `{{.Config.Labels.mykey}}`))
-				h.AssertNotNil(t, err)
-				h.AssertEq(t, strings.TrimSpace(label), "")
-
 				// After Pull
 				h.Run(t, exec.Command("docker", "pull", repoName))
-				label = h.Run(t, exec.Command("docker", "inspect", repoName, "-f", `{{.Config.Labels.mykey}}`))
+				defer h.Run(t, exec.Command("docker", "rmi", repoName))
+				label := h.Run(t, exec.Command("docker", "inspect", repoName, "-f", `{{.Config.Labels.mykey}}`))
 				h.AssertEq(t, strings.TrimSpace(label), "new-val")
 			})
 		})
@@ -179,13 +170,10 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					RUN echo text-from-image > myimage2.txt
 				`, oldBase))
 			})
-			it.After(func() {
-				h.RemoveImage(oldBase, newBase)
-			})
 
 			it("switches the base", func() {
 				// Before
-				txt := h.Run(t, exec.Command("docker", "run", repoName, "cat", "base.txt"))
+				txt := h.Run(t, exec.Command("docker", "run", "--rm", repoName, "cat", "base.txt"))
 				h.AssertEq(t, txt, "old-base\n")
 
 				// Run rebase
@@ -200,7 +188,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 
 				// After
 				h.Run(t, exec.Command("docker", "pull", repoName))
-				txt = h.Run(t, exec.Command("docker", "run", repoName, "cat", "base.txt"))
+				txt = h.Run(t, exec.Command("docker", "run", "--rm", repoName, "cat", "base.txt"))
 				h.AssertEq(t, txt, "new-base\n")
 			})
 		})
@@ -244,7 +232,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				// After Pull
-				defer h.RemoveImage(repoName + "@" + imgDigest)
+				defer h.Run(t, exec.Command("docker", "rmi", repoName+"@"+imgDigest))
 				h.Run(t, exec.Command("docker", "pull", repoName+"@"+imgDigest))
 				label := h.Run(t, exec.Command("docker", "inspect", repoName+"@"+imgDigest, "-f", `{{.Config.Labels.mykey}}`))
 				h.AssertEq(t, strings.TrimSpace(label), "newValue")
@@ -255,7 +243,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 
 func createImageOnRemote(t *testing.T, repoName, dockerFile string) string {
 	t.Helper()
-	defer h.RemoveImage(repoName)
+	defer h.Run(t, exec.Command("docker", "rmi", repoName))
 
 	cmd := exec.Command("docker", "build", "-t", repoName+":latest", "-")
 	cmd.Stdin = strings.NewReader(dockerFile)

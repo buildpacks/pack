@@ -105,6 +105,28 @@ func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 	})
 }
 
+func (*FS) AddTextToTar(tw *tar.Writer, name string, contents []byte) error {
+	hdr := &tar.Header{Name: name, Mode: 0644, Size: int64(len(contents))}
+	if err := tw.WriteHeader(hdr); err != nil {
+		return err
+	}
+	_, err := tw.Write(contents)
+	return err
+}
+
+func (*FS) AddFileToTar(tw *tar.Writer, name string, contents *os.File) error {
+	fi, err := contents.Stat()
+	if err != nil {
+		return err
+	}
+	hdr := &tar.Header{Name: name, Mode: 0644, Size: int64(fi.Size())}
+	if err := tw.WriteHeader(hdr); err != nil {
+		return err
+	}
+	_, err = io.Copy(tw, contents)
+	return err
+}
+
 func (*FS) Untar(r io.Reader, dest string) error {
 	tr := tar.NewReader(r)
 	for {

@@ -8,7 +8,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -48,11 +47,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDocker = mocks.NewMockDocker(mockController)
 			mockImages = mocks.NewMockImages(mockController)
 
-			home, err := ioutil.TempDir("", ".pack")
+			packHome, err := ioutil.TempDir("", ".pack")
 			if err != nil {
 				t.Fatalf("failed to create temp homedir: %v", err)
 			}
-			cfg, err := config.New(home)
+			h.ConfigurePackHome(t, packHome, "0000")
+			cfg, err := config.New(packHome)
 			if err != nil {
 				t.Fatalf("failed to create config: %v", err)
 			}
@@ -79,11 +79,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				Log:    log.New(&buf, "", log.LstdFlags),
 				Config: cfg,
 				Images: mockImages,
-			}
-
-			output, err := exec.Command("docker", "pull", "packs/build").CombinedOutput()
-			if err != nil {
-				t.Fatalf("Failed to pull the base image in test setup: %s: %s", output, err)
 			}
 		})
 

@@ -18,7 +18,7 @@ type Client struct {
 }
 
 func New() (*Client, error) {
-	cli, err := dockercli.NewEnvClient()
+	cli, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))
 	if err != nil {
 		return nil, errors.Wrap(err, "new docker client")
 	}
