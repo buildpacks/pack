@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -100,8 +102,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			h.Run(t, exec.Command("cp", "-r", "testdata/node_app/.", sourceCodePath))
-
+			h.AssertNil(t, copyDirectory("testdata/node_app/.", sourceCodePath))
 		})
 		it.After(func() {
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
@@ -140,7 +141,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				h.Run(t, exec.Command("cp", "-r", "testdata/maven_app/.", sourceCodePath))
+				h.AssertNil(t, copyDirectory("testdata/maven_app/.", sourceCodePath))
 			})
 
 			// Skip this test for now. The container run at the very end runs java -jar target/testdata-sample-app-1.0-SNAPSHOT.jar
@@ -219,8 +220,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			h.Run(t, exec.Command("cp", "-r", "testdata/node_app/.", sourceCodePath))
-
+			h.AssertNil(t, copyDirectory("testdata/node_app/.", sourceCodePath))
 		})
 		it.After(func() {
 			repoName := fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(sourceCodePath)))
@@ -662,4 +662,74 @@ func imgSHAFromOutput(txt, repoName string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("could not find Image: %s@[SHA] in output", repoName)
+}
+
+func copyDirectory(srcDir, destDir string) error {
+	destExists, _ := fileExists(destDir)
+	if !destExists {
+		return errors.New("destination dir must exist")
+	}
+	files, err := ioutil.ReadDir(srcDir)
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		src := filepath.Join(srcDir, f.Name())
+		dest := filepath.Join(destDir, f.Name())
+		if m := f.Mode(); m&os.ModeSymlink != 0 {
+			target, err := os.Readlink(src)
+			if err != nil {
+				return fmt.Errorf("Error while reading symlink '%s': %v", src, err)
+			}
+			if err := os.Symlink(target, dest); err != nil {
+				return fmt.Errorf("Error while creating '%s' as symlink to '%s': %v", dest, target, err)
+			}
+		} else if f.IsDir() {
+			err = os.MkdirAll(dest, f.Mode())
+			if err != nil {
+				return err
+			}
+			if err := copyDirectory(src, dest); err != nil {
+				return err
+			}
+		} else {
+			rc, err := os.Open(src)
+			if err != nil {
+				return err
+			}
+			err = writeToFile(rc, dest, f.Mode())
+			if err != nil {
+				rc.Close()
+				return err
+			}
+			rc.Close()
+		}
+	}
+	return nil
+}
+func fileExists(file string) (bool, error) {
+	_, err := os.Stat(file)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+func writeToFile(source io.Reader, destFile string, mode os.FileMode) error {
+	err := os.MkdirAll(filepath.Dir(destFile), 0755)
+	if err != nil {
+		return err
+	}
+	fh, err := os.OpenFile(destFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+	_, err = io.Copy(fh, source)
+	if err != nil {
+		return err
+	}
+	return nil
 }
