@@ -351,8 +351,7 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 	}
 
 	tr, errChan := b.FS.CreateTarReader(b.AppDir, filepath.Join(launchDir, "app"), uid, gid)
-	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{
-	}); err != nil {
+	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
 		return nil, errors.Wrap(err, "copy app to workspace volume")
 	}
 	if err := <-errChan; err != nil {
@@ -587,9 +586,9 @@ func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
 
 		exporter := &lifecycle.Exporter{
 			ArtifactsDir: filepath.Join(tmpDir, "pack-exporter"),
-			Buildpacks: group.Buildpacks,
-			Out:        os.Stdout,
-			Err:        os.Stderr,
+			Buildpacks:   group.Buildpacks,
+			Out:          os.Stdout,
+			Err:          os.Stderr,
 		}
 		repoStore, err := img.NewRegistry(b.RepoName)
 		if err != nil {

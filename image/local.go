@@ -121,7 +121,6 @@ func (l *local) Rebase(baseTopLayer string, newBase Image) error {
 	l.Inspect.RootFS.Layers = newBaseInspect.RootFS.Layers
 	l.layerPaths = make([]string, len(l.Inspect.RootFS.Layers))
 
-
 	// SAVE CURRENT IMAGE TO DISK
 	if err := l.prevDownload(); err != nil {
 		return err

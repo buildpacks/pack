@@ -42,7 +42,7 @@ func New(path string) (*Config, error) {
 		config.DefaultStackID = "io.buildpacks.stacks.bionic"
 	}
 	if config.DefaultBuilder == "" {
-		config.DefaultBuilder ="packs/samples"
+		config.DefaultBuilder = "packs/samples"
 	}
 	appendStackIfMissing(config, Stack{
 		ID:          "io.buildpacks.stacks.bionic",

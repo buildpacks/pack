@@ -16,7 +16,7 @@ import (
 
 type RunFlags struct {
 	BuildFlags BuildFlags
-	Port     string
+	Port       string
 }
 
 type RunConfig struct {
@@ -30,7 +30,7 @@ type RunConfig struct {
 	Log      *log.Logger
 }
 
-func (bf *BuildFactory) RunConfigFromFlags( f *RunFlags) (*RunConfig, error) {
+func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
 	bc, err := bf.BuildConfigFromFlags(&f.BuildFlags)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func Run(appDir, buildImage, runImage, port string, makeStopCh func() <-chan str
 			Builder:  buildImage,
 			RunImage: runImage,
 		},
-		Port:     port,
+		Port: port,
 	})
 	if err != nil {
 		return err
