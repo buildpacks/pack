@@ -691,11 +691,13 @@ func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
 					}
 					// TODO error nicely on not found
 					layer.SHA = prevBP.Layers[layerName].SHA
+					b.Log.Printf("reusing layer '%s/%s' with diffID '%s'\n", bp.ID, layerName, layer.SHA)
 					if err := img.ReuseLayer(layer.SHA); err != nil {
 						return errors.Wrapf(err, "reuse layer '%s/%s' from previous image", bp.ID, layerName)
 					}
 					metadata.Buildpacks[index].Layers[layerName] = layer
 				} else {
+					b.Log.Printf("adding layer '%s/%s' with diffID '%s'\n", bp.ID, layerName, layer.SHA)
 					if err := img.AddLayer(filepath.Join(tmpDir, "pack-exporter", strings.TrimPrefix(layer.SHA, "sha256:")+".tar")); err != nil {
 						return errors.Wrapf(err, "add layer '%s/%s'", bp.ID, layerName)
 					}
@@ -703,11 +705,14 @@ func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
 			}
 		}
 
+		b.Log.Printf("adding app layer with diffID '%s'\n", metadata.App.SHA)
 		if err := img.AddLayer(filepath.Join(tmpDir, "pack-exporter", strings.TrimPrefix(metadata.App.SHA, "sha256:")+".tar")); err != nil {
-			return err
+			return errors.Wrap(err, "add app layer")
 		}
+
+		b.Log.Printf("adding config layer with diffID '%s'\n", metadata.Config.SHA)
 		if err := img.AddLayer(filepath.Join(tmpDir, "pack-exporter", strings.TrimPrefix(metadata.Config.SHA, "sha256:")+".tar")); err != nil {
-			return err
+			return errors.Wrap(err, "add config layer")
 		}
 
 		bData, err = json.Marshal(metadata)
