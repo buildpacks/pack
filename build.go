@@ -7,6 +7,17 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/img"
@@ -20,16 +31,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"io"
-	"io/ioutil"
-	"log"
-	"math/rand"
-	"os"
-	"path/filepath"
-	"sort"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type BuildFactory struct {
@@ -350,7 +351,7 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 		return nil, errors.Wrap(err, "detect")
 	}
 
-	tr, errChan := b.FS.CreateTarReader(b.AppDir, filepath.Join(launchDir, "app"), uid, gid)
+	tr, errChan := b.FS.CreateTarReader(b.AppDir, launchDir+"/app", uid, gid)
 	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
 		return nil, errors.Wrap(err, "copy app to workspace volume")
 	}
@@ -358,7 +359,7 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 		return nil, errors.Wrap(err, "copy app to workspace volume")
 	}
 
-	if err := b.chownDir(filepath.Join(launchDir, "app"), uid, gid); err != nil {
+	if err := b.chownDir(launchDir+"/app", uid, gid); err != nil {
 		return nil, errors.Wrap(err, "chown app to workspace volume")
 	}
 
@@ -563,7 +564,7 @@ func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
 	}
 	defer r.Close()
 
-	tmpDir, err := ioutil.TempDir("/tmp", "pack.build.")
+	tmpDir, err := ioutil.TempDir("", "pack.build.")
 	if err != nil {
 		return errors.Wrap(err, "tmpdir for exporter")
 	}

@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 type FS struct {
@@ -85,6 +87,9 @@ func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 			}
 		}
 		header.Name = filepath.Join(tarDir, relPath)
+		if runtime.GOOS == "windows" {
+			header.Name = strings.Replace(header.Name, "\\", "/", -1)
+		}
 		header.Uid = uid
 		header.Gid = gid
 
