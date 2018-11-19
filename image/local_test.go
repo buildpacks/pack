@@ -1,24 +1,27 @@
 package image_test
 
 import (
+	"archive/tar"
 	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
-	"github.com/buildpack/pack/docker"
 	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/image"
 	h "github.com/buildpack/pack/testhelpers"
+	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 )
@@ -32,12 +35,14 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 	var factory image.Factory
 	var buf bytes.Buffer
 	var repoName string
+	var dockerCli *docker.Client
 
 	it.Before(func() {
-		docker, err := docker.New()
+		var err error
+		dockerCli, err = docker.New()
 		h.AssertNil(t, err)
 		factory = image.Factory{
-			Docker: docker,
+			Docker: dockerCli,
 			Log:    log.New(&buf, "", log.LstdFlags),
 			Stdout: &buf,
 			FS:     &fs.FS{},
@@ -48,17 +53,15 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 	when("#Label", func() {
 		when("image exists", func() {
 			it.Before(func() {
-				cmd := exec.Command("docker", "build", "-t", repoName, "-")
-				cmd.Stdin = strings.NewReader(fmt.Sprintf(`
+				createImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=myvalue other=data
 				`, repoName))
-				h.Run(t, cmd)
 			})
 
 			it.After(func() {
-				h.Run(t, exec.Command("docker", "rmi", repoName))
+				h.AssertNil(t, dockerRmi(dockerCli, repoName))
 			})
 
 			it("returns the label value", func() {
@@ -104,13 +107,8 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		when("image exists and has a digest", func() {
 			var expectedDigest string
 			it.Before(func() {
-				stdout := h.Run(t, exec.Command("docker", "pull", "busybox:1.29"))
-				regex := regexp.MustCompile(`Digest: (sha256:\w*)`)
-				matches := regex.FindStringSubmatch(stdout)
-				if len(matches) < 2 {
-					t.Fatalf("digest regexp failed: %s", stdout)
-				}
-				expectedDigest = matches[1]
+				h.AssertNil(t, dockerCli.PullImage("busybox:1.29"))
+				expectedDigest = "sha256:2a03a6059f21e150ae84b0973863609494aad70f0a80eaeb64bddd8d92465812"
 			})
 
 			it("returns the image digest", func() {
@@ -123,16 +121,14 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 
 		when("image exists but has no digest", func() {
 			it.Before(func() {
-				cmd := exec.Command("docker", "build", "-t", repoName, "-")
-				cmd.Stdin = strings.NewReader(`
+				createImageOnLocal(t, dockerCli, repoName, `
 					FROM scratch
 					LABEL key=val
 				`)
-				h.Run(t, cmd)
 			})
 
 			it.After(func() {
-				h.Run(t, exec.Command("docker", "rmi", repoName))
+				h.AssertNil(t, dockerRmi(dockerCli, repoName))
 			})
 
 			it("returns an empty string", func() {
@@ -152,20 +148,17 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			)
 			it.Before(func() {
 				var err error
-				cmd := exec.Command("docker", "build", "-t", repoName, "-")
-				cmd.Stdin = strings.NewReader(`
+				createImageOnLocal(t, dockerCli, repoName, `
 					FROM scratch
 					LABEL some-key=some-value
 				`)
-				h.Run(t, cmd)
 				img, err = factory.NewLocal(repoName, false)
 				h.AssertNil(t, err)
 				origID = h.ImageID(t, repoName)
 			})
 
 			it.After(func() {
-				h.Run(t, exec.Command("docker", "rmi", repoName))
-				h.Run(t, exec.Command("docker", "rmi", origID))
+				h.AssertNil(t, dockerRmi(dockerCli, repoName, origID))
 			})
 
 			it("sets label and saves label to docker daemon", func() {
@@ -178,7 +171,9 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				_, err = img.Save()
 				h.AssertNil(t, err)
 
-				label = h.Run(t, exec.Command("docker", "inspect", repoName, "-f", `{{.Config.Labels.somekey}}`))
+				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+				h.AssertNil(t, err)
+				label = inspect.Config.Labels["somekey"]
 				h.AssertEq(t, strings.TrimSpace(label), "new-val")
 			})
 		})
@@ -186,42 +181,52 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Rebase", func() {
 		when("image exists", func() {
-			var oldBase, oldTopLayer, newBase, origNumLayers, origID string
+			var oldBase, oldTopLayer, newBase, origID string
+			var origNumLayers int
 			it.Before(func() {
+				var wg sync.WaitGroup
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					newBase = "pack-newbase-test-" + h.RandString(10)
+					createImageOnLocal(t, dockerCli, newBase, `
+						FROM busybox
+						RUN echo new-base > base.txt
+						RUN echo text-new-base > otherfile.txt
+					`)
+				}()
+
 				oldBase = "pack-oldbase-test-" + h.RandString(10)
-				oldTopLayer = createImageOnLocal(t, oldBase, `
+				createImageOnLocal(t, dockerCli, oldBase, `
 					FROM busybox
 					RUN echo old-base > base.txt
 					RUN echo text-old-base > otherfile.txt
 				`)
+				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), oldBase)
+				h.AssertNil(t, err)
+				oldTopLayer = inspect.RootFS.Layers[len(inspect.RootFS.Layers)-1]
 
-				newBase = "pack-newbase-test-" + h.RandString(10)
-				createImageOnLocal(t, newBase, `
-					FROM busybox
-					RUN echo new-base > base.txt
-					RUN echo text-new-base > otherfile.txt
-				`)
-
-				createImageOnLocal(t, repoName, fmt.Sprintf(`
+				createImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM %s
 					RUN echo text-from-image > myimage.txt
 					RUN echo text-from-image > myimage2.txt
 				`, oldBase))
+				inspect, _, err = dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+				h.AssertNil(t, err)
+				origNumLayers = len(inspect.RootFS.Layers)
+				origID = inspect.ID
 
-				origNumLayers = h.Run(t, exec.Command("docker", "inspect", repoName, "-f", "{{len .RootFS.Layers}}"))
-				origID = h.ImageID(t, repoName)
+				wg.Wait()
 			})
 
 			it.After(func() {
-				h.Run(t, exec.Command("docker", "rmi", repoName))
-				h.Run(t, exec.Command("docker", "rmi", oldBase))
-				h.Run(t, exec.Command("docker", "rmi", newBase))
-				h.Run(t, exec.Command("docker", "rmi", origID))
+				h.AssertNil(t, dockerRmi(dockerCli, repoName, oldBase, newBase, origID))
 			})
 
 			it("switches the base", func() {
 				// Before
-				txt := h.Run(t, exec.Command("docker", "run", "--rm", repoName, "cat", "base.txt"))
+				txt, err := copySingleFileFromImage(dockerCli, repoName, "base.txt")
+				h.AssertNil(t, err)
 				h.AssertEq(t, txt, "old-base\n")
 
 				// Run rebase
@@ -241,13 +246,18 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 					"myimage.txt":   "text-from-image\n",
 					"myimage2.txt":  "text-from-image\n",
 				}
+				ctr, err := dockerCli.ContainerCreate(context.Background(), &container.Config{Image: repoName}, &container.HostConfig{}, nil, "")
+				defer dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
 				for filename, expectedText := range expected {
-					actualText := h.Run(t, exec.Command("docker", "run", "--rm", repoName, "cat", filename))
+					actualText, err := copySingleFileFromContainer(dockerCli, ctr.ID, filename)
+					h.AssertNil(t, err)
 					h.AssertEq(t, actualText, expectedText)
 				}
 
 				// Final Image should have same number of layers as initial image
-				numLayers := h.Run(t, exec.Command("docker", "inspect", repoName, "-f", "{{len .RootFS.Layers}}"))
+				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+				h.AssertNil(t, err)
+				numLayers := len(inspect.RootFS.Layers)
 				h.AssertEq(t, numLayers, origNumLayers)
 			})
 		})
@@ -257,15 +267,19 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		when("image exists", func() {
 			var expectedTopLayer string
 			it.Before(func() {
-				expectedTopLayer = createImageOnLocal(t, repoName, `
-					FROM busybox
-					RUN echo old-base > base.txt
-					RUN echo text-old-base > otherfile.txt
+				createImageOnLocal(t, dockerCli, repoName, `
+				FROM busybox
+				RUN echo old-base > base.txt
+				RUN echo text-old-base > otherfile.txt
 				`)
+
+				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+				h.AssertNil(t, err)
+				expectedTopLayer = inspect.RootFS.Layers[len(inspect.RootFS.Layers)-1]
 			})
 
 			it.After(func() {
-				h.Run(t, exec.Command("docker", "rmi", repoName))
+				h.AssertNil(t, dockerRmi(dockerCli, repoName))
 			})
 
 			it("returns the digest for the top layer (useful for rebasing)", func() {
@@ -287,7 +301,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			origID  string
 		)
 		it.Before(func() {
-			createImageOnLocal(t, repoName, `
+			createImageOnLocal(t, dockerCli, repoName, `
 					FROM busybox
 					RUN echo -n old-layer > old-layer.txt
 				`)
@@ -308,8 +322,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		it.After(func() {
 			err := os.Remove(tarPath)
 			h.AssertNil(t, err)
-			h.Run(t, exec.Command("docker", "rmi", repoName))
-			h.Run(t, exec.Command("docker", "rmi", origID))
+			h.AssertNil(t, dockerRmi(dockerCli, repoName, origID))
 		})
 
 		it("appends a layer", func() {
@@ -319,10 +332,12 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			_, err = img.Save()
 			h.AssertNil(t, err)
 
-			output := h.Run(t, exec.Command("docker", "run", "--rm", repoName, "cat", "/old-layer.txt"))
+			output, err := copySingleFileFromImage(dockerCli, repoName, "old-layer.txt")
+			h.AssertNil(t, err)
 			h.AssertEq(t, output, "old-layer")
 
-			output = h.Run(t, exec.Command("docker", "run", "--rm", repoName, "cat", "/new-layer.txt"))
+			output, err = copySingleFileFromImage(dockerCli, repoName, "new-layer.txt")
+			h.AssertNil(t, err)
 			h.AssertEq(t, output, "new-layer")
 		})
 	})
@@ -337,26 +352,29 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			var err error
 
-			createImageOnLocal(t, repoName, fmt.Sprintf(`
+			createImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
 					RUN echo -n old-layer-1 > layer-1.txt
 					RUN echo -n old-layer-2 > layer-2.txt
 				`, repoName))
 
-			layer1SHA = strings.TrimSpace(h.Run(t, exec.Command("docker", "inspect", repoName, "-f", "{{index .RootFS.Layers 1}}")))
-			layer2SHA = strings.TrimSpace(h.Run(t, exec.Command("docker", "inspect", repoName, "-f", "{{index .RootFS.Layers 2}}")))
+			inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+			h.AssertNil(t, err)
+			origID = inspect.ID
+
+			layer1SHA = inspect.RootFS.Layers[1]
+			layer2SHA = inspect.RootFS.Layers[2]
+
 			img, err = factory.NewLocal("busybox", false)
 			h.AssertNil(t, err)
 
 			img.Rename(repoName)
 			h.AssertNil(t, err)
-			origID = h.ImageID(t, repoName)
 		})
 
 		it.After(func() {
-			h.Run(t, exec.Command("docker", "rmi", repoName))
-			h.Run(t, exec.Command("docker", "rmi", origID))
+			h.AssertNil(t, dockerRmi(dockerCli, repoName, origID))
 		})
 
 		it("reuses a layer", func() {
@@ -366,12 +384,13 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			_, err = img.Save()
 			h.AssertNil(t, err)
 
-			output := h.Run(t, exec.Command("docker", "run", "--rm", repoName, "cat", "/layer-2.txt"))
+			output, err := copySingleFileFromImage(dockerCli, repoName, "layer-2.txt")
+			h.AssertNil(t, err)
 			h.AssertEq(t, output, "old-layer-2")
 
 			// Confirm layer-1.txt does not exist
-			_, err = h.RunE(exec.Command("docker", "run", "--rm", repoName, "cat", "/layer-1.txt"))
-			h.AssertContains(t, err.Error(), "cat: can't open '/layer-1.txt': No such file or directory")
+			_, err = copySingleFileFromImage(dockerCli, repoName, "layer-1.txt")
+			h.AssertMatch(t, err.Error(), regexp.MustCompile(`Error: No such container:path: .*:layer-1.txt`))
 		})
 
 		it("does not download the old image if layers are directly above (performance)", func() {
@@ -381,12 +400,13 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			_, err = img.Save()
 			h.AssertNil(t, err)
 
-			output := h.Run(t, exec.Command("docker", "run", "--rm", repoName, "cat", "/layer-1.txt"))
+			output, err := copySingleFileFromImage(dockerCli, repoName, "layer-1.txt")
+			h.AssertNil(t, err)
 			h.AssertEq(t, output, "old-layer-1")
 
 			// Confirm layer-2.txt does not exist
-			_, err = h.RunE(exec.Command("docker", "run", "--rm", repoName, "cat", "/layer-2.txt"))
-			h.AssertContains(t, err.Error(), "cat: can't open '/layer-2.txt': No such file or directory")
+			_, err = copySingleFileFromImage(dockerCli, repoName, "layer-2.txt")
+			h.AssertMatch(t, err.Error(), regexp.MustCompile(`Error: No such container:path: .*:layer-2.txt`))
 		})
 	})
 
@@ -398,7 +418,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		when("image exists", func() {
 			it.Before(func() {
 				var err error
-				createImageOnLocal(t, repoName, `
+				createImageOnLocal(t, dockerCli, repoName, `
 					FROM busybox
 					LABEL mykey=oldValue
 				`)
@@ -408,8 +428,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				h.Run(t, exec.Command("docker", "rmi", repoName))
-				h.Run(t, exec.Command("docker", "rmi", origID))
+				h.AssertNil(t, dockerRmi(dockerCli, repoName, origID))
 			})
 
 			it("returns the image digest", func() {
@@ -419,24 +438,65 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				imgDigest, err := img.Save()
 				h.AssertNil(t, err)
 
-				label := h.Run(t, exec.Command("docker", "inspect", imgDigest, "-f", `{{.Config.Labels.mykey}}`))
+				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), imgDigest)
+				h.AssertNil(t, err)
+				label := inspect.Config.Labels["mykey"]
 				h.AssertEq(t, strings.TrimSpace(label), "newValue")
 			})
 		})
 	})
 }
 
-func createImageOnLocal(t *testing.T, repoName, dockerFile string) string {
-	t.Helper()
+func createImageOnLocal(t *testing.T, dockerCli *docker.Client, repoName, dockerFile string) {
+	ctx := context.Background()
 
-	cmd := exec.Command("docker", "build", "-t", repoName+":latest", "-")
-	cmd.Stdin = strings.NewReader(dockerFile)
-	h.Run(t, cmd)
+	buildContext, err := (&fs.FS{}).CreateSingleFileTar("Dockerfile", dockerFile)
+	h.AssertNil(t, err)
 
-	topLayerJSON := h.Run(t, exec.Command("docker", "inspect", repoName, "-f", `{{json .RootFS.Layers}}`))
-	var layers []string
-	h.AssertNil(t, json.Unmarshal([]byte(topLayerJSON), &layers))
-	topLayer := layers[len(layers)-1]
+	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
+		Tags:           []string{repoName},
+		SuppressOutput: true,
+		Remove:         true,
+		ForceRemove:    true,
+	})
+	h.AssertNil(t, err)
 
-	return topLayer
+	io.Copy(ioutil.Discard, res.Body)
+	res.Body.Close()
+}
+
+func copySingleFileFromContainer(dockerCli *docker.Client, ctrID, path string) (string, error) {
+	r, _, err := dockerCli.CopyFromContainer(context.Background(), ctrID, path)
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+	tr := tar.NewReader(r)
+	hdr, err := tr.Next()
+	if hdr.Name != path {
+		return "", fmt.Errorf("filenames did not match: %s and %s", hdr.Name, path)
+	}
+	b, err := ioutil.ReadAll(tr)
+	return string(b), err
+}
+
+func copySingleFileFromImage(dockerCli *docker.Client, repoName, path string) (string, error) {
+	ctr, err := dockerCli.ContainerCreate(context.Background(), &container.Config{Image: repoName}, &container.HostConfig{}, nil, "")
+	if err != nil {
+		return "", err
+	}
+	defer dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
+	return copySingleFileFromContainer(dockerCli, ctr.ID, path)
+}
+
+func dockerRmi(dockerCli *docker.Client, repoNames ...string) error {
+	var err error
+	ctx := context.Background()
+	for _, name := range repoNames {
+		_, e := dockerCli.ImageRemove(ctx, name, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
+		if e != nil && err == nil {
+			err = e
+		}
+	}
+	return err
 }
