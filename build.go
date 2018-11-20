@@ -418,7 +418,7 @@ func (b *BuildConfig) Analyze() error {
 			"/lifecycle/analyzer",
 			"-launch", launchDir,
 			"-group", groupPath,
-			"-metadata", filepath.Join(launchDir, "imagemetadata.json"),
+			"-metadata", launchDir + "/imagemetadata.json",
 			b.RepoName,
 		},
 	}, &container.HostConfig{
@@ -431,7 +431,7 @@ func (b *BuildConfig) Analyze() error {
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
-	tr, err := b.FS.CreateSingleFileTar(filepath.Join(launchDir, "imagemetadata.json"), metadata)
+	tr, err := b.FS.CreateSingleFileTar(launchDir+"/imagemetadata.json", metadata)
 	if err != nil {
 		return errors.Wrap(err, "create tar with image metadata")
 	}
