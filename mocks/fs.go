@@ -59,10 +59,10 @@ func (mr *MockFSMockRecorder) CreateTGZFile(arg0, arg1, arg2, arg3, arg4 interfa
 }
 
 // CreateTarReader mocks base method
-func (m *MockFS) CreateTarReader(arg0, arg1 string, arg2, arg3 int) (io.Reader, chan error) {
+func (m *MockFS) CreateTarReader(arg0, arg1 string, arg2, arg3 int) (io.ReadCloser, error) {
 	ret := m.ctrl.Call(m, "CreateTarReader", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(io.Reader)
-	ret1, _ := ret[1].(chan error)
+	ret0, _ := ret[0].(io.ReadCloser)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 

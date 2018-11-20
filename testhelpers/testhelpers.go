@@ -458,10 +458,10 @@ func CopyWorkspaceToDocker(t *testing.T, srcPath, destVolume string) {
 	AssertNil(t, err)
 	defer dockerCli(t).ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
-	tr, errChan := (&fs.FS{}).CreateTarReader(srcPath, "/workspace", 1000, 1000)
+	tr, err := (&fs.FS{}).CreateTarReader(srcPath, "/workspace", 1000, 1000)
+	AssertNil(t, err)
 	err = dockerCli(t).CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{})
 	AssertNil(t, err)
-	AssertNil(t, <-errChan)
 }
 
 func ReadFromDocker(t *testing.T, volume, path string) string {

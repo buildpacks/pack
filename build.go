@@ -285,11 +285,12 @@ func (b *BuildConfig) copyBuildpacksToContainer(ctx context.Context, ctrID strin
 			id = buildpackTOML.Buildpack.ID
 			version = buildpackTOML.Buildpack.Version
 			bpDir := filepath.Join(buildpacksDir, id, version)
-			ftr, errChan := b.FS.CreateTarReader(bp, bpDir, 0, 0)
-			if err := b.Cli.CopyToContainer(ctx, ctrID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
+			ftr, err := b.FS.CreateTarReader(bp, bpDir, 0, 0)
+			if err != nil {
 				return nil, errors.Wrapf(err, "copying buildpack '%s' to container", bp)
 			}
-			if err := <-errChan; err != nil {
+			defer ftr.Close()
+			if err := b.Cli.CopyToContainer(ctx, ctrID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
 				return nil, errors.Wrapf(err, "copying buildpack '%s' to container", bp)
 			}
 		} else {
@@ -355,11 +356,12 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 		return nil, errors.Wrap(err, "detect")
 	}
 
-	tr, errChan := b.FS.CreateTarReader(b.AppDir, launchDir+"/app", uid, gid)
-	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
+	tr, err := b.FS.CreateTarReader(b.AppDir, launchDir+"/app", uid, gid)
+	if err != nil {
 		return nil, errors.Wrap(err, "copy app to workspace volume")
 	}
-	if err := <-errChan; err != nil {
+	defer tr.Close()
+	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
 		return nil, errors.Wrap(err, "copy app to workspace volume")
 	}
 
