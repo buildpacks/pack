@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +22,8 @@ import (
 	"github.com/buildpack/pack/docker"
 	h "github.com/buildpack/pack/testhelpers"
 	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 )
@@ -106,6 +109,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 		it.After(func() {
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
+			dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
 			dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
 			if sourceCodePath != "" {
 				os.RemoveAll(sourceCodePath)
@@ -118,8 +122,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
 
-				// NOTE: avoid using h.Run as it will convert repoName to include the remote registry port, which is irrelevant given this was done on the daemon
-				h.AssertNil(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", repoName).Run())
+				runDockerImageExposePort(t, containerName, repoName)
 				launchPort := fetchHostPort(t, containerName)
 
 				time.Sleep(5 * time.Second)
@@ -160,9 +163,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				if !strings.Contains(buildOutput, latestInfo) {
 					t.Fatalf(`expected build output to contain "%s", got "%s"`, latestInfo, buildOutput)
 				}
-				h.AssertEq(t, strings.Contains(buildOutput, "Sample Java Buildpack: pass"), true)
+				h.AssertContains(t, buildOutput, "Sample Java Buildpack: pass")
 
-				h.Run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", repoName))
+				runDockerImageExposePort(t, containerName, repoName)
 				launchPort := fetchHostPort(t, containerName)
 
 				time.Sleep(2 * time.Second)
@@ -191,10 +194,10 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Expected to see image %s in %s", repo, contents)
 				}
 
-				h.Run(t, exec.Command("docker", "pull", fmt.Sprintf("%s@%s", repoName, imgSHA)))
-				defer h.Run(t, exec.Command("docker", "rmi", fmt.Sprintf("%s@%s", repoName, imgSHA)))
-				h.Run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", fmt.Sprintf("%s@%s", repoName, imgSHA)))
-				defer h.Run(t, exec.Command("docker", "container", "stop", containerName))
+				h.AssertNil(t, dockerCli.PullImage(fmt.Sprintf("%s@%s", repoName, imgSHA)))
+				defer h.DockerRmi(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA))
+				runDockerImageExposePort(t, containerName, fmt.Sprintf("%s@%s", repoName, imgSHA))
+
 				launchPort := fetchHostPort(t, containerName)
 
 				time.Sleep(5 * time.Second)
@@ -255,7 +258,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 
 	when("pack rebase", func() {
-		var repoName, containerName, runBefore, runAfter, origID string
+		var repoName, containerName, runBefore, runAfter string
 		var buildAndSetRunImage func(runImage, contents1, contents2 string)
 		var rootContents1 func() string
 		it.Before(func() {
@@ -265,17 +268,15 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			runAfter = "run-after/" + h.RandString(10)
 
 			buildAndSetRunImage = func(runImage, contents1, contents2 string) {
-				cmd := exec.Command("docker", "build", "-t", runImage, "-")
-				cmd.Stdin = strings.NewReader(fmt.Sprintf(`
+				h.CreateImageOnLocal(t, dockerCli, runImage, fmt.Sprintf(`
 					FROM %s
 					USER root
 					RUN echo %s > /contents1.txt
 					RUN echo %s > /contents2.txt
 					USER pack
-					`, h.DefaultRunImage(t, registryPort), contents1, contents2))
-				h.Run(t, cmd)
+				`, h.DefaultRunImage(t, registryPort), contents1, contents2))
 
-				cmd = exec.Command(
+				cmd := exec.Command(
 					pack, "update-stack",
 					"io.buildpacks.stacks.bionic",
 					"--build-image", h.DefaultBuildImage(t, registryPort),
@@ -284,7 +285,13 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				h.Run(t, cmd)
 			}
 			rootContents1 = func() string {
-				h.Run(t, exec.Command("docker", "run", "--name="+containerName, "--rm=true", "-d", "-e", "PORT=8080", "-p", ":8080", repoName))
+				t.Helper()
+				runDockerImageExposePort(t, containerName, repoName)
+				defer func() {
+					dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
+					dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
+				}()
+
 				launchPort := fetchHostPort(t, containerName)
 				time.Sleep(5 * time.Second)
 				h.AssertEq(t, h.HttpGet(t, "http://localhost:"+launchPort), "Buildpacks Worked! - 1000:1000")
@@ -295,13 +302,13 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 		it.After(func() {
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
-			h.Run(t, exec.Command("docker", "rmi", origID))
-			h.Run(t, exec.Command("docker", "rmi", repoName))
-			h.Run(t, exec.Command("docker", "rmi", runBefore))
-			h.Run(t, exec.Command("docker", "rmi", runAfter))
+			dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
+
+			h.AssertNil(t, h.DockerRmi(dockerCli, repoName, runBefore, runAfter))
 		})
 
 		when("run on daemon", func() {
+			var origID string
 			it.Before(func() {
 				buildAndSetRunImage(runBefore, "contents-before-1", "contents-before-2")
 
@@ -309,6 +316,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
 				origID = h.ImageID(t, repoName)
+			})
+			it.After(func() {
+				h.AssertNil(t, h.DockerRmi(dockerCli, origID))
 			})
 
 			it("rebases", func() {
@@ -333,24 +343,25 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				runAfter = "localhost:" + registryPort + "/" + runAfter
 
 				buildAndSetRunImage(runBefore, "contents-before-1", "contents-before-2")
-				h.Run(t, exec.Command("docker", "push", runBefore))
+				h.AssertNil(t, pushImage(dockerCli, runBefore))
 
 				cmd := exec.Command(pack, "build", repoName, "-p", "testdata/node_app/", "--publish")
 				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
 
+				h.AssertNil(t, dockerCli.PullImage(repoName))
 				h.AssertEq(t, rootContents1(), "contents-before-1\n")
-				origID = h.ImageID(t, repoName)
+				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 			})
 
 			it("rebases", func() {
 				buildAndSetRunImage(runAfter, "contents-after-1", "contents-after-2")
-				h.Run(t, exec.Command("docker", "push", runAfter))
+				h.AssertNil(t, pushImage(dockerCli, runAfter))
 
 				cmd := exec.Command(pack, "rebase", repoName, "--publish")
 				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
-				h.Run(t, exec.Command("docker", "pull", repoName))
+				h.AssertNil(t, dockerCli.PullImage(repoName))
 
 				h.AssertEq(t, rootContents1(), "contents-after-1\n")
 			})
@@ -398,15 +409,14 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			buildOutput, err := cmd.CombinedOutput()
 			h.AssertNil(t, err)
-			defer h.Run(t, exec.Command("docker", "rmi", h.ImageID(t, repoName)))
+			defer func(origID string) { h.AssertNil(t, h.DockerRmi(dockerCli, origID)) }(h.ImageID(t, repoName))
 			expectedDetectOutput := "First Mock Buildpack: pass | Second Mock Buildpack: pass | Third Mock Buildpack: pass"
 			if !strings.Contains(string(buildOutput), expectedDetectOutput) {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, expectedDetectOutput, buildOutput)
 			}
 
 			t.Log("run app container")
-			cmd = exec.Command("docker", "run", "--name="+containerName, "--rm=true", repoName)
-			runOutput := h.Run(t, cmd)
+			runOutput := runDockerImageWithOutput(t, containerName, repoName)
 			if !strings.Contains(runOutput, "First Dep Contents") {
 				t.Fatalf(`Expected output to contain "First Dep Contents", got "%s"`, runOutput)
 			}
@@ -429,7 +439,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			buildOutput, err = cmd.CombinedOutput()
 			h.AssertNil(t, err)
-			defer h.Run(t, exec.Command("docker", "rmi", h.ImageID(t, repoName)))
+			defer func(origID string) { h.AssertNil(t, h.DockerRmi(dockerCli, origID)) }(h.ImageID(t, repoName))
 			latestInfo := `No version for 'mock.bp.first' buildpack provided, will use 'mock.bp.first@latest'`
 			if !strings.Contains(string(buildOutput), latestInfo) {
 				t.Fatalf(`expected build output to contain "%s", got "%s"`, latestInfo, buildOutput)
@@ -440,8 +450,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			t.Log("run app container")
-			cmd = exec.Command("docker", "run", "--name="+containerName, "--rm=true", repoName)
-			runOutput = h.Run(t, cmd)
+			runOutput = runDockerImageWithOutput(t, containerName, repoName)
 			if !strings.Contains(runOutput, "Latest First Dep Contents") {
 				t.Fatalf(`Expected output to contain "First Dep Contents", got "%s"`, runOutput)
 			}
@@ -719,4 +728,52 @@ func writeToFile(source io.Reader, destFile string, mode os.FileMode) error {
 		return err
 	}
 	return nil
+}
+
+func runDockerImageExposePort(t *testing.T, containerName, repoName string) {
+	t.Helper()
+	ctx := context.Background()
+
+	ctr, err := dockerCli.ContainerCreate(ctx, &container.Config{
+		Image: repoName,
+		Env:   []string{"PORT=8080"},
+	}, &container.HostConfig{
+		PortBindings: nat.PortMap{
+			"8080/tcp": []nat.PortBinding{{}},
+		},
+	}, nil, containerName)
+	h.AssertNil(t, err)
+
+	err = dockerCli.ContainerStart(ctx, ctr.ID, dockertypes.ContainerStartOptions{})
+	h.AssertNil(t, err)
+}
+
+func runDockerImageWithOutput(t *testing.T, containerName, repoName string) string {
+	t.Helper()
+	ctx := context.Background()
+
+	ctr, err := dockerCli.ContainerCreate(ctx, &container.Config{
+		Image: repoName,
+	}, &container.HostConfig{}, nil, containerName)
+	h.AssertNil(t, err)
+	defer dockerCli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+
+	var buf bytes.Buffer
+	err = dockerCli.RunContainer(ctx, ctr.ID, &buf, &buf)
+	h.AssertNil(t, err)
+
+	return buf.String()
+}
+
+func pushImage(d *docker.Client, ref string) error {
+	rc, err := d.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{
+		RegistryAuth: base64.StdEncoding.EncodeToString([]byte("{}")),
+	})
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
+		return err
+	}
+	return rc.Close()
 }

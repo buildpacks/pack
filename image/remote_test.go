@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -19,7 +17,6 @@ import (
 	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/image"
 	h "github.com/buildpack/pack/testhelpers"
-	dockertypes "github.com/docker/docker/api/types"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 )
@@ -59,7 +56,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		when("image exists", func() {
 			var img image.Image
 			it.Before(func() {
-				createImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=myvalue other=data
@@ -117,7 +114,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		var img image.Image
 		when("image exists", func() {
 			it.Before(func() {
-				createImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=myvalue other=data
@@ -158,7 +155,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 				newBase = "localhost:" + registryPort + "/pack-newbase-test-" + h.RandString(10)
 				go func() {
 					defer wg.Done()
-					createImageOnRemote(t, dockerCli, newBase, fmt.Sprintf(`
+					h.CreateImageOnRemote(t, dockerCli, newBase, fmt.Sprintf(`
 						FROM busybox
 						LABEL repo_name_for_randomisation=%s
 						RUN echo new-base > base.txt
@@ -168,7 +165,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 				}()
 
 				oldBase = "localhost:" + registryPort + "/pack-oldbase-test-" + h.RandString(10)
-				oldTopLayer = createImageOnRemote(t, dockerCli, oldBase, fmt.Sprintf(`
+				oldTopLayer = h.CreateImageOnRemote(t, dockerCli, oldBase, fmt.Sprintf(`
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
 					RUN echo old-base > base.txt
@@ -176,7 +173,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 				`, repoName))
 				oldBaseLayers = manifestLayers(t, oldBase)
 
-				createImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM %s
 					RUN echo text-from-image-1 > myimage.txt
 					RUN echo text-from-image-2 > myimage2.txt
@@ -215,7 +212,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 	when("#TopLayer", func() {
 		when("image exists", func() {
 			it("returns the digest for the top layer (useful for rebasing)", func() {
-				expectedTopLayer := createImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+				expectedTopLayer := h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
 					RUN echo old-base > base.txt
@@ -236,7 +233,7 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 	when("#Save", func() {
 		when("image exists", func() {
 			it("returns the image digest", func() {
-				createImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
+				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=oldValue
@@ -258,37 +255,6 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-func createImageOnRemote(t *testing.T, dockerCli *docker.Client, repoName, dockerFile string) string {
-	t.Helper()
-	defer dockerRmi(dockerCli, repoName)
-
-	createImageOnLocal(t, dockerCli, repoName+":latest", dockerFile)
-
-	var topLayer string
-	inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName+":latest")
-	h.AssertNil(t, err)
-	if len(inspect.RootFS.Layers) > 0 {
-		topLayer = inspect.RootFS.Layers[len(inspect.RootFS.Layers)-1]
-	} else {
-		topLayer = "N/A"
-	}
-
-	h.AssertNil(t, pushImage(dockerCli, repoName))
-
-	return topLayer
-}
-
-func pushImage(dockerCli *docker.Client, ref string) error {
-	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: "{}"})
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
-		return err
-	}
-	return rc.Close()
 }
 
 func manifestLayers(t *testing.T, repoName string) []string {
@@ -330,7 +296,7 @@ func remoteLabel(t *testing.T, dockerCli *docker.Client, repoName, label string)
 	t.Helper()
 
 	h.AssertNil(t, dockerCli.PullImage(repoName))
-	defer func() { h.AssertNil(t, dockerRmi(dockerCli, repoName)) }()
+	defer func() { h.AssertNil(t, h.DockerRmi(dockerCli, repoName)) }()
 	inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
 	h.AssertNil(t, err)
 	return inspect.Config.Labels[label]

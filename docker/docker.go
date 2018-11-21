@@ -40,7 +40,11 @@ func (d *Client) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 		return errors.Wrap(err, "container logs stdout")
 	}
 
-	go stdcopy.StdCopy(stdout, stderr, logs)
+	copyErr := make(chan error)
+	go func() {
+		_, err := stdcopy.StdCopy(stdout, stderr, logs)
+		copyErr <- err
+	}()
 
 	select {
 	case body := <-bodyChan:
@@ -51,7 +55,7 @@ func (d *Client) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 		fmt.Printf("ERR: %#v\n", err)
 		return err
 	}
-	return nil
+	return <-copyErr
 }
 
 func (d *Client) PullImage(ref string) error {

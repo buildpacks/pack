@@ -1,7 +1,6 @@
 package image_test
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"fmt"
@@ -54,7 +53,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 	when("#Label", func() {
 		when("image exists", func() {
 			it.Before(func() {
-				createImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
 					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=myvalue other=data
@@ -62,7 +61,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				h.AssertNil(t, dockerRmi(dockerCli, repoName))
+				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 			})
 
 			it("returns the label value", func() {
@@ -122,14 +121,14 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 
 		when("image exists but has no digest", func() {
 			it.Before(func() {
-				createImageOnLocal(t, dockerCli, repoName, `
+				h.CreateImageOnLocal(t, dockerCli, repoName, `
 					FROM scratch
 					LABEL key=val
 				`)
 			})
 
 			it.After(func() {
-				h.AssertNil(t, dockerRmi(dockerCli, repoName))
+				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 			})
 
 			it("returns an empty string", func() {
@@ -149,7 +148,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			)
 			it.Before(func() {
 				var err error
-				createImageOnLocal(t, dockerCli, repoName, `
+				h.CreateImageOnLocal(t, dockerCli, repoName, `
 					FROM scratch
 					LABEL some-key=some-value
 				`)
@@ -159,7 +158,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				h.AssertNil(t, dockerRmi(dockerCli, repoName, origID))
+				h.AssertNil(t, h.DockerRmi(dockerCli, repoName, origID))
 			})
 
 			it("sets label and saves label to docker daemon", func() {
@@ -190,7 +189,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				go func() {
 					defer wg.Done()
 					newBase = "pack-newbase-test-" + h.RandString(10)
-					createImageOnLocal(t, dockerCli, newBase, `
+					h.CreateImageOnLocal(t, dockerCli, newBase, `
 						FROM busybox
 						RUN echo new-base > base.txt
 						RUN echo text-new-base > otherfile.txt
@@ -198,7 +197,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				}()
 
 				oldBase = "pack-oldbase-test-" + h.RandString(10)
-				createImageOnLocal(t, dockerCli, oldBase, `
+				h.CreateImageOnLocal(t, dockerCli, oldBase, `
 					FROM busybox
 					RUN echo old-base > base.txt
 					RUN echo text-old-base > otherfile.txt
@@ -207,7 +206,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				oldTopLayer = inspect.RootFS.Layers[len(inspect.RootFS.Layers)-1]
 
-				createImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM %s
 					RUN echo text-from-image > myimage.txt
 					RUN echo text-from-image > myimage2.txt
@@ -221,12 +220,12 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				h.AssertNil(t, dockerRmi(dockerCli, repoName, oldBase, newBase, origID))
+				h.AssertNil(t, h.DockerRmi(dockerCli, repoName, oldBase, newBase, origID))
 			})
 
 			it("switches the base", func() {
 				// Before
-				txt, err := copySingleFileFromImage(dockerCli, repoName, "base.txt")
+				txt, err := h.CopySingleFileFromImage(dockerCli, repoName, "base.txt")
 				h.AssertNil(t, err)
 				h.AssertEq(t, txt, "old-base\n")
 
@@ -250,7 +249,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				ctr, err := dockerCli.ContainerCreate(context.Background(), &container.Config{Image: repoName}, &container.HostConfig{}, nil, "")
 				defer dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
 				for filename, expectedText := range expected {
-					actualText, err := copySingleFileFromContainer(dockerCli, ctr.ID, filename)
+					actualText, err := h.CopySingleFileFromContainer(dockerCli, ctr.ID, filename)
 					h.AssertNil(t, err)
 					h.AssertEq(t, actualText, expectedText)
 				}
@@ -268,7 +267,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		when("image exists", func() {
 			var expectedTopLayer string
 			it.Before(func() {
-				createImageOnLocal(t, dockerCli, repoName, `
+				h.CreateImageOnLocal(t, dockerCli, repoName, `
 				FROM busybox
 				RUN echo old-base > base.txt
 				RUN echo text-old-base > otherfile.txt
@@ -280,7 +279,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				h.AssertNil(t, dockerRmi(dockerCli, repoName))
+				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 			})
 
 			it("returns the digest for the top layer (useful for rebasing)", func() {
@@ -302,7 +301,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			origID  string
 		)
 		it.Before(func() {
-			createImageOnLocal(t, dockerCli, repoName, `
+			h.CreateImageOnLocal(t, dockerCli, repoName, `
 					FROM busybox
 					RUN echo -n old-layer > old-layer.txt
 				`)
@@ -323,7 +322,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		it.After(func() {
 			err := os.Remove(tarPath)
 			h.AssertNil(t, err)
-			h.AssertNil(t, dockerRmi(dockerCli, repoName, origID))
+			h.AssertNil(t, h.DockerRmi(dockerCli, repoName, origID))
 		})
 
 		it("appends a layer", func() {
@@ -333,11 +332,11 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			_, err = img.Save()
 			h.AssertNil(t, err)
 
-			output, err := copySingleFileFromImage(dockerCli, repoName, "old-layer.txt")
+			output, err := h.CopySingleFileFromImage(dockerCli, repoName, "old-layer.txt")
 			h.AssertNil(t, err)
 			h.AssertEq(t, output, "old-layer")
 
-			output, err = copySingleFileFromImage(dockerCli, repoName, "new-layer.txt")
+			output, err = h.CopySingleFileFromImage(dockerCli, repoName, "new-layer.txt")
 			h.AssertNil(t, err)
 			h.AssertEq(t, output, "new-layer")
 		})
@@ -353,7 +352,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			var err error
 
-			createImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
+			h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM busybox
 					LABEL repo_name_for_randomisation=%s
 					RUN echo -n old-layer-1 > layer-1.txt
@@ -375,7 +374,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it.After(func() {
-			h.AssertNil(t, dockerRmi(dockerCli, repoName, origID))
+			h.AssertNil(t, h.DockerRmi(dockerCli, repoName, origID))
 		})
 
 		it("reuses a layer", func() {
@@ -385,12 +384,12 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			_, err = img.Save()
 			h.AssertNil(t, err)
 
-			output, err := copySingleFileFromImage(dockerCli, repoName, "layer-2.txt")
+			output, err := h.CopySingleFileFromImage(dockerCli, repoName, "layer-2.txt")
 			h.AssertNil(t, err)
 			h.AssertEq(t, output, "old-layer-2")
 
 			// Confirm layer-1.txt does not exist
-			_, err = copySingleFileFromImage(dockerCli, repoName, "layer-1.txt")
+			_, err = h.CopySingleFileFromImage(dockerCli, repoName, "layer-1.txt")
 			h.AssertMatch(t, err.Error(), regexp.MustCompile(`Error: No such container:path: .*:layer-1.txt`))
 		})
 
@@ -401,12 +400,12 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			_, err = img.Save()
 			h.AssertNil(t, err)
 
-			output, err := copySingleFileFromImage(dockerCli, repoName, "layer-1.txt")
+			output, err := h.CopySingleFileFromImage(dockerCli, repoName, "layer-1.txt")
 			h.AssertNil(t, err)
 			h.AssertEq(t, output, "old-layer-1")
 
 			// Confirm layer-2.txt does not exist
-			_, err = copySingleFileFromImage(dockerCli, repoName, "layer-2.txt")
+			_, err = h.CopySingleFileFromImage(dockerCli, repoName, "layer-2.txt")
 			h.AssertMatch(t, err.Error(), regexp.MustCompile(`Error: No such container:path: .*:layer-2.txt`))
 		})
 	})
@@ -419,7 +418,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		when("image exists", func() {
 			it.Before(func() {
 				var err error
-				createImageOnLocal(t, dockerCli, repoName, `
+				h.CreateImageOnLocal(t, dockerCli, repoName, `
 					FROM busybox
 					LABEL mykey=oldValue
 				`)
@@ -429,7 +428,7 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				h.AssertNil(t, dockerRmi(dockerCli, repoName, origID))
+				h.AssertNil(t, h.DockerRmi(dockerCli, repoName, origID))
 			})
 
 			it("returns the image digest", func() {
@@ -446,58 +445,4 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-func createImageOnLocal(t *testing.T, dockerCli *docker.Client, repoName, dockerFile string) {
-	ctx := context.Background()
-
-	buildContext, err := (&fs.FS{}).CreateSingleFileTar("Dockerfile", dockerFile)
-	h.AssertNil(t, err)
-
-	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
-		Tags:           []string{repoName},
-		SuppressOutput: true,
-		Remove:         true,
-		ForceRemove:    true,
-	})
-	h.AssertNil(t, err)
-
-	io.Copy(ioutil.Discard, res.Body)
-	res.Body.Close()
-}
-
-func copySingleFileFromContainer(dockerCli *docker.Client, ctrID, path string) (string, error) {
-	r, _, err := dockerCli.CopyFromContainer(context.Background(), ctrID, path)
-	if err != nil {
-		return "", err
-	}
-	defer r.Close()
-	tr := tar.NewReader(r)
-	hdr, err := tr.Next()
-	if hdr.Name != path {
-		return "", fmt.Errorf("filenames did not match: %s and %s", hdr.Name, path)
-	}
-	b, err := ioutil.ReadAll(tr)
-	return string(b), err
-}
-
-func copySingleFileFromImage(dockerCli *docker.Client, repoName, path string) (string, error) {
-	ctr, err := dockerCli.ContainerCreate(context.Background(), &container.Config{Image: repoName}, &container.HostConfig{}, nil, "")
-	if err != nil {
-		return "", err
-	}
-	defer dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
-	return copySingleFileFromContainer(dockerCli, ctr.ID, path)
-}
-
-func dockerRmi(dockerCli *docker.Client, repoNames ...string) error {
-	var err error
-	ctx := context.Background()
-	for _, name := range repoNames {
-		_, e := dockerCli.ImageRemove(ctx, name, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
-		if e != nil && err == nil {
-			err = e
-		}
-	}
-	return err
 }
