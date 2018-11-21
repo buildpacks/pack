@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
@@ -140,6 +141,12 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 		Run(t, exec.Command("docker", "run", "--log-driver=none", "-d", "--rm", "-p", ":5000", "--name", runRegistryName, "registry:2"))
 		port := Run(t, exec.Command("docker", "inspect", runRegistryName, "-f", `{{index (index (index .NetworkSettings.Ports "5000/tcp") 0) "HostPort"}}`))
 		runRegistryPort = strings.TrimSpace(string(port))
+
+		Eventually(t, func() bool {
+			_, err := HttpGetE(fmt.Sprintf("http://localhost:%s/v2/", runRegistryPort))
+			return err == nil
+		}, 10*time.Millisecond, 2*time.Second)
+
 		if os.Getenv("DOCKER_HOST") != "" {
 			err := proxyDockerHostPort(runRegistryPort)
 			AssertNil(t, err)
@@ -156,6 +163,24 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 		}
 	})
 	return runRegistryPort
+}
+
+func Eventually(t *testing.T, test func() bool, every time.Duration, timeout time.Duration) {
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if test() {
+				return
+			}
+		case <-timer.C:
+			t.Fatalf("timeout on eventually: %v", timeout)
+		}
+	}
 }
 
 func ConfigurePackHome(t *testing.T, packHome, registryPort string) {
@@ -236,18 +261,28 @@ func packTag() string {
 
 func HttpGet(t *testing.T, url string) string {
 	t.Helper()
+	txt, err := HttpGetE(url)
+	AssertNil(t, err)
+	return txt
+}
+
+func HttpGetE(url string) (string, error) {
 	if os.Getenv("DOCKER_HOST") == "" {
 		resp, err := http.Get(url)
-		AssertNil(t, err)
+		if err != nil {
+			return "", err
+		}
 		defer resp.Body.Close()
 		if resp.StatusCode >= 300 {
-			t.Fatalf("HTTP Status was bad: %s => %d", url, resp.StatusCode)
+			return "", fmt.Errorf("HTTP Status was bad: %s => %d", url, resp.StatusCode)
 		}
 		b, err := ioutil.ReadAll(resp.Body)
-		AssertNil(t, err)
-		return string(b)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
 	} else {
-		return Run(t, exec.Command("docker", "run", "--rm", "--log-driver=none", "--entrypoint=", "--network=host", "packs/samples", "wget", "-q", "-O", "-", url))
+		return RunE(exec.Command("docker", "run", "--rm", "--log-driver=none", "--entrypoint=", "--network=host", "packs/samples", "wget", "-q", "-O", "-", url))
 	}
 }
 

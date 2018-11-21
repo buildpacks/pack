@@ -244,22 +244,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, cmd.Process.Signal(os.Interrupt))
 			}()
 
-			ticker := time.NewTicker(time.Second)
-			defer ticker.Stop()
-			timer := time.NewTimer(2 * time.Minute)
-			defer timer.Stop()
-
-		Loop:
-			for {
-				select {
-				case <-ticker.C:
-					if strings.Contains(buf.String(), "Example app listening on port 3000!") {
-						break Loop
-					}
-				case <-timer.C:
-					t.Fatal("timeout waiting for app to be up:\n", buf.String())
-				}
-			}
+			h.Eventually(t, func() bool {
+				return strings.Contains(buf.String(), "Example app listening on port 3000!")
+			}, time.Second, 2*time.Minute)
 
 			txt := h.HttpGet(t, "http://localhost:3000")
 			h.AssertEq(t, txt, "Buildpacks Worked! - 1000:1000")

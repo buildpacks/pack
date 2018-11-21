@@ -96,7 +96,8 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Name", func() {
 		it("always returns the original name", func() {
-			img, _ := factory.NewRemote(repoName)
+			img, err := factory.NewRemote(repoName)
+			h.AssertNil(t, err)
 			h.AssertEq(t, img.Name(), repoName)
 		})
 	})
@@ -104,7 +105,8 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 	when("#Digest", func() {
 		it("returns the image digest", func() {
 			//busybox:1.29 has digest sha256:915f390a8912e16d4beb8689720a17348f3f6d1a7b659697df850ab625ea29d5
-			img, _ := factory.NewRemote("busybox:1.29")
+			img, err := factory.NewRemote("busybox:1.29")
+			h.AssertNil(t, err)
 			digest, err := img.Digest()
 			h.AssertNil(t, err)
 			h.AssertEq(t, digest, "sha256:915f390a8912e16d4beb8689720a17348f3f6d1a7b659697df850ab625ea29d5")
