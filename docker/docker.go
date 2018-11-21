@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,6 +9,7 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockercli "github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/pkg/errors"
 )
 
@@ -39,23 +39,8 @@ func (d *Client) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 	if err != nil {
 		return errors.Wrap(err, "container logs stdout")
 	}
-	go func() {
-		header := make([]byte, 8)
-		for {
-			if n, err := logs.Read(header); err != nil || n != 8 {
-				continue
-			}
-			if header[0] == uint8(1) {
-				if _, err := io.CopyN(stdout, logs, int64(binary.BigEndian.Uint32(header[4:]))); err != nil {
-					break
-				}
-			} else if header[0] == uint8(2) {
-				if _, err := io.CopyN(stderr, logs, int64(binary.BigEndian.Uint32(header[4:]))); err != nil {
-					break
-				}
-			}
-		}
-	}()
+
+	go stdcopy.StdCopy(stdout, stderr, logs)
 
 	select {
 	case body := <-bodyChan:
