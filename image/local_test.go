@@ -27,6 +27,7 @@ import (
 )
 
 func TestLocal(t *testing.T) {
+	t.Parallel()
 	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "local", testLocal, spec.Parallel(), spec.Report(report.Terminal{}))
 }

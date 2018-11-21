@@ -27,6 +27,7 @@ import (
 var registryPort string
 
 func TestRemote(t *testing.T) {
+	t.Parallel()
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	registryPort = h.RunRegistry(t, false)
@@ -58,10 +59,11 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		when("image exists", func() {
 			var img image.Image
 			it.Before(func() {
-				createImageOnRemote(t, dockerCli, repoName, `
+				createImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
+					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=myvalue other=data
-				`)
+				`, repoName))
 
 				var err error
 				img, err = factory.NewRemote(repoName)
@@ -113,10 +115,11 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 		var img image.Image
 		when("image exists", func() {
 			it.Before(func() {
-				createImageOnRemote(t, dockerCli, repoName, `
+				createImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
+					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=myvalue other=data
-				`)
+				`, repoName))
 
 				var err error
 				img, err = factory.NewRemote(repoName)
@@ -153,20 +156,22 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 				newBase = "localhost:" + registryPort + "/pack-newbase-test-" + h.RandString(10)
 				go func() {
 					defer wg.Done()
-					createImageOnRemote(t, dockerCli, newBase, `
+					createImageOnRemote(t, dockerCli, newBase, fmt.Sprintf(`
 						FROM busybox
+						LABEL repo_name_for_randomisation=%s
 						RUN echo new-base > base.txt
 						RUN echo text-new-base > otherfile.txt
-					`)
+					`, repoName))
 					newBaseLayers = manifestLayers(t, newBase)
 				}()
 
 				oldBase = "localhost:" + registryPort + "/pack-oldbase-test-" + h.RandString(10)
-				oldTopLayer = createImageOnRemote(t, dockerCli, oldBase, `
+				oldTopLayer = createImageOnRemote(t, dockerCli, oldBase, fmt.Sprintf(`
 					FROM busybox
+					LABEL repo_name_for_randomisation=%s
 					RUN echo old-base > base.txt
 					RUN echo text-old-base > otherfile.txt
-				`)
+				`, repoName))
 				oldBaseLayers = manifestLayers(t, oldBase)
 
 				createImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
@@ -208,11 +213,12 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 	when("#TopLayer", func() {
 		when("image exists", func() {
 			it("returns the digest for the top layer (useful for rebasing)", func() {
-				expectedTopLayer := createImageOnRemote(t, dockerCli, repoName, `
+				expectedTopLayer := createImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM busybox
+					LABEL repo_name_for_randomisation=%s
 					RUN echo old-base > base.txt
 					RUN echo text-old-base > otherfile.txt
-				`)
+				`, repoName))
 
 				img, err := factory.NewRemote(repoName)
 				h.AssertNil(t, err)
@@ -228,10 +234,11 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 	when("#Save", func() {
 		when("image exists", func() {
 			it("returns the image digest", func() {
-				createImageOnRemote(t, dockerCli, repoName, `
+				createImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM busybox
+					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=oldValue
-				`)
+				`, repoName))
 
 				img, err := factory.NewRemote(repoName)
 				h.AssertNil(t, err)
