@@ -37,4 +37,4 @@ deploy:
       "$TRAVIS_BRANCH" = master || "$TRAVIS_TAG" != ''
     all_branches: true
 after_deploy:
-- echo "https://storage.cloud.google.com/pack-cli/$(basename $PACK_PATH}"
+- echo "https://storage.cloud.google.com/pack-cli/$(basename $PACK_PATH)"
