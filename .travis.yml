@@ -3,6 +3,7 @@ go:
 - 1.11.x
 os:
 - linux
+- osx
 env:
   global:
   - GO111MODULE=on
@@ -14,16 +15,13 @@ cache:
 before_install:
 - openssl aes-256-cbc -K $encrypted_c7ea36ef0bae_key -iv $encrypted_c7ea36ef0bae_iv -in .travis/key.pem.enc -out .travis/key.pem -d
 - export DOCKER_CERT_PATH=$PWD/.travis/
-install: true
-script:
-- |
-  pack_version="$TRAVIS_TAG (git sha: $(git log -1 --pretty=%H))"
-  pack_artifact_version="${TRAVIS_TAG:-$TRAVIS_BUILD_NUMBER}"
-  GOOS=linux go build -ldflags "-X 'main.Version=${pack_version}'" -o "artifacts/pack-${pack_artifact_version}-linux" ./cmd/pack
-  GOOS=darwin go build -ldflags "-X 'main.Version=${pack_version}'" -o "artifacts/pack-${pack_artifact_version}-darwin" ./cmd/pack
-  GOOS=windows go build -ldflags "-X 'main.Version=${pack_version}'" -o "artifacts/pack-${pack_artifact_version}-windows" ./cmd/pack
-  "./artifacts/pack-${pack_artifact_version}-linux" version
-  PACK_PATH="$PWD/artifacts/pack-${pack_artifact_version}-linux" go test -parallel 1 -v ./...
+install:
+  |
+  go mod download
+  export PACK_PATH="$PWD/artifacts/pack-${TRAVIS_TAG:-$TRAVIS_BUILD_NUMBER}-${TRAVIS_OS_NAME}"
+  go build -ldflags "-X 'main.Version=$TRAVIS_TAG (git sha: $(git log -1 --pretty=%H))'" -o "$PACK_PATH" ./cmd/pack
+  "$PACK_PATH" version
+script: go test -count=1 -parallel=1 -v ./...
 deploy:
   provider: gcs
   access_key_id: GOOGKYYDLY5ACGLNZVYXGTTN
@@ -39,6 +37,4 @@ deploy:
       "$TRAVIS_BRANCH" = master || "$TRAVIS_TAG" != ''
     all_branches: true
 after_deploy:
-- echo "https://storage.cloud.google.com/pack-cli/pack-${pack_artifact_version}-darwin"
-- echo "https://storage.cloud.google.com/pack-cli/pack-${pack_artifact_version}-linux"
-- echo "https://storage.cloud.google.com/pack-cli/pack-${pack_artifact_version}-windows"
+- echo "https://storage.cloud.google.com/pack-cli/$(basename $PACK_PATH}"
