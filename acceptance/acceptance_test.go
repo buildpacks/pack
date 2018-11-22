@@ -125,7 +125,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				runDockerImageExposePort(t, containerName, repoName)
 				launchPort := fetchHostPort(t, containerName)
 
-				time.Sleep(5 * time.Second)
+				waitForPort(t, launchPort, 10*time.Second)
 				h.AssertEq(t, h.HttpGet(t, "http://localhost:"+launchPort), "Buildpacks Worked! - 1000:1000")
 
 				t.Log("Checking that registry is empty")
@@ -168,7 +168,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				runDockerImageExposePort(t, containerName, repoName)
 				launchPort := fetchHostPort(t, containerName)
 
-				time.Sleep(2 * time.Second)
+				waitForPort(t, launchPort, 10*time.Second)
 				h.AssertEq(t, h.HttpGet(t, "http://localhost:"+launchPort), "Maven buildpack worked!")
 			})
 		})
@@ -200,7 +200,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 				launchPort := fetchHostPort(t, containerName)
 
-				time.Sleep(5 * time.Second)
+				waitForPort(t, launchPort, 10*time.Second)
 				h.AssertEq(t, h.HttpGet(t, "http://localhost:"+launchPort), "Buildpacks Worked! - 1000:1000")
 
 				t.Log("uses the cache on subsequent run")
@@ -293,7 +293,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				}()
 
 				launchPort := fetchHostPort(t, containerName)
-				time.Sleep(5 * time.Second)
+				waitForPort(t, launchPort, 10*time.Second)
 				h.AssertEq(t, h.HttpGet(t, "http://localhost:"+launchPort), "Buildpacks Worked! - 1000:1000")
 				txt := h.HttpGet(t, "http://localhost:"+launchPort+"/rootcontents1")
 				h.AssertNil(t, dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL"))
@@ -776,4 +776,11 @@ func pushImage(d *docker.Client, ref string) error {
 		return err
 	}
 	return rc.Close()
+}
+
+func waitForPort(t *testing.T, port string, duration time.Duration) {
+	h.Eventually(t, func() bool {
+		_, err := h.HttpGetE("http://localhost:" + port)
+		return err == nil
+	}, 500*time.Millisecond, duration)
 }
