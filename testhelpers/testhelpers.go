@@ -3,6 +3,7 @@ package testhelpers
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -17,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dgodd/dockerdial"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 )
@@ -105,6 +107,7 @@ func proxyDockerHostPort(port string) error {
 	if err != nil {
 		return err
 	}
+
 	go func() {
 		// TODO exit somehow.
 		for {
@@ -115,15 +118,15 @@ func proxyDockerHostPort(port string) error {
 			}
 			go func(conn net.Conn) {
 				defer conn.Close()
-				var stderr bytes.Buffer
-				cmd := exec.Command("docker", "run", "--rm", "--log-driver=none", "-i", "-a", "stdin", "-a", "stdout", "-a", "stderr", "--network=host", "alpine/socat", "-", "TCP:localhost:"+port)
-				cmd.Stdin = conn
-				cmd.Stdout = conn
-				cmd.Stderr = &stderr
-				if err := cmd.Run(); err != nil {
-					log.Println(stderr.String())
+				c, err := dockerdial.Dial("tcp", "localhost:"+port)
+				if err != nil {
 					log.Println(err)
+					return
 				}
+				defer c.Close()
+
+				go io.Copy(c, conn)
+				io.Copy(conn, c)
 			}(conn)
 		}
 	}()
@@ -267,23 +270,27 @@ func HttpGet(t *testing.T, url string) string {
 }
 
 func HttpGetE(url string) (string, error) {
+	var client *http.Client
 	if os.Getenv("DOCKER_HOST") == "" {
-		resp, err := http.Get(url)
-		if err != nil {
-			return "", err
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode >= 300 {
-			return "", fmt.Errorf("HTTP Status was bad: %s => %d", url, resp.StatusCode)
-		}
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return "", err
-		}
-		return string(b), nil
+		client = http.DefaultClient
 	} else {
-		return RunE(exec.Command("docker", "run", "--rm", "--log-driver=none", "--entrypoint=", "--network=host", "packs/samples", "wget", "-q", "-O", "-", url))
+		tr := &http.Transport{Dial: dockerdial.Dial}
+		client = &http.Client{Transport: tr}
 	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return "", fmt.Errorf("HTTP Status was bad: %s => %d", url, resp.StatusCode)
+	}
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
 }
 
 func CopyWorkspaceToDocker(t *testing.T, srcPath, destVolume string) {
