@@ -19,6 +19,7 @@ script:
 - |
   pack_version="$TRAVIS_TAG (git sha: $(git log -1 --pretty=%H))"
   pack_artifact_version="${TRAVIS_TAG:-$TRAVIS_BUILD_NUMBER}"
+  GOOS=linux CGO_ENABLED=0 go build -ldflags "-s -w -X 'main.Version=${pack_version}'" -o "artifacts/pack-${pack_artifact_version}-docker" ./cmd/pack
   GOOS=linux go build -ldflags "-X 'main.Version=${pack_version}'" -o "artifacts/pack-${pack_artifact_version}-linux" ./cmd/pack
   GOOS=darwin go build -ldflags "-X 'main.Version=${pack_version}'" -o "artifacts/pack-${pack_artifact_version}-darwin" ./cmd/pack
   GOOS=windows go build -ldflags "-X 'main.Version=${pack_version}'" -o "artifacts/pack-${pack_artifact_version}-windows" ./cmd/pack
