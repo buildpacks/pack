@@ -10,3 +10,6 @@ artifacts/
 
 # Travis unencrypted file
 .travis/key.pem
+
+# Appveyor tools
+/appveyor-tools/

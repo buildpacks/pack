@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -42,11 +43,14 @@ func TestPack(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
-		if txt, err := exec.Command("go", "build", "-o", filepath.Join(packTmpDir, "pack"), "../cmd/pack").CombinedOutput(); err != nil {
+		pack = filepath.Join(packTmpDir, "pack")
+		if runtime.GOOS == "windows" {
+			pack = pack + ".exe"
+		}
+		if txt, err := exec.Command("go", "build", "-o", pack, "../cmd/pack").CombinedOutput(); err != nil {
 			fmt.Println(string(txt))
 			panic(err)
 		}
-		pack = filepath.Join(packTmpDir, "pack")
 		defer os.RemoveAll(packTmpDir)
 	}
 
@@ -227,6 +231,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 		it.After(func() {
 			repoName := fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(sourceCodePath)))
+			killDockerByRepoName(t, repoName)
 			dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
 
 			if sourceCodePath != "" {
@@ -241,11 +246,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			cmd.Stdout = &buf
 			cmd.Stderr = &buf
 			cmd.Dir = sourceCodePath
-			cmd.Start()
+			h.AssertNil(t, cmd.Start())
 
-			defer func() {
-				h.AssertNil(t, cmd.Process.Signal(os.Interrupt))
-			}()
+			defer ctrlCProc(cmd)
 
 			h.Eventually(t, func() bool {
 				return strings.Contains(buf.String(), "Example app listening on port 3000!")
@@ -376,6 +379,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
+			if runtime.GOOS == "windows" {
+				t.Skip("create builder is not implemented on windows")
+			}
 			builderRepoName = "some-org/" + h.RandString(10)
 			repoName = "some-org/" + h.RandString(10)
 			containerName = "test-" + h.RandString(10)
@@ -783,4 +789,26 @@ func waitForPort(t *testing.T, port string, duration time.Duration) {
 		_, err := h.HttpGetE("http://localhost:" + port)
 		return err == nil
 	}, 500*time.Millisecond, duration)
+}
+
+func ctrlCProc(cmd *exec.Cmd) error {
+	if cmd == nil || cmd.Process == nil || cmd.Process.Pid <= 0 {
+		return fmt.Errorf("invalid pid: %#v", cmd)
+	}
+	if runtime.GOOS == "windows" {
+		return exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprint(cmd.Process.Pid)).Run()
+	}
+	return cmd.Process.Signal(os.Interrupt)
+}
+
+func killDockerByRepoName(t *testing.T, repoName string) {
+	t.Helper()
+	containers, err := dockerCli.ContainerList(context.Background(), dockertypes.ContainerListOptions{})
+	h.AssertNil(t, err)
+
+	for _, ctr := range containers {
+		if ctr.Image == repoName {
+			dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{Force: true})
+		}
+	}
 }

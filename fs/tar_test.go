@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -52,6 +53,7 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatalf("could not open tar file %s: %s", tarFile, err)
 		}
+		defer file.Close()
 		gzr, err := gzip.NewReader(file)
 		tr := tar.NewReader(gzr)
 
@@ -75,23 +77,25 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 			t.Fatalf(`expected some-file.txt to be group 2345 was %d`, header.Gid)
 		}
 
-		t.Log("handles symlinks")
-		header, err = tr.Next()
-		if err != nil {
-			t.Fatalf("Failed to get next file: %s", err)
-		}
-		if header.Name != "/dir-in-archive/sub-dir/link-file" {
-			t.Fatalf(`expected file with name /dir-in-archive/sub-dir/link-file, got %s`, header.Name)
-		}
-		if header.Uid != 1234 {
-			t.Fatalf(`expected link-file to be owned by 1234 was %d`, header.Uid)
-		}
-		if header.Gid != 2345 {
-			t.Fatalf(`expected link-file to be group 2345 was %d`, header.Gid)
-		}
+		if runtime.GOOS != "windows" {
+			t.Log("handles symlinks")
+			header, err = tr.Next()
+			if err != nil {
+				t.Fatalf("Failed to get next file: %s", err)
+			}
+			if header.Name != "/dir-in-archive/sub-dir/link-file" {
+				t.Fatalf(`expected file with name /dir-in-archive/sub-dir/link-file, got %s`, header.Name)
+			}
+			if header.Uid != 1234 {
+				t.Fatalf(`expected link-file to be owned by 1234 was %d`, header.Uid)
+			}
+			if header.Gid != 2345 {
+				t.Fatalf(`expected link-file to be group 2345 was %d`, header.Gid)
+			}
 
-		if header.Linkname != "../some-file.txt" {
-			t.Fatalf(`expected to link-file to have atrget "../some-file.txt" got %s`, header.Linkname)
+			if header.Linkname != "../some-file.txt" {
+				t.Fatalf(`expected to link-file to have atrget "../some-file.txt" got "%s"`, header.Linkname)
+			}
 		}
 	})
 }

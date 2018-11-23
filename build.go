@@ -13,6 +13,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -268,6 +269,9 @@ func (b *BuildConfig) copyBuildpacksToContainer(ctx context.Context, ctrID strin
 	for _, bp := range b.Buildpacks {
 		var id, version string
 		if _, err := os.Stat(filepath.Join(bp, "buildpack.toml")); !os.IsNotExist(err) {
+			if runtime.GOOS == "windows" {
+				return nil, fmt.Errorf("directory buildpacks are not implemented on windows")
+			}
 			var buildpackTOML struct {
 				Buildpack struct {
 					ID      string `toml:"id"`

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -142,6 +143,10 @@ func createBuilderCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
 			flags.RepoName = args[0]
+
+			if runtime.GOOS == "windows" {
+				return fmt.Errorf("create builder is not implemented on windows")
+			}
 
 			docker, err := docker.New()
 			if err != nil {

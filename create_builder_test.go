@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -27,6 +28,9 @@ import (
 )
 
 func TestCreateBuilder(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("create builder is not implemented on windows")
+	}
 	spec.Run(t, "create-builder", testCreateBuilder, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 

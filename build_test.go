@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -77,7 +78,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	})
 	it.After(func() {
 		for _, volName := range []string{subject.WorkspaceVolume, subject.CacheVolume} {
-			h.AssertNil(t, dockerCli.VolumeRemove(context.TODO(), volName, true))
+			dockerCli.VolumeRemove(context.TODO(), volName, true)
 		}
 	})
 
@@ -324,7 +325,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			_, err = envFile.Write([]byte(`
 VAR1=value1
 VAR2=value2 with spaces	
-USER
+PATH
 				`))
 			h.AssertNil(t, err)
 			envFile.Close()
@@ -338,9 +339,9 @@ USER
 			h.AssertEq(t, config.EnvFile, map[string]string{
 				"VAR1": "value1",
 				"VAR2": "value2 with spaces",
-				"USER": os.Getenv("USER"),
+				"PATH": os.Getenv("PATH"),
 			})
-			h.AssertNotEq(t, os.Getenv("USER"), "")
+			h.AssertNotEq(t, os.Getenv("PATH"), "")
 		})
 	})
 
@@ -367,7 +368,7 @@ USER
 			var badappDir string
 			it.Before(func() {
 				var err error
-				badappDir, err = ioutil.TempDir("/tmp", "pack.build.badapp.")
+				badappDir, err = ioutil.TempDir("", "pack.build.badapp.")
 				h.AssertNil(t, err)
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(badappDir, "file.txt"), []byte("content"), 0644))
 				subject.AppDir = badappDir
@@ -385,8 +386,11 @@ USER
 			when("directory buildpack", func() {
 				var bpDir string
 				it.Before(func() {
+					if runtime.GOOS == "windows" {
+						t.Skip("directory buildpacks are not implemented on windows")
+					}
 					var err error
-					bpDir, err = ioutil.TempDir("/tmp", "pack.build.bpdir.")
+					bpDir, err = ioutil.TempDir("", "pack.build.bpdir.")
 					h.AssertNil(t, err)
 					h.AssertNil(t, ioutil.WriteFile(filepath.Join(bpDir, "buildpack.toml"), []byte(`
 					[buildpack]
@@ -432,7 +436,7 @@ USER
 
 	when("#Analyze", func() {
 		it.Before(func() {
-			tmpDir, err := ioutil.TempDir("/tmp", "pack.build.analyze.")
+			tmpDir, err := ioutil.TempDir("", "pack.build.analyze.")
 			h.AssertNil(t, err)
 			defer os.RemoveAll(tmpDir)
 			h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "group.toml"), []byte(`[[buildpacks]]
@@ -533,7 +537,7 @@ USER
 				var bpDir string
 				it.Before(func() {
 					var err error
-					bpDir, err = ioutil.TempDir("/tmp", "pack.build.bpdir.")
+					bpDir, err = ioutil.TempDir("", "pack.build.bpdir.")
 					h.AssertNil(t, err)
 					h.AssertNil(t, ioutil.WriteFile(filepath.Join(bpDir, "buildpack.toml"), []byte(`
 					[buildpack]
@@ -556,6 +560,9 @@ USER
 				it.After(func() { os.RemoveAll(bpDir) })
 
 				it("runs the buildpacks bin/build", func() {
+					if runtime.GOOS == "windows" {
+						t.Skip("directory buildpacks are not implemented on windows")
+					}
 					subject.Buildpacks = []string{bpDir}
 					_, err := subject.Detect()
 					h.AssertNil(t, err)
@@ -582,6 +589,9 @@ USER
 
 		when("EnvFile is specified", func() {
 			it("sets specified env variables in /platform/env/...", func() {
+				if runtime.GOOS == "windows" {
+					t.Skip("directory buildpacks are not implemented on windows")
+				}
 				subject.EnvFile = map[string]string{
 					"VAR1": "value1",
 					"VAR2": "value2 with spaces",
@@ -606,7 +616,7 @@ USER
 			runTopLayer string
 		)
 		it.Before(func() {
-			tmpDir, err := ioutil.TempDir("/tmp", "pack.build.export.")
+			tmpDir, err := ioutil.TempDir("", "pack.build.export.")
 			h.AssertNil(t, err)
 			defer os.RemoveAll(tmpDir)
 			files := map[string]string{
@@ -820,7 +830,7 @@ func runInImage(t *testing.T, dockerCli *docker.Client, volumes []string, repoNa
 		Binds:      volumes,
 	}, nil, "")
 	h.AssertNil(t, err)
-	defer dockerCli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+	defer dockerCli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{Force: true})
 
 	var buf bytes.Buffer
 	err = dockerCli.RunContainer(ctx, ctr.ID, &buf, &buf)
