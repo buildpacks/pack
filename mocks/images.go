@@ -5,7 +5,6 @@
 package mocks
 
 import (
-	img "github.com/buildpack/lifecycle/img"
 	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	reflect "reflect"
@@ -45,17 +44,4 @@ func (m *MockImages) ReadImage(arg0 string, arg1 bool) (v1.Image, error) {
 // ReadImage indicates an expected call of ReadImage
 func (mr *MockImagesMockRecorder) ReadImage(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadImage", reflect.TypeOf((*MockImages)(nil).ReadImage), arg0, arg1)
-}
-
-// RepoStore mocks base method
-func (m *MockImages) RepoStore(arg0 string, arg1 bool) (img.Store, error) {
-	ret := m.ctrl.Call(m, "RepoStore", arg0, arg1)
-	ret0, _ := ret[0].(img.Store)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// RepoStore indicates an expected call of RepoStore
-func (mr *MockImagesMockRecorder) RepoStore(arg0, arg1 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RepoStore", reflect.TypeOf((*MockImages)(nil).RepoStore), arg0, arg1)
 }

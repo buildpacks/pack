@@ -5,9 +5,10 @@
 package mocks
 
 import (
-	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockFS is a mock of FS interface
@@ -46,16 +47,16 @@ func (mr *MockFSMockRecorder) CreateSingleFileTar(arg0, arg1 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSingleFileTar", reflect.TypeOf((*MockFS)(nil).CreateSingleFileTar), arg0, arg1)
 }
 
-// CreateTGZFile mocks base method
-func (m *MockFS) CreateTGZFile(arg0, arg1, arg2 string, arg3, arg4 int) error {
-	ret := m.ctrl.Call(m, "CreateTGZFile", arg0, arg1, arg2, arg3, arg4)
+// CreateTarFile mocks base method
+func (m *MockFS) CreateTarFile(arg0, arg1, arg2 string, arg3, arg4 int) error {
+	ret := m.ctrl.Call(m, "CreateTarFile", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// CreateTGZFile indicates an expected call of CreateTGZFile
-func (mr *MockFSMockRecorder) CreateTGZFile(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTGZFile", reflect.TypeOf((*MockFS)(nil).CreateTGZFile), arg0, arg1, arg2, arg3, arg4)
+// CreateTarFile indicates an expected call of CreateTarFile
+func (mr *MockFSMockRecorder) CreateTarFile(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTarFile", reflect.TypeOf((*MockFS)(nil).CreateTarFile), arg0, arg1, arg2, arg3, arg4)
 }
 
 // CreateTarReader mocks base method

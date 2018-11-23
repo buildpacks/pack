@@ -41,15 +41,14 @@ func TestPack(t *testing.T) {
 	if pack == "" {
 		packTmpDir, err := ioutil.TempDir("", "pack.acceptance.binary.")
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 		pack = filepath.Join(packTmpDir, "pack")
 		if runtime.GOOS == "windows" {
 			pack = pack + ".exe"
 		}
 		if txt, err := exec.Command("go", "build", "-o", pack, "../cmd/pack").CombinedOutput(); err != nil {
-			fmt.Println(string(txt))
-			panic(err)
+			t.Fatal("building pack cli:\n", string(txt), err)
 		}
 		defer os.RemoveAll(packTmpDir)
 	}

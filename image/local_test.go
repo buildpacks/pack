@@ -112,7 +112,8 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns the image digest", func() {
-				img, _ := factory.NewLocal("busybox:1.29", true)
+				img, err := factory.NewLocal("busybox:1.29", true)
+				h.AssertNil(t, err)
 				digest, err := img.Digest()
 				h.AssertNil(t, err)
 				h.AssertEq(t, digest, expectedDigest)
@@ -132,7 +133,8 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns an empty string", func() {
-				img, _ := factory.NewLocal(repoName, false)
+				img, err := factory.NewLocal(repoName, false)
+				h.AssertNil(t, err)
 				digest, err := img.Digest()
 				h.AssertNil(t, err)
 				h.AssertEq(t, digest, "")

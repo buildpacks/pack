@@ -215,8 +215,9 @@ func (l *local) Save() (string, error) {
 	pr, pw := io.Pipe()
 	go func() {
 		res, err := l.Docker.ImageLoad(ctx, pr, true)
-		if err != nil {
+		if err == nil {
 			io.Copy(ioutil.Discard, res.Body)
+			res.Body.Close()
 		}
 		done <- err
 	}()

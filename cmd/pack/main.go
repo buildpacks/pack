@@ -11,7 +11,6 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/image"
 	"github.com/spf13/cobra"
@@ -148,20 +147,19 @@ func createBuilderCommand() *cobra.Command {
 				return fmt.Errorf("create builder is not implemented on windows")
 			}
 
-			docker, err := docker.New()
-			if err != nil {
-				return err
-			}
 			cfg, err := config.NewDefault()
 			if err != nil {
 				return err
 			}
+			imageFactory, err := image.DefaultFactory()
+			if err != nil {
+				return err
+			}
 			builderFactory := pack.BuilderFactory{
-				FS:     &fs.FS{},
-				Log:    log.New(os.Stdout, "", log.LstdFlags),
-				Docker: docker,
-				Config: cfg,
-				Images: &image.Client{},
+				FS:           &fs.FS{},
+				Log:          log.New(os.Stdout, "", log.LstdFlags),
+				Config:       cfg,
+				ImageFactory: imageFactory,
 			}
 			builderConfig, err := builderFactory.BuilderConfigFromFlags(flags)
 			if err != nil {

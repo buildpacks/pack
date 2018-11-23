@@ -16,7 +16,6 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -40,16 +39,14 @@ func TestCreateBuilder(t *testing.T) {
 func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#BuilderFactory", func() {
 		var (
-			mockController *gomock.Controller
-			mockDocker     *mocks.MockDocker
-			mockImages     *mocks.MockImages
-			factory        pack.BuilderFactory
-			buf            bytes.Buffer
+			mockController   *gomock.Controller
+			mockImageFactory *mocks.MockImageFactory
+			factory          pack.BuilderFactory
+			buf              bytes.Buffer
 		)
 		it.Before(func() {
 			mockController = gomock.NewController(t)
-			mockDocker = mocks.NewMockDocker(mockController)
-			mockImages = mocks.NewMockImages(mockController)
+			mockImageFactory = mocks.NewMockImageFactory(mockController)
 
 			packHome, err := ioutil.TempDir("", ".pack")
 			if err != nil {
@@ -78,11 +75,10 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			factory = pack.BuilderFactory{
-				FS:     &fs.FS{},
-				Docker: mockDocker,
-				Log:    log.New(&buf, "", log.LstdFlags),
-				Config: cfg,
-				Images: mockImages,
+				FS:           &fs.FS{},
+				Log:          log.New(&buf, "", log.LstdFlags),
+				Config:       cfg,
+				ImageFactory: mockImageFactory,
 			}
 		})
 
@@ -92,11 +88,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("#BuilderConfigFromFlags", func() {
 			it("uses default stack build image as base image", func() {
-				mockBaseImage := mocks.NewMockV1Image(mockController)
-				mockImageStore := mocks.NewMockStore(mockController)
-				mockDocker.EXPECT().PullImage("default/build")
-				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
-				mockImages.EXPECT().RepoStore("some/image", true).Return(mockImageStore, nil)
+				mockBaseImage := mocks.NewMockImage(mockController)
+				mockImageFactory.EXPECT().NewLocal("default/build", true).Return(mockBaseImage, nil)
+				mockBaseImage.EXPECT().Rename("some/image")
 
 				config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
 					RepoName:        "some/image",
@@ -105,20 +99,16 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				if err != nil {
 					t.Fatalf("error creating builder config: %s", err)
 				}
-				h.AssertSameInstance(t, config.BaseImage, mockBaseImage)
-				h.AssertSameInstance(t, config.Repo, mockImageStore)
+				h.AssertSameInstance(t, config.Repo, mockBaseImage)
 				checkBuildpacks(t, config.Buildpacks)
 				checkGroups(t, config.Groups)
 				h.AssertEq(t, config.BuilderDir, "testdata")
-				h.AssertEq(t, config.RepoName, "some/image")
 			})
 
 			it("select the build image with matching registry", func() {
-				mockBaseImage := mocks.NewMockV1Image(mockController)
-				mockImageStore := mocks.NewMockStore(mockController)
-				mockDocker.EXPECT().PullImage("registry.com/build/image")
-				mockImages.EXPECT().ReadImage("registry.com/build/image", true).Return(mockBaseImage, nil)
-				mockImages.EXPECT().RepoStore("registry.com/some/image", true).Return(mockImageStore, nil)
+				mockBaseImage := mocks.NewMockImage(mockController)
+				mockImageFactory.EXPECT().NewLocal("registry.com/build/image", true).Return(mockBaseImage, nil)
+				mockBaseImage.EXPECT().Rename("registry.com/some/image")
 
 				config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
 					RepoName:        "registry.com/some/image",
@@ -127,19 +117,16 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				if err != nil {
 					t.Fatalf("error creating builder config: %s", err)
 				}
-				h.AssertSameInstance(t, config.BaseImage, mockBaseImage)
-				h.AssertSameInstance(t, config.Repo, mockImageStore)
+				h.AssertSameInstance(t, config.Repo, mockBaseImage)
 				checkBuildpacks(t, config.Buildpacks)
 				checkGroups(t, config.Groups)
 				h.AssertEq(t, config.BuilderDir, "testdata")
-				h.AssertEq(t, config.RepoName, "registry.com/some/image")
 			})
 
 			it("doesn't pull base a new image when --no-pull flag is provided", func() {
-				mockBaseImage := mocks.NewMockV1Image(mockController)
-				mockImageStore := mocks.NewMockStore(mockController)
-				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
-				mockImages.EXPECT().RepoStore("some/image", true).Return(mockImageStore, nil)
+				mockBaseImage := mocks.NewMockImage(mockController)
+				mockImageFactory.EXPECT().NewLocal("default/build", false).Return(mockBaseImage, nil)
+				mockBaseImage.EXPECT().Rename("some/image")
 
 				config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
 					RepoName:        "some/image",
@@ -149,28 +136,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				if err != nil {
 					t.Fatalf("error creating builder config: %s", err)
 				}
-				h.AssertSameInstance(t, config.BaseImage, mockBaseImage)
-				h.AssertSameInstance(t, config.Repo, mockImageStore)
+				h.AssertSameInstance(t, config.Repo, mockBaseImage)
 				checkBuildpacks(t, config.Buildpacks)
 				checkGroups(t, config.Groups)
 				h.AssertEq(t, config.BuilderDir, "testdata")
 			})
 
 			it("fails if the base image cannot be found", func() {
-				mockImages.EXPECT().ReadImage("default/build", true).Return(nil, nil)
-
-				_, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
-					RepoName:        "some/image",
-					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
-					NoPull:          true,
-				})
-				if err == nil {
-					t.Fatalf("Expected error when base image is missing from daemon")
-				}
-			})
-
-			it("fails if the base image cannot be pulled", func() {
-				mockDocker.EXPECT().PullImage("default/build").Return(fmt.Errorf("some-error"))
+				mockImageFactory.EXPECT().NewLocal("default/build", true).Return(nil, fmt.Errorf("read image failed"))
 
 				_, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
 					RepoName:        "some/image",
@@ -202,11 +175,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("-s flag is provided", func() {
 				it("used the build image from the selected stack", func() {
-					mockBaseImage := mocks.NewMockV1Image(mockController)
-					mockImageStore := mocks.NewMockStore(mockController)
-					mockDocker.EXPECT().PullImage("other/build")
-					mockImages.EXPECT().ReadImage("other/build", true).Return(mockBaseImage, nil)
-					mockImages.EXPECT().RepoStore("some/image", true).Return(mockImageStore, nil)
+					mockBaseImage := mocks.NewMockImage(mockController)
+					mockImageFactory.EXPECT().NewLocal("other/build", true).Return(mockBaseImage, nil)
+					mockBaseImage.EXPECT().Rename("some/image")
 
 					config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
 						RepoName:        "some/image",
@@ -216,8 +187,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					if err != nil {
 						t.Fatalf("error creating builder config: %s", err)
 					}
-					h.AssertSameInstance(t, config.BaseImage, mockBaseImage)
-					h.AssertSameInstance(t, config.Repo, mockImageStore)
+					h.AssertSameInstance(t, config.Repo, mockBaseImage)
 					checkBuildpacks(t, config.Buildpacks)
 					checkGroups(t, config.Groups)
 				})
@@ -235,10 +205,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("--publish is passed", func() {
 				it("uses a registry store and doesn't pull base image", func() {
-					mockBaseImage := mocks.NewMockV1Image(mockController)
-					mockImageStore := mocks.NewMockStore(mockController)
-					mockImages.EXPECT().ReadImage("default/build", false).Return(mockBaseImage, nil)
-					mockImages.EXPECT().RepoStore("some/image", false).Return(mockImageStore, nil)
+					mockBaseImage := mocks.NewMockImage(mockController)
+					mockImageFactory.EXPECT().NewRemote("default/build").Return(mockBaseImage, nil)
+					mockBaseImage.EXPECT().Rename("some/image")
 
 					config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
 						RepoName:        "some/image",
@@ -248,8 +217,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					if err != nil {
 						t.Fatalf("error creating builder config: %s", err)
 					}
-					h.AssertSameInstance(t, config.BaseImage, mockBaseImage)
-					h.AssertSameInstance(t, config.Repo, mockImageStore)
+					h.AssertSameInstance(t, config.Repo, mockBaseImage)
 					checkBuildpacks(t, config.Buildpacks)
 					checkGroups(t, config.Groups)
 					h.AssertEq(t, config.BuilderDir, "testdata")
@@ -260,19 +228,15 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("#Create", func() {
 			when("successful", func() {
 				it("logs usage tip", func() {
-					mockBaseImage := mocks.NewMockV1Image(mockController)
-					mockImageStore := mocks.NewMockStore(mockController)
-
-					mockBaseImage.EXPECT().Manifest().Return(&v1.Manifest{}, nil)
-					mockBaseImage.EXPECT().ConfigFile().Return(&v1.ConfigFile{}, nil)
-					mockImageStore.EXPECT().Write(gomock.Any())
+					mockImage := mocks.NewMockImage(mockController)
+					mockImage.EXPECT().AddLayer(gomock.Any()).AnyTimes()
+					mockImage.EXPECT().Save()
+					mockImage.EXPECT().Name().Return("myorg/mybuilder")
 
 					err := factory.Create(pack.BuilderConfig{
-						RepoName:   "myorg/mybuilder",
-						Repo:       mockImageStore,
+						Repo:       mockImage,
 						Buildpacks: []pack.Buildpack{},
 						Groups:     []lifecycle.BuildpackGroup{},
-						BaseImage:  mockBaseImage,
 						BuilderDir: "",
 					})
 					h.AssertNil(t, err)
@@ -284,11 +248,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 		when("a buildpack location uses no scheme uris", func() {
 			it("supports relative directories as well as archives", func() {
-				mockBaseImage := mocks.NewMockV1Image(mockController)
-				mockImageStore := mocks.NewMockStore(mockController)
-
-				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
-				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
+				mockImage := mocks.NewMockImage(mockController)
+				mockImageFactory.EXPECT().NewLocal("default/build", false).Return(mockImage, nil)
+				mockImage.EXPECT().Rename("myorg/mybuilder")
 
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
@@ -305,11 +267,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[1].Dir, "bin/build", "I come from an archive")
 			})
 			it("supports absolute directories as well as archives", func() {
-				mockBaseImage := mocks.NewMockV1Image(mockController)
-				mockImageStore := mocks.NewMockStore(mockController)
-
-				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
-				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
+				mockImage := mocks.NewMockImage(mockController)
+				mockImageFactory.EXPECT().NewLocal("default/build", false).Return(mockImage, nil)
+				mockImage.EXPECT().Rename("myorg/mybuilder")
 
 				absPath, err := filepath.Abs("testdata/used-to-test-various-uri-schemes/buildpack")
 				h.AssertNil(t, err)
@@ -353,11 +313,9 @@ buildpacks = [
 		})
 		when("a buildpack location uses file:// uris", func() {
 			it("supports absolute directories as well as archives", func() {
-				mockBaseImage := mocks.NewMockV1Image(mockController)
-				mockImageStore := mocks.NewMockStore(mockController)
-
-				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
-				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
+				mockImage := mocks.NewMockImage(mockController)
+				mockImageFactory.EXPECT().NewLocal("default/build", false).Return(mockImage, nil)
+				mockImage.EXPECT().Rename("myorg/mybuilder")
 
 				absPath, err := filepath.Abs("testdata/used-to-test-various-uri-schemes/buildpack")
 				h.AssertNil(t, err)
@@ -428,11 +386,9 @@ buildpacks = [
 				}
 			})
 			it("downloads and extracts the archive", func() {
-				mockBaseImage := mocks.NewMockV1Image(mockController)
-				mockImageStore := mocks.NewMockStore(mockController)
-
-				mockImages.EXPECT().ReadImage("default/build", true).Return(mockBaseImage, nil)
-				mockImages.EXPECT().RepoStore("myorg/mybuilder", true).Return(mockImageStore, nil)
+				mockImage := mocks.NewMockImage(mockController)
+				mockImageFactory.EXPECT().NewLocal("default/build", false).Return(mockImage, nil)
+				mockImage.EXPECT().Rename("myorg/mybuilder")
 
 				f, err := ioutil.TempFile("", "*.toml")
 				h.AssertNil(t, err)

@@ -2,7 +2,6 @@ package fs_test
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -11,10 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpack/pack/fs"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"github.com/buildpack/pack/fs"
 )
 
 func TestFS(t *testing.T) {
@@ -45,17 +43,16 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 
 	it("writes a tar to the dest dir", func() {
 		tarFile := filepath.Join(tmpDir, "some.tar")
-		err := fs.CreateTGZFile(tarFile, src, "/dir-in-archive", 1234, 2345)
+		err := fs.CreateTarFile(tarFile, src, "/dir-in-archive", 1234, 2345)
 		if err != nil {
-			t.Fatalf("CreateTGZFile failed: %s", err)
+			t.Fatalf("CreateTarFile failed: %s", err)
 		}
 		file, err := os.Open(tarFile)
 		if err != nil {
 			t.Fatalf("could not open tar file %s: %s", tarFile, err)
 		}
 		defer file.Close()
-		gzr, err := gzip.NewReader(file)
-		tr := tar.NewReader(gzr)
+		tr := tar.NewReader(file)
 
 		t.Log("handles regular files")
 		header, err := tr.Next()

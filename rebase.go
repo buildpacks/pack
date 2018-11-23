@@ -8,7 +8,6 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/image"
-	"github.com/google/go-containerregistry/pkg/v1"
 )
 
 type RebaseConfig struct {
