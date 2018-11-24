@@ -197,7 +197,7 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 		Eventually(t, func() bool {
 			txt, err := HttpGetE(fmt.Sprintf("http://localhost:%s/v2/", runRegistryPort))
 			return err == nil && txt != ""
-		}, 10*time.Millisecond, 2*time.Second)
+		}, 100*time.Millisecond, 10*time.Second)
 
 		if seedRegistry {
 			t.Log("seed registry")
