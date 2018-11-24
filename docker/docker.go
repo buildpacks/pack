@@ -61,7 +61,11 @@ func (d *Client) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 func (d *Client) PullImage(ref string) error {
 	rc, err := d.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
 	if err != nil {
-		return err
+		// Retry
+		rc, err = d.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+		if err != nil {
+			return err
+		}
 	}
 	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
 		return err
