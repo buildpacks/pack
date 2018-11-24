@@ -48,44 +48,12 @@ type Buildpack struct {
 	Latest bool
 }
 
-//go:generate mockgen -package mocks -destination mocks/docker.go github.com/buildpack/pack Docker
-type Docker interface {
-	PullImage(ref string) error
-	RunContainer(ctx context.Context, id string, stdout io.Writer, stderr io.Writer) error
-	VolumeRemove(ctx context.Context, volumeID string, force bool) error
-	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (container.ContainerCreateCreatedBody, error)
-	ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error
-	CopyToContainer(ctx context.Context, containerID, dstPath string, content io.Reader, options types.CopyToContainerOptions) error
-	CopyFromContainer(ctx context.Context, containerID, srcPath string) (io.ReadCloser, types.ContainerPathStat, error)
-	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
-	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
-}
-
-//go:generate mockgen -package mocks -destination mocks/images.go github.com/buildpack/pack Images
-type Images interface {
-	ReadImage(repoName string, useDaemon bool) (v1.Image, error)
-	RepoStore(repoName string, useDaemon bool) (img.Store, error)
-}
-
-//go:generate mockgen -package mocks -destination mocks/task.go github.com/buildpack/pack Task
-type Task interface {
-	Run() error
-}
-
 type BuilderFactory struct {
 	Log    *log.Logger
 	Docker Docker
 	FS     FS
 	Config *config.Config
 	Images Images
-}
-
-//go:generate mockgen -package mocks -destination mocks/fs.go github.com/buildpack/pack FS
-type FS interface {
-	CreateTGZFile(tarFile, srcDir, tarDir string, uid, gid int) error
-	CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error)
-	Untar(r io.Reader, dest string) error
-	CreateSingleFileTar(path, txt string) (io.Reader, error)
 }
 
 type CreateBuilderFlags struct {

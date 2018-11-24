@@ -16,10 +16,6 @@ type RebaseConfig struct {
 	NewBaseImage image.Image
 }
 
-type WritableStore interface {
-	Write(image v1.Image) error
-}
-
 type RebaseFactory struct {
 	Log          *log.Logger
 	Config       *config.Config
@@ -30,11 +26,6 @@ type RebaseFlags struct {
 	RepoName string
 	Publish  bool
 	NoPull   bool
-}
-
-type ImageFactory interface {
-	NewLocal(string, bool) (image.Image, error)
-	NewRemote(string) (image.Image, error)
 }
 
 func (f *RebaseFactory) RebaseConfigFromFlags(flags RebaseFlags) (RebaseConfig, error) {
