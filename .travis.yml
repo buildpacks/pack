@@ -19,6 +19,7 @@ install:
   |
   go mod download
   export PACK_PATH="$PWD/artifacts/pack-${TRAVIS_TAG:-$TRAVIS_BUILD_NUMBER}-${TRAVIS_OS_NAME}"
+  if [[ $TRAVIS_OS_NAME == "linux" ]]; then export CGO_ENABLED=0; fi
   go build -ldflags "-X 'main.Version=$TRAVIS_TAG (git sha: $(git log -1 --pretty=%H))'" -o "$PACK_PATH" ./cmd/pack
   "$PACK_PATH" version
 script: go test -count=1 -parallel=1 -v ./...
