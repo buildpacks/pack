@@ -18,14 +18,18 @@ import (
 
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/image"
+	"strings"
 )
 
+type Buildpack struct {
+	ID     string `toml:"id"`
+	URI    string `toml:"uri"`
+	Latest bool   `toml:"latest"`
+	Dir    string
+}
+
 type BuilderTOML struct {
-	Buildpacks []struct {
-		ID     string `toml:"id"`
-		URI    string `toml:"uri"`
-		Latest bool   `toml:"latest"`
-	} `toml:"buildpacks"`
+	Buildpacks []Buildpack `toml:"buildpacks"`
 	Groups []lifecycle.BuildpackGroup `toml:"groups"`
 }
 
@@ -34,11 +38,6 @@ type BuilderConfig struct {
 	Groups     []lifecycle.BuildpackGroup
 	Repo       image.Image
 	BuilderDir string //original location of builder.toml, used for interpreting relative paths in buildpack URIs
-}
-type Buildpack struct {
-	ID     string
-	Dir    string
-	Latest bool
 }
 
 type BuilderFactory struct {
@@ -54,6 +53,10 @@ type CreateBuilderFlags struct {
 	StackID         string
 	Publish         bool
 	NoPull          bool
+}
+
+func (b *Buildpack) escapedID() string {
+	return strings.Replace(b.ID, "/", "_", -1)
 }
 
 func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (BuilderConfig, error) {
@@ -91,11 +94,7 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 	return builderConfig, nil
 }
 
-func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
-	ID     string `toml:"id"`
-	URI    string `toml:"uri"`
-	Latest bool   `toml:"latest"`
-}) (Buildpack, error) {
+func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Buildpack, error) {
 
 	var dir string
 
@@ -119,7 +118,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b struct {
 				return Buildpack{}, errors.Wrapf(err, "could not open file to untar: %q", path)
 			}
 			defer file.Close()
-			tmpDir, err := ioutil.TempDir("", fmt.Sprintf("create-builder-%s-", b.ID))
+			tmpDir, err := ioutil.TempDir("", fmt.Sprintf("create-builder-%s-", b.escapedID()))
 			if err != nil {
 				return Buildpack{}, fmt.Errorf(`failed to create temporary directory: %s`, err)
 			}
@@ -283,8 +282,8 @@ func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builde
 		return "", fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(buildpack.Dir, "!/buildpack.toml"))
 	}
 
-	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.ID, bp.Version))
-	if err := f.FS.CreateTarFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.ID, bp.Version), 0, 0); err != nil {
+	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.escapedID(), bp.Version))
+	if err := f.FS.CreateTarFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.escapedID(), bp.Version), 0, 0); err != nil {
 		return "", err
 	}
 	return tarFile, err
@@ -310,11 +309,11 @@ func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir st
 			if err != nil {
 				return "", err
 			}
-			err = os.Mkdir(filepath.Join(tmpDir, bp.ID), 0755)
+			err = os.Mkdir(filepath.Join(tmpDir, bp.escapedID()), 0755)
 			if err != nil {
 				return "", err
 			}
-			err = os.Symlink(filepath.Join("/", "buildpacks", bp.ID, data.BP.Version), filepath.Join(tmpDir, bp.ID, "latest"))
+			err = os.Symlink(filepath.Join("/", "buildpacks", bp.escapedID(), data.BP.Version), filepath.Join(tmpDir, bp.escapedID(), "latest"))
 			if err != nil {
 				fmt.Println("E")
 			}
