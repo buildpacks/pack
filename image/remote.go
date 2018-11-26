@@ -95,7 +95,12 @@ func (r *remote) TopLayer() (string, error) {
 }
 
 func (r *remote) AddLayer(path string) error {
-	panic("Not Implemented")
+	newImage, _, err := img.Append(r.Image, path)
+	if err != nil {
+		return errors.Wrap(err, "add layer")
+	}
+	r.Image = newImage
+	return nil
 }
 
 func (r *remote) ReuseLayer(sha string) error {

@@ -5,9 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -227,6 +230,54 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, actualTopLayer, expectedTopLayer)
 			})
+		})
+	})
+
+	when("#AddLayer", func() {
+		var (
+			tarPath string
+			img     image.Image
+		)
+		it.Before(func() {
+			h.CreateImageOnRemote(t, dockerCli, repoName, `
+					FROM busybox
+					RUN echo -n old-layer > old-layer.txt
+				`)
+			tr, err := (&fs.FS{}).CreateSingleFileTar("/new-layer.txt", "new-layer")
+			h.AssertNil(t, err)
+			tarFile, err := ioutil.TempFile("", "add-layer-test")
+			h.AssertNil(t, err)
+			defer tarFile.Close()
+			_, err = io.Copy(tarFile, tr)
+			h.AssertNil(t, err)
+			tarPath = tarFile.Name()
+
+			img, err = factory.NewRemote(repoName)
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			h.AssertNil(t, os.Remove(tarPath))
+			h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+		})
+
+		it("appends a layer", func() {
+			err := img.AddLayer(tarPath)
+			h.AssertNil(t, err)
+
+			_, err = img.Save()
+			h.AssertNil(t, err)
+
+			// After Pull
+			h.AssertNil(t, dockerCli.PullImage(repoName))
+
+			output, err := h.CopySingleFileFromImage(dockerCli, repoName, "old-layer.txt")
+			h.AssertNil(t, err)
+			h.AssertEq(t, output, "old-layer")
+
+			output, err = h.CopySingleFileFromImage(dockerCli, repoName, "new-layer.txt")
+			h.AssertNil(t, err)
+			h.AssertEq(t, output, "new-layer")
 		})
 	})
 
