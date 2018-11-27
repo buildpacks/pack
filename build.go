@@ -272,14 +272,17 @@ func (b *BuildConfig) copyBuildpacksToContainer(ctx context.Context, ctrID strin
 			if runtime.GOOS == "windows" {
 				return nil, fmt.Errorf("directory buildpacks are not implemented on windows")
 			}
-			var buildpackTOML Buildpack
+			var buildpackTOML struct {
+				Buildpack Buildpack
+			}
+
 			_, err = toml.DecodeFile(filepath.Join(bp, "buildpack.toml"), &buildpackTOML)
 			if err != nil {
 				return nil, fmt.Errorf(`failed to decode buildpack.toml from "%s": %s`, bp, err)
 			}
-			id = buildpackTOML.ID
-			version = buildpackTOML.Version
-			bpDir := filepath.Join(buildpacksDir, buildpackTOML.escapedID(), version)
+			id = buildpackTOML.Buildpack.ID
+			version = buildpackTOML.Buildpack.Version
+			bpDir := filepath.Join(buildpacksDir, buildpackTOML.Buildpack.escapedID(), version)
 			ftr, errChan := b.FS.CreateTarReader(bp, bpDir, 0, 0)
 			if err := b.Cli.CopyToContainer(ctx, ctrID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
 				return nil, errors.Wrapf(err, "copying buildpack '%s' to container", bp)
