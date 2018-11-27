@@ -18,19 +18,11 @@ import (
 
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/image"
-	"strings"
 )
 
-type Buildpack struct {
-	ID     string `toml:"id"`
-	URI    string `toml:"uri"`
-	Latest bool   `toml:"latest"`
-	Dir    string
-}
-
 type BuilderTOML struct {
-	Buildpacks []Buildpack `toml:"buildpacks"`
-	Groups []lifecycle.BuildpackGroup `toml:"groups"`
+	Buildpacks []Buildpack                `toml:"buildpacks"`
+	Groups     []lifecycle.BuildpackGroup `toml:"groups"`
 }
 
 type BuilderConfig struct {
@@ -53,10 +45,6 @@ type CreateBuilderFlags struct {
 	StackID         string
 	Publish         bool
 	NoPull          bool
-}
-
-func (b *Buildpack) escapedID() string {
-	return strings.Replace(b.ID, "/", "_", -1)
 }
 
 func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (BuilderConfig, error) {

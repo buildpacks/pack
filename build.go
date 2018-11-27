@@ -272,19 +272,14 @@ func (b *BuildConfig) copyBuildpacksToContainer(ctx context.Context, ctrID strin
 			if runtime.GOOS == "windows" {
 				return nil, fmt.Errorf("directory buildpacks are not implemented on windows")
 			}
-			var buildpackTOML struct {
-				Buildpack struct {
-					ID      string `toml:"id"`
-					Version string `toml:"version"`
-				} `toml:"buildpack"`
-			}
+			var buildpackTOML Buildpack
 			_, err = toml.DecodeFile(filepath.Join(bp, "buildpack.toml"), &buildpackTOML)
 			if err != nil {
 				return nil, fmt.Errorf(`failed to decode buildpack.toml from "%s": %s`, bp, err)
 			}
-			id = buildpackTOML.Buildpack.ID
-			version = buildpackTOML.Buildpack.Version
-			bpDir := filepath.Join(buildpacksDir, id, version)
+			id = buildpackTOML.ID
+			version = buildpackTOML.Version
+			bpDir := filepath.Join(buildpacksDir, buildpackTOML.escapedID(), version)
 			ftr, errChan := b.FS.CreateTarReader(bp, bpDir, 0, 0)
 			if err := b.Cli.CopyToContainer(ctx, ctrID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
 				return nil, errors.Wrapf(err, "copying buildpack '%s' to container", bp)
@@ -701,9 +696,9 @@ func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
 					}
 					metadata.Buildpacks[index].Layers[layerName] = layer
 				} else {
-					b.Log.Printf("adding layer '%s/%s' with diffID '%s'\n", bp.ID, layerName, layer.SHA)
+					b.Log.Printf("adding %s layer '%s' with diffID '%s'\n", bp.ID, layerName, layer.SHA)
 					if err := img.AddLayer(filepath.Join(tmpDir, "pack-exporter", strings.TrimPrefix(layer.SHA, "sha256:")+".tar")); err != nil {
-						return errors.Wrapf(err, "add layer '%s/%s'", bp.ID, layerName)
+						return errors.Wrapf(err, "add %s layer '%s'", bp.ID, layerName)
 					}
 				}
 			}
