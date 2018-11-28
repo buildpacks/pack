@@ -122,10 +122,11 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 
 		when("image exists but has no digest", func() {
 			it.Before(func() {
-				h.CreateImageOnLocal(t, dockerCli, repoName, `
+				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
+					LABEL repo_name_for_randomisation=%s
 					LABEL key=val
-				`)
+				`, repoName))
 			})
 
 			it.After(func() {
@@ -150,10 +151,11 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			)
 			it.Before(func() {
 				var err error
-				h.CreateImageOnLocal(t, dockerCli, repoName, `
+				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM scratch
+					LABEL repo_name_for_randomisation=%s
 					LABEL some-key=some-value
-				`)
+				`, repoName))
 				img, err = factory.NewLocal(repoName, false)
 				h.AssertNil(t, err)
 				origID = h.ImageID(t, repoName)
@@ -191,28 +193,31 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 				go func() {
 					defer wg.Done()
 					newBase = "pack-newbase-test-" + h.RandString(10)
-					h.CreateImageOnLocal(t, dockerCli, newBase, `
+					h.CreateImageOnLocal(t, dockerCli, newBase, fmt.Sprintf(`
 						FROM busybox
+						LABEL repo_name_for_randomisation=%s
 						RUN echo new-base > base.txt
 						RUN echo text-new-base > otherfile.txt
-					`)
+					`, newBase))
 				}()
 
 				oldBase = "pack-oldbase-test-" + h.RandString(10)
-				h.CreateImageOnLocal(t, dockerCli, oldBase, `
+				h.CreateImageOnLocal(t, dockerCli, oldBase, fmt.Sprintf(`
 					FROM busybox
+					LABEL repo_name_for_randomisation=%s
 					RUN echo old-base > base.txt
 					RUN echo text-old-base > otherfile.txt
-				`)
+				`, oldBase))
 				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), oldBase)
 				h.AssertNil(t, err)
 				oldTopLayer = inspect.RootFS.Layers[len(inspect.RootFS.Layers)-1]
 
 				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM %s
+					LABEL repo_name_for_randomisation=%s
 					RUN echo text-from-image > myimage.txt
 					RUN echo text-from-image > myimage2.txt
-				`, oldBase))
+				`, oldBase, repoName))
 				inspect, _, err = dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
 				h.AssertNil(t, err)
 				origNumLayers = len(inspect.RootFS.Layers)
@@ -269,11 +274,12 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		when("image exists", func() {
 			var expectedTopLayer string
 			it.Before(func() {
-				h.CreateImageOnLocal(t, dockerCli, repoName, `
+				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 				FROM busybox
+				LABEL repo_name_for_randomisation=%s
 				RUN echo old-base > base.txt
 				RUN echo text-old-base > otherfile.txt
-				`)
+				`, repoName))
 
 				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
 				h.AssertNil(t, err)
@@ -303,10 +309,11 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 			origID  string
 		)
 		it.Before(func() {
-			h.CreateImageOnLocal(t, dockerCli, repoName, `
+			h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM busybox
+					LABEL repo_name_for_randomisation=%s
 					RUN echo -n old-layer > old-layer.txt
-				`)
+				`, repoName))
 			tr, err := (&fs.FS{}).CreateSingleFileTar("/new-layer.txt", "new-layer")
 			h.AssertNil(t, err)
 			tarFile, err := ioutil.TempFile("", "add-layer-test")
@@ -420,10 +427,11 @@ func testLocal(t *testing.T, when spec.G, it spec.S) {
 		when("image exists", func() {
 			it.Before(func() {
 				var err error
-				h.CreateImageOnLocal(t, dockerCli, repoName, `
+				h.CreateImageOnLocal(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM busybox
+					LABEL repo_name_for_randomisation=%s
 					LABEL mykey=oldValue
-				`)
+				`, repoName))
 				img, err = factory.NewLocal(repoName, false)
 				h.AssertNil(t, err)
 				origID = h.ImageID(t, repoName)

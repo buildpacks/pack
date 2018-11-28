@@ -173,17 +173,22 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 					LABEL repo_name_for_randomisation=%s
 					RUN echo old-base > base.txt
 					RUN echo text-old-base > otherfile.txt
-				`, repoName))
+				`, oldBase))
 				oldBaseLayers = manifestLayers(t, oldBase)
 
 				h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM %s
+					LABEL repo_name_for_randomisation=%s
 					RUN echo text-from-image-1 > myimage.txt
 					RUN echo text-from-image-2 > myimage2.txt
-				`, oldBase))
+				`, oldBase, repoName))
 				repoTopLayers = manifestLayers(t, repoName)[len(oldBaseLayers):]
 
 				wg.Wait()
+			})
+
+			it.After(func() {
+				h.AssertNil(t, h.DockerRmi(dockerCli, oldBase))
 			})
 
 			it("switches the base", func() {
@@ -239,10 +244,11 @@ func testRemote(t *testing.T, when spec.G, it spec.S) {
 			img     image.Image
 		)
 		it.Before(func() {
-			h.CreateImageOnRemote(t, dockerCli, repoName, `
+			h.CreateImageOnRemote(t, dockerCli, repoName, fmt.Sprintf(`
 					FROM busybox
+					LABEL repo_name_for_randomisation=%s
 					RUN echo -n old-layer > old-layer.txt
-				`)
+				`, repoName))
 			tr, err := (&fs.FS{}).CreateSingleFileTar("/new-layer.txt", "new-layer")
 			h.AssertNil(t, err)
 			tarFile, err := ioutil.TempFile("", "add-layer-test")

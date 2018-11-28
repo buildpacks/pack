@@ -327,10 +327,10 @@ func CreateImageOnRemote(t *testing.T, dockerCli *docker.Client, repoName, docke
 	t.Helper()
 	defer DockerRmi(dockerCli, repoName)
 
-	CreateImageOnLocal(t, dockerCli, repoName+":latest", dockerFile)
+	CreateImageOnLocal(t, dockerCli, repoName, dockerFile)
 
 	var topLayer string
-	inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName+":latest")
+	inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
 	AssertNil(t, err)
 	if len(inspect.RootFS.Layers) > 0 {
 		topLayer = inspect.RootFS.Layers[len(inspect.RootFS.Layers)-1]
@@ -347,7 +347,11 @@ func DockerRmi(dockerCli *docker.Client, repoNames ...string) error {
 	var err error
 	ctx := context.Background()
 	for _, name := range repoNames {
-		_, e := dockerCli.ImageRemove(ctx, name, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
+		_, e := dockerCli.ImageRemove(
+			ctx,
+			name,
+			dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true},
+		)
 		if e != nil && err == nil {
 			err = e
 		}
