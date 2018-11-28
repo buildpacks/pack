@@ -557,7 +557,9 @@ PATH
 					exit 0
 					`), 0777))
 				})
-				it.After(func() { os.RemoveAll(bpDir) })
+				it.After(func() {
+					os.RemoveAll(bpDir)
+				})
 
 				it("runs the buildpacks bin/build", func() {
 					if runtime.GOOS == "windows" {
@@ -662,6 +664,7 @@ PATH
 				h.AssertNil(t, subject.Export(group))
 
 				h.AssertNil(t, dockerCli.PullImage(subject.RepoName))
+				defer h.DockerRmi(dockerCli, subject.RepoName)
 				txt, err := h.CopySingleFileFromImage(dockerCli, subject.RepoName, "workspace/app/file.txt")
 				h.AssertNil(t, err)
 				h.AssertEq(t, string(txt), "some text")
@@ -675,6 +678,7 @@ PATH
 				h.AssertNil(t, subject.Export(group))
 
 				h.AssertNil(t, dockerCli.PullImage(subject.RepoName))
+				defer h.DockerRmi(dockerCli, subject.RepoName)
 				var metadata lifecycle.AppImageMetadata
 				metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
 				h.AssertNil(t, json.Unmarshal([]byte(metadataJSON), &metadata))

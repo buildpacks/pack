@@ -199,7 +199,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertNil(t, dockerCli.PullImage(fmt.Sprintf("%s@%s", repoName, imgSHA)))
 				defer h.DockerRmi(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA))
-				runDockerImageExposePort(t, containerName, fmt.Sprintf("%s@%s", repoName, imgSHA))
+
+				ctrID := runDockerImageExposePort(t, containerName, fmt.Sprintf("%s@%s", repoName, imgSHA))
+				defer dockerCli.ContainerRemove(context.TODO(), ctrID, dockertypes.ContainerRemoveOptions{Force: true})
 
 				launchPort := fetchHostPort(t, containerName)
 
@@ -231,7 +233,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		it.After(func() {
 			repoName := fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(sourceCodePath)))
 			killDockerByRepoName(t, repoName)
-			dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
+			h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 
 			if sourceCodePath != "" {
 				os.RemoveAll(sourceCodePath)
@@ -240,7 +242,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 		it("starts an image", func() {
 			var buf bytes.Buffer
-			cmd := exec.Command(pack, "run", "--port", "3000")
+			cmd := exec.Command(pack, "run", "--port", "3000", "-p", sourceCodePath)
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			cmd.Stdout = &buf
 			cmd.Stderr = &buf
@@ -735,7 +737,7 @@ func writeToFile(source io.Reader, destFile string, mode os.FileMode) error {
 	return nil
 }
 
-func runDockerImageExposePort(t *testing.T, containerName, repoName string) {
+func runDockerImageExposePort(t *testing.T, containerName, repoName string) string {
 	t.Helper()
 	ctx := context.Background()
 
@@ -746,11 +748,13 @@ func runDockerImageExposePort(t *testing.T, containerName, repoName string) {
 		PortBindings: nat.PortMap{
 			"8080/tcp": []nat.PortBinding{{}},
 		},
+		AutoRemove: true,
 	}, nil, containerName)
 	h.AssertNil(t, err)
 
 	err = dockerCli.ContainerStart(ctx, ctr.ID, dockertypes.ContainerStartOptions{})
 	h.AssertNil(t, err)
+	return ctr.ID
 }
 
 func runDockerImageWithOutput(t *testing.T, containerName, repoName string) string {
@@ -797,7 +801,11 @@ func ctrlCProc(cmd *exec.Cmd) error {
 	if runtime.GOOS == "windows" {
 		return exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprint(cmd.Process.Pid)).Run()
 	}
-	return cmd.Process.Signal(os.Interrupt)
+	if err := cmd.Process.Signal(os.Interrupt); err != nil {
+		return err
+	}
+	_, err := cmd.Process.Wait()
+	return err
 }
 
 func killDockerByRepoName(t *testing.T, repoName string) {
@@ -807,7 +815,7 @@ func killDockerByRepoName(t *testing.T, repoName string) {
 
 	for _, ctr := range containers {
 		if ctr.Image == repoName {
-			dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{Force: true})
+			h.AssertNil(t, dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{Force: true}))
 		}
 	}
 }
