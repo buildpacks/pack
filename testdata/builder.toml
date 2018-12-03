@@ -3,18 +3,18 @@ id = "some.bp1"
 uri = "some-path-1"
 
 [[buildpacks]]
-id = "some.bp2"
+id = "some/bp2"
 uri = "some-path-2"
 
 [[buildpacks]]
-id = "some.bp2"
+id = "some/bp2"
 uri = "some-latest-path-2"
 latest = true
 
 [[groups]]
 buildpacks = [
   { id = "some.bp1", version = "1.2.3" },
-  { id = "some.bp2", version = "1.2.4" },
+  { id = "some/bp2", version = "1.2.4" },
 ]
 
 [[groups]]

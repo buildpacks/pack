@@ -439,7 +439,7 @@ func checkGroups(t *testing.T, groups []lifecycle.BuildpackGroup) {
 				Version: "1.2.3",
 			},
 			{
-				ID:      "some.bp2",
+				ID:      "some/bp2",
 				Version: "1.2.4",
 			},
 		}},
@@ -462,12 +462,12 @@ func checkBuildpacks(t *testing.T, buildpacks []pack.Buildpack) {
 			// Latest will default to false
 		},
 		{
-			ID:     "some.bp2",
+			ID:     "some/bp2",
 			Dir:    filepath.Join("testdata", "some-path-2"),
 			Latest: false,
 		},
 		{
-			ID:     "some.bp2",
+			ID:     "some/bp2",
 			Dir:    filepath.Join("testdata", "some-latest-path-2"),
 			Latest: true,
 		},
