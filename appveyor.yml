@@ -1,6 +1,4 @@
 # appveyor.yml
-build: off
-
 stack: go 1.11
 cache:
   - 'C:\Users\appveyor\go\pkg\mod'
