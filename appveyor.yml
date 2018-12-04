@@ -12,9 +12,9 @@ environment:
   DOCKER_CERT_PATH: '%APPVEYOR_BUILD_FOLDER%\.travis'
   DOCKER_TLS_VERIFY: '1'
   DOCKER_HOST:
-    secure: 9/n4Ey6XCzZt2TT5VP5cX5sugiR0WWV4bS6W3jo56M4= # currently in jchesterpivotal
+    secure: 9/n4Ey6XCzZt2TT5VP5cX5sugiR0WWV4bS6W3jo56M4= # currently in buildpack account
   file_secret:
-    secure: nyH/ayJ9cnxXI05Vyri7ntns95Sqn/Q9+jGIrVAzZHU= # currently in jchesterpivotal
+    secure: nyH/ayJ9cnxXI05Vyri7ntns95Sqn/Q9+jGIrVAzZHU= # currently in buildpack account
 
 artifacts:
   - path: artifacts
