@@ -1,4 +1,6 @@
 # appveyor.yml
+build: off # disable appveyor's automatic msbuild
+
 stack: go 1.11
 cache:
   - 'C:\Users\appveyor\go\pkg\mod'
