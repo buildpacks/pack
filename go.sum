@@ -27,6 +27,7 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgodd/dockerdial v1.0.1 h1:6XixGQxeytsIdVsbI4y+EHuv8QcxxH6ySJZLkm3jk5o=
 github.com/dgodd/dockerdial v1.0.1/go.mod h1:MJmK56eTylC3KU7DR6bc3k9jmbpURO8rDOsGbfj+c6o=
+github.com/dgodd/go-containerregistry v0.0.0-20180912122137-611aad063148a69435dccd3cf8475262c11814f6 h1:a+X0zSNbdrQ3JRHHcdQcU+hUXD6YGNBIjdPN+bKUWvU=
 github.com/dgodd/go-containerregistry v0.0.0-20180912122137-611aad063148a69435dccd3cf8475262c11814f6/go.mod h1:PyUt+1ej85jmZb2zpaWxwnO7AEf7eTbBL2mAsIxPuXo=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/docker/distribution v0.0.0-20180327202408-83389a148052 h1:bYklS+YB8BZreSEY+/WqaH+S8upfuYf0Hq/EmNOQMIA=

@@ -142,6 +142,20 @@ func (mr *MockImageMockRecorder) SetLabel(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLabel", reflect.TypeOf((*MockImage)(nil).SetLabel), arg0, arg1)
 }
 
+// SetCmd mocks base method
+func (m *MockImage) SetCmd(arg0 []string) (error) {
+	ret := m.ctrl.Call(m, "SetCmd", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetEntrypoint mocks base method
+func (m *MockImage) SetEntrypoint(arg0 []string) (error) {
+	ret := m.ctrl.Call(m, "SetEntrypoint", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
 // TopLayer mocks base method
 func (m *MockImage) TopLayer() (string, error) {
 	ret := m.ctrl.Call(m, "TopLayer")
