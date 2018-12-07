@@ -157,6 +157,22 @@ func (l *local) SetLabel(key, val string) error {
 	return nil
 }
 
+func (l *local) SetEntrypoint(entrypoint []string) error {
+	if l.Inspect.Config == nil {
+		return fmt.Errorf("failed to set entrypoint, image '%s' does not exist", l.RepoName)
+	}
+	l.Inspect.Config.Entrypoint = entrypoint
+	return nil
+}
+
+func (l *local) SetCmd(cmd []string) error {
+	if l.Inspect.Config == nil {
+		return fmt.Errorf("failed to set cmd, image '%s' does not exist", l.RepoName)
+	}
+	l.Inspect.Config.Cmd = cmd
+	return nil
+}
+
 func (l *local) TopLayer() (string, error) {
 	all := l.Inspect.RootFS.Layers
 	topLayer := all[len(all)-1]

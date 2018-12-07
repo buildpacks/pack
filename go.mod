@@ -2,7 +2,7 @@ module github.com/buildpack/pack
 
 require (
 	github.com/BurntSushi/toml v0.3.1
-	github.com/buildpack/lifecycle v0.0.0-20181116214402-fa66d9071434
+	github.com/buildpack/lifecycle v0.0.0-20181207064842-8913d0660f344a7807a15b89f65006399e4422b2
 	github.com/buildpack/packs v0.0.0-20180824001031-aa30a412923763df37e83f14a6e4e0fe07e11f25
 	github.com/dgodd/dockerdial v1.0.1
 	github.com/docker/docker v0.7.3-0.20181027010111-b8e87cfdad8d

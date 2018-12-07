@@ -21,6 +21,8 @@ type Image interface {
 	Digest() (string, error)
 	Rebase(string, Image) error
 	SetLabel(string, string) error
+	SetEntrypoint([]string) error
+	SetCmd([]string) error
 	TopLayer() (string, error)
 	AddLayer(path string) error
 	ReuseLayer(sha string) error

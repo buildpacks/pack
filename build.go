@@ -53,6 +53,7 @@ type BuildFlags struct {
 	Publish    bool
 	NoPull     bool
 	Buildpacks []string
+	Cmd        []string
 }
 
 type BuildConfig struct {
@@ -64,6 +65,7 @@ type BuildConfig struct {
 	Publish    bool
 	NoPull     bool
 	Buildpacks []string
+	Cmd        []string
 	// Above are copied from BuildFlags are set by init
 	Cli    Docker
 	Stdout io.Writer
@@ -134,6 +136,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		Publish:         f.Publish,
 		NoPull:          f.NoPull,
 		Buildpacks:      f.Buildpacks,
+		Cmd:             f.Cmd,
 		Cli:             bf.Cli,
 		Stdout:          bf.Stdout,
 		Stderr:          bf.Stderr,
@@ -715,6 +718,14 @@ func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
 		b.Log.Printf("adding config layer with diffID '%s'\n", metadata.Config.SHA)
 		if err := img.AddLayer(filepath.Join(tmpDir, "pack-exporter", strings.TrimPrefix(metadata.Config.SHA, "sha256:")+".tar")); err != nil {
 			return errors.Wrap(err, "add config layer")
+		}
+
+		if err := img.SetEntrypoint([]string{"/lifecycle/launcher"}); err != nil {
+			return errors.Wrap(err, "set entrypoint")
+		}
+
+		if err := img.SetCmd(b.Cmd); err != nil {
+			return errors.Wrap(err, "set cmd")
 		}
 
 		bData, err = json.Marshal(metadata)

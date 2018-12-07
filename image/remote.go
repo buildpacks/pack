@@ -81,6 +81,24 @@ func (r *remote) SetLabel(key, val string) error {
 	return nil
 }
 
+func (r *remote) SetEntrypoint(entrypoint []string) error {
+	newImage, err := img.Entrypoint(r.Image, entrypoint)
+	if err != nil {
+		return errors.Wrap(err, "set entrypoint")
+	}
+	r.Image = newImage
+	return nil
+}
+
+func (r *remote) SetCmd(cmd []string) error {
+	newImage, err := img.Cmd(r.Image, cmd)
+	if err != nil {
+		return errors.Wrap(err, "set entrypoint")
+	}
+	r.Image = newImage
+	return nil
+}
+
 func (r *remote) TopLayer() (string, error) {
 	all, err := r.Image.Layers()
 	if err != nil {

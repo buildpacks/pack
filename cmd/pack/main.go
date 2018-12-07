@@ -96,6 +96,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *pack.BuildFlags) {
 	cmd.Flags().StringVar(&buildFlags.EnvFile, "env-file", "", "env file")
 	cmd.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "don't pull images before use")
 	cmd.Flags().StringArrayVar(&buildFlags.Buildpacks, "buildpack", []string{}, "buildpack ID or host directory path, \n\t\t repeat for each buildpack in order")
+	cmd.Flags().StringArrayVar(&buildFlags.Cmd, "cmd", []string{}, "the CMD of the exported image")
 }
 
 func rebaseCommand() *cobra.Command {

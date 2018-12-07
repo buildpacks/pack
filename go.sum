@@ -17,8 +17,16 @@ github.com/aws/aws-sdk-go v1.15.2/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZoC
 github.com/buildpack/lifecycle v0.0.0-20181025145258-50ec6a1d00c1686b983928be55851938f7190f72/go.mod h1:Vk2KGQyLuqXrfyY1siCrHTqtvciRQIgzTbrv5iILoKU=
 github.com/buildpack/lifecycle v0.0.0-20181025145258-a42887a7d29f h1:6+0q7PRrM7EWyKVEwdwWmo11jsQAq+BJ57MCfXcdGPc=
 github.com/buildpack/lifecycle v0.0.0-20181025145258-a42887a7d29f/go.mod h1:rmQIWPE7ORJsSn/gHoT5fQAbsK7zV0X9yttd0cuGv5M=
+github.com/buildpack/lifecycle v0.0.0-20181116214402-68292a7ad4579d1c5c89b38eac64af2dc38be687 h1:eY5IkhpFg7f0TEdCzrSGYBbMFEQii/bsmapesTYtHhI=
+github.com/buildpack/lifecycle v0.0.0-20181116214402-68292a7ad4579d1c5c89b38eac64af2dc38be687/go.mod h1:Vk2KGQyLuqXrfyY1siCrHTqtvciRQIgzTbrv5iILoKU=
+github.com/buildpack/lifecycle v0.0.0-20181116214402-8913d0660f344a7807a15b89f65006399e4422b2 h1:E0atf65KBxAuUqRFN/Ps0J/eZLPlghIZkyQOGTZ/SVc=
+github.com/buildpack/lifecycle v0.0.0-20181116214402-8913d0660f344a7807a15b89f65006399e4422b2/go.mod h1:Vk2KGQyLuqXrfyY1siCrHTqtvciRQIgzTbrv5iILoKU=
+github.com/buildpack/lifecycle v0.0.0-20181116214402-a5a2206b60ca7eb9265245dde5b63cdf4e29e58b h1:53xNkUVdXrUJYTTDOsjSE7Gn9C843TjwDUMuX1wh0oA=
+github.com/buildpack/lifecycle v0.0.0-20181116214402-a5a2206b60ca7eb9265245dde5b63cdf4e29e58b/go.mod h1:Vk2KGQyLuqXrfyY1siCrHTqtvciRQIgzTbrv5iILoKU=
 github.com/buildpack/lifecycle v0.0.0-20181116214402-fa66d9071434 h1:VQflgDluvbcgpyyzjdNRBwSMuDcDjw1l/h+ePIzzsFA=
 github.com/buildpack/lifecycle v0.0.0-20181116214402-fa66d9071434/go.mod h1:Vk2KGQyLuqXrfyY1siCrHTqtvciRQIgzTbrv5iILoKU=
+github.com/buildpack/lifecycle v0.0.0-20181207064842-8913d0660f344a7807a15b89f65006399e4422b2 h1:Yg3JGBua9TaPDSyM316BWlteVF1PJMTRtv9BqodI/SU=
+github.com/buildpack/lifecycle v0.0.0-20181207064842-8913d0660f344a7807a15b89f65006399e4422b2/go.mod h1:Vk2KGQyLuqXrfyY1siCrHTqtvciRQIgzTbrv5iILoKU=
 github.com/buildpack/packs v0.0.0-20180824001031-aa30a412923763df37e83f14a6e4e0fe07e11f25 h1:gaFgBRK9mKLhfH26GLqMYmriWawmcUvYYgta73tHVJ4=
 github.com/buildpack/packs v0.0.0-20180824001031-aa30a412923763df37e83f14a6e4e0fe07e11f25/go.mod h1:jcquCT5a2gbyJw8WMkfgq36g7yc5VDSABVnCctIUKs8=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
