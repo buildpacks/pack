@@ -5,23 +5,21 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	"io"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/img"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/fs"
@@ -232,8 +230,7 @@ func Build(appDir, buildImage, runImage, repoName string, publish bool) error {
 func (b *BuildConfig) Run() error {
 	defer b.Cli.VolumeRemove(context.Background(), b.WorkspaceVolume, true)
 
-	group, err := b.Detect()
-	if err != nil {
+	if err := b.Detect(); err != nil {
 		return err
 	}
 
@@ -248,7 +245,7 @@ func (b *BuildConfig) Run() error {
 	}
 
 	fmt.Println("*** EXPORTING:")
-	if err := b.Export(group); err != nil {
+	if err := b.Export(); err != nil {
 		return err
 	}
 
@@ -301,7 +298,7 @@ func (b *BuildConfig) copyBuildpacksToContainer(ctx context.Context, ctrID strin
 	return buildpacks, nil
 }
 
-func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
+func (b *BuildConfig) Detect() error {
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
@@ -318,7 +315,7 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 		},
 	}, nil, "")
 	if err != nil {
-		return nil, errors.Wrap(err, "container create")
+		return errors.Wrap(err, "container create")
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
@@ -331,7 +328,7 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 
 		buildpacks, err := b.copyBuildpacksToContainer(ctx, ctr.ID)
 		if err != nil {
-			return nil, errors.Wrap(err, "copy buildpacks to container")
+			return errors.Wrap(err, "copy buildpacks to container")
 		}
 
 		groups := lifecycle.BuildpackOrder{
@@ -342,7 +339,7 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 
 		var tomlBuilder strings.Builder
 		if err := toml.NewEncoder(&tomlBuilder).Encode(map[string]interface{}{"groups": groups}); err != nil {
-			return nil, errors.Wrapf(err, "encoding order.toml: %#v", groups)
+			return errors.Wrapf(err, "encoding order.toml: %#v", groups)
 		}
 
 		orderToml = tomlBuilder.String()
@@ -350,101 +347,107 @@ func (b *BuildConfig) Detect() (*lifecycle.BuildpackGroup, error) {
 
 	uid, gid, err := b.packUidGid(b.Builder)
 	if err != nil {
-		return nil, errors.Wrap(err, "detect")
+		return errors.Wrap(err, "detect")
 	}
 
 	tr, errChan := b.FS.CreateTarReader(b.AppDir, launchDir+"/app", uid, gid)
 	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
-		return nil, errors.Wrap(err, "copy app to workspace volume")
+		return errors.Wrap(err, "copy app to workspace volume")
 	}
 	if err := <-errChan; err != nil {
-		return nil, errors.Wrap(err, "copy app to workspace volume")
+		return errors.Wrap(err, "copy app to workspace volume")
 	}
 
 	if err := b.chownDir(launchDir+"/app", uid, gid); err != nil {
-		return nil, errors.Wrap(err, "chown app to workspace volume")
+		return errors.Wrap(err, "chown app to workspace volume")
 	}
 
 	if orderToml != "" {
 		ftr, err := b.FS.CreateSingleFileTar(orderPath, orderToml)
 		if err != nil {
-			return nil, errors.Wrap(err, "converting order TOML to tar reader")
+			return errors.Wrap(err, "converting order TOML to tar reader")
 		}
 		if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("creating %s", orderPath))
+			return errors.Wrap(err, fmt.Sprintf("creating %s", orderPath))
 		}
 	}
 
 	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
-		return nil, errors.Wrap(err, "run detect container")
+		return errors.Wrap(err, "run detect container")
 	}
-	return b.groupToml(ctr.ID)
-}
-
-func (b *BuildConfig) groupToml(ctrID string) (*lifecycle.BuildpackGroup, error) {
-	trc, _, err := b.Cli.CopyFromContainer(context.Background(), ctrID, groupPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "reading group.toml from container")
-	}
-	defer trc.Close()
-	tr := tar.NewReader(trc)
-	_, err = tr.Next()
-	if err != nil {
-		return nil, errors.Wrap(err, "extracting group.toml from tar")
-	}
-	var group lifecycle.BuildpackGroup
-	if _, err := toml.DecodeReader(tr, &group); err != nil {
-		return nil, errors.Wrap(err, "decoding group.toml")
-	}
-	return &group, nil
+	return nil
 }
 
 func (b *BuildConfig) Analyze() error {
-	metadata, err := b.imageLabel(b.RepoName, lifecycle.MetadataLabel, !b.Publish)
-	if err != nil {
-		return errors.Wrap(err, "analyze image label")
-	}
-	if metadata == "" {
-		if b.Publish {
-			b.Log.Printf("WARNING: skipping analyze, image not found or requires authentication to access")
-		} else {
-			b.Log.Printf("WARNING: skipping analyze, image not found")
-		}
-		return nil
-	}
-
 	ctx := context.Background()
-	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
+	ctrConf := &container.Config{
 		Image: b.Builder,
-		Cmd: []string{
-			"/lifecycle/analyzer",
-			"-launch", launchDir,
-			"-group", groupPath,
-			"-metadata", launchDir + "/imagemetadata.json",
-			b.RepoName,
-		},
-	}, &container.HostConfig{
+	}
+	hostConfig := &container.HostConfig{
 		Binds: []string{
 			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
 		},
-	}, nil, "")
+	}
+
+	if b.Publish {
+		authHeader, err := authHeader(b.RepoName)
+		if err != nil {
+			return err
+		}
+
+		ctrConf.Env = []string{fmt.Sprintf(`PACK_REGISTRY_AUTH=%s`, authHeader)}
+		ctrConf.Cmd = []string{
+			"/lifecycle/analyzer",
+			"-launch", launchDir,
+			"-group", groupPath,
+			b.RepoName,
+		}
+		hostConfig.NetworkMode = "host"
+	} else {
+		ctrConf.Cmd = []string{
+			"/lifecycle/analyzer",
+			"-launch", launchDir,
+			"-group", groupPath,
+			"-daemon",
+			b.RepoName,
+		}
+		ctrConf.User = "root"
+		hostConfig.Binds = append(hostConfig.Binds, "/var/run/docker.sock:/var/run/docker.sock")
+	}
+
+	ctr, err := b.Cli.ContainerCreate(ctx, ctrConf, hostConfig, nil, "")
 	if err != nil {
 		return errors.Wrap(err, "analyze container create")
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
-	tr, err := b.FS.CreateSingleFileTar(launchDir+"/imagemetadata.json", metadata)
-	if err != nil {
-		return errors.Wrap(err, "create tar with image metadata")
-	}
-	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
-		return errors.Wrap(err, "copy image metadata to workspace volume")
-	}
-
 	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
 		return errors.Wrap(err, "analyze run container")
 	}
+
+	if ctrConf.User == "root" {
+		uid, gid, err := b.packUidGid(b.Builder)
+		if err != nil {
+			return errors.Wrap(err, "getting pack uid/gid")
+		}
+		if err := b.chownDir(launchDir, uid, gid); err != nil {
+			return errors.Wrap(err, "chown launch dir")
+		}
+	}
+
 	return nil
+}
+
+func authHeader(repoName string) (string, error) {
+	r, err := name.ParseReference(repoName, name.WeakValidation)
+	if err != nil {
+		return "", err
+	}
+	auth, err := authn.DefaultKeychain.Resolve(r.Context().Registry)
+	if err != nil {
+		return "", err
+	}
+	return auth.Authorization()
 }
 
 func (b *BuildConfig) Build() error {
@@ -533,203 +536,54 @@ func (b *BuildConfig) tarEnvFile() (io.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-func (b *BuildConfig) Export(group *lifecycle.BuildpackGroup) error {
+func (b *BuildConfig) Export() error {
 	ctx := context.Background()
-	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
+	ctrConf := &container.Config{
 		Image: b.Builder,
-		Cmd: []string{
+	}
+	hostConfig := &container.HostConfig{
+		Binds: []string{
+			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
+		},
+	}
+
+	if b.Publish {
+		authHeader, err := authHeader(b.RepoName)
+		if err != nil {
+			return err
+		}
+
+		ctrConf.Env = []string{fmt.Sprintf(`PACK_REGISTRY_AUTH=%s`, authHeader)}
+		ctrConf.Cmd = []string{
 			"/lifecycle/exporter",
-			"-dry-run", "/tmp/pack-exporter",
 			"-image", b.RunImage,
 			"-launch", launchDir,
 			"-group", groupPath,
 			b.RepoName,
-		},
-	}, &container.HostConfig{
-		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
-		},
-	}, nil, "")
+		}
+		hostConfig.NetworkMode = "host"
+	} else {
+		ctrConf.Cmd = []string{
+			"/lifecycle/exporter",
+			"-image", b.RunImage,
+			"-launch", launchDir,
+			"-group", groupPath,
+			"-daemon",
+			b.RepoName,
+		}
+		ctrConf.User = "root"
+		hostConfig.Binds = append(hostConfig.Binds, "/var/run/docker.sock:/var/run/docker.sock")
+	}
+
+	ctr, err := b.Cli.ContainerCreate(ctx, ctrConf, hostConfig, nil, "")
 	if err != nil {
-		return errors.Wrap(err, "export container create")
+		return errors.Wrap(err, "create export container")
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
 	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
 		return errors.Wrap(err, "run lifecycle/exporter")
 	}
-	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
-
-	r, _, err := b.Cli.CopyFromContainer(ctx, ctr.ID, "/tmp/pack-exporter")
-	if err != nil {
-		return errors.Wrap(err, "copy from exporter container")
-	}
-	defer r.Close()
-
-	tmpDir, err := ioutil.TempDir("", "pack.build.")
-	if err != nil {
-		return errors.Wrap(err, "tmpdir for exporter")
-	}
-	defer os.RemoveAll(tmpDir)
-
-	if err := b.FS.Untar(r, tmpDir); err != nil {
-		return errors.Wrap(err, "untar from exporter container")
-	}
-
-	var imgSHA string
-	if b.Publish {
-		runImageStore, err := img.NewRegistry(b.RunImage)
-		if err != nil {
-			return errors.Wrap(err, "access")
-		}
-		runImage, err := runImageStore.Image()
-		if err != nil {
-			return errors.Wrap(err, "access")
-		}
-
-		exporter := &lifecycle.Exporter{
-			ArtifactsDir: filepath.Join(tmpDir, "pack-exporter"),
-			Buildpacks:   group.Buildpacks,
-			Out:          os.Stdout,
-			Err:          os.Stderr,
-		}
-		repoStore, err := img.NewRegistry(b.RepoName)
-		if err != nil {
-			return errors.Wrap(err, "access")
-		}
-		origImage, err := repoStore.Image()
-		if err != nil {
-			return errors.Wrap(err, "access")
-		}
-
-		_, err = origImage.ConfigFile()
-		if err != nil {
-			origImage = nil
-		}
-		newImage, err := exporter.ExportImage(
-			launchDir,
-			launchDir+"/app",
-			runImage,
-			origImage,
-		)
-		if err != nil {
-			return errors.Wrap(err, "export to registry")
-		}
-		if err := repoStore.Write(newImage); err != nil {
-			return errors.Wrap(err, "write")
-		}
-		hash, err := newImage.Digest()
-		if err != nil {
-			return errors.Wrap(err, "digest")
-		}
-		imgSHA = hash.String()
-	} else {
-		var metadata lifecycle.AppImageMetadata
-		bData, err := ioutil.ReadFile(filepath.Join(tmpDir, "pack-exporter", "metadata.json"))
-
-		if err != nil {
-			return errors.Wrap(err, "read exporter metadata")
-		}
-		if err := json.Unmarshal(bData, &metadata); err != nil {
-			return errors.Wrap(err, "read exporter metadata")
-		}
-
-		// TODO: move to init
-		imgFactory, err := image.DefaultFactory()
-		if err != nil {
-			return errors.Wrap(err, "create default factory")
-		}
-
-		img, err := imgFactory.NewLocal(b.RunImage, false)
-		if err != nil {
-			return errors.Wrap(err, "new local")
-		}
-
-		runImageTopLayer, err := img.TopLayer()
-		if err != nil {
-			return errors.Wrap(err, "get run top layer")
-		}
-		runImageDigest, err := img.Digest()
-		if err != nil {
-			return errors.Wrap(err, "get run digest")
-		}
-		metadata.RunImage = lifecycle.RunImageMetadata{
-			TopLayer: runImageTopLayer,
-			SHA:      runImageDigest,
-		}
-
-		img.Rename(b.RepoName)
-
-		var prevMetadata lifecycle.AppImageMetadata
-		if prevInspect, _, err := b.Cli.ImageInspectWithRaw(context.Background(), b.RepoName); err != nil {
-			// TODO handle rel error (eg. not prev image not exist)
-		} else {
-			label := prevInspect.Config.Labels[lifecycle.MetadataLabel]
-			if err := json.Unmarshal([]byte(label), &prevMetadata); err != nil {
-				return errors.Wrap(err, "parsing previous image metadata label")
-			}
-		}
-
-		// TODO do alpha sort
-		for index, bp := range metadata.Buildpacks {
-			var prevBP *lifecycle.BuildpackMetadata
-			for _, pbp := range prevMetadata.Buildpacks {
-				if pbp.ID == bp.ID {
-					prevBP = &pbp
-				}
-			}
-
-			layerKeys := make([]string, 0, len(bp.Layers))
-			for n, _ := range bp.Layers {
-				layerKeys = append(layerKeys, n)
-			}
-			sort.Strings(layerKeys)
-
-			for _, layerName := range layerKeys {
-				layer := bp.Layers[layerName]
-				if layer.SHA == "" {
-					if prevBP == nil {
-						return fmt.Errorf("tried to use not exist previous buildpack: %s", bp.ID)
-					}
-					// TODO error nicely on not found
-					layer.SHA = prevBP.Layers[layerName].SHA
-					b.Log.Printf("reusing layer '%s/%s' with diffID '%s'\n", bp.ID, layerName, layer.SHA)
-					if err := img.ReuseLayer(layer.SHA); err != nil {
-						return errors.Wrapf(err, "reuse layer '%s/%s' from previous image", bp.ID, layerName)
-					}
-					metadata.Buildpacks[index].Layers[layerName] = layer
-				} else {
-					b.Log.Printf("adding %s layer '%s' with diffID '%s'\n", bp.ID, layerName, layer.SHA)
-					if err := img.AddLayer(filepath.Join(tmpDir, "pack-exporter", strings.TrimPrefix(layer.SHA, "sha256:")+".tar")); err != nil {
-						return errors.Wrapf(err, "add %s layer '%s'", bp.ID, layerName)
-					}
-				}
-			}
-		}
-
-		b.Log.Printf("adding app layer with diffID '%s'\n", metadata.App.SHA)
-		if err := img.AddLayer(filepath.Join(tmpDir, "pack-exporter", strings.TrimPrefix(metadata.App.SHA, "sha256:")+".tar")); err != nil {
-			return errors.Wrap(err, "add app layer")
-		}
-
-		b.Log.Printf("adding config layer with diffID '%s'\n", metadata.Config.SHA)
-		if err := img.AddLayer(filepath.Join(tmpDir, "pack-exporter", strings.TrimPrefix(metadata.Config.SHA, "sha256:")+".tar")); err != nil {
-			return errors.Wrap(err, "add config layer")
-		}
-
-		bData, err = json.Marshal(metadata)
-		if err != nil {
-			return errors.Wrap(err, "write exporter metadata")
-		}
-		if err := img.SetLabel(lifecycle.MetadataLabel, string(bData)); err != nil {
-			return errors.Wrap(err, "set image metadata label")
-		}
-		if imgSHA, err = img.Save(); err != nil {
-			return errors.Wrap(err, "save image")
-		}
-	}
-
-	b.Log.Printf("\n*** Image: %s@%s\n", b.RepoName, imgSHA)
 	return nil
 }
 
@@ -812,46 +666,4 @@ func (b *BuildConfig) chownDir(path string, uid, gid int) error {
 		return err
 	}
 	return nil
-}
-
-func (b *BuildConfig) exportVolume(image, volName string) (string, func(), error) {
-	ctx := context.Background()
-	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
-		Image: b.Builder,
-		Cmd:   []string{"true"},
-	}, &container.HostConfig{
-		Binds: []string{
-			fmt.Sprintf("%s:%s:ro", b.WorkspaceVolume, launchDir),
-		},
-	}, nil, "")
-	if err != nil {
-		return "", func() {}, errors.Wrap(err, "export container create")
-	}
-	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
-
-	r, _, err := b.Cli.CopyFromContainer(ctx, ctr.ID, launchDir)
-	if err != nil {
-		return "", func() {}, err
-	}
-	defer r.Close()
-
-	tmpDir, err := ioutil.TempDir("", "pack.build.")
-	if err != nil {
-		return "", func() {}, err
-	}
-	cleanup := func() { os.RemoveAll(tmpDir) }
-
-	if err := b.FS.Untar(r, tmpDir); err != nil {
-		cleanup()
-		return "", func() {}, err
-	}
-
-	return filepath.Join(tmpDir, "workspace"), cleanup, nil
-}
-func randString(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = 'a' + byte(rand.Intn(26))
-	}
-	return string(b)
 }

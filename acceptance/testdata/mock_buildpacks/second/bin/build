@@ -5,7 +5,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-launch_dir=$3
+launch_dir=$4
 
 mkdir "$launch_dir/second-layer"
 echo "Second Dep Contents" > "$launch_dir/second-layer/second-dep"

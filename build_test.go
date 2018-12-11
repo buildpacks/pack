@@ -10,7 +10,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -347,21 +346,12 @@ PATH
 
 	when("#Detect", func() {
 		it("copies the app in to docker and chowns it (including directories)", func() {
-			_, err := subject.Detect()
-			h.AssertNil(t, err)
+			h.AssertNil(t, subject.Detect())
 
 			for _, name := range []string{"/workspace/app", "/workspace/app/app.js", "/workspace/app/mydir", "/workspace/app/mydir/myfile.txt"} {
 				txt := runInImage(t, dockerCli, []string{subject.WorkspaceVolume + ":/workspace"}, subject.Builder, "ls", "-ld", name)
 				h.AssertContains(t, txt, "pack pack")
 			}
-		})
-
-		when("app is detected", func() {
-			it("returns the successful group with node", func() {
-				group, err := subject.Detect()
-				h.AssertNil(t, err)
-				h.AssertEq(t, group.Buildpacks[0].ID, "io.buildpacks.samples.nodejs")
-			})
 		})
 
 		when("app is not detectable", func() {
@@ -373,12 +363,11 @@ PATH
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(badappDir, "file.txt"), []byte("content"), 0644))
 				subject.AppDir = badappDir
 			})
-			it.After(func() { os.RemoveAll(badappDir) })
-			it("returns the successful group with node", func() {
-				_, err := subject.Detect()
 
-				h.AssertNotNil(t, err)
-				h.AssertEq(t, err.Error(), "run detect container: failed with status code: 6")
+			it.After(func() { os.RemoveAll(badappDir) })
+
+			it("returns the successful group with node", func() {
+				h.AssertError(t, subject.Detect(), "run detect container: failed with status code: 6")
 			})
 		})
 
@@ -413,10 +402,9 @@ PATH
 						bpDir,
 					}
 
-					_, err := subject.Detect()
-					h.AssertNil(t, err)
+					h.AssertNil(t, subject.Detect())
 
-					h.AssertMatch(t, buf.String(), regexp.MustCompile(`DETECTING WITH MANUALLY-PROVIDED GROUP:\n[0-9\s:\/]* Group: My Sample Buildpack: pass\n`))
+					h.AssertContains(t, buf.String(), `My Sample Buildpack: pass`)
 				})
 			})
 			when("id@version buildpack", func() {
@@ -425,10 +413,9 @@ PATH
 						"io.buildpacks.samples.nodejs@latest",
 					}
 
-					_, err := subject.Detect()
-					h.AssertNil(t, err)
+					h.AssertNil(t, subject.Detect())
 
-					h.AssertMatch(t, buf.String(), regexp.MustCompile(`DETECTING WITH MANUALLY-PROVIDED GROUP:\n[0-9\s:\/]* Group: Sample Node.js Buildpack: pass\n`))
+					h.AssertContains(t, buf.String(), `Sample Node.js Buildpack: pass`)
 				})
 			})
 		})
@@ -456,7 +443,7 @@ PATH
 				it("informs the user", func() {
 					err := subject.Analyze()
 					h.AssertNil(t, err)
-					h.AssertContains(t, buf.String(), "WARNING: skipping analyze, image not found or requires authentication to access")
+					h.AssertContains(t, buf.String(), "WARNING: skipping analyze")
 				})
 			})
 			when("daemon", func() {
@@ -464,7 +451,7 @@ PATH
 				it("informs the user", func() {
 					err := subject.Analyze()
 					h.AssertNil(t, err)
-					h.AssertContains(t, buf.String(), "WARNING: skipping analyze, image not found\n")
+					h.AssertContains(t, buf.String(), "WARNING: skipping analyze")
 				})
 			})
 		})
@@ -473,7 +460,7 @@ PATH
 			var dockerFile string
 			it.Before(func() {
 				dockerFile = fmt.Sprintf(`
-					FROM scratch
+					FROM busybox
 					LABEL io.buildpacks.lifecycle.metadata='{"buildpacks":[{"key":"io.buildpacks.samples.nodejs","layers":{"node_modules":{"sha":"sha256:99311ec03d790adf46d35cd9219ed80a7d9a4b97f761247c02c77e7158a041d5","data":{"lock_checksum":"eb04ed1b461f1812f0f4233ef997cdb5"}}}}]}'
 					LABEL repo_name_for_randomisation=%s
 				`, subject.RepoName)
@@ -487,19 +474,15 @@ PATH
 					h.CreateImageOnRemote(t, dockerCli, subject.RepoName, dockerFile)
 				})
 
-				it("tells the user nothing", func() {
-					h.AssertNil(t, subject.Analyze())
-
-					txt := string(bytes.Trim(buf.Bytes(), "\x00"))
-					h.AssertEq(t, txt, "")
-				})
-
-				it("places files in workspace", func() {
+				it("places files in workspace and sets owner to pack", func() {
 					h.AssertNil(t, subject.Analyze())
 
 					txt := h.ReadFromDocker(t, subject.WorkspaceVolume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 
 					h.AssertEq(t, txt, "lock_checksum = \"eb04ed1b461f1812f0f4233ef997cdb5\"\n")
+					hdr := h.StatFromDocker(t, subject.WorkspaceVolume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+					h.AssertEq(t, hdr.Uid, 1000)
+					h.AssertEq(t, hdr.Gid, 1000)
 				})
 			})
 
@@ -514,18 +497,15 @@ PATH
 					h.AssertNil(t, h.DockerRmi(dockerCli, subject.RepoName))
 				})
 
-				it("tells the user nothing", func() {
-					h.AssertNil(t, subject.Analyze())
-
-					txt := string(bytes.Trim(buf.Bytes(), "\x00"))
-					h.AssertEq(t, txt, "")
-				})
-
-				it("places files in workspace", func() {
-					h.AssertNil(t, subject.Analyze())
+				it("places files in workspace and sets owner to pack", func() {
+					err := subject.Analyze()
+					h.AssertNil(t, err)
 
 					txt := h.ReadFromDocker(t, subject.WorkspaceVolume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 					h.AssertEq(t, txt, "lock_checksum = \"eb04ed1b461f1812f0f4233ef997cdb5\"\n")
+					hdr := h.StatFromDocker(t, subject.WorkspaceVolume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+					h.AssertEq(t, hdr.Uid, 1000)
+					h.AssertEq(t, hdr.Gid, 1000)
 				})
 			})
 		})
@@ -566,11 +546,9 @@ PATH
 						t.Skip("directory buildpacks are not implemented on windows")
 					}
 					subject.Buildpacks = []string{bpDir}
-					_, err := subject.Detect()
-					h.AssertNil(t, err)
 
-					err = subject.Build()
-					h.AssertNil(t, err)
+					h.AssertNil(t, subject.Detect())
+					h.AssertNil(t, subject.Build())
 
 					h.AssertContains(t, buf.String(), "BUILD OUTPUT FROM MY SAMPLE BUILDPACK")
 				})
@@ -578,11 +556,9 @@ PATH
 			when("id@version buildpack", func() {
 				it("runs the buildpacks bin/build", func() {
 					subject.Buildpacks = []string{"io.buildpacks.samples.nodejs@latest"}
-					_, err := subject.Detect()
-					h.AssertNil(t, err)
 
-					err = subject.Build()
-					h.AssertNil(t, err)
+					h.AssertNil(t, subject.Detect())
+					h.AssertNil(t, subject.Build())
 
 					h.AssertContains(t, buf.String(), "npm notice created a lockfile as package-lock.json. You should commit this file.")
 				})
@@ -599,11 +575,9 @@ PATH
 					"VAR2": "value2 with spaces",
 				}
 				subject.Buildpacks = []string{"acceptance/testdata/mock_buildpacks/printenv"}
-				_, err := subject.Detect()
-				h.AssertNil(t, err)
+				h.AssertNil(t, subject.Detect())
 
-				err = subject.Build()
-				h.AssertNil(t, err)
+				h.AssertNil(t, subject.Build())
 
 				h.AssertContains(t, buf.String(), "ENV: VAR1 is value1;")
 				h.AssertContains(t, buf.String(), "ENV: VAR2 is value2 with spaces;")
@@ -613,7 +587,6 @@ PATH
 
 	when("#Export", func() {
 		var (
-			group       *lifecycle.BuildpackGroup
 			runSHA      string
 			runTopLayer string
 		)
@@ -636,11 +609,6 @@ PATH
 			}
 			h.CopyWorkspaceToDocker(t, tmpDir, subject.WorkspaceVolume)
 
-			group = &lifecycle.BuildpackGroup{
-				Buildpacks: []*lifecycle.Buildpack{
-					{ID: "io.buildpacks.samples.nodejs", Version: "0.0.1"},
-				},
-			}
 			runSHA = imageSHA(t, dockerCli, subject.RunImage)
 			runTopLayer = topLayer(t, dockerCli, subject.RunImage)
 		})
@@ -655,13 +623,13 @@ PATH
 			})
 
 			it("creates the image on the registry", func() {
-				h.AssertNil(t, subject.Export(group))
+				h.AssertNil(t, subject.Export())
 				images := h.HttpGet(t, "http://localhost:"+registryPort+"/v2/_catalog")
 				h.AssertContains(t, images, oldRepoName)
 			})
 
 			it("puts the files on the image", func() {
-				h.AssertNil(t, subject.Export(group))
+				h.AssertNil(t, subject.Export())
 
 				h.AssertNil(t, dockerCli.PullImage(subject.RepoName))
 				defer h.DockerRmi(dockerCli, subject.RepoName)
@@ -675,7 +643,7 @@ PATH
 			})
 
 			it("sets the metadata on the image", func() {
-				h.AssertNil(t, subject.Export(group))
+				h.AssertNil(t, subject.Export())
 
 				h.AssertNil(t, dockerCli.PullImage(subject.RepoName))
 				defer h.DockerRmi(dockerCli, subject.RepoName)
@@ -702,12 +670,12 @@ PATH
 			})
 
 			it("creates the image on the daemon", func() {
-				h.AssertNil(t, subject.Export(group))
+				h.AssertNil(t, subject.Export())
 				images := imageList(t, dockerCli)
 				h.AssertSliceContains(t, images, subject.RepoName+":latest")
 			})
 			it("puts the files on the image", func() {
-				h.AssertNil(t, subject.Export(group))
+				h.AssertNil(t, subject.Export())
 
 				txt, err := h.CopySingleFileFromImage(dockerCli, subject.RepoName, "workspace/app/file.txt")
 				h.AssertNil(t, err)
@@ -718,7 +686,7 @@ PATH
 				h.AssertEq(t, string(txt), "content")
 			})
 			it("sets the metadata on the image", func() {
-				h.AssertNil(t, subject.Export(group))
+				h.AssertNil(t, subject.Export())
 
 				var metadata lifecycle.AppImageMetadata
 				metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
@@ -750,7 +718,7 @@ PATH
 				})
 
 				it("sets owner of layer files to PACK_USER_ID:PACK_GROUP_ID", func() {
-					h.AssertNil(t, subject.Export(group))
+					h.AssertNil(t, subject.Export())
 					txt := runInImage(t, dockerCli, nil, subject.RepoName, "ls", "-la", "/workspace/app/file.txt")
 					h.AssertContains(t, txt, " 1234 5678 ")
 				})
@@ -759,7 +727,7 @@ PATH
 			when("previous image exists", func() {
 				it("reuses images from previous layers", func() {
 					t.Log("create image and h.Assert add new layer")
-					h.AssertNil(t, subject.Export(group))
+					h.AssertNil(t, subject.Export())
 
 					origImageID := h.ImageID(t, subject.RepoName)
 					defer func() { h.AssertNil(t, h.DockerRmi(dockerCli, origImageID)) }()
@@ -777,7 +745,7 @@ PATH
 					)
 
 					t.Log("recreate image and h.Assert copying layer from previous image")
-					h.AssertNil(t, subject.Export(group))
+					h.AssertNil(t, subject.Export())
 					txt, err = h.CopySingleFileFromImage(dockerCli, subject.RepoName, "workspace/io.buildpacks.samples.nodejs/mylayer/file.txt")
 					h.AssertNil(t, err)
 					h.AssertEq(t, txt, "content")

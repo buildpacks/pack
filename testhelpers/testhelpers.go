@@ -374,6 +374,20 @@ func CopySingleFileFromContainer(dockerCli *docker.Client, ctrID, path string) (
 	return string(b), err
 }
 
+func StatSingleFileFromContainer(dockerCli *docker.Client, ctrID, path string) (*tar.Header, error) {
+	r, _, err := dockerCli.CopyFromContainer(context.Background(), ctrID, path)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	tr := tar.NewReader(r)
+	hdr, err := tr.Next()
+	if hdr.Name != path && hdr.Name != filepath.Base(path) {
+		return nil, fmt.Errorf("filenames did not match: %s and %s (%s)", hdr.Name, path, filepath.Base(path))
+	}
+	return hdr, err
+}
+
 func CopySingleFileFromImage(dockerCli *docker.Client, repoName, path string) (string, error) {
 	ctr, err := dockerCli.ContainerCreate(context.Background(),
 		&container.Config{
@@ -387,6 +401,21 @@ func CopySingleFileFromImage(dockerCli *docker.Client, repoName, path string) (s
 	}
 	defer dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
 	return CopySingleFileFromContainer(dockerCli, ctr.ID, path)
+}
+
+func StatSingleFileFromImage(dockerCli *docker.Client, repoName, path string) (*tar.Header, error) {
+	ctr, err := dockerCli.ContainerCreate(context.Background(),
+		&container.Config{
+			Image: repoName,
+		}, &container.HostConfig{
+			AutoRemove: true,
+		}, nil, "",
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
+	return StatSingleFileFromContainer(dockerCli, ctr.ID, path)
 }
 
 func pushImage(dockerCli *docker.Client, ref string) error {
@@ -485,6 +514,25 @@ func ReadFromDocker(t *testing.T, volume, path string) string {
 	txt, err := CopySingleFileFromContainer(dockerCli(t), ctr.ID, path)
 	AssertNil(t, err)
 	return txt
+}
+
+func StatFromDocker(t *testing.T, volume, path string) *tar.Header {
+	t.Helper()
+	pullPacksSamples(dockerCli(t))
+	ctr, err := dockerCli(t).ContainerCreate(
+		context.Background(),
+		&container.Config{Image: "packs/samples"},
+		&container.HostConfig{
+			AutoRemove: true,
+			Binds:      []string{volume + ":/workspace"},
+		},
+		nil, "",
+	)
+	AssertNil(t, err)
+	defer dockerCli(t).ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
+	hdr, err := StatSingleFileFromContainer(dockerCli(t), ctr.ID, path)
+	AssertNil(t, err)
+	return hdr
 }
 
 func ImageID(t *testing.T, repoName string) string {

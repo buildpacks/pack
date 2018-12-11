@@ -232,7 +232,6 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 		it.After(func() {
 			repoName := fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(sourceCodePath)))
-			killDockerByRepoName(t, repoName)
 			h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 
 			if sourceCodePath != "" {
@@ -417,9 +416,14 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			buildOutput, err := cmd.CombinedOutput()
 			h.AssertNil(t, err)
 			defer func(origID string) { h.AssertNil(t, h.DockerRmi(dockerCli, origID)) }(h.ImageID(t, repoName))
-			expectedDetectOutput := "First Mock Buildpack: pass | Second Mock Buildpack: pass | Third Mock Buildpack: pass"
-			if !strings.Contains(string(buildOutput), expectedDetectOutput) {
-				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, expectedDetectOutput, buildOutput)
+			if !strings.Contains(string(buildOutput), "First Mock Buildpack: pass") {
+				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "First Mock Buildpack: pass", buildOutput)
+			}
+			if !strings.Contains(string(buildOutput), "Second Mock Buildpack: pass") {
+				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Second Mock Buildpack: pass", buildOutput)
+			}
+			if !strings.Contains(string(buildOutput), "Third Mock Buildpack: pass") {
+				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Third Mock Buildpack: pass", buildOutput)
 			}
 
 			t.Log("run app container")
@@ -451,9 +455,11 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			if !strings.Contains(string(buildOutput), latestInfo) {
 				t.Fatalf(`expected build output to contain "%s", got "%s"`, latestInfo, buildOutput)
 			}
-			expectedDetectOutput = "Latest First Mock Buildpack: pass | Third Mock Buildpack: pass"
-			if !strings.Contains(string(buildOutput), expectedDetectOutput) {
-				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, expectedDetectOutput, buildOutput)
+			if !strings.Contains(string(buildOutput), "Latest First Mock Buildpack: pass") {
+				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Latest First Mock Buildpack: pass", buildOutput)
+			}
+			if !strings.Contains(string(buildOutput), "Third Mock Buildpack: pass") {
+				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Third Mock Buildpack: pass", buildOutput)
 			}
 
 			t.Log("run app container")

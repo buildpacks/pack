@@ -6,7 +6,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-launch_dir=$3
+launch_dir=$4
 
 mkdir "$launch_dir/first-layer"
 echo "Latest First Dep Contents" > "$launch_dir/first-layer/first-dep"
