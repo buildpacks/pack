@@ -2,15 +2,18 @@ package docker
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
-	"io"
-	"io/ioutil"
-
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockercli "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+	"io"
+	"io/ioutil"
+	"strings"
 )
 
 type Client struct {
@@ -59,7 +62,18 @@ func (d *Client) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 }
 
 func (d *Client) PullImage(ref string) error {
-	rc, err := d.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+	reference, _ := name.ParseReference(ref, name.WeakValidation)
+	authenticator, _ := authn.DefaultKeychain.Resolve(reference.Context().Registry)
+	encodedHeader, _ := authenticator.Authorization()
+	encodedToken := strings.Replace(encodedHeader, "Basic ", "", 1)
+	tokenBytes, _ := base64.StdEncoding.DecodeString(encodedToken)
+	tokenAtoms := strings.SplitN(string(tokenBytes), ":", 2)
+	rc, err := d.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{
+		RegistryAuth: base64.StdEncoding.EncodeToString([]byte(
+			fmt.Sprintf(`{"username": "%s", "password": "%s"}`,
+				tokenAtoms[0],
+				tokenAtoms[1]))),
+	})
 	if err != nil {
 		// Retry
 		rc, err = d.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
