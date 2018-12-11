@@ -58,6 +58,19 @@ func (mr *MockImageMockRecorder) Digest() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Digest", reflect.TypeOf((*MockImage)(nil).Digest))
 }
 
+// Env mocks base method
+func (m *MockImage) Env(arg0 string) (string, error) {
+	ret := m.ctrl.Call(m, "Env", arg0)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Env indicates an expected call of Env
+func (mr *MockImageMockRecorder) Env(arg0 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Env", reflect.TypeOf((*MockImage)(nil).Env), arg0)
+}
+
 // Found mocks base method
 func (m *MockImage) Found() (bool, error) {
 	ret := m.ctrl.Call(m, "Found")

@@ -6,13 +6,13 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-launch_dir=$4
+launch_dir=$1
 
 mkdir "$launch_dir/first-layer"
 echo "First Dep Contents" > "$launch_dir/first-layer/first-dep"
 ln -snf "$launch_dir/first-layer/first-dep" first-dep
 
-touch "$launch_dir/first-layer.toml"
+echo "launch = true" > "$launch_dir/first-layer.toml"
 echo 'processes = [{ type = "web", command = "./run"}]' > "$launch_dir/launch.toml"
 
 ls -al

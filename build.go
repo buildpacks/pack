@@ -6,9 +6,6 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
-	"github.com/buildpack/lifecycle/image"
-	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
 	"io"
 	"io/ioutil"
 	"log"
@@ -19,6 +16,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buildpack/lifecycle/image"
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
+
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/fs"
@@ -27,7 +28,6 @@ import (
 	"github.com/buildpack/lifecycle"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
@@ -69,8 +69,8 @@ type BuildConfig struct {
 	FS     FS
 	Config *config.Config
 	// Above are copied from BuildFactory
-	WorkspaceVolume string
-	CacheVolume     string
+	//WorkspaceVolume string
+	CacheVolume string
 }
 
 const (
@@ -140,7 +140,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		Log:             bf.Log,
 		FS:              bf.FS,
 		Config:          bf.Config,
-		WorkspaceVolume: fmt.Sprintf("pack-workspace-%x", uuid.New().String()),
+		//WorkspaceVolume: fmt.Sprintf("pack-workspace-%x", uuid.New().String()),
 		CacheVolume:     fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(appDir))),
 	}
 
@@ -240,7 +240,7 @@ func Build(appDir, buildImage, runImage, repoName string, publish bool) error {
 }
 
 func (b *BuildConfig) Run() error {
-	defer b.Cli.VolumeRemove(context.Background(), b.WorkspaceVolume, true)
+	//defer b.Cli.VolumeRemove(context.Background(), b.WorkspaceVolume, true)
 
 	if err := b.Detect(); err != nil {
 		return err
@@ -323,7 +323,7 @@ func (b *BuildConfig) Detect() error {
 		},
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
+			fmt.Sprintf("%s:%s:", b.CacheVolume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {
@@ -357,19 +357,19 @@ func (b *BuildConfig) Detect() error {
 		orderToml = tomlBuilder.String()
 	}
 
-	uid, gid, err := b.packUidGid(b.Builder)
-	if err != nil {
-		return errors.Wrap(err, "detect")
-	}
-
-	tr, errChan := b.FS.CreateTarReader(b.AppDir, launchDir+"/app", uid, gid)
-	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
+	tr, errChan := b.FS.CreateTarReader(b.AppDir, launchDir+"/app", 0, 0)
+	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{
+	}); err != nil {
 		return errors.Wrap(err, "copy app to workspace volume")
 	}
 	if err := <-errChan; err != nil {
 		return errors.Wrap(err, "copy app to workspace volume")
 	}
 
+	uid, gid, err := b.packUidGid(b.Builder)
+	if err != nil {
+		return errors.Wrap(err, "get pack uid gid")
+	}
 	if err := b.chownDir(launchDir+"/app", uid, gid); err != nil {
 		return errors.Wrap(err, "chown app to workspace volume")
 	}
@@ -379,7 +379,8 @@ func (b *BuildConfig) Detect() error {
 		if err != nil {
 			return errors.Wrap(err, "converting order TOML to tar reader")
 		}
-		if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
+		if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", ftr, dockertypes.CopyToContainerOptions{
+		}); err != nil {
 			return errors.Wrap(err, fmt.Sprintf("creating %s", orderPath))
 		}
 	}
@@ -397,7 +398,7 @@ func (b *BuildConfig) Analyze() error {
 	}
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
+			fmt.Sprintf("%s:%s:", b.CacheVolume, launchDir),
 		},
 	}
 
@@ -410,7 +411,7 @@ func (b *BuildConfig) Analyze() error {
 		ctrConf.Env = []string{fmt.Sprintf(`PACK_REGISTRY_AUTH=%s`, authHeader)}
 		ctrConf.Cmd = []string{
 			"/lifecycle/analyzer",
-			"-launch", launchDir,
+			"-layers", launchDir,
 			"-group", groupPath,
 			b.RepoName,
 		}
@@ -418,7 +419,7 @@ func (b *BuildConfig) Analyze() error {
 	} else {
 		ctrConf.Cmd = []string{
 			"/lifecycle/analyzer",
-			"-launch", launchDir,
+			"-layers", launchDir,
 			"-group", groupPath,
 			"-daemon",
 			b.RepoName,
@@ -437,14 +438,12 @@ func (b *BuildConfig) Analyze() error {
 		return errors.Wrap(err, "analyze run container")
 	}
 
-	if ctrConf.User == "root" {
-		uid, gid, err := b.packUidGid(b.Builder)
-		if err != nil {
-			return errors.Wrap(err, "getting pack uid/gid")
-		}
-		if err := b.chownDir(launchDir, uid, gid); err != nil {
-			return errors.Wrap(err, "chown launch dir")
-		}
+	uid, gid, err := b.packUidGid(b.Builder)
+	if err != nil {
+		return errors.Wrap(err, "get pack uid and gid")
+	}
+	if err := b.chownDir(launchDir, uid, gid); err != nil {
+		return errors.Wrap(err, "chown launch dir")
 	}
 
 	return nil
@@ -469,16 +468,14 @@ func (b *BuildConfig) Build() error {
 		Cmd: []string{
 			"/lifecycle/builder",
 			"-buildpacks", buildpacksDir,
-			"-launch", launchDir,
-			"-cache", cacheDir,
+			"-layers", launchDir,
 			"-group", groupPath,
 			"-plan", planPath,
 			"-platform", platformDir,
 		},
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
-			fmt.Sprintf("%s:%s:", b.CacheVolume, cacheDir),
+			fmt.Sprintf("%s:%s:", b.CacheVolume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {
@@ -503,7 +500,11 @@ func (b *BuildConfig) Build() error {
 		}
 	}
 
-	return b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr)
+	err = b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr)
+	if err != nil {
+		return errors.Wrap(err, "running builder in container")
+	}
+	return nil
 }
 
 func parseEnvFile(envFile string) (map[string]string, error) {
@@ -555,7 +556,7 @@ func (b *BuildConfig) Export() error {
 	}
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
+			fmt.Sprintf("%s:%s:", b.CacheVolume, launchDir),
 		},
 	}
 
@@ -569,7 +570,7 @@ func (b *BuildConfig) Export() error {
 		ctrConf.Cmd = []string{
 			"/lifecycle/exporter",
 			"-image", b.RunImage,
-			"-launch", launchDir,
+			"-layers", launchDir,
 			"-group", groupPath,
 			b.RepoName,
 		}
@@ -578,7 +579,7 @@ func (b *BuildConfig) Export() error {
 		ctrConf.Cmd = []string{
 			"/lifecycle/exporter",
 			"-image", b.RunImage,
-			"-launch", launchDir,
+			"-layers", launchDir,
 			"-group", groupPath,
 			"-daemon",
 			b.RepoName,
@@ -592,6 +593,15 @@ func (b *BuildConfig) Export() error {
 		return errors.Wrap(err, "create export container")
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+
+	uid, gid, err := b.packUidGid(b.Builder)
+	if err != nil {
+		return errors.Wrap(err, "get pack uid and gid")
+	}
+	if err := b.chownDir(launchDir, uid, gid); err != nil {
+		return errors.Wrap(err, "chown launch dir")
+	}
+
 
 	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
 		return errors.Wrap(err, "run lifecycle/exporter")
@@ -636,7 +646,7 @@ func (b *BuildConfig) chownDir(path string, uid, gid int) error {
 		User:  "root",
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.WorkspaceVolume, launchDir),
+			fmt.Sprintf("%s:%s:", b.CacheVolume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {

@@ -482,6 +482,7 @@ func CopyWorkspaceToDocker(t *testing.T, srcPath, destVolume string) {
 	ctx := context.Background()
 	pullPacksSamples(dockerCli(t))
 	ctr, err := dockerCli(t).ContainerCreate(ctx, &container.Config{
+		User: "pack",
 		Image: "packs/samples",
 		Cmd:   []string{"true"},
 	}, &container.HostConfig{

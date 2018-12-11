@@ -4,6 +4,10 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"fmt"
+	"github.com/BurntSushi/toml"
+	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/image"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -11,11 +15,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-
-	"github.com/BurntSushi/toml"
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/image"
-	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/config"
 )

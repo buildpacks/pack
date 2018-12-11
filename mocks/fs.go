@@ -5,10 +5,9 @@
 package mocks
 
 import (
+	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"
-
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockFS is a mock of FS interface
