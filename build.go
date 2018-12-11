@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
+	"github.com/buildpack/lifecycle/image"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"io"
@@ -18,28 +19,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/BurntSushi/toml"
-	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/fs"
-	"github.com/buildpack/pack/image"
+
+	"github.com/BurntSushi/toml"
+	"github.com/buildpack/lifecycle"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	dockercli "github.com/docker/docker/client"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 )
 
 type BuildFactory struct {
-	Cli    Docker
-	Stdout io.Writer
-	Stderr io.Writer
-	Log    *log.Logger
-	FS     FS
-	Config *config.Config
-	Images Images
+	Cli          Docker
+	Stdout       io.Writer
+	Stderr       io.Writer
+	Log          *log.Logger
+	FS           FS
+	Config       *config.Config
+	ImageFactory ImageFactory
 }
 
 type BuildFlags struct {
@@ -69,7 +68,6 @@ type BuildConfig struct {
 	Log    *log.Logger
 	FS     FS
 	Config *config.Config
-	Images Images
 	// Above are copied from BuildFactory
 	WorkspaceVolume string
 	CacheVolume     string
@@ -91,7 +89,6 @@ func DefaultBuildFactory() (*BuildFactory, error) {
 		Stderr: os.Stderr,
 		Log:    log.New(os.Stdout, "", log.LstdFlags),
 		FS:     &fs.FS{},
-		Images: &image.Client{},
 	}
 
 	var err error
@@ -101,6 +98,11 @@ func DefaultBuildFactory() (*BuildFactory, error) {
 	}
 
 	f.Config, err = config.NewDefault()
+	if err != nil {
+		return nil, err
+	}
+
+	f.ImageFactory, err = image.DefaultFactory()
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +140,6 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		Log:             bf.Log,
 		FS:              bf.FS,
 		Config:          bf.Config,
-		Images:          bf.Images,
 		WorkspaceVolume: fmt.Sprintf("pack-workspace-%x", uuid.New().String()),
 		CacheVolume:     fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(appDir))),
 	}
@@ -159,12 +160,14 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 	if !f.NoPull {
 		bf.Log.Printf("Pulling builder image '%s' (use --no-pull flag to skip this step)", b.Builder)
-		if err := bf.Cli.PullImage(b.Builder); err != nil {
-			return nil, err
-		}
 	}
 
-	builderStackID, err := b.imageLabel(b.Builder, "io.buildpacks.stack.id", true)
+	builderImage, err := bf.ImageFactory.NewLocal(b.Builder, !f.NoPull)
+	if err != nil {
+		return nil, err
+	}
+
+	builderStackID, err := builderImage.Label("io.buildpacks.stack.id")
 	if err != nil {
 		return nil, fmt.Errorf(`invalid builder image "%s": %s`, b.Builder, err)
 	}
@@ -191,14 +194,23 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		b.Log.Printf("Selected run image '%s' from stack '%s'\n", b.RunImage, builderStackID)
 	}
 
-	if !f.NoPull && !f.Publish {
-		bf.Log.Printf("Pulling run image '%s' (use --no-pull flag to skip this step)", b.RunImage)
-		if err := bf.Cli.PullImage(b.RunImage); err != nil {
+	var runImage image.Image
+	if f.Publish {
+		runImage, err = bf.ImageFactory.NewRemote(b.RunImage)
+		if err != nil {
+			return nil, err
+		}
+	}else {
+		if !f.NoPull {
+			bf.Log.Printf("Pulling run image '%s' (use --no-pull flag to skip this step)", b.RunImage)
+		}
+		runImage, err = bf.ImageFactory.NewLocal(b.RunImage, !f.NoPull)
+		if err != nil {
 			return nil, err
 		}
 	}
 
-	if runStackID, err := b.imageLabel(b.RunImage, "io.buildpacks.stack.id", !f.Publish); err != nil {
+	if runStackID, err := runImage.Label("io.buildpacks.stack.id"); err != nil {
 		return nil, fmt.Errorf(`invalid run image "%s": %s`, b.RunImage, err)
 	} else if runStackID == "" {
 		return nil, fmt.Errorf(`invalid run image "%s": missing required label "io.buildpacks.stack.id"`, b.RunImage)
@@ -585,37 +597,6 @@ func (b *BuildConfig) Export() error {
 		return errors.Wrap(err, "run lifecycle/exporter")
 	}
 	return nil
-}
-
-func (b *BuildConfig) imageLabel(repoName, key string, useDaemon bool) (string, error) {
-	var labels map[string]string
-	if useDaemon {
-		i, _, err := b.Cli.ImageInspectWithRaw(context.Background(), repoName)
-		if dockercli.IsErrNotFound(err) {
-			return "", nil
-		} else if err != nil {
-			return "", errors.Wrap(err, "analyze read previous image config")
-		}
-		labels = i.Config.Labels
-	} else {
-		origImage, err := b.Images.ReadImage(repoName, false)
-		if err != nil || origImage == nil {
-			return "", err
-		}
-		config, err := origImage.ConfigFile()
-		if err != nil {
-			if remoteErr, ok := err.(*remote.Error); ok && len(remoteErr.Errors) > 0 {
-				switch remoteErr.Errors[0].Code {
-				case remote.UnauthorizedErrorCode, remote.ManifestUnknownErrorCode:
-					return "", nil
-				}
-			}
-			return "", errors.Wrapf(err, "access manifest: %s", repoName)
-		}
-		labels = config.Config.Labels
-	}
-
-	return labels[key], nil
 }
 
 func (b *BuildConfig) packUidGid(builder string) (int, int, error) {

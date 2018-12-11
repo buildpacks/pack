@@ -33,9 +33,6 @@ func TestCreateBuilder(t *testing.T) {
 	spec.Run(t, "create-builder", testCreateBuilder, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
-//go:generate mockgen -package mocks -destination mocks/img.go -mock_names Image=MockV1Image github.com/google/go-containerregistry/pkg/v1 Image
-//go:generate mockgen -package mocks -destination mocks/store.go github.com/buildpack/lifecycle/img Store
-
 func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#BuilderFactory", func() {
 		var (

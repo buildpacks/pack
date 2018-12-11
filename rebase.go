@@ -6,8 +6,9 @@ import (
 	"log"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/image"
+
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/image"
 )
 
 type RebaseConfig struct {

@@ -5,7 +5,7 @@
 package mocks
 
 import (
-	image "github.com/buildpack/pack/image"
+	image "github.com/buildpack/lifecycle/image"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )

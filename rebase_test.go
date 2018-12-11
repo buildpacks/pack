@@ -20,9 +20,8 @@ func TestRebase(t *testing.T) {
 	spec.Run(t, "rebase", testRebase, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-//go:generate mockgen -package mocks -destination mocks/writablestore.go github.com/buildpack/pack WritableStore
-//go:generate mockgen -package mocks -destination mocks/image.go github.com/buildpack/pack/image Image
-//go:generate mockgen -package mocks -destination mocks/image_factory.go github.com/buildpack/pack ImageFactory
+//move somewhere else
+//go:generate mockgen -package mocks -destination mocks/image.go github.com/buildpack/lifecycle/image Image
 
 func testRebase(t *testing.T, when spec.G, it spec.S) {
 	when("#RebaseFactory", func() {

@@ -8,8 +8,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/google/go-containerregistry/pkg/v1"
-
-	"github.com/buildpack/pack/image"
+	"github.com/buildpack/lifecycle/image"
 )
 
 //go:generate mockgen -package mocks -destination mocks/docker.go github.com/buildpack/pack Docker
@@ -25,11 +24,6 @@ type Docker interface {
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
 }
 
-//go:generate mockgen -package mocks -destination mocks/images.go github.com/buildpack/pack Images
-type Images interface {
-	ReadImage(repoName string, useDaemon bool) (v1.Image, error)
-}
-
 //go:generate mockgen -package mocks -destination mocks/task.go github.com/buildpack/pack Task
 type Task interface {
 	Run() error
@@ -43,10 +37,12 @@ type FS interface {
 	CreateSingleFileTar(path, txt string) (io.Reader, error)
 }
 
+//go:generate mockgen -package mocks -destination mocks/writablestore.go github.com/buildpack/pack WritableStore
 type WritableStore interface {
 	Write(image v1.Image) error
 }
 
+//go:generate mockgen -package mocks -destination mocks/image_factory.go github.com/buildpack/pack ImageFactory
 type ImageFactory interface {
 	NewLocal(string, bool) (image.Image, error)
 	NewRemote(string) (image.Image, error)

@@ -12,7 +12,8 @@ import (
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/fs"
-	"github.com/buildpack/pack/image"
+
+	"github.com/buildpack/lifecycle/image"
 	"github.com/spf13/cobra"
 )
 
