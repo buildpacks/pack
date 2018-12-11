@@ -61,11 +61,11 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			mockController = gomock.NewController(t)
 			mockImageFactory = mocks.NewMockImageFactory(mockController)
 			factory = &pack.BuildFactory{
-				Cli:    mockDocker,
-				Stdout: &buf,
-				Stderr: &buf,
-				Log:    log.New(&buf, "", log.LstdFlags|log.Lshortfile),
-				FS:     &fs.FS{},
+				Cli:          mockDocker,
+				Stdout:       &buf,
+				Stderr:       &buf,
+				Log:          log.New(&buf, "", log.LstdFlags|log.Lshortfile),
+				FS:           &fs.FS{},
 				ImageFactory: mockImageFactory,
 				Config: &config.Config{
 					Stacks: []config.Stack{

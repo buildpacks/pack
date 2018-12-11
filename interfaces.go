@@ -13,7 +13,6 @@ import (
 
 //go:generate mockgen -package mocks -destination mocks/docker.go github.com/buildpack/pack Docker
 type Docker interface {
-	PullImage(ref string) error
 	RunContainer(ctx context.Context, id string, stdout io.Writer, stderr io.Writer) error
 	VolumeRemove(ctx context.Context, volumeID string, force bool) error
 	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (container.ContainerCreateCreatedBody, error)

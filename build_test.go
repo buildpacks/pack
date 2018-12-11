@@ -16,12 +16,6 @@ import (
 	"time"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/fs"
-	"github.com/buildpack/pack/mocks"
-	h "github.com/buildpack/pack/testhelpers"
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/golang/mock/gomock"
@@ -29,6 +23,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/docker"
+	"github.com/buildpack/pack/fs"
+	"github.com/buildpack/pack/mocks"
+	h "github.com/buildpack/pack/testhelpers"
 )
 
 var registryPort string
@@ -55,11 +56,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 		subject = &pack.BuildConfig{
-			AppDir:   "acceptance/testdata/node_app",
-			Builder:  h.DefaultBuilderImage(t, registryPort),
-			RunImage: h.DefaultRunImage(t, registryPort),
-			RepoName: "pack.build." + h.RandString(10),
-			Publish:  false,
+			AppDir:      "acceptance/testdata/node_app",
+			Builder:     h.DefaultBuilderImage(t, registryPort),
+			RunImage:    h.DefaultRunImage(t, registryPort),
+			RepoName:    "pack.build." + h.RandString(10),
+			Publish:     false,
 			CacheVolume: fmt.Sprintf("pack-cache-%x", uuid.New().String()),
 			Stdout:      &buf,
 			Stderr:      &buf,
@@ -564,8 +565,8 @@ cache = false
 
 	when("#Export", func() {
 		var (
-			runSHA      string
-			runTopLayer string
+			runSHA         string
+			runTopLayer    string
 			setupLayersDir func()
 		)
 		it.Before(func() {
@@ -616,7 +617,7 @@ cache = false
 			it("puts the files on the image", func() {
 				h.AssertNil(t, subject.Export())
 
-				h.AssertNil(t, dockerCli.PullImage(subject.RepoName))
+				h.AssertNil(t, h.PullImage(dockerCli, subject.RepoName))
 				defer h.DockerRmi(dockerCli, subject.RepoName)
 				txt, err := h.CopySingleFileFromImage(dockerCli, subject.RepoName, "workspace/app/file.txt")
 				h.AssertNil(t, err)
@@ -630,7 +631,7 @@ cache = false
 			it("sets the metadata on the image", func() {
 				h.AssertNil(t, subject.Export())
 
-				h.AssertNil(t, dockerCli.PullImage(subject.RepoName))
+				h.AssertNil(t, h.PullImage(dockerCli, subject.RepoName))
 				defer h.DockerRmi(dockerCli, subject.RepoName)
 				var metadata lifecycle.AppImageMetadata
 				metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
@@ -712,7 +713,7 @@ cache = false
 			})
 
 			when("previous image exists", func() {
-				it.Before(func(){
+				it.Before(func() {
 					t.Log("create image and h.Assert add new layer")
 					h.AssertNil(t, subject.Export())
 					setupLayersDir()

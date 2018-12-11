@@ -10,9 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/pack/fs"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack/fs"
 )
 
 func TestFS(t *testing.T) {

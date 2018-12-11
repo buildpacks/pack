@@ -69,7 +69,6 @@ type BuildConfig struct {
 	FS     FS
 	Config *config.Config
 	// Above are copied from BuildFactory
-	//WorkspaceVolume string
 	CacheVolume string
 }
 
@@ -129,19 +128,18 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 
 	b := &BuildConfig{
-		AppDir:          appDir,
-		RepoName:        f.RepoName,
-		Publish:         f.Publish,
-		NoPull:          f.NoPull,
-		Buildpacks:      f.Buildpacks,
-		Cli:             bf.Cli,
-		Stdout:          bf.Stdout,
-		Stderr:          bf.Stderr,
-		Log:             bf.Log,
-		FS:              bf.FS,
-		Config:          bf.Config,
-		//WorkspaceVolume: fmt.Sprintf("pack-workspace-%x", uuid.New().String()),
-		CacheVolume:     fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(appDir))),
+		AppDir:     appDir,
+		RepoName:   f.RepoName,
+		Publish:    f.Publish,
+		NoPull:     f.NoPull,
+		Buildpacks: f.Buildpacks,
+		Cli:        bf.Cli,
+		Stdout:     bf.Stdout,
+		Stderr:     bf.Stderr,
+		Log:        bf.Log,
+		FS:         bf.FS,
+		Config:     bf.Config,
+		CacheVolume: fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(appDir))),
 	}
 
 	if f.EnvFile != "" {
@@ -200,7 +198,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		if err != nil {
 			return nil, err
 		}
-	}else {
+	} else {
 		if !f.NoPull {
 			bf.Log.Printf("Pulling run image '%s' (use --no-pull flag to skip this step)", b.RunImage)
 		}
@@ -240,8 +238,6 @@ func Build(appDir, buildImage, runImage, repoName string, publish bool) error {
 }
 
 func (b *BuildConfig) Run() error {
-	//defer b.Cli.VolumeRemove(context.Background(), b.WorkspaceVolume, true)
-
 	if err := b.Detect(); err != nil {
 		return err
 	}
@@ -601,7 +597,6 @@ func (b *BuildConfig) Export() error {
 	if err := b.chownDir(launchDir, uid, gid); err != nil {
 		return errors.Wrap(err, "chown launch dir")
 	}
-
 
 	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
 		return errors.Wrap(err, "run lifecycle/exporter")

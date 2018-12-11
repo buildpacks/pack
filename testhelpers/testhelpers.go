@@ -14,19 +14,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/fs"
 	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/buildpack/pack/docker"
+	"github.com/buildpack/pack/fs"
 )
 
 func RandString(n int) string {
@@ -50,13 +50,6 @@ func AssertSameInstance(t *testing.T, actual, expected interface{}) {
 	t.Helper()
 	if actual != expected {
 		t.Fatalf("Expected %s and %s to be pointers to the variable", actual, expected)
-	}
-}
-
-func AssertMatch(t *testing.T, actual string, expected *regexp.Regexp) {
-	t.Helper()
-	if !expected.Match([]byte(actual)) {
-		t.Fatal(cmp.Diff(actual, expected))
 	}
 }
 
@@ -170,7 +163,7 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 	runRegistryOnce.Do(func() {
 		runRegistryName = "test-registry-" + RandString(10)
 
-		AssertNil(t, dockerCli(t).PullImage("registry:2"))
+		AssertNil(t, PullImage(dockerCli(t), "registry:2"))
 		ctx := context.Background()
 		ctr, err := dockerCli(t).ContainerCreate(ctx, &container.Config{
 			Image: "registry:2",
@@ -258,7 +251,7 @@ func DefaultBuildImage(t *testing.T, registryPort string) string {
 	tag := packTag()
 	getBuildImageOnce.Do(func() {
 		if tag == defaultTag {
-			AssertNil(t, dockerCli(t).PullImage(fmt.Sprintf("packs/build:%s", tag)))
+			AssertNil(t, PullImage(dockerCli(t), fmt.Sprintf("packs/build:%s", tag)))
 		}
 		AssertNil(t, dockerCli(t).ImageTag(
 			context.Background(),
@@ -276,7 +269,7 @@ func DefaultRunImage(t *testing.T, registryPort string) string {
 	tag := packTag()
 	getRunImageOnce.Do(func() {
 		if tag == defaultTag {
-			AssertNil(t, dockerCli(t).PullImage(fmt.Sprintf("packs/run:%s", tag)))
+			AssertNil(t, PullImage(dockerCli(t), fmt.Sprintf("packs/run:%s", tag)))
 		}
 		AssertNil(t, dockerCli(t).ImageTag(
 			context.Background(),
@@ -294,7 +287,7 @@ func DefaultBuilderImage(t *testing.T, registryPort string) string {
 	tag := packTag()
 	getBuilderImageOnce.Do(func() {
 		if tag == defaultTag {
-			AssertNil(t, dockerCli(t).PullImage(fmt.Sprintf("packs/samples:%s", tag)))
+			AssertNil(t, PullImage(dockerCli(t), fmt.Sprintf("packs/samples:%s", tag)))
 		}
 		AssertNil(t, dockerCli(t).ImageTag(
 			context.Background(),
@@ -403,21 +396,6 @@ func CopySingleFileFromImage(dockerCli *docker.Client, repoName, path string) (s
 	return CopySingleFileFromContainer(dockerCli, ctr.ID, path)
 }
 
-func StatSingleFileFromImage(dockerCli *docker.Client, repoName, path string) (*tar.Header, error) {
-	ctr, err := dockerCli.ContainerCreate(context.Background(),
-		&container.Config{
-			Image: repoName,
-		}, &container.HostConfig{
-			AutoRemove: true,
-		}, nil, "",
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
-	return StatSingleFileFromContainer(dockerCli, ctr.ID, path)
-}
-
 func pushImage(dockerCli *docker.Client, ref string) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: "{}"})
 	if err != nil {
@@ -430,6 +408,7 @@ func pushImage(dockerCli *docker.Client, ref string) error {
 }
 
 const defaultTag = "v3alpha2"
+
 func packTag() string {
 	tag := os.Getenv("PACK_TAG")
 	if tag == "" {
@@ -442,7 +421,7 @@ var pullPacksSamplesOnce sync.Once
 
 func pullPacksSamples(d *docker.Client) {
 	pullPacksSamplesOnce.Do(func() {
-		d.PullImage("packs/samples")
+		PullImage(d, "packs/samples")
 	})
 }
 
@@ -483,7 +462,7 @@ func CopyWorkspaceToDocker(t *testing.T, srcPath, destVolume string) {
 	ctx := context.Background()
 	pullPacksSamples(dockerCli(t))
 	ctr, err := dockerCli(t).ContainerCreate(ctx, &container.Config{
-		User: "pack",
+		User:  "pack",
 		Image: "packs/samples",
 		Cmd:   []string{"true"},
 	}, &container.HostConfig{
@@ -575,21 +554,17 @@ func RunE(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
-func contains(slice []string, val string) bool {
-	for _, s := range slice {
-		if s == val {
-			return true
+func PullImage(dockerCli *docker.Client, ref string) error {
+	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+	if err != nil {
+		// Retry
+		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+		if err != nil {
+			return err
 		}
 	}
-	return false
-}
-
-func trimEmpty(slice []string) []string {
-	out := make([]string, 0, len(slice))
-	for _, v := range slice {
-		if v != "" {
-			out = append(out, v)
-		}
+	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
+		return err
 	}
-	return out
+	return rc.Close()
 }

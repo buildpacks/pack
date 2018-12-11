@@ -7,13 +7,14 @@ import (
 	"testing"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/golang/mock/gomock"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
-	"github.com/golang/mock/gomock"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 )
 
 func TestRebase(t *testing.T) {

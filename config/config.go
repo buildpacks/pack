@@ -85,13 +85,13 @@ func upgradeStack(config *Config, stack Stack) {
 	for _, stk := range config.Stacks {
 		if stk.ID == stack.ID {
 			for index, value := range stk.BuildImages {
-				if value == "packs/build"{
+				if value == "packs/build" {
 					stk.BuildImages[index] = stack.BuildImages[0]
 				}
 			}
 
 			for index, value := range stk.RunImages {
-				if value == "packs/run"{
+				if value == "packs/run" {
 					stk.RunImages[index] = stack.RunImages[0]
 				}
 			}

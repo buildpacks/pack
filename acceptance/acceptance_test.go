@@ -20,13 +20,14 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/pack/docker"
-	h "github.com/buildpack/pack/testhelpers"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack/docker"
+	h "github.com/buildpack/pack/testhelpers"
 )
 
 var pack string
@@ -197,7 +198,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Expected to see image %s in %s", repo, contents)
 				}
 
-				h.AssertNil(t, dockerCli.PullImage(fmt.Sprintf("%s@%s", repoName, imgSHA)))
+				h.AssertNil(t, h.PullImage(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA)))
 				defer h.DockerRmi(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA))
 
 				ctrID := runDockerImageExposePort(t, containerName, fmt.Sprintf("%s@%s", repoName, imgSHA))
@@ -352,7 +353,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
 
-				h.AssertNil(t, dockerCli.PullImage(repoName))
+				h.AssertNil(t, h.PullImage(dockerCli, repoName))
 				h.AssertEq(t, rootContents1(), "contents-before-1\n")
 				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 			})
@@ -364,7 +365,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				cmd := exec.Command(pack, "rebase", repoName, "--publish")
 				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
-				h.AssertNil(t, dockerCli.PullImage(repoName))
+				h.AssertNil(t, h.PullImage(dockerCli, repoName))
 
 				h.AssertEq(t, rootContents1(), "contents-after-1\n")
 			})

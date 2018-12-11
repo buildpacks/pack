@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -56,19 +55,4 @@ func (d *Client) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 		return err
 	}
 	return <-copyErr
-}
-
-func (d *Client) PullImage(ref string) error {
-	rc, err := d.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
-	if err != nil {
-		// Retry
-		rc, err = d.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
-		if err != nil {
-			return err
-		}
-	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
-		return err
-	}
-	return rc.Close()
 }
