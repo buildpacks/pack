@@ -41,13 +41,13 @@ func New(path string) (*Config, error) {
 	if config.DefaultStackID == "" {
 		config.DefaultStackID = "io.buildpacks.stacks.bionic"
 	}
-	if config.DefaultBuilder == "" {
-		config.DefaultBuilder = "packs/samples"
+	if config.DefaultBuilder == "" || config.DefaultBuilder == "packs/samples" {
+		config.DefaultBuilder = "packs/samples:v3alpha2"
 	}
-	appendStackIfMissing(config, Stack{
+	upgradeStack(config, Stack{
 		ID:          "io.buildpacks.stacks.bionic",
-		BuildImages: []string{"packs/build"},
-		RunImages:   []string{"packs/run"},
+		BuildImages: []string{"packs/build:v3alpha2"},
+		RunImages:   []string{"packs/run:v3alpha2"},
 	})
 
 	config.configPath = configPath
@@ -81,9 +81,20 @@ func previousConfig(path string) (*Config, error) {
 	return config, nil
 }
 
-func appendStackIfMissing(config *Config, stack Stack) {
+func upgradeStack(config *Config, stack Stack) {
 	for _, stk := range config.Stacks {
 		if stk.ID == stack.ID {
+			for index, value := range stk.BuildImages {
+				if value == "packs/build"{
+					stk.BuildImages[index] = stack.BuildImages[0]
+				}
+			}
+
+			for index, value := range stk.RunImages {
+				if value == "packs/run"{
+					stk.RunImages[index] = stack.RunImages[0]
+				}
+			}
 			return
 		}
 	}

@@ -257,7 +257,7 @@ func DefaultBuildImage(t *testing.T, registryPort string) string {
 	t.Helper()
 	tag := packTag()
 	getBuildImageOnce.Do(func() {
-		if tag == "latest" {
+		if tag == defaultTag {
 			AssertNil(t, dockerCli(t).PullImage(fmt.Sprintf("packs/build:%s", tag)))
 		}
 		AssertNil(t, dockerCli(t).ImageTag(
@@ -275,7 +275,7 @@ func DefaultRunImage(t *testing.T, registryPort string) string {
 	t.Helper()
 	tag := packTag()
 	getRunImageOnce.Do(func() {
-		if tag == "latest" {
+		if tag == defaultTag {
 			AssertNil(t, dockerCli(t).PullImage(fmt.Sprintf("packs/run:%s", tag)))
 		}
 		AssertNil(t, dockerCli(t).ImageTag(
@@ -293,7 +293,7 @@ func DefaultBuilderImage(t *testing.T, registryPort string) string {
 	t.Helper()
 	tag := packTag()
 	getBuilderImageOnce.Do(func() {
-		if tag == "latest" {
+		if tag == defaultTag {
 			AssertNil(t, dockerCli(t).PullImage(fmt.Sprintf("packs/samples:%s", tag)))
 		}
 		AssertNil(t, dockerCli(t).ImageTag(
@@ -429,10 +429,11 @@ func pushImage(dockerCli *docker.Client, ref string) error {
 	return rc.Close()
 }
 
+const defaultTag = "v3alpha2"
 func packTag() string {
 	tag := os.Getenv("PACK_TAG")
 	if tag == "" {
-		return "latest"
+		return defaultTag
 	}
 	return tag
 }

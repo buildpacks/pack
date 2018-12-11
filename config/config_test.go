@@ -41,22 +41,22 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
 				h.AssertNil(t, err)
 				h.AssertContains(t, string(b), `default-stack-id = "io.buildpacks.stacks.bionic"`)
-				h.AssertContains(t, string(b), `default-builder = "packs/samples"`)
+				h.AssertContains(t, string(b), `default-builder = "packs/samples:v3alpha2"`)
 				h.AssertContains(t, string(b), strings.TrimSpace(`
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
-  build-images = ["packs/build"]
-  run-images = ["packs/run"]
+  build-images = ["packs/build:v3alpha2"]
+  run-images = ["packs/run:v3alpha2"]
 `))
 
 				h.AssertEq(t, len(subject.Stacks), 1)
 				h.AssertEq(t, subject.Stacks[0].ID, "io.buildpacks.stacks.bionic")
 				h.AssertEq(t, len(subject.Stacks[0].BuildImages), 1)
-				h.AssertEq(t, subject.Stacks[0].BuildImages[0], "packs/build")
+				h.AssertEq(t, subject.Stacks[0].BuildImages[0], "packs/build:v3alpha2")
 				h.AssertEq(t, len(subject.Stacks[0].RunImages), 1)
-				h.AssertEq(t, subject.Stacks[0].RunImages[0], "packs/run")
+				h.AssertEq(t, subject.Stacks[0].RunImages[0], "packs/run:v3alpha2")
 				h.AssertEq(t, subject.DefaultStackID, "io.buildpacks.stacks.bionic")
-				h.AssertEq(t, subject.DefaultBuilder, "packs/samples")
+				h.AssertEq(t, subject.DefaultBuilder, "packs/samples:v3alpha2")
 			})
 
 			when("path is missing", func() {
@@ -98,8 +98,8 @@ default-builder = "some/builder"
 				h.AssertContains(t, string(b), strings.TrimSpace(`
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
-  build-images = ["packs/build"]
-  run-images = ["packs/run"]
+  build-images = ["packs/build:v3alpha2"]
+  run-images = ["packs/run:v3alpha2"]
 `))
 				h.AssertContains(t, string(b), strings.TrimSpace(`
 [[stacks]]
@@ -119,9 +119,9 @@ default-builder = "some/builder"
 
 				h.AssertEq(t, subject.Stacks[1].ID, "io.buildpacks.stacks.bionic")
 				h.AssertEq(t, len(subject.Stacks[1].BuildImages), 1)
-				h.AssertEq(t, subject.Stacks[1].BuildImages[0], "packs/build")
+				h.AssertEq(t, subject.Stacks[1].BuildImages[0], "packs/build:v3alpha2")
 				h.AssertEq(t, len(subject.Stacks[1].RunImages), 1)
-				h.AssertEq(t, subject.Stacks[1].RunImages[0], "packs/run")
+				h.AssertEq(t, subject.Stacks[1].RunImages[0], "packs/run:v3alpha2")
 			})
 		})
 
@@ -134,11 +134,11 @@ default-builder = "some/builder"
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
   build-images = ["some-other/build"]
-  run-images = ["some-other/run", "packs/run"]
+  run-images = ["some-other/run", "packs/run:v3alpha2"]
 `))
 			})
 
-			it("does not modify the built-in stack", func() {
+			it("does not modify the built-in stack if it is customized", func() {
 				subject, err := config.New(tmpDir)
 				h.AssertNil(t, err)
 
@@ -149,7 +149,7 @@ default-builder = "some/builder"
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
   build-images = ["some-other/build"]
-  run-images = ["some-other/run", "packs/run"]
+  run-images = ["some-other/run", "packs/run:v3alpha2"]
 `))
 
 				h.AssertEq(t, len(subject.Stacks), 1)
@@ -158,8 +158,50 @@ default-builder = "some/builder"
 				h.AssertEq(t, subject.Stacks[0].BuildImages[0], "some-other/build")
 				h.AssertEq(t, len(subject.Stacks[0].RunImages), 2)
 				h.AssertEq(t, subject.Stacks[0].RunImages[0], "some-other/run")
-				h.AssertEq(t, subject.Stacks[0].RunImages[1], "packs/run")
+				h.AssertEq(t, subject.Stacks[0].RunImages[1], "packs/run:v3alpha2")
 				h.AssertEq(t, subject.DefaultStackID, "io.buildpacks.stacks.bionic")
+			})
+		})
+
+		when("config.toml has an outdated built-in stack", func() {
+			it.Before(func() {
+				w, err := os.Create(filepath.Join(tmpDir, "config.toml"))
+				h.AssertNil(t, err)
+				defer w.Close()
+				w.Write([]byte(`
+default-builder = "packs/samples"
+
+[[stacks]]
+  id = "io.buildpacks.stacks.bionic"
+  build-images = ["packs/build"]
+  run-images = ["some-other/run", "packs/run"]
+`))
+			})
+
+			it("modifies old defaults", func() {
+				subject, err := config.New(tmpDir)
+				h.AssertNil(t, err)
+
+				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
+				h.AssertNil(t, err)
+				h.AssertContains(t, string(b), `default-stack-id = "io.buildpacks.stacks.bionic"`)
+				h.AssertContains(t, string(b), `default-builder = "packs/samples:v3alpha2"`)
+				h.AssertContains(t, string(b), strings.TrimSpace(`
+[[stacks]]
+  id = "io.buildpacks.stacks.bionic"
+  build-images = ["packs/build:v3alpha2"]
+  run-images = ["some-other/run", "packs/run:v3alpha2"]
+`))
+
+				h.AssertEq(t, len(subject.Stacks), 1)
+				h.AssertEq(t, subject.Stacks[0].ID, "io.buildpacks.stacks.bionic")
+				h.AssertEq(t, len(subject.Stacks[0].BuildImages), 1)
+				h.AssertEq(t, subject.Stacks[0].BuildImages[0], "packs/build:v3alpha2")
+				h.AssertEq(t, len(subject.Stacks[0].RunImages), 2)
+				h.AssertEq(t, subject.Stacks[0].RunImages[0], "some-other/run")
+				h.AssertEq(t, subject.Stacks[0].RunImages[1], "packs/run:v3alpha2")
+				h.AssertEq(t, subject.DefaultStackID, "io.buildpacks.stacks.bionic")
+				h.AssertEq(t, subject.DefaultBuilder, "packs/samples:v3alpha2")
 			})
 		})
 	})
@@ -336,8 +378,8 @@ default-stack-id = "stack-1"
   id = "stack-1"
 [[stacks]]
   id = "my.stack"
-	build-images = ["packs/build"]
-	run-images = ["packs/run"]
+	build-images = ["packs/build:v3alpha2"]
+	run-images = ["packs/run:v3alpha2"]
 [[stacks]]
   id = "stack-3"
 `), 0666))
@@ -372,7 +414,7 @@ default-stack-id = "stack-1"
 				stack, err := subject.Get("my.stack")
 				h.AssertNil(t, err)
 				h.AssertEq(t, stack.BuildImages, []string{"packs/build-2"})
-				h.AssertEq(t, stack.RunImages, []string{"packs/run"})
+				h.AssertEq(t, stack.RunImages, []string{"packs/run:v3alpha2"})
 
 				err = subject.Update("my.stack", config.Stack{
 					RunImages: []string{"packs/run-3"},
