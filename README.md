@@ -195,12 +195,14 @@ $ pack build my-app:my-tag --builder my-builder:my-tag --buildpack org.example.b
 ![create-builder diagram](docs/create-builder.svg)
 
 A builder is an image containing a collection of buildpacks that will be executed, in the order that they appear in
-`builder.toml`, against app source code. A buildpack's primary role is to inspect the source code, determine any
-dependencies that will be required to compile and/or run the app, and provide those dependencies as layers in the
-resulting image. This image's base will be the build image associated with a given stack.
+`builder.toml`, against app source code. This image's base will be the build image associated with a given stack.
 
-It's important to note that the buildpacks in a builder are not actually executed until
-[`build`](#building-explained) is run.
+> A buildpack's primary role is to inspect the source code, determine any
+> dependencies that will be required to compile and/or run the app, and provide those dependencies as layers in the
+> final app image. 
+> 
+> It's important to note that the buildpacks in a builder are not actually executed until
+> [`build`](#building-explained) is run.
 
 ## Managing stacks
 
