@@ -224,6 +224,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		var sourceCodePath string
 
 		it.Before(func() {
+			skipOnWindows(t, "cleaning up from this test is leaving containers on windows")
 			var err error
 			sourceCodePath, err = ioutil.TempDir("", "pack.build.node_app.")
 			if err != nil {
@@ -380,9 +381,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			if runtime.GOOS == "windows" {
-				t.Skip("create builder is not implemented on windows")
-			}
+			skipOnWindows(t, "create builder is not implemented on windows")
 			builderRepoName = "some-org/" + h.RandString(10)
 			repoName = "some-org/" + h.RandString(10)
 			containerName = "test-" + h.RandString(10)
@@ -717,6 +716,7 @@ func copyDirectory(srcDir, destDir string) error {
 	}
 	return nil
 }
+
 func fileExists(file string) (bool, error) {
 	_, err := os.Stat(file)
 	if err != nil {
@@ -824,5 +824,11 @@ func killDockerByRepoName(t *testing.T, repoName string) {
 		if ctr.Image == repoName {
 			h.AssertNil(t, dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{Force: true}))
 		}
+	}
+}
+
+func skipOnWindows(t *testing.T, message string) {
+	if runtime.GOOS == "windows" {
+		t.Skip(message)
 	}
 }
