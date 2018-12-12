@@ -295,7 +295,14 @@ $ cat ~/.pack/config.toml
 ----
 
 ## Development
+### Building
+To build pack, run:
+```
+go build ./cmd/pack
+```
+Note: This project uses [go modules](https://github.com/golang/go/wiki/Modules)
 
+### Testing
 To run the tests, simply run:
 
 ```bash
