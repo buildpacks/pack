@@ -6,8 +6,6 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
-	"github.com/buildpack/pack/logging"
-	"github.com/buildpack/pack/style"
 	"io"
 	"io/ioutil"
 	"os"
@@ -16,6 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
 
 	"github.com/buildpack/lifecycle/image"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -131,7 +132,6 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		Logger:      bf.Logger,
 		FS:          bf.FS,
 		Config:      bf.Config,
-		CacheVolume: fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(appDir))),
 	}
 
 	if f.EnvFile != "" {
@@ -208,6 +208,12 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		return nil, fmt.Errorf("invalid stack: stack %s from run image %s does not match stack %s from builder image %s", style.Symbol(runStackID), style.Symbol(b.RunImage), style.Symbol(builderStackID), style.Symbol(b.Builder))
 	}
 
+	b.CacheVolume, err = CacheVolume(f.RepoName)
+	if err != nil {
+		return nil, err
+	}
+
+	bf.Logger.Verbose(fmt.Sprintf("Using cache volume %s", style.Symbol(b.CacheVolume)))
 	return b, nil
 }
 
