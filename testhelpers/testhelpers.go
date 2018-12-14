@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -66,7 +67,7 @@ func AssertError(t *testing.T, actual error, expected string) {
 func AssertContains(t *testing.T, actual, expected string) {
 	t.Helper()
 	if !strings.Contains(actual, expected) {
-		t.Fatalf("Expected: '%s' inside '%s'", expected, actual)
+		t.Fatalf("Expected: '%s' to contain '%s'", actual, expected)
 	}
 }
 
@@ -77,7 +78,14 @@ func AssertSliceContains(t *testing.T, slice []string, value string) {
 			return
 		}
 	}
-	t.Fatalf("Expected: '%s' inside '%s'", value, slice)
+	t.Fatalf("Expected: '%s' to contain element '%s'", slice, value)
+}
+
+func AssertMatch(t *testing.T, actual string, expected *regexp.Regexp) {
+	t.Helper()
+	if !expected.Match([]byte(actual)) {
+		t.Fatal(cmp.Diff(actual, expected))
+	}
 }
 
 func AssertNil(t *testing.T, actual interface{}) {
@@ -230,7 +238,7 @@ func ConfigurePackHome(t *testing.T, packHome, registryPort string) {
 
 				[[stacks]]
 				  id = "io.buildpacks.stacks.bionic"
-				  build-images = ["%s"]
+				  build-image = "%s"
 				  run-images = ["%s"]
 			`, DefaultBuilderImage(t, registryPort), DefaultBuildImage(t, registryPort), DefaultRunImage(t, registryPort))), 0666))
 }

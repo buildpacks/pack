@@ -33,7 +33,6 @@ import (
 var pack string
 var dockerCli *docker.Client
 var registryPort string
-var packTag string
 
 func TestPack(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -84,7 +83,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 	when("subcommand is invalid", func() {
 		it("prints usage", func() {
-			cmd := exec.Command(pack, "some-bad-command")
+			cmd := packCmd("some-bad-command")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, _ := cmd.CombinedOutput()
 			if !strings.Contains(string(output), `unknown command "some-bad-command" for "pack"`) {
@@ -122,10 +121,10 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 		when("'--publish' flag is not specified'", func() {
 			it("builds and exports an image", func() {
-				cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath)
+				cmd := packCmd("build", repoName, "-p", sourceCodePath)
 				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
-				h.Run(t, cmd)
-
+				output := h.Run(t, cmd)
+				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 				runDockerImageExposePort(t, containerName, repoName)
 				launchPort := fetchHostPort(t, containerName)
 
@@ -140,55 +139,19 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			})
 		}, spec.Parallel(), spec.Report(report.Terminal{}))
 
-		when("'--buildpack' flag is specified", func() {
-			javaBpId := "io.buildpacks.samples.java"
-			it.Before(func() {
-				var err error
-				sourceCodePath, err = ioutil.TempDir("", "pack.build.maven_app.")
-				if err != nil {
-					t.Fatal(err)
-				}
-				h.AssertNil(t, copyDirectory("testdata/maven_app/.", sourceCodePath))
-			})
-
-			// Skip this test for now. The container run at the very end runs java -jar target/testdata-sample-app-1.0-SNAPSHOT.jar
-			// instead of java -jar target/testdata-sample-app-1.0-SNAPSHOT-jar-with-dependencies.jar, which ends
-			// up exiting immediately
-			it.Pend("assumes latest if no version is provided", func() {
-				cmd := exec.Command(pack, "build", repoName, "--buildpack", javaBpId, "-p", sourceCodePath)
-				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
-				buildOutput := h.Run(t, cmd)
-
-				h.AssertEq(t, strings.Contains(buildOutput, "DETECTING WITH MANUALLY-PROVIDED GROUP:"), true)
-				if strings.Contains(buildOutput, "Node.js Buildpack") {
-					t.Fatalf("should have skipped Node.js buildpack because --buildpack flag was provided")
-				}
-				latestInfo := fmt.Sprintf(`No version for '%s' buildpack provided, will use '%s@latest'`, javaBpId, javaBpId)
-				if !strings.Contains(buildOutput, latestInfo) {
-					t.Fatalf(`expected build output to contain "%s", got "%s"`, latestInfo, buildOutput)
-				}
-				h.AssertContains(t, buildOutput, "Sample Java Buildpack: pass")
-
-				runDockerImageExposePort(t, containerName, repoName)
-				launchPort := fetchHostPort(t, containerName)
-
-				waitForPort(t, launchPort, 10*time.Second)
-				h.AssertEq(t, h.HttpGet(t, "http://localhost:"+launchPort), "Maven buildpack worked!")
-			})
-		})
-
 		when("'--publish' flag is specified", func() {
 			it("builds and exports an image", func() {
 				runPackBuild := func() string {
 					t.Helper()
-					cmd := exec.Command(pack, "build", repoName, "-p", sourceCodePath, "--publish")
+					cmd := packCmd("build", repoName, "-p", sourceCodePath, "--publish")
 					cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 					return h.Run(t, cmd)
 				}
 				output := runPackBuild()
+				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 				imgSHA, err := imgSHAFromOutput(output, repoName)
 				if err != nil {
-					fmt.Println(output)
+					t.Log(output)
 					t.Fatal("Could not determine sha for built image")
 				}
 
@@ -243,7 +206,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 		it("starts an image", func() {
 			var buf bytes.Buffer
-			cmd := exec.Command(pack, "run", "--port", "3000", "-p", sourceCodePath)
+			cmd := packCmd("run", "--port", "3000", "-p", sourceCodePath)
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			cmd.Stdout = &buf
 			cmd.Stderr = &buf
@@ -281,11 +244,11 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 					USER pack
 				`, h.DefaultRunImage(t, registryPort), contents1, contents2))
 
-				cmd := exec.Command(
-					pack, "update-stack",
-					"io.buildpacks.stacks.bionic",
+				cmd := packCmd(
+					"update-stack", "io.buildpacks.stacks.bionic",
 					"--build-image", h.DefaultBuildImage(t, registryPort),
-					"--run-image", runImage)
+					"--run-image", runImage,
+				)
 				cmd.Env = []string{"PACK_HOME=" + packHome}
 				h.Run(t, cmd)
 			}
@@ -317,7 +280,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				buildAndSetRunImage(runBefore, "contents-before-1", "contents-before-2")
 
-				cmd := exec.Command(pack, "build", repoName, "-p", "testdata/node_app/", "--no-pull")
+				cmd := packCmd("build", repoName, "-p", "testdata/node_app/", "--no-pull")
 				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
 				origID = h.ImageID(t, repoName)
@@ -333,10 +296,11 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 				buildAndSetRunImage(runAfter, "contents-after-1", "contents-after-2")
 
-				cmd := exec.Command(pack, "rebase", repoName, "--no-pull")
+				cmd := packCmd("rebase", repoName, "--no-pull")
 				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
-				h.Run(t, cmd)
+				output := h.Run(t, cmd)
 
+				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
 				h.AssertEq(t, rootContents1(), "contents-after-1\n")
 			})
 		})
@@ -350,7 +314,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				buildAndSetRunImage(runBefore, "contents-before-1", "contents-before-2")
 				h.AssertNil(t, pushImage(dockerCli, runBefore))
 
-				cmd := exec.Command(pack, "build", repoName, "-p", "testdata/node_app/", "--publish")
+				cmd := packCmd("build", repoName, "-p", "testdata/node_app/", "--publish")
 				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 				h.Run(t, cmd)
 
@@ -363,11 +327,12 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				buildAndSetRunImage(runAfter, "contents-after-1", "contents-after-2")
 				h.AssertNil(t, pushImage(dockerCli, runAfter))
 
-				cmd := exec.Command(pack, "rebase", repoName, "--publish")
+				cmd := packCmd("rebase", repoName, "--publish")
 				cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
-				h.Run(t, cmd)
-				h.AssertNil(t, h.PullImage(dockerCli, repoName))
+				output := h.Run(t, cmd)
 
+				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
+				h.AssertNil(t, h.PullImage(dockerCli, repoName))
 				h.AssertEq(t, rootContents1(), "contents-after-1\n")
 			})
 		})
@@ -397,21 +362,13 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			sourceCodePath := filepath.Join("testdata", "mock_app")
 
 			t.Log("create builder image")
-			cmd := exec.Command(
-				pack, "create-builder",
-				builderRepoName,
-				"-b", builderTOML,
-			)
+			cmd := packCmd("create-builder", builderRepoName, "-b", builderTOML)
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
-			h.Run(t, cmd)
+			output := h.Run(t, cmd)
+			h.AssertContains(t, output, fmt.Sprintf("Successfully created builder image '%s'", builderRepoName))
 
 			t.Log("build uses order defined in builder.toml")
-			cmd = exec.Command(
-				pack, "build", repoName,
-				"--builder", builderRepoName,
-				"--no-pull",
-				"--path", sourceCodePath,
-			)
+			cmd = packCmd("build", repoName, "--builder", builderRepoName, "--path", sourceCodePath, "--no-pull")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			buildOutput, err := cmd.CombinedOutput()
 			h.AssertNil(t, err)
@@ -439,19 +396,19 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			t.Log("build with multiple --buildpack flags")
-			cmd = exec.Command(
-				pack, "build", repoName,
+			cmd = packCmd(
+				"build", repoName,
 				"--builder", builderRepoName,
-				"--no-pull",
 				"--buildpack", "mock.bp.first",
 				"--buildpack", "mock.bp.third@0.0.3-mock",
 				"--path", sourceCodePath,
+				"--no-pull",
 			)
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			buildOutput, err = cmd.CombinedOutput()
 			h.AssertNil(t, err)
 			defer func(origID string) { h.AssertNil(t, h.DockerRmi(dockerCli, origID)) }(h.ImageID(t, repoName))
-			latestInfo := `No version for 'mock.bp.first' buildpack provided, will use 'mock.bp.first@latest'`
+			latestInfo := "No version for 'mock.bp.first' buildpack provided, will use 'mock.bp.first@latest'"
 			if !strings.Contains(string(buildOutput), latestInfo) {
 				t.Fatalf(`expected build output to contain "%s", got "%s"`, latestInfo, buildOutput)
 			}
@@ -478,17 +435,17 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 	when("pack add-stack", func() {
 		it("adds a custom stack to ~/.pack/config.toml", func() {
-			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
+			cmd := packCmd("add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output := h.Run(t, cmd)
 
-			h.AssertEq(t, string(output), "my.custom.stack successfully added\n")
+			h.AssertEq(t, string(output), "Stack 'my.custom.stack' added\n")
 
 			var config struct {
 				Stacks []struct {
-					ID          string   `toml:"id"`
-					BuildImages []string `toml:"build-images"`
-					RunImages   []string `toml:"run-images"`
+					ID         string   `toml:"id"`
+					BuildImage string   `toml:"build-image"`
+					RunImages  []string `toml:"run-images"`
 				} `toml:"stacks"`
 			}
 			_, err := toml.DecodeFile(filepath.Join(packHome, "config.toml"), &config)
@@ -496,7 +453,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 			stack := config.Stacks[len(config.Stacks)-1]
 			h.AssertEq(t, stack.ID, "my.custom.stack")
-			h.AssertEq(t, stack.BuildImages, []string{"my-org/build"})
+			h.AssertEq(t, stack.BuildImage, "my-org/build")
 			h.AssertEq(t, stack.RunImages, []string{"my-org/run"})
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -504,14 +461,14 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	when("pack update-stack", func() {
 		type config struct {
 			Stacks []struct {
-				ID          string   `toml:"id"`
-				BuildImages []string `toml:"build-images"`
-				RunImages   []string `toml:"run-images"`
+				ID         string   `toml:"id"`
+				BuildImage string   `toml:"build-image"`
+				RunImages  []string `toml:"run-images"`
 			} `toml:"stacks"`
 		}
 
 		it.Before(func() {
-			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
+			cmd := packCmd("add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
@@ -520,13 +477,18 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("updates an existing custom stack in ~/.pack/config.toml", func() {
-			cmd := exec.Command(pack, "update-stack", "my.custom.stack", "--run-image", "my-org/run-2", "--run-image", "my-org/run-3", "--build-image", "my-org/build-2", "--build-image", "my-org/build-3")
+			cmd := packCmd(
+				"update-stack", "my.custom.stack",
+				"--run-image", "my-org/run-2",
+				"--run-image", "my-org/run-3",
+				"--build-image", "my-org/build-2",
+			)
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("update-stack command failed: %s: %s", output, err)
 			}
-			h.AssertEq(t, string(output), "my.custom.stack successfully updated\n")
+			h.AssertEq(t, string(output), "Stack 'my.custom.stack' updated\n")
 
 			var config config
 			_, err = toml.DecodeFile(filepath.Join(packHome, "config.toml"), &config)
@@ -534,7 +496,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 			stack := config.Stacks[len(config.Stacks)-1]
 			h.AssertEq(t, stack.ID, "my.custom.stack")
-			h.AssertEq(t, stack.BuildImages, []string{"my-org/build-2", "my-org/build-3"})
+			h.AssertEq(t, stack.BuildImage, "my-org/build-2")
 			h.AssertEq(t, stack.RunImages, []string{"my-org/run-2", "my-org/run-3"})
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
@@ -545,7 +507,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		it.Before(func() {
-			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
+			cmd := packCmd("add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
@@ -554,17 +516,13 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			cmd := exec.Command(
-				pack,
-				"set-default-stack",
-				"my.custom.stack",
-			)
+			cmd := packCmd("set-default-stack", "my.custom.stack")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("set-default-stack command failed: %s: %s", output, err)
 			}
-			h.AssertEq(t, string(output), "my.custom.stack is now the default stack\n")
+			h.AssertEq(t, string(output), "Stack 'my.custom.stack' is now the default stack\n")
 
 			var config config
 			_, err = toml.DecodeFile(filepath.Join(packHome, "config.toml"), &config)
@@ -576,9 +534,9 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	when("pack delete-stack", func() {
 		type config struct {
 			Stacks []struct {
-				ID          string   `toml:"id"`
-				BuildImages []string `toml:"build-images"`
-				RunImages   []string `toml:"run-images"`
+				ID         string   `toml:"id"`
+				BuildImage string   `toml:"build-image"`
+				RunImages  []string `toml:"run-images"`
 			} `toml:"stacks"`
 		}
 		containsStack := func(c config, stackID string) bool {
@@ -591,7 +549,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		it.Before(func() {
-			cmd := exec.Command(pack, "add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
+			cmd := packCmd("add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
@@ -606,13 +564,13 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			numStacks := len(config.Stacks)
 			h.AssertEq(t, containsStack(config, "my.custom.stack"), true)
 
-			cmd := exec.Command(pack, "delete-stack", "my.custom.stack")
+			cmd := packCmd("delete-stack", "my.custom.stack")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("add-stack command failed: %s: %s", output, err)
 			}
-			h.AssertEq(t, string(output), "my.custom.stack has been successfully deleted\n")
+			h.AssertEq(t, string(output), "Stack 'my.custom.stack' deleted\n")
 
 			_, err = toml.DecodeFile(filepath.Join(packHome, "config.toml"), &config)
 			h.AssertNil(t, err)
@@ -627,17 +585,13 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			cmd := exec.Command(
-				pack,
-				"set-default-builder",
-				"some/builder",
-			)
+			cmd := packCmd("set-default-builder", "some/builder")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("set-default-builder command failed: %s: %s", output, err)
 			}
-			h.AssertEq(t, string(output), "Successfully set 'some/builder' as default builder.\n")
+			h.AssertEq(t, string(output), "Builder 'some/builder' is now the default builder\n")
 
 			var config config
 			_, err = toml.DecodeFile(filepath.Join(packHome, "config.toml"), &config)
@@ -647,8 +601,19 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-// TODO: fetchHostPort, proxyDockerHostPort, and runRegistry are duplicated
-// here and in build_test.go. Find a common spot for them.
+func packCmd(name string, args ...string) *exec.Cmd {
+	cmdArgs := append([]string{
+		name,
+		"--verbose",
+		"--no-color",
+	}, args...)
+
+	return exec.Command(
+		pack,
+		cmdArgs...,
+	)
+}
+
 func fetchHostPort(t *testing.T, dockerID string) string {
 	t.Helper()
 
@@ -813,18 +778,6 @@ func ctrlCProc(cmd *exec.Cmd) error {
 	}
 	_, err := cmd.Process.Wait()
 	return err
-}
-
-func killDockerByRepoName(t *testing.T, repoName string) {
-	t.Helper()
-	containers, err := dockerCli.ContainerList(context.Background(), dockertypes.ContainerListOptions{})
-	h.AssertNil(t, err)
-
-	for _, ctr := range containers {
-		if ctr.Image == repoName {
-			h.AssertNil(t, dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{Force: true}))
-		}
-	}
 }
 
 func skipOnWindows(t *testing.T, message string) {

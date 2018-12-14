@@ -6,9 +6,10 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
+	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -33,9 +34,7 @@ import (
 
 type BuildFactory struct {
 	Cli          Docker
-	Stdout       io.Writer
-	Stderr       io.Writer
-	Log          *log.Logger
+	Logger       *logging.Logger
 	FS           FS
 	Config       *config.Config
 	ImageFactory ImageFactory
@@ -63,9 +62,7 @@ type BuildConfig struct {
 	Buildpacks []string
 	// Above are copied from BuildFlags are set by init
 	Cli    Docker
-	Stdout io.Writer
-	Stderr io.Writer
-	Log    *log.Logger
+	Logger *logging.Logger
 	FS     FS
 	Config *config.Config
 	// Above are copied from BuildFactory
@@ -74,7 +71,6 @@ type BuildConfig struct {
 
 const (
 	launchDir     = "/workspace"
-	cacheDir      = "/cache"
 	buildpacksDir = "/buildpacks"
 	platformDir   = "/platform"
 	orderPath     = "/buildpacks/order.toml"
@@ -82,11 +78,9 @@ const (
 	planPath      = "/workspace/plan.toml"
 )
 
-func DefaultBuildFactory() (*BuildFactory, error) {
+func DefaultBuildFactory(logger *logging.Logger) (*BuildFactory, error) {
 	f := &BuildFactory{
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-		Log:    log.New(os.Stdout, "", log.LstdFlags),
+		Logger: logger,
 		FS:     &fs.FS{},
 	}
 
@@ -110,13 +104,13 @@ func DefaultBuildFactory() (*BuildFactory, error) {
 }
 
 func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error) {
-	if f.AppDir == "current working directory" { // default placeholder
+	if f.AppDir == "" {
 		var err error
 		f.AppDir, err = os.Getwd()
 		if err != nil {
 			return nil, err
 		}
-		bf.Log.Printf("Defaulting app directory to current working directory '%s' (use --path to override)", f.AppDir)
+		bf.Logger.Verbose("Defaulting app directory to current working directory %s (use --path to override)", style.Symbol(f.AppDir))
 	}
 	appDir, err := filepath.Abs(f.AppDir)
 	if err != nil {
@@ -128,17 +122,15 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 
 	b := &BuildConfig{
-		AppDir:     appDir,
-		RepoName:   f.RepoName,
-		Publish:    f.Publish,
-		NoPull:     f.NoPull,
-		Buildpacks: f.Buildpacks,
-		Cli:        bf.Cli,
-		Stdout:     bf.Stdout,
-		Stderr:     bf.Stderr,
-		Log:        bf.Log,
-		FS:         bf.FS,
-		Config:     bf.Config,
+		AppDir:      appDir,
+		RepoName:    f.RepoName,
+		Publish:     f.Publish,
+		NoPull:      f.NoPull,
+		Buildpacks:  f.Buildpacks,
+		Cli:         bf.Cli,
+		Logger:      bf.Logger,
+		FS:          bf.FS,
+		Config:      bf.Config,
 		CacheVolume: fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(appDir))),
 	}
 
@@ -150,14 +142,14 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 
 	if f.Builder == "" {
-		bf.Log.Printf("Using default builder image '%s'\n", bf.Config.DefaultBuilder)
+		bf.Logger.Verbose("Using default builder image %s", style.Symbol(bf.Config.DefaultBuilder))
 		b.Builder = bf.Config.DefaultBuilder
 	} else {
-		bf.Log.Printf("Using user provided builder image '%s'\n", f.Builder)
+		bf.Logger.Verbose("Using user-provided builder image %s", style.Symbol(f.Builder))
 		b.Builder = f.Builder
 	}
 	if !f.NoPull {
-		bf.Log.Printf("Pulling builder image '%s' (use --no-pull flag to skip this step)", b.Builder)
+		bf.Logger.Verbose("Pulling builder image %s (use --no-pull flag to skip this step)", style.Symbol(b.Builder))
 	}
 
 	builderImage, err := bf.ImageFactory.NewLocal(b.Builder, !f.NoPull)
@@ -167,10 +159,10 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 
 	builderStackID, err := builderImage.Label("io.buildpacks.stack.id")
 	if err != nil {
-		return nil, fmt.Errorf(`invalid builder image "%s": %s`, b.Builder, err)
+		return nil, fmt.Errorf("invalid builder image %s: %s", style.Symbol(b.Builder), err)
 	}
 	if builderStackID == "" {
-		return nil, fmt.Errorf(`invalid builder image "%s": missing required label "io.buildpacks.stack.id"`, b.Builder)
+		return nil, fmt.Errorf("invalid builder image %s: missing required label %s", style.Symbol(b.Builder), style.Symbol("io.buildpacks.stack.id"))
 	}
 	stack, err := bf.Config.Get(builderStackID)
 	if err != nil {
@@ -178,7 +170,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 
 	if f.RunImage != "" {
-		bf.Log.Printf("Using user provided run image '%s'\n", f.RunImage)
+		bf.Logger.Verbose("Using user-provided run image %s", style.Symbol(f.RunImage))
 		b.RunImage = f.RunImage
 	} else {
 		reg, err := config.Registry(f.RepoName)
@@ -189,7 +181,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		if err != nil {
 			return nil, err
 		}
-		b.Log.Printf("Selected run image '%s' from stack '%s'\n", b.RunImage, builderStackID)
+		b.Logger.Verbose("Selected run image %s from stack %s", style.Symbol(b.RunImage), style.Symbol(builderStackID))
 	}
 
 	var runImage image.Image
@@ -200,7 +192,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		}
 	} else {
 		if !f.NoPull {
-			bf.Log.Printf("Pulling run image '%s' (use --no-pull flag to skip this step)", b.RunImage)
+			bf.Logger.Verbose("Pulling run image %s (use --no-pull flag to skip this step)", style.Symbol(b.RunImage))
 		}
 		runImage, err = bf.ImageFactory.NewLocal(b.RunImage, !f.NoPull)
 		if err != nil {
@@ -209,18 +201,18 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 
 	if runStackID, err := runImage.Label("io.buildpacks.stack.id"); err != nil {
-		return nil, fmt.Errorf(`invalid run image "%s": %s`, b.RunImage, err)
+		return nil, fmt.Errorf("invalid run image %s: %s", style.Symbol(b.RunImage), err)
 	} else if runStackID == "" {
-		return nil, fmt.Errorf(`invalid run image "%s": missing required label "io.buildpacks.stack.id"`, b.RunImage)
+		return nil, fmt.Errorf("invalid run image %s: missing required label %s", style.Symbol(b.RunImage), style.Symbol("io.buildpacks.stack.id"))
 	} else if builderStackID != runStackID {
-		return nil, fmt.Errorf(`invalid stack: stack "%s" from run image "%s" does not match stack "%s" from builder image "%s"`, runStackID, b.RunImage, builderStackID, b.Builder)
+		return nil, fmt.Errorf("invalid stack: stack %s from run image %s does not match stack %s from builder image %s", style.Symbol(runStackID), style.Symbol(b.RunImage), style.Symbol(builderStackID), style.Symbol(b.Builder))
 	}
 
 	return b, nil
 }
 
-func Build(appDir, buildImage, runImage, repoName string, publish bool) error {
-	bf, err := DefaultBuildFactory()
+func Build(logger *logging.Logger, appDir, buildImage, runImage, repoName string, publish bool) error {
+	bf, err := DefaultBuildFactory(logger)
 	if err != nil {
 		return err
 	}
@@ -242,17 +234,18 @@ func (b *BuildConfig) Run() error {
 		return err
 	}
 
-	fmt.Println("*** ANALYZING: Reading information from previous image for possible re-use")
+	b.Logger.Verbose(style.Step("ANALYZING"))
+	b.Logger.Verbose("Reading information from previous image for possible re-use")
 	if err := b.Analyze(); err != nil {
 		return err
 	}
 
-	fmt.Println("*** BUILDING:")
+	b.Logger.Verbose(style.Step("BUILDING"))
 	if err := b.Build(); err != nil {
 		return err
 	}
 
-	fmt.Println("*** EXPORTING:")
+	b.Logger.Verbose(style.Step("EXPORTING"))
 	if err := b.Export(); err != nil {
 		return err
 	}
@@ -260,12 +253,12 @@ func (b *BuildConfig) Run() error {
 	return nil
 }
 
-func parseBuildpack(ref string) (string, string) {
+func (b *BuildConfig) parseBuildpack(ref string) (string, string) {
 	parts := strings.Split(ref, "@")
 	if len(parts) == 2 {
 		return parts[0], parts[1]
 	}
-	fmt.Printf("No version for '%s' buildpack provided, will use '%s@latest'\n", parts[0], parts[0])
+	b.Logger.Verbose("No version for %s buildpack provided, will use %s", style.Symbol(parts[0]), style.Symbol(parts[0]+"@latest"))
 	return parts[0], "latest"
 }
 
@@ -296,7 +289,7 @@ func (b *BuildConfig) copyBuildpacksToContainer(ctx context.Context, ctrID strin
 				return nil, errors.Wrapf(err, "copying buildpack '%s' to container", bp)
 			}
 		} else {
-			id, version = parseBuildpack(bp)
+			id, version = b.parseBuildpack(bp)
 		}
 		buildpacks = append(
 			buildpacks,
@@ -328,11 +321,11 @@ func (b *BuildConfig) Detect() error {
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
 	var orderToml string
+	b.Logger.Verbose(style.Step("DETECTING"))
 	if len(b.Buildpacks) == 0 {
-		fmt.Fprintln(b.Stdout, "*** DETECTING:")
-		orderToml = "" // use order toml already in image
+		orderToml = "" // use order.toml already in image
 	} else {
-		fmt.Fprintln(b.Stdout, "*** DETECTING WITH MANUALLY-PROVIDED GROUP:")
+		b.Logger.Verbose("Using manually-provided group")
 
 		buildpacks, err := b.copyBuildpacksToContainer(ctx, ctr.ID)
 		if err != nil {
@@ -354,8 +347,7 @@ func (b *BuildConfig) Detect() error {
 	}
 
 	tr, errChan := b.FS.CreateTarReader(b.AppDir, launchDir+"/app", 0, 0)
-	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{
-	}); err != nil {
+	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
 		return errors.Wrap(err, "copy app to workspace volume")
 	}
 	if err := <-errChan; err != nil {
@@ -375,13 +367,17 @@ func (b *BuildConfig) Detect() error {
 		if err != nil {
 			return errors.Wrap(err, "converting order TOML to tar reader")
 		}
-		if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", ftr, dockertypes.CopyToContainerOptions{
-		}); err != nil {
+		if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
 			return errors.Wrap(err, fmt.Sprintf("creating %s", orderPath))
 		}
 	}
 
-	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
+	if err := b.Cli.RunContainer(
+		ctx,
+		ctr.ID,
+		b.Logger.VerboseWriter().WithPrefix("detector"),
+		b.Logger.VerboseErrorWriter().WithPrefix("detector"),
+	); err != nil {
 		return errors.Wrap(err, "run detect container")
 	}
 	return nil
@@ -430,7 +426,12 @@ func (b *BuildConfig) Analyze() error {
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
 
-	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
+	if err := b.Cli.RunContainer(
+		ctx,
+		ctr.ID,
+		b.Logger.VerboseWriter().WithPrefix("analyzer"),
+		b.Logger.VerboseErrorWriter().WithPrefix("analyzer"),
+	); err != nil {
 		return errors.Wrap(err, "analyze run container")
 	}
 
@@ -496,8 +497,12 @@ func (b *BuildConfig) Build() error {
 		}
 	}
 
-	err = b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr)
-	if err != nil {
+	if err = b.Cli.RunContainer(
+		ctx,
+		ctr.ID,
+		b.Logger.VerboseWriter().WithPrefix("builder"),
+		b.Logger.VerboseErrorWriter().WithPrefix("builder"),
+	); err != nil {
 		return errors.Wrap(err, "running builder in container")
 	}
 	return nil
@@ -598,7 +603,12 @@ func (b *BuildConfig) Export() error {
 		return errors.Wrap(err, "chown launch dir")
 	}
 
-	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
+	if err := b.Cli.RunContainer(
+		ctx,
+		ctr.ID,
+		b.Logger.VerboseWriter().WithPrefix("exporter"),
+		b.Logger.VerboseErrorWriter().WithPrefix("exporter"),
+	); err != nil {
 		return errors.Wrap(err, "run lifecycle/exporter")
 	}
 	return nil
@@ -648,7 +658,7 @@ func (b *BuildConfig) chownDir(path string, uid, gid int) error {
 		return err
 	}
 	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
-	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Stdout, b.Stderr); err != nil {
+	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Logger.VerboseWriter(), b.Logger.VerboseErrorWriter()); err != nil {
 		return err
 	}
 	return nil

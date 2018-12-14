@@ -5,8 +5,9 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
+	"github.com/buildpack/pack/logging"
+	"github.com/fatih/color"
 	"io"
-	"log"
 	"math/rand"
 	"path/filepath"
 	"reflect"
@@ -28,13 +29,16 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "run", testRun, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testRun(t *testing.T, when spec.G, it spec.S) {
 	var (
-		buf            bytes.Buffer
+		outBuf         bytes.Buffer
+		errBuf         bytes.Buffer
+		logger         *logging.Logger
 		mockController *gomock.Controller
 		mockBuild      *mocks.MockTask
 		mockDocker     *mocks.MockDocker
@@ -44,6 +48,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockBuild = mocks.NewMockTask(mockController)
 		mockDocker = mocks.NewMockDocker(mockController)
+		logger = logging.NewLogger(&outBuf, &errBuf, true, false)
 	})
 
 	it.After(func() {
@@ -62,9 +67,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			mockImageFactory = mocks.NewMockImageFactory(mockController)
 			factory = &pack.BuildFactory{
 				Cli:          mockDocker,
-				Stdout:       &buf,
-				Stderr:       &buf,
-				Log:          log.New(&buf, "", log.LstdFlags|log.Lshortfile),
+				Logger:       logger,
 				FS:           &fs.FS{},
 				ImageFactory: mockImageFactory,
 				Config: &config.Config{
@@ -98,23 +101,21 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 					Builder:  "some/builder",
 					RunImage: "some/run",
 				},
-				Port: "1370",
+				Ports: []string{"1370"},
 			})
 			h.AssertNil(t, err)
 
 			absAppDir, _ := filepath.Abs("acceptance/testdata/node_app")
 			absAppDirMd5 := fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(absAppDir)))
 			h.AssertEq(t, run.RepoName, absAppDirMd5)
-			h.AssertEq(t, run.Port, "1370")
+			h.AssertEq(t, run.Ports, []string{"1370"})
 
 			build, ok := run.Build.(*pack.BuildConfig)
 			h.AssertEq(t, ok, true)
 			for _, field := range []string{
 				"RepoName",
 				"Cli",
-				"Stdout",
-				"Stderr",
-				"Log",
+				"Logger",
 			} {
 				h.AssertSameInstance(
 					t,
@@ -143,11 +144,9 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			subject = &pack.RunConfig{
 				Build:    mockBuild,
 				RepoName: "pack.local/run/346ffb210a2c6d138c8d058d6d4025a0",
-				Port:     "1370",
+				Ports:    []string{"1370"},
 				Cli:      mockDocker,
-				Log:      log.New(&buf, "", log.LstdFlags|log.Lshortfile),
-				Stdout:   &buf,
-				Stderr:   &buf,
+				Logger:   logger,
 			}
 			ctr = container.ContainerCreateCreatedBody{
 				ID: "29aef5a011dd",
@@ -169,12 +168,12 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			}, nil, "").Return(ctr, nil)
 
 			mockDocker.EXPECT().ContainerRemove(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
-			mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, subject.Stdout, subject.Stderr).Return(nil)
+			mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, gomock.Any(), gomock.Any()).Return(nil)
 
 			err := subject.Run(makeStopCh)
 			h.AssertNil(t, err)
 
-			h.AssertContains(t, buf.String(), "Starting container listening at http://localhost:1370/")
+			h.AssertContains(t, outBuf.String(), "Starting container listening at http://localhost:1370/")
 		})
 
 		when("the build fails", func() {
@@ -202,7 +201,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 					syncCh <- struct{}{}
 					return nil
 				})
-				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, subject.Stdout, subject.Stderr).DoAndReturn(func(ctx context.Context, id string, stdout io.Writer, stderr io.Writer) error {
+				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, stdout io.Writer, stderr io.Writer) error {
 					stopCh <- struct{}{}
 					// wait for ContainerRemove to be called
 					<-syncCh
@@ -216,7 +215,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 
 		when("the port is not specified", func() {
 			it.Before(func() {
-				subject.Port = ""
+				subject.Ports = nil
 			})
 
 			it("gets exposed ports from the built image", func() {
@@ -241,7 +240,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 					PortBindings: portBindings,
 				}, nil, "").Return(ctr, nil)
 
-				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, subject.Stdout, subject.Stderr).Return(nil)
+				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, gomock.Any(), gomock.Any()).Return(nil)
 
 				err := subject.Run(makeStopCh)
 				h.AssertNil(t, err)
@@ -251,7 +250,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			it("binds simple ports from localhost to the container on the same port", func() {
 				mockBuild.EXPECT().Run().Return(nil)
 
-				subject.Port = "1370"
+				subject.Ports = []string{"1370"}
 				exposedPorts, portBindings, _ := nat.ParsePortSpecs([]string{
 					"127.0.0.1:1370:1370/tcp",
 				})
@@ -265,7 +264,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 					PortBindings: portBindings,
 				}, nil, "").Return(ctr, nil)
 
-				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, subject.Stdout, subject.Stderr).Return(nil)
+				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, gomock.Any(), gomock.Any()).Return(nil)
 
 				err := subject.Run(makeStopCh)
 				h.AssertNil(t, err)
@@ -273,7 +272,10 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			it("binds each port to the container", func() {
 				mockBuild.EXPECT().Run().Return(nil)
 
-				subject.Port = "0.0.0.0:8080:8080/tcp, 0.0.0.0:8443:8443/tcp"
+				subject.Ports = []string{
+					"0.0.0.0:8080:8080/tcp",
+					"0.0.0.0:8443:8443/tcp",
+				}
 				exposedPorts, portBindings, _ := nat.ParsePortSpecs([]string{
 					"0.0.0.0:8080:8080/tcp",
 					"0.0.0.0:8443:8443/tcp",
@@ -288,7 +290,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 					PortBindings: portBindings,
 				}, nil, "").Return(ctr, nil)
 
-				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, subject.Stdout, subject.Stderr).Return(nil)
+				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, gomock.Any(), gomock.Any()).Return(nil)
 
 				err := subject.Run(makeStopCh)
 				h.AssertNil(t, err)

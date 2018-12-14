@@ -3,7 +3,8 @@ package pack_test
 import (
 	"bytes"
 	"encoding/json"
-	"log"
+	"github.com/buildpack/pack/logging"
+	"github.com/fatih/color"
 	"testing"
 
 	"github.com/buildpack/lifecycle"
@@ -18,6 +19,7 @@ import (
 )
 
 func TestRebase(t *testing.T) {
+	color.NoColor = true
 	spec.Run(t, "rebase", testRebase, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -30,26 +32,27 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			mockController   *gomock.Controller
 			mockImageFactory *mocks.MockImageFactory
 			factory          pack.RebaseFactory
-			buf              bytes.Buffer
+			outBuf           bytes.Buffer
+			errBuff          bytes.Buffer
 		)
 		it.Before(func() {
 			mockController = gomock.NewController(t)
 			mockImageFactory = mocks.NewMockImageFactory(mockController)
 
 			factory = pack.RebaseFactory{
-				Log: log.New(&buf, "", log.LstdFlags),
+				Logger: logging.NewLogger(&outBuf, &errBuff, false, false),
 				Config: &config.Config{
 					DefaultStackID: "some.default.stack",
 					Stacks: []config.Stack{
 						{
-							ID:          "some.default.stack",
-							BuildImages: []string{"default/build", "registry.com/build/image"},
-							RunImages:   []string{"default/run"},
+							ID:         "some.default.stack",
+							BuildImage: "default/build",
+							RunImages:  []string{"default/run"},
 						},
 						{
-							ID:          "some.other.stack",
-							BuildImages: []string{"other/build"},
-							RunImages:   []string{"other/run"},
+							ID:         "some.other.stack",
+							BuildImage: "other/build",
+							RunImages:  []string{"other/run"},
 						},
 					},
 				},
@@ -133,7 +136,6 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				mockBaseImage.EXPECT().TopLayer().Return("some-top-layer", nil)
 				mockBaseImage.EXPECT().Digest().Return("some-sha", nil)
 				mockImage := mocks.NewMockImage(mockController)
-				mockImage.EXPECT().Name().Return("my-org/my-repo")
 				mockImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
 					Return(`{"runimage":{"topLayer":"old-top-layer"}, "app":{"sha":"data"}}`, nil)
 				mockImage.EXPECT().Rebase("old-top-layer", mockBaseImage)
@@ -153,7 +155,6 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				}
 				err := factory.Rebase(rebaseConfig)
 				h.AssertNil(t, err)
-				h.AssertContains(t, buf.String(), "Successfully replaced my-org/my-repo with some-digest\n")
 			})
 		})
 	})

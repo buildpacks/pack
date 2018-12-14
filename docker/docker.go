@@ -51,7 +51,6 @@ func (d *Client) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 			return fmt.Errorf("failed with status code: %d", body.StatusCode)
 		}
 	case err := <-errChan:
-		fmt.Printf("ERR: %#v\n", err)
 		return err
 	}
 	return <-copyErr

@@ -5,8 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/buildpack/pack/logging"
+	"github.com/fatih/color"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -35,6 +36,7 @@ import (
 var registryPort string
 
 func TestBuild(t *testing.T) {
+	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	registryPort = h.RunRegistry(t, true)
@@ -50,11 +52,14 @@ func TestBuild(t *testing.T) {
 
 func testBuild(t *testing.T, when spec.G, it spec.S) {
 	var subject *pack.BuildConfig
-	var buf bytes.Buffer
+	var outBuf bytes.Buffer
+	var errBuf bytes.Buffer
 	var dockerCli *docker.Client
+	var logger *logging.Logger
 
 	it.Before(func() {
 		var err error
+		logger = logging.NewLogger(&outBuf, &errBuf, true, false)
 		subject = &pack.BuildConfig{
 			AppDir:      "acceptance/testdata/node_app",
 			Builder:     h.DefaultBuilderImage(t, registryPort),
@@ -62,12 +67,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			RepoName:    "pack.build." + h.RandString(10),
 			Publish:     false,
 			CacheVolume: fmt.Sprintf("pack-cache-%x", uuid.New().String()),
-			Stdout:      &buf,
-			Stderr:      &buf,
-			Log:         log.New(&buf, "", log.LstdFlags|log.Lshortfile),
+			Logger:      logger,
 			FS:          &fs.FS{},
 		}
-		log.SetOutput(ioutil.Discard)
 		dockerCli, err = docker.New()
 		subject.Cli = dockerCli
 		h.AssertNil(t, err)
@@ -102,8 +104,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				},
-				Cli: mockDocker,
-				Log: log.New(&buf, "", log.LstdFlags|log.Lshortfile),
+				Cli:    mockDocker,
+				Logger: logger,
 			}
 		})
 
@@ -238,7 +240,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				RunImage: "override/run",
 				Publish:  true,
 			})
-			h.AssertError(t, err, `invalid stack: stack "other.stack.id" from run image "override/run" does not match stack "some.stack.id" from builder image "some/builder"`)
+			h.AssertError(t, err, "invalid stack: stack 'other.stack.id' from run image 'override/run' does not match stack 'some.stack.id' from builder image 'some/builder'")
 		})
 
 		it("uses working dir if appDir is set to placeholder value", func() {
@@ -254,7 +256,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				RepoName: "some/app",
 				Builder:  "some/builder",
 				Publish:  true,
-				AppDir:   "current working directory",
+				AppDir:   "",
 			})
 			h.AssertNil(t, err)
 			h.AssertEq(t, config.RunImage, "some/run")
@@ -271,7 +273,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				RepoName: "some/app",
 				Builder:  "some/builder",
 			})
-			h.AssertError(t, err, `invalid builder image "some/builder": missing required label "io.buildpacks.stack.id"`)
+			h.AssertError(t, err, "invalid builder image 'some/builder': missing required label 'io.buildpacks.stack.id'")
 		})
 
 		it("sets EnvFile", func() {
@@ -283,7 +285,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			mockRunImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
 			mockImageFactory.EXPECT().NewLocal("some/run", true).Return(mockRunImage, nil)
 
-			envFile, err := ioutil.TempFile("", "pack.build.enfile")
+			envFile, err := ioutil.TempFile("", "pack.build.envfile")
 			h.AssertNil(t, err)
 			defer os.Remove(envFile.Name())
 
@@ -370,7 +372,7 @@ PATH
 
 					h.AssertNil(t, subject.Detect())
 
-					h.AssertContains(t, buf.String(), `My Sample Buildpack: pass`)
+					h.AssertContains(t, outBuf.String(), `My Sample Buildpack: pass`)
 				})
 			})
 			when("id@version buildpack", func() {
@@ -381,7 +383,7 @@ PATH
 
 					h.AssertNil(t, subject.Detect())
 
-					h.AssertContains(t, buf.String(), `Sample Node.js Buildpack: pass`)
+					h.AssertContains(t, outBuf.String(), `Sample Node.js Buildpack: pass`)
 				})
 			})
 		})
@@ -409,7 +411,7 @@ PATH
 				it("informs the user", func() {
 					err := subject.Analyze()
 					h.AssertNil(t, err)
-					h.AssertContains(t, buf.String(), "WARNING: skipping analyze")
+					h.AssertContains(t, outBuf.String(), "WARNING: skipping analyze")
 				})
 			})
 			when("daemon", func() {
@@ -417,7 +419,7 @@ PATH
 				it("informs the user", func() {
 					err := subject.Analyze()
 					h.AssertNil(t, err)
-					h.AssertContains(t, buf.String(), "WARNING: skipping analyze")
+					h.AssertContains(t, outBuf.String(), "WARNING: skipping analyze")
 				})
 			})
 		})
@@ -528,7 +530,7 @@ cache = false
 					h.AssertNil(t, subject.Detect())
 					h.AssertNil(t, subject.Build())
 
-					h.AssertContains(t, buf.String(), "BUILD OUTPUT FROM MY SAMPLE BUILDPACK")
+					h.AssertContains(t, outBuf.String(), "BUILD OUTPUT FROM MY SAMPLE BUILDPACK")
 				})
 			})
 			when("id@version buildpack", func() {
@@ -538,7 +540,7 @@ cache = false
 					h.AssertNil(t, subject.Detect())
 					h.AssertNil(t, subject.Build())
 
-					h.AssertContains(t, buf.String(), "npm notice created a lockfile as package-lock.json. You should commit this file.")
+					h.AssertContains(t, outBuf.String(), "Sample Node.js Buildpack: pass")
 				})
 			})
 		})
@@ -557,8 +559,8 @@ cache = false
 
 				h.AssertNil(t, subject.Build())
 
-				h.AssertContains(t, buf.String(), "ENV: VAR1 is value1;")
-				h.AssertContains(t, buf.String(), "ENV: VAR2 is value2 with spaces;")
+				h.AssertContains(t, outBuf.String(), "ENV: VAR1 is value1;")
+				h.AssertContains(t, outBuf.String(), "ENV: VAR2 is value2 with spaces;")
 			})
 		})
 	})
@@ -605,7 +607,7 @@ cache = false
 			})
 
 			it.After(func() {
-				fmt.Println("OUTPUT:", buf.String())
+				t.Log("OUTPUT:", outBuf.String())
 			})
 
 			it("creates the image on the registry", func() {
@@ -635,7 +637,7 @@ cache = false
 				defer h.DockerRmi(dockerCli, subject.RepoName)
 				var metadata lifecycle.AppImageMetadata
 				metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
-				fmt.Println(metadataJSON)
+				t.Log(metadataJSON)
 				h.AssertNil(t, json.Unmarshal([]byte(metadataJSON), &metadata))
 
 				h.AssertEq(t, metadata.RunImage.SHA, runSHA)
@@ -653,7 +655,7 @@ cache = false
 			it.Before(func() { subject.Publish = false })
 
 			it.After(func() {
-				fmt.Println("OUTPUT:", buf.String())
+				t.Log("OUTPUT:", outBuf.String())
 				h.AssertNil(t, h.DockerRmi(dockerCli, subject.RepoName))
 			})
 
@@ -728,7 +730,7 @@ cache = false
 					h.AssertEq(t, txt, "content")
 
 					t.Log("setup workspace to reuse layer")
-					buf.Reset()
+					outBuf.Reset()
 					runInImage(t, dockerCli,
 						[]string{subject.CacheVolume + ":/workspace"},
 						h.DefaultBuilderImage(t, registryPort),

@@ -3,8 +3,8 @@ package pack
 import (
 	"context"
 	"fmt"
-	"io"
-	"log"
+	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
 	"strconv"
 	"strings"
 
@@ -16,18 +16,16 @@ import (
 
 type RunFlags struct {
 	BuildFlags BuildFlags
-	Port       string
+	Ports      []string
 }
 
 type RunConfig struct {
-	Port  string
+	Ports []string
 	Build Task
 	// All below are from BuildConfig
 	RepoName string
 	Cli      Docker
-	Stdout   io.Writer
-	Stderr   io.Writer
-	Log      *log.Logger
+	Logger   *logging.Logger
 }
 
 func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
@@ -37,20 +35,18 @@ func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
 	}
 	rc := &RunConfig{
 		Build: bc,
-		Port:  f.Port,
+		Ports: f.Ports,
 		// All below are from BuildConfig
 		RepoName: bc.RepoName,
 		Cli:      bc.Cli,
-		Stdout:   bc.Stdout,
-		Stderr:   bc.Stderr,
-		Log:      bc.Log,
+		Logger:   bc.Logger,
 	}
 
 	return rc, nil
 }
 
-func Run(appDir, buildImage, runImage, port string, makeStopCh func() <-chan struct{}) error {
-	bf, err := DefaultBuildFactory()
+func Run(logger *logging.Logger, appDir, buildImage, runImage string, ports []string, makeStopCh func() <-chan struct{}) error {
+	bf, err := DefaultBuildFactory(logger)
 	if err != nil {
 		return err
 	}
@@ -60,7 +56,7 @@ func Run(appDir, buildImage, runImage, port string, makeStopCh func() <-chan str
 			Builder:  buildImage,
 			RunImage: runImage,
 		},
-		Port: port,
+		Ports: ports,
 	})
 	if err != nil {
 		return err
@@ -76,14 +72,14 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 		return err
 	}
 
-	fmt.Println("*** RUNNING:")
-	if r.Port == "" {
-		r.Port, err = r.exposedPorts(ctx, r.RepoName)
+	r.Logger.Verbose(style.Step("RUNNING"))
+	if r.Ports == nil {
+		r.Ports, err = r.exposedPorts(ctx, r.RepoName)
 		if err != nil {
 			return err
 		}
 	}
-	exposedPorts, portBindings, err := parsePorts(r.Port)
+	exposedPorts, portBindings, err := parsePorts(r.Ports)
 	if err != nil {
 		return err
 	}
@@ -97,7 +93,7 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 		PortBindings: portBindings,
 	}, nil, "")
 
-	logContainerListening(r.Log, portBindings)
+	logContainerListening(r.Logger, portBindings)
 	running := true
 	stopCh := makeStopCh()
 	go func() {
@@ -107,27 +103,26 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 			Force: true,
 		})
 	}()
-	if err = r.Cli.RunContainer(ctx, ctr.ID, r.Stdout, r.Stderr); err != nil && running {
+	if err = r.Cli.RunContainer(ctx, ctr.ID, r.Logger.VerboseWriter(), r.Logger.VerboseErrorWriter()); err != nil && running {
 		return errors.Wrap(err, "run container")
 	}
 
 	return nil
 }
 
-func (r *RunConfig) exposedPorts(ctx context.Context, imageID string) (string, error) {
+func (r *RunConfig) exposedPorts(ctx context.Context, imageID string) ([]string, error) {
 	i, _, err := r.Cli.ImageInspectWithRaw(ctx, imageID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	ports := []string{}
+	var ports []string
 	for port := range i.Config.ExposedPorts {
 		ports = append(ports, port.Port())
 	}
-	return strings.Join(ports, ","), nil
+	return ports, nil
 }
 
-func parsePorts(port string) (nat.PortSet, nat.PortMap, error) {
-	ports := strings.Split(port, ",")
+func parsePorts(ports []string) (nat.PortSet, nat.PortMap, error) {
 	for i, p := range ports {
 		p = strings.TrimSpace(p)
 		if _, err := strconv.Atoi(p); err == nil {
@@ -140,7 +135,7 @@ func parsePorts(port string) (nat.PortSet, nat.PortMap, error) {
 	return nat.ParsePortSpecs(ports)
 }
 
-func logContainerListening(log *log.Logger, portBindings nat.PortMap) {
+func logContainerListening(logger *logging.Logger, portBindings nat.PortMap) {
 	// TODO handle case with multiple ports, for now when there is more than
 	// one port we assume you know what you're doing and don't need guidance
 	if len(portBindings) == 1 {
@@ -153,7 +148,7 @@ func logContainerListening(log *log.Logger, portBindings nat.PortMap) {
 					host = "localhost"
 				}
 				// TODO the service may not be http based
-				log.Printf("Starting container listening at http://%s:%s/\n", host, port)
+				logger.Info("Starting container listening at http://%s:%s/\n", host, port)
 			}
 		}
 	}

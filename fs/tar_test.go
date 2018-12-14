@@ -2,6 +2,7 @@ package fs_test
 
 import (
 	"archive/tar"
+	"github.com/fatih/color"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -17,6 +18,7 @@ import (
 )
 
 func TestFS(t *testing.T) {
+	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "fs", testFS, spec.Report(report.Terminal{}))
 }

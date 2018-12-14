@@ -41,11 +41,6 @@ In the following example, an app image is created from Node.js application sourc
 ```bash
 $ cd /path/to/node/app
 $ pack build my-app:my-tag
-
-# ... Detect, analyze and build output
-
-Successfully built 2452b4b1fce1
-Successfully tagged my-app:my-tag
 ```
 
 In this case, the default [builder](#working-with-builders-using-create-builder) is used, and an appropriate buildpack
@@ -67,24 +62,17 @@ user.
 ```bash
 $ cd /path/to/node/app
 $ pack build my-app:my-tag --buildpack path/to/some/buildpack
-
-# ...
-*** DETECTING WITH MANUALLY-PROVIDED GROUP:
-2018/10/29 18:31:05 Group: Name Of Some Buildpack: pass
-# ...
-
-Successfully built 2452b4b1fce1
-Successfully tagged my-app:my-tag
 ```
-
-The message `DETECTING WITH MANUALLY-PROVIDED GROUP` indicates that the buildpack was chosen by the user, rather than
-by the automated detection process.
 
 The `--buildpack` parameter can be
 - a path to a directory
 - a path to a `.tgz` file
 - a URL to a `.tgz` file, or
 - the ID of a buildpack located in a builder
+
+> Multiple buildpacks can be specified, in order, by:
+> - supplying `--buildpack` multiple times, or
+> - supplying a comma-separated list to `--buildpack` (without spaces)
 
 ### Building explained
 
@@ -171,9 +159,6 @@ Running `create-builder` while supplying this configuration file will produce th
 
 ```bash
 $ pack create-builder my-builder:my-tag --builder-config path/to/builder.toml
-
-2018/10/29 15:35:47 Pulling builder base image packs/build
-2018/10/29 15:36:06 Successfully created builder image: my-builder:my-tag
 ```
 
 Like [`build`](#building-app-images-using-build), `create-builder` has a `--publish` flag that can be used to publish
@@ -210,23 +195,25 @@ As mentioned [previously](#building-explained), a stack is associated with a bui
 `pack`'s configuration can be managed using the following commands:
 
 ```bash
-$ pack add-stack <stack-name> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
+$ pack add-stack <stack-id> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
 ```
 
 ```bash
-$ pack update-stack <stack-name> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
+$ pack update-stack <stack-id> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
 ```
 
 ```bash
-$ pack delete-stack <stack-name>
+$ pack delete-stack <stack-id>
 ```
 
 ```bash
-$ pack set-default-stack <stack-name>
+$ pack set-default-stack <stack-id>
 ```
 
 > Technically, a stack can be associated with multiple run images, as a variant is needed for each registry to
 > which an app image might be published when using `--publish`.
+>
+> Multiple run images can be specified using the syntax above, or by supplying `--run-image` multiple times.
 
 ### Example: Adding a stack
 
@@ -239,7 +226,7 @@ $ pack add-stack org.example.my-stack --build-image my-stack/build --run-image m
 
 ### Example: Updating a stack
 
-In this example, an existing stack called `org.example.my-stack` is updated with a new build image `my-stack/build:v2`
+In this example, an existing stack `org.example.my-stack` is updated with a new build image `my-stack/build:v2`
 and a new run image `my-stack/run:v2`.
 
 ```bash
@@ -265,7 +252,7 @@ $ pack set-default-stack org.example.my-stack
 
 ### Listing stacks
 
-To inspect available stacks and their names (denoted by `id`), run:
+To inspect available stacks and their IDs (denoted by `id`), run:
 
 ```bash
 $ cat ~/.pack/config.toml
@@ -274,12 +261,12 @@ $ cat ~/.pack/config.toml
 
 [[stacks]]
   id = "io.buildpacks.stacks.bionic"
-  build-images = ["packs/build"]
+  build-image = "packs/build"
   run-images = ["packs/run"]
 
 [[stacks]]
   id = "org.example.my-stack"
-  build-images = ["my-stack/build"]
+  build-image = "my-stack/build"
   run-images = ["my-stack/run"]
 
 ...
