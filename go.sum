@@ -22,6 +22,8 @@ github.com/buildpack/lifecycle v0.0.0-20181116214402-fa66d9071434/go.mod h1:Vk2K
 github.com/buildpack/lifecycle v0.0.0-20181204191349-898e1dd05a0a h1:Gk7xHMNFRMLKVIK/6VjZh41IKHGuCaiuSgRb53ft3n8=
 github.com/buildpack/lifecycle v0.0.0-20181211162153-177afa69a3ea h1:Eer+LeRdEQgIZXk+ix34VAvcVEzklAEG+8ZLUy4T2ZU=
 github.com/buildpack/lifecycle v0.0.0-20181211162153-177afa69a3ea/go.mod h1:3XZXGTIcoU8nr3mhC0/n6VRJvSVL8e5+6GOk01git7U=
+github.com/buildpack/lifecycle v0.0.0-20181214154748-234205545575 h1:CwfVwdmIKg5FUgJKnZGYABZZJnLBmRFj+/VoLzr/Hd4=
+github.com/buildpack/lifecycle v0.0.0-20181214154748-234205545575/go.mod h1:3XZXGTIcoU8nr3mhC0/n6VRJvSVL8e5+6GOk01git7U=
 github.com/buildpack/packs v0.0.0-20180824001031-aa30a412923763df37e83f14a6e4e0fe07e11f25 h1:gaFgBRK9mKLhfH26GLqMYmriWawmcUvYYgta73tHVJ4=
 github.com/buildpack/packs v0.0.0-20180824001031-aa30a412923763df37e83f14a6e4e0fe07e11f25/go.mod h1:jcquCT5a2gbyJw8WMkfgq36g7yc5VDSABVnCctIUKs8=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
