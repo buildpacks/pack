@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
-	"regexp"
 	"testing"
 
 	"github.com/fatih/color"
@@ -87,8 +86,7 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 			it("prefixes logging with timestamp", func() {
 				logger.Info("Some text")
 
-				h.AssertMatch(t, outBuf.String(), regexp.MustCompile(
-					`^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} \Q`+style.Prefix("| ")+`\ESome text`))
+				h.AssertMatch(t, outBuf.String(), `^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} \Q`+style.Prefix("| ")+`\ESome text`)
 			})
 		})
 

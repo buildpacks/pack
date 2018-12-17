@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
@@ -10,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"text/tabwriter"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
@@ -44,6 +46,7 @@ func main() {
 		addStackCommand,
 		updateStackCommand,
 		deleteStackCommand,
+		showStacksCommand,
 		setDefaultStackCommand,
 		setDefaultBuilderCommand,
 		versionCommand,
@@ -319,7 +322,6 @@ func deleteStackCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Short: "Delete stack from list of available stacks",
 		RunE: logError(func(cmd *cobra.Command, args []string) error {
-			cmd.SilenceUsage = true
 			cfg, err := config.NewDefault()
 			if err != nil {
 				return err
@@ -332,6 +334,40 @@ func deleteStackCommand() *cobra.Command {
 		}),
 	}
 	addHelpFlag(cmd, "delete-stack")
+	return cmd
+}
+
+func showStacksCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "stacks",
+		Args:  cobra.NoArgs,
+		Short: "Show information about available stacks",
+		RunE: logError(func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.NewDefault()
+			if err != nil {
+				return err
+			}
+			var buf bytes.Buffer
+			w := tabwriter.NewWriter(&buf, 0, 0, 4, ' ', 0)
+			// Note: Nop style is needed to keep color control characters from interfering with table formatting
+			// See https://stackoverflow.com/questions/35398497/how-do-i-get-colors-to-work-with-golang-tabwriter
+			fmt.Fprintf(w, "%s\t%s\t%s\n", style.Noop("Stack ID"), style.Noop("Build Image"), style.Noop("Run Image(s)"))
+			fmt.Fprintf(w, "%s\t%s\t%s\n", style.Noop("--------"), style.Noop("-----------"), style.Noop("------------"))
+			for _, stack := range cfg.Stacks {
+				displayID := style.Key(stack.ID)
+				if stack.ID == cfg.DefaultStackID {
+					displayID = fmt.Sprintf("%s (default)", displayID)
+				}
+				fmt.Fprintf(w, "%s\t%s\t%s\n", displayID, style.Noop(stack.BuildImage), style.Noop(strings.Join(stack.RunImages, ", ")))
+			}
+			if err := w.Flush(); err != nil {
+				return err
+			}
+			logger.Info(buf.String())
+			return nil
+		}),
+	}
+	addHelpFlag(cmd, "stacks")
 	return cmd
 }
 

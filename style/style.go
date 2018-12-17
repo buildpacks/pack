@@ -5,12 +5,18 @@ import (
 	"github.com/fatih/color"
 )
 
+var Noop = func(format string, a ...interface{}) string {
+	return color.WhiteString("") + fmt.Sprintf(format, a...)
+}
+
 var Symbol = func(format string, a ...interface{}) string {
 	if color.NoColor {
 		format = fmt.Sprintf("'%s'", format)
 	}
-	return color.New(color.FgMagenta).Sprintf(format, a...)
+	return Key(format, a...)
 }
+
+var Key = color.MagentaString
 
 var Tip = color.New(color.FgHiGreen, color.Bold).SprintfFunc()
 

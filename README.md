@@ -252,28 +252,11 @@ $ pack set-default-stack org.example.my-stack
 
 ### Listing stacks
 
-To inspect available stacks and their IDs (denoted by `id`), run:
+To inspect available stacks and their associated images, run:
 
 ```bash
-$ cat ~/.pack/config.toml
-
-...
-
-[[stacks]]
-  id = "io.buildpacks.stacks.bionic"
-  build-image = "packs/build"
-  run-images = ["packs/run"]
-
-[[stacks]]
-  id = "org.example.my-stack"
-  build-image = "my-stack/build"
-  run-images = ["my-stack/run"]
-
-...
+$ pack stacks
 ```
-
-> Note that this method of inspecting available stacks will soon be replaced by a new command. The format of
-> `config.toml` is subject to change at any time.
 
 ## Resources
 

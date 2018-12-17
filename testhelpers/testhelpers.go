@@ -81,10 +81,10 @@ func AssertSliceContains(t *testing.T, slice []string, value string) {
 	t.Fatalf("Expected: '%s' to contain element '%s'", slice, value)
 }
 
-func AssertMatch(t *testing.T, actual string, expected *regexp.Regexp) {
+func AssertMatch(t *testing.T, actual string, expected string) {
 	t.Helper()
-	if !expected.Match([]byte(actual)) {
-		t.Fatal(cmp.Diff(actual, expected))
+	if !regexp.MustCompile(expected).MatchString(actual) {
+		t.Fatalf("Expected: '%s' to match regex '%s'", actual, expected)
 	}
 }
 
