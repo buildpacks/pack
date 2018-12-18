@@ -123,15 +123,15 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 
 	b := &BuildConfig{
-		AppDir:      appDir,
-		RepoName:    f.RepoName,
-		Publish:     f.Publish,
-		NoPull:      f.NoPull,
-		Buildpacks:  f.Buildpacks,
-		Cli:         bf.Cli,
-		Logger:      bf.Logger,
-		FS:          bf.FS,
-		Config:      bf.Config,
+		AppDir:     appDir,
+		RepoName:   f.RepoName,
+		Publish:    f.Publish,
+		NoPull:     f.NoPull,
+		Buildpacks: f.Buildpacks,
+		Cli:        bf.Cli,
+		Logger:     bf.Logger,
+		FS:         bf.FS,
+		Config:     bf.Config,
 	}
 
 	if f.EnvFile != "" {
@@ -378,6 +378,10 @@ func (b *BuildConfig) Detect() error {
 		}
 	}
 
+	if err := b.copyEnvsToContainer(ctx, ctr.ID); err != nil {
+		return err
+	}
+
 	if err := b.Cli.RunContainer(
 		ctx,
 		ctr.ID,
@@ -493,14 +497,8 @@ func (b *BuildConfig) Build() error {
 		}
 	}
 
-	if len(b.EnvFile) > 0 {
-		platformEnvTar, err := b.tarEnvFile()
-		if err != nil {
-			return errors.Wrap(err, "create env files")
-		}
-		if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", platformEnvTar, dockertypes.CopyToContainerOptions{}); err != nil {
-			return errors.Wrap(err, "create env files")
-		}
+	if err := b.copyEnvsToContainer(ctx, ctr.ID); err != nil {
+		return err
 	}
 
 	if err = b.Cli.RunContainer(
@@ -554,6 +552,19 @@ func (b *BuildConfig) tarEnvFile() (io.Reader, error) {
 		return nil, err
 	}
 	return bytes.NewReader(buf.Bytes()), nil
+}
+
+func (b *BuildConfig) copyEnvsToContainer(ctx context.Context, containerID string) error {
+	if len(b.EnvFile) > 0 {
+		platformEnvTar, err := b.tarEnvFile()
+		if err != nil {
+			return errors.Wrap(err, "create env files")
+		}
+		if err := b.Cli.CopyToContainer(ctx, containerID, "/", platformEnvTar, dockertypes.CopyToContainerOptions{}); err != nil {
+			return errors.Wrap(err, "create env files")
+		}
+	}
+	return nil
 }
 
 func (b *BuildConfig) Export() error {

@@ -387,6 +387,22 @@ PATH
 				})
 			})
 		})
+
+		when("EnvFile is specified", func() {
+			it("sets specified env variables in /platform/env/...", func() {
+				if runtime.GOOS == "windows" {
+					t.Skip("directory buildpacks are not implemented on windows")
+				}
+				subject.EnvFile = map[string]string{
+					"VAR1": "value1",
+					"VAR2": "value2 with spaces",
+				}
+				subject.Buildpacks = []string{"acceptance/testdata/mock_buildpacks/printenv"}
+				h.AssertNil(t, subject.Detect())
+				h.AssertContains(t, outBuf.String(), "DETECT: VAR1 is value1;")
+				h.AssertContains(t, outBuf.String(), "DETECT: VAR2 is value2 with spaces;")
+			})
+		})
 	})
 
 	when("#Analyze", func() {
@@ -556,11 +572,9 @@ cache = false
 				}
 				subject.Buildpacks = []string{"acceptance/testdata/mock_buildpacks/printenv"}
 				h.AssertNil(t, subject.Detect())
-
 				h.AssertNil(t, subject.Build())
-
-				h.AssertContains(t, outBuf.String(), "ENV: VAR1 is value1;")
-				h.AssertContains(t, outBuf.String(), "ENV: VAR2 is value2 with spaces;")
+				h.AssertContains(t, outBuf.String(), "BUILD: VAR1 is value1;")
+				h.AssertContains(t, outBuf.String(), "BUILD: VAR2 is value2 with spaces;")
 			})
 		})
 	})

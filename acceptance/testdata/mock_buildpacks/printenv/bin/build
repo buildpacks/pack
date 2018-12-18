@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-echo "---> Print env buildpack"
+echo "---> BUILD: Printenv buildpack"
 
 set -o errexit
 set -o nounset
 set -o pipefail
 
 for file in $(ls /platform/env); do
-    echo "ENV: $file is $(cat /platform/env/$file);"
+    echo "BUILD: $file is $(cat /platform/env/$file);"
 done

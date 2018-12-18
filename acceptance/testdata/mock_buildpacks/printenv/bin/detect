@@ -1,3 +1,13 @@
 #!/usr/bin/env bash
 
+echo "---> DETECT: Printenv buildpack"
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+for file in $(ls /platform/env); do
+    echo "DETECT: $file is $(cat /platform/env/$file);"
+done
+
 exit 0
