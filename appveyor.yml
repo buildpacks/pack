@@ -20,7 +20,7 @@ artifacts:
   - path: artifacts
 
 before_test:
-  - go mod download
+  - choco install golang
   - go build -ldflags "-X main.Version=gitsha:%APPVEYOR_REPO_COMMIT%" -o %PACK_PATH% ./cmd/pack
   - ps: iex ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/appveyor/secure-file/master/install.ps1'))
   - cmd: appveyor-tools\secure-file -decrypt %DOCKER_CERT_PATH%\key.appveyor.pem.enc -out %DOCKER_CERT_PATH%\key.pem -secret %file_secret%
