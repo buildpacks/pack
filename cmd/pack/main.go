@@ -22,21 +22,21 @@ import (
 )
 
 var (
-	Version             = "0.0.0"
-	timestamps, verbose bool
-	logger              *logging.Logger
+	Version           = "0.0.0"
+	timestamps, quiet bool
+	logger            *logging.Logger
 )
 
 func main() {
 	rootCmd := &cobra.Command{
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			logger = logging.NewLogger(os.Stdout, os.Stderr, verbose, timestamps)
+			logger = logging.NewLogger(os.Stdout, os.Stderr, !quiet, timestamps)
 		},
 	}
 	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
 	rootCmd.PersistentFlags().BoolVar(&timestamps, "timestamps", false, "Enable timestamps in output")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Show verbose output")
+	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Show less output")
 	addHelpFlag(rootCmd, "pack")
 	for _, f := range []func() *cobra.Command{
 		buildCommand,

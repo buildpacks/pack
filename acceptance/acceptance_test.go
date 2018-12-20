@@ -69,7 +69,6 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	var packCmd = func(name string, args ...string) *exec.Cmd {
 		cmdArgs := append([]string{
 			name,
-			"--verbose",
 			"--no-color",
 		}, args...)
 		cmd := exec.Command(
