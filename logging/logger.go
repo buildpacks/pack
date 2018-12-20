@@ -3,6 +3,7 @@ package logging
 import (
 	"fmt"
 	"github.com/buildpack/pack/style"
+	"github.com/fatih/color"
 	"io"
 	"io/ioutil"
 	"log"
@@ -67,15 +68,22 @@ var nullLogWriter = newLogWriter(ioutil.Discard, false)
 
 func newLogWriter(out io.Writer, timestamps bool) *logWriter {
 	flags := 0
+	timestampStart := ""
+	timestampEnd := ""
+	if !color.NoColor {
+		// Go logger prefixes appear before timestamp, so insert color start/end sequences around timestamp
+		timestampStart = fmt.Sprintf("\x1b[%dm", style.TimestampColorCode)
+		timestampEnd = fmt.Sprintf("\x1b[%dm", color.Reset)
+	}
 	prefix := ""
 	if timestamps {
 		flags = log.LstdFlags
-		prefix = style.Prefix("| ")
+		prefix = " "
 	}
 
 	return &logWriter{
-		prefix: prefix,
-		log:    log.New(out, "", flags),
+		prefix: timestampEnd + prefix,
+		log:    log.New(out, timestampStart, flags),
 	}
 }
 

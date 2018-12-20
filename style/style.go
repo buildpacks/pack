@@ -18,12 +18,14 @@ var Symbol = func(format string, a ...interface{}) string {
 
 var Key = color.MagentaString
 
-var Tip = color.New(color.FgHiGreen, color.Bold).SprintfFunc()
+var Tip = color.New(color.FgGreen, color.Bold).SprintfFunc()
 
 var Error = color.New(color.FgRed, color.Bold).SprintfFunc()
 
 var Step = func(format string, a ...interface{}) string {
-	return color.HiCyanString("===> "+format, a...)
+	return color.CyanString("===> "+format, a...)
 }
 
-var Prefix = color.HiCyanString
+var Prefix = color.CyanString
+
+var TimestampColorCode = color.FgHiBlack

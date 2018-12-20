@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
+	"strings"
 	"testing"
 
 	"github.com/fatih/color"
@@ -36,19 +37,19 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 			it("shows verbose output", func() {
 				logger.Verbose("Some verbose output")
 
-				h.AssertEq(t, outBuf.String(), "Some verbose output\n")
+				h.AssertEq(t, ignoreEmptyTimestampColorCodes(outBuf.String()), "Some verbose output\n")
 			})
 
 			it("returns real out writer", func() {
 				writer := logger.VerboseWriter()
-				writer.Write([]byte("some-text\n"))
-				h.AssertEq(t, string(outBuf.Bytes()), "some-text\n")
+				writer.Write([]byte("Some text\n"))
+				h.AssertEq(t, ignoreEmptyTimestampColorCodes(outBuf.String()), "Some text\n")
 			})
 
 			it("returns real err writer", func() {
 				writer := logger.VerboseErrorWriter()
-				writer.Write([]byte("some-text\n"))
-				h.AssertEq(t, errBuf.String(), "some-text\n")
+				writer.Write([]byte("Some error\n"))
+				h.AssertEq(t, ignoreEmptyTimestampColorCodes(errBuf.String()), "Some error\n")
 			})
 		})
 
@@ -85,8 +86,7 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 
 			it("prefixes logging with timestamp", func() {
 				logger.Info("Some text")
-
-				h.AssertMatch(t, outBuf.String(), `^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} \Q`+style.Prefix("| ")+`\ESome text`)
+				h.AssertMatch(t, outBuf.String(), fmt.Sprintf(`^\x1b\[%dm\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} \x1b\[%dm Some text`, style.TimestampColorCode, color.Reset))
 			})
 		})
 
@@ -98,7 +98,7 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 			it("does not prefix logging with timestamp", func() {
 				logger.Info("Some text")
 
-				h.AssertEq(t, outBuf.String(), "Some text\n")
+				h.AssertEq(t, ignoreEmptyTimestampColorCodes(outBuf.String()), "Some text\n")
 			})
 		})
 	})
@@ -112,7 +112,7 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 			it("displays unstyled info message", func() {
 				logger.Info("This is some info")
 
-				h.AssertEq(t, outBuf.String(), "This is some info\n")
+				h.AssertEq(t, ignoreEmptyTimestampColorCodes(outBuf.String()), "This is some info\n")
 			})
 		})
 
@@ -120,7 +120,7 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 			it("displays unstyled verbose message", func() {
 				logger.Verbose("This is some verbose text")
 
-				h.AssertEq(t, outBuf.String(), "This is some verbose text\n")
+				h.AssertEq(t, ignoreEmptyTimestampColorCodes(outBuf.String()), "This is some verbose text\n")
 			})
 		})
 
@@ -128,7 +128,7 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 			it("displays styled error message to error buffer", func() {
 				logger.Error("Something went wrong!")
 
-				h.AssertEq(t, errBuf.String(), style.Error("ERROR: ")+"Something went wrong!\n")
+				h.AssertEq(t, ignoreEmptyTimestampColorCodes(errBuf.String()), style.Error("ERROR: ")+"Something went wrong!\n")
 			})
 		})
 
@@ -136,7 +136,7 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 			it("displays styled tip message", func() {
 				logger.Tip("This is a tip")
 
-				h.AssertEq(t, outBuf.String(), style.Tip("Tip: ")+"This is a tip\n")
+				h.AssertEq(t, ignoreEmptyTimestampColorCodes(outBuf.String()), style.Tip("Tip: ")+"This is a tip\n")
 			})
 		})
 	})
@@ -144,8 +144,13 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 	when("#WithPrefix", func() {
 		it("returns prefixed writer", func() {
 			writer := logging.NewLogger(&outBuf, &errBuf, true, false).VerboseWriter()
-			writer.WithPrefix("some-prefix").Write([]byte("some-text\n"))
-			h.AssertEq(t, outBuf.String(), fmt.Sprintf("[%s] some-text\n", style.Prefix("some-prefix")))
+			writer.WithPrefix("Some prefix").Write([]byte("Some text\n"))
+			h.AssertEq(t, ignoreEmptyTimestampColorCodes(outBuf.String()), fmt.Sprintf("[%s] Some text\n", style.Prefix("Some prefix")))
 		})
 	})
+}
+
+func ignoreEmptyTimestampColorCodes(s string) string {
+	// These codes are inserted, but have no timestamp between them
+	return strings.TrimPrefix(s, fmt.Sprintf("\x1b[%dm\x1b[0m", style.TimestampColorCode))
 }
