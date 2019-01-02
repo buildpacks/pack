@@ -403,6 +403,51 @@ PATH
 				h.AssertContains(t, outBuf.String(), "DETECT: VAR2 is value2 with spaces;")
 			})
 		})
+
+		when.Focus("--clear-cache flag", func() {
+			it.Before(func() {
+				subject.RepoName = "localhost:" + registryPort + "/" + subject.RepoName
+
+				runInImage(t, dockerCli, []string{subject.CacheVolume + ":/cache"}, subject.Builder,
+					"bash", "-c", "echo foo > /cache/leftover.txt",
+				)
+				output := runInImage(t, dockerCli, []string{subject.CacheVolume + ":/cache"}, subject.Builder,
+					"ls", "-la", "/cache",
+				)
+				h.AssertContains(t, output, "leftover.txt")
+			})
+
+			when("--clear-cache flag present", func() {
+				it.Before(func() {
+					subject.ClearCache = true
+				})
+
+				it("clears cache", func() {
+					h.AssertNil(t, subject.Detect())
+					output := runInImage(t, dockerCli, []string{subject.CacheVolume + ":/cache"}, subject.Builder,
+						"ls", "-la", "/cache",
+					)
+					if strings.Contains(output, "leftover.txt") {
+						t.Fatal("cache should have been cleared")
+					}
+					h.AssertContains(t, outBuf.String(), fmt.Sprintf("Cache volume '%s' cleared", subject.CacheVolume))
+				})
+			})
+
+			when("--clear-cache not present", func() {
+				it.Before(func() {
+					subject.ClearCache = false
+				})
+
+				it("does not clear cache", func() {
+					h.AssertNil(t, subject.Detect())
+					output := runInImage(t, dockerCli, []string{subject.CacheVolume + ":/cache"}, subject.Builder,
+						"ls", "-la", "/cache",
+					)
+					h.AssertContains(t, output, "leftover.txt")
+				})
+			})
+		})
 	})
 
 	when("#Analyze", func() {
@@ -412,11 +457,12 @@ PATH
 			defer os.RemoveAll(tmpDir)
 			h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "group.toml"), []byte(`[[buildpacks]]
 			  id = "io.buildpacks.samples.nodejs"
-				version = "0.0.1"
+			  version = "0.0.1"
 			`), 0666))
 
 			h.CopyWorkspaceToDocker(t, tmpDir, subject.CacheVolume)
 		})
+
 		when("no previous image exists", func() {
 			when("publish", func() {
 				it.Before(func() {
@@ -430,6 +476,7 @@ PATH
 					h.AssertContains(t, outBuf.String(), "WARNING: skipping analyze")
 				})
 			})
+
 			when("daemon", func() {
 				it.Before(func() { subject.Publish = false })
 				it("informs the user", func() {

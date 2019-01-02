@@ -49,6 +49,7 @@ type BuildFlags struct {
 	RepoName   string
 	Publish    bool
 	NoPull     bool
+	ClearCache bool
 	Buildpacks []string
 }
 
@@ -60,6 +61,7 @@ type BuildConfig struct {
 	RepoName   string
 	Publish    bool
 	NoPull     bool
+	ClearCache bool
 	Buildpacks []string
 	// Above are copied from BuildFlags are set by init
 	Cli    Docker
@@ -127,6 +129,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		RepoName:   f.RepoName,
 		Publish:    f.Publish,
 		NoPull:     f.NoPull,
+		ClearCache: f.ClearCache,
 		Buildpacks: f.Buildpacks,
 		Cli:        bf.Cli,
 		Logger:     bf.Logger,
@@ -212,22 +215,24 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	if err != nil {
 		return nil, err
 	}
-
 	bf.Logger.Verbose(fmt.Sprintf("Using cache volume %s", style.Symbol(b.CacheVolume)))
+
 	return b, nil
 }
 
-func Build(logger *logging.Logger, appDir, buildImage, runImage, repoName string, publish bool) error {
+// TODO: This function has no tests! Also, should it take a `BuildFlags` object instead of all these args?
+func Build(logger *logging.Logger, appDir, buildImage, runImage, repoName string, publish, clearCache bool) error {
 	bf, err := DefaultBuildFactory(logger)
 	if err != nil {
 		return err
 	}
 	b, err := bf.BuildConfigFromFlags(&BuildFlags{
-		AppDir:   appDir,
-		Builder:  buildImage,
-		RunImage: runImage,
-		RepoName: repoName,
-		Publish:  publish,
+		AppDir:     appDir,
+		Builder:    buildImage,
+		RunImage:   runImage,
+		RepoName:   repoName,
+		Publish:    publish,
+		ClearCache: clearCache,
 	})
 	if err != nil {
 		return err
@@ -307,6 +312,14 @@ func (b *BuildConfig) copyBuildpacksToContainer(ctx context.Context, ctrID strin
 
 func (b *BuildConfig) Detect() error {
 	ctx := context.Background()
+
+	if b.ClearCache {
+		if err := b.Cli.VolumeRemove(ctx, b.CacheVolume, true); err != nil {
+			return errors.Wrap(err, "clearing cache")
+		}
+		b.Logger.Verbose("Cache volume %s cleared", style.Symbol(b.CacheVolume))
+	}
+
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
 		Cmd: []string{
@@ -356,6 +369,7 @@ func (b *BuildConfig) Detect() error {
 	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
 		return errors.Wrap(err, "copy app to workspace volume")
 	}
+
 	if err := <-errChan; err != nil {
 		return errors.Wrap(err, "copy app to workspace volume")
 	}
