@@ -13,8 +13,8 @@ github.com/Microsoft/go-winio v0.4.11/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcy
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 h1:TngWCqHvy9oXAN6lEVMRuU21PR1EtLVZJmdB18Gu3Rw=
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5/go.mod h1:lmUJ/7eu/Q8D7ML55dXQrVaamCz2vxCfdQBasLZfHKk=
 github.com/aws/aws-sdk-go v1.15.2/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZoCYDt7FT0=
-github.com/buildpack/lifecycle v0.0.0-20181218142129-e9080de8ee4e h1:jcpCAiITxA/KErQYe2XgbnSN/IAZTlIi7bC/MQgbgqo=
-github.com/buildpack/lifecycle v0.0.0-20181218142129-e9080de8ee4e/go.mod h1:5kshqaqUPS08dueAYZmMsXTEUN0GHf+OQfqfS4pVToc=
+github.com/buildpack/lifecycle v0.0.0-20181218142129-1f72581303b3 h1:NftNIs6p7Wc3PdyL0Vr/yi7XY++Yi4uiQ7tRvZa4g/o=
+github.com/buildpack/lifecycle v0.0.0-20181218142129-1f72581303b3/go.mod h1:5kshqaqUPS08dueAYZmMsXTEUN0GHf+OQfqfS4pVToc=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cpuguy83/go-md2man v1.0.8/go.mod h1:N6JayAiVKtlHSnuTCeuLSQVs75hb8q+dYQLjr7cDsKY=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

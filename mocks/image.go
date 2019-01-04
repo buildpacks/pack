@@ -156,6 +156,38 @@ func (mr *MockImageMockRecorder) Save() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockImage)(nil).Save))
 }
 
+// SetCmd mocks base method
+func (m *MockImage) SetCmd(arg0 ...string) error {
+	varargs := []interface{}{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SetCmd", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetCmd indicates an expected call of SetCmd
+func (mr *MockImageMockRecorder) SetCmd(arg0 ...interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCmd", reflect.TypeOf((*MockImage)(nil).SetCmd), arg0...)
+}
+
+// SetEntrypoint mocks base method
+func (m *MockImage) SetEntrypoint(arg0 ...string) error {
+	varargs := []interface{}{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SetEntrypoint", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetEntrypoint indicates an expected call of SetEntrypoint
+func (mr *MockImageMockRecorder) SetEntrypoint(arg0 ...interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetEntrypoint", reflect.TypeOf((*MockImage)(nil).SetEntrypoint), arg0...)
+}
+
 // SetEnv mocks base method
 func (m *MockImage) SetEnv(arg0, arg1 string) error {
 	ret := m.ctrl.Call(m, "SetEnv", arg0, arg1)
