@@ -404,7 +404,7 @@ PATH
 			})
 		})
 
-		when.Focus("--clear-cache flag", func() {
+		when("--clear-cache flag", func() {
 			it.Before(func() {
 				subject.RepoName = "localhost:" + registryPort + "/" + subject.RepoName
 
