@@ -18,6 +18,7 @@ import (
 
 	"github.com/buildpack/lifecycle"
 	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
@@ -856,7 +857,7 @@ func runInImage(t *testing.T, dockerCli *docker.Client, volumes []string, repoNa
 		Binds:      volumes,
 	}, nil, "")
 	h.AssertNil(t, err)
-	defer dockerCli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{Force: true})
+	okChan, errChan := dockerCli.ContainerWait(ctx, ctr.ID, container.WaitConditionRemoved)
 
 	var buf bytes.Buffer
 	err = dockerCli.RunContainer(ctx, ctr.ID, &buf, &buf)
@@ -864,5 +865,10 @@ func runInImage(t *testing.T, dockerCli *docker.Client, volumes []string, repoNa
 		t.Fatalf("Expected nil: %s", errors.Wrap(err, buf.String()))
 	}
 
+	select {
+	case <-okChan:
+	case err = <-errChan:
+		h.AssertNil(t, err)
+	}
 	return buf.String()
 }
