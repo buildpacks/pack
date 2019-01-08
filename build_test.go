@@ -471,19 +471,17 @@ PATH
 					subject.Publish = true
 				})
 
-				it("informs the user", func() {
+				it("succeeds and does nothing", func() {
 					err := subject.Analyze()
 					h.AssertNil(t, err)
-					h.AssertContains(t, outBuf.String(), "WARNING: skipping analyze")
 				})
 			})
 
-			when("daemon", func() {
+			when("succeeds and does nothing", func() {
 				it.Before(func() { subject.Publish = false })
 				it("informs the user", func() {
 					err := subject.Analyze()
 					h.AssertNil(t, err)
-					h.AssertContains(t, outBuf.String(), "WARNING: skipping analyze")
 				})
 			})
 		})
