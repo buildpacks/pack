@@ -226,6 +226,10 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			defer ctrlCProc(cmd)
 
 			h.Eventually(t, func() bool {
+				if !isCommandRunning(cmd) {
+					t.Fatalf("Command exited unexpectedly: \n %s", buf.String())
+				}
+
 				return strings.Contains(buf.String(), "Example app listening on port 3000!")
 			}, time.Second, 2*time.Minute)
 
@@ -747,4 +751,15 @@ func skipOnWindows(t *testing.T, message string) {
 	if runtime.GOOS == "windows" {
 		t.Skip(message)
 	}
+}
+
+func isCommandRunning(cmd *exec.Cmd) bool {
+	_, err := os.FindProcess(cmd.Process.Pid)
+	if err != nil {
+		return false
+	}
+	if runtime.GOOS == "windows" {
+		return true
+	}
+	return true
 }
