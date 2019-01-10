@@ -106,7 +106,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				t.Fatal("Failed to print usage", string(output))
 			}
 		})
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
+	})
 
 	when("pack build", func() {
 		var sourceCodePath, repo, repoName, containerName string
@@ -149,7 +149,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Should not have published image without the '--publish' flag: got %s", contents)
 				}
 			})
-		}, spec.Parallel(), spec.Report(report.Terminal{}))
+		})
 
 		when("'--publish' flag is specified", func() {
 			it("builds and exports an image", func() {
@@ -191,8 +191,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Build failed to use cache: %s", output)
 				}
 			})
-		}, spec.Parallel(), spec.Report(report.Terminal{}))
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
+		})
+	})
 
 	when("pack run", func() {
 		var sourceCodePath string
@@ -236,8 +236,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			txt := h.HttpGet(t, "http://localhost:3000")
 			h.AssertEq(t, txt, "Buildpacks Worked! - 1000:1000")
 		})
-
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
+	})
 
 	when("pack rebase", func() {
 		var repoName, containerName, runBefore, runAfter string
@@ -353,7 +352,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, rootContents1(), "contents-after-1\n")
 			})
 		})
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
+	})
 
 	when("pack create-builder", func() {
 		var (
@@ -445,7 +444,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf(`Expected output to contain "Third Dep Contents", got "%s"`, runOutput)
 			}
 		})
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
+	})
 
 	when("pack add-stack", func() {
 		it("adds a custom stack to ~/.pack/config.toml", func() {
@@ -458,7 +457,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			output = h.Run(t, cmd)
 			h.AssertMatch(t, output, `(?m)^\Qmy.custom.stack\E\s+\Qmy-org/build\E\s+\Qmy-org/run\E\n`)
 		})
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
+	})
 
 	when("pack update-stack", func() {
 		it.Before(func() {
@@ -486,7 +485,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			stacksOutput := h.Run(t, cmd)
 			h.AssertMatch(t, stacksOutput, `(?m)^\Qmy.custom.stack\E\s+\Qmy-org/build-2\E\s+\Qmy-org/run-2, my-org/run-3\E\n`)
 		})
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
+	})
 
 	when("pack set-default-stack", func() {
 		it.Before(func() {
@@ -509,7 +508,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			stacksOutput := h.Run(t, cmd)
 			h.AssertMatch(t, stacksOutput, `(?m)^\Qmy.custom.stack (default)\E\s+\Qmy-org/build\E\s+\Qmy-org/run\E\n`)
 		})
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
+	})
 
 	when("pack delete-stack", func() {
 		it.Before(func() {
@@ -534,7 +533,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("stacks output '%s' contains deleted stack 'my.custom.stack'", stacksOutput)
 			}
 		})
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
+	})
 
 	when("pack set-default-builder", func() {
 		type config struct {
@@ -554,7 +553,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			h.AssertEq(t, config.DefaultBuilder, "some/builder")
 		})
-	}, spec.Parallel(), spec.Report(report.Terminal{}))
+	})
 
 	when("pack inspect-remote-builder", func() {
 		it("displays run images for a remote builder ", func() {

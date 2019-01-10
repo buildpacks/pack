@@ -48,7 +48,7 @@ func TestBuild(t *testing.T) {
 	h.ConfigurePackHome(t, packHome, registryPort)
 	defer h.CleanDefaultImages(t, registryPort)
 
-	spec.Run(t, "build", testBuild, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "build", testBuild, spec.Report(report.Terminal{}))
 }
 
 func testBuild(t *testing.T, when spec.G, it spec.S) {
@@ -426,7 +426,7 @@ PATH
 			})
 			h.AssertNotEq(t, os.Getenv("PATH"), "")
 		})
-	})
+	}, spec.Parallel())
 
 	when("#Detect", func() {
 		it("copies the app in to docker and chowns it (including directories)", func() {
@@ -564,7 +564,7 @@ PATH
 				})
 			})
 		})
-	})
+	}, spec.Sequential())
 
 	when("#Analyze", func() {
 		it.Before(func() {
@@ -664,7 +664,7 @@ cache = false
 				})
 			})
 		})
-	})
+	}, spec.Sequential())
 
 	when("#Build", func() {
 		when("buildpacks are specified", func() {
@@ -736,7 +736,7 @@ cache = false
 				h.AssertContains(t, outBuf.String(), "BUILD: VAR2 is value2 with spaces;")
 			})
 		})
-	})
+	}, spec.Sequential())
 
 	when("#Export", func() {
 		var (
@@ -918,7 +918,7 @@ cache = false
 				})
 			})
 		})
-	})
+	}, spec.Sequential())
 }
 
 func imageSHA(t *testing.T, dockerCli *docker.Client, repoName string) string {
