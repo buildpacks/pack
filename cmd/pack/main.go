@@ -49,6 +49,8 @@ func main() {
 		showStacksCommand,
 		setDefaultStackCommand,
 		setDefaultBuilderCommand,
+		configureBuilderCommand,
+		inspectRemoteBuilderCommand,
 		versionCommand,
 	} {
 		rootCmd.AddCommand(f())
@@ -225,7 +227,7 @@ func addStackCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := cfg.Add(config.Stack{
+			if err := cfg.AddStack(config.Stack{
 				ID:         args[0],
 				BuildImage: flags.BuildImage,
 				RunImages:  flags.RunImages,
@@ -266,28 +268,6 @@ func setDefaultStackCommand() *cobra.Command {
 	return cmd
 }
 
-func setDefaultBuilderCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "set-default-builder <builder-name>",
-		Short: "Set default builder used by other commands",
-		Args:  cobra.ExactArgs(1),
-		RunE: logError(func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.NewDefault()
-			if err != nil {
-				return err
-			}
-			err = cfg.SetDefaultBuilder(args[0])
-			if err != nil {
-				return err
-			}
-			logger.Info("Builder %s is now the default builder", style.Symbol(args[0]))
-			return nil
-		}),
-	}
-	addHelpFlag(cmd, "set-default-builder")
-	return cmd
-}
-
 func updateStackCommand() *cobra.Command {
 	flags := struct {
 		BuildImage string
@@ -302,7 +282,7 @@ func updateStackCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := cfg.Update(args[0], config.Stack{
+			if err := cfg.UpdateStack(args[0], config.Stack{
 				BuildImage: flags.BuildImage,
 				RunImages:  flags.RunImages,
 			}); err != nil {
@@ -328,7 +308,7 @@ func deleteStackCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := cfg.Delete(args[0]); err != nil {
+			if err := cfg.DeleteStack(args[0]); err != nil {
 				return err
 			}
 			logger.Info("Stack %s deleted", style.Symbol(args[0]))
@@ -370,6 +350,84 @@ func showStacksCommand() *cobra.Command {
 		}),
 	}
 	addHelpFlag(cmd, "stacks")
+	return cmd
+}
+
+func setDefaultBuilderCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "set-default-builder <builder-name>",
+		Short: "Set default builder used by other commands",
+		Args:  cobra.ExactArgs(1),
+		RunE: logError(func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.NewDefault()
+			if err != nil {
+				return err
+			}
+			err = cfg.SetDefaultBuilder(args[0])
+			if err != nil {
+				return err
+			}
+			logger.Info("Builder %s is now the default builder", style.Symbol(args[0]))
+			return nil
+		}),
+	}
+	addHelpFlag(cmd, "set-default-builder")
+	return cmd
+}
+
+func configureBuilderCommand() *cobra.Command {
+	var runImages []string
+
+	cmd := &cobra.Command{
+		Use:   "configure-builder <builder-image-name> --run-image <run-image-name>",
+		Short: "Override a builder's default run images with one or more overrides",
+		Args:  cobra.ExactArgs(1),
+		RunE: logError(func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.NewDefault()
+			if err != nil {
+				return err
+			}
+
+			builder := args[0]
+			cfg.ConfigureBuilder(builder, runImages)
+			logger.Info("Builder %s configured", style.Symbol(builder))
+			return nil
+		}),
+	}
+	cmd.Flags().StringSliceVarP(&runImages, "run-image", "r", nil, "Overriding run image"+multiValueHelp("run image"))
+	cmd.MarkFlagRequired("run-image")
+	addHelpFlag(cmd, "configure-builder")
+	return cmd
+}
+
+func inspectRemoteBuilderCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "inspect-remote-builder <builder-image-name>",
+		Short: "Show information about a remote builder",
+		Args:  cobra.ExactArgs(1),
+		RunE: logError(func(cmd *cobra.Command, args []string) error {
+			inspector, err := pack.DefaultBuilderInspector()
+			if err != nil {
+				return err
+			}
+
+			remoteBuilder := args[0]
+			builder, err := inspector.Inspect(remoteBuilder)
+			if err != nil {
+				return err
+			}
+
+			logger.Info("Run Images:")
+			for _, r := range builder.LocalRunImages {
+				logger.Info("\t%s (local)", r)
+			}
+			for _, r := range builder.DefaultRunImages {
+				logger.Info("\t%s", r)
+			}
+			return nil
+		}),
+	}
+	addHelpFlag(cmd, "inspect-remote-builder")
 	return cmd
 }
 

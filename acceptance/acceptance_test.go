@@ -26,28 +26,29 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/docker"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
-var pack string
+var packPath string
 var dockerCli *docker.Client
 var registryPort string
 
 func TestPack(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	pack = os.Getenv("PACK_PATH")
-	if pack == "" {
+	packPath = os.Getenv("PACK_PATH")
+	if packPath == "" {
 		packTmpDir, err := ioutil.TempDir("", "pack.acceptance.binary.")
 		if err != nil {
 			t.Fatal(err)
 		}
-		pack = filepath.Join(packTmpDir, "pack")
+		packPath = filepath.Join(packTmpDir, "pack")
 		if runtime.GOOS == "windows" {
-			pack = pack + ".exe"
+			packPath = packPath + ".exe"
 		}
-		if txt, err := exec.Command("go", "build", "-o", pack, "../cmd/pack").CombinedOutput(); err != nil {
+		if txt, err := exec.Command("go", "build", "-o", packPath, "../cmd/pack").CombinedOutput(); err != nil {
 			t.Fatal("building pack cli:\n", string(txt), err)
 		}
 		defer os.RemoveAll(packTmpDir)
@@ -72,7 +73,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			"--no-color",
 		}, args...)
 		cmd := exec.Command(
-			pack,
+			packPath,
 			cmdArgs...,
 		)
 		cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
@@ -80,8 +81,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 	}
 
 	it.Before(func() {
-		if _, err := os.Stat(pack); os.IsNotExist(err) {
-			t.Fatal("No file found at PACK_PATH environment variable:", pack)
+		if _, err := os.Stat(packPath); os.IsNotExist(err) {
+			t.Fatal("No file found at PACK_PATH environment variable:", packPath)
 		}
 
 		var err error
@@ -236,7 +237,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 	when("pack rebase", func() {
 		var repoName, containerName, runBefore, runAfter string
-		var buildAndSetRunImage func(runImage, contents1, contents2 string)
+		var buildRunImage func(string, string, string)
+		var setRunImage func(string)
 		var rootContents1 func() string
 		it.Before(func() {
 			containerName = "test-" + h.RandString(10)
@@ -244,7 +246,7 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			runBefore = "run-before/" + h.RandString(10)
 			runAfter = "run-after/" + h.RandString(10)
 
-			buildAndSetRunImage = func(runImage, contents1, contents2 string) {
+			buildRunImage = func(runImage, contents1, contents2 string) {
 				h.CreateImageOnLocal(t, dockerCli, runImage, fmt.Sprintf(`
 					FROM %s
 					USER root
@@ -253,9 +255,10 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 					USER pack
 				`, h.DefaultRunImage(t, registryPort), contents1, contents2))
 
+			}
+			setRunImage = func(runImage string) {
 				cmd := packCmd(
 					"update-stack", "io.buildpacks.stacks.bionic",
-					"--build-image", h.DefaultBuildImage(t, registryPort),
 					"--run-image", runImage,
 				)
 				h.Run(t, cmd)
@@ -286,22 +289,24 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		when("run on daemon", func() {
 			var origID string
 			it.Before(func() {
-				buildAndSetRunImage(runBefore, "contents-before-1", "contents-before-2")
-
-				cmd := packCmd("build", repoName, "-p", "testdata/node_app/", "--no-pull")
+				buildRunImage(runBefore, "contents-before-1", "contents-before-2")
+				cmd := packCmd(
+					"build", repoName,
+					"-p", "testdata/node_app/",
+					"--run-image", runBefore,
+					"--no-pull",
+				)
 				h.Run(t, cmd)
 				origID = h.ImageID(t, repoName)
+				h.AssertEq(t, rootContents1(), "contents-before-1\n")
 			})
 			it.After(func() {
 				h.AssertNil(t, h.DockerRmi(dockerCli, origID))
 			})
 
 			it("rebases", func() {
-				buildAndSetRunImage(runBefore, "contents-before-1", "contents-before-2")
-
-				h.AssertEq(t, rootContents1(), "contents-before-1\n")
-
-				buildAndSetRunImage(runAfter, "contents-after-1", "contents-after-2")
+				buildRunImage(runAfter, "contents-after-1", "contents-after-2")
+				setRunImage(runAfter)
 
 				cmd := packCmd("rebase", repoName, "--no-pull")
 				output := h.Run(t, cmd)
@@ -317,10 +322,13 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				runBefore = "localhost:" + registryPort + "/" + runBefore
 				runAfter = "localhost:" + registryPort + "/" + runAfter
 
-				buildAndSetRunImage(runBefore, "contents-before-1", "contents-before-2")
+				buildRunImage(runBefore, "contents-before-1", "contents-before-2")
 				h.AssertNil(t, pushImage(dockerCli, runBefore))
 
-				cmd := packCmd("build", repoName, "-p", "testdata/node_app/", "--publish")
+				cmd := packCmd("build", repoName,
+					"-p", "testdata/node_app/",
+					"--run-image", runBefore,
+					"--publish")
 				h.Run(t, cmd)
 
 				h.AssertNil(t, h.PullImage(dockerCli, repoName))
@@ -329,7 +337,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("rebases", func() {
-				buildAndSetRunImage(runAfter, "contents-after-1", "contents-after-2")
+				buildRunImage(runAfter, "contents-after-1", "contents-after-2")
+				setRunImage(runAfter)
 				h.AssertNil(t, pushImage(dockerCli, runAfter))
 
 				cmd := packCmd("rebase", repoName, "--publish")
@@ -542,6 +551,30 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, config.DefaultBuilder, "some/builder")
 		})
 	}, spec.Parallel(), spec.Report(report.Terminal{}))
+
+	when("pack inspect-remote-builder", func() {
+		it("displays run images for a remote builder ", func() {
+			runImage := "some/run"
+			locallyConfiguredRunImage := "some-registry.com/" + runImage
+			remoteBuilder := h.CreateImageOnRemote(t, dockerCli, registryPort, "some/builder",
+				fmt.Sprintf(`
+					FROM scratch
+					LABEL %s="{\"runImages\": [\"%s\"]}"
+				`, pack.MetadataLabel, runImage))
+
+			cmd := packCmd("configure-builder", remoteBuilder, "--run-image", locallyConfiguredRunImage)
+			output := h.Run(t, cmd)
+			h.AssertEq(t, output, fmt.Sprintf("Builder '%s' configured\n", remoteBuilder))
+
+			cmd = packCmd("inspect-remote-builder", remoteBuilder)
+			output = h.Run(t, cmd)
+
+			h.AssertEq(t, output, fmt.Sprintf(`Run Images:
+	%s (local)
+	%s
+`, locallyConfiguredRunImage, runImage))
+		})
+	})
 }
 
 func fetchHostPort(t *testing.T, dockerID string) string {

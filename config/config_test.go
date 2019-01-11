@@ -34,7 +34,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 	})
 
-	when(".BuildConfigFromFlags", func() {
+	when("#New", func() {
 		when("no config on disk", func() {
 			it("writes the defaults to disk", func() {
 				subject, err := config.New(tmpDir)
@@ -237,7 +237,7 @@ default-builder = "packs/samples"
 		})
 	})
 
-	when("Config#Get", func() {
+	when("Config#GetStack", func() {
 		var subject *config.Config
 		it.Before(func() {
 			h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
@@ -255,25 +255,25 @@ default-stack-id = "my.stack"
 		})
 		when("no stack is requested", func() {
 			it("returns the default stack", func() {
-				stack, err := subject.Get("")
+				stack, err := subject.GetStack("")
 				h.AssertNil(t, err)
 				h.AssertEq(t, stack.ID, "my.stack")
 			})
 		})
 		when("a stack known is requested", func() {
 			it("returns the stack", func() {
-				stack, err := subject.Get("stack-1")
+				stack, err := subject.GetStack("stack-1")
 				h.AssertNil(t, err)
 				h.AssertEq(t, stack.ID, "stack-1")
 
-				stack, err = subject.Get("stack-3")
+				stack, err = subject.GetStack("stack-3")
 				h.AssertNil(t, err)
 				h.AssertEq(t, stack.ID, "stack-3")
 			})
 		})
 		when("an unknown stack is requested", func() {
 			it("returns an error", func() {
-				_, err := subject.Get("stack-4")
+				_, err := subject.GetStack("stack-4")
 				h.AssertNotNil(t, err)
 				h.AssertEq(t, err.Error(), "stack 'stack-4' does not exist")
 			})
@@ -335,7 +335,7 @@ default-stack-id = "old/builder"
 		})
 	})
 
-	when("Config#Add", func() {
+	when("Config#AddStack", func() {
 		var subject *config.Config
 		it.Before(func() {
 			h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
@@ -354,14 +354,14 @@ default-stack-id = "my.stack"
 
 		when("stack to be added is new", func() {
 			it("adds the stack and writes to file", func() {
-				err := subject.Add(config.Stack{
+				err := subject.AddStack(config.Stack{
 					ID:         "new-stack",
 					BuildImage: "neworg/build",
 					RunImages:  []string{"neworg/run"},
 				})
 				h.AssertNil(t, err)
 
-				stack, err := subject.Get("new-stack")
+				stack, err := subject.GetStack("new-stack")
 				h.AssertNil(t, err)
 				h.AssertEq(t, stack.ID, "new-stack")
 				h.AssertEq(t, stack.BuildImage, "neworg/build")
@@ -381,7 +381,7 @@ default-stack-id = "my.stack"
 				h.AssertNil(t, err)
 				origSize := stat.Size()
 
-				err = subject.Add(config.Stack{
+				err = subject.AddStack(config.Stack{
 					ID:         "my.stack",
 					BuildImage: "neworg/build",
 					RunImages:  []string{"neworg/run"},
@@ -389,7 +389,7 @@ default-stack-id = "my.stack"
 				h.AssertNotNil(t, err)
 				h.AssertEq(t, err.Error(), "stack 'my.stack' already exists")
 
-				stack, err := subject.Get("my.stack")
+				stack, err := subject.GetStack("my.stack")
 				h.AssertNil(t, err)
 				h.AssertEq(t, stack.BuildImage, "")
 
@@ -400,7 +400,7 @@ default-stack-id = "my.stack"
 		})
 	})
 
-	when("Config#Update", func() {
+	when("Config#UpdateStack", func() {
 		var subject *config.Config
 		it.Before(func() {
 			h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
@@ -421,7 +421,7 @@ default-stack-id = "stack-1"
 
 		when("stack to be updated exists", func() {
 			it("updates the stack and writes the file", func() {
-				err := subject.Update("my.stack", config.Stack{
+				err := subject.UpdateStack("my.stack", config.Stack{
 					BuildImage: "packs/build-2",
 					RunImages:  []string{"packs/run-2", "jane"},
 				})
@@ -438,20 +438,20 @@ default-stack-id = "stack-1"
 			})
 
 			it("updates only the fields entered", func() {
-				err := subject.Update("my.stack", config.Stack{
+				err := subject.UpdateStack("my.stack", config.Stack{
 					BuildImage: "packs/build-2",
 				})
 				h.AssertNil(t, err)
-				stack, err := subject.Get("my.stack")
+				stack, err := subject.GetStack("my.stack")
 				h.AssertNil(t, err)
 				h.AssertEq(t, stack.BuildImage, "packs/build-2")
 				h.AssertEq(t, stack.RunImages, []string{"packs/run:v3alpha2"})
 
-				err = subject.Update("my.stack", config.Stack{
+				err = subject.UpdateStack("my.stack", config.Stack{
 					RunImages: []string{"packs/run-3"},
 				})
 				h.AssertNil(t, err)
-				stack, err = subject.Get("my.stack")
+				stack, err = subject.GetStack("my.stack")
 				h.AssertNil(t, err)
 				h.AssertEq(t, stack.BuildImage, "packs/build-2")
 				h.AssertEq(t, stack.RunImages, []string{"packs/run-3"})
@@ -460,7 +460,7 @@ default-stack-id = "stack-1"
 
 		when("stack to be updated is NOT in file", func() {
 			it("errors and leaves file unchanged", func() {
-				err := subject.Update("other.stack", config.Stack{
+				err := subject.UpdateStack("other.stack", config.Stack{
 					BuildImage: "packs/build-2",
 					RunImages:  []string{"packs/run-2"},
 				})
@@ -471,14 +471,14 @@ default-stack-id = "stack-1"
 
 		when("neither build image nor run image specified", func() {
 			it("errors and leaves file unchanged", func() {
-				err := subject.Update("my.stack", config.Stack{})
+				err := subject.UpdateStack("my.stack", config.Stack{})
 				h.AssertNotNil(t, err)
 				h.AssertEq(t, err.Error(), "no build image or run image(s) specified")
 			})
 		})
 	})
 
-	when("Config#Delete", func() {
+	when("Config#DeleteStack", func() {
 		var subject *config.Config
 		it.Before(func() {
 			h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
@@ -497,13 +497,13 @@ default-stack-id = "stack-1"
 
 		when("stack to be deleted exists", func() {
 			it("deletes the stack and writes the file", func() {
-				_, err := subject.Get("my.stack")
+				_, err := subject.GetStack("my.stack")
 				h.AssertNil(t, err)
 
-				err = subject.Delete("my.stack")
+				err = subject.DeleteStack("my.stack")
 				h.AssertNil(t, err)
 
-				_, err = subject.Get("my.stack")
+				_, err = subject.GetStack("my.stack")
 				h.AssertNotNil(t, err)
 
 				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
@@ -516,7 +516,7 @@ default-stack-id = "stack-1"
 
 		when("stack to be deleted is NOT in file", func() {
 			it("errors and leaves file unchanged", func() {
-				err := subject.Delete("other.stack")
+				err := subject.DeleteStack("other.stack")
 				h.AssertNotNil(t, err)
 				h.AssertEq(t, err.Error(), "stack 'other.stack' does not exist")
 			})
@@ -524,9 +524,104 @@ default-stack-id = "stack-1"
 
 		when("stack to be deleted is the default-stack-id", func() {
 			it("errors and leaves file unchanged", func() {
-				err := subject.Delete("stack-1")
+				err := subject.DeleteStack("stack-1")
 				h.AssertNotNil(t, err)
 				h.AssertEq(t, err.Error(), `stack-1 cannot be deleted when it is the default stack. You can change your default stack by running "pack set-default-stack".`)
+			})
+		})
+	})
+
+	when("Config#GetBuilder", func() {
+		var subject *config.Config
+
+		when("builder exists in config", func() {
+			it.Before(func() {
+				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
+[[builders]]
+  image = "some/builder"
+  run-images = ["some/run", "some.registry/some/run"]
+`), 0666))
+				var err error
+				subject, err = config.New(tmpDir)
+				h.AssertNil(t, err)
+			})
+
+			it("returns the builder config", func() {
+				builder := subject.GetBuilder("some/builder")
+				h.AssertNotNil(t, builder)
+				h.AssertEq(t, len(builder.RunImages), 2)
+				h.AssertSliceContains(t, builder.RunImages, "some/run")
+				h.AssertSliceContains(t, builder.RunImages, "some.registry/some/run")
+			})
+		})
+
+		when("builder does not exist in config", func() {
+			it.Before(func() {
+				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
+[[builders]]
+  image = "some-other/builder"
+  run-images = ["some/run", "some.registry/some/run"]
+`), 0666))
+				var err error
+				subject, err = config.New(tmpDir)
+				h.AssertNil(t, err)
+			})
+
+			it("returns a nil pointer", func() {
+				builder := subject.GetBuilder("some/builder")
+				h.AssertNil(t, builder)
+			})
+		})
+	})
+
+	when("Config#ConfigureBuilder", func() {
+		var subject *config.Config
+
+		when("builder exists in config", func() {
+			it.Before(func() {
+				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
+[[builders]]
+  image = "some/builder"
+  run-images = ["some/run", "some.registry/some/run"]
+`), 0666))
+				var err error
+				subject, err = config.New(tmpDir)
+				h.AssertNil(t, err)
+			})
+
+			it("updates the builder", func() {
+				subject.ConfigureBuilder("some/builder", []string{"some-other/run"})
+
+				reloadedConfig, err := config.New(tmpDir)
+				h.AssertNil(t, err)
+
+				builder := reloadedConfig.GetBuilder("some/builder")
+
+				h.AssertNotNil(t, builder)
+				h.AssertEq(t, len(builder.RunImages), 1)
+				h.AssertSliceContains(t, builder.RunImages, "some-other/run")
+			})
+		})
+
+		when("builder does not exist in config", func() {
+			it.Before(func() {
+				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), nil, 0666))
+				var err error
+				subject, err = config.New(tmpDir)
+				h.AssertNil(t, err)
+			})
+
+			it("adds the builder", func() {
+				subject.ConfigureBuilder("some/builder", []string{"some-other/run"})
+
+				reloadedConfig, err := config.New(tmpDir)
+				h.AssertNil(t, err)
+
+				builder := reloadedConfig.GetBuilder("some/builder")
+
+				h.AssertNotNil(t, builder)
+				h.AssertEq(t, len(builder.RunImages), 1)
+				h.AssertSliceContains(t, builder.RunImages, "some-other/run")
 			})
 		})
 	})

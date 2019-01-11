@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/buildpack/pack"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -90,16 +92,20 @@ func AssertMatch(t *testing.T, actual string, expected string) {
 
 func AssertNil(t *testing.T, actual interface{}) {
 	t.Helper()
-	if actual != nil {
+	if !isNil(actual) {
 		t.Fatalf("Expected nil: %s", actual)
 	}
 }
 
 func AssertNotNil(t *testing.T, actual interface{}) {
 	t.Helper()
-	if actual == nil {
+	if isNil(actual) {
 		t.Fatal("Expected not nil")
 	}
+}
+
+func isNil(value interface{}) bool {
+	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
 }
 
 func AssertNotEq(t *testing.T, actual, expected interface{}) {
@@ -293,17 +299,23 @@ var getBuilderImageOnce sync.Once
 func DefaultBuilderImage(t *testing.T, registryPort string) string {
 	t.Helper()
 	tag := packTag()
+	origName := fmt.Sprintf("packs/samples:%s", tag)
+	newName := fmt.Sprintf("localhost:%s/%s", registryPort, origName)
+	dockerCli := dockerCli(t)
 	getBuilderImageOnce.Do(func() {
 		if tag == defaultTag {
-			AssertNil(t, PullImage(dockerCli(t), fmt.Sprintf("packs/samples:%s", tag)))
+			AssertNil(t, PullImage(dockerCli, origName))
+			AssertNil(t, dockerCli.ImageTag(context.Background(), origName, newName))
+		} else {
+			runImageName := DefaultRunImage(t, registryPort)
+
+			CreateImageOnLocal(t, dockerCli, newName, fmt.Sprintf(`
+					FROM %s
+					LABEL %s="{\"runImages\": [\"%s\"]}"
+				`, origName, pack.MetadataLabel, runImageName))
 		}
-		AssertNil(t, dockerCli(t).ImageTag(
-			context.Background(),
-			fmt.Sprintf("packs/samples:%s", tag),
-			fmt.Sprintf("localhost:%s/packs/samples:%s", registryPort, tag),
-		))
 	})
-	return fmt.Sprintf("localhost:%s/packs/samples:%s", registryPort, tag)
+	return newName
 }
 
 func CreateImageOnLocal(t *testing.T, dockerCli *docker.Client, repoName, dockerFile string) {
@@ -324,24 +336,13 @@ func CreateImageOnLocal(t *testing.T, dockerCli *docker.Client, repoName, docker
 	res.Body.Close()
 }
 
-func CreateImageOnRemote(t *testing.T, dockerCli *docker.Client, repoName, dockerFile string) string {
+func CreateImageOnRemote(t *testing.T, dockerCli *docker.Client, registryPort, repoName, dockerFile string) string {
 	t.Helper()
-	defer DockerRmi(dockerCli, repoName)
-
-	CreateImageOnLocal(t, dockerCli, repoName, dockerFile)
-
-	var topLayer string
-	inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
-	AssertNil(t, err)
-	if len(inspect.RootFS.Layers) > 0 {
-		topLayer = inspect.RootFS.Layers[len(inspect.RootFS.Layers)-1]
-	} else {
-		topLayer = "N/A"
-	}
-
-	AssertNil(t, pushImage(dockerCli, repoName))
-
-	return topLayer
+	imageName := fmt.Sprintf("localhost:%s/%s", registryPort, repoName)
+	defer DockerRmi(dockerCli, imageName)
+	CreateImageOnLocal(t, dockerCli, imageName, dockerFile)
+	AssertNil(t, pushImage(dockerCli, imageName))
+	return imageName
 }
 
 func DockerRmi(dockerCli *docker.Client, repoNames ...string) error {

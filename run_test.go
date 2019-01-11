@@ -92,6 +92,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			mockImageFactory.EXPECT().NewLocal("some/builder", true).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
+			mockRunImage.EXPECT().Found().Return(true, nil)
 			mockRunImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
 			mockImageFactory.EXPECT().NewLocal("some/run", true).Return(mockRunImage, nil)
 

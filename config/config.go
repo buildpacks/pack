@@ -12,9 +12,10 @@ import (
 )
 
 type Config struct {
-	Stacks         []Stack `toml:"stacks"`
-	DefaultStackID string  `toml:"default-stack-id"`
-	DefaultBuilder string  `toml:"default-builder"`
+	Stacks         []Stack   `toml:"stacks"`
+	Builders       []Builder `toml:"builders"`
+	DefaultStackID string    `toml:"default-stack-id"`
+	DefaultBuilder string    `toml:"default-builder"`
 	configPath     string
 }
 
@@ -23,6 +24,11 @@ type Stack struct {
 	BuildImage  string   `toml:"build-image"`
 	BuildImages []string `toml:"build-images,omitempty"` // Deprecated
 	RunImages   []string `toml:"run-images"`
+}
+
+type Builder struct {
+	Image     string   `toml:"image"`
+	RunImages []string `toml:"run-images"`
 }
 
 func NewDefault() (*Config, error) {
@@ -91,7 +97,7 @@ func (c *Config) migrate() {
 
 	c.migrateBuildImagesToSingularBuildImage()
 
-	s, err := c.Get(initialStack.ID)
+	s, err := c.GetStack(initialStack.ID)
 	if err == nil {
 		migrateInitialImages(s, initialStack.BuildImage, initialStack.RunImages[0])
 	} else {
@@ -122,7 +128,7 @@ func migrateInitialImages(stack *Stack, buildImage, runImage string) {
 	}
 }
 
-func (c *Config) Get(stackID string) (*Stack, error) {
+func (c *Config) GetStack(stackID string) (*Stack, error) {
 	if stackID == "" {
 		stackID = c.DefaultStackID
 	}
@@ -135,16 +141,16 @@ func (c *Config) Get(stackID string) (*Stack, error) {
 	return nil, missingStackError(stackID)
 }
 
-func (c *Config) Add(stack Stack) error {
-	if _, err := c.Get(stack.ID); err == nil {
+func (c *Config) AddStack(stack Stack) error {
+	if _, err := c.GetStack(stack.ID); err == nil {
 		return fmt.Errorf("stack %s already exists", style.Symbol(stack.ID))
 	}
 	c.Stacks = append(c.Stacks, stack)
 	return c.save()
 }
 
-func (c *Config) Update(stackID string, newStack Stack) error {
-	stk, err := c.Get(stackID)
+func (c *Config) UpdateStack(stackID string, newStack Stack) error {
+	stk, err := c.GetStack(stackID)
 	if err != nil {
 		return err
 	}
@@ -159,11 +165,10 @@ func (c *Config) Update(stackID string, newStack Stack) error {
 	if len(newStack.RunImages) > 0 {
 		stk.RunImages = newStack.RunImages
 	}
-
 	return c.save()
 }
 
-func (c *Config) Delete(stackID string) error {
+func (c *Config) DeleteStack(stackID string) error {
 	if c.DefaultStackID == stackID {
 		return fmt.Errorf(`%s cannot be deleted when it is the default stack. You can change your default stack by running "pack set-default-stack".`, stackID)
 	}
@@ -177,7 +182,7 @@ func (c *Config) Delete(stackID string) error {
 }
 
 func (c *Config) SetDefaultStack(stackID string) error {
-	_, err := c.Get(stackID)
+	_, err := c.GetStack(stackID)
 	if err != nil {
 		return err
 	}
@@ -195,6 +200,25 @@ func (c *Config) Path() string {
 func (c *Config) SetDefaultBuilder(builder string) error {
 	c.DefaultBuilder = builder
 	return c.save()
+}
+
+func (c *Config) GetBuilder(image string) *Builder {
+	for b := range c.Builders {
+		builder := &c.Builders[b]
+		if builder.Image == image {
+			return builder
+		}
+	}
+	return nil
+}
+
+func (c *Config) ConfigureBuilder(image string, runImages []string) {
+	if builder := c.GetBuilder(image); builder != nil {
+		builder.RunImages = runImages
+	} else {
+		c.Builders = append(c.Builders, Builder{Image: image, RunImages: runImages})
+	}
+	c.save()
 }
 
 func ImageByRegistry(registry string, images []string) (string, error) {

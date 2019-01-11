@@ -32,11 +32,15 @@ func TestCreateBuilder(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("create builder is not implemented on windows")
 	}
-	spec.Run(t, "create-builder", testCreateBuilder, spec.Sequential(), spec.Report(report.Terminal{}))
+	spec.Run(t, "create-builder", testCreateBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#BuilderFactory", func() {
+		const (
+			defaultStack = "some.default.stack"
+			otherStack   = "some.other.stack"
+		)
 		var (
 			mockController   *gomock.Controller
 			mockImageFactory *mocks.MockImageFactory
@@ -44,6 +48,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			outBuf           bytes.Buffer
 			errBuf           bytes.Buffer
 		)
+
 		it.Before(func() {
 			mockController = gomock.NewController(t)
 			mockImageFactory = mocks.NewMockImageFactory(mockController)
@@ -57,20 +62,20 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatalf("failed to create config: %v", err)
 			}
-			if err = cfg.Add(config.Stack{
-				ID:         "some.default.stack",
+			if err = cfg.AddStack(config.Stack{
+				ID:         defaultStack,
 				BuildImage: "default/build",
 				RunImages:  []string{"default/run"},
 			}); err != nil {
 				t.Fatalf("failed to create config: %v", err)
 			}
-			if err = cfg.Add(config.Stack{ID: "some.other.stack",
+			if err = cfg.AddStack(config.Stack{ID: otherStack,
 				BuildImage: "other/build",
-				RunImages:  []string{"other/run"},
+				RunImages:  []string{"other/run", "other/run2"},
 			}); err != nil {
 				t.Fatalf("failed to create config: %v", err)
 			}
-			if err = cfg.SetDefaultStack("some.default.stack"); err != nil {
+			if err = cfg.SetDefaultStack(defaultStack); err != nil {
 				t.Fatalf("failed to create config: %v", err)
 			}
 
@@ -147,7 +152,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
 						RepoName:        "some/image",
 						BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
-						StackID:         "some.other.stack",
+						StackID:         otherStack,
 					})
 					if err != nil {
 						t.Fatalf("error creating builder config: %s", err)
@@ -155,6 +160,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertSameInstance(t, config.Repo, mockBaseImage)
 					checkBuildpacks(t, config.Buildpacks)
 					checkGroups(t, config.Groups)
+					h.AssertEq(t, config.StackID, otherStack)
 				})
 
 				it("fails if the provided stack id does not exist", func() {
@@ -191,22 +197,48 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("#Create", func() {
-			when("successful", func() {
-				it("returns no errors", func() {
-					mockImage := mocks.NewMockImage(mockController)
-					mockImage.EXPECT().AddLayer(gomock.Any()).AnyTimes()
+			var mockImage *mocks.MockImage
+
+			it.Before(func() {
+				mockImage = mocks.NewMockImage(mockController)
+				mockImage.EXPECT().AddLayer(gomock.Any()).AnyTimes()
+			})
+
+			when("stack is in config", func() {
+
+				it.Before(func() {
 					mockImage.EXPECT().Save()
+				})
+
+				it("stores metadata about the run images defined for the stack", func() {
+					mockImage.EXPECT().SetLabel("io.buildpacks.pack.metadata", `{"runImages":["other/run","other/run2"]}`)
 
 					err := factory.Create(pack.BuilderConfig{
 						Repo:       mockImage,
 						Buildpacks: []pack.Buildpack{},
 						Groups:     []lifecycle.BuildpackGroup{},
 						BuilderDir: "",
+						StackID:    otherStack,
 					})
 					h.AssertNil(t, err)
 				})
 			})
+
+			when("stack is not in config", func() {
+				it("returns an error for the missing stack", func() {
+					err := factory.Create(pack.BuilderConfig{
+						Repo:       mockImage,
+						Buildpacks: []pack.Buildpack{},
+						Groups:     []lifecycle.BuildpackGroup{},
+						BuilderDir: "",
+						StackID:    "some.missing.stack",
+					})
+
+					h.AssertError(t, err, "failed to get run images: stack 'some.missing.stack' does not exist")
+				})
+			})
 		})
+
 		when("a buildpack location uses no scheme uris", func() {
 			it("supports relative directories as well as archives", func() {
 				mockImage := mocks.NewMockImage(mockController)
@@ -216,7 +248,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
 					BuilderTomlPath: "testdata/used-to-test-various-uri-schemes/builder-with-schemeless-uris.toml",
-					StackID:         "some.default.stack",
+					StackID:         defaultStack,
 					Publish:         false,
 					NoPull:          true,
 				}
@@ -260,7 +292,7 @@ buildpacks = [
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
 					BuilderTomlPath: f.Name(),
-					StackID:         "some.default.stack",
+					StackID:         defaultStack,
 					Publish:         false,
 					NoPull:          true,
 				}
@@ -306,7 +338,7 @@ buildpacks = [
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
 					BuilderTomlPath: f.Name(),
-					StackID:         "some.default.stack",
+					StackID:         defaultStack,
 					Publish:         false,
 					NoPull:          true,
 				}
@@ -371,7 +403,7 @@ buildpacks = [
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
 					BuilderTomlPath: f.Name(),
-					StackID:         "some.default.stack",
+					StackID:         defaultStack,
 					Publish:         false,
 					NoPull:          true,
 				}

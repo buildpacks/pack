@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -160,31 +161,43 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		return nil, err
 	}
 
-	builderStackID, err := builderImage.Label("io.buildpacks.stack.id")
+	builderStackID, err := builderImage.Label(StackLabel)
 	if err != nil {
 		return nil, fmt.Errorf("invalid builder image %s: %s", style.Symbol(b.Builder), err)
 	}
 	if builderStackID == "" {
-		return nil, fmt.Errorf("invalid builder image %s: missing required label %s", style.Symbol(b.Builder), style.Symbol("io.buildpacks.stack.id"))
-	}
-	stack, err := bf.Config.Get(builderStackID)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid builder image %s: missing required label %s", style.Symbol(b.Builder), style.Symbol(StackLabel))
 	}
 
 	if f.RunImage != "" {
 		bf.Logger.Verbose("Using user-provided run image %s", style.Symbol(f.RunImage))
 		b.RunImage = f.RunImage
 	} else {
+		label, err := builderImage.Label(MetadataLabel)
+		if err != nil {
+			return nil, fmt.Errorf("invalid builder image %s: %s", style.Symbol(b.Builder), err)
+		}
+		if label == "" {
+			return nil, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(b.Builder), style.Symbol(MetadataLabel))
+		}
+		var builderMetadata BuilderImageMetadata
+		if err := json.Unmarshal([]byte(label), &builderMetadata); err != nil {
+			return nil, fmt.Errorf("invalid builder image metadata: %s", err)
+		}
+
 		reg, err := config.Registry(f.RepoName)
 		if err != nil {
 			return nil, err
 		}
-		b.RunImage, err = config.ImageByRegistry(reg, stack.RunImages)
+		var overrideRunImages []string
+		if b := bf.Config.GetBuilder(b.Builder); b != nil {
+			overrideRunImages = b.RunImages
+		}
+		b.RunImage, err = config.ImageByRegistry(reg, append(overrideRunImages, builderMetadata.RunImages...))
 		if err != nil {
 			return nil, err
 		}
-		b.Logger.Verbose("Selected run image %s from stack %s", style.Symbol(b.RunImage), style.Symbol(builderStackID))
+		b.Logger.Verbose("Selected run image %s from builder %s", style.Symbol(b.RunImage), style.Symbol(b.Builder))
 	}
 
 	var runImage image.Image
@@ -192,6 +205,12 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		runImage, err = bf.ImageFactory.NewRemote(b.RunImage)
 		if err != nil {
 			return nil, err
+		}
+
+		if found, err := runImage.Found(); !found {
+			return nil, fmt.Errorf("remote run image %s does not exist", style.Symbol(b.RunImage))
+		} else if err != nil {
+			return nil, fmt.Errorf("invalid run image %s: %s", style.Symbol(b.RunImage), err)
 		}
 	} else {
 		if !f.NoPull {
@@ -201,12 +220,18 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		if err != nil {
 			return nil, err
 		}
+
+		if found, err := runImage.Found(); !found {
+			return nil, fmt.Errorf("local run image %s does not exist", style.Symbol(b.RunImage))
+		} else if err != nil {
+			return nil, fmt.Errorf("invalid run image %s: %s", style.Symbol(b.RunImage), err)
+		}
 	}
 
-	if runStackID, err := runImage.Label("io.buildpacks.stack.id"); err != nil {
+	if runStackID, err := runImage.Label(StackLabel); err != nil {
 		return nil, fmt.Errorf("invalid run image %s: %s", style.Symbol(b.RunImage), err)
 	} else if runStackID == "" {
-		return nil, fmt.Errorf("invalid run image %s: missing required label %s", style.Symbol(b.RunImage), style.Symbol("io.buildpacks.stack.id"))
+		return nil, fmt.Errorf("invalid run image %s: missing required label %s", style.Symbol(b.RunImage), style.Symbol(StackLabel))
 	} else if builderStackID != runStackID {
 		return nil, fmt.Errorf("invalid stack: stack %s from run image %s does not match stack %s from builder image %s", style.Symbol(runStackID), style.Symbol(b.RunImage), style.Symbol(builderStackID), style.Symbol(b.Builder))
 	}
