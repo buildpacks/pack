@@ -12,8 +12,7 @@ import (
 )
 
 type BuilderInspector struct {
-	Config       *config.Config
-	ImageFactory ImageFactory
+	Config *config.Config
 }
 
 type Builder struct {
@@ -28,63 +27,44 @@ func DefaultBuilderInspector() (*BuilderInspector, error) {
 		return nil, err
 	}
 
-	factory, err := image.DefaultFactory()
-	if err != nil {
-		return nil, err
-	}
-
 	return &BuilderInspector{
-		Config:       cfg,
-		ImageFactory: factory,
+		Config: cfg,
 	}, nil
 }
 
-func (b *BuilderInspector) Inspect(builderName string) (Builder, error) {
-	var err error
-	var localRunImages, defaultRunImages []string
-	if builderConfig := b.Config.GetBuilder(builderName); builderConfig != nil {
-		localRunImages = builderConfig.RunImages
-	}
-	defaultRunImages, err = b.getDefaultRunImages(builderName)
+func (b *BuilderInspector) Inspect(builderImage image.Image) (Builder, error) {
+	defaultRunImages, err := b.getDefaultRunImages(builderImage)
 	if err != nil {
 		return Builder{}, err
 	}
 
-	builder := Builder{
+	builderName := builderImage.Name()
+	return Builder{
 		Image:            builderName,
-		LocalRunImages:   localRunImages,
+		LocalRunImages:   b.getLocalRunImages(builderName),
 		DefaultRunImages: defaultRunImages,
-	}
-
-	return builder, nil
+	}, nil
 }
 
-func (b *BuilderInspector) getDefaultRunImages(builderName string) ([]string, error) {
-	builderImage, err := b.ImageFactory.NewRemote(builderName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get remote image %s", style.Symbol(builderName))
+func (b *BuilderInspector) getLocalRunImages(builderName string) []string {
+	if builderConfig := b.Config.GetBuilder(builderName); builderConfig != nil {
+		return builderConfig.RunImages
 	}
-	var metadata BuilderImageMetadata
+	return nil
+}
 
-	if found, err := builderImage.Found(); !found {
-		return nil, fmt.Errorf("remote image %s does not exist", style.Symbol(builderName))
-	} else if err != nil {
-		return nil, unexpectedError(err, builderName)
-	}
+func (b *BuilderInspector) getDefaultRunImages(builderImage image.Image) ([]string, error) {
+	var metadata BuilderImageMetadata
 
 	label, err := builderImage.Label(MetadataLabel)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to find run images for builder %s", style.Symbol(builderName))
+		return nil, errors.Wrapf(err, "failed to find run images for builder %s", style.Symbol(builderImage.Name()))
 	}
 	if label == "" {
-		return nil, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(builderName), style.Symbol(MetadataLabel))
+		return nil, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(builderImage.Name()), style.Symbol(MetadataLabel))
 	}
 	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
-		return nil, errors.Wrapf(err, "failed to parse run images for builder %s", style.Symbol(builderName))
+		return nil, errors.Wrapf(err, "failed to parse run images for builder %s", style.Symbol(builderImage.Name()))
 	}
 	return metadata.RunImages, nil
-}
-
-func unexpectedError(err error, builderName string) error {
-	return errors.Wrapf(err, "failed to find run images for builder %s", style.Symbol(builderName))
 }

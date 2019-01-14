@@ -555,8 +555,8 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("pack inspect-remote-builder", func() {
-		it("displays run images for a remote builder ", func() {
+	when("pack inspect-builder", func() {
+		it("displays configuration for a remote builder ", func() {
 			runImage := "some/run"
 			locallyConfiguredRunImage := "some-registry.com/" + runImage
 			remoteBuilder := h.CreateImageOnRemote(t, dockerCli, registryPort, "some/builder",
@@ -569,12 +569,49 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			output := h.Run(t, cmd)
 			h.AssertEq(t, output, fmt.Sprintf("Builder '%s' configured\n", remoteBuilder))
 
-			cmd = packCmd("inspect-remote-builder", remoteBuilder)
+			cmd = packCmd("inspect-builder", remoteBuilder)
 			output = h.Run(t, cmd)
 
-			h.AssertEq(t, output, fmt.Sprintf(`Run Images:
-	%s (local)
+			h.AssertEq(t, output, fmt.Sprintf(`Remote
+------
+Run Images:
+	%s (user-configured)
 	%s
+
+Local
+-----
+Not present
+
+`, locallyConfiguredRunImage, runImage))
+		})
+
+		it("displays configuration for a local builder ", func() {
+			localBuilder := "some/builder"
+			runImage := "some/run"
+			locallyConfiguredRunImage := "some-registry.com/" + runImage
+			h.CreateImageOnLocal(t, dockerCli, localBuilder,
+				fmt.Sprintf(`
+					FROM scratch
+					LABEL %s="{\"runImages\": [\"%s\"]}"
+				`, pack.MetadataLabel, runImage))
+
+			cmd := packCmd("configure-builder", localBuilder, "--run-image", locallyConfiguredRunImage)
+			output := h.Run(t, cmd)
+			h.AssertEq(t, output, fmt.Sprintf("Builder '%s' configured\n", localBuilder))
+
+			cmd = packCmd("inspect-builder", localBuilder)
+			output = h.Run(t, cmd)
+
+			h.AssertEq(t, output, fmt.Sprintf(`Remote
+------
+Not present
+
+Local
+-----
+Run Images:
+	%s (user-configured)
+	%s
+
 `, locallyConfiguredRunImage, runImage))
 		})
 	})

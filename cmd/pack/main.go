@@ -3,15 +3,17 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/buildpack/pack/logging"
-	"github.com/buildpack/pack/style"
-	"github.com/fatih/color"
 	"os"
 	"os/signal"
 	"runtime"
 	"strings"
 	"syscall"
 	"text/tabwriter"
+
+	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
+	"github.com/fatih/color"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
@@ -50,7 +52,7 @@ func main() {
 		setDefaultStackCommand,
 		setDefaultBuilderCommand,
 		configureBuilderCommand,
-		inspectRemoteBuilderCommand,
+		inspectBuilderCommand,
 		versionCommand,
 	} {
 		rootCmd.AddCommand(f())
@@ -400,10 +402,10 @@ func configureBuilderCommand() *cobra.Command {
 	return cmd
 }
 
-func inspectRemoteBuilderCommand() *cobra.Command {
+func inspectBuilderCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "inspect-remote-builder <builder-image-name>",
-		Short: "Show information about a remote builder",
+		Use:   "inspect-builder <builder-image-name>",
+		Short: "Show information about a builder",
 		Args:  cobra.ExactArgs(1),
 		RunE: logError(func(cmd *cobra.Command, args []string) error {
 			inspector, err := pack.DefaultBuilderInspector()
@@ -411,24 +413,58 @@ func inspectRemoteBuilderCommand() *cobra.Command {
 				return err
 			}
 
-			remoteBuilder := args[0]
-			builder, err := inspector.Inspect(remoteBuilder)
+			imageFactory, err := image.DefaultFactory()
 			if err != nil {
 				return err
 			}
 
-			logger.Info("Run Images:")
-			for _, r := range builder.LocalRunImages {
-				logger.Info("\t%s (local)", r)
-			}
-			for _, r := range builder.DefaultRunImages {
-				logger.Info("\t%s", r)
+			imageName := args[0]
+			for _, remote := range []bool{true, false} {
+				inspectBuilderOutput(imageName, remote, imageFactory, inspector)
+				logger.Info("")
 			}
 			return nil
 		}),
 	}
-	addHelpFlag(cmd, "inspect-remote-builder")
+	addHelpFlag(cmd, "inspect-builder")
 	return cmd
+}
+
+func inspectBuilderOutput(imageName string, remote bool, imageFactory *image.Factory, inspector *pack.BuilderInspector) {
+	var builderImage image.Image
+	var err error
+	if remote {
+		builderImage, err = imageFactory.NewRemote(imageName)
+		logger.Info("Remote\n------")
+	} else {
+		builderImage, err = imageFactory.NewLocal(imageName, false)
+		logger.Info("Local\n-----")
+	}
+	if err != nil {
+		logger.Error(errors.Wrapf(err, "failed to get image %s", style.Symbol(imageName)).Error())
+		return
+	}
+	if found, err := builderImage.Found(); err != nil {
+		logger.Error(err.Error())
+		return
+	} else if !found {
+		logger.Info("Not present")
+		return
+	}
+
+	builder, err := inspector.Inspect(builderImage)
+	if err != nil {
+		logger.Error(err.Error())
+		return
+	}
+
+	logger.Info("Run Images:")
+	for _, r := range builder.LocalRunImages {
+		logger.Info("\t%s (user-configured)", r)
+	}
+	for _, r := range builder.DefaultRunImages {
+		logger.Info("\t%s", r)
+	}
 }
 
 func versionCommand() *cobra.Command {
