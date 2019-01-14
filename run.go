@@ -1,3 +1,5 @@
+// TODO: We should rename this file (and its test and test file) to avoid confusion with the one in the `commands` package
+
 package pack
 
 import (

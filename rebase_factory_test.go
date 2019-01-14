@@ -18,15 +18,15 @@ import (
 	h "github.com/buildpack/pack/testhelpers"
 )
 
-func TestRebase(t *testing.T) {
+func TestRebaseFactory(t *testing.T) {
 	color.NoColor = true
-	spec.Run(t, "rebase", testRebase, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "rebase_factory", testRebaseFactory, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 //move somewhere else
 //go:generate mockgen -package mocks -destination mocks/image.go github.com/buildpack/lifecycle/image Image
 
-func testRebase(t *testing.T, when spec.G, it spec.S) {
+func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#RebaseFactory", func() {
 		var (
 			mockController   *gomock.Controller

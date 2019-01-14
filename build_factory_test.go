@@ -36,7 +36,7 @@ import (
 
 var registryPort string
 
-func TestBuild(t *testing.T) {
+func TestBuildFactory(t *testing.T) {
 	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -48,10 +48,10 @@ func TestBuild(t *testing.T) {
 	h.ConfigurePackHome(t, packHome, registryPort)
 	defer h.CleanDefaultImages(t, registryPort)
 
-	spec.Run(t, "build", testBuild, spec.Report(report.Terminal{}))
+	spec.Run(t, "build_factory", testBuildFactory, spec.Report(report.Terminal{}))
 }
 
-func testBuild(t *testing.T, when spec.G, it spec.S) {
+func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 	var subject *pack.BuildConfig
 	var outBuf bytes.Buffer
 	var errBuf bytes.Buffer

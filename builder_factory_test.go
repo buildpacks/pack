@@ -27,15 +27,15 @@ import (
 	h "github.com/buildpack/pack/testhelpers"
 )
 
-func TestCreateBuilder(t *testing.T) {
+func TestBuilderFactory(t *testing.T) {
 	color.NoColor = true
 	if runtime.GOOS == "windows" {
 		t.Skip("create builder is not implemented on windows")
 	}
-	spec.Run(t, "create-builder", testCreateBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "builder_factory", testBuilderFactory, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
+func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#BuilderFactory", func() {
 		const (
 			defaultStack = "some.default.stack"
