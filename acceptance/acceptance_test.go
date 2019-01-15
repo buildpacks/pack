@@ -594,7 +594,6 @@ Run Images:
 
 `, configuredRunImage, runImageRemote, configuredRunImage, runImageLocal))
 		})
-
 	})
 }
 

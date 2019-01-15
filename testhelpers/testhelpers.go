@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/buildpack/pack"
 	"io"
 	"io/ioutil"
 	"log"
@@ -21,6 +20,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/buildpack/pack"
 
 	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
@@ -180,7 +181,8 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 		AssertNil(t, PullImage(dockerCli(t), "registry:2"))
 		ctx := context.Background()
 		ctr, err := dockerCli(t).ContainerCreate(ctx, &container.Config{
-			Image: "registry:2",
+			Image:  "registry:2",
+			Labels: map[string]string{"author": "pack"},
 		}, &container.HostConfig{
 			AutoRemove: true,
 			PortBindings: nat.PortMap{
@@ -393,7 +395,8 @@ func StatSingleFileFromContainer(dockerCli *docker.Client, ctrID, path string) (
 func CopySingleFileFromImage(dockerCli *docker.Client, repoName, path string) (string, error) {
 	ctr, err := dockerCli.ContainerCreate(context.Background(),
 		&container.Config{
-			Image: repoName,
+			Image:  repoName,
+			Labels: map[string]string{"author": "pack"},
 		}, &container.HostConfig{
 			AutoRemove: true,
 		}, nil, "",
@@ -471,9 +474,10 @@ func CopyWorkspaceToDocker(t *testing.T, srcPath, destVolume string) {
 	ctx := context.Background()
 	pullPacksSamples(dockerCli(t))
 	ctr, err := dockerCli(t).ContainerCreate(ctx, &container.Config{
-		User:  "pack",
-		Image: "packs/samples",
-		Cmd:   []string{"true"},
+		User:   "pack",
+		Image:  "packs/samples",
+		Cmd:    []string{"true"},
+		Labels: map[string]string{"author": "pack"},
 	}, &container.HostConfig{
 		AutoRemove: true,
 		Binds:      []string{destVolume + ":/workspace"},
@@ -492,7 +496,10 @@ func ReadFromDocker(t *testing.T, volume, path string) string {
 	pullPacksSamples(dockerCli(t))
 	ctr, err := dockerCli(t).ContainerCreate(
 		context.Background(),
-		&container.Config{Image: "packs/samples"},
+		&container.Config{
+			Image:  "packs/samples",
+			Labels: map[string]string{"author": "pack"},
+		},
 		&container.HostConfig{
 			AutoRemove: true,
 			Binds:      []string{volume + ":/workspace"},
@@ -511,7 +518,10 @@ func StatFromDocker(t *testing.T, volume, path string) *tar.Header {
 	pullPacksSamples(dockerCli(t))
 	ctr, err := dockerCli(t).ContainerCreate(
 		context.Background(),
-		&container.Config{Image: "packs/samples"},
+		&container.Config{
+			Image:  "packs/samples",
+			Labels: map[string]string{"author": "pack"},
+		},
 		&container.HostConfig{
 			AutoRemove: true,
 			Binds:      []string{volume + ":/workspace"},

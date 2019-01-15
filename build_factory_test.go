@@ -16,6 +16,7 @@ import (
 
 	"github.com/fatih/color"
 
+	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/golang/mock/gomock"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -63,22 +63,24 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 		logger = logging.NewLogger(&outBuf, &errBuf, true, false)
-		subject = &pack.BuildConfig{
-			AppDir:      "acceptance/testdata/node_app",
-			Builder:     h.DefaultBuilderImage(t, registryPort),
-			RunImage:    h.DefaultRunImage(t, registryPort),
-			RepoName:    "pack.build." + h.RandString(10),
-			Publish:     false,
-			CacheVolume: fmt.Sprintf("pack-cache-%x", uuid.New().String()),
-			Logger:      logger,
-			FS:          &fs.FS{},
-		}
 		dockerCli, err = docker.New()
-		subject.Cli = dockerCli
 		h.AssertNil(t, err)
+		repoName := "pack.build." + h.RandString(10)
+		buildCache, err := cache.New(repoName)
+		subject = &pack.BuildConfig{
+			AppDir:   "acceptance/testdata/node_app",
+			Builder:  h.DefaultBuilderImage(t, registryPort),
+			RunImage: h.DefaultRunImage(t, registryPort),
+			RepoName: repoName,
+			Publish:  false,
+			Cache:    buildCache,
+			Logger:   logger,
+			FS:       &fs.FS{},
+			Cli:      dockerCli,
+		}
 	})
 	it.After(func() {
-		for _, volName := range []string{subject.CacheVolume, subject.CacheVolume} {
+		for _, volName := range []string{subject.Cache.Volume, subject.Cache.Volume} {
 			dockerCli.VolumeRemove(context.TODO(), volName, true)
 		}
 	})
@@ -435,7 +437,7 @@ PATH
 			h.AssertNil(t, subject.Detect())
 
 			for _, name := range []string{"/workspace/app", "/workspace/app/app.js", "/workspace/app/mydir", "/workspace/app/mydir/myfile.txt"} {
-				txt := runInImage(t, dockerCli, []string{subject.CacheVolume + ":/workspace"}, subject.Builder, "ls", "-ld", name)
+				txt := runInImage(t, dockerCli, []string{subject.Cache.Volume + ":/workspace"}, subject.Builder, "ls", "-ld", name)
 				h.AssertContains(t, txt, "pack pack")
 			}
 		})
@@ -526,10 +528,10 @@ PATH
 			it.Before(func() {
 				subject.RepoName = "localhost:" + registryPort + "/" + subject.RepoName
 
-				runInImage(t, dockerCli, []string{subject.CacheVolume + ":/cache"}, subject.Builder,
+				runInImage(t, dockerCli, []string{subject.Cache.Volume + ":/cache"}, subject.Builder,
 					"bash", "-c", "echo foo > /cache/leftover.txt",
 				)
-				output := runInImage(t, dockerCli, []string{subject.CacheVolume + ":/cache"}, subject.Builder,
+				output := runInImage(t, dockerCli, []string{subject.Cache.Volume + ":/cache"}, subject.Builder,
 					"ls", "-la", "/cache",
 				)
 				h.AssertContains(t, output, "leftover.txt")
@@ -542,13 +544,13 @@ PATH
 
 				it("clears cache", func() {
 					h.AssertNil(t, subject.Detect())
-					output := runInImage(t, dockerCli, []string{subject.CacheVolume + ":/cache"}, subject.Builder,
+					output := runInImage(t, dockerCli, []string{subject.Cache.Volume + ":/cache"}, subject.Builder,
 						"ls", "-la", "/cache",
 					)
 					if strings.Contains(output, "leftover.txt") {
 						t.Fatal("cache should have been cleared")
 					}
-					h.AssertContains(t, outBuf.String(), fmt.Sprintf("Cache volume '%s' cleared", subject.CacheVolume))
+					h.AssertContains(t, outBuf.String(), fmt.Sprintf("Cache volume '%s' cleared", subject.Cache.Volume))
 				})
 			})
 
@@ -559,7 +561,7 @@ PATH
 
 				it("does not clear cache", func() {
 					h.AssertNil(t, subject.Detect())
-					output := runInImage(t, dockerCli, []string{subject.CacheVolume + ":/cache"}, subject.Builder,
+					output := runInImage(t, dockerCli, []string{subject.Cache.Volume + ":/cache"}, subject.Builder,
 						"ls", "-la", "/cache",
 					)
 					h.AssertContains(t, output, "leftover.txt")
@@ -578,7 +580,7 @@ PATH
 			  version = "0.0.1"
 			`), 0666))
 
-			h.CopyWorkspaceToDocker(t, tmpDir, subject.CacheVolume)
+			h.CopyWorkspaceToDocker(t, tmpDir, subject.Cache.Volume)
 		})
 
 		when("no previous image exists", func() {
@@ -622,7 +624,7 @@ PATH
 				it("places files in workspace and sets owner to pack", func() {
 					h.AssertNil(t, subject.Analyze())
 
-					txt := h.ReadFromDocker(t, subject.CacheVolume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+					txt := h.ReadFromDocker(t, subject.Cache.Volume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 
 					h.AssertEq(t, txt, `build = false
 launch = true
@@ -631,7 +633,7 @@ cache = false
 [metadata]
   lock_checksum = "eb04ed1b461f1812f0f4233ef997cdb5"
 `)
-					hdr := h.StatFromDocker(t, subject.CacheVolume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+					hdr := h.StatFromDocker(t, subject.Cache.Volume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 					h.AssertEq(t, hdr.Uid, 1000)
 					h.AssertEq(t, hdr.Gid, 1000)
 				})
@@ -652,7 +654,7 @@ cache = false
 					err := subject.Analyze()
 					h.AssertNil(t, err)
 
-					txt := h.ReadFromDocker(t, subject.CacheVolume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+					txt := h.ReadFromDocker(t, subject.Cache.Volume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 					h.AssertEq(t, txt, `build = false
 launch = true
 cache = false
@@ -660,7 +662,7 @@ cache = false
 [metadata]
   lock_checksum = "eb04ed1b461f1812f0f4233ef997cdb5"
 `)
-					hdr := h.StatFromDocker(t, subject.CacheVolume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+					hdr := h.StatFromDocker(t, subject.Cache.Volume, "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 					h.AssertEq(t, hdr.Uid, 1000)
 					h.AssertEq(t, hdr.Gid, 1000)
 				})
@@ -764,7 +766,7 @@ cache = false
 					h.AssertNil(t, os.MkdirAll(filepath.Dir(filepath.Join(tmpDir, name)), 0777))
 					h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, name), []byte(txt), 0666))
 				}
-				h.CopyWorkspaceToDocker(t, tmpDir, subject.CacheVolume)
+				h.CopyWorkspaceToDocker(t, tmpDir, subject.Cache.Volume)
 			}
 			setupLayersDir()
 
@@ -911,7 +913,7 @@ cache = false
 					t.Log("setup workspace to reuse layer")
 					outBuf.Reset()
 					runInImage(t, dockerCli,
-						[]string{subject.CacheVolume + ":/workspace"},
+						[]string{subject.Cache.Volume + ":/workspace"},
 						h.DefaultBuilderImage(t, registryPort),
 						"rm", "-rf", "/workspace/io.buildpacks.samples.nodejs/mylayer",
 					)

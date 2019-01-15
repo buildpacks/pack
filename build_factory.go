@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 
@@ -70,7 +71,7 @@ type BuildConfig struct {
 	FS     FS
 	Config *config.Config
 	// Above are copied from BuildFactory
-	CacheVolume string
+	Cache *cache.Cache
 }
 
 const (
@@ -236,11 +237,11 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		return nil, fmt.Errorf("invalid stack: stack %s from run image %s does not match stack %s from builder image %s", style.Symbol(runStackID), style.Symbol(b.RunImage), style.Symbol(builderStackID), style.Symbol(b.Builder))
 	}
 
-	b.CacheVolume, err = CacheVolume(f.RepoName)
+	b.Cache, err = cache.New(f.RepoName)
 	if err != nil {
 		return nil, err
 	}
-	bf.Logger.Verbose(fmt.Sprintf("Using cache volume %s", style.Symbol(b.CacheVolume)))
+	bf.Logger.Verbose(fmt.Sprintf("Using cache volume %s", style.Symbol(b.Cache.Volume)))
 
 	return b, nil
 }
@@ -339,10 +340,10 @@ func (b *BuildConfig) Detect() error {
 	ctx := context.Background()
 
 	if b.ClearCache {
-		if err := b.Cli.VolumeRemove(ctx, b.CacheVolume, true); err != nil {
+		if err := b.Cache.Clear(); err != nil {
 			return errors.Wrap(err, "clearing cache")
 		}
-		b.Logger.Verbose("Cache volume %s cleared", style.Symbol(b.CacheVolume))
+		b.Logger.Verbose("Cache volume %s cleared", style.Symbol(b.Cache.Volume))
 	}
 
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
@@ -354,9 +355,10 @@ func (b *BuildConfig) Detect() error {
 			"-group", groupPath,
 			"-plan", planPath,
 		},
+		Labels: map[string]string{"author": "pack"},
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.CacheVolume, launchDir),
+			fmt.Sprintf("%s:%s:", b.Cache.Volume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {
@@ -435,11 +437,12 @@ func (b *BuildConfig) Detect() error {
 func (b *BuildConfig) Analyze() error {
 	ctx := context.Background()
 	ctrConf := &container.Config{
-		Image: b.Builder,
+		Image:  b.Builder,
+		Labels: map[string]string{"author": "pack"},
 	}
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.CacheVolume, launchDir),
+			fmt.Sprintf("%s:%s:", b.Cache.Volume, launchDir),
 		},
 	}
 
@@ -519,9 +522,10 @@ func (b *BuildConfig) Build() error {
 			"-plan", planPath,
 			"-platform", platformDir,
 		},
+		Labels: map[string]string{"author": "pack"},
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.CacheVolume, launchDir),
+			fmt.Sprintf("%s:%s:", b.Cache.Volume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {
@@ -609,11 +613,12 @@ func (b *BuildConfig) copyEnvsToContainer(ctx context.Context, containerID strin
 func (b *BuildConfig) Export() error {
 	ctx := context.Background()
 	ctrConf := &container.Config{
-		Image: b.Builder,
+		Image:  b.Builder,
+		Labels: map[string]string{"author": "pack"},
 	}
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.CacheVolume, launchDir),
+			fmt.Sprintf("%s:%s:", b.Cache.Volume, launchDir),
 		},
 	}
 
@@ -702,12 +707,13 @@ func (b *BuildConfig) packUidGid(builder string) (int, int, error) {
 func (b *BuildConfig) chownDir(path string, uid, gid int) error {
 	ctx := context.Background()
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
-		Image: b.Builder,
-		Cmd:   []string{"chown", "-R", fmt.Sprintf("%d:%d", uid, gid), path},
-		User:  "root",
+		Image:  b.Builder,
+		Cmd:    []string{"chown", "-R", fmt.Sprintf("%d:%d", uid, gid), path},
+		User:   "root",
+		Labels: map[string]string{"author": "pack"},
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.CacheVolume, launchDir),
+			fmt.Sprintf("%s:%s:", b.Cache.Volume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {

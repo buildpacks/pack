@@ -5,10 +5,11 @@ package pack
 import (
 	"context"
 	"fmt"
-	"github.com/buildpack/pack/logging"
-	"github.com/buildpack/pack/style"
 	"strconv"
 	"strings"
+
+	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -90,6 +91,7 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 		AttachStdout: true,
 		AttachStderr: true,
 		ExposedPorts: exposedPorts,
+		Labels:       map[string]string{"author": "pack"},
 	}, &container.HostConfig{
 		AutoRemove:   true,
 		PortBindings: portBindings,

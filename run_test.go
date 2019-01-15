@@ -163,6 +163,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				AttachStdout: true,
 				AttachStderr: true,
 				ExposedPorts: exposedPorts,
+				Labels:       map[string]string{"author": "pack"},
 			}, &container.HostConfig{
 				AutoRemove:   true,
 				PortBindings: portBindings,
@@ -236,6 +237,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 					AttachStdout: true,
 					AttachStderr: true,
 					ExposedPorts: exposedPorts,
+					Labels:       map[string]string{"author": "pack"},
 				}, &container.HostConfig{
 					AutoRemove:   true,
 					PortBindings: portBindings,
@@ -260,6 +262,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 					AttachStdout: true,
 					AttachStderr: true,
 					ExposedPorts: exposedPorts,
+					Labels:       map[string]string{"author": "pack"},
 				}, &container.HostConfig{
 					AutoRemove:   true,
 					PortBindings: portBindings,
@@ -286,6 +289,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 					AttachStdout: true,
 					AttachStderr: true,
 					ExposedPorts: exposedPorts,
+					Labels:       map[string]string{"author": "pack"},
 				}, &container.HostConfig{
 					AutoRemove:   true,
 					PortBindings: portBindings,
