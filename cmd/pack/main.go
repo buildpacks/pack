@@ -3,9 +3,11 @@ package main
 import (
 	"os"
 
+	"github.com/buildpack/lifecycle/image"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/commands"
 	"github.com/buildpack/pack/logging"
 )
@@ -17,6 +19,17 @@ var (
 )
 
 func main() {
+	initLogger := logging.NewLogger(os.Stdout, os.Stderr, false, false)
+	inspect, err := pack.DefaultBuilderInspect()
+	if err != nil {
+		exitError(err, initLogger)
+	}
+
+	imageFactory, err := image.DefaultFactory()
+	if err != nil {
+		exitError(err, initLogger)
+	}
+
 	cobra.EnableCommandSorting = false
 	rootCmd := &cobra.Command{
 		Use: "pack",
@@ -35,7 +48,7 @@ func main() {
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger))
 	rootCmd.AddCommand(commands.ConfigureBuilder(&logger))
-	rootCmd.AddCommand(commands.InspectBuilder(&logger))
+	rootCmd.AddCommand(commands.InspectBuilder(&logger, inspect, imageFactory))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger))
 
 	rootCmd.AddCommand(commands.AddStack(&logger))
@@ -49,4 +62,9 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func exitError(err error, logger *logging.Logger) {
+	logger.Error(err.Error())
+	os.Exit(1)
 }

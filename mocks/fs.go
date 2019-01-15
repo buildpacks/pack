@@ -35,6 +35,7 @@ func (m *MockFS) EXPECT() *MockFSMockRecorder {
 
 // CreateSingleFileTar mocks base method
 func (m *MockFS) CreateSingleFileTar(arg0, arg1 string) (io.Reader, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSingleFileTar", arg0, arg1)
 	ret0, _ := ret[0].(io.Reader)
 	ret1, _ := ret[1].(error)
@@ -43,11 +44,13 @@ func (m *MockFS) CreateSingleFileTar(arg0, arg1 string) (io.Reader, error) {
 
 // CreateSingleFileTar indicates an expected call of CreateSingleFileTar
 func (mr *MockFSMockRecorder) CreateSingleFileTar(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSingleFileTar", reflect.TypeOf((*MockFS)(nil).CreateSingleFileTar), arg0, arg1)
 }
 
 // CreateTarFile mocks base method
 func (m *MockFS) CreateTarFile(arg0, arg1, arg2 string, arg3, arg4 int) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateTarFile", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -55,11 +58,13 @@ func (m *MockFS) CreateTarFile(arg0, arg1, arg2 string, arg3, arg4 int) error {
 
 // CreateTarFile indicates an expected call of CreateTarFile
 func (mr *MockFSMockRecorder) CreateTarFile(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTarFile", reflect.TypeOf((*MockFS)(nil).CreateTarFile), arg0, arg1, arg2, arg3, arg4)
 }
 
 // CreateTarReader mocks base method
 func (m *MockFS) CreateTarReader(arg0, arg1 string, arg2, arg3 int) (io.Reader, chan error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateTarReader", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(io.Reader)
 	ret1, _ := ret[1].(chan error)
@@ -68,11 +73,13 @@ func (m *MockFS) CreateTarReader(arg0, arg1 string, arg2, arg3 int) (io.Reader, 
 
 // CreateTarReader indicates an expected call of CreateTarReader
 func (mr *MockFSMockRecorder) CreateTarReader(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTarReader", reflect.TypeOf((*MockFS)(nil).CreateTarReader), arg0, arg1, arg2, arg3)
 }
 
 // Untar mocks base method
 func (m *MockFS) Untar(arg0 io.Reader, arg1 string) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Untar", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -80,5 +87,6 @@ func (m *MockFS) Untar(arg0 io.Reader, arg1 string) error {
 
 // Untar indicates an expected call of Untar
 func (mr *MockFSMockRecorder) Untar(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Untar", reflect.TypeOf((*MockFS)(nil).Untar), arg0, arg1)
 }

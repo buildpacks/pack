@@ -6,10 +6,17 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/buildpack/lifecycle/image"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack/logging"
 )
+
+//go:generate mockgen -package mocks -destination mocks/image_factory.go github.com/buildpack/pack/commands ImageFactory
+type ImageFactory interface {
+	NewLocal(string, bool) (image.Image, error)
+	NewRemote(string) (image.Image, error)
+}
 
 // TODO: Check if most recent cobra version fixed bug in help strings. It was not always capitalizing the first
 // letter in the help string. If it's fixed, we can remove this.

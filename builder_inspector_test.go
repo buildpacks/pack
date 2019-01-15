@@ -21,7 +21,7 @@ func TestInspectBuilder(t *testing.T) {
 
 func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		inspector        *pack.BuilderInspector
+		inspector        *pack.BuilderInspect
 		mockController   *gomock.Controller
 		mockBuilderImage *mocks.MockImage
 	)
@@ -31,7 +31,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockBuilderImage = mocks.NewMockImage(mockController)
 		mockBuilderImage.EXPECT().Name().Return("some/builder").AnyTimes()
 
-		inspector = &pack.BuilderInspector{
+		inspector = &pack.BuilderInspect{
 			Config: &config.Config{},
 		}
 	})

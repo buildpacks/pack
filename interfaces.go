@@ -4,11 +4,11 @@ import (
 	"context"
 	"io"
 
+	"github.com/buildpack/lifecycle/image"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/google/go-containerregistry/pkg/v1"
-	"github.com/buildpack/lifecycle/image"
 )
 
 //go:generate mockgen -package mocks -destination mocks/docker.go github.com/buildpack/pack Docker

@@ -39,6 +39,7 @@ func (m *MockDocker) EXPECT() *MockDockerMockRecorder {
 
 // ContainerCreate mocks base method
 func (m *MockDocker) ContainerCreate(arg0 context.Context, arg1 *container.Config, arg2 *container.HostConfig, arg3 *network.NetworkingConfig, arg4 string) (container.ContainerCreateCreatedBody, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerCreate", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(container.ContainerCreateCreatedBody)
 	ret1, _ := ret[1].(error)
@@ -47,11 +48,13 @@ func (m *MockDocker) ContainerCreate(arg0 context.Context, arg1 *container.Confi
 
 // ContainerCreate indicates an expected call of ContainerCreate
 func (mr *MockDockerMockRecorder) ContainerCreate(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContainerCreate", reflect.TypeOf((*MockDocker)(nil).ContainerCreate), arg0, arg1, arg2, arg3, arg4)
 }
 
 // ContainerRemove mocks base method
 func (m *MockDocker) ContainerRemove(arg0 context.Context, arg1 string, arg2 types.ContainerRemoveOptions) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerRemove", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -59,11 +62,13 @@ func (m *MockDocker) ContainerRemove(arg0 context.Context, arg1 string, arg2 typ
 
 // ContainerRemove indicates an expected call of ContainerRemove
 func (mr *MockDockerMockRecorder) ContainerRemove(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContainerRemove", reflect.TypeOf((*MockDocker)(nil).ContainerRemove), arg0, arg1, arg2)
 }
 
 // CopyFromContainer mocks base method
 func (m *MockDocker) CopyFromContainer(arg0 context.Context, arg1, arg2 string) (io.ReadCloser, types.ContainerPathStat, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CopyFromContainer", arg0, arg1, arg2)
 	ret0, _ := ret[0].(io.ReadCloser)
 	ret1, _ := ret[1].(types.ContainerPathStat)
@@ -73,11 +78,13 @@ func (m *MockDocker) CopyFromContainer(arg0 context.Context, arg1, arg2 string) 
 
 // CopyFromContainer indicates an expected call of CopyFromContainer
 func (mr *MockDockerMockRecorder) CopyFromContainer(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyFromContainer", reflect.TypeOf((*MockDocker)(nil).CopyFromContainer), arg0, arg1, arg2)
 }
 
 // CopyToContainer mocks base method
 func (m *MockDocker) CopyToContainer(arg0 context.Context, arg1, arg2 string, arg3 io.Reader, arg4 types.CopyToContainerOptions) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CopyToContainer", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -85,11 +92,13 @@ func (m *MockDocker) CopyToContainer(arg0 context.Context, arg1, arg2 string, ar
 
 // CopyToContainer indicates an expected call of CopyToContainer
 func (mr *MockDockerMockRecorder) CopyToContainer(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyToContainer", reflect.TypeOf((*MockDocker)(nil).CopyToContainer), arg0, arg1, arg2, arg3, arg4)
 }
 
 // ImageBuild mocks base method
 func (m *MockDocker) ImageBuild(arg0 context.Context, arg1 io.Reader, arg2 types.ImageBuildOptions) (types.ImageBuildResponse, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImageBuild", arg0, arg1, arg2)
 	ret0, _ := ret[0].(types.ImageBuildResponse)
 	ret1, _ := ret[1].(error)
@@ -98,11 +107,13 @@ func (m *MockDocker) ImageBuild(arg0 context.Context, arg1 io.Reader, arg2 types
 
 // ImageBuild indicates an expected call of ImageBuild
 func (mr *MockDockerMockRecorder) ImageBuild(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImageBuild", reflect.TypeOf((*MockDocker)(nil).ImageBuild), arg0, arg1, arg2)
 }
 
 // ImageInspectWithRaw mocks base method
 func (m *MockDocker) ImageInspectWithRaw(arg0 context.Context, arg1 string) (types.ImageInspect, []byte, error) {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImageInspectWithRaw", arg0, arg1)
 	ret0, _ := ret[0].(types.ImageInspect)
 	ret1, _ := ret[1].([]byte)
@@ -112,11 +123,13 @@ func (m *MockDocker) ImageInspectWithRaw(arg0 context.Context, arg1 string) (typ
 
 // ImageInspectWithRaw indicates an expected call of ImageInspectWithRaw
 func (mr *MockDockerMockRecorder) ImageInspectWithRaw(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImageInspectWithRaw", reflect.TypeOf((*MockDocker)(nil).ImageInspectWithRaw), arg0, arg1)
 }
 
 // RunContainer mocks base method
 func (m *MockDocker) RunContainer(arg0 context.Context, arg1 string, arg2, arg3 io.Writer) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RunContainer", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -124,11 +137,13 @@ func (m *MockDocker) RunContainer(arg0 context.Context, arg1 string, arg2, arg3 
 
 // RunContainer indicates an expected call of RunContainer
 func (mr *MockDockerMockRecorder) RunContainer(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunContainer", reflect.TypeOf((*MockDocker)(nil).RunContainer), arg0, arg1, arg2, arg3)
 }
 
 // VolumeRemove mocks base method
 func (m *MockDocker) VolumeRemove(arg0 context.Context, arg1 string, arg2 bool) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VolumeRemove", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -136,5 +151,6 @@ func (m *MockDocker) VolumeRemove(arg0 context.Context, arg1 string, arg2 bool) 
 
 // VolumeRemove indicates an expected call of VolumeRemove
 func (mr *MockDockerMockRecorder) VolumeRemove(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VolumeRemove", reflect.TypeOf((*MockDocker)(nil).VolumeRemove), arg0, arg1, arg2)
 }

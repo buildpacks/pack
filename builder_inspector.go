@@ -11,7 +11,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-type BuilderInspector struct {
+type BuilderInspect struct {
 	Config *config.Config
 }
 
@@ -21,18 +21,18 @@ type Builder struct {
 	DefaultRunImages []string
 }
 
-func DefaultBuilderInspector() (*BuilderInspector, error) {
+func DefaultBuilderInspect() (*BuilderInspect, error) {
 	cfg, err := config.NewDefault()
 	if err != nil {
 		return nil, err
 	}
 
-	return &BuilderInspector{
+	return &BuilderInspect{
 		Config: cfg,
 	}, nil
 }
 
-func (b *BuilderInspector) Inspect(builderImage image.Image) (Builder, error) {
+func (b *BuilderInspect) Inspect(builderImage image.Image) (Builder, error) {
 	defaultRunImages, err := b.getDefaultRunImages(builderImage)
 	if err != nil {
 		return Builder{}, err
@@ -46,14 +46,14 @@ func (b *BuilderInspector) Inspect(builderImage image.Image) (Builder, error) {
 	}, nil
 }
 
-func (b *BuilderInspector) getLocalRunImages(builderName string) []string {
+func (b *BuilderInspect) getLocalRunImages(builderName string) []string {
 	if builderConfig := b.Config.GetBuilder(builderName); builderConfig != nil {
 		return builderConfig.RunImages
 	}
 	return nil
 }
 
-func (b *BuilderInspector) getDefaultRunImages(builderImage image.Image) ([]string, error) {
+func (b *BuilderInspect) getDefaultRunImages(builderImage image.Image) ([]string, error) {
 	var metadata BuilderImageMetadata
 
 	label, err := builderImage.Label(MetadataLabel)

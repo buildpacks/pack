@@ -5,9 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/logging"
-	"github.com/fatih/color"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -16,6 +13,11 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/fatih/color"
+
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/logging"
 
 	"github.com/buildpack/lifecycle"
 	dockertypes "github.com/docker/docker/api/types"
@@ -780,7 +782,9 @@ cache = false
 			})
 
 			it.After(func() {
-				t.Log("OUTPUT:", outBuf.String())
+				if t.Failed() {
+					t.Log("OUTPUT:", outBuf.String())
+				}
 			})
 
 			it("creates the image on the registry", func() {
@@ -828,7 +832,9 @@ cache = false
 			it.Before(func() { subject.Publish = false })
 
 			it.After(func() {
-				t.Log("OUTPUT:", outBuf.String())
+				if t.Failed() {
+					t.Log("OUTPUT:", outBuf.String())
+				}
 				h.AssertNil(t, h.DockerRmi(dockerCli, subject.RepoName))
 			})
 

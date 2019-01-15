@@ -10,22 +10,17 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func InspectBuilder(logger *logging.Logger) *cobra.Command {
+//go:generate mockgen -package mocks -destination mocks/builder_inspector.go github.com/buildpack/pack/commands BuilderInspector
+type BuilderInspector interface {
+	Inspect(image.Image) (pack.Builder, error)
+}
+
+func InspectBuilder(logger *logging.Logger, inspector BuilderInspector, imageFactory pack.ImageFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "inspect-builder <builder-image-name>",
 		Short: "Show information about a builder",
 		Args:  cobra.ExactArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			inspector, err := pack.DefaultBuilderInspector()
-			if err != nil {
-				return err
-			}
-
-			imageFactory, err := image.DefaultFactory()
-			if err != nil {
-				return err
-			}
-
 			imageName := args[0]
 			for _, remote := range []bool{true, false} {
 				inspectBuilderOutput(logger, imageName, remote, imageFactory, inspector)
@@ -38,7 +33,7 @@ func InspectBuilder(logger *logging.Logger) *cobra.Command {
 	return cmd
 }
 
-func inspectBuilderOutput(logger *logging.Logger, imageName string, remote bool, imageFactory *image.Factory, inspector *pack.BuilderInspector) {
+func inspectBuilderOutput(logger *logging.Logger, imageName string, remote bool, imageFactory pack.ImageFactory, inspector BuilderInspector) {
 	var builderImage image.Image
 	var err error
 	if remote {
