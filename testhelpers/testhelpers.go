@@ -21,14 +21,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/pack"
-
 	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
+	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/go-cmp/cmp"
+	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/fs"
 )
@@ -180,10 +180,10 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 
 		AssertNil(t, PullImage(dockerCli(t), "registry:2"))
 		ctx := context.Background()
-		ctr, err := dockerCli(t).ContainerCreate(ctx, &container.Config{
+		ctr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
 			Image:  "registry:2",
 			Labels: map[string]string{"author": "pack"},
-		}, &container.HostConfig{
+		}, &dockercontainer.HostConfig{
 			AutoRemove: true,
 			PortBindings: nat.PortMap{
 				"5000/tcp": []nat.PortBinding{{}},
@@ -394,10 +394,10 @@ func StatSingleFileFromContainer(dockerCli *docker.Client, ctrID, path string) (
 
 func CopySingleFileFromImage(dockerCli *docker.Client, repoName, path string) (string, error) {
 	ctr, err := dockerCli.ContainerCreate(context.Background(),
-		&container.Config{
+		&dockercontainer.Config{
 			Image:  repoName,
 			Labels: map[string]string{"author": "pack"},
-		}, &container.HostConfig{
+		}, &dockercontainer.HostConfig{
 			AutoRemove: true,
 		}, nil, "",
 	)
@@ -473,12 +473,12 @@ func CopyWorkspaceToDocker(t *testing.T, srcPath, destVolume string) {
 
 	ctx := context.Background()
 	pullPacksSamples(dockerCli(t))
-	ctr, err := dockerCli(t).ContainerCreate(ctx, &container.Config{
+	ctr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
 		User:   "pack",
 		Image:  "packs/samples",
 		Cmd:    []string{"true"},
 		Labels: map[string]string{"author": "pack"},
-	}, &container.HostConfig{
+	}, &dockercontainer.HostConfig{
 		AutoRemove: true,
 		Binds:      []string{destVolume + ":/workspace"},
 	}, nil, "")
@@ -496,11 +496,11 @@ func ReadFromDocker(t *testing.T, volume, path string) string {
 	pullPacksSamples(dockerCli(t))
 	ctr, err := dockerCli(t).ContainerCreate(
 		context.Background(),
-		&container.Config{
+		&dockercontainer.Config{
 			Image:  "packs/samples",
 			Labels: map[string]string{"author": "pack"},
 		},
-		&container.HostConfig{
+		&dockercontainer.HostConfig{
 			AutoRemove: true,
 			Binds:      []string{volume + ":/workspace"},
 		},
@@ -518,11 +518,11 @@ func StatFromDocker(t *testing.T, volume, path string) *tar.Header {
 	pullPacksSamples(dockerCli(t))
 	ctr, err := dockerCli(t).ContainerCreate(
 		context.Background(),
-		&container.Config{
+		&dockercontainer.Config{
 			Image:  "packs/samples",
 			Labels: map[string]string{"author": "pack"},
 		},
-		&container.HostConfig{
+		&dockercontainer.HostConfig{
 			AutoRemove: true,
 			Binds:      []string{volume + ":/workspace"},
 		},
@@ -586,4 +586,33 @@ func PullImage(dockerCli *docker.Client, ref string) error {
 		return err
 	}
 	return rc.Close()
+}
+
+func RunInImage(t *testing.T, dockerCli *docker.Client, volumes []string, repoName string, args ...string) string {
+	t.Helper()
+	ctx := context.Background()
+
+	ctr, err := dockerCli.ContainerCreate(ctx, &dockercontainer.Config{
+		Image: repoName,
+		Cmd:   args,
+		User:  "root",
+	}, &dockercontainer.HostConfig{
+		AutoRemove: true,
+		Binds:      volumes,
+	}, nil, "")
+	AssertNil(t, err)
+	okChan, errChan := dockerCli.ContainerWait(ctx, ctr.ID, dockercontainer.WaitConditionRemoved)
+
+	var buf bytes.Buffer
+	err = dockerCli.RunContainer(ctx, ctr.ID, &buf, &buf)
+	if err != nil {
+		t.Fatalf("Expected nil: %s", errors.Wrap(err, buf.String()))
+	}
+
+	select {
+	case <-okChan:
+	case err = <-errChan:
+		AssertNil(t, err)
+	}
+	return buf.String()
 }

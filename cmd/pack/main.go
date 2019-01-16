@@ -9,6 +9,7 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/commands"
+	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 )
 
@@ -30,6 +31,11 @@ func main() {
 		exitError(err, initLogger)
 	}
 
+	dockerClient, err := docker.New()
+	if err != nil {
+		exitError(err, initLogger)
+	}
+
 	cobra.EnableCommandSorting = false
 	rootCmd := &cobra.Command{
 		Use: "pack",
@@ -42,8 +48,8 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Show less output")
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(&logger))
-	rootCmd.AddCommand(commands.Run(&logger))
+	rootCmd.AddCommand(commands.Build(&logger, dockerClient))
+	rootCmd.AddCommand(commands.Run(&logger, dockerClient))
 	rootCmd.AddCommand(commands.Rebase(&logger))
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger))

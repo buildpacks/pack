@@ -4,17 +4,27 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/logging"
 )
 
-func Run(logger *logging.Logger) *cobra.Command {
+func Run(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
 	var runFlags pack.RunFlags
 	cmd := &cobra.Command{
 		Use:   "run",
 		Args:  cobra.NoArgs,
 		Short: "Build and run app image (recommended for development only)",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			bf, err := pack.DefaultBuildFactory(logger)
+			repoName, err := pack.RepositoryName(logger, &runFlags.BuildFlags)
+			if err != nil {
+				return err
+			}
+
+			cacheObj, err := cache.New(repoName, dockerClient)
+			if err != nil {
+				return err
+			}
+			bf, err := pack.DefaultBuildFactory(logger, cacheObj, dockerClient)
 			if err != nil {
 				return err
 			}

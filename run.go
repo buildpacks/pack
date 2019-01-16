@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 
@@ -49,7 +51,17 @@ func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
 }
 
 func Run(logger *logging.Logger, appDir, buildImage, runImage string, ports []string, makeStopCh func() <-chan struct{}) error {
-	bf, err := DefaultBuildFactory(logger)
+	// TODO: Receive Cache and docker client as an argument of this function
+	dockerClient, err := docker.New()
+	if err != nil {
+		return err
+	}
+	c, err := cache.New(runImage, dockerClient)
+	if err != nil {
+		return err
+	}
+
+	bf, err := DefaultBuildFactory(logger, c, dockerClient)
 	if err != nil {
 		return err
 	}

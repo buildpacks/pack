@@ -4,11 +4,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
 
-func Build(logger *logging.Logger) *cobra.Command {
+func Build(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
 	var buildFlags pack.BuildFlags
 	cmd := &cobra.Command{
 		Use:   "build <image-name>",
@@ -16,7 +17,13 @@ func Build(logger *logging.Logger) *cobra.Command {
 		Short: "Generate app image from source code",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			buildFlags.RepoName = args[0]
-			bf, err := pack.DefaultBuildFactory(logger)
+
+			cacheObj, err := cache.New(buildFlags.RepoName, dockerClient)
+			if err != nil {
+				return err
+			}
+
+			bf, err := pack.DefaultBuildFactory(logger, cacheObj, dockerClient)
 			if err != nil {
 				return err
 			}

@@ -35,12 +35,19 @@ import (
 	"github.com/pkg/errors"
 )
 
+//go:generate mockgen -package mocks -destination mocks/cache.go github.com/buildpack/pack Cache
+type Cache interface {
+	Clear() error
+	Volume() string
+}
+
 type BuildFactory struct {
 	Cli          Docker
 	Logger       *logging.Logger
 	FS           FS
 	Config       *config.Config
 	ImageFactory ImageFactory
+	Cache        Cache
 }
 
 type BuildFlags struct {
@@ -71,7 +78,7 @@ type BuildConfig struct {
 	FS     FS
 	Config *config.Config
 	// Above are copied from BuildFactory
-	Cache *cache.Cache
+	Cache Cache
 }
 
 const (
@@ -83,17 +90,15 @@ const (
 	planPath      = "/workspace/plan.toml"
 )
 
-func DefaultBuildFactory(logger *logging.Logger) (*BuildFactory, error) {
+func DefaultBuildFactory(logger *logging.Logger, cache Cache, dockerClient Docker) (*BuildFactory, error) {
 	f := &BuildFactory{
 		Logger: logger,
 		FS:     &fs.FS{},
+		Cache:  cache,
 	}
 
 	var err error
-	f.Cli, err = docker.New()
-	if err != nil {
-		return nil, err
-	}
+	f.Cli = dockerClient
 
 	f.Config, err = config.NewDefault()
 	if err != nil {
@@ -106,6 +111,30 @@ func DefaultBuildFactory(logger *logging.Logger) (*BuildFactory, error) {
 	}
 
 	return f, nil
+}
+
+func RepositoryName(logger *logging.Logger, buildFlags *BuildFlags) (string, error) {
+	if buildFlags.AppDir == "" {
+		var err error
+		buildFlags.AppDir, err = os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		logger.Verbose("Defaulting app directory to current working directory %s (use --path to override)", style.Symbol(buildFlags.AppDir))
+	}
+
+	appDir, err := filepath.Abs(buildFlags.AppDir)
+	if err != nil {
+		return "", err
+	}
+	return calculateRepositoryName(appDir, buildFlags), nil
+}
+
+func calculateRepositoryName(appDir string, buildFlags *BuildFlags) string {
+	if buildFlags.RepoName == "" {
+		return fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(appDir)))
+	}
+	return buildFlags.RepoName
 }
 
 func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error) {
@@ -122,9 +151,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		return nil, err
 	}
 
-	if f.RepoName == "" {
-		f.RepoName = fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(appDir)))
-	}
+	f.RepoName = calculateRepositoryName(appDir, f)
 
 	b := &BuildConfig{
 		AppDir:     appDir,
@@ -237,18 +264,25 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		return nil, fmt.Errorf("invalid stack: stack %s from run image %s does not match stack %s from builder image %s", style.Symbol(runStackID), style.Symbol(b.RunImage), style.Symbol(builderStackID), style.Symbol(b.Builder))
 	}
 
-	b.Cache, err = cache.New(f.RepoName)
-	if err != nil {
-		return nil, err
-	}
-	bf.Logger.Verbose(fmt.Sprintf("Using cache volume %s", style.Symbol(b.Cache.Volume)))
+	b.Cache = bf.Cache
+	bf.Logger.Verbose(fmt.Sprintf("Using cache volume %s", style.Symbol(b.Cache.Volume())))
 
 	return b, nil
 }
 
 // TODO: This function has no tests! Also, should it take a `BuildFlags` object instead of all these args?
 func Build(logger *logging.Logger, appDir, buildImage, runImage, repoName string, publish, clearCache bool) error {
-	bf, err := DefaultBuildFactory(logger)
+	// TODO: Receive Cache as an argument of this function
+	dockerClient, err := docker.New()
+	if err != nil {
+		return err
+	}
+	c, err := cache.New(repoName, dockerClient)
+	if err != nil {
+		return err
+	}
+
+	bf, err := DefaultBuildFactory(logger, c, dockerClient)
 	if err != nil {
 		return err
 	}
@@ -343,7 +377,7 @@ func (b *BuildConfig) Detect() error {
 		if err := b.Cache.Clear(); err != nil {
 			return errors.Wrap(err, "clearing cache")
 		}
-		b.Logger.Verbose("Cache volume %s cleared", style.Symbol(b.Cache.Volume))
+		b.Logger.Verbose("Cache volume %s cleared", style.Symbol(b.Cache.Volume()))
 	}
 
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
@@ -358,7 +392,7 @@ func (b *BuildConfig) Detect() error {
 		Labels: map[string]string{"author": "pack"},
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.Cache.Volume, launchDir),
+			fmt.Sprintf("%s:%s:", b.Cache.Volume(), launchDir),
 		},
 	}, nil, "")
 	if err != nil {
@@ -442,7 +476,7 @@ func (b *BuildConfig) Analyze() error {
 	}
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.Cache.Volume, launchDir),
+			fmt.Sprintf("%s:%s:", b.Cache.Volume(), launchDir),
 		},
 	}
 
@@ -525,7 +559,7 @@ func (b *BuildConfig) Build() error {
 		Labels: map[string]string{"author": "pack"},
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.Cache.Volume, launchDir),
+			fmt.Sprintf("%s:%s:", b.Cache.Volume(), launchDir),
 		},
 	}, nil, "")
 	if err != nil {
@@ -618,7 +652,7 @@ func (b *BuildConfig) Export() error {
 	}
 	hostConfig := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.Cache.Volume, launchDir),
+			fmt.Sprintf("%s:%s:", b.Cache.Volume(), launchDir),
 		},
 	}
 
@@ -713,7 +747,7 @@ func (b *BuildConfig) chownDir(path string, uid, gid int) error {
 		Labels: map[string]string{"author": "pack"},
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.Cache.Volume, launchDir),
+			fmt.Sprintf("%s:%s:", b.Cache.Volume(), launchDir),
 		},
 	}, nil, "")
 	if err != nil {

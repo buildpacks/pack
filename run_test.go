@@ -5,8 +5,6 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
-	"github.com/buildpack/pack/logging"
-	"github.com/fatih/color"
 	"io"
 	"math/rand"
 	"path/filepath"
@@ -17,6 +15,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
+	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -24,6 +23,7 @@ import (
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/fs"
+	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -60,16 +60,19 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			mockController   *gomock.Controller
 			factory          *pack.BuildFactory
 			mockImageFactory *mocks.MockImageFactory
+			mockCache        *mocks.MockCache
 		)
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
 			mockImageFactory = mocks.NewMockImageFactory(mockController)
+			mockCache = mocks.NewMockCache(mockController)
 			factory = &pack.BuildFactory{
 				Cli:          mockDocker,
 				Logger:       logger,
 				FS:           &fs.FS{},
 				ImageFactory: mockImageFactory,
+				Cache:        mockCache,
 				Config: &config.Config{
 					Stacks: []config.Stack{
 						{
@@ -80,6 +83,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 
+			mockCache.EXPECT().Volume().Return("some-volume")
 		})
 
 		it.After(func() {

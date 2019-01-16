@@ -29,47 +29,54 @@ func TestCache(t *testing.T) {
 
 func testCache(t *testing.T, when spec.G, it spec.S) {
 	when("#New", func() {
-		it("reusing the same cache for the same repo name", func() {
-			subject, err := cache.New("my/repo")
+		var dockerClient *docker.Client
+		it.Before(func() {
+			var err error
+			dockerClient, err = docker.New()
 			h.AssertNil(t, err)
-			expected, _ := cache.New("my/repo")
-			if subject.Volume != expected.Volume {
+		})
+
+		it("reusing the same cache for the same repo name", func() {
+			subject, err := cache.New("my/repo", dockerClient)
+			h.AssertNil(t, err)
+			expected, _ := cache.New("my/repo", dockerClient)
+			if subject.Volume() != expected.Volume() {
 				t.Fatalf("The same repo name should result in the same volume")
 			}
 		})
 
 		it("supplies different volumes for different tags", func() {
-			subject, err := cache.New("my/repo:other-tag")
+			subject, err := cache.New("my/repo:other-tag", dockerClient)
 			h.AssertNil(t, err)
-			notExpected, _ := cache.New("my/repo")
-			if subject.Volume == notExpected.Volume {
+			notExpected, _ := cache.New("my/repo", dockerClient)
+			if subject.Volume() == notExpected.Volume() {
 				t.Fatalf("Different image tags should result in different volumes")
 			}
 		})
 
 		it("supplies different volumes for different registries", func() {
-			subject, err := cache.New("registry.com/my/repo:other-tag")
+			subject, err := cache.New("registry.com/my/repo:other-tag", dockerClient)
 			h.AssertNil(t, err)
-			notExpected, _ := cache.New("my/repo")
-			if subject.Volume == notExpected.Volume {
+			notExpected, _ := cache.New("my/repo", dockerClient)
+			if subject.Volume() == notExpected.Volume() {
 				t.Fatalf("Different image registries should result in different volumes")
 			}
 		})
 
 		it("resolves implied tag", func() {
-			subject, err := cache.New("my/repo:latest")
+			subject, err := cache.New("my/repo:latest", dockerClient)
 			h.AssertNil(t, err)
-			expected, _ := cache.New("my/repo")
-			if subject.Volume != expected.Volume {
+			expected, _ := cache.New("my/repo", dockerClient)
+			if subject.Volume() != expected.Volume() {
 				t.Fatalf("The same repo name should result in the same volume")
 			}
 		})
 
 		it("resolves implied registry", func() {
-			subject, err := cache.New("index.docker.io/my/repo")
+			subject, err := cache.New("index.docker.io/my/repo", dockerClient)
 			h.AssertNil(t, err)
-			expected, _ := cache.New("my/repo")
-			if subject.Volume != expected.Volume {
+			expected, _ := cache.New("my/repo", dockerClient)
+			if subject.Volume() != expected.Volume() {
 				t.Fatalf("The same repo name should result in the same volume")
 			}
 		})
@@ -79,18 +86,17 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 		var (
 			volumeName   string
 			dockerClient *docker.Client
-			subject      cache.Cache
+			subject      *cache.Cache
 		)
 
 		it.Before(func() {
 			var err error
 			dockerClient, err = docker.New()
 			h.AssertNil(t, err)
-			volumeName = h.RandString(10)
-			subject = cache.Cache{
-				Docker: dockerClient,
-				Volume: volumeName,
-			}
+
+			subject, err = cache.New(h.RandString(10), dockerClient)
+			volumeName = subject.Volume()
+			h.AssertNil(t, err)
 		})
 
 		when("the volume is not attached to a container", func() {

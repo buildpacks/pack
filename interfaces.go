@@ -17,6 +17,7 @@ type Docker interface {
 	VolumeRemove(ctx context.Context, volumeID string, force bool) error
 	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (container.ContainerCreateCreatedBody, error)
 	ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error
+	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
 	CopyToContainer(ctx context.Context, containerID, dstPath string, content io.Reader, options types.CopyToContainerOptions) error
 	CopyFromContainer(ctx context.Context, containerID, srcPath string) (io.ReadCloser, types.ContainerPathStat, error)
 	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)

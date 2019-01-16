@@ -52,6 +52,21 @@ func (mr *MockDockerMockRecorder) ContainerCreate(arg0, arg1, arg2, arg3, arg4 i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContainerCreate", reflect.TypeOf((*MockDocker)(nil).ContainerCreate), arg0, arg1, arg2, arg3, arg4)
 }
 
+// ContainerList mocks base method
+func (m *MockDocker) ContainerList(arg0 context.Context, arg1 types.ContainerListOptions) ([]types.Container, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ContainerList", arg0, arg1)
+	ret0, _ := ret[0].([]types.Container)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ContainerList indicates an expected call of ContainerList
+func (mr *MockDockerMockRecorder) ContainerList(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContainerList", reflect.TypeOf((*MockDocker)(nil).ContainerList), arg0, arg1)
+}
+
 // ContainerRemove mocks base method
 func (m *MockDocker) ContainerRemove(arg0 context.Context, arg1 string, arg2 types.ContainerRemoveOptions) error {
 	m.ctrl.T.Helper()
