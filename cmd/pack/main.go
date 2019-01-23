@@ -13,34 +13,25 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-var (
-	Version           = "0.0.0"
-	timestamps, quiet bool
-	logger            logging.Logger
-)
+var Version = "0.0.0"
 
 func main() {
-	initLogger := logging.NewLogger(os.Stdout, os.Stderr, false, false)
-	inspect, err := pack.DefaultBuilderInspect()
-	if err != nil {
-		exitError(err, initLogger)
-	}
-
-	imageFactory, err := image.DefaultFactory()
-	if err != nil {
-		exitError(err, initLogger)
-	}
-
-	dockerClient, err := docker.New()
-	if err != nil {
-		exitError(err, initLogger)
-	}
+	var (
+		logger            logging.Logger
+		timestamps, quiet bool
+		inspect           pack.BuilderInspect
+		imageFactory      image.Factory
+		dockerClient      docker.Client
+	)
 
 	cobra.EnableCommandSorting = false
 	rootCmd := &cobra.Command{
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			logger = *logging.NewLogger(os.Stdout, os.Stderr, !quiet, timestamps)
+			inspect = initInspect(logger)
+			imageFactory = initImageFactory(logger)
+			dockerClient = initDockerClient(logger)
 		},
 	}
 	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
@@ -48,13 +39,13 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Show less output")
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(&logger, dockerClient))
-	rootCmd.AddCommand(commands.Run(&logger, dockerClient))
+	rootCmd.AddCommand(commands.Build(&logger, &dockerClient))
+	rootCmd.AddCommand(commands.Run(&logger, &dockerClient))
 	rootCmd.AddCommand(commands.Rebase(&logger))
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger))
 	rootCmd.AddCommand(commands.ConfigureBuilder(&logger))
-	rootCmd.AddCommand(commands.InspectBuilder(&logger, inspect, imageFactory))
+	rootCmd.AddCommand(commands.InspectBuilder(&logger, &inspect, &imageFactory))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger))
 
 	rootCmd.AddCommand(commands.AddStack(&logger))
@@ -70,7 +61,31 @@ func main() {
 	}
 }
 
-func exitError(err error, logger *logging.Logger) {
+func initInspect(logger logging.Logger) pack.BuilderInspect {
+	inspect, err := pack.DefaultBuilderInspect()
+	if err != nil {
+		exitError(logger, err)
+	}
+	return *inspect
+}
+
+func initImageFactory(logger logging.Logger) image.Factory {
+	factory, err := image.DefaultFactory()
+	if err != nil {
+		exitError(logger, err)
+	}
+	return *factory
+}
+
+func initDockerClient(logger logging.Logger) docker.Client {
+	client, err := docker.New()
+	if err != nil {
+		exitError(logger, err)
+	}
+	return *client
+}
+
+func exitError(logger logging.Logger, err error) {
 	logger.Error(err.Error())
 	os.Exit(1)
 }

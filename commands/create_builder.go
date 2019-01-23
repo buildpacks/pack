@@ -54,7 +54,7 @@ func CreateBuilder(logger *logging.Logger) *cobra.Command {
 			return nil
 		}),
 	}
-	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling stack image before use")
+	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling build image before use")
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "builder-config", "b", "", "Path to builder TOML file (required)")
 	cmd.MarkFlagRequired("builder-config")
 	cmd.Flags().StringVarP(&flags.StackID, "stack", "s", "", "Stack ID (defaults to stack configured by 'set-default-stack')")

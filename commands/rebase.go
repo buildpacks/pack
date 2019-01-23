@@ -44,7 +44,7 @@ func Rebase(logger *logging.Logger) *cobra.Command {
 		}),
 	}
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
-	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling images before use")
+	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling app and run images before use")
 	AddHelpFlag(cmd, "rebase")
 	return cmd
 }
