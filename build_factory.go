@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/containers"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 
@@ -37,7 +38,7 @@ import (
 
 //go:generate mockgen -package mocks -destination mocks/cache.go github.com/buildpack/pack Cache
 type Cache interface {
-	Clear() error
+	Clear(context.Context) error
 	Volume() string
 }
 
@@ -271,7 +272,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 }
 
 // TODO: This function has no tests! Also, should it take a `BuildFlags` object instead of all these args?
-func Build(logger *logging.Logger, appDir, buildImage, runImage, repoName string, publish, clearCache bool) error {
+func Build(ctx context.Context, logger *logging.Logger, appDir, buildImage, runImage, repoName string, publish, clearCache bool) error {
 	// TODO: Receive Cache as an argument of this function
 	dockerClient, err := docker.New()
 	if err != nil {
@@ -297,27 +298,27 @@ func Build(logger *logging.Logger, appDir, buildImage, runImage, repoName string
 	if err != nil {
 		return err
 	}
-	return b.Run()
+	return b.Run(ctx)
 }
 
-func (b *BuildConfig) Run() error {
-	if err := b.Detect(); err != nil {
+func (b *BuildConfig) Run(ctx context.Context) error {
+	if err := b.Detect(ctx); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("ANALYZING"))
 	b.Logger.Verbose("Reading information from previous image for possible re-use")
-	if err := b.Analyze(); err != nil {
+	if err := b.Analyze(ctx); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("BUILDING"))
-	if err := b.Build(); err != nil {
+	if err := b.Build(ctx); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("EXPORTING"))
-	if err := b.Export(); err != nil {
+	if err := b.Export(ctx); err != nil {
 		return err
 	}
 
@@ -370,11 +371,9 @@ func (b *BuildConfig) copyBuildpacksToContainer(ctx context.Context, ctrID strin
 	return buildpacks, nil
 }
 
-func (b *BuildConfig) Detect() error {
-	ctx := context.Background()
-
+func (b *BuildConfig) Detect(ctx context.Context) error {
 	if b.ClearCache {
-		if err := b.Cache.Clear(); err != nil {
+		if err := b.Cache.Clear(ctx); err != nil {
 			return errors.Wrap(err, "clearing cache")
 		}
 		b.Logger.Verbose("Cache volume %s cleared", style.Symbol(b.Cache.Volume()))
@@ -396,9 +395,9 @@ func (b *BuildConfig) Detect() error {
 		},
 	}, nil, "")
 	if err != nil {
-		return errors.Wrap(err, "container create")
+		return errors.Wrap(err, "create detect container")
 	}
-	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+	defer containers.Remove(b.Cli, ctr.ID)
 
 	var orderToml string
 	b.Logger.Verbose(style.Step("DETECTING"))
@@ -435,11 +434,11 @@ func (b *BuildConfig) Detect() error {
 		return errors.Wrap(err, "copy app to workspace volume")
 	}
 
-	uid, gid, err := b.packUidGid(b.Builder)
+	uid, gid, err := b.packUidGid(ctx, b.Builder)
 	if err != nil {
 		return errors.Wrap(err, "get pack uid gid")
 	}
-	if err := b.chownDir(launchDir+"/app", uid, gid); err != nil {
+	if err := b.chownDir(ctx, launchDir+"/app", uid, gid); err != nil {
 		return errors.Wrap(err, "chown app to workspace volume")
 	}
 
@@ -468,8 +467,7 @@ func (b *BuildConfig) Detect() error {
 	return nil
 }
 
-func (b *BuildConfig) Analyze() error {
-	ctx := context.Background()
+func (b *BuildConfig) Analyze(ctx context.Context) error {
 	ctrConf := &container.Config{
 		Image:  b.Builder,
 		Labels: map[string]string{"author": "pack"},
@@ -508,9 +506,9 @@ func (b *BuildConfig) Analyze() error {
 
 	ctr, err := b.Cli.ContainerCreate(ctx, ctrConf, hostConfig, nil, "")
 	if err != nil {
-		return errors.Wrap(err, "analyze container create")
+		return errors.Wrap(err, "create analyze container")
 	}
-	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+	defer containers.Remove(b.Cli, ctr.ID)
 
 	if err := b.Cli.RunContainer(
 		ctx,
@@ -518,14 +516,14 @@ func (b *BuildConfig) Analyze() error {
 		b.Logger.VerboseWriter().WithPrefix("analyzer"),
 		b.Logger.VerboseErrorWriter().WithPrefix("analyzer"),
 	); err != nil {
-		return errors.Wrap(err, "analyze run container")
+		return errors.Wrap(err, "run analyze container")
 	}
 
-	uid, gid, err := b.packUidGid(b.Builder)
+	uid, gid, err := b.packUidGid(ctx, b.Builder)
 	if err != nil {
 		return errors.Wrap(err, "get pack uid and gid")
 	}
-	if err := b.chownDir(launchDir, uid, gid); err != nil {
+	if err := b.chownDir(ctx, launchDir, uid, gid); err != nil {
 		return errors.Wrap(err, "chown launch dir")
 	}
 
@@ -544,8 +542,7 @@ func authHeader(repoName string) (string, error) {
 	return auth.Authorization()
 }
 
-func (b *BuildConfig) Build() error {
-	ctx := context.Background()
+func (b *BuildConfig) Build(ctx context.Context) error {
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image: b.Builder,
 		Cmd: []string{
@@ -563,9 +560,9 @@ func (b *BuildConfig) Build() error {
 		},
 	}, nil, "")
 	if err != nil {
-		return errors.Wrap(err, "build container create")
+		return errors.Wrap(err, "create build container")
 	}
-	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+	defer containers.Remove(b.Cli, ctr.ID)
 
 	if len(b.Buildpacks) > 0 {
 		_, err = b.copyBuildpacksToContainer(ctx, ctr.ID)
@@ -584,7 +581,7 @@ func (b *BuildConfig) Build() error {
 		b.Logger.VerboseWriter().WithPrefix("builder"),
 		b.Logger.VerboseErrorWriter().WithPrefix("builder"),
 	); err != nil {
-		return errors.Wrap(err, "running builder in container")
+		return errors.Wrap(err, "run build container")
 	}
 	return nil
 }
@@ -644,8 +641,7 @@ func (b *BuildConfig) copyEnvsToContainer(ctx context.Context, containerID strin
 	return nil
 }
 
-func (b *BuildConfig) Export() error {
-	ctx := context.Background()
+func (b *BuildConfig) Export(ctx context.Context) error {
 	ctrConf := &container.Config{
 		Image:  b.Builder,
 		Labels: map[string]string{"author": "pack"},
@@ -688,13 +684,13 @@ func (b *BuildConfig) Export() error {
 	if err != nil {
 		return errors.Wrap(err, "create export container")
 	}
-	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+	defer containers.Remove(b.Cli, ctr.ID)
 
-	uid, gid, err := b.packUidGid(b.Builder)
+	uid, gid, err := b.packUidGid(ctx, b.Builder)
 	if err != nil {
 		return errors.Wrap(err, "get pack uid and gid")
 	}
-	if err := b.chownDir(launchDir, uid, gid); err != nil {
+	if err := b.chownDir(ctx, launchDir, uid, gid); err != nil {
 		return errors.Wrap(err, "chown launch dir")
 	}
 
@@ -704,13 +700,13 @@ func (b *BuildConfig) Export() error {
 		b.Logger.VerboseWriter().WithPrefix("exporter"),
 		b.Logger.VerboseErrorWriter().WithPrefix("exporter"),
 	); err != nil {
-		return errors.Wrap(err, "run lifecycle/exporter")
+		return errors.Wrap(err, "run export container")
 	}
 	return nil
 }
 
-func (b *BuildConfig) packUidGid(builder string) (int, int, error) {
-	i, _, err := b.Cli.ImageInspectWithRaw(context.Background(), builder)
+func (b *BuildConfig) packUidGid(ctx context.Context, builder string) (int, int, error) {
+	i, _, err := b.Cli.ImageInspectWithRaw(ctx, builder)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "reading builder env variables")
 	}
@@ -738,8 +734,7 @@ func (b *BuildConfig) packUidGid(builder string) (int, int, error) {
 	return uid, gid, nil
 }
 
-func (b *BuildConfig) chownDir(path string, uid, gid int) error {
-	ctx := context.Background()
+func (b *BuildConfig) chownDir(ctx context.Context, path string, uid, gid int) error {
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image:  b.Builder,
 		Cmd:    []string{"chown", "-R", fmt.Sprintf("%d:%d", uid, gid), path},
@@ -753,7 +748,7 @@ func (b *BuildConfig) chownDir(path string, uid, gid int) error {
 	if err != nil {
 		return err
 	}
-	defer b.Cli.ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
+	defer containers.Remove(b.Cli, ctr.ID)
 	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Logger.VerboseWriter(), b.Logger.VerboseErrorWriter()); err != nil {
 		return err
 	}

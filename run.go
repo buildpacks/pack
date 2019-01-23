@@ -9,15 +9,21 @@ import (
 	"strings"
 
 	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/containers"
 	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
 )
+
+// This interface same as BuildConfig
+//go:generate mockgen -package mocks -destination mocks/build_runner.go github.com/buildpack/pack BuildRunner
+type BuildRunner interface {
+	Run(context.Context) error
+}
 
 type RunFlags struct {
 	BuildFlags BuildFlags
@@ -26,7 +32,7 @@ type RunFlags struct {
 
 type RunConfig struct {
 	Ports []string
-	Build Task
+	Build BuildRunner
 	// All below are from BuildConfig
 	RepoName string
 	Cli      Docker
@@ -50,7 +56,7 @@ func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
 	return rc, nil
 }
 
-func Run(logger *logging.Logger, appDir, buildImage, runImage string, ports []string, makeStopCh func() <-chan struct{}) error {
+func Run(ctx context.Context, logger *logging.Logger, appDir, buildImage, runImage string, ports []string) error {
 	// TODO: Receive Cache and docker client as an argument of this function
 	dockerClient, err := docker.New()
 	if err != nil {
@@ -76,13 +82,11 @@ func Run(logger *logging.Logger, appDir, buildImage, runImage string, ports []st
 	if err != nil {
 		return err
 	}
-	return r.Run(makeStopCh)
+	return r.Run(ctx)
 }
 
-func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
-	ctx := context.Background()
-
-	err := r.Build.Run()
+func (r *RunConfig) Run(ctx context.Context) error {
+	err := r.Build.Run(ctx)
 	if err != nil {
 		return err
 	}
@@ -108,18 +112,13 @@ func (r *RunConfig) Run(makeStopCh func() <-chan struct{}) error {
 		AutoRemove:   true,
 		PortBindings: portBindings,
 	}, nil, "")
+	if err != nil {
+		return err
+	}
+	defer containers.Remove(r.Cli, ctr.ID)
 
 	logContainerListening(r.Logger, portBindings)
-	running := true
-	stopCh := makeStopCh()
-	go func() {
-		<-stopCh
-		running = false
-		r.Cli.ContainerRemove(ctx, ctr.ID, types.ContainerRemoveOptions{
-			Force: true,
-		})
-	}()
-	if err = r.Cli.RunContainer(ctx, ctr.ID, r.Logger.VerboseWriter(), r.Logger.VerboseErrorWriter()); err != nil && running {
+	if err = r.Cli.RunContainer(ctx, ctr.ID, r.Logger.VerboseWriter(), r.Logger.VerboseErrorWriter()); err != nil {
 		return errors.Wrap(err, "run container")
 	}
 

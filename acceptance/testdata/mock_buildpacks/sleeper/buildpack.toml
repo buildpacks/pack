@@ -1,0 +1,7 @@
+[buildpack]
+id = "mock.bp.sleeper"
+version = "0.0.1-mock"
+name = "Sleeping Buildpack"
+
+[[stacks]]
+id = "io.buildpacks.stacks.bionic"

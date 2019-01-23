@@ -1,3 +1,5 @@
+// +build acceptance
+
 package acceptance
 
 import (
@@ -35,7 +37,7 @@ var packPath string
 var dockerCli *docker.Client
 var registryPort string
 
-func TestPack(t *testing.T) {
+func TestAcceptance(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	packPath = os.Getenv("PACK_PATH")
@@ -61,10 +63,10 @@ func TestPack(t *testing.T) {
 	defer h.StopRegistry(t)
 	defer h.CleanDefaultImages(t, registryPort)
 
-	spec.Run(t, "pack", testPack, spec.Report(report.Terminal{}))
+	spec.Run(t, "acceptance", testAcceptance, spec.Report(report.Terminal{}))
 }
 
-func testPack(t *testing.T, when spec.G, it spec.S) {
+func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 	var packHome string
 
 	var packCmd = func(name string, args ...string) *exec.Cmd {
@@ -192,6 +194,97 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 		})
+
+		when.Focus("terminating", func() {
+			when("during detect", func() {
+				it("cleans up containers", func() {
+					containersBefore := h.GetAllContainerIDs(t)
+
+					var buf bytes.Buffer
+					cmd := packCmd("build", repoName, "-p", sourceCodePath, "--buildpack", "testdata/mock_buildpacks/sleeper")
+					cmd.Stdout = &buf
+					cmd.Stderr = &buf
+
+					h.AssertNil(t, cmd.Start())
+
+					go terminateAtStep(t, cmd, &buf, "[detector]")
+
+					err := cmd.Wait()
+					h.AssertNotNil(t, err)
+					h.AssertContains(t, buf.String(), "ERROR: run detect container: context canceled")
+
+					time.Sleep(5 * time.Second)
+					containersAfter := h.GetAllContainers(t)
+					assertContainerList(containersAfter, containersBefore, t)
+					// if !cmp.Equal(containersBefore, containersAfter) {
+					// 	t.Fatalf("Expected containers to be cleaned up.\nDiff:\n%s\n", cmp.Diff(containersBefore, containersAfter))
+					// }
+				})
+			})
+			when("during analyze", func() {
+				it("cleans up containers", func() {
+					containersBefore := h.GetAllContainerIDs(t)
+
+					var buf bytes.Buffer
+					cmd := packCmd("build", repoName, "-p", sourceCodePath, "--buildpack", "testdata/mock_buildpacks/sleeper")
+					cmd.Stdout = &buf
+					cmd.Stderr = &buf
+
+					h.AssertNil(t, cmd.Start())
+
+					go terminateAtStep(t, cmd, &buf, "[analyzer]")
+
+					err := cmd.Wait()
+					h.AssertNotNil(t, err)
+					h.AssertContains(t, buf.String(), "ERROR: run analyze container: context canceled")
+					time.Sleep(1 * time.Second)
+					containersAfter := h.GetAllContainers(t)
+					assertContainerList(containersAfter, containersBefore, t)
+				})
+			})
+			when("during build", func() {
+				it("cleans up containers", func() {
+					containersBefore := h.GetAllContainerIDs(t)
+
+					var buf bytes.Buffer
+					cmd := packCmd("build", repoName, "-p", sourceCodePath, "--buildpack", "testdata/mock_buildpacks/sleeper")
+					cmd.Stdout = &buf
+					cmd.Stderr = &buf
+
+					h.AssertNil(t, cmd.Start())
+
+					go terminateAtStep(t, cmd, &buf, "[builder]")
+
+					err := cmd.Wait()
+					h.AssertNotNil(t, err)
+					h.AssertContains(t, buf.String(), "ERROR: run build container: context canceled")
+
+					containersAfter := h.GetAllContainers(t)
+					assertContainerList(containersAfter, containersBefore, t)
+				})
+			})
+			when("during export", func() {
+				it("cleans up containers", func() {
+					containersBefore := h.GetAllContainerIDs(t)
+
+					var buf bytes.Buffer
+					cmd := packCmd("build", repoName, "-p", sourceCodePath, "--buildpack", "testdata/mock_buildpacks/sleeper")
+					cmd.Stdout = &buf
+					cmd.Stderr = &buf
+
+					h.AssertNil(t, cmd.Start())
+
+					go terminateAtStep(t, cmd, &buf, "[exporter]")
+
+					err := cmd.Wait()
+					h.AssertNotNil(t, err)
+					h.AssertContains(t, buf.String(), "ERROR: run export container: context canceled")
+
+					containersAfter := h.GetAllContainers(t)
+					assertContainerList(containersAfter, containersBefore, t)
+				})
+			})
+		}, spec.Sequential())
 	})
 
 	when("pack run", func() {
@@ -251,12 +344,12 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 			buildRunImage = func(runImage, contents1, contents2 string) {
 				h.CreateImageOnLocal(t, dockerCli, runImage, fmt.Sprintf(`
-					FROM %s
-					USER root
-					RUN echo %s > /contents1.txt
-					RUN echo %s > /contents2.txt
-					USER pack
-				`, h.DefaultRunImage(t, registryPort), contents1, contents2))
+										FROM %s
+										USER root
+										RUN echo %s > /contents1.txt
+										RUN echo %s > /contents2.txt
+										USER pack
+									`, h.DefaultRunImage(t, registryPort), contents1, contents2))
 
 			}
 			setRunImage = func(runImage string) {
@@ -563,15 +656,15 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 
 			builderImageName := h.CreateImageOnRemote(t, dockerCli, registryPort, "some/builder",
 				fmt.Sprintf(`
-					FROM scratch
-					LABEL %s="{\"runImages\": [\"%s\"]}"
-				`, pack.MetadataLabel, runImageRemote))
+										FROM scratch
+										LABEL %s="{\"runImages\": [\"%s\"]}"
+									`, pack.MetadataLabel, runImageRemote))
 
 			h.CreateImageOnLocal(t, dockerCli, builderImageName,
 				fmt.Sprintf(`
-					FROM scratch
-					LABEL %s="{\"runImages\": [\"%s\"]}"
-				`, pack.MetadataLabel, runImageLocal))
+										FROM scratch
+										LABEL %s="{\"runImages\": [\"%s\"]}"
+									`, pack.MetadataLabel, runImageLocal))
 
 			cmd := packCmd("configure-builder", builderImageName, "--run-image", configuredRunImage)
 			output := h.Run(t, cmd)
@@ -581,20 +674,35 @@ func testPack(t *testing.T, when spec.G, it spec.S) {
 			output = h.Run(t, cmd)
 
 			h.AssertEq(t, output, fmt.Sprintf(`Remote
-------
-Run Images:
-	%s (user-configured)
-	%s
-
-Local
------
-Run Images:
-	%s (user-configured)
-	%s
-
-`, configuredRunImage, runImageRemote, configuredRunImage, runImageLocal))
+					------
+					Run Images:
+						%s (user-configured)
+						%s
+					
+					Local
+					-----
+					Run Images:
+						%s (user-configured)
+						%s
+					
+					`, configuredRunImage, runImageRemote, configuredRunImage, runImageLocal))
 		})
 	})
+}
+
+func assertContainerList(containersAfter []dockertypes.Container, containersBefore []string, t *testing.T) {
+	for _, cnt := range containersAfter {
+		found := false
+		for _, bef := range containersBefore {
+			if cnt.ID == bef {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Container %s with names %s should have been cleaned", cnt.ID, cnt.Names)
+		}
+	}
 }
 
 func fetchHostPort(t *testing.T, dockerID string) string {
@@ -778,4 +886,14 @@ func isCommandRunning(cmd *exec.Cmd) bool {
 		return true
 	}
 	return true
+}
+
+func terminateAtStep(t *testing.T, cmd *exec.Cmd, buf *bytes.Buffer, pattern string) {
+	t.Helper()
+	for {
+		if strings.Contains(buf.String(), pattern) {
+			h.AssertNil(t, cmd.Process.Signal(os.Interrupt))
+			return
+		}
+	}
 }

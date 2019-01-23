@@ -170,6 +170,7 @@ func proxyDockerHostPort(dockerCli *docker.Client, port string) error {
 }
 
 var runRegistryName, runRegistryPort string
+var registryContainerName = "registry:2"
 var runRegistryOnce sync.Once
 
 func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
@@ -178,10 +179,10 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 	runRegistryOnce.Do(func() {
 		runRegistryName = "test-registry-" + RandString(10)
 
-		AssertNil(t, PullImage(dockerCli(t), "registry:2"))
+		AssertNil(t, PullImage(dockerCli(t), registryContainerName))
 		ctx := context.Background()
 		ctr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
-			Image:  "registry:2",
+			Image:  registryContainerName,
 			Labels: map[string]string{"author": "pack"},
 		}, &dockercontainer.HostConfig{
 			AutoRemove: true,
@@ -216,6 +217,25 @@ func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
 		}
 	})
 	return runRegistryPort
+}
+
+func GetAllContainers(t *testing.T) []dockertypes.Container {
+	t.Helper()
+
+	containers, err := dockerCli(t).ContainerList(context.TODO(), dockertypes.ContainerListOptions{All: true})
+	AssertNil(t, err)
+	return containers
+}
+
+func GetAllContainerIDs(t *testing.T) []string {
+	t.Helper()
+
+	containers := GetAllContainers(t)
+	var ids []string
+	for _, container := range containers {
+		ids = append(ids, container.ID)
+	}
+	return ids
 }
 
 func Eventually(t *testing.T, test func() bool, every time.Duration, timeout time.Duration) {

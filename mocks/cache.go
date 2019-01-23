@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )
@@ -33,17 +34,17 @@ func (m *MockCache) EXPECT() *MockCacheMockRecorder {
 }
 
 // Clear mocks base method
-func (m *MockCache) Clear() error {
+func (m *MockCache) Clear(arg0 context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Clear")
+	ret := m.ctrl.Call(m, "Clear", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Clear indicates an expected call of Clear
-func (mr *MockCacheMockRecorder) Clear() *gomock.Call {
+func (mr *MockCacheMockRecorder) Clear(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clear", reflect.TypeOf((*MockCache)(nil).Clear))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clear", reflect.TypeOf((*MockCache)(nil).Clear), arg0)
 }
 
 // Volume mocks base method

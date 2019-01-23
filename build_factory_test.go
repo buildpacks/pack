@@ -61,11 +61,13 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 		logger             *logging.Logger
 		mockController     *gomock.Controller
 		defaultBuilderName string
+		ctx                context.Context
 	)
 
 	it.Before(func() {
 		var err error
 		mockController = gomock.NewController(t)
+		ctx = context.TODO()
 
 		logger = logging.NewLogger(&outBuf, &errBuf, true, false)
 		dockerCli, err = docker.New()
@@ -460,11 +462,11 @@ PATH
 
 			when("when fails to clear the cache", func() {
 				it.Before(func() {
-					mockCache.EXPECT().Clear().Return(errors.New("something went wrong"))
+					mockCache.EXPECT().Clear(ctx).Return(errors.New("something went wrong"))
 				})
 
 				it("returns error", func() {
-					err := subject.Detect()
+					err := subject.Detect(ctx)
 					h.AssertError(t, err, "clearing cache: something went wrong")
 				})
 			})
@@ -491,8 +493,8 @@ PATH
 			})
 
 			it("returns error", func() {
-				err := subject.Detect()
-				h.AssertError(t, err, "container create: unable to create container")
+				err := subject.Detect(ctx)
+				h.AssertError(t, err, "create detect container: unable to create container")
 			})
 		})
 
@@ -515,7 +517,7 @@ PATH
 					ID: "container-id",
 				}, nil)
 
-				mockDockerCli.EXPECT().ContainerRemove(context.TODO(), "container-id", dockertypes.ContainerRemoveOptions{})
+				mockDockerCli.EXPECT().ContainerRemove(context.TODO(), "container-id", dockertypes.ContainerRemoveOptions{Force: true})
 			})
 
 			when("no buildpacks are provided", func() {
@@ -531,7 +533,7 @@ PATH
 						mockDockerCli.EXPECT().CopyToContainer(context.TODO(), "container-id", "/", nil, dockertypes.CopyToContainerOptions{}).Return(errors.New("error copy"))
 					})
 					it("returns an error", func() {
-						err := subject.Detect()
+						err := subject.Detect(ctx)
 						h.AssertError(t, err, "copy app to workspace volume: error copy")
 					})
 				})
@@ -550,7 +552,7 @@ PATH
 						})
 
 						it("returns an error", func() {
-							err := subject.Detect()
+							err := subject.Detect(ctx)
 							h.AssertError(t, err, "get pack uid gid: reading builder env variables: inspect image error")
 						})
 					})
@@ -584,7 +586,7 @@ PATH
 									}, nil, "").Return(container.ContainerCreateCreatedBody{}, errors.New("error chown"))
 							})
 							it("returns an error", func() {
-								err := subject.Detect()
+								err := subject.Detect(ctx)
 								h.AssertError(t, err, "chown app to workspace volume: error chown")
 							})
 						})
@@ -606,7 +608,7 @@ PATH
 									}, nil, "").Return(container.ContainerCreateCreatedBody{
 									ID: "some-other-container-id",
 								}, nil)
-								mockDockerCli.EXPECT().ContainerRemove(context.TODO(), "some-other-container-id", dockertypes.ContainerRemoveOptions{})
+								mockDockerCli.EXPECT().ContainerRemove(context.TODO(), "some-other-container-id", dockertypes.ContainerRemoveOptions{Force: true})
 								mockDockerCli.EXPECT().RunContainer(context.TODO(), "some-other-container-id", logger.VerboseWriter(), logger.VerboseErrorWriter()).Return(nil)
 							})
 
@@ -625,7 +627,7 @@ PATH
 									})
 
 									it("returns an error", func() {
-										err := subject.Detect()
+										err := subject.Detect(ctx)
 										h.AssertError(t, err, "run detect container: fatal error")
 									})
 								})
@@ -640,7 +642,7 @@ PATH
 									})
 
 									it("returns no error", func() {
-										err := subject.Detect()
+										err := subject.Detect(ctx)
 										h.AssertNil(t, err)
 									})
 								})
@@ -704,7 +706,7 @@ PATH
 										}, nil, "").Return(container.ContainerCreateCreatedBody{
 										ID: "some-other-container-id",
 									}, nil)
-									mockDockerCli.EXPECT().ContainerRemove(context.TODO(), "some-other-container-id", dockertypes.ContainerRemoveOptions{})
+									mockDockerCli.EXPECT().ContainerRemove(context.TODO(), "some-other-container-id", dockertypes.ContainerRemoveOptions{Force: true})
 									mockDockerCli.EXPECT().RunContainer(context.TODO(), "some-other-container-id", logger.VerboseWriter(), logger.VerboseErrorWriter()).Return(nil)
 								})
 
@@ -732,7 +734,7 @@ PATH
 												})
 
 												it("returns an error", func() {
-													err := subject.Detect()
+													err := subject.Detect(ctx)
 													h.AssertError(t, err, "run detect container: fatal error")
 												})
 											})
@@ -747,7 +749,7 @@ PATH
 												})
 
 												it("returns no error", func() {
-													err := subject.Detect()
+													err := subject.Detect(ctx)
 													h.AssertNil(t, err)
 												})
 											})
@@ -812,7 +814,7 @@ PATH
 				})
 
 				it("succeeds and does nothing", func() {
-					err := subject.Analyze()
+					err := subject.Analyze(ctx)
 					h.AssertNil(t, err)
 				})
 			})
@@ -820,7 +822,7 @@ PATH
 			when("succeeds and does nothing", func() {
 				it.Before(func() { subject.Publish = false })
 				it("succeeds and does nothing", func() {
-					err := subject.Analyze()
+					err := subject.Analyze(ctx)
 					h.AssertNil(t, err)
 				})
 			})
@@ -843,7 +845,7 @@ PATH
 				})
 
 				it("places files in workspace and sets owner to pack", func() {
-					h.AssertNil(t, subject.Analyze())
+					h.AssertNil(t, subject.Analyze(ctx))
 
 					txt := h.ReadFromDocker(t, subject.Cache.Volume(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 
@@ -872,7 +874,7 @@ cache = false
 				})
 
 				it("places files in workspace and sets owner to pack", func() {
-					err := subject.Analyze()
+					err := subject.Analyze(ctx)
 					h.AssertNil(t, err)
 
 					txt := h.ReadFromDocker(t, subject.Cache.Volume(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
@@ -954,8 +956,8 @@ cache = false
 					}
 					subject.Buildpacks = []string{bpDir}
 
-					h.AssertNil(t, subject.Detect())
-					h.AssertNil(t, subject.Build())
+					h.AssertNil(t, subject.Detect(ctx))
+					h.AssertNil(t, subject.Build(ctx))
 
 					h.AssertContains(t, outBuf.String(), "BUILD OUTPUT FROM MY SAMPLE BUILDPACK")
 				})
@@ -964,8 +966,8 @@ cache = false
 				it("runs the buildpacks bin/build", func() {
 					subject.Buildpacks = []string{"io.buildpacks.samples.nodejs@latest"}
 
-					h.AssertNil(t, subject.Detect())
-					h.AssertNil(t, subject.Build())
+					h.AssertNil(t, subject.Detect(ctx))
+					h.AssertNil(t, subject.Build(ctx))
 
 					h.AssertContains(t, outBuf.String(), "Sample Node.js Buildpack: pass")
 				})
@@ -982,8 +984,8 @@ cache = false
 					"VAR2": "value2 with spaces",
 				}
 				subject.Buildpacks = []string{"acceptance/testdata/mock_buildpacks/printenv"}
-				h.AssertNil(t, subject.Detect())
-				h.AssertNil(t, subject.Build())
+				h.AssertNil(t, subject.Detect(ctx))
+				h.AssertNil(t, subject.Build(ctx))
 				h.AssertContains(t, outBuf.String(), "BUILD: VAR1 is value1;")
 				h.AssertContains(t, outBuf.String(), "BUILD: VAR2 is value2 with spaces;")
 			})
@@ -1064,13 +1066,13 @@ cache = false
 			})
 
 			it("creates the image on the registry", func() {
-				h.AssertNil(t, subject.Export())
+				h.AssertNil(t, subject.Export(ctx))
 				images := h.HttpGet(t, "http://localhost:"+registryPort+"/v2/_catalog")
 				h.AssertContains(t, images, oldRepoName)
 			})
 
 			it("puts the files on the image", func() {
-				h.AssertNil(t, subject.Export())
+				h.AssertNil(t, subject.Export(ctx))
 
 				h.AssertNil(t, h.PullImage(dockerCli, subject.RepoName))
 				defer h.DockerRmi(dockerCli, subject.RepoName)
@@ -1084,7 +1086,7 @@ cache = false
 			})
 
 			it("sets the metadata on the image", func() {
-				h.AssertNil(t, subject.Export())
+				h.AssertNil(t, subject.Export(ctx))
 
 				h.AssertNil(t, h.PullImage(dockerCli, subject.RepoName))
 				defer h.DockerRmi(dockerCli, subject.RepoName)
@@ -1115,12 +1117,12 @@ cache = false
 			})
 
 			it("creates the image on the daemon", func() {
-				h.AssertNil(t, subject.Export())
+				h.AssertNil(t, subject.Export(ctx))
 				images := imageList(t, dockerCli)
 				h.AssertSliceContains(t, images, subject.RepoName+":latest")
 			})
 			it("puts the files on the image", func() {
-				h.AssertNil(t, subject.Export())
+				h.AssertNil(t, subject.Export(ctx))
 
 				txt, err := h.CopySingleFileFromImage(dockerCli, subject.RepoName, "workspace/app/file.txt")
 				h.AssertNil(t, err)
@@ -1131,7 +1133,7 @@ cache = false
 				h.AssertEq(t, string(txt), "content")
 			})
 			it("sets the metadata on the image", func() {
-				h.AssertNil(t, subject.Export())
+				h.AssertNil(t, subject.Export(ctx))
 
 				var metadata lifecycle.AppImageMetadata
 				metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
@@ -1163,7 +1165,7 @@ cache = false
 				})
 
 				it("sets owner of layer files to PACK_USER_ID:PACK_GROUP_ID", func() {
-					h.AssertNil(t, subject.Export())
+					h.AssertNil(t, subject.Export(ctx))
 					txt := h.RunInImage(t, dockerCli, nil, subject.RepoName, "ls", "-la", "/workspace/app/file.txt")
 					h.AssertContains(t, txt, " 1234 5678 ")
 				})
@@ -1172,7 +1174,7 @@ cache = false
 			when("previous image exists", func() {
 				it.Before(func() {
 					t.Log("create image and h.Assert add new layer")
-					h.AssertNil(t, subject.Export())
+					h.AssertNil(t, subject.Export(ctx))
 					setupLayersDir()
 				})
 
@@ -1193,7 +1195,7 @@ cache = false
 					)
 
 					t.Log("recreate image and h.Assert copying layer from previous image")
-					h.AssertNil(t, subject.Export())
+					h.AssertNil(t, subject.Export(ctx))
 					txt, err = h.CopySingleFileFromImage(dockerCli, subject.RepoName, "workspace/io.buildpacks.samples.nodejs/mylayer/file.txt")
 					h.AssertNil(t, err)
 					h.AssertEq(t, txt, "content")

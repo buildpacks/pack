@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/buildpack/lifecycle/image"
 	"github.com/fatih/color"
@@ -13,16 +16,17 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-var Version = "0.0.0"
+var (
+	Version           = "0.0.0"
+	timestamps, quiet bool
+	logger            logging.Logger
+	inspect           pack.BuilderInspect
+	imageFactory      image.Factory
+	dockerClient      docker.Client
+)
 
 func main() {
-	var (
-		logger            logging.Logger
-		timestamps, quiet bool
-		inspect           pack.BuilderInspect
-		imageFactory      image.Factory
-		dockerClient      docker.Client
-	)
+	ctx := createCancellableContext()
 
 	cobra.EnableCommandSorting = false
 	rootCmd := &cobra.Command{
@@ -39,8 +43,8 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Show less output")
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(&logger, &dockerClient))
-	rootCmd.AddCommand(commands.Run(&logger, &dockerClient))
+	rootCmd.AddCommand(commands.Build(ctx, &logger, &dockerClient))
+	rootCmd.AddCommand(commands.Run(ctx, &logger, &dockerClient))
 	rootCmd.AddCommand(commands.Rebase(&logger))
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger))
@@ -59,6 +63,19 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func createCancellableContext() context.Context {
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		<-signals
+		cancel()
+	}()
+
+	return ctx
 }
 
 func initInspect(logger logging.Logger) pack.BuilderInspect {

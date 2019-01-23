@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -9,7 +11,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func Build(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
+func Build(ctx context.Context, logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
 	var buildFlags pack.BuildFlags
 	cmd := &cobra.Command{
 		Use:   "build <image-name>",
@@ -31,7 +33,7 @@ func Build(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := b.Run(); err != nil {
+			if err := b.Run(ctx); err != nil {
 				return err
 			}
 			logger.Info("Successfully built image %s", style.Symbol(b.RepoName))

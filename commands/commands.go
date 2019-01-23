@@ -2,9 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/buildpack/lifecycle/image"
 	"github.com/spf13/cobra"
@@ -35,20 +32,6 @@ func logError(logger *logging.Logger, f func(cmd *cobra.Command, args []string) 
 		}
 		return nil
 	}
-}
-
-func makeStopChannelForSignals() <-chan struct{} {
-	sigsCh := make(chan os.Signal, 1)
-	stopCh := make(chan struct{}, 1)
-	signal.Notify(sigsCh, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		// convert chan os.Signal to chan struct{}
-		for {
-			<-sigsCh
-			stopCh <- struct{}{}
-		}
-	}()
-	return stopCh
 }
 
 func multiValueHelp(name string) string {

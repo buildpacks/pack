@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -8,7 +10,7 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-func Run(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
+func Run(ctx context.Context, logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
 	var runFlags pack.RunFlags
 	cmd := &cobra.Command{
 		Use:   "run",
@@ -32,7 +34,7 @@ func Run(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return r.Run(makeStopChannelForSignals)
+			return r.Run(ctx)
 		}),
 	}
 

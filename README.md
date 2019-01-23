@@ -273,8 +273,13 @@ go build ./cmd/pack
 Note: This project uses [go modules](https://github.com/golang/go/wiki/Modules)
 
 ### Testing
-To run the tests, simply run:
+To run unit and integration tests:
 
 ```bash
 $ go test
+```
+
+To run acceptance tests:
+```bash
+$ go test -tags=acceptance ./acceptance/...
 ```

@@ -87,12 +87,14 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			volumeName   string
 			dockerClient *docker.Client
 			subject      *cache.Cache
+			ctx          context.Context
 		)
 
 		it.Before(func() {
 			var err error
 			dockerClient, err = docker.New()
 			h.AssertNil(t, err)
+			ctx = context.TODO()
 
 			subject, err = cache.New(h.RandString(10), dockerClient)
 			volumeName = subject.Volume()
@@ -112,7 +114,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("removes the volumes", func() {
-				err := subject.Clear()
+				err := subject.Clear(ctx)
 				h.AssertNil(t, err)
 				body, err := dockerClient.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
 					Key:   "name",
@@ -148,14 +150,14 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					dockerClient.ContainerRemove(context.TODO(), containerBody.ID, types.ContainerRemoveOptions{
+					dockerClient.ContainerRemove(ctx, containerBody.ID, types.ContainerRemoveOptions{
 						Force: true,
 					})
 				})
 
 				when("the container is stopped", func() {
 					it("removes the volumes and the container", func() {
-						err := subject.Clear()
+						err := subject.Clear(ctx)
 						h.AssertNil(t, err)
 
 						body, err := dockerClient.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
@@ -173,7 +175,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("removes the volumes and the container", func() {
-						err := subject.Clear()
+						err := subject.Clear(ctx)
 						h.AssertNil(t, err)
 
 						body, err := dockerClient.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
@@ -210,7 +212,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("does not removes the container or the volume", func() {
-					err := subject.Clear()
+					err := subject.Clear(ctx)
 					h.AssertError(t, err, fmt.Sprintf("volume in use by the container '%s' not created by pack", containerBody.ID))
 
 					body, err := dockerClient.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{

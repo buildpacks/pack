@@ -29,7 +29,7 @@ jobs:
     script: |
       openssl aes-256-cbc -K $encrypted_c7ea36ef0bae_key -iv $encrypted_c7ea36ef0bae_iv -in .travis/key.pem.enc -out .travis/key.pem -d
       export DOCKER_CERT_PATH=$PWD/.travis/
-      go test -count=1 -parallel=1 -v ./...
+      go test -count=1 -parallel=1 -v ./... && go test -count=1 -parallel=1 -v -tags=acceptance ./acceptance/...
   - <<: *remote-test
     os: linux
 

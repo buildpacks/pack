@@ -9,6 +9,8 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/containers"
 )
 
 type Cache struct {
@@ -37,8 +39,8 @@ func (c *Cache) Volume() string {
 	return c.volume
 }
 
-func (c *Cache) Clear() error {
-	allContainers, err := c.docker.ContainerList(context.Background(), types.ContainerListOptions{
+func (c *Cache) Clear(ctx context.Context) error {
+	allContainers, err := c.docker.ContainerList(ctx, types.ContainerListOptions{
 		All: true,
 		Filters: filters.NewArgs(filters.KeyValuePair{
 			Key:   "volume",
@@ -50,15 +52,13 @@ func (c *Cache) Clear() error {
 	}
 	for _, ctr := range allContainers {
 		if author, ok := ctr.Labels["author"]; ok && author == "pack" {
-			c.docker.ContainerRemove(context.Background(), ctr.ID, types.ContainerRemoveOptions{
-				Force: true,
-			})
+			_ = containers.Remove(c.docker, ctr.ID)
 		} else {
 			return fmt.Errorf("volume in use by the container '%s' not created by pack", ctr.ID)
 		}
 	}
 
-	err = c.docker.VolumeRemove(context.Background(), c.volume, true)
+	err = c.docker.VolumeRemove(ctx, c.volume, true)
 	if err != nil {
 		return err
 	}

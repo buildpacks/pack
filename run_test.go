@@ -40,15 +40,18 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 		errBuf         bytes.Buffer
 		logger         *logging.Logger
 		mockController *gomock.Controller
-		mockBuild      *mocks.MockTask
+		mockBuild      *mocks.MockBuildRunner
 		mockDocker     *mocks.MockDocker
+		ctx            context.Context
+		cancel         context.CancelFunc
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
-		mockBuild = mocks.NewMockTask(mockController)
+		mockBuild = mocks.NewMockBuildRunner(mockController)
 		mockDocker = mocks.NewMockDocker(mockController)
 		logger = logging.NewLogger(&outBuf, &errBuf, true, false)
+		ctx, cancel = context.WithTimeout(context.TODO(), time.Minute*2)
 	})
 
 	it.After(func() {
@@ -134,18 +137,11 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Run", func() {
 		var (
-			subject    *pack.RunConfig
-			ctr        container.ContainerCreateCreatedBody
-			stopCh     chan struct{}
-			makeStopCh func() <-chan struct{}
+			subject *pack.RunConfig
+			ctr     container.ContainerCreateCreatedBody
 		)
 
 		it.Before(func() {
-			stopCh = make(chan struct{}, 1)
-			makeStopCh = func() <-chan struct{} {
-				return stopCh
-			}
-
 			subject = &pack.RunConfig{
 				Build:    mockBuild,
 				RepoName: "pack.local/run/346ffb210a2c6d138c8d058d6d4025a0",
@@ -159,7 +155,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("builds an image and runs it", func() {
-			mockBuild.EXPECT().Run().Return(nil)
+			mockBuild.EXPECT().Run(ctx).Return(nil)
 
 			exposedPorts, portBindings, _ := nat.ParsePortSpecs([]string{"127.0.0.1:1370:1370/tcp"})
 			mockDocker.EXPECT().ContainerCreate(gomock.Any(), &container.Config{
@@ -175,8 +171,9 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 
 			mockDocker.EXPECT().ContainerRemove(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(0)
 			mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, gomock.Any(), gomock.Any()).Return(nil)
+			mockDocker.EXPECT().ContainerRemove(gomock.Any(), ctr.ID, types.ContainerRemoveOptions{Force: true})
 
-			err := subject.Run(makeStopCh)
+			err := subject.Run(ctx)
 			h.AssertNil(t, err)
 
 			h.AssertContains(t, outBuf.String(), "Starting container listening at http://localhost:1370/")
@@ -185,36 +182,40 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 		when("the build fails", func() {
 			it("exits without running", func() {
 				expected := fmt.Errorf("build error")
-				mockBuild.EXPECT().Run().Return(expected)
+				mockBuild.EXPECT().Run(ctx).Return(expected)
 
 				mockDocker.EXPECT().ContainerCreate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 				mockDocker.EXPECT().ContainerRemove(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 				mockDocker.EXPECT().RunContainer(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-				err := subject.Run(makeStopCh)
+				err := subject.Run(ctx)
 				h.AssertSameInstance(t, err, expected)
 			})
 		})
 
 		when("the process is terminated", func() {
 			it("stops the running container and cleans up", func() {
-				syncCh := make(chan struct{})
-
-				mockBuild.EXPECT().Run().Return(nil)
+				mockBuild.EXPECT().Run(ctx).Return(nil)
 				mockDocker.EXPECT().ContainerCreate(gomock.Any(), gomock.Any(), gomock.Any(), nil, "").Return(ctr, nil)
 
-				mockDocker.EXPECT().ContainerRemove(gomock.Any(), ctr.ID, types.ContainerRemoveOptions{Force: true}).DoAndReturn(func(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error {
-					syncCh <- struct{}{}
-					return nil
-				})
-				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, stdout io.Writer, stderr io.Writer) error {
-					stopCh <- struct{}{}
-					// wait for ContainerRemove to be called
-					<-syncCh
-					return nil
-				})
+				mockDocker.EXPECT().
+					RunContainer(gomock.Any(), ctr.ID, gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, id string, stdout io.Writer, stderr io.Writer) error {
+						select {
+						case <-ctx.Done():
+							return nil
+						}
+					})
+				mockDocker.EXPECT().
+					ContainerRemove(gomock.Any(), ctr.ID, types.ContainerRemoveOptions{Force: true}).
+					DoAndReturn(func(_ context.Context, containerID string, options types.ContainerRemoveOptions) error {
+						h.AssertError(t, ctx.Err(), "context canceled")
+						return nil
+					})
 
-				err := subject.Run(makeStopCh)
+				time.AfterFunc(time.Second*1, cancel)
+
+				err := subject.Run(ctx)
 				h.AssertNil(t, err)
 			})
 		})
@@ -225,7 +226,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("gets exposed ports from the built image", func() {
-				mockBuild.EXPECT().Run().Return(nil)
+				mockBuild.EXPECT().Run(ctx).Return(nil)
 
 				exposedPorts, portBindings, _ := nat.ParsePortSpecs([]string{
 					"127.0.0.1:8080:8080/tcp",
@@ -248,14 +249,15 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				}, nil, "").Return(ctr, nil)
 
 				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, gomock.Any(), gomock.Any()).Return(nil)
+				mockDocker.EXPECT().ContainerRemove(gomock.Any(), ctr.ID, types.ContainerRemoveOptions{Force: true})
 
-				err := subject.Run(makeStopCh)
+				err := subject.Run(ctx)
 				h.AssertNil(t, err)
 			})
 		})
 		when("custom ports bindings are defined", func() {
 			it("binds simple ports from localhost to the container on the same port", func() {
-				mockBuild.EXPECT().Run().Return(nil)
+				mockBuild.EXPECT().Run(ctx).Return(nil)
 
 				subject.Ports = []string{"1370"}
 				exposedPorts, portBindings, _ := nat.ParsePortSpecs([]string{
@@ -273,12 +275,13 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				}, nil, "").Return(ctr, nil)
 
 				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, gomock.Any(), gomock.Any()).Return(nil)
+				mockDocker.EXPECT().ContainerRemove(gomock.Any(), ctr.ID, types.ContainerRemoveOptions{Force: true})
 
-				err := subject.Run(makeStopCh)
+				err := subject.Run(ctx)
 				h.AssertNil(t, err)
 			})
 			it("binds each port to the container", func() {
-				mockBuild.EXPECT().Run().Return(nil)
+				mockBuild.EXPECT().Run(ctx).Return(nil)
 
 				subject.Ports = []string{
 					"0.0.0.0:8080:8080/tcp",
@@ -300,8 +303,9 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				}, nil, "").Return(ctr, nil)
 
 				mockDocker.EXPECT().RunContainer(gomock.Any(), ctr.ID, gomock.Any(), gomock.Any()).Return(nil)
+				mockDocker.EXPECT().ContainerRemove(gomock.Any(), ctr.ID, types.ContainerRemoveOptions{Force: true})
 
-				err := subject.Run(makeStopCh)
+				err := subject.Run(ctx)
 				h.AssertNil(t, err)
 			})
 		})
