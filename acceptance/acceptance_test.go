@@ -195,13 +195,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when.Focus("terminating", func() {
+		when("terminating", func() {
 			when("during detect", func() {
 				it("cleans up containers", func() {
 					containersBefore := h.GetAllContainerIDs(t)
 
 					var buf bytes.Buffer
-					cmd := packCmd("build", repoName, "-p", sourceCodePath, "--buildpack", "testdata/mock_buildpacks/sleeper")
+					cmd := packCmd("build", repoName, "-p", sourceCodePath)
 					cmd.Stdout = &buf
 					cmd.Stderr = &buf
 
@@ -216,9 +216,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					time.Sleep(5 * time.Second)
 					containersAfter := h.GetAllContainers(t)
 					assertContainerList(containersAfter, containersBefore, t)
-					// if !cmp.Equal(containersBefore, containersAfter) {
-					// 	t.Fatalf("Expected containers to be cleaned up.\nDiff:\n%s\n", cmp.Diff(containersBefore, containersAfter))
-					// }
 				})
 			})
 			when("during analyze", func() {
@@ -226,7 +223,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					containersBefore := h.GetAllContainerIDs(t)
 
 					var buf bytes.Buffer
-					cmd := packCmd("build", repoName, "-p", sourceCodePath, "--buildpack", "testdata/mock_buildpacks/sleeper")
+					cmd := packCmd("build", repoName, "-p", sourceCodePath)
 					cmd.Stdout = &buf
 					cmd.Stderr = &buf
 
@@ -247,7 +244,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					containersBefore := h.GetAllContainerIDs(t)
 
 					var buf bytes.Buffer
-					cmd := packCmd("build", repoName, "-p", sourceCodePath, "--buildpack", "testdata/mock_buildpacks/sleeper")
+					cmd := packCmd("build", repoName, "-p", sourceCodePath)
 					cmd.Stdout = &buf
 					cmd.Stderr = &buf
 
@@ -268,7 +265,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					containersBefore := h.GetAllContainerIDs(t)
 
 					var buf bytes.Buffer
-					cmd := packCmd("build", repoName, "-p", sourceCodePath, "--buildpack", "testdata/mock_buildpacks/sleeper")
+					cmd := packCmd("build", repoName, "-p", sourceCodePath)
 					cmd.Stdout = &buf
 					cmd.Stderr = &buf
 
@@ -890,9 +887,18 @@ func isCommandRunning(cmd *exec.Cmd) bool {
 
 func terminateAtStep(t *testing.T, cmd *exec.Cmd, buf *bytes.Buffer, pattern string) {
 	t.Helper()
+	var interruptSignal os.Signal
+
+	if runtime.GOOS == "windows" {
+		// Windows does not support os.Interrupt
+		interruptSignal = os.Kill
+	} else {
+		interruptSignal = os.Interrupt
+	}
+
 	for {
 		if strings.Contains(buf.String(), pattern) {
-			h.AssertNil(t, cmd.Process.Signal(os.Interrupt))
+			h.AssertNil(t, cmd.Process.Signal(interruptSignal))
 			return
 		}
 	}
