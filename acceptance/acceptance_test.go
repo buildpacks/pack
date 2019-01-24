@@ -195,93 +195,24 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("terminating", func() {
-			when("during detect", func() {
-				it("cleans up containers", func() {
-					containersBefore := h.GetAllContainerIDs(t)
+		when("execution is aborted using ctrl+c or kill", func() {
+			it("stops the execution", func() {
+				var buf bytes.Buffer
+				cmd := packCmd("build", repoName, "-p", sourceCodePath)
+				cmd.Stdout = &buf
+				cmd.Stderr = &buf
 
-					var buf bytes.Buffer
-					cmd := packCmd("build", repoName, "-p", sourceCodePath)
-					cmd.Stdout = &buf
-					cmd.Stderr = &buf
+				h.AssertNil(t, cmd.Start())
 
-					h.AssertNil(t, cmd.Start())
+				go terminateAtStep(t, cmd, &buf, "[detector]")
 
-					go terminateAtStep(t, cmd, &buf, "[detector]")
+				err := cmd.Wait()
+				h.AssertNotNil(t, err)
+				h.AssertNotContains(t, buf.String(), "Successfully built image")
 
-					err := cmd.Wait()
-					h.AssertNotNil(t, err)
-					h.AssertContains(t, buf.String(), "ERROR: run detect container: context canceled")
-
-					time.Sleep(5 * time.Second)
-					containersAfter := h.GetAllContainers(t)
-					assertContainerList(containersAfter, containersBefore, t)
-				})
+				time.Sleep(5 * time.Second)
 			})
-			when("during analyze", func() {
-				it("cleans up containers", func() {
-					containersBefore := h.GetAllContainerIDs(t)
-
-					var buf bytes.Buffer
-					cmd := packCmd("build", repoName, "-p", sourceCodePath)
-					cmd.Stdout = &buf
-					cmd.Stderr = &buf
-
-					h.AssertNil(t, cmd.Start())
-
-					go terminateAtStep(t, cmd, &buf, "[analyzer]")
-
-					err := cmd.Wait()
-					h.AssertNotNil(t, err)
-					h.AssertContains(t, buf.String(), "ERROR: run analyze container: context canceled")
-					time.Sleep(1 * time.Second)
-					containersAfter := h.GetAllContainers(t)
-					assertContainerList(containersAfter, containersBefore, t)
-				})
-			})
-			when("during build", func() {
-				it("cleans up containers", func() {
-					containersBefore := h.GetAllContainerIDs(t)
-
-					var buf bytes.Buffer
-					cmd := packCmd("build", repoName, "-p", sourceCodePath)
-					cmd.Stdout = &buf
-					cmd.Stderr = &buf
-
-					h.AssertNil(t, cmd.Start())
-
-					go terminateAtStep(t, cmd, &buf, "[builder]")
-
-					err := cmd.Wait()
-					h.AssertNotNil(t, err)
-					h.AssertContains(t, buf.String(), "ERROR: run build container: context canceled")
-
-					containersAfter := h.GetAllContainers(t)
-					assertContainerList(containersAfter, containersBefore, t)
-				})
-			})
-			when("during export", func() {
-				it("cleans up containers", func() {
-					containersBefore := h.GetAllContainerIDs(t)
-
-					var buf bytes.Buffer
-					cmd := packCmd("build", repoName, "-p", sourceCodePath)
-					cmd.Stdout = &buf
-					cmd.Stderr = &buf
-
-					h.AssertNil(t, cmd.Start())
-
-					go terminateAtStep(t, cmd, &buf, "[exporter]")
-
-					err := cmd.Wait()
-					h.AssertNotNil(t, err)
-					h.AssertContains(t, buf.String(), "ERROR: run export container: context canceled")
-
-					containersAfter := h.GetAllContainers(t)
-					assertContainerList(containersAfter, containersBefore, t)
-				})
-			})
-		}, spec.Sequential())
+		})
 	})
 
 	when("pack run", func() {

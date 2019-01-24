@@ -74,6 +74,13 @@ func AssertContains(t *testing.T, actual, expected string) {
 	}
 }
 
+func AssertNotContains(t *testing.T, actual, expected string) {
+	t.Helper()
+	if strings.Contains(actual, expected) {
+		t.Fatalf("Expected: '%s' to not contain '%s'", actual, expected)
+	}
+}
+
 func AssertSliceContains(t *testing.T, slice []string, value string) {
 	t.Helper()
 	for _, s := range slice {
