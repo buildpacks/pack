@@ -671,18 +671,18 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			output = h.Run(t, cmd)
 
 			h.AssertEq(t, output, fmt.Sprintf(`Remote
-					------
-					Run Images:
-						%s (user-configured)
-						%s
-					
-					Local
-					-----
-					Run Images:
-						%s (user-configured)
-						%s
-					
-					`, configuredRunImage, runImageRemote, configuredRunImage, runImageLocal))
+------
+Run Images:
+	%s (user-configured)
+	%s
+
+Local
+-----
+Run Images:
+	%s (user-configured)
+	%s
+
+`, configuredRunImage, runImageRemote, configuredRunImage, runImageLocal))
 		})
 	})
 }
