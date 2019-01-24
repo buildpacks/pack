@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"context"
-
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -10,8 +8,10 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-func Run(ctx context.Context, logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
+func Run(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
 	var runFlags pack.RunFlags
+	ctx := createCancellableContext()
+
 	cmd := &cobra.Command{
 		Use:   "run",
 		Args:  cobra.NoArgs,

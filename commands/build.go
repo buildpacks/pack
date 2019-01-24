@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"context"
-
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -11,8 +9,10 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func Build(ctx context.Context, logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
+func Build(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
 	var buildFlags pack.BuildFlags
+	ctx := createCancellableContext()
+
 	cmd := &cobra.Command{
 		Use:   "build <image-name>",
 		Args:  cobra.ExactArgs(1),

@@ -1,7 +1,11 @@
 package commands
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/buildpack/lifecycle/image"
 	"github.com/spf13/cobra"
@@ -36,4 +40,17 @@ func logError(logger *logging.Logger, f func(cmd *cobra.Command, args []string) 
 
 func multiValueHelp(name string) string {
 	return fmt.Sprintf("\nRepeat for each %s in order,\n  or supply once by comma-separated list", name)
+}
+
+func createCancellableContext() context.Context {
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		<-signals
+		cancel()
+	}()
+
+	return ctx
 }
