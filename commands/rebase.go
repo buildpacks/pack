@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"github.com/buildpack/lifecycle/image"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -10,7 +9,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func Rebase(logger *logging.Logger) *cobra.Command {
+func Rebase(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Command {
 	var flags pack.RebaseFlags
 	cmd := &cobra.Command{
 		Use:   "rebase <image-name>",
@@ -18,11 +17,6 @@ func Rebase(logger *logging.Logger) *cobra.Command {
 		Short: "Rebase app image with latest run image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			flags.RepoName = args[0]
-
-			imageFactory, err := image.DefaultFactory()
-			if err != nil {
-				return err
-			}
 			cfg, err := config.NewDefault()
 			if err != nil {
 				return err

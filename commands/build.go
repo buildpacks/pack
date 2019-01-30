@@ -9,7 +9,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func Build(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
+func Build(logger *logging.Logger, dockerClient pack.Docker, imageFactory pack.ImageFactory) *cobra.Command {
 	var buildFlags pack.BuildFlags
 	ctx := createCancellableContext()
 
@@ -25,7 +25,7 @@ func Build(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
 				return err
 			}
 
-			bf, err := pack.DefaultBuildFactory(logger, cacheObj, dockerClient)
+			bf, err := pack.DefaultBuildFactory(logger, cacheObj, dockerClient, imageFactory)
 			if err != nil {
 				return err
 			}

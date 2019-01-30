@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/buildpack/lifecycle/image"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -14,7 +13,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func CreateBuilder(logger *logging.Logger) *cobra.Command {
+func CreateBuilder(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Command {
 	flags := pack.CreateBuilderFlags{}
 	cmd := &cobra.Command{
 		Use:   "create-builder <image-name> --builder-config <builder-config-path>",
@@ -28,10 +27,6 @@ func CreateBuilder(logger *logging.Logger) *cobra.Command {
 			}
 
 			cfg, err := config.NewDefault()
-			if err != nil {
-				return err
-			}
-			imageFactory, err := image.DefaultFactory()
 			if err != nil {
 				return err
 			}

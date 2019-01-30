@@ -38,11 +38,11 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Show less output")
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(&logger, &dockerClient))
-	rootCmd.AddCommand(commands.Run(&logger, &dockerClient))
-	rootCmd.AddCommand(commands.Rebase(&logger))
+	rootCmd.AddCommand(commands.Build(&logger, &dockerClient, &imageFactory))
+	rootCmd.AddCommand(commands.Run(&logger, &dockerClient, &imageFactory))
+	rootCmd.AddCommand(commands.Rebase(&logger, &imageFactory))
 
-	rootCmd.AddCommand(commands.CreateBuilder(&logger))
+	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFactory))
 	rootCmd.AddCommand(commands.ConfigureBuilder(&logger))
 	rootCmd.AddCommand(commands.InspectBuilder(&logger, &inspect, &imageFactory))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger))
@@ -69,7 +69,7 @@ func initInspect(logger logging.Logger) pack.BuilderInspect {
 }
 
 func initImageFactory(logger logging.Logger) image.Factory {
-	factory, err := image.DefaultFactory()
+	factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
 	if err != nil {
 		exitError(logger, err)
 	}

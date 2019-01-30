@@ -5,8 +5,11 @@ package pack
 import (
 	"context"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
+
+	"github.com/buildpack/lifecycle/image"
 
 	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/containers"
@@ -56,7 +59,7 @@ func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
 	return rc, nil
 }
 
-func Run(ctx context.Context, logger *logging.Logger, appDir, buildImage, runImage string, ports []string) error {
+func Run(ctx context.Context, outWriter, errWriter io.Writer, appDir, buildImage, runImage string, ports []string) error {
 	// TODO: Receive Cache and docker client as an argument of this function
 	dockerClient, err := docker.New()
 	if err != nil {
@@ -66,8 +69,12 @@ func Run(ctx context.Context, logger *logging.Logger, appDir, buildImage, runIma
 	if err != nil {
 		return err
 	}
-
-	bf, err := DefaultBuildFactory(logger, c, dockerClient)
+	imageFactory, err := image.NewFactory(image.WithOutWriter(outWriter))
+	if err != nil {
+		return err
+	}
+	logger := logging.NewLogger(outWriter, errWriter, true, false)
+	bf, err := DefaultBuildFactory(logger, c, dockerClient, imageFactory)
 	if err != nil {
 		return err
 	}

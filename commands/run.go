@@ -8,7 +8,7 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-func Run(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
+func Run(logger *logging.Logger, dockerClient pack.Docker, imageFactory pack.ImageFactory) *cobra.Command {
 	var runFlags pack.RunFlags
 	ctx := createCancellableContext()
 
@@ -26,7 +26,7 @@ func Run(logger *logging.Logger, dockerClient pack.Docker) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			bf, err := pack.DefaultBuildFactory(logger, cacheObj, dockerClient)
+			bf, err := pack.DefaultBuildFactory(logger, cacheObj, dockerClient, imageFactory)
 			if err != nil {
 				return err
 			}
