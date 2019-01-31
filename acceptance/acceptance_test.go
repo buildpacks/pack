@@ -584,13 +584,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				fmt.Sprintf(`
 										FROM scratch
 										LABEL %s="{\"runImage\": { \"image\": \"some/run1\", \"mirrors\": [\"gcr.io/some/run1\"]}}"
-									`, pack.MetadataLabel))
+									`, pack.BuilderMetadataLabel))
 
 			h.CreateImageOnLocal(t, dockerCli, builderImageName,
 				fmt.Sprintf(`
 										FROM scratch
 										LABEL %s="{\"runImage\": { \"image\": \"some/run1\", \"mirrors\": [\"gcr.io/some/run2\"]}}"
-									`, pack.MetadataLabel))
+									`, pack.BuilderMetadataLabel))
 			println(builderImageName)
 			cmd := packCmd("set-run-image-mirrors", "some/run1", "--mirror", configuredRunImage)
 			output := h.Run(t, cmd)

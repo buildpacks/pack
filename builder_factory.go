@@ -224,7 +224,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return fmt.Errorf(`failed marshal builder image metadata: %s`, err)
 	}
 
-	config.Repo.SetLabel(MetadataLabel, string(jsonBytes))
+	config.Repo.SetLabel(BuilderMetadataLabel, string(jsonBytes))
 
 	if _, err := config.Repo.Save(); err != nil {
 		return err

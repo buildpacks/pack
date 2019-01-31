@@ -59,12 +59,12 @@ func (b *BuilderInspect) getLocalRunImageMirrors(imageName string) []string {
 func (b *BuilderInspect) getRunImageMirrors(builderImage image.Image) (*BuilderRunImageMetadata, error) {
 	var metadata BuilderImageMetadata
 
-	label, err := builderImage.Label(MetadataLabel)
+	label, err := builderImage.Label(BuilderMetadataLabel)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to find run images for builder %s", style.Symbol(builderImage.Name()))
 	}
 	if label == "" {
-		return nil, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(builderImage.Name()), style.Symbol(MetadataLabel))
+		return nil, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(builderImage.Name()), style.Symbol(BuilderMetadataLabel))
 	}
 	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
 		return nil, errors.Wrapf(err, "failed to parse run images for builder %s", style.Symbol(builderImage.Name()))

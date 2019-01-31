@@ -198,12 +198,12 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		bf.Logger.Verbose("Using user-provided run image %s", style.Symbol(f.RunImage))
 		b.RunImage = f.RunImage
 	} else {
-		label, err := builderImage.Label(MetadataLabel)
+		label, err := builderImage.Label(BuilderMetadataLabel)
 		if err != nil {
 			return nil, fmt.Errorf("invalid builder image %s: %s", style.Symbol(b.Builder), err)
 		}
 		if label == "" {
-			return nil, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(b.Builder), style.Symbol(MetadataLabel))
+			return nil, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(b.Builder), style.Symbol(BuilderMetadataLabel))
 		}
 		var builderMetadata BuilderImageMetadata
 		if err := json.Unmarshal([]byte(label), &builderMetadata); err != nil {

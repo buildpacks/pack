@@ -1,8 +1,8 @@
 package pack
 
 const (
-	StackLabel    = "io.buildpacks.stack.id"
-	MetadataLabel = "io.buildpacks.pack.metadata"
+	StackLabel           = "io.buildpacks.stack.id"
+	BuilderMetadataLabel = "io.buildpacks.builder.metadata"
 )
 
 type BuilderImageMetadata struct {

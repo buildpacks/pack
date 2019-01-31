@@ -43,7 +43,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#Inspect", func() {
 		when("builder has valid metadata label", func() {
 			it.Before(func() {
-				mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImage": {"image": "some/default", "mirrors": ["gcr.io/some/default"]}}`, nil)
+				mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/default", "mirrors": ["gcr.io/some/default"]}}`, nil)
 			})
 
 			when("builder exists in config", func() {
@@ -94,18 +94,18 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("builder has missing metadata label", func() {
 			it.Before(func() {
-				mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return("", nil)
+				mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return("", nil)
 			})
 
 			it("returns an error", func() {
 				_, err := inspector.Inspect(mockBuilderImage)
-				h.AssertError(t, err, "invalid builder image 'some/builder': missing required label 'io.buildpacks.pack.metadata' -- try recreating builder")
+				h.AssertError(t, err, "invalid builder image 'some/builder': missing required label 'io.buildpacks.builder.metadata' -- try recreating builder")
 			})
 		})
 
 		when("builder has invalid metadata label", func() {
 			it.Before(func() {
-				mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return("junk", nil)
+				mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return("junk", nil)
 			})
 
 			it("returns an error", func() {

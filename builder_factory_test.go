@@ -211,7 +211,7 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("stores metadata about the run images defined for the default stack", func() {
-					mockImage.EXPECT().SetLabel("io.buildpacks.pack.metadata", `{"runImage":{"image":"default/run","mirrors":[]}}`)
+					mockImage.EXPECT().SetLabel("io.buildpacks.builder.metadata", `{"runImage":{"image":"default/run","mirrors":[]}}`)
 
 					err := factory.Create(pack.BuilderConfig{
 						Repo:       mockImage,
@@ -223,7 +223,7 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("stores metadata about the run images defined for the stack", func() {
-					mockImage.EXPECT().SetLabel("io.buildpacks.pack.metadata", `{"runImage":{"image":"other/run","mirrors":["other/run2"]}}`)
+					mockImage.EXPECT().SetLabel("io.buildpacks.builder.metadata", `{"runImage":{"image":"other/run","mirrors":["other/run2"]}}`)
 
 					err := factory.Create(pack.BuilderConfig{
 						Repo:       mockImage,
