@@ -6,5 +6,10 @@ const (
 )
 
 type BuilderImageMetadata struct {
-	RunImages []string `json:"runImages"`
+	RunImage BuilderRunImageMetadata `json:"runImage"`
+}
+
+type BuilderRunImageMetadata struct {
+	Image   string   `json:"image"`
+	Mirrors []string `json:"mirrors"`
 }

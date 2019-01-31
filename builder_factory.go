@@ -5,18 +5,20 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/BurntSushi/toml"
-	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/pack/logging"
-	"github.com/buildpack/pack/style"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+
+	"github.com/BurntSushi/toml"
+	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/image"
+	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
 
 	"github.com/buildpack/pack/config"
 )
@@ -94,7 +96,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 		return Buildpack{}, err
 	}
 	switch asurl.Scheme {
-	case "", // This is the only way to support relative filepaths
+	case "",    // This is the only way to support relative filepaths
 		"file": // URIs with file:// protocol force the use of absolute paths. Host=localhost may be implied with file:///
 
 		path := asurl.Path
@@ -215,8 +217,9 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 	if err != nil {
 		return fmt.Errorf(`failed to get run images: %s`, err)
 	}
-
-	jsonBytes, err := json.Marshal(&BuilderImageMetadata{RunImages: runImages})
+	jsonBytes, err := json.Marshal(&BuilderImageMetadata{
+		RunImage: BuilderRunImageMetadata{Image: runImages[0], Mirrors: runImages[1:]},
+	})
 	if err != nil {
 		return fmt.Errorf(`failed marshal builder image metadata: %s`, err)
 	}

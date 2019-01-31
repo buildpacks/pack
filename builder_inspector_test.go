@@ -43,15 +43,15 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#Inspect", func() {
 		when("builder has valid metadata label", func() {
 			it.Before(func() {
-				mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImages": ["some/default", "gcr.io/some/default"]}`, nil)
+				mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImage": {"image": "some/default", "mirrors": ["gcr.io/some/default"]}}`, nil)
 			})
 
 			when("builder exists in config", func() {
 				it.Before(func() {
-					inspector.Config.Builders = []config.Builder{
+					inspector.Config.RunImages = []config.RunImage{
 						{
-							Image:     "some/builder",
-							RunImages: []string{"some/run"},
+							Image:   "some/default",
+							Mirrors: []string{"gcr.io/some/run"},
 						},
 					}
 				})
@@ -62,15 +62,22 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, builder.Image, "some/builder")
 				})
 
-				it("set the local run images", func() {
+				it("set the correct run image", func() {
 					builder, err := inspector.Inspect(mockBuilderImage)
 					h.AssertNil(t, err)
-					h.AssertEq(t, builder.LocalRunImages, []string{"some/run"})
+					h.AssertEq(t, builder.RunImage, "some/default")
 				})
-				it("set the defaults run images", func() {
+
+				it("set the local run image mirrors", func() {
 					builder, err := inspector.Inspect(mockBuilderImage)
 					h.AssertNil(t, err)
-					h.AssertEq(t, builder.DefaultRunImages, []string{"some/default", "gcr.io/some/default"})
+					h.AssertEq(t, builder.LocalRunImageMirrors, []string{"gcr.io/some/run"})
+				})
+
+				it("set the defaults run image mirrors", func() {
+					builder, err := inspector.Inspect(mockBuilderImage)
+					h.AssertNil(t, err)
+					h.AssertEq(t, builder.RunImageMirrors, []string{"gcr.io/some/default"})
 				})
 			})
 
@@ -79,8 +86,8 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					builder, err := inspector.Inspect(mockBuilderImage)
 					h.AssertNil(t, err)
 					h.AssertEq(t, builder.Image, "some/builder")
-					h.AssertEq(t, len(builder.LocalRunImages), 0)
-					h.AssertEq(t, builder.DefaultRunImages, []string{"some/default", "gcr.io/some/default"})
+					h.AssertEq(t, len(builder.LocalRunImageMirrors), 0)
+					h.AssertEq(t, builder.RunImageMirrors, []string{"gcr.io/some/default"})
 				})
 			})
 		})

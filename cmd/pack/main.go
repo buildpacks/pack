@@ -43,7 +43,7 @@ func main() {
 	rootCmd.AddCommand(commands.Rebase(&logger, &imageFactory))
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFactory))
-	rootCmd.AddCommand(commands.ConfigureBuilder(&logger))
+	rootCmd.AddCommand(commands.SetRunImagesMirrors(&logger))
 	rootCmd.AddCommand(commands.InspectBuilder(&logger, &inspect, &imageFactory))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger))
 

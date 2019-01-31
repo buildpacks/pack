@@ -210,8 +210,20 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 					mockImage.EXPECT().Save()
 				})
 
+				it("stores metadata about the run images defined for the default stack", func() {
+					mockImage.EXPECT().SetLabel("io.buildpacks.pack.metadata", `{"runImage":{"image":"default/run","mirrors":[]}}`)
+
+					err := factory.Create(pack.BuilderConfig{
+						Repo:       mockImage,
+						Buildpacks: []pack.Buildpack{},
+						Groups:     []lifecycle.BuildpackGroup{},
+						BuilderDir: "",
+					})
+					h.AssertNil(t, err)
+				})
+
 				it("stores metadata about the run images defined for the stack", func() {
-					mockImage.EXPECT().SetLabel("io.buildpacks.pack.metadata", `{"runImages":["other/run","other/run2"]}`)
+					mockImage.EXPECT().SetLabel("io.buildpacks.pack.metadata", `{"runImage":{"image":"other/run","mirrors":["other/run2"]}}`)
 
 					err := factory.Create(pack.BuilderConfig{
 						Repo:       mockImage,

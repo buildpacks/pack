@@ -61,11 +61,12 @@ func inspectBuilderOutput(logger *logging.Logger, imageName string, remote bool,
 		return
 	}
 
-	logger.Info("Run Images:")
-	for _, r := range builder.LocalRunImages {
+	logger.Info("Run Image: %s", builder.RunImage)
+	logger.Info("Run Image Mirrors:")
+	for _, r := range builder.LocalRunImageMirrors {
 		logger.Info("\t%s (user-configured)", r)
 	}
-	for _, r := range builder.DefaultRunImages {
+	for _, r := range builder.RunImageMirrors {
 		logger.Info("\t%s", r)
 	}
 }

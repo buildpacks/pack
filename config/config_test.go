@@ -1,12 +1,13 @@
 package config_test
 
 import (
-	"github.com/fatih/color"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/fatih/color"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -531,15 +532,15 @@ default-stack-id = "stack-1"
 		})
 	})
 
-	when("Config#GetBuilder", func() {
+	when("Config#GetRunImage", func() {
 		var subject *config.Config
 
-		when("builder exists in config", func() {
+		when("run image exists in config", func() {
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
-[[builders]]
-  image = "some/builder"
-  run-images = ["some/run", "some.registry/some/run"]
+[[run-images]]
+  tag = "some/run-image"
+  mirrors = ["some/run-image1", "some.registry/some/run-image"]
 `), 0666))
 				var err error
 				subject, err = config.New(tmpDir)
@@ -547,20 +548,21 @@ default-stack-id = "stack-1"
 			})
 
 			it("returns the builder config", func() {
-				builder := subject.GetBuilder("some/builder")
-				h.AssertNotNil(t, builder)
-				h.AssertEq(t, len(builder.RunImages), 2)
-				h.AssertSliceContains(t, builder.RunImages, "some/run")
-				h.AssertSliceContains(t, builder.RunImages, "some.registry/some/run")
+				runImage := subject.GetRunImage("some/run-image")
+				h.AssertNotNil(t, runImage)
+				h.AssertEq(t, runImage.Image, "some/run-image")
+				h.AssertEq(t, len(runImage.Mirrors), 2)
+				h.AssertSliceContains(t, runImage.Mirrors, "some/run-image1")
+				h.AssertSliceContains(t, runImage.Mirrors, "some.registry/some/run-image")
 			})
 		})
 
-		when("builder does not exist in config", func() {
+		when("run image does not exist in config", func() {
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
-[[builders]]
-  image = "some-other/builder"
-  run-images = ["some/run", "some.registry/some/run"]
+[[run-images]]
+  tag = "some-other/run-image"
+  mirrors = ["some/run", "some.registry/some/run"]
 `), 0666))
 				var err error
 				subject, err = config.New(tmpDir)
@@ -568,42 +570,43 @@ default-stack-id = "stack-1"
 			})
 
 			it("returns a nil pointer", func() {
-				builder := subject.GetBuilder("some/builder")
+				builder := subject.GetRunImage("some/builder")
 				h.AssertNil(t, builder)
 			})
 		})
 	})
 
-	when("Config#ConfigureBuilder", func() {
+	when("Config#SetRunImageMirrors", func() {
 		var subject *config.Config
 
-		when("builder exists in config", func() {
+		when("run image exists in config", func() {
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
-[[builders]]
-  image = "some/builder"
-  run-images = ["some/run", "some.registry/some/run"]
+[[run-images]]
+  tag = "some/run-image"
+  mirrors = ["some/run", "some.registry/some/run"]
 `), 0666))
 				var err error
 				subject, err = config.New(tmpDir)
 				h.AssertNil(t, err)
 			})
 
-			it("updates the builder", func() {
-				subject.ConfigureBuilder("some/builder", []string{"some-other/run"})
+			it("updates the run image", func() {
+				subject.SetRunImageMirrors("some/run-image", []string{"some-other/run"})
 
 				reloadedConfig, err := config.New(tmpDir)
 				h.AssertNil(t, err)
 
-				builder := reloadedConfig.GetBuilder("some/builder")
+				image := reloadedConfig.GetRunImage("some/run-image")
 
-				h.AssertNotNil(t, builder)
-				h.AssertEq(t, len(builder.RunImages), 1)
-				h.AssertSliceContains(t, builder.RunImages, "some-other/run")
+				h.AssertNotNil(t, image)
+				h.AssertEq(t, image.Image, "some/run-image")
+				h.AssertEq(t, len(image.Mirrors), 1)
+				h.AssertSliceContains(t, image.Mirrors, "some-other/run")
 			})
 		})
 
-		when("builder does not exist in config", func() {
+		when("run image does not exist in config", func() {
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), nil, 0666))
 				var err error
@@ -611,17 +614,18 @@ default-stack-id = "stack-1"
 				h.AssertNil(t, err)
 			})
 
-			it("adds the builder", func() {
-				subject.ConfigureBuilder("some/builder", []string{"some-other/run"})
+			it("adds the run image", func() {
+				subject.SetRunImageMirrors("some/run-image", []string{"some-other/run"})
 
 				reloadedConfig, err := config.New(tmpDir)
 				h.AssertNil(t, err)
 
-				builder := reloadedConfig.GetBuilder("some/builder")
+				image := reloadedConfig.GetRunImage("some/run-image")
 
-				h.AssertNotNil(t, builder)
-				h.AssertEq(t, len(builder.RunImages), 1)
-				h.AssertSliceContains(t, builder.RunImages, "some-other/run")
+				h.AssertNotNil(t, image)
+				h.AssertEq(t, image.Image, "some/run-image")
+				h.AssertEq(t, len(image.Mirrors), 1)
+				h.AssertSliceContains(t, image.Mirrors, "some-other/run")
 			})
 		})
 	})

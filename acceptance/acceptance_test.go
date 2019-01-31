@@ -578,42 +578,42 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 	when("pack inspect-builder", func() {
 		it("displays configuration for a builder (local and remote)", func() {
-			runImageRemote := "some/run1"
-			runImageLocal := "some/run2"
-			configuredRunImage := "some-registry.com/" + runImageRemote
+			configuredRunImage := "some-registry.com/some/run1"
 
 			builderImageName := h.CreateImageOnRemote(t, dockerCli, registryPort, "some/builder",
 				fmt.Sprintf(`
 										FROM scratch
-										LABEL %s="{\"runImages\": [\"%s\"]}"
-									`, pack.MetadataLabel, runImageRemote))
+										LABEL %s="{\"runImage\": { \"image\": \"some/run1\", \"mirrors\": [\"gcr.io/some/run1\"]}}"
+									`, pack.MetadataLabel))
 
 			h.CreateImageOnLocal(t, dockerCli, builderImageName,
 				fmt.Sprintf(`
 										FROM scratch
-										LABEL %s="{\"runImages\": [\"%s\"]}"
-									`, pack.MetadataLabel, runImageLocal))
-
-			cmd := packCmd("configure-builder", builderImageName, "--run-image", configuredRunImage)
+										LABEL %s="{\"runImage\": { \"image\": \"some/run1\", \"mirrors\": [\"gcr.io/some/run2\"]}}"
+									`, pack.MetadataLabel))
+			println(builderImageName)
+			cmd := packCmd("set-run-image-mirrors", "some/run1", "--mirror", configuredRunImage)
 			output := h.Run(t, cmd)
-			h.AssertEq(t, output, fmt.Sprintf("Builder '%s' configured\n", builderImageName))
+			h.AssertEq(t, output, "Run Image 'some/run1' configured with mirror 'some-registry.com/some/run1'\n")
 
 			cmd = packCmd("inspect-builder", builderImageName)
 			output = h.Run(t, cmd)
 
-			h.AssertEq(t, output, fmt.Sprintf(`Remote
+			h.AssertEq(t, output, `Remote
 ------
-Run Images:
-	%s (user-configured)
-	%s
+Run Image: some/run1
+Run Image Mirrors:
+	some-registry.com/some/run1 (user-configured)
+	gcr.io/some/run1
 
 Local
 -----
-Run Images:
-	%s (user-configured)
-	%s
+Run Image: some/run1
+Run Image Mirrors:
+	some-registry.com/some/run1 (user-configured)
+	gcr.io/some/run2
 
-`, configuredRunImage, runImageRemote, configuredRunImage, runImageLocal))
+`)
 		})
 	})
 }

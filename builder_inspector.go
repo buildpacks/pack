@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/image"
+
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/style"
 )
@@ -16,9 +17,10 @@ type BuilderInspect struct {
 }
 
 type Builder struct {
-	Image            string
-	LocalRunImages   []string
-	DefaultRunImages []string
+	Image                string
+	RunImage             string
+	LocalRunImageMirrors []string
+	RunImageMirrors      []string
 }
 
 func DefaultBuilderInspect() (*BuilderInspect, error) {
@@ -33,27 +35,28 @@ func DefaultBuilderInspect() (*BuilderInspect, error) {
 }
 
 func (b *BuilderInspect) Inspect(builderImage image.Image) (Builder, error) {
-	defaultRunImages, err := b.getDefaultRunImages(builderImage)
+	defaultRunImage, err := b.getRunImageMirrors(builderImage)
 	if err != nil {
 		return Builder{}, err
 	}
 
 	builderName := builderImage.Name()
 	return Builder{
-		Image:            builderName,
-		LocalRunImages:   b.getLocalRunImages(builderName),
-		DefaultRunImages: defaultRunImages,
+		Image:                builderName,
+		RunImage:             defaultRunImage.Image,
+		LocalRunImageMirrors: b.getLocalRunImageMirrors(defaultRunImage.Image),
+		RunImageMirrors:      defaultRunImage.Mirrors,
 	}, nil
 }
 
-func (b *BuilderInspect) getLocalRunImages(builderName string) []string {
-	if builderConfig := b.Config.GetBuilder(builderName); builderConfig != nil {
-		return builderConfig.RunImages
+func (b *BuilderInspect) getLocalRunImageMirrors(imageName string) []string {
+	if builderConfig := b.Config.GetRunImage(imageName); builderConfig != nil {
+		return builderConfig.Mirrors
 	}
 	return nil
 }
 
-func (b *BuilderInspect) getDefaultRunImages(builderImage image.Image) ([]string, error) {
+func (b *BuilderInspect) getRunImageMirrors(builderImage image.Image) (*BuilderRunImageMetadata, error) {
 	var metadata BuilderImageMetadata
 
 	label, err := builderImage.Label(MetadataLabel)
@@ -66,5 +69,6 @@ func (b *BuilderInspect) getDefaultRunImages(builderImage image.Image) ([]string
 	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
 		return nil, errors.Wrapf(err, "failed to parse run images for builder %s", style.Symbol(builderImage.Name()))
 	}
-	return metadata.RunImages, nil
+
+	return &metadata.RunImage, nil
 }

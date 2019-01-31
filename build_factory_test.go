@@ -116,7 +116,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 		it("defaults to daemon, default-builder, pulls builder and run images, selects run-image from builder", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
 			mockBuilderImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImages": ["some/run"]}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
 			mockImageFactory.EXPECT().NewLocal("some/builder", true).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -136,7 +136,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 		it("respects builder from flags", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
 			mockBuilderImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImages": ["some/run"]}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
 			mockImageFactory.EXPECT().NewLocal("custom/builder", true).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -156,7 +156,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 		it("doesn't pull builder or run images when --no-pull is passed", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
 			mockBuilderImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImages": ["some/run"]}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
 			mockImageFactory.EXPECT().NewLocal("custom/builder", false).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -177,7 +177,8 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 		it("selects run images with matching registry", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
 			mockBuilderImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImages": ["some/run", "registry.com/some/run"]}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").
+				Return(`{"runImage": {"image": "some/run", "mirrors": ["registry.com/some/run"]}}`, nil)
 			mockImageFactory.EXPECT().NewLocal("some/builder", true).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -196,16 +197,17 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 
 		when("both builder and local override run images have a matching registry", func() {
 			it.Before(func() {
-				factory.Config.Builders = []config.Builder{
+				factory.Config.RunImages = []config.RunImage{
 					{
-						Image:     "some/builder",
-						RunImages: []string{"registry.com/override/run"},
+						Image:   "default/run",
+						Mirrors: []string{"registry.com/override/run"},
 					},
 				}
 
 				mockBuilderImage := mocks.NewMockImage(mockController)
 				mockBuilderImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
-				mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImages": ["registry.com/default/run", "default/run"]}`, nil)
+				mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").
+					Return(`{"runImage": {"image": "default/run", "mirrors": ["registry.com/default/run"]}}`, nil)
 				mockImageFactory.EXPECT().NewLocal("some/builder", true).Return(mockBuilderImage, nil)
 
 				mockRunImage := mocks.NewMockImage(mockController)
@@ -228,7 +230,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 		it("uses a remote run image when --publish is passed", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
 			mockBuilderImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImages": ["some/run"]}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
 			mockImageFactory.EXPECT().NewLocal("some/builder", true).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -289,7 +291,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 		it("uses working dir if appDir is set to placeholder value", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
 			mockBuilderImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImages": ["some/run"]}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
 			mockImageFactory.EXPECT().NewLocal("some/builder", true).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -398,7 +400,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 		it("sets EnvFile", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
 			mockBuilderImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImages": ["some/run"]}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.pack.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
 			mockImageFactory.EXPECT().NewLocal("some/builder", true).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)

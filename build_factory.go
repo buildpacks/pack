@@ -215,10 +215,11 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 			return nil, err
 		}
 		var overrideRunImages []string
-		if b := bf.Config.GetBuilder(b.Builder); b != nil {
-			overrideRunImages = b.RunImages
+		if runImage := bf.Config.GetRunImage(builderMetadata.RunImage.Image); runImage != nil {
+			overrideRunImages = runImage.Mirrors
 		}
-		b.RunImage, err = config.ImageByRegistry(reg, append(overrideRunImages, builderMetadata.RunImages...))
+		i := append(overrideRunImages, append([]string{builderMetadata.RunImage.Image}, builderMetadata.RunImage.Mirrors...)...)
+		b.RunImage, err = config.ImageByRegistry(reg, i)
 		if err != nil {
 			return nil, err
 		}

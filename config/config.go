@@ -3,19 +3,20 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/buildpack/pack/style"
 	"os"
 	"path/filepath"
+
+	"github.com/buildpack/pack/style"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
 )
 
 type Config struct {
-	Stacks         []Stack   `toml:"stacks"`
-	Builders       []Builder `toml:"builders"`
-	DefaultStackID string    `toml:"default-stack-id"`
-	DefaultBuilder string    `toml:"default-builder"`
+	Stacks         []Stack    `toml:"stacks"`
+	RunImages      []RunImage `toml:"run-images"`
+	DefaultStackID string     `toml:"default-stack-id"`
+	DefaultBuilder string     `toml:"default-builder"`
 	configPath     string
 }
 
@@ -26,9 +27,9 @@ type Stack struct {
 	RunImages   []string `toml:"run-images"`
 }
 
-type Builder struct {
-	Image     string   `toml:"image"`
-	RunImages []string `toml:"run-images"`
+type RunImage struct {
+	Image   string   `toml:"tag"`
+	Mirrors []string `toml:"mirrors"`
 }
 
 func NewDefault() (*Config, error) {
@@ -202,21 +203,21 @@ func (c *Config) SetDefaultBuilder(builder string) error {
 	return c.save()
 }
 
-func (c *Config) GetBuilder(image string) *Builder {
-	for b := range c.Builders {
-		builder := &c.Builders[b]
-		if builder.Image == image {
-			return builder
+func (c *Config) GetRunImage(runImageTag string) *RunImage {
+	for i := range c.RunImages {
+		runImage := &c.RunImages[i]
+		if runImage.Image == runImageTag {
+			return runImage
 		}
 	}
 	return nil
 }
 
-func (c *Config) ConfigureBuilder(image string, runImages []string) {
-	if builder := c.GetBuilder(image); builder != nil {
-		builder.RunImages = runImages
+func (c *Config) SetRunImageMirrors(image string, mirrors []string) {
+	if runImage := c.GetRunImage(image); runImage != nil {
+		runImage.Mirrors = mirrors
 	} else {
-		c.Builders = append(c.Builders, Builder{Image: image, RunImages: runImages})
+		c.RunImages = append(c.RunImages, RunImage{Image: image, Mirrors: mirrors})
 	}
 	c.save()
 }

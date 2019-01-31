@@ -267,6 +267,7 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 
 func ConfigurePackHome(t *testing.T, packHome, registryPort string) {
 	t.Helper()
+	tag := packTag()
 	AssertNil(t, ioutil.WriteFile(filepath.Join(packHome, "config.toml"), []byte(fmt.Sprintf(`
 				default-stack-id = "io.buildpacks.stacks.bionic"
                 default-builder = "%s"
@@ -275,7 +276,11 @@ func ConfigurePackHome(t *testing.T, packHome, registryPort string) {
 				  id = "io.buildpacks.stacks.bionic"
 				  build-image = "%s"
 				  run-images = ["%s"]
-			`, DefaultBuilderImage(t, registryPort), DefaultBuildImage(t, registryPort), DefaultRunImage(t, registryPort))), 0666))
+
+                [[run-images]]
+                  image = "packs/run:%s"
+                  mirrors = ["%s"]
+			`, DefaultBuilderImage(t, registryPort), DefaultBuildImage(t, registryPort), DefaultRunImage(t, registryPort), tag, DefaultRunImage(t, registryPort))), 0666))
 }
 
 func StopRegistry(t *testing.T) {
