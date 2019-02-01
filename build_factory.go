@@ -17,22 +17,20 @@ import (
 	"time"
 
 	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/containers"
+	"github.com/buildpack/pack/docker"
+	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 
-	"github.com/buildpack/lifecycle/image"
-	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
-
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/fs"
-
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/lifecycle/image/auth"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 )
 
@@ -480,12 +478,12 @@ func (b *BuildConfig) Analyze(ctx context.Context) error {
 	}
 
 	if b.Publish {
-		authHeader, err := authHeader(b.RepoName)
+		authHeader, err := auth.BuildEnvVar(authn.DefaultKeychain, b.RepoName, b.RunImage)
 		if err != nil {
 			return err
 		}
 
-		ctrConf.Env = []string{fmt.Sprintf(`PACK_REGISTRY_AUTH=%s`, authHeader)}
+		ctrConf.Env = []string{fmt.Sprintf(`CNB_REGISTRY_AUTH=%s`, authHeader)}
 		ctrConf.Cmd = []string{
 			"/lifecycle/analyzer",
 			"-layers", launchDir,
@@ -529,18 +527,6 @@ func (b *BuildConfig) Analyze(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func authHeader(repoName string) (string, error) {
-	r, err := name.ParseReference(repoName, name.WeakValidation)
-	if err != nil {
-		return "", err
-	}
-	auth, err := authn.DefaultKeychain.Resolve(r.Context().Registry)
-	if err != nil {
-		return "", err
-	}
-	return auth.Authorization()
 }
 
 func (b *BuildConfig) Build(ctx context.Context) error {
@@ -654,12 +640,12 @@ func (b *BuildConfig) Export(ctx context.Context) error {
 	}
 
 	if b.Publish {
-		authHeader, err := authHeader(b.RepoName)
+		authHeader, err := auth.BuildEnvVar(authn.DefaultKeychain, b.RepoName, b.RunImage)
 		if err != nil {
 			return err
 		}
 
-		ctrConf.Env = []string{fmt.Sprintf(`PACK_REGISTRY_AUTH=%s`, authHeader)}
+		ctrConf.Env = []string{fmt.Sprintf(`CNB_REGISTRY_AUTH=%s`, authHeader)}
 		ctrConf.Cmd = []string{
 			"/lifecycle/exporter",
 			"-image", b.RunImage,
