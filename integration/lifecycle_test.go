@@ -28,19 +28,19 @@ import (
 	h "github.com/buildpack/pack/testhelpers"
 )
 
-var registryPort string
+var registryConfig *h.TestRegistryConfig
 
 func TestLifecycle(t *testing.T) {
 	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	registryPort = h.RunRegistry(t, true)
-	defer h.StopRegistry(t)
+	registryConfig = h.RunRegistry(t, true)
+	defer registryConfig.StopRegistry(t)
 	packHome, err := ioutil.TempDir("", "build-test-pack-home")
 	h.AssertNil(t, err)
 	defer os.RemoveAll(packHome)
-	h.ConfigurePackHome(t, packHome, registryPort)
-	defer h.CleanDefaultImages(t, registryPort)
+	h.ConfigurePackHome(t, packHome, registryConfig.RunRegistryPort)
+	defer h.CleanDefaultImages(t, registryConfig.RunRegistryPort)
 
 	spec.Run(t, "pack", testLifecycle, spec.Report(report.Terminal{}))
 }
@@ -59,17 +59,20 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
+		err = os.Setenv("DOCKER_CONFIG", registryConfig.DockerConfigDir)
+		h.AssertNil(t, err)
+
 		ctx = context.TODO()
 		logger = logging.NewLogger(&outBuf, &errBuf, true, false)
 		dockerCli, err = docker.New()
 		h.AssertNil(t, err)
 		repoName := "pack.build." + h.RandString(10)
 		buildCache, err := cache.New(repoName, dockerCli)
-		defaultBuilderName = h.DefaultBuilderImage(t, registryPort)
+		defaultBuilderName = h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)
 		subject = &pack.BuildConfig{
 			AppDir:   "../acceptance/testdata/node_app",
 			Builder:  defaultBuilderName,
-			RunImage: h.DefaultRunImage(t, registryPort),
+			RunImage: h.DefaultRunImage(t, registryConfig.RunRegistryPort),
 			RepoName: repoName,
 			Publish:  false,
 			Cache:    buildCache,
@@ -82,6 +85,9 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 		for _, volName := range []string{subject.Cache.Volume(), subject.Cache.Volume()} {
 			dockerCli.VolumeRemove(context.TODO(), volName, true)
 		}
+
+		err := os.Unsetenv("DOCKER_CONFIG")
+		h.AssertNil(t, err)
 	})
 
 	when("#Detect", func() {
@@ -185,11 +191,11 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			repoName := "pack.build." + h.RandString(10)
 			buildCache, err := cache.New(repoName, dockerCli)
-			defaultBuilderName = h.DefaultBuilderImage(t, registryPort)
+			defaultBuilderName = h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)
 			subject = &pack.BuildConfig{
 				AppDir:   "../acceptance/testdata/node_app",
 				Builder:  defaultBuilderName,
-				RunImage: h.DefaultRunImage(t, registryPort),
+				RunImage: h.DefaultRunImage(t, registryConfig.RunRegistryPort),
 				RepoName: repoName,
 				Publish:  false,
 				Cache:    buildCache,
@@ -218,7 +224,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 		when("no previous image exists", func() {
 			when("publish", func() {
 				it.Before(func() {
-					subject.RepoName = "localhost:" + registryPort + "/" + subject.RepoName
+					subject.RepoName = registryConfig.RepoName(subject.RepoName)
 					subject.Publish = true
 				})
 
@@ -250,7 +256,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			when("publish", func() {
 				it.Before(func() {
 					subject.Publish = true
-					subject.RepoName = h.CreateImageOnRemote(t, dockerCli, registryPort, subject.RepoName, dockerFile)
+					subject.RepoName = h.CreateImageOnRemote(t, dockerCli, registryConfig, subject.RepoName, dockerFile)
 				})
 
 				it("places files in workspace and sets owner to pack", func() {
@@ -311,11 +317,11 @@ cache = false
 			h.AssertNil(t, err)
 			repoName := "pack.build." + h.RandString(10)
 			buildCache, err := cache.New(repoName, dockerCli)
-			defaultBuilderName = h.DefaultBuilderImage(t, registryPort)
+			defaultBuilderName = h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)
 			subject = &pack.BuildConfig{
 				AppDir:   "../acceptance/testdata/node_app",
 				Builder:  defaultBuilderName,
-				RunImage: h.DefaultRunImage(t, registryPort),
+				RunImage: h.DefaultRunImage(t, registryConfig.RunRegistryPort),
 				RepoName: repoName,
 				Publish:  false,
 				Cache:    buildCache,
@@ -415,11 +421,11 @@ cache = false
 			h.AssertNil(t, err)
 			repoName := "pack.build." + h.RandString(10)
 			buildCache, err := cache.New(repoName, dockerCli)
-			defaultBuilderName = h.DefaultBuilderImage(t, registryPort)
+			defaultBuilderName = h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)
 			subject = &pack.BuildConfig{
 				AppDir:   "../acceptance/testdata/node_app",
 				Builder:  defaultBuilderName,
-				RunImage: h.DefaultRunImage(t, registryPort),
+				RunImage: h.DefaultRunImage(t, registryConfig.RunRegistryPort),
 				RepoName: repoName,
 				Publish:  false,
 				Cache:    buildCache,
@@ -464,7 +470,7 @@ cache = false
 			it.Before(func() {
 				oldRepoName = subject.RepoName
 
-				subject.RepoName = "localhost:" + registryPort + "/" + oldRepoName
+				subject.RepoName = registryConfig.RepoName(subject.RepoName)
 				subject.Publish = true
 			})
 
@@ -476,14 +482,15 @@ cache = false
 
 			it("creates the image on the registry", func() {
 				h.AssertNil(t, subject.Export(ctx))
-				images := h.HttpGet(t, "http://localhost:"+registryPort+"/v2/_catalog")
+				images, err := registryConfig.RegistryCatalog()
+				h.AssertNil(t, err)
 				h.AssertContains(t, images, oldRepoName)
 			})
 
 			it("puts the files on the image", func() {
 				h.AssertNil(t, subject.Export(ctx))
 
-				h.AssertNil(t, h.PullImage(dockerCli, subject.RepoName))
+				h.AssertNil(t, h.PullImageWithAuth(dockerCli, subject.RepoName, registryConfig.RegistryAuth()))
 				defer h.DockerRmi(dockerCli, subject.RepoName)
 				txt, err := h.CopySingleFileFromImage(dockerCli, subject.RepoName, "workspace/app/file.txt")
 				h.AssertNil(t, err)
@@ -497,7 +504,7 @@ cache = false
 			it("sets the metadata on the image", func() {
 				h.AssertNil(t, subject.Export(ctx))
 
-				h.AssertNil(t, h.PullImage(dockerCli, subject.RepoName))
+				h.AssertNil(t, h.PullImageWithAuth(dockerCli, subject.RepoName, registryConfig.RegistryAuth()))
 				defer h.DockerRmi(dockerCli, subject.RepoName)
 				var metadata lifecycle.AppImageMetadata
 				metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
@@ -566,7 +573,7 @@ cache = false
 						ENV PACK_USER_ID 1234
 						ENV PACK_GROUP_ID 5678
 						LABEL repo_name_for_randomisation=%s
-					`, h.DefaultBuilderImage(t, registryPort), subject.Builder))
+					`, h.DefaultBuilderImage(t, registryConfig.RunRegistryPort), subject.Builder))
 				})
 
 				it.After(func() {
@@ -599,7 +606,7 @@ cache = false
 					outBuf.Reset()
 					h.RunInImage(t, dockerCli,
 						[]string{subject.Cache.Volume() + ":/workspace"},
-						h.DefaultBuilderImage(t, registryPort),
+						h.DefaultBuilderImage(t, registryConfig.RunRegistryPort),
 						"rm", "-rf", "/workspace/io.buildpacks.samples.nodejs/mylayer",
 					)
 

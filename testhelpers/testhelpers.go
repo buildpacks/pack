@@ -24,11 +24,9 @@ import (
 	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/fs"
 )
@@ -176,75 +174,6 @@ func proxyDockerHostPort(dockerCli *docker.Client, port string) error {
 	return nil
 }
 
-var runRegistryName, runRegistryPort string
-var registryContainerName = "registry:2"
-var runRegistryOnce sync.Once
-
-func RunRegistry(t *testing.T, seedRegistry bool) (localPort string) {
-	t.Log("run registry")
-	t.Helper()
-	runRegistryOnce.Do(func() {
-		runRegistryName = "test-registry-" + RandString(10)
-
-		AssertNil(t, PullImage(dockerCli(t), registryContainerName))
-		ctx := context.Background()
-		ctr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
-			Image:  registryContainerName,
-			Labels: map[string]string{"author": "pack"},
-		}, &dockercontainer.HostConfig{
-			AutoRemove: true,
-			PortBindings: nat.PortMap{
-				"5000/tcp": []nat.PortBinding{{}},
-			},
-		}, nil, runRegistryName)
-		AssertNil(t, err)
-		defer dockerCli(t).ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
-		err = dockerCli(t).ContainerStart(ctx, ctr.ID, dockertypes.ContainerStartOptions{})
-		AssertNil(t, err)
-
-		inspect, err := dockerCli(t).ContainerInspect(context.TODO(), ctr.ID)
-		AssertNil(t, err)
-		runRegistryPort = inspect.NetworkSettings.Ports["5000/tcp"][0].HostPort
-
-		if os.Getenv("DOCKER_HOST") != "" {
-			err := proxyDockerHostPort(dockerCli(t), runRegistryPort)
-			AssertNil(t, err)
-		}
-
-		Eventually(t, func() bool {
-			txt, err := HttpGetE(fmt.Sprintf("http://localhost:%s/v2/", runRegistryPort))
-			return err == nil && txt != ""
-		}, 100*time.Millisecond, 10*time.Second)
-
-		if seedRegistry {
-			t.Log("seed registry")
-			for _, f := range []func(*testing.T, string) string{DefaultBuildImage, DefaultRunImage, DefaultBuilderImage} {
-				AssertNil(t, pushImage(dockerCli(t), f(t, runRegistryPort)))
-			}
-		}
-	})
-	return runRegistryPort
-}
-
-func GetAllContainers(t *testing.T) []dockertypes.Container {
-	t.Helper()
-
-	containers, err := dockerCli(t).ContainerList(context.TODO(), dockertypes.ContainerListOptions{All: true})
-	AssertNil(t, err)
-	return containers
-}
-
-func GetAllContainerIDs(t *testing.T) []string {
-	t.Helper()
-
-	containers := GetAllContainers(t)
-	var ids []string
-	for _, container := range containers {
-		ids = append(ids, container.ID)
-	}
-	return ids
-}
-
 func Eventually(t *testing.T, test func() bool, every time.Duration, timeout time.Duration) {
 	t.Helper()
 
@@ -283,75 +212,6 @@ func ConfigurePackHome(t *testing.T, packHome, registryPort string) {
 			`, DefaultBuilderImage(t, registryPort), DefaultBuildImage(t, registryPort), DefaultRunImage(t, registryPort), tag, DefaultRunImage(t, registryPort))), 0666))
 }
 
-func StopRegistry(t *testing.T) {
-	t.Log("stop registry")
-	t.Helper()
-	if runRegistryName != "" {
-		dockerCli(t).ContainerKill(context.Background(), runRegistryName, "SIGKILL")
-		dockerCli(t).ContainerRemove(context.TODO(), runRegistryName, dockertypes.ContainerRemoveOptions{Force: true})
-	}
-}
-
-var getBuildImageOnce sync.Once
-
-func DefaultBuildImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := packTag()
-	getBuildImageOnce.Do(func() {
-		if tag == defaultTag {
-			AssertNil(t, PullImage(dockerCli(t), fmt.Sprintf("packs/build:%s", tag)))
-		}
-		AssertNil(t, dockerCli(t).ImageTag(
-			context.Background(),
-			fmt.Sprintf("packs/build:%s", tag),
-			fmt.Sprintf("localhost:%s/packs/build:%s", registryPort, tag),
-		))
-	})
-	return fmt.Sprintf("localhost:%s/packs/build:%s", registryPort, tag)
-}
-
-var getRunImageOnce sync.Once
-
-func DefaultRunImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := packTag()
-	getRunImageOnce.Do(func() {
-		if tag == defaultTag {
-			AssertNil(t, PullImage(dockerCli(t), fmt.Sprintf("packs/run:%s", tag)))
-		}
-		AssertNil(t, dockerCli(t).ImageTag(
-			context.Background(),
-			fmt.Sprintf("packs/run:%s", tag),
-			fmt.Sprintf("localhost:%s/packs/run:%s", registryPort, tag),
-		))
-	})
-	return fmt.Sprintf("localhost:%s/packs/run:%s", registryPort, tag)
-}
-
-var getBuilderImageOnce sync.Once
-
-func DefaultBuilderImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := packTag()
-	origName := fmt.Sprintf("packs/samples:%s", tag)
-	newName := fmt.Sprintf("localhost:%s/%s", registryPort, origName)
-	dockerCli := dockerCli(t)
-	getBuilderImageOnce.Do(func() {
-		if tag == defaultTag {
-			AssertNil(t, PullImage(dockerCli, origName))
-			AssertNil(t, dockerCli.ImageTag(context.Background(), origName, newName))
-		} else {
-			runImageName := DefaultRunImage(t, registryPort)
-
-			CreateImageOnLocal(t, dockerCli, newName, fmt.Sprintf(`
-					FROM %s
-					LABEL %s="{\"runImages\": [\"%s\"]}"
-				`, origName, pack.BuilderMetadataLabel, runImageName))
-		}
-	})
-	return newName
-}
-
 func CreateImageOnLocal(t *testing.T, dockerCli *docker.Client, repoName, dockerFile string) {
 	ctx := context.Background()
 
@@ -370,12 +230,13 @@ func CreateImageOnLocal(t *testing.T, dockerCli *docker.Client, repoName, docker
 	res.Body.Close()
 }
 
-func CreateImageOnRemote(t *testing.T, dockerCli *docker.Client, registryPort, repoName, dockerFile string) string {
+func CreateImageOnRemote(t *testing.T, dockerCli *docker.Client, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
 	t.Helper()
-	imageName := fmt.Sprintf("localhost:%s/%s", registryPort, repoName)
+	imageName := registryConfig.RepoName(repoName)
+
 	defer DockerRmi(dockerCli, imageName)
 	CreateImageOnLocal(t, dockerCli, imageName, dockerFile)
-	AssertNil(t, pushImage(dockerCli, imageName))
+	AssertNil(t, PushImage(dockerCli, imageName, registryConfig))
 	return imageName
 }
 
@@ -440,8 +301,8 @@ func CopySingleFileFromImage(dockerCli *docker.Client, repoName, path string) (s
 	return CopySingleFileFromContainer(dockerCli, ctr.ID, path)
 }
 
-func pushImage(dockerCli *docker.Client, ref string) error {
-	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: "{}"})
+func PushImage(dockerCli *docker.Client, ref string, registryConfig *TestRegistryConfig) error {
+	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: registryConfig.RegistryAuth()})
 	if err != nil {
 		return err
 	}
@@ -471,12 +332,12 @@ func pullPacksSamples(d *docker.Client) {
 
 func HttpGet(t *testing.T, url string) string {
 	t.Helper()
-	txt, err := HttpGetE(url)
+	txt, err := HttpGetE(url, map[string]string{})
 	AssertNil(t, err)
 	return txt
 }
 
-func HttpGetE(url string) (string, error) {
+func HttpGetE(url string, headers map[string]string) (string, error) {
 	var client *http.Client
 	if os.Getenv("DOCKER_HOST") == "" {
 		client = http.DefaultClient
@@ -485,7 +346,16 @@ func HttpGetE(url string) (string, error) {
 		client = &http.Client{Transport: tr}
 	}
 
-	resp, err := client.Get(url)
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	for key, val := range headers {
+		request.Header.Set(key, val)
+	}
+
+	resp, err := client.Do(request)
 	if err != nil {
 		return "", err
 	}
@@ -606,10 +476,14 @@ func RunE(cmd *exec.Cmd) (string, error) {
 }
 
 func PullImage(dockerCli *docker.Client, ref string) error {
-	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+	return PullImageWithAuth(dockerCli, ref, "")
+}
+
+func PullImageWithAuth(dockerCli *docker.Client, ref, registryAuth string) error {
+	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{RegistryAuth: registryAuth})
 	if err != nil {
 		// Retry
-		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{})
+		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{RegistryAuth: registryAuth})
 		if err != nil {
 			return err
 		}

@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -35,7 +34,7 @@ import (
 
 var packPath string
 var dockerCli *docker.Client
-var registryPort string
+var registryConfig *h.TestRegistryConfig
 
 func TestAcceptance(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -59,9 +58,9 @@ func TestAcceptance(t *testing.T) {
 	var err error
 	dockerCli, err = docker.New()
 	h.AssertNil(t, err)
-	registryPort = h.RunRegistry(t, true)
-	defer h.StopRegistry(t)
-	defer h.CleanDefaultImages(t, registryPort)
+	registryConfig = h.RunRegistry(t, true)
+	defer registryConfig.StopRegistry(t)
+	defer h.CleanDefaultImages(t, registryConfig.RunRegistryPort)
 
 	spec.Run(t, "acceptance", testAcceptance, spec.Report(report.Terminal{}))
 }
@@ -78,7 +77,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			packPath,
 			cmdArgs...,
 		)
-		cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
+		cmd.Env = append(os.Environ(), "PACK_HOME="+packHome, "DOCKER_CONFIG="+registryConfig.DockerConfigDir)
 		return cmd
 	}
 
@@ -90,7 +89,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		var err error
 		packHome, err = ioutil.TempDir("", "buildpack.pack.home.")
 		h.AssertNil(t, err)
-		h.ConfigurePackHome(t, packHome, registryPort)
+		h.ConfigurePackHome(t, packHome, registryConfig.RunRegistryPort)
 	})
 
 	it.After(func() {
@@ -115,7 +114,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			repo = "some-org/" + h.RandString(10)
-			repoName = "localhost:" + registryPort + "/" + repo
+			repoName = registryConfig.RepoName(repo)
 			containerName = "test-" + h.RandString(10)
 
 			var err error
@@ -146,8 +145,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, h.HttpGet(t, "http://localhost:"+launchPort), "Buildpacks Worked! - 1000:1000")
 
 				t.Log("Checking that registry is empty")
-				contents := h.HttpGet(t, fmt.Sprintf("http://localhost:%s/v2/_catalog", registryPort))
-				if strings.Contains(string(contents), repo) {
+				contents, err := registryConfig.RegistryCatalog()
+				h.AssertNil(t, err)
+				if strings.Contains(contents, repo) {
 					t.Fatalf("Should not have published image without the '--publish' flag: got %s", contents)
 				}
 			})
@@ -169,12 +169,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				t.Log("Checking that registry has contents")
-				contents := h.HttpGet(t, fmt.Sprintf("http://localhost:%s/v2/_catalog", registryPort))
-				if !strings.Contains(string(contents), repo) {
+				contents, err := registryConfig.RegistryCatalog()
+				h.AssertNil(t, err)
+				if !strings.Contains(contents, repo) {
 					t.Fatalf("Expected to see image %s in %s", repo, contents)
 				}
 
-				h.AssertNil(t, h.PullImage(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA)))
+				h.AssertNil(t, h.PullImageWithAuth(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA), registryConfig.RegistryAuth()))
 				defer h.DockerRmi(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA))
 
 				ctrID := runDockerImageExposePort(t, containerName, fmt.Sprintf("%s@%s", repoName, imgSHA))
@@ -277,7 +278,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 										RUN echo %s > /contents1.txt
 										RUN echo %s > /contents2.txt
 										USER pack
-									`, h.DefaultRunImage(t, registryPort), contents1, contents2))
+									`, h.DefaultRunImage(t, registryConfig.RunRegistryPort), contents1, contents2))
 
 			}
 			setRunImage = func(runImage string) {
@@ -342,12 +343,12 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 		when("run on registry", func() {
 			it.Before(func() {
-				repoName = "localhost:" + registryPort + "/" + repoName
-				runBefore = "localhost:" + registryPort + "/" + runBefore
-				runAfter = "localhost:" + registryPort + "/" + runAfter
+				repoName = registryConfig.RepoName(repoName)
+				runBefore = registryConfig.RepoName(runBefore)
+				runAfter = registryConfig.RepoName(runAfter)
 
 				buildRunImage(runBefore, "contents-before-1", "contents-before-2")
-				h.AssertNil(t, pushImage(dockerCli, runBefore))
+				h.AssertNil(t, h.PushImage(dockerCli, runBefore, registryConfig))
 
 				cmd := packCmd("build", repoName,
 					"-p", "testdata/node_app/",
@@ -355,7 +356,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					"--publish")
 				h.Run(t, cmd)
 
-				h.AssertNil(t, h.PullImage(dockerCli, repoName))
+				h.AssertNil(t, h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
 				h.AssertEq(t, rootContents1(), "contents-before-1\n")
 				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 			})
@@ -363,13 +364,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			it("rebases", func() {
 				buildRunImage(runAfter, "contents-after-1", "contents-after-2")
 				setRunImage(runAfter)
-				h.AssertNil(t, pushImage(dockerCli, runAfter))
+				h.AssertNil(t, h.PushImage(dockerCli, runAfter, registryConfig))
 
 				cmd := packCmd("rebase", repoName, "--publish")
 				output := h.Run(t, cmd)
 
 				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
-				h.AssertNil(t, h.PullImage(dockerCli, repoName))
+				h.AssertNil(t, h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
 				h.AssertEq(t, rootContents1(), "contents-after-1\n")
 			})
 		})
@@ -580,7 +581,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		it("displays configuration for a builder (local and remote)", func() {
 			configuredRunImage := "some-registry.com/some/run1"
 
-			builderImageName := h.CreateImageOnRemote(t, dockerCli, registryPort, "some/builder",
+			builderImageName := h.CreateImageOnRemote(t, dockerCli, registryConfig, "some/builder",
 				fmt.Sprintf(`
 										FROM scratch
 										LABEL %s="{\"runImage\": { \"image\": \"some/run1\", \"mirrors\": [\"gcr.io/some/run1\"]}}"
@@ -616,21 +617,6 @@ Run Image Mirrors:
 `)
 		})
 	})
-}
-
-func assertContainerList(containersAfter []dockertypes.Container, containersBefore []string, t *testing.T) {
-	for _, cnt := range containersAfter {
-		found := false
-		for _, bef := range containersBefore {
-			if cnt.ID == bef {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("Container %s with names %s should have been cleaned", cnt.ID, cnt.Names)
-		}
-	}
 }
 
 func fetchHostPort(t *testing.T, dockerID string) string {
@@ -765,22 +751,9 @@ func runDockerImageWithOutput(t *testing.T, containerName, repoName string) stri
 	return buf.String()
 }
 
-func pushImage(d *docker.Client, ref string) error {
-	rc, err := d.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{
-		RegistryAuth: base64.StdEncoding.EncodeToString([]byte("{}")),
-	})
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
-		return err
-	}
-	return rc.Close()
-}
-
 func waitForPort(t *testing.T, port string, duration time.Duration) {
 	h.Eventually(t, func() bool {
-		_, err := h.HttpGetE("http://localhost:" + port)
+		_, err := h.HttpGetE("http://localhost:"+port, map[string]string{})
 		return err == nil
 	}, 500*time.Millisecond, duration)
 }

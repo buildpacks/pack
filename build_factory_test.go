@@ -29,19 +29,19 @@ import (
 	h "github.com/buildpack/pack/testhelpers"
 )
 
-var registryPort string
+var registryConfig *h.TestRegistryConfig
 
 func TestBuildFactory(t *testing.T) {
 	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	registryPort = h.RunRegistry(t, true)
-	defer h.StopRegistry(t)
+	registryConfig = h.RunRegistry(t, true)
+	defer registryConfig.StopRegistry(t)
 	packHome, err := ioutil.TempDir("", "build-test-pack-home")
 	h.AssertNil(t, err)
 	defer os.RemoveAll(packHome)
-	h.ConfigurePackHome(t, packHome, registryPort)
-	defer h.CleanDefaultImages(t, registryPort)
+	h.ConfigurePackHome(t, packHome, registryConfig.RunRegistryPort)
+	defer h.CleanDefaultImages(t, registryConfig.RunRegistryPort)
 
 	spec.Run(t, "build_factory", testBuildFactory, spec.Report(report.Terminal{}))
 }
@@ -69,11 +69,11 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		repoName := "pack.build." + h.RandString(10)
 		buildCache, err := cache.New(repoName, dockerCli)
-		defaultBuilderName = h.DefaultBuilderImage(t, registryPort)
+		defaultBuilderName = h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)
 		subject = &pack.BuildConfig{
 			AppDir:   "acceptance/testdata/node_app",
 			Builder:  defaultBuilderName,
-			RunImage: h.DefaultRunImage(t, registryPort),
+			RunImage: h.DefaultRunImage(t, registryConfig.RunRegistryPort),
 			RepoName: repoName,
 			Publish:  false,
 			Cache:    buildCache,
