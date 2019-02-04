@@ -11,3 +11,8 @@ buildpacks = [
   { id = "some.bp", version = "1.2.3" },
   { id = "some.other.bp.using.tgz", version = "1.2.4" },
 ]
+
+[stack]
+id = "com.example.stack"
+build-image = "some/build"
+run-image = "some/run"

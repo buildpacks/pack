@@ -26,14 +26,23 @@ import (
 type BuilderTOML struct {
 	Buildpacks []Buildpack                `toml:"buildpacks"`
 	Groups     []lifecycle.BuildpackGroup `toml:"groups"`
+	Stack      Stack
+}
+
+type Stack struct {
+	ID              string   `toml:"id"`
+	BuildImage      string   `toml:"build-image"`
+	RunImage        string   `toml:"run-image"`
+	RunImageMirrors []string `toml:"run-image-mirrors,omitempty"`
 }
 
 type BuilderConfig struct {
-	Buildpacks []Buildpack
-	Groups     []lifecycle.BuildpackGroup
-	Repo       image.Image
-	BuilderDir string //original location of builder.toml, used for interpreting relative paths in buildpack URIs
-	StackID    string
+	Buildpacks      []Buildpack
+	Groups          []lifecycle.BuildpackGroup
+	Repo            image.Image
+	BuilderDir      string // original location of builder.toml, used for interpreting relative paths in buildpack URIs
+	RunImage        string
+	RunImageMirrors []string
 }
 
 type BuilderFactory struct {
@@ -46,20 +55,23 @@ type BuilderFactory struct {
 type CreateBuilderFlags struct {
 	RepoName        string
 	BuilderTomlPath string
-	StackID         string
 	Publish         bool
 	NoPull          bool
 }
 
 func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (BuilderConfig, error) {
-	baseImage, err := f.buildImageName(flags.StackID)
+	builderConfig := BuilderConfig{}
+	builderConfig.BuilderDir = filepath.Dir(flags.BuilderTomlPath)
+
+	builderTOML := &BuilderTOML{}
+	_, err := toml.DecodeFile(flags.BuilderTomlPath, &builderTOML)
 	if err != nil {
-		return BuilderConfig{}, err
+		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file %s: %s`, flags.BuilderTomlPath, err)
 	}
 
-	builderConfig := BuilderConfig{}
-	builderConfig.StackID = flags.StackID
-	builderConfig.BuilderDir = filepath.Dir(flags.BuilderTomlPath)
+	baseImage := builderTOML.Stack.BuildImage
+	builderConfig.RunImage = builderTOML.Stack.RunImage
+	builderConfig.RunImageMirrors = builderTOML.Stack.RunImageMirrors
 	if flags.Publish {
 		builderConfig.Repo, err = f.ImageFactory.NewRemote(baseImage)
 	} else {
@@ -70,11 +82,6 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 	}
 	builderConfig.Repo.Rename(flags.RepoName)
 
-	builderTOML := &BuilderTOML{}
-	_, err = toml.DecodeFile(flags.BuilderTomlPath, &builderTOML)
-	if err != nil {
-		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file %s: %s`, flags.BuilderTomlPath, err)
-	}
 	builderConfig.Groups = builderTOML.Groups
 
 	for _, b := range builderTOML.Buildpacks {
@@ -96,7 +103,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 		return Buildpack{}, err
 	}
 	switch asurl.Scheme {
-	case "",    // This is the only way to support relative filepaths
+	case "", // This is the only way to support relative filepaths
 		"file": // URIs with file:// protocol force the use of absolute paths. Host=localhost may be implied with file:///
 
 		path := asurl.Path
@@ -166,22 +173,6 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 	}, nil
 }
 
-func (f *BuilderFactory) buildImageName(stackID string) (string, error) {
-	stack, err := f.Config.GetStack(stackID)
-	if err != nil {
-		return "", err
-	}
-	return stack.BuildImage, nil
-}
-
-func (f *BuilderFactory) runImageNames(stackID string) ([]string, error) {
-	stack, err := f.Config.GetStack(stackID)
-	if err != nil {
-		return nil, err
-	}
-	return stack.RunImages, nil
-}
-
 func (f *BuilderFactory) Create(config BuilderConfig) error {
 	tmpDir, err := ioutil.TempDir("", "create-builder")
 	if err != nil {
@@ -213,12 +204,8 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return fmt.Errorf(`failed append latest link layer to image: %s`, err)
 	}
 
-	runImages, err := f.runImageNames(config.StackID)
-	if err != nil {
-		return fmt.Errorf(`failed to get run images: %s`, err)
-	}
 	jsonBytes, err := json.Marshal(&BuilderImageMetadata{
-		RunImage: BuilderRunImageMetadata{Image: runImages[0], Mirrors: runImages[1:]},
+		RunImage: BuilderRunImageMetadata{Image: config.RunImage, Mirrors: config.RunImageMirrors},
 	})
 	if err != nil {
 		return fmt.Errorf(`failed marshal builder image metadata: %s`, err)

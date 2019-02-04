@@ -27,3 +27,8 @@ uri = "third"
   [[groups.buildpacks]]
     id = "mock.bp.third"
     version = "0.0.3-mock"
+
+[stack]
+id = "com.example.stack"
+build-image = "packs/build:v3alpha2"
+run-image = "packs/run:v3alpha2"

@@ -37,10 +37,6 @@ func TestBuilderFactory(t *testing.T) {
 
 func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#BuilderFactory", func() {
-		const (
-			defaultStack = "some.default.stack"
-			otherStack   = "some.other.stack"
-		)
 		var (
 			mockController   *gomock.Controller
 			mockImageFactory *mocks.MockImageFactory
@@ -62,22 +58,6 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatalf("failed to create config: %v", err)
 			}
-			if err = cfg.AddStack(config.Stack{
-				ID:         defaultStack,
-				BuildImage: "default/build",
-				RunImages:  []string{"default/run"},
-			}); err != nil {
-				t.Fatalf("failed to create config: %v", err)
-			}
-			if err = cfg.AddStack(config.Stack{ID: otherStack,
-				BuildImage: "other/build",
-				RunImages:  []string{"other/run", "other/run2"},
-			}); err != nil {
-				t.Fatalf("failed to create config: %v", err)
-			}
-			if err = cfg.SetDefaultStack(defaultStack); err != nil {
-				t.Fatalf("failed to create config: %v", err)
-			}
 
 			factory = pack.BuilderFactory{
 				FS:           &fs.FS{},
@@ -92,27 +72,29 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("#BuilderConfigFromFlags", func() {
-			it("uses default stack build image as base image", func() {
+			it("uses stack build image as base image", func() {
 				mockBaseImage := mocks.NewMockImage(mockController)
-				mockImageFactory.EXPECT().NewLocal("default/build", true).Return(mockBaseImage, nil)
+				mockImageFactory.EXPECT().NewLocal("some/build", true).Return(mockBaseImage, nil)
 				mockBaseImage.EXPECT().Rename("some/image")
 
-				config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
+				cfg, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
 					RepoName:        "some/image",
 					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
 				})
 				if err != nil {
 					t.Fatalf("error creating builder config: %s", err)
 				}
-				h.AssertSameInstance(t, config.Repo, mockBaseImage)
-				checkBuildpacks(t, config.Buildpacks)
-				checkGroups(t, config.Groups)
-				h.AssertEq(t, config.BuilderDir, "testdata")
+				h.AssertSameInstance(t, cfg.Repo, mockBaseImage)
+				checkBuildpacks(t, cfg.Buildpacks)
+				checkGroups(t, cfg.Groups)
+				h.AssertEq(t, cfg.BuilderDir, "testdata")
+				h.AssertEq(t, cfg.RunImage, "some/run")
+				h.AssertEq(t, cfg.RunImageMirrors, []string{"gcr.io/some/run2"})
 			})
 
-			it("doesn't pull base a new image when --no-pull flag is provided", func() {
+			it("doesn't pull a new base image when --no-pull flag is provided", func() {
 				mockBaseImage := mocks.NewMockImage(mockController)
-				mockImageFactory.EXPECT().NewLocal("default/build", false).Return(mockBaseImage, nil)
+				mockImageFactory.EXPECT().NewLocal("some/build", false).Return(mockBaseImage, nil)
 				mockBaseImage.EXPECT().Rename("some/image")
 
 				config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
@@ -130,7 +112,7 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("fails if the base image cannot be found", func() {
-				mockImageFactory.EXPECT().NewLocal("default/build", true).Return(nil, fmt.Errorf("read image failed"))
+				mockImageFactory.EXPECT().NewLocal("some/build", true).Return(nil, fmt.Errorf("read image failed"))
 
 				_, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
 					RepoName:        "some/image",
@@ -141,43 +123,10 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			it("uses the build image that matches the repoName registry", func() {})
-
-			when("-s flag is provided", func() {
-				it("used the build image from the selected stack", func() {
-					mockBaseImage := mocks.NewMockImage(mockController)
-					mockImageFactory.EXPECT().NewLocal("other/build", true).Return(mockBaseImage, nil)
-					mockBaseImage.EXPECT().Rename("some/image")
-
-					config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
-						RepoName:        "some/image",
-						BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
-						StackID:         otherStack,
-					})
-					if err != nil {
-						t.Fatalf("error creating builder config: %s", err)
-					}
-					h.AssertSameInstance(t, config.Repo, mockBaseImage)
-					checkBuildpacks(t, config.Buildpacks)
-					checkGroups(t, config.Groups)
-					h.AssertEq(t, config.StackID, otherStack)
-				})
-
-				it("fails if the provided stack id does not exist", func() {
-					_, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
-						RepoName:        "some/image",
-						BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
-						NoPull:          true,
-						StackID:         "some.missing.stack",
-					})
-					h.AssertError(t, err, "stack 'some.missing.stack' does not exist")
-				})
-			})
-
 			when("--publish is passed", func() {
 				it("uses a registry store and doesn't pull base image", func() {
 					mockBaseImage := mocks.NewMockImage(mockController)
-					mockImageFactory.EXPECT().NewRemote("default/build").Return(mockBaseImage, nil)
+					mockImageFactory.EXPECT().NewRemote("some/build").Return(mockBaseImage, nil)
 					mockBaseImage.EXPECT().Rename("some/image")
 
 					config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
@@ -202,65 +151,33 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				mockImage = mocks.NewMockImage(mockController)
 				mockImage.EXPECT().AddLayer(gomock.Any()).AnyTimes()
+				mockImage.EXPECT().Save()
 			})
 
-			when("stack is in config", func() {
+			it("stores metadata about the run image defined in builder TOML", func() {
+				mockImage.EXPECT().SetLabel("io.buildpacks.builder.metadata", `{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]}}`)
 
-				it.Before(func() {
-					mockImage.EXPECT().Save()
+				err := factory.Create(pack.BuilderConfig{
+					Repo:            mockImage,
+					Buildpacks:      []pack.Buildpack{},
+					Groups:          []lifecycle.BuildpackGroup{},
+					BuilderDir:      "",
+					RunImage:        "myorg/run",
+					RunImageMirrors: []string{"gcr.io/myorg/run"},
 				})
-
-				it("stores metadata about the run images defined for the default stack", func() {
-					mockImage.EXPECT().SetLabel("io.buildpacks.builder.metadata", `{"runImage":{"image":"default/run","mirrors":[]}}`)
-
-					err := factory.Create(pack.BuilderConfig{
-						Repo:       mockImage,
-						Buildpacks: []pack.Buildpack{},
-						Groups:     []lifecycle.BuildpackGroup{},
-						BuilderDir: "",
-					})
-					h.AssertNil(t, err)
-				})
-
-				it("stores metadata about the run images defined for the stack", func() {
-					mockImage.EXPECT().SetLabel("io.buildpacks.builder.metadata", `{"runImage":{"image":"other/run","mirrors":["other/run2"]}}`)
-
-					err := factory.Create(pack.BuilderConfig{
-						Repo:       mockImage,
-						Buildpacks: []pack.Buildpack{},
-						Groups:     []lifecycle.BuildpackGroup{},
-						BuilderDir: "",
-						StackID:    otherStack,
-					})
-					h.AssertNil(t, err)
-				})
-			})
-
-			when("stack is not in config", func() {
-				it("returns an error for the missing stack", func() {
-					err := factory.Create(pack.BuilderConfig{
-						Repo:       mockImage,
-						Buildpacks: []pack.Buildpack{},
-						Groups:     []lifecycle.BuildpackGroup{},
-						BuilderDir: "",
-						StackID:    "some.missing.stack",
-					})
-
-					h.AssertError(t, err, "failed to get run images: stack 'some.missing.stack' does not exist")
-				})
+				h.AssertNil(t, err)
 			})
 		})
 
 		when("a buildpack location uses no scheme uris", func() {
 			it("supports relative directories as well as archives", func() {
 				mockImage := mocks.NewMockImage(mockController)
-				mockImageFactory.EXPECT().NewLocal("default/build", false).Return(mockImage, nil)
+				mockImageFactory.EXPECT().NewLocal("some/build", false).Return(mockImage, nil)
 				mockImage.EXPECT().Rename("myorg/mybuilder")
 
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
 					BuilderTomlPath: "testdata/used-to-test-various-uri-schemes/builder-with-schemeless-uris.toml",
-					StackID:         defaultStack,
 					Publish:         false,
 					NoPull:          true,
 				}
@@ -273,7 +190,7 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 			it("supports absolute directories as well as archives", func() {
 				mockImage := mocks.NewMockImage(mockController)
-				mockImageFactory.EXPECT().NewLocal("default/build", false).Return(mockImage, nil)
+				mockImageFactory.EXPECT().NewLocal("some/build", false).Return(mockImage, nil)
 				mockImage.EXPECT().Rename("myorg/mybuilder")
 
 				absPath, err := filepath.Abs("testdata/used-to-test-various-uri-schemes/buildpack")
@@ -298,13 +215,18 @@ buildpacks = [
 [[groups]]
 buildpacks = [
   { id = "some.bp1", version = "1.2.3" },
-]`, absPath, absPath)), 0644)
+]
+
+[stack]
+id = "com.example.stack"
+build-image = "some/build"
+run-image = "some/run"
+`, absPath, absPath)), 0644)
 				f.Name()
 
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
 					BuilderTomlPath: f.Name(),
-					StackID:         defaultStack,
 					Publish:         false,
 					NoPull:          true,
 				}
@@ -319,7 +241,7 @@ buildpacks = [
 		when("a buildpack location uses file:// uris", func() {
 			it("supports absolute directories as well as archives", func() {
 				mockImage := mocks.NewMockImage(mockController)
-				mockImageFactory.EXPECT().NewLocal("default/build", false).Return(mockImage, nil)
+				mockImageFactory.EXPECT().NewLocal("some/build", false).Return(mockImage, nil)
 				mockImage.EXPECT().Rename("myorg/mybuilder")
 
 				absPath, err := filepath.Abs("testdata/used-to-test-various-uri-schemes/buildpack")
@@ -344,13 +266,18 @@ buildpacks = [
 [[groups]]
 buildpacks = [
   { id = "some.bp1", version = "1.2.3" },
-]`, absPath, absPath)), 0644)
+]
+
+[stack]
+id = "com.example.stack"
+build-image = "some/build"
+run-image = "some/run"
+`, absPath, absPath)), 0644)
 				f.Name()
 
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
 					BuilderTomlPath: f.Name(),
-					StackID:         defaultStack,
 					Publish:         false,
 					NoPull:          true,
 				}
@@ -392,7 +319,7 @@ buildpacks = [
 			})
 			it("downloads and extracts the archive", func() {
 				mockImage := mocks.NewMockImage(mockController)
-				mockImageFactory.EXPECT().NewLocal("default/build", false).Return(mockImage, nil)
+				mockImageFactory.EXPECT().NewLocal("some/build", false).Return(mockImage, nil)
 				mockImage.EXPECT().Rename("myorg/mybuilder")
 
 				f, err := ioutil.TempFile("", "*.toml")
@@ -409,13 +336,18 @@ buildpacks = [
 [[groups]]
 buildpacks = [
   { id = "some.bp1", version = "1.2.3" },
-]`, server.Addr)), 0644)
+]
+
+[stack]
+id = "com.example.stack"
+build-image = "some/build"
+run-image = "some/run"
+`, server.Addr)), 0644)
 				f.Name()
 
 				flags := pack.CreateBuilderFlags{
 					RepoName:        "myorg/mybuilder",
 					BuilderTomlPath: f.Name(),
-					StackID:         defaultStack,
 					Publish:         false,
 					NoPull:          true,
 				}

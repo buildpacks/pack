@@ -52,7 +52,6 @@ func CreateBuilder(logger *logging.Logger, imageFactory pack.ImageFactory) *cobr
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling build image before use")
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "builder-config", "b", "", "Path to builder TOML file (required)")
 	cmd.MarkFlagRequired("builder-config")
-	cmd.Flags().StringVarP(&flags.StackID, "stack", "s", "", "Stack ID (defaults to stack configured by 'set-default-stack')")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "create-builder")
 	return cmd
