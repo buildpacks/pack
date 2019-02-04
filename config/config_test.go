@@ -539,7 +539,7 @@ default-stack-id = "stack-1"
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
 [[run-images]]
-  tag = "some/run-image"
+  image = "some/run-image"
   mirrors = ["some/run-image1", "some.registry/some/run-image"]
 `), 0666))
 				var err error
@@ -561,7 +561,7 @@ default-stack-id = "stack-1"
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
 [[run-images]]
-  tag = "some-other/run-image"
+  image = "some-other/run-image"
   mirrors = ["some/run", "some.registry/some/run"]
 `), 0666))
 				var err error
@@ -583,7 +583,7 @@ default-stack-id = "stack-1"
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
 [[run-images]]
-  tag = "some/run-image"
+  image = "some/run-image"
   mirrors = ["some/run", "some.registry/some/run"]
 `), 0666))
 				var err error

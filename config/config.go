@@ -28,7 +28,7 @@ type Stack struct {
 }
 
 type RunImage struct {
-	Image   string   `toml:"tag"`
+	Image   string   `toml:"image"`
 	Mirrors []string `toml:"mirrors"`
 }
 
