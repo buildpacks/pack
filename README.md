@@ -230,7 +230,7 @@ In this example, an existing stack `org.example.my-stack` is updated with a new 
 and a new run image `my-stack/run:v2`.
 
 ```bash
-$ pack add-stack org.example.my-stack --build-image my-stack/build:v2 --run-image my-stack/run:v2
+$ pack update-stack org.example.my-stack --build-image my-stack/build:v2 --run-image my-stack/run:v2
 ```
 
 ### Example: Deleting a stack
