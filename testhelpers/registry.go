@@ -223,7 +223,7 @@ func DefaultBuilderImage(t *testing.T, registryPort string) string {
 
 			CreateImageOnLocal(t, dockerCli, newName, fmt.Sprintf(`
 					FROM %s
-					LABEL %s="{\"runImages\": [\"%s\"]}"
+					LABEL %s="{\"runImage\": {\"image\": \"%s\"}}"
 				`, origName, pack.BuilderMetadataLabel, runImageName))
 		}
 	})
