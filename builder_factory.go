@@ -153,6 +153,12 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 			dir = cachedDir
 			break
 		} else {
+			defer func() {
+				err := reader.Close()
+				if err != nil {
+					fmt.Printf("warning: could not close %v: %s", reader, err)
+				}
+			}()
 			if err = f.untarZ(reader, cachedDir); err != nil {
 				return Buildpack{}, err
 			}
@@ -324,7 +330,7 @@ func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir st
 	return tarFile, err
 }
 
-func (f *BuilderFactory) downloadAsStream(uri string, etag string) (io.Reader, string, error) {
+func (f *BuilderFactory) downloadAsStream(uri string, etag string) (io.ReadCloser, string, error) {
 	c := http.Client{}
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
