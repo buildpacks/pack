@@ -3,6 +3,8 @@ package cache_test
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"math/rand"
 	"testing"
 	"time"
@@ -126,6 +128,13 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("the volume is attached to a container", func() {
+			it.Before(func() {
+				o, err := dockerClient.ImagePull(context.TODO(), "busybox", types.ImagePullOptions{})
+				h.AssertNil(t, err)
+				_, err = io.Copy(ioutil.Discard, o)
+				h.AssertNil(t, err)
+			})
+
 			when("container is created by pack", func() {
 				var (
 					containerBody container.ContainerCreateCreatedBody
@@ -135,7 +144,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 					var err error
 					containerName = h.RandString(10)
 					containerBody, err = dockerClient.ContainerCreate(context.TODO(), &container.Config{
-						Image: "registry:2",
+						Image: "busybox",
 						Labels: map[string]string{
 							"author": "pack",
 						},
@@ -193,7 +202,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					var err error
 					containerBody, err = dockerClient.ContainerCreate(context.TODO(), &container.Config{
-						Image: "registry:2",
+						Image: "busybox",
 					}, &container.HostConfig{
 						Binds: []string{
 							fmt.Sprintf("%s:%s:", volumeName, "/tmp"),
