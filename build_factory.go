@@ -53,6 +53,7 @@ type BuildFlags struct {
 	AppDir     string
 	Builder    string
 	RunImage   string
+	Env        []string
 	EnvFile    string
 	RepoName   string
 	Publish    bool
@@ -65,7 +66,7 @@ type BuildConfig struct {
 	AppDir     string
 	Builder    string
 	RunImage   string
-	EnvFile    map[string]string
+	Env        map[string]string
 	RepoName   string
 	Publish    bool
 	NoPull     bool
@@ -162,10 +163,15 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 
 	if f.EnvFile != "" {
-		b.EnvFile, err = parseEnvFile(f.EnvFile)
+		b.Env, err = parseEnvFile(f.EnvFile)
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		b.Env = map[string]string{}
+	}
+	for _, item := range f.Env {
+		b.Env = addEnvVar(b.Env, item)
 	}
 
 	if f.Builder == "" {
@@ -584,21 +590,26 @@ func parseEnvFile(envFile string) (map[string]string, error) {
 		if line == "" {
 			continue
 		}
-		arr := strings.SplitN(line, "=", 2)
-		if len(arr) > 1 {
-			out[arr[0]] = arr[1]
-		} else {
-			out[arr[0]] = os.Getenv(arr[0])
-		}
+		out = addEnvVar(out, line)
 	}
 	return out, nil
+}
+
+func addEnvVar(env map[string]string, item string) map[string]string {
+	arr := strings.SplitN(item, "=", 2)
+	if len(arr) > 1 {
+		env[arr[0]] = arr[1]
+	} else {
+		env[arr[0]] = os.Getenv(arr[0])
+	}
+	return env
 }
 
 func (b *BuildConfig) tarEnvFile() (io.Reader, error) {
 	now := time.Now()
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
-	for k, v := range b.EnvFile {
+	for k, v := range b.Env {
 		if err := tw.WriteHeader(&tar.Header{Name: "/platform/env/" + k, Size: int64(len(v)), Mode: 0444, ModTime: now}); err != nil {
 			return nil, err
 		}
@@ -616,7 +627,7 @@ func (b *BuildConfig) tarEnvFile() (io.Reader, error) {
 }
 
 func (b *BuildConfig) copyEnvsToContainer(ctx context.Context, containerID string) error {
-	if len(b.EnvFile) > 0 {
+	if len(b.Env) > 0 {
 		platformEnvTar, err := b.tarEnvFile()
 		if err != nil {
 			return errors.Wrap(err, "create env files")

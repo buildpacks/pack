@@ -166,12 +166,12 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("EnvFile is specified", func() {
+		when("Env is specified", func() {
 			it("sets specified env variables in /platform/env/...", func() {
 				if runtime.GOOS == "windows" {
 					t.Skip("directory buildpacks are not implemented on windows")
 				}
-				subject.EnvFile = map[string]string{
+				subject.Env = map[string]string{
 					"VAR1": "value1",
 					"VAR2": "value2 with spaces",
 				}
@@ -389,12 +389,12 @@ cache = false
 			})
 		})
 
-		when("EnvFile is specified", func() {
+		when("Env is specified", func() {
 			it("sets specified env variables in /platform/env/...", func() {
 				if runtime.GOOS == "windows" {
 					t.Skip("directory buildpacks are not implemented on windows")
 				}
-				subject.EnvFile = map[string]string{
+				subject.Env = map[string]string{
 					"VAR1": "value1",
 					"VAR2": "value2 with spaces",
 				}
