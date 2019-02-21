@@ -62,6 +62,13 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 		if err != nil {
 			t.Fatalf("Failed to get next file: %s", err)
 		}
+		if header.Name != "/dir-in-archive" {
+			t.Fatalf(`expected dir with name /dir-in-archive, got %s`, header.Name)
+		}
+		header, err = tr.Next()
+		if err != nil {
+			t.Fatalf("Failed to get next file: %s", err)
+		}
 		if header.Name != "/dir-in-archive/some-file.txt" {
 			t.Fatalf(`expected file with name /dir-in-archive/some-file.txt, got %s`, header.Name)
 		}
@@ -75,6 +82,13 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 		}
 		if header.Gid != 2345 {
 			t.Fatalf(`expected some-file.txt to be group 2345 was %d`, header.Gid)
+		}
+		header, err = tr.Next()
+		if err != nil {
+			t.Fatalf("Failed to get next file: %s", err)
+		}
+		if header.Name != "/dir-in-archive/sub-dir" {
+			t.Fatalf(`expected dir with name /dir-in-archive/sub-dir, got %s`, header.Name)
 		}
 
 		if runtime.GOOS != "windows" {

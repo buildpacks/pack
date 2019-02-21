@@ -1,8 +1,6 @@
 package pack
 
 import (
-	"archive/tar"
-	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/json"
@@ -11,11 +9,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
+	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/containers"
@@ -24,13 +21,8 @@ import (
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 
-	"github.com/BurntSushi/toml"
-	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/lifecycle/image/auth"
-	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 )
 
@@ -43,7 +35,7 @@ type Cache interface {
 type BuildFactory struct {
 	Cli          Docker
 	Logger       *logging.Logger
-	FS           FS
+	FS           *fs.FS
 	Config       *config.Config
 	ImageFactory ImageFactory
 	Cache        Cache
@@ -62,22 +54,19 @@ type BuildFlags struct {
 }
 
 type BuildConfig struct {
-	AppDir     string
 	Builder    string
 	RunImage   string
-	EnvFile    map[string]string
 	RepoName   string
 	Publish    bool
-	NoPull     bool
 	ClearCache bool
-	Buildpacks []string
 	// Above are copied from BuildFlags are set by init
 	Cli    Docker
 	Logger *logging.Logger
-	FS     FS
+	FS     *fs.FS
 	Config *config.Config
 	// Above are copied from BuildFactory
-	Cache Cache
+	Cache           Cache
+	LifecycleConfig build.LifecycleConfig
 }
 
 const (
@@ -149,20 +138,18 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	f.RepoName = calculateRepositoryName(appDir, f)
 
 	b := &BuildConfig{
-		AppDir:     appDir,
 		RepoName:   f.RepoName,
 		Publish:    f.Publish,
-		NoPull:     f.NoPull,
 		ClearCache: f.ClearCache,
-		Buildpacks: f.Buildpacks,
 		Cli:        bf.Cli,
 		Logger:     bf.Logger,
 		FS:         bf.FS,
 		Config:     bf.Config,
 	}
 
+	var envFile map[string]string
 	if f.EnvFile != "" {
-		b.EnvFile, err = parseEnvFile(f.EnvFile)
+		envFile, err = parseEnvFile(f.EnvFile)
 		if err != nil {
 			return nil, err
 		}
@@ -263,6 +250,15 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	b.Cache = bf.Cache
 	bf.Logger.Verbose(fmt.Sprintf("Using cache volume %s", style.Symbol(b.Cache.Volume())))
 
+	b.LifecycleConfig = build.LifecycleConfig{
+		BuilderImage: b.Builder,
+		VolumeName:   b.Cache.Volume(),
+		Logger:       b.Logger,
+		Buildpacks:   f.Buildpacks,
+		EnvFile:      envFile,
+		AppDir:       appDir,
+	}
+
 	return b, nil
 }
 
@@ -301,221 +297,81 @@ func Build(ctx context.Context, outWriter, errWriter io.Writer, appDir, buildIma
 }
 
 func (b *BuildConfig) Run(ctx context.Context) error {
-	if err := b.Detect(ctx); err != nil {
+	lifecycle, err := build.NewLifecycle(b.LifecycleConfig)
+	if err != nil {
+		return err
+	}
+	defer lifecycle.Cleanup(ctx)
+
+	b.Logger.Verbose(style.Step("DETECTING"))
+	if err := b.Detect(ctx, lifecycle); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("ANALYZING"))
 	b.Logger.Verbose("Reading information from previous image for possible re-use")
-	if err := b.Analyze(ctx); err != nil {
+	if err := b.Analyze(ctx, lifecycle); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("BUILDING"))
-	if err := b.Build(ctx); err != nil {
+	if err := b.Build(ctx, lifecycle); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("EXPORTING"))
-	if err := b.Export(ctx); err != nil {
+	if err := b.Export(ctx, lifecycle); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (b *BuildConfig) parseBuildpack(ref string) (string, string) {
-	parts := strings.Split(ref, "@")
-	if len(parts) == 2 {
-		return parts[0], parts[1]
-	}
-	b.Logger.Verbose("No version for %s buildpack provided, will use %s", style.Symbol(parts[0]), style.Symbol(parts[0]+"@latest"))
-	return parts[0], "latest"
-}
-
-func (b *BuildConfig) copyBuildpacksToContainer(ctx context.Context, ctrID string) ([]*lifecycle.Buildpack, error) {
-	var buildpacks []*lifecycle.Buildpack
-	for _, bp := range b.Buildpacks {
-		var id, version string
-		if _, err := os.Stat(filepath.Join(bp, "buildpack.toml")); !os.IsNotExist(err) {
-			if runtime.GOOS == "windows" {
-				return nil, fmt.Errorf("directory buildpacks are not implemented on windows")
-			}
-			var buildpackTOML struct {
-				Buildpack Buildpack
-			}
-
-			_, err = toml.DecodeFile(filepath.Join(bp, "buildpack.toml"), &buildpackTOML)
-			if err != nil {
-				return nil, fmt.Errorf(`failed to decode buildpack.toml from "%s": %s`, bp, err)
-			}
-			id = buildpackTOML.Buildpack.ID
-			version = buildpackTOML.Buildpack.Version
-			bpDir := filepath.Join(buildpacksDir, buildpackTOML.Buildpack.escapedID(), version)
-			ftr, errChan := b.FS.CreateTarReader(bp, bpDir, 0, 0)
-			if err := b.Cli.CopyToContainer(ctx, ctrID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
-				return nil, errors.Wrapf(err, "copying buildpack '%s' to container", bp)
-			}
-			if err := <-errChan; err != nil {
-				return nil, errors.Wrapf(err, "copying buildpack '%s' to container", bp)
-			}
-		} else {
-			id, version = b.parseBuildpack(bp)
-		}
-		buildpacks = append(
-			buildpacks,
-			&lifecycle.Buildpack{ID: id, Version: version, Optional: false},
-		)
-	}
-	return buildpacks, nil
-}
-
-func (b *BuildConfig) Detect(ctx context.Context) error {
+func (b *BuildConfig) Detect(ctx context.Context, lifecycle *build.Lifecycle) error {
 	if b.ClearCache {
 		if err := b.Cache.Clear(ctx); err != nil {
 			return errors.Wrap(err, "clearing cache")
 		}
 		b.Logger.Verbose("Cache volume %s cleared", style.Symbol(b.Cache.Volume()))
 	}
-
-	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
-		Image: b.Builder,
-		Cmd: []string{
-			"/lifecycle/detector",
-			"-buildpacks", buildpacksDir,
+	phase, err := lifecycle.NewPhase(
+		"detector",
+		build.WithArgs("-buildpacks", buildpacksDir,
 			"-order", orderPath,
 			"-group", groupPath,
 			"-plan", planPath,
-		},
-		Labels: map[string]string{"author": "pack"},
-	}, &container.HostConfig{
-		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.Cache.Volume(), launchDir),
-		},
-	}, nil, "")
+		),
+	)
 	if err != nil {
-		return errors.Wrap(err, "create detect container")
-	}
-	defer containers.Remove(b.Cli, ctr.ID)
-
-	var orderToml string
-	b.Logger.Verbose(style.Step("DETECTING"))
-	if len(b.Buildpacks) == 0 {
-		orderToml = "" // use order.toml already in image
-	} else {
-		b.Logger.Verbose("Using manually-provided group")
-
-		buildpacks, err := b.copyBuildpacksToContainer(ctx, ctr.ID)
-		if err != nil {
-			return errors.Wrap(err, "copy buildpacks to container")
-		}
-
-		groups := lifecycle.BuildpackOrder{
-			lifecycle.BuildpackGroup{
-				Buildpacks: buildpacks,
-			},
-		}
-
-		var tomlBuilder strings.Builder
-		if err := toml.NewEncoder(&tomlBuilder).Encode(map[string]interface{}{"groups": groups}); err != nil {
-			return errors.Wrapf(err, "encoding order.toml: %#v", groups)
-		}
-
-		orderToml = tomlBuilder.String()
-	}
-
-	tr, errChan := b.FS.CreateTarReader(b.AppDir, launchDir+"/app", 0, 0)
-	if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{}); err != nil {
-		return errors.Wrap(err, "copy app to workspace volume")
-	}
-
-	if err := <-errChan; err != nil {
-		return errors.Wrap(err, "copy app to workspace volume")
-	}
-
-	uid, gid, err := b.packUidGid(ctx, b.Builder)
-	if err != nil {
-		return errors.Wrap(err, "get pack uid gid")
-	}
-	if err := b.chownDir(ctx, launchDir+"/app", uid, gid); err != nil {
-		return errors.Wrap(err, "chown app to workspace volume")
-	}
-
-	if orderToml != "" {
-		ftr, err := b.FS.CreateSingleFileTar(orderPath, orderToml)
-		if err != nil {
-			return errors.Wrap(err, "converting order TOML to tar reader")
-		}
-		if err := b.Cli.CopyToContainer(ctx, ctr.ID, "/", ftr, dockertypes.CopyToContainerOptions{}); err != nil {
-			return errors.Wrap(err, fmt.Sprintf("creating %s", orderPath))
-		}
-	}
-
-	if err := b.copyEnvsToContainer(ctx, ctr.ID); err != nil {
 		return err
 	}
+	defer phase.Cleanup()
 
-	if err := b.Cli.RunContainer(
-		ctx,
-		ctr.ID,
-		b.Logger.VerboseWriter().WithPrefix("detector"),
-		b.Logger.VerboseErrorWriter().WithPrefix("detector"),
-	); err != nil {
+	if err := phase.Run(ctx); err != nil {
 		return errors.Wrap(err, "run detect container")
 	}
 	return nil
 }
 
-func (b *BuildConfig) Analyze(ctx context.Context) error {
-	ctrConf := &container.Config{
-		Image:  b.Builder,
-		Labels: map[string]string{"author": "pack"},
-	}
-	hostConfig := &container.HostConfig{
-		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.Cache.Volume(), launchDir),
-		},
-	}
-
+func (b *BuildConfig) Analyze(ctx context.Context, lifecycle *build.Lifecycle) error {
+	var analyze *build.Phase
+	var err error
 	if b.Publish {
-		authHeader, err := auth.BuildEnvVar(authn.DefaultKeychain, b.RepoName, b.RunImage)
-		if err != nil {
-			return err
-		}
-
-		ctrConf.Env = []string{fmt.Sprintf(`CNB_REGISTRY_AUTH=%s`, authHeader)}
-		ctrConf.Cmd = []string{
-			"/lifecycle/analyzer",
-			"-layers", launchDir,
-			"-group", groupPath,
-			b.RepoName,
-		}
-		hostConfig.NetworkMode = "host"
+		analyze, err = lifecycle.NewPhase(
+			"analyzer",
+			build.WithRegistryAccess(b.RepoName, b.RunImage),
+			build.WithArgs("-layers", launchDir, "-group", groupPath, b.RepoName),
+		)
 	} else {
-		ctrConf.Cmd = []string{
-			"/lifecycle/analyzer",
-			"-layers", launchDir,
-			"-group", groupPath,
-			"-daemon",
-			b.RepoName,
-		}
-		ctrConf.User = "root"
-		hostConfig.Binds = append(hostConfig.Binds, "/var/run/docker.sock:/var/run/docker.sock")
+		analyze, err = lifecycle.NewPhase(
+			"analyzer",
+			build.WithDaemonAccess(),
+			build.WithArgs("-layers", launchDir, "-group", groupPath, "-daemon", b.RepoName),
+		)
 	}
-
-	ctr, err := b.Cli.ContainerCreate(ctx, ctrConf, hostConfig, nil, "")
-	if err != nil {
-		return errors.Wrap(err, "create analyze container")
-	}
-	defer containers.Remove(b.Cli, ctr.ID)
-
-	if err := b.Cli.RunContainer(
-		ctx,
-		ctr.ID,
-		b.Logger.VerboseWriter().WithPrefix("analyzer"),
-		b.Logger.VerboseErrorWriter().WithPrefix("analyzer"),
-	); err != nil {
-		return errors.Wrap(err, "run analyze container")
+	defer analyze.Cleanup()
+	if err = analyze.Run(ctx); err != nil {
+		return err
 	}
 
 	uid, gid, err := b.packUidGid(ctx, b.Builder)
@@ -529,150 +385,52 @@ func (b *BuildConfig) Analyze(ctx context.Context) error {
 	return nil
 }
 
-func (b *BuildConfig) Build(ctx context.Context) error {
-	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
-		Image: b.Builder,
-		Cmd: []string{
-			"/lifecycle/builder",
+func (b *BuildConfig) Build(ctx context.Context, lifecycle *build.Lifecycle) error {
+	build, err := lifecycle.NewPhase(
+		"builder",
+		build.WithArgs(
 			"-buildpacks", buildpacksDir,
 			"-layers", launchDir,
 			"-group", groupPath,
 			"-plan", planPath,
 			"-platform", platformDir,
-		},
-		Labels: map[string]string{"author": "pack"},
-	}, &container.HostConfig{
-		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.Cache.Volume(), launchDir),
-		},
-	}, nil, "")
+		),
+	)
 	if err != nil {
-		return errors.Wrap(err, "create build container")
-	}
-	defer containers.Remove(b.Cli, ctr.ID)
-
-	if len(b.Buildpacks) > 0 {
-		_, err = b.copyBuildpacksToContainer(ctx, ctr.ID)
-		if err != nil {
-			return errors.Wrap(err, "copy buildpacks to container")
-		}
-	}
-
-	if err := b.copyEnvsToContainer(ctx, ctr.ID); err != nil {
 		return err
 	}
-
-	if err = b.Cli.RunContainer(
-		ctx,
-		ctr.ID,
-		b.Logger.VerboseWriter().WithPrefix("builder"),
-		b.Logger.VerboseErrorWriter().WithPrefix("builder"),
-	); err != nil {
+	defer build.Cleanup()
+	if err := build.Run(ctx); err != nil {
 		return errors.Wrap(err, "run build container")
 	}
 	return nil
 }
 
-func parseEnvFile(envFile string) (map[string]string, error) {
-	out := make(map[string]string, 0)
-	f, err := ioutil.ReadFile(envFile)
-	if err != nil {
-		return nil, errors.Wrapf(err, "open %s", envFile)
-	}
-	for _, line := range strings.Split(string(f), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		arr := strings.SplitN(line, "=", 2)
-		if len(arr) > 1 {
-			out[arr[0]] = arr[1]
-		} else {
-			out[arr[0]] = os.Getenv(arr[0])
-		}
-	}
-	return out, nil
-}
-
-func (b *BuildConfig) tarEnvFile() (io.Reader, error) {
-	now := time.Now()
-	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	for k, v := range b.EnvFile {
-		if err := tw.WriteHeader(&tar.Header{Name: "/platform/env/" + k, Size: int64(len(v)), Mode: 0444, ModTime: now}); err != nil {
-			return nil, err
-		}
-		if _, err := tw.Write([]byte(v)); err != nil {
-			return nil, err
-		}
-	}
-	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: "/platform/env/", Mode: 0555, ModTime: now}); err != nil {
-		return nil, err
-	}
-	if err := tw.Close(); err != nil {
-		return nil, err
-	}
-	return bytes.NewReader(buf.Bytes()), nil
-}
-
-func (b *BuildConfig) copyEnvsToContainer(ctx context.Context, containerID string) error {
-	if len(b.EnvFile) > 0 {
-		platformEnvTar, err := b.tarEnvFile()
-		if err != nil {
-			return errors.Wrap(err, "create env files")
-		}
-		if err := b.Cli.CopyToContainer(ctx, containerID, "/", platformEnvTar, dockertypes.CopyToContainerOptions{}); err != nil {
-			return errors.Wrap(err, "create env files")
-		}
-	}
-	return nil
-}
-
-func (b *BuildConfig) Export(ctx context.Context) error {
-	ctrConf := &container.Config{
-		Image:  b.Builder,
-		Labels: map[string]string{"author": "pack"},
-	}
-	hostConfig := &container.HostConfig{
-		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.Cache.Volume(), launchDir),
-		},
-	}
-
+func (b *BuildConfig) Export(ctx context.Context, lifecycle *build.Lifecycle) error {
+	var export *build.Phase
+	var err error
 	if b.Publish {
-		authHeader, err := auth.BuildEnvVar(authn.DefaultKeychain, b.RepoName, b.RunImage)
-		if err != nil {
-			return err
-		}
-
-		ctrConf.Env = []string{fmt.Sprintf(`CNB_REGISTRY_AUTH=%s`, authHeader)}
-		ctrConf.Cmd = []string{
-			"/lifecycle/exporter",
-			"-image", b.RunImage,
-			"-layers", launchDir,
-			"-group", groupPath,
-			b.RepoName,
-		}
-		hostConfig.NetworkMode = "host"
+		export, err = lifecycle.NewPhase(
+			"exporter",
+			build.WithRegistryAccess(b.RepoName, b.RunImage),
+			build.WithArgs("-image", b.RunImage,
+				"-layers", launchDir,
+				"-group", groupPath,
+				b.RepoName),
+		)
 	} else {
-		ctrConf.Cmd = []string{
-			"/lifecycle/exporter",
-			"-image", b.RunImage,
-			"-layers", launchDir,
-			"-group", groupPath,
-			"-daemon",
-			b.RepoName,
-		}
-		ctrConf.User = "root"
-		hostConfig.Binds = append(hostConfig.Binds, "/var/run/docker.sock:/var/run/docker.sock")
+		export, err = lifecycle.NewPhase(
+			"exporter",
+			build.WithDaemonAccess(),
+			build.WithArgs("-image", b.RunImage,
+				"-layers", launchDir,
+				"-group", groupPath,
+				"-daemon",
+				b.RepoName,
+			),
+		)
 	}
-
-	ctr, err := b.Cli.ContainerCreate(ctx, ctrConf, hostConfig, nil, "")
-	if err != nil {
-		return errors.Wrap(err, "create export container")
-	}
-	defer containers.Remove(b.Cli, ctr.ID)
-
+	defer export.Cleanup()
 	uid, gid, err := b.packUidGid(ctx, b.Builder)
 	if err != nil {
 		return errors.Wrap(err, "get pack uid and gid")
@@ -680,14 +438,8 @@ func (b *BuildConfig) Export(ctx context.Context) error {
 	if err := b.chownDir(ctx, launchDir, uid, gid); err != nil {
 		return errors.Wrap(err, "chown launch dir")
 	}
-
-	if err := b.Cli.RunContainer(
-		ctx,
-		ctr.ID,
-		b.Logger.VerboseWriter().WithPrefix("exporter"),
-		b.Logger.VerboseErrorWriter().WithPrefix("exporter"),
-	); err != nil {
-		return errors.Wrap(err, "run export container")
+	if err = export.Run(ctx); err != nil {
+		return err
 	}
 	return nil
 }
@@ -740,4 +492,25 @@ func (b *BuildConfig) chownDir(ctx context.Context, path string, uid, gid int) e
 		return err
 	}
 	return nil
+}
+
+func parseEnvFile(envFile string) (map[string]string, error) {
+	out := make(map[string]string, 0)
+	f, err := ioutil.ReadFile(envFile)
+	if err != nil {
+		return nil, errors.Wrapf(err, "open %s", envFile)
+	}
+	for _, line := range strings.Split(string(f), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		arr := strings.SplitN(line, "=", 2)
+		if len(arr) > 1 {
+			out[arr[0]] = arr[1]
+		} else {
+			out[arr[0]] = os.Getenv(arr[0])
+		}
+	}
+	return out, nil
 }

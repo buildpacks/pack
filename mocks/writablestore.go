@@ -35,7 +35,6 @@ func (m *MockWritableStore) EXPECT() *MockWritableStoreMockRecorder {
 
 // Write mocks base method
 func (m *MockWritableStore) Write(arg0 v1.Image) error {
-	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Write", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -43,6 +42,5 @@ func (m *MockWritableStore) Write(arg0 v1.Image) error {
 
 // Write indicates an expected call of Write
 func (mr *MockWritableStoreMockRecorder) Write(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockWritableStore)(nil).Write), arg0)
 }

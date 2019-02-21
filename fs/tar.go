@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 type FS struct {
@@ -36,7 +37,7 @@ func (*FS) CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan
 	return r, errChan
 }
 
-func (*FS) CreateSingleFileTar(path, txt string) (io.Reader, error) {
+func (*FS) CreateSingleFileTarReader(path, txt string) (io.Reader, error) {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
 	if err := tw.WriteHeader(&tar.Header{Name: path, Size: int64(len(txt)), Mode: 0666}); err != nil {
@@ -51,6 +52,25 @@ func (*FS) CreateSingleFileTar(path, txt string) (io.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
+func (*FS) CreateSingleFileTar(tarFile, path, txt string) error {
+	fh, err := os.Create(tarFile)
+	if err != nil {
+		return fmt.Errorf("create file for tar: %s", err)
+	}
+
+	tw := tar.NewWriter(fh)
+	if err := tw.WriteHeader(&tar.Header{Name: path, Size: int64(len(txt)), Mode: 0666}); err != nil {
+		return err
+	}
+	if _, err := tw.Write([]byte(txt)); err != nil {
+		return err
+	}
+	if err := tw.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
@@ -59,14 +79,6 @@ func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 		if err != nil {
 			return err
 		}
-		if fi.Mode().IsDir() {
-			return nil
-		}
-		relPath, err := filepath.Rel(srcDir, file)
-		if err != nil {
-			return err
-		}
-
 		var header *tar.Header
 		if fi.Mode()&os.ModeSymlink != 0 {
 			target, err := os.Readlink(file)
@@ -83,12 +95,19 @@ func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 				return err
 			}
 		}
+		relPath, err := filepath.Rel(srcDir, file)
+		if err != nil {
+			return err
+		}
 		header.Name = filepath.Join(tarDir, relPath)
 		if runtime.GOOS == "windows" {
 			header.Name = strings.Replace(header.Name, "\\", "/", -1)
 		}
+		header.ModTime = time.Time{}
 		header.Uid = uid
 		header.Gid = gid
+		header.Uname = ""
+		header.Gname = ""
 
 		if err := tw.WriteHeader(header); err != nil {
 			return err

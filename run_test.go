@@ -71,7 +71,6 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			mockImageFactory = mocks.NewMockImageFactory(mockController)
 			mockCache = mocks.NewMockCache(mockController)
 			factory = &pack.BuildFactory{
-				Cli:          mockDocker,
 				Logger:       logger,
 				FS:           &fs.FS{},
 				ImageFactory: mockImageFactory,
@@ -86,7 +85,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 
-			mockCache.EXPECT().Volume().Return("some-volume")
+			mockCache.EXPECT().Volume().Return("some-volume").AnyTimes()
 		})
 
 		it.After(func() {
