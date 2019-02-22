@@ -17,6 +17,8 @@ import (
 	"github.com/buildpack/lifecycle/image"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/fs"
+
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 
@@ -47,7 +49,7 @@ type BuilderConfig struct {
 
 type BuilderFactory struct {
 	Logger       *logging.Logger
-	FS           FS
+	FS           *fs.FS
 	Config       *config.Config
 	ImageFactory ImageFactory
 }
@@ -224,13 +226,13 @@ type order struct {
 }
 
 func (f *BuilderFactory) orderLayer(dest string, groups []lifecycle.BuildpackGroup) (layerTar string, err error) {
-	buildpackDir := filepath.Join(dest, "buildpack")
-	err = os.Mkdir(buildpackDir, 0755)
+	bpDir := filepath.Join(dest, "buildpacks")
+	err = os.Mkdir(bpDir, 0755)
 	if err != nil {
 		return "", err
 	}
 
-	orderFile, err := os.Create(filepath.Join(buildpackDir, "order.toml"))
+	orderFile, err := os.OpenFile(filepath.Join(bpDir, "order.toml"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return "", err
 	}
@@ -240,7 +242,7 @@ func (f *BuilderFactory) orderLayer(dest string, groups []lifecycle.BuildpackGro
 		return "", err
 	}
 	layerTar = filepath.Join(dest, "order.tar")
-	if err := f.FS.CreateTarFile(layerTar, buildpackDir, "/buildpacks", 0, 0); err != nil {
+	if err := f.FS.CreateTarFile(layerTar, bpDir, "/buildpacks", 0, 0); err != nil {
 		return "", err
 	}
 	return layerTar, nil
@@ -297,7 +299,8 @@ func (f *BuilderFactory) untarZ(r io.Reader, dir string) error {
 }
 
 func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir string) (string, error) {
-	tmpDir, err := ioutil.TempDir(dest, "create-builder-latest")
+	layerDir := filepath.Join(dest, "latest-layer")
+	err := os.Mkdir(layerDir, 0755)
 	if err != nil {
 		return "", err
 	}
@@ -307,21 +310,21 @@ func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir st
 			if err != nil {
 				return "", err
 			}
-			err = os.Mkdir(filepath.Join(tmpDir, bp.escapedID()), 0755)
+			err = os.Mkdir(filepath.Join(layerDir, bp.escapedID()), 0755)
 			if err != nil {
 				return "", err
 			}
-			err = os.Symlink(filepath.Join("/", "buildpacks", bp.escapedID(), data.BP.Version), filepath.Join(tmpDir, bp.escapedID(), "latest"))
+			err = os.Symlink(filepath.Join("/", "buildpacks", bp.escapedID(), data.BP.Version), filepath.Join(layerDir, bp.escapedID(), "latest"))
 			if err != nil {
 				return "", err
 			}
 		}
 	}
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", "latest", "buildpacks"))
-	if err := f.FS.CreateTarFile(tarFile, tmpDir, filepath.Join("/buildpacks"), 0, 0); err != nil {
+	if err := f.FS.CreateTarFile(tarFile, layerDir, "/buildpacks", 0, 0); err != nil {
 		return "", err
 	}
-	return tarFile, err
+	return tarFile, nil
 }
 
 func (f *BuilderFactory) downloadAsStream(uri string, etag string) (io.Reader, string, error) {

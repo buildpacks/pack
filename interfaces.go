@@ -22,19 +22,12 @@ type Docker interface {
 	CopyFromContainer(ctx context.Context, containerID, srcPath string) (io.ReadCloser, types.ContainerPathStat, error)
 	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
+	ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
 }
 
 //go:generate mockgen -package mocks -destination mocks/task.go github.com/buildpack/pack Task
 type Task interface {
-	Run() error
-}
-
-//go:generate mockgen -package mocks -destination mocks/fs.go github.com/buildpack/pack FS
-type FS interface {
-	CreateTarFile(tarFile, srcDir, tarDir string, uid, gid int) error
-	CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error)
-	Untar(r io.Reader, dest string) error
-	CreateSingleFileTar(path, txt string) (io.Reader, error)
+	Run(context context.Context) error
 }
 
 //go:generate mockgen -package mocks -destination mocks/writablestore.go github.com/buildpack/pack WritableStore

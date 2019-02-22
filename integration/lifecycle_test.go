@@ -21,6 +21,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/fs"
@@ -54,6 +55,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 		logger             *logging.Logger
 		defaultBuilderName string
 		ctx                context.Context
+		buildCache         *cache.Cache
 	)
 
 	it.Before(func() {
@@ -67,10 +69,9 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 		dockerCli, err = docker.New()
 		h.AssertNil(t, err)
 		repoName := "pack.build." + h.RandString(10)
-		buildCache, err := cache.New(repoName, dockerCli)
+		buildCache, err = cache.New(repoName, dockerCli)
 		defaultBuilderName = h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)
 		subject = &pack.BuildConfig{
-			AppDir:   "../acceptance/testdata/node_app",
 			Builder:  defaultBuilderName,
 			RunImage: h.DefaultRunImage(t, registryConfig.RunRegistryPort),
 			RepoName: repoName,
@@ -79,6 +80,12 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			Logger:   logger,
 			FS:       &fs.FS{},
 			Cli:      dockerCli,
+			LifecycleConfig: build.LifecycleConfig{
+				BuilderImage: defaultBuilderName,
+				VolumeName:   buildCache.Volume(),
+				Logger:       logger,
+				AppDir:       "../acceptance/testdata/node_app",
+			},
 		}
 	})
 	it.After(func() {
@@ -92,7 +99,9 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Detect", func() {
 		it("copies the app in to docker and chowns it (including directories)", func() {
-			h.AssertNil(t, subject.Detect(ctx))
+			lifecycle, err := build.NewLifecycle(subject.LifecycleConfig)
+			h.AssertNil(t, err)
+			h.AssertNil(t, subject.Detect(ctx, lifecycle))
 
 			for _, name := range []string{"/workspace/app", "/workspace/app/app.js", "/workspace/app/mydir", "/workspace/app/mydir/myfile.txt"} {
 				txt := h.RunInImage(t, dockerCli, []string{subject.Cache.Volume() + ":/workspace"}, subject.Builder, "ls", "-ld", name)
@@ -107,13 +116,15 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				badappDir, err = ioutil.TempDir("", "pack.build.badapp.")
 				h.AssertNil(t, err)
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(badappDir, "file.txt"), []byte("content"), 0644))
-				subject.AppDir = badappDir
+				subject.LifecycleConfig.AppDir = badappDir
 			})
 
 			it.After(func() { os.RemoveAll(badappDir) })
 
 			it("returns the successful group with node", func() {
-				h.AssertError(t, subject.Detect(ctx), "run detect container: failed with status code: 6")
+				lifecycle, err := build.NewLifecycle(subject.LifecycleConfig)
+				h.AssertNil(t, err)
+				h.AssertError(t, subject.Detect(ctx, lifecycle), "run detect container: failed with status code: 6")
 			})
 		})
 
@@ -144,22 +155,26 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				it.After(func() { os.RemoveAll(bpDir) })
 
 				it("copies directories to workspace and sets order.toml", func() {
-					subject.Buildpacks = []string{
+					subject.LifecycleConfig.Buildpacks = []string{
 						bpDir,
 					}
+					lifecycle, err := build.NewLifecycle(subject.LifecycleConfig)
+					h.AssertNil(t, err)
+					h.AssertNil(t, subject.Detect(ctx, lifecycle))
 
-					h.AssertNil(t, subject.Detect(ctx))
-
+					h.AssertNil(t, subject.Detect(ctx, lifecycle))
 					h.AssertContains(t, outBuf.String(), `My Sample Buildpack: pass`)
 				})
 			})
 			when("id@version buildpack", func() {
 				it("symlinks directories to workspace and sets order.toml", func() {
-					subject.Buildpacks = []string{
+					subject.LifecycleConfig.Buildpacks = []string{
 						"io.buildpacks.samples.nodejs@latest",
 					}
 
-					h.AssertNil(t, subject.Detect(ctx))
+					lifecycle, err := build.NewLifecycle(subject.LifecycleConfig)
+					h.AssertNil(t, err)
+					h.AssertNil(t, subject.Detect(ctx, lifecycle))
 
 					h.AssertContains(t, outBuf.String(), `Sample Node.js Buildpack: pass`)
 				})
@@ -171,18 +186,22 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				if runtime.GOOS == "windows" {
 					t.Skip("directory buildpacks are not implemented on windows")
 				}
-				subject.Env = map[string]string{
+				subject.LifecycleConfig.Env = map[string]string{
 					"VAR1": "value1",
 					"VAR2": "value2 with spaces",
 				}
-				subject.Buildpacks = []string{"../acceptance/testdata/mock_buildpacks/printenv"}
-				h.AssertNil(t, subject.Detect(ctx))
+				subject.LifecycleConfig.Buildpacks = []string{"../acceptance/testdata/mock_buildpacks/printenv"}
+				lifecycle, err := build.NewLifecycle(subject.LifecycleConfig)
+				h.AssertNil(t, err)
+				h.AssertNil(t, subject.Detect(ctx, lifecycle))
 				h.AssertContains(t, outBuf.String(), "DETECT: VAR1 is value1;")
 				h.AssertContains(t, outBuf.String(), "DETECT: VAR2 is value2 with spaces;")
 			})
 		})
 	})
 	when("#Analyze", func() {
+		var lifecycle *build.Lifecycle
+
 		it.Before(func() {
 			var err error
 
@@ -193,7 +212,6 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			buildCache, err := cache.New(repoName, dockerCli)
 			defaultBuilderName = h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)
 			subject = &pack.BuildConfig{
-				AppDir:   "../acceptance/testdata/node_app",
 				Builder:  defaultBuilderName,
 				RunImage: h.DefaultRunImage(t, registryConfig.RunRegistryPort),
 				RepoName: repoName,
@@ -202,6 +220,12 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				Logger:   logger,
 				FS:       &fs.FS{},
 				Cli:      dockerCli,
+				LifecycleConfig: build.LifecycleConfig{
+					BuilderImage: defaultBuilderName,
+					VolumeName:   buildCache.Volume(),
+					Logger:       logger,
+					AppDir:       "../acceptance/testdata/node_app",
+				},
 			}
 
 			tmpDir, err := ioutil.TempDir("", "pack.build.analyze.")
@@ -213,6 +237,8 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			`), 0666))
 
 			h.CopyWorkspaceToDocker(t, tmpDir, subject.Cache.Volume())
+			lifecycle, err = build.NewLifecycle(subject.LifecycleConfig)
+			h.AssertNil(t, err)
 		})
 
 		it.After(func() {
@@ -229,7 +255,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("succeeds and does nothing", func() {
-					err := subject.Analyze(ctx)
+					err := subject.Analyze(ctx, lifecycle)
 					h.AssertNil(t, err)
 				})
 			})
@@ -237,7 +263,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			when("succeeds and does nothing", func() {
 				it.Before(func() { subject.Publish = false })
 				it("succeeds and does nothing", func() {
-					err := subject.Analyze(ctx)
+					err := subject.Analyze(ctx, lifecycle)
 					h.AssertNil(t, err)
 				})
 			})
@@ -260,7 +286,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("places files in workspace and sets owner to pack", func() {
-					h.AssertNil(t, subject.Analyze(ctx))
+					h.AssertNil(t, subject.Analyze(ctx, lifecycle))
 
 					txt := h.ReadFromDocker(t, subject.Cache.Volume(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 
@@ -289,7 +315,7 @@ cache = false
 				})
 
 				it("places files in workspace and sets owner to pack", func() {
-					err := subject.Analyze(ctx)
+					err := subject.Analyze(ctx, lifecycle)
 					h.AssertNil(t, err)
 
 					txt := h.ReadFromDocker(t, subject.Cache.Volume(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
@@ -319,7 +345,6 @@ cache = false
 			buildCache, err := cache.New(repoName, dockerCli)
 			defaultBuilderName = h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)
 			subject = &pack.BuildConfig{
-				AppDir:   "../acceptance/testdata/node_app",
 				Builder:  defaultBuilderName,
 				RunImage: h.DefaultRunImage(t, registryConfig.RunRegistryPort),
 				RepoName: repoName,
@@ -328,6 +353,12 @@ cache = false
 				Logger:   logger,
 				FS:       &fs.FS{},
 				Cli:      dockerCli,
+				LifecycleConfig: build.LifecycleConfig{
+					BuilderImage: defaultBuilderName,
+					VolumeName:   buildCache.Volume(),
+					Logger:       logger,
+					AppDir:       "../acceptance/testdata/node_app",
+				},
 			}
 		})
 		it.After(func() {
@@ -369,20 +400,22 @@ cache = false
 					if runtime.GOOS == "windows" {
 						t.Skip("directory buildpacks are not implemented on windows")
 					}
-					subject.Buildpacks = []string{bpDir}
-
-					h.AssertNil(t, subject.Detect(ctx))
-					h.AssertNil(t, subject.Build(ctx))
+					subject.LifecycleConfig.Buildpacks = []string{bpDir}
+					lifecycle, err := build.NewLifecycle(subject.LifecycleConfig)
+					h.AssertNil(t, err)
+					h.AssertNil(t, subject.Detect(ctx, lifecycle))
+					h.AssertNil(t, subject.Build(ctx, lifecycle))
 
 					h.AssertContains(t, outBuf.String(), "BUILD OUTPUT FROM MY SAMPLE BUILDPACK")
 				})
 			})
 			when("id@version buildpack", func() {
 				it("runs the buildpacks bin/build", func() {
-					subject.Buildpacks = []string{"io.buildpacks.samples.nodejs@latest"}
-
-					h.AssertNil(t, subject.Detect(ctx))
-					h.AssertNil(t, subject.Build(ctx))
+					subject.LifecycleConfig.Buildpacks = []string{"io.buildpacks.samples.nodejs@latest"}
+					lifecycle, err := build.NewLifecycle(subject.LifecycleConfig)
+					h.AssertNil(t, err)
+					h.AssertNil(t, subject.Detect(ctx, lifecycle))
+					h.AssertNil(t, subject.Build(ctx, lifecycle))
 
 					h.AssertContains(t, outBuf.String(), "Sample Node.js Buildpack: pass")
 				})
@@ -394,13 +427,15 @@ cache = false
 				if runtime.GOOS == "windows" {
 					t.Skip("directory buildpacks are not implemented on windows")
 				}
-				subject.Env = map[string]string{
+				subject.LifecycleConfig.Env = map[string]string{
 					"VAR1": "value1",
 					"VAR2": "value2 with spaces",
 				}
-				subject.Buildpacks = []string{"../acceptance/testdata/mock_buildpacks/printenv"}
-				h.AssertNil(t, subject.Detect(ctx))
-				h.AssertNil(t, subject.Build(ctx))
+				subject.LifecycleConfig.Buildpacks = []string{"../acceptance/testdata/mock_buildpacks/printenv"}
+				lifecycle, err := build.NewLifecycle(subject.LifecycleConfig)
+				h.AssertNil(t, err)
+				h.AssertNil(t, subject.Detect(ctx, lifecycle))
+				h.AssertNil(t, subject.Build(ctx, lifecycle))
 				h.AssertContains(t, outBuf.String(), "BUILD: VAR1 is value1;")
 				h.AssertContains(t, outBuf.String(), "BUILD: VAR2 is value2 with spaces;")
 			})
@@ -412,6 +447,7 @@ cache = false
 			runSHA         string
 			runTopLayer    string
 			setupLayersDir func()
+			lcycle         *build.Lifecycle
 		)
 		it.Before(func() {
 			var err error
@@ -423,7 +459,6 @@ cache = false
 			buildCache, err := cache.New(repoName, dockerCli)
 			defaultBuilderName = h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)
 			subject = &pack.BuildConfig{
-				AppDir:   "../acceptance/testdata/node_app",
 				Builder:  defaultBuilderName,
 				RunImage: h.DefaultRunImage(t, registryConfig.RunRegistryPort),
 				RepoName: repoName,
@@ -432,6 +467,12 @@ cache = false
 				Logger:   logger,
 				FS:       &fs.FS{},
 				Cli:      dockerCli,
+				LifecycleConfig: build.LifecycleConfig{
+					BuilderImage: defaultBuilderName,
+					VolumeName:   buildCache.Volume(),
+					Logger:       logger,
+					AppDir:       "../acceptance/testdata/node_app",
+				},
 			}
 
 			tmpDir, err := ioutil.TempDir("", "pack.build.export.")
@@ -457,6 +498,8 @@ cache = false
 
 			runSHA = imageSHA(t, dockerCli, subject.RunImage)
 			runTopLayer = topLayer(t, dockerCli, subject.RunImage)
+			lcycle, err = build.NewLifecycle(subject.LifecycleConfig)
+			h.AssertNil(t, err)
 		})
 
 		it.After(func() {
@@ -481,14 +524,14 @@ cache = false
 			})
 
 			it("creates the image on the registry", func() {
-				h.AssertNil(t, subject.Export(ctx))
+				h.AssertNil(t, subject.Export(ctx, lcycle))
 				images, err := registryConfig.RegistryCatalog()
 				h.AssertNil(t, err)
 				h.AssertContains(t, images, oldRepoName)
 			})
 
 			it("puts the files on the image", func() {
-				h.AssertNil(t, subject.Export(ctx))
+				h.AssertNil(t, subject.Export(ctx, lcycle))
 
 				h.AssertNil(t, h.PullImageWithAuth(dockerCli, subject.RepoName, registryConfig.RegistryAuth()))
 				defer h.DockerRmi(dockerCli, subject.RepoName)
@@ -502,7 +545,7 @@ cache = false
 			})
 
 			it("sets the metadata on the image", func() {
-				h.AssertNil(t, subject.Export(ctx))
+				h.AssertNil(t, subject.Export(ctx, lcycle))
 
 				h.AssertNil(t, h.PullImageWithAuth(dockerCli, subject.RepoName, registryConfig.RegistryAuth()))
 				defer h.DockerRmi(dockerCli, subject.RepoName)
@@ -533,12 +576,12 @@ cache = false
 			})
 
 			it("creates the image on the daemon", func() {
-				h.AssertNil(t, subject.Export(ctx))
+				h.AssertNil(t, subject.Export(ctx, lcycle))
 				images := imageList(t, dockerCli)
 				h.AssertSliceContains(t, images, subject.RepoName+":latest")
 			})
 			it("puts the files on the image", func() {
-				h.AssertNil(t, subject.Export(ctx))
+				h.AssertNil(t, subject.Export(ctx, lcycle))
 
 				txt, err := h.CopySingleFileFromImage(dockerCli, subject.RepoName, "workspace/app/file.txt")
 				h.AssertNil(t, err)
@@ -549,7 +592,7 @@ cache = false
 				h.AssertEq(t, string(txt), "content")
 			})
 			it("sets the metadata on the image", func() {
-				h.AssertNil(t, subject.Export(ctx))
+				h.AssertNil(t, subject.Export(ctx, lcycle))
 
 				var metadata lifecycle.AppImageMetadata
 				metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
@@ -567,21 +610,24 @@ cache = false
 
 			when("PACK_USER_ID and PACK_GROUP_ID are set on builder", func() {
 				it.Before(func() {
-					subject.Builder = "packs/samples-" + h.RandString(8)
-					h.CreateImageOnLocal(t, dockerCli, subject.Builder, fmt.Sprintf(`
+					subject.LifecycleConfig.BuilderImage = "packs/samples-" + h.RandString(8)
+					h.CreateImageOnLocal(t, dockerCli, subject.LifecycleConfig.BuilderImage, fmt.Sprintf(`
 						FROM %s
 						ENV PACK_USER_ID 1234
 						ENV PACK_GROUP_ID 5678
 						LABEL repo_name_for_randomisation=%s
-					`, h.DefaultBuilderImage(t, registryConfig.RunRegistryPort), subject.Builder))
+					`, h.DefaultBuilderImage(t, registryConfig.RunRegistryPort), subject.LifecycleConfig.BuilderImage))
+					var err error
+					lcycle, err = build.NewLifecycle(subject.LifecycleConfig)
+					h.AssertNil(t, err)
 				})
 
 				it.After(func() {
-					h.AssertNil(t, h.DockerRmi(dockerCli, subject.Builder))
+					h.AssertNil(t, h.DockerRmi(dockerCli, subject.LifecycleConfig.BuilderImage))
 				})
 
 				it("sets owner of layer files to PACK_USER_ID:PACK_GROUP_ID", func() {
-					h.AssertNil(t, subject.Export(ctx))
+					h.AssertNil(t, subject.Export(ctx, lcycle))
 					txt := h.RunInImage(t, dockerCli, nil, subject.RepoName, "ls", "-la", "/workspace/app/file.txt")
 					h.AssertContains(t, txt, " 1234 5678 ")
 				})
@@ -590,7 +636,7 @@ cache = false
 			when("previous image exists", func() {
 				it.Before(func() {
 					t.Log("create image and h.Assert add new layer")
-					h.AssertNil(t, subject.Export(ctx))
+					h.AssertNil(t, subject.Export(ctx, lcycle))
 					setupLayersDir()
 				})
 
@@ -611,7 +657,7 @@ cache = false
 					)
 
 					t.Log("recreate image and h.Assert copying layer from previous image")
-					h.AssertNil(t, subject.Export(ctx))
+					h.AssertNil(t, subject.Export(ctx, lcycle))
 					txt, err = h.CopySingleFileFromImage(dockerCli, subject.RepoName, "workspace/io.buildpacks.samples.nodejs/mylayer/file.txt")
 					h.AssertNil(t, err)
 					h.AssertEq(t, txt, "content")

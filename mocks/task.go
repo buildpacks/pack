@@ -6,6 +6,7 @@ package mocks
 
 import (
 	gomock "github.com/golang/mock/gomock"
+	context2 "context"
 	reflect "reflect"
 )
 
@@ -33,8 +34,7 @@ func (m *MockTask) EXPECT() *MockTaskMockRecorder {
 }
 
 // Run mocks base method
-func (m *MockTask) Run() error {
-	m.ctrl.T.Helper()
+func (m *MockTask) Run(context context2.Context) error {
 	ret := m.ctrl.Call(m, "Run")
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -42,6 +42,5 @@ func (m *MockTask) Run() error {
 
 // Run indicates an expected call of Run
 func (mr *MockTaskMockRecorder) Run() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockTask)(nil).Run))
 }

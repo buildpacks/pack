@@ -1,0 +1,7 @@
+[buildpack]
+id = "test.bp"
+version = "0.0.1-test"
+name = "First Mock Buildpack"
+
+[[stacks]]
+id = "io.buildpacks.stacks.bionic"

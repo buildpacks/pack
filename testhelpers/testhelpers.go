@@ -215,7 +215,7 @@ func ConfigurePackHome(t *testing.T, packHome, registryPort string) {
 func CreateImageOnLocal(t *testing.T, dockerCli *docker.Client, repoName, dockerFile string) {
 	ctx := context.Background()
 
-	buildContext, err := (&fs.FS{}).CreateSingleFileTar("Dockerfile", dockerFile)
+	buildContext, err := (&fs.FS{}).CreateSingleFileTarReader("Dockerfile", dockerFile)
 	AssertNil(t, err)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
