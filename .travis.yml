@@ -1,6 +1,9 @@
+sudo: required
 language: go
 go:
 - 1.11.x
+services:
+- docker
 env:
   global:
   - GO111MODULE=on
@@ -16,22 +19,9 @@ install:
       "$PACK_PATH" version
 jobs:
   include:
-  - name: local-test
+  - name: tests
     os: linux
-    if: fork = true
-    script: go test -count=1 -parallel=1 -v ./...
-  - &remote-test
-    os: osx
-    if: fork = false
-    env:
-    - DOCKER_TLS_VERIFY=1
-    - secure: hXKjtSh18VMo0G3Gk/njZ57wnO6ztobZUJiCcb1OPp7WYI62K9QpWBr30sivncHPVnYtALOL+KTxKdjVS04D9UFYynID/Sk5cFlewZt8uvRCy3XUIG1++8XXh53CAJpojCkXwyaIbq4Tx81fZvUR5fmVz5xCP+iLCXBqm6/i5+CDY/p3USYdBk1XsY99QEphVgL1XM291IkJHTya+SBMKsKq+JwyWJK4edydlhI5Pp5K8sNoN6aSHDvYiqk0aWgaKfwr+gCKVfyi90Ni5lPPrPx28kFWPqUxBwSybggL6LTmTgtPmdFEVijwTJsddbvvJilYGlqRXm48JVEOAf1Rt7VEsNy4w5P+QigwgUZyGatMsmN3Sc24AxGvcWutUm6KzVgX9qw/mhxcJh5QDTTjAZ5ARLI6VAfExrciXK079zpqqkK42fpDcXi/wBt4L0mJdU5z6YW+nPMfXcWUcHKmGmEuK5zrCPBaIqPlUVK0PrPEtsgWq0yoEfeicYadYGGWCTvv6WtLVS0WMGfzSDTEo/8UQXrfjtvWKXUv3swJzv/iQLb2K0UCKnl3HHOU+D5pi0TnFqKY+9VE9qlm1oqvDqEhtR2xUYsV/gBW8Sp6Up2SqpQo1deMNP6MKUxIlk4g+UPwRlVxHhUEyqqntobcCVDd73pyiTb1EghIygV+hWQ=
-    script: |
-      openssl aes-256-cbc -K $encrypted_c7ea36ef0bae_key -iv $encrypted_c7ea36ef0bae_iv -in .travis/key.pem.enc -out .travis/key.pem -d
-      export DOCKER_CERT_PATH=$PWD/.travis/
-      go test -count=1 -parallel=1 -v ./... && go test -count=1 -parallel=1 -v -tags=acceptance ./acceptance/...
-  - <<: *remote-test
-    os: linux
+    script: go test -count=1 -parallel=1 -v ./... && go test -count=1 -parallel=1 -v -tags=acceptance ./acceptance/...
 
 deploy:
   provider: gcs
