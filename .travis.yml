@@ -22,20 +22,3 @@ jobs:
   - name: tests
     os: linux
     script: go test -count=1 -parallel=1 -v ./... && go test -count=1 -parallel=1 -v -tags=acceptance ./acceptance/...
-
-deploy:
-  provider: gcs
-  access_key_id: GOOGKYYDLY5ACGLNZVYXGTTN
-  secret_access_key:
-    secure: pSh3XiGfsLKJSY4WxpAxS4rejfI0CY7JfqBZq6MyrEjzTREzoe0GEsKBqx+E/ext2wFsEda0sl2tLPtle29YXRUC2gb2k1zH9YlQv2XqGPmSzbX++QqXRpm1um4KMSJM95mxXuP9DEkjsQLFPdiR0tK5AZ7pPSu4fbrtEb1Kn98DQknslvyzSzKXASZFRuOOCzWDUu4iKQR64xtOuA9dFz1s0V0+tD7R2USyPYwn2UlABalTt5t1rdm4Tz5vAG91GQq9onMIAzHuiW89t790u5kzBhhLSYSd1Fm5ChcLQhRMZ2rKvFVQHl580CtCkKou5xEEBZZrX5PBmOdAhLkkz389wUfT410DuBoIiUCzK8ioxk4UqPG3SC02v7fct8PIST2f1uT71oVMyKGtWwNEtZ8a4uwdRI37zCDfP3/uaVN5NY5Lg9fCmMNnAyPbg3zf4bVjrpDGN9QgAcpHTnhJj6/9TvT+SQqrnCYzonemq2aCc7d8tCXVcM6JItUV467oSyHIlI7Uro0LGcaYHHAzfbe/tVulruYWEw17XpJ9MX5qNZukWvMDiZP6hqNBGotMS6fS0Qo7qRFgye1oLFVPgHblVG/rYi2qpQ+IKxO4EMprvf0rJDxDUPmMFuig5QZ5c3riIq09Lrm0LAs0RPRnDbkuHFTkUcNhgzff1Jix8U4=
-  bucket: pack-cli
-  skip_cleanup: true
-  acl: public-read
-  local-dir: ./artifacts/
-  on:
-    repo: buildpack/pack
-    condition: |
-      "$TRAVIS_BRANCH" = master || "$TRAVIS_TAG" != ''
-    all_branches: true
-after_deploy:
-- echo "https://storage.cloud.google.com/pack-cli/$(basename $PACK_PATH)"
