@@ -143,6 +143,63 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, config.BuilderDir, "testdata")
 				})
 			})
+
+			it("validates the presence of the id field", func() {
+				file, err := ioutil.TempFile("", "builder.toml")
+				h.AssertNil(t, err)
+
+				_, err = file.WriteString(`
+[stack]
+build-image = "packs/build:v3alpha2"
+run-image = "packs/run:v3alpha2"
+`)
+				h.AssertNil(t, err)
+				file.Close()
+
+				_, err = factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
+					RepoName:        "some/image",
+					BuilderTomlPath: file.Name(),
+				})
+				h.AssertError(t, err, "stack.id is required")
+			})
+
+			it("validates the presence of the build-image field", func() {
+				file, err := ioutil.TempFile("", "builder.toml")
+				h.AssertNil(t, err)
+
+				_, err = file.WriteString(`
+[stack]
+id = "some.id"
+run-image = "packs/run:v3alpha2"
+`)
+				h.AssertNil(t, err)
+				file.Close()
+
+				_, err = factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
+					RepoName:        "some/image",
+					BuilderTomlPath: file.Name(),
+				})
+				h.AssertError(t, err, "stack.build-image is required")
+			})
+
+			it("validates the presence of the run-image field", func() {
+				file, err := ioutil.TempFile("", "builder.toml")
+				h.AssertNil(t, err)
+
+				_, err = file.WriteString(`
+[stack]
+id = "some.id"
+build-image = "packs/build:v3alpha2"
+`)
+				h.AssertNil(t, err)
+				file.Close()
+
+				_, err = factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
+					RepoName:        "some/image",
+					BuilderTomlPath: file.Name(),
+				})
+				h.AssertError(t, err, "stack.run-image is required")
+			})
 		})
 
 		when("#Create", func() {

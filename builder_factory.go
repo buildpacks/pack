@@ -71,6 +71,10 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file %s: %s`, flags.BuilderTomlPath, err)
 	}
 
+	if err := validateBuilderTOML(builderTOML); err != nil {
+		return BuilderConfig{}, err
+	}
+
 	baseImage := builderTOML.Stack.BuildImage
 	builderConfig.RunImage = builderTOML.Stack.RunImage
 	builderConfig.RunImageMirrors = builderTOML.Stack.RunImageMirrors
@@ -351,4 +355,23 @@ func (f *BuilderFactory) downloadAsStream(uri string, etag string) (io.ReadClose
 			return nil, "", fmt.Errorf("could not download from %q, code http status %d", uri, resp.StatusCode)
 		}
 	}
+}
+
+func validateBuilderTOML(builderTOML *BuilderTOML) error {
+	if builderTOML == nil {
+		return errors.New("builder toml is empty")
+	}
+
+	if builderTOML.Stack.ID == "" {
+		return errors.New("stack.id is required")
+	}
+
+	if builderTOML.Stack.BuildImage == "" {
+		return errors.New("stack.build-image is required")
+	}
+
+	if builderTOML.Stack.RunImage == "" {
+		return errors.New("stack.run-image is required")
+	}
+	return nil
 }
