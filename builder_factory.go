@@ -154,19 +154,15 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 			// can use cached content
 			dir = cachedDir
 			break
-		} else {
-			defer func() {
-				err := reader.Close()
-				if err != nil {
-					fmt.Printf("warning: could not close %v: %s", reader, err)
-				}
-			}()
-			if err = f.untarZ(reader, cachedDir); err != nil {
-				return Buildpack{}, err
-			}
-			if err = ioutil.WriteFile(etagFile, []byte(etag), 0744); err != nil {
-				return Buildpack{}, err
-			}
+		}
+		defer reader.Close()
+
+		if err = f.untarZ(reader, cachedDir); err != nil {
+			return Buildpack{}, err
+		}
+
+		if err = ioutil.WriteFile(etagFile, []byte(etag), 0744); err != nil {
+			return Buildpack{}, err
 		}
 
 		dir = cachedDir
