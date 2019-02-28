@@ -46,7 +46,7 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 
 	it("writes a tar to the dest dir", func() {
 		tarFile := filepath.Join(tmpDir, "some.tar")
-		err := fs.CreateTarFile(tarFile, src, "/dir-in-archive", 1234, 2345)
+		err := fs.CreateTarFile(tarFile, src, "/nested/dir/dir-in-archive", 1234, 2345)
 		if err != nil {
 			t.Fatalf("CreateTarFile failed: %s", err)
 		}
@@ -57,59 +57,94 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 		defer file.Close()
 		tr := tar.NewReader(file)
 
-		t.Log("handles regular files")
-		header, err := tr.Next()
-		if err != nil {
-			t.Fatalf("Failed to get next file: %s", err)
-		}
-		if header.Name != "/dir-in-archive" {
-			t.Fatalf(`expected dir with name /dir-in-archive, got %s`, header.Name)
-		}
-		header, err = tr.Next()
-		if err != nil {
-			t.Fatalf("Failed to get next file: %s", err)
-		}
-		if header.Name != "/dir-in-archive/some-file.txt" {
-			t.Fatalf(`expected file with name /dir-in-archive/some-file.txt, got %s`, header.Name)
-		}
-		fileContents := make([]byte, header.Size, header.Size)
-		tr.Read(fileContents)
-		if string(fileContents) != "some-content" {
-			t.Fatalf(`expected to some-file.txt to have "some-contents" got %s`, string(fileContents))
-		}
-		if header.Uid != 1234 {
-			t.Fatalf(`expected some-file.txt to be owned by 1234 was %d`, header.Uid)
-		}
-		if header.Gid != 2345 {
-			t.Fatalf(`expected some-file.txt to be group 2345 was %d`, header.Gid)
-		}
-		header, err = tr.Next()
-		if err != nil {
-			t.Fatalf("Failed to get next file: %s", err)
-		}
-		if header.Name != "/dir-in-archive/sub-dir" {
-			t.Fatalf(`expected dir with name /dir-in-archive/sub-dir, got %s`, header.Name)
-		}
-
+		verify := tarVerifier{t, tr, 1234, 2345}
+		verify.nextDirectory("/nested")
+		verify.nextDirectory("/nested/dir")
+		verify.nextDirectory("/nested/dir/dir-in-archive")
+		verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content")
+		verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir")
 		if runtime.GOOS != "windows" {
-			t.Log("handles symlinks")
-			header, err = tr.Next()
-			if err != nil {
-				t.Fatalf("Failed to get next file: %s", err)
-			}
-			if header.Name != "/dir-in-archive/sub-dir/link-file" {
-				t.Fatalf(`expected file with name /dir-in-archive/sub-dir/link-file, got %s`, header.Name)
-			}
-			if header.Uid != 1234 {
-				t.Fatalf(`expected link-file to be owned by 1234 was %d`, header.Uid)
-			}
-			if header.Gid != 2345 {
-				t.Fatalf(`expected link-file to be group 2345 was %d`, header.Gid)
-			}
-
-			if header.Linkname != "../some-file.txt" {
-				t.Fatalf(`expected to link-file to have atrget "../some-file.txt" got "%s"`, header.Linkname)
-			}
+			verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 		}
 	})
+}
+
+type tarVerifier struct {
+	t   *testing.T
+	tr  *tar.Reader
+	uid int
+	gid int
+}
+
+func (v *tarVerifier) nextDirectory(name string) {
+	header, err := v.tr.Next()
+	if err != nil {
+		v.t.Fatalf("Failed to get next file: %s", err)
+	}
+
+	if header.Name != name {
+		v.t.Fatalf(`expected dir with name %s, got %s`, name, header.Name)
+	}
+	if header.Typeflag != tar.TypeDir {
+		v.t.Fatalf(`expected %s to be a Directory`, header.Name)
+	}
+	if header.Uid != v.uid {
+		v.t.Fatalf(`expected %s to have uid %d but, got: %d`, header.Name, v.uid, header.Uid)
+	}
+	if header.Gid != v.gid {
+		v.t.Fatalf(`expected %s to have gid %d but, got: %d`, header.Name, v.gid, header.Gid)
+	}
+	if header.Mode != 0755 {
+		v.t.Fatalf(`expected %s to have mode %o but, got: %o`, header.Name, 0755, header.Mode)
+	}
+}
+
+func (v *tarVerifier) nextFile(name, expectedFileContents string) {
+	header, err := v.tr.Next()
+	if err != nil {
+		v.t.Fatalf("Failed to get next file: %s", err)
+	}
+
+	if header.Name != name {
+		v.t.Fatalf(`expected dir with name %s, got %s`, name, header.Name)
+	}
+	if header.Typeflag != tar.TypeReg {
+		v.t.Fatalf(`expected %s to be a file`, header.Name)
+	}
+	if header.Uid != v.uid {
+		v.t.Fatalf(`expected %s to have uid %d but, got: %d`, header.Name, v.uid, header.Uid)
+	}
+	if header.Gid != v.gid {
+		v.t.Fatalf(`expected %s to have gid %d but, got: %d`, header.Name, v.gid, header.Gid)
+	}
+
+	fileContents := make([]byte, header.Size, header.Size)
+	v.tr.Read(fileContents)
+	if string(fileContents) != expectedFileContents {
+		v.t.Fatalf(`expected to some-file.txt to have %s got %s`, expectedFileContents, string(fileContents))
+	}
+}
+
+func (v *tarVerifier) nextSymLink(name, link string) {
+	header, err := v.tr.Next()
+	if err != nil {
+		v.t.Fatalf("Failed to get next file: %s", err)
+	}
+
+	if header.Name != name {
+		v.t.Fatalf(`expected dir with name %s, got %s`, name, header.Name)
+	}
+	if header.Typeflag != tar.TypeSymlink {
+		v.t.Fatalf(`expected %s to be a link got %s`, header.Name, string(header.Typeflag))
+	}
+	if header.Uid != v.uid {
+		v.t.Fatalf(`expected %s to have uid %d but, got: %d`, header.Name, v.uid, header.Uid)
+	}
+	if header.Gid != v.gid {
+		v.t.Fatalf(`expected %s to have gid %d but, got: %d`, header.Name, v.gid, header.Gid)
+	}
+
+	if header.Linkname != "../some-file.txt" {
+		v.t.Fatalf(`expected to link-file to have target %s got: %s`, link, header.Linkname)
+	}
 }

@@ -71,9 +71,37 @@ func (*FS) CreateSingleFileTar(tarFile, path, txt string) error {
 	return nil
 }
 
+func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int) error {
+	parent := filepath.Dir(tarDir)
+	if parent == "." || parent == "/" {
+		return nil
+	} else {
+		if err := writeParentDirectoryHeaders(parent, tw, uid, gid); err != nil {
+			return err
+		}
+		header := &tar.Header{
+			Name:     parent,
+			Uid:      uid,
+			Gid:      gid,
+			Mode:     0755,
+			Typeflag: tar.TypeDir,
+			ModTime:  time.Time{},
+		}
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
 func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
+
+	err := writeParentDirectoryHeaders(tarDir, tw, uid, gid)
+	if err != nil {
+		return err
+	}
 
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		if err != nil {
