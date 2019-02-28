@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -203,26 +204,54 @@ build-image = "packs/build:v3alpha2"
 		})
 
 		when("#Create", func() {
-			var mockImage *mocks.MockImage
+			var (
+				mockImage   *mocks.MockImage
+				savedLayers map[string]*bytes.Buffer
+				labels      map[string]string
+			)
 
 			it.Before(func() {
-				mockImage = mocks.NewMockImage(mockController)
-				mockImage.EXPECT().AddLayer(gomock.Any()).AnyTimes()
-				mockImage.EXPECT().Save()
-			})
+				savedLayers = make(map[string]*bytes.Buffer)
+				labels = make(map[string]string)
 
-			it("stores metadata about the run image defined in builder TOML", func() {
-				mockImage.EXPECT().SetLabel("io.buildpacks.builder.metadata", `{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]}}`)
+				mockImage = mocks.NewMockImage(mockController)
+				mockImage.EXPECT().AddLayer(gomock.Any()).Do(func(layerPath string) {
+					file, err := os.Open(layerPath)
+					h.AssertNil(t, err)
+					defer file.Close()
+
+					buf, err := ioutil.ReadAll(file)
+					h.AssertNil(t, err)
+
+					savedLayers[filepath.Base(layerPath)] = bytes.NewBuffer(buf)
+				}).AnyTimes()
+				mockImage.EXPECT().Save()
+				mockImage.EXPECT().SetLabel(gomock.Any(), gomock.Any()).Do(func(labelName, labelValue string) {
+					labels[labelName] = labelValue
+				})
 
 				err := factory.Create(pack.BuilderConfig{
 					Repo:            mockImage,
 					Buildpacks:      []pack.Buildpack{},
-					Groups:          []lifecycle.BuildpackGroup{},
+					Groups:          []lifecycle.BuildpackGroup{{Buildpacks: []*lifecycle.Buildpack{{ID: "bpId"}}}},
 					BuilderDir:      "",
 					RunImage:        "myorg/run",
 					RunImageMirrors: []string{"gcr.io/myorg/run"},
 				})
 				h.AssertNil(t, err)
+			})
+
+			it("stores metadata about the run image defined in builder TOML", func() {
+				h.AssertEq(t, labels["io.buildpacks.builder.metadata"], `{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]}}`)
+			})
+
+			it("should write a 'order.toml' that lists buildpack groups", func() {
+				buf, exists := savedLayers["order.tar"]
+				h.AssertEq(t, exists, true)
+
+				contents, err := h.UntarSingleFile(buf, "/buildpacks/order.toml")
+				h.AssertNil(t, err)
+				h.AssertContains(t, string(contents), `id = "bpId"`)
 			})
 		})
 

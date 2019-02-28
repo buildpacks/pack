@@ -522,3 +522,24 @@ func RunInImage(t *testing.T, dockerCli *docker.Client, volumes []string, repoNa
 	}
 	return buf.String()
 }
+
+func UntarSingleFile(r io.Reader, fileName string) ([]byte, error) {
+	tr := tar.NewReader(r)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			// end of tar archive
+			return []byte{}, fmt.Errorf("file '%s' does not exist in tar", fileName)
+		}
+		if err != nil {
+			return []byte{}, err
+		}
+
+		switch hdr.Typeflag {
+		case tar.TypeReg, tar.TypeRegA:
+			if hdr.Name == fileName {
+				return ioutil.ReadAll(tr)
+			}
+		}
+	}
+}
