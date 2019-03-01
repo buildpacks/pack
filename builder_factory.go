@@ -109,7 +109,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 		return Buildpack{}, err
 	}
 	switch asurl.Scheme {
-	case "", // This is the only way to support relative filepaths
+	case "",    // This is the only way to support relative filepaths
 		"file": // URIs with file:// protocol force the use of absolute paths. Host=localhost may be implied with file:///
 
 		path := asurl.Path
@@ -195,14 +195,18 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 	if err := config.Repo.AddLayer(orderTar); err != nil {
 		return fmt.Errorf(`failed append order.toml layer to image: %s`, err)
 	}
+
+	var buildpacksMetadata []BuilderBuildpacksMetadata
+
 	for _, buildpack := range config.Buildpacks {
-		tarFile, err := f.buildpackLayer(tmpDir, buildpack, config.BuilderDir)
+		tarFile, err := f.buildpackLayer(tmpDir, &buildpack, config.BuilderDir)
 		if err != nil {
 			return fmt.Errorf(`failed to generate layer for buildpack %s: %s`, style.Symbol(buildpack.ID), err)
 		}
 		if err := config.Repo.AddLayer(tarFile); err != nil {
 			return fmt.Errorf(`failed append buildpack layer to image: %s`, err)
 		}
+		buildpacksMetadata = append(buildpacksMetadata, BuilderBuildpacksMetadata{ID: buildpack.ID, Version: buildpack.Version})
 	}
 	tarFile, err := f.latestLayer(config.Buildpacks, tmpDir, config.BuilderDir)
 	if err != nil {
@@ -213,7 +217,8 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 	}
 
 	jsonBytes, err := json.Marshal(&BuilderImageMetadata{
-		RunImage: BuilderRunImageMetadata{Image: config.RunImage, Mirrors: config.RunImageMirrors},
+		RunImage:   BuilderRunImageMetadata{Image: config.RunImage, Mirrors: config.RunImageMirrors},
+		Buildpacks: buildpacksMetadata,
 	})
 	if err != nil {
 		return fmt.Errorf(`failed marshal builder image metadata: %s`, err)
@@ -264,10 +269,10 @@ type BuildpackData struct {
 // buildpackLayer creates and returns the location of a tgz file for a buildpack layer. That file will reside in the `dest` directory.
 // The tgz file is either created from an initially local directory, or it is downloaded (and validated) from
 // a remote location if the buildpack uri uses the http(s) protocol.
-func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builderDir string) (layerTar string, err error) {
+func (f *BuilderFactory) buildpackLayer(dest string, buildpack *Buildpack, builderDir string) (layerTar string, err error) {
 	dir := buildpack.Dir
 
-	data, err := f.buildpackData(buildpack, dir)
+	data, err := f.buildpackData(*buildpack, dir)
 	if err != nil {
 		return "", err
 	}
@@ -279,6 +284,7 @@ func (f *BuilderFactory) buildpackLayer(dest string, buildpack Buildpack, builde
 		return "", fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(buildpack.Dir, "buildpack.toml"))
 	}
 
+	buildpack.Version = bp.Version
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.escapedID(), bp.Version))
 	if err := f.FS.CreateTarFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.escapedID(), bp.Version), 0, 0); err != nil {
 		return "", err

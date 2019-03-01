@@ -241,8 +241,8 @@ build-image = "packs/build:v3alpha2"
 				h.AssertNil(t, err)
 			})
 
-			it("stores metadata about the run image defined in builder TOML", func() {
-				h.AssertEq(t, labels["io.buildpacks.builder.metadata"], `{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]}}`)
+			it("stores metadata about the run image and buildpacks defined in builder label", func() {
+				h.AssertEq(t, labels["io.buildpacks.builder.metadata"], `{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]},"buildpacks":[]}`)
 			})
 
 			it("should write a 'order.toml' that lists buildpack groups", func() {
