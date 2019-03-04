@@ -109,7 +109,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 		return Buildpack{}, err
 	}
 	switch asurl.Scheme {
-	case "",    // This is the only way to support relative filepaths
+	case "", // This is the only way to support relative filepaths
 		"file": // URIs with file:// protocol force the use of absolute paths. Host=localhost may be implied with file:///
 
 		path := asurl.Path
@@ -196,8 +196,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return fmt.Errorf(`failed append order.toml layer to image: %s`, err)
 	}
 
-	var buildpacksMetadata []BuilderBuildpacksMetadata
-
+	buildpacksMetadata := make([]BuilderBuildpacksMetadata, 0)
 	for _, buildpack := range config.Buildpacks {
 		tarFile, err := f.buildpackLayer(tmpDir, &buildpack, config.BuilderDir)
 		if err != nil {
@@ -208,6 +207,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		}
 		buildpacksMetadata = append(buildpacksMetadata, BuilderBuildpacksMetadata{ID: buildpack.ID, Version: buildpack.Version})
 	}
+
 	tarFile, err := f.latestLayer(config.Buildpacks, tmpDir, config.BuilderDir)
 	if err != nil {
 		return fmt.Errorf(`failed generate layer for latest links: %s`, err)
