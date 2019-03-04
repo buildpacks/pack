@@ -196,7 +196,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return fmt.Errorf(`failed append order.toml layer to image: %s`, err)
 	}
 
-	buildpacksMetadata := make([]BuilderBuildpacksMetadata, 0)
+	buildpacksMetadata := make([]BuilderBuildpacksMetadata, 0, len(config.Buildpacks))
 	for _, buildpack := range config.Buildpacks {
 		tarFile, err := f.buildpackLayer(tmpDir, &buildpack, config.BuilderDir)
 		if err != nil {
