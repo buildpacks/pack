@@ -3,6 +3,7 @@ package build_test
 import (
 	"bytes"
 	"context"
+	"github.com/docker/docker/api/types/filters"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -49,17 +50,14 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			lifecycle      *build.Lifecycle
 			outBuf, errBuf bytes.Buffer
 			logger         *logging.Logger
-			volumeName     string
 		)
 
 		it.Before(func() {
-			volumeName = "lifecycle.test" + h.RandString(10)
 			logger = logging.NewLogger(&outBuf, &errBuf, true, false)
 		})
 
 		it.After(func() {
 			h.AssertNil(t, lifecycle.Cleanup(context.TODO()))
-			h.AssertNil(t, dockerCli.VolumeRemove(context.TODO(), volumeName, true))
 		})
 
 		when("there are no user provided buildpacks", func() {
@@ -68,7 +66,6 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				lifecycle, err = build.NewLifecycle(
 					build.LifecycleConfig{
 						BuilderImage: repoName,
-						VolumeName:   volumeName,
 						AppDir:       filepath.Join("testdata", "fake-app"),
 						Logger:       logger,
 						EnvFile: map[string]string{
@@ -199,7 +196,6 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				lifecycle, err = build.NewLifecycle(
 					build.LifecycleConfig{
 						BuilderImage: repoName,
-						VolumeName:   volumeName,
 						Logger:       logger,
 						Buildpacks: []string{
 							filepath.Join("testdata", "fake_buildpack"),
@@ -251,7 +247,6 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				lifecycle, err = build.NewLifecycle(
 					build.LifecycleConfig{
 						BuilderImage: repoName,
-						VolumeName:   volumeName,
 						Logger:       logger,
 						Buildpacks: []string{
 							"some.buildpack.id@some-version",
@@ -287,6 +282,64 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("#Cleanup", func() {
+		var (
+			subject        *build.Lifecycle
+			outBuf, errBuf bytes.Buffer
+		)
+
+		it.Before(func() {
+			var err error
+			logger := logging.NewLogger(&outBuf, &errBuf, true, false)
+			subject, err = build.NewLifecycle(build.LifecycleConfig{
+				BuilderImage: repoName,
+				AppDir:       filepath.Join("testdata", "fake-app"),
+				Logger:       logger,
+				EnvFile:      map[string]string{},
+			})
+			h.AssertNil(t, err)
+
+			phase, err := subject.NewPhase("phase")
+			h.AssertNil(t, err)
+			assertRunSucceeds(t, phase, &outBuf, &errBuf)
+			h.AssertContains(t, outBuf.String(), "running some-lifecycle-phase")
+
+			err = subject.Cleanup(context.TODO())
+			h.AssertNil(t, err)
+		})
+
+		it("should delete the workspace volume", func() {
+			body, err := subject.Docker.VolumeList(context.TODO(),
+				filters.NewArgs(filters.KeyValuePair{
+					Key:   "name",
+					Value: subject.WorkspaceVolume,
+				}))
+			h.AssertNil(t, err)
+			h.AssertEq(t, len(body.Volumes), 0)
+		})
+
+		it("should remove the builder image", func() {
+			images, err := subject.Docker.ImageList(context.TODO(), dockertypes.ImageListOptions{})
+			h.AssertNil(t, err)
+
+			found := false
+			for _, image := range images {
+				for _, tag := range image.RepoTags {
+					if strings.Contains(tag, subject.BuilderImage) {
+						found = true
+						break
+					}
+				}
+				if found == true {
+					break
+				}
+			}
+
+			h.AssertEq(t, found, false)
+		})
+	})
+
 }
 
 func assertRunSucceeds(t *testing.T, phase *build.Phase, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {

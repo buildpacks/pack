@@ -57,7 +57,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 				Cache:  mockCache,
 			}
 
-			mockCache.EXPECT().Volume().AnyTimes()
+			mockCache.EXPECT().Image().AnyTimes()
 		})
 
 		it.After(func() {

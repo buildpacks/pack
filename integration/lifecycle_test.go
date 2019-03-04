@@ -82,14 +82,13 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			Cli:      dockerCli,
 			LifecycleConfig: build.LifecycleConfig{
 				BuilderImage: defaultBuilderName,
-				VolumeName:   buildCache.Volume(),
 				Logger:       logger,
 				AppDir:       "../acceptance/testdata/node_app",
 			},
 		}
 	})
 	it.After(func() {
-		for _, volName := range []string{subject.Cache.Volume(), subject.Cache.Volume()} {
+		for _, volName := range []string{subject.Cache.Image(), subject.Cache.Image()} {
 			dockerCli.VolumeRemove(context.TODO(), volName, true)
 		}
 
@@ -104,7 +103,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, subject.Detect(ctx, lifecycle))
 
 			for _, name := range []string{"/workspace/app", "/workspace/app/app.js", "/workspace/app/mydir", "/workspace/app/mydir/myfile.txt"} {
-				txt := h.RunInImage(t, dockerCli, []string{subject.Cache.Volume() + ":/workspace"}, subject.Builder, "ls", "-ld", name)
+				txt := h.RunInImage(t, dockerCli, []string{subject.Cache.Image() + ":/workspace"}, subject.Builder, "ls", "-ld", name)
 				h.AssertContains(t, txt, "pack pack")
 			}
 		})
@@ -222,7 +221,6 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				Cli:      dockerCli,
 				LifecycleConfig: build.LifecycleConfig{
 					BuilderImage: defaultBuilderName,
-					VolumeName:   buildCache.Volume(),
 					Logger:       logger,
 					AppDir:       "../acceptance/testdata/node_app",
 				},
@@ -236,13 +234,13 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			  version = "0.0.1"
 			`), 0666))
 
-			h.CopyWorkspaceToDocker(t, tmpDir, subject.Cache.Volume())
+			h.CopyWorkspaceToDocker(t, tmpDir, subject.Cache.Image())
 			lifecycle, err = build.NewLifecycle(subject.LifecycleConfig)
 			h.AssertNil(t, err)
 		})
 
 		it.After(func() {
-			for _, volName := range []string{subject.Cache.Volume(), subject.Cache.Volume()} {
+			for _, volName := range []string{subject.Cache.Image(), subject.Cache.Image()} {
 				dockerCli.VolumeRemove(ctx, volName, true)
 			}
 		})
@@ -288,7 +286,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				it("places files in workspace and sets owner to pack", func() {
 					h.AssertNil(t, subject.Analyze(ctx, lifecycle))
 
-					txt := h.ReadFromDocker(t, subject.Cache.Volume(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+					txt := h.ReadFromDocker(t, subject.Cache.Image(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 
 					h.AssertEq(t, txt, `build = false
 launch = true
@@ -297,7 +295,7 @@ cache = false
 [metadata]
   lock_checksum = "eb04ed1b461f1812f0f4233ef997cdb5"
 `)
-					hdr := h.StatFromDocker(t, subject.Cache.Volume(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+					hdr := h.StatFromDocker(t, subject.Cache.Image(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 					h.AssertEq(t, hdr.Uid, 1000)
 					h.AssertEq(t, hdr.Gid, 1000)
 				})
@@ -318,7 +316,7 @@ cache = false
 					err := subject.Analyze(ctx, lifecycle)
 					h.AssertNil(t, err)
 
-					txt := h.ReadFromDocker(t, subject.Cache.Volume(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+					txt := h.ReadFromDocker(t, subject.Cache.Image(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 					h.AssertEq(t, txt, `build = false
 launch = true
 cache = false
@@ -326,7 +324,7 @@ cache = false
 [metadata]
   lock_checksum = "eb04ed1b461f1812f0f4233ef997cdb5"
 `)
-					hdr := h.StatFromDocker(t, subject.Cache.Volume(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
+					hdr := h.StatFromDocker(t, subject.Cache.Image(), "/workspace/io.buildpacks.samples.nodejs/node_modules.toml")
 					h.AssertEq(t, hdr.Uid, 1000)
 					h.AssertEq(t, hdr.Gid, 1000)
 				})
@@ -355,14 +353,13 @@ cache = false
 				Cli:      dockerCli,
 				LifecycleConfig: build.LifecycleConfig{
 					BuilderImage: defaultBuilderName,
-					VolumeName:   buildCache.Volume(),
 					Logger:       logger,
 					AppDir:       "../acceptance/testdata/node_app",
 				},
 			}
 		})
 		it.After(func() {
-			for _, volName := range []string{subject.Cache.Volume(), subject.Cache.Volume()} {
+			for _, volName := range []string{subject.Cache.Image(), subject.Cache.Image()} {
 				dockerCli.VolumeRemove(ctx, volName, true)
 			}
 		})
@@ -469,7 +466,6 @@ cache = false
 				Cli:      dockerCli,
 				LifecycleConfig: build.LifecycleConfig{
 					BuilderImage: defaultBuilderName,
-					VolumeName:   buildCache.Volume(),
 					Logger:       logger,
 					AppDir:       "../acceptance/testdata/node_app",
 				},
@@ -492,7 +488,7 @@ cache = false
 					h.AssertNil(t, os.MkdirAll(filepath.Dir(filepath.Join(tmpDir, name)), 0777))
 					h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, name), []byte(txt), 0666))
 				}
-				h.CopyWorkspaceToDocker(t, tmpDir, subject.Cache.Volume())
+				h.CopyWorkspaceToDocker(t, tmpDir, subject.Cache.Image())
 			}
 			setupLayersDir()
 
@@ -503,7 +499,7 @@ cache = false
 		})
 
 		it.After(func() {
-			for _, volName := range []string{subject.Cache.Volume(), subject.Cache.Volume()} {
+			for _, volName := range []string{subject.Cache.Image(), subject.Cache.Image()} {
 				dockerCli.VolumeRemove(ctx, volName, true)
 			}
 		})
@@ -651,7 +647,7 @@ cache = false
 					t.Log("setup workspace to reuse layer")
 					outBuf.Reset()
 					h.RunInImage(t, dockerCli,
-						[]string{subject.Cache.Volume() + ":/workspace"},
+						[]string{subject.Cache.Image() + ":/workspace"},
 						h.DefaultBuilderImage(t, registryConfig.RunRegistryPort),
 						"rm", "-rf", "/workspace/io.buildpacks.samples.nodejs/mylayer",
 					)

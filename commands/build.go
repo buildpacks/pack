@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
@@ -20,6 +21,10 @@ func Build(logger *logging.Logger, dockerClient pack.Docker, imageFactory pack.I
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			buildFlags.RepoName = args[0]
 
+			dockerClient, err := docker.New()
+			if err != nil {
+				return err
+			}
 			cacheObj, err := cache.New(buildFlags.RepoName, dockerClient)
 			if err != nil {
 				return err

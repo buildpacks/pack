@@ -35,6 +35,7 @@ func (m *MockCache) EXPECT() *MockCacheMockRecorder {
 
 // Clear mocks base method
 func (m *MockCache) Clear(arg0 context.Context) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Clear", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -42,17 +43,20 @@ func (m *MockCache) Clear(arg0 context.Context) error {
 
 // Clear indicates an expected call of Clear
 func (mr *MockCacheMockRecorder) Clear(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clear", reflect.TypeOf((*MockCache)(nil).Clear), arg0)
 }
 
-// Volume mocks base method
-func (m *MockCache) Volume() string {
-	ret := m.ctrl.Call(m, "Volume")
+// Image mocks base method
+func (m *MockCache) Image() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Image")
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
-// Volume indicates an expected call of Volume
-func (mr *MockCacheMockRecorder) Volume() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Volume", reflect.TypeOf((*MockCache)(nil).Volume))
+// Image indicates an expected call of Image
+func (mr *MockCacheMockRecorder) Image() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Image", reflect.TypeOf((*MockCache)(nil).Image))
 }

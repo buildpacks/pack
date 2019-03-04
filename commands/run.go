@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 )
 
@@ -21,7 +22,10 @@ func Run(logger *logging.Logger, dockerClient pack.Docker, imageFactory pack.Ima
 			if err != nil {
 				return err
 			}
-
+			dockerClient, err := docker.New()
+			if err != nil {
+				return err
+			}
 			cacheObj, err := cache.New(repoName, dockerClient)
 			if err != nil {
 				return err

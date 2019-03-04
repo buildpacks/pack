@@ -196,7 +196,7 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 
 func ConfigurePackHome(t *testing.T, packHome, registryPort string) {
 	t.Helper()
-	tag := packTag()
+	tag := PackTag()
 	AssertNil(t, ioutil.WriteFile(filepath.Join(packHome, "config.toml"), []byte(fmt.Sprintf(`
 				default-stack-id = "io.buildpacks.stacks.bionic"
                 default-builder = "%s"
@@ -312,12 +312,12 @@ func PushImage(dockerCli *docker.Client, ref string, registryConfig *TestRegistr
 	return rc.Close()
 }
 
-const defaultTag = "v3alpha2"
+const DefaultTag = "v3alpha2"
 
-func packTag() string {
+func PackTag() string {
 	tag := os.Getenv("PACK_TAG")
 	if tag == "" {
-		return defaultTag
+		return DefaultTag
 	}
 	return tag
 }
@@ -521,6 +521,35 @@ func RunInImage(t *testing.T, dockerCli *docker.Client, volumes []string, repoNa
 		AssertNil(t, err)
 	}
 	return buf.String()
+}
+
+func RecursiveCopy(t *testing.T, src, dst string) {
+	t.Helper()
+	fis, err := ioutil.ReadDir(src)
+	AssertNil(t, err)
+	for _, fi := range fis {
+		if fi.Mode().IsRegular() {
+			srcFile, err := os.Open(filepath.Join(src, fi.Name()))
+			AssertNil(t, err)
+			dstFile, err := os.OpenFile(filepath.Join(dst, fi.Name()),  os.O_RDWR|os.O_CREATE|os.O_TRUNC, fi.Mode())
+			AssertNil(t, err)
+			_, err = io.Copy(dstFile, srcFile)
+			AssertNil(t, err)
+			modifiedtime := time.Time{}
+			err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedtime, modifiedtime)
+			AssertNil(t, err)
+		}
+		if fi.IsDir() {
+			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
+			AssertNil(t, err)
+			RecursiveCopy(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+		}
+	}
+	modifiedtime := time.Time{}
+	err = os.Chtimes(dst, modifiedtime, modifiedtime)
+	AssertNil(t, err)
+	err = os.Chmod(dst, 0775)
+	AssertNil(t, err)
 }
 
 func UntarSingleFile(r io.Reader, fileName string) ([]byte, error) {

@@ -381,6 +381,8 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			builderRepoName string
 			containerName   string
 			repoName        string
+			builderTOML     string
+			tmpDir          string
 		)
 
 		it.Before(func() {
@@ -389,15 +391,40 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			builderRepoName = "some-org/" + h.RandString(10)
 			repoName = "some-org/" + h.RandString(10)
 			containerName = "test-" + h.RandString(10)
+			if h.PackTag() != h.DefaultTag {
+				var err error
+				tmpDir, err = ioutil.TempDir("", "create-builder-toml-with-tags")
+				h.AssertNil(t, err)
+				h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks"), tmpDir)
+				builderTOML = filepath.Join(tmpDir, "builder.toml")
+				builderTOMLContents, err := ioutil.ReadFile(builderTOML)
+				h.AssertNil(t, err)
+				newBuilderTOML := strings.Replace(
+					string(builderTOMLContents),
+					"packs/build:"+h.DefaultTag,
+					h.DefaultBuildImage(t, registryConfig.RunRegistryPort),
+					-1,
+				)
+				newBuilderTOML = strings.Replace(
+					string(newBuilderTOML),
+					"packs/run:"+h.DefaultTag,
+					h.DefaultRunImage(t, registryConfig.RunRegistryPort),
+					-1,
+				)
+				err = ioutil.WriteFile(builderTOML, []byte(newBuilderTOML), 0777)
+				h.AssertNil(t, err)
+			} else {
+				builderTOML = filepath.Join("testdata", "mock_buildpacks", "builder.toml")
+			}
 		})
 
 		it.After(func() {
+			os.RemoveAll(tmpDir)
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 			dockerCli.ImageRemove(context.TODO(), builderRepoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
 		})
 
 		it("builds and exports an image", func() {
-			builderTOML := filepath.Join("testdata", "mock_buildpacks", "builder.toml")
 			sourceCodePath := filepath.Join("testdata", "mock_app")
 
 			t.Log("create builder image")
@@ -407,16 +434,15 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 			t.Log("build uses order defined in builder.toml")
 			cmd = packCmd("build", repoName, "--builder", builderRepoName, "--path", sourceCodePath, "--no-pull")
-			buildOutput, err := cmd.CombinedOutput()
-			h.AssertNil(t, err)
+			buildOutput := h.Run(t, cmd)
 			defer func(origID string) { h.AssertNil(t, h.DockerRmi(dockerCli, origID)) }(h.ImageID(t, repoName))
-			if !strings.Contains(string(buildOutput), "First Mock Buildpack: pass") {
+			if !strings.Contains(buildOutput, "First Mock Buildpack: pass") {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "First Mock Buildpack: pass", buildOutput)
 			}
-			if !strings.Contains(string(buildOutput), "Second Mock Buildpack: pass") {
+			if !strings.Contains(buildOutput, "Second Mock Buildpack: pass") {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Second Mock Buildpack: pass", buildOutput)
 			}
-			if !strings.Contains(string(buildOutput), "Third Mock Buildpack: pass") {
+			if !strings.Contains(buildOutput, "Third Mock Buildpack: pass") {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Third Mock Buildpack: pass", buildOutput)
 			}
 
@@ -441,17 +467,16 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				"--path", sourceCodePath,
 				"--no-pull",
 			)
-			buildOutput, err = cmd.CombinedOutput()
-			h.AssertNil(t, err)
+			buildOutput = h.Run(t, cmd)
 			defer func(origID string) { h.AssertNil(t, h.DockerRmi(dockerCli, origID)) }(h.ImageID(t, repoName))
 			latestInfo := "No version for 'mock.bp.first' buildpack provided, will use 'mock.bp.first@latest'"
-			if !strings.Contains(string(buildOutput), latestInfo) {
+			if !strings.Contains(buildOutput, latestInfo) {
 				t.Fatalf(`expected build output to contain "%s", got "%s"`, latestInfo, buildOutput)
 			}
-			if !strings.Contains(string(buildOutput), "Latest First Mock Buildpack: pass") {
+			if !strings.Contains(buildOutput, "Latest First Mock Buildpack: pass") {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Latest First Mock Buildpack: pass", buildOutput)
 			}
-			if !strings.Contains(string(buildOutput), "Third Mock Buildpack: pass") {
+			if !strings.Contains(buildOutput, "Third Mock Buildpack: pass") {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Third Mock Buildpack: pass", buildOutput)
 			}
 

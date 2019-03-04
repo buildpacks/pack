@@ -29,7 +29,7 @@ import (
 //go:generate mockgen -package mocks -destination mocks/cache.go github.com/buildpack/pack Cache
 type Cache interface {
 	Clear(context.Context) error
-	Volume() string
+	Image() string
 }
 
 type BuildFactory struct {
@@ -248,11 +248,10 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 
 	b.Cache = bf.Cache
-	bf.Logger.Verbose(fmt.Sprintf("Using cache volume %s", style.Symbol(b.Cache.Volume())))
+	bf.Logger.Verbose(fmt.Sprintf("Using cache volume %s", style.Symbol(b.Cache.Image())))
 
 	b.LifecycleConfig = build.LifecycleConfig{
 		BuilderImage: b.Builder,
-		VolumeName:   b.Cache.Volume(),
 		Logger:       b.Logger,
 		Buildpacks:   f.Buildpacks,
 		EnvFile:      envFile,
@@ -308,6 +307,11 @@ func (b *BuildConfig) Run(ctx context.Context) error {
 		return err
 	}
 
+	b.Logger.Verbose(style.Step("RESTORING"))
+	if err := b.Restorer(ctx, lifecycle); err != nil {
+		return err
+	}
+
 	b.Logger.Verbose(style.Step("ANALYZING"))
 	b.Logger.Verbose("Reading information from previous image for possible re-use")
 	if err := b.Analyze(ctx, lifecycle); err != nil {
@@ -324,6 +328,11 @@ func (b *BuildConfig) Run(ctx context.Context) error {
 		return err
 	}
 
+	b.Logger.Verbose(style.Step("CACHING"))
+	if err := b.Cacher(ctx, lifecycle); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -332,7 +341,7 @@ func (b *BuildConfig) Detect(ctx context.Context, lifecycle *build.Lifecycle) er
 		if err := b.Cache.Clear(ctx); err != nil {
 			return errors.Wrap(err, "clearing cache")
 		}
-		b.Logger.Verbose("Cache volume %s cleared", style.Symbol(b.Cache.Volume()))
+		b.Logger.Verbose("Cache volume %s cleared", style.Symbol(b.Cache.Image()))
 	}
 	phase, err := lifecycle.NewPhase(
 		"detector",
@@ -350,6 +359,25 @@ func (b *BuildConfig) Detect(ctx context.Context, lifecycle *build.Lifecycle) er
 	if err := phase.Run(ctx); err != nil {
 		return errors.Wrap(err, "run detect container")
 	}
+	return nil
+}
+
+func (b *BuildConfig) Restorer(ctx context.Context, lifecycle *build.Lifecycle) error {
+	phase, err := lifecycle.NewPhase(
+		"restorer",
+		build.WithArgs("-image="+b.Cache.Image()),
+		build.WithDaemonAccess(),
+	)
+
+	if err != nil {
+		return err
+	}
+	defer phase.Cleanup()
+
+	if err := phase.Run(ctx); err != nil {
+		return errors.Wrap(err, "run restorer container")
+	}
+
 	return nil
 }
 
@@ -378,7 +406,7 @@ func (b *BuildConfig) Analyze(ctx context.Context, lifecycle *build.Lifecycle) e
 	if err != nil {
 		return errors.Wrap(err, "get pack uid and gid")
 	}
-	if err := b.chownDir(ctx, launchDir, uid, gid); err != nil {
+	if err := b.chownDir(ctx, lifecycle, launchDir, uid, gid); err != nil {
 		return errors.Wrap(err, "chown launch dir")
 	}
 
@@ -435,12 +463,31 @@ func (b *BuildConfig) Export(ctx context.Context, lifecycle *build.Lifecycle) er
 	if err != nil {
 		return errors.Wrap(err, "get pack uid and gid")
 	}
-	if err := b.chownDir(ctx, launchDir, uid, gid); err != nil {
+	if err := b.chownDir(ctx, lifecycle, launchDir, uid, gid); err != nil {
 		return errors.Wrap(err, "chown launch dir")
 	}
 	if err = export.Run(ctx); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (b *BuildConfig) Cacher(ctx context.Context, lifecycle *build.Lifecycle) error {
+	phase, err := lifecycle.NewPhase(
+		"cacher",
+		build.WithArgs("-image="+b.Cache.Image()),
+		build.WithDaemonAccess(),
+	)
+
+	if err != nil {
+		return err
+	}
+	defer phase.Cleanup()
+
+	if err := phase.Run(ctx); err != nil {
+		return errors.Wrap(err, "run cacher container")
+	}
+
 	return nil
 }
 
@@ -473,7 +520,7 @@ func (b *BuildConfig) packUidGid(ctx context.Context, builder string) (int, int,
 	return uid, gid, nil
 }
 
-func (b *BuildConfig) chownDir(ctx context.Context, path string, uid, gid int) error {
+func (b *BuildConfig) chownDir(ctx context.Context, lifecycle *build.Lifecycle, path string, uid, gid int) error {
 	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
 		Image:  b.Builder,
 		Cmd:    []string{"chown", "-R", fmt.Sprintf("%d:%d", uid, gid), path},
@@ -481,7 +528,7 @@ func (b *BuildConfig) chownDir(ctx context.Context, path string, uid, gid int) e
 		Labels: map[string]string{"author": "pack"},
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", b.Cache.Volume(), launchDir),
+			fmt.Sprintf("%s:%s:", lifecycle.WorkspaceVolume, launchDir),
 		},
 	}, nil, "")
 	if err != nil {

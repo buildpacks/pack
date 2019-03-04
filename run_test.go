@@ -85,7 +85,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 
-			mockCache.EXPECT().Volume().Return("some-volume").AnyTimes()
+			mockCache.EXPECT().Image().Return("some-volume").AnyTimes()
 		})
 
 		it.After(func() {
