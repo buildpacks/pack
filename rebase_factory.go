@@ -2,6 +2,8 @@ package pack
 
 import (
 	"encoding/json"
+	"errors"
+
 	"github.com/buildpack/pack/logging"
 
 	"github.com/buildpack/lifecycle"
@@ -43,15 +45,18 @@ func (f *RebaseFactory) RebaseConfigFromFlags(flags RebaseFlags) (RebaseConfig, 
 		return RebaseConfig{}, err
 	}
 
-	//todo if no -rrun-image and no label run image tell the user something
-	//todo: Check  if run image flag has been passed and set that as the run image
-	runImageName, err := appImage.Label("io.buildpacks.run-image") // TODO : const the label name
-	if err != nil {
-		return RebaseConfig{}, err
+	var runImageName string
+	if flags.RunImage != "" {
+		runImageName = flags.RunImage
+	} else {
+		runImageName, err = appImage.Label(RunImageLabel) // TODO : const the label name
+		if err != nil {
+			return RebaseConfig{}, err
+		}
 	}
 
 	if runImageName == "" {
-		runImageName = flags.RunImage
+		return RebaseConfig{}, errors.New("run image must be specified")
 	}
 
 	baseImage, err := newImage(runImageName)

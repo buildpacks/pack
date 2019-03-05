@@ -3,9 +3,11 @@ package pack_test
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/buildpack/pack/logging"
-	"github.com/fatih/color"
 	"testing"
+
+	"github.com/fatih/color"
+
+	"github.com/buildpack/pack/logging"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/golang/mock/gomock"
@@ -65,6 +67,73 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("#RebaseConfigFromFlags", func() {
+			when("run image is provided by the user", func() {
+				when("the image has a label with a run image specified", func() {
+					it("uses the run image provided by the user", func() {
+						mockBaseImage := mocks.NewMockImage(mockController)
+						mockImage := mocks.NewMockImage(mockController)
+						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", true).Return(mockImage, nil)
+						mockImageFactory.EXPECT().NewLocal("my/run/image", true).Return(mockBaseImage, nil)
+
+						flags := pack.RebaseFlags{
+							RunImage: "my/run/image",
+							RepoName: "myorg/myrepo",
+						}
+
+						_, err := factory.RebaseConfigFromFlags(flags)
+						h.AssertNil(t, err)
+					})
+				})
+				when("the image does not have a label with a run image specified", func() {
+					it("uses the run image provided by the user", func() {
+						mockBaseImage := mocks.NewMockImage(mockController)
+						mockImage := mocks.NewMockImage(mockController)
+						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", true).Return(mockImage, nil)
+						mockImageFactory.EXPECT().NewLocal("my/run/image", true).Return(mockBaseImage, nil)
+
+						flags := pack.RebaseFlags{
+							RunImage: "my/run/image",
+							RepoName: "myorg/myrepo",
+						}
+
+						_, err := factory.RebaseConfigFromFlags(flags)
+						h.AssertNil(t, err)
+					})
+				})
+			})
+			when("run image is NOT provided by the user", func() {
+				when("the image has a label with a run image specified", func() {
+					it("uses the run image provided in the App image label", func() {
+						mockBaseImage := mocks.NewMockImage(mockController)
+						mockImage := mocks.NewMockImage(mockController)
+						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", true).Return(mockImage, nil)
+						mockImageFactory.EXPECT().NewLocal("some/other/runimage", true).Return(mockBaseImage, nil)
+						mockImage.EXPECT().Label("io.buildpacks.run-image").Return("some/other/runimage", nil)
+
+						flags := pack.RebaseFlags{
+							RepoName: "myorg/myrepo",
+						}
+
+						_, err := factory.RebaseConfigFromFlags(flags)
+						h.AssertNil(t, err)
+					})
+				})
+				when("the image does not have a label with a run image specified", func() {
+					it("returns an error", func() {
+						mockImage := mocks.NewMockImage(mockController)
+						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", true).Return(mockImage, nil)
+						mockImage.EXPECT().Label("io.buildpacks.run-image").Return("", nil)
+
+						flags := pack.RebaseFlags{
+							RepoName: "myorg/myrepo",
+						}
+
+						_, err := factory.RebaseConfigFromFlags(flags)
+						h.AssertError(t, err, "run image must be specified")
+					})
+				})
+			})
+
 			when("publish is false", func() {
 				when("no-pull is false", func() {
 					it("XXXX", func() {
@@ -72,10 +141,10 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 						mockImage := mocks.NewMockImage(mockController)
 						mockImageFactory.EXPECT().NewLocal("default/run", true).Return(mockBaseImage, nil)
 						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", true).Return(mockImage, nil)
-						mockImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.default.stack", nil)
 
 						cfg, err := factory.RebaseConfigFromFlags(pack.RebaseFlags{
 							RepoName: "myorg/myrepo",
+							RunImage: "default/run",
 							Publish:  false,
 							NoPull:   false,
 						})
@@ -92,10 +161,10 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 						mockImage := mocks.NewMockImage(mockController)
 						mockImageFactory.EXPECT().NewLocal("default/run", false).Return(mockBaseImage, nil)
 						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", false).Return(mockImage, nil)
-						mockImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.default.stack", nil)
 
 						cfg, err := factory.RebaseConfigFromFlags(pack.RebaseFlags{
 							RepoName: "myorg/myrepo",
+							RunImage: "default/run",
 							Publish:  false,
 							NoPull:   true,
 						})
@@ -114,10 +183,10 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 						mockImage := mocks.NewMockImage(mockController)
 						mockImageFactory.EXPECT().NewRemote("default/run").Return(mockBaseImage, nil)
 						mockImageFactory.EXPECT().NewRemote("myorg/myrepo").Return(mockImage, nil)
-						mockImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.default.stack", nil)
 
 						cfg, err := factory.RebaseConfigFromFlags(pack.RebaseFlags{
 							RepoName: "myorg/myrepo",
+							RunImage: "default/run",
 							Publish:  true,
 							NoPull:   false,
 						})
