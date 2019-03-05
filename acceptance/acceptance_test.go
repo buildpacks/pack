@@ -426,7 +426,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 		it.Before(func() {
 			skipOnWindows(t, "create builder is not implemented on windows")
-			skipOnCI(t, "create builder is not working on concourse")
 			builderRepoName = "some-org/" + h.RandString(10)
 			repoName = "some-org/" + h.RandString(10)
 			containerName = "test-" + h.RandString(10)
@@ -750,12 +749,6 @@ func ctrlCProc(cmd *exec.Cmd) error {
 
 func skipOnWindows(t *testing.T, message string) {
 	if runtime.GOOS == "windows" {
-		t.Skip(message)
-	}
-}
-
-func skipOnCI(t *testing.T, message string) {
-	if os.Getenv("IS_CI") == "true" {
 		t.Skip(message)
 	}
 }
