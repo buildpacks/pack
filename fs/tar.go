@@ -73,25 +73,23 @@ func (*FS) CreateSingleFileTar(tarFile, path, txt string) error {
 
 func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int) error {
 	parent := filepath.Dir(tarDir)
-	if parent == "." || parent == "/" {
-		return nil
-	} else {
+	if parent != "." && parent != "/" {
 		if err := writeParentDirectoryHeaders(parent, tw, uid, gid); err != nil {
 			return err
 		}
-		header := &tar.Header{
-			Name:     parent,
-			Uid:      uid,
-			Gid:      gid,
-			Mode:     0755,
-			Typeflag: tar.TypeDir,
-			ModTime:  time.Time{},
-		}
-		if err := tw.WriteHeader(header); err != nil {
-			return err
-		}
-		return nil
 	}
+	header := &tar.Header{
+		Name:     tarDir,
+		Uid:      uid,
+		Gid:      gid,
+		Mode:     0755,
+		Typeflag: tar.TypeDir,
+		ModTime:  time.Time{},
+	}
+	if err := tw.WriteHeader(header); err != nil {
+		return err
+	}
+	return nil
 }
 
 func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
@@ -126,6 +124,9 @@ func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 		relPath, err := filepath.Rel(srcDir, file)
 		if err != nil {
 			return err
+		}
+		if relPath == "." {
+			return nil
 		}
 		header.Name = filepath.Join(tarDir, relPath)
 		if runtime.GOOS == "windows" {
