@@ -2,7 +2,6 @@ package fs_test
 
 import (
 	"archive/tar"
-	"github.com/fatih/color"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -10,6 +9,8 @@ import (
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/fatih/color"
 
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -58,15 +59,24 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 		tr := tar.NewReader(file)
 
 		verify := tarVerifier{t, tr, 1234, 2345}
-		verify.nextDirectory("/nested")
-		verify.nextDirectory("/nested/dir")
-		verify.nextDirectory("/nested/dir/dir-in-archive")
+		verify.nextDirectory("/nested", 0755)
+		verify.nextDirectory("/nested/dir", 0755)
+		verify.nextDirectory("/nested/dir/dir-in-archive", 0755)
 		verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content")
-		verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir")
+		verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir", fileMode(t, filepath.Join(src, "sub-dir")))
 		if runtime.GOOS != "windows" {
 			verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 		}
 	})
+}
+
+func fileMode(t *testing.T, path string) int64 {
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("failed to stat %s", path)
+	}
+	mode := int64(info.Mode() & os.ModePerm)
+	return mode
 }
 
 type tarVerifier struct {
@@ -76,7 +86,7 @@ type tarVerifier struct {
 	gid int
 }
 
-func (v *tarVerifier) nextDirectory(name string) {
+func (v *tarVerifier) nextDirectory(name string, mode int64) {
 	header, err := v.tr.Next()
 	if err != nil {
 		v.t.Fatalf("Failed to get next file: %s", err)
@@ -94,8 +104,8 @@ func (v *tarVerifier) nextDirectory(name string) {
 	if header.Gid != v.gid {
 		v.t.Fatalf(`expected %s to have gid %d but, got: %d`, header.Name, v.gid, header.Gid)
 	}
-	if header.Mode != 0755 {
-		v.t.Fatalf(`expected %s to have mode %o but, got: %o`, header.Name, 0755, header.Mode)
+	if header.Mode != mode {
+		v.t.Fatalf(`expected %s to have mode %o but, got: %o`, header.Name, mode, header.Mode)
 	}
 }
 
