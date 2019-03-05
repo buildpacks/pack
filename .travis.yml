@@ -23,7 +23,7 @@ jobs:
     os: linux
     script:
     |
-      docker pull packs/build:0.0.1-rc.719
-      docker pull packs/run:0.0.1-rc.719
-      docker pull packs/samples:0.0.1-rc.719
-      PACK_TAG=0.0.1-rc.719 go test -count=1 -parallel=1 -v ./... && go test -count=2 -parallel=1 -v -tags=acceptance ./acceptance/...
+      docker pull packs/build:0.0.1-rc.731
+      docker pull packs/run:0.0.1-rc.731
+      docker pull packs/samples:0.0.1-rc.731
+      PACK_TAG=0.0.1-rc.731 go test -count=1 -parallel=1 -v ./... && go test -count=2 -parallel=1 -v -tags=acceptance ./acceptance/...
