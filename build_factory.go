@@ -172,14 +172,6 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		return nil, err
 	}
 
-	builderStackID, err := builderImage.Label(StackLabel)
-	if err != nil {
-		return nil, fmt.Errorf("invalid builder image %s: %s", style.Symbol(b.Builder), err)
-	}
-	if builderStackID == "" {
-		return nil, fmt.Errorf("invalid builder image %s: missing required label %s", style.Symbol(b.Builder), style.Symbol(StackLabel))
-	}
-
 	if f.RunImage != "" {
 		bf.Logger.Verbose("Using user-provided run image %s", style.Symbol(f.RunImage))
 		b.RunImage = f.RunImage
@@ -236,14 +228,6 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		} else if err != nil {
 			return nil, fmt.Errorf("invalid run image %s: %s", style.Symbol(b.RunImage), err)
 		}
-	}
-
-	if runStackID, err := runImage.Label(StackLabel); err != nil {
-		return nil, fmt.Errorf("invalid run image %s: %s", style.Symbol(b.RunImage), err)
-	} else if runStackID == "" {
-		return nil, fmt.Errorf("invalid run image %s: missing required label %s", style.Symbol(b.RunImage), style.Symbol(StackLabel))
-	} else if builderStackID != runStackID {
-		return nil, fmt.Errorf("invalid stack: stack %s from run image %s does not match stack %s from builder image %s", style.Symbol(runStackID), style.Symbol(b.RunImage), style.Symbol(builderStackID), style.Symbol(b.Builder))
 	}
 
 	b.Cache = bf.Cache

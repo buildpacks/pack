@@ -5,7 +5,6 @@ import (
 )
 
 const (
-	StackLabel           = "io.buildpacks.stack.id" // TODO : remove me
 	BuilderMetadataLabel = "io.buildpacks.builder.metadata"
 	RunImageLabel        = "io.buildpacks.run-image"
 )
