@@ -45,12 +45,6 @@ func main() {
 	rootCmd.AddCommand(commands.InspectBuilder(&logger, &inspect, &imageFactory))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger))
 
-	rootCmd.AddCommand(commands.AddStack(&logger))
-	rootCmd.AddCommand(commands.UpdateStack(&logger))
-	rootCmd.AddCommand(commands.DeleteStack(&logger))
-	rootCmd.AddCommand(commands.ShowStacks(&logger))
-	rootCmd.AddCommand(commands.SetDefaultStack(&logger))
-
 	rootCmd.AddCommand(commands.Version(&logger, Version))
 
 	if err := rootCmd.Execute(); err != nil {
