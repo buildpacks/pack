@@ -248,7 +248,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 
 	b.Cache = bf.Cache
-	bf.Logger.Verbose(fmt.Sprintf("Using cache volume %s", style.Symbol(b.Cache.Image())))
+	bf.Logger.Verbose(fmt.Sprintf("Using cache image %s", style.Symbol(b.Cache.Image())))
 
 	b.LifecycleConfig = build.LifecycleConfig{
 		BuilderImage: b.Builder,
@@ -296,6 +296,12 @@ func Build(ctx context.Context, outWriter, errWriter io.Writer, appDir, buildIma
 }
 
 func (b *BuildConfig) Run(ctx context.Context) error {
+	if b.ClearCache {
+		if err := b.Cache.Clear(ctx); err != nil {
+			return errors.Wrap(err, "clearing cache")
+		}
+		b.Logger.Verbose("Cache image %s cleared", style.Symbol(b.Cache.Image()))
+	}
 	lifecycle, err := build.NewLifecycle(b.LifecycleConfig)
 	if err != nil {
 		return err
@@ -337,12 +343,6 @@ func (b *BuildConfig) Run(ctx context.Context) error {
 }
 
 func (b *BuildConfig) Detect(ctx context.Context, lifecycle *build.Lifecycle) error {
-	if b.ClearCache {
-		if err := b.Cache.Clear(ctx); err != nil {
-			return errors.Wrap(err, "clearing cache")
-		}
-		b.Logger.Verbose("Cache volume %s cleared", style.Symbol(b.Cache.Image()))
-	}
 	phase, err := lifecycle.NewPhase(
 		"detector",
 		build.WithArgs("-buildpacks", buildpacksDir,
