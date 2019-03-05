@@ -9,7 +9,7 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-func Run(logger *logging.Logger, dockerClient pack.Docker, imageFactory pack.ImageFactory) *cobra.Command {
+func Run(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Command {
 	var runFlags pack.RunFlags
 	ctx := createCancellableContext()
 

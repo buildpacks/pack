@@ -10,7 +10,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func Build(logger *logging.Logger, dockerClient pack.Docker, imageFactory pack.ImageFactory) *cobra.Command {
+func Build(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Command {
 	var buildFlags pack.BuildFlags
 	ctx := createCancellableContext()
 

@@ -19,7 +19,6 @@ var (
 	logger            logging.Logger
 	inspect           pack.BuilderInspect
 	imageFactory      image.Factory
-	dockerClient      docker.Client
 )
 
 func main() {
@@ -30,7 +29,6 @@ func main() {
 			logger = *logging.NewLogger(os.Stdout, os.Stderr, !quiet, timestamps)
 			inspect = initInspect(logger)
 			imageFactory = initImageFactory(logger)
-			dockerClient = initDockerClient(logger)
 		},
 	}
 	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
@@ -38,8 +36,8 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Show less output")
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(&logger, &dockerClient, &imageFactory))
-	rootCmd.AddCommand(commands.Run(&logger, &dockerClient, &imageFactory))
+	rootCmd.AddCommand(commands.Build(&logger, &imageFactory))
+	rootCmd.AddCommand(commands.Run(&logger, &imageFactory))
 	rootCmd.AddCommand(commands.Rebase(&logger, &imageFactory))
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFactory))
