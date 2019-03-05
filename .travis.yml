@@ -23,8 +23,9 @@ jobs:
     os: linux
     script:
     |
+      go test -count=1 -parallel=1 -v ./...
       docker pull packs/build:0.0.1-rc.731
       docker pull packs/run:0.0.1-rc.731
       docker pull packs/samples:0.0.1-rc.731
-      go test -count=1 -parallel=1 -v ./...
-      export PACK_TAG=0.0.1-rc.731 go test -count=2 -parallel=1 -v -tags=acceptance/acceptance_test.go
+      export PACK_TAG=0.0.1-rc.731
+      go test -count=1 -parallel=1 -v -tags=acceptance ./acceptance
