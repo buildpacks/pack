@@ -81,6 +81,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 			h.AssertNil(t, err)
 			h.AssertEq(t, config.RunImage, "some/run")
+			h.AssertEq(t, config.LocallyConfiguredRunImage, false)
 			h.AssertEq(t, config.Builder, "some/builder")
 		})
 
@@ -101,6 +102,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 			h.AssertNil(t, err)
 			h.AssertEq(t, config.RunImage, "some/run")
+			h.AssertEq(t, config.LocallyConfiguredRunImage, false)
 			h.AssertEq(t, config.Builder, "custom/builder")
 		})
 
@@ -122,6 +124,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 			h.AssertNil(t, err)
 			h.AssertEq(t, config.RunImage, "some/run")
+			h.AssertEq(t, config.LocallyConfiguredRunImage, false)
 			h.AssertEq(t, config.Builder, "custom/builder")
 		})
 
@@ -143,10 +146,13 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 			h.AssertNil(t, err)
 			h.AssertEq(t, config.RunImage, "registry.com/some/run")
+			h.AssertEq(t, config.LocallyConfiguredRunImage, false)
 			h.AssertEq(t, config.Builder, "some/builder")
 		})
 
 		when("both builder and local override run images have a matching registry", func() {
+			var mockRunImage *mocks.MockImage
+
 			it.Before(func() {
 				factory.Config.RunImages = []config.RunImage{
 					{
@@ -161,19 +167,34 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 					Return(`{"runImage": {"image": "default/run", "mirrors": ["registry.com/default/run"]}}`, nil)
 				mockImageFactory.EXPECT().NewLocal("some/builder", true).Return(mockBuilderImage, nil)
 
-				mockRunImage := mocks.NewMockImage(mockController)
+				mockRunImage = mocks.NewMockImage(mockController)
 				mockRunImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
 				mockRunImage.EXPECT().Found().Return(true, nil)
-				mockImageFactory.EXPECT().NewLocal("registry.com/override/run", true).Return(mockRunImage, nil)
 			})
 
 			it("selects from local override run images first", func() {
+				mockImageFactory.EXPECT().NewLocal("registry.com/override/run", true).Return(mockRunImage, nil)
+
 				config, err := factory.BuildConfigFromFlags(&pack.BuildFlags{
 					RepoName: "registry.com/some/app",
 					Builder:  "some/builder",
 				})
 				h.AssertNil(t, err)
 				h.AssertEq(t, config.RunImage, "registry.com/override/run")
+				h.AssertEq(t, config.LocallyConfiguredRunImage, true)
+				h.AssertEq(t, config.Builder, "some/builder")
+			})
+
+			it("selects the first local override if no run image matches the registry", func() {
+				mockImageFactory.EXPECT().NewLocal("registry.com/override/run", true).Return(mockRunImage, nil)
+
+				config, err := factory.BuildConfigFromFlags(&pack.BuildFlags{
+					RepoName: "some-other-registry.com/some/app",
+					Builder:  "some/builder",
+				})
+				h.AssertNil(t, err)
+				h.AssertEq(t, config.RunImage, "registry.com/override/run")
+				h.AssertEq(t, config.LocallyConfiguredRunImage, true)
 				h.AssertEq(t, config.Builder, "some/builder")
 			})
 		})
@@ -196,6 +217,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 			h.AssertNil(t, err)
 			h.AssertEq(t, config.RunImage, "some/run")
+			h.AssertEq(t, config.LocallyConfiguredRunImage, false)
 			h.AssertEq(t, config.Builder, "some/builder")
 		})
 
@@ -217,6 +239,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 			h.AssertNil(t, err)
 			h.AssertEq(t, config.RunImage, "override/run")
+			h.AssertEq(t, config.LocallyConfiguredRunImage, true)
 			h.AssertEq(t, config.Builder, "some/builder")
 		})
 
@@ -258,6 +281,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 			h.AssertNil(t, err)
 			h.AssertEq(t, config.RunImage, "some/run")
+			h.AssertEq(t, config.LocallyConfiguredRunImage, false)
 			h.AssertEq(t, config.Builder, "some/builder")
 			h.AssertEq(t, config.LifecycleConfig.AppDir, os.Getenv("PWD"))
 		})

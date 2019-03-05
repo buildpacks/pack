@@ -263,8 +263,8 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 	when("pack rebase", func() {
 		var repoName, containerName, runBefore, runAfter string
 		var buildRunImage func(string, string, string)
-		var setRunImage func(string)
 		var rootContents1 func() string
+
 		it.Before(func() {
 			containerName = "test-" + h.RandString(10)
 			repoName = "some-org/" + h.RandString(10)
@@ -280,13 +280,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 										USER pack
 									`, h.DefaultRunImage(t, registryConfig.RunRegistryPort), contents1, contents2))
 
-			}
-			setRunImage = func(runImage string) {
-				cmd := packCmd(
-					"update-stack", "io.buildpacks.stacks.bionic",
-					"--run-image", runImage,
-				)
-				h.Run(t, cmd)
 			}
 			rootContents1 = func() string {
 				t.Helper()
@@ -304,15 +297,17 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				return txt
 			}
 		})
+
 		it.After(func() {
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 			dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
 
-			h.AssertNil(t, h.DockerRmi(dockerCli, repoName, runBefore, runAfter))
+			h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 		})
 
 		when("run on daemon", func() {
 			var origID string
+
 			it.Before(func() {
 				buildRunImage(runBefore, "contents-before-1", "contents-before-2")
 				cmd := packCmd(
@@ -325,15 +320,15 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				origID = h.ImageID(t, repoName)
 				h.AssertEq(t, rootContents1(), "contents-before-1\n")
 			})
+
 			it.After(func() {
-				h.AssertNil(t, h.DockerRmi(dockerCli, origID))
+				h.AssertNil(t, h.DockerRmi(dockerCli, origID, runBefore, runAfter))
 			})
 
 			it("rebases", func() {
 				buildRunImage(runAfter, "contents-after-1", "contents-after-2")
-				setRunImage(runAfter)
 
-				cmd := packCmd("rebase", repoName, "--no-pull")
+				cmd := packCmd("rebase", repoName, "--no-pull", "--run-image", runAfter)
 				output := h.Run(t, cmd)
 
 				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
@@ -361,16 +356,60 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 			})
 
+			it.After(func() {
+				h.AssertNil(t, h.DockerRmi(dockerCli, runBefore, runAfter))
+			})
+
 			it("rebases", func() {
 				buildRunImage(runAfter, "contents-after-1", "contents-after-2")
-				setRunImage(runAfter)
 				h.AssertNil(t, h.PushImage(dockerCli, runAfter, registryConfig))
 
-				cmd := packCmd("rebase", repoName, "--publish")
+				cmd := packCmd("rebase", repoName, "--publish", "--run-image", runAfter)
 				output := h.Run(t, cmd)
 
 				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
 				h.AssertNil(t, h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+				h.AssertEq(t, rootContents1(), "contents-after-1\n")
+			})
+		})
+
+		//todo do we need this test and if so how do we cleanup
+		when("no run-image flag", func() {
+			var origID string
+			// var defaultRunImage string
+			var builderName = "some-org/" + h.RandString(10)
+			var runImage = "some-org/" + h.RandString(10)
+
+			it.Before(func() {
+				buildRunImage(runImage, "contents-before-1", "contents-before-2")
+
+				h.CreateImageOnLocal(t, dockerCli, builderName, fmt.Sprintf(`
+					FROM %s
+					LABEL %s="{\"runImage\": {\"image\": \"%s\"}}"
+				`, h.DefaultBuilderImage(t, registryConfig.RunRegistryPort), pack.BuilderMetadataLabel, runImage))
+
+				cmd := packCmd(
+					"build", repoName,
+					"-p", "testdata/node_app/",
+					"--builder", builderName,
+					"--no-pull",
+				)
+				h.Run(t, cmd)
+				origID = h.ImageID(t, repoName)
+				h.AssertEq(t, rootContents1(), "contents-before-1\n")
+			})
+
+			it.After(func() {
+				h.AssertNil(t, h.DockerRmi(dockerCli, origID, builderName, runImage))
+			})
+
+			it("rebases", func() {
+				buildRunImage(runImage, "contents-after-1", "contents-after-2")
+
+				cmd := packCmd("rebase", repoName, "--no-pull")
+				output := h.Run(t, cmd)
+
+				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
 				h.AssertEq(t, rootContents1(), "contents-after-1\n")
 			})
 		})

@@ -39,6 +39,7 @@ func Rebase(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Comma
 	}
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling app and run images before use")
+	cmd.Flags().StringVar(&flags.RunImage, "run-image", "", "Run image to use for rebasing")
 	AddHelpFlag(cmd, "rebase")
 	return cmd
 }

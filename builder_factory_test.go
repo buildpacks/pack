@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/buildpack/pack/logging"
+	"github.com/fatih/color"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -12,10 +14,6 @@ import (
 	"runtime"
 	"testing"
 	"time"
-
-	"github.com/fatih/color"
-
-	"github.com/buildpack/pack/logging"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/golang/mock/gomock"

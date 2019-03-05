@@ -54,11 +54,12 @@ type BuildFlags struct {
 }
 
 type BuildConfig struct {
-	Builder    string
-	RunImage   string
-	RepoName   string
-	Publish    bool
-	ClearCache bool
+	Builder                   string
+	RunImage                  string
+	RepoName                  string
+	Publish                   bool
+	ClearCache                bool
+	LocallyConfiguredRunImage bool
 	// Above are copied from BuildFlags are set by init
 	Cli    Docker
 	Logger *logging.Logger
@@ -182,6 +183,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	if f.RunImage != "" {
 		bf.Logger.Verbose("Using user-provided run image %s", style.Symbol(f.RunImage))
 		b.RunImage = f.RunImage
+		b.LocallyConfiguredRunImage = true
 	} else {
 		label, err := builderImage.Label(BuilderMetadataLabel)
 		if err != nil {
@@ -195,19 +197,16 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 			return nil, fmt.Errorf("invalid builder image metadata: %s", err)
 		}
 
-		reg, err := config.Registry(f.RepoName)
-		if err != nil {
-			return nil, err
-		}
 		var overrideRunImages []string
 		if runImage := bf.Config.GetRunImage(builderMetadata.RunImage.Image); runImage != nil {
 			overrideRunImages = runImage.Mirrors
 		}
-		i := append(overrideRunImages, append([]string{builderMetadata.RunImage.Image}, builderMetadata.RunImage.Mirrors...)...)
-		b.RunImage, err = config.ImageByRegistry(reg, i)
+
+		b.RunImage, b.LocallyConfiguredRunImage, err = builderMetadata.RunImageForRepoName(f.RepoName, overrideRunImages)
 		if err != nil {
 			return nil, err
 		}
+
 		b.Logger.Verbose("Selected run image %s from builder %s", style.Symbol(b.RunImage), style.Symbol(b.Builder))
 	}
 
@@ -434,28 +433,55 @@ func (b *BuildConfig) Build(ctx context.Context, lifecycle *build.Lifecycle) err
 	return nil
 }
 
+type exporterArgs struct {
+	args     []string
+	repoName string
+}
+
+func (e *exporterArgs) label(s string) {
+	e.args = append(e.args, "-label", s)
+}
+
+func (e *exporterArgs) add(args ...string) {
+	e.args = append(e.args, args...)
+}
+
+func (e *exporterArgs) daemon() {
+	e.args = append(e.args, "-daemon")
+}
+
+func (e *exporterArgs) list() []string {
+	e.args = append(e.args, e.repoName)
+	return e.args
+}
+
 func (b *BuildConfig) Export(ctx context.Context, lifecycle *build.Lifecycle) error {
 	var export *build.Phase
 	var err error
+
+	args := &exporterArgs{repoName: b.RepoName}
+
+	args.add("-image", b.RunImage,
+		"-layers", launchDir,
+		"-group", groupPath)
+
+	if !b.LocallyConfiguredRunImage {
+		args.label("io.buildpacks.run-image=" + b.RunImage)
+	}
+
 	if b.Publish {
 		export, err = lifecycle.NewPhase(
 			"exporter",
 			build.WithRegistryAccess(b.RepoName, b.RunImage),
-			build.WithArgs("-image", b.RunImage,
-				"-layers", launchDir,
-				"-group", groupPath,
-				b.RepoName),
+			build.WithArgs(args.list()...),
 		)
 	} else {
+		args.daemon()
+
 		export, err = lifecycle.NewPhase(
 			"exporter",
 			build.WithDaemonAccess(),
-			build.WithArgs("-image", b.RunImage,
-				"-layers", launchDir,
-				"-group", groupPath,
-				"-daemon",
-				b.RepoName,
-			),
+			build.WithArgs(args.list()...),
 		)
 	}
 	defer export.Cleanup()

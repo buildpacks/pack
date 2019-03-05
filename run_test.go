@@ -92,7 +92,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			mockController.Finish()
 		})
 
-		it("creates a RunConfig derived from a BuildConfig", func() {
+		it("creates args RunConfig derived from args BuildConfig", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
 			mockBuilderImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil)
 			mockImageFactory.EXPECT().NewLocal("some/builder", true).Return(mockBuilderImage, nil)

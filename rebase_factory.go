@@ -2,14 +2,12 @@ package pack
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/buildpack/pack/logging"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/image"
 
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/style"
 )
 
 type RebaseConfig struct {
@@ -27,6 +25,7 @@ type RebaseFlags struct {
 	RepoName string
 	Publish  bool
 	NoPull   bool
+	RunImage string
 }
 
 func (f *RebaseFactory) RebaseConfigFromFlags(flags RebaseFlags) (RebaseConfig, error) {
@@ -39,27 +38,29 @@ func (f *RebaseFactory) RebaseConfigFromFlags(flags RebaseFlags) (RebaseConfig, 
 		}
 	}
 
-	image, err := newImage(flags.RepoName)
+	appImage, err := newImage(flags.RepoName)
 	if err != nil {
 		return RebaseConfig{}, err
 	}
 
-	stackID, err := image.Label(StackLabel)
+	//todo if no -rrun-image and no label run image tell the user something
+	//todo: Check  if run image flag has been passed and set that as the run image
+	runImageName, err := appImage.Label("io.buildpacks.run-image") // TODO : const the label name
 	if err != nil {
 		return RebaseConfig{}, err
 	}
 
-	baseImageName, err := f.runImageName(stackID, flags.RepoName)
+	if runImageName == "" {
+		runImageName = flags.RunImage
+	}
+
+	baseImage, err := newImage(runImageName)
 	if err != nil {
 		return RebaseConfig{}, err
 	}
 
-	baseImage, err := newImage(baseImageName)
-	if err != nil {
-		return RebaseConfig{}, err
-	}
 	return RebaseConfig{
-		Image:        image,
+		Image:        appImage,
 		NewBaseImage: baseImage,
 	}, nil
 }
@@ -95,19 +96,4 @@ func (f *RebaseFactory) Rebase(cfg RebaseConfig) error {
 		return err
 	}
 	return nil
-}
-
-func (f *RebaseFactory) runImageName(stackID, repoName string) (string, error) {
-	stack, err := f.Config.GetStack(stackID)
-	if err != nil {
-		return "", err
-	}
-	if len(stack.RunImages) == 0 {
-		return "", fmt.Errorf("invalid stack: stack %s requies at least one run image", style.Symbol(stack.ID))
-	}
-	registry, err := config.Registry(repoName)
-	if err != nil {
-		return "", err
-	}
-	return config.ImageByRegistry(registry, stack.RunImages)
 }

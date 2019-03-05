@@ -468,14 +468,15 @@ cache = false
 			buildCache, err := cache.New(repoName, dockerCli)
 			defaultBuilderName = h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)
 			subject = &pack.BuildConfig{
-				Builder:  defaultBuilderName,
-				RunImage: h.DefaultRunImage(t, registryConfig.RunRegistryPort),
-				RepoName: repoName,
-				Publish:  false,
-				Cache:    buildCache,
-				Logger:   logger,
-				FS:       &fs.FS{},
-				Cli:      dockerCli,
+				Builder:                   defaultBuilderName,
+				RunImage:                  h.DefaultRunImage(t, registryConfig.RunRegistryPort),
+				LocallyConfiguredRunImage: false,
+				RepoName:                  repoName,
+				Publish:                   false,
+				Cache:                     buildCache,
+				Logger:                    logger,
+				FS:                        &fs.FS{},
+				Cli:                       dockerCli,
 				LifecycleConfig: build.LifecycleConfig{
 					BuilderImage: defaultBuilderName,
 					Logger:       logger,
@@ -552,23 +553,58 @@ cache = false
 				h.AssertEq(t, string(txt), "content")
 			})
 
-			it("sets the metadata on the image", func() {
-				h.AssertNil(t, subject.Export(ctx, lifecycle))
+			when("the run image is the default image", func() {
+				it("sets the sets the run image label on the metadata of the image", func() {
+					subject.LocallyConfiguredRunImage = false
 
-				h.AssertNil(t, h.PullImageWithAuth(dockerCli, subject.RepoName, registryConfig.RegistryAuth()))
-				defer h.DockerRmi(dockerCli, subject.RepoName)
-				var metadata lifecyclepkg.AppImageMetadata
-				metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
-				h.AssertNil(t, json.Unmarshal([]byte(metadataJSON), &metadata))
+					h.AssertNil(t, subject.Export(ctx, lifecycle))
 
-				h.AssertEq(t, metadata.RunImage.SHA, runSHA)
-				h.AssertEq(t, metadata.RunImage.TopLayer, runTopLayer)
-				h.AssertContains(t, metadata.App.SHA, "sha256:")
-				h.AssertContains(t, metadata.Config.SHA, "sha256:")
-				h.AssertEq(t, len(metadata.Buildpacks), 1)
-				h.AssertContains(t, metadata.Buildpacks[0].Layers["mylayer"].SHA, "sha256:")
-				h.AssertEq(t, metadata.Buildpacks[0].Layers["mylayer"].Data, map[string]interface{}{"key": "myval"})
-				h.AssertContains(t, metadata.Buildpacks[0].Layers["other"].SHA, "sha256:")
+					h.AssertNil(t, h.PullImageWithAuth(dockerCli, subject.RepoName, registryConfig.RegistryAuth()))
+					defer h.DockerRmi(dockerCli, subject.RepoName)
+					var metadata lifecyclepkg.AppImageMetadata
+					metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
+					t.Log(metadataJSON)
+					h.AssertNil(t, json.Unmarshal([]byte(metadataJSON), &metadata))
+
+					h.AssertEq(t, metadata.RunImage.SHA, runSHA)
+					h.AssertEq(t, metadata.RunImage.TopLayer, runTopLayer)
+					h.AssertContains(t, metadata.App.SHA, "sha256:")
+					h.AssertContains(t, metadata.Config.SHA, "sha256:")
+					h.AssertEq(t, len(metadata.Buildpacks), 1)
+					h.AssertContains(t, metadata.Buildpacks[0].Layers["mylayer"].SHA, "sha256:")
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["mylayer"].Data, map[string]interface{}{"key": "myval"})
+					h.AssertContains(t, metadata.Buildpacks[0].Layers["other"].SHA, "sha256:")
+
+					runImageLabel := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.run-image")
+					h.AssertEq(t, runImageLabel, h.DefaultRunImage(t, registryConfig.RunRegistryPort))
+				})
+			})
+
+			// todo when
+			when("the run image is the configured locally", func() {
+				it("does not set the run image label", func() {
+					subject.LocallyConfiguredRunImage = true
+
+					h.AssertNil(t, subject.Export(ctx, lifecycle))
+
+					h.AssertNil(t, h.PullImageWithAuth(dockerCli, subject.RepoName, registryConfig.RegistryAuth()))
+					defer h.DockerRmi(dockerCli, subject.RepoName)
+					var metadata lifecyclepkg.AppImageMetadata
+					metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
+					t.Log(metadataJSON)
+					h.AssertNil(t, json.Unmarshal([]byte(metadataJSON), &metadata))
+
+					h.AssertEq(t, metadata.RunImage.SHA, runSHA)
+					h.AssertEq(t, metadata.RunImage.TopLayer, runTopLayer)
+					h.AssertContains(t, metadata.App.SHA, "sha256:")
+					h.AssertContains(t, metadata.Config.SHA, "sha256:")
+					h.AssertEq(t, len(metadata.Buildpacks), 1)
+					h.AssertContains(t, metadata.Buildpacks[0].Layers["mylayer"].SHA, "sha256:")
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["mylayer"].Data, map[string]interface{}{"key": "myval"})
+					h.AssertContains(t, metadata.Buildpacks[0].Layers["other"].SHA, "sha256:")
+
+					assertImageLabelAbsent(t, dockerCli, subject.RepoName, "io.buildpacks.run-image")
+				})
 			})
 		})
 
@@ -601,21 +637,51 @@ cache = false
 				h.AssertEq(t, string(txt), "content")
 			})
 
-			it("sets the metadata on the image", func() {
-				h.AssertNil(t, subject.Export(ctx, lifecycle))
+			when("the run image is the configured locally", func() {
+				it("does not set the run image metadata on the image", func() {
+					subject.LocallyConfiguredRunImage = true
 
-				var metadata lifecyclepkg.AppImageMetadata
-				metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
-				h.AssertNil(t, json.Unmarshal([]byte(metadataJSON), &metadata))
+					h.AssertNil(t, subject.Export(ctx, lifecycle))
 
-				h.AssertEq(t, metadata.RunImage.SHA, runSHA)
-				h.AssertEq(t, metadata.RunImage.TopLayer, runTopLayer)
-				h.AssertContains(t, metadata.App.SHA, "sha256:")
-				h.AssertContains(t, metadata.Config.SHA, "sha256:")
-				h.AssertEq(t, len(metadata.Buildpacks), 1)
-				h.AssertContains(t, metadata.Buildpacks[0].Layers["mylayer"].SHA, "sha256:")
-				h.AssertEq(t, metadata.Buildpacks[0].Layers["mylayer"].Data, map[string]interface{}{"key": "myval"})
-				h.AssertContains(t, metadata.Buildpacks[0].Layers["other"].SHA, "sha256:")
+					var metadata lifecyclepkg.AppImageMetadata
+					metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
+					h.AssertNil(t, json.Unmarshal([]byte(metadataJSON), &metadata))
+
+					h.AssertEq(t, metadata.RunImage.SHA, runSHA)
+					h.AssertEq(t, metadata.RunImage.TopLayer, runTopLayer)
+					h.AssertContains(t, metadata.App.SHA, "sha256:")
+					h.AssertContains(t, metadata.Config.SHA, "sha256:")
+					h.AssertEq(t, len(metadata.Buildpacks), 1)
+					h.AssertContains(t, metadata.Buildpacks[0].Layers["mylayer"].SHA, "sha256:")
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["mylayer"].Data, map[string]interface{}{"key": "myval"})
+					h.AssertContains(t, metadata.Buildpacks[0].Layers["other"].SHA, "sha256:")
+
+					assertImageLabelAbsent(t, dockerCli, subject.RepoName, "io.buildpacks.run-image")
+				})
+			})
+
+			when("the run image is the default image", func() {
+				it("sets the run image metadata", func() {
+					subject.LocallyConfiguredRunImage = false
+
+					h.AssertNil(t, subject.Export(ctx, lifecycle))
+
+					var metadata lifecyclepkg.AppImageMetadata
+					metadataJSON := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.lifecycle.metadata")
+					h.AssertNil(t, json.Unmarshal([]byte(metadataJSON), &metadata))
+
+					h.AssertEq(t, metadata.RunImage.SHA, runSHA)
+					h.AssertEq(t, metadata.RunImage.TopLayer, runTopLayer)
+					h.AssertContains(t, metadata.App.SHA, "sha256:")
+					h.AssertContains(t, metadata.Config.SHA, "sha256:")
+					h.AssertEq(t, len(metadata.Buildpacks), 1)
+					h.AssertContains(t, metadata.Buildpacks[0].Layers["mylayer"].SHA, "sha256:")
+					h.AssertEq(t, metadata.Buildpacks[0].Layers["mylayer"].Data, map[string]interface{}{"key": "myval"})
+					h.AssertContains(t, metadata.Buildpacks[0].Layers["other"].SHA, "sha256:")
+
+					runImageLabel := imageLabel(t, dockerCli, subject.RepoName, "io.buildpacks.run-image")
+					h.AssertEq(t, runImageLabel, h.DefaultRunImage(t, registryConfig.RunRegistryPort))
+				})
 			})
 
 			when("PACK_USER_ID and PACK_GROUP_ID are set on builder", func() {
@@ -704,7 +770,20 @@ func imageLabel(t *testing.T, dockerCli *docker.Client, repoName, labelName stri
 	t.Helper()
 	inspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), repoName)
 	h.AssertNil(t, err)
-	return inspect.Config.Labels[labelName]
+	label, ok := inspect.Config.Labels[labelName]
+	if !ok {
+		t.Errorf("expected label %s to exist", labelName)
+	}
+	return label
+}
+func assertImageLabelAbsent(t *testing.T, dockerCli *docker.Client, repoName, labelName string) {
+	t.Helper()
+	inspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), repoName)
+	h.AssertNil(t, err)
+	val, ok := inspect.Config.Labels[labelName]
+	if ok {
+		t.Errorf("expected label %s not to exist but was %s", labelName, val)
+	}
 }
 
 func imageList(t *testing.T, dockerCli *docker.Client) []string {
