@@ -1,4 +1,4 @@
-# pack - Buildpack CLI [![Travis Build Status](https://travis-ci.org/buildpack/pack.svg?branch=master)](https://travis-ci.org/buildpack/pack) [![Windows Build status](https://ci.appveyor.com/api/projects/status/0dspvks46snrda2v/branch/master?svg=true)](https://ci.appveyor.com/project/buildpack/pack/branch/master)
+# pack - Buildpack CLI [![Travis Build Status](https://travis-ci.org/buildpack/pack.svg?branch=master)](https://travis-ci.org/buildpack/pack)
 
 **`pack`** makes it easy for
 - **application developers** to use [buildpacks](https://buildpacks.io/) to convert code into runnable images
