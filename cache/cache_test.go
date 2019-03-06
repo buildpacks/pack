@@ -19,6 +19,7 @@ import (
 )
 
 func TestCache(t *testing.T) {
+	h.RequireDocker(t)
 	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
 

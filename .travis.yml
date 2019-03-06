@@ -1,26 +1,23 @@
 sudo: required
 language: go
 go:
-- 1.11.x
+- 1.12.x
 services:
 - docker
-env:
-  global:
-  - GO111MODULE=on
-cache:
-  directories:
-  - $GOPATH/pkg/mod
-install:
+jobs:
+  include:
+  - name: tests
+    os: linux
+    cache:
+      directories:
+      - $GOPATH/pkg/mod
+    install:
     |
       go mod download
       export PACK_PATH="$PWD/artifacts/pack-${TRAVIS_TAG:-$TRAVIS_BUILD_NUMBER}-${TRAVIS_OS_NAME}"
       if [[ $TRAVIS_OS_NAME = linux ]]; then export CGO_ENABLED=0; fi
       go build -ldflags "-X 'main.Version=$TRAVIS_TAG (git sha: $(git log -1 --pretty=%H))'" -o "$PACK_PATH" ./cmd/pack
       "$PACK_PATH" version
-jobs:
-  include:
-  - name: tests
-    os: linux
     script:
     |
       go test -count=1 -parallel=1 -v ./...
@@ -29,3 +26,17 @@ jobs:
       docker pull packs/samples:0.0.1-rc.731
       export PACK_TAG=0.0.1-rc.731
       go test -count=1 -parallel=1 -v -tags=acceptance ./acceptance
+  - name: tests
+    os: windows
+    env:
+    - NO_DOCKER=true
+    after_success:
+    |
+      go build -o pack ./cmd/pack
+  - name: tests
+    os: osx
+    env:
+    - NO_DOCKER=true
+    after_success:
+    |
+      go build -o pack ./cmd/pack

@@ -73,7 +73,7 @@ func (*FS) CreateSingleFileTar(tarFile, path, txt string) error {
 
 func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int) error {
 	parent := filepath.Dir(tarDir)
-	if parent != "." && parent != "/" {
+	if isNotRootDir(parent) {
 		if err := writeParentDirectoryHeaders(parent, tw, uid, gid); err != nil {
 			return err
 		}
@@ -86,10 +86,21 @@ func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int
 		Typeflag: tar.TypeDir,
 		ModTime:  time.Time{},
 	}
+	if runtime.GOOS == "windows" {
+		header.Name = strings.Replace(header.Name, "\\", "/", -1)
+	}
 	if err := tw.WriteHeader(header); err != nil {
 		return err
 	}
 	return nil
+}
+
+func isNotRootDir(parent string) bool {
+	if runtime.GOOS == "windows" {
+		return parent != "\\"
+	}
+
+	return parent != "/"
 }
 
 func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {

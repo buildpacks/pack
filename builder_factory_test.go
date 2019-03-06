@@ -29,6 +29,7 @@ import (
 )
 
 func TestBuilderFactory(t *testing.T) {
+	h.RequireDocker(t)
 	color.NoColor = true
 	if runtime.GOOS == "windows" {
 		t.Skip("create builder is not implemented on windows")

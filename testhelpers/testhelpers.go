@@ -537,7 +537,7 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 		if fi.Mode().IsRegular() {
 			srcFile, err := os.Open(filepath.Join(src, fi.Name()))
 			AssertNil(t, err)
-			dstFile, err := os.OpenFile(filepath.Join(dst, fi.Name()),  os.O_RDWR|os.O_CREATE|os.O_TRUNC, fi.Mode())
+			dstFile, err := os.OpenFile(filepath.Join(dst, fi.Name()), os.O_RDWR|os.O_CREATE|os.O_TRUNC, fi.Mode())
 			AssertNil(t, err)
 			_, err = io.Copy(dstFile, srcFile)
 			AssertNil(t, err)
@@ -576,5 +576,12 @@ func UntarSingleFile(r io.Reader, fileName string) ([]byte, error) {
 				return ioutil.ReadAll(tr)
 			}
 		}
+	}
+}
+
+func RequireDocker(t *testing.T) {
+	_, ok := os.LookupEnv("NO_DOCKER")
+	if ok {
+		t.Skip("Skipping because docker daemon unavailable")
 	}
 }

@@ -37,6 +37,7 @@ var dockerCli *docker.Client
 var registryConfig *h.TestRegistryConfig
 
 func TestAcceptance(t *testing.T) {
+	h.RequireDocker(t)
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	packPath = os.Getenv("PACK_PATH")
@@ -242,6 +243,8 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			var envPath string
 
 			it.Before(func() {
+				skipOnWindows(t, "directory buildpacks are not implemented on windows")
+
 				envfile, err := ioutil.TempFile("", "envfile")
 				h.AssertNil(t, err)
 				err = os.Setenv("VAR3", "value from env")

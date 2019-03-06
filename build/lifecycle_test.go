@@ -32,6 +32,7 @@ var (
 )
 
 func TestLifecycle(t *testing.T) {
+	h.RequireDocker(t)
 	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
 	var err error
