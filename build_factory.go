@@ -292,40 +292,40 @@ func (b *BuildConfig) Run(ctx context.Context) error {
 	defer lifecycle.Cleanup(ctx)
 
 	b.Logger.Verbose(style.Step("DETECTING"))
-	if err := b.Detect(ctx, lifecycle); err != nil {
+	if err := b.detect(ctx, lifecycle); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("RESTORING"))
-	if err := b.Restorer(ctx, lifecycle); err != nil {
+	if err := b.restore(ctx, lifecycle); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("ANALYZING"))
 	b.Logger.Verbose("Reading information from previous image for possible re-use")
-	if err := b.Analyze(ctx, lifecycle); err != nil {
+	if err := b.analyze(ctx, lifecycle); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("BUILDING"))
-	if err := b.Build(ctx, lifecycle); err != nil {
+	if err := b.build(ctx, lifecycle); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("EXPORTING"))
-	if err := b.Export(ctx, lifecycle); err != nil {
+	if err := b.export(ctx, lifecycle); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("CACHING"))
-	if err := b.Cacher(ctx, lifecycle); err != nil {
+	if err := b.cache(ctx, lifecycle); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (b *BuildConfig) Detect(ctx context.Context, lifecycle *build.Lifecycle) error {
+func (b *BuildConfig) detect(ctx context.Context, lifecycle *build.Lifecycle) error {
 	phase, err := lifecycle.NewPhase(
 		"detector",
 		build.WithArgs("-buildpacks", buildpacksDir,
@@ -345,7 +345,7 @@ func (b *BuildConfig) Detect(ctx context.Context, lifecycle *build.Lifecycle) er
 	return nil
 }
 
-func (b *BuildConfig) Restorer(ctx context.Context, lifecycle *build.Lifecycle) error {
+func (b *BuildConfig) restore(ctx context.Context, lifecycle *build.Lifecycle) error {
 	phase, err := lifecycle.NewPhase(
 		"restorer",
 		build.WithArgs("-image="+b.Cache.Image()),
@@ -364,7 +364,7 @@ func (b *BuildConfig) Restorer(ctx context.Context, lifecycle *build.Lifecycle) 
 	return nil
 }
 
-func (b *BuildConfig) Analyze(ctx context.Context, lifecycle *build.Lifecycle) error {
+func (b *BuildConfig) analyze(ctx context.Context, lifecycle *build.Lifecycle) error {
 	var analyze *build.Phase
 	var err error
 	if b.Publish {
@@ -396,7 +396,7 @@ func (b *BuildConfig) Analyze(ctx context.Context, lifecycle *build.Lifecycle) e
 	return nil
 }
 
-func (b *BuildConfig) Build(ctx context.Context, lifecycle *build.Lifecycle) error {
+func (b *BuildConfig) build(ctx context.Context, lifecycle *build.Lifecycle) error {
 	build, err := lifecycle.NewPhase(
 		"builder",
 		build.WithArgs(
@@ -439,7 +439,7 @@ func (e *exporterArgs) list() []string {
 	return e.args
 }
 
-func (b *BuildConfig) Export(ctx context.Context, lifecycle *build.Lifecycle) error {
+func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) error {
 	var export *build.Phase
 	var err error
 
@@ -482,7 +482,7 @@ func (b *BuildConfig) Export(ctx context.Context, lifecycle *build.Lifecycle) er
 	return nil
 }
 
-func (b *BuildConfig) Cacher(ctx context.Context, lifecycle *build.Lifecycle) error {
+func (b *BuildConfig) cache(ctx context.Context, lifecycle *build.Lifecycle) error {
 	phase, err := lifecycle.NewPhase(
 		"cacher",
 		build.WithArgs("-image="+b.Cache.Image()),

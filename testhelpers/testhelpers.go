@@ -72,6 +72,15 @@ func AssertContains(t *testing.T, actual, expected string) {
 	}
 }
 
+func AssertContainsMatch(t *testing.T, actual, exp string) {
+	t.Helper()
+	regex := regexp.MustCompile(exp)
+	matches := regex.FindAll([]byte(actual), -1)
+	if len(matches) < 1 {
+		t.Fatalf("Expected: '%s' to match expression '%s'", actual, exp)
+	}
+}
+
 func AssertNotContains(t *testing.T, actual, expected string) {
 	t.Helper()
 	if strings.Contains(actual, expected) {
@@ -464,12 +473,9 @@ func CleanDefaultImages(t *testing.T, registryPort string) {
 }
 
 func RunE(cmd *exec.Cmd) (string, error) {
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("Failed to execute command: %v, %s, %s, %s", cmd.Args, err, stderr.String(), output)
+		return string(output), fmt.Errorf("Failed to execute command: %v, %s, %s", cmd.Args, err, output)
 	}
 
 	return string(output), nil
