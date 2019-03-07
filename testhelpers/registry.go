@@ -15,7 +15,7 @@ import (
 
 	"github.com/buildpack/pack"
 
-	"github.com/buildpack/lifecycle/fs"
+	"github.com/buildpack/lifecycle/testhelpers"
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
@@ -121,7 +121,7 @@ func generateHtpasswd(t *testing.T, ctx context.Context, username string, passwo
 
 	var b bytes.Buffer
 	err = dockerCli(t).RunContainer(ctx, htpasswdCtr.ID, &b, &b)
-	reader, err := (&fs.FS{}).CreateSingleFileTar("/registry_test_htpasswd", b.String())
+	reader, err := testhelpers.CreateSingleFileTar("/registry_test_htpasswd", b.String())
 	AssertNil(t, err)
 
 	return reader
