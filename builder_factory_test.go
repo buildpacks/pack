@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/buildpack/pack/logging"
-	"github.com/fatih/color"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -14,6 +12,8 @@ import (
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/fatih/color"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/golang/mock/gomock"
@@ -24,6 +24,7 @@ import (
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/fs"
+	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -40,16 +41,16 @@ func TestBuilderFactory(t *testing.T) {
 func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#BuilderFactory", func() {
 		var (
-			mockController   *gomock.Controller
-			mockImageFactory *mocks.MockImageFactory
-			factory          pack.BuilderFactory
-			outBuf           bytes.Buffer
-			errBuf           bytes.Buffer
+			mockController *gomock.Controller
+			mockFetcher    *mocks.MockFetcher
+			factory        pack.BuilderFactory
+			outBuf         bytes.Buffer
+			errBuf         bytes.Buffer
 		)
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
-			mockImageFactory = mocks.NewMockImageFactory(mockController)
+			mockFetcher = mocks.NewMockFetcher(mockController)
 
 			packHome, err := ioutil.TempDir("", ".pack")
 			if err != nil {
@@ -62,10 +63,10 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			factory = pack.BuilderFactory{
-				FS:           &fs.FS{},
-				Logger:       logging.NewLogger(&outBuf, &errBuf, true, false),
-				Config:       cfg,
-				ImageFactory: mockImageFactory,
+				FS:      &fs.FS{},
+				Logger:  logging.NewLogger(&outBuf, &errBuf, true, false),
+				Config:  cfg,
+				Fetcher: mockFetcher,
 			}
 		})
 
@@ -76,10 +77,11 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 		when("#BuilderConfigFromFlags", func() {
 			it("uses stack build image as base image", func() {
 				mockBaseImage := mocks.NewMockImage(mockController)
-				mockImageFactory.EXPECT().NewLocal("some/build", true).Return(mockBaseImage, nil)
+
+				mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/build", gomock.Any()).Return(mockBaseImage, nil)
 				mockBaseImage.EXPECT().Rename("some/image")
 
-				cfg, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
+				cfg, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
 					RepoName:        "some/image",
 					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
 				})
@@ -96,10 +98,10 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 
 			it("doesn't pull a new base image when --no-pull flag is provided", func() {
 				mockBaseImage := mocks.NewMockImage(mockController)
-				mockImageFactory.EXPECT().NewLocal("some/build", false).Return(mockBaseImage, nil)
+				mockFetcher.EXPECT().FetchLocalImage("some/build").Return(mockBaseImage, nil)
 				mockBaseImage.EXPECT().Rename("some/image")
 
-				config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
+				config, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
 					RepoName:        "some/image",
 					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
 					NoPull:          true,
@@ -114,9 +116,9 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("fails if the base image cannot be found", func() {
-				mockImageFactory.EXPECT().NewLocal("some/build", true).Return(nil, fmt.Errorf("read image failed"))
+				mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/build", gomock.Any()).Return(nil, fmt.Errorf("read image failed"))
 
-				_, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
+				_, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
 					RepoName:        "some/image",
 					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
 				})
@@ -128,10 +130,10 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			when("--publish is passed", func() {
 				it("uses a registry store and doesn't pull base image", func() {
 					mockBaseImage := mocks.NewMockImage(mockController)
-					mockImageFactory.EXPECT().NewRemote("some/build").Return(mockBaseImage, nil)
+					mockFetcher.EXPECT().FetchRemoteImage("some/build").Return(mockBaseImage, nil)
 					mockBaseImage.EXPECT().Rename("some/image")
 
-					config, err := factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
+					config, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
 						RepoName:        "some/image",
 						BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
 						Publish:         true,
@@ -158,7 +160,7 @@ run-image = "packs/run:v3alpha2"
 				h.AssertNil(t, err)
 				file.Close()
 
-				_, err = factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
+				_, err = factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
 					RepoName:        "some/image",
 					BuilderTomlPath: file.Name(),
 				})
@@ -177,7 +179,7 @@ run-image = "packs/run:v3alpha2"
 				h.AssertNil(t, err)
 				file.Close()
 
-				_, err = factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
+				_, err = factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
 					RepoName:        "some/image",
 					BuilderTomlPath: file.Name(),
 				})
@@ -196,7 +198,7 @@ build-image = "packs/build:v3alpha2"
 				h.AssertNil(t, err)
 				file.Close()
 
-				_, err = factory.BuilderConfigFromFlags(pack.CreateBuilderFlags{
+				_, err = factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
 					RepoName:        "some/image",
 					BuilderTomlPath: file.Name(),
 				})
@@ -206,7 +208,7 @@ build-image = "packs/build:v3alpha2"
 			when("a buildpack location uses no scheme uris", func() {
 				it("supports relative directories as well as archives", func() {
 					mockImage := mocks.NewMockImage(mockController)
-					mockImageFactory.EXPECT().NewLocal("some/build", false).Return(mockImage, nil)
+					mockFetcher.EXPECT().FetchLocalImage("some/build").Return(mockImage, nil)
 					mockImage.EXPECT().Rename("myorg/mybuilder")
 
 					flags := pack.CreateBuilderFlags{
@@ -216,7 +218,7 @@ build-image = "packs/build:v3alpha2"
 						NoPull:          true,
 					}
 
-					builderConfig, err := factory.BuilderConfigFromFlags(flags)
+					builderConfig, err := factory.BuilderConfigFromFlags(context.TODO(), flags)
 					h.AssertNil(t, err)
 
 					h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
@@ -225,7 +227,7 @@ build-image = "packs/build:v3alpha2"
 
 				it("supports absolute directories as well as archives", func() {
 					mockImage := mocks.NewMockImage(mockController)
-					mockImageFactory.EXPECT().NewLocal("some/build", false).Return(mockImage, nil)
+					mockFetcher.EXPECT().FetchLocalImage("some/build").Return(mockImage, nil)
 					mockImage.EXPECT().Rename("myorg/mybuilder")
 
 					absPath, err := filepath.Abs("testdata/used-to-test-various-uri-schemes/buildpack")
@@ -266,7 +268,7 @@ run-image = "some/run"
 						NoPull:          true,
 					}
 
-					builderConfig, err := factory.BuilderConfigFromFlags(flags)
+					builderConfig, err := factory.BuilderConfigFromFlags(context.TODO(), flags)
 					h.AssertNil(t, err)
 
 					h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
@@ -277,7 +279,7 @@ run-image = "some/run"
 			when("a buildpack location uses file:// uris", func() {
 				it("supports absolute directories as well as archives", func() {
 					mockImage := mocks.NewMockImage(mockController)
-					mockImageFactory.EXPECT().NewLocal("some/build", false).Return(mockImage, nil)
+					mockFetcher.EXPECT().FetchLocalImage("some/build").Return(mockImage, nil)
 					mockImage.EXPECT().Rename("myorg/mybuilder")
 
 					absPath, err := filepath.Abs("testdata/used-to-test-various-uri-schemes/buildpack")
@@ -318,7 +320,7 @@ run-image = "some/run"
 						NoPull:          true,
 					}
 
-					builderConfig, err := factory.BuilderConfigFromFlags(flags)
+					builderConfig, err := factory.BuilderConfigFromFlags(context.TODO(), flags)
 					h.AssertNil(t, err)
 
 					h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/detect", "I come from a directory")
@@ -356,7 +358,7 @@ run-image = "some/run"
 				})
 				it("downloads and extracts the archive", func() {
 					mockImage := mocks.NewMockImage(mockController)
-					mockImageFactory.EXPECT().NewLocal("some/build", false).Return(mockImage, nil)
+					mockFetcher.EXPECT().FetchLocalImage("some/build").Return(mockImage, nil)
 					mockImage.EXPECT().Rename("myorg/mybuilder")
 
 					f, err := ioutil.TempFile("", "*.toml")
@@ -389,7 +391,7 @@ run-image = "some/run"
 						NoPull:          true,
 					}
 
-					builderConfig, err := factory.BuilderConfigFromFlags(flags)
+					builderConfig, err := factory.BuilderConfigFromFlags(context.TODO(), flags)
 					h.AssertNil(t, err)
 
 					h.AssertDirContainsFileWithContents(t, builderConfig.Buildpacks[0].Dir, "bin/build", "I come from an archive")

@@ -2,6 +2,7 @@ package pack
 
 import (
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -14,7 +15,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/image"
+	lcimg "github.com/buildpack/lifecycle/image"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/fs"
@@ -41,17 +42,17 @@ type Stack struct {
 type BuilderConfig struct {
 	Buildpacks      []Buildpack
 	Groups          []lifecycle.BuildpackGroup
-	Repo            image.Image
+	Repo            lcimg.Image
 	BuilderDir      string // original location of builder.toml, used for interpreting relative paths in buildpack URIs
 	RunImage        string
 	RunImageMirrors []string
 }
 
 type BuilderFactory struct {
-	Logger       *logging.Logger
-	FS           *fs.FS
-	Config       *config.Config
-	ImageFactory ImageFactory
+	Logger  *logging.Logger
+	FS      *fs.FS
+	Config  *config.Config
+	Fetcher Fetcher
 }
 
 type CreateBuilderFlags struct {
@@ -61,7 +62,7 @@ type CreateBuilderFlags struct {
 	NoPull          bool
 }
 
-func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (BuilderConfig, error) {
+func (f *BuilderFactory) BuilderConfigFromFlags(ctx context.Context, flags CreateBuilderFlags) (BuilderConfig, error) {
 	builderConfig := BuilderConfig{}
 	builderConfig.BuilderDir = filepath.Dir(flags.BuilderTomlPath)
 
@@ -79,9 +80,13 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 	builderConfig.RunImage = builderTOML.Stack.RunImage
 	builderConfig.RunImageMirrors = builderTOML.Stack.RunImageMirrors
 	if flags.Publish {
-		builderConfig.Repo, err = f.ImageFactory.NewRemote(baseImage)
+		builderConfig.Repo, err = f.Fetcher.FetchRemoteImage(baseImage)
 	} else {
-		builderConfig.Repo, err = f.ImageFactory.NewLocal(baseImage, !flags.NoPull)
+		if !flags.NoPull {
+			builderConfig.Repo, err = f.Fetcher.FetchUpdatedLocalImage(ctx, baseImage, f.Logger.VerboseWriter().WithPrefix("docker"))
+		} else {
+			builderConfig.Repo, err = f.Fetcher.FetchLocalImage(baseImage)
+		}
 	}
 	if err != nil {
 		return BuilderConfig{}, errors.Wrapf(err, "opening base image: %s", baseImage)

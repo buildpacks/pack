@@ -80,7 +80,7 @@ func NewLifecycle(c LifecycleConfig) (*Lifecycle, error) {
 		return nil, err
 	}
 
-	builder, err := factory.NewLocal(c.BuilderImage, false)
+	builder, err := factory.NewLocal(c.BuilderImage)
 	if err != nil {
 		return nil, err
 	}

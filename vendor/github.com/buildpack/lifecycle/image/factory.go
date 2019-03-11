@@ -8,20 +8,17 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/fs"
 	"github.com/buildpack/lifecycle/image/auth"
 )
 
 type Factory struct {
 	Docker   *client.Client
-	FS       *fs.FS
 	Keychain authn.Keychain
 	Out      io.Writer
 }
 
 func NewFactory(ops ...func(*Factory)) (*Factory, error) {
 	f := &Factory{
-		FS:       &fs.FS{},
 		Out:      ioutil.Discard,
 		Keychain: authn.DefaultKeychain,
 	}

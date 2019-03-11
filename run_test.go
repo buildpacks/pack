@@ -60,21 +60,21 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 
 	when("#RunConfigFromFlags", func() {
 		var (
-			mockController   *gomock.Controller
-			factory          *pack.BuildFactory
-			mockImageFactory *mocks.MockImageFactory
-			mockCache        *mocks.MockCache
+			mockController *gomock.Controller
+			factory        *pack.BuildFactory
+			mockFetcher    *mocks.MockFetcher
+			mockCache      *mocks.MockCache
 		)
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
-			mockImageFactory = mocks.NewMockImageFactory(mockController)
+			mockFetcher = mocks.NewMockFetcher(mockController)
 			mockCache = mocks.NewMockCache(mockController)
 			factory = &pack.BuildFactory{
-				Logger:       logger,
-				FS:           &fs.FS{},
-				ImageFactory: mockImageFactory,
-				Cache:        mockCache,
+				Logger:  logger,
+				FS:      &fs.FS{},
+				Fetcher: mockFetcher,
+				Cache:   mockCache,
 				Config: &config.Config{
 					Stacks: []config.Stack{
 						{
@@ -94,13 +94,13 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 
 		it("creates args RunConfig derived from args BuildConfig", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
-			mockImageFactory.EXPECT().NewLocal("some/builder", true).Return(mockBuilderImage, nil)
+			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/builder", gomock.Any()).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
 			mockRunImage.EXPECT().Found().Return(true, nil)
-			mockImageFactory.EXPECT().NewLocal("some/run", true).Return(mockRunImage, nil)
+			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/run", gomock.Any()).Return(mockRunImage, nil)
 
-			run, err := factory.RunConfigFromFlags(&pack.RunFlags{
+			run, err := factory.RunConfigFromFlags(context.TODO(), &pack.RunFlags{
 				BuildFlags: pack.BuildFlags{
 					AppDir:   "acceptance/testdata/node_app",
 					Builder:  "some/builder",

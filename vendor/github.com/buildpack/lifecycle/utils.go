@@ -20,10 +20,6 @@ func WriteTOML(path string, data interface{}) error {
 	return toml.NewEncoder(f).Encode(data)
 }
 
-func buildpackIDToDir(id string) string {
+func escapeIdentifier(id string) string {
 	return strings.Replace(id, "/", "_", -1)
-}
-
-func buildpackDirToID(dirname string) string {
-	return strings.Replace(dirname, "_", "/", -1)
 }

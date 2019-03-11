@@ -1,5 +1,7 @@
 package image
 
+import "io"
+
 type Image interface {
 	Name() string
 	Rename(name string)
@@ -16,4 +18,5 @@ type Image interface {
 	TopLayer() (string, error)
 	Save() (string, error)
 	Found() (bool, error)
+	GetLayer(string) (io.ReadCloser, error)
 }

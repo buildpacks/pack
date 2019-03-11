@@ -9,7 +9,7 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-func Run(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Command {
+func Run(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 	var runFlags pack.RunFlags
 	ctx := createCancellableContext()
 
@@ -30,11 +30,11 @@ func Run(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			bf, err := pack.DefaultBuildFactory(logger, cacheObj, dockerClient, imageFactory)
+			bf, err := pack.DefaultBuildFactory(logger, cacheObj, dockerClient, fetcher)
 			if err != nil {
 				return err
 			}
-			r, err := bf.RunConfigFromFlags(&runFlags)
+			r, err := bf.RunConfigFromFlags(ctx, &runFlags)
 			if err != nil {
 				return err
 			}

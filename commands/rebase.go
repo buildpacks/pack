@@ -9,8 +9,10 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func Rebase(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Command {
+func Rebase(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 	var flags pack.RebaseFlags
+	ctx := createCancellableContext()
+
 	cmd := &cobra.Command{
 		Use:   "rebase <image-name>",
 		Args:  cobra.ExactArgs(1),
@@ -22,11 +24,11 @@ func Rebase(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Comma
 				return err
 			}
 			factory := pack.RebaseFactory{
-				Logger:       logger,
-				Config:       cfg,
-				ImageFactory: imageFactory,
+				Logger:  logger,
+				Config:  cfg,
+				Fetcher: fetcher,
 			}
-			rebaseConfig, err := factory.RebaseConfigFromFlags(flags)
+			rebaseConfig, err := factory.RebaseConfigFromFlags(ctx, flags, logger.VerboseWriter().WithPrefix("docker"))
 			if err != nil {
 				return err
 			}

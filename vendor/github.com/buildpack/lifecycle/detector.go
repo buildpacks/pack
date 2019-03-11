@@ -35,7 +35,7 @@ type DetectConfig struct {
 }
 
 func (bp *Buildpack) EscapedID() string {
-	return buildpackIDToDir(bp.ID)
+	return escapeIdentifier(bp.ID)
 }
 
 func (bp *Buildpack) Detect(c *DetectConfig, in io.Reader, out io.Writer) int {
@@ -199,8 +199,8 @@ type BuildpackOrder []BuildpackGroup
 
 func (bo BuildpackOrder) Detect(c *DetectConfig) (plan []byte, group *BuildpackGroup) {
 	for i := range bo {
-		if plan, group, ok := bo[i].Detect(c); ok {
-			return plan, group
+		if p, g, ok := bo[i].Detect(c); ok {
+			return p, g
 		}
 	}
 	return nil, nil

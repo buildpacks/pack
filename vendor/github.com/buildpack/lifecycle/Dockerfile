@@ -5,7 +5,7 @@ FROM golang:${go_version} as builder
 
 WORKDIR /go/src/github.com/buildpack/lifecycle
 COPY . .
-RUN CGO_ENABLED=0 GO111MODULE=on go install -a -installsuffix static "./cmd/..."
+RUN CGO_ENABLED=0 GO111MODULE=on go install -mod=vendor -a -installsuffix static "./cmd/..."
 
 FROM ${base}
 ARG jq_url=https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64

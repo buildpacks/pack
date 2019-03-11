@@ -42,8 +42,8 @@ type RunConfig struct {
 	Logger   *logging.Logger
 }
 
-func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
-	bc, err := bf.BuildConfigFromFlags(&f.BuildFlags)
+func (bf *BuildFactory) RunConfigFromFlags(ctx context.Context, f *RunFlags) (*RunConfig, error) {
+	bc, err := bf.BuildConfigFromFlags(ctx, &f.BuildFlags)
 	if err != nil {
 		return nil, err
 	}
@@ -73,19 +73,24 @@ func Run(ctx context.Context, outWriter, errWriter io.Writer, appDir, buildImage
 	if err != nil {
 		return err
 	}
+	imageFetcher := &ImageFetcher{
+		Factory: imageFactory,
+		Docker:  dockerClient,
+	}
 	logger := logging.NewLogger(outWriter, errWriter, true, false)
-	bf, err := DefaultBuildFactory(logger, c, dockerClient, imageFactory)
+	bf, err := DefaultBuildFactory(logger, c, dockerClient, imageFetcher)
 	if err != nil {
 		return err
 	}
-	r, err := bf.RunConfigFromFlags(&RunFlags{
-		BuildFlags: BuildFlags{
-			AppDir:   appDir,
-			Builder:  buildImage,
-			RunImage: runImage,
-		},
-		Ports: ports,
-	})
+	r, err := bf.RunConfigFromFlags(ctx,
+		&RunFlags{
+			BuildFlags: BuildFlags{
+				AppDir:   appDir,
+				Builder:  buildImage,
+				RunImage: runImage,
+			},
+			Ports: ports,
+		})
 	if err != nil {
 		return err
 	}

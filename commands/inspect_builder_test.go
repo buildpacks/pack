@@ -26,32 +26,29 @@ func TestCommands(t *testing.T) {
 func testCommands(t *testing.T, when spec.G, it spec.S) {
 
 	var (
-		command          *cobra.Command
-		logger           *logging.Logger
-		outBuf           bytes.Buffer
-		mockInspector    *mocks.MockBuilderInspector
-		mockController   *gomock.Controller
-		mockImageFactory *mocks.MockImageFactory
+		command        *cobra.Command
+		logger         *logging.Logger
+		outBuf         bytes.Buffer
+		mockInspector  *mocks.MockBuilderInspector
+		mockController *gomock.Controller
+		mockFetcher    *mocks.MockFetcher
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockInspector = mocks.NewMockBuilderInspector(mockController)
-		mockImageFactory = mocks.NewMockImageFactory(mockController)
+		mockFetcher = mocks.NewMockFetcher(mockController)
 
 		logger = logging.NewLogger(&outBuf, &outBuf, false, false)
+		command = commands.InspectBuilder(logger, mockInspector, mockFetcher)
 	})
 
 	when("#InspectBuilder", func() {
 		when("image cannot be found", func() {
-			it.Before(func() {
-				command = commands.InspectBuilder(logger, mockInspector, mockImageFactory)
-			})
-
 			it("logs 'Not present'", func() {
 				mockImage := mocks.NewMockImage(mockController)
-				mockImageFactory.EXPECT().NewLocal("some/image", false).Return(mockImage, nil)
-				mockImageFactory.EXPECT().NewRemote("some/image").Return(mockImage, nil)
+				mockFetcher.EXPECT().FetchLocalImage("some/image").Return(mockImage, nil)
+				mockFetcher.EXPECT().FetchRemoteImage("some/image").Return(mockImage, nil)
 				mockImage.EXPECT().Found().Return(false, nil).AnyTimes()
 				command.SetArgs([]string{
 					"some/image",
@@ -62,14 +59,10 @@ func testCommands(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("image factory returns an error", func() {
-			it.Before(func() {
-				command = commands.InspectBuilder(logger, mockInspector, mockImageFactory)
-			})
-
+		when("image fetcher returns an error", func() {
 			it("logs the error message", func() {
-				mockImageFactory.EXPECT().NewLocal("some/image", false).Return(nil, errors.New("some local error"))
-				mockImageFactory.EXPECT().NewRemote("some/image").Return(nil, errors.New("some remote error"))
+				mockFetcher.EXPECT().FetchLocalImage("some/image").Return(nil, errors.New("some local error"))
+				mockFetcher.EXPECT().FetchRemoteImage("some/image").Return(nil, errors.New("some remote error"))
 				command.SetArgs([]string{
 					"some/image",
 				})
@@ -84,19 +77,14 @@ Local
 ERROR: failed to get image 'some/image': some local error
 `)
 			})
-
 		})
 
 		when("is successful", func() {
-			it.Before(func() {
-				command = commands.InspectBuilder(logger, mockInspector, mockImageFactory)
-			})
-
 			it("displays the run image information for local and remote", func() {
 				mockRemoteImage := mocks.NewMockImage(mockController)
 				mockLocalImage := mocks.NewMockImage(mockController)
-				mockImageFactory.EXPECT().NewLocal("some/image", false).Return(mockLocalImage, nil)
-				mockImageFactory.EXPECT().NewRemote("some/image").Return(mockRemoteImage, nil)
+				mockFetcher.EXPECT().FetchLocalImage("some/image").Return(mockLocalImage, nil)
+				mockFetcher.EXPECT().FetchRemoteImage("some/image").Return(mockRemoteImage, nil)
 
 				mockRemoteImage.EXPECT().Found().Return(true, nil)
 				mockLocalImage.EXPECT().Found().Return(true, nil)

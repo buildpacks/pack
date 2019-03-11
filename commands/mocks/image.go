@@ -7,6 +7,7 @@ package mocks
 import (
 	image "github.com/buildpack/lifecycle/image"
 	gomock "github.com/golang/mock/gomock"
+	io "io"
 	reflect "reflect"
 )
 
@@ -90,6 +91,21 @@ func (m *MockImage) Found() (bool, error) {
 func (mr *MockImageMockRecorder) Found() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Found", reflect.TypeOf((*MockImage)(nil).Found))
+}
+
+// GetLayer mocks base method
+func (m *MockImage) GetLayer(arg0 string) (io.ReadCloser, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLayer", arg0)
+	ret0, _ := ret[0].(io.ReadCloser)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLayer indicates an expected call of GetLayer
+func (mr *MockImageMockRecorder) GetLayer(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLayer", reflect.TypeOf((*MockImage)(nil).GetLayer), arg0)
 }
 
 // Label mocks base method

@@ -15,7 +15,7 @@ import (
 
 //go:generate mockgen -package mocks -destination mocks/image_factory.go github.com/buildpack/pack/commands ImageFactory
 type ImageFactory interface {
-	NewLocal(string, bool) (image.Image, error)
+	NewLocal(string) (image.Image, error)
 	NewRemote(string) (image.Image, error)
 }
 

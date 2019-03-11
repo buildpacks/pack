@@ -2,13 +2,19 @@ package docker
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
+	"strings"
 
+	"github.com/buildpack/lifecycle/image/auth"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	dockercli "github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/docker/docker/pkg/term"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 )
 
@@ -54,4 +60,57 @@ func (d *Client) RunContainer(ctx context.Context, id string, stdout io.Writer, 
 		return err
 	}
 	return <-copyErr
+}
+
+func (d *Client) PullImage(ctx context.Context, imageID string, stdout io.Writer) error {
+	regAuth, err := d.registryAuth(imageID)
+	if err != nil {
+		return errors.Wrap(err, "auth for docker pull")
+	}
+
+	rc, err := d.Client.ImagePull(ctx, imageID, dockertypes.ImagePullOptions{
+		RegistryAuth: regAuth,
+	})
+	if err != nil {
+		// Retry
+		rc, err = d.Client.ImagePull(ctx, imageID, dockertypes.ImagePullOptions{
+			RegistryAuth: regAuth,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	termFd, isTerm := term.GetFdInfo(stdout)
+	err = jsonmessage.DisplayJSONMessagesStream(rc, stdout, termFd, isTerm, nil)
+	if err != nil {
+		return err
+	}
+
+	return rc.Close()
+}
+
+func (d *Client) registryAuth(ref string) (string, error) {
+	var regAuth string
+	_, a, err := auth.ReferenceForRepoName(authn.DefaultKeychain, ref)
+	if err != nil {
+		return "", errors.Wrapf(err, "resolve auth for ref %s", ref)
+	}
+	authHeader, err := a.Authorization()
+	if err != nil {
+		return "", err
+	}
+	if strings.HasPrefix(authHeader, "Basic ") {
+		encoded := strings.TrimPrefix(authHeader, "Basic ")
+		decoded, _ := base64.StdEncoding.DecodeString(encoded)
+		parts := strings.SplitN(string(decoded), ":", 2)
+		regAuth = base64.StdEncoding.EncodeToString(
+			[]byte(fmt.Sprintf(
+				`{"username": "%s", "password": "%s"}`,
+				parts[0],
+				parts[1],
+			)),
+		)
+	}
+	return regAuth, nil
 }

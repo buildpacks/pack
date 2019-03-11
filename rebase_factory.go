@@ -1,26 +1,28 @@
 package pack
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
 
 	"github.com/buildpack/pack/logging"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/image"
+	lcimg "github.com/buildpack/lifecycle/image"
 
 	"github.com/buildpack/pack/config"
 )
 
 type RebaseConfig struct {
-	Image        image.Image
-	NewBaseImage image.Image
+	Image        lcimg.Image
+	NewBaseImage lcimg.Image
 }
 
 type RebaseFactory struct {
-	Logger       *logging.Logger
-	Config       *config.Config
-	ImageFactory ImageFactory
+	Logger  *logging.Logger
+	Config  *config.Config
+	Fetcher Fetcher
 }
 
 type RebaseFlags struct {
@@ -30,17 +32,23 @@ type RebaseFlags struct {
 	RunImage string
 }
 
-func (f *RebaseFactory) RebaseConfigFromFlags(flags RebaseFlags) (RebaseConfig, error) {
-	var newImage func(string) (image.Image, error)
+func (f *RebaseFactory) RebaseConfigFromFlags(ctx context.Context, flags RebaseFlags, stdout io.Writer) (RebaseConfig, error) {
+	var newImageFn func(string) (lcimg.Image, error)
 	if flags.Publish {
-		newImage = f.ImageFactory.NewRemote
+		newImageFn = f.Fetcher.FetchRemoteImage
 	} else {
-		newImage = func(name string) (image.Image, error) {
-			return f.ImageFactory.NewLocal(name, !flags.NoPull)
+		newImageFn = func(name string) (lcimg.Image, error) {
+			if !flags.NoPull {
+				return f.Fetcher.FetchUpdatedLocalImage(ctx, name, stdout)
+
+			} else {
+				return f.Fetcher.FetchLocalImage(name)
+
+			}
 		}
 	}
 
-	appImage, err := newImage(flags.RepoName)
+	appImage, err := newImageFn(flags.RepoName)
 	if err != nil {
 		return RebaseConfig{}, err
 	}
@@ -59,7 +67,7 @@ func (f *RebaseFactory) RebaseConfigFromFlags(flags RebaseFlags) (RebaseConfig, 
 		return RebaseConfig{}, errors.New("run image must be specified")
 	}
 
-	baseImage, err := newImage(runImageName)
+	baseImage, err := newImageFn(runImageName)
 	if err != nil {
 		return RebaseConfig{}, err
 	}

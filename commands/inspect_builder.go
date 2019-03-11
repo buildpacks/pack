@@ -15,15 +15,16 @@ type BuilderInspector interface {
 	Inspect(image.Image) (pack.Builder, error)
 }
 
-func InspectBuilder(logger *logging.Logger, inspector BuilderInspector, imageFactory pack.ImageFactory) *cobra.Command {
+func InspectBuilder(logger *logging.Logger, inspector BuilderInspector, fetcher pack.Fetcher) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "inspect-builder <builder-image-name>",
 		Short: "Show information about a builder",
 		Args:  cobra.ExactArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			imageName := args[0]
+
 			for _, remote := range []bool{true, false} {
-				inspectBuilderOutput(logger, imageName, remote, imageFactory, inspector)
+				inspectBuilderOutput(logger, imageName, remote, inspector, fetcher)
 				logger.Info("")
 			}
 			return nil
@@ -33,14 +34,14 @@ func InspectBuilder(logger *logging.Logger, inspector BuilderInspector, imageFac
 	return cmd
 }
 
-func inspectBuilderOutput(logger *logging.Logger, imageName string, remote bool, imageFactory pack.ImageFactory, inspector BuilderInspector) {
+func inspectBuilderOutput(logger *logging.Logger, imageName string, remote bool, inspector BuilderInspector, fetcher pack.Fetcher) {
 	var builderImage image.Image
 	var err error
 	if remote {
-		builderImage, err = imageFactory.NewRemote(imageName)
+		builderImage, err = fetcher.FetchRemoteImage(imageName)
 		logger.Info("Remote\n------")
 	} else {
-		builderImage, err = imageFactory.NewLocal(imageName, false)
+		builderImage, err = fetcher.FetchLocalImage(imageName)
 		logger.Info("Local\n-----")
 	}
 	if err != nil {

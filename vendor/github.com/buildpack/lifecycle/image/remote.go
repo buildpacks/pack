@@ -2,9 +2,11 @@ package image
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1"
@@ -190,6 +192,10 @@ func (r *remote) TopLayer() (string, error) {
 	return hex.String(), nil
 }
 
+func (r *remote) GetLayer(string) (io.ReadCloser, error) {
+	panic("not implemented")
+}
+
 func (r *remote) AddLayer(path string) error {
 	layer, err := tarball.LayerFromFile(path)
 	if err != nil {
@@ -243,6 +249,11 @@ func findLayerWithSha(layers []v1.Layer, sha string) (v1.Layer, error) {
 
 func (r *remote) Save() (string, error) {
 	ref, auth, err := auth.ReferenceForRepoName(r.keychain, r.RepoName)
+	if err != nil {
+		return "", err
+	}
+
+	r.Image, err = mutate.CreatedAt(r.Image, v1.Time{Time: time.Now()})
 	if err != nil {
 		return "", err
 	}

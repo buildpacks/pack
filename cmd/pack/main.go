@@ -4,12 +4,12 @@ import (
 	"os"
 
 	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/pack/docker"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/commands"
-	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 )
 
@@ -18,7 +18,7 @@ var (
 	timestamps, quiet bool
 	logger            logging.Logger
 	inspect           pack.BuilderInspect
-	imageFactory      image.Factory
+	imageFetcher      pack.ImageFetcher
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			logger = *logging.NewLogger(os.Stdout, os.Stderr, !quiet, timestamps)
 			inspect = initInspect(logger)
-			imageFactory = initImageFactory(logger)
+			imageFetcher = initImageFetcher(logger)
 		},
 	}
 	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
@@ -36,13 +36,13 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Show less output")
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(&logger, &imageFactory))
-	rootCmd.AddCommand(commands.Run(&logger, &imageFactory))
-	rootCmd.AddCommand(commands.Rebase(&logger, &imageFactory))
+	rootCmd.AddCommand(commands.Build(&logger, &imageFetcher))
+	rootCmd.AddCommand(commands.Run(&logger, &imageFetcher))
+	rootCmd.AddCommand(commands.Rebase(&logger, &imageFetcher))
 
-	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFactory))
+	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFetcher))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(&logger))
-	rootCmd.AddCommand(commands.InspectBuilder(&logger, &inspect, &imageFactory))
+	rootCmd.AddCommand(commands.InspectBuilder(&logger, &inspect, &imageFetcher))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger))
 
 	rootCmd.AddCommand(commands.Version(&logger, Version))
@@ -60,20 +60,21 @@ func initInspect(logger logging.Logger) pack.BuilderInspect {
 	return *inspect
 }
 
-func initImageFactory(logger logging.Logger) image.Factory {
-	factory, err := image.NewFactory(image.WithOutWriter(os.Stdout))
+func initImageFetcher(logger logging.Logger) pack.ImageFetcher {
+	factory, err := image.NewFactory()
 	if err != nil {
 		exitError(logger, err)
 	}
-	return *factory
-}
 
-func initDockerClient(logger logging.Logger) docker.Client {
-	client, err := docker.New()
+	dockerClient, err := docker.New()
 	if err != nil {
 		exitError(logger, err)
 	}
-	return *client
+
+	return pack.ImageFetcher{
+		Factory: factory,
+		Docker:  dockerClient,
+	}
 }
 
 func exitError(logger logging.Logger, err error) {

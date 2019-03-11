@@ -1,9 +1,11 @@
 package lifecycle
 
 import (
-	"github.com/buildpack/lifecycle/image"
-	"github.com/pkg/errors"
 	"log"
+
+	"github.com/pkg/errors"
+
+	"github.com/buildpack/lifecycle/image"
 )
 
 type loggingImage struct {
@@ -50,6 +52,5 @@ func (li *loggingImage) SetEmptyCmd() error {
 func (li *loggingImage) Save() (string, error) {
 	li.Out.Println("writing image")
 	sha, err := li.image.Save()
-	li.Out.Printf("\n*** Image: %s@%s\n", li.image.Name(), sha)
 	return sha, err
 }

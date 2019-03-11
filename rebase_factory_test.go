@@ -2,6 +2,7 @@ package pack_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -25,21 +26,21 @@ func TestRebaseFactory(t *testing.T) {
 	spec.Run(t, "rebase_factory", testRebaseFactory, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-//move somewhere else
+// move somewhere else
 //go:generate mockgen -package mocks -destination mocks/image.go github.com/buildpack/lifecycle/image Image
 
 func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#RebaseFactory", func() {
 		var (
-			mockController   *gomock.Controller
-			mockImageFactory *mocks.MockImageFactory
-			factory          pack.RebaseFactory
-			outBuf           bytes.Buffer
-			errBuff          bytes.Buffer
+			mockController *gomock.Controller
+			mockFetcher    *mocks.MockFetcher
+			factory        pack.RebaseFactory
+			outBuf         bytes.Buffer
+			errBuff        bytes.Buffer
 		)
 		it.Before(func() {
 			mockController = gomock.NewController(t)
-			mockImageFactory = mocks.NewMockImageFactory(mockController)
+			mockFetcher = mocks.NewMockFetcher(mockController)
 
 			factory = pack.RebaseFactory{
 				Logger: logging.NewLogger(&outBuf, &errBuff, false, false),
@@ -58,7 +59,7 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				},
-				ImageFactory: mockImageFactory,
+				Fetcher: mockFetcher,
 			}
 		})
 
@@ -72,15 +73,15 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 					it("uses the run image provided by the user", func() {
 						mockBaseImage := mocks.NewMockImage(mockController)
 						mockImage := mocks.NewMockImage(mockController)
-						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", true).Return(mockImage, nil)
-						mockImageFactory.EXPECT().NewLocal("my/run/image", true).Return(mockBaseImage, nil)
+						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "myorg/myrepo", gomock.Any()).Return(mockImage, nil)
+						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "my/run/image", gomock.Any()).Return(mockBaseImage, nil)
 
 						flags := pack.RebaseFlags{
 							RunImage: "my/run/image",
 							RepoName: "myorg/myrepo",
 						}
 
-						_, err := factory.RebaseConfigFromFlags(flags)
+						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags, &outBuf)
 						h.AssertNil(t, err)
 					})
 				})
@@ -88,15 +89,15 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 					it("uses the run image provided by the user", func() {
 						mockBaseImage := mocks.NewMockImage(mockController)
 						mockImage := mocks.NewMockImage(mockController)
-						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", true).Return(mockImage, nil)
-						mockImageFactory.EXPECT().NewLocal("my/run/image", true).Return(mockBaseImage, nil)
+						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "myorg/myrepo", gomock.Any()).Return(mockImage, nil)
+						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "my/run/image", gomock.Any()).Return(mockBaseImage, nil)
 
 						flags := pack.RebaseFlags{
 							RunImage: "my/run/image",
 							RepoName: "myorg/myrepo",
 						}
 
-						_, err := factory.RebaseConfigFromFlags(flags)
+						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags, &outBuf)
 						h.AssertNil(t, err)
 					})
 				})
@@ -106,29 +107,29 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 					it("uses the run image provided in the App image label", func() {
 						mockBaseImage := mocks.NewMockImage(mockController)
 						mockImage := mocks.NewMockImage(mockController)
-						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", true).Return(mockImage, nil)
-						mockImageFactory.EXPECT().NewLocal("some/other/runimage", true).Return(mockBaseImage, nil)
+						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "myorg/myrepo", gomock.Any()).Return(mockImage, nil)
+						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/other/runimage", gomock.Any()).Return(mockBaseImage, nil)
 						mockImage.EXPECT().Label("io.buildpacks.run-image").Return("some/other/runimage", nil)
 
 						flags := pack.RebaseFlags{
 							RepoName: "myorg/myrepo",
 						}
 
-						_, err := factory.RebaseConfigFromFlags(flags)
+						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags, &outBuf)
 						h.AssertNil(t, err)
 					})
 				})
 				when("the image does not have a label with a run image specified", func() {
 					it("returns an error", func() {
 						mockImage := mocks.NewMockImage(mockController)
-						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", true).Return(mockImage, nil)
+						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "myorg/myrepo", gomock.Any()).Return(mockImage, nil)
 						mockImage.EXPECT().Label("io.buildpacks.run-image").Return("", nil)
 
 						flags := pack.RebaseFlags{
 							RepoName: "myorg/myrepo",
 						}
 
-						_, err := factory.RebaseConfigFromFlags(flags)
+						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags, &outBuf)
 						h.AssertError(t, err, "run image must be specified")
 					})
 				})
@@ -139,15 +140,15 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 					it("XXXX", func() {
 						mockBaseImage := mocks.NewMockImage(mockController)
 						mockImage := mocks.NewMockImage(mockController)
-						mockImageFactory.EXPECT().NewLocal("default/run", true).Return(mockBaseImage, nil)
-						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", true).Return(mockImage, nil)
+						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "default/run", gomock.Any()).Return(mockBaseImage, nil)
+						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "myorg/myrepo", gomock.Any()).Return(mockImage, nil)
 
-						cfg, err := factory.RebaseConfigFromFlags(pack.RebaseFlags{
+						cfg, err := factory.RebaseConfigFromFlags(context.TODO(), pack.RebaseFlags{
 							RepoName: "myorg/myrepo",
 							RunImage: "default/run",
 							Publish:  false,
 							NoPull:   false,
-						})
+						}, &outBuf)
 						h.AssertNil(t, err)
 
 						h.AssertSameInstance(t, cfg.Image, mockImage)
@@ -159,15 +160,15 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 					it("XXXX", func() {
 						mockBaseImage := mocks.NewMockImage(mockController)
 						mockImage := mocks.NewMockImage(mockController)
-						mockImageFactory.EXPECT().NewLocal("default/run", false).Return(mockBaseImage, nil)
-						mockImageFactory.EXPECT().NewLocal("myorg/myrepo", false).Return(mockImage, nil)
+						mockFetcher.EXPECT().FetchLocalImage("default/run").Return(mockBaseImage, nil)
+						mockFetcher.EXPECT().FetchLocalImage("myorg/myrepo").Return(mockImage, nil)
 
-						cfg, err := factory.RebaseConfigFromFlags(pack.RebaseFlags{
+						cfg, err := factory.RebaseConfigFromFlags(context.TODO(), pack.RebaseFlags{
 							RepoName: "myorg/myrepo",
 							RunImage: "default/run",
 							Publish:  false,
 							NoPull:   true,
-						})
+						}, &outBuf)
 						h.AssertNil(t, err)
 
 						h.AssertSameInstance(t, cfg.Image, mockImage)
@@ -181,15 +182,15 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 					it("XXXX", func() {
 						mockBaseImage := mocks.NewMockImage(mockController)
 						mockImage := mocks.NewMockImage(mockController)
-						mockImageFactory.EXPECT().NewRemote("default/run").Return(mockBaseImage, nil)
-						mockImageFactory.EXPECT().NewRemote("myorg/myrepo").Return(mockImage, nil)
+						mockFetcher.EXPECT().FetchRemoteImage("default/run").Return(mockBaseImage, nil)
+						mockFetcher.EXPECT().FetchRemoteImage("myorg/myrepo").Return(mockImage, nil)
 
-						cfg, err := factory.RebaseConfigFromFlags(pack.RebaseFlags{
+						cfg, err := factory.RebaseConfigFromFlags(context.TODO(), pack.RebaseFlags{
 							RepoName: "myorg/myrepo",
 							RunImage: "default/run",
 							Publish:  true,
 							NoPull:   false,
-						})
+						}, &outBuf)
 						h.AssertNil(t, err)
 
 						h.AssertSameInstance(t, cfg.Image, mockImage)

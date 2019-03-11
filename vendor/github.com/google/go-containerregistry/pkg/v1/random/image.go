@@ -63,6 +63,9 @@ func Image(byteSize, layers int64) (v1.Image, error) {
 		if _, err := io.CopyN(tw, rand.Reader, byteSize); err != nil {
 			return nil, err
 		}
+		if err := tw.Close(); err != nil {
+			return nil, err
+		}
 		bts := b.Bytes()
 		h, _, err := v1.SHA256(bytes.NewReader(bts))
 		if err != nil {
@@ -75,6 +78,9 @@ func Image(byteSize, layers int64) (v1.Image, error) {
 	}
 
 	cfg := &v1.ConfigFile{}
+
+	// Some clients check this.
+	cfg.RootFS.Type = "layers"
 
 	// It is ok that iteration order is random in Go, because this is the random image anyways.
 	for k := range layerz {

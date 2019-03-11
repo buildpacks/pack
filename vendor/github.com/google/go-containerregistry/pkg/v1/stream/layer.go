@@ -21,6 +21,7 @@ import (
 	"errors"
 	"hash"
 	"io"
+	"sync"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
@@ -35,43 +36,57 @@ var (
 	ErrConsumed = errors.New("stream was already consumed")
 )
 
+// Layer is a streaming implementation of v1.Layer.
 type Layer struct {
 	blob     io.ReadCloser
 	consumed bool
 
+	mu             sync.Mutex
 	digest, diffID *v1.Hash
 	size           int64
 }
 
 var _ v1.Layer = (*Layer)(nil)
 
+// NewLayer creates a Layer from an io.ReadCloser.
 func NewLayer(rc io.ReadCloser) *Layer { return &Layer{blob: rc} }
 
+// Digest implements v1.Layer.
 func (l *Layer) Digest() (v1.Hash, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if l.digest == nil {
 		return v1.Hash{}, ErrNotComputed
 	}
 	return *l.digest, nil
 }
 
+// DiffID implements v1.Layer.
 func (l *Layer) DiffID() (v1.Hash, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if l.diffID == nil {
 		return v1.Hash{}, ErrNotComputed
 	}
 	return *l.diffID, nil
 }
 
+// Size implements v1.Layer.
 func (l *Layer) Size() (int64, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if l.size == 0 {
 		return 0, ErrNotComputed
 	}
 	return l.size, nil
 }
 
+// Uncompressed implements v1.Layer.
 func (l *Layer) Uncompressed() (io.ReadCloser, error) {
 	return nil, errors.New("NYI: stream.Layer.Uncompressed is not implemented")
 }
 
+// Compressed implements v1.Layer.
 func (l *Layer) Compressed() (io.ReadCloser, error) {
 	if l.consumed {
 		return nil, ErrConsumed
@@ -129,6 +144,9 @@ func newCompressedReader(l *Layer) (*compressedReader, error) {
 func (cr *compressedReader) Read(b []byte) (int, error) { return cr.pr.Read(b) }
 
 func (cr *compressedReader) Close() error {
+	cr.l.mu.Lock()
+	defer cr.l.mu.Unlock()
+
 	// Close the inner ReadCloser.
 	if err := cr.closer.Close(); err != nil {
 		return err

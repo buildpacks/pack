@@ -21,7 +21,7 @@ import (
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 
-	"github.com/buildpack/lifecycle/image"
+	lcimg "github.com/buildpack/lifecycle/image"
 	"github.com/docker/docker/api/types/container"
 	"github.com/pkg/errors"
 )
@@ -33,12 +33,12 @@ type Cache interface {
 }
 
 type BuildFactory struct {
-	Cli          Docker
-	Logger       *logging.Logger
-	FS           *fs.FS
-	Config       *config.Config
-	ImageFactory ImageFactory
-	Cache        Cache
+	Cli     Docker
+	Logger  *logging.Logger
+	FS      *fs.FS
+	Config  *config.Config
+	Cache   Cache
+	Fetcher Fetcher
 }
 
 type BuildFlags struct {
@@ -79,12 +79,12 @@ const (
 	planPath      = "/workspace/plan.toml"
 )
 
-func DefaultBuildFactory(logger *logging.Logger, cache Cache, dockerClient Docker, imageFactory ImageFactory) (*BuildFactory, error) {
+func DefaultBuildFactory(logger *logging.Logger, cache Cache, dockerClient Docker, fetcher Fetcher) (*BuildFactory, error) {
 	f := &BuildFactory{
-		ImageFactory: imageFactory,
-		Logger:       logger,
-		FS:           &fs.FS{},
-		Cache:        cache,
+		Logger:  logger,
+		FS:      &fs.FS{},
+		Cache:   cache,
+		Fetcher: fetcher,
 	}
 
 	var err error
@@ -122,9 +122,11 @@ func calculateRepositoryName(appDir string, buildFlags *BuildFlags) string {
 	return buildFlags.RepoName
 }
 
-func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error) {
+func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags) (*BuildConfig, error) {
+	var builderImage lcimg.Image
+	var err error
+
 	if f.AppDir == "" {
-		var err error
 		f.AppDir, err = os.Getwd()
 		if err != nil {
 			return nil, err
@@ -165,11 +167,15 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	}
 	if !f.NoPull {
 		bf.Logger.Verbose("Pulling builder image %s (use --no-pull flag to skip this step)", style.Symbol(b.Builder))
-	}
-
-	builderImage, err := bf.ImageFactory.NewLocal(b.Builder, !f.NoPull)
-	if err != nil {
-		return nil, err
+		builderImage, err = bf.Fetcher.FetchUpdatedLocalImage(ctx, b.Builder, bf.Logger.VerboseWriter().WithPrefix("docker"))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		builderImage, err = bf.Fetcher.FetchLocalImage(b.Builder)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if f.RunImage != "" {
@@ -202,9 +208,9 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 		b.Logger.Verbose("Selected run image %s from builder %s", style.Symbol(b.RunImage), style.Symbol(b.Builder))
 	}
 
-	var runImage image.Image
+	var runImage lcimg.Image
 	if f.Publish {
-		runImage, err = bf.ImageFactory.NewRemote(b.RunImage)
+		runImage, err = bf.Fetcher.FetchRemoteImage(b.RunImage)
 		if err != nil {
 			return nil, err
 		}
@@ -217,10 +223,15 @@ func (bf *BuildFactory) BuildConfigFromFlags(f *BuildFlags) (*BuildConfig, error
 	} else {
 		if !f.NoPull {
 			bf.Logger.Verbose("Pulling run image %s (use --no-pull flag to skip this step)", style.Symbol(b.RunImage))
-		}
-		runImage, err = bf.ImageFactory.NewLocal(b.RunImage, !f.NoPull)
-		if err != nil {
-			return nil, err
+			runImage, err = bf.Fetcher.FetchUpdatedLocalImage(ctx, b.RunImage, b.Logger.VerboseWriter().WithPrefix("docker"))
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			runImage, err = bf.Fetcher.FetchLocalImage(b.RunImage)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if found, err := runImage.Found(); !found {
@@ -254,24 +265,28 @@ func Build(ctx context.Context, outWriter, errWriter io.Writer, appDir, buildIma
 	if err != nil {
 		return err
 	}
-
-	imageFactory, err := image.NewFactory(image.WithOutWriter(outWriter))
+	imageFactory, err := lcimg.NewFactory(lcimg.WithOutWriter(outWriter))
 	if err != nil {
 		return err
+	}
+	imageFetcher := &ImageFetcher{
+		Factory: imageFactory,
+		Docker:  dockerClient,
 	}
 	logger := logging.NewLogger(outWriter, errWriter, true, false)
-	bf, err := DefaultBuildFactory(logger, c, dockerClient, imageFactory)
+	bf, err := DefaultBuildFactory(logger, c, dockerClient, imageFetcher)
 	if err != nil {
 		return err
 	}
-	b, err := bf.BuildConfigFromFlags(&BuildFlags{
-		AppDir:     appDir,
-		Builder:    buildImage,
-		RunImage:   runImage,
-		RepoName:   repoName,
-		Publish:    publish,
-		ClearCache: clearCache,
-	})
+	b, err := bf.BuildConfigFromFlags(ctx,
+		&BuildFlags{
+			AppDir:     appDir,
+			Builder:    buildImage,
+			RunImage:   runImage,
+			RepoName:   repoName,
+			Publish:    publish,
+			ClearCache: clearCache,
+		})
 	if err != nil {
 		return err
 	}

@@ -11,17 +11,19 @@ import (
 )
 
 type bpLayersDir struct {
-	path   string
-	layers map[string]bpLayer
-	name   string
+	path      string
+	layers    map[string]bpLayer
+	name      string
+	buildpack Buildpack
 }
 
-func readBuildpackLayersDir(layersDir, buildpackID string) (bpLayersDir, error) {
-	path := filepath.Join(layersDir, buildpackIDToDir(buildpackID))
+func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir, error) {
+	path := filepath.Join(layersDir, buildpack.EscapedID())
 	bpDir := bpLayersDir{
-		name:   buildpackID,
-		path:   path,
-		layers: map[string]bpLayer{},
+		name:      buildpack.ID,
+		path:      path,
+		layers:    map[string]bpLayer{},
+		buildpack: buildpack,
 	}
 
 	fis, err := ioutil.ReadDir(path)
@@ -57,6 +59,11 @@ func malformed(l bpLayer) bool {
 	return err != nil
 }
 
+func cached(l bpLayer) bool {
+	md, err := l.read()
+	return err == nil && md.Cache
+}
+
 func (bd *bpLayersDir) findLayers(f func(layer bpLayer) bool) []bpLayer {
 	var selectedLayers []bpLayer
 	for _, l := range bd.layers {
@@ -70,8 +77,8 @@ func (bd *bpLayersDir) findLayers(f func(layer bpLayer) bool) []bpLayer {
 func (bd *bpLayersDir) newBPLayer(name string) *bpLayer {
 	return &bpLayer{
 		layer{
-			path:       filepath.Join(bd.path, buildpackIDToDir(name)),
-			identifier: fmt.Sprintf("%s:%s", bd.name, name),
+			path:       filepath.Join(bd.path, name),
+			identifier: fmt.Sprintf("%s:%s", bd.buildpack.ID, name),
 		},
 	}
 }
