@@ -9,9 +9,9 @@ import (
 
 //go:generate mockgen -package mocks -destination mocks/fetcher.go github.com/buildpack/pack Fetcher
 type Fetcher interface {
-	FetchUpdatedLocalImage(ctx context.Context, imageName string, stdout io.Writer) (image.Image, error)
-	FetchLocalImage(imageName string) (image.Image, error)
-	FetchRemoteImage(imageName string) (image.Image, error)
+	FetchUpdatedLocalImage(context.Context, string, io.Writer) (image.Image, error)
+	FetchLocalImage(string) (image.Image, error)
+	FetchRemoteImage(string) (image.Image, error)
 }
 
 type ImageFetcher struct {

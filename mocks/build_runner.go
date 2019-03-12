@@ -35,6 +35,7 @@ func (m *MockBuildRunner) EXPECT() *MockBuildRunnerMockRecorder {
 
 // Run mocks base method
 func (m *MockBuildRunner) Run(arg0 context.Context) error {
+	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Run", arg0)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -42,5 +43,6 @@ func (m *MockBuildRunner) Run(arg0 context.Context) error {
 
 // Run indicates an expected call of Run
 func (mr *MockBuildRunnerMockRecorder) Run(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockBuildRunner)(nil).Run), arg0)
 }

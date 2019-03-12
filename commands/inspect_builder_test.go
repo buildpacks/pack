@@ -12,8 +12,9 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/commands"
-	"github.com/buildpack/pack/commands/mocks"
+	cmdmocks "github.com/buildpack/pack/commands/mocks"
 	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -21,22 +22,20 @@ func TestCommands(t *testing.T) {
 	spec.Run(t, "Commands", testCommands, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-//go:generate mockgen -package mocks -destination mocks/image.go github.com/buildpack/lifecycle/image Image
-
 func testCommands(t *testing.T, when spec.G, it spec.S) {
 
 	var (
 		command        *cobra.Command
 		logger         *logging.Logger
 		outBuf         bytes.Buffer
-		mockInspector  *mocks.MockBuilderInspector
+		mockInspector  *cmdmocks.MockBuilderInspector
 		mockController *gomock.Controller
 		mockFetcher    *mocks.MockFetcher
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
-		mockInspector = mocks.NewMockBuilderInspector(mockController)
+		mockInspector = cmdmocks.NewMockBuilderInspector(mockController)
 		mockFetcher = mocks.NewMockFetcher(mockController)
 
 		logger = logging.NewLogger(&outBuf, &outBuf, false, false)

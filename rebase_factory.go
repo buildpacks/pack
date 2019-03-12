@@ -4,19 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
+
+	"github.com/buildpack/lifecycle/image"
 
 	"github.com/buildpack/pack/logging"
 
 	"github.com/buildpack/lifecycle"
-	lcimg "github.com/buildpack/lifecycle/image"
 
 	"github.com/buildpack/pack/config"
 )
 
 type RebaseConfig struct {
-	Image        lcimg.Image
-	NewBaseImage lcimg.Image
+	Image        image.Image
+	NewBaseImage image.Image
 }
 
 type RebaseFactory struct {
@@ -32,14 +32,14 @@ type RebaseFlags struct {
 	RunImage string
 }
 
-func (f *RebaseFactory) RebaseConfigFromFlags(ctx context.Context, flags RebaseFlags, stdout io.Writer) (RebaseConfig, error) {
-	var newImageFn func(string) (lcimg.Image, error)
+func (f *RebaseFactory) RebaseConfigFromFlags(ctx context.Context, flags RebaseFlags) (RebaseConfig, error) {
+	var newImageFn func(string) (image.Image, error)
 	if flags.Publish {
 		newImageFn = f.Fetcher.FetchRemoteImage
 	} else {
-		newImageFn = func(name string) (lcimg.Image, error) {
+		newImageFn = func(name string) (image.Image, error) {
 			if !flags.NoPull {
-				return f.Fetcher.FetchUpdatedLocalImage(ctx, name, stdout)
+				return f.Fetcher.FetchUpdatedLocalImage(ctx, name, f.Logger.RawVerboseWriter())
 
 			} else {
 				return f.Fetcher.FetchLocalImage(name)

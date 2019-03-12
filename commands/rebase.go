@@ -28,7 +28,7 @@ func Rebase(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 				Config:  cfg,
 				Fetcher: fetcher,
 			}
-			rebaseConfig, err := factory.RebaseConfigFromFlags(ctx, flags, logger.VerboseWriter().WithPrefix("docker"))
+			rebaseConfig, err := factory.RebaseConfigFromFlags(ctx, flags)
 			if err != nil {
 				return err
 			}

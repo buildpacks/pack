@@ -167,7 +167,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 	}
 	if !f.NoPull {
 		bf.Logger.Verbose("Pulling builder image %s (use --no-pull flag to skip this step)", style.Symbol(b.Builder))
-		builderImage, err = bf.Fetcher.FetchUpdatedLocalImage(ctx, b.Builder, bf.Logger.VerboseWriter().WithPrefix("docker"))
+		builderImage, err = bf.Fetcher.FetchUpdatedLocalImage(ctx, b.Builder, bf.Logger.RawVerboseWriter())
 		if err != nil {
 			return nil, err
 		}
@@ -223,7 +223,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 	} else {
 		if !f.NoPull {
 			bf.Logger.Verbose("Pulling run image %s (use --no-pull flag to skip this step)", style.Symbol(b.RunImage))
-			runImage, err = bf.Fetcher.FetchUpdatedLocalImage(ctx, b.RunImage, b.Logger.VerboseWriter().WithPrefix("docker"))
+			runImage, err = bf.Fetcher.FetchUpdatedLocalImage(ctx, b.RunImage, b.Logger.RawVerboseWriter())
 			if err != nil {
 				return nil, err
 			}

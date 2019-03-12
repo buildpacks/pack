@@ -26,9 +26,6 @@ func TestRebaseFactory(t *testing.T) {
 	spec.Run(t, "rebase_factory", testRebaseFactory, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-// move somewhere else
-//go:generate mockgen -package mocks -destination mocks/image.go github.com/buildpack/lifecycle/image Image
-
 func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#RebaseFactory", func() {
 		var (
@@ -81,7 +78,7 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 							RepoName: "myorg/myrepo",
 						}
 
-						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags, &outBuf)
+						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags)
 						h.AssertNil(t, err)
 					})
 				})
@@ -97,7 +94,7 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 							RepoName: "myorg/myrepo",
 						}
 
-						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags, &outBuf)
+						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags)
 						h.AssertNil(t, err)
 					})
 				})
@@ -115,7 +112,7 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 							RepoName: "myorg/myrepo",
 						}
 
-						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags, &outBuf)
+						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags)
 						h.AssertNil(t, err)
 					})
 				})
@@ -129,7 +126,7 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 							RepoName: "myorg/myrepo",
 						}
 
-						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags, &outBuf)
+						_, err := factory.RebaseConfigFromFlags(context.TODO(), flags)
 						h.AssertError(t, err, "run image must be specified")
 					})
 				})
@@ -148,7 +145,7 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 							RunImage: "default/run",
 							Publish:  false,
 							NoPull:   false,
-						}, &outBuf)
+						})
 						h.AssertNil(t, err)
 
 						h.AssertSameInstance(t, cfg.Image, mockImage)
@@ -168,7 +165,7 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 							RunImage: "default/run",
 							Publish:  false,
 							NoPull:   true,
-						}, &outBuf)
+						})
 						h.AssertNil(t, err)
 
 						h.AssertSameInstance(t, cfg.Image, mockImage)
@@ -190,7 +187,7 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 							RunImage: "default/run",
 							Publish:  true,
 							NoPull:   false,
-						}, &outBuf)
+						})
 						h.AssertNil(t, err)
 
 						h.AssertSameInstance(t, cfg.Image, mockImage)

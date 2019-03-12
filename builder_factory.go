@@ -83,7 +83,7 @@ func (f *BuilderFactory) BuilderConfigFromFlags(ctx context.Context, flags Creat
 		builderConfig.Repo, err = f.Fetcher.FetchRemoteImage(baseImage)
 	} else {
 		if !flags.NoPull {
-			builderConfig.Repo, err = f.Fetcher.FetchUpdatedLocalImage(ctx, baseImage, f.Logger.VerboseWriter().WithPrefix("docker"))
+			builderConfig.Repo, err = f.Fetcher.FetchUpdatedLocalImage(ctx, baseImage, f.Logger.RawVerboseWriter())
 		} else {
 			builderConfig.Repo, err = f.Fetcher.FetchLocalImage(baseImage)
 		}
