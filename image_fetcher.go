@@ -25,52 +25,22 @@ func (f *ImageFetcher) FetchUpdatedLocalImage(ctx context.Context, imageName str
 		return nil, err
 	}
 
-	found, err := expectedImage.Found()
-	if err != nil {
+	if found, err := expectedImage.Found(); err != nil {
 		return nil, err
-	}
-
-	if found {
+	} else if found {
 		err = f.Docker.PullImage(ctx, imageName, stdout)
 		if err != nil {
 			return nil, err
 		}
-
-	}
-	expectedImage, err = f.FetchLocalImage(imageName)
-	if err != nil {
-		return nil, err
 	}
 
-	return expectedImage, nil
+	return f.FetchLocalImage(imageName)
 }
 
 func (f *ImageFetcher) FetchLocalImage(imageName string) (image.Image, error) {
-	expectedImage, err := f.Factory.NewLocal(imageName)
-
-	if err != nil {
-		return nil, err
-	}
-
-	found, err := expectedImage.Found()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if !found {
-		return nil, nil
-	}
-
-	return expectedImage, nil
+	return f.Factory.NewLocal(imageName)
 }
 
 func (f *ImageFetcher) FetchRemoteImage(imageName string) (image.Image, error) {
-	expectedImage, err := f.Factory.NewRemote(imageName)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return expectedImage, nil
+	return f.Factory.NewRemote(imageName)
 }
