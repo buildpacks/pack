@@ -101,7 +101,7 @@ github.com/spf13/cobra
 github.com/spf13/pflag
 # golang.org/x/crypto v0.0.0-20190228161510-8dd112bcdc25
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20190301231341-16b79f2e4e95
+# golang.org/x/net v0.0.0-20190213061140-3a22650c66bd
 golang.org/x/net/proxy
 golang.org/x/net/internal/socks
 # golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6
