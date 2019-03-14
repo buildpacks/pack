@@ -2,7 +2,7 @@ package cache
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 
 	"github.com/docker/docker/api/types"
@@ -18,19 +18,16 @@ type Cache struct {
 	image  string
 }
 
-//type Docker interface {
-//	VolumeRemove(ctx context.Context, volumeID string, force bool) error
-//	ContainerList(ctx context.Context, options types.ContainerListOptions) ([]types.Container, error)
-//	ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error
-//}
-
 func New(repoName string, dockerClient *docker.Client) (*Cache, error) {
 	ref, err := name.ParseReference(repoName, name.WeakValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "bad image identifier")
 	}
+
+	sum := sha256.Sum256([]byte(ref.String()))
+
 	return &Cache{
-		image:  fmt.Sprintf("pack-cache-%x", md5.Sum([]byte(ref.String()))),
+		image:  fmt.Sprintf("pack-cache-%x", sum[:6]),
 		docker: dockerClient,
 	}, nil
 }
