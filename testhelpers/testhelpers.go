@@ -2,7 +2,6 @@ package testhelpers
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -23,9 +22,7 @@ import (
 
 	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
-	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/google/go-cmp/cmp"
-	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/fs"
@@ -265,51 +262,6 @@ func DockerRmi(dockerCli *docker.Client, repoNames ...string) error {
 	return err
 }
 
-func CopySingleFileFromContainer(dockerCli *docker.Client, ctrID, path string) (string, error) {
-	r, _, err := dockerCli.CopyFromContainer(context.Background(), ctrID, path)
-	if err != nil {
-		return "", err
-	}
-	defer r.Close()
-	tr := tar.NewReader(r)
-	hdr, err := tr.Next()
-	if hdr.Name != path && hdr.Name != filepath.Base(path) {
-		return "", fmt.Errorf("filenames did not match: %s and %s (%s)", hdr.Name, path, filepath.Base(path))
-	}
-	b, err := ioutil.ReadAll(tr)
-	return string(b), err
-}
-
-func StatSingleFileFromContainer(dockerCli *docker.Client, ctrID, path string) (*tar.Header, error) {
-	r, _, err := dockerCli.CopyFromContainer(context.Background(), ctrID, path)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-	tr := tar.NewReader(r)
-	hdr, err := tr.Next()
-	if hdr.Name != path && hdr.Name != filepath.Base(path) {
-		return nil, fmt.Errorf("filenames did not match: %s and %s (%s)", hdr.Name, path, filepath.Base(path))
-	}
-	return hdr, err
-}
-
-func CopySingleFileFromImage(dockerCli *docker.Client, repoName, path string) (string, error) {
-	ctr, err := dockerCli.ContainerCreate(context.Background(),
-		&dockercontainer.Config{
-			Image:  repoName,
-			Labels: map[string]string{"author": "pack"},
-		}, &dockercontainer.HostConfig{
-			AutoRemove: true,
-		}, nil, "",
-	)
-	if err != nil {
-		return "", err
-	}
-	defer dockerCli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
-	return CopySingleFileFromContainer(dockerCli, ctr.ID, path)
-}
-
 func PushImage(dockerCli *docker.Client, ref string, registryConfig *TestRegistryConfig) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: registryConfig.RegistryAuth()})
 	if err != nil {
@@ -321,7 +273,7 @@ func PushImage(dockerCli *docker.Client, ref string, registryConfig *TestRegistr
 	return rc.Close()
 }
 
-const DefaultTag = "v3alpha2"
+const DefaultTag = "rc"
 
 func PackTag() string {
 	tag := os.Getenv("PACK_TAG")
@@ -329,14 +281,6 @@ func PackTag() string {
 		return DefaultTag
 	}
 	return tag
-}
-
-var pullPacksSamplesOnce sync.Once
-
-func pullPacksSamples(d *docker.Client) {
-	pullPacksSamplesOnce.Do(func() {
-		PullImage(d, "packs/samples")
-	})
 }
 
 func HttpGet(t *testing.T, url string) string {
@@ -379,73 +323,6 @@ func HttpGetE(url string, headers map[string]string) (string, error) {
 	return string(b), nil
 }
 
-func CopyWorkspaceToDocker(t *testing.T, srcPath, destVolume string) {
-	t.Helper()
-
-	ctx := context.Background()
-	pullPacksSamples(dockerCli(t))
-	ctr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
-		User:   "pack",
-		Image:  "packs/samples",
-		Cmd:    []string{"true"},
-		Labels: map[string]string{"author": "pack"},
-	}, &dockercontainer.HostConfig{
-		AutoRemove: true,
-		Binds:      []string{destVolume + ":/workspace"},
-	}, nil, "")
-	AssertNil(t, err)
-	defer dockerCli(t).ContainerRemove(ctx, ctr.ID, dockertypes.ContainerRemoveOptions{})
-
-	tr, errChan := (&fs.FS{}).CreateTarReader(srcPath, "/workspace", 1000, 1000)
-	err = dockerCli(t).CopyToContainer(ctx, ctr.ID, "/", tr, dockertypes.CopyToContainerOptions{})
-	AssertNil(t, err)
-	AssertNil(t, <-errChan)
-}
-
-func ReadFromDocker(t *testing.T, volume, path string) string {
-	t.Helper()
-	pullPacksSamples(dockerCli(t))
-	ctr, err := dockerCli(t).ContainerCreate(
-		context.Background(),
-		&dockercontainer.Config{
-			Image:  "packs/samples",
-			Labels: map[string]string{"author": "pack"},
-		},
-		&dockercontainer.HostConfig{
-			AutoRemove: true,
-			Binds:      []string{volume + ":/workspace"},
-		},
-		nil, "",
-	)
-	AssertNil(t, err)
-	defer dockerCli(t).ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
-	txt, err := CopySingleFileFromContainer(dockerCli(t), ctr.ID, path)
-	AssertNil(t, err)
-	return txt
-}
-
-func StatFromDocker(t *testing.T, volume, path string) *tar.Header {
-	t.Helper()
-	pullPacksSamples(dockerCli(t))
-	ctr, err := dockerCli(t).ContainerCreate(
-		context.Background(),
-		&dockercontainer.Config{
-			Image:  "packs/samples",
-			Labels: map[string]string{"author": "pack"},
-		},
-		&dockercontainer.HostConfig{
-			AutoRemove: true,
-			Binds:      []string{volume + ":/workspace"},
-		},
-		nil, "",
-	)
-	AssertNil(t, err)
-	defer dockerCli(t).ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{})
-	hdr, err := StatSingleFileFromContainer(dockerCli(t), ctr.ID, path)
-	AssertNil(t, err)
-	return hdr
-}
-
 func ImageID(t *testing.T, repoName string) string {
 	t.Helper()
 	inspect, _, err := dockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
@@ -481,52 +358,19 @@ func RunE(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
-func PullImage(dockerCli *docker.Client, ref string) error {
+func TryPullImage(dockerCli *docker.Client, ref string) error {
 	return PullImageWithAuth(dockerCli, ref, "")
 }
 
 func PullImageWithAuth(dockerCli *docker.Client, ref, registryAuth string) error {
 	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{RegistryAuth: registryAuth})
 	if err != nil {
-		// Retry
-		rc, err = dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{RegistryAuth: registryAuth})
-		if err != nil {
-			return err
-		}
+		return nil
 	}
 	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
 		return err
 	}
 	return rc.Close()
-}
-
-func RunInImage(t *testing.T, dockerCli *docker.Client, volumes []string, repoName string, args ...string) string {
-	t.Helper()
-	ctx := context.Background()
-
-	ctr, err := dockerCli.ContainerCreate(ctx, &dockercontainer.Config{
-		Image: repoName,
-		Cmd:   args,
-		User:  "root",
-	}, &dockercontainer.HostConfig{
-		AutoRemove: true,
-		Binds:      volumes,
-	}, nil, "")
-	AssertNil(t, err)
-	okChan, errChan := dockerCli.ContainerWait(ctx, ctr.ID, dockercontainer.WaitConditionRemoved)
-
-	var buf bytes.Buffer
-	err = dockerCli.RunContainer(ctx, ctr.ID, &buf, &buf)
-	if err != nil {
-		t.Fatalf("Expected nil: %s", errors.Wrap(err, buf.String()))
-	}
-
-	select {
-	case <-okChan:
-	case err = <-errChan:
-		AssertNil(t, err)
-	}
-	return buf.String()
 }
 
 func RecursiveCopy(t *testing.T, src, dst string) {

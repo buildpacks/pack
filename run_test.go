@@ -76,12 +76,6 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 				Fetcher: mockFetcher,
 				Cache:   mockCache,
 				Config: &config.Config{
-					Stacks: []config.Stack{
-						{
-							ID:        "some.stack.id",
-							RunImages: []string{"some/run", "registry.com/some/run"},
-						},
-					},
 				},
 			}
 

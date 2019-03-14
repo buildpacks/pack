@@ -72,7 +72,7 @@ func RunRegistry(t *testing.T, seedRegistry bool) *TestRegistryConfig {
 }
 
 func startRegistry(t *testing.T, runRegistryName, username, password string) string {
-	AssertNil(t, PullImage(dockerCli(t), registryContainerName))
+	AssertNil(t, TryPullImage(dockerCli(t), registryContainerName))
 	ctx := context.Background()
 
 	htpasswdTar := generateHtpasswd(t, ctx, username, password)
@@ -176,9 +176,7 @@ func DefaultBuildImage(t *testing.T, registryPort string) string {
 	t.Helper()
 	tag := PackTag()
 	getBuildImageOnce.Do(func() {
-		if tag == DefaultTag {
-			AssertNil(t, PullImage(dockerCli(t), fmt.Sprintf("packs/build:%s", tag)))
-		}
+		AssertNil(t, TryPullImage(dockerCli(t), fmt.Sprintf("packs/build:%s", tag)))
 		AssertNil(t, dockerCli(t).ImageTag(
 			context.Background(),
 			fmt.Sprintf("packs/build:%s", tag),
@@ -194,9 +192,7 @@ func DefaultRunImage(t *testing.T, registryPort string) string {
 	t.Helper()
 	tag := PackTag()
 	getRunImageOnce.Do(func() {
-		if tag == DefaultTag {
-			AssertNil(t, PullImage(dockerCli(t), fmt.Sprintf("packs/run:%s", tag)))
-		}
+		AssertNil(t, TryPullImage(dockerCli(t), fmt.Sprintf("packs/run:%s", tag)))
 		AssertNil(t, dockerCli(t).ImageTag(
 			context.Background(),
 			fmt.Sprintf("packs/run:%s", tag),
@@ -215,17 +211,14 @@ func DefaultBuilderImage(t *testing.T, registryPort string) string {
 	newName := fmt.Sprintf("localhost:%s/%s", registryPort, origName)
 	dockerCli := dockerCli(t)
 	getBuilderImageOnce.Do(func() {
-		if tag == DefaultTag {
-			AssertNil(t, PullImage(dockerCli, origName))
-			AssertNil(t, dockerCli.ImageTag(context.Background(), origName, newName))
-		} else {
-			runImageName := DefaultRunImage(t, registryPort)
+		AssertNil(t, TryPullImage(dockerCli, origName))
+		AssertNil(t, dockerCli.ImageTag(context.Background(), origName, newName))
+		runImageName := DefaultRunImage(t, registryPort)
 
-			CreateImageOnLocal(t, dockerCli, newName, fmt.Sprintf(`
+		CreateImageOnLocal(t, dockerCli, newName, fmt.Sprintf(`
 					FROM %s
 					LABEL %s="{\"runImage\": {\"image\": \"%s\"}}"
 				`, origName, pack.BuilderMetadataLabel, runImageName))
-		}
 	})
 	return newName
 }

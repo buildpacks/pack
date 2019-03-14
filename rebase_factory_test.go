@@ -16,7 +16,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -41,21 +40,6 @@ func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
 
 			factory = pack.RebaseFactory{
 				Logger: logging.NewLogger(&outBuf, &errBuff, false, false),
-				Config: &config.Config{
-					DefaultStackID: "some.default.stack",
-					Stacks: []config.Stack{
-						{
-							ID:         "some.default.stack",
-							BuildImage: "default/build",
-							RunImages:  []string{"default/run"},
-						},
-						{
-							ID:         "some.other.stack",
-							BuildImage: "other/build",
-							RunImages:  []string{"other/run"},
-						},
-					},
-				},
 				Fetcher: mockFetcher,
 			}
 		})
