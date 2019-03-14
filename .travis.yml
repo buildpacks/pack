@@ -21,10 +21,10 @@ jobs:
     script:
     |
       go test -count=1 -parallel=1 -v ./...
-      docker pull packs/build:0.0.1-rc.731
-      docker pull packs/run:0.0.1-rc.731
-      docker pull packs/samples:0.0.1-rc.731
-      export PACK_TAG=0.0.1-rc.731
+      docker pull packs/build:rc
+      docker pull packs/run:rc
+      docker pull packs/samples:rc
+      export PACK_TAG=rc
       go test -count=1 -parallel=1 -v -tags=acceptance ./acceptance
   - name: tests
     os: windows
