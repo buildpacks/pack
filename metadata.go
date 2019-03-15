@@ -10,8 +10,9 @@ const (
 )
 
 type BuilderImageMetadata struct {
-	RunImage   BuilderRunImageMetadata     `json:"runImage"`
-	Buildpacks []BuilderBuildpacksMetadata `json:"buildpacks"`
+	RunImage   BuilderRunImageMetadata    `json:"runImage"`
+	Buildpacks []BuilderBuildpackMetadata `json:"buildpacks"`
+	Groups     []BuilderGroupMetadata     `json:"groups"`
 }
 
 type BuilderRunImageMetadata struct {
@@ -19,9 +20,14 @@ type BuilderRunImageMetadata struct {
 	Mirrors []string `json:"mirrors"`
 }
 
-type BuilderBuildpacksMetadata struct {
+type BuilderBuildpackMetadata struct {
 	ID      string `json:"id"`
 	Version string `json:"version"`
+	Latest  bool   `json:"latest"`
+}
+
+type BuilderGroupMetadata struct {
+	Buildpacks []BuilderBuildpackMetadata `json:"buildpacks"`
 }
 
 func (m *BuilderImageMetadata) RunImageForRepoName(repoName string, runImages []string) (runImage string, locallyConfigured bool, err error) {

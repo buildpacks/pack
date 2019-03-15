@@ -21,6 +21,8 @@ type Builder struct {
 	RunImage             string
 	LocalRunImageMirrors []string
 	RunImageMirrors      []string
+	Buildpacks           []BuilderBuildpackMetadata
+	Groups               []BuilderGroupMetadata
 }
 
 func DefaultBuilderInspect() (*BuilderInspect, error) {
@@ -35,17 +37,18 @@ func DefaultBuilderInspect() (*BuilderInspect, error) {
 }
 
 func (b *BuilderInspect) Inspect(builderImage image.Image) (Builder, error) {
-	defaultRunImage, err := b.getRunImageMirrors(builderImage)
+	builderMetadata, err := b.getBuilderMetadata(builderImage)
 	if err != nil {
 		return Builder{}, err
 	}
 
-	builderName := builderImage.Name()
 	return Builder{
-		Image:                builderName,
-		RunImage:             defaultRunImage.Image,
-		LocalRunImageMirrors: b.getLocalRunImageMirrors(defaultRunImage.Image),
-		RunImageMirrors:      defaultRunImage.Mirrors,
+		Image:                builderImage.Name(),
+		RunImage:             builderMetadata.RunImage.Image,
+		LocalRunImageMirrors: b.getLocalRunImageMirrors(builderMetadata.RunImage.Image),
+		RunImageMirrors:      builderMetadata.RunImage.Mirrors,
+		Buildpacks:           builderMetadata.Buildpacks,
+		Groups:               builderMetadata.Groups,
 	}, nil
 }
 
@@ -56,19 +59,20 @@ func (b *BuilderInspect) getLocalRunImageMirrors(imageName string) []string {
 	return nil
 }
 
-func (b *BuilderInspect) getRunImageMirrors(builderImage image.Image) (*BuilderRunImageMetadata, error) {
-	var metadata BuilderImageMetadata
-
+func (b *BuilderInspect) getBuilderMetadata(builderImage image.Image) (BuilderImageMetadata, error) {
 	label, err := builderImage.Label(BuilderMetadataLabel)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to find run images for builder %s", style.Symbol(builderImage.Name()))
-	}
-	if label == "" {
-		return nil, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(builderImage.Name()), style.Symbol(BuilderMetadataLabel))
-	}
-	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
-		return nil, errors.Wrapf(err, "failed to parse run images for builder %s", style.Symbol(builderImage.Name()))
+		return BuilderImageMetadata{}, errors.Wrapf(err, "failed to find run images for builder %s", style.Symbol(builderImage.Name()))
 	}
 
-	return &metadata.RunImage, nil
+	if label == "" {
+		return BuilderImageMetadata{}, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(builderImage.Name()), style.Symbol(BuilderMetadataLabel))
+	}
+
+	var metadata BuilderImageMetadata
+	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
+		return BuilderImageMetadata{}, errors.Wrapf(err, "failed to parse run images for builder %s", style.Symbol(builderImage.Name()))
+	}
+
+	return metadata, nil
 }

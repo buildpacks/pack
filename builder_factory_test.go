@@ -436,7 +436,7 @@ run-image = "some/run"
 				builderConfig = pack.BuilderConfig{
 					Repo:            mockImage,
 					Buildpacks:      []pack.Buildpack{},
-					Groups:          []lifecycle.BuildpackGroup{{Buildpacks: []*lifecycle.Buildpack{{ID: "bpId"}}}},
+					Groups:          []lifecycle.BuildpackGroup{},
 					BuilderDir:      "",
 					RunImage:        "myorg/run",
 					RunImageMirrors: []string{"gcr.io/myorg/run"},
@@ -447,24 +447,14 @@ run-image = "some/run"
 				h.AssertNil(t, factory.Create(builderConfig))
 				h.AssertEq(t,
 					labels["io.buildpacks.builder.metadata"],
-					`{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]},"buildpacks":[]}`,
+					`{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]},"buildpacks":[],"groups":[]}`,
 				)
-			})
-
-			it("should write a 'order.toml' that lists buildpack groups", func() {
-				h.AssertNil(t, factory.Create(builderConfig))
-				buf, exists := savedLayers["order.tar"]
-				h.AssertEq(t, exists, true)
-
-				contents, err := h.UntarSingleFile(buf, "/buildpacks/order.toml")
-				h.AssertNil(t, err)
-				h.AssertContains(t, string(contents), `id = "bpId"`)
 			})
 
 			when("builder config contains buildpacks", func() {
 				it.Before(func() {
 					builderConfig.Buildpacks = []pack.Buildpack{
-						{ID: "some-buildpack-id", Version: "some-buildpack-version", Dir: "testdata/used-to-test-various-uri-schemes/buildpack"},
+						{ID: "some-buildpack-id", Version: "some-buildpack-version", Dir: "testdata/used-to-test-various-uri-schemes/buildpack", Latest: true},
 					}
 				})
 
@@ -472,7 +462,31 @@ run-image = "some/run"
 					h.AssertNil(t, factory.Create(builderConfig))
 					h.AssertEq(t,
 						labels["io.buildpacks.builder.metadata"],
-						`{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]},"buildpacks":[{"id":"some-buildpack-id","version":"some-buildpack-version"}]}`,
+						`{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]},"buildpacks":[{"id":"some-buildpack-id","version":"some-buildpack-version","latest":true}],"groups":[]}`,
+					)
+				})
+			})
+
+			when("builder config contains groups", func() {
+				it.Before(func() {
+					builderConfig.Groups = []lifecycle.BuildpackGroup{{Buildpacks: []*lifecycle.Buildpack{{ID: "bpId", Version: "bpVersion"}}}}
+				})
+
+				it("should write a 'order.toml' that lists buildpack groups", func() {
+					h.AssertNil(t, factory.Create(builderConfig))
+					buf, exists := savedLayers["order.tar"]
+					h.AssertEq(t, exists, true)
+
+					contents, err := h.UntarSingleFile(buf, "/buildpacks/order.toml")
+					h.AssertNil(t, err)
+					h.AssertContains(t, string(contents), `id = "bpId"`)
+				})
+
+				it("stores metadata about the groups in the builder label", func() {
+					h.AssertNil(t, factory.Create(builderConfig))
+					h.AssertEq(t,
+						labels["io.buildpacks.builder.metadata"],
+						`{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]},"buildpacks":[],"groups":[{"buildpacks":[{"id":"bpId","version":"bpVersion","latest":false}]}]}`,
 					)
 				})
 			})

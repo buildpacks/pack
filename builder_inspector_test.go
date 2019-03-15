@@ -43,7 +43,33 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#Inspect", func() {
 		when("builder has valid metadata label", func() {
 			it.Before(func() {
-				mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/default", "mirrors": ["gcr.io/some/default"]}}`, nil)
+				mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").
+					Return(`{
+  "runImage": {
+    "image": "some/default",
+    "mirrors": [
+      "gcr.io/some/default"
+    ]
+  },
+  "buildpacks": [
+    {
+      "id": "test.bp.one",
+      "version": "1.0.0",
+      "latest": true
+    }
+  ],
+  "groups": [
+    {
+      "buildpacks": [
+        {
+          "id": "test.bp.one",
+          "version": "1.0.0",
+          "latest": true
+        }
+      ]
+    }
+  ]
+}`, nil)
 			})
 
 			when("builder exists in config", func() {
@@ -78,6 +104,18 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					builder, err := inspector.Inspect(mockBuilderImage)
 					h.AssertNil(t, err)
 					h.AssertEq(t, builder.RunImageMirrors, []string{"gcr.io/some/default"})
+				})
+
+				it("sets the buildpacks", func() {
+					builder, err := inspector.Inspect(mockBuilderImage)
+					h.AssertNil(t, err)
+					h.AssertEq(t, builder.Buildpacks, []pack.BuilderBuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}})
+				})
+
+				it("sets the groups", func() {
+					builder, err := inspector.Inspect(mockBuilderImage)
+					h.AssertNil(t, err)
+					h.AssertEq(t, builder.Groups, []pack.BuilderGroupMetadata{{Buildpacks: []pack.BuilderBuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}}}})
 				})
 			})
 

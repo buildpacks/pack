@@ -741,15 +741,17 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			builderImageName := h.CreateImageOnRemote(t, dockerCli, registryConfig, "some/builder",
 				fmt.Sprintf(`
 										FROM scratch
-										LABEL %s="{\"runImage\": { \"image\": \"some/run1\", \"mirrors\": [\"gcr.io/some/run1\"]}}"
+										LABEL %s="{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run1\"]},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
+										LABEL io.buildpacks.stack.id=some.test.stack
 									`, pack.BuilderMetadataLabel))
 
 			h.CreateImageOnLocal(t, dockerCli, builderImageName,
 				fmt.Sprintf(`
 										FROM scratch
-										LABEL %s="{\"runImage\": { \"image\": \"some/run1\", \"mirrors\": [\"gcr.io/some/run2\"]}}"
+										LABEL %s="{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run2\"]},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
+										LABEL io.buildpacks.stack.id=some.test.stack
 									`, pack.BuilderMetadataLabel))
-			println(builderImageName)
+
 			cmd := packCmd("set-run-image-mirrors", "some/run1", "--mirror", configuredRunImage)
 			output := h.Run(t, cmd)
 			h.AssertEq(t, output, "Run Image 'some/run1' configured with mirror 'some-registry.com/some/run1'\n")
@@ -757,21 +759,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			cmd = packCmd("inspect-builder", builderImageName)
 			output = h.Run(t, cmd)
 
-			h.AssertEq(t, output, `Remote
-------
-Run Image: some/run1
-Run Image Mirrors:
-	some-registry.com/some/run1 (user-configured)
-	gcr.io/some/run1
+			expected, err := ioutil.ReadFile(filepath.Join("testdata", "inspect_builder_output.txt"))
+			h.AssertNil(t, err)
 
-Local
------
-Run Image: some/run1
-Run Image Mirrors:
-	some-registry.com/some/run1 (user-configured)
-	gcr.io/some/run2
-
-`)
+			h.AssertEq(t, output, fmt.Sprintf(string(expected), builderImageName))
 		})
 	})
 }

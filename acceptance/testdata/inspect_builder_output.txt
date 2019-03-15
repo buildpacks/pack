@@ -1,0 +1,45 @@
+Inspecting builder: %s
+
+Remote
+------
+
+Stack: some.test.stack
+
+Run Images:
+  some-registry.com/some/run1 (user-configured)
+  some/run1
+  gcr.io/some/run1
+
+Buildpacks:
+  ID                 VERSION        LATEST        
+  test.bp.one        0.0.1          false         
+  test.bp.two        0.0.2          true
+
+Detection Order:
+  Group #1:
+    test.bp.one@0.0.1
+    test.bp.two@0.0.2
+  Group #2:
+    test.bp.one@0.0.1
+
+Local
+-----
+
+Stack: some.test.stack
+
+Run Images:
+  some-registry.com/some/run1 (user-configured)
+  some/run1
+  gcr.io/some/run2
+
+Buildpacks:
+  ID                 VERSION        LATEST        
+  test.bp.one        0.0.1          false         
+  test.bp.two        0.0.2          true
+
+Detection Order:
+  Group #1:
+    test.bp.one@0.0.1
+    test.bp.two@0.0.2
+  Group #2:
+    test.bp.one@0.0.1

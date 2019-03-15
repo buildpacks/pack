@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/buildpack/pack/config"
 	"os"
 
 	"github.com/buildpack/lifecycle/image"
@@ -17,6 +18,7 @@ var (
 	Version           = "0.0.0"
 	timestamps, quiet bool
 	logger            logging.Logger
+	cfg               config.Config
 	inspect           pack.BuilderInspect
 	imageFetcher      pack.ImageFetcher
 )
@@ -27,6 +29,7 @@ func main() {
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			logger = *logging.NewLogger(os.Stdout, os.Stderr, !quiet, timestamps)
+			cfg = initConfig(logger)
 			inspect = initInspect(logger)
 			imageFetcher = initImageFetcher(logger)
 		},
@@ -42,7 +45,7 @@ func main() {
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFetcher))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(&logger))
-	rootCmd.AddCommand(commands.InspectBuilder(&logger, &inspect, &imageFetcher))
+	rootCmd.AddCommand(commands.InspectBuilder(&logger, &cfg, &inspect, &imageFetcher))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger))
 
 	rootCmd.AddCommand(commands.Version(&logger, Version))
@@ -50,6 +53,14 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func initConfig(logger logging.Logger) config.Config {
+	cfg, err := config.NewDefault()
+	if err != nil {
+		exitError(logger, err)
+	}
+	return *cfg
 }
 
 func initInspect(logger logging.Logger) pack.BuilderInspect {

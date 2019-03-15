@@ -201,7 +201,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return fmt.Errorf(`failed append order.toml layer to image: %s`, err)
 	}
 
-	buildpacksMetadata := make([]BuilderBuildpacksMetadata, 0, len(config.Buildpacks))
+	buildpacksMetadata := make([]BuilderBuildpackMetadata, 0, len(config.Buildpacks))
 	for _, buildpack := range config.Buildpacks {
 		tarFile, err := f.buildpackLayer(tmpDir, &buildpack, config.BuilderDir)
 		if err != nil {
@@ -210,7 +210,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		if err := config.Repo.AddLayer(tarFile); err != nil {
 			return fmt.Errorf(`failed append buildpack layer to image: %s`, err)
 		}
-		buildpacksMetadata = append(buildpacksMetadata, BuilderBuildpacksMetadata{ID: buildpack.ID, Version: buildpack.Version})
+		buildpacksMetadata = append(buildpacksMetadata, BuilderBuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version, Latest: buildpack.Latest})
 	}
 
 	tarFile, err := f.latestLayer(config.Buildpacks, tmpDir, config.BuilderDir)
@@ -221,19 +221,32 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return fmt.Errorf(`failed append latest link layer to image: %s`, err)
 	}
 
+	groupsMetadata := make([]BuilderGroupMetadata, 0, len(config.Groups))
+	for _, group := range config.Groups {
+		groupBuildpacks := make([]BuilderBuildpackMetadata, 0, len(group.Buildpacks))
+		for _, buildpack := range group.Buildpacks {
+			groupBuildpacks = append(groupBuildpacks, BuilderBuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version})
+		}
+		groupsMetadata = append(groupsMetadata, BuilderGroupMetadata{Buildpacks: groupBuildpacks})
+	}
+
 	jsonBytes, err := json.Marshal(&BuilderImageMetadata{
 		RunImage:   BuilderRunImageMetadata{Image: config.RunImage, Mirrors: config.RunImageMirrors},
 		Buildpacks: buildpacksMetadata,
+		Groups:     groupsMetadata,
 	})
 	if err != nil {
 		return fmt.Errorf(`failed marshal builder image metadata: %s`, err)
 	}
 
-	config.Repo.SetLabel(BuilderMetadataLabel, string(jsonBytes))
+	if err := config.Repo.SetLabel(BuilderMetadataLabel, string(jsonBytes)); err != nil {
+		return fmt.Errorf("failed to set metadata label: %s", err)
+	}
 
 	if _, err := config.Repo.Save(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
