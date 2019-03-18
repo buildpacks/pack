@@ -493,8 +493,8 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, output, `Please select a default builder with:
 
 	pack set-default-builder [builder image]`)
-				h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb`)
-				h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
+				//h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb`)
+				//h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
 				h.AssertMatch(t, output, `Samples:\s+packs/samples`)
 			})
 		})
