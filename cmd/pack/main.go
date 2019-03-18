@@ -19,7 +19,7 @@ var (
 	timestamps, quiet bool
 	logger            logging.Logger
 	cfg               config.Config
-	inspect           pack.BuilderInspect
+	client            pack.Client
 	imageFetcher      pack.ImageFetcher
 )
 
@@ -30,8 +30,8 @@ func main() {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			logger = *logging.NewLogger(os.Stdout, os.Stderr, !quiet, timestamps)
 			cfg = initConfig(logger)
-			inspect = initInspect(logger)
 			imageFetcher = initImageFetcher(logger)
+			client = *pack.NewClient(&cfg, &imageFetcher)
 		},
 	}
 	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
@@ -45,7 +45,7 @@ func main() {
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFetcher))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(&logger))
-	rootCmd.AddCommand(commands.InspectBuilder(&logger, &cfg, &inspect, &imageFetcher))
+	rootCmd.AddCommand(commands.InspectBuilder(&logger, &cfg, &client))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger))
 
 	rootCmd.AddCommand(commands.Version(&logger, Version))
@@ -61,14 +61,6 @@ func initConfig(logger logging.Logger) config.Config {
 		exitError(logger, err)
 	}
 	return *cfg
-}
-
-func initInspect(logger logging.Logger) pack.BuilderInspect {
-	inspect, err := pack.DefaultBuilderInspect()
-	if err != nil {
-		exitError(logger, err)
-	}
-	return *inspect
 }
 
 func initImageFetcher(logger logging.Logger) pack.ImageFetcher {

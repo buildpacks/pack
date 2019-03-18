@@ -1,32 +1,32 @@
 package pack_test
 
 import (
-"bytes"
-"context"
-"encoding/json"
-"testing"
+	"bytes"
+	"context"
+	"encoding/json"
+	"testing"
 
-"github.com/fatih/color"
+	"github.com/fatih/color"
 
-"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/logging"
 
-"github.com/buildpack/lifecycle"
-"github.com/golang/mock/gomock"
-"github.com/sclevine/spec"
-"github.com/sclevine/spec/report"
+	"github.com/buildpack/lifecycle"
+	"github.com/golang/mock/gomock"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
 
-"github.com/buildpack/pack"
-"github.com/buildpack/pack/mocks"
-h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/mocks"
+	h "github.com/buildpack/pack/testhelpers"
 )
 
-func TestRebase(t *testing.T) {
+func TestRebaseFactory(t *testing.T) {
 	color.NoColor = true
-	spec.Run(t, "rebase_factory", testRebase, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "rebase_factory", testRebaseFactory, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testRebase(t *testing.T, when spec.G, it spec.S) {
-	when("#Rebase", func() {
+func testRebaseFactory(t *testing.T, when spec.G, it spec.S) {
+	when("#RebaseFactory", func() {
 		var (
 			mockController *gomock.Controller
 			mockFetcher    *mocks.MockFetcher

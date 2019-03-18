@@ -1,53 +1,69 @@
 package pack_test
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
+	imgtest "github.com/buildpack/lifecycle/testhelpers"
 	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	h "github.com/buildpack/pack/testhelpers"
+
 	"github.com/buildpack/pack"
-	builder2 "github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/mocks"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpack/pack/testhelpers"
 )
 
 func TestInspectBuilder(t *testing.T) {
 	color.NoColor = true
-	spec.Run(t, "inspect-builder", testInspectBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "InspectBuilder", testInspectBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		inspector        *pack.BuilderInspect
-		mockController   *gomock.Controller
-		mockBuilderImage *mocks.MockImage
+		client         *pack.Client
+		mockFetcher    *mocks.MockFetcher
+		mockController *gomock.Controller
+		builderImage   *imgtest.FakeImage
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
-		mockBuilderImage = mocks.NewMockImage(mockController)
-		mockBuilderImage.EXPECT().Name().Return("some/builder").AnyTimes()
-
-		inspector = &pack.BuilderInspect{
-			Config: &config.Config{},
-		}
+		mockFetcher = mocks.NewMockFetcher(mockController)
+		client = pack.NewClient(&config.Config{
+			RunImages: []config.RunImage{
+				{Image: "some/run-image", Mirrors: []string{"some/local-mirror"}},
+			},
+		}, mockFetcher)
+		builderImage = imgtest.NewFakeImage(t, "some/builder", "", "")
 	})
 
 	it.After(func() {
 		mockController.Finish()
 	})
 
-	when("#Inspect", func() {
-		when("builder has valid metadata label", func() {
-			it.Before(func() {
-				mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").
-					Return(`{
+	when("the image exists", func() {
+		for _, useDaemon := range []bool{true, false} {
+			when(fmt.Sprintf("daemon is %t", useDaemon), func() {
+				it.Before(func() {
+					if useDaemon {
+						mockFetcher.EXPECT().FetchLocalImage("some/builder").Return(builderImage, nil)
+					} else {
+						mockFetcher.EXPECT().FetchRemoteImage("some/builder").Return(builderImage, nil)
+					}
+				})
+
+				when("the builder image has a metadata label", func() {
+					it.Before(func() {
+						testhelpers.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
+						testhelpers.AssertNil(t, builderImage.SetLabel("io.buildpacks.builder.metadata", `{
   "runImage": {
-    "image": "some/default",
+    "image": "some/run-image",
     "mirrors": [
       "gcr.io/some/default"
     ]
@@ -70,88 +86,72 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
       ]
     }
   ]
-}`, nil)
-			})
+}`))
+					})
 
-			when("builder exists in config", func() {
-				it.Before(func() {
-					inspector.Config.RunImages = []config.RunImage{
-						{
-							Image:   "some/default",
-							Mirrors: []string{"gcr.io/some/run"},
-						},
-					}
-				})
+					it("returns the builder with the given name", func() {
+						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+						h.AssertEq(t, builderInfo.RunImage, "some/run-image")
+					})
 
-				it("returns the builder with the given name", func() {
-					builder, err := inspector.Inspect(mockBuilderImage)
-					h.AssertNil(t, err)
-					h.AssertEq(t, builder.Image, "some/builder")
-				})
+					it("set the local run image mirrors", func() {
+						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+						h.AssertEq(t, builderInfo.LocalRunImageMirrors, []string{"some/local-mirror"})
+					})
 
-				it("set the correct run image", func() {
-					builder, err := inspector.Inspect(mockBuilderImage)
-					h.AssertNil(t, err)
-					h.AssertEq(t, builder.RunImage, "some/default")
-				})
+					it("set the defaults run image mirrors", func() {
+						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+						h.AssertEq(t, builderInfo.RunImageMirrors, []string{"gcr.io/some/default"})
+					})
 
-				it("set the local run image mirrors", func() {
-					builder, err := inspector.Inspect(mockBuilderImage)
-					h.AssertNil(t, err)
-					h.AssertEq(t, builder.LocalRunImageMirrors, []string{"gcr.io/some/run"})
-				})
+					it("sets the buildpacks", func() {
+						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+						h.AssertEq(t, builderInfo.Buildpacks[0], pack.BuildpackInfo{
+							ID:      "test.bp.one",
+							Version: "1.0.0",
+							Latest:  true,
+						})
+					})
 
-				it("set the defaults run image mirrors", func() {
-					builder, err := inspector.Inspect(mockBuilderImage)
-					h.AssertNil(t, err)
-					h.AssertEq(t, builder.RunImageMirrors, []string{"gcr.io/some/default"})
-				})
-
-				it("sets the buildpacks", func() {
-					builder, err := inspector.Inspect(mockBuilderImage)
-					h.AssertNil(t, err)
-					h.AssertEq(t, builder.Buildpacks, []builder2.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}})
-				})
-
-				it("sets the groups", func() {
-					builder, err := inspector.Inspect(mockBuilderImage)
-					h.AssertNil(t, err)
-					h.AssertEq(t, builder.Groups, []builder2.GroupMetadata{{Buildpacks: []builder2.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}}}})
+					it("sets the groups", func() {
+						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+						h.AssertEq(t, builderInfo.Groups[0], []pack.BuildpackInfo{{
+							ID:      "test.bp.one",
+							Version: "1.0.0",
+							Latest:  true,
+						}})
+					})
 				})
 			})
+		}
+	})
 
-			when("builder does not exist in config", func() {
-				it("returns the builder with default run images only", func() {
-					builder, err := inspector.Inspect(mockBuilderImage)
-					h.AssertNil(t, err)
-					h.AssertEq(t, builder.Image, "some/builder")
-					h.AssertEq(t, len(builder.LocalRunImageMirrors), 0)
-					h.AssertEq(t, builder.RunImageMirrors, []string{"gcr.io/some/default"})
-				})
-			})
+	when("fetcher fails to fetch the image", func() {
+		it.Before(func() {
+			mockFetcher.EXPECT().FetchRemoteImage("some/builder").Return(nil, errors.New("some-error"))
+		})
+		it("returns an error", func() {
+			_, err := client.InspectBuilder("some/builder", false)
+			h.AssertError(t, err, "failed to get builder image 'some/builder': some-error")
+		})
+	})
+
+	when("the image does not exist", func() {
+		it.Before(func() {
+			notFoundImage := imgtest.NewFakeImage(t, "", "", "")
+			notFoundImage.Delete()
+			mockFetcher.EXPECT().FetchLocalImage("some/builder").Return(notFoundImage, nil)
 		})
 
-		when("builder has missing metadata label", func() {
-			it.Before(func() {
-				mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return("", nil)
-			})
-
-			it("returns an error", func() {
-				_, err := inspector.Inspect(mockBuilderImage)
-				h.AssertError(t, err, "invalid builder image 'some/builder': missing required label 'io.buildpacks.builder.metadata' -- try recreating builder")
-			})
-		})
-
-		when("builder has invalid metadata label", func() {
-			it.Before(func() {
-				mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return("junk", nil)
-			})
-
-			it("returns an error", func() {
-				_, err := inspector.Inspect(mockBuilderImage)
-				h.AssertNotNil(t, err)
-				h.AssertContains(t, err.Error(), "failed to parse run images for builder 'some/builder':")
-			})
+		it("return nil metadata", func() {
+			metadata, err := client.InspectBuilder("some/builder", true)
+			h.AssertNil(t, err)
+			h.AssertNil(t, metadata)
 		})
 	})
 }

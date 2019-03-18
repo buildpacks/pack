@@ -5,7 +5,6 @@
 package mocks
 
 import (
-	image "github.com/buildpack/lifecycle/image"
 	pack "github.com/buildpack/pack"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
@@ -34,15 +33,15 @@ func (m *MockBuilderInspector) EXPECT() *MockBuilderInspectorMockRecorder {
 	return m.recorder
 }
 
-// Inspect mocks base method
-func (m *MockBuilderInspector) Inspect(arg0 image.Image) (pack.Builder, error) {
-	ret := m.ctrl.Call(m, "Inspect", arg0)
-	ret0, _ := ret[0].(pack.Builder)
+// InspectBuilder mocks base method
+func (m *MockBuilderInspector) InspectBuilder(arg0 string, arg1 bool) (*pack.BuilderInfo, error) {
+	ret := m.ctrl.Call(m, "InspectBuilder", arg0, arg1)
+	ret0, _ := ret[0].(*pack.BuilderInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Inspect indicates an expected call of Inspect
-func (mr *MockBuilderInspectorMockRecorder) Inspect(arg0 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Inspect", reflect.TypeOf((*MockBuilderInspector)(nil).Inspect), arg0)
+// InspectBuilder indicates an expected call of InspectBuilder
+func (mr *MockBuilderInspectorMockRecorder) InspectBuilder(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectBuilder", reflect.TypeOf((*MockBuilderInspector)(nil).InspectBuilder), arg0, arg1)
 }

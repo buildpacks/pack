@@ -2,54 +2,89 @@ package pack
 
 import (
 	"github.com/buildpack/lifecycle/image"
-
 	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/config"
+	"github.com/pkg/errors"
 )
 
-type BuilderInspect struct {
-	Config *config.Config
-}
-
-type Builder struct {
-	Image                string
+type BuilderInfo struct {
+	Stack                string
 	RunImage             string
-	LocalRunImageMirrors []string
 	RunImageMirrors      []string
-	Buildpacks           []builder.BuildpackMetadata
-	Groups               []builder.GroupMetadata
+	LocalRunImageMirrors []string
+	Buildpacks           []BuildpackInfo
+	Groups               [][]BuildpackInfo
 }
 
-func DefaultBuilderInspect() (*BuilderInspect, error) {
-	cfg, err := config.NewDefault()
+type BuildpackInfo struct {
+	ID      string
+	Version string
+	Latest  bool
+}
+
+func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) {
+	var (
+		img image.Image
+		err error
+	)
+
+	if daemon {
+		img, err = c.fetcher.FetchLocalImage(name)
+	} else {
+		img, err = c.fetcher.FetchRemoteImage(name)
+	}
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to get builder image '%s'", name)
 	}
 
-	return &BuilderInspect{
-		Config: cfg,
+	if found, err := img.Found(); err != nil {
+		return nil, errors.Wrapf(err, "failed to find builder image '%s'", name)
+	} else if !found {
+		return nil, nil
+	}
+
+	bldr := builder.NewBuilder(img, c.config)
+
+	stack, err := bldr.GetStack()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get stack for builder image '%s'", name)
+	}
+
+	metadata, err := bldr.GetMetadata()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get metadata for builder image '%s'", name)
+	}
+
+	localMirrors, err := bldr.GetLocalRunImageMirrors()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get local run image mirrors for builder image '%s'", name)
+	}
+
+	var buildpacks []BuildpackInfo
+	for _, bp := range metadata.Buildpacks {
+		buildpacks = append(buildpacks, buildpackMetadataToInfo(bp))
+	}
+
+	groups := make([][]BuildpackInfo, len(metadata.Groups))
+	for i, group := range metadata.Groups {
+		for _, bp := range group.Buildpacks {
+			groups[i] = append(groups[i], buildpackMetadataToInfo(bp))
+		}
+	}
+
+	return &BuilderInfo{
+		Stack:                stack,
+		RunImage:             metadata.RunImage.Image,
+		RunImageMirrors:      metadata.RunImage.Mirrors,
+		LocalRunImageMirrors: localMirrors,
+		Buildpacks:           buildpacks,
+		Groups:               groups,
 	}, nil
 }
 
-func (b *BuilderInspect) Inspect(builderImage image.Image) (Builder, error) {
-	builderMetadata, err := builder.GetMetadata(builderImage)
-	if err != nil {
-		return Builder{}, err
+func buildpackMetadataToInfo(bp builder.BuildpackMetadata) BuildpackInfo {
+	return BuildpackInfo{
+		ID:      bp.ID,
+		Version: bp.Version,
+		Latest:  bp.Latest,
 	}
-
-	return Builder{
-		Image:                builderImage.Name(),
-		RunImage:             builderMetadata.RunImage.Image,
-		LocalRunImageMirrors: b.getLocalRunImageMirrors(builderMetadata.RunImage.Image),
-		RunImageMirrors:      builderMetadata.RunImage.Mirrors,
-		Buildpacks:           builderMetadata.Buildpacks,
-		Groups:               builderMetadata.Groups,
-	}, nil
-}
-
-func (b *BuilderInspect) getLocalRunImageMirrors(imageName string) []string {
-	if builderConfig := b.Config.GetRunImage(imageName); builderConfig != nil {
-		return builderConfig.Mirrors
-	}
-	return nil
 }

@@ -2,21 +2,19 @@ package commands_test
 
 import (
 	"bytes"
+	"errors"
+	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/config"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/commands"
 	cmdmocks "github.com/buildpack/pack/commands/mocks"
-	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
-	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -30,18 +28,17 @@ func testCommands(t *testing.T, when spec.G, it spec.S) {
 		command        *cobra.Command
 		logger         *logging.Logger
 		outBuf         bytes.Buffer
-		mockInspector  *cmdmocks.MockBuilderInspector
 		mockController *gomock.Controller
-		mockFetcher    *mocks.MockFetcher
+		mockInspector  *cmdmocks.MockBuilderInspector
+		cfg            *config.Config
 	)
 
 	it.Before(func() {
+		cfg = &config.Config{}
 		mockController = gomock.NewController(t)
 		mockInspector = cmdmocks.NewMockBuilderInspector(mockController)
-		mockFetcher = mocks.NewMockFetcher(mockController)
-
 		logger = logging.NewLogger(&outBuf, &outBuf, false, false)
-		command = commands.InspectBuilder(logger, &config.Config{}, mockInspector, mockFetcher)
+		command = commands.InspectBuilder(logger, cfg, mockInspector)
 	})
 
 	it.After(func() {
@@ -51,97 +48,45 @@ func testCommands(t *testing.T, when spec.G, it spec.S) {
 	when("#InspectBuilder", func() {
 		when("image cannot be found", func() {
 			it("logs 'Not present'", func() {
-				mockImage := mocks.NewMockImage(mockController)
-				mockFetcher.EXPECT().FetchLocalImage("some/image").Return(mockImage, nil)
-				mockFetcher.EXPECT().FetchRemoteImage("some/image").Return(mockImage, nil)
-				mockImage.EXPECT().Found().Return(false, nil).AnyTimes()
-				command.SetArgs([]string{
-					"some/image",
-				})
+				mockInspector.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
+				mockInspector.EXPECT().InspectBuilder("some/image", true).Return(nil, nil)
+
+				command.SetArgs([]string{"some/image"})
 				h.AssertNil(t, command.Execute())
 
 				h.AssertContains(t, outBuf.String(), "Remote\n------\n\nNot present\n\nLocal\n-----\n\nNot present\n")
 			})
 		})
 
-		when("image fetcher returns an error", func() {
+		when("inspector returns an error", func() {
 			it("logs the error message", func() {
-				mockFetcher.EXPECT().FetchLocalImage("some/image").Return(nil, errors.New("some local error"))
-				mockFetcher.EXPECT().FetchRemoteImage("some/image").Return(nil, errors.New("some remote error"))
-				command.SetArgs([]string{
-					"some/image",
-				})
+				mockInspector.EXPECT().InspectBuilder("some/image", false).Return(nil, errors.New("some remote error"))
+				mockInspector.EXPECT().InspectBuilder("some/image", true).Return(nil, errors.New("some local error"))
+
+				command.SetArgs([]string{"some/image"})
 				h.AssertNil(t, command.Execute())
 
 				h.AssertContains(t, outBuf.String(), `Remote
 ------
 
-ERROR: failed to get image 'some/image': some remote error
+ERROR: failed to inspect image 'some/image': some remote error
 
 Local
 -----
 
-ERROR: failed to get image 'some/image': some local error
+ERROR: failed to inspect image 'some/image': some local error
 `)
 			})
 		})
 
-		when("the image is missing the stack label", func() {
-			var (
-				mockRemoteImage *mocks.MockImage
-				mockLocalImage  *mocks.MockImage
-			)
-
+		when("the image has empty fields in info", func() {
 			it.Before(func() {
-				mockRemoteImage = mocks.NewMockImage(mockController)
-				mockRemoteImage.EXPECT().Found().Return(true, nil)
-				mockRemoteImage.EXPECT().Label("io.buildpacks.stack.id").Return("", nil)
-				mockFetcher.EXPECT().FetchRemoteImage("some/image").Return(mockRemoteImage, nil)
-
-				mockLocalImage = mocks.NewMockImage(mockController)
-				mockLocalImage.EXPECT().Label("io.buildpacks.stack.id").Return("", nil)
-				mockLocalImage.EXPECT().Found().Return(true, nil)
-				mockFetcher.EXPECT().FetchLocalImage("some/image").Return(mockLocalImage, nil)
-
-				command.SetArgs([]string{"some/image"})
-			})
-
-			it("logs an error", func() {
-				h.AssertNil(t, command.Execute())
-				msg := "Error: 'some/image' is an invalid builder because it is missing a 'io.buildpacks.stack.id' label"
-				h.AssertContains(t, outBuf.String(), msg)
-			})
-		})
-
-		when("the image has empty fields in metadata", func() {
-			var (
-				mockRemoteImage *mocks.MockImage
-				mockLocalImage  *mocks.MockImage
-			)
-
-			it.Before(func() {
-				mockRemoteImage = mocks.NewMockImage(mockController)
-				mockRemoteImage.EXPECT().Label("io.buildpacks.stack.id").Return("stack", nil)
-				mockRemoteImage.EXPECT().Found().Return(true, nil)
-				mockFetcher.EXPECT().FetchRemoteImage("some/image").Return(mockRemoteImage, nil)
-				mockInspector.EXPECT().Inspect(mockRemoteImage).Return(pack.Builder{
-					RunImage:             "run/image",
-					LocalRunImageMirrors: []string{},
-					RunImageMirrors:      []string{},
-					Buildpacks:           []builder.BuildpackMetadata{},
-					Groups:               []builder.GroupMetadata{},
+				mockInspector.EXPECT().InspectBuilder("some/image", false).Return(&pack.BuilderInfo{
+					Stack: "test.stack.id",
 				}, nil)
 
-				mockLocalImage = mocks.NewMockImage(mockController)
-				mockLocalImage.EXPECT().Label("io.buildpacks.stack.id").Return("stack", nil)
-				mockLocalImage.EXPECT().Found().Return(true, nil)
-				mockFetcher.EXPECT().FetchLocalImage("some/image").Return(mockLocalImage, nil)
-				mockInspector.EXPECT().Inspect(mockRemoteImage).Return(pack.Builder{
-					RunImage:             "run/image",
-					LocalRunImageMirrors: []string{},
-					RunImageMirrors:      []string{},
-					Buildpacks:           []builder.BuildpackMetadata{},
-					Groups:               []builder.GroupMetadata{},
+				mockInspector.EXPECT().InspectBuilder("some/image", true).Return(&pack.BuilderInfo{
+					Stack: "test.stack.id",
 				}, nil)
 
 				command.SetArgs([]string{"some/image"})
@@ -162,41 +107,38 @@ ERROR: failed to get image 'some/image': some local error
 
 		when("is successful", func() {
 			it.Before(func() {
-				mockRemoteImage := mocks.NewMockImage(mockController)
-				mockRemoteImage.EXPECT().Label("io.buildpacks.stack.id").Return("test.stack.id", nil)
-				mockRemoteImage.EXPECT().Found().Return(true, nil)
-				mockFetcher.EXPECT().FetchRemoteImage("some/image").Return(mockRemoteImage, nil)
-				mockInspector.EXPECT().Inspect(mockRemoteImage).Return(pack.Builder{
-					RunImage:             "run/image",
-					LocalRunImageMirrors: []string{"first/image", "second/image"},
+				buildpacks := []pack.BuildpackInfo{
+					{ID: "test.bp.one", Version: "1.0.0", Latest: true},
+					{ID: "test.bp.two", Version: "2.0.0", Latest: false},
+				}
+				remoteInfo := &pack.BuilderInfo{
+					Stack:                "test.stack.id",
+					RunImage:             "some/run-image",
 					RunImageMirrors:      []string{"first/default", "second/default"},
-					Buildpacks:           []builder.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}, {ID: "fake.bp.two", Version: "2.0.0", Latest: false}},
-					Groups:               []builder.GroupMetadata{{Buildpacks: []builder.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}, {ID: "fake.bp.two", Version: "2.0.0", Latest: false}}}},
-				}, nil)
+					LocalRunImageMirrors: []string{"first/image", "second/image"},
+					Buildpacks:           buildpacks,
+					Groups:               [][]pack.BuildpackInfo{buildpacks},
+				}
+				mockInspector.EXPECT().InspectBuilder("some/image", false).Return(remoteInfo, nil)
 
-				mockLocalImage := mocks.NewMockImage(mockController)
-				mockLocalImage.EXPECT().Label("io.buildpacks.stack.id").Return("test.stack.id", nil)
-				mockLocalImage.EXPECT().Found().Return(true, nil)
-				mockFetcher.EXPECT().FetchLocalImage("some/image").Return(mockLocalImage, nil)
-				mockInspector.EXPECT().Inspect(mockRemoteImage).Return(pack.Builder{
-					RunImage:             "run/image",
-					LocalRunImageMirrors: []string{"first/local", "second/local"},
+				localInfo := &pack.BuilderInfo{
+					Stack:                "test.stack.id",
+					RunImage:             "some/run-image",
 					RunImageMirrors:      []string{"first/local-default", "second/local-default"},
-					Buildpacks:           []builder.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}},
-					Groups: []builder.GroupMetadata{
-						{Buildpacks: []builder.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}}},
-						{Buildpacks: []builder.BuildpackMetadata{{ID: "fake.bp.two", Version: "2.0.0", Latest: false}}},
-					},
-				}, nil)
+					LocalRunImageMirrors: []string{"first/local", "second/local"},
+					Buildpacks:           buildpacks,
+					Groups:               [][]pack.BuildpackInfo{{buildpacks[0]}, {buildpacks[1]}},
+				}
+				mockInspector.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
 			})
 
 			when("using the default builder", func() {
 				it.Before(func() {
-					command = commands.InspectBuilder(logger, &config.Config{DefaultBuilder: "some/image"}, mockInspector, mockFetcher)
+					cfg.DefaultBuilder = "some/image"
+					command.SetArgs([]string{})
 				})
 
 				it("should print a different inspection message", func() {
-					command.SetArgs([]string{"some/image"})
 					h.AssertNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), "Inspecting default builder: some/image")
 				})
@@ -215,20 +157,21 @@ Stack: test.stack.id
 Run Images:
   first/image (user-configured)
   second/image (user-configured)
-  run/image
+  some/run-image
   first/default
   second/default
 
 Buildpacks:
   ID                 VERSION        LATEST        
   test.bp.one        1.0.0          true          
-  fake.bp.two        2.0.0          false
+  test.bp.two        2.0.0          false
 
 Detection Order:
   Group #1:
     test.bp.one@1.0.0
-    fake.bp.two@2.0.0
+    test.bp.two@2.0.0
 `)
+
 				h.AssertContains(t, outBuf.String(), `
 Local
 -----
@@ -238,19 +181,20 @@ Stack: test.stack.id
 Run Images:
   first/local (user-configured)
   second/local (user-configured)
-  run/image
+  some/run-image
   first/local-default
   second/local-default
 
 Buildpacks:
   ID                 VERSION        LATEST        
-  test.bp.one        1.0.0          true
+  test.bp.one        1.0.0          true          
+  test.bp.two        2.0.0          false
 
 Detection Order:
   Group #1:
     test.bp.one@1.0.0
   Group #2:
-    fake.bp.two@2.0.0
+    test.bp.two@2.0.0
 `)
 			})
 		})

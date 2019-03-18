@@ -1,16 +1,10 @@
 package builder
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/image"
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/buildpack"
-	"github.com/buildpack/pack/style"
 )
 
 const MetadataLabel = "io.buildpacks.builder.metadata"
@@ -34,7 +28,6 @@ type Metadata struct {
 	Groups     []GroupMetadata     `json:"groups"`
 }
 
-
 type RunImageMetadata struct {
 	Image   string   `json:"image"`
 	Mirrors []string `json:"mirrors"`
@@ -49,25 +42,6 @@ type BuildpackMetadata struct {
 type GroupMetadata struct {
 	Buildpacks []BuildpackMetadata `json:"buildpacks"`
 }
-
-func GetMetadata(builderImage image.Image) (Metadata, error) {
-	label, err := builderImage.Label(MetadataLabel)
-	if err != nil {
-		return Metadata{}, errors.Wrapf(err, "failed to find run images for builder %s", style.Symbol(builderImage.Name()))
-	}
-
-	if label == "" {
-		return Metadata{}, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(builderImage.Name()), style.Symbol(MetadataLabel))
-	}
-
-	var metadata Metadata
-	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
-		return Metadata{}, errors.Wrapf(err, "failed to parse run images for builder %s", style.Symbol(builderImage.Name()))
-	}
-
-	return metadata, nil
-}
-
 
 func (m *Metadata) RunImageForRepoName(repoName string, runImages []string) (runImage string, locallyConfigured bool, err error) {
 	desiredRegistry, err := registry(repoName)

@@ -46,6 +46,18 @@ func (mr *MockImageMockRecorder) AddLayer(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLayer", reflect.TypeOf((*MockImage)(nil).AddLayer), arg0)
 }
 
+// Delete mocks base method
+func (m *MockImage) Delete() error {
+	ret := m.ctrl.Call(m, "Delete")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete
+func (mr *MockImageMockRecorder) Delete() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockImage)(nil).Delete))
+}
+
 // Digest mocks base method
 func (m *MockImage) Digest() (string, error) {
 	ret := m.ctrl.Call(m, "Digest")
