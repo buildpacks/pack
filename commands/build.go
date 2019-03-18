@@ -24,8 +24,8 @@ type suggestedBuilder struct {
 }
 
 var suggestedBuilders = []suggestedBuilder{
-	{"Cloud Foundry", "cloudfoundry/cnb"},
-	{"Heroku", "heroku/buildpacks"},
+	//{"Cloud Foundry", "cloudfoundry/cnb"},  //Uncomment me when this builder works with master of pack
+	//{"Heroku", "heroku/buildpacks"},        //Uncomment me when this builder works with master of pack
 }
 
 func init() {
