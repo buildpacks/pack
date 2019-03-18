@@ -58,7 +58,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it.After(func() {
-			h.AssertNil(t, lifecycle.Cleanup(context.TODO()))
+			h.AssertNil(t, lifecycle.Cleanup())
 		})
 
 		when("there are no user provided buildpacks", func() {
@@ -306,8 +306,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			assertRunSucceeds(t, phase, &outBuf, &errBuf)
 			h.AssertContains(t, outBuf.String(), "running some-lifecycle-phase")
 
-			err = subject.Cleanup(context.TODO())
-			h.AssertNil(t, err)
+			h.AssertNil(t, subject.Cleanup())
 		})
 
 		it("should delete the workspace volume", func() {

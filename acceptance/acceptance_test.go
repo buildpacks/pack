@@ -27,6 +27,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/docker"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -129,6 +130,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 			dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
 			dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
+			cacheImage, err := cache.New(repoName, dockerCli)
+			h.AssertNil(t, err)
+			cacheImage.Clear(context.TODO())
 			if sourceCodePath != "" {
 				os.RemoveAll(sourceCodePath)
 			}
@@ -144,6 +148,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				cmd := packCmd("build", repoName, "-p", "testdata/node_app/.")
 				output := h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+				sha, err := imgSHAFromOutput(output, repoName)
+				h.AssertNil(t, err)
+				defer h.DockerRmi(dockerCli, sha)
 
 				t.Log("app is runnable")
 				assertNodeAppRuns(t, repoName)
@@ -166,6 +173,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				cmd = packCmd("build", repoName, "-p", "testdata/node_app/.")
 				output = h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+				sha, err = imgSHAFromOutput(output, repoName)
+				h.AssertNil(t, err)
+				defer h.DockerRmi(dockerCli, sha)
 
 				t.Log("app is runnable")
 				assertNodeAppRuns(t, repoName)
@@ -444,6 +454,12 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			it.After(func() {
 				repoName := fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(sourceCodePath)))
 				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+				cacheImage, err := cache.New(repoName, dockerCli)
+				h.AssertNil(t, err)
+				cacheImage.Clear(context.TODO())
+				if sourceCodePath != "" {
+					os.RemoveAll(sourceCodePath)
+				}
 			})
 
 			it("starts an image", func() {
@@ -503,7 +519,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 													RUN echo %s > /contents2.txt
 													USER pack
 												`, h.DefaultRunImage(t, registryConfig.RunRegistryPort), contents1, contents2))
-
 			}
 			rootContents1 = func() string {
 				t.Helper()
@@ -526,7 +541,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 			dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
 
-			h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+			h.DockerRmi(dockerCli, repoName)
 		})
 
 		when("run on daemon", func() {
@@ -547,7 +562,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				h.AssertNil(t, h.DockerRmi(dockerCli, origID, runBefore, runAfter))
+				h.DockerRmi(dockerCli, origID, runBefore, runAfter)
+				cacheImage, err := cache.New(repoName, dockerCli)
+				h.AssertNil(t, err)
+				cacheImage.Clear(context.TODO())
 			})
 
 			it("rebases", func() {
@@ -572,6 +590,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 				cmd := packCmd("build", repoName,
 					"-p", "testdata/node_app/",
+					"--builder", h.DefaultBuilderImage(t, registryConfig.RunRegistryPort),
 					"--run-image", runBefore,
 					"--publish")
 				h.Run(t, cmd)
@@ -582,7 +601,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				h.AssertNil(t, h.DockerRmi(dockerCli, runBefore, runAfter))
+				h.DockerRmi(dockerCli, runBefore, runAfter)
+				cacheImage, err := cache.New(repoName, dockerCli)
+				h.AssertNil(t, err)
+				cacheImage.Clear(context.TODO())
 			})
 
 			it("rebases on the registry", func() {
@@ -601,11 +623,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		//todo do we need this test and if so how do we cleanup
 		when("no run-image flag", func() {
 			var origID string
+			var origRunImageID string
 			var builderName = "some-org/" + h.RandString(10)
 			var runImage = "some-org/" + h.RandString(10)
 
 			it.Before(func() {
 				buildRunImage(runImage, "contents-before-1", "contents-before-2")
+				origRunImageID = h.ImageID(t, runImage)
 
 				h.CreateImageOnLocal(t, dockerCli, builderName, fmt.Sprintf(`
 								FROM %s
@@ -624,7 +648,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				h.AssertNil(t, h.DockerRmi(dockerCli, origID, builderName, runImage))
+				h.DockerRmi(dockerCli, origID, builderName, origRunImageID, runImage)
+				cacheImage, err := cache.New(repoName, dockerCli)
+				h.AssertNil(t, err)
+				cacheImage.Clear(context.TODO())
 			})
 
 			it("rebases", func() {
@@ -684,6 +711,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			os.RemoveAll(tmpDir)
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 			dockerCli.ImageRemove(context.TODO(), builderRepoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
+			dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
+			cacheImage, err := cache.New(repoName, dockerCli)
+			h.AssertNil(t, err)
+			cacheImage.Clear(context.TODO())
 		})
 
 		it("builds and exports an image", func() {
@@ -784,6 +815,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 										LABEL %s="{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run2\"]},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
 										LABEL io.buildpacks.stack.id=some.test.stack
 									`, pack.BuilderMetadataLabel))
+			defer h.DockerRmi(dockerCli, builderImageName)
 
 			cmd := packCmd("set-run-image-mirrors", "some/run1", "--mirror", configuredRunImage)
 			output := h.Run(t, cmd)

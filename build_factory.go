@@ -304,7 +304,7 @@ func (b *BuildConfig) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer lifecycle.Cleanup(ctx)
+	defer lifecycle.Cleanup()
 
 	b.Logger.Verbose(style.Step("DETECTING"))
 	if err := b.detect(ctx, lifecycle); err != nil {

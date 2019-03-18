@@ -134,12 +134,12 @@ func NewLifecycle(c LifecycleConfig) (*Lifecycle, error) {
 	}, nil
 }
 
-func (l *Lifecycle) Cleanup(ctx context.Context) error {
-	_, err := l.Docker.ImageRemove(ctx, l.BuilderImage, types.ImageRemoveOptions{})
+func (l *Lifecycle) Cleanup() error {
+	_, err := l.Docker.ImageRemove(context.Background(), l.BuilderImage, types.ImageRemoveOptions{})
 	if err != nil {
 		return err
 	}
-	return l.Docker.VolumeRemove(ctx, l.WorkspaceVolume, true)
+	return l.Docker.VolumeRemove(context.Background(), l.WorkspaceVolume, true)
 }
 
 func randString(n int) string {
