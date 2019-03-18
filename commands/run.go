@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -34,6 +36,12 @@ func Run(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			if bf.Config.DefaultBuilder == "" && runFlags.BuildFlags.Builder == "" {
+				suggestBuilders(logger)
+				os.Exit(2)
+			}
+
 			r, err := bf.RunConfigFromFlags(ctx, &runFlags)
 			if err != nil {
 				return err

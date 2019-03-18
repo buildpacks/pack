@@ -61,6 +61,10 @@ func (l *Logger) RawVerboseWriter() io.Writer {
 	return l.out.rawOut
 }
 
+func (l *Logger) RawWriter() io.Writer {
+	return l.out.rawOut
+}
+
 func (l *Logger) VerboseErrorWriter() *logWriter {
 	if !l.verbose {
 		return nullLogWriter

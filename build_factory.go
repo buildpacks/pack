@@ -255,7 +255,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 	return b, nil
 }
 
-func Build(ctx context.Context, outWriter, errWriter io.Writer, appDir, buildImage, runImage, repoName string, publish, clearCache bool) error {
+func Build(ctx context.Context, outWriter, errWriter io.Writer, appDir, builderImage, runImage, repoName string, publish, clearCache bool) error {
 	// TODO: Receive Cache as an argument of this function
 	dockerClient, err := docker.New()
 	if err != nil {
@@ -281,7 +281,7 @@ func Build(ctx context.Context, outWriter, errWriter io.Writer, appDir, buildIma
 	b, err := bf.BuildConfigFromFlags(ctx,
 		&BuildFlags{
 			AppDir:     appDir,
-			Builder:    buildImage,
+			Builder:    builderImage,
 			RunImage:   runImage,
 			RepoName:   repoName,
 			Publish:    publish,

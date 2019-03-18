@@ -3,17 +3,14 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/google/go-containerregistry/pkg/name"
 )
 
-var defaultBuilder = "packs/samples:rc"
-
 type Config struct {
 	RunImages      []RunImage `toml:"run-images"`
-	DefaultBuilder string     `toml:"default-builder"`
+	DefaultBuilder string     `toml:"default-builder-image,omitempty"`
 	configPath     string
 }
 
@@ -36,8 +33,6 @@ func New(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	config.migrate()
 
 	config.configPath = configPath
 
@@ -70,12 +65,6 @@ func previousConfig(path string) (*Config, error) {
 	}
 
 	return config, nil
-}
-
-func (c *Config) migrate() {
-	if c.DefaultBuilder == "" || strings.HasPrefix(c.DefaultBuilder, "packs/samples") {
-		c.DefaultBuilder = defaultBuilder
-	}
 }
 
 // Path returns the directory path where the config is stored as a toml file.

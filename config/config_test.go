@@ -42,8 +42,8 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 
 				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
 				h.AssertNil(t, err)
-				h.AssertContains(t, string(b), `default-builder = "packs/samples:rc"`)
-				h.AssertEq(t, subject.DefaultBuilder, "packs/samples:rc")
+				h.AssertNotContains(t, string(b), `default-builder-image`)
+				h.AssertEq(t, subject.DefaultBuilder, "")
 			})
 
 			when("path is missing", func() {
@@ -53,26 +53,26 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 
 					b, err := ioutil.ReadFile(filepath.Join(tmpDir, "a", "b", "config.toml"))
 					h.AssertNil(t, err)
-					h.AssertContains(t, string(b), `default-builder = "packs/samples:rc"`)
+					h.AssertNotContains(t, string(b), `default-builder-image`)
 				})
 			})
 		})
 
-		when("a previous packs/samples is set as the default builder", func() {
+		when("a previous builder is set as the default builder", func() {
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
-default-stack-id = "packs/samples:v3alpha2"
+default-builder-image = "some/builder"
 `), 0666))
 			})
 
-			it("sets the new samples as the default builder", func() {
+			it("loads the saved value", func() {
 				subject, err := config.New(tmpDir)
 				h.AssertNil(t, err)
 
 				b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
 				h.AssertNil(t, err)
-				h.AssertContains(t, string(b), `default-builder = "packs/samples:rc"`)
-				h.AssertEq(t, subject.DefaultBuilder, "packs/samples:rc")
+				h.AssertContains(t, string(b), `default-builder-image = "some/builder"`)
+				h.AssertEq(t, subject.DefaultBuilder, "some/builder")
 			})
 		})
 	})
@@ -81,7 +81,7 @@ default-stack-id = "packs/samples:v3alpha2"
 		var subject *config.Config
 		it.Before(func() {
 			h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "config.toml"), []byte(`
-default-stack-id = "old/builder"
+default-builder-image = "old/builder"
 `), 0666))
 			var err error
 			subject, err = config.New(tmpDir)
@@ -93,7 +93,7 @@ default-stack-id = "old/builder"
 			h.AssertNil(t, err)
 			b, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
 			h.AssertNil(t, err)
-			h.AssertContains(t, string(b), `default-builder = "new/builder"`)
+			h.AssertContains(t, string(b), `default-builder-image = "new/builder"`)
 			h.AssertEq(t, subject.DefaultBuilder, "new/builder")
 		})
 	})

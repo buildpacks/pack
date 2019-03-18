@@ -1,6 +1,12 @@
 package commands
 
 import (
+	"fmt"
+	"math/rand"
+	"os"
+	"text/tabwriter"
+	"time"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -9,6 +15,22 @@ import (
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
+
+var samplesBuilder = "packs/samples:rc"
+
+type suggestedBuilder struct {
+	name  string
+	image string
+}
+
+var suggestedBuilders = []suggestedBuilder{
+	{"Cloud Foundry", "cloudfoundry/cnb"},
+	{"Heroku", "heroku/buildpacks"},
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 	var buildFlags pack.BuildFlags
@@ -34,6 +56,12 @@ func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			if bf.Config.DefaultBuilder == "" && buildFlags.Builder == "" {
+				suggestBuilders(logger)
+				os.Exit(2)
+			}
+
 			b, err := bf.BuildConfigFromFlags(ctx, &buildFlags)
 			if err != nil {
 				return err
@@ -49,6 +77,25 @@ func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "build")
 	return cmd
+}
+
+func suggestBuilders(logger *logging.Logger) {
+	logger.Info("Please select a default builder with:\n")
+	logger.Info("\tpack set-default-builder [builder image]")
+	logger.Info("\nSuggested builders:")
+	tw := tabwriter.NewWriter(logger.RawWriter(), 10, 10, 5, ' ', tabwriter.TabIndent)
+	for len(suggestedBuilders) > 0 {
+		n := rand.Intn(len(suggestedBuilders))
+		builder := suggestedBuilders[n]
+		tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t\n", builder.name, builder.image)))
+		suggestedBuilders = append(suggestedBuilders[:n], suggestedBuilders[n+1:]...)
+	}
+	for _, builder := range suggestedBuilders {
+		tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t\n", builder.name, builder.image)))
+	}
+	tw.Flush()
+	logger.Info("\nSample builders:")
+	logger.Info(fmt.Sprintf("\t%s:\t%s", "Samples", samplesBuilder))
 }
 
 func buildCommandFlags(cmd *cobra.Command, buildFlags *pack.BuildFlags) {
