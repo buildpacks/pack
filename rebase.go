@@ -14,6 +14,10 @@ import (
 	"github.com/buildpack/pack/config"
 )
 
+const (
+	RunImageLabel        = "io.buildpacks.run-image"
+)
+
 type RebaseConfig struct {
 	Image        image.Image
 	NewBaseImage image.Image

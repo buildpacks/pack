@@ -10,16 +10,15 @@ import (
 	"strings"
 
 	"github.com/buildpack/lifecycle/image"
-
-	"github.com/buildpack/pack/cache"
-	"github.com/buildpack/pack/containers"
-	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/logging"
-	"github.com/buildpack/pack/style"
-
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/docker"
+	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
 )
 
 // This interface same as BuildConfig
@@ -127,7 +126,7 @@ func (r *RunConfig) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer containers.Remove(r.Cli, ctr.ID)
+	defer r.Cli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{Force: true})
 
 	logContainerListening(r.Logger, portBindings)
 	if err = r.Cli.RunContainer(ctx, ctr.ID, r.Logger.VerboseWriter(), r.Logger.VerboseErrorWriter()); err != nil {

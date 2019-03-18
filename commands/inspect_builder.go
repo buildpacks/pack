@@ -13,7 +13,7 @@ import (
 	"text/tabwriter"
 )
 
-//go:generate mockgen -package mocks -destination mocks/builder_inspector.go github.com/buildpack/pack/commands BuilderInspector
+//go:generate mockgen -package mocks -destination mocks/inspect_builder.go github.com/buildpack/pack/commands BuilderInspector
 type BuilderInspector interface {
 	Inspect(image.Image) (pack.Builder, error)
 }

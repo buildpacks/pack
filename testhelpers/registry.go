@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/builder"
 
 	"github.com/buildpack/lifecycle/testhelpers"
 	dockertypes "github.com/docker/docker/api/types"
@@ -218,7 +218,7 @@ func DefaultBuilderImage(t *testing.T, registryPort string) string {
 		CreateImageOnLocal(t, dockerCli, newName, fmt.Sprintf(`
 					FROM %s
 					LABEL %s="{\"runImage\": {\"image\": \"%s\"}}"
-				`, origName, pack.BuilderMetadataLabel, runImageName))
+				`, origName, builder.MetadataLabel, runImageName))
 	})
 	return newName
 }

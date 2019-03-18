@@ -1,15 +1,10 @@
 package pack
 
 import (
-	"encoding/json"
-	"fmt"
-
-	"github.com/pkg/errors"
-
 	"github.com/buildpack/lifecycle/image"
 
+	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/style"
 )
 
 type BuilderInspect struct {
@@ -21,8 +16,8 @@ type Builder struct {
 	RunImage             string
 	LocalRunImageMirrors []string
 	RunImageMirrors      []string
-	Buildpacks           []BuilderBuildpackMetadata
-	Groups               []BuilderGroupMetadata
+	Buildpacks           []builder.BuildpackMetadata
+	Groups               []builder.GroupMetadata
 }
 
 func DefaultBuilderInspect() (*BuilderInspect, error) {
@@ -37,7 +32,7 @@ func DefaultBuilderInspect() (*BuilderInspect, error) {
 }
 
 func (b *BuilderInspect) Inspect(builderImage image.Image) (Builder, error) {
-	builderMetadata, err := b.getBuilderMetadata(builderImage)
+	builderMetadata, err := builder.GetMetadata(builderImage)
 	if err != nil {
 		return Builder{}, err
 	}
@@ -57,22 +52,4 @@ func (b *BuilderInspect) getLocalRunImageMirrors(imageName string) []string {
 		return builderConfig.Mirrors
 	}
 	return nil
-}
-
-func (b *BuilderInspect) getBuilderMetadata(builderImage image.Image) (BuilderImageMetadata, error) {
-	label, err := builderImage.Label(BuilderMetadataLabel)
-	if err != nil {
-		return BuilderImageMetadata{}, errors.Wrapf(err, "failed to find run images for builder %s", style.Symbol(builderImage.Name()))
-	}
-
-	if label == "" {
-		return BuilderImageMetadata{}, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(builderImage.Name()), style.Symbol(BuilderMetadataLabel))
-	}
-
-	var metadata BuilderImageMetadata
-	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
-		return BuilderImageMetadata{}, errors.Wrapf(err, "failed to parse run images for builder %s", style.Symbol(builderImage.Name()))
-	}
-
-	return metadata, nil
 }

@@ -1,17 +1,17 @@
 package main
 
 import (
-	"github.com/buildpack/pack/config"
 	"os"
-
-	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/pack/docker"
-	"github.com/fatih/color"
-	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/commands"
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
+
+	"github.com/buildpack/lifecycle/image"
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
 )
 
 var (

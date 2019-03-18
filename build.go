@@ -13,15 +13,16 @@ import (
 	"strings"
 
 	"github.com/buildpack/pack/build"
+	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/containers"
 	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 
 	lcimg "github.com/buildpack/lifecycle/image"
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/pkg/errors"
 )
@@ -183,14 +184,14 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 		b.RunImage = f.RunImage
 		b.LocallyConfiguredRunImage = true
 	} else {
-		label, err := builderImage.Label(BuilderMetadataLabel)
+		label, err := builderImage.Label(builder.MetadataLabel)
 		if err != nil {
 			return nil, fmt.Errorf("invalid builder image %s: %s", style.Symbol(b.Builder), err)
 		}
 		if label == "" {
-			return nil, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(b.Builder), style.Symbol(BuilderMetadataLabel))
+			return nil, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(b.Builder), style.Symbol(builder.MetadataLabel))
 		}
-		var builderMetadata BuilderImageMetadata
+		var builderMetadata builder.Metadata
 		if err := json.Unmarshal([]byte(label), &builderMetadata); err != nil {
 			return nil, fmt.Errorf("invalid builder image metadata: %s", err)
 		}
@@ -559,7 +560,7 @@ func (b *BuildConfig) chownDir(ctx context.Context, lifecycle *build.Lifecycle, 
 	if err != nil {
 		return err
 	}
-	defer containers.Remove(b.Cli, ctr.ID)
+	defer b.Cli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{Force: true})
 	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Logger.VerboseWriter(), b.Logger.VerboseErrorWriter()); err != nil {
 		return err
 	}

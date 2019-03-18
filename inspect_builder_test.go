@@ -9,6 +9,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack"
+	builder2 "github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
@@ -109,13 +110,13 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 				it("sets the buildpacks", func() {
 					builder, err := inspector.Inspect(mockBuilderImage)
 					h.AssertNil(t, err)
-					h.AssertEq(t, builder.Buildpacks, []pack.BuilderBuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}})
+					h.AssertEq(t, builder.Buildpacks, []builder2.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}})
 				})
 
 				it("sets the groups", func() {
 					builder, err := inspector.Inspect(mockBuilderImage)
 					h.AssertNil(t, err)
-					h.AssertEq(t, builder.Groups, []pack.BuilderGroupMetadata{{Buildpacks: []pack.BuilderBuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}}}})
+					h.AssertEq(t, builder.Groups, []builder2.GroupMetadata{{Buildpacks: []builder2.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}}}})
 				})
 			})
 

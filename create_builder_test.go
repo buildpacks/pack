@@ -22,6 +22,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/logging"
@@ -435,7 +436,7 @@ run-image = "some/run"
 
 				builderConfig = pack.BuilderConfig{
 					Repo:            mockImage,
-					Buildpacks:      []pack.Buildpack{},
+					Buildpacks:      []buildpack.Buildpack{},
 					Groups:          []lifecycle.BuildpackGroup{},
 					BuilderDir:      "",
 					RunImage:        "myorg/run",
@@ -453,7 +454,7 @@ run-image = "some/run"
 
 			when("builder config contains buildpacks", func() {
 				it.Before(func() {
-					builderConfig.Buildpacks = []pack.Buildpack{
+					builderConfig.Buildpacks = []buildpack.Buildpack{
 						{ID: "some-buildpack-id", Version: "some-buildpack-version", Dir: "testdata/used-to-test-various-uri-schemes/buildpack", Latest: true},
 					}
 				})
@@ -518,8 +519,8 @@ func checkGroups(t *testing.T, groups []lifecycle.BuildpackGroup) {
 	}
 }
 
-func checkBuildpacks(t *testing.T, buildpacks []pack.Buildpack) {
-	if diff := cmp.Diff(buildpacks, []pack.Buildpack{
+func checkBuildpacks(t *testing.T, buildpacks []buildpack.Buildpack) {
+	if diff := cmp.Diff(buildpacks, []buildpack.Buildpack{
 		{
 			ID:  "some.bp1",
 			Dir: filepath.Join("testdata", "some-path-1"),

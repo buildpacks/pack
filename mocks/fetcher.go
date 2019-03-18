@@ -37,7 +37,6 @@ func (m *MockFetcher) EXPECT() *MockFetcherMockRecorder {
 
 // FetchLocalImage mocks base method
 func (m *MockFetcher) FetchLocalImage(arg0 string) (image.Image, error) {
-	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FetchLocalImage", arg0)
 	ret0, _ := ret[0].(image.Image)
 	ret1, _ := ret[1].(error)
@@ -46,13 +45,11 @@ func (m *MockFetcher) FetchLocalImage(arg0 string) (image.Image, error) {
 
 // FetchLocalImage indicates an expected call of FetchLocalImage
 func (mr *MockFetcherMockRecorder) FetchLocalImage(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchLocalImage", reflect.TypeOf((*MockFetcher)(nil).FetchLocalImage), arg0)
 }
 
 // FetchRemoteImage mocks base method
 func (m *MockFetcher) FetchRemoteImage(arg0 string) (image.Image, error) {
-	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FetchRemoteImage", arg0)
 	ret0, _ := ret[0].(image.Image)
 	ret1, _ := ret[1].(error)
@@ -61,13 +58,11 @@ func (m *MockFetcher) FetchRemoteImage(arg0 string) (image.Image, error) {
 
 // FetchRemoteImage indicates an expected call of FetchRemoteImage
 func (mr *MockFetcherMockRecorder) FetchRemoteImage(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchRemoteImage", reflect.TypeOf((*MockFetcher)(nil).FetchRemoteImage), arg0)
 }
 
 // FetchUpdatedLocalImage mocks base method
 func (m *MockFetcher) FetchUpdatedLocalImage(arg0 context.Context, arg1 string, arg2 io.Writer) (image.Image, error) {
-	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FetchUpdatedLocalImage", arg0, arg1, arg2)
 	ret0, _ := ret[0].(image.Image)
 	ret1, _ := ret[1].(error)
@@ -76,6 +71,5 @@ func (m *MockFetcher) FetchUpdatedLocalImage(arg0 context.Context, arg1 string, 
 
 // FetchUpdatedLocalImage indicates an expected call of FetchUpdatedLocalImage
 func (mr *MockFetcherMockRecorder) FetchUpdatedLocalImage(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchUpdatedLocalImage", reflect.TypeOf((*MockFetcher)(nil).FetchUpdatedLocalImage), arg0, arg1, arg2)
 }

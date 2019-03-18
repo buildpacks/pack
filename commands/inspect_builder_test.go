@@ -2,8 +2,6 @@ package commands_test
 
 import (
 	"bytes"
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/config"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -12,8 +10,11 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/commands"
 	cmdmocks "github.com/buildpack/pack/commands/mocks"
+	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
@@ -127,8 +128,8 @@ ERROR: failed to get image 'some/image': some local error
 					RunImage:             "run/image",
 					LocalRunImageMirrors: []string{},
 					RunImageMirrors:      []string{},
-					Buildpacks:           []pack.BuilderBuildpackMetadata{},
-					Groups:               []pack.BuilderGroupMetadata{},
+					Buildpacks:           []builder.BuildpackMetadata{},
+					Groups:               []builder.GroupMetadata{},
 				}, nil)
 
 				mockLocalImage = mocks.NewMockImage(mockController)
@@ -139,8 +140,8 @@ ERROR: failed to get image 'some/image': some local error
 					RunImage:             "run/image",
 					LocalRunImageMirrors: []string{},
 					RunImageMirrors:      []string{},
-					Buildpacks:           []pack.BuilderBuildpackMetadata{},
-					Groups:               []pack.BuilderGroupMetadata{},
+					Buildpacks:           []builder.BuildpackMetadata{},
+					Groups:               []builder.GroupMetadata{},
 				}, nil)
 
 				command.SetArgs([]string{"some/image"})
@@ -169,8 +170,8 @@ ERROR: failed to get image 'some/image': some local error
 					RunImage:             "run/image",
 					LocalRunImageMirrors: []string{"first/image", "second/image"},
 					RunImageMirrors:      []string{"first/default", "second/default"},
-					Buildpacks:           []pack.BuilderBuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}, {ID: "fake.bp.two", Version: "2.0.0", Latest: false}},
-					Groups:               []pack.BuilderGroupMetadata{{Buildpacks: []pack.BuilderBuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}, {ID: "fake.bp.two", Version: "2.0.0", Latest: false}}}},
+					Buildpacks:           []builder.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}, {ID: "fake.bp.two", Version: "2.0.0", Latest: false}},
+					Groups:               []builder.GroupMetadata{{Buildpacks: []builder.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}, {ID: "fake.bp.two", Version: "2.0.0", Latest: false}}}},
 				}, nil)
 
 				mockLocalImage := mocks.NewMockImage(mockController)
@@ -181,10 +182,10 @@ ERROR: failed to get image 'some/image': some local error
 					RunImage:             "run/image",
 					LocalRunImageMirrors: []string{"first/local", "second/local"},
 					RunImageMirrors:      []string{"first/local-default", "second/local-default"},
-					Buildpacks:           []pack.BuilderBuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}},
-					Groups: []pack.BuilderGroupMetadata{
-						{Buildpacks: []pack.BuilderBuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}}},
-						{Buildpacks: []pack.BuilderBuildpackMetadata{{ID: "fake.bp.two", Version: "2.0.0", Latest: false}}},
+					Buildpacks:           []builder.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}},
+					Groups: []builder.GroupMetadata{
+						{Buildpacks: []builder.BuildpackMetadata{{ID: "test.bp.one", Version: "1.0.0", Latest: true}}},
+						{Buildpacks: []builder.BuildpackMetadata{{ID: "fake.bp.two", Version: "2.0.0", Latest: false}}},
 					},
 				}, nil)
 			})

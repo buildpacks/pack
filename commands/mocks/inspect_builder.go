@@ -36,7 +36,6 @@ func (m *MockBuilderInspector) EXPECT() *MockBuilderInspectorMockRecorder {
 
 // Inspect mocks base method
 func (m *MockBuilderInspector) Inspect(arg0 image.Image) (pack.Builder, error) {
-	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Inspect", arg0)
 	ret0, _ := ret[0].(pack.Builder)
 	ret1, _ := ret[1].(error)
@@ -45,6 +44,5 @@ func (m *MockBuilderInspector) Inspect(arg0 image.Image) (pack.Builder, error) {
 
 // Inspect indicates an expected call of Inspect
 func (mr *MockBuilderInspectorMockRecorder) Inspect(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Inspect", reflect.TypeOf((*MockBuilderInspector)(nil).Inspect), arg0)
 }

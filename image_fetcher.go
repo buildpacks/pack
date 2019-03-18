@@ -7,13 +7,6 @@ import (
 	"github.com/buildpack/lifecycle/image"
 )
 
-//go:generate mockgen -package mocks -destination mocks/fetcher.go github.com/buildpack/pack Fetcher
-type Fetcher interface {
-	FetchUpdatedLocalImage(context.Context, string, io.Writer) (image.Image, error)
-	FetchLocalImage(string) (image.Image, error)
-	FetchRemoteImage(string) (image.Image, error)
-}
-
 type ImageFetcher struct {
 	Docker  Docker
 	Factory ImageFactory

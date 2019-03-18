@@ -7,7 +7,6 @@ import (
 
 	"github.com/buildpack/lifecycle/image/auth"
 
-	"github.com/buildpack/pack/containers"
 	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/logging"
 
@@ -112,5 +111,5 @@ func (p *Phase) Run(context context.Context) error {
 }
 
 func (p *Phase) Cleanup() error {
-	return containers.Remove(p.docker, p.ctr.ID)
+	return p.docker.ContainerRemove(context.Background(), p.ctr.ID, types.ContainerRemoveOptions{Force: true})
 }

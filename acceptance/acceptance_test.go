@@ -26,7 +26,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/docker"
 	h "github.com/buildpack/pack/testhelpers"
@@ -634,7 +634,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.CreateImageOnLocal(t, dockerCli, builderName, fmt.Sprintf(`
 								FROM %s
 								LABEL %s="{\"runImage\": {\"image\": \"%s\"}}"
-							`, h.DefaultBuilderImage(t, registryConfig.RunRegistryPort), pack.BuilderMetadataLabel, runImage))
+							`, h.DefaultBuilderImage(t, registryConfig.RunRegistryPort), builder.MetadataLabel, runImage))
 
 				cmd := packCmd(
 					"build", repoName,
@@ -807,14 +807,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 										FROM scratch
 										LABEL %s="{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run1\"]},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
 										LABEL io.buildpacks.stack.id=some.test.stack
-									`, pack.BuilderMetadataLabel))
+									`, builder.MetadataLabel))
 
 			h.CreateImageOnLocal(t, dockerCli, builderImageName,
 				fmt.Sprintf(`
 										FROM scratch
 										LABEL %s="{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run2\"]},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
 										LABEL io.buildpacks.stack.id=some.test.stack
-									`, pack.BuilderMetadataLabel))
+									`, builder.MetadataLabel))
 			defer h.DockerRmi(dockerCli, builderImageName)
 
 			cmd := packCmd("set-run-image-mirrors", "some/run1", "--mirror", configuredRunImage)

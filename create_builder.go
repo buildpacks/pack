@@ -18,6 +18,8 @@ import (
 	lcimg "github.com/buildpack/lifecycle/image"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/fs"
 
 	"github.com/buildpack/pack/logging"
@@ -26,21 +28,8 @@ import (
 	"github.com/buildpack/pack/config"
 )
 
-type BuilderTOML struct {
-	Buildpacks []Buildpack                `toml:"buildpacks"`
-	Groups     []lifecycle.BuildpackGroup `toml:"groups"`
-	Stack      Stack
-}
-
-type Stack struct {
-	ID              string   `toml:"id"`
-	BuildImage      string   `toml:"build-image"`
-	RunImage        string   `toml:"run-image"`
-	RunImageMirrors []string `toml:"run-image-mirrors,omitempty"`
-}
-
 type BuilderConfig struct {
-	Buildpacks      []Buildpack
+	Buildpacks      []buildpack.Buildpack
 	Groups          []lifecycle.BuildpackGroup
 	Repo            lcimg.Image
 	BuilderDir      string // original location of builder.toml, used for interpreting relative paths in buildpack URIs
@@ -66,7 +55,7 @@ func (f *BuilderFactory) BuilderConfigFromFlags(ctx context.Context, flags Creat
 	builderConfig := BuilderConfig{}
 	builderConfig.BuilderDir = filepath.Dir(flags.BuilderTomlPath)
 
-	builderTOML := &BuilderTOML{}
+	builderTOML := &builder.TOML{}
 	_, err := toml.DecodeFile(flags.BuilderTomlPath, &builderTOML)
 	if err != nil {
 		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file %s: %s`, flags.BuilderTomlPath, err)
@@ -105,13 +94,13 @@ func (f *BuilderFactory) BuilderConfigFromFlags(ctx context.Context, flags Creat
 	return builderConfig, nil
 }
 
-func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Buildpack, error) {
+func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b buildpack.Buildpack) (buildpack.Buildpack, error) {
 
 	var dir string
 
 	asurl, err := url.Parse(b.URI)
 	if err != nil {
-		return Buildpack{}, err
+		return buildpack.Buildpack{}, err
 	}
 	switch asurl.Scheme {
 	case "", // This is the only way to support relative filepaths
@@ -126,15 +115,15 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 		if filepath.Ext(path) == ".tgz" {
 			file, err := os.Open(path)
 			if err != nil {
-				return Buildpack{}, errors.Wrapf(err, "could not open file to untar: %q", path)
+				return buildpack.Buildpack{}, errors.Wrapf(err, "could not open file to untar: %q", path)
 			}
 			defer file.Close()
-			tmpDir, err := ioutil.TempDir("", fmt.Sprintf("create-builder-%s-", b.escapedID()))
+			tmpDir, err := ioutil.TempDir("", fmt.Sprintf("create-builder-%s-", b.EscapedID()))
 			if err != nil {
-				return Buildpack{}, fmt.Errorf(`failed to create temporary directory: %s`, err)
+				return buildpack.Buildpack{}, fmt.Errorf(`failed to create temporary directory: %s`, err)
 			}
 			if err = f.untarZ(file, tmpDir); err != nil {
-				return Buildpack{}, err
+				return buildpack.Buildpack{}, err
 			}
 			dir = tmpDir
 		} else {
@@ -146,7 +135,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 		_, err := os.Stat(cachedDir)
 		if os.IsNotExist(err) {
 			if err = os.MkdirAll(cachedDir, 0744); err != nil {
-				return Buildpack{}, err
+				return buildpack.Buildpack{}, err
 			}
 		}
 		etagFile := cachedDir + ".etag"
@@ -158,7 +147,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 
 		reader, etag, err := f.downloadAsStream(b.URI, etag)
 		if err != nil {
-			return Buildpack{}, errors.Wrapf(err, "failed to download from %q", b.URI)
+			return buildpack.Buildpack{}, errors.Wrapf(err, "failed to download from %q", b.URI)
 		} else if reader == nil {
 			// can use cached content
 			dir = cachedDir
@@ -167,19 +156,19 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b Buildpack) (Bu
 		defer reader.Close()
 
 		if err = f.untarZ(reader, cachedDir); err != nil {
-			return Buildpack{}, err
+			return buildpack.Buildpack{}, err
 		}
 
 		if err = ioutil.WriteFile(etagFile, []byte(etag), 0744); err != nil {
-			return Buildpack{}, err
+			return buildpack.Buildpack{}, err
 		}
 
 		dir = cachedDir
 	default:
-		return Buildpack{}, fmt.Errorf("unsupported protocol in URI %q", b.URI)
+		return buildpack.Buildpack{}, fmt.Errorf("unsupported protocol in URI %q", b.URI)
 	}
 
-	return Buildpack{
+	return buildpack.Buildpack{
 		ID:     b.ID,
 		Latest: b.Latest,
 		Dir:    dir,
@@ -201,7 +190,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return fmt.Errorf(`failed append order.toml layer to image: %s`, err)
 	}
 
-	buildpacksMetadata := make([]BuilderBuildpackMetadata, 0, len(config.Buildpacks))
+	buildpacksMetadata := make([]builder.BuildpackMetadata, 0, len(config.Buildpacks))
 	for _, buildpack := range config.Buildpacks {
 		tarFile, err := f.buildpackLayer(tmpDir, &buildpack, config.BuilderDir)
 		if err != nil {
@@ -210,7 +199,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		if err := config.Repo.AddLayer(tarFile); err != nil {
 			return fmt.Errorf(`failed append buildpack layer to image: %s`, err)
 		}
-		buildpacksMetadata = append(buildpacksMetadata, BuilderBuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version, Latest: buildpack.Latest})
+		buildpacksMetadata = append(buildpacksMetadata, builder.BuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version, Latest: buildpack.Latest})
 	}
 
 	tarFile, err := f.latestLayer(config.Buildpacks, tmpDir, config.BuilderDir)
@@ -221,17 +210,17 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return fmt.Errorf(`failed append latest link layer to image: %s`, err)
 	}
 
-	groupsMetadata := make([]BuilderGroupMetadata, 0, len(config.Groups))
+	groupsMetadata := make([]builder.GroupMetadata, 0, len(config.Groups))
 	for _, group := range config.Groups {
-		groupBuildpacks := make([]BuilderBuildpackMetadata, 0, len(group.Buildpacks))
+		groupBuildpacks := make([]builder.BuildpackMetadata, 0, len(group.Buildpacks))
 		for _, buildpack := range group.Buildpacks {
-			groupBuildpacks = append(groupBuildpacks, BuilderBuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version})
+			groupBuildpacks = append(groupBuildpacks, builder.BuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version})
 		}
-		groupsMetadata = append(groupsMetadata, BuilderGroupMetadata{Buildpacks: groupBuildpacks})
+		groupsMetadata = append(groupsMetadata, builder.GroupMetadata{Buildpacks: groupBuildpacks})
 	}
 
-	jsonBytes, err := json.Marshal(&BuilderImageMetadata{
-		RunImage:   BuilderRunImageMetadata{Image: config.RunImage, Mirrors: config.RunImageMirrors},
+	jsonBytes, err := json.Marshal(&builder.Metadata{
+		RunImage:   builder.RunImageMetadata{Image: config.RunImage, Mirrors: config.RunImageMirrors},
 		Buildpacks: buildpacksMetadata,
 		Groups:     groupsMetadata,
 	})
@@ -239,7 +228,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return fmt.Errorf(`failed marshal builder image metadata: %s`, err)
 	}
 
-	if err := config.Repo.SetLabel(BuilderMetadataLabel, string(jsonBytes)); err != nil {
+	if err := config.Repo.SetLabel(builder.MetadataLabel, string(jsonBytes)); err != nil {
 		return fmt.Errorf("failed to set metadata label: %s", err)
 	}
 
@@ -287,7 +276,7 @@ type BuildpackData struct {
 // buildpackLayer creates and returns the location of a tgz file for a buildpack layer. That file will reside in the `dest` directory.
 // The tgz file is either created from an initially local directory, or it is downloaded (and validated) from
 // a remote location if the buildpack uri uses the http(s) protocol.
-func (f *BuilderFactory) buildpackLayer(dest string, buildpack *Buildpack, builderDir string) (layerTar string, err error) {
+func (f *BuilderFactory) buildpackLayer(dest string, buildpack *buildpack.Buildpack, builderDir string) (layerTar string, err error) {
 	dir := buildpack.Dir
 
 	data, err := f.buildpackData(*buildpack, dir)
@@ -303,14 +292,14 @@ func (f *BuilderFactory) buildpackLayer(dest string, buildpack *Buildpack, build
 	}
 
 	buildpack.Version = bp.Version
-	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.escapedID(), bp.Version))
-	if err := f.FS.CreateTarFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.escapedID(), bp.Version), 0, 0); err != nil {
+	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.EscapedID(), bp.Version))
+	if err := f.FS.CreateTarFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.EscapedID(), bp.Version), 0, 0); err != nil {
 		return "", err
 	}
 	return tarFile, err
 }
 
-func (f *BuilderFactory) buildpackData(buildpack Buildpack, dir string) (*BuildpackData, error) {
+func (f *BuilderFactory) buildpackData(buildpack buildpack.Buildpack, dir string) (*BuildpackData, error) {
 	data := &BuildpackData{}
 	_, err := toml.DecodeFile(filepath.Join(dir, "buildpack.toml"), &data)
 	if err != nil {
@@ -328,7 +317,7 @@ func (f *BuilderFactory) untarZ(r io.Reader, dir string) error {
 	return f.FS.Untar(gzr, dir)
 }
 
-func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir string) (string, error) {
+func (f *BuilderFactory) latestLayer(buildpacks []buildpack.Buildpack, dest, builderDir string) (string, error) {
 	layerDir := filepath.Join(dest, "latest-layer")
 	err := os.Mkdir(layerDir, 0755)
 	if err != nil {
@@ -340,11 +329,11 @@ func (f *BuilderFactory) latestLayer(buildpacks []Buildpack, dest, builderDir st
 			if err != nil {
 				return "", err
 			}
-			err = os.Mkdir(filepath.Join(layerDir, bp.escapedID()), 0755)
+			err = os.Mkdir(filepath.Join(layerDir, bp.EscapedID()), 0755)
 			if err != nil {
 				return "", err
 			}
-			err = os.Symlink(filepath.Join("/", "buildpacks", bp.escapedID(), data.BP.Version), filepath.Join(layerDir, bp.escapedID(), "latest"))
+			err = os.Symlink(filepath.Join("/", "buildpacks", bp.EscapedID(), data.BP.Version), filepath.Join(layerDir, bp.EscapedID(), "latest"))
 			if err != nil {
 				return "", err
 			}
@@ -381,7 +370,7 @@ func (f *BuilderFactory) downloadAsStream(uri string, etag string) (io.ReadClose
 	}
 }
 
-func validateBuilderTOML(builderTOML *BuilderTOML) error {
+func validateBuilderTOML(builderTOML *builder.TOML) error {
 	if builderTOML == nil {
 		return errors.New("builder toml is empty")
 	}
