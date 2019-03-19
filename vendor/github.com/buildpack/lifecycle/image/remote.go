@@ -270,6 +270,10 @@ func (r *remote) Save() (string, error) {
 	return hex.String(), nil
 }
 
+func (r *remote) Delete() error {
+	return errors.New("remote image does not implement Delete")
+}
+
 type subImage struct {
 	img    v1.Image
 	topSHA string

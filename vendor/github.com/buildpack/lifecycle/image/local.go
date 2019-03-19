@@ -346,6 +346,22 @@ func (l *local) Save() (string, error) {
 	return imgID, err
 }
 
+func (l *local) Delete() error {
+	if found, err := l.Found(); err != nil {
+		return errors.Wrap(err, "determining image existence")
+	} else if found {
+		options := dockertypes.ImageRemoveOptions{
+			Force:         true,
+			PruneChildren: true,
+		}
+		_, err := l.Docker.ImageRemove(context.Background(), l.Inspect.ID, options)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (l *local) prevDownload() error {
 	var outerErr error
 	l.prevOnce.Do(func() {

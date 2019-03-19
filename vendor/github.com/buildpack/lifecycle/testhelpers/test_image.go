@@ -29,6 +29,7 @@ func NewFakeImage(t *testing.T, name, topLayerSha, digest string) *FakeImage {
 type FakeImage struct {
 	t            *testing.T
 	alreadySaved bool
+	deleted      bool
 	layers       []string
 	layersMap    map[string]string
 	reusedLayers []string
@@ -123,8 +124,13 @@ func (f *FakeImage) Save() (string, error) {
 	return "saved-digest-from-fake-run-image", nil
 }
 
-func (FakeImage) Found() (bool, error) {
-	return true, nil
+func (f *FakeImage) Delete() error {
+	f.deleted = true
+	return nil
+}
+
+func (f *FakeImage) Found() (bool, error) {
+	return !f.deleted, nil
 }
 
 // test methods

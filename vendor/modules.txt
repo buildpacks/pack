@@ -5,7 +5,7 @@ github.com/Azure/go-ansiterm
 github.com/BurntSushi/toml
 # github.com/Microsoft/go-winio v0.4.12
 github.com/Microsoft/go-winio
-# github.com/buildpack/lifecycle v0.0.0-20190311181440-959c946e209c
+# github.com/buildpack/lifecycle v0.0.0-20190314183328-a6ea5e18de72
 github.com/buildpack/lifecycle
 github.com/buildpack/lifecycle/image
 github.com/buildpack/lifecycle/image/auth
@@ -58,14 +58,14 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
 # github.com/google/go-containerregistry v0.0.0-20190306174256-678f6c51f585
-github.com/google/go-containerregistry/pkg/name
 github.com/google/go-containerregistry/pkg/v1
 github.com/google/go-containerregistry/pkg/authn
-github.com/google/go-containerregistry/pkg/v1/types
+github.com/google/go-containerregistry/pkg/name
 github.com/google/go-containerregistry/pkg/v1/mutate
 github.com/google/go-containerregistry/pkg/v1/remote
 github.com/google/go-containerregistry/pkg/v1/remote/transport
 github.com/google/go-containerregistry/pkg/v1/tarball
+github.com/google/go-containerregistry/pkg/v1/types
 github.com/google/go-containerregistry/pkg/v1/empty
 github.com/google/go-containerregistry/pkg/v1/partial
 github.com/google/go-containerregistry/pkg/v1/stream

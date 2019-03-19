@@ -19,4 +19,5 @@ type Image interface {
 	Save() (string, error)
 	Found() (bool, error)
 	GetLayer(string) (io.ReadCloser, error)
+	Delete() error
 }
