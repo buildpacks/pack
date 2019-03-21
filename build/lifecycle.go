@@ -215,9 +215,9 @@ func createBuildpacksTars(tmpDir string, buildpacks []string, logger *logging.Lo
 			id = buildpackTOML.Buildpack.ID
 			version = buildpackTOML.Buildpack.Version
 
-			tarFile := filepath.Join(tmpDir, fmt.Sprintf("%s.%s.tar", id, version))
+			tarFile := filepath.Join(tmpDir, fmt.Sprintf("%s.%s.tar", buildpackTOML.Buildpack.EscapedID(), version))
 
-			if err := archive.CreateTar(tarFile, bp, filepath.Join("/buildpacks", id, version), uid, gid); err != nil {
+			if err := archive.CreateTar(tarFile, bp, filepath.Join("/buildpacks", buildpackTOML.Buildpack.EscapedID(), version), uid, gid); err != nil {
 				return nil, err
 			}
 

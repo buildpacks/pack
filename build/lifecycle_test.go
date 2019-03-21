@@ -200,7 +200,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 						Logger:       logger,
 						Buildpacks: []string{
 							filepath.Join("testdata", "fake_buildpack"),
-							"just.buildpack.id@1.2.3",
+							"just/buildpack.id@1.2.3",
 						},
 						EnvFile: map[string]string{
 							"some-key":  "some-val",
@@ -237,7 +237,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, strings.Replace(outBuf.String(), "[phase]", "", -1),
 					`
    [[groups.buildpacks]]
-     id = "just.buildpack.id"
+     id = "just/buildpack.id"
      version = "1.2.3"
 `)
 			})
