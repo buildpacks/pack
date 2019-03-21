@@ -51,6 +51,9 @@ func main() {
 	rootCmd.AddCommand(commands.Version(&logger, Version))
 
 	if err := rootCmd.Execute(); err != nil {
+		if commands.IsSoftError(err) {
+			os.Exit(2)
+		}
 		os.Exit(1)
 	}
 }

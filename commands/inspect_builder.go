@@ -23,6 +23,11 @@ func InspectBuilder(logger *logging.Logger, cfg *config.Config, inspector Builde
 		Short: "Show information about a builder",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			if cfg.DefaultBuilder == "" && len(args) == 0 {
+				suggestBuilders(logger)
+				return MakeSoftError()
+			}
+
 			imageName := cfg.DefaultBuilder
 			if len(args) >= 1 {
 				imageName = args[0]

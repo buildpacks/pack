@@ -24,7 +24,9 @@ func logError(logger *logging.Logger, f func(cmd *cobra.Command, args []string) 
 		cmd.SilenceUsage = true
 		err := f(cmd, args)
 		if err != nil {
-			logger.Error(err.Error())
+			if !IsSoftError(err) {
+				logger.Error(err.Error())
+			}
 			return err
 		}
 		return nil

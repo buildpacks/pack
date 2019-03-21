@@ -46,6 +46,7 @@ func testCommands(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#InspectBuilder", func() {
+
 		when("image cannot be found", func() {
 			it("logs 'Not present'", func() {
 				mockInspector.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
@@ -196,6 +197,19 @@ Detection Order:
   Group #2:
     test.bp.two@2.0.0
 `)
+			})
+		})
+
+		when("default builder is not set", func() {
+			it("informs the user", func() {
+				command.SetArgs([]string{})
+				h.AssertNotNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), `Please select a default builder with:
+
+	pack set-default-builder [builder image]`)
+				//h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb`)
+				//h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
+				h.AssertMatch(t, outBuf.String(), `Samples:\s+packs/samples`)
 			})
 		})
 	})

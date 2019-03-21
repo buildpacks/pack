@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"text/tabwriter"
 	"time"
 
@@ -59,7 +58,7 @@ func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 
 			if bf.Config.DefaultBuilder == "" && buildFlags.Builder == "" {
 				suggestBuilders(logger)
-				os.Exit(2)
+				return MakeSoftError()
 			}
 
 			b, err := bf.BuildConfigFromFlags(ctx, &buildFlags)
