@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/volume"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -47,6 +49,9 @@ type Docker interface {
 	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (container.ContainerCreateCreatedBody, error)
 	ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error
 	ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
+	ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error)
+	VolumeRemove(ctx context.Context, volumeID string, force bool) error
+	VolumeList(ctx context.Context, filter filters.Args) (volume.VolumeListOKBody, error)
 }
 
 const (
@@ -55,7 +60,6 @@ const (
 
 type LifecycleConfig struct {
 	BuilderImage string
-	VolumeName   string
 	Logger       *logging.Logger
 	Env          map[string]string
 	Buildpacks   []string
@@ -76,7 +80,7 @@ func NewLifecycle(c LifecycleConfig) (*Lifecycle, error) {
 		return nil, err
 	}
 
-	builder, err := factory.NewLocal(c.BuilderImage, false)
+	builder, err := factory.NewLocal(c.BuilderImage)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +126,7 @@ func NewLifecycle(c LifecycleConfig) (*Lifecycle, error) {
 		BuilderImage:    builder.Name(),
 		Logger:          c.Logger,
 		Docker:          client,
-		WorkspaceVolume: c.VolumeName,
+		WorkspaceVolume: "pack-workspace-" + randString(10),
 		appDir:          c.AppDir,
 		uid:             uid,
 		gid:             gid,
@@ -130,12 +134,12 @@ func NewLifecycle(c LifecycleConfig) (*Lifecycle, error) {
 	}, nil
 }
 
-func (l *Lifecycle) Cleanup(ctx context.Context) error {
-	_, err := l.Docker.ImageRemove(ctx, l.BuilderImage, types.ImageRemoveOptions{})
+func (l *Lifecycle) Cleanup() error {
+	_, err := l.Docker.ImageRemove(context.Background(), l.BuilderImage, types.ImageRemoveOptions{})
 	if err != nil {
 		return err
 	}
-	return nil
+	return l.Docker.VolumeRemove(context.Background(), l.WorkspaceVolume, true)
 }
 
 func randString(n int) string {

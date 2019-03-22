@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/builder"
 
-	"github.com/buildpack/lifecycle/fs"
+	"github.com/buildpack/lifecycle/testhelpers"
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
@@ -72,7 +72,7 @@ func RunRegistry(t *testing.T, seedRegistry bool) *TestRegistryConfig {
 }
 
 func startRegistry(t *testing.T, runRegistryName, username, password string) string {
-	AssertNil(t, PullImage(dockerCli(t), registryContainerName))
+	AssertNil(t, TryPullImage(dockerCli(t), registryContainerName))
 	ctx := context.Background()
 
 	htpasswdTar := generateHtpasswd(t, ctx, username, password)
@@ -121,7 +121,7 @@ func generateHtpasswd(t *testing.T, ctx context.Context, username string, passwo
 
 	var b bytes.Buffer
 	err = dockerCli(t).RunContainer(ctx, htpasswdCtr.ID, &b, &b)
-	reader, err := (&fs.FS{}).CreateSingleFileTar("/registry_test_htpasswd", b.String())
+	reader, err := testhelpers.CreateSingleFileTar("/registry_test_htpasswd", b.String())
 	AssertNil(t, err)
 
 	return reader
@@ -174,11 +174,9 @@ var getBuildImageOnce sync.Once
 
 func DefaultBuildImage(t *testing.T, registryPort string) string {
 	t.Helper()
-	tag := packTag()
+	tag := PackTag()
 	getBuildImageOnce.Do(func() {
-		if tag == defaultTag {
-			AssertNil(t, PullImage(dockerCli(t), fmt.Sprintf("packs/build:%s", tag)))
-		}
+		AssertNil(t, TryPullImage(dockerCli(t), fmt.Sprintf("packs/build:%s", tag)))
 		AssertNil(t, dockerCli(t).ImageTag(
 			context.Background(),
 			fmt.Sprintf("packs/build:%s", tag),
@@ -192,11 +190,9 @@ var getRunImageOnce sync.Once
 
 func DefaultRunImage(t *testing.T, registryPort string) string {
 	t.Helper()
-	tag := packTag()
+	tag := PackTag()
 	getRunImageOnce.Do(func() {
-		if tag == defaultTag {
-			AssertNil(t, PullImage(dockerCli(t), fmt.Sprintf("packs/run:%s", tag)))
-		}
+		AssertNil(t, TryPullImage(dockerCli(t), fmt.Sprintf("packs/run:%s", tag)))
 		AssertNil(t, dockerCli(t).ImageTag(
 			context.Background(),
 			fmt.Sprintf("packs/run:%s", tag),
@@ -210,22 +206,19 @@ var getBuilderImageOnce sync.Once
 
 func DefaultBuilderImage(t *testing.T, registryPort string) string {
 	t.Helper()
-	tag := packTag()
+	tag := PackTag()
 	origName := fmt.Sprintf("packs/samples:%s", tag)
 	newName := fmt.Sprintf("localhost:%s/%s", registryPort, origName)
 	dockerCli := dockerCli(t)
 	getBuilderImageOnce.Do(func() {
-		if tag == defaultTag {
-			AssertNil(t, PullImage(dockerCli, origName))
-			AssertNil(t, dockerCli.ImageTag(context.Background(), origName, newName))
-		} else {
-			runImageName := DefaultRunImage(t, registryPort)
+		AssertNil(t, TryPullImage(dockerCli, origName))
+		AssertNil(t, dockerCli.ImageTag(context.Background(), origName, newName))
+		runImageName := DefaultRunImage(t, registryPort)
 
-			CreateImageOnLocal(t, dockerCli, newName, fmt.Sprintf(`
+		CreateImageOnLocal(t, dockerCli, newName, fmt.Sprintf(`
 					FROM %s
 					LABEL %s="{\"runImage\": {\"image\": \"%s\"}}"
-				`, origName, pack.BuilderMetadataLabel, runImageName))
-		}
+				`, origName, builder.MetadataLabel, runImageName))
 	})
 	return newName
 }

@@ -20,14 +20,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/docker"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -37,6 +37,7 @@ var dockerCli *docker.Client
 var registryConfig *h.TestRegistryConfig
 
 func TestAcceptance(t *testing.T) {
+	h.RequireDocker(t)
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	packPath = os.Getenv("PACK_PATH")
@@ -124,96 +125,308 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			}
 			h.AssertNil(t, copyDirectory("testdata/node_app/.", sourceCodePath))
 		})
+
 		it.After(func() {
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 			dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
 			dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
+			cacheImage, err := cache.New(repoName, dockerCli)
+			h.AssertNil(t, err)
+			cacheImage.Clear(context.TODO())
 			if sourceCodePath != "" {
 				os.RemoveAll(sourceCodePath)
 			}
 		})
 
-		when("'--publish' flag is not specified'", func() {
-			it("builds and exports an image", func() {
-				cmd := packCmd("build", repoName, "-p", sourceCodePath)
+		when("default builder is set", func() {
+			it.Before(func() {
+				h.Run(t, packCmd("set-default-builder", h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)))
+			})
+
+			it("creates image on the daemon", func() {
+				t.Log("no previous image exists")
+				cmd := packCmd("build", repoName, "-p", "testdata/node_app/.")
 				output := h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-				runDockerImageExposePort(t, containerName, repoName)
-				launchPort := fetchHostPort(t, containerName)
+				sha, err := imgSHAFromOutput(output, repoName)
+				h.AssertNil(t, err)
+				defer h.DockerRmi(dockerCli, sha)
 
-				waitForPort(t, launchPort, 10*time.Second)
-				h.AssertEq(t, h.HttpGet(t, "http://localhost:"+launchPort), "Buildpacks Worked! - 1000:1000")
+				t.Log("app is runnable")
+				assertNodeAppRuns(t, repoName)
 
-				t.Log("Checking that registry is empty")
+				t.Log("it uses the default run image as a base image")
+				assertHasBase(t, repoName, h.DefaultRunImage(t, registryConfig.RunRegistryPort))
+
+				t.Log("sets the run image label")
+				runImageLabel := imageLabel(t, dockerCli, repoName, "io.buildpacks.run-image")
+				h.AssertEq(t, runImageLabel, h.DefaultRunImage(t, registryConfig.RunRegistryPort))
+
+				t.Log("registry is empty")
 				contents, err := registryConfig.RegistryCatalog()
 				h.AssertNil(t, err)
 				if strings.Contains(contents, repo) {
 					t.Fatalf("Should not have published image without the '--publish' flag: got %s", contents)
 				}
-			})
-		})
 
-		when("'--publish' flag is specified", func() {
-			it("builds and exports an image", func() {
-				runPackBuild := func() string {
-					t.Helper()
-					cmd := packCmd("build", repoName, "-p", sourceCodePath, "--publish")
-					return h.Run(t, cmd)
-				}
-				output := runPackBuild()
+				t.Log("rebuild")
+				cmd = packCmd("build", repoName, "-p", "testdata/node_app/.")
+				output = h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-				imgSHA, err := imgSHAFromOutput(output, repoName)
-				if err != nil {
-					t.Log(output)
-					t.Fatal("Could not determine sha for built image")
-				}
-
-				t.Log("Checking that registry has contents")
-				contents, err := registryConfig.RegistryCatalog()
+				sha, err = imgSHAFromOutput(output, repoName)
 				h.AssertNil(t, err)
-				if !strings.Contains(contents, repo) {
-					t.Fatalf("Expected to see image %s in %s", repo, contents)
-				}
+				defer h.DockerRmi(dockerCli, sha)
 
-				h.AssertNil(t, h.PullImageWithAuth(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA), registryConfig.RegistryAuth()))
-				defer h.DockerRmi(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA))
+				t.Log("app is runnable")
+				assertNodeAppRuns(t, repoName)
 
-				ctrID := runDockerImageExposePort(t, containerName, fmt.Sprintf("%s@%s", repoName, imgSHA))
-				defer dockerCli.ContainerRemove(context.TODO(), ctrID, dockertypes.ContainerRemoveOptions{Force: true})
+				t.Log("restores the cache")
+				h.AssertContainsMatch(t, output, `\[restorer] \S+ \S+ restoring cached layer 'io.buildpacks.samples.nodejs:nodejs'`)
+				h.AssertContainsMatch(t, output, `\[analyzer] \S+ \S+ using cached launch layer 'io.buildpacks.samples.nodejs:nodejs'`)
 
-				launchPort := fetchHostPort(t, containerName)
+				t.Log("exporter and cacher reuse unchanged layers")
+				h.AssertContainsMatch(t, output, `\[exporter] \S+ \S+ reusing layer 'io.buildpacks.samples.nodejs:nodejs'`)
+				h.AssertContainsMatch(t, output, `\[cacher] \S+ \S+ reusing layer 'io.buildpacks.samples.nodejs:nodejs'`)
 
-				waitForPort(t, launchPort, 10*time.Second)
-				h.AssertEq(t, h.HttpGet(t, "http://localhost:"+launchPort), "Buildpacks Worked! - 1000:1000")
+				t.Log("rebuild with --clear-cache")
+				cmd = packCmd("build", repoName, "-p", "testdata/node_app/.", "--clear-cache")
+				output = h.Run(t, cmd)
+				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
-				t.Log("uses the cache on subsequent run")
-				output = runPackBuild()
+				t.Log("doesn't restore the cache")
+				h.AssertContains(t, output, "nothing to restore")
 
-				regex := regexp.MustCompile(`moved \d+ packages`)
-				if !regex.MatchString(output) {
-					t.Fatalf("Build failed to use cache: %s", output)
-				}
+				t.Log("exporter reuses unchanged layers")
+				h.AssertContainsMatch(t, output, `\[exporter] \S+ \S+ reusing layer 'io.buildpacks.samples.nodejs:nodejs'`)
+
+				t.Log("cacher adds layers")
+				h.AssertContainsMatch(t, output, `\[cacher] \S+ \S+ adding layer 'io.buildpacks.samples.nodejs:nodejs'`)
 			})
+
+			when("--buildpack", func() {
+				when("the argument is a directory", func() {
+					it("adds the buildpack to the builder and runs it", func() {
+						skipOnWindows(t, "buildpack directories not supported on windows")
+						cmd := packCmd(
+							"build", repoName,
+							"-p", filepath.Join("testdata", "mock_app"),
+							"--buildpack", filepath.Join("testdata", "mock_buildpacks", "first"),
+							"--buildpack", filepath.Join("testdata", "mock_buildpacks", "second"),
+						)
+						output := h.Run(t, cmd)
+						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+						t.Log("it calls /bin/detect on the buildpacks")
+						if !strings.Contains(output, "First Mock Buildpack: pass") {
+							t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "First Mock Buildpack: pass", output)
+						}
+						if !strings.Contains(output, "Second Mock Buildpack: pass") {
+							t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Second Mock Buildpack: pass", output)
+						}
+						t.Log("it calls /bin/build on the buildpacks")
+						if !strings.Contains(output, "---> First mock buildpack") {
+							t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "---> First mock buildpack", output)
+						}
+						if !strings.Contains(output, "---> Second mock buildpack") {
+							t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "---> Second mock buildpack", output)
+						}
+						t.Log("run app container")
+						runOutput := runDockerImageWithOutput(t, containerName, repoName)
+						if !strings.Contains(runOutput, "First Dep Contents") {
+							t.Fatalf(`Expected output to contain "First Dep Contents", got "%s"`, runOutput)
+						}
+					})
+
+					when("the buildpack stack doesn't match the builder", func() {
+						it.Pend("errors", func() {
+							skipOnWindows(t, "buildpack directories not supported on windows")
+							cmd := packCmd(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--buildpack", filepath.Join("testdata", "mock_buildpacks", "other-stack"),
+							)
+							txt, err := h.RunE(cmd)
+							h.AssertNotNil(t, err)
+							h.AssertContains(t, txt, "wrong stack")
+						})
+					})
+				})
+				//--buildpack flag with id arg is tested in create-builder test
+			})
+
+			when("--env-file", func() {
+				var envPath string
+
+				it.Before(func() {
+					skipOnWindows(t, "directory buildpacks are not implemented on windows")
+
+					envfile, err := ioutil.TempFile("", "envfile")
+					h.AssertNil(t, err)
+					err = os.Setenv("VAR3", "value from env")
+					h.AssertNil(t, err)
+					envfile.WriteString(`
+			VAR1=value1
+			VAR2=value2
+			VAR3
+			`)
+					envPath = envfile.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.Unsetenv("VAR3"))
+					h.AssertNil(t, os.RemoveAll(envPath))
+				})
+
+				it("provides the env vars to the build and detect steps", func() {
+					cmd := packCmd(
+						"build", repoName,
+						"-p", filepath.Join("testdata", "mock_app"),
+						"--env-file", envPath,
+						"--buildpack", filepath.Join("testdata", "mock_buildpacks", "printenv"),
+					)
+					output := h.Run(t, cmd)
+					h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+					h.AssertContains(t, output, "DETECT: VAR1 is value1;")
+					h.AssertContains(t, output, "DETECT: VAR2 is value2;")
+					h.AssertContains(t, output, "DETECT: VAR3 is value from env;")
+					h.AssertContains(t, output, "BUILD: VAR1 is value1;")
+					h.AssertContains(t, output, "BUILD: VAR2 is value2;")
+					h.AssertContains(t, output, "BUILD: VAR3 is value from env;")
+				})
+			})
+
+			when("--run-image", func() {
+				var runImageName string
+
+				when("the run-image has the correct stack ID", func() {
+					it.Before(func() {
+						runImageName = h.CreateImageOnRemote(t, dockerCli, registryConfig, "custom-run-image"+h.RandString(10), fmt.Sprintf(`
+													FROM %s
+													USER root
+													RUN echo "custom-run" > /custom-run.txt
+													USER pack
+												`, h.DefaultRunImage(t, registryConfig.RunRegistryPort)))
+					})
+
+					it.After(func() {
+						h.DockerRmi(dockerCli, runImageName)
+					})
+
+					it("uses the run image as the base image", func() {
+						cmd := packCmd(
+							"build", repoName,
+							"-p", "testdata/node_app/.",
+							"--run-image", runImageName,
+						)
+
+						output := h.Run(t, cmd)
+						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+
+						t.Log("app is runnable")
+						assertNodeAppRuns(t, repoName)
+
+						t.Log("pulls the run image")
+						h.AssertContains(t, output, fmt.Sprintf("Pulling run image '%s'", runImageName))
+
+						t.Log("uses the run image as the base image")
+						assertHasBase(t, repoName, runImageName)
+
+						t.Log("doesn't set the run-image label")
+						assertImageLabelAbsent(t, dockerCli, repoName, "io.buildpacks.run-image")
+					})
+				})
+
+				when("the run image has the wrong stack ID", func() {
+					it.Before(func() {
+						runImageName = h.CreateImageOnRemote(t, dockerCli, registryConfig, "custom-run-image"+h.RandString(10), fmt.Sprintf(`
+													FROM %s
+													LABEL io.buildpacks.stack.id=other.stack.id
+													USER pack
+												`, h.DefaultRunImage(t, registryConfig.RunRegistryPort)))
+
+					})
+
+					it.After(func() {
+						h.DockerRmi(dockerCli, runImageName)
+					})
+
+					it.Pend("fails with a message", func() {
+						cmd := packCmd(
+							"build", repoName,
+							"-p", "testdata/node_app/.",
+							"--run-image", runImageName,
+						)
+						txt, err := h.RunE(cmd)
+						h.AssertNotNil(t, err)
+						h.AssertContains(t, txt, "wrong stack")
+					})
+				})
+			})
+
+			when("--publish", func() {
+				it("creates image on the registry", func() {
+					runPackBuild := func() string {
+						t.Helper()
+						cmd := packCmd("build", repoName, "-p", sourceCodePath, "--publish")
+						return h.Run(t, cmd)
+					}
+					output := runPackBuild()
+					h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+					imgSHA, err := imgSHAFromOutput(output, repoName)
+					if err != nil {
+						t.Log(output)
+						t.Fatal("Could not determine sha for built image")
+					}
+
+					t.Log("Checking that registry has contents")
+					contents, err := registryConfig.RegistryCatalog()
+					h.AssertNil(t, err)
+					if !strings.Contains(contents, repo) {
+						t.Fatalf("Expected to see image %s in %s", repo, contents)
+					}
+
+					h.AssertNil(t, h.PullImageWithAuth(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA), registryConfig.RegistryAuth()))
+					defer h.DockerRmi(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA))
+					assertNodeAppRuns(t, fmt.Sprintf("%s@%s", repoName, imgSHA))
+				})
+			})
+
+			when("ctrl+c", func() {
+				it("stops the execution", func() {
+					var buf bytes.Buffer
+					cmd := packCmd("build", repoName, "-p", sourceCodePath)
+					cmd.Stdout = &buf
+					cmd.Stderr = &buf
+
+					h.AssertNil(t, cmd.Start())
+
+					go terminateAtStep(t, cmd, &buf, "[detector]")
+
+					err := cmd.Wait()
+					h.AssertNotNil(t, err)
+					h.AssertNotContains(t, buf.String(), "Successfully built image")
+
+					time.Sleep(5 * time.Second)
+				})
+			})
+
+			//--no-pull flag is tested in create-builder test
 		})
 
-		when("execution is aborted using ctrl+c or kill", func() {
-			it("stops the execution", func() {
-				var buf bytes.Buffer
-				cmd := packCmd("build", repoName, "-p", sourceCodePath)
-				cmd.Stdout = &buf
-				cmd.Stderr = &buf
-
-				h.AssertNil(t, cmd.Start())
-
-				go terminateAtStep(t, cmd, &buf, "[detector]")
-
-				err := cmd.Wait()
+		when("default builder is not set", func() {
+			it("informs the user", func() {
+				cmd := packCmd("build", repoName, "-p", "testdata/node_app/.")
+				output, err := h.RunE(cmd)
 				h.AssertNotNil(t, err)
-				h.AssertNotContains(t, buf.String(), "Successfully built image")
+				h.AssertContains(t, output, `Please select a default builder with:
 
-				time.Sleep(5 * time.Second)
+	pack set-default-builder [builder image]`)
+				//h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb`)
+				//h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
+				h.AssertMatch(t, output, `Samples:\s+packs/samples`)
 			})
 		})
+
+		//--builder flag is tested in create-builder test
 	})
 
 	when("pack run", func() {
@@ -228,43 +441,70 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			}
 			h.AssertNil(t, copyDirectory("testdata/node_app/.", sourceCodePath))
 		})
-		it.After(func() {
-			repoName := fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(sourceCodePath)))
-			h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 
-			if sourceCodePath != "" {
-				os.RemoveAll(sourceCodePath)
-			}
+		it.After(func() {
+			os.RemoveAll(sourceCodePath)
 		})
 
-		it("starts an image", func() {
-			var buf bytes.Buffer
-			cmd := packCmd("run", "--port", "3000", "-p", sourceCodePath)
-			cmd.Stdout = &buf
-			cmd.Stderr = &buf
-			cmd.Dir = sourceCodePath
-			h.AssertNil(t, cmd.Start())
+		when("default builder is set", func() {
+			it.Before(func() {
+				h.Run(t, packCmd("set-default-builder", h.DefaultBuilderImage(t, registryConfig.RunRegistryPort)))
+			})
 
-			defer ctrlCProc(cmd)
-
-			h.Eventually(t, func() bool {
-				if !isCommandRunning(cmd) {
-					t.Fatalf("Command exited unexpectedly: \n %s", buf.String())
+			it.After(func() {
+				repoName := fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(sourceCodePath)))
+				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+				cacheImage, err := cache.New(repoName, dockerCli)
+				h.AssertNil(t, err)
+				cacheImage.Clear(context.TODO())
+				if sourceCodePath != "" {
+					os.RemoveAll(sourceCodePath)
 				}
+			})
 
-				return strings.Contains(buf.String(), "Example app listening on port 3000!")
-			}, time.Second, 2*time.Minute)
+			it("starts an image", func() {
+				var buf bytes.Buffer
+				cmd := packCmd("run", "--port", "3000", "-p", sourceCodePath)
+				cmd.Stdout = &buf
+				cmd.Stderr = &buf
+				cmd.Dir = sourceCodePath
+				h.AssertNil(t, cmd.Start())
 
-			txt := h.HttpGet(t, "http://localhost:3000")
-			h.AssertEq(t, txt, "Buildpacks Worked! - 1000:1000")
+				defer ctrlCProc(cmd)
+
+				h.Eventually(t, func() bool {
+					if !isCommandRunning(cmd) {
+						t.Fatalf("Command exited unexpectedly: \n %s", buf.String())
+					}
+
+					return strings.Contains(buf.String(), "Example app listening on port 3000!")
+				}, time.Second, 2*time.Minute)
+
+				txt := h.HttpGet(t, "http://localhost:3000")
+				h.AssertEq(t, txt, "Buildpacks Worked! - 1000:1000")
+			})
+		})
+
+		when("default builder is not set", func() {
+			it("informs the user", func() {
+				cmd := packCmd("run", "-p", "testdata/node_app/.")
+				output, err := h.RunE(cmd)
+				h.AssertNotNil(t, err)
+				h.AssertContains(t, output, `Please select a default builder with:
+
+	pack set-default-builder [builder image]`)
+				//h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb`)
+				//h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
+				h.AssertMatch(t, output, `Samples:\s+packs/samples`)
+			})
 		})
 	})
 
 	when("pack rebase", func() {
 		var repoName, containerName, runBefore, runAfter string
 		var buildRunImage func(string, string, string)
-		var setRunImage func(string)
 		var rootContents1 func() string
+
 		it.Before(func() {
 			containerName = "test-" + h.RandString(10)
 			repoName = "some-org/" + h.RandString(10)
@@ -273,20 +513,12 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 			buildRunImage = func(runImage, contents1, contents2 string) {
 				h.CreateImageOnLocal(t, dockerCli, runImage, fmt.Sprintf(`
-										FROM %s
-										USER root
-										RUN echo %s > /contents1.txt
-										RUN echo %s > /contents2.txt
-										USER pack
-									`, h.DefaultRunImage(t, registryConfig.RunRegistryPort), contents1, contents2))
-
-			}
-			setRunImage = func(runImage string) {
-				cmd := packCmd(
-					"update-stack", "io.buildpacks.stacks.bionic",
-					"--run-image", runImage,
-				)
-				h.Run(t, cmd)
+													FROM %s
+													USER root
+													RUN echo %s > /contents1.txt
+													RUN echo %s > /contents2.txt
+													USER pack
+												`, h.DefaultRunImage(t, registryConfig.RunRegistryPort), contents1, contents2))
 			}
 			rootContents1 = func() string {
 				t.Helper()
@@ -304,20 +536,23 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				return txt
 			}
 		})
+
 		it.After(func() {
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 			dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
 
-			h.AssertNil(t, h.DockerRmi(dockerCli, repoName, runBefore, runAfter))
+			h.DockerRmi(dockerCli, repoName)
 		})
 
 		when("run on daemon", func() {
 			var origID string
+
 			it.Before(func() {
 				buildRunImage(runBefore, "contents-before-1", "contents-before-2")
 				cmd := packCmd(
 					"build", repoName,
 					"-p", "testdata/node_app/",
+					"--builder", h.DefaultBuilderImage(t, registryConfig.RunRegistryPort),
 					"--run-image", runBefore,
 					"--no-pull",
 				)
@@ -325,15 +560,18 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				origID = h.ImageID(t, repoName)
 				h.AssertEq(t, rootContents1(), "contents-before-1\n")
 			})
+
 			it.After(func() {
-				h.AssertNil(t, h.DockerRmi(dockerCli, origID))
+				h.DockerRmi(dockerCli, origID, runBefore, runAfter)
+				cacheImage, err := cache.New(repoName, dockerCli)
+				h.AssertNil(t, err)
+				cacheImage.Clear(context.TODO())
 			})
 
 			it("rebases", func() {
 				buildRunImage(runAfter, "contents-after-1", "contents-after-2")
-				setRunImage(runAfter)
 
-				cmd := packCmd("rebase", repoName, "--no-pull")
+				cmd := packCmd("rebase", repoName, "--no-pull", "--run-image", runAfter)
 				output := h.Run(t, cmd)
 
 				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
@@ -341,7 +579,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("run on registry", func() {
+		when("--publish", func() {
 			it.Before(func() {
 				repoName = registryConfig.RepoName(repoName)
 				runBefore = registryConfig.RepoName(runBefore)
@@ -352,6 +590,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 				cmd := packCmd("build", repoName,
 					"-p", "testdata/node_app/",
+					"--builder", h.DefaultBuilderImage(t, registryConfig.RunRegistryPort),
 					"--run-image", runBefore,
 					"--publish")
 				h.Run(t, cmd)
@@ -361,16 +600,67 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 			})
 
-			it("rebases", func() {
+			it.After(func() {
+				h.DockerRmi(dockerCli, runBefore, runAfter)
+				cacheImage, err := cache.New(repoName, dockerCli)
+				h.AssertNil(t, err)
+				cacheImage.Clear(context.TODO())
+			})
+
+			it("rebases on the registry", func() {
 				buildRunImage(runAfter, "contents-after-1", "contents-after-2")
-				setRunImage(runAfter)
 				h.AssertNil(t, h.PushImage(dockerCli, runAfter, registryConfig))
 
-				cmd := packCmd("rebase", repoName, "--publish")
+				cmd := packCmd("rebase", repoName, "--publish", "--run-image", runAfter)
 				output := h.Run(t, cmd)
 
 				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
 				h.AssertNil(t, h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+				h.AssertEq(t, rootContents1(), "contents-after-1\n")
+			})
+		})
+
+		//todo do we need this test and if so how do we cleanup
+		when("no run-image flag", func() {
+			var origID string
+			var origRunImageID string
+			var builderName = "some-org/" + h.RandString(10)
+			var runImage = "some-org/" + h.RandString(10)
+
+			it.Before(func() {
+				buildRunImage(runImage, "contents-before-1", "contents-before-2")
+				origRunImageID = h.ImageID(t, runImage)
+
+				h.CreateImageOnLocal(t, dockerCli, builderName, fmt.Sprintf(`
+								FROM %s
+								LABEL %s="{\"runImage\": {\"image\": \"%s\"}}"
+							`, h.DefaultBuilderImage(t, registryConfig.RunRegistryPort), builder.MetadataLabel, runImage))
+
+				cmd := packCmd(
+					"build", repoName,
+					"-p", "testdata/node_app/",
+					"--builder", builderName,
+					"--no-pull",
+				)
+				h.Run(t, cmd)
+				origID = h.ImageID(t, repoName)
+				h.AssertEq(t, rootContents1(), "contents-before-1\n")
+			})
+
+			it.After(func() {
+				h.DockerRmi(dockerCli, origID, builderName, origRunImageID, runImage)
+				cacheImage, err := cache.New(repoName, dockerCli)
+				h.AssertNil(t, err)
+				cacheImage.Clear(context.TODO())
+			})
+
+			it("rebases", func() {
+				buildRunImage(runImage, "contents-after-1", "contents-after-2")
+
+				cmd := packCmd("rebase", repoName, "--no-pull")
+				output := h.Run(t, cmd)
+
+				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
 				h.AssertEq(t, rootContents1(), "contents-after-1\n")
 			})
 		})
@@ -381,23 +671,53 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			builderRepoName string
 			containerName   string
 			repoName        string
+			builderTOML     string
+			tmpDir          string
 		)
 
 		it.Before(func() {
 			skipOnWindows(t, "create builder is not implemented on windows")
-			skipOnCI(t, "create builder is not working on concourse")
 			builderRepoName = "some-org/" + h.RandString(10)
 			repoName = "some-org/" + h.RandString(10)
 			containerName = "test-" + h.RandString(10)
+			if h.PackTag() != h.DefaultTag {
+				var err error
+				tmpDir, err = ioutil.TempDir("", "create-builder-toml-with-tags")
+				h.AssertNil(t, err)
+				h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks"), tmpDir)
+				builderTOML = filepath.Join(tmpDir, "builder.toml")
+				builderTOMLContents, err := ioutil.ReadFile(builderTOML)
+				h.AssertNil(t, err)
+				newBuilderTOML := strings.Replace(
+					string(builderTOMLContents),
+					"packs/build:"+h.DefaultTag,
+					h.DefaultBuildImage(t, registryConfig.RunRegistryPort),
+					-1,
+				)
+				newBuilderTOML = strings.Replace(
+					string(newBuilderTOML),
+					"packs/run:"+h.DefaultTag,
+					h.DefaultRunImage(t, registryConfig.RunRegistryPort),
+					-1,
+				)
+				err = ioutil.WriteFile(builderTOML, []byte(newBuilderTOML), 0777)
+				h.AssertNil(t, err)
+			} else {
+				builderTOML = filepath.Join("testdata", "mock_buildpacks", "builder.toml")
+			}
 		})
 
 		it.After(func() {
+			os.RemoveAll(tmpDir)
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 			dockerCli.ImageRemove(context.TODO(), builderRepoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
+			dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
+			cacheImage, err := cache.New(repoName, dockerCli)
+			h.AssertNil(t, err)
+			cacheImage.Clear(context.TODO())
 		})
 
 		it("builds and exports an image", func() {
-			builderTOML := filepath.Join("testdata", "mock_buildpacks", "builder.toml")
 			sourceCodePath := filepath.Join("testdata", "mock_app")
 
 			t.Log("create builder image")
@@ -407,16 +727,15 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 			t.Log("build uses order defined in builder.toml")
 			cmd = packCmd("build", repoName, "--builder", builderRepoName, "--path", sourceCodePath, "--no-pull")
-			buildOutput, err := cmd.CombinedOutput()
-			h.AssertNil(t, err)
+			buildOutput := h.Run(t, cmd)
 			defer func(origID string) { h.AssertNil(t, h.DockerRmi(dockerCli, origID)) }(h.ImageID(t, repoName))
-			if !strings.Contains(string(buildOutput), "First Mock Buildpack: pass") {
+			if !strings.Contains(buildOutput, "First Mock Buildpack: pass") {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "First Mock Buildpack: pass", buildOutput)
 			}
-			if !strings.Contains(string(buildOutput), "Second Mock Buildpack: pass") {
+			if !strings.Contains(buildOutput, "Second Mock Buildpack: pass") {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Second Mock Buildpack: pass", buildOutput)
 			}
-			if !strings.Contains(string(buildOutput), "Third Mock Buildpack: pass") {
+			if !strings.Contains(buildOutput, "Third Mock Buildpack: pass") {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Third Mock Buildpack: pass", buildOutput)
 			}
 
@@ -441,17 +760,16 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				"--path", sourceCodePath,
 				"--no-pull",
 			)
-			buildOutput, err = cmd.CombinedOutput()
-			h.AssertNil(t, err)
+			buildOutput = h.Run(t, cmd)
 			defer func(origID string) { h.AssertNil(t, h.DockerRmi(dockerCli, origID)) }(h.ImageID(t, repoName))
 			latestInfo := "No version for 'mock.bp.first' buildpack provided, will use 'mock.bp.first@latest'"
-			if !strings.Contains(string(buildOutput), latestInfo) {
+			if !strings.Contains(buildOutput, latestInfo) {
 				t.Fatalf(`expected build output to contain "%s", got "%s"`, latestInfo, buildOutput)
 			}
-			if !strings.Contains(string(buildOutput), "Latest First Mock Buildpack: pass") {
+			if !strings.Contains(buildOutput, "Latest First Mock Buildpack: pass") {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Latest First Mock Buildpack: pass", buildOutput)
 			}
-			if !strings.Contains(string(buildOutput), "Third Mock Buildpack: pass") {
+			if !strings.Contains(buildOutput, "Third Mock Buildpack: pass") {
 				t.Fatalf(`Expected build output to contain detection output "%s", got "%s"`, "Third Mock Buildpack: pass", buildOutput)
 			}
 
@@ -469,100 +787,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("pack add-stack", func() {
-		it("adds a custom stack to ~/.pack/config.toml", func() {
-			cmd := packCmd("add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
-			output := h.Run(t, cmd)
-
-			h.AssertEq(t, string(output), "Stack 'my.custom.stack' added\n")
-
-			cmd = packCmd("stacks")
-			output = h.Run(t, cmd)
-			h.AssertMatch(t, output, `(?m)^\Qmy.custom.stack\E\s+\Qmy-org/build\E\s+\Qmy-org/run\E\n`)
-		})
-	})
-
-	when("pack update-stack", func() {
-		it.Before(func() {
-			cmd := packCmd("add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("add-stack command failed: %s: %s", output, err)
-			}
-		})
-
-		it("updates an existing custom stack in ~/.pack/config.toml", func() {
-			cmd := packCmd(
-				"update-stack", "my.custom.stack",
-				"--run-image", "my-org/run-2",
-				"--run-image", "my-org/run-3",
-				"--build-image", "my-org/build-2",
-			)
-			updateOutput, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("update-stack command failed: %s: %s", updateOutput, err)
-			}
-			h.AssertEq(t, string(updateOutput), "Stack 'my.custom.stack' updated\n")
-
-			cmd = packCmd("stacks")
-			stacksOutput := h.Run(t, cmd)
-			h.AssertMatch(t, stacksOutput, `(?m)^\Qmy.custom.stack\E\s+\Qmy-org/build-2\E\s+\Qmy-org/run-2, my-org/run-3\E\n`)
-		})
-	})
-
-	when("pack set-default-stack", func() {
-		it.Before(func() {
-			cmd := packCmd("add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("add-stack command failed: %s: %s", output, err)
-			}
-		})
-
-		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			cmd := packCmd("set-default-stack", "my.custom.stack")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("set-default-stack command failed: %s: %s", output, err)
-			}
-			h.AssertEq(t, string(output), "Stack 'my.custom.stack' is now the default stack\n")
-
-			cmd = packCmd("stacks")
-			stacksOutput := h.Run(t, cmd)
-			h.AssertMatch(t, stacksOutput, `(?m)^\Qmy.custom.stack (default)\E\s+\Qmy-org/build\E\s+\Qmy-org/run\E\n`)
-		})
-	})
-
-	when("pack delete-stack", func() {
-		it.Before(func() {
-			cmd := packCmd("add-stack", "my.custom.stack", "--run-image", "my-org/run", "--build-image", "my-org/build")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("add-stack command failed: %s: %s", output, err)
-			}
-		})
-
-		it("deletes a custom stack from ~/.pack/config.toml", func() {
-			cmd := packCmd("delete-stack", "my.custom.stack")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("add-stack command failed: %s: %s", output, err)
-			}
-			h.AssertEq(t, string(output), "Stack 'my.custom.stack' deleted\n")
-
-			cmd = packCmd("stacks")
-			stacksOutput := h.Run(t, cmd)
-			if strings.Contains(stacksOutput, "my.custom.stack") {
-				t.Fatalf("stacks output '%s' contains deleted stack 'my.custom.stack'", stacksOutput)
-			}
-		})
-	})
-
 	when("pack set-default-builder", func() {
-		type config struct {
-			DefaultBuilder string `toml:"default-builder"`
-		}
-
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
 			cmd := packCmd("set-default-builder", "some/builder")
 			output, err := cmd.CombinedOutput()
@@ -570,11 +795,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				t.Fatalf("set-default-builder command failed: %s: %s", output, err)
 			}
 			h.AssertEq(t, string(output), "Builder 'some/builder' is now the default builder\n")
-
-			var config config
-			_, err = toml.DecodeFile(filepath.Join(packHome, "config.toml"), &config)
-			h.AssertNil(t, err)
-			h.AssertEq(t, config.DefaultBuilder, "some/builder")
 		})
 	})
 
@@ -585,15 +805,18 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			builderImageName := h.CreateImageOnRemote(t, dockerCli, registryConfig, "some/builder",
 				fmt.Sprintf(`
 										FROM scratch
-										LABEL %s="{\"runImage\": { \"image\": \"some/run1\", \"mirrors\": [\"gcr.io/some/run1\"]}}"
-									`, pack.BuilderMetadataLabel))
+										LABEL %s="{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run1\"]},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
+										LABEL io.buildpacks.stack.id=some.test.stack
+									`, builder.MetadataLabel))
 
 			h.CreateImageOnLocal(t, dockerCli, builderImageName,
 				fmt.Sprintf(`
 										FROM scratch
-										LABEL %s="{\"runImage\": { \"image\": \"some/run1\", \"mirrors\": [\"gcr.io/some/run2\"]}}"
-									`, pack.BuilderMetadataLabel))
-			println(builderImageName)
+										LABEL %s="{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run2\"]},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
+										LABEL io.buildpacks.stack.id=some.test.stack
+									`, builder.MetadataLabel))
+			defer h.DockerRmi(dockerCli, builderImageName)
+
 			cmd := packCmd("set-run-image-mirrors", "some/run1", "--mirror", configuredRunImage)
 			output := h.Run(t, cmd)
 			h.AssertEq(t, output, "Run Image 'some/run1' configured with mirror 'some-registry.com/some/run1'\n")
@@ -601,23 +824,33 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			cmd = packCmd("inspect-builder", builderImageName)
 			output = h.Run(t, cmd)
 
-			h.AssertEq(t, output, `Remote
-------
-Run Image: some/run1
-Run Image Mirrors:
-	some-registry.com/some/run1 (user-configured)
-	gcr.io/some/run1
+			expected, err := ioutil.ReadFile(filepath.Join("testdata", "inspect_builder_output.txt"))
+			h.AssertNil(t, err)
 
-Local
------
-Run Image: some/run1
-Run Image Mirrors:
-	some-registry.com/some/run1 (user-configured)
-	gcr.io/some/run2
-
-`)
+			h.AssertEq(t, output, fmt.Sprintf(string(expected), builderImageName))
 		})
 	})
+}
+
+func assertNodeAppRuns(t *testing.T, repoName string) {
+	t.Helper()
+	containerName := "test-" + h.RandString(10)
+	runDockerImageExposePort(t, containerName, repoName)
+	defer dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
+	defer dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
+	launchPort := fetchHostPort(t, containerName)
+	waitForPort(t, launchPort, 10*time.Second)
+	h.AssertEq(t, h.HttpGet(t, "http://localhost:"+launchPort), "Buildpacks Worked! - 1000:1000")
+}
+
+func assertHasBase(t *testing.T, image, base string) {
+	imageInspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), image)
+	h.AssertNil(t, err)
+	baseInspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), base)
+	h.AssertNil(t, err)
+	for i, layer := range baseInspect.RootFS.Layers {
+		h.AssertEq(t, imageInspect.RootFS.Layers[i], layer)
+	}
 }
 
 func fetchHostPort(t *testing.T, dockerID string) string {
@@ -779,12 +1012,6 @@ func skipOnWindows(t *testing.T, message string) {
 	}
 }
 
-func skipOnCI(t *testing.T, message string) {
-	if os.Getenv("IS_CI") == "true" {
-		t.Skip(message)
-	}
-}
-
 func isCommandRunning(cmd *exec.Cmd) bool {
 	_, err := os.FindProcess(cmd.Process.Pid)
 	if err != nil {
@@ -812,5 +1039,26 @@ func terminateAtStep(t *testing.T, cmd *exec.Cmd, buf *bytes.Buffer, pattern str
 			h.AssertNil(t, cmd.Process.Signal(interruptSignal))
 			return
 		}
+	}
+}
+
+func imageLabel(t *testing.T, dockerCli *docker.Client, repoName, labelName string) string {
+	t.Helper()
+	inspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), repoName)
+	h.AssertNil(t, err)
+	label, ok := inspect.Config.Labels[labelName]
+	if !ok {
+		t.Errorf("expected label %s to exist", labelName)
+	}
+	return label
+}
+
+func assertImageLabelAbsent(t *testing.T, dockerCli *docker.Client, repoName, labelName string) {
+	t.Helper()
+	inspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), repoName)
+	h.AssertNil(t, err)
+	val, ok := inspect.Config.Labels[labelName]
+	if ok {
+		t.Errorf("expected label %s not to exist but was %s", labelName, val)
 	}
 }

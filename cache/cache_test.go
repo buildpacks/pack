@@ -3,16 +3,12 @@ package cache_test
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/volume"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -23,6 +19,7 @@ import (
 )
 
 func TestCache(t *testing.T) {
+	h.RequireDocker(t)
 	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -42,7 +39,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			subject, err := cache.New("my/repo", dockerClient)
 			h.AssertNil(t, err)
 			expected, _ := cache.New("my/repo", dockerClient)
-			if subject.Volume() != expected.Volume() {
+			if subject.Image() != expected.Image() {
 				t.Fatalf("The same repo name should result in the same volume")
 			}
 		})
@@ -51,7 +48,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			subject, err := cache.New("my/repo:other-tag", dockerClient)
 			h.AssertNil(t, err)
 			notExpected, _ := cache.New("my/repo", dockerClient)
-			if subject.Volume() == notExpected.Volume() {
+			if subject.Image() == notExpected.Image() {
 				t.Fatalf("Different image tags should result in different volumes")
 			}
 		})
@@ -60,7 +57,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			subject, err := cache.New("registry.com/my/repo:other-tag", dockerClient)
 			h.AssertNil(t, err)
 			notExpected, _ := cache.New("my/repo", dockerClient)
-			if subject.Volume() == notExpected.Volume() {
+			if subject.Image() == notExpected.Image() {
 				t.Fatalf("Different image registries should result in different volumes")
 			}
 		})
@@ -69,7 +66,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			subject, err := cache.New("my/repo:latest", dockerClient)
 			h.AssertNil(t, err)
 			expected, _ := cache.New("my/repo", dockerClient)
-			if subject.Volume() != expected.Volume() {
+			if subject.Image() != expected.Image() {
 				t.Fatalf("The same repo name should result in the same volume")
 			}
 		})
@@ -78,7 +75,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			subject, err := cache.New("index.docker.io/my/repo", dockerClient)
 			h.AssertNil(t, err)
 			expected, _ := cache.New("my/repo", dockerClient)
-			if subject.Volume() != expected.Volume() {
+			if subject.Image() != expected.Image() {
 				t.Fatalf("The same repo name should result in the same volume")
 			}
 		})
@@ -86,7 +83,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Clear", func() {
 		var (
-			volumeName   string
+			imageName    string
 			dockerClient *docker.Client
 			subject      *cache.Cache
 			ctx          context.Context
@@ -99,138 +96,36 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			ctx = context.TODO()
 
 			subject, err = cache.New(h.RandString(10), dockerClient)
-			volumeName = subject.Volume()
 			h.AssertNil(t, err)
+			imageName = subject.Image()
 		})
 
-		when("the volume is not attached to a container", func() {
+		when("there is a cache image", func() {
 			it.Before(func() {
-				var err error
-				_, err = dockerClient.VolumeCreate(context.TODO(), volume.VolumeCreateBody{Name: volumeName})
-				h.AssertNil(t, err)
+				h.CreateImageOnLocal(t, dockerClient, imageName, fmt.Sprintf(`
+FROM busybox
+LABEL repo_name_for_randomisation=%s
+`, imageName))
 			})
 
-			it.After(func() {
-				err := dockerClient.VolumeRemove(context.TODO(), volumeName, true)
-				h.AssertNil(t, err)
-			})
-
-			it("removes the volumes", func() {
+			it("removes the image", func() {
 				err := subject.Clear(ctx)
 				h.AssertNil(t, err)
-				body, err := dockerClient.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
-					Key:   "name",
-					Value: volumeName,
-				}))
+				images, err := dockerClient.ImageList(context.TODO(), types.ImageListOptions{
+					Filters: filters.NewArgs(filters.KeyValuePair{
+						Key:   "label",
+						Value: "repo_name_for_randomisation=" + imageName,
+					}),
+				})
 				h.AssertNil(t, err)
-				h.AssertEq(t, len(body.Volumes), 0)
+				h.AssertEq(t, len(images), 0)
 			})
 		})
 
-		when("the volume is attached to a container", func() {
-			it.Before(func() {
-				o, err := dockerClient.ImagePull(context.TODO(), "busybox", types.ImagePullOptions{})
+		when("there is no cache image", func() {
+			it("does not fail", func() {
+				err := subject.Clear(ctx)
 				h.AssertNil(t, err)
-				_, err = io.Copy(ioutil.Discard, o)
-				h.AssertNil(t, err)
-			})
-
-			when("container is created by pack", func() {
-				var (
-					containerBody container.ContainerCreateCreatedBody
-					containerName string
-				)
-				it.Before(func() {
-					var err error
-					containerName = h.RandString(10)
-					containerBody, err = dockerClient.ContainerCreate(context.TODO(), &container.Config{
-						Image: "busybox",
-						Labels: map[string]string{
-							"author": "pack",
-						},
-					}, &container.HostConfig{
-						Binds: []string{
-							fmt.Sprintf("%s:%s:", volumeName, "/tmp"),
-						},
-					},
-						nil,
-						containerName)
-					h.AssertNil(t, err)
-				})
-
-				it.After(func() {
-					dockerClient.ContainerRemove(ctx, containerBody.ID, types.ContainerRemoveOptions{
-						Force: true,
-					})
-				})
-
-				when("the container is stopped", func() {
-					it("removes the volumes and the container", func() {
-						err := subject.Clear(ctx)
-						h.AssertNil(t, err)
-
-						body, err := dockerClient.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
-							Key:   "name",
-							Value: volumeName,
-						}))
-						h.AssertNil(t, err)
-						h.AssertEq(t, len(body.Volumes), 0)
-					})
-				})
-
-				when("the container is running", func() {
-					it.Before(func() {
-						dockerClient.ContainerStart(context.TODO(), containerBody.ID, types.ContainerStartOptions{})
-					})
-
-					it("removes the volumes and the container", func() {
-						err := subject.Clear(ctx)
-						h.AssertNil(t, err)
-
-						body, err := dockerClient.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
-							Key:   "name",
-							Value: volumeName,
-						}))
-						h.AssertNil(t, err)
-						h.AssertEq(t, len(body.Volumes), 0)
-					})
-				})
-			})
-
-			when("container is not created by pack", func() {
-				var containerBody container.ContainerCreateCreatedBody
-				it.Before(func() {
-					var err error
-					containerBody, err = dockerClient.ContainerCreate(context.TODO(), &container.Config{
-						Image: "busybox",
-					}, &container.HostConfig{
-						Binds: []string{
-							fmt.Sprintf("%s:%s:", volumeName, "/tmp"),
-						},
-					},
-						nil,
-						"some-container")
-					h.AssertNil(t, err)
-				})
-
-				it.After(func() {
-					err := dockerClient.ContainerRemove(context.TODO(), containerBody.ID, types.ContainerRemoveOptions{
-						Force: true,
-					})
-					h.AssertNil(t, err)
-				})
-
-				it("does not removes the container or the volume", func() {
-					err := subject.Clear(ctx)
-					h.AssertError(t, err, fmt.Sprintf("volume in use by the container '%s' not created by pack", containerBody.ID))
-
-					body, err := dockerClient.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
-						Key:   "name",
-						Value: volumeName,
-					}))
-					h.AssertNil(t, err)
-					h.AssertEq(t, len(body.Volumes), 1)
-				})
 			})
 		})
 	})

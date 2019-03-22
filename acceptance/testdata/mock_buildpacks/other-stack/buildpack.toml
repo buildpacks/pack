@@ -1,0 +1,7 @@
+[buildpack]
+id = "bp.for.another.stack"
+version = "0.0.1"
+name = "Buildpack For Another Stack"
+
+[[stacks]]
+id = "io.buildpacks.stacks.other"

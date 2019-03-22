@@ -10,16 +10,15 @@ import (
 	"strings"
 
 	"github.com/buildpack/lifecycle/image"
-
-	"github.com/buildpack/pack/cache"
-	"github.com/buildpack/pack/containers"
-	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/logging"
-	"github.com/buildpack/pack/style"
-
+	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/docker"
+	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
 )
 
 // This interface same as BuildConfig
@@ -42,8 +41,8 @@ type RunConfig struct {
 	Logger   *logging.Logger
 }
 
-func (bf *BuildFactory) RunConfigFromFlags(f *RunFlags) (*RunConfig, error) {
-	bc, err := bf.BuildConfigFromFlags(&f.BuildFlags)
+func (bf *BuildFactory) RunConfigFromFlags(ctx context.Context, f *RunFlags) (*RunConfig, error) {
+	bc, err := bf.BuildConfigFromFlags(ctx, &f.BuildFlags)
 	if err != nil {
 		return nil, err
 	}
@@ -73,19 +72,24 @@ func Run(ctx context.Context, outWriter, errWriter io.Writer, appDir, buildImage
 	if err != nil {
 		return err
 	}
+	imageFetcher := &ImageFetcher{
+		Factory: imageFactory,
+		Docker:  dockerClient,
+	}
 	logger := logging.NewLogger(outWriter, errWriter, true, false)
-	bf, err := DefaultBuildFactory(logger, c, dockerClient, imageFactory)
+	bf, err := DefaultBuildFactory(logger, c, dockerClient, imageFetcher)
 	if err != nil {
 		return err
 	}
-	r, err := bf.RunConfigFromFlags(&RunFlags{
-		BuildFlags: BuildFlags{
-			AppDir:   appDir,
-			Builder:  buildImage,
-			RunImage: runImage,
-		},
-		Ports: ports,
-	})
+	r, err := bf.RunConfigFromFlags(ctx,
+		&RunFlags{
+			BuildFlags: BuildFlags{
+				AppDir:   appDir,
+				Builder:  buildImage,
+				RunImage: runImage,
+			},
+			Ports: ports,
+		})
 	if err != nil {
 		return err
 	}
@@ -122,7 +126,7 @@ func (r *RunConfig) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer containers.Remove(r.Cli, ctr.ID)
+	defer r.Cli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{Force: true})
 
 	logContainerListening(r.Logger, portBindings)
 	if err = r.Cli.RunContainer(ctx, ctr.ID, r.Logger.VerboseWriter(), r.Logger.VerboseErrorWriter()); err != nil {

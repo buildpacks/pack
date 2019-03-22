@@ -9,8 +9,10 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func Rebase(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Command {
+func Rebase(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 	var flags pack.RebaseFlags
+	ctx := createCancellableContext()
+
 	cmd := &cobra.Command{
 		Use:   "rebase <image-name>",
 		Args:  cobra.ExactArgs(1),
@@ -22,11 +24,11 @@ func Rebase(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Comma
 				return err
 			}
 			factory := pack.RebaseFactory{
-				Logger:       logger,
-				Config:       cfg,
-				ImageFactory: imageFactory,
+				Logger:  logger,
+				Config:  cfg,
+				Fetcher: fetcher,
 			}
-			rebaseConfig, err := factory.RebaseConfigFromFlags(flags)
+			rebaseConfig, err := factory.RebaseConfigFromFlags(ctx, flags)
 			if err != nil {
 				return err
 			}
@@ -39,6 +41,7 @@ func Rebase(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Comma
 	}
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling app and run images before use")
+	cmd.Flags().StringVar(&flags.RunImage, "run-image", "", "Run image to use for rebasing")
 	AddHelpFlag(cmd, "rebase")
 	return cmd
 }

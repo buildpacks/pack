@@ -30,5 +30,5 @@ uri = "third"
 
 [stack]
 id = "com.example.stack"
-build-image = "packs/build:v3alpha2"
-run-image = "packs/run:v3alpha2"
+build-image = "packs/build:rc"
+run-image = "packs/run:rc"

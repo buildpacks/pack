@@ -3,10 +3,11 @@ package logging_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/buildpack/pack/logging"
-	"github.com/buildpack/pack/style"
 	"strings"
 	"testing"
+
+	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
 
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
@@ -46,6 +47,12 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, ignoreEmptyTimestampColorCodes(outBuf.String()), "Some text\n")
 			})
 
+			it("returns real raw out writer", func() {
+				writer := logger.RawVerboseWriter()
+				writer.Write([]byte("Some text\n"))
+				h.AssertEq(t, outBuf.String(), "Some text\n")
+			})
+
 			it("returns real err writer", func() {
 				writer := logger.VerboseErrorWriter()
 				writer.Write([]byte("Some error\n"))
@@ -61,6 +68,12 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 			it("does not show verbose output", func() {
 				logger.Verbose("Some verbose output")
 
+				h.AssertEq(t, outBuf.String(), "")
+			})
+
+			it("returns discard raw out writer", func() {
+				writer := logger.RawVerboseWriter()
+				writer.Write([]byte("some-text"))
 				h.AssertEq(t, outBuf.String(), "")
 			})
 

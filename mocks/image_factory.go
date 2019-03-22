@@ -34,16 +34,16 @@ func (m *MockImageFactory) EXPECT() *MockImageFactoryMockRecorder {
 }
 
 // NewLocal mocks base method
-func (m *MockImageFactory) NewLocal(arg0 string, arg1 bool) (image.Image, error) {
-	ret := m.ctrl.Call(m, "NewLocal", arg0, arg1)
+func (m *MockImageFactory) NewLocal(arg0 string) (image.Image, error) {
+	ret := m.ctrl.Call(m, "NewLocal", arg0)
 	ret0, _ := ret[0].(image.Image)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // NewLocal indicates an expected call of NewLocal
-func (mr *MockImageFactoryMockRecorder) NewLocal(arg0, arg1 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewLocal", reflect.TypeOf((*MockImageFactory)(nil).NewLocal), arg0, arg1)
+func (mr *MockImageFactoryMockRecorder) NewLocal(arg0 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewLocal", reflect.TypeOf((*MockImageFactory)(nil).NewLocal), arg0)
 }
 
 // NewRemote mocks base method

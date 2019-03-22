@@ -2,11 +2,13 @@ package logging
 
 import (
 	"fmt"
-	"github.com/buildpack/pack/style"
-	"github.com/fatih/color"
 	"io"
 	"io/ioutil"
 	"log"
+
+	"github.com/fatih/color"
+
+	"github.com/buildpack/pack/style"
 )
 
 type Logger struct {
@@ -52,6 +54,17 @@ func (l *Logger) VerboseWriter() *logWriter {
 	return l.out
 }
 
+func (l *Logger) RawVerboseWriter() io.Writer {
+	if !l.verbose {
+		return ioutil.Discard
+	}
+	return l.out.rawOut
+}
+
+func (l *Logger) RawWriter() io.Writer {
+	return l.out.rawOut
+}
+
 func (l *Logger) VerboseErrorWriter() *logWriter {
 	if !l.verbose {
 		return nullLogWriter
@@ -62,6 +75,7 @@ func (l *Logger) VerboseErrorWriter() *logWriter {
 type logWriter struct {
 	prefix string
 	log    *log.Logger
+	rawOut io.Writer
 }
 
 var nullLogWriter = newLogWriter(ioutil.Discard, false)
@@ -84,6 +98,7 @@ func newLogWriter(out io.Writer, timestamps bool) *logWriter {
 	return &logWriter{
 		prefix: timestampEnd + prefix,
 		log:    log.New(out, timestampStart, flags),
+		rawOut: out,
 	}
 }
 
@@ -91,6 +106,7 @@ func (w *logWriter) WithPrefix(prefix string) *logWriter {
 	return &logWriter{
 		log:    w.log,
 		prefix: fmt.Sprintf("%s[%s] ", w.prefix, style.Prefix(prefix)),
+		rawOut: w.rawOut,
 	}
 }
 

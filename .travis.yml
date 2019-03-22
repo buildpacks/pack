@@ -1,51 +1,38 @@
+sudo: required
 language: go
 go:
-- 1.11.x
-env:
-  global:
-  - GO111MODULE=on
-cache:
-  directories:
-  - $GOPATH/pkg/mod
-install:
+- 1.12.x
+services:
+- docker
+jobs:
+  include:
+  - name: tests
+    os: linux
+    cache:
+      directories:
+      - $GOPATH/pkg/mod
+    install:
     |
       go mod download
       export PACK_PATH="$PWD/artifacts/pack-${TRAVIS_TAG:-$TRAVIS_BUILD_NUMBER}-${TRAVIS_OS_NAME}"
       if [[ $TRAVIS_OS_NAME = linux ]]; then export CGO_ENABLED=0; fi
       go build -ldflags "-X 'main.Version=$TRAVIS_TAG (git sha: $(git log -1 --pretty=%H))'" -o "$PACK_PATH" ./cmd/pack
       "$PACK_PATH" version
-jobs:
-  include:
-  - name: local-test
-    os: linux
-    if: fork = true
-    script: go test -count=1 -parallel=1 -v ./...
-  - &remote-test
-    os: osx
-    if: fork = false
+    script:
+    |
+      go test -count=1 -parallel=1 -v ./...
+      go test -count=1 -parallel=1 -v -tags=acceptance ./acceptance
+  - name: tests
+    os: windows
     env:
-    - DOCKER_TLS_VERIFY=1
-    - secure: hXKjtSh18VMo0G3Gk/njZ57wnO6ztobZUJiCcb1OPp7WYI62K9QpWBr30sivncHPVnYtALOL+KTxKdjVS04D9UFYynID/Sk5cFlewZt8uvRCy3XUIG1++8XXh53CAJpojCkXwyaIbq4Tx81fZvUR5fmVz5xCP+iLCXBqm6/i5+CDY/p3USYdBk1XsY99QEphVgL1XM291IkJHTya+SBMKsKq+JwyWJK4edydlhI5Pp5K8sNoN6aSHDvYiqk0aWgaKfwr+gCKVfyi90Ni5lPPrPx28kFWPqUxBwSybggL6LTmTgtPmdFEVijwTJsddbvvJilYGlqRXm48JVEOAf1Rt7VEsNy4w5P+QigwgUZyGatMsmN3Sc24AxGvcWutUm6KzVgX9qw/mhxcJh5QDTTjAZ5ARLI6VAfExrciXK079zpqqkK42fpDcXi/wBt4L0mJdU5z6YW+nPMfXcWUcHKmGmEuK5zrCPBaIqPlUVK0PrPEtsgWq0yoEfeicYadYGGWCTvv6WtLVS0WMGfzSDTEo/8UQXrfjtvWKXUv3swJzv/iQLb2K0UCKnl3HHOU+D5pi0TnFqKY+9VE9qlm1oqvDqEhtR2xUYsV/gBW8Sp6Up2SqpQo1deMNP6MKUxIlk4g+UPwRlVxHhUEyqqntobcCVDd73pyiTb1EghIygV+hWQ=
-    script: |
-      openssl aes-256-cbc -K $encrypted_c7ea36ef0bae_key -iv $encrypted_c7ea36ef0bae_iv -in .travis/key.pem.enc -out .travis/key.pem -d
-      export DOCKER_CERT_PATH=$PWD/.travis/
-      go test -count=1 -parallel=1 -v ./... && go test -count=1 -parallel=1 -v -tags=acceptance ./acceptance/...
-  - <<: *remote-test
-    os: linux
-
-deploy:
-  provider: gcs
-  access_key_id: GOOGKYYDLY5ACGLNZVYXGTTN
-  secret_access_key:
-    secure: pSh3XiGfsLKJSY4WxpAxS4rejfI0CY7JfqBZq6MyrEjzTREzoe0GEsKBqx+E/ext2wFsEda0sl2tLPtle29YXRUC2gb2k1zH9YlQv2XqGPmSzbX++QqXRpm1um4KMSJM95mxXuP9DEkjsQLFPdiR0tK5AZ7pPSu4fbrtEb1Kn98DQknslvyzSzKXASZFRuOOCzWDUu4iKQR64xtOuA9dFz1s0V0+tD7R2USyPYwn2UlABalTt5t1rdm4Tz5vAG91GQq9onMIAzHuiW89t790u5kzBhhLSYSd1Fm5ChcLQhRMZ2rKvFVQHl580CtCkKou5xEEBZZrX5PBmOdAhLkkz389wUfT410DuBoIiUCzK8ioxk4UqPG3SC02v7fct8PIST2f1uT71oVMyKGtWwNEtZ8a4uwdRI37zCDfP3/uaVN5NY5Lg9fCmMNnAyPbg3zf4bVjrpDGN9QgAcpHTnhJj6/9TvT+SQqrnCYzonemq2aCc7d8tCXVcM6JItUV467oSyHIlI7Uro0LGcaYHHAzfbe/tVulruYWEw17XpJ9MX5qNZukWvMDiZP6hqNBGotMS6fS0Qo7qRFgye1oLFVPgHblVG/rYi2qpQ+IKxO4EMprvf0rJDxDUPmMFuig5QZ5c3riIq09Lrm0LAs0RPRnDbkuHFTkUcNhgzff1Jix8U4=
-  bucket: pack-cli
-  skip_cleanup: true
-  acl: public-read
-  local-dir: ./artifacts/
-  on:
-    repo: buildpack/pack
-    condition: |
-      "$TRAVIS_BRANCH" = master || "$TRAVIS_TAG" != ''
-    all_branches: true
-after_deploy:
-- echo "https://storage.cloud.google.com/pack-cli/$(basename $PACK_PATH)"
+    - NO_DOCKER=true
+    after_success:
+    |
+      go build -o pack ./cmd/pack
+  - name: tests
+    os: osx
+    env:
+    - NO_DOCKER=true
+    after_success:
+    |
+      go build -o pack ./cmd/pack

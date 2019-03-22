@@ -5,10 +5,11 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 )
 
-func Run(logger *logging.Logger, dockerClient pack.Docker, imageFactory pack.ImageFactory) *cobra.Command {
+func Run(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 	var runFlags pack.RunFlags
 	ctx := createCancellableContext()
 
@@ -21,16 +22,25 @@ func Run(logger *logging.Logger, dockerClient pack.Docker, imageFactory pack.Ima
 			if err != nil {
 				return err
 			}
-
+			dockerClient, err := docker.New()
+			if err != nil {
+				return err
+			}
 			cacheObj, err := cache.New(repoName, dockerClient)
 			if err != nil {
 				return err
 			}
-			bf, err := pack.DefaultBuildFactory(logger, cacheObj, dockerClient, imageFactory)
+			bf, err := pack.DefaultBuildFactory(logger, cacheObj, dockerClient, fetcher)
 			if err != nil {
 				return err
 			}
-			r, err := bf.RunConfigFromFlags(&runFlags)
+
+			if bf.Config.DefaultBuilder == "" && runFlags.BuildFlags.Builder == "" {
+				suggestBuilders(logger)
+				return MakeSoftError()
+			}
+
+			r, err := bf.RunConfigFromFlags(ctx, &runFlags)
 			if err != nil {
 				return err
 			}

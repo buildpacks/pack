@@ -13,15 +13,15 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func CreateBuilder(logger *logging.Logger, imageFactory pack.ImageFactory) *cobra.Command {
-	flags := pack.CreateBuilderFlags{}
+func CreateBuilder(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
+	var flags pack.CreateBuilderFlags
+	ctx := createCancellableContext()
 	cmd := &cobra.Command{
 		Use:   "create-builder <image-name> --builder-config <builder-config-path>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Create builder image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			flags.RepoName = args[0]
-
 			if runtime.GOOS == "windows" {
 				return fmt.Errorf("%s is not implemented on Windows", style.Symbol("create-builder"))
 			}
@@ -31,12 +31,12 @@ func CreateBuilder(logger *logging.Logger, imageFactory pack.ImageFactory) *cobr
 				return err
 			}
 			builderFactory := pack.BuilderFactory{
-				FS:           &fs.FS{},
-				Logger:       logger,
-				Config:       cfg,
-				ImageFactory: imageFactory,
+				FS:      &fs.FS{},
+				Logger:  logger,
+				Config:  cfg,
+				Fetcher: fetcher,
 			}
-			builderConfig, err := builderFactory.BuilderConfigFromFlags(flags)
+			builderConfig, err := builderFactory.BuilderConfigFromFlags(ctx, flags)
 			if err != nil {
 				return err
 			}

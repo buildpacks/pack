@@ -141,6 +141,18 @@ func (mr *MockDockerMockRecorder) ImageRemove(arg0, arg1, arg2 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImageRemove", reflect.TypeOf((*MockDocker)(nil).ImageRemove), arg0, arg1, arg2)
 }
 
+// PullImage mocks base method
+func (m *MockDocker) PullImage(arg0 context.Context, arg1 string, arg2 io.Writer) error {
+	ret := m.ctrl.Call(m, "PullImage", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PullImage indicates an expected call of PullImage
+func (mr *MockDockerMockRecorder) PullImage(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullImage", reflect.TypeOf((*MockDocker)(nil).PullImage), arg0, arg1, arg2)
+}
+
 // RunContainer mocks base method
 func (m *MockDocker) RunContainer(arg0 context.Context, arg1 string, arg2, arg3 io.Writer) error {
 	ret := m.ctrl.Call(m, "RunContainer", arg0, arg1, arg2, arg3)

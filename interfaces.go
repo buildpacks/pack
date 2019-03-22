@@ -23,6 +23,7 @@ type Docker interface {
 	ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error)
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
 	ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
+	PullImage(ctx context.Context, imageID string, stdout io.Writer) error
 }
 
 //go:generate mockgen -package mocks -destination mocks/task.go github.com/buildpack/pack Task
@@ -37,6 +38,13 @@ type WritableStore interface {
 
 //go:generate mockgen -package mocks -destination mocks/image_factory.go github.com/buildpack/pack ImageFactory
 type ImageFactory interface {
-	NewLocal(string, bool) (image.Image, error)
+	NewLocal(string) (image.Image, error)
 	NewRemote(string) (image.Image, error)
+}
+
+//go:generate mockgen -package mocks -destination mocks/fetcher.go github.com/buildpack/pack Fetcher
+type Fetcher interface {
+	FetchUpdatedLocalImage(context.Context, string, io.Writer) (image.Image, error)
+	FetchLocalImage(string) (image.Image, error)
+	FetchRemoteImage(string) (image.Image, error)
 }

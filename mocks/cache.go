@@ -45,14 +45,14 @@ func (mr *MockCacheMockRecorder) Clear(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Clear", reflect.TypeOf((*MockCache)(nil).Clear), arg0)
 }
 
-// Volume mocks base method
-func (m *MockCache) Volume() string {
-	ret := m.ctrl.Call(m, "Volume")
+// Image mocks base method
+func (m *MockCache) Image() string {
+	ret := m.ctrl.Call(m, "Image")
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
-// Volume indicates an expected call of Volume
-func (mr *MockCacheMockRecorder) Volume() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Volume", reflect.TypeOf((*MockCache)(nil).Volume))
+// Image indicates an expected call of Image
+func (mr *MockCacheMockRecorder) Image() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Image", reflect.TypeOf((*MockCache)(nil).Image))
 }
