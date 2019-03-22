@@ -1,7 +1,6 @@
 package pack
 
 import (
-	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -18,9 +17,9 @@ import (
 	lcimg "github.com/buildpack/lifecycle/image"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
-	"github.com/buildpack/pack/fs"
 
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
@@ -39,7 +38,6 @@ type BuilderConfig struct {
 
 type BuilderFactory struct {
 	Logger  *logging.Logger
-	FS      *fs.FS
 	Config  *config.Config
 	Fetcher Fetcher
 }
@@ -122,7 +120,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b buildpack.Buil
 			if err != nil {
 				return buildpack.Buildpack{}, fmt.Errorf(`failed to create temporary directory: %s`, err)
 			}
-			if err = f.untarZ(file, tmpDir); err != nil {
+			if err = archive.ExtractTarGZ(file, tmpDir); err != nil {
 				return buildpack.Buildpack{}, err
 			}
 			dir = tmpDir
@@ -155,7 +153,7 @@ func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b buildpack.Buil
 		}
 		defer reader.Close()
 
-		if err = f.untarZ(reader, cachedDir); err != nil {
+		if err = archive.ExtractTarGZ(reader, cachedDir); err != nil {
 			return buildpack.Buildpack{}, err
 		}
 
@@ -260,7 +258,7 @@ func (f *BuilderFactory) orderLayer(dest string, groups []lifecycle.BuildpackGro
 		return "", err
 	}
 	layerTar = filepath.Join(dest, "order.tar")
-	if err := f.FS.CreateTarFile(layerTar, bpDir, "/buildpacks", 0, 0); err != nil {
+	if err := archive.CreateTar(layerTar, bpDir, "/buildpacks", 0, 0); err != nil {
 		return "", err
 	}
 	return layerTar, nil
@@ -293,7 +291,7 @@ func (f *BuilderFactory) buildpackLayer(dest string, buildpack *buildpack.Buildp
 
 	buildpack.Version = bp.Version
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.EscapedID(), bp.Version))
-	if err := f.FS.CreateTarFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.EscapedID(), bp.Version), 0, 0); err != nil {
+	if err := archive.CreateTar(tarFile, dir, filepath.Join("/buildpacks", buildpack.EscapedID(), bp.Version), 0, 0); err != nil {
 		return "", err
 	}
 	return tarFile, err
@@ -306,15 +304,6 @@ func (f *BuilderFactory) buildpackData(buildpack buildpack.Buildpack, dir string
 		return nil, errors.Wrapf(err, "reading buildpack.toml from buildpack: %s", dir)
 	}
 	return data, nil
-}
-
-func (f *BuilderFactory) untarZ(r io.Reader, dir string) error {
-	gzr, err := gzip.NewReader(r)
-	if err != nil {
-		return errors.Wrapf(err, "could not unzip")
-	}
-	defer gzr.Close()
-	return f.FS.Untar(gzr, dir)
 }
 
 func (f *BuilderFactory) latestLayer(buildpacks []buildpack.Buildpack, dest, builderDir string) (string, error) {
@@ -340,7 +329,7 @@ func (f *BuilderFactory) latestLayer(buildpacks []buildpack.Buildpack, dest, bui
 		}
 	}
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", "latest", "buildpacks"))
-	if err := f.FS.CreateTarFile(tarFile, layerDir, "/buildpacks", 0, 0); err != nil {
+	if err := archive.CreateTar(tarFile, layerDir, "/buildpacks", 0, 0); err != nil {
 		return "", err
 	}
 	return tarFile, nil

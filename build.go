@@ -16,7 +16,6 @@ import (
 	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 
@@ -35,7 +34,6 @@ type Cache interface {
 type BuildFactory struct {
 	Cli     Docker
 	Logger  *logging.Logger
-	FS      *fs.FS
 	Config  *config.Config
 	Cache   Cache
 	Fetcher Fetcher
@@ -63,7 +61,6 @@ type BuildConfig struct {
 	// Above are copied from BuildFlags are set by init
 	Cli    Docker
 	Logger *logging.Logger
-	FS     *fs.FS
 	Config *config.Config
 	// Above are copied from BuildFactory
 	Cache           Cache
@@ -82,7 +79,6 @@ const (
 func DefaultBuildFactory(logger *logging.Logger, cache Cache, dockerClient Docker, fetcher Fetcher) (*BuildFactory, error) {
 	f := &BuildFactory{
 		Logger:  logger,
-		FS:      &fs.FS{},
 		Cache:   cache,
 		Fetcher: fetcher,
 	}
@@ -148,7 +144,6 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 		ClearCache: f.ClearCache,
 		Cli:        bf.Cli,
 		Logger:     bf.Logger,
-		FS:         bf.FS,
 		Config:     bf.Config,
 	}
 

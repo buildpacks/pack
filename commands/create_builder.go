@@ -8,7 +8,6 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
@@ -31,7 +30,6 @@ func CreateBuilder(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command 
 				return err
 			}
 			builderFactory := pack.BuilderFactory{
-				FS:      &fs.FS{},
 				Logger:  logger,
 				Config:  cfg,
 				Fetcher: fetcher,

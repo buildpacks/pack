@@ -24,8 +24,8 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/fs"
 )
 
 func RandString(n int) string {
@@ -221,7 +221,7 @@ func ConfigurePackHome(t *testing.T, packHome, registryPort string) {
 func CreateImageOnLocal(t *testing.T, dockerCli *docker.Client, repoName, dockerFile string) {
 	ctx := context.Background()
 
-	buildContext, err := (&fs.FS{}).CreateSingleFileTarReader("Dockerfile", dockerFile)
+	buildContext, err := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
 	AssertNil(t, err)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{

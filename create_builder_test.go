@@ -24,7 +24,6 @@ import (
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
@@ -64,7 +63,6 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			factory = pack.BuilderFactory{
-				FS:      &fs.FS{},
 				Logger:  logging.NewLogger(&outBuf, &errBuf, true, false),
 				Config:  cfg,
 				Fetcher: mockFetcher,

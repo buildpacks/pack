@@ -19,9 +19,9 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -355,7 +355,7 @@ func CreateFakeLifecycleImage(t *testing.T, dockerCli *docker.Client, repoName s
 
 	wd, err := os.Getwd()
 	h.AssertNil(t, err)
-	buildContext, _ := (&fs.FS{}).CreateTarReader(filepath.Join(wd, "testdata", "fake-lifecycle"), "/", 0, 0)
+	buildContext, _ := archive.CreateTarReader(filepath.Join(wd, "testdata", "fake-lifecycle"), "/", 0, 0)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
 		Tags:        []string{repoName},

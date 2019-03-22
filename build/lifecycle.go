@@ -21,8 +21,8 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/image"
 
+	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/style"
 
 	"github.com/docker/docker/api/types"
@@ -198,7 +198,6 @@ func createBuildpacksTars(tmpDir string, buildpacks []string, logger *logging.Lo
 	tars := make([]string, 0, len(buildpacks)+1)
 
 	var buildpackGroup []*lifecycle.Buildpack
-	fs := fs.FS{}
 	for _, bp := range buildpacks {
 		var id, version string
 		if _, err := os.Stat(filepath.Join(bp, "buildpack.toml")); !os.IsNotExist(err) {
@@ -218,7 +217,7 @@ func createBuildpacksTars(tmpDir string, buildpacks []string, logger *logging.Lo
 
 			tarFile := filepath.Join(tmpDir, fmt.Sprintf("%s.%s.tar", id, version))
 
-			if err := fs.CreateTarFile(tarFile, bp, filepath.Join("/buildpacks", id, version), uid, gid); err != nil {
+			if err := archive.CreateTar(tarFile, bp, filepath.Join("/buildpacks", id, version), uid, gid); err != nil {
 				return nil, err
 			}
 
@@ -253,7 +252,7 @@ func orderTar(tmpDir string, buildpacks []*lifecycle.Buildpack) (string, error) 
 	}
 
 	orderToml := tomlBuilder.String()
-	err := (&fs.FS{}).CreateSingleFileTar(
+	err := archive.CreateSingleFileTar(
 		filepath.Join(tmpDir, "order.tar"),
 		"/buildpacks/order.toml",
 		orderToml,
