@@ -364,6 +364,25 @@ run-image = "some/run"
 				}
 			})
 		})
+
+		it("fails when a stack.build-image is not provided", func() {
+			f, err := ioutil.TempFile("", "*.toml")
+			h.AssertNil(t, err)
+			ioutil.WriteFile(f.Name(), []byte(`
+[stack]
+id = "com.example.stack"
+run-image = "some/run"
+`), 0644)
+			flags := pack.CreateBuilderFlags{
+				RepoName:        "myorg/mybuilder",
+				BuilderTomlPath: f.Name(),
+				Publish:         false,
+				NoPull:          true,
+			}
+
+			_, err = factory.BuilderConfigFromFlags(flags)
+			h.AssertNotNil(t, err)
+		})
 	})
 }
 

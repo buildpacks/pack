@@ -70,6 +70,10 @@ func (f *BuilderFactory) BuilderConfigFromFlags(flags CreateBuilderFlags) (Build
 	}
 
 	baseImage := builderTOML.Stack.BuildImage
+	if baseImage == "" {
+		return BuilderConfig{}, fmt.Errorf("failed to decode builder config from file: missing stack.build-image")
+	}
+
 	builderConfig.RunImage = builderTOML.Stack.RunImage
 	builderConfig.RunImageMirrors = builderTOML.Stack.RunImageMirrors
 	if flags.Publish {
