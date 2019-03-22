@@ -3,6 +3,7 @@ package builder
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpack/lifecycle/image"
 	"github.com/pkg/errors"
@@ -59,8 +60,51 @@ func (b *Builder) GetLocalRunImageMirrors() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	if runImageConfig := b.config.GetRunImage(metadata.RunImage.Image); runImageConfig != nil {
-		return runImageConfig.Mirrors, nil
+	if runImage := b.config.GetRunImage(metadata.RunImage.Image); runImage != nil {
+		return runImage.Mirrors, nil
 	}
 	return []string{}, nil
+}
+
+func (b *Builder) GetRunImageByRepoName(repoName string) (runImage string, locallyConfigured bool, err error) {
+	desiredRegistry, err := registry(repoName)
+	if err != nil {
+		return "", false, err
+	}
+
+	metadata, err := b.GetMetadata()
+	if err != nil {
+		return "", false, err
+	}
+
+	localRunImageMirrors, err := b.GetLocalRunImageMirrors()
+	if err != nil {
+		return "", false, err
+	}
+
+	for _, img := range localRunImageMirrors {
+		if reg, err := registry(img); err == nil && reg == desiredRegistry {
+			return img, true, nil
+		}
+	}
+
+	for _, img := range append([]string{metadata.RunImage.Image}, metadata.RunImage.Mirrors...) {
+		if reg, err := registry(img); err == nil && reg == desiredRegistry {
+			return img, false, nil
+		}
+	}
+
+	if len(localRunImageMirrors) > 0 {
+		return localRunImageMirrors[0], true, nil
+	}
+
+	return metadata.RunImage.Image, false, nil
+}
+
+func registry(imageName string) (string, error) {
+	ref, err := name.ParseReference(imageName, name.WeakValidation)
+	if err != nil {
+		return "", err
+	}
+	return ref.Context().RegistryStr(), nil
 }
