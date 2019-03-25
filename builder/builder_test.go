@@ -2,15 +2,17 @@ package builder_test
 
 import (
 	"errors"
-	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/mocks"
-	h "github.com/buildpack/pack/testhelpers"
+	"testing"
+
 	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"testing"
+
+	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/mocks"
+	h "github.com/buildpack/pack/testhelpers"
 )
 
 func TestBuilder(t *testing.T) {
@@ -23,7 +25,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockController *gomock.Controller
 		mockImage      *mocks.MockImage
 		cfg            *config.Config
-		bldr           *builder.Builder
+		subject        *builder.Builder
 	)
 
 	it.Before(func() {
@@ -31,7 +33,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockImage = mocks.NewMockImage(mockController)
 		mockImage.EXPECT().Name().Return("some/builder")
 		cfg = &config.Config{}
-		bldr = builder.NewBuilder(mockImage, cfg)
+		subject = builder.NewBuilder(mockImage, cfg)
 	})
 
 	when("#GetStack", func() {
@@ -41,7 +43,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns an error", func() {
-				_, err := bldr.GetStack()
+				_, err := subject.GetStack()
 				h.AssertError(t, err, "failed to find stack label for builder 'some/builder'")
 			})
 		})
@@ -52,7 +54,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns an error", func() {
-				_, err := bldr.GetStack()
+				_, err := subject.GetStack()
 				h.AssertError(t, err, "builder 'some/builder' missing label 'io.buildpacks.stack.id' -- try recreating builder")
 			})
 		})
@@ -65,7 +67,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns an error", func() {
-				_, err := bldr.GetMetadata()
+				_, err := subject.GetMetadata()
 				h.AssertError(t, err, "failed to find run images for builder 'some/builder'")
 			})
 		})
@@ -76,7 +78,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns an error", func() {
-				_, err := bldr.GetMetadata()
+				_, err := subject.GetMetadata()
 				h.AssertError(t, err, "builder 'some/builder' missing label 'io.buildpacks.builder.metadata' -- try recreating builder")
 			})
 		})
@@ -87,7 +89,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns an error", func() {
-				_, err := bldr.GetMetadata()
+				_, err := subject.GetMetadata()
 				h.AssertError(t, err, "failed to parse metadata for builder 'some/builder'")
 			})
 		})
@@ -106,7 +108,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns the local mirrors", func() {
-				localMirrors, err := bldr.GetLocalRunImageMirrors()
+				localMirrors, err := subject.GetLocalRunImageMirrors()
 				h.AssertNil(t, err)
 				h.AssertSliceContains(t, localMirrors, "a")
 				h.AssertSliceContains(t, localMirrors, "b")
@@ -125,9 +127,64 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns an empty slice", func() {
-				localMirrors, err := bldr.GetLocalRunImageMirrors()
+				localMirrors, err := subject.GetLocalRunImageMirrors()
 				h.AssertNil(t, err)
 				h.AssertEq(t, len(localMirrors), 0)
+			})
+		})
+	})
+
+	when("#GetRunImageByRepoName", func() {
+		when("there are NOT local run image mirrors", func() {
+			it("should return the remote run image for the repo", func() {
+				mockImage.EXPECT().Label(builder.MetadataLabel).Return(`{
+ "runImage": {
+   "image": "some/run-image",
+   "mirrors": ["foo.bar/other/run-image", "gcr.io/extra/run-image"]
+ }
+}`, nil).AnyTimes()
+
+				runImage, isLocal, err := subject.GetRunImageByRepoName("gcr.io/foo/bar")
+				h.AssertNil(t, err)
+				h.AssertEq(t, isLocal, false)
+				h.AssertEq(t, runImage, "gcr.io/extra/run-image")
+			})
+		})
+
+		when("there are local run image mirrors", func() {
+			it.Before(func() {
+				cfg.RunImages = []config.RunImage{{Image: "some/run-image", Mirrors: []string{"gcr.io/another/run-image", "foo.bar/ignored"}}}
+				mockImage.EXPECT().Label(builder.MetadataLabel).Return(`{
+ "runImage": {
+   "image": "some/run-image",
+   "mirrors": ["foo.bar/other/run-image", "gcr.io/extra/run-image"]
+ }
+}`, nil).AnyTimes()
+			})
+
+			when("one matches the given repo", func() {
+				it("should return the local run image for the repo", func() {
+					runImage, isLocal, err := subject.GetRunImageByRepoName("gcr.io/foo/bar")
+					h.AssertNil(t, err)
+					h.AssertEq(t, isLocal, true)
+					h.AssertEq(t, runImage, "gcr.io/another/run-image")
+				})
+			})
+
+			when("none match the given repo", func() {
+				it("should return the non-local run image for the repo", func() {
+					runImage, isLocal, err := subject.GetRunImageByRepoName("some/run-image")
+					h.AssertNil(t, err)
+					h.AssertEq(t, isLocal, false)
+					h.AssertEq(t, runImage, "some/run-image")
+				})
+			})
+		})
+
+		when("the repo name is invalid", func() {
+			it("should err", func() {
+				_, _, err := subject.GetRunImageByRepoName("!!@@##$$%%")
+				h.AssertNotNil(t, err)
 			})
 		})
 	})

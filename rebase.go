@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	RunImageLabel        = "io.buildpacks.run-image"
+	RunImageLabel = "io.buildpacks.run-image"
 )
 
 type RebaseConfig struct {
@@ -61,7 +61,7 @@ func (f *RebaseFactory) RebaseConfigFromFlags(ctx context.Context, flags RebaseF
 	if flags.RunImage != "" {
 		runImageName = flags.RunImage
 	} else {
-		runImageName, err = appImage.Label(RunImageLabel) // TODO : const the label name
+		runImageName, err = appImage.Label(RunImageLabel)
 		if err != nil {
 			return RebaseConfig{}, err
 		}

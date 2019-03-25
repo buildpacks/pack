@@ -1,15 +1,10 @@
 package pack
 
 import (
-	"compress/gzip"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 
@@ -18,9 +13,9 @@ import (
 	lcimg "github.com/buildpack/lifecycle/image"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
-	"github.com/buildpack/pack/fs"
 
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
@@ -39,7 +34,6 @@ type BuilderConfig struct {
 
 type BuilderFactory struct {
 	Logger  *logging.Logger
-	FS      *fs.FS
 	Config  *config.Config
 	Fetcher Fetcher
 }
@@ -84,95 +78,16 @@ func (f *BuilderFactory) BuilderConfigFromFlags(ctx context.Context, flags Creat
 
 	builderConfig.Groups = builderTOML.Groups
 
+	// TODO : inject this
+	bpFetcher := buildpack.NewFetcher(f.Config, f.Logger)
 	for _, b := range builderTOML.Buildpacks {
-		bp, err := f.resolveBuildpackURI(builderConfig.BuilderDir, b)
+		bp, err := bpFetcher.FetchBuildpack(builderConfig.BuilderDir, b)
 		if err != nil {
 			return BuilderConfig{}, err
 		}
 		builderConfig.Buildpacks = append(builderConfig.Buildpacks, bp)
 	}
 	return builderConfig, nil
-}
-
-func (f *BuilderFactory) resolveBuildpackURI(builderDir string, b buildpack.Buildpack) (buildpack.Buildpack, error) {
-
-	var dir string
-
-	asurl, err := url.Parse(b.URI)
-	if err != nil {
-		return buildpack.Buildpack{}, err
-	}
-	switch asurl.Scheme {
-	case "", // This is the only way to support relative filepaths
-		"file": // URIs with file:// protocol force the use of absolute paths. Host=localhost may be implied with file:///
-
-		path := asurl.Path
-
-		if !asurl.IsAbs() && !filepath.IsAbs(path) {
-			path = filepath.Join(builderDir, path)
-		}
-
-		if filepath.Ext(path) == ".tgz" {
-			file, err := os.Open(path)
-			if err != nil {
-				return buildpack.Buildpack{}, errors.Wrapf(err, "could not open file to untar: %q", path)
-			}
-			defer file.Close()
-			tmpDir, err := ioutil.TempDir("", fmt.Sprintf("create-builder-%s-", b.EscapedID()))
-			if err != nil {
-				return buildpack.Buildpack{}, fmt.Errorf(`failed to create temporary directory: %s`, err)
-			}
-			if err = f.untarZ(file, tmpDir); err != nil {
-				return buildpack.Buildpack{}, err
-			}
-			dir = tmpDir
-		} else {
-			dir = path
-		}
-	case "http", "https":
-		uriDigest := fmt.Sprintf("%x", sha256.Sum256([]byte(b.URI)))
-		cachedDir := filepath.Join(f.Config.Path(), "dl-cache", uriDigest)
-		_, err := os.Stat(cachedDir)
-		if os.IsNotExist(err) {
-			if err = os.MkdirAll(cachedDir, 0744); err != nil {
-				return buildpack.Buildpack{}, err
-			}
-		}
-		etagFile := cachedDir + ".etag"
-		bytes, err := ioutil.ReadFile(etagFile)
-		etag := ""
-		if err == nil {
-			etag = string(bytes)
-		}
-
-		reader, etag, err := f.downloadAsStream(b.URI, etag)
-		if err != nil {
-			return buildpack.Buildpack{}, errors.Wrapf(err, "failed to download from %q", b.URI)
-		} else if reader == nil {
-			// can use cached content
-			dir = cachedDir
-			break
-		}
-		defer reader.Close()
-
-		if err = f.untarZ(reader, cachedDir); err != nil {
-			return buildpack.Buildpack{}, err
-		}
-
-		if err = ioutil.WriteFile(etagFile, []byte(etag), 0744); err != nil {
-			return buildpack.Buildpack{}, err
-		}
-
-		dir = cachedDir
-	default:
-		return buildpack.Buildpack{}, fmt.Errorf("unsupported protocol in URI %q", b.URI)
-	}
-
-	return buildpack.Buildpack{
-		ID:     b.ID,
-		Latest: b.Latest,
-		Dir:    dir,
-	}, nil
 }
 
 func (f *BuilderFactory) Create(config BuilderConfig) error {
@@ -260,7 +175,7 @@ func (f *BuilderFactory) orderLayer(dest string, groups []lifecycle.BuildpackGro
 		return "", err
 	}
 	layerTar = filepath.Join(dest, "order.tar")
-	if err := f.FS.CreateTarFile(layerTar, bpDir, "/buildpacks", 0, 0); err != nil {
+	if err := archive.CreateTar(layerTar, bpDir, "/buildpacks", 0, 0); err != nil {
 		return "", err
 	}
 	return layerTar, nil
@@ -293,7 +208,7 @@ func (f *BuilderFactory) buildpackLayer(dest string, buildpack *buildpack.Buildp
 
 	buildpack.Version = bp.Version
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.EscapedID(), bp.Version))
-	if err := f.FS.CreateTarFile(tarFile, dir, filepath.Join("/buildpacks", buildpack.EscapedID(), bp.Version), 0, 0); err != nil {
+	if err := archive.CreateTar(tarFile, dir, filepath.Join("/buildpacks", buildpack.EscapedID(), bp.Version), 0, 0); err != nil {
 		return "", err
 	}
 	return tarFile, err
@@ -306,15 +221,6 @@ func (f *BuilderFactory) buildpackData(buildpack buildpack.Buildpack, dir string
 		return nil, errors.Wrapf(err, "reading buildpack.toml from buildpack: %s", dir)
 	}
 	return data, nil
-}
-
-func (f *BuilderFactory) untarZ(r io.Reader, dir string) error {
-	gzr, err := gzip.NewReader(r)
-	if err != nil {
-		return errors.Wrapf(err, "could not unzip")
-	}
-	defer gzr.Close()
-	return f.FS.Untar(gzr, dir)
 }
 
 func (f *BuilderFactory) latestLayer(buildpacks []buildpack.Buildpack, dest, builderDir string) (string, error) {
@@ -340,34 +246,10 @@ func (f *BuilderFactory) latestLayer(buildpacks []buildpack.Buildpack, dest, bui
 		}
 	}
 	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", "latest", "buildpacks"))
-	if err := f.FS.CreateTarFile(tarFile, layerDir, "/buildpacks", 0, 0); err != nil {
+	if err := archive.CreateTar(tarFile, layerDir, "/buildpacks", 0, 0); err != nil {
 		return "", err
 	}
 	return tarFile, nil
-}
-
-func (f *BuilderFactory) downloadAsStream(uri string, etag string) (io.ReadCloser, string, error) {
-	c := http.Client{}
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		return nil, "", err
-	}
-	if etag != "" {
-		req.Header.Set("If-None-Match", etag)
-	}
-	if resp, err := c.Do(req); err != nil {
-		return nil, "", err
-	} else {
-		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			f.Logger.Verbose("Downloading from %q\n", uri)
-			return resp.Body, resp.Header.Get("Etag"), nil
-		} else if resp.StatusCode == 304 {
-			f.Logger.Verbose("Using cached version of %q\n", uri)
-			return nil, etag, nil
-		} else {
-			return nil, "", fmt.Errorf("could not download from %q, code http status %d", uri, resp.StatusCode)
-		}
-	}
 }
 
 func validateBuilderTOML(builderTOML *builder.TOML) error {

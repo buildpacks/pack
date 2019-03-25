@@ -22,7 +22,6 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
@@ -72,11 +71,9 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			mockCache = mocks.NewMockCache(mockController)
 			factory = &pack.BuildFactory{
 				Logger:  logger,
-				FS:      &fs.FS{},
 				Fetcher: mockFetcher,
 				Cache:   mockCache,
-				Config: &config.Config{
-				},
+				Config:  &config.Config{},
 			}
 
 			mockCache.EXPECT().Image().Return("some-volume").AnyTimes()

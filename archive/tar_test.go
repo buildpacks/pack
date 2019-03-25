@@ -1,4 +1,4 @@
-package fs_test
+package archive_test
 
 import (
 	"archive/tar"
@@ -15,19 +15,18 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/fs"
+	"github.com/buildpack/pack/archive"
 )
 
-func TestFS(t *testing.T) {
+func TestArchive(t *testing.T) {
 	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
-	spec.Run(t, "fs", testFS, spec.Report(report.Terminal{}))
+	spec.Run(t, "Archive", testArchive, spec.Report(report.Terminal{}))
 }
 
-func testFS(t *testing.T, when spec.G, it spec.S) {
+func testArchive(t *testing.T, when spec.G, it spec.S) {
 	var (
 		tmpDir, src string
-		fs          fs.FS
 	)
 
 	it.Before(func() {
@@ -47,9 +46,9 @@ func testFS(t *testing.T, when spec.G, it spec.S) {
 
 	it("writes a tar to the dest dir", func() {
 		tarFile := filepath.Join(tmpDir, "some.tar")
-		err := fs.CreateTarFile(tarFile, src, "/nested/dir/dir-in-archive", 1234, 2345)
+		err := archive.CreateTar(tarFile, src, "/nested/dir/dir-in-archive", 1234, 2345)
 		if err != nil {
-			t.Fatalf("CreateTarFile failed: %s", err)
+			t.Fatalf("CreateTar failed: %s", err)
 		}
 		file, err := os.Open(tarFile)
 		if err != nil {

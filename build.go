@@ -3,7 +3,6 @@ package pack
 import (
 	"context"
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,7 +16,6 @@ import (
 	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/fs"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 
@@ -36,7 +34,6 @@ type Cache interface {
 type BuildFactory struct {
 	Cli     Docker
 	Logger  *logging.Logger
-	FS      *fs.FS
 	Config  *config.Config
 	Cache   Cache
 	Fetcher Fetcher
@@ -65,7 +62,6 @@ type BuildConfig struct {
 	// Above are copied from BuildFlags are set by init
 	Cli    Docker
 	Logger *logging.Logger
-	FS     *fs.FS
 	Config *config.Config
 	// Above are copied from BuildFactory
 	Cache           Cache
@@ -84,7 +80,6 @@ const (
 func DefaultBuildFactory(logger *logging.Logger, cache Cache, dockerClient Docker, fetcher Fetcher) (*BuildFactory, error) {
 	f := &BuildFactory{
 		Logger:  logger,
-		FS:      &fs.FS{},
 		Cache:   cache,
 		Fetcher: fetcher,
 	}
@@ -125,8 +120,10 @@ func calculateRepositoryName(appDir string, buildFlags *BuildFlags) string {
 }
 
 func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags) (*BuildConfig, error) {
-	var builderImage lcimg.Image
-	var err error
+	var (
+		err          error
+		builderImage *builder.Builder
+	)
 
 	if f.AppDir == "" {
 		f.AppDir, err = os.Getwd()
@@ -148,7 +145,6 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 		ClearCache: f.ClearCache,
 		Cli:        bf.Cli,
 		Logger:     bf.Logger,
-		FS:         bf.FS,
 		Config:     bf.Config,
 	}
 
@@ -172,17 +168,20 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 		bf.Logger.Verbose("Using user-provided builder image %s", style.Symbol(f.Builder))
 		b.Builder = f.Builder
 	}
+
 	if !f.NoPull {
 		bf.Logger.Verbose("Pulling builder image %s (use --no-pull flag to skip this step)", style.Symbol(b.Builder))
-		builderImage, err = bf.Fetcher.FetchUpdatedLocalImage(ctx, b.Builder, bf.Logger.RawVerboseWriter())
+		img, err := bf.Fetcher.FetchUpdatedLocalImage(ctx, b.Builder, bf.Logger.RawVerboseWriter())
 		if err != nil {
 			return nil, err
 		}
+		builderImage = builder.NewBuilder(img, bf.Config)
 	} else {
-		builderImage, err = bf.Fetcher.FetchLocalImage(b.Builder)
+		img, err := bf.Fetcher.FetchLocalImage(b.Builder)
 		if err != nil {
 			return nil, err
 		}
+		builderImage = builder.NewBuilder(img, bf.Config)
 	}
 
 	if f.RunImage != "" {
@@ -190,24 +189,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 		b.RunImage = f.RunImage
 		b.LocallyConfiguredRunImage = true
 	} else {
-		label, err := builderImage.Label(builder.MetadataLabel)
-		if err != nil {
-			return nil, fmt.Errorf("invalid builder image %s: %s", style.Symbol(b.Builder), err)
-		}
-		if label == "" {
-			return nil, fmt.Errorf("invalid builder image %s: missing required label %s -- try recreating builder", style.Symbol(b.Builder), style.Symbol(builder.MetadataLabel))
-		}
-		var builderMetadata builder.Metadata
-		if err := json.Unmarshal([]byte(label), &builderMetadata); err != nil {
-			return nil, fmt.Errorf("invalid builder image metadata: %s", err)
-		}
-
-		var overrideRunImages []string
-		if runImage := bf.Config.GetRunImage(builderMetadata.RunImage.Image); runImage != nil {
-			overrideRunImages = runImage.Mirrors
-		}
-
-		b.RunImage, b.LocallyConfiguredRunImage, err = builderMetadata.RunImageForRepoName(f.RepoName, overrideRunImages)
+		b.RunImage, b.LocallyConfiguredRunImage, err = builderImage.GetRunImageByRepoName(f.RepoName)
 		if err != nil {
 			return nil, err
 		}
@@ -370,7 +352,7 @@ func (b *BuildConfig) detect(ctx context.Context, lifecycle *build.Lifecycle) er
 func (b *BuildConfig) restore(ctx context.Context, lifecycle *build.Lifecycle) error {
 	phase, err := lifecycle.NewPhase(
 		"restorer",
-		build.WithArgs("-image="+b.Cache.Image()),
+		build.WithArgs("-image="+b.Cache.Image(), "-group", groupPath),
 		build.WithDaemonAccess(),
 	)
 
@@ -507,7 +489,7 @@ func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) er
 func (b *BuildConfig) cache(ctx context.Context, lifecycle *build.Lifecycle) error {
 	phase, err := lifecycle.NewPhase(
 		"cacher",
-		build.WithArgs("-image="+b.Cache.Image()),
+		build.WithArgs("-image="+b.Cache.Image(), "-group", groupPath),
 		build.WithDaemonAccess(),
 	)
 

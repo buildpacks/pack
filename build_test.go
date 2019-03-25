@@ -67,7 +67,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it("defaults to daemon, default-builder, pulls builder and run images, selects run-image from builder", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil).AnyTimes()
 			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/builder", gomock.Any()).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -86,7 +86,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it("respects builder from flags", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil).AnyTimes()
 			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "custom/builder", gomock.Any()).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -105,7 +105,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it("doesn't pull builder or run images when --no-pull is passed", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil).AnyTimes()
 			mockFetcher.EXPECT().FetchLocalImage("custom/builder").Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -126,7 +126,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 		it("selects run images with matching registry", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
 			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").
-				Return(`{"runImage": {"image": "some/run", "mirrors": ["registry.com/some/run"]}}`, nil)
+				Return(`{"runImage": {"image": "some/run", "mirrors": ["registry.com/some/run"]}}`, nil).AnyTimes()
 			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/builder", gomock.Any()).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -156,7 +156,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 
 				mockBuilderImage := mocks.NewMockImage(mockController)
 				mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").
-					Return(`{"runImage": {"image": "default/run", "mirrors": ["registry.com/default/run"]}}`, nil)
+					Return(`{"runImage": {"image": "default/run", "mirrors": ["registry.com/default/run"]}}`, nil).AnyTimes()
 				mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/builder", gomock.Any()).Return(mockBuilderImage, nil)
 
 				mockRunImage = mocks.NewMockImage(mockController)
@@ -192,7 +192,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it("uses a remote run image when --publish is passed", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil).AnyTimes()
 			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/builder", gomock.Any()).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -232,7 +232,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it("uses working dir if appDir is set to placeholder value", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil).AnyTimes()
 			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/builder", gomock.Any()).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
@@ -254,6 +254,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it("returns an error when the builder metadata label is missing", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
+			mockBuilderImage.EXPECT().Name().Return("some/builder")
 			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return("", nil)
 			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/builder", gomock.Any()).Return(mockBuilderImage, nil)
 
@@ -261,11 +262,12 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 				RepoName: "some/app",
 				Builder:  "some/builder",
 			})
-			h.AssertError(t, err, "invalid builder image 'some/builder': missing required label 'io.buildpacks.builder.metadata' -- try recreating builder")
+			h.AssertError(t, err, "builder 'some/builder' missing label 'io.buildpacks.builder.metadata' -- try recreating builder")
 		})
 
 		it("returns an error when the builder metadata label is unparsable", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
+			mockBuilderImage.EXPECT().Name().Return("some/builder")
 			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return("junk", nil)
 			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/builder", gomock.Any()).Return(mockBuilderImage, nil)
 
@@ -273,7 +275,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 				RepoName: "some/app",
 				Builder:  "some/builder",
 			})
-			h.AssertError(t, err, "invalid builder image metadata: invalid character 'j' looking for beginning of value")
+			h.AssertError(t, err, "failed to parse metadata for builder 'some/builder': invalid character 'j' looking for beginning of value")
 		})
 
 		it("returns an error if remote run image doesn't exist in remote on published builds", func() {
@@ -339,7 +341,7 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 
 		it("sets EnvFile", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
-			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil).AnyTimes()
 			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/builder", gomock.Any()).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)
