@@ -294,6 +294,38 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("--env", func() {
+				it.Before(func() {
+					skipOnWindows(t, "directory buildpacks are not implemented on windows")
+
+					err := os.Setenv("VAR3", "value from env")
+					h.AssertNil(t, err)
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.Unsetenv("VAR3"))
+				})
+
+				it("provides the env vars to the build and detect steps", func() {
+					cmd := packCmd(
+						"build", repoName,
+						"-p", filepath.Join("testdata", "mock_app"),
+						"--env", "VAR1=value1",
+						"--env", "VAR2=value2",
+						"--env", "VAR3",
+						"--buildpack", filepath.Join("testdata", "mock_buildpacks", "printenv"),
+					)
+					output := h.Run(t, cmd)
+					h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+					h.AssertContains(t, output, "DETECT: VAR1 is value1;")
+					h.AssertContains(t, output, "DETECT: VAR2 is value2;")
+					h.AssertContains(t, output, "DETECT: VAR3 is value from env;")
+					h.AssertContains(t, output, "BUILD: VAR1 is value1;")
+					h.AssertContains(t, output, "BUILD: VAR2 is value2;")
+					h.AssertContains(t, output, "BUILD: VAR3 is value from env;")
+				})
+			})
+
 			when("--run-image", func() {
 				var runImageName string
 
