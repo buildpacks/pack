@@ -19,9 +19,8 @@ jobs:
       go build -ldflags "-X 'main.Version=$TRAVIS_TAG (git sha: $(git log -1 --pretty=%H))'" -o "$PACK_PATH" ./cmd/pack
       "$PACK_PATH" version
     script:
-    |
-      go test -count=1 -parallel=1 -v ./...
-      go test -count=1 -parallel=1 -v -tags=acceptance ./acceptance
+    - go test -count=1 -parallel=1 -v ./...
+    - go test -count=1 -parallel=1 -v -tags=acceptance ./acceptance
   - name: tests
     os: windows
     env:
