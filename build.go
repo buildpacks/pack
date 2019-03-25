@@ -346,7 +346,7 @@ func (b *BuildConfig) detect(ctx context.Context, lifecycle *build.Lifecycle) er
 func (b *BuildConfig) restore(ctx context.Context, lifecycle *build.Lifecycle) error {
 	phase, err := lifecycle.NewPhase(
 		"restorer",
-		build.WithArgs("-image="+b.Cache.Image()),
+		build.WithArgs("-image="+b.Cache.Image(), "-group", groupPath),
 		build.WithDaemonAccess(),
 	)
 
@@ -483,7 +483,7 @@ func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) er
 func (b *BuildConfig) cache(ctx context.Context, lifecycle *build.Lifecycle) error {
 	phase, err := lifecycle.NewPhase(
 		"cacher",
-		build.WithArgs("-image="+b.Cache.Image()),
+		build.WithArgs("-image="+b.Cache.Image(), "-group", groupPath),
 		build.WithDaemonAccess(),
 	)
 
