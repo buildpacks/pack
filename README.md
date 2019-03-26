@@ -16,11 +16,7 @@
   - [Example: Creating a builder from buildpacks](#example-creating-a-builder-from-buildpacks)
   - [Builders explained](#builders-explained)
 - [Managing stacks](#managing-stacks)
-  - [Example: Adding a stack](#example-adding-a-stack)
-  - [Example: Updating a stack](#example-updating-a-stack)
-  - [Example: Deleting a stack](#example-deleting-a-stack)
-  - [Example: Setting the default stack](#example-setting-the-default-stack)
-  - [Listing stacks](#listing-stacks)
+  - [Run image mirrors](#run-image-mirrors)
 - [Resources](#resources)
 - [Development](#development)
 
@@ -39,7 +35,7 @@ $ pack build <image-name>
 In the following example, an app image is created from Node.js application source code.
 
 ```bash
-$ cd /path/to/node/app
+$ cd path/to/node/app
 $ pack build my-app:my-tag
 ```
 
@@ -51,7 +47,7 @@ how to create or use them, see the
 To publish the produced image to an image registry, include the `--publish` flag:
 
 ```bash
-$ pack build private-registry.example.com/my-app:my-tag --publish
+$ pack build myregistry.com/my-app:my-tag --publish
 ```
 
 ### Example: Building using a specified buildpack
@@ -60,7 +56,7 @@ In the following example, an app image is created from Node.js application sourc
 user.
 
 ```bash
-$ cd /path/to/node/app
+$ cd path/to/node/app
 $ pack build my-app:my-tag --buildpack path/to/some/buildpack
 ```
 
@@ -132,7 +128,7 @@ $ pack create-builder <image-name> --builder-config <path-to-builder-toml>
 ### Example: Creating a builder from buildpacks
 
 In this example, a builder image is created from buildpacks `org.example.buildpack-1` and `org.example.buildpack-2`.
-A `builder.toml` file provides necessary configuration to the command.
+A TOML file (typically named `builder.toml`) provides necessary configuration to the command.
 
 ```toml
 [[buildpacks]]
@@ -151,7 +147,14 @@ A `builder.toml` file provides necessary configuration to the command.
   [[groups.buildpacks]]
     id = "org.example.buildpack-2"
     version = "0.0.1"
+
+[stack]
+  id = "com.example.stack"
+  build-image = "example/build"
+  run-image = "example/run"
 ```
+
+> For more information on stacks, see the [Managing stacks](#managing-stacks) section.
 
 Running `create-builder` while supplying this configuration file will produce the builder image.
 
@@ -161,11 +164,6 @@ $ pack create-builder my-builder:my-tag --builder-config path/to/builder.toml
 
 Like [`build`](#building-app-images-using-build), `create-builder` has a `--publish` flag that can be used to publish
 the generated builder image to a registry.
-
-> The above example uses the default stack, whose build image is `packs/build`.
-> The `--stack` parameter can be used to specify a different stack (currently, the only built-in stack is
-> `io.buildpacks.stacks.bionic`). For more information about managing stacks and their associations with build and run
-> images, see the [Managing stacks](#managing-stacks) section.
 
 The builder can then be used in `build` by running:
 
@@ -177,8 +175,8 @@ $ pack build my-app:my-tag --builder my-builder:my-tag --buildpack org.example.b
 
 ![create-builder diagram](docs/create-builder.svg)
 
-A builder is an image containing a collection of buildpacks that will be executed, in the order that they appear in
-`builder.toml`, against app source code. This image's base will be the build image associated with a given stack.
+A builder is an image containing a collection of buildpack groups that will be executed against app source code, in the order
+that they appear in `builder.toml`. This image's base will be the build image associated with a given stack.
 
 > A buildpack's primary role is to inspect the source code, determine any
 > dependencies that will be required to compile and/or run the app, and provide those dependencies as layers in the
@@ -189,72 +187,57 @@ A builder is an image containing a collection of buildpacks that will be execute
 
 ## Managing stacks
 
-As mentioned [previously](#building-explained), a stack is associated with a build image and a run image. Stacks in
-`pack`'s configuration can be managed using the following commands:
+As mentioned [previously](#building-explained), a stack is a named association of a build image and a run image.
+Stacks are managed through a builder's TOML file:
 
-```bash
-$ pack add-stack <stack-id> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
+```toml
+[[buildpacks]]
+...
+
+[[groups]]
+...
+
+[stack]
+  id = "com.example.stack"
+  build-image = "example/build"
+  run-image = "example/run"
+  run-image-mirrors = ["gcr.io/example/run", "registry.example.com/example/run"]
 ```
 
-```bash
-$ pack update-stack <stack-id> --build-image <build-image-name> --run-image <run-image-name1,run-image-name2,...>
-```
+By providing the required `[stack]` section, a builder author can configure a stack's ID, build image, and run image
+(including any mirrors).
+
+### Run image mirrors
+
+Run image mirrors provide alternate locations for run images, for use during `build` (or `rebase`).
+When running `build` with a builder containing run image mirrors, `pack` will select a run image
+whose registry location matches that of the specified app image (if no registry host is specified in the image name,
+DockerHub is assumed). This is useful when publishing the resulting app image (via the `--publish` flag or via
+`docker push`), as the app's base image (i.e. run image) will be located on the same registry as the app image itself,
+reducing the amount of data transfer required to push the app image.
+
+In the following example, assuming a builder configured with the example TOML above, the selected run image will be
+`registry.example.com/example/run`.
 
 ```bash
-$ pack delete-stack <stack-id>
+$ pack build registry.example.com/example/app
 ```
+
+while naming the app without a registry specified, `example/app`, will cause `example/run` to be selected as the app's
+run image.
 
 ```bash
-$ pack set-default-stack <stack-id>
+$ pack build example/app
 ```
 
-> Technically, a stack can be associated with multiple run images, as a variant is needed for each registry to
-> which an app image might be published when using `--publish`.
+> For local development, it's often helpful to override the run image mirrors in a builder. For this, the
+> `set-run-image-mirrors` command can be used. This command does not modify the builder, and instead configures the
+> user's local machine.
 >
-> Multiple run images can be specified using the syntax above, or by supplying `--run-image` multiple times.
-
-### Example: Adding a stack
-
-In this example, a new stack called `org.example.my-stack` is added and associated with build image `my-stack/build`
-and run image `my-stack/run`.
-
-```bash
-$ pack add-stack org.example.my-stack --build-image my-stack/build --run-image my-stack/run
-```
-
-### Example: Updating a stack
-
-In this example, an existing stack `org.example.my-stack` is updated with a new build image `my-stack/build:v2`
-and a new run image `my-stack/run:v2`.
-
-```bash
-$ pack add-stack org.example.my-stack --build-image my-stack/build:v2 --run-image my-stack/run:v2
-```
-
-### Example: Deleting a stack
-
-In this example, the existing stack `org.example.my-stack` is deleted from `pack`'s configuration.
-
-```bash
-$ pack delete-stack org.example.my-stack
-```
-
-### Example: Setting the default stack
-
-In this example, the default stack, used by [`create-builder`](#working-with-builders-using-create-builder), is set to
-`org.example.my-stack`.
-
-```bash
-$ pack set-default-stack org.example.my-stack
-```
-
-### Listing stacks
-
-To inspect available stacks and their associated images, run:
-
-```bash
-$ pack stacks
-```
+> To see what run images are configured for a builder, the
+> `inspect-builder` command can be used. `inspect-builder` will output built-in and locally-configured run images for
+> a given builder, among other useful information. The order of the run images in the output denotes the order in
+> which they will be matched during `build`.
 
 ## Resources
 
