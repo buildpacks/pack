@@ -32,9 +32,10 @@ type BuilderConfig struct {
 }
 
 type BuilderFactory struct {
-	Logger  *logging.Logger
-	Config  *config.Config
-	Fetcher Fetcher
+	Logger           *logging.Logger
+	Config           *config.Config
+	Fetcher          Fetcher
+	BuildpackFetcher BuildpackFetcher
 }
 
 type CreateBuilderFlags struct {
@@ -77,14 +78,12 @@ func (f *BuilderFactory) BuilderConfigFromFlags(ctx context.Context, flags Creat
 
 	builderConfig.Groups = builderTOML.Groups
 
-	// TODO : inject this
-	bpFetcher := buildpack.NewFetcher(f.Config, f.Logger)
 	for _, b := range builderTOML.Buildpacks {
-		bp, err := bpFetcher.FetchBuildpack(builderConfig.BuilderDir, b)
+		fetchedBuildpack, err := f.BuildpackFetcher.FetchBuildpack(builderConfig.BuilderDir, b)
 		if err != nil {
 			return BuilderConfig{}, err
 		}
-		builderConfig.Buildpacks = append(builderConfig.Buildpacks, bp)
+		builderConfig.Buildpacks = append(builderConfig.Buildpacks, fetchedBuildpack)
 	}
 	return builderConfig, nil
 }

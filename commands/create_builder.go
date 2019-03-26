@@ -12,7 +12,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func CreateBuilder(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
+func CreateBuilder(logger *logging.Logger, fetcher pack.Fetcher, bpFetcher pack.BuildpackFetcher) *cobra.Command {
 	var flags pack.CreateBuilderFlags
 	ctx := createCancellableContext()
 	cmd := &cobra.Command{
@@ -30,9 +30,10 @@ func CreateBuilder(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command 
 				return err
 			}
 			builderFactory := pack.BuilderFactory{
-				Logger:  logger,
-				Config:  cfg,
-				Fetcher: fetcher,
+				Logger:           logger,
+				Config:           cfg,
+				Fetcher:          fetcher,
+				BuildpackFetcher: bpFetcher,
 			}
 			builderConfig, err := builderFactory.BuilderConfigFromFlags(ctx, flags)
 			if err != nil {

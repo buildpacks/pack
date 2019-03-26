@@ -2,6 +2,7 @@ package pack
 
 import (
 	"context"
+	"github.com/buildpack/pack/buildpack"
 	"io"
 
 	"github.com/buildpack/lifecycle/image"
@@ -47,4 +48,8 @@ type Fetcher interface {
 	FetchUpdatedLocalImage(context.Context, string, io.Writer) (image.Image, error)
 	FetchLocalImage(string) (image.Image, error)
 	FetchRemoteImage(string) (image.Image, error)
+}
+
+type BuildpackFetcher interface {
+	FetchBuildpack(localSearchPath string, bp buildpack.Buildpack) (buildpack.Buildpack, error)
 }

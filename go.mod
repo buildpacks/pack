@@ -19,6 +19,7 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
+	github.com/onsi/gomega v1.5.0
 	github.com/pkg/errors v0.8.1
 	github.com/sclevine/spec v1.2.0
 	github.com/sirupsen/logrus v1.3.0 // indirect
