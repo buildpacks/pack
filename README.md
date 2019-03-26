@@ -1,8 +1,18 @@
 # pack - Buildpack CLI [![Travis Build Status](https://travis-ci.org/buildpack/pack.svg?branch=master)](https://travis-ci.org/buildpack/pack)
 
 **`pack`** makes it easy for
-- **application developers** to use [buildpacks](https://buildpacks.io/) to convert code into runnable images
-- **buildpack authors** to develop and package buildpacks for distribution
+- **Application developers** to use [Cloud Native Buildpacks](https://buildpacks.io/) to convert code into runnable images
+- **Buildpack authors** to develop and package buildpacks for distribution
+
+---
+
+## ⚔️ It's dangerous to go alone! Read this. 🛠️
+Ready to embark on your adventure with `pack` but not sure where to start? Try out our tutorial,
+[**An App's Brief Journey from Source to Image**](docs/tutorials/app-journey.md).
+
+Otherwise, read the rest of this document for detailed explanations and examples of `pack`'s most important commands.
+
+---
 
 ## Contents
 - [Building app images using `build`](#building-app-images-using-build)
@@ -39,10 +49,8 @@ $ cd path/to/node/app
 $ pack build my-app:my-tag
 ```
 
-In this case, the default [builder](#working-with-builders-using-create-builder) is used, and an appropriate buildpack
-is automatically selected from the builder based on the app source code. To understand more about what builders are and
-how to create or use them, see the
-[Working with builders using `create-builder`](#working-with-builders-using-create-builder) section.
+In this case, the default [builder](#working-with-builders-using-create-builder) (essentially, an image containing
+buildpacks) is used, and an appropriate buildpack is automatically selected from the builder based on the app source code.
 
 To publish the produced image to an image registry, include the `--publish` flag:
 
@@ -179,7 +187,7 @@ A builder is an image containing a collection of buildpack groups that will be e
 that they appear in `builder.toml`. This image's base will be the build image associated with a given stack.
 
 > A buildpack's primary role is to inspect the source code, determine any
-> dependencies that will be required to compile and/or run the app, and provide those dependencies as layers in the
+> dependencies that will be required to compile and/or run the app, and provide runtime dependencies as layers in the
 > final app image. 
 > 
 > It's important to note that the buildpacks in a builder are not actually executed until
@@ -251,7 +259,7 @@ To build pack, run:
 ```
 go build ./cmd/pack
 ```
-Note: This project uses [go modules](https://github.com/golang/go/wiki/Modules)
+> This project uses [go modules](https://github.com/golang/go/wiki/Modules)
 
 ### Testing
 To run unit and integration tests:
