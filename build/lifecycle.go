@@ -61,7 +61,7 @@ const (
 type LifecycleConfig struct {
 	BuilderImage string
 	Logger       *logging.Logger
-	EnvFile      map[string]string
+	Env          map[string]string
 	Buildpacks   []string
 	AppDir       string
 }
@@ -96,7 +96,7 @@ func NewLifecycle(c LifecycleConfig) (*Lifecycle, error) {
 		return nil, err
 	}
 
-	envTar, err := tarEnvFile(tmpDir, c.EnvFile)
+	envTar, err := tarEnvFile(tmpDir, c.Env)
 	defer os.RemoveAll(envTar)
 	if err != nil {
 		return nil, err

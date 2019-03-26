@@ -3,7 +3,6 @@ package build_test
 import (
 	"bytes"
 	"context"
-	"github.com/docker/docker/api/types/filters"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -69,7 +69,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 						BuilderImage: repoName,
 						AppDir:       filepath.Join("testdata", "fake-app"),
 						Logger:       logger,
-						EnvFile: map[string]string{
+						Env: map[string]string{
 							"some-key":  "some-val",
 							"other-key": "other-val",
 						},
@@ -202,7 +202,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 							filepath.Join("testdata", "fake_buildpack"),
 							"just/buildpack.id@1.2.3",
 						},
-						EnvFile: map[string]string{
+						Env: map[string]string{
 							"some-key":  "some-val",
 							"other-key": "other-val",
 						},
@@ -253,7 +253,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 							"some.buildpack.id@some-version",
 							"just.buildpack.id@1.2.3",
 						},
-						EnvFile: map[string]string{
+						Env: map[string]string{
 							"some-key":  "some-val",
 							"other-key": "other-val",
 						},
@@ -297,7 +297,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				BuilderImage: repoName,
 				AppDir:       filepath.Join("testdata", "fake-app"),
 				Logger:       logger,
-				EnvFile:      map[string]string{},
+				Env:          map[string]string{},
 			})
 			h.AssertNil(t, err)
 

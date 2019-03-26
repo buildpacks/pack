@@ -43,6 +43,7 @@ type BuildFlags struct {
 	AppDir     string
 	Builder    string
 	RunImage   string
+	Env        []string
 	EnvFile    string
 	RepoName   string
 	Publish    bool
@@ -147,12 +148,17 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 		Config:     bf.Config,
 	}
 
-	var envFile map[string]string
+	var env map[string]string
 	if f.EnvFile != "" {
-		envFile, err = parseEnvFile(f.EnvFile)
+		env, err = parseEnvFile(f.EnvFile)
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		env = map[string]string{}
+	}
+	for _, item := range f.Env {
+		env = addEnvVar(env, item)
 	}
 
 	if f.Builder == "" {
@@ -231,7 +237,7 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 		BuilderImage: b.Builder,
 		Logger:       b.Logger,
 		Buildpacks:   f.Buildpacks,
-		EnvFile:      envFile,
+		Env:          env,
 		AppDir:       appDir,
 	}
 
@@ -549,23 +555,28 @@ func (b *BuildConfig) chownDir(ctx context.Context, lifecycle *build.Lifecycle, 
 	return nil
 }
 
-func parseEnvFile(envFile string) (map[string]string, error) {
+func parseEnvFile(filename string) (map[string]string, error) {
 	out := make(map[string]string, 0)
-	f, err := ioutil.ReadFile(envFile)
+	f, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, errors.Wrapf(err, "open %s", envFile)
+		return nil, errors.Wrapf(err, "open %s", filename)
 	}
 	for _, line := range strings.Split(string(f), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		arr := strings.SplitN(line, "=", 2)
-		if len(arr) > 1 {
-			out[arr[0]] = arr[1]
-		} else {
-			out[arr[0]] = os.Getenv(arr[0])
-		}
+		out = addEnvVar(out, line)
 	}
 	return out, nil
+}
+
+func addEnvVar(env map[string]string, item string) map[string]string {
+	arr := strings.SplitN(item, "=", 2)
+	if len(arr) > 1 {
+		env[arr[0]] = arr[1]
+	} else {
+		env[arr[0]] = os.Getenv(arr[0])
+	}
+	return env
 }

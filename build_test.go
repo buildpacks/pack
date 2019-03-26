@@ -312,6 +312,33 @@ func testBuildFactory(t *testing.T, when spec.G, it spec.S) {
 			h.AssertError(t, err, "local run image 'some/run' does not exist")
 		})
 
+		it("sets Env", func() {
+			mockBuilderImage := mocks.NewMockImage(mockController)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil).AnyTimes()
+			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/builder", gomock.Any()).Return(mockBuilderImage, nil)
+
+			mockRunImage := mocks.NewMockImage(mockController)
+			mockRunImage.EXPECT().Found().Return(true, nil)
+			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/run", gomock.Any()).Return(mockRunImage, nil)
+
+			config, err := factory.BuildConfigFromFlags(context.TODO(), &pack.BuildFlags{
+				RepoName: "some/app",
+				Builder:  "some/builder",
+				Env: []string{
+					"VAR1=value1",
+					"VAR2=value2 with spaces",
+					"PATH",
+				},
+			})
+			h.AssertNil(t, err)
+			h.AssertEq(t, config.LifecycleConfig.Env, map[string]string{
+				"VAR1": "value1",
+				"VAR2": "value2 with spaces",
+				"PATH": os.Getenv("PATH"),
+			})
+			h.AssertNotEq(t, os.Getenv("PATH"), "")
+		})
+
 		it("sets EnvFile", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
 			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil).AnyTimes()
@@ -339,8 +366,44 @@ PATH
 				EnvFile:  envFile.Name(),
 			})
 			h.AssertNil(t, err)
-			h.AssertEq(t, config.LifecycleConfig.EnvFile, map[string]string{
+			h.AssertEq(t, config.LifecycleConfig.Env, map[string]string{
 				"VAR1": "value1",
+				"VAR2": "value2 with spaces",
+				"PATH": os.Getenv("PATH"),
+			})
+			h.AssertNotEq(t, os.Getenv("PATH"), "")
+		})
+
+		it("sets EnvFile with Env overrides", func() {
+			mockBuilderImage := mocks.NewMockImage(mockController)
+			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"runImage": {"image": "some/run"}}`, nil).AnyTimes()
+			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/builder", gomock.Any()).Return(mockBuilderImage, nil)
+
+			mockRunImage := mocks.NewMockImage(mockController)
+			mockRunImage.EXPECT().Found().Return(true, nil)
+			mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/run", gomock.Any()).Return(mockRunImage, nil)
+
+			envFile, err := ioutil.TempFile("", "pack.build.envfile")
+			h.AssertNil(t, err)
+			defer os.Remove(envFile.Name())
+
+			_, err = envFile.Write([]byte(`
+VAR1=value1
+VAR2=value2 with spaces
+PATH
+				`))
+			h.AssertNil(t, err)
+			envFile.Close()
+
+			config, err := factory.BuildConfigFromFlags(context.TODO(), &pack.BuildFlags{
+				RepoName: "some/app",
+				Builder:  "some/builder",
+				EnvFile:  envFile.Name(),
+				Env:      []string{"VAR1=override1"},
+			})
+			h.AssertNil(t, err)
+			h.AssertEq(t, config.LifecycleConfig.Env, map[string]string{
+				"VAR1": "override1",
 				"VAR2": "value2 with spaces",
 				"PATH": os.Getenv("PATH"),
 			})
