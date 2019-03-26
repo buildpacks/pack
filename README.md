@@ -65,9 +65,7 @@ $ pack build my-app:my-tag --buildpack path/to/some/buildpack
 ```
 
 The `--buildpack` parameter can be
-- a path to a directory
-- a path to a `.tgz` file
-- a URL to a `.tgz` file, or
+- a path to a directory, or
 - the ID of a buildpack located in a builder
 
 > Multiple buildpacks can be specified, in order, by:
