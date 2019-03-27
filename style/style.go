@@ -2,6 +2,7 @@ package style
 
 import (
 	"fmt"
+
 	"github.com/fatih/color"
 )
 
@@ -16,7 +17,7 @@ var Symbol = func(format string, a ...interface{}) string {
 	return Key(format, a...)
 }
 
-var Key = color.MagentaString
+var Key = color.GreenString
 
 var Tip = color.New(color.FgGreen, color.Bold).SprintfFunc()
 
