@@ -89,13 +89,25 @@ func (l *local) Env(key string) (string, error) {
 
 func (l *local) Rename(name string) {
 	l.easyAddLayers = nil
-	if inspect, _, err := l.Docker.ImageInspectWithRaw(context.TODO(), name); err == nil {
-		if len(inspect.RootFS.Layers) > len(l.Inspect.RootFS.Layers) {
-			l.easyAddLayers = inspect.RootFS.Layers[len(l.Inspect.RootFS.Layers):]
+	if prevInspect, _, err := l.Docker.ImageInspectWithRaw(context.TODO(), name); err == nil {
+		if l.sameBase(prevInspect) {
+			l.easyAddLayers = prevInspect.RootFS.Layers[len(l.Inspect.RootFS.Layers):]
 		}
 	}
 
 	l.RepoName = name
+}
+
+func (l *local) sameBase(prevInspect types.ImageInspect) bool {
+	if len(prevInspect.RootFS.Layers) < len(l.Inspect.RootFS.Layers) {
+		return false
+	}
+	for i, baseLayer := range l.Inspect.RootFS.Layers {
+		if baseLayer != prevInspect.RootFS.Layers[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func (l *local) Name() string {
@@ -270,16 +282,21 @@ func (l *local) Save() (string, error) {
 	repoName := t.String()
 
 	pr, pw := io.Pipe()
+	defer pw.Close()
 	go func() {
 		res, err := l.Docker.ImageLoad(ctx, pr, true)
-		if err == nil {
-			io.Copy(ioutil.Discard, res.Body)
-			res.Body.Close()
+		if err != nil {
+			done <- err
+			return
 		}
-		done <- err
+		defer res.Body.Close()
+		io.Copy(ioutil.Discard, res.Body)
+
+		done <- nil
 	}()
 
 	tw := tar.NewWriter(pw)
+	defer tw.Close()
 
 	imgConfig := map[string]interface{}{
 		"os":      "linux",
@@ -341,6 +358,11 @@ func (l *local) Save() (string, error) {
 		l.prevDir = ""
 		l.prevMap = nil
 		l.prevOnce = &sync.Once{}
+	}
+	if _, _, err = l.Docker.ImageInspectWithRaw(context.Background(), imgID); err != nil && !dockerclient.IsErrNotFound(err) {
+		return "", err
+	} else if dockerclient.IsErrNotFound(err) {
+		return "", fmt.Errorf("save image '%s'", l.RepoName)
 	}
 
 	return imgID, err

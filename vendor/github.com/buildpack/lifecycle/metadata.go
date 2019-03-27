@@ -18,6 +18,7 @@ type AppImageMetadata struct {
 	Launcher   LauncherMetadata    `json:"launcher"`
 	Buildpacks []BuildpackMetadata `json:"buildpacks"`
 	RunImage   RunImageMetadata    `json:"runImage"`
+	Stack      StackMetadata       `json:"stack"`
 }
 
 type CacheImageMetadata struct {
@@ -53,6 +54,15 @@ type LayerMetadata struct {
 type RunImageMetadata struct {
 	TopLayer string `json:"topLayer"`
 	SHA      string `json:"sha"`
+}
+
+type StackMetadata struct {
+	RunImage StackRunImageMetadata `toml:"run-image" json:"runImage"`
+}
+
+type StackRunImageMetadata struct {
+	Image   string   `toml:"image" json:"image"`
+	Mirrors []string `toml:"mirrors" json:"mirrors,omitempty"`
 }
 
 func (m *AppImageMetadata) metadataForBuildpack(id string) BuildpackMetadata {
