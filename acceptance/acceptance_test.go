@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpack/lifecycle"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
@@ -158,9 +159,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				t.Log("it uses the default run image as a base image")
 				assertHasBase(t, repoName, h.DefaultRunImage(t, registryConfig.RunRegistryPort))
 
-				t.Log("sets the run image label")
-				runImageLabel := imageLabel(t, dockerCli, repoName, "io.buildpacks.run-image")
-				h.AssertEq(t, runImageLabel, h.DefaultRunImage(t, registryConfig.RunRegistryPort))
+				t.Log("sets the run image metadata")
+				runImageLabel := imageLabel(t, dockerCli, repoName, lifecycle.MetadataLabel)
+				h.AssertContains(t, runImageLabel, fmt.Sprintf(`"stack":{"runImage":{"image":"%s"}}}`,h.DefaultRunImage(t, registryConfig.RunRegistryPort)))
 
 				t.Log("registry is empty")
 				contents, err := registryConfig.RegistryCatalog()
@@ -665,8 +666,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 				h.CreateImageOnLocal(t, dockerCli, builderName, fmt.Sprintf(`
 								FROM %s
-								LABEL %s="{\"runImage\": {\"image\": \"%s\"}}"
-							`, h.DefaultBuilderImage(t, registryConfig.RunRegistryPort), builder.MetadataLabel, runImage))
+								LABEL %s="{\"stack\":{\"runImage\": {\"image\": \"%s\"}}}"
+								USER root
+								RUN echo "[run-image]\n  image=\"%s\"" > /buildpacks/stack.toml
+								USER pack
+							`, h.DefaultBuilderImage(t, registryConfig.RunRegistryPort), builder.MetadataLabel, runImage, runImage))
 
 				cmd := packCmd(
 					"build", repoName,
@@ -837,14 +841,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			builderImageName := h.CreateImageOnRemote(t, dockerCli, registryConfig, "some/builder",
 				fmt.Sprintf(`
 										FROM scratch
-										LABEL %s="{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run1\"]},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
+										LABEL %s="{\"stack\":{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run1\"]}},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
 										LABEL io.buildpacks.stack.id=some.test.stack
 									`, builder.MetadataLabel))
 
 			h.CreateImageOnLocal(t, dockerCli, builderImageName,
 				fmt.Sprintf(`
 										FROM scratch
-										LABEL %s="{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run2\"]},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
+										LABEL %s="{\"stack\":{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run2\"]}},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
 										LABEL io.buildpacks.stack.id=some.test.stack
 									`, builder.MetadataLabel))
 			defer h.DockerRmi(dockerCli, builderImageName)

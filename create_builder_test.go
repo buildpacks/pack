@@ -409,12 +409,14 @@ run-image = "some/run"
 				mockImage     *mocks.MockImage
 				savedLayers   map[string]*bytes.Buffer
 				labels        map[string]string
+				env           map[string]string
 				builderConfig pack.BuilderConfig
 			)
 
 			it.Before(func() {
 				savedLayers = make(map[string]*bytes.Buffer)
 				labels = make(map[string]string)
+				env = make(map[string]string)
 
 				mockImage = mocks.NewMockImage(mockController)
 				mockImage.EXPECT().AddLayer(gomock.Any()).Do(func(layerPath string) {
@@ -427,10 +429,11 @@ run-image = "some/run"
 
 					savedLayers[filepath.Base(layerPath)] = bytes.NewBuffer(buf)
 				}).AnyTimes()
-				mockImage.EXPECT().Save()
 				mockImage.EXPECT().SetLabel(gomock.Any(), gomock.Any()).Do(func(labelName, labelValue string) {
 					labels[labelName] = labelValue
 				})
+				mockImage.EXPECT().SetEnv(gomock.Any(), gomock.Any()).Do(func(key, val string) { env[key] = val }).AnyTimes()
+				mockImage.EXPECT().Save()
 
 				builderConfig = pack.BuilderConfig{
 					Repo:            mockImage,
@@ -446,8 +449,25 @@ run-image = "some/run"
 				h.AssertNil(t, factory.Create(builderConfig))
 				h.AssertEq(t,
 					labels["io.buildpacks.builder.metadata"],
-					`{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]},"buildpacks":[],"groups":[]}`,
+					`{"buildpacks":[],"groups":[],"stack":{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]}}}`,
 				)
+			})
+
+			it("writes a stack.toml file", func() {
+				h.AssertNil(t, factory.Create(builderConfig))
+
+				content, exists := savedLayers["stack.tar"]
+				h.AssertEq(t, exists, true)
+				h.AssertContains(t, content.String(), `[run-image]`)
+				h.AssertContains(t, content.String(), `image = "myorg/run"`)
+				h.AssertContains(t, content.String(), `mirrors = ["gcr.io/myorg/run"]`)
+			})
+
+			it("writes the stack.toml file path to an env var", func() {
+				h.AssertNil(t, factory.Create(builderConfig))
+				content, exists := env["CNB_STACK_PATH"]
+				h.AssertEq(t, exists, true)
+				h.AssertContains(t, content, "/buildpacks/stack.toml")
 			})
 
 			when("builder config contains buildpacks", func() {
@@ -461,7 +481,7 @@ run-image = "some/run"
 					h.AssertNil(t, factory.Create(builderConfig))
 					h.AssertEq(t,
 						labels["io.buildpacks.builder.metadata"],
-						`{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]},"buildpacks":[{"id":"some-buildpack-id","version":"some-buildpack-version","latest":true}],"groups":[]}`,
+						`{"buildpacks":[{"id":"some-buildpack-id","version":"some-buildpack-version","latest":true}],"groups":[],"stack":{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]}}}`,
 					)
 				})
 			})
@@ -485,7 +505,7 @@ run-image = "some/run"
 					h.AssertNil(t, factory.Create(builderConfig))
 					h.AssertEq(t,
 						labels["io.buildpacks.builder.metadata"],
-						`{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]},"buildpacks":[],"groups":[{"buildpacks":[{"id":"bpId","version":"bpVersion","latest":false}]}]}`,
+						`{"buildpacks":[],"groups":[{"buildpacks":[{"id":"bpId","version":"bpVersion","latest":false}]}],"stack":{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]}}}`,
 					)
 				})
 			})

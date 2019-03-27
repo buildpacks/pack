@@ -62,11 +62,13 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					it.Before(func() {
 						testhelpers.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
 						testhelpers.AssertNil(t, builderImage.SetLabel("io.buildpacks.builder.metadata", `{
-  "runImage": {
-    "image": "some/run-image",
-    "mirrors": [
-      "gcr.io/some/default"
-    ]
+  "stack": {
+    "runImage": {
+      "image": "some/run-image",
+      "mirrors": [
+        "gcr.io/some/default"
+      ]
+    }
   },
   "buildpacks": [
     {

@@ -53,12 +53,11 @@ type BuildFlags struct {
 }
 
 type BuildConfig struct {
-	Builder                   string
-	RunImage                  string
-	RepoName                  string
-	Publish                   bool
-	ClearCache                bool
-	LocallyConfiguredRunImage bool
+	Builder    string
+	RunImage   string
+	RepoName   string
+	Publish    bool
+	ClearCache bool
 	// Above are copied from BuildFlags are set by init
 	Cli    Docker
 	Logger *logging.Logger
@@ -187,9 +186,8 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 	if f.RunImage != "" {
 		bf.Logger.Verbose("Using user-provided run image %s", style.Symbol(f.RunImage))
 		b.RunImage = f.RunImage
-		b.LocallyConfiguredRunImage = true
 	} else {
-		b.RunImage, b.LocallyConfiguredRunImage, err = builderImage.GetRunImageByRepoName(f.RepoName)
+		b.RunImage, err = builderImage.GetRunImageByRepoName(f.RepoName)
 		if err != nil {
 			return nil, err
 		}
@@ -426,10 +424,6 @@ type exporterArgs struct {
 	repoName string
 }
 
-func (e *exporterArgs) label(s string) {
-	e.args = append(e.args, "-label", s)
-}
-
 func (e *exporterArgs) add(args ...string) {
 	e.args = append(e.args, args...)
 }
@@ -444,18 +438,17 @@ func (e *exporterArgs) list() []string {
 }
 
 func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) error {
-	var export *build.Phase
-	var err error
+	var (
+		export *build.Phase
+		err    error
+	)
 
 	args := &exporterArgs{repoName: b.RepoName}
-
-	args.add("-image", b.RunImage,
+	args.add(
+		"-image", b.RunImage,
 		"-layers", launchDir,
-		"-group", groupPath)
-
-	if !b.LocallyConfiguredRunImage {
-		args.label("io.buildpacks.run-image=" + b.RunImage)
-	}
+		"-group", groupPath,
+	)
 
 	if b.Publish {
 		export, err = lifecycle.NewPhase(
@@ -465,7 +458,6 @@ func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) er
 		)
 	} else {
 		args.daemon()
-
 		export, err = lifecycle.NewPhase(
 			"exporter",
 			build.WithDaemonAccess(),
@@ -473,17 +465,17 @@ func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) er
 		)
 	}
 	defer export.Cleanup()
+
 	uid, gid, err := b.packUidGid(ctx, b.Builder)
 	if err != nil {
 		return errors.Wrap(err, "get pack uid and gid")
 	}
+
 	if err := b.chownDir(ctx, lifecycle, launchDir, uid, gid); err != nil {
 		return errors.Wrap(err, "chown launch dir")
 	}
-	if err = export.Run(ctx); err != nil {
-		return err
-	}
-	return nil
+
+	return export.Run(ctx)
 }
 
 func (b *BuildConfig) cache(ctx context.Context, lifecycle *build.Lifecycle) error {
