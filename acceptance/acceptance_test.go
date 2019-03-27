@@ -181,12 +181,12 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				assertNodeAppRuns(t, repoName)
 
 				t.Log("restores the cache")
-				h.AssertContainsMatch(t, output, `\[restorer] \S+ \S+ restoring cached layer 'io.buildpacks.samples.nodejs:nodejs'`)
-				h.AssertContainsMatch(t, output, `\[analyzer] \S+ \S+ using cached launch layer 'io.buildpacks.samples.nodejs:nodejs'`)
+				h.AssertContainsMatch(t, output, `\[restorer] restoring cached layer 'io.buildpacks.samples.nodejs:nodejs'`)
+				h.AssertContainsMatch(t, output, `\[analyzer] using cached launch layer 'io.buildpacks.samples.nodejs:nodejs'`)
 
 				t.Log("exporter and cacher reuse unchanged layers")
-				h.AssertContainsMatch(t, output, `\[exporter] \S+ \S+ reusing layer 'io.buildpacks.samples.nodejs:nodejs'`)
-				h.AssertContainsMatch(t, output, `\[cacher] \S+ \S+ reusing layer 'io.buildpacks.samples.nodejs:nodejs'`)
+				h.AssertContainsMatch(t, output, `\[exporter] reusing layer 'io.buildpacks.samples.nodejs:nodejs'`)
+				h.AssertContainsMatch(t, output, `\[cacher] reusing layer 'io.buildpacks.samples.nodejs:nodejs'`)
 
 				t.Log("rebuild with --clear-cache")
 				cmd = packCmd("build", repoName, "-p", "testdata/node_app/.", "--clear-cache")
@@ -197,10 +197,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, output, "nothing to restore")
 
 				t.Log("exporter reuses unchanged layers")
-				h.AssertContainsMatch(t, output, `\[exporter] \S+ \S+ reusing layer 'io.buildpacks.samples.nodejs:nodejs'`)
+				h.AssertContainsMatch(t, output, `\[exporter] reusing layer 'io.buildpacks.samples.nodejs:nodejs'`)
 
 				t.Log("cacher adds layers")
-				h.AssertContainsMatch(t, output, `\[cacher] \S+ \S+ adding layer 'io.buildpacks.samples.nodejs:nodejs'`)
+				h.AssertContainsMatch(t, output, `\[cacher] adding layer 'io.buildpacks.samples.nodejs:nodejs'`)
 			})
 
 			when("--buildpack", func() {
