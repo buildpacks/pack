@@ -44,9 +44,9 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 
 	bldr := builder.NewBuilder(img, c.config)
 
-	stack, err := bldr.GetStack()
+	stackID, err := bldr.GetStack()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get stack for builder image '%s'", name)
+		return nil, errors.Wrapf(err, "failed to get stackID for builder image '%s'", name)
 	}
 
 	metadata, err := bldr.GetMetadata()
@@ -72,9 +72,9 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 	}
 
 	return &BuilderInfo{
-		Stack:                stack,
-		RunImage:             metadata.RunImage.Image,
-		RunImageMirrors:      metadata.RunImage.Mirrors,
+		Stack:                stackID,
+		RunImage:             metadata.Stack.RunImage.Image,
+		RunImageMirrors:      metadata.Stack.RunImage.Mirrors,
 		LocalRunImageMirrors: localMirrors,
 		Buildpacks:           buildpacks,
 		Groups:               groups,

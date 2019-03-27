@@ -2,7 +2,9 @@ package builder
 
 import (
 	"github.com/buildpack/lifecycle"
+
 	"github.com/buildpack/pack/buildpack"
+	"github.com/buildpack/pack/stack"
 )
 
 const MetadataLabel = "io.buildpacks.builder.metadata"
@@ -21,14 +23,9 @@ type Stack struct {
 }
 
 type Metadata struct {
-	RunImage   RunImageMetadata    `json:"runImage"`
 	Buildpacks []BuildpackMetadata `json:"buildpacks"`
 	Groups     []GroupMetadata     `json:"groups"`
-}
-
-type RunImageMetadata struct {
-	Image   string   `json:"image"`
-	Mirrors []string `json:"mirrors"`
+	Stack      stack.Metadata      `json:"stack"`
 }
 
 type BuildpackMetadata struct {

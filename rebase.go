@@ -3,19 +3,14 @@ package pack
 import (
 	"context"
 	"encoding/json"
-	"errors"
-
-	"github.com/buildpack/lifecycle/image"
-
-	"github.com/buildpack/pack/logging"
 
 	"github.com/buildpack/lifecycle"
+	"github.com/buildpack/lifecycle/image"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/config"
-)
-
-const (
-	RunImageLabel = "io.buildpacks.run-image"
+	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
 )
 
 type RebaseConfig struct {
@@ -61,9 +56,30 @@ func (f *RebaseFactory) RebaseConfigFromFlags(ctx context.Context, flags RebaseF
 	if flags.RunImage != "" {
 		runImageName = flags.RunImage
 	} else {
-		runImageName, err = appImage.Label(RunImageLabel)
+		contents, err := appImage.Label(lifecycle.MetadataLabel)
 		if err != nil {
 			return RebaseConfig{}, err
+		}
+
+		var appImageMetadata lifecycle.AppImageMetadata
+		if err := json.Unmarshal([]byte(contents), &appImageMetadata); err != nil {
+			return RebaseConfig{}, err
+		}
+
+		registry, err := config.Registry(flags.RepoName)
+		if err != nil {
+			return RebaseConfig{}, errors.Wrapf(err, "parsing registry from reference '%s'", flags.RepoName)
+		}
+
+		mirrors := make([]string, 0)
+		if localRunImage := f.Config.GetRunImage(appImageMetadata.Stack.RunImage.Image); localRunImage != nil {
+			mirrors = append(mirrors, localRunImage.Mirrors...)
+		}
+		mirrors = append(mirrors, appImageMetadata.Stack.RunImage.Image)
+		mirrors = append(mirrors, appImageMetadata.Stack.RunImage.Mirrors...)
+		runImageName, err = config.ImageByRegistry(registry, mirrors)
+		if err != nil {
+			return RebaseConfig{}, errors.Wrapf(err, "find image by registry")
 		}
 	}
 
@@ -91,6 +107,7 @@ func (f *RebaseFactory) Rebase(cfg RebaseConfig) error {
 	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
 		return err
 	}
+	f.Logger.Info("Rebasing %s on run image %s", style.Symbol(cfg.Image.Name()), style.Symbol(cfg.NewBaseImage.Name()))
 	if err := cfg.Image.Rebase(metadata.RunImage.TopLayer, cfg.NewBaseImage); err != nil {
 		return err
 	}
@@ -108,9 +125,10 @@ func (f *RebaseFactory) Rebase(cfg RebaseConfig) error {
 		return err
 	}
 
-	_, err = cfg.Image.Save()
+	sha, err := cfg.Image.Save()
 	if err != nil {
 		return err
 	}
+	f.Logger.Info("New sha: %s", style.Symbol(sha))
 	return nil
 }

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -98,6 +99,10 @@ func (c *Config) SetRunImageMirrors(image string, mirrors []string) {
 }
 
 func ImageByRegistry(registry string, images []string) (string, error) {
+	if len(images) < 1 {
+		return "", errors.New("no images provided to search")
+	}
+
 	for _, i := range images {
 		reg, err := Registry(i)
 		if err != nil {

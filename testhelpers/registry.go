@@ -217,8 +217,11 @@ func DefaultBuilderImage(t *testing.T, registryPort string) string {
 
 		CreateImageOnLocal(t, dockerCli, newName, fmt.Sprintf(`
 					FROM %s
-					LABEL %s="{\"runImage\": {\"image\": \"%s\"}}"
-				`, origName, builder.MetadataLabel, runImageName))
+					LABEL %s="{\"stack\":{\"runImage\": {\"image\": \"%s\"}}}"
+					USER root
+					RUN echo "[run-image]\n  image=\"%s\"" > /buildpacks/stack.toml
+					USER pack
+				`, origName, builder.MetadataLabel, runImageName, runImageName))
 	})
 	return newName
 }
