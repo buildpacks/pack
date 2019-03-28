@@ -64,7 +64,6 @@ To test out your new app image locally, you can run it with Docker:
 
 ```bash
 $ docker run --rm -p 8080:8080 myapp
-$ curl localhost:8080
 ```
 
 Now just hit `localhost:8080` in your favorite browser and take a minute to admire your handiwork.
