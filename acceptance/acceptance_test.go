@@ -161,7 +161,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 				t.Log("sets the run image metadata")
 				runImageLabel := imageLabel(t, dockerCli, repoName, lifecycle.MetadataLabel)
-				h.AssertContains(t, runImageLabel, fmt.Sprintf(`"stack":{"runImage":{"image":"%s"}}}`,h.DefaultRunImage(t, registryConfig.RunRegistryPort)))
+				h.AssertContains(t, runImageLabel, fmt.Sprintf(`"stack":{"runImage":{"image":"%s"}}}`, h.DefaultRunImage(t, registryConfig.RunRegistryPort)))
 
 				t.Log("registry is empty")
 				contents, err := registryConfig.RegistryCatalog()
@@ -453,9 +453,8 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, output, `Please select a default builder with:
 
 	pack set-default-builder [builder image]`)
-				//h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb`)
-				//h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
-				h.AssertMatch(t, output, `Samples:\s+packs/samples`)
+				h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb`)
+				h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
 			})
 		})
 
@@ -526,9 +525,8 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, output, `Please select a default builder with:
 
 	pack set-default-builder [builder image]`)
-				//h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb`)
-				//h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
-				h.AssertMatch(t, output, `Samples:\s+packs/samples`)
+				h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb`)
+				h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
 			})
 		})
 	})

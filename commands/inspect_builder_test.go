@@ -207,9 +207,8 @@ Detection Order:
 				h.AssertContains(t, outBuf.String(), `Please select a default builder with:
 
 	pack set-default-builder [builder image]`)
-				//h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb`)
-				//h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
-				h.AssertMatch(t, outBuf.String(), `Samples:\s+packs/samples`)
+				h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+cloudfoundry/cnb`)
+				h.AssertMatch(t, outBuf.String(), `Heroku:\s+heroku/buildpacks`)
 			})
 		})
 	})

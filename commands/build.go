@@ -15,16 +15,14 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-var samplesBuilder = "packs/samples:rc"
-
 type suggestedBuilder struct {
 	name  string
 	image string
 }
 
 var suggestedBuilders = []suggestedBuilder{
-	//{"Cloud Foundry", "cloudfoundry/cnb"},  //Uncomment me when this builder works with master of pack
-	//{"Heroku", "heroku/buildpacks"},        //Uncomment me when this builder works with master of pack
+	{"Cloud Foundry", "cloudfoundry/cnb"},
+	{"Heroku", "heroku/buildpacks"},
 }
 
 func init() {
@@ -93,8 +91,6 @@ func suggestBuilders(logger *logging.Logger) {
 		tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t\n", builder.name, builder.image)))
 	}
 	tw.Flush()
-	logger.Info("\nSample builders:")
-	logger.Info(fmt.Sprintf("\t%s:\t%s", "Samples", samplesBuilder))
 }
 
 func buildCommandFlags(cmd *cobra.Command, buildFlags *pack.BuildFlags) {
