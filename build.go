@@ -68,12 +68,13 @@ type BuildConfig struct {
 }
 
 const (
-	launchDir     = "/workspace"
+	layersDir     = "/workspace"
 	buildpacksDir = "/buildpacks"
 	platformDir   = "/platform"
 	orderPath     = "/buildpacks/order.toml"
 	groupPath     = `/workspace/group.toml`
 	planPath      = "/workspace/plan.toml"
+	appDir        = "/workspace/app"
 )
 
 func DefaultBuildFactory(logger *logging.Logger, cache Cache, dockerClient Docker, fetcher Fetcher) (*BuildFactory, error) {
@@ -330,10 +331,12 @@ func (b *BuildConfig) Run(ctx context.Context) error {
 func (b *BuildConfig) detect(ctx context.Context, lifecycle *build.Lifecycle) error {
 	phase, err := lifecycle.NewPhase(
 		"detector",
-		build.WithArgs("-buildpacks", buildpacksDir,
+		build.WithArgs(
+			"-buildpacks", buildpacksDir,
 			"-order", orderPath,
 			"-group", groupPath,
 			"-plan", planPath,
+			"-app", appDir,
 		),
 	)
 	if err != nil {
@@ -350,7 +353,11 @@ func (b *BuildConfig) detect(ctx context.Context, lifecycle *build.Lifecycle) er
 func (b *BuildConfig) restore(ctx context.Context, lifecycle *build.Lifecycle) error {
 	phase, err := lifecycle.NewPhase(
 		"restorer",
-		build.WithArgs("-image="+b.Cache.Image(), "-group", groupPath),
+		build.WithArgs(
+			"-image", b.Cache.Image(),
+			"-group", groupPath,
+			"-layers", layersDir,
+		),
 		build.WithDaemonAccess(),
 	)
 
@@ -373,13 +380,22 @@ func (b *BuildConfig) analyze(ctx context.Context, lifecycle *build.Lifecycle) e
 		analyze, err = lifecycle.NewPhase(
 			"analyzer",
 			build.WithRegistryAccess(b.RepoName, b.RunImage),
-			build.WithArgs("-layers", launchDir, "-group", groupPath, b.RepoName),
+			build.WithArgs(
+				"-layers", layersDir,
+				"-group", groupPath,
+				b.RepoName,
+			),
 		)
 	} else {
 		analyze, err = lifecycle.NewPhase(
 			"analyzer",
 			build.WithDaemonAccess(),
-			build.WithArgs("-layers", launchDir, "-group", groupPath, "-daemon", b.RepoName),
+			build.WithArgs(
+				"-layers", layersDir,
+				"-group", groupPath,
+				"-daemon",
+				b.RepoName,
+			),
 		)
 	}
 	defer analyze.Cleanup()
@@ -391,7 +407,7 @@ func (b *BuildConfig) analyze(ctx context.Context, lifecycle *build.Lifecycle) e
 	if err != nil {
 		return errors.Wrap(err, "get pack uid and gid")
 	}
-	if err := b.chownDir(ctx, lifecycle, launchDir, uid, gid); err != nil {
+	if err := b.chownDir(ctx, lifecycle, layersDir, uid, gid); err != nil {
 		return errors.Wrap(err, "chown launch dir")
 	}
 
@@ -403,7 +419,8 @@ func (b *BuildConfig) build(ctx context.Context, lifecycle *build.Lifecycle) err
 		"builder",
 		build.WithArgs(
 			"-buildpacks", buildpacksDir,
-			"-layers", launchDir,
+			"-layers", layersDir,
+			"-app", appDir,
 			"-group", groupPath,
 			"-plan", planPath,
 			"-platform", platformDir,
@@ -446,7 +463,8 @@ func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) er
 	args := &exporterArgs{repoName: b.RepoName}
 	args.add(
 		"-image", b.RunImage,
-		"-layers", launchDir,
+		"-layers", layersDir,
+		"-app", appDir,
 		"-group", groupPath,
 	)
 
@@ -471,7 +489,7 @@ func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) er
 		return errors.Wrap(err, "get pack uid and gid")
 	}
 
-	if err := b.chownDir(ctx, lifecycle, launchDir, uid, gid); err != nil {
+	if err := b.chownDir(ctx, lifecycle, layersDir, uid, gid); err != nil {
 		return errors.Wrap(err, "chown launch dir")
 	}
 
@@ -481,7 +499,11 @@ func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) er
 func (b *BuildConfig) cache(ctx context.Context, lifecycle *build.Lifecycle) error {
 	phase, err := lifecycle.NewPhase(
 		"cacher",
-		build.WithArgs("-image="+b.Cache.Image(), "-group", groupPath),
+		build.WithArgs(
+			"-image", b.Cache.Image(),
+			"-group", groupPath,
+			"-layers", layersDir,
+		),
 		build.WithDaemonAccess(),
 	)
 
@@ -505,9 +527,9 @@ func (b *BuildConfig) packUidGid(ctx context.Context, builder string) (int, int,
 	var sUID, sGID string
 	for _, kv := range i.Config.Env {
 		kv2 := strings.SplitN(kv, "=", 2)
-		if len(kv2) == 2 && kv2[0] == "PACK_USER_ID" {
+		if len(kv2) == 2 && kv2[0] == "CNB_USER_ID" {
 			sUID = kv2[1]
-		} else if len(kv2) == 2 && kv2[0] == "PACK_GROUP_ID" {
+		} else if len(kv2) == 2 && kv2[0] == "CNB_GROUP_ID" {
 			sGID = kv2[1]
 		}
 	}
@@ -534,7 +556,7 @@ func (b *BuildConfig) chownDir(ctx context.Context, lifecycle *build.Lifecycle, 
 		Labels: map[string]string{"author": "pack"},
 	}, &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", lifecycle.WorkspaceVolume, launchDir),
+			fmt.Sprintf("%s:%s:", lifecycle.WorkspaceVolume, layersDir),
 		},
 	}, nil, "")
 	if err != nil {

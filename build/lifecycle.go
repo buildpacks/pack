@@ -151,11 +151,11 @@ func randString(n int) string {
 }
 
 func packUidGid(builder image.Image) (int, int, error) {
-	sUID, err := builder.Env("PACK_USER_ID")
+	sUID, err := builder.Env("CNB_USER_ID")
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "reading builder env variables")
 	}
-	sGID, err := builder.Env("PACK_GROUP_ID")
+	sGID, err := builder.Env("CNB_GROUP_ID")
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "reading builder env variables")
 	}
