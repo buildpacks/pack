@@ -17,7 +17,7 @@ var Symbol = func(format string, a ...interface{}) string {
 	return Key(format, a...)
 }
 
-var Key = color.GreenString
+var Key = color.HiBlueString
 
 var Tip = color.New(color.FgGreen, color.Bold).SprintfFunc()
 
