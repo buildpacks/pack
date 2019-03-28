@@ -16,6 +16,8 @@ import (
 	"github.com/docker/docker/pkg/term"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/style"
 )
 
 type Client struct {
@@ -82,7 +84,7 @@ func (d *Client) PullImage(ctx context.Context, imageID string, stdout io.Writer
 	}
 
 	termFd, isTerm := term.GetFdInfo(stdout)
-	err = jsonmessage.DisplayJSONMessagesStream(rc, stdout, termFd, isTerm, nil)
+	err = jsonmessage.DisplayJSONMessagesStream(rc, &colorizedWriter{stdout}, termFd, isTerm, nil)
 	if err != nil {
 		return err
 	}
@@ -113,4 +115,29 @@ func (d *Client) registryAuth(ref string) (string, error) {
 		)
 	}
 	return regAuth, nil
+}
+
+type colorizedWriter struct {
+	writer io.Writer
+}
+
+type colorFunc = func(string, ...interface{}) string
+
+func (w *colorizedWriter) Write(p []byte) (n int, err error) {
+	msg := string(p)
+	colorizers := map[string]colorFunc{
+		"Waiting":           style.Waiting,
+		"Pulling fs layer":  style.Waiting,
+		"Downloading":       style.Working,
+		"Download complete": style.Working,
+		"Extracting":        style.Working,
+		"Pull complete":     style.Complete,
+		"Already exists":    style.Complete,
+		"=":                 style.ProgressBar,
+		">":                 style.ProgressBar,
+	}
+	for pattern, colorize := range colorizers {
+		msg = strings.Replace(msg, pattern, colorize(pattern), -1)
+	}
+	return w.writer.Write([]byte(msg))
 }

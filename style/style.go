@@ -30,3 +30,8 @@ var Step = func(format string, a ...interface{}) string {
 var Prefix = color.CyanString
 
 var TimestampColorCode = color.FgHiBlack
+
+var Waiting = color.HiBlackString
+var Working = color.HiBlueString
+var Complete = color.GreenString
+var ProgressBar = color.HiBlueString
