@@ -52,7 +52,7 @@ $ pack build myapp
 
 That's it. You've now got a runnable app image called `myapp` available on your local Docker daemon.
 We did say this was a "brief" journey after all! Take note that your app was built without any need for you to install
-a JDK, run Maven, or otherwise configure a build environment. `pack` and the buildpack took care of all that for you.
+a JDK, run Maven, or otherwise configure a build environment. `pack` and the buildpacks took care of all that for you.
 
 ## Beyond the journey
 
