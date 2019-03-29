@@ -74,7 +74,7 @@ const (
 	orderPath     = "/buildpacks/order.toml"
 	groupPath     = `/workspace/group.toml`
 	planPath      = "/workspace/plan.toml"
-	appDir        = "/workspace/app"
+	appDir        = "/workspace"
 )
 
 func DefaultBuildFactory(logger *logging.Logger, cache Cache, dockerClient Docker, fetcher Fetcher) (*BuildFactory, error) {
