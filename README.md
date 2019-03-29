@@ -55,7 +55,7 @@ buildpacks) is used, and an appropriate buildpack is automatically selected from
 To publish the produced image to an image registry, include the `--publish` flag:
 
 ```bash
-$ pack build myregistry.com/my-app:my-tag --publish
+$ pack build registry.example.com/my-app:my-tag --publish
 ```
 
 ### Example: Building using a specified buildpack
