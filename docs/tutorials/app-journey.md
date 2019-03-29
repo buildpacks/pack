@@ -72,3 +72,6 @@ Now just hit `localhost:8080` in your favorite browser and take a minute to admi
 
 `pack` uses Cloud Native Buildpacks to help you easily create OCI images that you can run just about anywhere. Try
 deploying your new image to your favorite cloud!
+
+> In case you need it, `pack build` has a handy flag called `--publish` that will publish your app image to a Docker
+> registry after building it.
