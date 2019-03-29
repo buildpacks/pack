@@ -36,7 +36,7 @@ $ brew install pack
 
 ## Next stop, the end
 
-Next, clone or download this simple [Java app source code](https://github.com/buildpack/sample-java-app) to a location
+Next, clone or download [this simple Java app source code](https://github.com/buildpack/sample-java-app) to a location
 of your choosing.
 
 Now run the following commands in a shell:
