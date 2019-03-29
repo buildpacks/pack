@@ -94,7 +94,7 @@ func (p *Phase) Run(context context.Context) error {
 		return errors.Wrapf(err, "failed to create '%s' container", p.name)
 	}
 	p.appOnce.Do(func() {
-		appReader, _ := archive.CreateTarReader(p.appDir, launchDir+"/app", p.uid, p.gid)
+		appReader, _ := archive.CreateTarReader(p.appDir, launchDir, p.uid, p.gid)
 		if err := p.docker.CopyToContainer(context, p.ctr.ID, "/", appReader, types.CopyToContainerOptions{}); err != nil {
 			err = errors.Wrapf(err, "failed to copy files to '%s' container", p.name)
 		}
