@@ -25,7 +25,7 @@ Let's see auto-detection in action by running `pack build` against a simple Java
 Start by installing `pack`. Simply download the appropriate binary from the latest
 [GitHub release](https://github.com/buildpack/pack/releases) and move it somewhere on your `$PATH`.
 
-If you're on MacOS, you can use Homebrew instead:
+If you're on macOS, you can use Homebrew instead:
 
 ```bash
 $ brew tap buildpack/tap
