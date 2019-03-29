@@ -5,9 +5,9 @@ create a runnable app image from source code.
 
 ## What is a buildpack?
 
-Let's start with the basics. A buildpack is something you've likely already leveraged without knowing it, as
-they're already being used in many cloud platforms. A buildpack's job is to gather
-dependencies that your app needs to build and run, and a buildpack often performs this job quickly and quietly.
+Let's start with the basics. A buildpack is something you've likely leveraged without knowing it, as they're already
+being used in many cloud platforms. A buildpack's job is to gather dependencies that your app needs to build and run,
+and a buildpack often performs this job quickly and quietly.
 
 That said, while buildpacks are often a behind-the-scenes detail, they are extremely important.
 
