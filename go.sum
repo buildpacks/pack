@@ -11,8 +11,11 @@ github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 h1:TngWCqHvy9oXAN6lEV
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5/go.mod h1:lmUJ/7eu/Q8D7ML55dXQrVaamCz2vxCfdQBasLZfHKk=
 github.com/buildpack/lifecycle v0.0.0-20190314183328-a6ea5e18de72 h1:tCYd4NvBTgrb+7VP8vgZmOO4ecK9i/RKAArO2EAJ20I=
 github.com/buildpack/lifecycle v0.0.0-20190314183328-a6ea5e18de72/go.mod h1:35fR8AHcmIc9UHt/XE0Js3UzA260lNqQMhgH4HQ3vPM=
+github.com/buildpack/lifecycle v0.0.0-20190327221653-645dc4f6a36/go.mod h1:35fR8AHcmIc9UHt/XE0Js3UzA260lNqQMhgH4HQ3vPM=
 github.com/buildpack/lifecycle v0.0.0-20190327221653-eecd1c5c1b4c h1:jiEogU54RaQCF9/ZqwHbrrcFJmMFdOu5VQdO3FpLAvE=
 github.com/buildpack/lifecycle v0.0.0-20190327221653-eecd1c5c1b4c/go.mod h1:35fR8AHcmIc9UHt/XE0Js3UzA260lNqQMhgH4HQ3vPM=
+github.com/buildpack/lifecycle v0.0.0-20190329190431-645dc4f6a36e h1:JekCqNX3Ssfkt6hwkSOIPEA4Ot9tYRIIxMbiAYgLZS4=
+github.com/buildpack/lifecycle v0.0.0-20190329190431-645dc4f6a36e/go.mod h1:35fR8AHcmIc9UHt/XE0Js3UzA260lNqQMhgH4HQ3vPM=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
