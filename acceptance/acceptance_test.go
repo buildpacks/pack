@@ -194,8 +194,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				output = h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
-				t.Log("doesn't restore the cache")
-				h.AssertContains(t, output, "nothing to restore")
+				t.Log("skips restore")
+				h.AssertContains(t, output, "Skipping 'restore' due to clearing cache")
+
+				t.Log("skips analyze")
+				h.AssertContains(t, output, "Skipping 'analyze' due to clearing cache")
 
 				t.Log("exporter reuses unchanged layers")
 				h.AssertContainsMatch(t, output, `\[exporter] reusing layer 'io.buildpacks.samples.nodejs:nodejs'`)
