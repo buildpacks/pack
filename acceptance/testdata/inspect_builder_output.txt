@@ -1,4 +1,4 @@
-Inspecting builder: %s
+Inspecting builder: '%s'
 
 Remote
 ------
