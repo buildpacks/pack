@@ -455,10 +455,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNotNil(t, err)
 				h.AssertContains(t, output, `Please select a default builder with:
 
-	pack set-default-builder [builder image]`)
-				h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb:bionic`)
-				h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb:cflinuxfs3`)
-				h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
+	pack set-default-builder <builder image>`)
+				h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
+				h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
+				h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks'`)
 			})
 		})
 
@@ -528,10 +528,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNotNil(t, err)
 				h.AssertContains(t, output, `Please select a default builder with:
 
-	pack set-default-builder [builder image]`)
-				h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb:bionic`)
-				h.AssertMatch(t, output, `Cloud Foundry:\s+cloudfoundry/cnb:cflinuxfs3`)
-				h.AssertMatch(t, output, `Heroku:\s+heroku/buildpacks`)
+	pack set-default-builder <builder image>`)
+				h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
+				h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
+				h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks'`)
 			})
 		})
 	})

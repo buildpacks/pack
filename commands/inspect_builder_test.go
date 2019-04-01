@@ -141,14 +141,14 @@ ERROR: failed to inspect image 'some/image': some local error
 
 				it("should print a different inspection message", func() {
 					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), "Inspecting default builder: some/image")
+					h.AssertContains(t, outBuf.String(), "Inspecting default builder: 'some/image'")
 				})
 			})
 
 			it("displays builder information for local and remote", func() {
 				command.SetArgs([]string{"some/image"})
 				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Inspecting builder: some/image")
+				h.AssertContains(t, outBuf.String(), "Inspecting builder: 'some/image'")
 				h.AssertContains(t, outBuf.String(), `
 Remote
 ------
@@ -206,9 +206,10 @@ Detection Order:
 				h.AssertNotNil(t, command.Execute())
 				h.AssertContains(t, outBuf.String(), `Please select a default builder with:
 
-	pack set-default-builder [builder image]`)
-				h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+cloudfoundry/cnb`)
-				h.AssertMatch(t, outBuf.String(), `Heroku:\s+heroku/buildpacks`)
+	pack set-default-builder <builder image>`)
+				h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
+				h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
+				h.AssertMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks'`)
 			})
 		})
 	})
