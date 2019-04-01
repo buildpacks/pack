@@ -100,7 +100,7 @@ func (p *Phase) Run(context context.Context) error {
 		}
 	})
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "run %s container", p.name)
 	}
 	return p.docker.RunContainer(
 		context,
