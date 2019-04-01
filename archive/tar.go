@@ -14,6 +14,12 @@ import (
 	"time"
 )
 
+var NormalizedDateTime time.Time
+
+func init() {
+	NormalizedDateTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
+}
+
 func CreateTar(tarFile, srcDir, tarDir string, uid, gid int) error {
 	fh, err := os.Create(tarFile)
 	if err != nil {
@@ -139,7 +145,7 @@ func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int
 		Gid:      gid,
 		Mode:     0755,
 		Typeflag: tar.TypeDir,
-		ModTime:  time.Time{},
+		ModTime:  NormalizedDateTime,
 	}
 	if runtime.GOOS == "windows" {
 		header.Name = strings.Replace(header.Name, "\\", "/", -1)
@@ -200,7 +206,7 @@ func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
 		if runtime.GOOS == "windows" {
 			header.Name = strings.Replace(header.Name, "\\", "/", -1)
 		}
-		header.ModTime = time.Time{}
+		header.ModTime = NormalizedDateTime
 		header.Uid = uid
 		header.Gid = gid
 		header.Uname = ""

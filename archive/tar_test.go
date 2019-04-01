@@ -106,6 +106,9 @@ func (v *tarVerifier) nextDirectory(name string, mode int64) {
 	if header.Mode != mode {
 		v.t.Fatalf(`expected %s to have mode %o but, got: %o`, header.Name, mode, header.Mode)
 	}
+	if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
+		v.t.Fatalf(`expected %s to have been normalized, got: %s`, header.Name, header.ModTime.String())
+	}
 }
 
 func (v *tarVerifier) nextFile(name, expectedFileContents string) {
@@ -132,6 +135,10 @@ func (v *tarVerifier) nextFile(name, expectedFileContents string) {
 	if string(fileContents) != expectedFileContents {
 		v.t.Fatalf(`expected to some-file.txt to have %s got %s`, expectedFileContents, string(fileContents))
 	}
+
+	if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
+		v.t.Fatalf(`expected %s to have been normalized, got: %s`, header.Name, header.ModTime.String())
+	}
 }
 
 func (v *tarVerifier) nextSymLink(name, link string) {
@@ -155,5 +162,8 @@ func (v *tarVerifier) nextSymLink(name, link string) {
 
 	if header.Linkname != "../some-file.txt" {
 		v.t.Fatalf(`expected to link-file to have target %s got: %s`, link, header.Linkname)
+	}
+	if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
+		v.t.Fatalf(`expected %s to have been normalized, got: %s`, header.Name, header.ModTime.String())
 	}
 }
