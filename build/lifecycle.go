@@ -183,14 +183,14 @@ func tarEnvFile(tmpDir string, env map[string]string) (string, error) {
 	tw := tar.NewWriter(fh)
 	defer tw.Close()
 	for k, v := range env {
-		if err := tw.WriteHeader(&tar.Header{Name: filepath.Join(platformDir, "env", k), Size: int64(len(v)), Mode: 0444, ModTime: now}); err != nil {
+		if err := tw.WriteHeader(&tar.Header{Name: platformDir + "/env/" + k, Size: int64(len(v)), Mode: 0444, ModTime: now}); err != nil {
 			return "", err
 		}
 		if _, err := tw.Write([]byte(v)); err != nil {
 			return "", err
 		}
 	}
-	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name:  filepath.Join(platformDir, "env"), Mode: 0555, ModTime: now}); err != nil {
+	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name:  platformDir + "/env", Mode: 0555, ModTime: now}); err != nil {
 		return "", err
 	}
 	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name:  platformDir, Mode: 0555, ModTime: now}); err != nil {
