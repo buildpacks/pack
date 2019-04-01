@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/buildpack/pack/build"
@@ -20,8 +19,6 @@ import (
 	"github.com/buildpack/pack/style"
 
 	lcimg "github.com/buildpack/lifecycle/image"
-	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/pkg/errors"
 )
 
@@ -66,16 +63,6 @@ type BuildConfig struct {
 	Cache           Cache
 	LifecycleConfig build.LifecycleConfig
 }
-
-const (
-	layersDir     = "/workspace"
-	buildpacksDir = "/buildpacks"
-	platformDir   = "/platform"
-	orderPath     = "/buildpacks/order.toml"
-	groupPath     = `/workspace/group.toml`
-	planPath      = "/workspace/plan.toml"
-	appDir        = "/workspace/app"
-)
 
 func DefaultBuildFactory(logger *logging.Logger, cache Cache, dockerClient Docker, fetcher Fetcher) (*BuildFactory, error) {
 	f := &BuildFactory{
@@ -310,7 +297,6 @@ func (b *BuildConfig) Run(ctx context.Context) error {
 	if b.ClearCache {
 		b.Logger.Verbose("Skipping 'analyze' due to clearing cache")
 	} else {
-		b.Logger.Verbose("Reading information from previous image for possible re-use")
 		if err := b.analyze(ctx, lifecycle); err != nil {
 			return err
 		}
@@ -335,244 +321,57 @@ func (b *BuildConfig) Run(ctx context.Context) error {
 }
 
 func (b *BuildConfig) detect(ctx context.Context, lifecycle *build.Lifecycle) error {
-	phase, err := lifecycle.NewPhase(
-		"detector",
-		build.WithArgs(
-			"-buildpacks", buildpacksDir,
-			"-order", orderPath,
-			"-group", groupPath,
-			"-plan", planPath,
-			"-app", appDir,
-		),
-	)
+	detect, err := lifecycle.NewDetect()
 	if err != nil {
 		return err
 	}
-	defer phase.Cleanup()
-
-	if err := phase.Run(ctx); err != nil {
-		return errors.Wrap(err, "run detect container")
-	}
-	return nil
+	defer detect.Cleanup()
+	return detect.Run(ctx)
 }
 
 func (b *BuildConfig) restore(ctx context.Context, lifecycle *build.Lifecycle) error {
-	phase, err := lifecycle.NewPhase(
-		"restorer",
-		build.WithArgs(
-			"-image", b.Cache.Image(),
-			"-group", groupPath,
-			"-layers", layersDir,
-		),
-		build.WithDaemonAccess(),
-	)
-
+	restore, err := lifecycle.NewRestore(b.Cache.Image())
 	if err != nil {
 		return err
 	}
-	defer phase.Cleanup()
-
-	if err := phase.Run(ctx); err != nil {
-		return errors.Wrap(err, "run restorer container")
-	}
-
-	return nil
+	defer restore.Cleanup()
+	return restore.Run(ctx)
 }
 
 func (b *BuildConfig) analyze(ctx context.Context, lifecycle *build.Lifecycle) error {
-	var analyze *build.Phase
-	var err error
-	if b.Publish {
-		analyze, err = lifecycle.NewPhase(
-			"analyzer",
-			build.WithRegistryAccess(b.RepoName, b.RunImage),
-			build.WithArgs(
-				"-layers", layersDir,
-				"-group", groupPath,
-				b.RepoName,
-			),
-		)
-	} else {
-		analyze, err = lifecycle.NewPhase(
-			"analyzer",
-			build.WithDaemonAccess(),
-			build.WithArgs(
-				"-layers", layersDir,
-				"-group", groupPath,
-				"-daemon",
-				b.RepoName,
-			),
-		)
-	}
-	defer analyze.Cleanup()
-	if err = analyze.Run(ctx); err != nil {
+	analyze, err := lifecycle.NewAnalyze(b.RepoName, b.Publish)
+	if err != nil {
 		return err
 	}
-
-	uid, gid, err := b.packUidGid(ctx, b.Builder)
-	if err != nil {
-		return errors.Wrap(err, "get pack uid and gid")
-	}
-	if err := b.chownDir(ctx, lifecycle, layersDir, uid, gid); err != nil {
-		return errors.Wrap(err, "chown launch dir")
-	}
-
-	return nil
+	defer analyze.Cleanup()
+	return analyze.Run(ctx)
 }
 
 func (b *BuildConfig) build(ctx context.Context, lifecycle *build.Lifecycle) error {
-	build, err := lifecycle.NewPhase(
-		"builder",
-		build.WithArgs(
-			"-buildpacks", buildpacksDir,
-			"-layers", layersDir,
-			"-app", appDir,
-			"-group", groupPath,
-			"-plan", planPath,
-			"-platform", platformDir,
-		),
-	)
+	build, err := lifecycle.NewBuild()
 	if err != nil {
 		return err
 	}
 	defer build.Cleanup()
-	if err := build.Run(ctx); err != nil {
-		return errors.Wrap(err, "run build container")
-	}
-	return nil
-}
-
-type exporterArgs struct {
-	args     []string
-	repoName string
-}
-
-func (e *exporterArgs) add(args ...string) {
-	e.args = append(e.args, args...)
-}
-
-func (e *exporterArgs) daemon() {
-	e.args = append(e.args, "-daemon")
-}
-
-func (e *exporterArgs) list() []string {
-	e.args = append(e.args, e.repoName)
-	return e.args
+	return build.Run(ctx)
 }
 
 func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) error {
-	var (
-		export *build.Phase
-		err    error
-	)
-
-	args := &exporterArgs{repoName: b.RepoName}
-	args.add(
-		"-image", b.RunImage,
-		"-layers", layersDir,
-		"-app", appDir,
-		"-group", groupPath,
-	)
-
-	if b.Publish {
-		export, err = lifecycle.NewPhase(
-			"exporter",
-			build.WithRegistryAccess(b.RepoName, b.RunImage),
-			build.WithArgs(args.list()...),
-		)
-	} else {
-		args.daemon()
-		export, err = lifecycle.NewPhase(
-			"exporter",
-			build.WithDaemonAccess(),
-			build.WithArgs(args.list()...),
-		)
+	export, err := lifecycle.NewExport(b.RepoName, b.RunImage, b.Publish)
+	if err != nil {
+		return err
 	}
 	defer export.Cleanup()
-
-	uid, gid, err := b.packUidGid(ctx, b.Builder)
-	if err != nil {
-		return errors.Wrap(err, "get pack uid and gid")
-	}
-
-	if err := b.chownDir(ctx, lifecycle, layersDir, uid, gid); err != nil {
-		return errors.Wrap(err, "chown launch dir")
-	}
-
 	return export.Run(ctx)
 }
 
 func (b *BuildConfig) cache(ctx context.Context, lifecycle *build.Lifecycle) error {
-	phase, err := lifecycle.NewPhase(
-		"cacher",
-		build.WithArgs(
-			"-image", b.Cache.Image(),
-			"-group", groupPath,
-			"-layers", layersDir,
-		),
-		build.WithDaemonAccess(),
-	)
-
+	cache, err := lifecycle.NewCache(b.Cache.Image())
 	if err != nil {
 		return err
 	}
-	defer phase.Cleanup()
-
-	if err := phase.Run(ctx); err != nil {
-		return errors.Wrap(err, "run cacher container")
-	}
-
-	return nil
-}
-
-func (b *BuildConfig) packUidGid(ctx context.Context, builder string) (int, int, error) {
-	i, _, err := b.Cli.ImageInspectWithRaw(ctx, builder)
-	if err != nil {
-		return 0, 0, errors.Wrap(err, "reading builder env variables")
-	}
-	var sUID, sGID string
-	for _, kv := range i.Config.Env {
-		kv2 := strings.SplitN(kv, "=", 2)
-		if len(kv2) == 2 && kv2[0] == "CNB_USER_ID" {
-			sUID = kv2[1]
-		} else if len(kv2) == 2 && kv2[0] == "CNB_GROUP_ID" {
-			sGID = kv2[1]
-		}
-	}
-	if sUID == "" || sGID == "" {
-		return 0, 0, errors.New("not found pack uid & gid")
-	}
-	var uid, gid int
-	uid, err = strconv.Atoi(sUID)
-	if err != nil {
-		return 0, 0, errors.Wrapf(err, "parsing pack uid: %s", sUID)
-	}
-	gid, err = strconv.Atoi(sGID)
-	if err != nil {
-		return 0, 0, errors.Wrapf(err, "parsing pack gid: %s", sGID)
-	}
-	return uid, gid, nil
-}
-
-func (b *BuildConfig) chownDir(ctx context.Context, lifecycle *build.Lifecycle, path string, uid, gid int) error {
-	ctr, err := b.Cli.ContainerCreate(ctx, &container.Config{
-		Image:  b.Builder,
-		Cmd:    []string{"chown", "-R", fmt.Sprintf("%d:%d", uid, gid), path},
-		User:   "root",
-		Labels: map[string]string{"author": "pack"},
-	}, &container.HostConfig{
-		Binds: []string{
-			fmt.Sprintf("%s:%s:", lifecycle.WorkspaceVolume, layersDir),
-		},
-	}, nil, "")
-	if err != nil {
-		return err
-	}
-	defer b.Cli.ContainerRemove(context.Background(), ctr.ID, dockertypes.ContainerRemoveOptions{Force: true})
-	if err := b.Cli.RunContainer(ctx, ctr.ID, b.Logger.VerboseWriter(), b.Logger.VerboseErrorWriter()); err != nil {
-		return err
-	}
-	return nil
+	defer cache.Cleanup()
+	return cache.Run(ctx)
 }
 
 func parseEnvFile(filename string) (map[string]string, error) {

@@ -102,28 +102,39 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 					h.AssertContains(t, outBuf.String(), "[phase] other-key=other-val")
 				})
 
-				it("attaches the same workspace volume to each phase", func() {
-					writePhase, err := lifecycle.NewPhase("phase", build.WithArgs("write", "/workspace/test.txt", "test-workspace"))
+				it("attaches the same layers volume to each phase", func() {
+					writePhase, err := lifecycle.NewPhase("phase", build.WithArgs("write", "/layers/test.txt", "test-layers"))
+					h.AssertNil(t, err)
+					assertRunSucceeds(t, writePhase, &outBuf, &errBuf)
+					h.AssertContains(t, outBuf.String(), "[phase] write test")
+					readPhase, err := lifecycle.NewPhase("phase", build.WithArgs("read", "/layers/test.txt"))
+					h.AssertNil(t, err)
+					assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
+					h.AssertContains(t, outBuf.String(), "[phase] file contents: test-layers")
+				})
+
+				it("attaches the same app volume to each phase", func() {
+					writePhase, err := lifecycle.NewPhase("phase", build.WithArgs("write", "/workspace/test.txt", "test-app"))
 					h.AssertNil(t, err)
 					assertRunSucceeds(t, writePhase, &outBuf, &errBuf)
 					h.AssertContains(t, outBuf.String(), "[phase] write test")
 					readPhase, err := lifecycle.NewPhase("phase", build.WithArgs("read", "/workspace/test.txt"))
 					h.AssertNil(t, err)
 					assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
-					h.AssertContains(t, outBuf.String(), "[phase] file contents: test-workspace")
+					h.AssertContains(t, outBuf.String(), "[phase] file contents: test-app")
 				})
 
-				it("copies the app into the workspace volume before the first phase", func() {
-					readPhase, err := lifecycle.NewPhase("phase", build.WithArgs("read", "/workspace/app/fake-app-file"))
+				it("copies the app into the app volume before the first phase", func() {
+					readPhase, err := lifecycle.NewPhase("phase", build.WithArgs("read", "/workspace/fake-app-file"))
 					h.AssertNil(t, err)
 					assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
 					h.AssertContains(t, outBuf.String(), "[phase] file contents: fake-app-contents")
 					h.AssertContains(t, outBuf.String(), "[phase] file uid/gid 111/222")
-					deletePhase, err := lifecycle.NewPhase("phase", build.WithArgs("delete", "/workspace/app/fake-app-file"))
+					deletePhase, err := lifecycle.NewPhase("phase", build.WithArgs("delete", "/workspace/fake-app-file"))
 					h.AssertNil(t, err)
 					assertRunSucceeds(t, deletePhase, &outBuf, &errBuf)
 					h.AssertContains(t, outBuf.String(), "[phase] delete test")
-					readPhase2, err := lifecycle.NewPhase("phase", build.WithArgs("read", "/workspace/app/fake-app-file"))
+					readPhase2, err := lifecycle.NewPhase("phase", build.WithArgs("read", "/workspace/fake-app-file"))
 					h.AssertNil(t, err)
 					err = readPhase2.Run(context.TODO())
 					readPhase2.Cleanup()
@@ -309,11 +320,21 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, subject.Cleanup())
 		})
 
-		it("should delete the workspace volume", func() {
+		it("should delete the layers volume", func() {
 			body, err := subject.Docker.VolumeList(context.TODO(),
 				filters.NewArgs(filters.KeyValuePair{
 					Key:   "name",
-					Value: subject.WorkspaceVolume,
+					Value: subject.LayersVolume,
+				}))
+			h.AssertNil(t, err)
+			h.AssertEq(t, len(body.Volumes), 0)
+		})
+
+		it("should delete the app volume", func() {
+			body, err := subject.Docker.VolumeList(context.TODO(),
+				filters.NewArgs(filters.KeyValuePair{
+					Key:   "name",
+					Value: subject.AppVolume,
 				}))
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(body.Volumes), 0)
@@ -335,14 +356,13 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 					break
 				}
 			}
-
 			h.AssertEq(t, found, false)
 		})
 	})
-
 }
 
 func assertRunSucceeds(t *testing.T, phase *build.Phase, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
+	t.Helper()
 	if err := phase.Run(context.TODO()); err != nil {
 		phase.Cleanup()
 		t.Fatalf("Failed to run phase '%s' \n stdout: '%s' \n stderr '%s'", err, outBuf.String(), errBuf.String())

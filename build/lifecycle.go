@@ -4,8 +4,6 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/volume"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -20,27 +18,28 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/image"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/volume"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/style"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/pkg/errors"
-
 	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/style"
 )
 
 type Lifecycle struct {
-	BuilderImage    string
-	Logger          *logging.Logger
-	Docker          Docker
-	WorkspaceVolume string
-	uid, gid        int
-	appDir          string
-	appOnce         *sync.Once
+	BuilderImage string
+	Logger       *logging.Logger
+	Docker       Docker
+	LayersVolume string
+	AppVolume    string
+	uid, gid     int
+	appDir       string
+	appOnce      *sync.Once
 }
 
 type Docker interface {
@@ -53,10 +52,6 @@ type Docker interface {
 	VolumeRemove(ctx context.Context, volumeID string, force bool) error
 	VolumeList(ctx context.Context, filter filters.Args) (volume.VolumeListOKBody, error)
 }
-
-const (
-	launchDir = "/workspace"
-)
 
 type LifecycleConfig struct {
 	BuilderImage string
@@ -123,23 +118,30 @@ func NewLifecycle(c LifecycleConfig) (*Lifecycle, error) {
 	}
 
 	return &Lifecycle{
-		BuilderImage:    builder.Name(),
-		Logger:          c.Logger,
-		Docker:          client,
-		WorkspaceVolume: "pack-workspace-" + randString(10),
-		appDir:          c.AppDir,
-		uid:             uid,
-		gid:             gid,
-		appOnce:         &sync.Once{},
+		BuilderImage: builder.Name(),
+		Logger:       c.Logger,
+		Docker:       client,
+		LayersVolume: "pack-layers-" + randString(10),
+		AppVolume:    "pack-app-" + randString(10),
+		appDir:       c.AppDir,
+		uid:          uid,
+		gid:          gid,
+		appOnce:      &sync.Once{},
 	}, nil
 }
 
 func (l *Lifecycle) Cleanup() error {
-	_, err := l.Docker.ImageRemove(context.Background(), l.BuilderImage, types.ImageRemoveOptions{})
-	if err != nil {
-		return err
+	var reterr error
+	if _, err := l.Docker.ImageRemove(context.Background(), l.BuilderImage, types.ImageRemoveOptions{}); err != nil {
+		reterr = errors.Wrapf(err, "failed to clean up builder image %s", l.BuilderImage)
 	}
-	return l.Docker.VolumeRemove(context.Background(), l.WorkspaceVolume, true)
+	if err := l.Docker.VolumeRemove(context.Background(), l.LayersVolume, true); err != nil {
+		reterr = errors.Wrapf(err, "failed to clean up layers volume %s", l.LayersVolume)
+	}
+	if err := l.Docker.VolumeRemove(context.Background(), l.AppVolume, true); err != nil {
+		reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.AppVolume)
+	}
+	return reterr
 }
 
 func randString(n int) string {
@@ -181,14 +183,17 @@ func tarEnvFile(tmpDir string, env map[string]string) (string, error) {
 	tw := tar.NewWriter(fh)
 	defer tw.Close()
 	for k, v := range env {
-		if err := tw.WriteHeader(&tar.Header{Name: "/platform/env/" + k, Size: int64(len(v)), Mode: 0444, ModTime: now}); err != nil {
+		if err := tw.WriteHeader(&tar.Header{Name: filepath.Join(platformDir, "env", k), Size: int64(len(v)), Mode: 0444, ModTime: now}); err != nil {
 			return "", err
 		}
 		if _, err := tw.Write([]byte(v)); err != nil {
 			return "", err
 		}
 	}
-	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: "/platform/env/", Mode: 0555, ModTime: now}); err != nil {
+	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name:  filepath.Join(platformDir, "env"), Mode: 0555, ModTime: now}); err != nil {
+		return "", err
+	}
+	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name:  platformDir, Mode: 0555, ModTime: now}); err != nil {
 		return "", err
 	}
 	return fh.Name(), nil
@@ -217,7 +222,7 @@ func createBuildpacksTars(tmpDir string, buildpacks []string, logger *logging.Lo
 
 			tarFile := filepath.Join(tmpDir, fmt.Sprintf("%s.%s.tar", buildpackTOML.Buildpack.EscapedID(), version))
 
-			if err := archive.CreateTar(tarFile, bp, filepath.Join("/buildpacks", buildpackTOML.Buildpack.EscapedID(), version), uid, gid); err != nil {
+			if err := archive.CreateTar(tarFile, bp, filepath.Join(buildpacksDir, buildpackTOML.Buildpack.EscapedID(), version), uid, gid); err != nil {
 				return nil, err
 			}
 
@@ -254,7 +259,7 @@ func orderTar(tmpDir string, buildpacks []*lifecycle.Buildpack) (string, error) 
 	orderToml := tomlBuilder.String()
 	err := archive.CreateSingleFileTar(
 		filepath.Join(tmpDir, "order.tar"),
-		"/buildpacks/order.toml",
+		orderPath,
 		orderToml,
 	)
 	if err != nil {

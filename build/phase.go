@@ -35,7 +35,8 @@ func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (
 	}
 	hostConf := &container.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", l.WorkspaceVolume, launchDir),
+			fmt.Sprintf("%s:%s:", l.LayersVolume, layersDir),
+			fmt.Sprintf("%s:%s:", l.AppVolume, appDir),
 		},
 	}
 	ctrConf.Cmd = []string{"/lifecycle/" + name}
@@ -54,7 +55,7 @@ func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (
 	for _, op := range ops {
 		phase, err = op(phase)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "create %s phase", name)
 		}
 	}
 	return phase, nil
@@ -94,13 +95,13 @@ func (p *Phase) Run(context context.Context) error {
 		return errors.Wrapf(err, "failed to create '%s' container", p.name)
 	}
 	p.appOnce.Do(func() {
-		appReader, _ := archive.CreateTarReader(p.appDir, launchDir+"/app", p.uid, p.gid)
+		appReader, _ := archive.CreateTarReader(p.appDir, appDir, p.uid, p.gid)
 		if err := p.docker.CopyToContainer(context, p.ctr.ID, "/", appReader, types.CopyToContainerOptions{}); err != nil {
 			err = errors.Wrapf(err, "failed to copy files to '%s' container", p.name)
 		}
 	})
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "run %s container", p.name)
 	}
 	return p.docker.RunContainer(
 		context,
