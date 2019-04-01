@@ -34,9 +34,9 @@ func InspectBuilder(logger *logging.Logger, cfg *config.Config, inspector Builde
 			}
 
 			if imageName == cfg.DefaultBuilder {
-				logger.Info("Inspecting default builder: %s\n", imageName)
+				logger.Info("Inspecting default builder: %s\n", style.Symbol(imageName))
 			} else {
-				logger.Info("Inspecting builder: %s\n", imageName)
+				logger.Info("Inspecting builder: %s\n", style.Symbol(imageName))
 			}
 
 			logger.Info("Remote\n------\n")

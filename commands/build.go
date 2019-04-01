@@ -18,11 +18,17 @@ import (
 type suggestedBuilder struct {
 	name  string
 	image string
+	info string
 }
 
-var suggestedBuilders = []suggestedBuilder{
-	{"Cloud Foundry", "cloudfoundry/cnb"},
-	{"Heroku", "heroku/buildpacks"},
+var suggestedBuilders = [][]suggestedBuilder{
+	{
+		{"Cloud Foundry", "cloudfoundry/cnb:bionic", "small base image with Java & Node.js"},
+		{"Cloud Foundry", "cloudfoundry/cnb:cflinuxfs3", "larger base image with Java, Node.js & Python"},
+	},
+	{
+		{"Heroku", "heroku/buildpacks", "heroku-18 base image with official Heroku buildpacks"},
+	},
 }
 
 func init() {
@@ -78,19 +84,21 @@ func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 
 func suggestBuilders(logger *logging.Logger) {
 	logger.Info("Please select a default builder with:\n")
-	logger.Info("\tpack set-default-builder [builder image]")
-	logger.Info("\nSuggested builders:")
+	logger.Info("\tpack set-default-builder <builder image>")
+	logger.Info("\nSuggested builders:\n")
 	tw := tabwriter.NewWriter(logger.RawWriter(), 10, 10, 5, ' ', tabwriter.TabIndent)
 	for len(suggestedBuilders) > 0 {
 		n := rand.Intn(len(suggestedBuilders))
-		builder := suggestedBuilders[n]
-		tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t\n", builder.name, builder.image)))
+		builders := suggestedBuilders[n]
+		for _, builder := range builders {
+			tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t%s\t\n", builder.name, style.Symbol(builder.image), builder.info)))
+		}
 		suggestedBuilders = append(suggestedBuilders[:n], suggestedBuilders[n+1:]...)
 	}
-	for _, builder := range suggestedBuilders {
-		tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t\n", builder.name, builder.image)))
-	}
 	tw.Flush()
+	logger.Info("\n")
+	logger.Tip("Learn more about a specific builder with:\n")
+	logger.Info("\tpack inspect-builder [builder image]")
 }
 
 func buildCommandFlags(cmd *cobra.Command, buildFlags *pack.BuildFlags) {
