@@ -300,14 +300,20 @@ func (b *BuildConfig) Run(ctx context.Context) error {
 	}
 
 	b.Logger.Verbose(style.Step("RESTORING"))
-	if err := b.restore(ctx, lifecycle); err != nil {
+	if b.ClearCache {
+		b.Logger.Verbose("Skipping 'restore' due to clearing cache")
+	} else if err := b.restore(ctx, lifecycle); err != nil {
 		return err
 	}
 
 	b.Logger.Verbose(style.Step("ANALYZING"))
-	b.Logger.Verbose("Reading information from previous image for possible re-use")
-	if err := b.analyze(ctx, lifecycle); err != nil {
-		return err
+	if b.ClearCache {
+		b.Logger.Verbose("Skipping 'analyze' due to clearing cache")
+	} else {
+		b.Logger.Verbose("Reading information from previous image for possible re-use")
+		if err := b.analyze(ctx, lifecycle); err != nil {
+			return err
+		}
 	}
 
 	b.Logger.Verbose(style.Step("BUILDING"))
