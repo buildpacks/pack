@@ -64,16 +64,6 @@ type BuildConfig struct {
 	LifecycleConfig build.LifecycleConfig
 }
 
-const (
-	layersDir     = "/workspace"
-	buildpacksDir = "/buildpacks"
-	platformDir   = "/platform"
-	orderPath     = "/buildpacks/order.toml"
-	groupPath     = `/workspace/group.toml`
-	planPath      = "/workspace/plan.toml"
-	appDir        = "/workspace/app"
-)
-
 func DefaultBuildFactory(logger *logging.Logger, cache Cache, dockerClient Docker, fetcher Fetcher) (*BuildFactory, error) {
 	f := &BuildFactory{
 		Logger:  logger,
@@ -331,66 +321,25 @@ func (b *BuildConfig) Run(ctx context.Context) error {
 }
 
 func (b *BuildConfig) detect(ctx context.Context, lifecycle *build.Lifecycle) error {
-	phase, err := lifecycle.NewPhase(
-		"detector",
-		build.WithArgs(
-			"-buildpacks", buildpacksDir,
-			"-order", orderPath,
-			"-group", groupPath,
-			"-plan", planPath,
-			"-app", appDir,
-		),
-	)
+	detect, err := lifecycle.NewDetect()
 	if err != nil {
 		return err
 	}
-	defer phase.Cleanup()
-	return phase.Run(ctx)
+	defer detect.Cleanup()
+	return detect.Run(ctx)
 }
 
 func (b *BuildConfig) restore(ctx context.Context, lifecycle *build.Lifecycle) error {
-	phase, err := lifecycle.NewPhase(
-		"restorer",
-		build.WithArgs(
-			"-image", b.Cache.Image(),
-			"-group", groupPath,
-			"-layers", layersDir,
-		),
-		build.WithDaemonAccess(),
-	)
-
+	restore, err := lifecycle.NewRestore(b.Cache.Image())
 	if err != nil {
 		return err
 	}
-	defer phase.Cleanup()
-	return phase.Run(ctx)
+	defer restore.Cleanup()
+	return restore.Run(ctx)
 }
 
 func (b *BuildConfig) analyze(ctx context.Context, lifecycle *build.Lifecycle) error {
-	var analyze *build.Phase
-	var err error
-	if b.Publish {
-		analyze, err = lifecycle.NewPhase(
-			"analyzer",
-			build.WithRegistryAccess(b.RepoName, b.RunImage),
-			build.WithArgs(
-				"-layers", layersDir,
-				"-group", groupPath,
-				b.RepoName,
-			),
-		)
-	} else {
-		analyze, err = lifecycle.NewPhase(
-			"analyzer",
-			build.WithDaemonAccess(),
-			build.WithArgs(
-				"-layers", layersDir,
-				"-group", groupPath,
-				"-daemon",
-				b.RepoName,
-			),
-		)
-	}
+	analyze, err := lifecycle.NewAnalyze(b.RepoName, b.Publish)
 	if err != nil {
 		return err
 	}
@@ -399,17 +348,7 @@ func (b *BuildConfig) analyze(ctx context.Context, lifecycle *build.Lifecycle) e
 }
 
 func (b *BuildConfig) build(ctx context.Context, lifecycle *build.Lifecycle) error {
-	build, err := lifecycle.NewPhase(
-		"builder",
-		build.WithArgs(
-			"-buildpacks", buildpacksDir,
-			"-layers", layersDir,
-			"-app", appDir,
-			"-group", groupPath,
-			"-plan", planPath,
-			"-platform", platformDir,
-		),
-	)
+	build, err := lifecycle.NewBuild()
 	if err != nil {
 		return err
 	}
@@ -417,52 +356,8 @@ func (b *BuildConfig) build(ctx context.Context, lifecycle *build.Lifecycle) err
 	return build.Run(ctx)
 }
 
-type exporterArgs struct {
-	args     []string
-	repoName string
-}
-
-func (e *exporterArgs) add(args ...string) {
-	e.args = append(e.args, args...)
-}
-
-func (e *exporterArgs) daemon() {
-	e.args = append(e.args, "-daemon")
-}
-
-func (e *exporterArgs) list() []string {
-	e.args = append(e.args, e.repoName)
-	return e.args
-}
-
 func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) error {
-	var (
-		export *build.Phase
-		err    error
-	)
-
-	args := &exporterArgs{repoName: b.RepoName}
-	args.add(
-		"-image", b.RunImage,
-		"-layers", layersDir,
-		"-app", appDir,
-		"-group", groupPath,
-	)
-
-	if b.Publish {
-		export, err = lifecycle.NewPhase(
-			"exporter",
-			build.WithRegistryAccess(b.RepoName, b.RunImage),
-			build.WithArgs(args.list()...),
-		)
-	} else {
-		args.daemon()
-		export, err = lifecycle.NewPhase(
-			"exporter",
-			build.WithDaemonAccess(),
-			build.WithArgs(args.list()...),
-		)
-	}
+	export, err := lifecycle.NewExport(b.RepoName, b.RunImage, b.Publish)
 	if err != nil {
 		return err
 	}
@@ -471,22 +366,12 @@ func (b *BuildConfig) export(ctx context.Context, lifecycle *build.Lifecycle) er
 }
 
 func (b *BuildConfig) cache(ctx context.Context, lifecycle *build.Lifecycle) error {
-	phase, err := lifecycle.NewPhase(
-		"cacher",
-		build.WithArgs(
-			"-image", b.Cache.Image(),
-			"-group", groupPath,
-			"-layers", layersDir,
-		),
-		build.WithDaemonAccess(),
-	)
-
+	cache, err := lifecycle.NewCache(b.Cache.Image())
 	if err != nil {
 		return err
 	}
-	defer phase.Cleanup()
-
-	return phase.Run(ctx)
+	defer cache.Cleanup()
+	return cache.Run(ctx)
 }
 
 func parseEnvFile(filename string) (map[string]string, error) {
