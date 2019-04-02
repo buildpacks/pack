@@ -52,6 +52,10 @@ $ pack build my-app:my-tag
 In this case, the default [builder](#working-with-builders-using-create-builder) (essentially, an image containing
 buildpacks) is used, and an appropriate buildpack is automatically selected from the builder based on the app source code.
 
+> You can change the default builder using the `set-default-builder` command.
+>
+> Alternately, you can ignore the default and use a specific builder with the `build` command's `--builder` flag.
+
 To publish the produced image to an image registry, include the `--publish` flag:
 
 ```bash
