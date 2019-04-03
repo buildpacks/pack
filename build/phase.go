@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/buildpack/lifecycle/image/auth"
@@ -71,6 +72,16 @@ func WithArgs(args ...string) func(*Phase) (*Phase, error) {
 func WithDaemonAccess() func(*Phase) (*Phase, error) {
 	return func(phase *Phase) (*Phase, error) {
 		phase.ctrConf.User = "root"
+
+		if dockerVolumeName, ok := os.LookupEnv(`PACK_DOCKER_CERT_VOLUME`); ok {
+			phase.ctrConf.Env = []string{
+				fmt.Sprintf(`DOCKER_HOST=%s`, os.Getenv(`DOCKER_HOST`)),
+				fmt.Sprintf(`DOCKER_TLS_VERIFY=%s`, os.Getenv(`DOCKER_TLS_VERIFY`)),
+				fmt.Sprintf(`DOCKER_CERT_PATH=%s`, `/pack-docker-cert-path`),
+			}
+			phase.hostConf.Binds = append(phase.hostConf.Binds, fmt.Sprintf(`%s:/pack-docker-cert-path`, dockerVolumeName))
+		}
+
 		phase.hostConf.Binds = append(phase.hostConf.Binds, "/var/run/docker.sock:/var/run/docker.sock")
 		return phase, nil
 	}
