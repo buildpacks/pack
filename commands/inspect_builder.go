@@ -24,7 +24,7 @@ func InspectBuilder(logger *logging.Logger, cfg *config.Config, inspector Builde
 		Args:  cobra.MaximumNArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if cfg.DefaultBuilder == "" && len(args) == 0 {
-				suggestBuilders(logger)
+				suggestSettingBuilder(logger)
 				return MakeSoftError()
 			}
 

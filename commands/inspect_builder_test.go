@@ -18,11 +18,11 @@ import (
 	h "github.com/buildpack/pack/testhelpers"
 )
 
-func TestCommands(t *testing.T) {
-	spec.Run(t, "Commands", testCommands, spec.Parallel(), spec.Report(report.Terminal{}))
+func TestInspectBuilderCommand(t *testing.T) {
+	spec.Run(t, "Commands", testInspectBuilderCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testCommands(t *testing.T, when spec.G, it spec.S) {
+func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 	var (
 		command        *cobra.Command

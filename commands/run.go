@@ -36,7 +36,7 @@ func Run(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 			}
 
 			if bf.Config.DefaultBuilder == "" && runFlags.BuildFlags.Builder == "" {
-				suggestBuilders(logger)
+				suggestSettingBuilder(logger)
 				return MakeSoftError()
 			}
 

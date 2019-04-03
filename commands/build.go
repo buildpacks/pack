@@ -61,7 +61,7 @@ func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 			}
 
 			if bf.Config.DefaultBuilder == "" && buildFlags.Builder == "" {
-				suggestBuilders(logger)
+				suggestSettingBuilder(logger)
 				return MakeSoftError()
 			}
 
@@ -82,10 +82,14 @@ func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 	return cmd
 }
 
-func suggestBuilders(logger *logging.Logger) {
+func suggestSettingBuilder(logger *logging.Logger) {
 	logger.Info("Please select a default builder with:\n")
-	logger.Info("\tpack set-default-builder <builder image>")
-	logger.Info("\nSuggested builders:\n")
+	logger.Info("\tpack set-default-builder <builder image>\n")
+	suggestBuilders(logger)
+}
+
+func suggestBuilders(logger *logging.Logger) {
+	logger.Info("Suggested builders:\n")
 	tw := tabwriter.NewWriter(logger.RawWriter(), 10, 10, 5, ' ', tabwriter.TabIndent)
 	for len(suggestedBuilders) > 0 {
 		n := rand.Intn(len(suggestedBuilders))
@@ -96,7 +100,7 @@ func suggestBuilders(logger *logging.Logger) {
 		suggestedBuilders = append(suggestedBuilders[:n], suggestedBuilders[n+1:]...)
 	}
 	tw.Flush()
-	logger.Info("\n")
+	logger.Info("")
 	logger.Tip("Learn more about a specific builder with:\n")
 	logger.Info("\tpack inspect-builder [builder image]")
 }

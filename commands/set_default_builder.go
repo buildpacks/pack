@@ -1,19 +1,26 @@
 package commands
 
 import (
-	"github.com/spf13/cobra"
-
+	"fmt"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
+	"github.com/spf13/cobra"
 )
 
 func SetDefaultBuilder(logger *logging.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set-default-builder <builder-name>",
 		Short: "Set default builder used by other commands",
-		Args:  cobra.ExactArgs(1),
+		Long: "Set default builder used by other commands.\n\n** For suggested builders simply leave builder name empty. **",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			if len(args) < 1 || args[0] == "" {
+				logger.Info(fmt.Sprintf("Usage:\n\t%s\n", cmd.UseLine()))
+				suggestBuilders(logger)
+				return nil
+			}
+
 			cfg, err := config.NewDefault()
 			if err != nil {
 				return err
@@ -26,6 +33,7 @@ func SetDefaultBuilder(logger *logging.Logger) *cobra.Command {
 			return nil
 		}),
 	}
+
 	AddHelpFlag(cmd, "set-default-builder")
 	return cmd
 }
