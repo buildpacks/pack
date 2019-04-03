@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/commands"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/docker"
@@ -21,6 +22,7 @@ var (
 	cfg               config.Config
 	client            pack.Client
 	imageFetcher      pack.ImageFetcher
+	buildpackFetcher  buildpack.Fetcher
 )
 
 func main() {
@@ -31,6 +33,7 @@ func main() {
 			logger = *logging.NewLogger(os.Stdout, os.Stderr, !quiet, timestamps)
 			cfg = initConfig(logger)
 			imageFetcher = initImageFetcher(logger)
+			buildpackFetcher = initBuildpackFetcher(logger)
 			client = *pack.NewClient(&cfg, &imageFetcher)
 		},
 	}
@@ -43,7 +46,7 @@ func main() {
 	rootCmd.AddCommand(commands.Run(&logger, &imageFetcher))
 	rootCmd.AddCommand(commands.Rebase(&logger, &imageFetcher))
 
-	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFetcher))
+	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFetcher, &buildpackFetcher))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(&logger))
 	rootCmd.AddCommand(commands.InspectBuilder(&logger, &cfg, &client))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger))
@@ -81,6 +84,10 @@ func initImageFetcher(logger logging.Logger) pack.ImageFetcher {
 		Factory: factory,
 		Docker:  dockerClient,
 	}
+}
+
+func initBuildpackFetcher(logger logging.Logger) buildpack.Fetcher {
+	return *buildpack.NewFetcher(&logger, cfg.Path())
 }
 
 func exitError(logger logging.Logger, err error) {

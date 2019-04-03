@@ -52,6 +52,8 @@ github.com/fatih/color
 github.com/gogo/protobuf/proto
 # github.com/golang/mock v1.2.0
 github.com/golang/mock/gomock
+# github.com/golang/protobuf v1.3.0
+github.com/golang/protobuf/proto
 # github.com/google/go-cmp v0.2.0
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
@@ -83,6 +85,20 @@ github.com/mattn/go-colorable
 github.com/mattn/go-isatty
 # github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c
 github.com/morikuni/aec
+# github.com/onsi/gomega v1.5.0
+github.com/onsi/gomega/ghttp
+github.com/onsi/gomega
+github.com/onsi/gomega/types
+github.com/onsi/gomega/internal/assertion
+github.com/onsi/gomega/internal/asyncassertion
+github.com/onsi/gomega/internal/testingtsupport
+github.com/onsi/gomega/matchers
+github.com/onsi/gomega/internal/oraclematcher
+github.com/onsi/gomega/format
+github.com/onsi/gomega/matchers/support/goraph/bipartitegraph
+github.com/onsi/gomega/matchers/support/goraph/edge
+github.com/onsi/gomega/matchers/support/goraph/node
+github.com/onsi/gomega/matchers/support/goraph/util
 # github.com/opencontainers/go-digest v1.0.0-rc1
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.1
@@ -104,8 +120,29 @@ golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20190213061140-3a22650c66bd
 golang.org/x/net/proxy
 golang.org/x/net/internal/socks
+golang.org/x/net/html/charset
+golang.org/x/net/html
+golang.org/x/net/html/atom
 # golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6
 golang.org/x/sync/errgroup
 # golang.org/x/sys v0.0.0-20190306220723-b294cbcfc56d
 golang.org/x/sys/unix
 golang.org/x/sys/windows
+# golang.org/x/text v0.3.0
+golang.org/x/text/encoding
+golang.org/x/text/encoding/charmap
+golang.org/x/text/encoding/htmlindex
+golang.org/x/text/transform
+golang.org/x/text/encoding/internal/identifier
+golang.org/x/text/encoding/internal
+golang.org/x/text/encoding/japanese
+golang.org/x/text/encoding/korean
+golang.org/x/text/encoding/simplifiedchinese
+golang.org/x/text/encoding/traditionalchinese
+golang.org/x/text/encoding/unicode
+golang.org/x/text/language
+golang.org/x/text/internal/utf8internal
+golang.org/x/text/runes
+golang.org/x/text/internal/tag
+# gopkg.in/yaml.v2 v2.2.1
+gopkg.in/yaml.v2

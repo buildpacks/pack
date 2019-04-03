@@ -4,8 +4,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/buildpack/pack/archive"
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/logging"
 	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
@@ -15,122 +13,151 @@ import (
 	"path/filepath"
 )
 
-// TODO : test this by itself, currently it is tested in create_builder_test.go
-// TODO : attempt to use this during build with the --buildpack flag to get tar.gz buildpacks
-// TODO : think of a better name for this construct
+type Logger interface {
+	Verbose(format string, a ...interface{})
+}
+
 type Fetcher struct {
-	Config *config.Config
-	Logger *logging.Logger
+	Logger   Logger
+	CacheDir string
 }
 
-func NewFetcher(cfg *config.Config, logger *logging.Logger) *Fetcher {
+func NewFetcher(logger Logger, cacheDir string) *Fetcher {
 	return &Fetcher{
-		Config: cfg,
-		Logger: logger,
+		Logger:   logger,
+		CacheDir: filepath.Join(cacheDir, "dl-cache"),
 	}
 }
 
-func (f *Fetcher) FetchBuildpack(builderDir string, b Buildpack) (Buildpack, error) {
-	var dir string
+func (f *Fetcher) FetchBuildpack(localSearchPath string, bp Buildpack) (out Buildpack, err error) {
+	out = Buildpack{
+		ID:      bp.ID,
+		URI:     bp.URI,
+		Latest:  bp.Latest,
+		Version: bp.Version,
+	}
 
-	asURL, err := url.Parse(b.URI)
+	bpURL, err := url.Parse(bp.URI)
 	if err != nil {
-		return Buildpack{}, err
+		return out, err
 	}
 
-	switch asURL.Scheme {
-	case "", // This is the only way to support relative filepaths
-		"file": // URIs with file:// protocol force the use of absolute paths. Host=localhost may be implied with file:///
-
-		path := asURL.Path
-
-		if !asURL.IsAbs() && !filepath.IsAbs(path) {
-			path = filepath.Join(builderDir, path)
-		}
-
-		if filepath.Ext(path) == ".tgz" {
-			file, err := os.Open(path)
-			if err != nil {
-				return Buildpack{}, errors.Wrapf(err, "could not open file to untar: %q", path)
-			}
-			defer file.Close()
-			tmpDir, err := ioutil.TempDir("", fmt.Sprintf("create-builder-%s-", b.EscapedID()))
-			if err != nil {
-				return Buildpack{}, fmt.Errorf(`failed to create temporary directory: %s`, err)
-			}
-			if err = archive.ExtractTarGZ(file, tmpDir); err != nil {
-				return Buildpack{}, err
-			}
-			dir = tmpDir
-		} else {
-			dir = path
-		}
+	switch bpURL.Scheme {
+	case "", "file":
+		out.Dir, err = f.handleFile(localSearchPath, bpURL)
 	case "http", "https":
-		uriDigest := fmt.Sprintf("%x", sha256.Sum256([]byte(b.URI)))
-		cachedDir := filepath.Join(f.Config.Path(), "dl-cache", uriDigest)
-		_, err := os.Stat(cachedDir)
-		if os.IsNotExist(err) {
-			if err = os.MkdirAll(cachedDir, 0744); err != nil {
-				return Buildpack{}, err
-			}
-		}
-		etagFile := cachedDir + ".etag"
-		bytes, err := ioutil.ReadFile(etagFile)
-		etag := ""
-		if err == nil {
-			etag = string(bytes)
-		}
-
-		reader, etag, err := f.downloadAsStream(b.URI, etag)
-		if err != nil {
-			return Buildpack{}, errors.Wrapf(err, "failed to download from %q", b.URI)
-		} else if reader == nil {
-			// can use cached content
-			dir = cachedDir
-			break
-		}
-		defer reader.Close()
-
-		if err = archive.ExtractTarGZ(reader, cachedDir); err != nil {
-			return Buildpack{}, err
-		}
-
-		if err = ioutil.WriteFile(etagFile, []byte(etag), 0744); err != nil {
-			return Buildpack{}, err
-		}
-
-		dir = cachedDir
+		out.Dir, err = f.handleHTTP(bp)
 	default:
-		return Buildpack{}, fmt.Errorf("unsupported protocol in URI %q", b.URI)
+		return out, fmt.Errorf("unsupported protocol in URI %q", bp.URI)
 	}
 
-	return Buildpack{
-		ID:     b.ID,
-		Latest: b.Latest,
-		Dir:    dir,
-	}, nil
+	return out, err
+}
+
+func (f *Fetcher) handleFile(localSearchPath string, bpURL *url.URL) (string, error) {
+	path := bpURL.Path
+
+	if !bpURL.IsAbs() && !filepath.IsAbs(path) {
+		path = filepath.Join(localSearchPath, path)
+	}
+
+	if filepath.Ext(path) != ".tgz" {
+		return path, nil
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not open file to untar: %q", path)
+	}
+	defer file.Close()
+
+	tmpDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		return "", fmt.Errorf(`failed to create temporary directory: %s`, err)
+	}
+
+	if err = archive.ExtractTarGZ(file, tmpDir); err != nil {
+		return "", err
+	}
+
+	return tmpDir, nil
+}
+
+func (f *Fetcher) handleHTTP(bp Buildpack) (string, error) {
+	bpCache := filepath.Join(f.CacheDir, fmt.Sprintf("%x", sha256.Sum256([]byte(bp.URI))))
+	if err := os.MkdirAll(bpCache, 0744); err != nil {
+		return "", err
+	}
+
+	etagFile := bpCache + ".etag"
+	etagExists, err := fileExists(etagFile)
+	if err != nil {
+		return "", err
+	}
+
+	etag := ""
+	if etagExists {
+		bytes, err := ioutil.ReadFile(etagFile)
+		if err != nil {
+			return "", err
+		}
+		etag = string(bytes)
+	}
+
+	reader, etag, err := f.downloadAsStream(bp.URI, etag)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to download from %q", bp.URI)
+	} else if reader == nil {
+		return bpCache, nil
+	}
+	defer reader.Close()
+
+	if err = archive.ExtractTarGZ(reader, bpCache); err != nil {
+		return "", err
+	}
+
+	if err = ioutil.WriteFile(etagFile, []byte(etag), 0744); err != nil {
+		return "", err
+	}
+
+	return bpCache, nil
 }
 
 func (f *Fetcher) downloadAsStream(uri string, etag string) (io.ReadCloser, string, error) {
-	c := http.Client{}
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		return nil, "", err
 	}
+
 	if etag != "" {
 		req.Header.Set("If-None-Match", etag)
 	}
-	if resp, err := c.Do(req); err != nil {
+
+	resp, err := (&http.Client{}).Do(req)
+	if err != nil {
 		return nil, "", err
-	} else {
-		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			f.Logger.Verbose("Downloading from %q\n", uri)
-			return resp.Body, resp.Header.Get("Etag"), nil
-		} else if resp.StatusCode == 304 {
-			f.Logger.Verbose("Using cached version of %q\n", uri)
-			return nil, etag, nil
-		} else {
-			return nil, "", fmt.Errorf("could not download from %q, code http status %d", uri, resp.StatusCode)
-		}
 	}
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		f.Logger.Verbose("Downloading from %q\n", uri)
+		return resp.Body, resp.Header.Get("Etag"), nil
+	}
+
+	if resp.StatusCode == 304 {
+		f.Logger.Verbose("Using cached version of %q\n", uri)
+		return nil, etag, nil
+	}
+
+	return nil, "", fmt.Errorf("could not download from %q, code http status %d", uri, resp.StatusCode)
+}
+
+func fileExists(file string) (bool, error) {
+	_, err := os.Stat(file)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
