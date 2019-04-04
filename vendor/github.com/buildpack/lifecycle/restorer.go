@@ -1,16 +1,12 @@
 package lifecycle
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
-	"strconv"
 
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/archive"
-	"github.com/buildpack/lifecycle/cmd"
 	"github.com/buildpack/lifecycle/image"
 )
 
@@ -18,6 +14,8 @@ type Restorer struct {
 	LayersDir  string
 	Buildpacks []*Buildpack
 	Out, Err   *log.Logger
+	UID        int
+	GID        int
 }
 
 func (r *Restorer) Restore(cacheImage image.Image) error {
@@ -50,16 +48,8 @@ func (r *Restorer) Restore(cacheImage image.Image) error {
 	if current := os.Getuid(); err != nil {
 		return err
 	} else if current == 0 {
-		uid, err := strconv.Atoi(os.Getenv(cmd.EnvUID))
-		if err != nil {
-			return errors.Wrapf(err, "failed to convert PACK_USER_ID '%s' to int", os.Getenv(cmd.EnvUID))
-		}
-		gid, err := strconv.Atoi(os.Getenv(cmd.EnvGID))
-		if err != nil {
-			return errors.Wrapf(err, "failed to convert PACK_GROUP_ID '%s' to int", os.Getenv(cmd.EnvGID))
-		}
-		if err := recursiveChown(r.LayersDir, uid, gid); err != nil {
-			return errors.Wrapf(err, "chowning layers dir to PACK_UID/PACK_GID '%d/%d'", uid, gid)
+		if err := recursiveChown(r.LayersDir, r.UID, r.GID); err != nil {
+			return errors.Wrapf(err, "chowning layers dir to '%d/%d'", r.UID, r.GID)
 		}
 	}
 	return nil
@@ -86,27 +76,4 @@ func (r *Restorer) restoreLayer(name string, bpMD BuildpackMetadata, layer Layer
 	defer rc.Close()
 
 	return archive.Untar(rc, "/")
-}
-
-func recursiveChown(path string, uid, gid int) error {
-	fis, err := ioutil.ReadDir(path)
-	if err != nil {
-		return err
-	}
-	if err := os.Chown(path, uid, gid); err != nil {
-		return err
-	}
-	for _, fi := range fis {
-		filePath := filepath.Join(path, fi.Name())
-		if fi.IsDir() {
-			if err := recursiveChown(filePath, uid, gid); err != nil {
-				return err
-			}
-		} else {
-			if err := os.Chown(filePath, uid, gid); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }

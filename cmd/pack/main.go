@@ -21,8 +21,8 @@ var (
 	logger            logging.Logger
 	cfg               config.Config
 	client            pack.Client
-	imageFetcher      pack.ImageFetcher
-	buildpackFetcher  buildpack.Fetcher
+	buildpackFetcher  buildpack.Fetcher // TODO: Remove once all commands use pack.Client
+	imageFetcher      pack.ImageFetcher // TODO: Remove once all commands use pack.Client
 )
 
 func main() {
@@ -31,10 +31,10 @@ func main() {
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			logger = *logging.NewLogger(os.Stdout, os.Stderr, !quiet, timestamps)
-			cfg = initConfig(logger)
-			imageFetcher = initImageFetcher(logger)
-			buildpackFetcher = initBuildpackFetcher(logger)
-			client = *pack.NewClient(&cfg, &imageFetcher)
+			cfg = initConfig(&logger)
+			imageFetcher = initImageFetcher(&logger)
+			buildpackFetcher = initBuildpackFetcher(&logger)
+			client = initClient(&cfg, &logger)
 		},
 	}
 	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
@@ -44,7 +44,7 @@ func main() {
 
 	rootCmd.AddCommand(commands.Build(&logger, &imageFetcher))
 	rootCmd.AddCommand(commands.Run(&logger, &imageFetcher))
-	rootCmd.AddCommand(commands.Rebase(&logger, &imageFetcher))
+	rootCmd.AddCommand(commands.Rebase(&logger, &client))
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFetcher, &buildpackFetcher))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(&logger))
@@ -61,7 +61,7 @@ func main() {
 	}
 }
 
-func initConfig(logger logging.Logger) config.Config {
+func initConfig(logger *logging.Logger) config.Config {
 	cfg, err := config.NewDefault()
 	if err != nil {
 		exitError(logger, err)
@@ -69,7 +69,16 @@ func initConfig(logger logging.Logger) config.Config {
 	return *cfg
 }
 
-func initImageFetcher(logger logging.Logger) pack.ImageFetcher {
+func initClient(cfg *config.Config, logger *logging.Logger) pack.Client {
+	client, err := pack.DefaultClient(cfg, logger)
+	if err != nil {
+		exitError(logger, err)
+	}
+	return *client
+}
+
+// TODO: Remove once all commands use pack.Client
+func initImageFetcher(logger *logging.Logger) pack.ImageFetcher {
 	factory, err := image.NewFactory()
 	if err != nil {
 		exitError(logger, err)
@@ -86,11 +95,12 @@ func initImageFetcher(logger logging.Logger) pack.ImageFetcher {
 	}
 }
 
-func initBuildpackFetcher(logger logging.Logger) buildpack.Fetcher {
-	return *buildpack.NewFetcher(&logger, cfg.Path())
+// TODO: Remove once all commands use pack.Client
+func initBuildpackFetcher(logger *logging.Logger) buildpack.Fetcher {
+	return *buildpack.NewFetcher(logger, cfg.Path())
 }
 
-func exitError(logger logging.Logger, err error) {
+func exitError(logger *logging.Logger, err error) {
 	logger.Error(err.Error())
 	os.Exit(1)
 }

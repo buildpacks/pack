@@ -10,68 +10,54 @@ import (
 )
 
 const (
-	DefaultLayersDir      = "/workspace"
-	DefaultAppDir         = "/workspace/app"
-	DefaultBuildpacksDir  = "/buildpacks"
-	DefaultPlatformDir    = "/platform"
-	DefaultOrderPath      = "/buildpacks/order.toml"
-	DefaultGroupPath      = "./group.toml"
-	DefaultStackPath      = "/buildpacks/stack.toml"
-	DefaultPlanPath       = "./plan.toml"
-	DefaultUseDaemon      = false
-	DefaultUseCredHelpers = false
+	DefaultLayersDir     = "/layers"
+	DefaultAppDir        = "/workspace"
+	DefaultBuildpacksDir = "/buildpacks"
+	DefaultPlatformDir   = "/platform"
+	DefaultOrderPath     = "/buildpacks/order.toml"
+	DefaultGroupPath     = "./group.toml"
+	DefaultStackPath     = "/buildpacks/stack.toml"
+	DefaultPlanPath      = "./plan.toml"
 
-	EnvRunImage           = "PACK_RUN_IMAGE"
-	EnvUID                = "PACK_USER_ID"
-	EnvGID                = "PACK_GROUP_ID"
-	EnvLayersDir          = "PACK_LAYERS_DIR"
-	EnvAppDir             = "PACK_APP_DIR"
-	EnvLegacyRegistryAuth = "PACK_REGISTRY_AUTH"
-	EnvRegistryAuth       = "CNB_REGISTRY_AUTH"
-	EnvStackPath          = "CNB_STACK_PATH"
+	EnvLayersDir     = "CNB_LAYERS_DIR"
+	EnvAppDir        = "CNB_APP_DIR"
+	EnvBuildpacksDir = "CNB_BUILDPACKS_DIR"
+	EnvPlatformDir   = "CNB_PLATFORM_DIR"
+	EnvOrderPath     = "CNB_ORDER_PATH"
+	EnvGroupPath     = "CNB_GROUP_PATH"
+	EnvStackPath     = "CNB_STACK_PATH"
+	EnvPlanPath      = "CNB_PLAN_PATH"
+	EnvUseDaemon     = "CNB_USE_DAEMON"       // defaults to false
+	EnvUseHelpers    = "CNB_USE_CRED_HELPERS" // defaults to false
+	EnvRunImage      = "CNB_RUN_IMAGE"
+	EnvCacheImage    = "CNB_CACHE_IMAGE"
+	EnvUID           = "CNB_USER_ID"
+	EnvGID           = "CNB_GROUP_ID"
+	EnvRegistryAuth  = "CNB_REGISTRY_AUTH"
 )
 
-type Labels map[string]string
-
-func (l Labels) String() string {
-	b := strings.Builder{}
-	for k, v := range l {
-		b.WriteString(fmt.Sprintf("%s=%s ", k, v))
-	}
-	return b.String()
-}
-
-func (l Labels) Set(value string) error {
-	pair := strings.Split(value, "=")
-	if len(pair) != 2 {
-		return fmt.Errorf("please provide valid labels in a key=value format")
-	}
-	l[pair[0]] = pair[1]
-	return nil
-}
-
 func FlagLayersDir(dir *string) {
-	flag.StringVar(dir, "layers", DefaultLayersDir, "path to layers directory")
+	flag.StringVar(dir, "layers", envWithDefault(EnvLayersDir, DefaultLayersDir), "path to layers directory")
 }
 
 func FlagAppDir(dir *string) {
-	flag.StringVar(dir, "app", DefaultAppDir, "path to app directory")
+	flag.StringVar(dir, "app", envWithDefault(EnvAppDir, DefaultAppDir), "path to app directory")
 }
 
 func FlagBuildpacksDir(dir *string) {
-	flag.StringVar(dir, "buildpacks", DefaultBuildpacksDir, "path to buildpacks directory")
+	flag.StringVar(dir, "buildpacks", envWithDefault(EnvBuildpacksDir, DefaultBuildpacksDir), "path to buildpacks directory")
 }
 
 func FlagPlatformDir(dir *string) {
-	flag.StringVar(dir, "platform", DefaultPlatformDir, "path to platform directory")
+	flag.StringVar(dir, "platform", envWithDefault(EnvPlatformDir, DefaultPlatformDir), "path to platform directory")
 }
 
 func FlagOrderPath(path *string) {
-	flag.StringVar(path, "order", DefaultOrderPath, "path to order.toml")
+	flag.StringVar(path, "order", envWithDefault(EnvOrderPath, DefaultOrderPath), "path to order.toml")
 }
 
 func FlagGroupPath(path *string) {
-	flag.StringVar(path, "group", DefaultGroupPath, "path to group.toml")
+	flag.StringVar(path, "group", envWithDefault(EnvGroupPath, DefaultGroupPath), "path to group.toml")
 }
 
 func FlagStackPath(path *string) {
@@ -79,7 +65,7 @@ func FlagStackPath(path *string) {
 }
 
 func FlagPlanPath(path *string) {
-	flag.StringVar(path, "plan", DefaultPlanPath, "path to plan.toml")
+	flag.StringVar(path, "plan", envWithDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
 }
 
 func FlagRunImage(image *string) {
@@ -87,15 +73,15 @@ func FlagRunImage(image *string) {
 }
 
 func FlagCacheImage(image *string) {
-	flag.StringVar(image, "image", "", "cache image tag name")
+	flag.StringVar(image, "image", os.Getenv(EnvCacheImage), "cache image tag name")
 }
 
 func FlagUseDaemon(use *bool) {
-	flag.BoolVar(use, "daemon", DefaultUseDaemon, "export to docker daemon")
+	flag.BoolVar(use, "daemon", boolEnv(EnvUseDaemon), "export to docker daemon")
 }
 
 func FlagUseCredHelpers(use *bool) {
-	flag.BoolVar(use, "helpers", DefaultUseCredHelpers, "use credential helpers")
+	flag.BoolVar(use, "helpers", boolEnv(EnvUseHelpers), "use credential helpers")
 }
 
 func FlagUID(uid *int) {
@@ -151,7 +137,8 @@ func Exit(err error) {
 	if err == nil {
 		os.Exit(0)
 	}
-	log.Printf("Error: %s\n", err)
+	logger := log.New(os.Stderr, "", 0)
+	logger.Printf("Error: %s\n", err)
 	if err, ok := err.(*ErrorFail); ok {
 		os.Exit(err.Code)
 	}
@@ -165,6 +152,15 @@ func intEnv(k string) int {
 		return 0
 	}
 	return d
+}
+
+func boolEnv(k string) bool {
+	v := os.Getenv(k)
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return false
+	}
+	return b
 }
 
 func envWithDefault(key string, defaultVal string) string {

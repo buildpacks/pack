@@ -29,16 +29,16 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		logger         *logging.Logger
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
-		mockInspector  *cmdmocks.MockBuilderInspector
+		mockClient     *cmdmocks.MockPackClient
 		cfg            *config.Config
 	)
 
 	it.Before(func() {
 		cfg = &config.Config{}
 		mockController = gomock.NewController(t)
-		mockInspector = cmdmocks.NewMockBuilderInspector(mockController)
+		mockClient = cmdmocks.NewMockPackClient(mockController)
 		logger = logging.NewLogger(&outBuf, &outBuf, false, false)
-		command = commands.InspectBuilder(logger, cfg, mockInspector)
+		command = commands.InspectBuilder(logger, cfg, mockClient)
 	})
 
 	it.After(func() {
@@ -49,8 +49,8 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("image cannot be found", func() {
 			it("logs 'Not present'", func() {
-				mockInspector.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
-				mockInspector.EXPECT().InspectBuilder("some/image", true).Return(nil, nil)
+				mockClient.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
+				mockClient.EXPECT().InspectBuilder("some/image", true).Return(nil, nil)
 
 				command.SetArgs([]string{"some/image"})
 				h.AssertNil(t, command.Execute())
@@ -61,8 +61,8 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("inspector returns an error", func() {
 			it("logs the error message", func() {
-				mockInspector.EXPECT().InspectBuilder("some/image", false).Return(nil, errors.New("some remote error"))
-				mockInspector.EXPECT().InspectBuilder("some/image", true).Return(nil, errors.New("some local error"))
+				mockClient.EXPECT().InspectBuilder("some/image", false).Return(nil, errors.New("some remote error"))
+				mockClient.EXPECT().InspectBuilder("some/image", true).Return(nil, errors.New("some local error"))
 
 				command.SetArgs([]string{"some/image"})
 				h.AssertNil(t, command.Execute())
@@ -82,11 +82,11 @@ ERROR: failed to inspect image 'some/image': some local error
 
 		when("the image has empty fields in info", func() {
 			it.Before(func() {
-				mockInspector.EXPECT().InspectBuilder("some/image", false).Return(&pack.BuilderInfo{
+				mockClient.EXPECT().InspectBuilder("some/image", false).Return(&pack.BuilderInfo{
 					Stack: "test.stack.id",
 				}, nil)
 
-				mockInspector.EXPECT().InspectBuilder("some/image", true).Return(&pack.BuilderInfo{
+				mockClient.EXPECT().InspectBuilder("some/image", true).Return(&pack.BuilderInfo{
 					Stack: "test.stack.id",
 				}, nil)
 
@@ -120,7 +120,7 @@ ERROR: failed to inspect image 'some/image': some local error
 					Buildpacks:           buildpacks,
 					Groups:               [][]pack.BuildpackInfo{buildpacks},
 				}
-				mockInspector.EXPECT().InspectBuilder("some/image", false).Return(remoteInfo, nil)
+				mockClient.EXPECT().InspectBuilder("some/image", false).Return(remoteInfo, nil)
 
 				localInfo := &pack.BuilderInfo{
 					Stack:                "test.stack.id",
@@ -130,7 +130,7 @@ ERROR: failed to inspect image 'some/image': some local error
 					Buildpacks:           buildpacks,
 					Groups:               [][]pack.BuildpackInfo{{buildpacks[0]}, {buildpacks[1]}},
 				}
-				mockInspector.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
+				mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
 			})
 
 			when("using the default builder", func() {

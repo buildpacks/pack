@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -77,6 +78,14 @@ func AssertNil(t *testing.T, actual interface{}) {
 	if actual != nil {
 		t.Fatalf("Expected nil: %s", actual)
 	}
+}
+
+func AssertUidGid(t *testing.T, path string, uid, gid int) {
+	fi, err := os.Stat(path)
+	AssertNil(t, err)
+	stat := fi.Sys().(*syscall.Stat_t)
+	AssertEq(t, stat.Uid, uint32(uid))
+	AssertEq(t, stat.Gid, uint32(gid))
 }
 
 var dockerCliVal *dockercli.Client
