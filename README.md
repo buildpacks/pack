@@ -4,9 +4,6 @@
 - **Application developers** to use [Cloud Native Buildpacks](https://buildpacks.io/) to convert code into runnable images
 - **Buildpack authors** to develop and package buildpacks for distribution
 
----
-
-## ⚔️ It's dangerous to go alone! Read this. 🛠️
 Ready to embark on your adventure with `pack` but not sure where to start? Try out our tutorial,
 [**An App's Brief Journey from Source to Image**](docs/tutorials/app-journey.md).
 
