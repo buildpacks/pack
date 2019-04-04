@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func SetDefaultBuilder(logger *logging.Logger) *cobra.Command {
+func SetDefaultBuilder(logger *logging.Logger, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set-default-builder <builder-name>",
 		Short: "Set default builder used by other commands",
@@ -21,6 +21,26 @@ func SetDefaultBuilder(logger *logging.Logger) *cobra.Command {
 				return nil
 			}
 
+			imageName := args[0]
+
+			logger.Verbose("Verifying local image...")
+			info, err := client.InspectBuilder(imageName, true)
+			if err != nil {
+				return err
+			}
+
+			if info == nil {
+				logger.Verbose("Verifying remote image...")
+				info, err := client.InspectBuilder(imageName, false)
+				if err != nil {
+					return err
+				}
+
+				if info == nil {
+					return fmt.Errorf("builder %s not found", style.Symbol(imageName))
+				}
+			}
+
 			cfg, err := config.NewDefault()
 			if err != nil {
 				return err
@@ -29,7 +49,7 @@ func SetDefaultBuilder(logger *logging.Logger) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			logger.Info("Builder %s is now the default builder", style.Symbol(args[0]))
+			logger.Info("Builder %s is now the default builder", style.Symbol(imageName))
 			return nil
 		}),
 	}
