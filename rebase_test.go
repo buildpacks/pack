@@ -47,9 +47,9 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		//it.After(func() {
-		//	mockController.Finish()
-		//})
+		it.After(func() {
+			mockController.Finish()
+		})
 
 		when("#RebaseConfigFromFlags", func() {
 			when("run image is provided by the user", func() {
