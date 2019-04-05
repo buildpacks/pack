@@ -39,6 +39,10 @@ func WithEnvKeychain(factory *Factory) {
 	factory.Keychain = authn.NewMultiKeychain(&auth.EnvKeychain{}, factory.Keychain)
 }
 
+func WithLegacyEnvKeychain(factory *Factory) {
+	factory.Keychain = authn.NewMultiKeychain(&auth.LegacyEnvKeychain{}, factory.Keychain)
+}
+
 func WithOutWriter(w io.Writer) func(factory *Factory) {
 	return func(factory *Factory) {
 		factory.Out = w

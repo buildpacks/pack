@@ -9,15 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/logging"
 )
-
-//go:generate mockgen -package mocks -destination mocks/pack_client.go github.com/buildpack/pack/commands PackClient
-type PackClient interface {
-	InspectBuilder(string, bool) (*pack.BuilderInfo, error)
-	Rebase(context.Context, pack.RebaseOptions) error
-}
 
 // TODO: Check if most recent cobra version fixed bug in help strings. It was not always capitalizing the first
 // letter in the help string. If it's fixed, we can remove this.

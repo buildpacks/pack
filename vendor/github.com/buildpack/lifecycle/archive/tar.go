@@ -57,7 +57,7 @@ func WriteTarArchive(w io.Writer, srcDir string, uid, gid int) error {
 			}
 		}
 		header.Name = file
-		header.ModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
+		header.ModTime = time.Time{}
 		header.Uid = uid
 		header.Gid = gid
 		header.Uname = ""
@@ -99,7 +99,7 @@ func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int
 			return err
 		}
 		header.Name = parent
-		header.ModTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
+		header.ModTime = time.Time{}
 
 		if err := tw.WriteHeader(header); err != nil {
 			return err

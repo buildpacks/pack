@@ -204,26 +204,3 @@ type identifiableLayer interface {
 	Identifier() string
 	Path() string
 }
-
-func recursiveChown(path string, uid, gid int) error {
-	fis, err := ioutil.ReadDir(path)
-	if err != nil {
-		return err
-	}
-	if err := os.Chown(path, uid, gid); err != nil {
-		return err
-	}
-	for _, fi := range fis {
-		filePath := filepath.Join(path, fi.Name())
-		if fi.IsDir() {
-			if err := recursiveChown(filePath, uid, gid); err != nil {
-				return err
-			}
-		} else {
-			if err := os.Lchown(filePath, uid, gid); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}

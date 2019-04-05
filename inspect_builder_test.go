@@ -3,7 +3,6 @@ package pack_test
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"testing"
 
 	imgtest "github.com/buildpack/lifecycle/testhelpers"
@@ -12,7 +11,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 
 	"github.com/buildpack/pack"
@@ -37,14 +35,11 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockFetcher = mocks.NewMockFetcher(mockController)
-		client = pack.NewClient(
-			&config.Config{
-				RunImages: []config.RunImage{
-					{Image: "some/run-image", Mirrors: []string{"some/local-mirror"}},
-				},
+		client = pack.NewClient(&config.Config{
+			RunImages: []config.RunImage{
+				{Image: "some/run-image", Mirrors: []string{"some/local-mirror"}},
 			},
-			logging.NewLogger(ioutil.Discard, ioutil.Discard, false, false),
-			mockFetcher)
+		}, mockFetcher)
 		builderImage = imgtest.NewFakeImage(t, "some/builder", "", "")
 	})
 

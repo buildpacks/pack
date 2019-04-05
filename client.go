@@ -1,46 +1,38 @@
 package pack
 
 import (
-	"github.com/buildpack/lifecycle/image"
-
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/docker"
-	"github.com/buildpack/pack/logging"
 )
 
 type Client struct {
 	config  *config.Config
-	logger  *logging.Logger
 	fetcher Fetcher
 }
 
-func NewClient(config *config.Config, logger *logging.Logger, fetcher Fetcher) *Client {
+func NewClient(config *config.Config, fetcher Fetcher) *Client {
 	return &Client{
 		config:  config,
-		logger:  logger,
 		fetcher: fetcher,
 	}
 }
 
-func DefaultClient(config *config.Config, logger *logging.Logger) (*Client, error) {
-	factory, err := image.NewFactory()
-	if err != nil {
-		return nil, err
-	}
+//// TODO : move to build.go
+//func (c *Client) Build() {
+//
+//}
+//
+//// TODO : move to create_builder.go
+//func (c *Client) CreateBuilder() {
+//
+//}
+//
 
-	dockerClient, err := docker.New()
-	if err != nil {
-		return nil, err
-	}
+//// TODO : move to run.go
+//func (c *Client) Run() {
+//
+//}
 
-	fetcher := &ImageFetcher{
-		Factory: factory,
-		Docker:  dockerClient,
-	}
-
-	return &Client{
-		config:  config,
-		logger:  logger,
-		fetcher: fetcher,
-	}, nil
-}
+// TODO : move to rebase.go
+//func (c *Client) Rebase() {
+//
+//}

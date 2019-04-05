@@ -298,13 +298,20 @@ func (l *local) Save() (string, error) {
 	tw := tar.NewWriter(pw)
 	defer tw.Close()
 
-	configFile, err := l.configFile()
-	if err != nil {
-		return "", errors.Wrap(err, "generate config file")
+	imgConfig := map[string]interface{}{
+		"os":      "linux",
+		"created": time.Now().Format(time.RFC3339),
+		"config":  l.Inspect.Config,
+		"rootfs": map[string][]string{
+			"diff_ids": l.Inspect.RootFS.Layers,
+		},
 	}
-
-	imgID := fmt.Sprintf("%x", sha256.Sum256(configFile))
-	if err := archive.AddTextToTar(tw, imgID+".json", configFile); err != nil {
+	formatted, err := json.Marshal(imgConfig)
+	if err != nil {
+		return "", err
+	}
+	imgID := fmt.Sprintf("%x", sha256.Sum256(formatted))
+	if err := archive.AddTextToTar(tw, imgID+".json", formatted); err != nil {
 		return "", err
 	}
 
@@ -328,7 +335,7 @@ func (l *local) Save() (string, error) {
 
 	}
 
-	manifest, err := json.Marshal([]map[string]interface{}{
+	formatted, err = json.Marshal([]map[string]interface{}{
 		{
 			"Config":   imgID + ".json",
 			"RepoTags": []string{repoName},
@@ -338,8 +345,7 @@ func (l *local) Save() (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	if err := archive.AddTextToTar(tw, "manifest.json", manifest); err != nil {
+	if err := archive.AddTextToTar(tw, "manifest.json", formatted); err != nil {
 		return "", err
 	}
 
@@ -353,28 +359,13 @@ func (l *local) Save() (string, error) {
 		l.prevMap = nil
 		l.prevOnce = &sync.Once{}
 	}
-
-	if _, _, err = l.Docker.ImageInspectWithRaw(context.Background(), imgID); err != nil {
-		if dockerclient.IsErrNotFound(err) {
-			return "", fmt.Errorf("save image '%s'", l.RepoName)
-		}
+	if _, _, err = l.Docker.ImageInspectWithRaw(context.Background(), imgID); err != nil && !dockerclient.IsErrNotFound(err) {
 		return "", err
+	} else if dockerclient.IsErrNotFound(err) {
+		return "", fmt.Errorf("save image '%s'", l.RepoName)
 	}
 
 	return imgID, err
-}
-
-func (l *local) configFile() ([]byte, error) {
-	imgConfig := map[string]interface{}{
-		"os":      "linux",
-		"created": time.Now().Format(time.RFC3339),
-		"config":  l.Inspect.Config,
-		"rootfs": map[string][]string{
-			"diff_ids": l.Inspect.RootFS.Layers,
-		},
-		"history": make([]struct{}, len(l.Inspect.RootFS.Layers)),
-	}
-	return json.Marshal(imgConfig)
 }
 
 func (l *local) Delete() error {

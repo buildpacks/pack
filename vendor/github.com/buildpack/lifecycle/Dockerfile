@@ -22,10 +22,14 @@ RUN \
   groupadd pack --gid ${pack_gid} && \
   useradd --uid ${pack_uid} --gid ${pack_gid} -m -s /bin/bash pack
 
-ENV CNB_USER_ID=${pack_uid}
-ENV CNB_GROUP_ID=${pack_gid}
+ENV PACK_USER_ID=${pack_uid}
+ENV PACK_GROUP_ID=${pack_gid}
+ENV PACK_USER_GID=${pack_gid}
 
 COPY --from=builder /go/bin /lifecycle
 
 RUN wget -qO /usr/local/bin/jq "${jq_url}" && chmod +x /usr/local/bin/jq && \
   wget -qO /usr/local/bin/yj "${yj_url}" && chmod +x /usr/local/bin/yj
+
+WORKDIR /workspace
+RUN chown -R pack:pack /workspace
