@@ -5,7 +5,7 @@ github.com/Azure/go-ansiterm
 github.com/BurntSushi/toml
 # github.com/Microsoft/go-winio v0.4.12
 github.com/Microsoft/go-winio
-# github.com/buildpack/lifecycle v0.1.0
+# github.com/buildpack/lifecycle v0.1.1-0.20190404211403-f0052c8e8941
 github.com/buildpack/lifecycle
 github.com/buildpack/lifecycle/image
 github.com/buildpack/lifecycle/image/auth
