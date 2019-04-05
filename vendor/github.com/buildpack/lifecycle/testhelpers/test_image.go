@@ -40,7 +40,6 @@ type FakeImage struct {
 	name         string
 	entryPoint   []string
 	cmd          []string
-	base         string
 }
 
 func (f *FakeImage) Label(key string) (string, error) {
@@ -60,9 +59,8 @@ func (f *FakeImage) Digest() (string, error) {
 	return f.digest, nil
 }
 
-func (f *FakeImage) Rebase(baseTopLayer string, newBase image.Image) error {
-	f.base = newBase.Name()
-	return nil
+func (FakeImage) Rebase(string, image.Image) error {
+	panic("Not Implemented in Fake")
 }
 
 func (f *FakeImage) SetLabel(k string, v string) error {
@@ -222,8 +220,4 @@ func (f *FakeImage) assertNotAlreadySaved() {
 
 func (f *FakeImage) IsSaved() bool {
 	return f.alreadySaved
-}
-
-func (f *FakeImage) Base() string {
-	return f.base
 }
