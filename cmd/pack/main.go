@@ -50,6 +50,7 @@ func main() {
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(&logger))
 	rootCmd.AddCommand(commands.InspectBuilder(&logger, &cfg, &client))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger))
+	rootCmd.AddCommand(commands.SuggestBuilders(&logger))
 
 	rootCmd.AddCommand(commands.Version(&logger, Version))
 

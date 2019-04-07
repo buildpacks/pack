@@ -90,16 +90,16 @@ func suggestSettingBuilder(logger *logging.Logger) {
 
 func suggestBuilders(logger *logging.Logger) {
 	logger.Info("Suggested builders:\n")
+
 	tw := tabwriter.NewWriter(logger.RawWriter(), 10, 10, 5, ' ', tabwriter.TabIndent)
-	for len(suggestedBuilders) > 0 {
-		n := rand.Intn(len(suggestedBuilders))
-		builders := suggestedBuilders[n]
+	for _, i := range rand.Perm(len(suggestedBuilders)) {
+		builders := suggestedBuilders[i]
 		for _, builder := range builders {
-			tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t%s\t\n", builder.name, style.Symbol(builder.image), builder.info)))
+			_, _ = tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t%s\t\n", builder.name, style.Symbol(builder.image), builder.info)))
 		}
-		suggestedBuilders = append(suggestedBuilders[:n], suggestedBuilders[n+1:]...)
 	}
-	tw.Flush()
+	_ = tw.Flush()
+
 	logger.Info("")
 	logger.Tip("Learn more about a specific builder with:\n")
 	logger.Info("\tpack inspect-builder [builder image]")
