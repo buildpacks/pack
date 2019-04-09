@@ -6,12 +6,14 @@ import (
 	"sync"
 
 	"github.com/buildpack/lifecycle/image/auth"
+	"github.com/buildpack/pack/container"
+	"github.com/docker/docker/client"
 
 	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/logging"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
+	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 )
@@ -19,21 +21,21 @@ import (
 type Phase struct {
 	name     string
 	logger   *logging.Logger
-	docker   Docker
-	ctrConf  *container.Config
-	hostConf *container.HostConfig
-	ctr      container.ContainerCreateCreatedBody
+	docker   *client.Client
+	ctrConf  *dcontainer.Config
+	hostConf *dcontainer.HostConfig
+	ctr      dcontainer.ContainerCreateCreatedBody
 	uid, gid int
 	appDir   string
 	appOnce  *sync.Once
 }
 
 func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (*Phase, error) {
-	ctrConf := &container.Config{
+	ctrConf := &dcontainer.Config{
 		Image:  l.BuilderImage,
 		Labels: map[string]string{"author": "pack"},
 	}
-	hostConf := &container.HostConfig{
+	hostConf := &dcontainer.HostConfig{
 		Binds: []string{
 			fmt.Sprintf("%s:%s:", l.LayersVolume, layersDir),
 			fmt.Sprintf("%s:%s:", l.AppVolume, appDir),
@@ -103,8 +105,9 @@ func (p *Phase) Run(context context.Context) error {
 	if err != nil {
 		return errors.Wrapf(err, "run %s container", p.name)
 	}
-	return p.docker.RunContainer(
+	return container.Run(
 		context,
+		p.docker,
 		p.ctr.ID,
 		p.logger.VerboseWriter().WithPrefix(p.name),
 		p.logger.VerboseErrorWriter().WithPrefix(p.name),

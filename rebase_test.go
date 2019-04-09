@@ -30,20 +30,20 @@ func TestRebase(t *testing.T) {
 func testRebase(t *testing.T, when spec.G, it spec.S) {
 	when("#Rebase", func() {
 		var (
-			mockController *gomock.Controller
-			mockFetcher    *mocks.MockFetcher
-			factory        pack.RebaseFactory
-			outBuf         bytes.Buffer
-			errBuff        bytes.Buffer
+			mockController   *gomock.Controller
+			MockImageFetcher *mocks.MockImageFetcher
+			factory          pack.RebaseFactory
+			outBuf           bytes.Buffer
+			errBuff          bytes.Buffer
 		)
 		it.Before(func() {
 			mockController = gomock.NewController(t)
-			mockFetcher = mocks.NewMockFetcher(mockController)
+			MockImageFetcher = mocks.NewMockImageFetcher(mockController)
 
 			factory = pack.RebaseFactory{
 				Logger:  logging.NewLogger(&outBuf, &errBuff, false, false),
-				Fetcher: mockFetcher,
-				Config: &config.Config{},
+				Fetcher: MockImageFetcher,
+				Config:  &config.Config{},
 			}
 		})
 
@@ -61,8 +61,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						mockImage.EXPECT().Name().Return("some/name").AnyTimes()
 						mockImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
 							Return(`{"stack":{"runImage":{"image":"label/run/image"}}}`, nil).AnyTimes()
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "myorg/myrepo", gomock.Any()).Return(mockImage, nil)
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "my/run/image", gomock.Any()).Return(mockBaseImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "myorg/myrepo", true, true).Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "my/run/image", true, true).Return(mockBaseImage, nil)
 
 						flags := pack.RebaseFlags{
 							RunImage: "my/run/image",
@@ -79,8 +79,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						mockBaseImage.EXPECT().Name().Return("some/base-image").AnyTimes()
 						mockImage := mocks.NewMockImage(mockController)
 						mockImage.EXPECT().Name().Return("some/name").AnyTimes()
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "myorg/myrepo", gomock.Any()).Return(mockImage, nil)
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "my/run/image", gomock.Any()).Return(mockBaseImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "myorg/myrepo", true, true).Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "my/run/image", true, true).Return(mockBaseImage, nil)
 
 						flags := pack.RebaseFlags{
 							RunImage: "my/run/image",
@@ -99,8 +99,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						mockBaseImage.EXPECT().Name().Return("some/base-image").AnyTimes()
 						mockImage := mocks.NewMockImage(mockController)
 						mockImage.EXPECT().Name().Return("some/name").AnyTimes()
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "myorg/myrepo", gomock.Any()).Return(mockImage, nil)
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/other/runimage", gomock.Any()).Return(mockBaseImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "myorg/myrepo", true, true).Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/other/runimage", true, true).Return(mockBaseImage, nil)
 						mockImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
 							Return(`{"stack":{"runImage":{"image":"some/other/runimage"}}}`, nil).AnyTimes()
 
@@ -120,8 +120,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						mockBaseImage.EXPECT().Name().Return("some/base-image").AnyTimes()
 						mockImage := mocks.NewMockImage(mockController)
 						mockImage.EXPECT().Name().Return("some/name").AnyTimes()
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "example.com/myorg/myrepo", gomock.Any()).Return(mockImage, nil)
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "example.com/local/run/image", gomock.Any()).Return(mockBaseImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "example.com/myorg/myrepo", true, true).Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "example.com/local/run/image", true, true).Return(mockBaseImage, nil)
 						mockImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
 							Return(`{"stack":{"runImage":{"image":"some/other/runimage", "mirrors":["example.com/run/image"]}}}`, nil).AnyTimes()
 						factory.Config = &config.Config{
@@ -145,8 +145,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						mockBaseImage.EXPECT().Name().Return("some/base-image").AnyTimes()
 						mockImage := mocks.NewMockImage(mockController)
 						mockImage.EXPECT().Name().Return("some/name").AnyTimes()
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "example.com/myorg/myrepo", gomock.Any()).Return(mockImage, nil)
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "example.com/run/image", gomock.Any()).Return(mockBaseImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "example.com/myorg/myrepo", true, true).Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "example.com/run/image", true, true).Return(mockBaseImage, nil)
 						mockImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").
 							Return(`{"stack":{"runImage":{"image":"some/other/runimage", "mirrors":["example.com/run/image"]}}}`, nil).AnyTimes()
 
@@ -164,7 +164,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 					it("returns an error", func() {
 						mockImage := mocks.NewMockImage(mockController)
 						mockImage.EXPECT().Name().Return("some/name").AnyTimes()
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "myorg/myrepo", gomock.Any()).Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "myorg/myrepo", true, true).Return(mockImage, nil)
 						mockImage.EXPECT().Label("io.buildpacks.lifecycle.metadata").Return(`{"stack":{}}`, nil)
 
 						flags := pack.RebaseFlags{
@@ -184,8 +184,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						mockBaseImage.EXPECT().Name().Return("some/base-image").AnyTimes()
 						mockImage := mocks.NewMockImage(mockController)
 						mockImage.EXPECT().Name().Return("some/name").AnyTimes()
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "default/run", gomock.Any()).Return(mockBaseImage, nil)
-						mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "myorg/myrepo", gomock.Any()).Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "myorg/myrepo", true, true).Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "default/run", true, true).Return(mockBaseImage, nil)
 
 						cfg, err := factory.RebaseConfigFromFlags(context.TODO(), pack.RebaseFlags{
 							RepoName: "myorg/myrepo",
@@ -206,8 +206,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						mockBaseImage.EXPECT().Name().Return("some/base-image").AnyTimes()
 						mockImage := mocks.NewMockImage(mockController)
 						mockImage.EXPECT().Name().Return("some/name").AnyTimes()
-						mockFetcher.EXPECT().FetchLocalImage("default/run").Return(mockBaseImage, nil)
-						mockFetcher.EXPECT().FetchLocalImage("myorg/myrepo").Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "myorg/myrepo", true, false).Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "default/run", true, false).Return(mockBaseImage, nil)
 
 						cfg, err := factory.RebaseConfigFromFlags(context.TODO(), pack.RebaseFlags{
 							RepoName: "myorg/myrepo",
@@ -230,8 +230,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						mockBaseImage.EXPECT().Name().Return("some/base-image").AnyTimes()
 						mockImage := mocks.NewMockImage(mockController)
 						mockImage.EXPECT().Name().Return("some/name").AnyTimes()
-						mockFetcher.EXPECT().FetchRemoteImage("default/run").Return(mockBaseImage, nil)
-						mockFetcher.EXPECT().FetchRemoteImage("myorg/myrepo").Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "myorg/myrepo", false, true).Return(mockImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "default/run", false, true).Return(mockBaseImage, nil)
 
 						cfg, err := factory.RebaseConfigFromFlags(context.TODO(), pack.RebaseFlags{
 							RepoName: "myorg/myrepo",

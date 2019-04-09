@@ -5,11 +5,10 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/cache"
-	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 )
 
-func Run(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
+func Run(logger *logging.Logger, fetcher pack.ImageFetcher) *cobra.Command {
 	var runFlags pack.RunFlags
 	ctx := createCancellableContext()
 
@@ -22,7 +21,7 @@ func Run(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			dockerClient, err := docker.New()
+			dockerClient, err := dockerClient()
 			if err != nil {
 				return err
 			}
@@ -44,7 +43,7 @@ func Run(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return r.Run(ctx)
+			return r.Run(ctx, dockerClient)
 		}),
 	}
 

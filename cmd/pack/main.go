@@ -3,14 +3,16 @@ package main
 import (
 	"os"
 
+	"github.com/docker/docker/client"
+
+	"github.com/buildpack/pack/image"
+
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/commands"
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 
-	"github.com/buildpack/lifecycle/image"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -20,8 +22,8 @@ var (
 	timestamps, quiet bool
 	logger            logging.Logger
 	cfg               config.Config
-	client            pack.Client
-	imageFetcher      pack.ImageFetcher
+	packClient        pack.Client
+	imageFetcher      image.Fetcher
 	buildpackFetcher  buildpack.Fetcher
 )
 
@@ -34,7 +36,7 @@ func main() {
 			cfg = initConfig(logger)
 			imageFetcher = initImageFetcher(logger)
 			buildpackFetcher = initBuildpackFetcher(logger)
-			client = *pack.NewClient(&cfg, &imageFetcher)
+			packClient = *pack.NewClient(&cfg, &imageFetcher)
 		},
 	}
 	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
@@ -48,7 +50,7 @@ func main() {
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFetcher, &buildpackFetcher))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(&logger))
-	rootCmd.AddCommand(commands.InspectBuilder(&logger, &cfg, &client))
+	rootCmd.AddCommand(commands.InspectBuilder(&logger, &cfg, &packClient))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger))
 
 	rootCmd.AddCommand(commands.Version(&logger, Version))
@@ -69,21 +71,17 @@ func initConfig(logger logging.Logger) config.Config {
 	return *cfg
 }
 
-func initImageFetcher(logger logging.Logger) pack.ImageFetcher {
-	factory, err := image.NewFactory()
+func initImageFetcher(logger logging.Logger) image.Fetcher {
+	dockerClient, err := dockerClient()
 	if err != nil {
 		exitError(logger, err)
 	}
 
-	dockerClient, err := docker.New()
+	fetcher, err := image.NewFetcher(&logger, dockerClient)
 	if err != nil {
 		exitError(logger, err)
 	}
-
-	return pack.ImageFetcher{
-		Factory: factory,
-		Docker:  dockerClient,
-	}
+	return *fetcher
 }
 
 func initBuildpackFetcher(logger logging.Logger) buildpack.Fetcher {
@@ -93,4 +91,8 @@ func initBuildpackFetcher(logger logging.Logger) buildpack.Fetcher {
 func exitError(logger logging.Logger, err error) {
 	logger.Error(err.Error())
 	os.Exit(1)
+}
+
+func dockerClient() (*client.Client, error) {
+	return client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 }

@@ -7,13 +7,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack/logging"
 )
 
-// TODO: Check if most recent cobra version fixed bug in help strings. It was not always capitalizing the first
-// letter in the help string. If it's fixed, we can remove this.
 func AddHelpFlag(cmd *cobra.Command, commandName string) {
 	cmd.Flags().BoolP("help", "h", false, fmt.Sprintf("Help for '%s'", commandName))
 }
@@ -48,4 +47,8 @@ func createCancellableContext() context.Context {
 	}()
 
 	return ctx
+}
+
+func dockerClient() (*client.Client, error){
+	return client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 }

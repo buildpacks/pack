@@ -9,7 +9,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func Rebase(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
+func Rebase(logger *logging.Logger, fetcher pack.ImageFetcher) *cobra.Command {
 	var flags pack.RebaseFlags
 	ctx := createCancellableContext()
 

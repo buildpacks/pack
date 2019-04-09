@@ -9,16 +9,14 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
-
-	"github.com/buildpack/pack/docker"
 )
 
 type Cache struct {
-	docker *docker.Client
+	docker *client.Client
 	image  string
 }
 
-func New(repoName string, dockerClient *docker.Client) (*Cache, error) {
+func New(repoName string, dockerClient *client.Client) (*Cache, error) {
 	ref, err := name.ParseReference(repoName, name.WeakValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "bad image identifier")
