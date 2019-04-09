@@ -3,14 +3,34 @@ package commands
 import (
 	"context"
 	"fmt"
+	"github.com/buildpack/pack/style"
+	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
+	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack/logging"
 )
+
+
+type suggestedBuilder struct {
+	name  string
+	image string
+	info string
+}
+
+var suggestedBuilders = [][]suggestedBuilder{
+	{
+		{"Cloud Foundry", "cloudfoundry/cnb:bionic", "small base image with Java & Node.js"},
+		{"Cloud Foundry", "cloudfoundry/cnb:cflinuxfs3", "larger base image with Java, Node.js & Python"},
+	},
+	{
+		{"Heroku", "heroku/buildpacks", "heroku-18 base image with official Heroku buildpacks"},
+	},
+}
 
 // TODO: Check if most recent cobra version fixed bug in help strings. It was not always capitalizing the first
 // letter in the help string. If it's fixed, we can remove this.
@@ -48,4 +68,27 @@ func createCancellableContext() context.Context {
 	}()
 
 	return ctx
+}
+
+func suggestSettingBuilder(logger *logging.Logger) {
+	logger.Info("Please select a default builder with:\n")
+	logger.Info("\tpack set-default-builder <builder image>\n")
+	suggestBuilders(logger)
+}
+
+func suggestBuilders(logger *logging.Logger) {
+	logger.Info("Suggested builders:\n")
+
+	tw := tabwriter.NewWriter(logger.RawWriter(), 10, 10, 5, ' ', tabwriter.TabIndent)
+	for _, i := range rand.Perm(len(suggestedBuilders)) {
+		builders := suggestedBuilders[i]
+		for _, builder := range builders {
+			_, _ = tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t%s\t\n", builder.name, style.Symbol(builder.image), builder.info)))
+		}
+	}
+	_ = tw.Flush()
+
+	logger.Info("")
+	logger.Tip("Learn more about a specific builder with:\n")
+	logger.Info("\tpack inspect-builder [builder image]")
 }

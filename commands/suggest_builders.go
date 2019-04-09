@@ -8,7 +8,7 @@ import (
 func SuggestBuilders(logger *logging.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "suggest-builders",
-		Short: "Display list of builders recommended by the Cloud Native Buildpacks project",
+		Short: "Display list of recommended builders",
 		Args:  cobra.NoArgs,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			suggestBuilders(logger)

@@ -1,11 +1,6 @@
 package commands
 
 import (
-	"fmt"
-	"math/rand"
-	"text/tabwriter"
-	"time"
-
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -15,25 +10,6 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-type suggestedBuilder struct {
-	name  string
-	image string
-	info string
-}
-
-var suggestedBuilders = [][]suggestedBuilder{
-	{
-		{"Cloud Foundry", "cloudfoundry/cnb:bionic", "small base image with Java & Node.js"},
-		{"Cloud Foundry", "cloudfoundry/cnb:cflinuxfs3", "larger base image with Java, Node.js & Python"},
-	},
-	{
-		{"Heroku", "heroku/buildpacks", "heroku-18 base image with official Heroku buildpacks"},
-	},
-}
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 	var buildFlags pack.BuildFlags
@@ -80,29 +56,6 @@ func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "build")
 	return cmd
-}
-
-func suggestSettingBuilder(logger *logging.Logger) {
-	logger.Info("Please select a default builder with:\n")
-	logger.Info("\tpack set-default-builder <builder image>\n")
-	suggestBuilders(logger)
-}
-
-func suggestBuilders(logger *logging.Logger) {
-	logger.Info("Suggested builders:\n")
-
-	tw := tabwriter.NewWriter(logger.RawWriter(), 10, 10, 5, ' ', tabwriter.TabIndent)
-	for _, i := range rand.Perm(len(suggestedBuilders)) {
-		builders := suggestedBuilders[i]
-		for _, builder := range builders {
-			_, _ = tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t%s\t\n", builder.name, style.Symbol(builder.image), builder.info)))
-		}
-	}
-	_ = tw.Flush()
-
-	logger.Info("")
-	logger.Tip("Learn more about a specific builder with:\n")
-	logger.Info("\tpack inspect-builder [builder image]")
 }
 
 func buildCommandFlags(cmd *cobra.Command, buildFlags *pack.BuildFlags) {
