@@ -9,11 +9,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
-
-	"github.com/buildpack/pack/builder"
 
 	"github.com/buildpack/lifecycle/testhelpers"
 	dockertypes "github.com/docker/docker/api/types"
@@ -59,20 +56,11 @@ func RunRegistry(t *testing.T, seedRegistry bool) *TestRegistryConfig {
 		password:        password,
 	}
 
-	if seedRegistry {
-		t.Log("seed registry")
-		for _, f := range []func(*testing.T, string) string{DefaultBuildImage, DefaultRunImage, DefaultBuilderImage} {
-			AssertNil(t, PushImage(dockerCli(t), f(t, runRegistryPort), registryConfig))
-			a := f(t, runRegistryPort)
-			fmt.Println(a)
-		}
-	}
-
 	return registryConfig
 }
 
 func startRegistry(t *testing.T, runRegistryName, username, password string) string {
-	AssertNil(t, TryPullImage(dockerCli(t), registryContainerName))
+	AssertNil(t, PullImageWithAuth(dockerCli(t), registryContainerName, ""))
 	ctx := context.Background()
 
 	htpasswdTar := generateHtpasswd(t, ctx, username, password)
@@ -102,7 +90,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) str
 	runRegistryPort := inspect.NetworkSettings.Ports["5000/tcp"][0].HostPort
 
 	if os.Getenv("DOCKER_HOST") != "" {
-		err := proxyDockerHostPort(dockerCli(t), runRegistryPort)
+		err := proxyDockerHostPort(runRegistryPort)
 		AssertNil(t, err)
 	}
 
@@ -168,60 +156,4 @@ func (rc *TestRegistryConfig) RegistryCatalog() (string, error) {
 	return HttpGetE(fmt.Sprintf("http://localhost:%s/v2/_catalog", rc.RunRegistryPort), map[string]string{
 		"Authorization": "Basic " + encodedUserPass(rc.username, rc.password),
 	})
-}
-
-var getBuildImageOnce sync.Once
-
-func DefaultBuildImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := PackTag()
-	getBuildImageOnce.Do(func() {
-		AssertNil(t, TryPullImage(dockerCli(t), fmt.Sprintf("packs/build:%s", tag)))
-		AssertNil(t, dockerCli(t).ImageTag(
-			context.Background(),
-			fmt.Sprintf("packs/build:%s", tag),
-			fmt.Sprintf("localhost:%s/packs/build:%s", registryPort, tag),
-		))
-	})
-	return fmt.Sprintf("localhost:%s/packs/build:%s", registryPort, tag)
-}
-
-var getRunImageOnce sync.Once
-
-func DefaultRunImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := PackTag()
-	getRunImageOnce.Do(func() {
-		AssertNil(t, TryPullImage(dockerCli(t), fmt.Sprintf("packs/run:%s", tag)))
-		AssertNil(t, dockerCli(t).ImageTag(
-			context.Background(),
-			fmt.Sprintf("packs/run:%s", tag),
-			fmt.Sprintf("localhost:%s/packs/run:%s", registryPort, tag),
-		))
-	})
-	return fmt.Sprintf("localhost:%s/packs/run:%s", registryPort, tag)
-}
-
-var getBuilderImageOnce sync.Once
-
-func DefaultBuilderImage(t *testing.T, registryPort string) string {
-	t.Helper()
-	tag := PackTag()
-	origName := fmt.Sprintf("packs/samples:%s", tag)
-	newName := fmt.Sprintf("localhost:%s/%s", registryPort, origName)
-	dockerCli := dockerCli(t)
-	getBuilderImageOnce.Do(func() {
-		AssertNil(t, TryPullImage(dockerCli, origName))
-		AssertNil(t, dockerCli.ImageTag(context.Background(), origName, newName))
-		runImageName := DefaultRunImage(t, registryPort)
-
-		CreateImageOnLocal(t, dockerCli, newName, fmt.Sprintf(`
-					FROM %s
-					LABEL %s="{\"stack\":{\"runImage\": {\"image\": \"%s\"}}}"
-					USER root
-					RUN echo "[run-image]\n  image=\"%s\"" > /buildpacks/stack.toml
-					USER pack
-				`, origName, builder.MetadataLabel, runImageName, runImageName))
-	})
-	return newName
 }

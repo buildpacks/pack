@@ -1,34 +1,27 @@
 [[buildpacks]]
-id = "mock.bp.first"
-uri = "first"
+  id = "simple/layers"
+  uri = "simple-layers-buildpack"
 
 [[buildpacks]]
-id = "mock.bp.first"
-uri = "first-latest"
-latest = true
+  id = "read/env"
+  uri = "read-env-buildpack"
 
 [[buildpacks]]
-id = "mock.bp.second"
-uri = "second"
-
-[[buildpacks]]
-id = "mock.bp.third"
-uri = "third"
+  id = "noop.buildpack"
+  uri = "noop-buildpack"
+  latest = true
 
 [[groups]]
   [[groups.buildpacks]]
-    id = "mock.bp.first"
-    version = "0.0.1-mock"
-
+    id = "simple/layers"
+    version = "simple-layers-version"
   [[groups.buildpacks]]
-    id = "mock.bp.second"
-    version = "0.0.2-mock"
+    id = "read/env"
+    version = "read-env-version"
+    optional = true
 
-  [[groups.buildpacks]]
-    id = "mock.bp.third"
-    version = "0.0.3-mock"
-
+# stack info is append by the tests
 [stack]
-id = "com.example.stack"
-build-image = "packs/build:rc"
-run-image = "packs/run:rc"
+  id = "test.stack"
+  build-image = "test/build"
+  run-image = "test/run"

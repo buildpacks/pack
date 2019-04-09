@@ -23,6 +23,7 @@ import (
 	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/google/go-cmp/cmp"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/docker"
@@ -149,7 +150,7 @@ func dockerCli(t *testing.T) *docker.Client {
 	return dockerCliVal
 }
 
-func proxyDockerHostPort(dockerCli *docker.Client, port string) error {
+func proxyDockerHostPort(port string) error {
 	ln, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return err
@@ -198,24 +199,6 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 			t.Fatalf("timeout on eventually: %v", timeout)
 		}
 	}
-}
-
-func ConfigurePackHome(t *testing.T, packHome, registryPort string) {
-	t.Helper()
-	tag := PackTag()
-	AssertNil(t, ioutil.WriteFile(filepath.Join(packHome, "config.toml"), []byte(fmt.Sprintf(`
-				default-stack-id = "io.buildpacks.stacks.bionic"
-                default-builder = "%s"
-
-				[[stacks]]
-				  id = "io.buildpacks.stacks.bionic"
-				  build-image = "%s"
-				  run-images = ["%s"]
-
-                [[run-images]]
-                  image = "packs/run:%s"
-                  mirrors = ["%s"]
-			`, DefaultBuilderImage(t, registryPort), DefaultBuildImage(t, registryPort), DefaultRunImage(t, registryPort), tag, DefaultRunImage(t, registryPort))), 0666))
 }
 
 func CreateImageOnLocal(t *testing.T, dockerCli *docker.Client, repoName, dockerFile string) {
@@ -273,23 +256,6 @@ func PushImage(dockerCli *docker.Client, ref string, registryConfig *TestRegistr
 	return rc.Close()
 }
 
-const DefaultTag = "rc"
-
-func PackTag() string {
-	tag := os.Getenv("PACK_TAG")
-	if tag == "" {
-		return DefaultTag
-	}
-	return tag
-}
-
-func HttpGet(t *testing.T, url string) string {
-	t.Helper()
-	txt, err := HttpGetE(url, map[string]string{})
-	AssertNil(t, err)
-	return txt
-}
-
 func HttpGetE(url string, headers map[string]string) (string, error) {
 	var client *http.Client
 	if os.Getenv("DOCKER_HOST") == "" {
@@ -301,7 +267,7 @@ func HttpGetE(url string, headers map[string]string) (string, error) {
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "making new request")
 	}
 
 	for key, val := range headers {
@@ -310,7 +276,7 @@ func HttpGetE(url string, headers map[string]string) (string, error) {
 
 	resp, err := client.Do(request)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "doing request")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
@@ -318,7 +284,7 @@ func HttpGetE(url string, headers map[string]string) (string, error) {
 	}
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "reading body")
 	}
 	return string(b), nil
 }
@@ -337,18 +303,6 @@ func Run(t *testing.T, cmd *exec.Cmd) string {
 	return txt
 }
 
-func CleanDefaultImages(t *testing.T, registryPort string) {
-	t.Helper()
-	AssertNil(t,
-		DockerRmi(
-			dockerCli(t),
-			DefaultRunImage(t, registryPort),
-			DefaultBuildImage(t, registryPort),
-			DefaultBuilderImage(t, registryPort),
-		),
-	)
-}
-
 func RunE(cmd *exec.Cmd) (string, error) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -356,10 +310,6 @@ func RunE(cmd *exec.Cmd) (string, error) {
 	}
 
 	return string(output), nil
-}
-
-func TryPullImage(dockerCli *docker.Client, ref string) error {
-	return PullImageWithAuth(dockerCli, ref, "")
 }
 
 func PullImageWithAuth(dockerCli *docker.Client, ref, registryAuth string) error {
