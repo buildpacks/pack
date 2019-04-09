@@ -1,7 +1,0 @@
-[buildpack]
-id = "mock.bp.printenv"
-version = "0.0.1-mock"
-name = "Buildpack Printenv"
-
-[[stacks]]
-id = "io.buildpacks.stacks.bionic"

@@ -1,7 +1,0 @@
-[buildpack]
-id = "mock.bp.third"
-version = "0.0.3-mock"
-name = "Third Mock Buildpack"
-
-[[stacks]]
-id = "io.buildpacks.stacks.bionic"

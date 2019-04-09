@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-
-echo "Pretending to build"
-sleep 2
-exit 0

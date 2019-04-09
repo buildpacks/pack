@@ -52,7 +52,6 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			if err != nil {
 				t.Fatalf("failed to create temp homedir: %v", err)
 			}
-			h.ConfigurePackHome(t, packHome, "0000")
 
 			cfg, err := config.New(packHome)
 			if err != nil {
