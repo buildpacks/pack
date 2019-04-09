@@ -13,8 +13,6 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-// This interface same as BuildConfig
-//go:generate mockgen -package mocks -destination mocks/build_runner.go github.com/buildpack/pack BuildRunner
 type BuildRunner interface {
 	Run(context.Context) (*app.Image, error)
 }

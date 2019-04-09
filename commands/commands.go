@@ -10,8 +10,15 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/logging"
 )
+
+//go:generate mockgen -package mocks -destination mocks/pack_client.go github.com/buildpack/pack/commands PackClient
+type PackClient interface {
+	InspectBuilder(string, bool) (*pack.BuilderInfo, error)
+	Rebase(context.Context, pack.RebaseOptions) error
+}
 
 func AddHelpFlag(cmd *cobra.Command, commandName string) {
 	cmd.Flags().BoolP("help", "h", false, fmt.Sprintf("Help for '%s'", commandName))

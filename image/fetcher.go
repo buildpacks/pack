@@ -47,7 +47,6 @@ func NewFetcher(logger *logging.Logger, docker *client.Client) (*Fetcher, error)
 
 var ErrNotFound = errors.New("not found")
 
-// TODO: we lost some logging, is the output informative enough?
 func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (i img.Image, err error) {
 	i, err = f.factory.NewRemote(name)
 	if err != nil {

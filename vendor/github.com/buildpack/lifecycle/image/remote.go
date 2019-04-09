@@ -107,6 +107,14 @@ func (r *remote) Digest() (string, error) {
 	return hash.String(), nil
 }
 
+func (r *remote) CreatedAt() (time.Time, error) {
+	configFile, err := r.Image.ConfigFile()
+	if err != nil {
+		return time.Time{}, fmt.Errorf("failed to get createdAt time for image '%s': %s", r.RepoName, err)
+	}
+	return configFile.Created.UTC(), nil
+}
+
 func (r *remote) Rebase(baseTopLayer string, newBase Image) error {
 	newBaseRemote, ok := newBase.(*remote)
 	if !ok {

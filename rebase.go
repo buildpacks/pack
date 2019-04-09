@@ -9,82 +9,33 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
 
-type RebaseConfig struct {
-	Image        image.Image
-	NewBaseImage image.Image
-}
-
-type RebaseFactory struct {
-	Logger  *logging.Logger
-	Config  *config.Config
-	Fetcher ImageFetcher
-}
-
-type RebaseFlags struct {
+type RebaseOptions struct {
 	RepoName string
 	Publish  bool
-	NoPull   bool
+	SkipPull bool
 	RunImage string
 }
 
-func (f *RebaseFactory) RebaseConfigFromFlags(ctx context.Context, flags RebaseFlags) (RebaseConfig, error) {
-	appImage, err := f.Fetcher.Fetch(ctx, flags.RepoName, !flags.Publish, !flags.NoPull)
+func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
+	appImage, err := c.fetcher.Fetch(ctx, opts.RepoName, !opts.Publish, !opts.SkipPull)
 	if err != nil {
-		return RebaseConfig{}, err
+		return err
 	}
 
-	var runImageName string
-	if flags.RunImage != "" {
-		runImageName = flags.RunImage
-	} else {
-		contents, err := appImage.Label(lifecycle.MetadataLabel)
-		if err != nil {
-			return RebaseConfig{}, err
-		}
-
-		var appImageMetadata lifecycle.AppImageMetadata
-		if err := json.Unmarshal([]byte(contents), &appImageMetadata); err != nil {
-			return RebaseConfig{}, err
-		}
-
-		registry, err := config.Registry(flags.RepoName)
-		if err != nil {
-			return RebaseConfig{}, errors.Wrapf(err, "parsing registry from reference '%s'", flags.RepoName)
-		}
-
-		mirrors := make([]string, 0)
-		if localRunImage := f.Config.GetRunImage(appImageMetadata.Stack.RunImage.Image); localRunImage != nil {
-			mirrors = append(mirrors, localRunImage.Mirrors...)
-		}
-		mirrors = append(mirrors, appImageMetadata.Stack.RunImage.Image)
-		mirrors = append(mirrors, appImageMetadata.Stack.RunImage.Mirrors...)
-		runImageName, err = config.ImageByRegistry(registry, mirrors)
-		if err != nil {
-			return RebaseConfig{}, errors.Wrapf(err, "find image by registry")
-		}
-	}
-
-	if runImageName == "" {
-		return RebaseConfig{}, errors.New("run image must be specified")
-	}
-
-	baseImage, err := f.Fetcher.Fetch(ctx, runImageName, !flags.Publish, !flags.NoPull)
+	runImageName, err := c.getRunImageName(ctx, opts, appImage)
 	if err != nil {
-		return RebaseConfig{}, err
+		return err
 	}
 
-	return RebaseConfig{
-		Image:        appImage,
-		NewBaseImage: baseImage,
-	}, nil
-}
+	baseImage, err := c.fetcher.Fetch(ctx, runImageName, !opts.Publish, !opts.SkipPull)
+	if err != nil {
+		return err
+	}
 
-func (f *RebaseFactory) Rebase(cfg RebaseConfig) error {
-	label, err := cfg.Image.Label("io.buildpacks.lifecycle.metadata")
+	label, err := appImage.Label(lifecycle.MetadataLabel)
 	if err != nil {
 		return err
 	}
@@ -92,28 +43,67 @@ func (f *RebaseFactory) Rebase(cfg RebaseConfig) error {
 	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
 		return err
 	}
-	f.Logger.Info("Rebasing %s on run image %s", style.Symbol(cfg.Image.Name()), style.Symbol(cfg.NewBaseImage.Name()))
-	if err := cfg.Image.Rebase(metadata.RunImage.TopLayer, cfg.NewBaseImage); err != nil {
+	c.logger.Info("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
+	if err := appImage.Rebase(metadata.RunImage.TopLayer, baseImage); err != nil {
 		return err
 	}
 
-	metadata.RunImage.SHA, err = cfg.NewBaseImage.Digest()
+	metadata.RunImage.SHA, err = baseImage.Digest()
 	if err != nil {
 		return err
 	}
-	metadata.RunImage.TopLayer, err = cfg.NewBaseImage.TopLayer()
+	metadata.RunImage.TopLayer, err = baseImage.TopLayer()
 	if err != nil {
 		return err
 	}
 	newLabel, err := json.Marshal(metadata)
-	if err := cfg.Image.SetLabel("io.buildpacks.lifecycle.metadata", string(newLabel)); err != nil {
+	if err := appImage.SetLabel(lifecycle.MetadataLabel, string(newLabel)); err != nil {
 		return err
 	}
 
-	sha, err := cfg.Image.Save()
+	sha, err := appImage.Save()
 	if err != nil {
 		return err
 	}
-	f.Logger.Info("New sha: %s", style.Symbol(sha))
+	c.logger.Info("New sha: %s", style.Symbol(sha))
 	return nil
+}
+
+func (c *Client) getRunImageName(ctx context.Context, opts RebaseOptions, appImage image.Image) (string, error) {
+	var runImageName string
+	if opts.RunImage != "" {
+		runImageName = opts.RunImage
+	} else {
+		contents, err := appImage.Label(lifecycle.MetadataLabel)
+		if err != nil {
+			return "", err
+		}
+
+		var appImageMetadata lifecycle.AppImageMetadata
+		if err := json.Unmarshal([]byte(contents), &appImageMetadata); err != nil {
+			return "", err
+		}
+
+		registry, err := config.Registry(opts.RepoName)
+		if err != nil {
+			return "", errors.Wrapf(err, "parsing registry from reference '%s'", opts.RepoName)
+		}
+
+		var mirrors []string
+		if localRunImage := c.config.GetRunImage(appImageMetadata.Stack.RunImage.Image); localRunImage != nil {
+			mirrors = localRunImage.Mirrors
+		}
+		mirrors = append(mirrors, appImageMetadata.Stack.RunImage.Image)
+		mirrors = append(mirrors, appImageMetadata.Stack.RunImage.Mirrors...)
+		runImageName, err = config.ImageByRegistry(registry, mirrors)
+		if err != nil {
+			return "", errors.Wrapf(err, "find image by registry")
+		}
+	}
+
+	if runImageName == "" {
+		return "", errors.New("run image must be specified")
+	}
+
+	return runImageName, nil
 }
