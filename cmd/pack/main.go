@@ -5,12 +5,11 @@ import (
 
 	"github.com/docker/docker/client"
 
-	"github.com/buildpack/pack/image"
-
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/commands"
 	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/image"
 	"github.com/buildpack/pack/logging"
 
 	"github.com/fatih/color"
@@ -33,10 +32,10 @@ func main() {
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			logger = *logging.NewLogger(os.Stdout, os.Stderr, !quiet, timestamps)
-			cfg = initConfig(logger)
-			imageFetcher = initImageFetcher(logger)
-			buildpackFetcher = initBuildpackFetcher(logger)
-			packClient = *pack.NewClient(&cfg, &imageFetcher)
+			cfg = initConfig(&logger)
+			imageFetcher = initImageFetcher(&logger)
+			buildpackFetcher = initBuildpackFetcher(&logger)
+			packClient = initClient(&cfg, &logger)
 		},
 	}
 	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
@@ -46,7 +45,7 @@ func main() {
 
 	rootCmd.AddCommand(commands.Build(&logger, &imageFetcher))
 	rootCmd.AddCommand(commands.Run(&logger, &imageFetcher))
-	rootCmd.AddCommand(commands.Rebase(&logger, &imageFetcher))
+	rootCmd.AddCommand(commands.Rebase(&logger, &packClient))
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger, &imageFetcher, &buildpackFetcher))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(&logger))
@@ -63,7 +62,7 @@ func main() {
 	}
 }
 
-func initConfig(logger logging.Logger) config.Config {
+func initConfig(logger *logging.Logger) config.Config {
 	cfg, err := config.NewDefault()
 	if err != nil {
 		exitError(logger, err)
@@ -71,24 +70,33 @@ func initConfig(logger logging.Logger) config.Config {
 	return *cfg
 }
 
-func initImageFetcher(logger logging.Logger) image.Fetcher {
+func initClient(cfg *config.Config, logger *logging.Logger) pack.Client {
+	client, err := pack.DefaultClient(cfg, logger)
+	if err != nil {
+		exitError(logger, err)
+	}
+	return *client
+}
+
+func initImageFetcher(logger *logging.Logger) image.Fetcher {
 	dockerClient, err := dockerClient()
 	if err != nil {
 		exitError(logger, err)
 	}
 
-	fetcher, err := image.NewFetcher(&logger, dockerClient)
+	fetcher, err := image.NewFetcher(logger, dockerClient)
 	if err != nil {
 		exitError(logger, err)
 	}
 	return *fetcher
 }
 
-func initBuildpackFetcher(logger logging.Logger) buildpack.Fetcher {
-	return *buildpack.NewFetcher(&logger, cfg.Path())
+// TODO: Remove once all commands use pack.Client
+func initBuildpackFetcher(logger *logging.Logger) buildpack.Fetcher {
+	return *buildpack.NewFetcher(logger, cfg.Path())
 }
 
-func exitError(logger logging.Logger, err error) {
+func exitError(logger *logging.Logger, err error) {
 	logger.Error(err.Error())
 	os.Exit(1)
 }

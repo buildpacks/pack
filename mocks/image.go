@@ -9,6 +9,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"
+	time "time"
 )
 
 // MockImage is a mock of Image interface
@@ -44,6 +45,19 @@ func (m *MockImage) AddLayer(arg0 string) error {
 // AddLayer indicates an expected call of AddLayer
 func (mr *MockImageMockRecorder) AddLayer(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddLayer", reflect.TypeOf((*MockImage)(nil).AddLayer), arg0)
+}
+
+// CreatedAt mocks base method
+func (m *MockImage) CreatedAt() (time.Time, error) {
+	ret := m.ctrl.Call(m, "CreatedAt")
+	ret0, _ := ret[0].(time.Time)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreatedAt indicates an expected call of CreatedAt
+func (mr *MockImageMockRecorder) CreatedAt() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatedAt", reflect.TypeOf((*MockImage)(nil).CreatedAt))
 }
 
 // Delete mocks base method

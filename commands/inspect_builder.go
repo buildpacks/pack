@@ -12,12 +12,7 @@ import (
 	"text/tabwriter"
 )
 
-//go:generate mockgen -package mocks -destination mocks/inspect_builder.go github.com/buildpack/pack/commands BuilderInspector
-type BuilderInspector interface {
-	InspectBuilder(string, bool) (*pack.BuilderInfo, error)
-}
-
-func InspectBuilder(logger *logging.Logger, cfg *config.Config, inspector BuilderInspector) *cobra.Command {
+func InspectBuilder(logger *logging.Logger, cfg *config.Config, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "inspect-builder <builder-image-name>",
 		Short: "Show information about a builder",
@@ -40,10 +35,10 @@ func InspectBuilder(logger *logging.Logger, cfg *config.Config, inspector Builde
 			}
 
 			logger.Info("Remote\n------\n")
-			inspectBuilderOutput(logger, inspector, imageName, false)
+			inspectBuilderOutput(logger, client, imageName, false)
 
 			logger.Info("\nLocal\n-----\n")
-			inspectBuilderOutput(logger, inspector, imageName, true)
+			inspectBuilderOutput(logger, client, imageName, true)
 
 			return nil
 		}),
@@ -52,8 +47,8 @@ func InspectBuilder(logger *logging.Logger, cfg *config.Config, inspector Builde
 	return cmd
 }
 
-func inspectBuilderOutput(logger *logging.Logger, inspector BuilderInspector, imageName string, local bool) {
-	info, err := inspector.InspectBuilder(imageName, local)
+func inspectBuilderOutput(logger *logging.Logger, client PackClient, imageName string, local bool) {
+	info, err := client.InspectBuilder(imageName, local)
 	if err != nil {
 		logger.Error(errors.Wrapf(err, "failed to inspect image %s", style.Symbol(imageName)).Error())
 		return

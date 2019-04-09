@@ -2,22 +2,22 @@ package pack_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"testing"
 
-	imgtest "github.com/buildpack/lifecycle/testhelpers"
-	"github.com/buildpack/pack/image"
+	"github.com/buildpack/lifecycle/image/fakes"
 	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	h "github.com/buildpack/pack/testhelpers"
-
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/image"
+	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/mocks"
-	"github.com/buildpack/pack/testhelpers"
+	h "github.com/buildpack/pack/testhelpers"
 )
 
 func TestInspectBuilder(t *testing.T) {
@@ -30,7 +30,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		client           *pack.Client
 		MockImageFetcher *mocks.MockImageFetcher
 		mockController   *gomock.Controller
-		builderImage     *imgtest.FakeImage
+		builderImage     *fakes.Image
 	)
 
 	it.Before(func() {
@@ -40,8 +40,11 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 			RunImages: []config.RunImage{
 				{Image: "some/run-image", Mirrors: []string{"some/local-mirror"}},
 			},
-		}, MockImageFetcher)
-		builderImage = imgtest.NewFakeImage(t, "some/builder", "", "")
+		},
+			logging.NewLogger(ioutil.Discard, ioutil.Discard, false, false),
+			MockImageFetcher,
+		)
+		builderImage = fakes.NewImage(t, "some/builder", "", "")
 	})
 
 	it.After(func() {
@@ -61,8 +64,8 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("the builder image has a metadata label", func() {
 					it.Before(func() {
-						testhelpers.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
-						testhelpers.AssertNil(t, builderImage.SetLabel("io.buildpacks.builder.metadata", `{
+						h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
+						h.AssertNil(t, builderImage.SetLabel("io.buildpacks.builder.metadata", `{
   "stack": {
     "runImage": {
       "image": "some/run-image",
@@ -147,7 +150,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	when("the image does not exist", func() {
 		it.Before(func() {
-			notFoundImage := imgtest.NewFakeImage(t, "", "", "")
+			notFoundImage := fakes.NewImage(t, "", "", "")
 			notFoundImage.Delete()
 			MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "some-error"))
 		})

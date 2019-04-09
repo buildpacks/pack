@@ -1,6 +1,9 @@
 package image
 
-import "io"
+import (
+	"io"
+	"time"
+)
 
 type Image interface {
 	Name() string
@@ -20,4 +23,5 @@ type Image interface {
 	Found() (bool, error)
 	GetLayer(string) (io.ReadCloser, error)
 	Delete() error
+	CreatedAt() (time.Time, error)
 }
