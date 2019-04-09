@@ -37,15 +37,6 @@ func RunRegistry(t *testing.T, seedRegistry bool) *TestRegistryConfig {
 	password := RandString(10)
 
 	runRegistryPort := startRegistry(t, runRegistryName, username, password)
-
-	Eventually(t, func() bool {
-		_, err := dockerCli(t).RegistryLogin(context.Background(), dockertypes.AuthConfig{
-			Username:      username,
-			Password:      password,
-			ServerAddress: fmt.Sprintf("localhost:%s", runRegistryPort)})
-		return err == nil
-	}, 100*time.Millisecond, 10*time.Second)
-
 	dockerConfigDir := setupDockerConfigWithAuth(t, username, password, runRegistryPort)
 
 	registryConfig := &TestRegistryConfig{
@@ -57,6 +48,23 @@ func RunRegistry(t *testing.T, seedRegistry bool) *TestRegistryConfig {
 	}
 
 	return registryConfig
+}
+
+func (r *TestRegistryConfig) AuthConfig() dockertypes.AuthConfig {
+	return dockertypes.AuthConfig{
+		Username:      r.username,
+		Password:      r.password,
+		ServerAddress: fmt.Sprintf("localhost:%s", r.RunRegistryPort)}
+}
+
+func (r *TestRegistryConfig) Login(t *testing.T, username string, password string) {
+	Eventually(t, func() bool {
+		_, err := dockerCli(t).RegistryLogin(context.Background(), dockertypes.AuthConfig{
+			Username:      username,
+			Password:      password,
+			ServerAddress: fmt.Sprintf("localhost:%s", r.RunRegistryPort)})
+		return err == nil
+	}, 100*time.Millisecond, 10*time.Second)
 }
 
 func startRegistry(t *testing.T, runRegistryName, username, password string) string {
@@ -108,7 +116,7 @@ func generateHtpasswd(t *testing.T, ctx context.Context, username string, passwo
 	AssertNil(t, err)
 
 	var b bytes.Buffer
-	err = dockerCli(t).RunContainer(ctx, htpasswdCtr.ID, &b, &b)
+	err = RunContainer(ctx, dockerCli(t), htpasswdCtr.ID, &b, &b)
 	reader, err := testhelpers.CreateSingleFileTar("/registry_test_htpasswd", b.String())
 	AssertNil(t, err)
 

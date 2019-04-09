@@ -22,11 +22,13 @@ import (
 
 	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/archive"
-	"github.com/buildpack/pack/docker"
 )
 
 func RandString(n int) string {
@@ -138,13 +140,13 @@ func AssertDirContainsFileWithContents(t *testing.T, dir string, file string, ex
 	}
 }
 
-var dockerCliVal *docker.Client
+var dockerCliVal *client.Client
 var dockerCliOnce sync.Once
 var dockerCliErr error
 
-func dockerCli(t *testing.T) *docker.Client {
+func dockerCli(t *testing.T) *client.Client {
 	dockerCliOnce.Do(func() {
-		dockerCliVal, dockerCliErr = docker.New()
+		dockerCliVal, dockerCliErr = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	})
 	AssertNil(t, dockerCliErr)
 	return dockerCliVal
@@ -157,7 +159,6 @@ func proxyDockerHostPort(port string) error {
 	}
 
 	go func() {
-		// TODO exit somehow.
 		for {
 			conn, err := ln.Accept()
 			if err != nil {
@@ -201,7 +202,7 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 	}
 }
 
-func CreateImageOnLocal(t *testing.T, dockerCli *docker.Client, repoName, dockerFile string) {
+func CreateImageOnLocal(t *testing.T, dockerCli *client.Client, repoName, dockerFile string) {
 	ctx := context.Background()
 
 	buildContext, err := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
@@ -219,7 +220,7 @@ func CreateImageOnLocal(t *testing.T, dockerCli *docker.Client, repoName, docker
 	res.Body.Close()
 }
 
-func CreateImageOnRemote(t *testing.T, dockerCli *docker.Client, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
+func CreateImageOnRemote(t *testing.T, dockerCli *client.Client, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
 	t.Helper()
 	imageName := registryConfig.RepoName(repoName)
 
@@ -229,7 +230,7 @@ func CreateImageOnRemote(t *testing.T, dockerCli *docker.Client, registryConfig 
 	return imageName
 }
 
-func DockerRmi(dockerCli *docker.Client, repoNames ...string) error {
+func DockerRmi(dockerCli *client.Client, repoNames ...string) error {
 	var err error
 	ctx := context.Background()
 	for _, name := range repoNames {
@@ -245,7 +246,7 @@ func DockerRmi(dockerCli *docker.Client, repoNames ...string) error {
 	return err
 }
 
-func PushImage(dockerCli *docker.Client, ref string, registryConfig *TestRegistryConfig) error {
+func PushImage(dockerCli *client.Client, ref string, registryConfig *TestRegistryConfig) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: registryConfig.RegistryAuth()})
 	if err != nil {
 		return err
@@ -312,7 +313,7 @@ func RunE(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
-func PullImageWithAuth(dockerCli *docker.Client, ref, registryAuth string) error {
+func PullImageWithAuth(dockerCli *client.Client, ref, registryAuth string) error {
 	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{RegistryAuth: registryAuth})
 	if err != nil {
 		return nil
@@ -379,3 +380,36 @@ func RequireDocker(t *testing.T) {
 		t.Skip("Skipping because docker daemon unavailable")
 	}
 }
+
+func RunContainer(ctx context.Context, dockerCli *client.Client, id string, stdout io.Writer, stderr io.Writer) error {
+	bodyChan, errChan := dockerCli.ContainerWait(ctx, id, container.WaitConditionNextExit)
+
+	if err := dockerCli.ContainerStart(ctx, id, dockertypes.ContainerStartOptions{}); err != nil {
+		return errors.Wrap(err, "container start")
+	}
+	logs, err := dockerCli.ContainerLogs(ctx, id, dockertypes.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	})
+	if err != nil {
+		return errors.Wrap(err, "container logs stdout")
+	}
+
+	copyErr := make(chan error)
+	go func() {
+		_, err := stdcopy.StdCopy(stdout, stderr, logs)
+		copyErr <- err
+	}()
+
+	select {
+	case body := <-bodyChan:
+		if body.StatusCode != 0 {
+			return fmt.Errorf("failed with status code: %d", body.StatusCode)
+		}
+	case err := <-errChan:
+		return err
+	}
+	return <-copyErr
+}
+

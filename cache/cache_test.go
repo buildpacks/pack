@@ -9,12 +9,12 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/cache"
-	"github.com/buildpack/pack/docker"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -28,10 +28,11 @@ func TestCache(t *testing.T) {
 
 func testCache(t *testing.T, when spec.G, it spec.S) {
 	when("#New", func() {
-		var dockerClient *docker.Client
+		var dockerClient *client.Client
+
 		it.Before(func() {
 			var err error
-			dockerClient, err = docker.New()
+			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 			h.AssertNil(t, err)
 		})
 
@@ -84,14 +85,14 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 	when("#Clear", func() {
 		var (
 			imageName    string
-			dockerClient *docker.Client
+			dockerClient *client.Client
 			subject      *cache.Cache
 			ctx          context.Context
 		)
 
 		it.Before(func() {
 			var err error
-			dockerClient, err = docker.New()
+			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 			h.AssertNil(t, err)
 			ctx = context.TODO()
 

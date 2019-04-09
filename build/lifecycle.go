@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -19,14 +18,10 @@ import (
 	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/image"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/volume"
+	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/archive"
-	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
@@ -34,23 +29,12 @@ import (
 type Lifecycle struct {
 	BuilderImage string
 	Logger       *logging.Logger
-	Docker       Docker
+	Docker       *client.Client
 	LayersVolume string
 	AppVolume    string
 	uid, gid     int
 	appDir       string
 	appOnce      *sync.Once
-}
-
-type Docker interface {
-	RunContainer(ctx context.Context, id string, stdout io.Writer, stderr io.Writer) error
-	CopyToContainer(ctx context.Context, containerID, dstPath string, content io.Reader, options types.CopyToContainerOptions) error
-	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, containerName string) (container.ContainerCreateCreatedBody, error)
-	ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error
-	ImageRemove(ctx context.Context, imageID string, options types.ImageRemoveOptions) ([]types.ImageDeleteResponseItem, error)
-	ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error)
-	VolumeRemove(ctx context.Context, volumeID string, force bool) error
-	VolumeList(ctx context.Context, filter filters.Args) (volume.VolumeListOKBody, error)
 }
 
 type LifecycleConfig struct {
@@ -66,7 +50,7 @@ func init() {
 }
 
 func NewLifecycle(c LifecycleConfig) (*Lifecycle, error) {
-	client, err := docker.New()
+	client, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	if err != nil {
 		return nil, err
 	}
@@ -190,10 +174,10 @@ func tarEnvFile(tmpDir string, env map[string]string) (string, error) {
 			return "", err
 		}
 	}
-	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name:  platformDir + "/env", Mode: 0555, ModTime: now}); err != nil {
+	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: platformDir + "/env", Mode: 0555, ModTime: now}); err != nil {
 		return "", err
 	}
-	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name:  platformDir, Mode: 0555, ModTime: now}); err != nil {
+	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: platformDir, Mode: 0555, ModTime: now}); err != nil {
 		return "", err
 	}
 	return fh.Name(), nil

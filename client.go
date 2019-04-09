@@ -6,10 +6,10 @@ import (
 
 type Client struct {
 	config  *config.Config
-	fetcher Fetcher
+	fetcher ImageFetcher
 }
 
-func NewClient(config *config.Config, fetcher Fetcher) *Client {
+func NewClient(config *config.Config, fetcher ImageFetcher) *Client {
 	return &Client{
 		config:  config,
 		fetcher: fetcher,

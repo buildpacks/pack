@@ -21,7 +21,7 @@ type RebaseConfig struct {
 type RebaseFactory struct {
 	Logger  *logging.Logger
 	Config  *config.Config
-	Fetcher Fetcher
+	Fetcher ImageFetcher
 }
 
 type RebaseFlags struct {
@@ -32,22 +32,7 @@ type RebaseFlags struct {
 }
 
 func (f *RebaseFactory) RebaseConfigFromFlags(ctx context.Context, flags RebaseFlags) (RebaseConfig, error) {
-	var newImageFn func(string) (image.Image, error)
-	if flags.Publish {
-		newImageFn = f.Fetcher.FetchRemoteImage
-	} else {
-		newImageFn = func(name string) (image.Image, error) {
-			if !flags.NoPull {
-				return f.Fetcher.FetchUpdatedLocalImage(ctx, name, f.Logger.RawVerboseWriter())
-
-			} else {
-				return f.Fetcher.FetchLocalImage(name)
-
-			}
-		}
-	}
-
-	appImage, err := newImageFn(flags.RepoName)
+	appImage, err := f.Fetcher.Fetch(ctx, flags.RepoName, !flags.Publish, !flags.NoPull)
 	if err != nil {
 		return RebaseConfig{}, err
 	}
@@ -87,7 +72,7 @@ func (f *RebaseFactory) RebaseConfigFromFlags(ctx context.Context, flags RebaseF
 		return RebaseConfig{}, errors.New("run image must be specified")
 	}
 
-	baseImage, err := newImageFn(runImageName)
+	baseImage, err := f.Fetcher.Fetch(ctx, runImageName, !flags.Publish, !flags.NoPull)
 	if err != nil {
 		return RebaseConfig{}, err
 	}

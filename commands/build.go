@@ -10,7 +10,6 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/cache"
-	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
@@ -18,7 +17,7 @@ import (
 type suggestedBuilder struct {
 	name  string
 	image string
-	info string
+	info  string
 }
 
 var suggestedBuilders = [][]suggestedBuilder{
@@ -35,7 +34,7 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
+func Build(logger *logging.Logger, fetcher pack.ImageFetcher) *cobra.Command {
 	var buildFlags pack.BuildFlags
 	ctx := createCancellableContext()
 
@@ -46,7 +45,7 @@ func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			buildFlags.RepoName = args[0]
 
-			dockerClient, err := docker.New()
+			dockerClient, err := dockerClient()
 			if err != nil {
 				return err
 			}
@@ -69,10 +68,11 @@ func Build(logger *logging.Logger, fetcher pack.Fetcher) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := b.Run(ctx); err != nil {
+			appImage, err := b.Run(ctx)
+			if err != nil {
 				return err
 			}
-			logger.Info("Successfully built image %s", style.Symbol(b.RepoName))
+			logger.Info("Successfully built image %s", style.Symbol(appImage.RepoName))
 			return nil
 		}),
 	}
