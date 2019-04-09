@@ -1,0 +1,4 @@
+[buildpack]
+id = "noop.buildpack"
+version = "noop.buildpack.version"
+name = "NOOP Buildpack"

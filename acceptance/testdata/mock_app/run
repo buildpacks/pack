@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
-echo Here are the deps:
+set -x
 
-cat "$PWD"/*-dep
+echo "listening on port 8080"
 
-echo "I hope they're what you wanted"
+resp=$(echo "HTTP/1.1 200 OK\n" && cat "$PWD"/*-dep /contents*.txt)
+while true; do
+  nc -l -p 8080 -c "echo \"$resp\""
+done
