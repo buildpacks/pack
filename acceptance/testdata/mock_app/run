@@ -7,5 +7,4 @@ echo "listening on port 8080"
 resp=$(echo "HTTP/1.1 200 OK\n" && cat "$PWD"/*-dep /contents*.txt)
 while true; do
   nc -l -p 8080 -c "echo \"$resp\""
-  echo "looping"
 done

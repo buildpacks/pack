@@ -5,5 +5,5 @@ USER root
 RUN apt-get update && apt-get -yq install netcat
 USER pack
 
-LABEL io.buildpacks.stack.id=test.stack
+LABEL io.buildpacks.stack.id=pack.test.stack
 

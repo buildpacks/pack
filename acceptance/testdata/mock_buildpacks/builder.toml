@@ -20,8 +20,9 @@
     version = "read-env-version"
     optional = true
 
-# stack info is append by the tests
 [stack]
-  id = "test.stack"
-  build-image = "test/build"
-  run-image = "test/run"
+  id = "pack.test.stack"
+  build-image = "pack-test/build"
+  run-image = "pack-test/run"
+
+# run-image-mirror is append by accpetance tests

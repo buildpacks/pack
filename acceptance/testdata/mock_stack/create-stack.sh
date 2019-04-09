@@ -2,5 +2,5 @@
 
 dir="$(cd $(dirname $0) && pwd)"
 
-docker build --tag test/build "$dir/build"
-docker build --tag test/run "$dir/run"
+docker build --tag pack-test/build "$dir/build"
+docker build --tag pack-test/run "$dir/run"

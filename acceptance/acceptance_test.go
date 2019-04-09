@@ -38,8 +38,8 @@ var (
 	dockerCli        *docker.Client
 	registryConfig   *h.TestRegistryConfig
 	lifecycleVersion = "0.1.0"
-	runImage         = "test/run"
-	buildImage       = "test/build"
+	runImage         = "pack-test/run"
+	buildImage       = "pack-test/build"
 	runImageMirror   string
 	packHome         string
 	builder          string
@@ -73,9 +73,10 @@ func TestAcceptance(t *testing.T) {
 	if version, ok := os.LookupEnv("LIFECYCLE_VERSION"); ok {
 		lifecycleVersion = version
 	}
-	runImageMirror = createStack(t, dockerCli)
+	runImageMirror = registryConfig.RepoName(runImage)
+	createStack(t, dockerCli)
 	builder = createBuilder(t, runImageMirror)
-	defer h.DockerRmi(dockerCli, runImage, buildImage, builder)
+	defer h.DockerRmi(dockerCli, runImage, buildImage, builder, runImageMirror)
 
 	spec.Run(t, "acceptance", testAcceptance, spec.Report(report.Terminal{}))
 }
@@ -711,15 +712,13 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 	return builder
 }
 
-func createStack(t *testing.T, dockerCli *docker.Client) string {
+func createStack(t *testing.T, dockerCli *docker.Client) {
 	t.Log("create stack images")
-	createStackImage(t, dockerCli, "test/run", filepath.Join("testdata", "mock_stack", "run"))
-	createStackImage(t, dockerCli, "test/build", filepath.Join("testdata", "mock_stack", "build"))
-	runImageMirror := registryConfig.RepoName("test/run")
+	createStackImage(t, dockerCli, runImage, filepath.Join("testdata", "mock_stack", "run"))
+	createStackImage(t, dockerCli, buildImage, filepath.Join("testdata", "mock_stack", "build"))
 	err := dockerCli.ImageTag(context.Background(), runImage, runImageMirror)
 	h.AssertNil(t, err)
 	h.AssertNil(t, h.PushImage(dockerCli, runImageMirror, registryConfig))
-	return runImageMirror
 }
 
 func createStackImage(t *testing.T, dockerCli *docker.Client, repoName string, dir string) {
