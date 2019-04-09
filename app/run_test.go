@@ -25,6 +25,7 @@ import (
 )
 
 func TestRun(t *testing.T) {
+	h.RequireDocker(t)
 	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "run", testRun, spec.Sequential(), spec.Report(report.Terminal{}))
