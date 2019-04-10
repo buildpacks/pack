@@ -656,13 +656,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 	when("pack set-default-builder", func() {
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			cmd := packCmd("set-default-builder", "some/builder")
+			cmd := packCmd("set-default-builder", "cloudfoundry/cnb:bionic")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("set-default-builder command failed: %s: %s", output, err)
 			}
-			h.AssertEq(t, string(output), "Builder 'some/builder' is now the default builder\n")
+			h.AssertContains(t, string(output), "Builder 'cloudfoundry/cnb:bionic' is now the default builder")
 		})
 	})
 
