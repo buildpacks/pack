@@ -642,6 +642,18 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("pack suggest-builders", func() {
+		it("displays suggested builders", func() {
+			cmd := packCmd("suggest-builders")
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("suggest-builders command failed: %s: %s", output, err)
+			}
+			h.AssertContains(t, string(output), "Suggested builders:")
+			h.AssertContains(t, string(output), "cloudfoundry/cnb:bionic")
+		})
+	})
+
 	when("pack set-default-builder", func() {
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
 			cmd := packCmd("set-default-builder", "some/builder")
