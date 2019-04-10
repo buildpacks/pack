@@ -10,10 +10,18 @@ import (
 	"syscall"
 	"text/tabwriter"
 
+	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/logging"
 )
+
+//go:generate mockgen -package mocks -destination mocks/pack_client.go github.com/buildpack/pack/commands PackClient
+type PackClient interface {
+	InspectBuilder(string, bool) (*pack.BuilderInfo, error)
+	Rebase(context.Context, pack.RebaseOptions) error
+}
 
 
 type suggestedBuilder struct {
@@ -32,8 +40,6 @@ var suggestedBuilders = [][]suggestedBuilder{
 	},
 }
 
-// TODO: Check if most recent cobra version fixed bug in help strings. It was not always capitalizing the first
-// letter in the help string. If it's fixed, we can remove this.
 func AddHelpFlag(cmd *cobra.Command, commandName string) {
 	cmd.Flags().BoolP("help", "h", false, fmt.Sprintf("Help for '%s'", commandName))
 }
@@ -69,6 +75,12 @@ func createCancellableContext() context.Context {
 
 	return ctx
 }
+
+func dockerClient() (*client.Client, error){
+	return client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+}
+
+
 
 func suggestSettingBuilder(logger *logging.Logger) {
 	logger.Info("Please select a default builder with:\n")

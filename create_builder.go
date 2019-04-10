@@ -25,7 +25,7 @@ import (
 type BuilderConfig struct {
 	Buildpacks      []buildpack.Buildpack
 	Groups          []lifecycle.BuildpackGroup
-	Repo            lcimg.Image
+	Image           lcimg.Image
 	BuilderDir      string // original location of builder.toml, used for interpreting relative paths in buildpack URIs
 	RunImage        string
 	RunImageMirrors []string
@@ -34,7 +34,7 @@ type BuilderConfig struct {
 type BuilderFactory struct {
 	Logger           *logging.Logger
 	Config           *config.Config
-	Fetcher          Fetcher
+	Fetcher          ImageFetcher
 	BuildpackFetcher BuildpackFetcher
 }
 
@@ -62,20 +62,12 @@ func (f *BuilderFactory) BuilderConfigFromFlags(ctx context.Context, flags Creat
 	baseImage := builderTOML.Stack.BuildImage
 	builderConfig.RunImage = builderTOML.Stack.RunImage
 	builderConfig.RunImageMirrors = builderTOML.Stack.RunImageMirrors
-	if flags.Publish {
-		builderConfig.Repo, err = f.Fetcher.FetchRemoteImage(baseImage)
-	} else {
-		if !flags.NoPull {
-			builderConfig.Repo, err = f.Fetcher.FetchUpdatedLocalImage(ctx, baseImage, f.Logger.RawVerboseWriter())
-		} else {
-			builderConfig.Repo, err = f.Fetcher.FetchLocalImage(baseImage)
-		}
-	}
+	f.Logger.Verbose("Using build-image %s", style.Symbol(baseImage))
+	builderConfig.Image, err = f.Fetcher.Fetch(ctx, baseImage, !flags.Publish, !flags.NoPull)
 	if err != nil {
-		return BuilderConfig{}, errors.Wrapf(err, "opening base image: %s", baseImage)
+		return BuilderConfig{}, err
 	}
-	builderConfig.Repo.Rename(flags.RepoName)
-
+	builderConfig.Image.Rename(flags.RepoName)
 	builderConfig.Groups = builderTOML.Groups
 
 	for _, b := range builderTOML.Buildpacks {
@@ -99,7 +91,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 	if err != nil {
 		return fmt.Errorf(`failed to generate order.toml layer: %s`, err)
 	}
-	if err := config.Repo.AddLayer(orderTar); err != nil {
+	if err := config.Image.AddLayer(orderTar); err != nil {
 		return fmt.Errorf(`failed append order.toml layer to image: %s`, err)
 	}
 
@@ -109,7 +101,8 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		if err != nil {
 			return fmt.Errorf(`failed to generate layer for buildpack %s: %s`, style.Symbol(buildpack.ID), err)
 		}
-		if err := config.Repo.AddLayer(tarFile); err != nil {
+		f.Logger.Verbose("adding layer for buildpack %s version %s", style.Symbol(buildpack.ID), style.Symbol(buildpack.Version))
+		if err := config.Image.AddLayer(tarFile); err != nil {
 			return fmt.Errorf(`failed append buildpack layer to image: %s`, err)
 		}
 		buildpacksMetadata = append(buildpacksMetadata, builder.BuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version, Latest: buildpack.Latest})
@@ -119,7 +112,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 	if err != nil {
 		return fmt.Errorf(`failed generate layer for latest links: %s`, err)
 	}
-	if err := config.Repo.AddLayer(tarFile); err != nil {
+	if err := config.Image.AddLayer(tarFile); err != nil {
 		return fmt.Errorf(`failed append latest link layer to image: %s`, err)
 	}
 
@@ -146,7 +139,7 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 		return fmt.Errorf(`failed marshal builder image metadata: %s`, err)
 	}
 
-	if err := config.Repo.SetLabel(builder.MetadataLabel, string(jsonBytes)); err != nil {
+	if err := config.Image.SetLabel(builder.MetadataLabel, string(jsonBytes)); err != nil {
 		return fmt.Errorf("failed to set metadata label: %s", err)
 	}
 
@@ -154,15 +147,15 @@ func (f *BuilderFactory) Create(config BuilderConfig) error {
 	if err != nil {
 		return fmt.Errorf(`failed to generate stack.toml layer: %s`, err)
 	}
-	if err := config.Repo.AddLayer(stackTar); err != nil {
+	if err := config.Image.AddLayer(stackTar); err != nil {
 		return fmt.Errorf(`failed to append stack.toml layer to image: %s`, err)
 	}
 
-	if err := config.Repo.SetEnv("CNB_STACK_PATH", filepath.Join("/buildpacks", "stack.toml")); err != nil {
+	if err := config.Image.SetEnv("CNB_STACK_PATH", filepath.Join("/buildpacks", "stack.toml")); err != nil {
 		return err
 	}
 
-	if _, err := config.Repo.Save(); err != nil {
+	if _, err := config.Image.Save(); err != nil {
 		return err
 	}
 

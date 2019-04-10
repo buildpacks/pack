@@ -1,22 +1,23 @@
 package pack_test
 
 import (
-	"errors"
 	"fmt"
+	"io/ioutil"
 	"testing"
 
-	imgtest "github.com/buildpack/lifecycle/testhelpers"
+	"github.com/buildpack/lifecycle/image/fakes"
 	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	h "github.com/buildpack/pack/testhelpers"
-
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/image"
+	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/mocks"
-	"github.com/buildpack/pack/testhelpers"
+	h "github.com/buildpack/pack/testhelpers"
 )
 
 func TestInspectBuilder(t *testing.T) {
@@ -26,21 +27,24 @@ func TestInspectBuilder(t *testing.T) {
 
 func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		client         *pack.Client
-		mockFetcher    *mocks.MockFetcher
-		mockController *gomock.Controller
-		builderImage   *imgtest.FakeImage
+		client           *pack.Client
+		MockImageFetcher *mocks.MockImageFetcher
+		mockController   *gomock.Controller
+		builderImage     *fakes.Image
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
-		mockFetcher = mocks.NewMockFetcher(mockController)
+		MockImageFetcher = mocks.NewMockImageFetcher(mockController)
 		client = pack.NewClient(&config.Config{
 			RunImages: []config.RunImage{
 				{Image: "some/run-image", Mirrors: []string{"some/local-mirror"}},
 			},
-		}, mockFetcher)
-		builderImage = imgtest.NewFakeImage(t, "some/builder", "", "")
+		},
+			logging.NewLogger(ioutil.Discard, ioutil.Discard, false, false),
+			MockImageFetcher,
+		)
+		builderImage = fakes.NewImage(t, "some/builder", "", "")
 	})
 
 	it.After(func() {
@@ -52,16 +56,16 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 			when(fmt.Sprintf("daemon is %t", useDaemon), func() {
 				it.Before(func() {
 					if useDaemon {
-						mockFetcher.EXPECT().FetchLocalImage("some/builder").Return(builderImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, false).Return(builderImage, nil)
 					} else {
-						mockFetcher.EXPECT().FetchRemoteImage("some/builder").Return(builderImage, nil)
+						MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, false).Return(builderImage, nil)
 					}
 				})
 
 				when("the builder image has a metadata label", func() {
 					it.Before(func() {
-						testhelpers.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
-						testhelpers.AssertNil(t, builderImage.SetLabel("io.buildpacks.builder.metadata", `{
+						h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
+						h.AssertNil(t, builderImage.SetLabel("io.buildpacks.builder.metadata", `{
   "stack": {
     "runImage": {
       "image": "some/run-image",
@@ -135,19 +139,20 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	when("fetcher fails to fetch the image", func() {
 		it.Before(func() {
-			mockFetcher.EXPECT().FetchRemoteImage("some/builder").Return(nil, errors.New("some-error"))
+			MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, false).Return(nil, errors.New("some-error"))
 		})
+
 		it("returns an error", func() {
 			_, err := client.InspectBuilder("some/builder", false)
-			h.AssertError(t, err, "failed to get builder image 'some/builder': some-error")
+			h.AssertError(t, err, "some-error")
 		})
 	})
 
 	when("the image does not exist", func() {
 		it.Before(func() {
-			notFoundImage := imgtest.NewFakeImage(t, "", "", "")
+			notFoundImage := fakes.NewImage(t, "", "", "")
 			notFoundImage.Delete()
-			mockFetcher.EXPECT().FetchLocalImage("some/builder").Return(notFoundImage, nil)
+			MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "some-error"))
 		})
 
 		it("return nil metadata", func() {

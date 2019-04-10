@@ -1,9 +1,13 @@
 package pack
 
 import (
-	"github.com/buildpack/lifecycle/image"
-	"github.com/buildpack/pack/builder"
+	"context"
+
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/image"
+
+	"github.com/buildpack/pack/builder"
 )
 
 type BuilderInfo struct {
@@ -22,24 +26,12 @@ type BuildpackInfo struct {
 }
 
 func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) {
-	var (
-		img image.Image
-		err error
-	)
-
-	if daemon {
-		img, err = c.fetcher.FetchLocalImage(name)
-	} else {
-		img, err = c.fetcher.FetchRemoteImage(name)
-	}
+	img, err := c.fetcher.Fetch(context.Background(), name, daemon, false)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get builder image '%s'", name)
-	}
-
-	if found, err := img.Found(); err != nil {
-		return nil, errors.Wrapf(err, "failed to find builder image '%s'", name)
-	} else if !found {
-		return nil, nil
+		if errors.Cause(err) == image.ErrNotFound {
+			return nil, nil
+		}
+		return nil, err
 	}
 
 	bldr := builder.NewBuilder(img, c.config)

@@ -12,7 +12,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func CreateBuilder(logger *logging.Logger, fetcher pack.Fetcher, bpFetcher pack.BuildpackFetcher) *cobra.Command {
+func CreateBuilder(logger *logging.Logger, fetcher pack.ImageFetcher, bpFetcher pack.BuildpackFetcher) *cobra.Command {
 	var flags pack.CreateBuilderFlags
 	ctx := createCancellableContext()
 	cmd := &cobra.Command{
@@ -42,7 +42,7 @@ func CreateBuilder(logger *logging.Logger, fetcher pack.Fetcher, bpFetcher pack.
 			if err := builderFactory.Create(builderConfig); err != nil {
 				return err
 			}
-			imageName := builderConfig.Repo.Name()
+			imageName := builderConfig.Image.Name()
 			logger.Info("Successfully created builder image %s", style.Symbol(imageName))
 			logger.Tip("Run %s to use this builder", style.Symbol(fmt.Sprintf("pack build <image-name> --builder %s", imageName)))
 			return nil

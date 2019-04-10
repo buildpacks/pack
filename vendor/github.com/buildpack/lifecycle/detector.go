@@ -109,7 +109,6 @@ type BuildpackGroup struct {
 func (bg *BuildpackGroup) Detect(c *DetectConfig) (plan []byte, group *BuildpackGroup, ok bool) {
 	group = &BuildpackGroup{}
 	detected := true
-	c.Out.Printf("Trying group of %d...", len(bg.Buildpacks))
 	plan, codes := bg.pDetect(c)
 	c.Out.Printf("======== Results ========")
 	for i, code := range codes {
@@ -199,6 +198,7 @@ type BuildpackOrder []BuildpackGroup
 
 func (bo BuildpackOrder) Detect(c *DetectConfig) (plan []byte, group *BuildpackGroup) {
 	for i := range bo {
+		c.Out.Printf("Trying group %d out of %d with %d buildpacks...", i+1, len(bo), len(bo[i].Buildpacks))
 		if p, g, ok := bo[i].Detect(c); ok {
 			return p, g
 		}

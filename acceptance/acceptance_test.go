@@ -24,18 +24,18 @@ import (
 	"github.com/buildpack/lifecycle"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/cache"
-	"github.com/buildpack/pack/docker"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
 var (
 	packPath         string
-	dockerCli        *docker.Client
+	dockerCli        *client.Client
 	registryConfig   *h.TestRegistryConfig
 	lifecycleVersion = "0.1.0"
 	runImage         = "pack-test/run"
@@ -66,7 +66,7 @@ func TestAcceptance(t *testing.T) {
 	}
 
 	var err error
-	dockerCli, err = docker.New()
+	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 	registryConfig = h.RunRegistry(t, false)
 	defer registryConfig.StopRegistry(t)
@@ -340,7 +340,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 						assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
 						t.Log("pulls the run image")
-						h.AssertContains(t, output, fmt.Sprintf("Pulling run image '%s'", runImageName))
+						h.AssertContains(t, output, fmt.Sprintf("Pulling image '%s'", runImageName))
 
 						t.Log("uses the run image as the base image")
 						assertHasBase(t, repoName, runImageName)
@@ -724,7 +724,7 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 	return builder
 }
 
-func createStack(t *testing.T, dockerCli *docker.Client) {
+func createStack(t *testing.T, dockerCli *client.Client) {
 	t.Log("create stack images")
 	createStackImage(t, dockerCli, runImage, filepath.Join("testdata", "mock_stack", "run"))
 	createStackImage(t, dockerCli, buildImage, filepath.Join("testdata", "mock_stack", "build"))
@@ -733,7 +733,7 @@ func createStack(t *testing.T, dockerCli *docker.Client) {
 	h.AssertNil(t, h.PushImage(dockerCli, runImageMirror, registryConfig))
 }
 
-func createStackImage(t *testing.T, dockerCli *docker.Client, repoName string, dir string) {
+func createStackImage(t *testing.T, dockerCli *client.Client, repoName string, dir string) {
 	ctx := context.Background()
 	buildContext, _ := archive.CreateTarReader(dir, "/", 0, 0)
 
@@ -891,7 +891,7 @@ func terminateAtStep(t *testing.T, cmd *exec.Cmd, buf *bytes.Buffer, pattern str
 	}
 }
 
-func imageLabel(t *testing.T, dockerCli *docker.Client, repoName, labelName string) string {
+func imageLabel(t *testing.T, dockerCli *client.Client, repoName, labelName string) string {
 	t.Helper()
 	inspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), repoName)
 	h.AssertNil(t, err)

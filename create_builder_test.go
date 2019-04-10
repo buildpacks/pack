@@ -3,13 +3,14 @@ package pack_test
 import (
 	"bytes"
 	"context"
-	"fmt"
-	"github.com/fatih/color"
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/fatih/color"
 
 	"github.com/buildpack/lifecycle"
 	"github.com/golang/mock/gomock"
@@ -37,16 +38,16 @@ func TestBuilderFactory(t *testing.T) {
 func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 	when("#BuilderFactory", func() {
 		var (
-			mockController *gomock.Controller
-			mockFetcher    *mocks.MockFetcher
-			factory        pack.BuilderFactory
-			outBuf         bytes.Buffer
-			errBuf         bytes.Buffer
+			mockController   *gomock.Controller
+			MockImageFetcher *mocks.MockImageFetcher
+			factory          pack.BuilderFactory
+			outBuf           bytes.Buffer
+			errBuf           bytes.Buffer
 		)
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
-			mockFetcher = mocks.NewMockFetcher(mockController)
+			MockImageFetcher = mocks.NewMockImageFetcher(mockController)
 
 			packHome, err := ioutil.TempDir("", ".pack")
 			if err != nil {
@@ -63,7 +64,7 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			factory = pack.BuilderFactory{
 				Logger:           logger,
 				Config:           cfg,
-				Fetcher:          mockFetcher,
+				Fetcher:          MockImageFetcher,
 				BuildpackFetcher: buildpack.NewFetcher(logger, cfg.Path()),
 			}
 		})
@@ -75,8 +76,7 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 		when("#BuilderConfigFromFlags", func() {
 			it("uses stack build image as base image", func() {
 				mockBaseImage := mocks.NewMockImage(mockController)
-
-				mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/build", gomock.Any()).Return(mockBaseImage, nil)
+				MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build", true, true).Return(mockBaseImage, nil)
 				mockBaseImage.EXPECT().Rename("some/image")
 
 				cfg, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
@@ -86,7 +86,7 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 				if err != nil {
 					t.Fatalf("error creating builder config: %s", err)
 				}
-				h.AssertSameInstance(t, cfg.Repo, mockBaseImage)
+				h.AssertSameInstance(t, cfg.Image, mockBaseImage)
 				checkBuildpacks(t, cfg.Buildpacks)
 				checkGroups(t, cfg.Groups)
 				h.AssertEq(t, cfg.BuilderDir, "testdata")
@@ -96,7 +96,7 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 
 			it("doesn't pull a new base image when --no-pull flag is provided", func() {
 				mockBaseImage := mocks.NewMockImage(mockController)
-				mockFetcher.EXPECT().FetchLocalImage("some/build").Return(mockBaseImage, nil)
+				MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build", true, false).Return(mockBaseImage, nil)
 				mockBaseImage.EXPECT().Rename("some/image")
 
 				config, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
@@ -107,14 +107,14 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 				if err != nil {
 					t.Fatalf("error creating builder config: %s", err)
 				}
-				h.AssertSameInstance(t, config.Repo, mockBaseImage)
+				h.AssertSameInstance(t, config.Image, mockBaseImage)
 				checkBuildpacks(t, config.Buildpacks)
 				checkGroups(t, config.Groups)
 				h.AssertEq(t, config.BuilderDir, "testdata")
 			})
 
 			it("fails if the base image cannot be found", func() {
-				mockFetcher.EXPECT().FetchUpdatedLocalImage(gomock.Any(), "some/build", gomock.Any()).Return(nil, fmt.Errorf("read image failed"))
+				MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build", true, true).Return(nil, errors.New("some-error"))
 
 				_, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
 					RepoName:        "some/image",
@@ -128,7 +128,7 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			when("--publish is passed", func() {
 				it("uses a registry store and doesn't pull base image", func() {
 					mockBaseImage := mocks.NewMockImage(mockController)
-					mockFetcher.EXPECT().FetchRemoteImage("some/build").Return(mockBaseImage, nil)
+					MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build", false, true).Return(mockBaseImage, nil)
 					mockBaseImage.EXPECT().Rename("some/image")
 
 					config, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
@@ -139,7 +139,7 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 					if err != nil {
 						t.Fatalf("error creating builder config: %s", err)
 					}
-					h.AssertSameInstance(t, config.Repo, mockBaseImage)
+					h.AssertSameInstance(t, config.Image, mockBaseImage)
 					checkBuildpacks(t, config.Buildpacks)
 					checkGroups(t, config.Groups)
 					h.AssertEq(t, config.BuilderDir, "testdata")
@@ -236,7 +236,7 @@ build-image = "packs/build:v3alpha2"
 				mockImage.EXPECT().Save()
 
 				builderConfig = pack.BuilderConfig{
-					Repo:            mockImage,
+					Image:           mockImage,
 					Buildpacks:      []buildpack.Buildpack{},
 					Groups:          []lifecycle.BuildpackGroup{},
 					BuilderDir:      "",

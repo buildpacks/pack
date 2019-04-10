@@ -1,38 +1,41 @@
 package pack
 
 import (
+	"github.com/docker/docker/client"
+
 	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/image"
+	"github.com/buildpack/pack/logging"
 )
 
 type Client struct {
 	config  *config.Config
-	fetcher Fetcher
+	logger  *logging.Logger
+	fetcher ImageFetcher
 }
 
-func NewClient(config *config.Config, fetcher Fetcher) *Client {
+func NewClient(config *config.Config, logger *logging.Logger, fetcher ImageFetcher) *Client {
 	return &Client{
 		config:  config,
+		logger:  logger,
 		fetcher: fetcher,
 	}
 }
 
-//// TODO : move to build.go
-//func (c *Client) Build() {
-//
-//}
-//
-//// TODO : move to create_builder.go
-//func (c *Client) CreateBuilder() {
-//
-//}
-//
+func DefaultClient(config *config.Config, logger *logging.Logger) (*Client, error) {
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+	if err != nil {
+		return nil, err
+	}
 
-//// TODO : move to run.go
-//func (c *Client) Run() {
-//
-//}
+	fetcher, err := image.NewFetcher(logger, dockerClient)
+	if err != nil {
+		return nil, err
+	}
 
-// TODO : move to rebase.go
-//func (c *Client) Rebase() {
-//
-//}
+	return &Client{
+		config:  config,
+		logger:  logger,
+		fetcher: fetcher,
+	}, nil
+}

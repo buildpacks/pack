@@ -15,29 +15,33 @@ import (
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/build"
-	"github.com/buildpack/pack/docker"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
 var (
 	repoName  string
-	dockerCli *docker.Client
+	dockerCli *client.Client
 )
 
 func TestLifecycle(t *testing.T) {
-	h.RequireDocker(t)
-	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
+
+	color.NoColor = true
+
+	h.RequireDocker(t)
+
 	var err error
-	dockerCli, err = docker.New()
+	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
+
 	repoName = "lifecycle.test." + h.RandString(10)
 	CreateFakeLifecycleImage(t, dockerCli, repoName)
 	defer h.DockerRmi(dockerCli, repoName)
@@ -370,7 +374,7 @@ func assertRunSucceeds(t *testing.T, phase *build.Phase, outBuf *bytes.Buffer, e
 	phase.Cleanup()
 }
 
-func CreateFakeLifecycleImage(t *testing.T, dockerCli *docker.Client, repoName string) {
+func CreateFakeLifecycleImage(t *testing.T, dockerCli *client.Client, repoName string) {
 	ctx := context.Background()
 
 	wd, err := os.Getwd()
