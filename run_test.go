@@ -81,7 +81,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 
 			run, err := factory.RunConfigFromFlags(context.TODO(), &pack.RunFlags{
 				BuildFlags: pack.BuildFlags{
-					AppDir:   "acceptance/testdata/node_app",
+					AppDir:   "testdata/some-app",
 					Builder:  "some/builder",
 					RunImage: "some/run",
 				},
@@ -89,7 +89,7 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 			})
 			h.AssertNil(t, err)
 
-			absAppDir, _ := filepath.Abs("acceptance/testdata/node_app")
+			absAppDir, _ := filepath.Abs("testdata/some-app")
 			absAppDirMd5 := fmt.Sprintf("pack.local/run/%x", md5.Sum([]byte(absAppDir)))
 			h.AssertEq(t, run.RepoName, absAppDirMd5)
 			h.AssertEq(t, run.Ports, []string{"1370"})
