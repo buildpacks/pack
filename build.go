@@ -123,6 +123,16 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 	if err != nil {
 		return nil, err
 	}
+	stat, err := os.Stat(appDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, errors.Errorf("app directory %s does not exist", style.Symbol(appDir))
+		} else {
+			return nil, err
+		}
+	} else if !stat.IsDir() {
+		return nil, errors.Errorf("provided app directory %s is not a directory", style.Symbol(appDir))
+	}
 
 	f.RepoName = calculateRepositoryName(appDir, f)
 

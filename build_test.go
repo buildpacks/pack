@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -367,6 +368,41 @@ PATH
 				"PATH": os.Getenv("PATH"),
 			})
 			h.AssertNotEq(t, os.Getenv("PATH"), "")
+		})
+
+		when("app path is invalid", func() {
+			when("app directory does not exist", func() {
+				it("return error", func() {
+					appDir := filepath.Join("testdata", "does-not-exist")
+
+					config, err := factory.BuildConfigFromFlags(context.TODO(), &pack.BuildFlags{
+						RepoName: "some/app",
+						Builder:  "some/builder",
+						AppDir:   appDir,
+					})
+
+					h.AssertNil(t, config)
+					h.AssertNotNil(t, err)
+					h.AssertContainsMatch(t, err.Error(), "^app directory .*does-not-exist.* does not exist$")
+				})
+			})
+
+			when("app directory is a file", func() {
+				it("return error", func() {
+					appDir := filepath.Join("testdata", "just-a-file.txt")
+
+					config, err := factory.BuildConfigFromFlags(context.TODO(), &pack.BuildFlags{
+						RepoName: "some/app",
+						Builder:  "some/builder",
+						AppDir:   appDir,
+					})
+
+					h.AssertNil(t, config)
+					h.AssertNotNil(t, err)
+
+					h.AssertContainsMatch(t, err.Error(), "^provided app directory .*just-a-file.txt.* is not a directory$")
+				})
+			})
 		})
 	}, spec.Parallel())
 }
