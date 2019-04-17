@@ -169,13 +169,23 @@ func (bf *BuildFactory) BuildConfigFromFlags(ctx context.Context, f *BuildFlags)
 	if err != nil {
 		return nil, err
 	}
-	builderImage = builder.NewBuilder(bimg, bf.Config)
+
+	builderImage, err = builder.GetBuilder(bimg)
+	if err != nil {
+		return nil, err
+	}
 
 	if f.RunImage != "" {
 		bf.Logger.Verbose("Using user-provided run image %s", style.Symbol(f.RunImage))
 		b.RunImage = f.RunImage
 	} else {
-		b.RunImage, err = builderImage.GetRunImageByRepoName(f.RepoName)
+		stack := builderImage.GetStackInfo()
+
+		var localMirrors []string
+		if runImageConfig := bf.Config.GetRunImage(stack.RunImage.Image); runImageConfig != nil {
+			localMirrors = runImageConfig.Mirrors
+		}
+		b.RunImage, err = stack.GetBestMirror(f.RepoName, localMirrors)
 		if err != nil {
 			return nil, err
 		}

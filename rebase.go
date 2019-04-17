@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/lifecycle/metadata"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/config"
@@ -20,7 +20,7 @@ type RebaseOptions struct {
 }
 
 func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
-	appImage, err := c.fetcher.Fetch(ctx, opts.RepoName, !opts.Publish, !opts.SkipPull)
+	appImage, err := c.imageFetcher.Fetch(ctx, opts.RepoName, !opts.Publish, !opts.SkipPull)
 	if err != nil {
 		return err
 	}
@@ -30,34 +30,36 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return err
 	}
 
-	baseImage, err := c.fetcher.Fetch(ctx, runImageName, !opts.Publish, !opts.SkipPull)
+	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, !opts.Publish, !opts.SkipPull)
 	if err != nil {
 		return err
 	}
 
-	label, err := appImage.Label(lifecycle.MetadataLabel)
+	label, err := appImage.Label(metadata.AppMetadataLabel)
 	if err != nil {
 		return err
 	}
-	var metadata lifecycle.AppImageMetadata
-	if err := json.Unmarshal([]byte(label), &metadata); err != nil {
+	var md metadata.AppImageMetadata
+	if err := json.Unmarshal([]byte(label), &md); err != nil {
 		return err
 	}
 	c.logger.Info("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
-	if err := appImage.Rebase(metadata.RunImage.TopLayer, baseImage); err != nil {
+	if err := appImage.Rebase(md.RunImage.TopLayer, baseImage); err != nil {
 		return err
 	}
 
-	metadata.RunImage.SHA, err = baseImage.Digest()
+	md.RunImage.SHA, err = baseImage.Digest()
 	if err != nil {
 		return err
 	}
-	metadata.RunImage.TopLayer, err = baseImage.TopLayer()
+
+	md.RunImage.TopLayer, err = baseImage.TopLayer()
 	if err != nil {
 		return err
 	}
-	newLabel, err := json.Marshal(metadata)
-	if err := appImage.SetLabel(lifecycle.MetadataLabel, string(newLabel)); err != nil {
+
+	newLabel, err := json.Marshal(md)
+	if err := appImage.SetLabel(metadata.AppMetadataLabel, string(newLabel)); err != nil {
 		return err
 	}
 
@@ -74,12 +76,12 @@ func (c *Client) getRunImageName(ctx context.Context, opts RebaseOptions, appIma
 	if opts.RunImage != "" {
 		runImageName = opts.RunImage
 	} else {
-		contents, err := appImage.Label(lifecycle.MetadataLabel)
+		contents, err := appImage.Label(metadata.AppMetadataLabel)
 		if err != nil {
 			return "", err
 		}
 
-		var appImageMetadata lifecycle.AppImageMetadata
+		var appImageMetadata metadata.AppImageMetadata
 		if err := json.Unmarshal([]byte(contents), &appImageMetadata); err != nil {
 			return "", err
 		}

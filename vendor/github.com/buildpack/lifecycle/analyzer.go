@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/lifecycle/metadata"
 )
 
 type Analyzer struct {
@@ -20,7 +21,7 @@ type Analyzer struct {
 }
 
 func (a *Analyzer) Analyze(image image.Image) error {
-	metadata, err := getAppMetadata(image, a.Out)
+	data, err := metadata.GetAppMetadata(image)
 	if err != nil {
 		return err
 	}
@@ -30,7 +31,7 @@ func (a *Analyzer) Analyze(image image.Image) error {
 			return err
 		}
 
-		metadataLayers := metadata.metadataForBuildpack(buildpack.ID).Layers
+		metadataLayers := data.MetadataForBuildpack(buildpack.ID).Layers
 		for _, cachedLayer := range cache.layers {
 			cacheType := cachedLayer.classifyCache(metadataLayers)
 			switch cacheType {

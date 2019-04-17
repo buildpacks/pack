@@ -24,14 +24,14 @@ import (
 	h "github.com/buildpack/pack/testhelpers"
 )
 
-func TestRun(t *testing.T) {
+func TestApp(t *testing.T) {
 	h.RequireDocker(t)
 	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
-	spec.Run(t, "run", testRun, spec.Sequential(), spec.Report(report.Terminal{}))
+	spec.Run(t, "app", testApp, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
-func testRun(t *testing.T, when spec.G, it spec.S) {
+func testApp(t *testing.T, when spec.G, it spec.S) {
 	when("#Run", func() {
 		var (
 			subject        *app.Image

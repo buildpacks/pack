@@ -1,7 +1,6 @@
 package lifecycle
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"path/filepath"
@@ -9,7 +8,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/archive"
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/lifecycle/cache"
+	"github.com/buildpack/lifecycle/metadata"
 )
 
 type Cacher struct {
@@ -19,69 +19,59 @@ type Cacher struct {
 	UID, GID     int
 }
 
-func (c *Cacher) Cache(layersDir string, oldCacheImage, newCacheImage image.Image) error {
-	loggingCacheImage := &loggingImage{
-		Out:   c.Out,
-		image: newCacheImage,
-	}
-
-	origMetadata, err := getCacheMetadata(oldCacheImage, c.Out)
+func (c *Cacher) Cache(layersDir string, cacheStore Cache) error {
+	origMetadata, err := cacheStore.RetrieveMetadata()
 	if err != nil {
-		return errors.Wrap(err, "metadata for previous image")
+		return errors.Wrap(err, "metadata for previous cache")
 	}
 
-	newMetadata := CacheImageMetadata{
-		Buildpacks: []BuildpackMetadata{},
-	}
-
+	newMetadata := cache.Metadata{}
 	for _, bp := range c.Buildpacks {
 		bpDir, err := readBuildpackLayersDir(layersDir, *bp)
 		if err != nil {
 			return err
 		}
-		bpMetadata := BuildpackMetadata{
+		bpMetadata := metadata.BuildpackMetadata{
 			ID:      bp.ID,
 			Version: bp.Version,
-			Layers:  map[string]LayerMetadata{},
+			Layers:  map[string]metadata.LayerMetadata{},
 		}
 		for _, l := range bpDir.findLayers(cached) {
 			if !l.hasLocalContents() {
 				return fmt.Errorf("failed to cache layer '%s' because it has no contents", l.Identifier())
 			}
-			metadata, err := l.read()
+			data, err := l.read()
 			if err != nil {
 				return err
 			}
-			origLayerMetadata := origMetadata.metadataForBuildpack(bp.ID).Layers[l.name()]
-			if metadata.SHA, err = c.addOrReuseLayer(loggingCacheImage, l, origLayerMetadata.SHA); err != nil {
+			origLayerMetadata := origMetadata.MetadataForBuildpack(bp.ID).Layers[l.name()]
+			if data.SHA, err = c.addOrReuseLayer(cacheStore, l, origLayerMetadata.SHA); err != nil {
 				return err
 			}
-			bpMetadata.Layers[l.name()] = metadata
+			bpMetadata.Layers[l.name()] = data
 		}
 		newMetadata.Buildpacks = append(newMetadata.Buildpacks, bpMetadata)
 	}
-	data, err := json.Marshal(newMetadata)
-	if err != nil {
-		return errors.Wrap(err, "marshall metadata")
-	}
-	if err := loggingCacheImage.SetLabel(CacheMetadataLabel, string(data)); err != nil {
+
+	if err := cacheStore.SetMetadata(newMetadata); err != nil {
 		return errors.Wrap(err, "set app image metadata label")
 	}
-	sha, err := loggingCacheImage.Save()
-	if err == nil {
-		c.Out.Printf("cache '%s@%s'", newCacheImage.Name(), sha)
-	}
-	return err
+
+	return cacheStore.Commit()
 }
 
-func (c *Cacher) addOrReuseLayer(image *loggingImage, layer bpLayer, previousSHA string) (string, error) {
+func (c *Cacher) addOrReuseLayer(cache Cache, layer bpLayer, previousSHA string) (string, error) {
 	tarPath := filepath.Join(c.ArtifactsDir, escapeIdentifier(layer.Identifier())+".tar")
 	sha, err := archive.WriteTarFile(layer.Path(), tarPath, c.UID, c.GID)
 	if err != nil {
 		return "", errors.Wrapf(err, "caching layer '%s'", layer.Identifier())
 	}
+
 	if sha == previousSHA {
-		return sha, image.ReuseLayer(layer.Identifier(), previousSHA)
+		c.Out.Printf("Reusing layer '%s' with SHA %s\n", layer.Identifier(), sha)
+		return sha, cache.ReuseLayer(layer.Identifier(), previousSHA)
 	}
-	return sha, image.AddLayer(layer.Identifier(), sha, tarPath)
+
+	c.Out.Printf("Caching layer '%s' with SHA %s\n", layer.Identifier(), sha)
+	return sha, cache.AddLayer(layer.Identifier(), sha, tarPath)
 }

@@ -3,8 +3,6 @@ package commands_test
 import (
 	"bytes"
 	"errors"
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/config"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -12,8 +10,11 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/commands"
 	cmdmocks "github.com/buildpack/pack/commands/mocks"
+	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -108,7 +109,7 @@ ERROR: failed to inspect image 'some/image': some local error
 
 		when("is successful", func() {
 			it.Before(func() {
-				buildpacks := []pack.BuildpackInfo{
+				buildpacks := []builder.BuildpackMetadata{
 					{ID: "test.bp.one", Version: "1.0.0", Latest: true},
 					{ID: "test.bp.two", Version: "2.0.0", Latest: false},
 				}
@@ -118,7 +119,11 @@ ERROR: failed to inspect image 'some/image': some local error
 					RunImageMirrors:      []string{"first/default", "second/default"},
 					LocalRunImageMirrors: []string{"first/image", "second/image"},
 					Buildpacks:           buildpacks,
-					Groups:               [][]pack.BuildpackInfo{buildpacks},
+					Groups: []builder.GroupMetadata{
+						{Buildpacks: []builder.GroupBuildpack{
+							{ID: "test.bp.one", Version: "1.0.0"},
+							{ID: "test.bp.two", Version: "2.0.0"},
+						}}},
 				}
 				mockClient.EXPECT().InspectBuilder("some/image", false).Return(remoteInfo, nil)
 
@@ -128,7 +133,10 @@ ERROR: failed to inspect image 'some/image': some local error
 					RunImageMirrors:      []string{"first/local-default", "second/local-default"},
 					LocalRunImageMirrors: []string{"first/local", "second/local"},
 					Buildpacks:           buildpacks,
-					Groups:               [][]pack.BuildpackInfo{{buildpacks[0]}, {buildpacks[1]}},
+					Groups: []builder.GroupMetadata{
+						{Buildpacks: []builder.GroupBuildpack{{ID: "test.bp.one", Version: "1.0.0"}}},
+						{Buildpacks: []builder.GroupBuildpack{{ID: "test.bp.two", Version: "2.0.0"}}},
+					},
 				}
 				mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
 			})

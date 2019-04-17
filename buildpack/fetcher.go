@@ -3,18 +3,29 @@ package buildpack
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/buildpack/pack/archive"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+
+	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/archive"
 )
 
 type Logger interface {
 	Verbose(format string, a ...interface{})
+}
+
+type buildpackTOML struct {
+	Buildpack struct {
+		ID      string `toml:"id"`
+		Version string `toml:"version"`
+	} `toml:"buildpack"`
+	Stacks []Stack `toml:"stacks"`
 }
 
 type Fetcher struct {
@@ -29,37 +40,46 @@ func NewFetcher(logger Logger, cacheDir string) *Fetcher {
 	}
 }
 
-func (f *Fetcher) FetchBuildpack(localSearchPath string, bp Buildpack) (out Buildpack, err error) {
-	out = Buildpack{
-		ID:      bp.ID,
-		URI:     bp.URI,
-		Latest:  bp.Latest,
-		Version: bp.Version,
-	}
-
-	bpURL, err := url.Parse(bp.URI)
+func (f *Fetcher) FetchBuildpack(uri string) (Buildpack, error) {
+	bpURL, err := url.Parse(uri)
 	if err != nil {
-		return out, err
+		return Buildpack{}, err
 	}
 
+	var dir string
 	switch bpURL.Scheme {
 	case "", "file":
-		out.Dir, err = f.handleFile(localSearchPath, bpURL)
+		dir, err = f.handleFile(bpURL)
 	case "http", "https":
-		out.Dir, err = f.handleHTTP(bp)
+		dir, err = f.handleHTTP(uri)
 	default:
-		return out, fmt.Errorf("unsupported protocol in URI %q", bp.URI)
+		return Buildpack{}, fmt.Errorf("unsupported protocol in URI %q", uri)
 	}
 
-	return out, err
+	data, err := readTOML(filepath.Join(dir, "buildpack.toml"))
+	if err != nil {
+		return Buildpack{}, err
+	}
+
+	return Buildpack{
+		Dir:     dir,
+		ID:      data.Buildpack.ID,
+		Version: data.Buildpack.Version,
+		Stacks:  data.Stacks,
+	}, err
 }
 
-func (f *Fetcher) handleFile(localSearchPath string, bpURL *url.URL) (string, error) {
-	path := bpURL.Path
-
-	if !bpURL.IsAbs() && !filepath.IsAbs(path) {
-		path = filepath.Join(localSearchPath, path)
+func readTOML(path string) (buildpackTOML, error) {
+	data := buildpackTOML{}
+	_, err := toml.DecodeFile(path, &data)
+	if err != nil {
+		return buildpackTOML{}, errors.Wrapf(err, "reading buildpack.toml from path %s", path)
 	}
+	return data, nil
+}
+
+func (f *Fetcher) handleFile(bpURL *url.URL) (string, error) {
+	path := bpURL.Path
 
 	if filepath.Ext(path) != ".tgz" {
 		return path, nil
@@ -83,8 +103,8 @@ func (f *Fetcher) handleFile(localSearchPath string, bpURL *url.URL) (string, er
 	return tmpDir, nil
 }
 
-func (f *Fetcher) handleHTTP(bp Buildpack) (string, error) {
-	bpCache := filepath.Join(f.CacheDir, fmt.Sprintf("%x", sha256.Sum256([]byte(bp.URI))))
+func (f *Fetcher) handleHTTP(uri string) (string, error) {
+	bpCache := filepath.Join(f.CacheDir, fmt.Sprintf("%x", sha256.Sum256([]byte(uri))))
 	if err := os.MkdirAll(bpCache, 0744); err != nil {
 		return "", err
 	}
@@ -104,9 +124,9 @@ func (f *Fetcher) handleHTTP(bp Buildpack) (string, error) {
 		etag = string(bytes)
 	}
 
-	reader, etag, err := f.downloadAsStream(bp.URI, etag)
+	reader, etag, err := f.downloadAsStream(uri, etag)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to download from %q", bp.URI)
+		return "", errors.Wrapf(err, "failed to download from %q", uri)
 	} else if reader == nil {
 		return bpCache, nil
 	}

@@ -1,17 +1,23 @@
 package builder_test
 
 import (
-	"errors"
+	"archive/tar"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/buildpack/lifecycle/image/fakes"
 	"github.com/fatih/color"
-	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/mocks"
+	"github.com/buildpack/pack/buildpack"
+
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -22,155 +28,382 @@ func TestBuilder(t *testing.T) {
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		mockController *gomock.Controller
-		mockImage      *mocks.MockImage
-		cfg            *config.Config
-		subject        *builder.Builder
+		baseImage *fakes.Image
+		subject   *builder.Builder
 	)
 
 	it.Before(func() {
-		mockController = gomock.NewController(t)
-		mockImage = mocks.NewMockImage(mockController)
-		mockImage.EXPECT().Name().Return("some/builder")
-		cfg = &config.Config{}
-		subject = builder.NewBuilder(mockImage, cfg)
+		baseImage = fakes.NewImage(t, "base/image", "", "")
 	})
 
-	when("#GetStack", func() {
-		when("error getting stack label", func() {
-			it.Before(func() {
-				mockImage.EXPECT().Label("io.buildpacks.stack.id").Return("", errors.New("some error"))
-			})
-
-			it("returns an error", func() {
-				_, err := subject.GetStack()
-				h.AssertError(t, err, "failed to find stack label for builder 'some/builder'")
-			})
-		})
-
-		when("stack label is empty", func() {
-			it.Before(func() {
-				mockImage.EXPECT().Label("io.buildpacks.stack.id").Return("", nil)
-			})
-
-			it("returns an error", func() {
-				_, err := subject.GetStack()
-				h.AssertError(t, err, "builder 'some/builder' missing label 'io.buildpacks.stack.id' -- try recreating builder")
-			})
-		})
-	})
-
-	when("#GetMetadata", func() {
-		when("error getting metadata label", func() {
-			it.Before(func() {
-				mockImage.EXPECT().Label("io.buildpacks.builder.metadata").Return("", errors.New("some error"))
-			})
-
-			it("returns an error", func() {
-				_, err := subject.GetMetadata()
-				h.AssertError(t, err, "failed to find run images for builder 'some/builder'")
-			})
-		})
-
-		when("metadata label is empty", func() {
-			it.Before(func() {
-				mockImage.EXPECT().Label("io.buildpacks.builder.metadata").Return("", nil)
-			})
-
-			it("returns an error", func() {
-				_, err := subject.GetMetadata()
-				h.AssertError(t, err, "builder 'some/builder' missing label 'io.buildpacks.builder.metadata' -- try recreating builder")
-			})
-		})
-
-		when("metadata label is not parsable", func() {
-			it.Before(func() {
-				mockImage.EXPECT().Label("io.buildpacks.builder.metadata").Return("junk", nil)
-			})
-
-			it("returns an error", func() {
-				_, err := subject.GetMetadata()
-				h.AssertError(t, err, "failed to parse metadata for builder 'some/builder'")
-			})
-		})
-	})
-
-	when("#GetLocalRunImageMirrors", func() {
-		when("run image exists in config", func() {
-			it.Before(func() {
-				mockImage.EXPECT().Label("io.buildpacks.builder.metadata").
-					Return(`{"stack":{"runImage": {"image": "some/run-image","mirrors": []}}}`, nil)
-				cfg.RunImages = []config.RunImage{{Image: "some/run-image", Mirrors: []string{"a", "b"}}}
-			})
-
-			it("returns the local mirrors", func() {
-				localMirrors, err := subject.GetLocalRunImageMirrors()
-				h.AssertNil(t, err)
-				h.AssertSliceContains(t, localMirrors, "a")
-				h.AssertSliceContains(t, localMirrors, "b")
-			})
-		})
-
-		when("run image does not exist in config", func() {
-			it.Before(func() {
-				mockImage.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{
- "runImage": {
-   "image": "some/other-run-image",
-   "mirrors": []
- }
-}`, nil)
-				cfg.RunImages = []config.RunImage{{Image: "some/run-image", Mirrors: []string{"a", "b"}}}
-			})
-
-			it("returns an empty slice", func() {
-				localMirrors, err := subject.GetLocalRunImageMirrors()
-				h.AssertNil(t, err)
-				h.AssertEq(t, len(localMirrors), 0)
-			})
-		})
-	})
-
-	when("#GetRunImageByRepoName", func() {
-		when("there are NOT local run image mirrors", func() {
-			it("should return the remote run image for the repo", func() {
-				mockImage.EXPECT().Label(builder.MetadataLabel).
-					Return(`{"stack":{"runImage": {"image": "some/run-image","mirrors": ["foo.bar/other/run-image", "gcr.io/extra/run-image"]}}}`, nil).AnyTimes()
-
-				runImage, err := subject.GetRunImageByRepoName("gcr.io/foo/bar")
-				h.AssertNil(t, err)
-				h.AssertEq(t, runImage, "gcr.io/extra/run-image")
-			})
-		})
-
-		when("there are local run image mirrors", func() {
-			it.Before(func() {
-				cfg.RunImages = []config.RunImage{{Image: "some/run-image", Mirrors: []string{"gcr.io/another/run-image", "foo.bar/ignored"}}}
-				mockImage.EXPECT().Label(builder.MetadataLabel).
-					Return(`{"stack":{"runImage": {"image": "some/run-image","mirrors": ["foo.bar/other/run-image", "gcr.io/extra/run-image"]}}}`, nil).AnyTimes()
-			})
-
-			when("one matches the given repo", func() {
-				it("should return the local run image for the repo", func() {
-					runImage, err := subject.GetRunImageByRepoName("gcr.io/foo/bar")
-					h.AssertNil(t, err)
-					h.AssertEq(t, runImage, "gcr.io/another/run-image")
+	when("#New", func() {
+		when("the base image is not valid", func() {
+			when("missing CNB_USER_ID", func() {
+				it("returns an error", func() {
+					_, err := builder.New(baseImage, "some/builder")
+					h.AssertError(t, err, "image 'base/image' missing required env var 'CNB_USER_ID'")
 				})
 			})
 
-			when("none match the given repo", func() {
-				it("should return the non-local run image for the repo", func() {
-					runImage, err := subject.GetRunImageByRepoName("some/run-image")
+			when("missing CNB_GROUP_ID", func() {
+				it.Before(func() {
+					h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
+				})
+
+				it("returns an error", func() {
+					_, err := builder.New(baseImage, "some/builder")
+					h.AssertError(t, err, "image 'base/image' missing required env var 'CNB_GROUP_ID'")
+				})
+			})
+
+			when("CNB_USER_ID is not an int", func() {
+				it.Before(func() {
+					h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "not an int"))
+					h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
+				})
+
+				it("returns an error", func() {
+					_, err := builder.New(baseImage, "some/builder")
+					h.AssertError(t, err, "failed to parse 'CNB_USER_ID', value 'not an int' should be an integer")
+				})
+			})
+
+			when("CNB_GROUP_ID is not an int", func() {
+				it.Before(func() {
+					h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
+					h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "not an int"))
+				})
+
+				it("returns an error", func() {
+					_, err := builder.New(baseImage, "some/builder")
+					h.AssertError(t, err, "failed to parse 'CNB_GROUP_ID', value 'not an int' should be an integer")
+				})
+			})
+
+			when("missing stack id label", func() {
+				it.Before(func() {
+					h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
+					h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
+				})
+
+				it("returns an error", func() {
+					_, err := builder.New(baseImage, "some/builder")
+					h.AssertError(t, err, "image 'base/image' missing 'io.buildpacks.stack.id' label")
+				})
+			})
+		})
+	})
+
+	when("the base image is a valid build image", func() {
+		it.Before(func() {
+			var err error
+			h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
+			h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
+			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+			subject, err = builder.New(baseImage, "some/builder")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			baseImage.Cleanup()
+		})
+
+		when("#Save", func() {
+			it("creates a builder from the image and renames it", func() {
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+				h.AssertEq(t, baseImage.Name(), "some/builder")
+			})
+		})
+
+		when("#AddBuildpack", func() {
+			when("buildpack has matching stack", func() {
+				it.Before(func() {
+					h.AssertNil(t, subject.AddBuildpack(buildpack.Buildpack{
+						ID:      "some-buildpack-id",
+						Version: "some-buildpack-version",
+						Dir:     filepath.Join("testdata", "buildpack"),
+						Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
+					}))
+
+					h.AssertNil(t, subject.AddBuildpack(buildpack.Buildpack{
+						ID:      "other-buildpack-id",
+						Version: "other-buildpack-version",
+						Dir:     filepath.Join("testdata", "buildpack"),
+						Latest:  true,
+						Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
+					}))
+
+					h.AssertNil(t, subject.Save())
+					h.AssertEq(t, baseImage.IsSaved(), true)
+				})
+
+				it("adds the buildpack as an image layer", func() {
+					layerTar := baseImage.FindLayerWithPath("/buildpacks/some-buildpack-id/some-buildpack-version")
+					assertTarFileContents(t, layerTar, "/buildpacks/some-buildpack-id/some-buildpack-version/buildpack-file", "buildpack-contents")
+
+					layerTar = baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id/other-buildpack-version")
+					assertTarFileContents(t, layerTar, "/buildpacks/other-buildpack-id/other-buildpack-version/buildpack-file", "buildpack-contents")
+				})
+
+				it("adds a symlink to the buildpack layer if latest is true", func() {
+					layerTar := baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id")
+					fmt.Println("LAYER TAR", layerTar)
+					assertTarFileSymlink(t, layerTar, "/buildpacks/other-buildpack-id/latest", "/buildpacks/other-buildpack-id/other-buildpack-version")
+					assertTarFileOwner(t, layerTar, "/buildpacks/other-buildpack-id/latest", 1234, 4321)
+				})
+
+				it("adds the buildpack contents with the correct uid and gid", func() {
+					layerTar := baseImage.FindLayerWithPath("/buildpacks/some-buildpack-id/some-buildpack-version")
+					assertTarFileOwner(t, layerTar, "/buildpacks/some-buildpack-id/some-buildpack-version/buildpack-file", 1234, 4321)
+
+					layerTar = baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id/other-buildpack-version")
+					assertTarFileOwner(t, layerTar, "/buildpacks/other-buildpack-id/other-buildpack-version/buildpack-file", 1234, 4321)
+				})
+
+				it("adds the buildpack metadata", func() {
+					label, err := baseImage.Label("io.buildpacks.builder.metadata")
 					h.AssertNil(t, err)
-					h.AssertEq(t, runImage, "some/run-image")
+
+					var metadata builder.Metadata
+					h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
+					h.AssertEq(t, len(metadata.Buildpacks), 2)
+
+					h.AssertEq(t, metadata.Buildpacks[0].ID, "some-buildpack-id")
+					h.AssertEq(t, metadata.Buildpacks[0].Version, "some-buildpack-version")
+					h.AssertEq(t, metadata.Buildpacks[0].Latest, false)
+
+					h.AssertEq(t, metadata.Buildpacks[1].ID, "other-buildpack-id")
+					h.AssertEq(t, metadata.Buildpacks[1].Version, "other-buildpack-version")
+					h.AssertEq(t, metadata.Buildpacks[1].Latest, true)
+				})
+			})
+
+			when("buildpack stack id does not match", func() {
+				it("returns an error", func() {
+					err := subject.AddBuildpack(buildpack.Buildpack{
+						ID:      "some-buildpack-id",
+						Version: "some-buildpack-version",
+						Dir:     filepath.Join("testdata", "buildpack"),
+						Stacks:  []buildpack.Stack{{ID: "other.stack.id"}},
+					})
+					h.AssertError(t, err, "buildpack 'some-buildpack-id:some-buildpack-version' does not support stack 'some.stack.id'")
+				})
+			})
+
+			when("base image already has metadata", func() {
+				it.Before(func() {
+					h.AssertNil(t, baseImage.SetLabel("io.buildpacks.builder.metadata", `{"buildpacks": [{"id": "prev.id"}], "groups": [{"buildpacks": [{"id": "prev.id"}]}], "stack": {"runImage": {"image": "prev/run", "mirrors": ["prev/mirror"]}}}`))
+
+					var err error
+					subject, err = builder.New(baseImage, "some/builder")
+					h.AssertNil(t, err)
+
+					h.AssertNil(t, subject.AddBuildpack(buildpack.Buildpack{
+						ID:      "some-buildpack-id",
+						Version: "some-buildpack-version",
+						Dir:     filepath.Join("testdata", "buildpack"),
+						Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
+					}))
+					h.AssertNil(t, subject.Save())
+					h.AssertEq(t, baseImage.IsSaved(), true)
+				})
+
+				it("appends the buildpack to the metadata", func() {
+					label, err := baseImage.Label("io.buildpacks.builder.metadata")
+					h.AssertNil(t, err)
+
+					var metadata builder.Metadata
+					h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
+					h.AssertEq(t, len(metadata.Buildpacks), 2)
+
+					// keeps original metadata
+					h.AssertEq(t, metadata.Buildpacks[0].ID, "prev.id")
+					h.AssertEq(t, metadata.Groups[0].Buildpacks[0].ID, "prev.id")
+					h.AssertEq(t, metadata.Stack.RunImage.Image, "prev/run")
+					h.AssertEq(t, metadata.Stack.RunImage.Mirrors[0], "prev/mirror")
+
+					// adds new buildpack
+					h.AssertEq(t, metadata.Buildpacks[1].ID, "some-buildpack-id")
+					h.AssertEq(t, metadata.Buildpacks[1].Version, "some-buildpack-version")
+					h.AssertEq(t, metadata.Buildpacks[1].Latest, false)
 				})
 			})
 		})
 
-		when("the repo name is invalid", func() {
-			it("should err", func() {
-				_, err := subject.GetRunImageByRepoName("!!@@##$$%%")
-				h.AssertNotNil(t, err)
+		when("#SetOrder", func() {
+			it.Before(func() {
+				subject.SetOrder([]builder.GroupMetadata{
+					{Buildpacks: []builder.GroupBuildpack{
+						{
+							ID:      "some-buildpack-id",
+							Version: "some-buildpack-version",
+						},
+						{
+							ID:       "optional-buildpack-id",
+							Version:  "latest",
+							Optional: true,
+						},
+					}},
+				})
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+			})
+
+			it("adds the order.toml to the image", func() {
+				layerTar := baseImage.FindLayerWithPath("/buildpacks/order.toml")
+				assertTarFileContents(t, layerTar, "/buildpacks/order.toml", `[[groups]]
+
+  [[groups.buildpacks]]
+    id = "some-buildpack-id"
+    version = "some-buildpack-version"
+
+  [[groups.buildpacks]]
+    id = "optional-buildpack-id"
+    version = "latest"
+    optional = true
+`)
+			})
+
+			it("adds the order to the metadata", func() {
+				label, err := baseImage.Label("io.buildpacks.builder.metadata")
+				h.AssertNil(t, err)
+
+				var metadata builder.Metadata
+				h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
+
+				h.AssertEq(t, len(metadata.Groups), 1)
+				h.AssertEq(t, len(metadata.Groups[0].Buildpacks), 2)
+
+				h.AssertEq(t, metadata.Groups[0].Buildpacks[0].ID, "some-buildpack-id")
+				h.AssertEq(t, metadata.Groups[0].Buildpacks[0].Version, "some-buildpack-version")
+
+				h.AssertEq(t, metadata.Groups[0].Buildpacks[1].ID, "optional-buildpack-id")
+				h.AssertEq(t, metadata.Groups[0].Buildpacks[1].Version, "latest")
+				h.AssertEq(t, metadata.Groups[0].Buildpacks[1].Optional, true)
+			})
+
+			//TODO: add error test case when order buildpack doesn't exist in image
+		})
+
+		when("#SetStackInfo", func() {
+			it.Before(func() {
+				subject.SetStackInfo(builder.StackConfig{
+					RunImage:        "some/run",
+					RunImageMirrors: []string{"some/mirror", "other/mirror"},
+				})
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+			})
+
+			it("adds the stack.toml to the image", func() {
+				layerTar := baseImage.FindLayerWithPath("/buildpacks/stack.toml")
+				assertTarFileContents(t, layerTar, "/buildpacks/stack.toml", `[run-image]
+  image = "some/run"
+  mirrors = ["some/mirror", "other/mirror"]
+`)
+			})
+
+			it("adds the stack to the metadata", func() {
+				label, err := baseImage.Label("io.buildpacks.builder.metadata")
+				h.AssertNil(t, err)
+
+				var metadata builder.Metadata
+				h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
+				h.AssertEq(t, metadata.Stack.RunImage.Image, "some/run")
+				h.AssertEq(t, metadata.Stack.RunImage.Mirrors[0], "some/mirror")
+				h.AssertEq(t, metadata.Stack.RunImage.Mirrors[1], "other/mirror")
 			})
 		})
 	})
+}
+
+func assertTarFileContents(t *testing.T, tarfile, path, expected string) {
+	t.Helper()
+	exist, contents := tarFileContents(t, tarfile, path)
+	if !exist {
+		t.Fatalf("%s does not exist in %s", path, tarfile)
+	}
+	h.AssertEq(t, contents, expected)
+}
+
+func assertTarFileSymlink(t *testing.T, tarFile, path, expected string) {
+	t.Helper()
+	r, err := os.Open(tarFile)
+	h.AssertNil(t, err)
+	defer r.Close()
+
+	tr := tar.NewReader(r)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		h.AssertNil(t, err)
+
+		if header.Name != path {
+			continue
+		}
+
+		if header.Typeflag != tar.TypeSymlink {
+			t.Fatalf("path '%s' is not a symlink, type flag is '%c'", header.Name, header.Typeflag)
+		}
+
+		if header.Linkname != expected {
+			t.Fatalf("symlink '%s' does not point to '%s', instead it points to '%s'", header.Name, expected, header.Linkname)
+		}
+	}
+}
+
+func tarFileContents(t *testing.T, tarfile, path string) (exist bool, contents string) {
+	t.Helper()
+	r, err := os.Open(tarfile)
+	h.AssertNil(t, err)
+	defer r.Close()
+
+	tr := tar.NewReader(r)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		h.AssertNil(t, err)
+
+		if header.Name == path {
+			buf, err := ioutil.ReadAll(tr)
+			h.AssertNil(t, err)
+			return true, string(buf)
+		}
+	}
+	return false, ""
+}
+
+func assertTarFileOwner(t *testing.T, tarfile, path string, expectedUID, expectedGID int) {
+	t.Helper()
+	var foundPath bool
+	r, err := os.Open(tarfile)
+	h.AssertNil(t, err)
+	defer r.Close()
+
+	tr := tar.NewReader(r)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		h.AssertNil(t, err)
+
+		if header.Name == path {
+			foundPath = true
+			if header.Uid != expectedUID {
+				t.Fatalf("expected all entries in `%s` to have uid '%d', but '%s' has '%d'", tarfile, expectedUID, header.Name, header.Uid)
+			}
+			if header.Gid != expectedGID {
+				t.Fatalf("expected all entries in `%s` to have gid '%d', got '%d'", tarfile, expectedGID, header.Gid)
+			}
+		}
+	}
+	if !foundPath {
+		t.Fatalf("%s does not exist in %s", path, tarfile)
+	}
 }

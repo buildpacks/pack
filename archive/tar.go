@@ -5,13 +5,14 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 var NormalizedDateTime time.Time
@@ -20,13 +21,21 @@ func init() {
 	NormalizedDateTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
 }
 
+func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int) error {
+	return writeTarArchive(tw, srcDir, tarDir, uid, gid)
+}
+
 func CreateTar(tarFile, srcDir, tarDir string, uid, gid int) error {
 	fh, err := os.Create(tarFile)
 	if err != nil {
 		return fmt.Errorf("create file for tar: %s", err)
 	}
 	defer fh.Close()
-	return writeTarArchive(fh, srcDir, tarDir, uid, gid)
+
+	tw := tar.NewWriter(fh)
+	defer tw.Close()
+
+	return writeTarArchive(tw, srcDir, tarDir, uid, gid)
 }
 
 func CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error) {
@@ -34,8 +43,11 @@ func CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error
 	errChan := make(chan error, 1)
 	go func() {
 		defer w.Close()
-		err := writeTarArchive(w, srcDir, tarDir, uid, gid)
-		w.Close()
+
+		tw := tar.NewWriter(w)
+		defer tw.Close()
+
+		err := writeTarArchive(tw, srcDir, tarDir, uid, gid)
 		errChan <- err
 	}()
 	return r, errChan
@@ -163,10 +175,7 @@ func isNotRootDir(parent string) bool {
 	return parent != "/"
 }
 
-func writeTarArchive(w io.Writer, srcDir, tarDir string, uid, gid int) error {
-	tw := tar.NewWriter(w)
-	defer tw.Close()
-
+func writeTarArchive(tw *tar.Writer, srcDir, tarDir string, uid, gid int) error {
 	err := writeParentDirectoryHeaders(tarDir, tw, uid, gid)
 	if err != nil {
 		return err

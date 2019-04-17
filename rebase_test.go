@@ -7,16 +7,13 @@ import (
 
 	"github.com/buildpack/lifecycle/image/fakes"
 	"github.com/fatih/color"
-
-	"github.com/buildpack/pack/config"
-
-	"github.com/buildpack/pack/logging"
-
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -31,6 +28,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 		var (
 			mockController   *gomock.Controller
 			mockImageFetcher *mocks.MockImageFetcher
+			mockBPFetcher    *mocks.MockBuildpackFetcher
 			client           *pack.Client
 			cfg              *config.Config
 			outBuf           bytes.Buffer
@@ -39,11 +37,14 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			mockController = gomock.NewController(t)
 			mockImageFetcher = mocks.NewMockImageFetcher(mockController)
+			mockBPFetcher = mocks.NewMockBuildpackFetcher(mockController)
+
 			cfg = &config.Config{}
 			client = pack.NewClient(
 				cfg,
 				logging.NewLogger(&outBuf, &errBuff, false, false),
 				mockImageFetcher,
+				mockBPFetcher,
 			)
 		})
 
