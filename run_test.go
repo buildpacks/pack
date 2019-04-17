@@ -74,6 +74,11 @@ func testRun(t *testing.T, when spec.G, it spec.S) {
 
 		it("creates args RunConfig derived from args BuildConfig", func() {
 			mockBuilderImage := mocks.NewMockImage(mockController)
+			mockBuilderImage.EXPECT().Env("CNB_USER_ID").Return("1111", nil).AnyTimes()
+			mockBuilderImage.EXPECT().Env("CNB_GROUP_ID").Return("2222", nil).AnyTimes()
+			mockBuilderImage.EXPECT().Label("io.buildpacks.stack.id").Return("some.stack.id", nil).AnyTimes()
+			mockBuilderImage.EXPECT().Label("io.buildpacks.builder.metadata").Return("{}", nil).AnyTimes()
+			mockBuilderImage.EXPECT().Name().Return("some/builder").AnyTimes()
 			MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, true).Return(mockBuilderImage, nil)
 
 			mockRunImage := mocks.NewMockImage(mockController)

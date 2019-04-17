@@ -9,8 +9,12 @@ github.com/Microsoft/go-winio v0.4.12 h1:xAfWHN1IrQ0NJ9TBC0KBZoqLjzDTr1ML+4MywiU
 github.com/Microsoft/go-winio v0.4.12/go.mod h1:VhR8bwka0BXejwEJY73c50VrPtXAaKcyvVC4A4RozmA=
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 h1:TngWCqHvy9oXAN6lEVMRuU21PR1EtLVZJmdB18Gu3Rw=
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5/go.mod h1:lmUJ/7eu/Q8D7ML55dXQrVaamCz2vxCfdQBasLZfHKk=
+github.com/buildpack/lifecycle v0.1.0 h1:Q0yetj/OflzM3Pid476G5dk9wf2axnG8z/FZAZ+Iur4=
+github.com/buildpack/lifecycle v0.1.0/go.mod h1:35fR8AHcmIc9UHt/XE0Js3UzA260lNqQMhgH4HQ3vPM=
 github.com/buildpack/lifecycle v0.1.1-0.20190409153558-9bfc59c56c74 h1:E/Slf45nFXUt19YJ7B1tevEFTpznooMH2iiVg0s3h9k=
 github.com/buildpack/lifecycle v0.1.1-0.20190409153558-9bfc59c56c74/go.mod h1:35fR8AHcmIc9UHt/XE0Js3UzA260lNqQMhgH4HQ3vPM=
+github.com/buildpack/lifecycle v0.1.1-0.20190417162324-d5a3c2de9ca1 h1:Wc1RB7eMxOpyjh3TVwBDduk6mJWbgXmbujTSq+ic798=
+github.com/buildpack/lifecycle v0.1.1-0.20190417162324-d5a3c2de9ca1/go.mod h1:35fR8AHcmIc9UHt/XE0Js3UzA260lNqQMhgH4HQ3vPM=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

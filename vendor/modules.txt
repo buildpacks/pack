@@ -5,13 +5,15 @@ github.com/Azure/go-ansiterm
 github.com/BurntSushi/toml
 # github.com/Microsoft/go-winio v0.4.12
 github.com/Microsoft/go-winio
-# github.com/buildpack/lifecycle v0.1.1-0.20190409153558-9bfc59c56c74
-github.com/buildpack/lifecycle
+# github.com/buildpack/lifecycle v0.1.1-0.20190417162324-d5a3c2de9ca1
 github.com/buildpack/lifecycle/image
+github.com/buildpack/lifecycle/metadata
+github.com/buildpack/lifecycle
 github.com/buildpack/lifecycle/image/auth
 github.com/buildpack/lifecycle/archive
-github.com/buildpack/lifecycle/cmd
 github.com/buildpack/lifecycle/image/fakes
+github.com/buildpack/lifecycle/cache
+github.com/buildpack/lifecycle/cmd
 # github.com/dgodd/dockerdial v1.0.1
 github.com/dgodd/dockerdial
 # github.com/docker/distribution v2.7.1+incompatible

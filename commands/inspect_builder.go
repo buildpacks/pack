@@ -109,7 +109,7 @@ func logDetectionOrderInfo(logger *logging.Logger, info *pack.BuilderInfo) {
 	logger.Info("\nDetection Order:")
 	for i, group := range info.Groups {
 		logger.Info(fmt.Sprintf("  Group #%d:", i+1))
-		for _, bp := range group {
+		for _, bp := range group.Buildpacks {
 			logger.Info(fmt.Sprintf("    %s@%s", bp.ID, bp.Version))
 		}
 	}

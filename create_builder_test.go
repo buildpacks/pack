@@ -3,22 +3,18 @@ package pack_test
 import (
 	"bytes"
 	"context"
-	"errors"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
+	"github.com/buildpack/lifecycle/image/fakes"
 	"github.com/fatih/color"
-
-	"github.com/buildpack/lifecycle"
 	"github.com/golang/mock/gomock"
-	"github.com/google/go-cmp/cmp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
@@ -26,46 +22,79 @@ import (
 	h "github.com/buildpack/pack/testhelpers"
 )
 
-func TestBuilderFactory(t *testing.T) {
+func TestCreateBuilder(t *testing.T) {
 	h.RequireDocker(t)
 	color.NoColor = true
 	if runtime.GOOS == "windows" {
 		t.Skip("create builder is not implemented on windows")
 	}
-	spec.Run(t, "builder_factory", testBuilderFactory, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "create_builder", testCreateBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
-	when("#BuilderFactory", func() {
+func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
+	when("#CreateBuilder", func() {
 		var (
 			mockController   *gomock.Controller
-			MockImageFetcher *mocks.MockImageFetcher
-			factory          pack.BuilderFactory
-			outBuf           bytes.Buffer
-			errBuf           bytes.Buffer
+			mockImageFetcher *mocks.MockImageFetcher
+			mockBPFetcher    *mocks.MockBuildpackFetcher
+			fakeBuildImage   *fakes.Image
+			logOut, logErr   *bytes.Buffer
+			opts             pack.CreateBuilderOptions
+			subject          *pack.Client
 		)
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
-			MockImageFetcher = mocks.NewMockImageFetcher(mockController)
+			mockImageFetcher = mocks.NewMockImageFetcher(mockController)
+			mockBPFetcher = mocks.NewMockBuildpackFetcher(mockController)
 
-			packHome, err := ioutil.TempDir("", ".pack")
-			if err != nil {
-				t.Fatalf("failed to create temp homedir: %v", err)
+			fakeBuildImage = fakes.NewImage(t, "some/build-image", "", "")
+			h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+			h.AssertNil(t, fakeBuildImage.SetEnv("CNB_USER_ID", "1234"))
+			h.AssertNil(t, fakeBuildImage.SetEnv("CNB_GROUP_ID", "4321"))
+
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any(), gomock.Any()).
+				Return(fakeBuildImage, nil).AnyTimes()
+
+			bp := buildpack.Buildpack{
+				ID:      "bp.one",
+				Latest:  true,
+				Dir:     filepath.Join("testdata", "buildpack"),
+				Version: "1.2.3",
+				Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
 			}
 
-			cfg, err := config.New(packHome)
-			if err != nil {
-				t.Fatalf("failed to create config: %v", err)
-			}
+			mockBPFetcher.EXPECT().FetchBuildpack(gomock.Any()).Return(bp, nil).AnyTimes()
 
-			logger := logging.NewLogger(&outBuf, &errBuf, true, false)
+			logOut, logErr = &bytes.Buffer{}, &bytes.Buffer{}
 
-			factory = pack.BuilderFactory{
-				Logger:           logger,
-				Config:           cfg,
-				Fetcher:          MockImageFetcher,
-				BuildpackFetcher: buildpack.NewFetcher(logger, cfg.Path()),
+			subject = pack.NewClient(
+				&config.Config{},
+				logging.NewLogger(logOut, logErr, true, false),
+				mockImageFetcher,
+				mockBPFetcher,
+			)
+
+			opts = pack.CreateBuilderOptions{
+				BuilderName: "some/builder",
+				BuilderConfig: builder.Config{
+					Buildpacks: []builder.BuildpackConfig{
+						{ID: "bp.one", URI: "https://example.fake/bp-one.tgz", Latest: true},
+					},
+					Groups: []builder.GroupMetadata{{
+						Buildpacks: []builder.GroupBuildpack{
+							{ID: "bp.one", Version: "1.2.3", Optional: false},
+						}},
+					},
+					Stack: builder.StackConfig{
+						ID:              "some.stack.id",
+						BuildImage:      "some/build-image",
+						RunImage:        "some/run-image",
+						RunImageMirrors: nil,
+					},
+				},
+				Publish: false,
+				NoPull:  false,
 			}
 		})
 
@@ -73,291 +102,56 @@ func testBuilderFactory(t *testing.T, when spec.G, it spec.S) {
 			mockController.Finish()
 		})
 
-		when("#BuilderConfigFromFlags", func() {
-			it("uses stack build image as base image", func() {
-				mockBaseImage := mocks.NewMockImage(mockController)
-				MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build", true, true).Return(mockBaseImage, nil)
-				mockBaseImage.EXPECT().Rename("some/image")
-
-				cfg, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
-					RepoName:        "some/image",
-					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
-				})
-				if err != nil {
-					t.Fatalf("error creating builder config: %s", err)
-				}
-				h.AssertSameInstance(t, cfg.Image, mockBaseImage)
-				checkBuildpacks(t, cfg.Buildpacks)
-				checkGroups(t, cfg.Groups)
-				h.AssertEq(t, cfg.BuilderDir, "testdata")
-				h.AssertEq(t, cfg.RunImage, "some/run")
-				h.AssertEq(t, cfg.RunImageMirrors, []string{"gcr.io/some/run2"})
-			})
-
-			it("doesn't pull a new base image when --no-pull flag is provided", func() {
-				mockBaseImage := mocks.NewMockImage(mockController)
-				MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build", true, false).Return(mockBaseImage, nil)
-				mockBaseImage.EXPECT().Rename("some/image")
-
-				config, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
-					RepoName:        "some/image",
-					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
-					NoPull:          true,
-				})
-				if err != nil {
-					t.Fatalf("error creating builder config: %s", err)
-				}
-				h.AssertSameInstance(t, config.Image, mockBaseImage)
-				checkBuildpacks(t, config.Buildpacks)
-				checkGroups(t, config.Groups)
-				h.AssertEq(t, config.BuilderDir, "testdata")
-			})
-
-			it("fails if the base image cannot be found", func() {
-				MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build", true, true).Return(nil, errors.New("some-error"))
-
-				_, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
-					RepoName:        "some/image",
-					BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
-				})
-				if err == nil {
-					t.Fatalf("Expected error when base image is missing from daemon")
-				}
-			})
-
-			when("--publish is passed", func() {
-				it("uses a registry store and doesn't pull base image", func() {
-					mockBaseImage := mocks.NewMockImage(mockController)
-					MockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build", false, true).Return(mockBaseImage, nil)
-					mockBaseImage.EXPECT().Rename("some/image")
-
-					config, err := factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
-						RepoName:        "some/image",
-						BuilderTomlPath: filepath.Join("testdata", "builder.toml"),
-						Publish:         true,
-					})
-					if err != nil {
-						t.Fatalf("error creating builder config: %s", err)
-					}
-					h.AssertSameInstance(t, config.Image, mockBaseImage)
-					checkBuildpacks(t, config.Buildpacks)
-					checkGroups(t, config.Groups)
-					h.AssertEq(t, config.BuilderDir, "testdata")
-				})
-			})
-
-			it("validates the presence of the id field", func() {
-				file, err := ioutil.TempFile("", "builder.toml")
-				h.AssertNil(t, err)
-
-				_, err = file.WriteString(`
-[stack]
-build-image = "packs/build:v3alpha2"
-run-image = "packs/run:v3alpha2"
-`)
-				h.AssertNil(t, err)
-				file.Close()
-
-				_, err = factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
-					RepoName:        "some/image",
-					BuilderTomlPath: file.Name(),
-				})
+		when("validating the builder config", func() {
+			it("should fail when the stack ID is empty", func() {
+				opts.BuilderConfig.Stack.ID = ""
+				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertError(t, err, "stack.id is required")
 			})
 
-			it("validates the presence of the build-image field", func() {
-				file, err := ioutil.TempFile("", "builder.toml")
-				h.AssertNil(t, err)
+			it("should fail when the stack ID from the builder config does not match the stack ID from the build image", func() {
+				h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "other.stack.id"))
 
-				_, err = file.WriteString(`
-[stack]
-id = "some.id"
-run-image = "packs/run:v3alpha2"
-`)
-				h.AssertNil(t, err)
-				file.Close()
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "stack 'some.stack.id' from builder config is incompatible with stack 'other.stack.id' from build image")
+			})
 
-				_, err = factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
-					RepoName:        "some/image",
-					BuilderTomlPath: file.Name(),
-				})
+			it("should fail when the build image is empty", func() {
+				opts.BuilderConfig.Stack.BuildImage = ""
+				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertError(t, err, "stack.build-image is required")
 			})
 
-			it("validates the presence of the run-image field", func() {
-				file, err := ioutil.TempFile("", "builder.toml")
-				h.AssertNil(t, err)
-
-				_, err = file.WriteString(`
-[stack]
-id = "some.id"
-build-image = "packs/build:v3alpha2"
-`)
-				h.AssertNil(t, err)
-				file.Close()
-
-				_, err = factory.BuilderConfigFromFlags(context.TODO(), pack.CreateBuilderFlags{
-					RepoName:        "some/image",
-					BuilderTomlPath: file.Name(),
-				})
+			it("should fail when the run image is empty", func() {
+				opts.BuilderConfig.Stack.RunImage = ""
+				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertError(t, err, "stack.run-image is required")
 			})
 		})
 
-		when("#Create", func() {
-			var (
-				mockImage     *mocks.MockImage
-				savedLayers   map[string]*bytes.Buffer
-				labels        map[string]string
-				env           map[string]string
-				builderConfig pack.BuilderConfig
-			)
+		it("should create a new builder image", func() {
+			err := subject.CreateBuilder(context.TODO(), opts)
+			h.AssertNil(t, err)
 
-			it.Before(func() {
-				savedLayers = make(map[string]*bytes.Buffer)
-				labels = make(map[string]string)
-				env = make(map[string]string)
+			builderImage, err := builder.GetBuilder(fakeBuildImage)
+			h.AssertNil(t, err)
 
-				mockImage = mocks.NewMockImage(mockController)
-				mockImage.EXPECT().AddLayer(gomock.Any()).Do(func(layerPath string) {
-					file, err := os.Open(layerPath)
-					h.AssertNil(t, err)
-					defer file.Close()
-
-					buf, err := ioutil.ReadAll(file)
-					h.AssertNil(t, err)
-
-					savedLayers[filepath.Base(layerPath)] = bytes.NewBuffer(buf)
-				}).AnyTimes()
-				mockImage.EXPECT().SetLabel(gomock.Any(), gomock.Any()).Do(func(labelName, labelValue string) {
-					labels[labelName] = labelValue
-				})
-				mockImage.EXPECT().SetEnv(gomock.Any(), gomock.Any()).Do(func(key, val string) { env[key] = val }).AnyTimes()
-				mockImage.EXPECT().Save()
-
-				builderConfig = pack.BuilderConfig{
-					Image:           mockImage,
-					Buildpacks:      []buildpack.Buildpack{},
-					Groups:          []lifecycle.BuildpackGroup{},
-					BuilderDir:      "",
-					RunImage:        "myorg/run",
-					RunImageMirrors: []string{"gcr.io/myorg/run"},
-				}
-			})
-
-			it("stores metadata about the run images in the builder label", func() {
-				h.AssertNil(t, factory.Create(builderConfig))
-				h.AssertEq(t,
-					labels["io.buildpacks.builder.metadata"],
-					`{"buildpacks":[],"groups":[],"stack":{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]}}}`,
-				)
-			})
-
-			it("writes a stack.toml file", func() {
-				h.AssertNil(t, factory.Create(builderConfig))
-
-				content, exists := savedLayers["stack.tar"]
-				h.AssertEq(t, exists, true)
-				h.AssertContains(t, content.String(), `[run-image]`)
-				h.AssertContains(t, content.String(), `image = "myorg/run"`)
-				h.AssertContains(t, content.String(), `mirrors = ["gcr.io/myorg/run"]`)
-			})
-
-			it("writes the stack.toml file path to an env var", func() {
-				h.AssertNil(t, factory.Create(builderConfig))
-				content, exists := env["CNB_STACK_PATH"]
-				h.AssertEq(t, exists, true)
-				h.AssertContains(t, content, "/buildpacks/stack.toml")
-			})
-
-			when("builder config contains buildpacks", func() {
-				it.Before(func() {
-					builderConfig.Buildpacks = []buildpack.Buildpack{
-						{ID: "some-buildpack-id", Version: "some-buildpack-version", Dir: "testdata/buildpack", Latest: true},
-					}
-				})
-
-				it("stores metadata about the buildpacks in the builder label", func() {
-					h.AssertNil(t, factory.Create(builderConfig))
-					h.AssertEq(t,
-						labels["io.buildpacks.builder.metadata"],
-						`{"buildpacks":[{"id":"some-buildpack-id","version":"some-buildpack-version","latest":true}],"groups":[],"stack":{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]}}}`,
-					)
-				})
-			})
-
-			when("builder config contains groups", func() {
-				it.Before(func() {
-					builderConfig.Groups = []lifecycle.BuildpackGroup{{Buildpacks: []*lifecycle.Buildpack{{ID: "bpId", Version: "bpVersion"}}}}
-				})
-
-				it("should write a 'order.toml' that lists buildpack groups", func() {
-					h.AssertNil(t, factory.Create(builderConfig))
-					buf, exists := savedLayers["order.tar"]
-					h.AssertEq(t, exists, true)
-
-					contents, err := h.UntarSingleFile(buf, "/buildpacks/order.toml")
-					h.AssertNil(t, err)
-					h.AssertContains(t, string(contents), `id = "bpId"`)
-				})
-
-				it("stores metadata about the groups in the builder label", func() {
-					h.AssertNil(t, factory.Create(builderConfig))
-					h.AssertEq(t,
-						labels["io.buildpacks.builder.metadata"],
-						`{"buildpacks":[],"groups":[{"buildpacks":[{"id":"bpId","version":"bpVersion","latest":false}]}],"stack":{"runImage":{"image":"myorg/run","mirrors":["gcr.io/myorg/run"]}}}`,
-					)
-				})
-			})
+			h.AssertEq(t, builderImage.Name, "some/builder")
+			h.AssertEq(t, builderImage.UID, 1234)
+			h.AssertEq(t, builderImage.GID, 4321)
+			h.AssertEq(t, builderImage.StackID, "some.stack.id")
+			h.AssertEq(t, builderImage.GetBuildpacks(), []builder.BuildpackMetadata{{
+				ID:      "bp.one",
+				Version: "1.2.3",
+				Latest:  true,
+			}})
+			h.AssertEq(t, builderImage.GetOrder(), []builder.GroupMetadata{{
+				Buildpacks: []builder.GroupBuildpack{{
+					ID:       "bp.one",
+					Version:  "1.2.3",
+					Optional: false,
+				}},
+			}})
 		})
 	})
-}
-
-func checkGroups(t *testing.T, groups []lifecycle.BuildpackGroup) {
-	t.Helper()
-	if diff := cmp.Diff(groups, []lifecycle.BuildpackGroup{
-		{Buildpacks: []*lifecycle.Buildpack{
-			{
-				ID:      "some.bp1",
-				Version: "1.2.3",
-			},
-			{
-				ID:      "some/bp2",
-				Version: "1.2.4",
-			},
-		}},
-		{Buildpacks: []*lifecycle.Buildpack{
-			{
-				ID:      "some.bp1",
-				Version: "1.2.3",
-			},
-		}},
-	}); diff != "" {
-		t.Fatalf("config has incorrect groups, %s", diff)
-	}
-}
-
-func checkBuildpacks(t *testing.T, buildpacks []buildpack.Buildpack) {
-	if diff := cmp.Diff(buildpacks, []buildpack.Buildpack{
-		{
-			ID:     "some.bp1",
-			Dir:    filepath.Join("testdata", "some-path-1"),
-			URI:    "some-path-1",
-			Latest: false,
-		},
-		{
-			ID:     "some/bp2",
-			Dir:    filepath.Join("testdata", "some-path-2"),
-			URI:    "some-path-2",
-			Latest: false,
-		},
-		{
-			ID:     "some/bp2",
-			Dir:    filepath.Join("testdata", "some-latest-path-2"),
-			URI:    "some-latest-path-2",
-			Latest: true,
-		},
-	}); diff != "" {
-		t.Fatalf("config has incorrect buildpacks, %s", diff)
-	}
 }

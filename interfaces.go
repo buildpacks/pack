@@ -14,6 +14,8 @@ type ImageFetcher interface {
 	Fetch(ctx context.Context, name string, daemon, pull bool) (image.Image, error)
 }
 
+//go:generate mockgen -package mocks -destination mocks/buildpack_fetcher.go github.com/buildpack/pack BuildpackFetcher
+
 type BuildpackFetcher interface {
-	FetchBuildpack(localSearchPath string, bp buildpack.Buildpack) (buildpack.Buildpack, error)
+	FetchBuildpack(uri string) (buildpack.Buildpack, error)
 }

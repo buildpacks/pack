@@ -21,6 +21,7 @@ import (
 type PackClient interface {
 	InspectBuilder(string, bool) (*pack.BuilderInfo, error)
 	Rebase(context.Context, pack.RebaseOptions) error
+	CreateBuilder(context.Context, pack.CreateBuilderOptions) error
 }
 
 

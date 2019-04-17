@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/buildpack/lifecycle/metadata"
 )
 
 type bpLayersDir struct {
@@ -47,11 +49,6 @@ func readBuildpackLayersDir(layersDir string, buildpack Buildpack) (bpLayersDir,
 func launch(l bpLayer) bool {
 	md, err := l.read()
 	return err == nil && md.Launch
-}
-
-func nonCached(l bpLayer) bool {
-	md, err := l.read()
-	return err == nil && !md.Cache
 }
 
 func malformed(l bpLayer) bool {
@@ -97,7 +94,7 @@ type bpLayer struct {
 	layer
 }
 
-func (bp *bpLayer) classifyCache(metadataLayers map[string]LayerMetadata) cacheType {
+func (bp *bpLayer) classifyCache(metadataLayers map[string]metadata.LayerMetadata) cacheType {
 	cachedLayer, err := bp.read()
 	if err != nil {
 		return cacheMalformed
@@ -118,29 +115,29 @@ func (bp *bpLayer) classifyCache(metadataLayers map[string]LayerMetadata) cacheT
 	return cacheValid
 }
 
-func (bp *bpLayer) read() (LayerMetadata, error) {
-	var metadata LayerMetadata
+func (bp *bpLayer) read() (metadata.LayerMetadata, error) {
+	var data metadata.LayerMetadata
 	tomlPath := bp.path + ".toml"
 	fh, err := os.Open(tomlPath)
 	if os.IsNotExist(err) {
-		return LayerMetadata{}, nil
+		return metadata.LayerMetadata{}, nil
 	} else if err != nil {
-		return LayerMetadata{}, err
+		return metadata.LayerMetadata{}, err
 	}
 	defer fh.Close()
-	if _, err := toml.DecodeFile(tomlPath, &metadata); err != nil {
-		return LayerMetadata{}, err
+	if _, err := toml.DecodeFile(tomlPath, &data); err != nil {
+		return metadata.LayerMetadata{}, err
 	}
 	sha, err := ioutil.ReadFile(bp.path + ".sha")
 	if err != nil {
 		if os.IsNotExist(err) {
-			return metadata, nil
+			return data, nil
 		} else {
-			return LayerMetadata{}, err
+			return metadata.LayerMetadata{}, err
 		}
 	}
-	metadata.SHA = string(sha)
-	return metadata, nil
+	data.SHA = string(sha)
+	return data, nil
 }
 
 func (bp *bpLayer) remove() error {
@@ -156,7 +153,7 @@ func (bp *bpLayer) remove() error {
 	return nil
 }
 
-func (bp *bpLayer) writeMetadata(metadataLayers map[string]LayerMetadata) error {
+func (bp *bpLayer) writeMetadata(metadataLayers map[string]metadata.LayerMetadata) error {
 	layerMetadata := metadataLayers[bp.name()]
 	path := filepath.Join(bp.path + ".toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {

@@ -1,4 +1,7 @@
 [buildpack]
-id = "simple/layers"
-version = "simple-layers-version"
-name = "Simple Layers Buildpack"
+  id = "simple/layers"
+  version = "simple-layers-version"
+  name = "Simple Layers Buildpack"
+
+[[stacks]]
+  id = "pack.test.stack"

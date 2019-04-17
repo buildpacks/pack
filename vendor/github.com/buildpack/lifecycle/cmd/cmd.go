@@ -31,6 +31,7 @@ const (
 	EnvUseHelpers    = "CNB_USE_CRED_HELPERS" // defaults to false
 	EnvRunImage      = "CNB_RUN_IMAGE"
 	EnvCacheImage    = "CNB_CACHE_IMAGE"
+	EnvCachePath     = "CNB_CACHE_PATH"
 	EnvUID           = "CNB_USER_ID"
 	EnvGID           = "CNB_GROUP_ID"
 	EnvRegistryAuth  = "CNB_REGISTRY_AUTH"
@@ -74,6 +75,10 @@ func FlagRunImage(image *string) {
 
 func FlagCacheImage(image *string) {
 	flag.StringVar(image, "image", os.Getenv(EnvCacheImage), "cache image tag name")
+}
+
+func FlagCachePath(path *string) {
+	flag.StringVar(path, "path", os.Getenv(EnvCachePath), "path to cache directory")
 }
 
 func FlagUseDaemon(use *bool) {

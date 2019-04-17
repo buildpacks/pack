@@ -2,308 +2,68 @@ package pack
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 
-	"github.com/BurntSushi/toml"
-	"github.com/buildpack/lifecycle"
-	lcimg "github.com/buildpack/lifecycle/image"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/buildpack"
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/logging"
-	"github.com/buildpack/pack/stack"
-	"github.com/buildpack/pack/style"
 )
 
-type BuilderConfig struct {
-	Buildpacks      []buildpack.Buildpack
-	Groups          []lifecycle.BuildpackGroup
-	Image           lcimg.Image
-	BuilderDir      string // original location of builder.toml, used for interpreting relative paths in buildpack URIs
-	RunImage        string
-	RunImageMirrors []string
+type CreateBuilderOptions struct {
+	BuilderName   string
+	BuilderConfig builder.Config
+	Publish       bool
+	NoPull        bool
 }
 
-type BuilderFactory struct {
-	Logger           *logging.Logger
-	Config           *config.Config
-	Fetcher          ImageFetcher
-	BuildpackFetcher BuildpackFetcher
-}
+func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
+	if err := validateBuilderConfig(opts.BuilderConfig); err != nil {
+		return errors.Wrap(err, "invalid builder config")
+	}
 
-type CreateBuilderFlags struct {
-	RepoName        string
-	BuilderTomlPath string
-	Publish         bool
-	NoPull          bool
-}
-
-func (f *BuilderFactory) BuilderConfigFromFlags(ctx context.Context, flags CreateBuilderFlags) (BuilderConfig, error) {
-	builderConfig := BuilderConfig{}
-	builderConfig.BuilderDir = filepath.Dir(flags.BuilderTomlPath)
-
-	builderTOML := &builder.TOML{}
-	_, err := toml.DecodeFile(flags.BuilderTomlPath, &builderTOML)
+	baseImage, err := c.imageFetcher.Fetch(ctx, opts.BuilderConfig.Stack.BuildImage, !opts.Publish, !opts.NoPull)
 	if err != nil {
-		return BuilderConfig{}, fmt.Errorf(`failed to decode builder config from file %s: %s`, flags.BuilderTomlPath, err)
-	}
-
-	if err := validateBuilderTOML(builderTOML); err != nil {
-		return BuilderConfig{}, err
-	}
-
-	baseImage := builderTOML.Stack.BuildImage
-	builderConfig.RunImage = builderTOML.Stack.RunImage
-	builderConfig.RunImageMirrors = builderTOML.Stack.RunImageMirrors
-	f.Logger.Verbose("Using build-image %s", style.Symbol(baseImage))
-	builderConfig.Image, err = f.Fetcher.Fetch(ctx, baseImage, !flags.Publish, !flags.NoPull)
-	if err != nil {
-		return BuilderConfig{}, err
-	}
-	builderConfig.Image.Rename(flags.RepoName)
-	builderConfig.Groups = builderTOML.Groups
-
-	for _, b := range builderTOML.Buildpacks {
-		fetchedBuildpack, err := f.BuildpackFetcher.FetchBuildpack(builderConfig.BuilderDir, b)
-		if err != nil {
-			return BuilderConfig{}, err
-		}
-		builderConfig.Buildpacks = append(builderConfig.Buildpacks, fetchedBuildpack)
-	}
-	return builderConfig, nil
-}
-
-func (f *BuilderFactory) Create(config BuilderConfig) error {
-	tmpDir, err := ioutil.TempDir("", "create-builder")
-	if err != nil {
-		return fmt.Errorf(`failed to create temporary directory: %s`, err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	orderTar, err := f.orderLayer(tmpDir, config.Groups)
-	if err != nil {
-		return fmt.Errorf(`failed to generate order.toml layer: %s`, err)
-	}
-	if err := config.Image.AddLayer(orderTar); err != nil {
-		return fmt.Errorf(`failed append order.toml layer to image: %s`, err)
-	}
-
-	buildpacksMetadata := make([]builder.BuildpackMetadata, 0, len(config.Buildpacks))
-	for _, buildpack := range config.Buildpacks {
-		tarFile, err := f.buildpackLayer(tmpDir, &buildpack, config.BuilderDir)
-		if err != nil {
-			return fmt.Errorf(`failed to generate layer for buildpack %s: %s`, style.Symbol(buildpack.ID), err)
-		}
-		f.Logger.Verbose("adding layer for buildpack %s version %s", style.Symbol(buildpack.ID), style.Symbol(buildpack.Version))
-		if err := config.Image.AddLayer(tarFile); err != nil {
-			return fmt.Errorf(`failed append buildpack layer to image: %s`, err)
-		}
-		buildpacksMetadata = append(buildpacksMetadata, builder.BuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version, Latest: buildpack.Latest})
-	}
-
-	tarFile, err := f.latestLayer(config.Buildpacks, tmpDir, config.BuilderDir)
-	if err != nil {
-		return fmt.Errorf(`failed generate layer for latest links: %s`, err)
-	}
-	if err := config.Image.AddLayer(tarFile); err != nil {
-		return fmt.Errorf(`failed append latest link layer to image: %s`, err)
-	}
-
-	groupsMetadata := make([]builder.GroupMetadata, 0, len(config.Groups))
-	for _, group := range config.Groups {
-		groupBuildpacks := make([]builder.BuildpackMetadata, 0, len(group.Buildpacks))
-		for _, buildpack := range group.Buildpacks {
-			groupBuildpacks = append(groupBuildpacks, builder.BuildpackMetadata{ID: buildpack.ID, Version: buildpack.Version})
-		}
-		groupsMetadata = append(groupsMetadata, builder.GroupMetadata{Buildpacks: groupBuildpacks})
-	}
-
-	jsonBytes, err := json.Marshal(&builder.Metadata{
-		Stack: stack.Metadata{
-			RunImage: stack.RunImageMetadata{
-				Image:   config.RunImage,
-				Mirrors: config.RunImageMirrors,
-			},
-		},
-		Buildpacks: buildpacksMetadata,
-		Groups:     groupsMetadata,
-	})
-	if err != nil {
-		return fmt.Errorf(`failed marshal builder image metadata: %s`, err)
-	}
-
-	if err := config.Image.SetLabel(builder.MetadataLabel, string(jsonBytes)); err != nil {
-		return fmt.Errorf("failed to set metadata label: %s", err)
-	}
-
-	stackTar, err := f.stackLayer(tmpDir, config.RunImage, config.RunImageMirrors)
-	if err != nil {
-		return fmt.Errorf(`failed to generate stack.toml layer: %s`, err)
-	}
-	if err := config.Image.AddLayer(stackTar); err != nil {
-		return fmt.Errorf(`failed to append stack.toml layer to image: %s`, err)
-	}
-
-	if err := config.Image.SetEnv("CNB_STACK_PATH", filepath.Join("/buildpacks", "stack.toml")); err != nil {
 		return err
 	}
 
-	if _, err := config.Image.Save(); err != nil {
+	builderImage, err := builder.New(baseImage, opts.BuilderName)
+	if err != nil {
 		return err
 	}
 
-	return nil
-}
-
-type order struct {
-	Groups []lifecycle.BuildpackGroup `toml:"groups"`
-}
-
-func (f *BuilderFactory) orderLayer(dest string, groups []lifecycle.BuildpackGroup) (layerTar string, err error) {
-	bpDir := filepath.Join(dest, "buildpacks")
-	err = os.Mkdir(bpDir, 0755)
-	if err != nil {
-		return "", err
+	if builderImage.StackID != opts.BuilderConfig.Stack.ID {
+		return fmt.Errorf("stack '%s' from builder config is incompatible with stack '%s' from build image", opts.BuilderConfig.Stack.ID, builderImage.StackID)
 	}
 
-	orderFile, err := os.OpenFile(filepath.Join(bpDir, "order.toml"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return "", err
-	}
-	defer orderFile.Close()
-	err = toml.NewEncoder(orderFile).Encode(order{Groups: groups})
-	if err != nil {
-		return "", err
-	}
-	layerTar = filepath.Join(dest, "order.tar")
-	if err := archive.CreateTar(layerTar, bpDir, "/buildpacks", 0, 0); err != nil {
-		return "", err
-	}
-	return layerTar, nil
-}
+	for _, b := range opts.BuilderConfig.Buildpacks {
+		fetchedBuildpack, err := c.buildpackFetcher.FetchBuildpack(b.URI)
+		if err != nil {
+			return err
+		}
+		fetchedBuildpack.Latest = b.Latest
+		if b.ID != "" && fetchedBuildpack.ID != b.ID {
+			return fmt.Errorf("buildpack from uri '%s' has id '%s' which does not match id '%s' from builder config", b.URI, fetchedBuildpack.ID, b.ID)
+		}
 
-func (f *BuilderFactory) stackLayer(dest string, runImage string, mirrors []string) (layerTar string, err error) {
-	bpDir := filepath.Join(dest, "buildpacks")
-	if err := os.MkdirAll(bpDir, 0755); err != nil {
-		return "", err
-	}
-
-	stackFile, err := os.OpenFile(filepath.Join(bpDir, "stack.toml"), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return "", err
-	}
-	defer stackFile.Close()
-
-	content := stack.Metadata{
-		RunImage: stack.RunImageMetadata{
-			Image:   runImage,
-			Mirrors: mirrors,
-		},
-	}
-	if err = toml.NewEncoder(stackFile).Encode(&content); err != nil {
-		return "", err
-	}
-
-	layerTar = filepath.Join(dest, "stack.tar")
-	if err := archive.CreateTar(layerTar, bpDir, "/buildpacks", 0, 0); err != nil {
-		return "", err
-	}
-
-	return layerTar, nil
-}
-
-type BuildpackData struct {
-	BP struct {
-		ID      string `toml:"id"`
-		Version string `toml:"version"`
-	} `toml:"buildpack"`
-}
-
-// buildpackLayer creates and returns the location of a tgz file for a buildpack layer. That file will reside in the `dest` directory.
-// The tgz file is either created from an initially local directory, or it is downloaded (and validated) from
-// a remote location if the buildpack uri uses the http(s) protocol.
-func (f *BuilderFactory) buildpackLayer(dest string, buildpack *buildpack.Buildpack, builderDir string) (layerTar string, err error) {
-	dir := buildpack.Dir
-
-	data, err := f.buildpackData(*buildpack, dir)
-	if err != nil {
-		return "", err
-	}
-	bp := data.BP
-	if buildpack.ID != bp.ID {
-		return "", fmt.Errorf("buildpack IDs did not match: %s != %s", buildpack.ID, bp.ID)
-	}
-	if bp.Version == "" {
-		return "", fmt.Errorf("buildpack.toml must provide version: %s", filepath.Join(buildpack.Dir, "buildpack.toml"))
-	}
-
-	buildpack.Version = bp.Version
-	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", buildpack.EscapedID(), bp.Version))
-	if err := archive.CreateTar(tarFile, dir, filepath.Join("/buildpacks", buildpack.EscapedID(), bp.Version), 0, 0); err != nil {
-		return "", err
-	}
-	return tarFile, err
-}
-
-func (f *BuilderFactory) buildpackData(buildpack buildpack.Buildpack, dir string) (*BuildpackData, error) {
-	data := &BuildpackData{}
-	_, err := toml.DecodeFile(filepath.Join(dir, "buildpack.toml"), &data)
-	if err != nil {
-		return nil, errors.Wrapf(err, "reading buildpack.toml from buildpack: %s", dir)
-	}
-	return data, nil
-}
-
-func (f *BuilderFactory) latestLayer(buildpacks []buildpack.Buildpack, dest, builderDir string) (string, error) {
-	layerDir := filepath.Join(dest, "latest-layer")
-	err := os.Mkdir(layerDir, 0755)
-	if err != nil {
-		return "", err
-	}
-	for _, bp := range buildpacks {
-		if bp.Latest {
-			data, err := f.buildpackData(bp, bp.Dir)
-			if err != nil {
-				return "", err
-			}
-			err = os.Mkdir(filepath.Join(layerDir, bp.EscapedID()), 0755)
-			if err != nil {
-				return "", err
-			}
-			err = os.Symlink(filepath.Join("/", "buildpacks", bp.EscapedID(), data.BP.Version), filepath.Join(layerDir, bp.EscapedID(), "latest"))
-			if err != nil {
-				return "", err
-			}
+		if err := builderImage.AddBuildpack(fetchedBuildpack); err != nil {
+			return err
 		}
 	}
-	tarFile := filepath.Join(dest, fmt.Sprintf("%s.%s.tar", "latest", "buildpacks"))
-	if err := archive.CreateTar(tarFile, layerDir, "/buildpacks", 0, 0); err != nil {
-		return "", err
-	}
-	return tarFile, nil
+	builderImage.SetOrder(opts.BuilderConfig.Groups)
+	builderImage.SetStackInfo(opts.BuilderConfig.Stack)
+	return builderImage.Save()
 }
 
-func validateBuilderTOML(builderTOML *builder.TOML) error {
-	if builderTOML == nil {
-		return errors.New("builder toml is empty")
-	}
-
-	if builderTOML.Stack.ID == "" {
+func validateBuilderConfig(conf builder.Config) error {
+	if conf.Stack.ID == "" {
 		return errors.New("stack.id is required")
 	}
 
-	if builderTOML.Stack.BuildImage == "" {
+	if conf.Stack.BuildImage == "" {
 		return errors.New("stack.build-image is required")
 	}
 
-	if builderTOML.Stack.RunImage == "" {
+	if conf.Stack.RunImage == "" {
 		return errors.New("stack.run-image is required")
 	}
 	return nil
