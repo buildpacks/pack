@@ -69,7 +69,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (i 
 	}
 
 	if !remoteFound {
-		return nil, errors.Wrapf(ErrNotFound, "image '%s' does not exist in registry", name)
+		return nil, errors.Wrapf(ErrNotFound, "image %s does not exist in registry", style.Symbol(name))
 	}
 
 	return i, nil
@@ -87,7 +87,7 @@ func (f *Fetcher) fetchDaemonImage(name string) (img.Image, error) {
 	}
 
 	if !found {
-		return nil, errors.Wrapf(ErrNotFound, "image '%s' does not exist on the daemon", name)
+		return nil, errors.Wrapf(ErrNotFound, "image %s does not exist on the daemon", style.Symbol(name))
 	}
 	return i, nil
 }

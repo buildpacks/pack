@@ -40,7 +40,7 @@ func (l *Logger) Verbose(format string, a ...interface{}) {
 }
 
 func (l *Logger) Error(format string, a ...interface{}) {
-	l.printf(l.err, style.Error("ERROR: ")+format, a...)
+	l.printf(l.err, "\n"+style.Error("ERROR: ")+format, a...)
 }
 
 func (l *Logger) Tip(format string, a ...interface{}) {

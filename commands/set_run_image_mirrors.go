@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"strings"
-
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack/config"
@@ -23,14 +21,18 @@ func SetRunImagesMirrors(logger *logging.Logger) *cobra.Command {
 				return err
 			}
 
-			builder := args[0]
-			cfg.SetRunImageMirrors(builder, runImages)
-			logger.Info("Run Image %s configured with mirror '%s'", style.Symbol(builder), strings.Join(runImages, ","))
+			runImage := args[0]
+			cfg.SetRunImageMirrors(runImage, runImages)
+			for _, mirror := range runImages {
+				logger.Info("Run Image %s configured with mirror %s", style.Symbol(runImage), style.Symbol(mirror))
+			}
+			if len(runImages) == 0 {
+				logger.Info("All mirrors removed for Run Image %s", style.Symbol(runImage))
+			}
 			return nil
 		}),
 	}
 	cmd.Flags().StringSliceVarP(&runImages, "mirror", "m", nil, "Run image mirror"+multiValueHelp("mirror"))
-	cmd.MarkFlagRequired("mirror")
 	AddHelpFlag(cmd, "configure-builder")
 	return cmd
 }

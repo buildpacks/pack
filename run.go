@@ -2,95 +2,47 @@ package pack
 
 import (
 	"context"
-	"io"
+	"crypto/sha256"
+	"fmt"
 
-	"github.com/docker/docker/client"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/app"
-	"github.com/buildpack/pack/cache"
-	"github.com/buildpack/pack/image"
-	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
 
-type BuildRunner interface {
-	Run(context.Context) (*app.Image, error)
-}
-
-type RunFlags struct {
-	BuildFlags BuildFlags
+type RunOptions struct {
+	AppDir     string // defaults to current working directory
+	Builder    string // defaults to default builder on the client config
+	RunImage   string // defaults to the best mirror from the builder image
+	Env        map[string]string
+	NoPull     bool
+	ClearCache bool
+	Buildpacks []string
 	Ports      []string
 }
 
-type RunConfig struct {
-	Ports []string
-	Build BuildRunner
-	// All below are from BuildConfig
-	RepoName string
-	Logger   *logging.Logger
-}
-
-func (bf *BuildFactory) RunConfigFromFlags(ctx context.Context, f *RunFlags) (*RunConfig, error) {
-	bc, err := bf.BuildConfigFromFlags(ctx, &f.BuildFlags)
+func (c *Client) Run(ctx context.Context, opts RunOptions) error {
+	appDir, err := c.processAppDir(opts.AppDir)
 	if err != nil {
-		return nil, err
+		return errors.Wrapf(err, "invalid app dir '%s'", opts.AppDir)
 	}
-	rc := &RunConfig{
-		Build: bc,
-		Ports: f.Ports,
-		// All below are from BuildConfig
-		RepoName: bc.RepoName,
-		Logger:   bc.Logger,
-	}
-
-	return rc, nil
-}
-
-func Run(ctx context.Context, outWriter, errWriter io.Writer, appDir, buildImage, runImage string, ports []string) error {
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+	sum := sha256.Sum256([]byte(appDir))
+	imageName := fmt.Sprintf("pack.local/run/%x", sum[:8])
+	err = c.Build(ctx, BuildOptions{
+		AppDir:     appDir,
+		Builder:    opts.Builder,
+		RunImage:   opts.RunImage,
+		Env:        opts.Env,
+		Image:      imageName,
+		NoPull:     opts.NoPull,
+		ClearCache: opts.ClearCache,
+		Buildpacks: opts.Buildpacks,
+	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "build failed")
 	}
-
-	c, err := cache.New(runImage, dockerClient)
-	if err != nil {
-		return err
-	}
-
-	logger := logging.NewLogger(outWriter, errWriter, true, false)
-
-	imageFetcher, err := image.NewFetcher(logger, dockerClient)
-	if err != nil {
-		return err
-	}
-
-	bf, err := DefaultBuildFactory(logger, c, dockerClient, imageFetcher)
-	if err != nil {
-		return err
-	}
-
-	r, err := bf.RunConfigFromFlags(ctx,
-		&RunFlags{
-			BuildFlags: BuildFlags{
-				AppDir:   appDir,
-				Builder:  buildImage,
-				RunImage: runImage,
-			},
-			Ports: ports,
-		})
-	if err != nil {
-		return err
-	}
-
-	return r.Run(ctx, dockerClient)
-}
-
-func (r *RunConfig) Run(ctx context.Context, docker *client.Client) error {
-	appImage, err := r.Build.Run(ctx)
-	if err != nil {
-		return err
-	}
-
-	r.Logger.Verbose(style.Step("RUNNING"))
-	return appImage.Run(ctx, docker, r.Ports)
+	appImage := &app.Image{RepoName: imageName, Logger: c.logger}
+	c.logger.Verbose(style.Step("RUNNING"))
+	return appImage.Run(ctx, c.docker, opts.Ports)
 }

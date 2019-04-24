@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -37,45 +38,58 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("reusing the same cache for the same repo name", func() {
-			subject, err := cache.New("my/repo", dockerClient)
+			ref, err := name.ParseReference("my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
-			expected, _ := cache.New("my/repo", dockerClient)
+			subject := cache.New(ref, dockerClient)
+			expected := cache.New(ref, dockerClient)
 			if subject.Image() != expected.Image() {
 				t.Fatalf("The same repo name should result in the same volume")
 			}
 		})
 
 		it("supplies different volumes for different tags", func() {
-			subject, err := cache.New("my/repo:other-tag", dockerClient)
+			ref, err := name.ParseReference("my/repo:other-tag", name.WeakValidation)
 			h.AssertNil(t, err)
-			notExpected, _ := cache.New("my/repo", dockerClient)
+			subject := cache.New(ref, dockerClient)
+			ref, err = name.ParseReference("my/repo", name.WeakValidation)
+			h.AssertNil(t, err)
+			notExpected := cache.New(ref, dockerClient)
 			if subject.Image() == notExpected.Image() {
 				t.Fatalf("Different image tags should result in different volumes")
 			}
 		})
 
 		it("supplies different volumes for different registries", func() {
-			subject, err := cache.New("registry.com/my/repo:other-tag", dockerClient)
+			ref, err := name.ParseReference("registry.com/my/repo:other-tag", name.WeakValidation)
 			h.AssertNil(t, err)
-			notExpected, _ := cache.New("my/repo", dockerClient)
+			subject := cache.New(ref, dockerClient)
+			ref, err = name.ParseReference("my/repo", name.WeakValidation)
+			h.AssertNil(t, err)
+			notExpected := cache.New(ref, dockerClient)
 			if subject.Image() == notExpected.Image() {
 				t.Fatalf("Different image registries should result in different volumes")
 			}
 		})
 
 		it("resolves implied tag", func() {
-			subject, err := cache.New("my/repo:latest", dockerClient)
+			ref, err := name.ParseReference("my/repo:latest", name.WeakValidation)
 			h.AssertNil(t, err)
-			expected, _ := cache.New("my/repo", dockerClient)
+			subject := cache.New(ref, dockerClient)
+			ref, err = name.ParseReference("my/repo", name.WeakValidation)
+			h.AssertNil(t, err)
+			expected := cache.New(ref, dockerClient)
 			if subject.Image() != expected.Image() {
 				t.Fatalf("The same repo name should result in the same volume")
 			}
 		})
 
 		it("resolves implied registry", func() {
-			subject, err := cache.New("index.docker.io/my/repo", dockerClient)
+			ref, err := name.ParseReference("index.docker.io/my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
-			expected, _ := cache.New("my/repo", dockerClient)
+			subject := cache.New(ref, dockerClient)
+			ref, err = name.ParseReference("my/repo", name.WeakValidation)
+			h.AssertNil(t, err)
+			expected := cache.New(ref, dockerClient)
 			if subject.Image() != expected.Image() {
 				t.Fatalf("The same repo name should result in the same volume")
 			}
@@ -96,7 +110,9 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			ctx = context.TODO()
 
-			subject, err = cache.New(h.RandString(10), dockerClient)
+			ref, err := name.ParseReference(h.RandString(10), name.WeakValidation)
+			h.AssertNil(t, err)
+			subject = cache.New(ref, dockerClient)
 			h.AssertNil(t, err)
 			imageName = subject.Image()
 		})

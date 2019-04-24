@@ -44,7 +44,9 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				cfg,
 				logging.NewLogger(&outBuf, &errBuff, false, false),
 				mockImageFetcher,
+				nil,
 				mockBPFetcher,
+				nil,
 			)
 		})
 

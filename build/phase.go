@@ -6,16 +6,15 @@ import (
 	"sync"
 
 	"github.com/buildpack/lifecycle/image/auth"
-	"github.com/buildpack/pack/container"
-	"github.com/docker/docker/client"
-
-	"github.com/buildpack/pack/archive"
-	"github.com/buildpack/pack/logging"
-
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/archive"
+	"github.com/buildpack/pack/container"
+	"github.com/buildpack/pack/logging"
 )
 
 type Phase struct {
@@ -32,7 +31,7 @@ type Phase struct {
 
 func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (*Phase, error) {
 	ctrConf := &dcontainer.Config{
-		Image:  l.BuilderImage,
+		Image:  l.Builder.Name(),
 		Labels: map[string]string{"author": "pack"},
 	}
 	hostConf := &dcontainer.HostConfig{
@@ -46,10 +45,10 @@ func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (
 		ctrConf:  ctrConf,
 		hostConf: hostConf,
 		name:     name,
-		docker:   l.Docker,
-		logger:   l.Logger,
-		uid:      l.uid,
-		gid:      l.gid,
+		docker:   l.docker,
+		logger:   l.logger,
+		uid:      l.Builder.UID,
+		gid:      l.Builder.GID,
 		appDir:   l.appDir,
 		appOnce:  l.appOnce,
 	}

@@ -4,12 +4,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
 )
 
-func Run(logger *logging.Logger, fetcher pack.ImageFetcher) *cobra.Command {
-	var runFlags pack.RunFlags
+func Run(logger *logging.Logger, config *config.Config, packClient *pack.Client) *cobra.Command {
+	var flags BuildFlags
+	var ports []string
 	ctx := createCancellableContext()
 
 	cmd := &cobra.Command{
@@ -17,38 +18,28 @@ func Run(logger *logging.Logger, fetcher pack.ImageFetcher) *cobra.Command {
 		Args:  cobra.NoArgs,
 		Short: "Build and run app image (recommended for development only)",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			repoName, err := pack.RepositoryName(logger, &runFlags.BuildFlags)
-			if err != nil {
-				return err
-			}
-			dockerClient, err := dockerClient()
-			if err != nil {
-				return err
-			}
-			cacheObj, err := cache.New(repoName, dockerClient)
-			if err != nil {
-				return err
-			}
-			bf, err := pack.DefaultBuildFactory(logger, cacheObj, dockerClient, fetcher)
-			if err != nil {
-				return err
-			}
-
-			if bf.Config.DefaultBuilder == "" && runFlags.BuildFlags.Builder == "" {
+			if config.DefaultBuilder == "" && flags.Builder == "" {
 				suggestSettingBuilder(logger)
 				return MakeSoftError()
 			}
-
-			r, err := bf.RunConfigFromFlags(ctx, &runFlags)
+			env, err := parseEnv(flags.EnvFile, flags.Env)
 			if err != nil {
 				return err
 			}
-			return r.Run(ctx, dockerClient)
+			return packClient.Run(ctx, pack.RunOptions{
+				AppDir:     flags.AppDir,
+				Builder:    flags.Builder,
+				RunImage:   flags.RunImage,
+				Env:        env,
+				NoPull:     flags.NoPull,
+				ClearCache: flags.ClearCache,
+				Buildpacks: flags.Buildpacks,
+				Ports:      ports,
+			})
 		}),
 	}
-
-	buildCommandFlags(cmd, &runFlags.BuildFlags)
-	cmd.Flags().StringSliceVar(&runFlags.Ports, "port", nil, "Port to publish (defaults to port(s) exposed by container)"+multiValueHelp("port"))
+	buildCommandFlags(cmd, &flags)
+	cmd.Flags().StringSliceVar(&ports, "port", nil, "Port to publish (defaults to port(s) exposed by container)"+multiValueHelp("port"))
 	AddHelpFlag(cmd, "run")
 	return cmd
 }

@@ -3,13 +3,14 @@ package commands
 import (
 	"bytes"
 	"fmt"
+	"text/tabwriter"
+
+	"github.com/spf13/cobra"
+
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-	"text/tabwriter"
 )
 
 func InspectBuilder(logger *logging.Logger, cfg *config.Config, client PackClient) *cobra.Command {
@@ -34,10 +35,10 @@ func InspectBuilder(logger *logging.Logger, cfg *config.Config, client PackClien
 				logger.Info("Inspecting builder: %s\n", style.Symbol(imageName))
 			}
 
-			logger.Info("Remote\n------\n")
+			logger.Info("Remote\n------")
 			inspectBuilderOutput(logger, client, imageName, false)
 
-			logger.Info("\nLocal\n-----\n")
+			logger.Info("\nLocal\n-----")
 			inspectBuilderOutput(logger, client, imageName, true)
 
 			return nil
@@ -50,16 +51,16 @@ func InspectBuilder(logger *logging.Logger, cfg *config.Config, client PackClien
 func inspectBuilderOutput(logger *logging.Logger, client PackClient, imageName string, local bool) {
 	info, err := client.InspectBuilder(imageName, local)
 	if err != nil {
-		logger.Error(errors.Wrapf(err, "failed to inspect image %s", style.Symbol(imageName)).Error())
+		logger.Error(err.Error())
 		return
 	}
 
 	if info == nil {
-		logger.Info("Not present")
+		logger.Info("\nNot present")
 		return
 	}
 
-	logger.Info("Stack: %s\n", info.Stack)
+	logger.Info("\nStack: %s\n", info.Stack)
 
 	logger.Info("Run Images:")
 	for _, r := range info.LocalRunImageMirrors {

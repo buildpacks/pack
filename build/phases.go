@@ -1,5 +1,9 @@
 package build
 
+import (
+	"context"
+)
+
 const (
 	layersDir     = "/layers"
 	buildpacksDir = "/buildpacks"
@@ -10,8 +14,8 @@ const (
 	appDir        = "/workspace"
 )
 
-func (l *Lifecycle) NewDetect() (*Phase, error) {
-	 return l.NewPhase(
+func (l *Lifecycle) Detect(ctx context.Context) error {
+	detect, err := l.NewPhase(
 		"detector",
 		WithArgs(
 			"-buildpacks", buildpacksDir,
@@ -21,10 +25,15 @@ func (l *Lifecycle) NewDetect() (*Phase, error) {
 			"-app", appDir,
 		),
 	)
+	if err != nil {
+		return err
+	}
+	defer detect.Cleanup()
+	return detect.Run(ctx)
 }
 
-func (l *Lifecycle) NewRestore(cacheImage string) (*Phase, error) {
-	return l.NewPhase(
+func (l *Lifecycle) Restore(ctx context.Context, cacheImage string) error {
+	restore, err := l.NewPhase(
 		"restorer",
 		WithDaemonAccess(),
 		WithArgs(
@@ -33,9 +42,23 @@ func (l *Lifecycle) NewRestore(cacheImage string) (*Phase, error) {
 			"-layers", layersDir,
 		),
 	)
+	if err != nil {
+		return err
+	}
+	defer restore.Cleanup()
+	return restore.Run(ctx)
 }
 
-func (l *Lifecycle) NewAnalyze(repoName string, publish bool) (*Phase, error) {
+func (l *Lifecycle) Analyze(ctx context.Context, repoName string, publish bool) error {
+	analyze, err := l.newAnalyze(repoName, publish)
+	if err != nil {
+		return err
+	}
+	defer analyze.Cleanup()
+	return analyze.Run(ctx)
+}
+
+func (l *Lifecycle) newAnalyze(repoName string, publish bool) (*Phase, error) {
 	if publish {
 		return l.NewPhase(
 			"analyzer",
@@ -60,8 +83,8 @@ func (l *Lifecycle) NewAnalyze(repoName string, publish bool) (*Phase, error) {
 	}
 }
 
-func (l *Lifecycle) NewBuild() (*Phase, error) {
-	return l.NewPhase(
+func (l *Lifecycle) Build(ctx context.Context) error {
+	build, err := l.NewPhase(
 		"builder",
 		WithArgs(
 			"-buildpacks", buildpacksDir,
@@ -72,9 +95,23 @@ func (l *Lifecycle) NewBuild() (*Phase, error) {
 			"-platform", platformDir,
 		),
 	)
+	if err != nil {
+		return err
+	}
+	defer build.Cleanup()
+	return build.Run(ctx)
 }
 
-func (l *Lifecycle) NewExport(repoName, runImage string, publish bool) (*Phase, error) {
+func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string, publish bool) error {
+	export, err := l.newExport(repoName, runImage, publish)
+	if err != nil {
+		return err
+	}
+	defer export.Cleanup()
+	return export.Run(ctx)
+}
+
+func (l *Lifecycle) newExport(repoName, runImage string, publish bool) (*Phase, error) {
 	if publish {
 		return l.NewPhase(
 			"exporter",
@@ -103,9 +140,8 @@ func (l *Lifecycle) NewExport(repoName, runImage string, publish bool) (*Phase, 
 	}
 }
 
-
-func (l *Lifecycle) NewCache(cacheImage string) (*Phase, error) {
-	return l.NewPhase(
+func (l *Lifecycle) Cache(ctx context.Context, cacheImage string) error {
+	cache, err := l.NewPhase(
 		"cacher",
 		WithDaemonAccess(),
 		WithArgs(
@@ -114,4 +150,9 @@ func (l *Lifecycle) NewCache(cacheImage string) (*Phase, error) {
 			"-layers", layersDir,
 		),
 	)
+	if err != nil {
+		return err
+	}
+	defer cache.Cleanup()
+	return cache.Run(ctx)
 }
