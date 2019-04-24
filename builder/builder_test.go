@@ -36,6 +36,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		baseImage = fakes.NewImage(t, "base/image", "", "")
 	})
 
+	it.After(func() {
+		baseImage.Cleanup()
+	})
+
 	when("the base image is not valid", func() {
 		when("#New", func() {
 			when("missing CNB_USER_ID", func() {

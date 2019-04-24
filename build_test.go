@@ -42,6 +42,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeLifecycle         *h.FakeLifecycle
 		defaultBuilderStackID string
 		defaultBuilderImage   *fakes.Image
+		fakeDefaultRunImage   *fakes.Image
+		fakeMirror1           *fakes.Image
+		fakeMirror2           *fakes.Image
 		tmpDir                string
 	)
 	it.Before(func() {
@@ -71,15 +74,15 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		)
 		fakeImageFetcher.LocalImages[defaultBuilderImage.Name()] = defaultBuilderImage
 
-		fakeDefaultRunImage := fakes.NewImage(t, "default/run", "", "")
+		fakeDefaultRunImage = fakes.NewImage(t, "default/run", "", "")
 		h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 		fakeImageFetcher.LocalImages[fakeDefaultRunImage.Name()] = fakeDefaultRunImage
 
-		fakeMirror1 := fakes.NewImage(t, "registry1.example.com/run/mirror", "", "")
+		fakeMirror1 = fakes.NewImage(t, "registry1.example.com/run/mirror", "", "")
 		h.AssertNil(t, fakeMirror1.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 		fakeImageFetcher.LocalImages[fakeMirror1.Name()] = fakeMirror1
 
-		fakeMirror2 := fakes.NewImage(t, "registry2.example.com/run/mirror", "", "")
+		fakeMirror2 = fakes.NewImage(t, "registry2.example.com/run/mirror", "", "")
 		h.AssertNil(t, fakeMirror2.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 		fakeImageFetcher.LocalImages[fakeMirror2.Name()] = fakeMirror2
 		var err error
@@ -100,6 +103,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
+		defaultBuilderImage.Cleanup()
+		fakeDefaultRunImage.Cleanup()
+		fakeMirror1.Cleanup()
+		fakeMirror2.Cleanup()
 		os.RemoveAll(tmpDir)
 	})
 
@@ -204,7 +211,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("the builder name is provided", func() {
-				var customBuilderImage *fakes.Image
+				var (
+					customBuilderImage *fakes.Image
+					fakeRunImage       *fakes.Image
+				)
 
 				it.Before(func() {
 					customBuilderImage = h.NewFakeBuilderImage(t,
@@ -215,9 +225,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 					fakeImageFetcher.LocalImages[customBuilderImage.Name()] = customBuilderImage
 
-					fakeRunImage := fakes.NewImage(t, "some/run", "", "")
-					fakeRunImage.SetLabel("io.buildpacks.stack.id", "some.stack.id")
+					fakeRunImage = fakes.NewImage(t, "some/run", "", "")
+					h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 					fakeImageFetcher.LocalImages[fakeRunImage.Name()] = fakeRunImage
+				})
+
+				it.After(func() {
+					customBuilderImage.Cleanup()
+					fakeRunImage.Cleanup()
 				})
 
 				it("it uses the provided builder", func() {
@@ -231,11 +246,22 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("RunImage option", func() {
+			var (
+				fakeRunImage *fakes.Image
+			)
+
+			it.Before(func() {
+				fakeRunImage = fakes.NewImage(t, "custom/run", "", "")
+				fakeImageFetcher.LocalImages[fakeRunImage.Name()] = fakeRunImage
+			})
+
+			it.After(func() {
+				fakeRunImage.Cleanup()
+			})
+
 			when("run image stack matches the builder stack", func() {
 				it.Before(func() {
-					fakeRunImage := fakes.NewImage(t, "custom/run", "", "")
-					fakeRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID)
-					fakeImageFetcher.LocalImages[fakeRunImage.Name()] = fakeRunImage
+					h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 				})
 
 				it("uses the provided image", func() {
@@ -249,9 +275,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("run image stack does not match the builder stack", func() {
 				it.Before(func() {
-					fakeRunImage := fakes.NewImage(t, "custom/run", "", "")
-					fakeRunImage.SetLabel("io.buildpacks.stack.id", "other.stack")
-					fakeImageFetcher.LocalImages[fakeRunImage.Name()] = fakeRunImage
+					h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", "other.stack"))
 				})
 
 				it("errors", func() {
@@ -291,6 +315,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("run image is not supplied", func() {
 				when("there are locally configured mirrors", func() {
+					var (
+						fakeLocalMirror  *fakes.Image
+						fakeLocalMirror1 *fakes.Image
+					)
+
 					it.Before(func() {
 						clientConfig.RunImages = []config.RunImage{
 							{
@@ -302,13 +331,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 						}
 
-						fakeLocalMirror := fakes.NewImage(t, "local/mirror", "", "")
+						fakeLocalMirror = fakes.NewImage(t, "local/mirror", "", "")
 						h.AssertNil(t, fakeLocalMirror.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 						fakeImageFetcher.LocalImages[fakeLocalMirror.Name()] = fakeLocalMirror
 
-						fakeLocalMirror1 := fakes.NewImage(t, "registry1.example.com/local/mirror", "", "")
+						fakeLocalMirror1 = fakes.NewImage(t, "registry1.example.com/local/mirror", "", "")
 						h.AssertNil(t, fakeLocalMirror1.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 						fakeImageFetcher.LocalImages[fakeLocalMirror1.Name()] = fakeLocalMirror1
+					})
+
+					it.After(func() {
+						fakeLocalMirror.Cleanup()
+						fakeLocalMirror1.Cleanup()
 					})
 
 					it("prefers locally configured mirrors", func() {
@@ -441,80 +475,89 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				assertTarFileContents(t, layerTar, "/platform/env/key1", `value1`)
 				assertTarFileContents(t, layerTar, "/platform/env/key2", `value2`)
 			})
-
 		})
 
 		when("Publish option", func() {
-			var remoteRunImage *fakes.Image
-
-			it("uses a remote run image", func() {
-				remoteRunImage = fakes.NewImage(t, "default/run", "", "")
-				h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
-				fakeImageFetcher.RemoteImages[remoteRunImage.Name()] = remoteRunImage
-
-				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-					Image:   "some/app",
-					Publish: true,
-				}))
-				h.AssertEq(t, fakeLifecycle.Opts.Publish, true)
-
-				args := fakeImageFetcher.FetchCalls["default/run"]
-				h.AssertEq(t, args.Daemon, false)
-
-				args = fakeImageFetcher.FetchCalls[clientConfig.DefaultBuilder]
-				h.AssertEq(t, args.Daemon, true)
-				h.AssertEq(t, args.Pull, true)
-			})
-
-			it("uses a local run image", func() {
-				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-					Image:   "some/app",
-					Publish: false,
-				}))
-				h.AssertEq(t, fakeLifecycle.Opts.Publish, false)
-
-				args := fakeImageFetcher.FetchCalls["default/run"]
-				h.AssertEq(t, args.Daemon, true)
-				h.AssertEq(t, args.Pull, true)
-
-				args = fakeImageFetcher.FetchCalls[clientConfig.DefaultBuilder]
-				h.AssertEq(t, args.Daemon, true)
-				h.AssertEq(t, args.Pull, true)
-			})
-		})
-
-		when("NoPull option", func() {
 			when("true", func() {
-				it("uses the local builder and run images without updating", func() {
+				var remoteRunImage *fakes.Image
+
+				it.Before(func() {
+					remoteRunImage = fakes.NewImage(t, "default/run", "", "")
+					h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
+					fakeImageFetcher.RemoteImages[remoteRunImage.Name()] = remoteRunImage
+				})
+
+				it.After(func() {
+					remoteRunImage.Cleanup()
+				})
+
+				it("uses a remote run image", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-						Image:  "some/app",
-						NoPull: true,
+						Image:   "some/app",
+						Publish: true,
 					}))
+					h.AssertEq(t, fakeLifecycle.Opts.Publish, true)
 
 					args := fakeImageFetcher.FetchCalls["default/run"]
-					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.Pull, false)
+					h.AssertEq(t, args.Daemon, false)
 
 					args = fakeImageFetcher.FetchCalls[clientConfig.DefaultBuilder]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.Pull, false)
+
+				})
+
+				when("false", func() {
+					it("uses a local run image", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Publish: false,
+						}))
+						h.AssertEq(t, fakeLifecycle.Opts.Publish, false)
+
+						args := fakeImageFetcher.FetchCalls["default/run"]
+						h.AssertEq(t, args.Daemon, true)
+						h.AssertEq(t, args.Pull, true)
+
+						args = fakeImageFetcher.FetchCalls[clientConfig.DefaultBuilder]
+						h.AssertEq(t, args.Daemon, true)
+						h.AssertEq(t, args.Pull, true)
+					})
 				})
 			})
 
-			when("false", func() {
-				it("uses pulls the builder and run image before using them", func() {
-					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-						Image:  "some/app",
-						NoPull: false,
-					}))
+			when("NoPull option", func() {
+				when("true", func() {
+					it("uses the local builder and run images without updating", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:  "some/app",
+							NoPull: true,
+						}))
 
-					args := fakeImageFetcher.FetchCalls["default/run"]
-					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.Pull, true)
+						args := fakeImageFetcher.FetchCalls["default/run"]
+						h.AssertEq(t, args.Daemon, true)
+						h.AssertEq(t, args.Pull, false)
 
-					args = fakeImageFetcher.FetchCalls[clientConfig.DefaultBuilder]
-					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.Pull, true)
+						args = fakeImageFetcher.FetchCalls[clientConfig.DefaultBuilder]
+						h.AssertEq(t, args.Daemon, true)
+						h.AssertEq(t, args.Pull, false)
+					})
+				})
+
+				when("false", func() {
+					it("uses pulls the builder and run image before using them", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:  "some/app",
+							NoPull: false,
+						}))
+
+						args := fakeImageFetcher.FetchCalls["default/run"]
+						h.AssertEq(t, args.Daemon, true)
+						h.AssertEq(t, args.Pull, true)
+
+						args = fakeImageFetcher.FetchCalls[clientConfig.DefaultBuilder]
+						h.AssertEq(t, args.Daemon, true)
+						h.AssertEq(t, args.Pull, true)
+					})
 				})
 			})
 		})

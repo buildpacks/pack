@@ -7,14 +7,12 @@ import (
 
 	"github.com/buildpack/lifecycle/image/fakes"
 	"github.com/fatih/color"
-	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
-	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -26,56 +24,68 @@ func TestRebase(t *testing.T) {
 func testRebase(t *testing.T, when spec.G, it spec.S) {
 	when("#Rebase", func() {
 		var (
-			mockController   *gomock.Controller
-			mockImageFetcher *mocks.MockImageFetcher
-			mockBPFetcher    *mocks.MockBuildpackFetcher
-			client           *pack.Client
-			cfg              *config.Config
-			outBuf           bytes.Buffer
-			errBuff          bytes.Buffer
+			fakeImageFetcher   *h.FakeImageFetcher
+			client             *pack.Client
+			cfg                *config.Config
+			outBuf             bytes.Buffer
+			errBuff            bytes.Buffer
+			fakeAppImage       *fakes.Image
+			fakeRunImage       *fakes.Image
+			fakeRunImageMirror *fakes.Image
 		)
 		it.Before(func() {
-			mockController = gomock.NewController(t)
-			mockImageFetcher = mocks.NewMockImageFetcher(mockController)
-			mockBPFetcher = mocks.NewMockBuildpackFetcher(mockController)
+			fakeImageFetcher = h.NewFakeImageFetcher()
+
+			fakeAppImage = fakes.NewImage(t, "some/app", "", "")
+			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
+				`{"stack":{"runImage":{"image":"some/run", "mirrors":["example.com/some/run"]}}}`))
+			fakeImageFetcher.LocalImages["some/app"] = fakeAppImage
+
+			fakeRunImage = fakes.NewImage(t, "some/run", "run-image-top-layer-sha", "run-image-digest")
+			fakeImageFetcher.LocalImages["some/run"] = fakeRunImage
+
+			fakeRunImageMirror = fakes.NewImage(t, "example.com/some/run", "mirror-top-layer-sha", "mirror-digest")
+			fakeImageFetcher.LocalImages["example.com/some/run"] = fakeRunImageMirror
 
 			cfg = &config.Config{}
 			client = pack.NewClient(
 				cfg,
 				logging.NewLogger(&outBuf, &errBuff, false, false),
-				mockImageFetcher,
+				fakeImageFetcher,
 				nil,
-				mockBPFetcher,
+				nil,
 				nil,
 			)
 		})
 
 		it.After(func() {
-			mockController.Finish()
+			fakeAppImage.Cleanup()
+			fakeRunImage.Cleanup()
+			fakeRunImageMirror.Cleanup()
 		})
 
 		when("#Rebase", func() {
 			when("run image is provided by the user", func() {
 				when("the image has a label with a run image specified", func() {
+					var fakeCustomRunImage *fakes.Image
+
+					it.Before(func() {
+						fakeCustomRunImage = fakes.NewImage(t, "custom/run", "custom-base-top-layer-sha", "custom-base-digest")
+						fakeImageFetcher.LocalImages["custom/run"] = fakeCustomRunImage
+					})
+
+					it.After(func() {
+						fakeCustomRunImage.Cleanup()
+					})
+
 					it("uses the run image provided by the user", func() {
-						fakeNewBaseImage := fakes.NewImage(t, "some/run", "new-base-top-layer-sha", "new-base-digest")
-
-						fakeAppImage := fakes.NewImage(t, "some/app", "", "")
-						fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata", "{}")
-
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/app", true, true).Return(fakeAppImage, nil)
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run", true, true).Return(fakeNewBaseImage, nil)
-
-						opts := pack.RebaseOptions{
-							RunImage: "some/run",
+						h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+							RunImage: "custom/run",
 							RepoName: "some/app",
-						}
-
-						err := client.Rebase(context.TODO(), opts)
-						h.AssertNil(t, err)
-						h.AssertEq(t, fakeAppImage.Base(), "some/run")
+						}))
+						h.AssertEq(t, fakeAppImage.Base(), "custom/run")
 						lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-						h.AssertContains(t, lbl, `"runImage":{"topLayer":"new-base-top-layer-sha","sha":"new-base-digest"`)
+						h.AssertContains(t, lbl, `"runImage":{"topLayer":"custom-base-top-layer-sha","sha":"custom-base-digest"`)
 					})
 				})
 			})
@@ -83,55 +93,39 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			when("run image is NOT provided by the user", func() {
 				when("the image has a label with a run image specified", func() {
 					it("uses the run image provided in the App image label", func() {
-						fakeNewBaseImage := fakes.NewImage(t, "some/run", "new-base-top-layer-sha", "new-base-digest")
-
-						fakeAppImage := fakes.NewImage(t, "some/app", "", "")
-						fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata", `{"stack":{"runImage":{"image":"some/run"}}}`)
-
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/app", true, true).Return(fakeAppImage, nil)
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run", true, true).Return(fakeNewBaseImage, nil)
-
-						opts := pack.RebaseOptions{
+						h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
 							RepoName: "some/app",
-						}
-
-						err := client.Rebase(context.TODO(), opts)
-						h.AssertNil(t, err)
+						}))
 						h.AssertEq(t, fakeAppImage.Base(), "some/run")
 						lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-						h.AssertContains(t, lbl, `"runImage":{"topLayer":"new-base-top-layer-sha","sha":"new-base-digest"`)
+						h.AssertContains(t, lbl, `"runImage":{"topLayer":"run-image-top-layer-sha","sha":"run-image-digest"`)
 					})
 				})
 
 				when("the image has a label with a run image mirrors specified", func() {
-					var fakeAppImage *fakes.Image
-
-					it.Before(func() {
-						fakeAppImage = fakes.NewImage(t, "example.com/some/app", "", "")
-						fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
-							`{"stack":{"runImage":{"image":"some/run", "mirrors":["example.com/some/run"]}}}`)
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "example.com/some/app", true, true).Return(fakeAppImage, nil)
-					})
-
 					when("there are no locally-configured mirrors", func() {
+						it.Before(func() {
+							fakeImageFetcher.LocalImages["example.com/some/app"] = fakeAppImage
+						})
+
 						it("chooses a matching mirror from the app image label", func() {
-							fakeNewBaseImage := fakes.NewImage(t, "example.com/some/run", "new-base-top-layer-sha", "new-base-digest")
-							mockImageFetcher.EXPECT().Fetch(gomock.Any(), "example.com/some/run", true, true).Return(fakeNewBaseImage, nil)
-
-							opts := pack.RebaseOptions{
+							h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
 								RepoName: "example.com/some/app",
-							}
-
-							err := client.Rebase(context.TODO(), opts)
-							h.AssertNil(t, err)
+							}))
 							h.AssertEq(t, fakeAppImage.Base(), "example.com/some/run")
 							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-							h.AssertContains(t, lbl, `"runImage":{"topLayer":"new-base-top-layer-sha","sha":"new-base-digest"`)
+							h.AssertContains(t, lbl, `"runImage":{"topLayer":"mirror-top-layer-sha","sha":"mirror-digest"`)
 						})
 					})
 
 					when("there are locally-configured mirrors", func() {
+						var (
+							fakeLocalMirror *fakes.Image
+						)
 						it.Before(func() {
+							fakeImageFetcher.LocalImages["example.com/some/app"] = fakeAppImage
+							fakeLocalMirror = fakes.NewImage(t, "example.com/some/local-run", "local-mirror-top-layer-sha", "local-mirror-digest")
+							fakeImageFetcher.LocalImages[ "example.com/some/local-run"] = fakeLocalMirror
 							cfg.RunImages = []config.RunImage{
 								{
 									Image:   "some/run",
@@ -140,110 +134,87 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 							}
 						})
 
-						it("chooses a matching local mirror first", func() {
-							fakeNewBaseImage := fakes.NewImage(t, "example.com/some/local-run", "new-base-top-layer-sha", "new-base-digest")
-							mockImageFetcher.EXPECT().Fetch(gomock.Any(), "example.com/some/local-run", true, true).Return(fakeNewBaseImage, nil)
-							opts := pack.RebaseOptions{
-								RepoName: "example.com/some/app",
-							}
+						it.After(func() {
+							fakeLocalMirror.Cleanup()
+						})
 
-							err := client.Rebase(context.TODO(), opts)
-							h.AssertNil(t, err)
+						it("chooses a matching local mirror first", func() {
+							h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+								RepoName: "example.com/some/app",
+							}))
 							h.AssertEq(t, fakeAppImage.Base(), "example.com/some/local-run")
 							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-							h.AssertContains(t, lbl, `"runImage":{"topLayer":"new-base-top-layer-sha","sha":"new-base-digest"`)
+							h.AssertContains(t, lbl, `"runImage":{"topLayer":"local-mirror-top-layer-sha","sha":"local-mirror-digest"`)
 						})
 					})
 				})
 
 				when("the image does not have a label with a run image specified", func() {
 					it("returns an error", func() {
-						fakeAppImage := fakes.NewImage(t, "some/app", "", "")
-						fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata", "{}")
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/app", true, true).Return(fakeAppImage, nil)
-
-						opts := pack.RebaseOptions{
+						h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata", "{}"))
+						err := client.Rebase(context.TODO(), pack.RebaseOptions{
 							RepoName: "some/app",
-						}
-
-						err := client.Rebase(context.TODO(), opts)
+						})
 						h.AssertError(t, err, "run image must be specified")
 					})
 				})
 			})
 
-			when("publish is false", func() {
-				when("skip pull is false", func() {
-					it("updates the local image", func() {
-						fakeNewBaseImage := fakes.NewImage(t, "some/run", "new-base-top-layer-sha", "new-base-digest")
-						fakeAppImage := fakes.NewImage(t, "some/app", "", "")
+			when("publish", func() {
+				var (
+					fakeRemoteRunImage *fakes.Image
+				)
 
-						fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
-							`{"stack":{"runImage":{"image":"some/run"}}}`)
+				it.Before(func() {
+					fakeRemoteRunImage = fakes.NewImage(t, "some/run", "remote-top-layer-sha", "remote-digest")
+					fakeImageFetcher.RemoteImages["some/run"] = fakeRemoteRunImage
+				})
 
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/app", true, true).Return(fakeAppImage, nil)
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run", true, true).Return(fakeNewBaseImage, nil)
+				it.After(func() {
+					fakeRemoteRunImage.Cleanup()
+				})
 
-						opts := pack.RebaseOptions{
-							RepoName: "some/app",
-							SkipPull: false,
-						}
+				when("is false", func() {
+					when("skip pull is false", func() {
+						it("updates the local image", func() {
+							h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+								RepoName: "some/app",
+								SkipPull: false,
+							}))
+							h.AssertEq(t, fakeAppImage.Base(), "some/run")
+							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+							h.AssertContains(t, lbl, `"runImage":{"topLayer":"remote-top-layer-sha","sha":"remote-digest"`)
+						})
+					})
 
-						err := client.Rebase(context.TODO(), opts)
-						h.AssertNil(t, err)
-						h.AssertEq(t, fakeAppImage.Base(), "some/run")
-						lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-						h.AssertContains(t, lbl, `"runImage":{"topLayer":"new-base-top-layer-sha","sha":"new-base-digest"`)
+					when("skip pull is true", func() {
+						it("uses local image", func() {
+							h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+								RepoName: "some/app",
+								SkipPull: true,
+							}))
+							h.AssertEq(t, fakeAppImage.Base(), "some/run")
+							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+							h.AssertContains(t, lbl, `"runImage":{"topLayer":"run-image-top-layer-sha","sha":"run-image-digest"`)
+						})
 					})
 				})
 
-				when("skip pull is true", func() {
-					it("uses local image", func() {
-						fakeNewBaseImage := fakes.NewImage(t, "some/run", "new-base-top-layer-sha", "new-base-digest")
-
-						fakeAppImage := fakes.NewImage(t, "some/app", "", "")
-						fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
-							`{"stack":{"runImage":{"image":"some/run"}}}`)
-
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/app", true, false).Return(fakeAppImage, nil)
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run", true, false).Return(fakeNewBaseImage, nil)
-
-						opts := pack.RebaseOptions{
-							RepoName: "some/app",
-							SkipPull: true,
-						}
-
-						err := client.Rebase(context.TODO(), opts)
-						h.AssertNil(t, err)
-						h.AssertEq(t, fakeAppImage.Base(), "some/run")
-						lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-						h.AssertContains(t, lbl, `"runImage":{"topLayer":"new-base-top-layer-sha","sha":"new-base-digest"`)
+				when("is true", func() {
+					it.Before(func() {
+						fakeImageFetcher.RemoteImages["some/app"] = fakeAppImage
 					})
-				})
-			})
 
-			when("publish is true", func() {
-				when("skip pull is anything", func() {
-					it("uses remote image", func() {
-						fakeNewBaseImage := fakes.NewImage(t, "some/run", "new-base-top-layer-sha", "new-base-digest")
-
-						fakeAppImage := fakes.NewImage(t, "some/app", "", "")
-						fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
-							`{"stack":{"runImage":{"image":"some/run"}}}`)
-
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/app", false, true).Return(fakeAppImage, nil)
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run", false, true).Return(fakeNewBaseImage, nil)
-
-						opts := pack.RebaseOptions{
-							RepoName: "some/app",
-							Publish:  true,
-						}
-
-						err := client.Rebase(context.TODO(), opts)
-						h.AssertNil(t, err)
-						h.AssertEq(t, fakeAppImage.Base(), "some/run")
-						lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
-						h.AssertContains(t, lbl, `"runImage":{"topLayer":"new-base-top-layer-sha","sha":"new-base-digest"`)
+					when("skip pull is anything", func() {
+						it("uses remote image", func() {
+							h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+								RepoName: "some/app",
+								Publish:  true,
+							}))
+							h.AssertEq(t, fakeAppImage.Base(), "some/run")
+							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
+							h.AssertContains(t, lbl, `"runImage":{"topLayer":"remote-top-layer-sha","sha":"remote-digest"`)
+						})
 					})
 				})
 			})
