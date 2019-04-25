@@ -3,13 +3,9 @@ package main
 import (
 	"os"
 
-	"github.com/docker/docker/client"
-
 	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/commands"
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/image"
 	"github.com/buildpack/pack/logging"
 
 	"github.com/fatih/color"
@@ -22,8 +18,6 @@ var (
 	logger            logging.Logger
 	cfg               config.Config
 	packClient        pack.Client
-	imageFetcher      image.Fetcher
-	buildpackFetcher  buildpack.Fetcher
 )
 
 func main() {
@@ -33,8 +27,6 @@ func main() {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			logger = *logging.NewLogger(os.Stdout, os.Stderr, !quiet, timestamps)
 			cfg = initConfig(&logger)
-			imageFetcher = initImageFetcher(&logger)
-			buildpackFetcher = initBuildpackFetcher(&logger)
 			packClient = initClient(&cfg, &logger)
 		},
 	}
@@ -43,8 +35,8 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Show less output")
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(&logger, &imageFetcher))
-	rootCmd.AddCommand(commands.Run(&logger, &imageFetcher))
+	rootCmd.AddCommand(commands.Build(&logger, &cfg, &packClient))
+	rootCmd.AddCommand(commands.Run(&logger, &cfg, &packClient))
 	rootCmd.AddCommand(commands.Rebase(&logger, &packClient))
 
 	rootCmd.AddCommand(commands.CreateBuilder(&logger, &packClient))
@@ -79,29 +71,7 @@ func initClient(cfg *config.Config, logger *logging.Logger) pack.Client {
 	return *client
 }
 
-func initImageFetcher(logger *logging.Logger) image.Fetcher {
-	dockerClient, err := dockerClient()
-	if err != nil {
-		exitError(logger, err)
-	}
-
-	fetcher, err := image.NewFetcher(logger, dockerClient)
-	if err != nil {
-		exitError(logger, err)
-	}
-	return *fetcher
-}
-
-// TODO: Remove once all commands use pack.Client
-func initBuildpackFetcher(logger *logging.Logger) buildpack.Fetcher {
-	return *buildpack.NewFetcher(logger, cfg.Path())
-}
-
 func exitError(logger *logging.Logger, err error) {
 	logger.Error(err.Error())
 	os.Exit(1)
-}
-
-func dockerClient() (*client.Client, error) {
-	return client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 }

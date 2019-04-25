@@ -7,6 +7,7 @@ import (
 
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/image"
+	"github.com/buildpack/pack/style"
 )
 
 type BuilderInfo struct {
@@ -35,7 +36,7 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 
 	bldr, err := builder.GetBuilder(img)
 	if err != nil {
-		return nil, errors.Wrapf(err, "getting builder '%s'", name)
+		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(name))
 	}
 
 	runImageConfig := c.config.GetRunImage(bldr.GetStackInfo().RunImage.Image)

@@ -11,24 +11,19 @@ type RunImageMetadata struct {
 	Mirrors []string `toml:"mirrors" json:"mirrors"`
 }
 
-func (m Metadata) GetBestMirror(repoName string, localMirrors []string) (string, error) {
-	desiredRegistry, err := registry(repoName)
-	if err != nil {
-		return "", err
-	}
-
+func (m Metadata) GetBestMirror(desiredRegistry string, localMirrors []string) string {
 	runImageList := append(localMirrors, append([]string{m.RunImage.Image}, m.RunImage.Mirrors...)...)
 	for _, img := range runImageList {
 		if reg, err := registry(img); err == nil && reg == desiredRegistry {
-			return img, nil
+			return img
 		}
 	}
 
 	if len(localMirrors) > 0 {
-		return localMirrors[0], nil
+		return localMirrors[0]
 	}
 
-	return m.RunImage.Image, nil
+	return m.RunImage.Image
 }
 
 func registry(imageName string) (string, error) {

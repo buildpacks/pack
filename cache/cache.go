@@ -8,7 +8,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/pkg/errors"
 )
 
 type Cache struct {
@@ -16,18 +15,12 @@ type Cache struct {
 	image  string
 }
 
-func New(repoName string, dockerClient *client.Client) (*Cache, error) {
-	ref, err := name.ParseReference(repoName, name.WeakValidation)
-	if err != nil {
-		return nil, errors.Wrap(err, "bad image identifier")
-	}
-
-	sum := sha256.Sum256([]byte(ref.String()))
-
+func New(imageRef name.Reference, dockerClient *client.Client) *Cache {
+	sum := sha256.Sum256([]byte(imageRef.String()))
 	return &Cache{
 		image:  fmt.Sprintf("pack-cache-%x", sum[:6]),
 		docker: dockerClient,
-	}, nil
+	}
 }
 
 func (c *Cache) Image() string {

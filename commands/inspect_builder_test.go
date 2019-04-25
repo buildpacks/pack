@@ -46,7 +46,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController.Finish()
 	})
 
-	when("#InspectBuilder", func() {
+	when("#GetBuilder", func() {
 
 		when("image cannot be found", func() {
 			it("logs 'Not present'", func() {
@@ -71,12 +71,12 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, outBuf.String(), `Remote
 ------
 
-ERROR: failed to inspect image 'some/image': some remote error
+ERROR: some remote error
 
 Local
 -----
 
-ERROR: failed to inspect image 'some/image': some local error
+ERROR: some local error
 `)
 			})
 		})

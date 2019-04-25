@@ -3,6 +3,7 @@ package pack
 import (
 	"github.com/docker/docker/client"
 
+	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/image"
@@ -14,14 +15,25 @@ type Client struct {
 	logger           *logging.Logger
 	imageFetcher     ImageFetcher
 	buildpackFetcher BuildpackFetcher
+	lifecycle        Lifecycle
+	docker           *client.Client
 }
 
-func NewClient(config *config.Config, logger *logging.Logger, imageFetcher ImageFetcher, buildpackFetcher BuildpackFetcher) *Client {
+func NewClient(
+	config *config.Config,
+	logger *logging.Logger,
+	imageFetcher ImageFetcher,
+	lifecycle Lifecycle,
+	buildpackFetcher BuildpackFetcher,
+	docker *client.Client,
+) *Client {
 	return &Client{
 		config:           config,
 		logger:           logger,
 		imageFetcher:     imageFetcher,
 		buildpackFetcher: buildpackFetcher,
+		lifecycle:        lifecycle,
+		docker:           docker,
 	}
 }
 
@@ -36,12 +48,12 @@ func DefaultClient(config *config.Config, logger *logging.Logger) (*Client, erro
 		return nil, err
 	}
 
-	buildpackFetcher := buildpack.NewFetcher(logger, config.Path())
-
 	return &Client{
 		config:           config,
 		logger:           logger,
 		imageFetcher:     imageFetcher,
-		buildpackFetcher: buildpackFetcher,
+		buildpackFetcher: buildpack.NewFetcher(logger, config.Path()),
+		lifecycle:        build.NewLifecycle(dockerClient, logger),
+		docker:           dockerClient,
 	}, nil
 }

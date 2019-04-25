@@ -141,7 +141,7 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 			it("displays styled error message to error buffer", func() {
 				logger.Error("Something went wrong!")
 
-				h.AssertEq(t, ignoreEmptyTimestampColorCodes(errBuf.String()), style.Error("ERROR: ")+"Something went wrong!\n")
+				h.AssertEq(t, ignoreEmptyTimestampColorCodes(errBuf.String()), "\n"+style.Error("ERROR: ")+"Something went wrong!\n")
 			})
 		})
 

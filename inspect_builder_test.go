@@ -47,7 +47,9 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		},
 			logging.NewLogger(ioutil.Discard, ioutil.Discard, false, false),
 			mockImageFetcher,
+			nil,
 			mockBPFetcher,
+			nil,
 		)
 		builderImage = fakes.NewImage(t, "some/builder", "", "")
 		h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))

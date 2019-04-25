@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/style"
 )
 
 type CreateBuilderOptions struct {
@@ -26,9 +27,10 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return err
 	}
 
+	c.logger.Verbose("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
 	builderImage, err := builder.New(baseImage, opts.BuilderName)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "invalid build-image")
 	}
 
 	if builderImage.StackID != opts.BuilderConfig.Stack.ID {
@@ -49,7 +51,9 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 			return err
 		}
 	}
-	builderImage.SetOrder(opts.BuilderConfig.Groups)
+	if err := builderImage.SetOrder(opts.BuilderConfig.Groups); err != nil {
+		return errors.Wrap(err, "builder config has invalid groups")
+	}
 	builderImage.SetStackInfo(opts.BuilderConfig.Stack)
 	return builderImage.Save()
 }

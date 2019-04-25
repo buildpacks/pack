@@ -72,7 +72,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				&config.Config{},
 				logging.NewLogger(logOut, logErr, true, false),
 				mockImageFetcher,
+				nil,
 				mockBPFetcher,
+				nil,
 			)
 
 			opts = pack.CreateBuilderOptions{
@@ -136,7 +138,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			builderImage, err := builder.GetBuilder(fakeBuildImage)
 			h.AssertNil(t, err)
 
-			h.AssertEq(t, builderImage.Name, "some/builder")
+			h.AssertEq(t, builderImage.Name(), "some/builder")
 			h.AssertEq(t, builderImage.UID, 1234)
 			h.AssertEq(t, builderImage.GID, 4321)
 			h.AssertEq(t, builderImage.StackID, "some.stack.id")
