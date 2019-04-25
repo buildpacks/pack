@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/imgutil"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -19,9 +19,9 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/build"
+	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -62,9 +62,7 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 		docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
 		subject = build.NewLifecycle(docker, logger)
-		imageFactory, err := image.NewFactory()
-		h.AssertNil(t, err)
-		builderImage, err := imageFactory.NewLocal(repoName)
+		builderImage, err := imgutil.NewLocalImage(repoName, docker)
 		h.AssertNil(t, err)
 		bldr, err := builder.GetBuilder(builderImage)
 		h.AssertNil(t, err)

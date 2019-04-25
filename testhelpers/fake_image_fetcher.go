@@ -3,7 +3,7 @@ package testhelpers
 import (
 	"context"
 
-	lcimage "github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/image"
@@ -15,20 +15,20 @@ type FetchArgs struct {
 }
 
 type FakeImageFetcher struct {
-	LocalImages  map[string]lcimage.Image
-	RemoteImages map[string]lcimage.Image
+	LocalImages  map[string]imgutil.Image
+	RemoteImages map[string]imgutil.Image
 	FetchCalls   map[string]*FetchArgs
 }
 
 func NewFakeImageFetcher() *FakeImageFetcher {
 	return &FakeImageFetcher{
-		LocalImages:  map[string]lcimage.Image{},
-		RemoteImages: map[string]lcimage.Image{},
+		LocalImages:  map[string]imgutil.Image{},
+		RemoteImages: map[string]imgutil.Image{},
 		FetchCalls:   map[string]*FetchArgs{},
 	}
 }
 
-func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (lcimage.Image, error) {
+func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (imgutil.Image, error) {
 	f.FetchCalls[name] = &FetchArgs{Daemon: daemon, Pull: pull}
 
 	ri, remoteFound := f.RemoteImages[name]
@@ -50,4 +50,3 @@ func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, daemon, pull 
 
 	return ri, nil
 }
-

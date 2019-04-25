@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/buildpack/lifecycle/image/fakes"
+	"github.com/buildpack/imgutil/fakes"
 	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
@@ -48,7 +48,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockImageFetcher = mocks.NewMockImageFetcher(mockController)
 			mockBPFetcher = mocks.NewMockBuildpackFetcher(mockController)
 
-			fakeBuildImage = fakes.NewImage(t, "some/build-image", "", "")
+			fakeBuildImage = fakes.NewImage("some/build-image", "", "")
 			h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 			h.AssertNil(t, fakeBuildImage.SetEnv("CNB_USER_ID", "1234"))
 			h.AssertNil(t, fakeBuildImage.SetEnv("CNB_GROUP_ID", "4321"))

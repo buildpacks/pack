@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/imgutil"
 	"github.com/buildpack/lifecycle/metadata"
 	"github.com/pkg/errors"
 
@@ -71,7 +71,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	return nil
 }
 
-func (c *Client) getRunImageName(ctx context.Context, opts RebaseOptions, appImage image.Image) (string, error) {
+func (c *Client) getRunImageName(ctx context.Context, opts RebaseOptions, appImage imgutil.Image) (string, error) {
 	var runImageName string
 	if opts.RunImage != "" {
 		runImageName = opts.RunImage

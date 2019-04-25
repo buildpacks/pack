@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/pack/logging"
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/image"
+	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -43,7 +43,6 @@ func TestFetcher(t *testing.T) {
 
 func testFetcher(t *testing.T, when spec.G, it spec.S) {
 	var (
-		err      error
 		fetcher  *image.Fetcher
 		repoName string
 		repo     string
@@ -52,9 +51,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		repo = "some-org/" + h.RandString(10)
 		repoName = registryConfig.RepoName(repo)
-
-		fetcher, err = image.NewFetcher(logging.NewLogger(ioutil.Discard, ioutil.Discard, false, false),  docker)
-		h.AssertNil(t, err)
+		fetcher = image.NewFetcher(logging.NewLogger(ioutil.Discard, ioutil.Discard, false, false), docker)
 	})
 
 	when("#Fetch", func() {

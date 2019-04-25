@@ -43,15 +43,10 @@ func DefaultClient(config *config.Config, logger *logging.Logger) (*Client, erro
 		return nil, err
 	}
 
-	imageFetcher, err := image.NewFetcher(logger, dockerClient)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Client{
 		config:           config,
 		logger:           logger,
-		imageFetcher:     imageFetcher,
+		imageFetcher:     image.NewFetcher(logger, dockerClient),
 		buildpackFetcher: buildpack.NewFetcher(logger, config.Path()),
 		lifecycle:        build.NewLifecycle(dockerClient, logger),
 		docker:           dockerClient,

@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/lifecycle/image/fakes"
+	"github.com/buildpack/imgutil/fakes"
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
@@ -74,15 +74,15 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		)
 		fakeImageFetcher.LocalImages[defaultBuilderImage.Name()] = defaultBuilderImage
 
-		fakeDefaultRunImage = fakes.NewImage(t, "default/run", "", "")
+		fakeDefaultRunImage = fakes.NewImage("default/run", "", "")
 		h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 		fakeImageFetcher.LocalImages[fakeDefaultRunImage.Name()] = fakeDefaultRunImage
 
-		fakeMirror1 = fakes.NewImage(t, "registry1.example.com/run/mirror", "", "")
+		fakeMirror1 = fakes.NewImage("registry1.example.com/run/mirror", "", "")
 		h.AssertNil(t, fakeMirror1.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 		fakeImageFetcher.LocalImages[fakeMirror1.Name()] = fakeMirror1
 
-		fakeMirror2 = fakes.NewImage(t, "registry2.example.com/run/mirror", "", "")
+		fakeMirror2 = fakes.NewImage("registry2.example.com/run/mirror", "", "")
 		h.AssertNil(t, fakeMirror2.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 		fakeImageFetcher.LocalImages[fakeMirror2.Name()] = fakeMirror2
 		var err error
@@ -225,7 +225,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 					fakeImageFetcher.LocalImages[customBuilderImage.Name()] = customBuilderImage
 
-					fakeRunImage = fakes.NewImage(t, "some/run", "", "")
+					fakeRunImage = fakes.NewImage("some/run", "", "")
 					h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 					fakeImageFetcher.LocalImages[fakeRunImage.Name()] = fakeRunImage
 				})
@@ -251,7 +251,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			it.Before(func() {
-				fakeRunImage = fakes.NewImage(t, "custom/run", "", "")
+				fakeRunImage = fakes.NewImage("custom/run", "", "")
 				fakeImageFetcher.LocalImages[fakeRunImage.Name()] = fakeRunImage
 			})
 
@@ -331,11 +331,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 						}
 
-						fakeLocalMirror = fakes.NewImage(t, "local/mirror", "", "")
+						fakeLocalMirror = fakes.NewImage("local/mirror", "", "")
 						h.AssertNil(t, fakeLocalMirror.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 						fakeImageFetcher.LocalImages[fakeLocalMirror.Name()] = fakeLocalMirror
 
-						fakeLocalMirror1 = fakes.NewImage(t, "registry1.example.com/local/mirror", "", "")
+						fakeLocalMirror1 = fakes.NewImage("registry1.example.com/local/mirror", "", "")
 						h.AssertNil(t, fakeLocalMirror1.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 						fakeImageFetcher.LocalImages[fakeLocalMirror1.Name()] = fakeLocalMirror1
 					})
@@ -471,7 +471,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						"key2": "value2",
 					},
 				}))
-				layerTar := defaultBuilderImage.FindLayerWithPath("/platform/env")
+				layerTar, err := defaultBuilderImage.FindLayerWithPath("/platform/env")
+				h.AssertNil(t, err)
 				assertTarFileContents(t, layerTar, "/platform/env/key1", `value1`)
 				assertTarFileContents(t, layerTar, "/platform/env/key2", `value2`)
 			})
@@ -482,7 +483,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				var remoteRunImage *fakes.Image
 
 				it.Before(func() {
-					remoteRunImage = fakes.NewImage(t, "default/run", "", "")
+					remoteRunImage = fakes.NewImage("default/run", "", "")
 					h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 					fakeImageFetcher.RemoteImages[remoteRunImage.Name()] = remoteRunImage
 				})

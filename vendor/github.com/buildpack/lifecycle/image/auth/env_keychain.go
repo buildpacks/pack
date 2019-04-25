@@ -13,6 +13,10 @@ import (
 
 type EnvKeychain struct{}
 
+func DefaultEnvKeychain() authn.Keychain {
+	return authn.NewMultiKeychain(&EnvKeychain{}, authn.DefaultKeychain)
+}
+
 func (EnvKeychain) Resolve(registry name.Registry) (authn.Authenticator, error) {
 	env := os.Getenv(cmd.EnvRegistryAuth)
 	if env == "" {

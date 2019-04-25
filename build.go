@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/imgutil"
 	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -98,10 +98,10 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 			return nil, errors.New("builder is a required parameter if the client has no default builder")
 		}
 	}
-	return name.ParseReference(builderName, name.WeakValidation);
+	return name.ParseReference(builderName, name.WeakValidation)
 }
 
-func (c *Client) processBuilderImage(img image.Image) (*builder.Builder, error) {
+func (c *Client) processBuilderImage(img imgutil.Image) (*builder.Builder, error) {
 	builder, err := builder.GetBuilder(img)
 	if err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func (c *Client) processRunImageName(runImage, targetRegistry string, builderSta
 	return runImageName
 }
 
-func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (image.Image, error) {
+func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (imgutil.Image, error) {
 	img, err := c.imageFetcher.Fetch(context, name, !publish, !noPull)
 	if err != nil {
 		return nil, err
@@ -222,7 +222,7 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 	return parts[0], "latest"
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage image.Image, env map[string]string, group builder.GroupMetadata, buildpacks []buildpack.Buildpack) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, group builder.GroupMetadata, buildpacks []buildpack.Buildpack) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {

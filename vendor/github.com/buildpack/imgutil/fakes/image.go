@@ -10,18 +10,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"testing"
 	"time"
 
-	"github.com/buildpack/lifecycle/image"
+	"github.com/pkg/errors"
+
+	"github.com/buildpack/imgutil"
 )
 
-func NewImage(t *testing.T, name, topLayerSha, digest string) *Image {
+func NewImage(name, topLayerSha, digest string) *Image {
 	return &Image{
-		t:            t,
 		alreadySaved: false,
-		labels:       make(map[string]string),
-		env:          make(map[string]string),
+		labels:       map[string]string{},
+		env:          map[string]string{},
 		topLayerSha:  topLayerSha,
 		digest:       digest,
 		name:         name,
@@ -32,7 +32,6 @@ func NewImage(t *testing.T, name, topLayerSha, digest string) *Image {
 }
 
 type Image struct {
-	t            *testing.T
 	alreadySaved bool
 	deleted      bool
 	layers       []string
@@ -59,7 +58,6 @@ func (f *Image) Label(key string) (string, error) {
 }
 
 func (f *Image) Rename(name string) {
-	f.assertNotAlreadySaved()
 	f.name = name
 }
 
@@ -71,31 +69,27 @@ func (f *Image) Digest() (string, error) {
 	return f.digest, nil
 }
 
-func (f *Image) Rebase(baseTopLayer string, newBase image.Image) error {
+func (f *Image) Rebase(baseTopLayer string, newBase imgutil.Image) error {
 	f.base = newBase.Name()
 	return nil
 }
 
 func (f *Image) SetLabel(k string, v string) error {
-	f.assertNotAlreadySaved()
 	f.labels[k] = v
 	return nil
 }
 
 func (f *Image) SetEnv(k string, v string) error {
-	f.assertNotAlreadySaved()
 	f.env[k] = v
 	return nil
 }
 
 func (f *Image) SetEntrypoint(v ...string) error {
-	f.assertNotAlreadySaved()
 	f.entryPoint = v
 	return nil
 }
 
 func (f *Image) SetCmd(v ...string) error {
-	f.assertNotAlreadySaved()
 	f.cmd = v
 	return nil
 }
@@ -109,26 +103,28 @@ func (f *Image) TopLayer() (string, error) {
 }
 
 func (f *Image) AddLayer(path string) error {
-	f.assertNotAlreadySaved()
+	sha, err := shaForFile(path)
+	if err != nil {
+		return err
+	}
 
-	f.layersMap["sha256:"+shaForFile(f.t, path)] = path
+	f.layersMap["sha256:"+sha] = path
 	f.layers = append(f.layers, path)
 	return nil
 }
 
-func shaForFile(t *testing.T, path string) string {
-	t.Helper()
-
+func shaForFile(path string) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		t.Fatalf("failed to open file: %s", err)
-	}
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, file); err != nil {
-		t.Fatalf("failed to copy file to hasher: %s", err)
+		return "", errors.Wrapf(err, "failed to open file")
 	}
 
-	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return "", errors.Wrapf(err, "failed to copy file to hasher")
+	}
+
+	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size()))), nil
 }
 
 func (f *Image) GetLayer(sha string) (io.ReadCloser, error) {
@@ -142,24 +138,22 @@ func (f *Image) GetLayer(sha string) (io.ReadCloser, error) {
 	if !ok {
 		return nil, fmt.Errorf("failed to get layer with sha '%s'", sha)
 	}
+
 	return os.Open(path)
 }
 
 func (f *Image) ReuseLayer(sha string) error {
-	f.assertNotAlreadySaved()
-
 	f.reusedLayers = append(f.reusedLayers, sha)
 	return nil
 }
 
 func (f *Image) Save() (string, error) {
-	f.assertNotAlreadySaved()
 	f.alreadySaved = true
 
 	var err error
 	f.layerDir, err = ioutil.TempDir("", "fake-image")
 	if err != nil {
-		f.t.Fatalf("failed to create tmpDir: %s", err)
+		return "", errors.Wrap(err, "failed to create tmpDir")
 	}
 
 	for sha, path := range f.layersMap {
@@ -176,22 +170,24 @@ func (f *Image) Save() (string, error) {
 	return "saved-digest-from-fake-run-image", nil
 }
 
-func (f *Image) copyLayer(path, newPath string) {
+func (f *Image) copyLayer(path, newPath string) error {
 	src, err := os.Open(path)
 	if err != nil {
-		f.t.Fatal(err)
+		return errors.Wrap(err, "opening layer during copy")
 	}
 	defer src.Close()
 
 	dst, err := os.Create(newPath)
 	if err != nil {
-		f.t.Fatal(err)
+		return errors.Wrap(err, "creating new layer during copy")
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, src); err != nil {
-		f.t.Fatal(err)
+		return errors.Wrap(err, "copying layers")
 	}
+
+	return nil
 }
 
 func (f *Image) Delete() error {
@@ -205,10 +201,8 @@ func (f *Image) Found() (bool, error) {
 
 // test methods
 
-func (f *Image) Cleanup() {
-	if err := os.RemoveAll(f.layerDir); err != nil {
-		f.t.Fatal(err)
-	}
+func (f *Image) Cleanup() error {
+	return os.RemoveAll(f.layerDir)
 }
 
 func (f *Image) AppLayerPath() string {
@@ -231,9 +225,7 @@ func (f *Image) ReusedLayers() []string {
 	return f.reusedLayers
 }
 
-func (f *Image) FindLayerWithPath(path string) string {
-	f.t.Helper()
-
+func (f *Image) FindLayerWithPath(path string) (string, error) {
 	for _, tarPath := range f.layersMap {
 
 		r, _ := os.Open(tarPath)
@@ -245,17 +237,16 @@ func (f *Image) FindLayerWithPath(path string) string {
 			if err == io.EOF {
 				break
 			} else if err != nil {
-				f.t.Fatal(err)
+				return "", errors.Wrap(err, "finding next header in layer")
 			}
 
 			if header.Name == path {
-				return tarPath
+				return tarPath, nil
 			}
 		}
 	}
 
-	f.t.Fatalf("Could not find %s in any layer. \n \n %s", path, f.tarContents())
-	return ""
+	return "", fmt.Errorf("Could not find %s in any layer. \n \n %s", path, f.tarContents())
 }
 
 func (f *Image) tarContents() string {
@@ -285,13 +276,6 @@ func (f *Image) tarContents() string {
 
 func (f *Image) NumberOfAddedLayers() int {
 	return len(f.layers)
-}
-
-func (f *Image) assertNotAlreadySaved() {
-	f.t.Helper()
-	if f.alreadySaved {
-		f.t.Fatalf("Image has already been saved")
-	}
 }
 
 func (f *Image) IsSaved() bool {

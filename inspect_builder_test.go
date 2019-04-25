@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/buildpack/lifecycle/image/fakes"
+	"github.com/buildpack/imgutil/fakes"
 	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
@@ -51,7 +51,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockBPFetcher,
 			nil,
 		)
-		builderImage = fakes.NewImage(t, "some/builder", "", "")
+		builderImage = fakes.NewImage("some/builder", "", "")
 		h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
 		h.AssertNil(t, builderImage.SetEnv("CNB_USER_ID", "1234"))
 		h.AssertNil(t, builderImage.SetEnv("CNB_GROUP_ID", "4321"))
@@ -159,7 +159,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	when("the image does not exist", func() {
 		it.Before(func() {
-			notFoundImage := fakes.NewImage(t, "", "", "")
+			notFoundImage := fakes.NewImage("", "", "")
 			notFoundImage.Delete()
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "some-error"))
 		})

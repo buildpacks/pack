@@ -1,0 +1,17 @@
+sudo: required
+services:
+- docker
+install:
+- set -e
+jobs:
+  include:
+  - stage: unit test
+    language: go
+    go:
+    - 1.11.x
+    env:
+    - GO111MODULE=on
+    go_import_path: github.com/buildpack/lifecycle
+    script: |
+      test -z "$(bin/format | tee >(cat >&2))"
+      go test -v -parallel=1 -p=1 -count=1 ./...

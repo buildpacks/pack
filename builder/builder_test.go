@@ -3,14 +3,13 @@ package builder_test
 import (
 	"archive/tar"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpack/lifecycle/image/fakes"
+	"github.com/buildpack/imgutil/fakes"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -33,7 +32,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		baseImage = fakes.NewImage(t, "base/image", "", "")
+		baseImage = fakes.NewImage("base/image", "", "")
 	})
 
 	it.After(func() {
@@ -143,25 +142,29 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("adds the buildpack as an image layer", func() {
-					layerTar := baseImage.FindLayerWithPath("/buildpacks/some-buildpack-id/some-buildpack-version")
+					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/some-buildpack-id/some-buildpack-version")
+					h.AssertNil(t, err)
 					assertTarFileContents(t, layerTar, "/buildpacks/some-buildpack-id/some-buildpack-version/buildpack-file", "buildpack-contents")
 
-					layerTar = baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id/other-buildpack-version")
+					layerTar, err = baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id/other-buildpack-version")
+					h.AssertNil(t, err)
 					assertTarFileContents(t, layerTar, "/buildpacks/other-buildpack-id/other-buildpack-version/buildpack-file", "buildpack-contents")
 				})
 
 				it("adds a symlink to the buildpack layer if latest is true", func() {
-					layerTar := baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id")
-					fmt.Println("LAYER TAR", layerTar)
+					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id")
+					h.AssertNil(t, err)
 					assertTarFileSymlink(t, layerTar, "/buildpacks/other-buildpack-id/latest", "/buildpacks/other-buildpack-id/other-buildpack-version")
 					assertTarFileOwner(t, layerTar, "/buildpacks/other-buildpack-id/latest", 1234, 4321)
 				})
 
 				it("adds the buildpack contents with the correct uid and gid", func() {
-					layerTar := baseImage.FindLayerWithPath("/buildpacks/some-buildpack-id/some-buildpack-version")
+					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/some-buildpack-id/some-buildpack-version")
+					h.AssertNil(t, err)
 					assertTarFileOwner(t, layerTar, "/buildpacks/some-buildpack-id/some-buildpack-version/buildpack-file", 1234, 4321)
 
-					layerTar = baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id/other-buildpack-version")
+					layerTar, err = baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id/other-buildpack-version")
+					h.AssertNil(t, err)
 					assertTarFileOwner(t, layerTar, "/buildpacks/other-buildpack-id/other-buildpack-version/buildpack-file", 1234, 4321)
 				})
 
@@ -275,7 +278,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("adds the order.toml to the image", func() {
-					layerTar := baseImage.FindLayerWithPath("/buildpacks/order.toml")
+					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")
+					h.AssertNil(t, err)
 					assertTarFileContents(t, layerTar, "/buildpacks/order.toml", `[[groups]]
 
   [[groups.buildpacks]]
@@ -368,7 +372,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("adds the stack.toml to the image", func() {
-				layerTar := baseImage.FindLayerWithPath("/buildpacks/stack.toml")
+				layerTar, err := baseImage.FindLayerWithPath("/buildpacks/stack.toml")
+				h.AssertNil(t, err)
 				assertTarFileContents(t, layerTar, "/buildpacks/stack.toml", `[run-image]
   image = "some/run"
   mirrors = ["some/mirror", "other/mirror"]
@@ -398,7 +403,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("adds the env vars as files to the image", func() {
-				layerTar := baseImage.FindLayerWithPath("/platform/env")
+				layerTar, err := baseImage.FindLayerWithPath("/platform/env")
+				h.AssertNil(t, err)
 				assertTarFileContents(t, layerTar, "/platform/env/SOME_KEY", `some-val`)
 				assertTarFileContents(t, layerTar, "/platform/env/OTHER_KEY", `other-val`)
 			})

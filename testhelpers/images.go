@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/buildpack/lifecycle/image/fakes"
+	"github.com/buildpack/imgutil/fakes"
 
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/stack"
 )
 
 func NewFakeBuilderImage(t *testing.T, name string, buildpacks []builder.BuildpackMetadata, config builder.Config) *fakes.Image {
-	fakeBuilderImage := fakes.NewImage(t, name, "", "")
+	fakeBuilderImage := fakes.NewImage(name, "", "")
 	AssertNil(t, fakeBuilderImage.SetLabel("io.buildpacks.stack.id", config.Stack.ID))
 	AssertNil(t, fakeBuilderImage.SetEnv("CNB_USER_ID", "1234"))
 	AssertNil(t, fakeBuilderImage.SetEnv("CNB_GROUP_ID", "4321"))

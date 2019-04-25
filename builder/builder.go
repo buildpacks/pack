@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/archive"
@@ -30,7 +30,7 @@ const (
 )
 
 type Builder struct {
-	image      image.Image
+	image      imgutil.Image
 	buildpacks []buildpack.Buildpack
 	metadata   Metadata
 	env        map[string]string
@@ -38,7 +38,7 @@ type Builder struct {
 	StackID    string
 }
 
-func GetBuilder(img image.Image) (*Builder, error) {
+func GetBuilder(img imgutil.Image) (*Builder, error) {
 	uid, gid, err := userAndGroupIDs(img)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (b *Builder) GetStackInfo() stack.Metadata {
 	return b.metadata.Stack
 }
 
-func New(img image.Image, name string) (*Builder, error) {
+func New(img imgutil.Image, name string) (*Builder, error) {
 	uid, gid, err := userAndGroupIDs(img)
 	if err != nil {
 		return nil, err
@@ -240,7 +240,7 @@ func (b *Builder) Save() error {
 	return err
 }
 
-func userAndGroupIDs(img image.Image) (int, int, error) {
+func userAndGroupIDs(img imgutil.Image) (int, int, error) {
 	sUID, err := img.Env(envUID)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "reading builder env variables")

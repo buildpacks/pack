@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	img "github.com/buildpack/lifecycle/image"
+	"github.com/buildpack/imgutil"
 	"github.com/buildpack/lifecycle/image/auth"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -20,40 +20,27 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-//go:generate mockgen -package mocks -destination mocks/image_factory.go github.com/buildpack/pack ImageFactory
-type ImageFactory interface {
-	NewLocal(string) (img.Image, error)
-	NewRemote(string) (img.Image, error)
-}
-
 type Fetcher struct {
-	docker  *client.Client
-	factory *img.Factory
-	logger  *logging.Logger
+	docker *client.Client
+	logger *logging.Logger
 }
 
-func NewFetcher(logger *logging.Logger, docker *client.Client) (*Fetcher, error) {
-	factory, err := img.NewFactory()
-	if err != nil {
-		return nil, err
-	}
-
+func NewFetcher(logger *logging.Logger, docker *client.Client) *Fetcher {
 	return &Fetcher{
-		logger:  logger,
-		docker:  docker,
-		factory: factory,
-	}, nil
+		logger: logger,
+		docker: docker,
+	}
 }
 
 var ErrNotFound = errors.New("not found")
 
-func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (i img.Image, err error) {
-	i, err = f.factory.NewRemote(name)
+func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (image imgutil.Image, err error) {
+	image, err = imgutil.NewRemoteImage(name, authn.DefaultKeychain)
 	if err != nil {
 		return nil, err
 	}
 
-	remoteFound, err := i.Found()
+	remoteFound, err := image.Found()
 	if err != nil {
 		return nil, err
 	}
@@ -72,16 +59,16 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (i 
 		return nil, errors.Wrapf(ErrNotFound, "image %s does not exist in registry", style.Symbol(name))
 	}
 
-	return i, nil
+	return image, nil
 }
 
-func (f *Fetcher) fetchDaemonImage(name string) (img.Image, error) {
-	i, err := f.factory.NewLocal(name)
+func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
+	image, err := imgutil.NewLocalImage(name, f.docker)
 	if err != nil {
 		return nil, err
 	}
 
-	found, err := i.Found()
+	found, err := image.Found()
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +76,7 @@ func (f *Fetcher) fetchDaemonImage(name string) (img.Image, error) {
 	if !found {
 		return nil, errors.Wrapf(ErrNotFound, "image %s does not exist on the daemon", style.Symbol(name))
 	}
-	return i, nil
+	return image, nil
 }
 
 func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {

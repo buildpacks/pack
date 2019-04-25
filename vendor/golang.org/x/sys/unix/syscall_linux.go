@@ -1022,6 +1022,10 @@ func SetsockoptIPMreqn(fd, level, opt int, mreq *IPMreqn) (err error) {
 	return setsockopt(fd, level, opt, unsafe.Pointer(mreq), unsafe.Sizeof(*mreq))
 }
 
+func SetsockoptPacketMreq(fd, level, opt int, mreq *PacketMreq) error {
+	return setsockopt(fd, level, opt, unsafe.Pointer(mreq), unsafe.Sizeof(*mreq))
+}
+
 // SetsockoptSockFprog attaches a classic BPF or an extended BPF program to a
 // socket to filter incoming packets.  See 'man 7 socket' for usage information.
 func SetsockoptSockFprog(fd, level, opt int, fprog *SockFprog) error {

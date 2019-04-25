@@ -6,7 +6,7 @@ package mocks
 
 import (
 	context "context"
-	image "github.com/buildpack/lifecycle/image"
+	imgutil "github.com/buildpack/imgutil"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )
@@ -35,9 +35,9 @@ func (m *MockImageFetcher) EXPECT() *MockImageFetcherMockRecorder {
 }
 
 // Fetch mocks base method
-func (m *MockImageFetcher) Fetch(arg0 context.Context, arg1 string, arg2, arg3 bool) (image.Image, error) {
+func (m *MockImageFetcher) Fetch(arg0 context.Context, arg1 string, arg2, arg3 bool) (imgutil.Image, error) {
 	ret := m.ctrl.Call(m, "Fetch", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(image.Image)
+	ret0, _ := ret[0].(imgutil.Image)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

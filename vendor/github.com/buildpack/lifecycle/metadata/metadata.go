@@ -3,9 +3,8 @@ package metadata
 import (
 	"encoding/json"
 
+	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
-
-	"github.com/buildpack/lifecycle/image"
 )
 
 const AppMetadataLabel = "io.buildpacks.lifecycle.metadata"
@@ -68,7 +67,7 @@ func (m *AppImageMetadata) MetadataForBuildpack(id string) BuildpackMetadata {
 	return BuildpackMetadata{}
 }
 
-func GetAppMetadata(image image.Image) (AppImageMetadata, error) {
+func GetAppMetadata(image imgutil.Image) (AppImageMetadata, error) {
 	contents, err := GetRawMetadata(image, AppMetadataLabel)
 	if err != nil {
 		return AppImageMetadata{}, err
@@ -79,7 +78,7 @@ func GetAppMetadata(image image.Image) (AppImageMetadata, error) {
 	return meta, nil
 }
 
-func GetRawMetadata(image image.Image, metadataLabel string) (string, error) {
+func GetRawMetadata(image imgutil.Image, metadataLabel string) (string, error) {
 	if found, err := image.Found(); err != nil {
 		return "", err
 	} else if !found {
