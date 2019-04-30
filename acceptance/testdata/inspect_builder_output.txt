@@ -17,7 +17,7 @@ Buildpacks:
 
 Detection Order:
   Group #1:
-    test.bp.one@0.0.1
+    test.bp.one@0.0.1    
     test.bp.two@0.0.2
   Group #2:
     test.bp.one@0.0.1
@@ -39,7 +39,7 @@ Buildpacks:
 
 Detection Order:
   Group #1:
-    test.bp.one@0.0.1
+    test.bp.one@0.0.1    
     test.bp.two@0.0.2
   Group #2:
     test.bp.one@0.0.1

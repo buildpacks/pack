@@ -121,7 +121,7 @@ ERROR: some local error
 					Buildpacks:           buildpacks,
 					Groups: []builder.GroupMetadata{
 						{Buildpacks: []builder.GroupBuildpack{
-							{ID: "test.bp.one", Version: "1.0.0"},
+							{ID: "test.bp.one", Version: "1.0.0", Optional: true},
 							{ID: "test.bp.two", Version: "2.0.0"},
 						}}},
 				}
@@ -135,7 +135,7 @@ ERROR: some local error
 					Buildpacks:           buildpacks,
 					Groups: []builder.GroupMetadata{
 						{Buildpacks: []builder.GroupBuildpack{{ID: "test.bp.one", Version: "1.0.0"}}},
-						{Buildpacks: []builder.GroupBuildpack{{ID: "test.bp.two", Version: "2.0.0"}}},
+						{Buildpacks: []builder.GroupBuildpack{{ID: "test.bp.two", Version: "2.0.0", Optional: true}}},
 					},
 				}
 				mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
@@ -177,7 +177,7 @@ Buildpacks:
 
 Detection Order:
   Group #1:
-    test.bp.one@1.0.0
+    test.bp.one@1.0.0    (optional)
     test.bp.two@2.0.0
 `)
 
@@ -203,7 +203,7 @@ Detection Order:
   Group #1:
     test.bp.one@1.0.0
   Group #2:
-    test.bp.two@2.0.0
+    test.bp.two@2.0.0    (optional)
 `)
 			})
 		})
