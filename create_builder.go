@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/image"
 	"github.com/buildpack/pack/style"
 )
 
@@ -22,6 +24,10 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return errors.Wrap(err, "invalid builder config")
 	}
 
+	if err := c.validateRunImageConfig(ctx, opts); err != nil {
+		return err
+	}
+
 	baseImage, err := c.imageFetcher.Fetch(ctx, opts.BuilderConfig.Stack.BuildImage, !opts.Publish, !opts.NoPull)
 	if err != nil {
 		return err
@@ -34,7 +40,11 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 
 	if builderImage.StackID != opts.BuilderConfig.Stack.ID {
-		return fmt.Errorf("stack '%s' from builder config is incompatible with stack '%s' from build image", opts.BuilderConfig.Stack.ID, builderImage.StackID)
+		return fmt.Errorf(
+			"stack %s from builder config is incompatible with stack %s from build image",
+			style.Symbol(opts.BuilderConfig.Stack.ID),
+			style.Symbol(builderImage.StackID),
+		)
 	}
 
 	for _, b := range opts.BuilderConfig.Buildpacks {
@@ -70,5 +80,48 @@ func validateBuilderConfig(conf builder.Config) error {
 	if conf.Stack.RunImage == "" {
 		return errors.New("stack.run-image is required")
 	}
+	return nil
+}
+
+func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions) error {
+	var runImages []imgutil.Image
+	for _, i := range append([]string{opts.BuilderConfig.Stack.RunImage}, opts.BuilderConfig.Stack.RunImageMirrors...) {
+		img, err := c.imageFetcher.Fetch(ctx, i, true, false)
+		if err != nil {
+			if errors.Cause(err) != image.ErrNotFound {
+				return err
+			}
+		} else {
+			runImages = append(runImages, img)
+			continue
+		}
+
+		img, err = c.imageFetcher.Fetch(ctx, i, false, false)
+		if err != nil {
+			if errors.Cause(err) != image.ErrNotFound {
+				return err
+			}
+			c.logger.Info("Warning: run image %s is not accessible", style.Symbol(i))
+		} else {
+			runImages = append(runImages, img)
+		}
+	}
+
+	for _, image := range runImages {
+		stackID, err := image.Label("io.buildpacks.stack.id")
+		if err != nil {
+			return err
+		}
+
+		if stackID != opts.BuilderConfig.Stack.ID {
+			return fmt.Errorf(
+				"stack %s from builder config is incompatible with stack %s from run image %s",
+				style.Symbol(opts.BuilderConfig.Stack.ID),
+				style.Symbol(stackID),
+				style.Symbol(image.Name()),
+			)
+		}
+	}
+
 	return nil
 }

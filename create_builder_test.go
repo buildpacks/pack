@@ -34,18 +34,19 @@ func TestCreateBuilder(t *testing.T) {
 func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#CreateBuilder", func() {
 		var (
-			mockController   *gomock.Controller
-			mockImageFetcher *mocks.MockImageFetcher
-			mockBPFetcher    *mocks.MockBuildpackFetcher
-			fakeBuildImage   *fakes.Image
-			logOut, logErr   *bytes.Buffer
-			opts             pack.CreateBuilderOptions
-			subject          *pack.Client
+			mockController     *gomock.Controller
+			mockBPFetcher      *mocks.MockBuildpackFetcher
+			imageFetcher       *h.FakeImageFetcher
+			fakeBuildImage     *fakes.Image
+			fakeRunImage       *fakes.Image
+			fakeRunImageMirror *fakes.Image
+			logOut, logErr     *bytes.Buffer
+			opts               pack.CreateBuilderOptions
+			subject            *pack.Client
 		)
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
-			mockImageFetcher = mocks.NewMockImageFetcher(mockController)
 			mockBPFetcher = mocks.NewMockBuildpackFetcher(mockController)
 
 			fakeBuildImage = fakes.NewImage("some/build-image", "", "")
@@ -53,8 +54,16 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, fakeBuildImage.SetEnv("CNB_USER_ID", "1234"))
 			h.AssertNil(t, fakeBuildImage.SetEnv("CNB_GROUP_ID", "4321"))
 
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any(), gomock.Any()).
-				Return(fakeBuildImage, nil).AnyTimes()
+			fakeRunImage = fakes.NewImage("some/run-image", "", "")
+			h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+
+			fakeRunImageMirror = fakes.NewImage("localhost:5000/some-run-image", "", "")
+			h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+
+			imageFetcher = h.NewFakeImageFetcher()
+			imageFetcher.LocalImages["some/build-image"] = fakeBuildImage
+			imageFetcher.LocalImages["some/run-image"] = fakeRunImage
+			imageFetcher.RemoteImages["localhost:5000/some-run-image"] = fakeRunImageMirror
 
 			bp := buildpack.Buildpack{
 				ID:      "bp.one",
@@ -71,7 +80,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			subject = pack.NewClient(
 				&config.Config{},
 				logging.NewLogger(logOut, logErr, true, false),
-				mockImageFetcher,
+				imageFetcher,
 				nil,
 				mockBPFetcher,
 				nil,
@@ -92,7 +101,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						ID:              "some.stack.id",
 						BuildImage:      "some/build-image",
 						RunImage:        "some/run-image",
-						RunImageMirrors: nil,
+						RunImageMirrors: []string{"localhost:5000/some-run-image"},
 					},
 				},
 				Publish: false,
@@ -128,6 +137,31 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				opts.BuilderConfig.Stack.RunImage = ""
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertError(t, err, "stack.run-image is required")
+			})
+		})
+
+		when("validating the run image config", func() {
+			it("should fail when the stack ID from the builder config does not match the stack ID from the run image", func() {
+				h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", "other.stack.id"))
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "stack 'some.stack.id' from builder config is incompatible with stack 'other.stack.id' from run image 'some/run-image'")
+			})
+
+			it("should fail when the stack ID from the builder config does not match the stack ID from the run image mirrors", func() {
+				h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "other.stack.id"))
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "stack 'some.stack.id' from builder config is incompatible with stack 'other.stack.id' from run image 'localhost:5000/some-run-image'")
+			})
+
+			it("should warn when the run image cannot be found", func() {
+				delete(imageFetcher.LocalImages, "some/run-image")
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+
+				h.AssertContains(t, logOut.String(), "Warning: run image 'some/run-image' is not accessible")
 			})
 		})
 
