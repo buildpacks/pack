@@ -77,6 +77,37 @@ The `--buildpack` parameter can be
 > - supplying `--buildpack` multiple times, or
 > - supplying a comma-separated list to `--buildpack` (without spaces)
 
+### Example: Building with user provided environment variables
+
+In the following example, an app image is created from Node.js application source code and the environment 
+variable 'HELLO' with the value 'WORLD' is provided to the buildpacks at build time.
+
+```bash
+$ cd path/to/node/app
+$ pack build my-app:my-tag --env "HELLO=WORLD"
+```
+
+The `--env` parameter must be one of
+- 'VARIABLE=VALUE'
+- 'VARIABLE', where the value of 'VARIABLE' will be taken from the current environment
+
+> Multiple environment variables can be specified by supplying `--env` multiple times.
+
+Alternatively, environment variables can be provided using the `--env-file` flag.
+
+```bash
+$ cd path/to/node/app
+$ pack build my-app:my-tag --env-file ./my-env-file
+```
+
+The `--env-file` parameter must be a path to a file where each line must be one of
+- 'VARIABLE=VALUE'
+- 'VARIABLE', where the value of 'VARIABLE' will be taken from the current environment
+
+> Multiple environment variables can be specified by supplying variables on each line of the file.
+>
+> Variables defined using `--env` take precedence over variables defined in `--env-file`. 
+
 ### Building explained
 
 ![build diagram](docs/build.svg)
