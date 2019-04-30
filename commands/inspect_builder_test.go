@@ -105,6 +105,17 @@ ERROR: some local error
 				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify detection order")
 				h.AssertContains(t, outBuf.String(), "Users must build with explicitly specified buildpacks")
 			})
+
+			it("missing run image logs a warning", func() {
+				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify a run image")
+				h.AssertContains(t, outBuf.String(), "Users must build with an explicitly specified run image")
+			})
+
+			it("missing lifecycle version prints Unknown", func() {
+				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Lifecycle Version: Unknown")
+			})
 		})
 
 		when("is successful", func() {
@@ -124,6 +135,7 @@ ERROR: some local error
 							{ID: "test.bp.one", Version: "1.0.0", Optional: true},
 							{ID: "test.bp.two", Version: "2.0.0"},
 						}}},
+					LifecycleVersion: "6.7.8",
 				}
 				mockClient.EXPECT().InspectBuilder("some/image", false).Return(remoteInfo, nil)
 
@@ -137,6 +149,7 @@ ERROR: some local error
 						{Buildpacks: []builder.GroupBuildpack{{ID: "test.bp.one", Version: "1.0.0"}}},
 						{Buildpacks: []builder.GroupBuildpack{{ID: "test.bp.two", Version: "2.0.0", Optional: true}}},
 					},
+					LifecycleVersion: "4.5.6",
 				}
 				mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
 			})
@@ -163,6 +176,8 @@ Remote
 
 Stack: test.stack.id
 
+Lifecycle Version: 6.7.8
+
 Run Images:
   first/image (user-configured)
   second/image (user-configured)
@@ -171,8 +186,8 @@ Run Images:
   second/default
 
 Buildpacks:
-  ID                 VERSION        LATEST        
-  test.bp.one        1.0.0          true          
+  ID                 VERSION        LATEST
+  test.bp.one        1.0.0          true
   test.bp.two        2.0.0          false
 
 Detection Order:
@@ -187,6 +202,8 @@ Local
 
 Stack: test.stack.id
 
+Lifecycle Version: 4.5.6
+
 Run Images:
   first/local (user-configured)
   second/local (user-configured)
@@ -195,8 +212,8 @@ Run Images:
   second/local-default
 
 Buildpacks:
-  ID                 VERSION        LATEST        
-  test.bp.one        1.0.0          true          
+  ID                 VERSION        LATEST
+  test.bp.one        1.0.0          true
   test.bp.two        2.0.0          false
 
 Detection Order:

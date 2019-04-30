@@ -16,7 +16,7 @@ import (
 
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
-
+	"github.com/buildpack/pack/lifecycle"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -116,6 +116,34 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, subject.Save())
 				h.AssertEq(t, baseImage.IsSaved(), true)
 				h.AssertEq(t, baseImage.Name(), "some/builder")
+			})
+		})
+
+		// TODO : check lifecycle bin owner or perms
+		when("#SetLifecycle", func() {
+			it.Before(func() {
+				h.AssertNil(t, subject.SetLifecycle(lifecycle.Metadata{
+					Version: "1.2.3",
+					Dir:     filepath.Join("testdata", "lifecycle"),
+				}))
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+			})
+
+			it("should set the lifecycle version successfully", func() {
+				h.AssertEq(t, subject.GetLifecycleVersion(), "1.2.3")
+			})
+
+			it("should add the lifecycle binaries as an image layer", func() {
+				layerTar, err := baseImage.FindLayerWithPath("/lifecycle")
+				h.AssertNil(t, err)
+				assertTarFileContents(t, layerTar, "/lifecycle/detector", "detector")
+				assertTarFileContents(t, layerTar, "/lifecycle/restorer", "restorer")
+				assertTarFileContents(t, layerTar, "/lifecycle/analyzer", "analyzer")
+				assertTarFileContents(t, layerTar, "/lifecycle/builder", "builder")
+				assertTarFileContents(t, layerTar, "/lifecycle/exporter", "exporter")
+				assertTarFileContents(t, layerTar, "/lifecycle/cacher", "cacher")
+				assertTarFileContents(t, layerTar, "/lifecycle/launcher", "launcher")
 			})
 		})
 

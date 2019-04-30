@@ -61,10 +61,22 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 			return err
 		}
 	}
+
 	if err := builderImage.SetOrder(opts.BuilderConfig.Groups); err != nil {
 		return errors.Wrap(err, "builder config has invalid groups")
 	}
+
 	builderImage.SetStackInfo(opts.BuilderConfig.Stack)
+
+	lifecycleMd, err := c.lifecycleFetcher.Fetch(opts.BuilderConfig.Lifecycle.Version, opts.BuilderConfig.Lifecycle.URI)
+	if err != nil {
+		return errors.Wrap(err, "fetching lifecycle")
+	}
+
+	if err := builderImage.SetLifecycle(lifecycleMd); err != nil {
+		return errors.Wrap(err, "setting lifecycle")
+	}
+
 	return builderImage.Save()
 }
 

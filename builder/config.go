@@ -3,7 +3,8 @@ package builder
 type Config struct {
 	Buildpacks []BuildpackConfig `toml:"buildpacks"`
 	Groups     []GroupMetadata   `toml:"groups"`
-	Stack      StackConfig
+	Stack      StackConfig       `toml:"stack"`
+	Lifecycle  LifecycleConfig   `toml:"lifecycle"`
 }
 
 type BuildpackConfig struct {
@@ -17,4 +18,9 @@ type StackConfig struct {
 	BuildImage      string   `toml:"build-image"`
 	RunImage        string   `toml:"run-image"`
 	RunImageMirrors []string `toml:"run-image-mirrors,omitempty"`
+}
+
+type LifecycleConfig struct {
+	URI     string `toml:"uri"`
+	Version string `toml:"version"`
 }

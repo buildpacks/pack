@@ -78,7 +78,7 @@ func testRegistryAccess(repoName string) {
 	}
 	_, err = v1remote.Image(ref, v1remote.WithAuth(auth))
 	if err != nil {
-		fmt.Println("failed to access image")
+		fmt.Println("failed to access image:", err)
 		os.Exit(6)
 	}
 }
