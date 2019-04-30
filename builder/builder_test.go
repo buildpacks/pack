@@ -1,11 +1,7 @@
 package builder_test
 
 import (
-	"archive/tar"
 	"encoding/json"
-	"io"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -119,7 +115,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		// TODO : check lifecycle bin owner or perms
 		when("#SetLifecycle", func() {
 			it.Before(func() {
 				h.AssertNil(t, subject.SetLifecycle(lifecycle.Metadata{
@@ -137,13 +132,42 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should add the lifecycle binaries as an image layer", func() {
 				layerTar, err := baseImage.FindLayerWithPath("/lifecycle")
 				h.AssertNil(t, err)
-				assertTarFileContents(t, layerTar, "/lifecycle/detector", "detector")
-				assertTarFileContents(t, layerTar, "/lifecycle/restorer", "restorer")
-				assertTarFileContents(t, layerTar, "/lifecycle/analyzer", "analyzer")
-				assertTarFileContents(t, layerTar, "/lifecycle/builder", "builder")
-				assertTarFileContents(t, layerTar, "/lifecycle/exporter", "exporter")
-				assertTarFileContents(t, layerTar, "/lifecycle/cacher", "cacher")
-				assertTarFileContents(t, layerTar, "/lifecycle/launcher", "launcher")
+				h.AssertOnTarEntry(t, layerTar, "/lifecycle", h.HasFileMode(0555))
+
+				h.AssertOnTarEntry(t, layerTar, "/lifecycle/detector",
+					h.ContentEquals("detector"),
+					h.HasFileMode(0555),
+				)
+
+				h.AssertOnTarEntry(t, layerTar, "/lifecycle/restorer",
+					h.ContentEquals("restorer"),
+					h.HasFileMode(0555),
+				)
+
+				h.AssertOnTarEntry(t, layerTar, "/lifecycle/analyzer",
+					h.ContentEquals("analyzer"),
+					h.HasFileMode(0555),
+				)
+
+				h.AssertOnTarEntry(t, layerTar, "/lifecycle/builder",
+					h.ContentEquals("builder"),
+					h.HasFileMode(0555),
+				)
+
+				h.AssertOnTarEntry(t, layerTar, "/lifecycle/exporter",
+					h.ContentEquals("exporter"),
+					h.HasFileMode(0555),
+				)
+
+				h.AssertOnTarEntry(t, layerTar, "/lifecycle/cacher",
+					h.ContentEquals("cacher"),
+					h.HasFileMode(0555),
+				)
+
+				h.AssertOnTarEntry(t, layerTar, "/lifecycle/launcher",
+					h.ContentEquals("launcher"),
+					h.HasFileMode(0555),
+				)
 			})
 		})
 
@@ -172,28 +196,28 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				it("adds the buildpack as an image layer", func() {
 					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/some-buildpack-id/some-buildpack-version")
 					h.AssertNil(t, err)
-					assertTarFileContents(t, layerTar, "/buildpacks/some-buildpack-id/some-buildpack-version/buildpack-file", "buildpack-contents")
+					h.AssertOnTarEntry(t, layerTar, "/buildpacks/some-buildpack-id/some-buildpack-version/buildpack-file", h.ContentEquals("buildpack-contents"))
 
 					layerTar, err = baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id/other-buildpack-version")
 					h.AssertNil(t, err)
-					assertTarFileContents(t, layerTar, "/buildpacks/other-buildpack-id/other-buildpack-version/buildpack-file", "buildpack-contents")
+					h.AssertOnTarEntry(t, layerTar, "/buildpacks/other-buildpack-id/other-buildpack-version/buildpack-file", h.ContentEquals("buildpack-contents"))
 				})
 
 				it("adds a symlink to the buildpack layer if latest is true", func() {
 					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id")
 					h.AssertNil(t, err)
-					assertTarFileSymlink(t, layerTar, "/buildpacks/other-buildpack-id/latest", "/buildpacks/other-buildpack-id/other-buildpack-version")
-					assertTarFileOwner(t, layerTar, "/buildpacks/other-buildpack-id/latest", 1234, 4321)
+					h.AssertOnTarEntry(t, layerTar, "/buildpacks/other-buildpack-id/latest", h.SymlinksTo("/buildpacks/other-buildpack-id/other-buildpack-version"))
+					h.AssertOnTarEntry(t, layerTar, "/buildpacks/other-buildpack-id/latest", h.HasOwnerAndGroup(1234, 4321))
 				})
 
 				it("adds the buildpack contents with the correct uid and gid", func() {
 					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/some-buildpack-id/some-buildpack-version")
 					h.AssertNil(t, err)
-					assertTarFileOwner(t, layerTar, "/buildpacks/some-buildpack-id/some-buildpack-version/buildpack-file", 1234, 4321)
+					h.AssertOnTarEntry(t, layerTar, "/buildpacks/some-buildpack-id/some-buildpack-version/buildpack-file", h.HasOwnerAndGroup(1234, 4321))
 
 					layerTar, err = baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id/other-buildpack-version")
 					h.AssertNil(t, err)
-					assertTarFileOwner(t, layerTar, "/buildpacks/other-buildpack-id/other-buildpack-version/buildpack-file", 1234, 4321)
+					h.AssertOnTarEntry(t, layerTar, "/buildpacks/other-buildpack-id/other-buildpack-version/buildpack-file", h.HasOwnerAndGroup(1234, 4321))
 				})
 
 				it("adds the buildpack metadata", func() {
@@ -308,7 +332,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				it("adds the order.toml to the image", func() {
 					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")
 					h.AssertNil(t, err)
-					assertTarFileContents(t, layerTar, "/buildpacks/order.toml", `[[groups]]
+					h.AssertOnTarEntry(t, layerTar, "/buildpacks/order.toml", h.ContentEquals(`[[groups]]
 
   [[groups.buildpacks]]
     id = "some-buildpack-id"
@@ -318,7 +342,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
     id = "optional-buildpack-id"
     version = "latest"
     optional = true
-`)
+`))
 				})
 
 				it("adds the order to the metadata", func() {
@@ -402,10 +426,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("adds the stack.toml to the image", func() {
 				layerTar, err := baseImage.FindLayerWithPath("/buildpacks/stack.toml")
 				h.AssertNil(t, err)
-				assertTarFileContents(t, layerTar, "/buildpacks/stack.toml", `[run-image]
+				h.AssertOnTarEntry(t, layerTar, "/buildpacks/stack.toml", h.ContentEquals(`[run-image]
   image = "some/run"
   mirrors = ["some/mirror", "other/mirror"]
-`)
+`))
 			})
 
 			it("adds the stack to the metadata", func() {
@@ -433,99 +457,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("adds the env vars as files to the image", func() {
 				layerTar, err := baseImage.FindLayerWithPath("/platform/env")
 				h.AssertNil(t, err)
-				assertTarFileContents(t, layerTar, "/platform/env/SOME_KEY", `some-val`)
-				assertTarFileContents(t, layerTar, "/platform/env/OTHER_KEY", `other-val`)
+				h.AssertOnTarEntry(t, layerTar, "/platform/env/SOME_KEY", h.ContentEquals(`some-val`))
+				h.AssertOnTarEntry(t, layerTar, "/platform/env/OTHER_KEY", h.ContentEquals(`other-val`))
 			})
 		})
 	})
-}
-
-func assertTarFileContents(t *testing.T, tarfile, path, expected string) {
-	t.Helper()
-	exist, contents := tarFileContents(t, tarfile, path)
-	if !exist {
-		t.Fatalf("%s does not exist in %s", path, tarfile)
-	}
-	h.AssertEq(t, contents, expected)
-}
-
-func assertTarFileSymlink(t *testing.T, tarFile, path, expected string) {
-	t.Helper()
-	r, err := os.Open(tarFile)
-	h.AssertNil(t, err)
-	defer r.Close()
-
-	tr := tar.NewReader(r)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		h.AssertNil(t, err)
-
-		if header.Name != path {
-			continue
-		}
-
-		if header.Typeflag != tar.TypeSymlink {
-			t.Fatalf("path '%s' is not a symlink, type flag is '%c'", header.Name, header.Typeflag)
-		}
-
-		if header.Linkname != expected {
-			t.Fatalf("symlink '%s' does not point to '%s', instead it points to '%s'", header.Name, expected, header.Linkname)
-		}
-	}
-}
-
-func tarFileContents(t *testing.T, tarfile, path string) (exist bool, contents string) {
-	t.Helper()
-	r, err := os.Open(tarfile)
-	h.AssertNil(t, err)
-	defer r.Close()
-
-	tr := tar.NewReader(r)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		h.AssertNil(t, err)
-
-		if header.Name == path {
-			buf, err := ioutil.ReadAll(tr)
-			h.AssertNil(t, err)
-			return true, string(buf)
-		}
-	}
-	return false, ""
-}
-
-func assertTarFileOwner(t *testing.T, tarfile, path string, expectedUID, expectedGID int) {
-	t.Helper()
-	var foundPath bool
-	r, err := os.Open(tarfile)
-	h.AssertNil(t, err)
-	defer r.Close()
-
-	tr := tar.NewReader(r)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		h.AssertNil(t, err)
-
-		if header.Name == path {
-			foundPath = true
-			if header.Uid != expectedUID {
-				t.Fatalf("expected all entries in `%s` to have uid '%d', but '%s' has '%d'", tarfile, expectedUID, header.Name, header.Uid)
-			}
-			if header.Gid != expectedGID {
-				t.Fatalf("expected all entries in `%s` to have gid '%d', got '%d'", tarfile, expectedGID, header.Gid)
-			}
-		}
-	}
-	if !foundPath {
-		t.Fatalf("%s does not exist in %s", path, tarfile)
-	}
 }

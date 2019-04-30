@@ -401,14 +401,14 @@ func (b *Builder) lifecycleLayer(dest string) (string, error) {
 
 	now := time.Now()
 
+	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: lifecycleDir, Mode: 0555, ModTime: now}); err != nil {
+		return "", err
+	}
+
 	for _, binary := range []string{"detector", "restorer", "analyzer", "builder", "exporter", "cacher", "launcher"} {
 		if err := writeLifecycleBinary(b.lifecyclePath, binary, tw, now); err != nil {
 			return "", err
 		}
-	}
-
-	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: lifecycleDir, Mode: 0555, ModTime: now}); err != nil {
-		return "", err
 	}
 
 	return fh.Name(), nil
