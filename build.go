@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -187,7 +188,7 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, 
 	group := builder.GroupMetadata{Buildpacks: []builder.GroupBuildpack{}}
 	var bps []buildpack.Buildpack
 	for _, bp := range buildpacks {
-		if isLocalBuildpack(bp) {
+		if isFetchableBuildpack(bp) {
 			if runtime.GOOS == "windows" {
 				return nil, builder.GroupMetadata{}, fmt.Errorf("directory buildpacks are not implemented on windows")
 			}
@@ -206,10 +207,22 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, 
 	return bps, group, nil
 }
 
-func isLocalBuildpack(path string) bool {
-	if _, err := os.Stat(filepath.Join(path, "buildpack.toml")); !os.IsNotExist(err) {
+func isFetchableBuildpack(path string) bool {
+	if _, err := os.Stat(filepath.Join(path, "buildpack.toml")); err == nil {
 		return true
 	}
+
+	bpURL, err := url.Parse(path)
+	if err != nil {
+		return false
+	}
+
+	if bpURL.Scheme == "" || bpURL.Scheme == "file" || bpURL.Scheme == "http" || bpURL.Scheme == "https" {
+		if filepath.Ext(path) == ".tgz" {
+			return true
+		}
+	}
+
 	return false
 }
 
