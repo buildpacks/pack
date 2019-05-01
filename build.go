@@ -167,20 +167,41 @@ func (c *Client) validateImageReference(imageName string) (name.Reference, error
 	return ref, nil
 }
 
+func mapAppDirError(dir string, err error) error {
+	if os.IsNotExist(err) {
+		return errors.Errorf("app directory %s does not exist", style.Symbol(dir))
+	} else {
+		return err
+	}
+}
+
 func (c *Client) processAppDir(appDir string) (string, error) {
+	var (
+		resolvedAppDir = appDir
+		err            error
+	)
+
 	if appDir == "" {
-		var err error
-		appDir, err = os.Getwd()
-		if err != nil {
+		if appDir, err = os.Getwd(); err != nil {
 			return "", err
 		}
 	}
-	if fi, err := os.Stat(appDir); err != nil {
+
+	if resolvedAppDir, err = filepath.EvalSymlinks(appDir); err != nil {
+		return "", mapAppDirError(appDir, err)
+	}
+
+	if resolvedAppDir, err = filepath.Abs(resolvedAppDir); err != nil {
 		return "", err
+	}
+
+	if fi, err := os.Stat(resolvedAppDir); err != nil {
+		return "", mapAppDirError(appDir, err)
 	} else if !fi.IsDir() {
 		return "", fmt.Errorf("%s is not a directory", appDir)
 	}
-	return filepath.Abs(appDir)
+
+	return resolvedAppDir, nil
 }
 
 func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, builder.GroupMetadata, error) {

@@ -184,6 +184,69 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				h.AssertEq(t, fakeLifecycle.Opts.AppDir, absPath)
 			})
+
+			it("resolves relative symbolic links", func() {
+				appDir := filepath.Join("testdata", "some-app")
+				absoluteAppDir, err := filepath.Abs(appDir)
+				h.AssertNil(t, err)
+
+				relLinkRef := "./some-app"
+				relLink := filepath.Join("testdata", "some-app.link")
+
+				_ = os.Remove(relLink)
+				h.AssertNil(t, os.Symlink(relLinkRef, relLink))
+
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:  "some/app",
+					AppDir: relLink,
+				}))
+
+				h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+			})
+
+			it("resolves absolute symbolic links", func() {
+				appDir := filepath.Join("testdata", "some-app")
+				absoluteAppDir, err := filepath.Abs(appDir)
+				h.AssertNil(t, err)
+
+				relLinkRef := absoluteAppDir
+				relLink := filepath.Join("testdata", "some-app.link")
+
+				_ = os.Remove(relLink)
+				h.AssertNil(t, os.Symlink(relLinkRef, relLink))
+
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:  "some/app",
+					AppDir: relLink,
+				}))
+
+				h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+			})
+
+			it("resolves symbolic links recursively", func() {
+				appDir := filepath.Join("testdata", "some-app")
+				absoluteAppDir, err := filepath.Abs(appDir)
+				h.AssertNil(t, err)
+
+				linkRef1 := absoluteAppDir
+				absoluteLink1 := filepath.Join("testdata", "some-app-abs-1.link")
+
+				linkRef2 := "some-app-abs-1.link"
+				relLink2 := filepath.Join("testdata", "some-app-rel-2.link")
+
+				_ = os.Remove(absoluteLink1)
+				_ = os.Remove(relLink2)
+
+				h.AssertNil(t, os.Symlink(linkRef1, absoluteLink1))
+				h.AssertNil(t, os.Symlink(linkRef2, relLink2))
+
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:  "some/app",
+					AppDir: relLink2,
+				}))
+
+				h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+			})
 		})
 
 		when("Builder option", func() {
