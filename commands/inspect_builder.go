@@ -62,13 +62,24 @@ func inspectBuilderOutput(logger *logging.Logger, client PackClient, imageName s
 
 	logger.Info("\nStack: %s\n", info.Stack)
 
-	logger.Info("Run Images:")
-	for _, r := range info.LocalRunImageMirrors {
-		logger.Info("  %s (user-configured)", r)
+	lcycleVer := info.LifecycleVersion
+	if lcycleVer == "" {
+		lcycleVer = "Unknown"
 	}
-	logger.Info("  %s", info.RunImage)
-	for _, r := range info.RunImageMirrors {
-		logger.Info("  %s", r)
+	logger.Info("Lifecycle Version: %s\n", lcycleVer)
+
+	if info.RunImage == "" {
+		logger.Info("\nWarning: '%s' does not specify a run image", imageName)
+		logger.Info("  Users must build with an explicitly specified run image")
+	} else {
+		logger.Info("Run Images:")
+		for _, r := range info.LocalRunImageMirrors {
+			logger.Info("  %s (user-configured)", r)
+		}
+		logger.Info("  %s", info.RunImage)
+		for _, r := range info.RunImageMirrors {
+			logger.Info("  %s", r)
+		}
 	}
 
 	if len(info.Buildpacks) == 0 {
@@ -89,12 +100,12 @@ func inspectBuilderOutput(logger *logging.Logger, client PackClient, imageName s
 func logBuildpacksInfo(logger *logging.Logger, info *pack.BuilderInfo) {
 	buf := &bytes.Buffer{}
 	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 8, ' ', 0)
-	if _, err := fmt.Fprint(tabWriter, "\n  ID\tVERSION\tLATEST\t"); err != nil {
+	if _, err := fmt.Fprint(tabWriter, "\n  ID\tVERSION\tLATEST"); err != nil {
 		logger.Error(err.Error())
 	}
 
 	for _, bp := range info.Buildpacks {
-		if _, err := fmt.Fprint(tabWriter, fmt.Sprintf("\n  %s\t%s\t%t\t", bp.ID, bp.Version, bp.Latest)); err != nil {
+		if _, err := fmt.Fprint(tabWriter, fmt.Sprintf("\n  %s\t%s\t%t", bp.ID, bp.Version, bp.Latest)); err != nil {
 			logger.Error(err.Error())
 		}
 	}

@@ -64,20 +64,40 @@ func readBuilderConfig(path string) (builder.Config, error) {
 	if err != nil {
 		return builder.Config{}, err
 	}
+
 	builderConfig := builder.Config{}
 	if _, err = toml.DecodeFile(path, &builderConfig); err != nil {
 		return builderConfig, fmt.Errorf(`failed to decode builder config from file %s: %s`, path, err)
 	}
+
 	for i, bp := range builderConfig.Buildpacks {
-		bpURL, err := url.Parse(bp.URI)
+		uri, err := transformRelativePath(bp.URI, builderDir)
 		if err != nil {
-			return builder.Config{}, err
+			return builder.Config{}, errors.Wrap(err, "transforming buildpack URI")
 		}
-		if bpURL.Scheme == "" || bpURL.Scheme == "file" {
-			if !filepath.IsAbs(bpURL.Path) {
-				builderConfig.Buildpacks[i].URI = fmt.Sprintf("file://" + filepath.Join(builderDir, bpURL.Path))
-			}
+		builderConfig.Buildpacks[i].URI = uri
+	}
+
+	if builderConfig.Lifecycle.URI != "" {
+		uri, err := transformRelativePath(builderConfig.Lifecycle.URI, builderDir)
+		if err != nil {
+			return builder.Config{}, errors.Wrap(err, "transforming lifecycle URI")
+		}
+		builderConfig.Lifecycle.URI = uri
+	}
+
+	return builderConfig, nil
+}
+
+func transformRelativePath(uri, relativeTo string) (string, error) {
+	parsed, err := url.Parse(uri)
+	if err != nil {
+		return "", err
+	}
+	if parsed.Scheme == "" {
+		if !filepath.IsAbs(parsed.Path) {
+			return fmt.Sprintf("file://" + filepath.Join(relativeTo, parsed.Path)), nil
 		}
 	}
-	return builderConfig, nil
+	return uri, nil
 }

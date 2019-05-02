@@ -96,8 +96,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			clientConfig,
 			logging.NewLogger(logOut, logErr, true, false),
 			fakeImageFetcher,
+			buildpack.NewFetcher(NewDownloader(logging.NewLogger(logOut, logErr, true, false), tmpDir)),
+			nil,
 			fakeLifecycle,
-			buildpack.NewFetcher(logging.NewLogger(logOut, logErr, true, false), tmpDir),
 			docker,
 		)
 	})

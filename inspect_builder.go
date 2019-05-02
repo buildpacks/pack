@@ -17,6 +17,7 @@ type BuilderInfo struct {
 	LocalRunImageMirrors []string
 	Buildpacks           []builder.BuildpackMetadata
 	Groups               []builder.GroupMetadata
+	LifecycleVersion     string
 }
 
 type BuildpackInfo struct {
@@ -53,5 +54,6 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		LocalRunImageMirrors: localMirrors,
 		Buildpacks:           bldr.GetBuildpacks(),
 		Groups:               bldr.GetOrder(),
+		LifecycleVersion:     bldr.GetLifecycleVersion(),
 	}, nil
 }

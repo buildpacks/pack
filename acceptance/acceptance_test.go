@@ -30,6 +30,7 @@ import (
 
 	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/lifecycle"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -37,12 +38,11 @@ var (
 	packPath         string
 	dockerCli        *client.Client
 	registryConfig   *h.TestRegistryConfig
-	lifecycleVersion = "0.1.0"
 	runImage         = "pack-test/run"
 	buildImage       = "pack-test/build"
 	runImageMirror   string
-	packHome         string
 	builder          string
+	lifecycleVersion = lifecycle.DefaultLifecycleVersion
 )
 
 func TestAcceptance(t *testing.T) {
@@ -64,15 +64,11 @@ func TestAcceptance(t *testing.T) {
 		}
 		defer os.RemoveAll(packTmpDir)
 	}
-
 	var err error
 	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 	registryConfig = h.RunRegistry(t, false)
 	defer registryConfig.StopRegistry(t)
-	if version, ok := os.LookupEnv("LIFECYCLE_VERSION"); ok {
-		lifecycleVersion = version
-	}
 	runImageMirror = registryConfig.RepoName(runImage)
 	createStack(t, dockerCli)
 	builder = createBuilder(t, runImageMirror)
@@ -134,7 +130,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 			dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
 			dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
-  			ref, err := name.ParseReference(repoName, name.WeakValidation)
+			ref, err := name.ParseReference(repoName, name.WeakValidation)
 			h.AssertNil(t, err)
 			cacheImage := cache.New(ref, dockerCli)
 			cacheImage.Clear(context.TODO())
@@ -161,7 +157,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
 				t.Log("it uses the default run image as a base image")
-				assertHasBase(t, repoName, "packs/run:"+lifecycleVersion)
+				assertHasBase(t, repoName, runImage)
 
 				t.Log("sets the run image metadata")
 				runImageLabel := imageLabel(t, dockerCli, repoName, metadata.AppMetadataLabel)
@@ -190,8 +186,8 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContainsMatch(t, output, `\[analyzer] using cached launch layer 'simple/layers:cached-launch-layer'`)
 
 				t.Log("exporter and cacher reuse unchanged layers")
-				h.AssertContainsMatch(t, output, `\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
-				h.AssertContainsMatch(t, output, `\[cacher] reusing layer 'simple/layers:cached-launch-layer'`)
+				h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+				h.AssertContainsMatch(t, output, `(?i)\[cacher] reusing layer 'simple/layers:cached-launch-layer'`)
 
 				t.Log("rebuild with --clear-cache")
 				cmd = packCmd("build", repoName, "-p", "testdata/mock_app/.", "--clear-cache")
@@ -205,10 +201,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, output, "Skipping 'analyze' due to clearing cache")
 
 				t.Log("exporter reuses unchanged layers")
-				h.AssertContainsMatch(t, output, `\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+				h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
 
 				t.Log("cacher adds layers")
-				h.AssertContainsMatch(t, output, `\[cacher] adding layer 'simple/layers:cached-launch-layer'`)
+				if lifecycleVersion == "0.1.0" {
+					h.AssertContainsMatch(t, output, `\[cacher] adding layer 'simple/layers:cached-launch-layer'`)
+				} else {
+					h.AssertContainsMatch(t, output, `\[cacher] Caching layer 'simple/layers:cached-launch-layer'`)
+				}
 			})
 
 			when("--buildpack", func() {
@@ -677,38 +677,18 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 	when("pack inspect-builder", func() {
 		it("displays configuration for a builder (local and remote)", func() {
-			configuredRunImage := "some-registry.com/some/run1"
-
-			builderImageName := h.CreateImageOnRemote(t, dockerCli, registryConfig, "some/builder",
-				fmt.Sprintf(`
-										FROM scratch
-										ENV CNB_USER_ID=1234
-										ENV CNB_GROUP_ID=4321
-										LABEL %s="{\"stack\":{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run1\"]}},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
-										LABEL io.buildpacks.stack.id=some.test.stack
-									`, "io.buildpacks.builder.metadata"))
-
-			h.CreateImageOnLocal(t, dockerCli, builderImageName,
-				fmt.Sprintf(`
-										FROM scratch
-										ENV CNB_USER_ID=1234
-										ENV CNB_GROUP_ID=4321
-										LABEL %s="{\"stack\":{\"runImage\":{\"image\":\"some/run1\",\"mirrors\":[\"gcr.io/some/run2\"]}},\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\",\"latest\":false},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\",\"latest\":true}],\"groups\":[{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"},{\"id\":\"test.bp.two\",\"version\":\"0.0.2\"}]},{\"buildpacks\":[{\"id\":\"test.bp.one\",\"version\":\"0.0.1\"}]}]}"
-										LABEL io.buildpacks.stack.id=some.test.stack
-									`, "io.buildpacks.builder.metadata"))
-			defer h.DockerRmi(dockerCli, builderImageName)
-
-			cmd := packCmd("set-run-image-mirrors", "some/run1", "--mirror", configuredRunImage)
+			configuredRunImage := "some-registry.com/pack-test/run1"
+			cmd := packCmd("set-run-image-mirrors", "pack-test/run", "--mirror", configuredRunImage)
 			output := h.Run(t, cmd)
-			h.AssertEq(t, output, "Run Image 'some/run1' configured with mirror 'some-registry.com/some/run1'\n")
+			h.AssertEq(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
-			cmd = packCmd("inspect-builder", builderImageName)
+			cmd = packCmd("inspect-builder", builder)
 			output = h.Run(t, cmd)
 
 			expected, err := ioutil.ReadFile(filepath.Join("testdata", "inspect_builder_output.txt"))
 			h.AssertNil(t, err)
 
-			h.AssertEq(t, output, fmt.Sprintf(string(expected), builderImageName))
+			h.AssertEq(t, output, fmt.Sprintf(string(expected), builder, lifecycleVersion, runImageMirror, lifecycleVersion, runImageMirror))
 		})
 	})
 }
@@ -720,29 +700,51 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 	tmpDir, err := ioutil.TempDir("", "create-test-builder")
 	h.AssertNil(t, err)
 	defer os.RemoveAll(tmpDir)
+
 	h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks"), tmpDir)
+
 	builderConfigFile, err := os.OpenFile(filepath.Join(tmpDir, "builder.toml"), os.O_RDWR|os.O_APPEND, 0666)
 	h.AssertNil(t, err)
-	_, err = builderConfigFile.Write([]byte(
-		fmt.Sprintf(`run-image-mirrors = ["%s"]`, runImageMirror)))
+
+	_, err = builderConfigFile.Write([]byte(fmt.Sprintf("run-image-mirrors = [\"%s\"]\n", runImageMirror)))
 	h.AssertNil(t, err)
+
+	_, err = builderConfigFile.Write([]byte("[lifecycle]\n"))
+	h.AssertNil(t, err)
+	if lifecyclePath, ok := os.LookupEnv("LIFECYCLE_PATH"); ok {
+		lifecycleVersion = "Unknown"
+		if !filepath.IsAbs(lifecyclePath) {
+			t.Fatal("LIFECYCLE_PATH must be an absolute path")
+		}
+		t.Logf("Adding lifecycle path '%s' to builder config", lifecyclePath)
+		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("uri = \"%s\"\n", lifecyclePath)))
+		h.AssertNil(t, err)
+	}
+	if lcver, ok := os.LookupEnv("LIFECYCLE_VERSION"); ok {
+		lifecycleVersion = lcver
+		t.Logf("Adding lifecycle version '%s' to builder config", lifecycleVersion)
+		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("version = \"%s\"\n", lifecycleVersion)))
+		h.AssertNil(t, err)
+	}
+
 	builderConfigFile.Close()
 
-	builder := "some-org/" + h.RandString(10)
+	builder := registryConfig.RepoName("some-org/" + h.RandString(10))
 
+	t.Logf("Creating builder. Lifecycle version '%s' will be used.", lifecycleVersion)
 	cmd := exec.Command(packPath, "create-builder", "--no-color", builder, "-b", filepath.Join(tmpDir, "builder.toml"))
 	output := h.Run(t, cmd)
-
 	h.AssertContains(t, output, fmt.Sprintf("Successfully created builder image '%s'", builder))
+	h.AssertNil(t, h.PushImage(dockerCli, builder, registryConfig))
+
 	return builder
 }
 
 func createStack(t *testing.T, dockerCli *client.Client) {
 	t.Log("create stack images")
-	createStackImage(t, dockerCli, runImage, filepath.Join("testdata", "mock_stack", "run"))
-	createStackImage(t, dockerCli, buildImage, filepath.Join("testdata", "mock_stack", "build"))
-	err := dockerCli.ImageTag(context.Background(), runImage, runImageMirror)
-	h.AssertNil(t, err)
+	createStackImage(t, dockerCli, runImage, filepath.Join("testdata", "mock_stack"))
+	h.AssertNil(t, dockerCli.ImageTag(context.Background(), runImage, buildImage))
+	h.AssertNil(t, dockerCli.ImageTag(context.Background(), runImage, runImageMirror))
 	h.AssertNil(t, h.PushImage(dockerCli, runImageMirror, registryConfig))
 }
 
@@ -754,7 +756,6 @@ func createStackImage(t *testing.T, dockerCli *client.Client, repoName string, d
 		Tags:        []string{repoName},
 		Remove:      true,
 		ForceRemove: true,
-		BuildArgs:   map[string]*string{"lifecycleVersion": &lifecycleVersion},
 	})
 	h.AssertNil(t, err)
 
@@ -807,7 +808,7 @@ func fetchHostPort(t *testing.T, dockerID string) string {
 func imgSHAFromOutput(txt, repoName string) (string, error) {
 	for _, m := range regexp.MustCompile(`\*\*\* Image: (.+)@(.+)`).FindAllStringSubmatch(txt, -1) {
 		// remove the :latest tag check once we fix tag + sha output error in lifecycle
-		if m[1] == repoName || m[1] == repoName + ":latest" {
+		if m[1] == repoName || m[1] == repoName+":latest" {
 			return m[2], nil
 		}
 	}
@@ -819,9 +820,10 @@ func runDockerImageExposePort(t *testing.T, containerName, repoName string) stri
 	ctx := context.Background()
 
 	ctr, err := dockerCli.ContainerCreate(ctx, &container.Config{
-		Image:       repoName,
-		Env:         []string{"PORT=8080"},
-		Healthcheck: nil,
+		Image:        repoName,
+		Env:          []string{"PORT=8080"},
+		ExposedPorts: map[nat.Port]struct{}{"8080/tcp": {}},
+		Healthcheck:  nil,
 	}, &container.HostConfig{
 		PortBindings: nat.PortMap{
 			"8080/tcp": []nat.PortBinding{{}},

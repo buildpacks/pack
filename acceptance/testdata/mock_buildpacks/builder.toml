@@ -25,4 +25,4 @@
   build-image = "pack-test/build"
   run-image = "pack-test/run"
 
-# run-image-mirror is append by accpetance tests
+# run-image-mirror and lifecycle are appended by accpetance tests

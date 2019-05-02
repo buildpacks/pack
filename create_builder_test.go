@@ -1,8 +1,11 @@
 package pack_test
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
+	"io"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -12,6 +15,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack/lifecycle"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/builder"
@@ -34,20 +39,22 @@ func TestCreateBuilder(t *testing.T) {
 func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#CreateBuilder", func() {
 		var (
-			mockController     *gomock.Controller
-			mockBPFetcher      *mocks.MockBuildpackFetcher
-			imageFetcher       *h.FakeImageFetcher
-			fakeBuildImage     *fakes.Image
-			fakeRunImage       *fakes.Image
-			fakeRunImageMirror *fakes.Image
-			logOut, logErr     *bytes.Buffer
-			opts               pack.CreateBuilderOptions
-			subject            *pack.Client
+			mockController       *gomock.Controller
+			mockBPFetcher        *mocks.MockBuildpackFetcher
+			mockLifecycleFetcher *mocks.MockLifecycleFetcher
+			imageFetcher         *h.FakeImageFetcher
+			fakeBuildImage       *fakes.Image
+			fakeRunImage         *fakes.Image
+			fakeRunImageMirror   *fakes.Image
+			logOut, logErr       *bytes.Buffer
+			opts                 pack.CreateBuilderOptions
+			subject              *pack.Client
 		)
 
 		it.Before(func() {
 			mockController = gomock.NewController(t)
 			mockBPFetcher = mocks.NewMockBuildpackFetcher(mockController)
+			mockLifecycleFetcher = mocks.NewMockLifecycleFetcher(mockController)
 
 			fakeBuildImage = fakes.NewImage("some/build-image", "", "")
 			h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
@@ -75,14 +82,17 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			mockBPFetcher.EXPECT().FetchBuildpack(gomock.Any()).Return(bp, nil).AnyTimes()
 
+			mockLifecycleFetcher.EXPECT().Fetch(gomock.Any(), gomock.Any()).Return(lifecycle.Metadata{Dir: filepath.Join("testdata", "lifecycle"), Version: "3.4.5"}, nil).AnyTimes()
+
 			logOut, logErr = &bytes.Buffer{}, &bytes.Buffer{}
 
 			subject = pack.NewClient(
 				&config.Config{},
 				logging.NewLogger(logOut, logErr, true, false),
 				imageFetcher,
-				nil,
 				mockBPFetcher,
+				mockLifecycleFetcher,
+				nil,
 				nil,
 			)
 
@@ -103,6 +113,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						RunImage:        "some/run-image",
 						RunImageMirrors: []string{"localhost:5000/some-run-image"},
 					},
+					Lifecycle: builder.LifecycleConfig{Version: "3.4.5"},
 				},
 				Publish: false,
 				NoPull:  false,
@@ -188,6 +199,49 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Optional: false,
 				}},
 			}})
+			h.AssertEq(t, builderImage.GetLifecycleVersion(), "3.4.5")
+
+			layerTar, err := fakeBuildImage.FindLayerWithPath("/lifecycle")
+			h.AssertNil(t, err)
+			assertTarHasFile(t, layerTar, "/lifecycle/detector")
+			assertTarHasFile(t, layerTar, "/lifecycle/restorer")
+			assertTarHasFile(t, layerTar, "/lifecycle/analyzer")
+			assertTarHasFile(t, layerTar, "/lifecycle/builder")
+			assertTarHasFile(t, layerTar, "/lifecycle/exporter")
+			assertTarHasFile(t, layerTar, "/lifecycle/cacher")
+			assertTarHasFile(t, layerTar, "/lifecycle/launcher")
 		})
 	})
+}
+
+func assertTarHasFile(t *testing.T, tarFile, path string) {
+	t.Helper()
+
+	exist := tarHasFile(t, tarFile, path)
+	if !exist {
+		t.Fatalf("%s does not exist in %s", path, tarFile)
+	}
+}
+
+func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
+	t.Helper()
+
+	r, err := os.Open(tarFile)
+	h.AssertNil(t, err)
+	defer r.Close()
+
+	tr := tar.NewReader(r)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		h.AssertNil(t, err)
+
+		if header.Name == path {
+			return true
+		}
+	}
+
+	return false
 }
