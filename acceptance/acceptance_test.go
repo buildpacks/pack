@@ -716,11 +716,13 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 		if !filepath.IsAbs(lifecyclePath) {
 			t.Fatal("LIFECYCLE_PATH must be an absolute path")
 		}
+		t.Logf("Adding lifecycle path '%s' to builder config", lifecyclePath)
 		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("uri = \"%s\"\n", lifecyclePath)))
 		h.AssertNil(t, err)
 	}
 	if lcver, ok := os.LookupEnv("LIFECYCLE_VERSION"); ok {
 		lifecycleVersion = lcver
+		t.Logf("Adding lifecycle version '%s' to builder config", lifecycleVersion)
 		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("version = \"%s\"\n", lifecycleVersion)))
 		h.AssertNil(t, err)
 	}
@@ -729,6 +731,7 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 
 	builder := registryConfig.RepoName("some-org/" + h.RandString(10))
 
+	t.Logf("Creating builder. Lifecycle version '%s' will be used.", lifecycleVersion)
 	cmd := exec.Command(packPath, "create-builder", "--no-color", builder, "-b", filepath.Join(tmpDir, "builder.toml"))
 	output := h.Run(t, cmd)
 	h.AssertContains(t, output, fmt.Sprintf("Successfully created builder image '%s'", builder))
