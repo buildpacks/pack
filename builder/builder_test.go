@@ -2,6 +2,8 @@ package builder_test
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/lifecycle"
@@ -160,6 +163,31 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, baseImage.WorkingDir(), "/layers")
 			})
+
+			it("does not overwrite the order layer when SetOrder has not been called", func() {
+				tmpDir, err := ioutil.TempDir("", "")
+				h.AssertNil(t, err)
+				defer os.RemoveAll(tmpDir)
+
+				layerFile := filepath.Join(tmpDir, "order.tar")
+				f, err := os.Create(layerFile)
+				h.AssertNil(t, err)
+				defer f.Close()
+
+				err = archive.CreateSingleFileTar(f.Name(), "/buildpacks/order.toml", "some content")
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, baseImage.AddLayer(layerFile))
+				baseImage.Save()
+
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/buildpacks/order.toml", h.ContentEquals("some content"))
+			})
+
 		})
 
 		when("#SetLifecycle", func() {

@@ -41,6 +41,7 @@ type Builder struct {
 	env           map[string]string
 	UID, GID      int
 	StackID       string
+	replaceOrder  bool
 }
 
 func GetBuilder(img imgutil.Image) (*Builder, error) {
@@ -170,6 +171,7 @@ func (b *Builder) SetOrder(order []GroupMetadata) error {
 		}
 	}
 	b.metadata.Groups = order
+	b.replaceOrder = true
 	return nil
 }
 
@@ -244,12 +246,14 @@ func (b *Builder) Save() error {
 		}
 	}
 
-	orderTar, err := b.orderLayer(tmpDir)
-	if err != nil {
-		return err
-	}
-	if err := b.image.AddLayer(orderTar); err != nil {
-		return errors.Wrap(err, "adding order.tar layer")
+	if b.replaceOrder {
+		orderTar, err := b.orderLayer(tmpDir)
+		if err != nil {
+			return err
+		}
+		if err := b.image.AddLayer(orderTar); err != nil {
+			return errors.Wrap(err, "adding order.tar layer")
+		}
 	}
 
 	stackTar, err := b.stackLayer(tmpDir)

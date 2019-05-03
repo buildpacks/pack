@@ -236,8 +236,9 @@ func (f *Image) WorkingDir() string {
 }
 
 func (f *Image) FindLayerWithPath(path string) (string, error) {
-	for _, tarPath := range f.layersMap {
-
+	// we iterate backwards over the layer array b/c later layers could replace a file with a given path
+	for i := len(f.layers) - 1; i >= 0; i-- {
+		tarPath := f.layers[i]
 		r, _ := os.Open(tarPath)
 		defer r.Close()
 
@@ -255,7 +256,6 @@ func (f *Image) FindLayerWithPath(path string) (string, error) {
 			}
 		}
 	}
-
 	return "", fmt.Errorf("Could not find %s in any layer. \n \n %s", path, f.tarContents())
 }
 
