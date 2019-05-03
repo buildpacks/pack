@@ -207,6 +207,14 @@ func (l *localImage) SetEnv(key, val string) error {
 	return nil
 }
 
+func (l *localImage) SetWorkingDir(dir string) error {
+	if l.inspect.Config == nil {
+		return fmt.Errorf("failed to set working dir, image '%s' does not exist", l.repoName)
+	}
+	l.inspect.Config.WorkingDir = dir
+	return nil
+}
+
 func (l *localImage) SetEntrypoint(ep ...string) error {
 	if l.inspect.Config == nil {
 		return fmt.Errorf("failed to set entrypoint, image '%s' does not exist", l.repoName)

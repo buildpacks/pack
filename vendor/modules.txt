@@ -5,7 +5,7 @@ github.com/Azure/go-ansiterm
 github.com/BurntSushi/toml
 # github.com/Microsoft/go-winio v0.4.12
 github.com/Microsoft/go-winio
-# github.com/buildpack/imgutil v0.0.0-20190425152312-609d2e9be7ee
+# github.com/buildpack/imgutil v0.0.0-20190503155027-45c792c068a4
 github.com/buildpack/imgutil
 github.com/buildpack/imgutil/fakes
 # github.com/buildpack/lifecycle v0.1.1-0.20190425153938-c98efaecd3c0

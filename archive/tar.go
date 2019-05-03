@@ -22,20 +22,64 @@ func init() {
 }
 
 func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int) error {
-	return writeTarArchive(tw, srcDir, tarDir, uid, gid)
-}
+	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 
-func CreateTar(tarFile, srcDir, tarDir string, uid, gid int) error {
-	fh, err := os.Create(tarFile)
-	if err != nil {
-		return fmt.Errorf("create file for tar: %s", err)
-	}
-	defer fh.Close()
+		var header *tar.Header
+		if fi.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(file)
+			if err != nil {
+				return err
+			}
 
-	tw := tar.NewWriter(fh)
-	defer tw.Close()
+			header, err = tar.FileInfoHeader(fi, target)
+			if err != nil {
+				return err
+			}
+		} else {
+			header, err = tar.FileInfoHeader(fi, fi.Name())
+			if err != nil {
+				return err
+			}
+		}
 
-	return writeTarArchive(tw, srcDir, tarDir, uid, gid)
+		relPath, err := filepath.Rel(srcDir, file)
+		if err != nil {
+			return err
+		} else if relPath == "." {
+			return nil
+		}
+
+		header.Name = filepath.Join(tarDir, relPath)
+		if runtime.GOOS == "windows" {
+			header.Name = strings.Replace(header.Name, "\\", "/", -1)
+		}
+		header.ModTime = NormalizedDateTime
+		header.Uid = uid
+		header.Gid = gid
+		header.Uname = ""
+		header.Gname = ""
+
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+
+		if fi.Mode().IsRegular() {
+			f, err := os.Open(file)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+
+			if _, err := io.Copy(tw, f); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }
 
 func CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error) {
@@ -47,7 +91,7 @@ func CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error
 		tw := tar.NewWriter(w)
 		defer tw.Close()
 
-		err := writeTarArchive(tw, srcDir, tarDir, uid, gid)
+		err := WriteDirToTar(tw, srcDir, tarDir, uid, gid)
 		errChan <- err
 	}()
 	return r, errChan
@@ -142,101 +186,4 @@ func ExtractTarGZ(r io.Reader, dest string) error {
 	}
 	defer gzr.Close()
 	return ExtractTar(gzr, dest)
-}
-
-func writeParentDirectoryHeaders(tarDir string, tw *tar.Writer, uid int, gid int) error {
-	parent := filepath.Dir(tarDir)
-	if isNotRootDir(parent) {
-		if err := writeParentDirectoryHeaders(parent, tw, uid, gid); err != nil {
-			return err
-		}
-	}
-	header := &tar.Header{
-		Name:     tarDir,
-		Uid:      uid,
-		Gid:      gid,
-		Mode:     0755,
-		Typeflag: tar.TypeDir,
-		ModTime:  NormalizedDateTime,
-	}
-	if runtime.GOOS == "windows" {
-		header.Name = strings.Replace(header.Name, "\\", "/", -1)
-	}
-	if err := tw.WriteHeader(header); err != nil {
-		return err
-	}
-	return nil
-}
-
-func isNotRootDir(parent string) bool {
-	if runtime.GOOS == "windows" {
-		return parent != "\\"
-	}
-	return parent != "/"
-}
-
-func writeTarArchive(tw *tar.Writer, srcDir, tarDir string, uid, gid int) error {
-	err := writeParentDirectoryHeaders(tarDir, tw, uid, gid)
-	if err != nil {
-		return err
-	}
-
-	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		var header *tar.Header
-		if fi.Mode()&os.ModeSymlink != 0 {
-			target, err := os.Readlink(file)
-			if err != nil {
-				return err
-			}
-
-			header, err = tar.FileInfoHeader(fi, target)
-			if err != nil {
-				return err
-			}
-		} else {
-			header, err = tar.FileInfoHeader(fi, fi.Name())
-			if err != nil {
-				return err
-			}
-		}
-
-		relPath, err := filepath.Rel(srcDir, file)
-		if err != nil {
-			return err
-		} else if relPath == "." {
-			return nil
-		}
-
-		header.Name = filepath.Join(tarDir, relPath)
-		if runtime.GOOS == "windows" {
-			header.Name = strings.Replace(header.Name, "\\", "/", -1)
-		}
-		header.ModTime = NormalizedDateTime
-		header.Uid = uid
-		header.Gid = gid
-		header.Uname = ""
-		header.Gname = ""
-
-		if err := tw.WriteHeader(header); err != nil {
-			return err
-		}
-
-		if fi.Mode().IsRegular() {
-			f, err := os.Open(file)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-
-			if _, err := io.Copy(tw, f); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
 }
