@@ -2,6 +2,8 @@ package builder_test
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/lifecycle"
@@ -113,6 +116,78 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, baseImage.IsSaved(), true)
 				h.AssertEq(t, baseImage.Name(), "some/builder")
 			})
+
+			it("creates the workspace dir with CNB user and group", func() {
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				layerTar, err := baseImage.FindLayerWithPath("/workspace")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/workspace", h.HasOwnerAndGroup(1234, 4321))
+				h.AssertOnTarEntry(t, layerTar, "/workspace", h.HasFileMode(0775))
+			})
+
+			it("creates the layers dir with CNB user and group", func() {
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				layerTar, err := baseImage.FindLayerWithPath("/layers")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/layers", h.HasOwnerAndGroup(1234, 4321))
+				h.AssertOnTarEntry(t, layerTar, "/layers", h.HasFileMode(0775))
+			})
+
+			it("creates the buildpacks dir", func() {
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				layerTar, err := baseImage.FindLayerWithPath("/buildpacks")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/buildpacks", h.HasOwnerAndGroup(0, 0))
+				h.AssertOnTarEntry(t, layerTar, "/buildpacks", h.HasFileMode(0555))
+			})
+
+			it("creates the platform dir", func() {
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				layerTar, err := baseImage.FindLayerWithPath("/platform")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/platform", h.HasOwnerAndGroup(0, 0))
+				h.AssertOnTarEntry(t, layerTar, "/platform", h.HasFileMode(0555))
+			})
+
+			it("sets the working dir to the layers dir", func() {
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				h.AssertEq(t, baseImage.WorkingDir(), "/layers")
+			})
+
+			it("does not overwrite the order layer when SetOrder has not been called", func() {
+				tmpDir, err := ioutil.TempDir("", "")
+				h.AssertNil(t, err)
+				defer os.RemoveAll(tmpDir)
+
+				layerFile := filepath.Join(tmpDir, "order.tar")
+				f, err := os.Create(layerFile)
+				h.AssertNil(t, err)
+				defer f.Close()
+
+				err = archive.CreateSingleFileTar(f.Name(), "/buildpacks/order.toml", "some content")
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, baseImage.AddLayer(layerFile))
+				baseImage.Save()
+
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/buildpacks/order.toml", h.ContentEquals("some content"))
+			})
+
 		})
 
 		when("#SetLifecycle", func() {
@@ -206,18 +281,39 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				it("adds a symlink to the buildpack layer if latest is true", func() {
 					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id")
 					h.AssertNil(t, err)
-					h.AssertOnTarEntry(t, layerTar, "/buildpacks/other-buildpack-id/latest", h.SymlinksTo("/buildpacks/other-buildpack-id/other-buildpack-version"))
-					h.AssertOnTarEntry(t, layerTar, "/buildpacks/other-buildpack-id/latest", h.HasOwnerAndGroup(1234, 4321))
+					h.AssertOnTarEntry(t,
+						layerTar,
+						"/buildpacks/other-buildpack-id/latest",
+						h.SymlinksTo("/buildpacks/other-buildpack-id/other-buildpack-version"),
+					)
+					h.AssertOnTarEntry(t,
+						layerTar,
+						"/buildpacks/other-buildpack-id/latest",
+						h.HasOwnerAndGroup(0, 0),
+					)
+					h.AssertOnTarEntry(t,
+						layerTar,
+						"/buildpacks/other-buildpack-id/latest",
+						h.HasFileMode(0444),
+					)
 				})
 
 				it("adds the buildpack contents with the correct uid and gid", func() {
 					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/some-buildpack-id/some-buildpack-version")
 					h.AssertNil(t, err)
-					h.AssertOnTarEntry(t, layerTar, "/buildpacks/some-buildpack-id/some-buildpack-version/buildpack-file", h.HasOwnerAndGroup(1234, 4321))
+					h.AssertOnTarEntry(t,
+						layerTar,
+						"/buildpacks/some-buildpack-id/some-buildpack-version/buildpack-file",
+						h.HasOwnerAndGroup(1234, 4321),
+					)
 
 					layerTar, err = baseImage.FindLayerWithPath("/buildpacks/other-buildpack-id/other-buildpack-version")
 					h.AssertNil(t, err)
-					h.AssertOnTarEntry(t, layerTar, "/buildpacks/other-buildpack-id/other-buildpack-version/buildpack-file", h.HasOwnerAndGroup(1234, 4321))
+					h.AssertOnTarEntry(t,
+						layerTar,
+						"/buildpacks/other-buildpack-id/other-buildpack-version/buildpack-file",
+						h.HasOwnerAndGroup(1234, 4321),
+					)
 				})
 
 				it("adds the buildpack metadata", func() {
@@ -455,7 +551,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("adds the env vars as files to the image", func() {
-				layerTar, err := baseImage.FindLayerWithPath("/platform/env")
+				layerTar, err := baseImage.FindLayerWithPath("/platform/env/SOME_KEY")
 				h.AssertNil(t, err)
 				h.AssertOnTarEntry(t, layerTar, "/platform/env/SOME_KEY", h.ContentEquals(`some-val`))
 				h.AssertOnTarEntry(t, layerTar, "/platform/env/OTHER_KEY", h.ContentEquals(`other-val`))

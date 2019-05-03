@@ -11,6 +11,12 @@ github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 h1:TngWCqHvy9oXAN6lEV
 github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5/go.mod h1:lmUJ/7eu/Q8D7ML55dXQrVaamCz2vxCfdQBasLZfHKk=
 github.com/buildpack/imgutil v0.0.0-20190425152312-609d2e9be7ee h1:oQWAjlScfqeEDxObHpygfCt9bFJCCf+qv919+BBnp4s=
 github.com/buildpack/imgutil v0.0.0-20190425152312-609d2e9be7ee/go.mod h1:BBKzH3BcaXDdjzD/YbYqVhXjSJFMnIUMnnnarymqavw=
+github.com/buildpack/imgutil v0.0.0-20190503154551-6e9c3b2ec677 h1:AFTZbW1+/tTwsyr1QbMkEdgFSoEZ00zzOeDlGntiREE=
+github.com/buildpack/imgutil v0.0.0-20190503154551-6e9c3b2ec677/go.mod h1:BBKzH3BcaXDdjzD/YbYqVhXjSJFMnIUMnnnarymqavw=
+github.com/buildpack/imgutil v0.0.0-20190503155027-45c792c068a4 h1:FszK1zPYMvZ3SsvJmzvGIUvaUcxfvQcHXIXynNi+bYI=
+github.com/buildpack/imgutil v0.0.0-20190503155027-45c792c068a4/go.mod h1:BBKzH3BcaXDdjzD/YbYqVhXjSJFMnIUMnnnarymqavw=
+github.com/buildpack/imgutil v0.0.0-20190503183250-888014bf7744 h1:F70C39OWJGE1rQ3PJgZHzUxQl90S//w8FMiqRmaavTU=
+github.com/buildpack/imgutil v0.0.0-20190503183250-888014bf7744/go.mod h1:BBKzH3BcaXDdjzD/YbYqVhXjSJFMnIUMnnnarymqavw=
 github.com/buildpack/lifecycle v0.1.1-0.20190425153938-c98efaecd3c0 h1:ZhReQPB4ratiPKrRrLBxsSyAGtip8j/DItr0mSRNPCQ=
 github.com/buildpack/lifecycle v0.1.1-0.20190425153938-c98efaecd3c0/go.mod h1:Hnmo/O2/3cCplBdzhItgGnimlsbAvokPhjPz9chEWx0=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=

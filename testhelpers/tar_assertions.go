@@ -57,6 +57,7 @@ func SymlinksTo(expectedTarget string) TarEntryAssertion {
 
 func HasOwnerAndGroup(expectedUID int, expectedGID int) TarEntryAssertion {
 	return func(t *testing.T, header *tar.Header, _ []byte) {
+		t.Helper()
 		if header.Uid != expectedUID {
 			t.Fatalf("expected '%s' to have uid '%d', but got '%d'", header.Name, expectedUID, header.Uid)
 		}
@@ -68,6 +69,7 @@ func HasOwnerAndGroup(expectedUID int, expectedGID int) TarEntryAssertion {
 
 func HasFileMode(expectedMode int64) TarEntryAssertion {
 	return func(t *testing.T, header *tar.Header, _ []byte) {
+		t.Helper()
 		if header.Mode != expectedMode {
 			t.Fatalf("expected '%s' to have mode '%o', but got '%o'", header.Name, expectedMode, header.Mode)
 		}

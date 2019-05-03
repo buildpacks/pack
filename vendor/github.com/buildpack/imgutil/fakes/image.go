@@ -47,6 +47,7 @@ type Image struct {
 	base         string
 	createdAt    time.Time
 	layerDir     string
+	workingDir   string
 }
 
 func (f *Image) CreatedAt() (time.Time, error) {
@@ -81,6 +82,11 @@ func (f *Image) SetLabel(k string, v string) error {
 
 func (f *Image) SetEnv(k string, v string) error {
 	f.env[k] = v
+	return nil
+}
+
+func (f *Image) SetWorkingDir(dir string) error {
+	f.workingDir = dir
 	return nil
 }
 
@@ -225,9 +231,14 @@ func (f *Image) ReusedLayers() []string {
 	return f.reusedLayers
 }
 
-func (f *Image) FindLayerWithPath(path string) (string, error) {
-	for _, tarPath := range f.layersMap {
+func (f *Image) WorkingDir() string {
+	return f.workingDir
+}
 
+func (f *Image) FindLayerWithPath(path string) (string, error) {
+	// we iterate backwards over the layer array b/c later layers could replace a file with a given path
+	for i := len(f.layers) - 1; i >= 0; i-- {
+		tarPath := f.layers[i]
 		r, _ := os.Open(tarPath)
 		defer r.Close()
 
@@ -245,7 +256,6 @@ func (f *Image) FindLayerWithPath(path string) (string, error) {
 			}
 		}
 	}
-
 	return "", fmt.Errorf("Could not find %s in any layer. \n \n %s", path, f.tarContents())
 }
 

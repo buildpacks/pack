@@ -472,7 +472,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						"key2": "value2",
 					},
 				}))
-				layerTar, err := defaultBuilderImage.FindLayerWithPath("/platform/env")
+				layerTar, err := defaultBuilderImage.FindLayerWithPath("/platform/env/key1")
 				h.AssertNil(t, err)
 				assertTarFileContents(t, layerTar, "/platform/env/key1", `value1`)
 				assertTarFileContents(t, layerTar, "/platform/env/key2", `value2`)
