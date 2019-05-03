@@ -10,9 +10,6 @@ RUN \
 RUN apt-get update && apt-get -yq install netcat
 LABEL io.buildpacks.stack.id=pack.test.stack
 
-RUN mkdir /layers && chown pack:pack /layers
-
 USER pack
-WORKDIR /layers
 
 
