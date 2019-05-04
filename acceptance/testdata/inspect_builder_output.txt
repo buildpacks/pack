@@ -3,43 +3,45 @@ Inspecting builder: '%s'
 Remote
 ------
 
-Stack: some.test.stack
+Stack: pack.test.stack
+
+Lifecycle Version: %s
 
 Run Images:
-  some-registry.com/some/run1 (user-configured)
-  some/run1
-  gcr.io/some/run1
+  some-registry.com/pack-test/run1 (user-configured)
+  pack-test/run
+  %s
 
 Buildpacks:
-  ID                 VERSION        LATEST        
-  test.bp.one        0.0.1          false         
-  test.bp.two        0.0.2          true
+  ID                    VERSION                       LATEST
+  simple/layers         simple-layers-version         false
+  read/env              read-env-version              false
+  noop.buildpack        noop.buildpack.version        true
 
 Detection Order:
   Group #1:
-    test.bp.one@0.0.1    
-    test.bp.two@0.0.2
-  Group #2:
-    test.bp.one@0.0.1
+    simple/layers@simple-layers-version    
+    read/env@read-env-version              (optional)
 
 Local
 -----
 
-Stack: some.test.stack
+Stack: pack.test.stack
+
+Lifecycle Version: %s
 
 Run Images:
-  some-registry.com/some/run1 (user-configured)
-  some/run1
-  gcr.io/some/run2
+  some-registry.com/pack-test/run1 (user-configured)
+  pack-test/run
+  %s
 
 Buildpacks:
-  ID                 VERSION        LATEST        
-  test.bp.one        0.0.1          false         
-  test.bp.two        0.0.2          true
+  ID                    VERSION                       LATEST
+  simple/layers         simple-layers-version         false
+  read/env              read-env-version              false
+  noop.buildpack        noop.buildpack.version        true
 
 Detection Order:
   Group #1:
-    test.bp.one@0.0.1    
-    test.bp.two@0.0.2
-  Group #2:
-    test.bp.one@0.0.1
+    simple/layers@simple-layers-version    
+    read/env@read-env-version              (optional)

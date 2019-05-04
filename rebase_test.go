@@ -55,6 +55,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 		})
 

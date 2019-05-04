@@ -14,6 +14,7 @@ type Image interface {
 	Env(key string) (string, error)
 	SetEnv(string, string) error
 	SetEntrypoint(...string) error
+	SetWorkingDir(string) error
 	SetCmd(...string) error
 	Rebase(string, Image) error
 	AddLayer(path string) error

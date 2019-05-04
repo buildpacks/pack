@@ -17,6 +17,7 @@ import (
 
 	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/buildpack"
+	"github.com/buildpack/pack/lifecycle"
 	"github.com/buildpack/pack/stack"
 	"github.com/buildpack/pack/style"
 )
@@ -24,18 +25,23 @@ import (
 const (
 	buildpacksDir = "/buildpacks"
 	platformDir   = "/platform"
+	lifecycleDir  = "/lifecycle"
+	workspaceDir  = "/workspace"
+	layersDir     = "/layers"
 	stackLabel    = "io.buildpacks.stack.id"
 	envUID        = "CNB_USER_ID"
 	envGID        = "CNB_GROUP_ID"
 )
 
 type Builder struct {
-	image      imgutil.Image
-	buildpacks []buildpack.Buildpack
-	metadata   Metadata
-	env        map[string]string
-	UID, GID   int
-	StackID    string
+	image         imgutil.Image
+	lifecyclePath string
+	buildpacks    []buildpack.Buildpack
+	metadata      Metadata
+	env           map[string]string
+	UID, GID      int
+	StackID       string
+	replaceOrder  bool
 }
 
 func GetBuilder(img imgutil.Image) (*Builder, error) {
@@ -70,6 +76,10 @@ func GetBuilder(img imgutil.Image) (*Builder, error) {
 		GID:      gid,
 		StackID:  stackID,
 	}, nil
+}
+
+func (b *Builder) GetLifecycleVersion() string {
+	return b.metadata.Lifecycle.Version
 }
 
 func (b *Builder) GetBuildpacks() []BuildpackMetadata {
@@ -134,6 +144,12 @@ func (b *Builder) AddBuildpack(bp buildpack.Buildpack) error {
 	return nil
 }
 
+func (b *Builder) SetLifecycle(md lifecycle.Metadata) error {
+	b.metadata.Lifecycle.Version = md.Version
+	b.lifecyclePath = md.Dir
+	return nil
+}
+
 func (b *Builder) SetEnv(env map[string]string) {
 	b.env = env
 }
@@ -155,6 +171,7 @@ func (b *Builder) SetOrder(order []GroupMetadata) error {
 		}
 	}
 	b.metadata.Groups = order
+	b.replaceOrder = true
 	return nil
 }
 
@@ -193,12 +210,30 @@ func (b *Builder) Save() error {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	dirsTar, err := b.defaultDirsLayer(tmpDir)
+	if err != nil {
+		return err
+	}
+	if err := b.image.AddLayer(dirsTar); err != nil {
+		return errors.Wrap(err, "adding default dirs layer")
+	}
+
 	envTar, err := b.envLayer(tmpDir, b.env)
 	if err != nil {
 		return err
 	}
 	if err := b.image.AddLayer(envTar); err != nil {
 		return errors.Wrap(err, "adding env layer")
+	}
+
+	if b.lifecyclePath != "" {
+		lifecycleTar, err := b.lifecycleLayer(tmpDir)
+		if err != nil {
+			return err
+		}
+		if err := b.image.AddLayer(lifecycleTar); err != nil {
+			return errors.Wrap(err, "adding lifecycle layer")
+		}
 	}
 
 	for _, bp := range b.buildpacks {
@@ -211,12 +246,14 @@ func (b *Builder) Save() error {
 		}
 	}
 
-	orderTar, err := b.orderLayer(tmpDir)
-	if err != nil {
-		return err
-	}
-	if err := b.image.AddLayer(orderTar); err != nil {
-		return errors.Wrap(err, "adding order.tar layer")
+	if b.replaceOrder {
+		orderTar, err := b.orderLayer(tmpDir)
+		if err != nil {
+			return err
+		}
+		if err := b.image.AddLayer(orderTar); err != nil {
+			return errors.Wrap(err, "adding order.tar layer")
+		}
 	}
 
 	stackTar, err := b.stackLayer(tmpDir)
@@ -234,6 +271,10 @@ func (b *Builder) Save() error {
 
 	if err := b.image.SetLabel(MetadataLabel, string(label)); err != nil {
 		return errors.Wrap(err, "failed to set metadata label")
+	}
+
+	if err := b.image.SetWorkingDir(layersDir); err != nil {
+		return errors.Wrap(err, "failed to set working dir")
 	}
 
 	_, err = b.image.Save()
@@ -267,6 +308,61 @@ func userAndGroupIDs(img imgutil.Image) (int, int, error) {
 	}
 
 	return uid, gid, nil
+}
+
+func (b *Builder) defaultDirsLayer(dest string) (string, error) {
+	fh, err := os.Create(filepath.Join(dest, "dirs.tar"))
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+
+	tw := tar.NewWriter(fh)
+	defer tw.Close()
+
+	now := time.Now()
+
+	if err := tw.WriteHeader(b.rwDir(workspaceDir, now)); err != nil {
+		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(workspaceDir))
+	}
+
+	if err := tw.WriteHeader(b.rwDir(layersDir, now)); err != nil {
+		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(layersDir))
+	}
+
+	if err := tw.WriteHeader(b.roDir(buildpacksDir, now)); err != nil {
+		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(buildpacksDir))
+	}
+
+	if err := tw.WriteHeader(b.roDir(platformDir, now)); err != nil {
+		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(platformDir))
+	}
+
+	if err := tw.WriteHeader(b.roDir(platformDir+"/env", now)); err != nil {
+		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(platformDir+"/env"))
+	}
+
+	return fh.Name(), nil
+}
+
+func (b *Builder) rwDir(path string, time time.Time) *tar.Header {
+	return &tar.Header{
+		Typeflag: tar.TypeDir,
+		Name:     path,
+		Mode:     0775,
+		ModTime:  time,
+		Uid:      b.UID,
+		Gid:      b.GID,
+	}
+}
+
+func (b *Builder) roDir(path string, time time.Time) *tar.Header {
+	return &tar.Header{
+		Typeflag: tar.TypeDir,
+		Name:     path,
+		Mode:     0555,
+		ModTime:  time,
+	}
 }
 
 func (b *Builder) orderLayer(dest string) (string, error) {
@@ -313,6 +409,26 @@ func (b *Builder) buildpackLayer(dest string, bp buildpack.Buildpack) (string, e
 	tw := tar.NewWriter(fh)
 	defer tw.Close()
 
+	now := time.Now()
+
+	if err := tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeDir,
+		Name:     buildpacksDir + "/" + bp.EscapedID(),
+		Mode:     0555,
+		ModTime:  now,
+	}); err != nil {
+		return "", err
+	}
+
+	if err := tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeDir,
+		Name:     buildpacksDir + "/" + bp.EscapedID() + "/" + bp.Version,
+		Mode:     0555,
+		ModTime:  now,
+	}); err != nil {
+		return "", err
+	}
+
 	if err := archive.WriteDirToTar(tw, bp.Dir, fmt.Sprintf("%s/%s/%s", buildpacksDir, bp.EscapedID(), bp.Version), b.UID, b.GID); err != nil {
 		return "", errors.Wrapf(err, "creating layer tar for buildpack '%s:%s'", bp.ID, bp.Version)
 	}
@@ -322,9 +438,7 @@ func (b *Builder) buildpackLayer(dest string, bp buildpack.Buildpack) (string, e
 			Name:     fmt.Sprintf("%s/%s/%s", buildpacksDir, bp.EscapedID(), "latest"),
 			Linkname: fmt.Sprintf("%s/%s/%s", buildpacksDir, bp.EscapedID(), bp.Version),
 			Typeflag: tar.TypeSymlink,
-			Mode:     0666,
-			Uid:      b.UID,
-			Gid:      b.GID,
+			Mode:     0444,
 		})
 		if err != nil {
 			return "", errors.Wrapf(err, "creating latest symlink for buildpack '%s:%s'", bp.ID, bp.Version)
@@ -355,13 +469,47 @@ func (b *Builder) envLayer(dest string, env map[string]string) (string, error) {
 		}
 	}
 
-	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: platformDir + "/env", Mode: 0555, ModTime: now}); err != nil {
+	return fh.Name(), nil
+}
+
+func (b *Builder) lifecycleLayer(dest string) (string, error) {
+	fh, err := os.Create(filepath.Join(dest, "lifecycle.tar"))
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+
+	tw := tar.NewWriter(fh)
+	defer tw.Close()
+
+	now := time.Now()
+
+	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: lifecycleDir, Mode: 0555, ModTime: now}); err != nil {
 		return "", err
 	}
 
-	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: platformDir, Mode: 0555, ModTime: now}); err != nil {
-		return "", err
+	for _, binary := range []string{"detector", "restorer", "analyzer", "builder", "exporter", "cacher", "launcher"} {
+		if err := writeLifecycleBinary(b.lifecyclePath, binary, tw, now); err != nil {
+			return "", err
+		}
 	}
 
 	return fh.Name(), nil
+}
+
+func writeLifecycleBinary(lifecyclePath, binary string, tw *tar.Writer, now time.Time) error {
+	buf, err := ioutil.ReadFile(filepath.Join(lifecyclePath, binary))
+	if err != nil {
+		return errors.Wrap(err, "reading lifecycle binary")
+	}
+
+	if err := tw.WriteHeader(&tar.Header{Name: lifecycleDir + "/" + binary, Size: int64(len(buf)), Mode: 0555, ModTime: now}); err != nil {
+		return err
+	}
+
+	if _, err := tw.Write([]byte(buf)); err != nil {
+		return err
+	}
+
+	return nil
 }

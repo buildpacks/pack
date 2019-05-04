@@ -47,8 +47,9 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		},
 			logging.NewLogger(ioutil.Discard, ioutil.Discard, false, false),
 			mockImageFetcher,
-			nil,
 			mockBPFetcher,
+			nil,
+			nil,
 			nil,
 		)
 		builderImage = fakes.NewImage("some/builder", "", "")
@@ -101,7 +102,8 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
         }
       ]
     }
-  ]
+  ],
+  "lifecycle": {"version": "some-lifecycle-version"}
 }`))
 					})
 
@@ -140,6 +142,12 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 							ID:      "test.bp.one",
 							Version: "1.0.0",
 						})
+					})
+
+					it("sets the lifecycle version", func() {
+						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+						h.AssertEq(t, builderInfo.LifecycleVersion, "some-lifecycle-version")
 					})
 				})
 			})

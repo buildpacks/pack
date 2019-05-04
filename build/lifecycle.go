@@ -65,6 +65,12 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	l.Setup(opts.AppDir, opts.Builder)
 	defer l.Cleanup()
 
+	if lifecycleVersion := l.Builder.GetLifecycleVersion(); lifecycleVersion == "" {
+		l.logger.Verbose("Warning: lifecycle version unknown")
+	}else {
+		l.logger.Verbose("Executing lifecycle version %s", style.Symbol(lifecycleVersion))
+	}
+
 	l.logger.Verbose(style.Step("DETECTING"))
 	if err := l.Detect(ctx); err != nil {
 		return err

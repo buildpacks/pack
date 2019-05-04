@@ -178,6 +178,17 @@ func (r *remoteImage) SetEnv(key, val string) error {
 	return err
 }
 
+func (r *remoteImage) SetWorkingDir(dir string) error {
+	configFile, err := r.image.ConfigFile()
+	if err != nil {
+		return err
+	}
+	config := *configFile.Config.DeepCopy()
+	config.WorkingDir = dir
+	r.image, err = mutate.Config(r.image, config)
+	return err
+}
+
 func (r *remoteImage) SetEntrypoint(ep ...string) error {
 	configFile, err := r.image.ConfigFile()
 	if err != nil {

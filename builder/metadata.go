@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"github.com/buildpack/pack/lifecycle"
 	"github.com/buildpack/pack/stack"
 )
 
@@ -10,6 +11,7 @@ type Metadata struct {
 	Buildpacks []BuildpackMetadata `json:"buildpacks"`
 	Groups     []GroupMetadata     `json:"groups"`
 	Stack      stack.Metadata      `json:"stack"`
+	Lifecycle  lifecycle.Metadata  `json:"lifecycle"`
 }
 
 type BuildpackMetadata struct {
