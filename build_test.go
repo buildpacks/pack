@@ -186,67 +186,73 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, fakeLifecycle.Opts.AppDir, absPath)
 			})
 
-			it("resolves relative symbolic links", func() {
-				appDir := filepath.Join("testdata", "some-app")
-				absoluteAppDir, err := filepath.Abs(appDir)
-				h.AssertNil(t, err)
+			when("appDir is a symlink", func() {
+				var (
+					appDirName     = "some-app"
+					absoluteAppDir string
+					tmpDir         string
+					err            error
+				)
 
-				relLinkRef := "./some-app"
-				relLink := filepath.Join("testdata", "some-app.link")
+				it.Before(func() {
+					tmpDir, err = ioutil.TempDir("", "build-symlink-test")
+					h.AssertNil(t, err)
 
-				_ = os.Remove(relLink)
-				h.AssertNil(t, os.Symlink(relLinkRef, relLink))
+					appDirPath := filepath.Join(tmpDir, appDirName)
+					h.AssertNil(t, os.MkdirAll(filepath.Join(tmpDir, appDirName), 0666))
 
-				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-					Image:  "some/app",
-					AppDir: relLink,
-				}))
+					absoluteAppDir, err = filepath.Abs(appDirPath)
+					h.AssertNil(t, err)
 
-				h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
-			})
+					absoluteAppDir, err = filepath.EvalSymlinks(appDirPath)
+					h.AssertNil(t, err)
+				})
 
-			it("resolves absolute symbolic links", func() {
-				appDir := filepath.Join("testdata", "some-app")
-				absoluteAppDir, err := filepath.Abs(appDir)
-				h.AssertNil(t, err)
+				it.After(func() {
+					_ = os.RemoveAll(tmpDir)
+				})
 
-				relLinkRef := absoluteAppDir
-				relLink := filepath.Join("testdata", "some-app.link")
+				it("resolves relative symbolic links", func() {
+					relLink := filepath.Join(tmpDir, "some-app.link")
+					h.AssertNil(t, os.Symlink(filepath.Join(".", appDirName), relLink))
 
-				_ = os.Remove(relLink)
-				h.AssertNil(t, os.Symlink(relLinkRef, relLink))
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:  "some/app",
+						AppDir: relLink,
+					}))
 
-				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-					Image:  "some/app",
-					AppDir: relLink,
-				}))
+					h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+				})
 
-				h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
-			})
+				it("resolves absolute symbolic links", func() {
+					relLink := filepath.Join(tmpDir, "some-app.link")
+					h.AssertNil(t, os.Symlink(absoluteAppDir, relLink))
 
-			it("resolves symbolic links recursively", func() {
-				appDir := filepath.Join("testdata", "some-app")
-				absoluteAppDir, err := filepath.Abs(appDir)
-				h.AssertNil(t, err)
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:  "some/app",
+						AppDir: relLink,
+					}))
 
-				linkRef1 := absoluteAppDir
-				absoluteLink1 := filepath.Join("testdata", "some-app-abs-1.link")
+					h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+				})
 
-				linkRef2 := "some-app-abs-1.link"
-				relLink2 := filepath.Join("testdata", "some-app-rel-2.link")
+				it("resolves symbolic links recursively", func() {
+					linkRef1 := absoluteAppDir
+					absoluteLink1 := filepath.Join(tmpDir, "some-app-abs-1.link")
 
-				_ = os.Remove(absoluteLink1)
-				_ = os.Remove(relLink2)
+					linkRef2 := "some-app-abs-1.link"
+					symbolicLink := filepath.Join(tmpDir, "some-app-rel-2.link")
 
-				h.AssertNil(t, os.Symlink(linkRef1, absoluteLink1))
-				h.AssertNil(t, os.Symlink(linkRef2, relLink2))
+					h.AssertNil(t, os.Symlink(linkRef1, absoluteLink1))
+					h.AssertNil(t, os.Symlink(linkRef2, symbolicLink))
 
-				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-					Image:  "some/app",
-					AppDir: relLink2,
-				}))
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:  "some/app",
+						AppDir: symbolicLink,
+					}))
 
-				h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+					h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+				})
 			})
 		})
 

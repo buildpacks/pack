@@ -168,14 +168,6 @@ func (c *Client) validateImageReference(imageName string) (name.Reference, error
 	return ref, nil
 }
 
-func mapAppDirError(dir string, err error) error {
-	if os.IsNotExist(err) {
-		return errors.Errorf("app directory %s does not exist", style.Symbol(dir))
-	} else {
-		return err
-	}
-}
-
 func (c *Client) processAppDir(appDir string) (string, error) {
 	var (
 		resolvedAppDir = appDir
@@ -189,7 +181,7 @@ func (c *Client) processAppDir(appDir string) (string, error) {
 	}
 
 	if resolvedAppDir, err = filepath.EvalSymlinks(appDir); err != nil {
-		return "", mapAppDirError(appDir, err)
+		return "", err
 	}
 
 	if resolvedAppDir, err = filepath.Abs(resolvedAppDir); err != nil {
@@ -197,7 +189,7 @@ func (c *Client) processAppDir(appDir string) (string, error) {
 	}
 
 	if fi, err := os.Stat(resolvedAppDir); err != nil {
-		return "", mapAppDirError(appDir, err)
+		return "", err
 	} else if !fi.IsDir() {
 		return "", fmt.Errorf("%s is not a directory", appDir)
 	}
