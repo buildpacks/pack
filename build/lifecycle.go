@@ -11,29 +11,22 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
 
 type Lifecycle struct {
-	Builder      *builder.Builder
+	builder      *builder.Builder
 	logger       *logging.Logger
 	docker       *client.Client
-	LayersVolume string
-	AppVolume    string
 	appDir       string
 	appOnce      *sync.Once
-}
-
-type LifecycleConfig struct {
-	BuilderImage string
-	Logger       *logging.Logger
-	Env          map[string]string
-	Buildpacks   []string
-	AppDir       string
-	BPFetcher    *buildpack.Fetcher
+	httpProxy    string
+	httpsProxy   string
+	noProxy      string
+	LayersVolume string
+	AppVolume    string
 }
 
 func init() {
@@ -51,6 +44,9 @@ type LifecycleOptions struct {
 	RunImage   string
 	ClearCache bool
 	Publish    bool
+	HTTPProxy  string
+	HTTPSProxy string
+	NoProxy    string
 }
 
 func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
@@ -62,12 +58,12 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		}
 		l.logger.Verbose("Cache image %s cleared", style.Symbol(cacheImage.Image()))
 	}
-	l.Setup(opts.AppDir, opts.Builder)
+	l.Setup(opts)
 	defer l.Cleanup()
 
-	if lifecycleVersion := l.Builder.GetLifecycleVersion(); lifecycleVersion == "" {
+	if lifecycleVersion := l.builder.GetLifecycleVersion(); lifecycleVersion == "" {
 		l.logger.Verbose("Warning: lifecycle version unknown")
-	}else {
+	} else {
 		l.logger.Verbose("Executing lifecycle version %s", style.Symbol(lifecycleVersion))
 	}
 
@@ -109,12 +105,15 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	return nil
 }
 
-func (l *Lifecycle) Setup(appDir string, builder *builder.Builder) {
+func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.LayersVolume = "pack-layers-" + randString(10)
 	l.AppVolume = "pack-app-" + randString(10)
-	l.appDir = appDir
+	l.appDir = opts.AppDir
 	l.appOnce = &sync.Once{}
-	l.Builder = builder
+	l.builder = opts.Builder
+	l.httpProxy = opts.HTTPProxy
+	l.httpsProxy = opts.HTTPSProxy
+	l.noProxy = opts.NoProxy
 }
 
 func (l *Lifecycle) Cleanup() error {

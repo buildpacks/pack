@@ -38,6 +38,9 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "buildpacks" {
 		testBuildpacks()
 	}
+	if len(os.Args) > 1 && os.Args[1] == "proxy" {
+		testProxy()
+	}
 }
 
 func testWrite(filename, contents string) {
@@ -126,6 +129,13 @@ func testBuildpacks() {
 	fmt.Println("buildpacks test")
 
 	readDir("/buildpacks")
+}
+
+func testProxy() {
+	fmt.Println("proxy test")
+	fmt.Println("HTTP_PROXY="+os.Getenv("HTTP_PROXY"))
+	fmt.Println("HTTPS_PROXY="+os.Getenv("HTTPS_PROXY"))
+	fmt.Println("NO_PROXY="+os.Getenv("NO_PROXY"))
 }
 
 func readDir(dir string) {

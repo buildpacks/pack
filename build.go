@@ -27,15 +27,22 @@ type Lifecycle interface {
 }
 
 type BuildOptions struct {
-	AppDir     string // defaults to current working directory
-	Builder    string // defaults to default builder on the client config
-	RunImage   string // defaults to the best mirror from the builder image or pack config
-	Env        map[string]string
-	Image      string // required
-	Publish    bool
-	NoPull     bool
-	ClearCache bool
-	Buildpacks []string
+	AppDir      string // defaults to current working directory
+	Builder     string // defaults to default builder on the client config
+	RunImage    string // defaults to the best mirror from the builder image or pack config
+	Env         map[string]string
+	Image       string // required
+	Publish     bool
+	NoPull      bool
+	ClearCache  bool
+	Buildpacks  []string
+	ProxyConfig *ProxyConfig // defaults to  environment proxy vars
+}
+
+type ProxyConfig struct {
+	HTTPProxy  string
+	HTTPSProxy string
+	NoProxy    string
 }
 
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
@@ -49,10 +56,13 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid app dir '%s'", opts.AppDir)
 	}
 
+	proxyConfig := c.processProxyConfig(opts.ProxyConfig)
+
 	builderRef, err := c.processBuilderName(opts.Builder)
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
+
 	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), true, !opts.NoPull)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
@@ -87,6 +97,9 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		RunImage:   runImage,
 		ClearCache: opts.ClearCache,
 		Publish:    opts.Publish,
+		HTTPProxy:  proxyConfig.HTTPProxy,
+		HTTPSProxy: proxyConfig.HTTPSProxy,
+		NoProxy:    proxyConfig.NoProxy,
 	})
 }
 
@@ -195,6 +208,30 @@ func (c *Client) processAppDir(appDir string) (string, error) {
 	}
 
 	return resolvedAppDir, nil
+}
+
+func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
+	var (
+		httpProxy, httpsProxy, noProxy string
+		ok                             bool
+	)
+	if config != nil {
+		return *config
+	}
+	if httpProxy, ok = os.LookupEnv("HTTP_PROXY"); !ok {
+		httpProxy = os.Getenv("http_proxy")
+	}
+	if httpsProxy, ok = os.LookupEnv("HTTPS_PROXY"); !ok {
+		httpsProxy = os.Getenv("https_proxy")
+	}
+	if noProxy, ok = os.LookupEnv("NO_PROXY"); !ok {
+		noProxy = os.Getenv("no_proxy")
+	}
+	return ProxyConfig{
+		HTTPProxy:  httpProxy,
+		HTTPSProxy: httpsProxy,
+		NoProxy:    noProxy,
+	}
 }
 
 func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, builder.GroupMetadata, error) {
