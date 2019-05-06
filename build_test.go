@@ -185,6 +185,75 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				h.AssertEq(t, fakeLifecycle.Opts.AppDir, absPath)
 			})
+
+			when("appDir is a symlink", func() {
+				var (
+					appDirName     = "some-app"
+					absoluteAppDir string
+					tmpDir         string
+					err            error
+				)
+
+				it.Before(func() {
+					tmpDir, err = ioutil.TempDir("", "build-symlink-test")
+					h.AssertNil(t, err)
+
+					appDirPath := filepath.Join(tmpDir, appDirName)
+					h.AssertNil(t, os.MkdirAll(filepath.Join(tmpDir, appDirName), 0666))
+
+					absoluteAppDir, err = filepath.Abs(appDirPath)
+					h.AssertNil(t, err)
+
+					absoluteAppDir, err = filepath.EvalSymlinks(appDirPath)
+					h.AssertNil(t, err)
+				})
+
+				it.After(func() {
+					_ = os.RemoveAll(tmpDir)
+				})
+
+				it("resolves relative symbolic links", func() {
+					relLink := filepath.Join(tmpDir, "some-app.link")
+					h.AssertNil(t, os.Symlink(filepath.Join(".", appDirName), relLink))
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:  "some/app",
+						AppDir: relLink,
+					}))
+
+					h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+				})
+
+				it("resolves absolute symbolic links", func() {
+					relLink := filepath.Join(tmpDir, "some-app.link")
+					h.AssertNil(t, os.Symlink(absoluteAppDir, relLink))
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:  "some/app",
+						AppDir: relLink,
+					}))
+
+					h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+				})
+
+				it("resolves symbolic links recursively", func() {
+					linkRef1 := absoluteAppDir
+					absoluteLink1 := filepath.Join(tmpDir, "some-app-abs-1.link")
+
+					linkRef2 := "some-app-abs-1.link"
+					symbolicLink := filepath.Join(tmpDir, "some-app-rel-2.link")
+
+					h.AssertNil(t, os.Symlink(linkRef1, absoluteLink1))
+					h.AssertNil(t, os.Symlink(linkRef2, symbolicLink))
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:  "some/app",
+						AppDir: symbolicLink,
+					}))
+
+					h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+				})
+			})
 		})
 
 		when("Builder option", func() {
