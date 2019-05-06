@@ -66,7 +66,13 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		bldr, err := builder.GetBuilder(builderImage)
 		h.AssertNil(t, err)
-		subject.Setup(filepath.Join("testdata", "fake-app"), bldr)
+		subject.Setup(build.LifecycleOptions{
+			AppDir:  filepath.Join("testdata", "fake-app"),
+			Builder: bldr,
+			HTTPProxy: "some-http-proxy",
+			HTTPSProxy: "some-https-proxy",
+			NoProxy: "some-no-proxy",
+		})
 	})
 
 	it.After(func() {
@@ -127,6 +133,18 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				readPhase2.Cleanup()
 				h.AssertNotNil(t, err)
 				h.AssertContains(t, outBuf.String(), "failed to read file")
+			})
+
+			it("sets the proxy vars in the container", func() {
+				phase, err := subject.NewPhase(
+					"phase",
+					build.WithArgs("proxy"),
+				)
+				h.AssertNil(t, err)
+				assertRunSucceeds(t, phase, &outBuf, &errBuf)
+				h.AssertContains(t, outBuf.String(), "HTTP_PROXY=some-http-proxy")
+				h.AssertContains(t, outBuf.String(), "HTTPS_PROXY=some-https-proxy")
+				h.AssertContains(t, outBuf.String(), "NO_PROXY=some-no-proxy")
 			})
 
 			when("#WithArgs", func() {

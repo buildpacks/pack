@@ -31,7 +31,7 @@ type Phase struct {
 
 func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (*Phase, error) {
 	ctrConf := &dcontainer.Config{
-		Image:  l.Builder.Name(),
+		Image:  l.builder.Name(),
 		Labels: map[string]string{"author": "pack"},
 	}
 	hostConf := &dcontainer.HostConfig{
@@ -47,11 +47,22 @@ func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (
 		name:     name,
 		docker:   l.docker,
 		logger:   l.logger,
-		uid:      l.Builder.UID,
-		gid:      l.Builder.GID,
+		uid:      l.builder.UID,
+		gid:      l.builder.GID,
 		appDir:   l.appDir,
 		appOnce:  l.appOnce,
 	}
+
+	if l.httpProxy != "" {
+		phase.ctrConf.Env = append(phase.ctrConf.Env, "HTTP_PROXY="+l.httpProxy)
+	}
+	if l.httpsProxy != "" {
+		phase.ctrConf.Env = append(phase.ctrConf.Env, "HTTPS_PROXY="+l.httpsProxy)
+	}
+	if l.noProxy != "" {
+		phase.ctrConf.Env = append(phase.ctrConf.Env, "NO_PROXY="+l.noProxy)
+	}
+
 	var err error
 	for _, op := range ops {
 		phase, err = op(phase)
@@ -83,7 +94,7 @@ func WithRegistryAccess(repos ...string) func(*Phase) (*Phase, error) {
 		if err != nil {
 			return nil, err
 		}
-		phase.ctrConf.Env = []string{fmt.Sprintf(`CNB_REGISTRY_AUTH=%s`, authHeader)}
+		phase.ctrConf.Env = append(phase.ctrConf.Env, fmt.Sprintf(`CNB_REGISTRY_AUTH=%s`, authHeader))
 		phase.hostConf.NetworkMode = "host"
 		return phase, nil
 	}
