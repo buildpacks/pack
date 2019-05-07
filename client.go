@@ -16,7 +16,7 @@ import (
 
 type Client struct {
 	config           *config.Config
-	logger           *logging.Logger
+	logger           logging.Logger
 	imageFetcher     ImageFetcher
 	buildpackFetcher BuildpackFetcher
 	lifecycleFetcher LifecycleFetcher
@@ -26,7 +26,7 @@ type Client struct {
 
 func NewClient(
 	config *config.Config,
-	logger *logging.Logger,
+	logger logging.Logger,
 	imageFetcher ImageFetcher,
 	buildpackFetcher BuildpackFetcher,
 	lifecycleFetcher LifecycleFetcher,
@@ -44,7 +44,7 @@ func NewClient(
 	}
 }
 
-func DefaultClient(config *config.Config, logger *logging.Logger) (*Client, error) {
+func DefaultClient(config *config.Config, logger logging.Logger) (*Client, error) {
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	if err != nil {
 		return nil, err

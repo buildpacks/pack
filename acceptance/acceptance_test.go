@@ -716,14 +716,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			configuredRunImage := "some-registry.com/pack-test/run1"
 			cmd := packCmd("set-run-image-mirrors", "pack-test/run", "--mirror", configuredRunImage)
 			output := h.Run(t, cmd)
-			h.AssertEq(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
+			h.AssertContains(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 			cmd = packCmd("inspect-builder", builder)
 			output = h.Run(t, cmd)
 
 			expected, err := ioutil.ReadFile(filepath.Join("testdata", "inspect_builder_output.txt"))
 			h.AssertNil(t, err)
-
 			h.AssertEq(t, output, fmt.Sprintf(string(expected), builder, lifecycleVersion, runImageMirror, lifecycleVersion, runImageMirror))
 		})
 	})

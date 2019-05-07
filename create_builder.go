@@ -39,7 +39,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return err
 	}
 
-	c.logger.Verbose("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
+	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
 	builderImage, err := builder.New(baseImage, opts.BuilderName)
 	if err != nil {
 		return errors.Wrap(err, "invalid build-image")
@@ -136,7 +136,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 			if errors.Cause(err) != image.ErrNotFound {
 				return err
 			}
-			c.logger.Info("Warning: run image %s is not accessible", style.Symbol(i))
+			c.logger.Infof("Warning: run image %s is not accessible", style.Symbol(i))
 		} else {
 			runImages = append(runImages, img)
 		}

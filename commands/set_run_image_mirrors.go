@@ -8,7 +8,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func SetRunImagesMirrors(logger *logging.Logger) *cobra.Command {
+func SetRunImagesMirrors(logger logging.Logger) *cobra.Command {
 	var runImages []string
 
 	cmd := &cobra.Command{
@@ -24,10 +24,10 @@ func SetRunImagesMirrors(logger *logging.Logger) *cobra.Command {
 			runImage := args[0]
 			cfg.SetRunImageMirrors(runImage, runImages)
 			for _, mirror := range runImages {
-				logger.Info("Run Image %s configured with mirror %s", style.Symbol(runImage), style.Symbol(mirror))
+				logger.Infof("Run Image %s configured with mirror %s", style.Symbol(runImage), style.Symbol(mirror))
 			}
 			if len(runImages) == 0 {
-				logger.Info("All mirrors removed for Run Image %s", style.Symbol(runImage))
+				logger.Infof("All mirrors removed for Run Image %s", style.Symbol(runImage))
 			}
 			return nil
 		}),

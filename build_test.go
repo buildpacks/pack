@@ -2,7 +2,6 @@ package pack_test
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -24,7 +23,7 @@ import (
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/internal/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -37,7 +36,6 @@ func TestBuild(t *testing.T) {
 func testBuild(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject               *pack.Client
-		logOut, logErr        *bytes.Buffer
 		clientConfig          *config.Config
 		fakeImageFetcher      *h.FakeImageFetcher
 		fakeLifecycle         *h.FakeLifecycle
@@ -52,7 +50,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeImageFetcher = h.NewFakeImageFetcher()
 		fakeLifecycle = &h.FakeLifecycle{}
 
-		logOut, logErr = &bytes.Buffer{}, &bytes.Buffer{}
 		clientConfig = &config.Config{
 			DefaultBuilder: "example.com/default/builder:tag",
 		}
@@ -93,11 +90,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
 
+		logger := mocks.NewMockLogger(ioutil.Discard)
+
 		subject = pack.NewClient(
 			clientConfig,
-			logging.NewLogger(logOut, logErr, true, false),
+			logger,
 			fakeImageFetcher,
-			buildpack.NewFetcher(pack.NewDownloader(logging.NewLogger(logOut, logErr, true, false), tmpDir)),
+			buildpack.NewFetcher(pack.NewDownloader(logger, tmpDir)),
 			nil,
 			fakeLifecycle,
 			docker,

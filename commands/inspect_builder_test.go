@@ -15,6 +15,7 @@ import (
 	"github.com/buildpack/pack/commands"
 	cmdmocks "github.com/buildpack/pack/commands/mocks"
 	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/internal/mocks"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -27,7 +28,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 	var (
 		command        *cobra.Command
-		logger         *logging.Logger
+		logger         logging.LoggerWithWriter
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
 		mockClient     *cmdmocks.MockPackClient
@@ -38,7 +39,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		cfg = &config.Config{}
 		mockController = gomock.NewController(t)
 		mockClient = cmdmocks.NewMockPackClient(mockController)
-		logger = logging.NewLogger(&outBuf, &outBuf, false, false)
+		logger = mocks.NewMockLogger(&outBuf)
 		command = commands.InspectBuilder(logger, cfg, mockClient)
 	})
 
@@ -69,13 +70,11 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertContains(t, outBuf.String(), `Remote
 ------
-
-ERROR: some remote error
+some remote error
 
 Local
 -----
-
-ERROR: some local error
+some local error
 `)
 			})
 		})

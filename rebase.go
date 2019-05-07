@@ -43,7 +43,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	if err := json.Unmarshal([]byte(label), &md); err != nil {
 		return err
 	}
-	c.logger.Info("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
+	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
 	if err := appImage.Rebase(md.RunImage.TopLayer, baseImage); err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	if err != nil {
 		return err
 	}
-	c.logger.Info("New sha: %s", style.Symbol(sha))
+	c.logger.Infof("New sha: %s", style.Symbol(sha))
 	return nil
 }
 

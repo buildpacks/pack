@@ -7,6 +7,9 @@ github.com/BurntSushi/toml
 github.com/Masterminds/semver
 # github.com/Microsoft/go-winio v0.4.12
 github.com/Microsoft/go-winio
+# github.com/apex/log v1.1.0
+github.com/apex/log
+github.com/apex/log/handlers/discard
 # github.com/buildpack/imgutil v0.0.0-20190509214933-76de939dfb34
 github.com/buildpack/imgutil
 github.com/buildpack/imgutil/fakes

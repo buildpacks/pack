@@ -12,6 +12,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil/fakes"
+	"github.com/buildpack/pack/logging"
 	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
@@ -23,10 +24,11 @@ import (
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/logging"
+	imocks "github.com/buildpack/pack/internal/mocks"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
+
 
 func TestCreateBuilder(t *testing.T) {
 	h.RequireDocker(t)
@@ -47,12 +49,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			fakeBuildImage       *fakes.Image
 			fakeRunImage         *fakes.Image
 			fakeRunImageMirror   *fakes.Image
-			logOut, logErr       *bytes.Buffer
 			opts                 pack.CreateBuilderOptions
 			subject              *pack.Client
+			log                  logging.LoggerWithWriter
+			out bytes.Buffer
 		)
 
 		it.Before(func() {
+			log = imocks.NewMockLogger(&out)
 			mockController = gomock.NewController(t)
 			mockBPFetcher = mocks.NewMockBuildpackFetcher(mockController)
 			mockLifecycleFetcher = mocks.NewMockLifecycleFetcher(mockController)
@@ -89,11 +93,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Version: semver.MustParse("3.4.5"),
 				}, nil).AnyTimes()
 
-			logOut, logErr = &bytes.Buffer{}, &bytes.Buffer{}
-
 			subject = pack.NewClient(
 				&config.Config{},
-				logging.NewLogger(logOut, logErr, true, false),
+				log,
 				imageFetcher,
 				mockBPFetcher,
 				mockLifecycleFetcher,
@@ -201,7 +203,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
 
-				h.AssertContains(t, logOut.String(), "Warning: run image 'some/run-image' is not accessible")
+				h.AssertContains(t, out.String(), "Warning: run image 'some/run-image' is not accessible")
 			})
 		})
 

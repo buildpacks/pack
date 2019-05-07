@@ -26,7 +26,7 @@ type BuildFlags struct {
 	Buildpacks []string
 }
 
-func Build(logger *logging.Logger, config *config.Config, packClient *pack.Client) *cobra.Command {
+func Build(logger logging.LoggerWithWriter, config *config.Config, packClient *pack.Client) *cobra.Command {
 	var flags BuildFlags
 	ctx := createCancellableContext()
 
@@ -57,7 +57,7 @@ func Build(logger *logging.Logger, config *config.Config, packClient *pack.Clien
 			}); err != nil {
 				return err
 			}
-			logger.Info("Successfully built image %s", style.Symbol(imageName))
+			logger.Infof("Successfully built image %s", style.Symbol(imageName))
 			return nil
 		}),
 	}

@@ -1,116 +1,68 @@
+// Package logging contains log interface and assorted log related utilities
 package logging
 
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
-
-	"github.com/fatih/color"
 
 	"github.com/buildpack/pack/style"
 )
 
-type Logger struct {
-	verbose bool
-	out     *logWriter
-	err     *logWriter
+// Logger defines behavior required by a logging package used by pack libraries
+type Logger interface {
+	Debug(msg string)
+	Debugf(fmt string, v ...interface{})
+	Info(msg string)
+	Infof(fmt string, v ...interface{})
+	Error(msg string)
+	Errorf(fmt string, v ...interface{})
 }
 
-func NewLogger(stdout, stderr io.Writer, verbose, timestamps bool) *Logger {
-	return &Logger{
-		verbose: verbose,
-		out:     newLogWriter(stdout, timestamps),
-		err:     newLogWriter(stderr, timestamps),
+// WithWriter would typically be used to return an io.Writer that can be used to write text that is unadorned
+// with logging information.
+type WithWriter interface {
+	Writer() io.Writer
+}
+
+type LoggerWithWriter interface {
+	Logger
+	WithWriter
+}
+
+// Writer will wrap a logging method in an io.Writer
+type Writer struct {
+	logMethod func(string)
+	prefix    string
+}
+
+// NewWriter takes a log method and creates a Writer. For example
+// w := NewWriter(log.Info)
+func NewWriter(f func(string)) *Writer {
+	return &Writer{
+		logMethod: f,
 	}
 }
 
-func (l *Logger) printf(w *logWriter, format string, a ...interface{}) {
-	w.Write([]byte(fmt.Sprintf(format+"\n", a...)))
+// Writes bytes to the embedded log function
+func (w *Writer) Write(buf []byte) (int, error) {
+	w.logMethod(w.prefix + string(buf))
+	return len(buf), nil
 }
 
-func (l *Logger) Info(format string, a ...interface{}) {
-	l.printf(l.out, format, a...)
+// WithPrefix prepends prefix to log messages
+func (w *Writer) WithPrefix(prefix string) *Writer {
+	w.prefix = fmt.Sprintf("%s[%s] ", w.prefix, style.Prefix(prefix))
+	return w
 }
 
-func (l *Logger) Verbose(format string, a ...interface{}) {
-	if l.verbose {
-		l.printf(l.out, format, a...)
-	}
+
+// Tip is a log method used in pack but we don't want to enforce it on other logging libraries we might use, so
+// we provide it as a separate function
+func Tip(l Logger, format string, v ...interface{}) {
+	l.Infof(style.Tip("Tip: ")+format, v...)
 }
 
-func (l *Logger) Error(format string, a ...interface{}) {
-	l.printf(l.err, "\n"+style.Error("ERROR: ")+format, a...)
-}
-
-func (l *Logger) Tip(format string, a ...interface{}) {
-	l.printf(l.out, style.Tip("Tip: ")+format, a...)
-}
-
-func (l *Logger) VerboseWriter() *logWriter {
-	if !l.verbose {
-		return nullLogWriter
-	}
-	return l.out
-}
-
-func (l *Logger) RawVerboseWriter() io.Writer {
-	if !l.verbose {
-		return ioutil.Discard
-	}
-	return l.out.rawOut
-}
-
-func (l *Logger) RawWriter() io.Writer {
-	return l.out.rawOut
-}
-
-func (l *Logger) VerboseErrorWriter() *logWriter {
-	if !l.verbose {
-		return nullLogWriter
-	}
-	return l.err
-}
-
-type logWriter struct {
-	prefix string
-	log    *log.Logger
-	rawOut io.Writer
-}
-
-var nullLogWriter = newLogWriter(ioutil.Discard, false)
-
-func newLogWriter(out io.Writer, timestamps bool) *logWriter {
-	flags := 0
-	timestampStart := ""
-	timestampEnd := ""
-	if !color.NoColor {
-		// Go logger prefixes appear before timestamp, so insert color start/end sequences around timestamp
-		timestampStart = fmt.Sprintf("\x1b[%dm", style.TimestampColorCode)
-		timestampEnd = fmt.Sprintf("\x1b[%dm", color.Reset)
-	}
-	prefix := ""
-	if timestamps {
-		flags = log.LstdFlags
-		prefix = " "
-	}
-
-	return &logWriter{
-		prefix: timestampEnd + prefix,
-		log:    log.New(out, timestampStart, flags),
-		rawOut: out,
-	}
-}
-
-func (w *logWriter) WithPrefix(prefix string) *logWriter {
-	return &logWriter{
-		log:    w.log,
-		prefix: fmt.Sprintf("%s[%s] ", w.prefix, style.Prefix(prefix)),
-		rawOut: w.rawOut,
-	}
-}
-
-func (w *logWriter) Write(p []byte) (n int, err error) {
-	w.log.Print(w.prefix + string(p))
-	return len(p), nil
+func FTip(w io.Writer, format string, v ...interface{}) {
+	_, _ = fmt.Fprintf(w, style.Tip("Tip: ")+format, v...)
+	_, _ = fmt.Fprintln(w)
 }

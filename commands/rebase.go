@@ -8,7 +8,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func Rebase(logger *logging.Logger, client PackClient) *cobra.Command {
+func Rebase(logger logging.Logger, client PackClient) *cobra.Command {
 	var opts pack.RebaseOptions
 	ctx := createCancellableContext()
 
@@ -21,7 +21,7 @@ func Rebase(logger *logging.Logger, client PackClient) *cobra.Command {
 			if err := client.Rebase(ctx, opts); err != nil {
 				return err
 			}
-			logger.Info("Successfully rebased image %s", style.Symbol(opts.RepoName))
+			logger.Infof("Successfully rebased image %s", style.Symbol(opts.RepoName))
 			return nil
 		}),
 	}

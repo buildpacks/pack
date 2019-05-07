@@ -1,8 +1,8 @@
 package pack_test
 
 import (
+	"bytes"
 	"fmt"
-	"io/ioutil"
 	"testing"
 
 	"github.com/buildpack/imgutil/fakes"
@@ -16,7 +16,7 @@ import (
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/image"
-	"github.com/buildpack/pack/logging"
+	m "github.com/buildpack/pack/internal/mocks"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -33,6 +33,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockBPFetcher    *mocks.MockBuildpackFetcher
 		mockController   *gomock.Controller
 		builderImage     *fakes.Image
+		out              bytes.Buffer
 	)
 
 	it.Before(func() {
@@ -45,7 +46,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 				{Image: "some/run-image", Mirrors: []string{"some/local-mirror"}},
 			},
 		},
-			logging.NewLogger(ioutil.Discard, ioutil.Discard, false, false),
+			m.NewMockLogger(&out),
 			mockImageFetcher,
 			mockBPFetcher,
 			nil,

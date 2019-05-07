@@ -22,10 +22,10 @@ import (
 
 type Fetcher struct {
 	docker *client.Client
-	logger *logging.Logger
+	logger logging.Logger
 }
 
-func NewFetcher(logger *logging.Logger, docker *client.Client) *Fetcher {
+func NewFetcher(logger logging.Logger, docker *client.Client) *Fetcher {
 	return &Fetcher{
 		logger: logger,
 		docker: docker,
@@ -44,7 +44,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (im
 
 	if daemon {
 		if remoteFound && pull {
-			f.logger.Verbose("Pulling image %s", style.Symbol(name))
+			f.logger.Debugf("Pulling image %s", style.Symbol(name))
 			if err := f.pullImage(ctx, name); err != nil {
 				return nil, err
 			}
@@ -82,8 +82,9 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
 	if err != nil {
 		return err
 	}
-	termFd, isTerm := term.GetFdInfo(f.logger.RawVerboseWriter())
-	err = jsonmessage.DisplayJSONMessagesStream(rc, &colorizedWriter{f.logger.RawVerboseWriter()}, termFd, isTerm, nil)
+	writer := logging.NewWriter(f.logger.Debug)
+	termFd, isTerm := term.GetFdInfo(writer)
+	err = jsonmessage.DisplayJSONMessagesStream(rc, &colorizedWriter{writer}, termFd, isTerm, nil)
 	if err != nil {
 		return err
 	}

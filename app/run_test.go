@@ -20,7 +20,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/app"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/internal/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -34,11 +34,11 @@ func TestApp(t *testing.T) {
 func testApp(t *testing.T, when spec.G, it spec.S) {
 	when("#Run", func() {
 		var (
-			subject        *app.Image
-			docker         *client.Client
-			err            error
-			outBuf, errBuf bytes.Buffer
-			repo           string
+			subject *app.Image
+			docker  *client.Client
+			err     error
+			errBuf  bytes.Buffer
+			repo    string
 		)
 
 		it.Before(func() {
@@ -46,7 +46,9 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			repo = "some-org/" + h.RandString(10)
-			logger := logging.NewLogger(&outBuf, &errBuf, true, false)
+
+			logger := mocks.NewMockLogger(&errBuf)
+
 			subject = &app.Image{
 				RepoName: repo,
 				Logger:   logger,
@@ -65,7 +67,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 
 			it("runs an image", func() {
 				assertOnRunningContainer(t, subject, nil, &errBuf, docker, func() bool {
-					return strings.Contains(errBuf.String(), "Server is listening")
+					return strings.Contains(errBuf.String(), "listening")
 				})
 			})
 		})

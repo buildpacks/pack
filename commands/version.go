@@ -8,7 +8,7 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-func Version(logger *logging.Logger, version string) *cobra.Command {
+func Version(logger logging.Logger, version string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Args:  cobra.NoArgs,
