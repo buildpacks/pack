@@ -11,6 +11,7 @@ import (
 )
 
 type BuilderInfo struct {
+	Description          string
 	Stack                string
 	RunImage             string
 	RunImageMirrors      []string
@@ -48,6 +49,7 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 	}
 
 	return &BuilderInfo{
+		Description:          bldr.Description(),
 		Stack:                bldr.StackID,
 		RunImage:             bldr.GetStackInfo().RunImage.Image,
 		RunImageMirrors:      bldr.GetStackInfo().RunImage.Mirrors,

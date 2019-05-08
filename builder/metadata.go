@@ -8,10 +8,11 @@ import (
 const MetadataLabel = "io.buildpacks.builder.metadata"
 
 type Metadata struct {
-	Buildpacks []BuildpackMetadata `json:"buildpacks"`
-	Groups     []GroupMetadata     `json:"groups"`
-	Stack      stack.Metadata      `json:"stack"`
-	Lifecycle  lifecycle.Metadata  `json:"lifecycle"`
+	Description string              `json:"description"`
+	Buildpacks  []BuildpackMetadata `json:"buildpacks"`
+	Groups      []GroupMetadata     `json:"groups"`
+	Stack       stack.Metadata      `json:"stack"`
+	Lifecycle   lifecycle.Metadata  `json:"lifecycle"`
 }
 
 type BuildpackMetadata struct {

@@ -99,6 +99,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			opts = pack.CreateBuilderOptions{
 				BuilderName: "some/builder",
 				BuilderConfig: builder.Config{
+					Description: "Some description",
 					Buildpacks: []builder.BuildpackConfig{
 						{ID: "bp.one", URI: "https://example.fake/bp-one.tgz", Latest: true},
 					},
@@ -184,6 +185,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, builderImage.Name(), "some/builder")
+			h.AssertEq(t, builderImage.Description(), "Some description")
 			h.AssertEq(t, builderImage.UID, 1234)
 			h.AssertEq(t, builderImage.GID, 4321)
 			h.AssertEq(t, builderImage.StackID, "some.stack.id")

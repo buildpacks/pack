@@ -1,10 +1,11 @@
 package builder
 
 type Config struct {
-	Buildpacks []BuildpackConfig `toml:"buildpacks"`
-	Groups     []GroupMetadata   `toml:"groups"`
-	Stack      StackConfig       `toml:"stack"`
-	Lifecycle  LifecycleConfig   `toml:"lifecycle"`
+	Description string            `toml:"description"`
+	Buildpacks  []BuildpackConfig `toml:"buildpacks"`
+	Groups      []GroupMetadata   `toml:"groups"`
+	Stack       StackConfig       `toml:"stack"`
+	Lifecycle   LifecycleConfig   `toml:"lifecycle"`
 }
 
 type BuildpackConfig struct {
