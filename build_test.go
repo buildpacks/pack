@@ -156,7 +156,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 				wd, err := os.Getwd()
 				h.AssertNil(t, err)
-				h.AssertEq(t, fakeLifecycle.Opts.AppDir, wd)
+				resolvedWd, err := filepath.EvalSymlinks(wd)
+				h.AssertNil(t, err)
+				h.AssertEq(t, fakeLifecycle.Opts.AppDir, resolvedWd)
 			})
 
 			it("path must exist", func() {
