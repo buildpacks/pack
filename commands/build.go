@@ -37,7 +37,7 @@ func Build(logger *logging.Logger, config *config.Config, packClient *pack.Clien
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			imageName := args[0]
 			if config.DefaultBuilder == "" && flags.Builder == "" {
-				suggestSettingBuilder(logger)
+				suggestSettingBuilder(logger, packClient)
 				return MakeSoftError()
 			}
 			env, err := parseEnv(flags.EnvFile, flags.Env)

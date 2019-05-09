@@ -75,8 +75,8 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("the builder image has a metadata label", func() {
 					it.Before(func() {
-						h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
 						h.AssertNil(t, builderImage.SetLabel("io.buildpacks.builder.metadata", `{
+  "description": "Some description",
   "stack": {
     "runImage": {
       "image": "some/run-image",
@@ -111,6 +111,18 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.RunImage, "some/run-image")
+					})
+
+					it("set the description", func() {
+						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+						h.AssertEq(t, builderInfo.Description, "Some description")
+					})
+
+					it("set the stack ID", func() {
+						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+						h.AssertEq(t, builderInfo.Stack, "test.stack.id")
 					})
 
 					it("set the local run image mirrors", func() {

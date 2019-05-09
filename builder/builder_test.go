@@ -509,6 +509,23 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("#SetDescription", func() {
+			it.Before(func() {
+				subject.SetDescription("Some description")
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+			})
+
+			it("sets the description on the metadata", func() {
+				label, err := baseImage.Label("io.buildpacks.builder.metadata")
+				h.AssertNil(t, err)
+
+				var metadata builder.Metadata
+				h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
+				h.AssertEq(t, metadata.Description, "Some description")
+			})
+		})
+
 		when("#SetStackInfo", func() {
 			it.Before(func() {
 				subject.SetStackInfo(builder.StackConfig{

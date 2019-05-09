@@ -20,7 +20,7 @@ func InspectBuilder(logger *logging.Logger, cfg *config.Config, client PackClien
 		Args:  cobra.MaximumNArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if cfg.DefaultBuilder == "" && len(args) == 0 {
-				suggestSettingBuilder(logger)
+				suggestSettingBuilder(logger, client)
 				return MakeSoftError()
 			}
 
@@ -58,6 +58,10 @@ func inspectBuilderOutput(logger *logging.Logger, client PackClient, imageName s
 	if info == nil {
 		logger.Info("\nNot present")
 		return
+	}
+
+	if info.Description != "" {
+		logger.Info("\nDescription: %s", info.Description)
 	}
 
 	logger.Info("\nStack: %s\n", info.Stack)

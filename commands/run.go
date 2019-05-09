@@ -19,7 +19,7 @@ func Run(logger *logging.Logger, config *config.Config, packClient *pack.Client)
 		Short: "Build and run app image (recommended for development only)",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if config.DefaultBuilder == "" && flags.Builder == "" {
-				suggestSettingBuilder(logger)
+				suggestSettingBuilder(logger, packClient)
 				return MakeSoftError()
 			}
 			env, err := parseEnv(flags.EnvFile, flags.Env)

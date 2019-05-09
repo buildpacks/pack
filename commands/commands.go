@@ -27,16 +27,15 @@ type PackClient interface {
 type suggestedBuilder struct {
 	name  string
 	image string
-	info string
 }
 
 var suggestedBuilders = [][]suggestedBuilder{
 	{
-		{"Cloud Foundry", "cloudfoundry/cnb:bionic", "small base image with Java & Node.js"},
-		{"Cloud Foundry", "cloudfoundry/cnb:cflinuxfs3", "larger base image with Java, Node.js & Python"},
+		{"Cloud Foundry", "cloudfoundry/cnb:bionic"},
+		{"Cloud Foundry", "cloudfoundry/cnb:cflinuxfs3"},
 	},
 	{
-		{"Heroku", "heroku/buildpacks", "heroku-18 base image with official Heroku buildpacks"},
+		{"Heroku", "heroku/buildpacks"},
 	},
 }
 
@@ -76,20 +75,20 @@ func createCancellableContext() context.Context {
 	return ctx
 }
 
-func suggestSettingBuilder(logger *logging.Logger) {
+func suggestSettingBuilder(logger *logging.Logger, client PackClient) {
 	logger.Info("Please select a default builder with:\n")
 	logger.Info("\tpack set-default-builder <builder image>\n")
-	suggestBuilders(logger)
+	suggestBuilders(logger, client)
 }
 
-func suggestBuilders(logger *logging.Logger) {
+func suggestBuilders(logger *logging.Logger, client PackClient) {
 	logger.Info("Suggested builders:\n")
 
 	tw := tabwriter.NewWriter(logger.RawWriter(), 10, 10, 5, ' ', tabwriter.TabIndent)
 	for _, i := range rand.Perm(len(suggestedBuilders)) {
 		builders := suggestedBuilders[i]
 		for _, builder := range builders {
-			_, _ = tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t%s\t\n", builder.name, style.Symbol(builder.image), builder.info)))
+			_, _ = tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t%s\t\n", builder.name, style.Symbol(builder.image), getBuilderDescription(builder.image, client))))
 		}
 	}
 	_ = tw.Flush()
@@ -97,4 +96,27 @@ func suggestBuilders(logger *logging.Logger) {
 	logger.Info("")
 	logger.Tip("Learn more about a specific builder with:\n")
 	logger.Info("\tpack inspect-builder [builder image]")
+}
+
+var defaultBuilderDescriptions = map[string]string{
+	"cloudfoundry/cnb:bionic":     "Small base image with Java & Node.js",
+	"cloudfoundry/cnb:cflinuxfs3": "Larger base image with Java, Node.js & Python",
+	"heroku/buildpacks":           "heroku-18 base image with official Heroku buildpacks",
+}
+
+func getBuilderDescription(builderName string, client PackClient) string {
+	desc := ""
+	info, err := client.InspectBuilder(builderName, false)
+	if err == nil {
+		desc = info.Description
+	}
+
+	if desc == "" {
+		defaultDesc, ok := defaultBuilderDescriptions[builderName]
+		if ok {
+			desc = defaultDesc
+		}
+	}
+
+	return desc
 }

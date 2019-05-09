@@ -78,6 +78,10 @@ func GetBuilder(img imgutil.Image) (*Builder, error) {
 	}, nil
 }
 
+func (b *Builder) Description() string {
+	return b.metadata.Description
+}
+
 func (b *Builder) GetLifecycleVersion() string {
 	return b.metadata.Lifecycle.Version
 }
@@ -192,6 +196,10 @@ func hasBPWithVersion(bps []BuildpackMetadata, version string) bool {
 		}
 	}
 	return false
+}
+
+func (b *Builder) SetDescription(description string) {
+	b.metadata.Description = description
 }
 
 func (b *Builder) SetStackInfo(stackConfig StackConfig) {

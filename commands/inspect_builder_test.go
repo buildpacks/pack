@@ -47,7 +47,6 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#GetBuilder", func() {
-
 		when("image cannot be found", func() {
 			it("logs 'Not present'", func() {
 				mockClient.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
@@ -94,6 +93,11 @@ ERROR: some local error
 				command.SetArgs([]string{"some/image"})
 			})
 
+			it("missing description is skipped", func() {
+				h.AssertNil(t, command.Execute())
+				h.AssertNotContains(t, outBuf.String(), "Description:")
+			})
+
 			it("missing buildpacks logs a warning", func() {
 				h.AssertNil(t, command.Execute())
 				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' has no buildpacks")
@@ -125,6 +129,7 @@ ERROR: some local error
 					{ID: "test.bp.two", Version: "2.0.0", Latest: false},
 				}
 				remoteInfo := &pack.BuilderInfo{
+					Description:          "Some remote description",
 					Stack:                "test.stack.id",
 					RunImage:             "some/run-image",
 					RunImageMirrors:      []string{"first/default", "second/default"},
@@ -140,6 +145,7 @@ ERROR: some local error
 				mockClient.EXPECT().InspectBuilder("some/image", false).Return(remoteInfo, nil)
 
 				localInfo := &pack.BuilderInfo{
+					Description:          "Some local description",
 					Stack:                "test.stack.id",
 					RunImage:             "some/run-image",
 					RunImageMirrors:      []string{"first/local-default", "second/local-default"},
@@ -174,6 +180,8 @@ ERROR: some local error
 Remote
 ------
 
+Description: Some remote description
+
 Stack: test.stack.id
 
 Lifecycle Version: 6.7.8
@@ -199,6 +207,8 @@ Detection Order:
 				h.AssertContains(t, outBuf.String(), `
 Local
 -----
+
+Description: Some local description
 
 Stack: test.stack.id
 
@@ -226,6 +236,10 @@ Detection Order:
 		})
 
 		when("default builder is not set", func() {
+			it.Before(func() {
+				mockClient.EXPECT().InspectBuilder(gomock.Any(), false).Return(&pack.BuilderInfo{}, nil).AnyTimes()
+			})
+
 			it("informs the user", func() {
 				command.SetArgs([]string{})
 				h.AssertNotNil(t, command.Execute())

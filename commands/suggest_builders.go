@@ -5,13 +5,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func SuggestBuilders(logger *logging.Logger) *cobra.Command {
+func SuggestBuilders(logger *logging.Logger, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "suggest-builders",
 		Short: "Display list of recommended builders",
 		Args:  cobra.NoArgs,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			suggestBuilders(logger)
+			suggestBuilders(logger, client)
 
 			return nil
 		}),
