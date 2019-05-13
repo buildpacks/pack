@@ -19,22 +19,23 @@ const (
 	DefaultStackPath     = "/buildpacks/stack.toml"
 	DefaultPlanPath      = "./plan.toml"
 
-	EnvLayersDir     = "CNB_LAYERS_DIR"
-	EnvAppDir        = "CNB_APP_DIR"
-	EnvBuildpacksDir = "CNB_BUILDPACKS_DIR"
-	EnvPlatformDir   = "CNB_PLATFORM_DIR"
-	EnvOrderPath     = "CNB_ORDER_PATH"
-	EnvGroupPath     = "CNB_GROUP_PATH"
-	EnvStackPath     = "CNB_STACK_PATH"
-	EnvPlanPath      = "CNB_PLAN_PATH"
-	EnvUseDaemon     = "CNB_USE_DAEMON"       // defaults to false
-	EnvUseHelpers    = "CNB_USE_CRED_HELPERS" // defaults to false
-	EnvRunImage      = "CNB_RUN_IMAGE"
-	EnvCacheImage    = "CNB_CACHE_IMAGE"
-	EnvCachePath     = "CNB_CACHE_PATH"
-	EnvUID           = "CNB_USER_ID"
-	EnvGID           = "CNB_GROUP_ID"
-	EnvRegistryAuth  = "CNB_REGISTRY_AUTH"
+	EnvLayersDir      = "CNB_LAYERS_DIR"
+	EnvAppDir         = "CNB_APP_DIR"
+	EnvBuildpacksDir  = "CNB_BUILDPACKS_DIR"
+	EnvPlatformDir    = "CNB_PLATFORM_DIR"
+	EnvOrderPath      = "CNB_ORDER_PATH"
+	EnvGroupPath      = "CNB_GROUP_PATH"
+	EnvStackPath      = "CNB_STACK_PATH"
+	EnvPlanPath       = "CNB_PLAN_PATH"
+	EnvUseDaemon      = "CNB_USE_DAEMON"       // defaults to false
+	EnvUseHelpers     = "CNB_USE_CRED_HELPERS" // defaults to false
+	EnvRunImage       = "CNB_RUN_IMAGE"
+	EnvCacheImage     = "CNB_CACHE_IMAGE"
+	EnvCacheDir       = "CNB_CACHE_DIR"
+	EnvLaunchCacheDir = "CNB_LAUNCH_CACHE_DIR"
+	EnvUID            = "CNB_USER_ID"
+	EnvGID            = "CNB_GROUP_ID"
+	EnvRegistryAuth   = "CNB_REGISTRY_AUTH"
 )
 
 func FlagLayersDir(dir *string) {
@@ -65,6 +66,10 @@ func FlagStackPath(path *string) {
 	flag.StringVar(path, "stack", envWithDefault(EnvStackPath, DefaultStackPath), "path to stack.toml")
 }
 
+func FlagLaunchCacheDir(dir *string) {
+	flag.StringVar(dir, "launch-cache", os.Getenv(EnvLaunchCacheDir), "path to launch cache directory")
+}
+
 func FlagPlanPath(path *string) {
 	flag.StringVar(path, "plan", envWithDefault(EnvPlanPath, DefaultPlanPath), "path to plan.toml")
 }
@@ -77,8 +82,8 @@ func FlagCacheImage(image *string) {
 	flag.StringVar(image, "image", os.Getenv(EnvCacheImage), "cache image tag name")
 }
 
-func FlagCachePath(path *string) {
-	flag.StringVar(path, "path", os.Getenv(EnvCachePath), "path to cache directory")
+func FlagCacheDir(dir *string) {
+	flag.StringVar(dir, "path", os.Getenv(EnvCacheDir), "path to cache directory")
 }
 
 func FlagUseDaemon(use *bool) {

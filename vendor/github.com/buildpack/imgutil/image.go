@@ -21,7 +21,7 @@ type Image interface {
 	ReuseLayer(sha string) error
 	TopLayer() (string, error)
 	Save() (string, error)
-	Found() (bool, error)
+	Found() bool
 	GetLayer(string) (io.ReadCloser, error)
 	Delete() error
 	CreatedAt() (time.Time, error)

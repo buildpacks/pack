@@ -40,10 +40,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (im
 		return nil, err
 	}
 
-	remoteFound, err := image.Found()
-	if err != nil {
-		return nil, err
-	}
+	remoteFound := image.Found()
 
 	if daemon {
 		if remoteFound && pull {
@@ -68,10 +65,7 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 		return nil, err
 	}
 
-	found, err := image.Found()
-	if err != nil {
-		return nil, err
-	}
+	found := image.Found()
 
 	if !found {
 		return nil, errors.Wrapf(ErrNotFound, "image %s does not exist on the daemon", style.Symbol(name))

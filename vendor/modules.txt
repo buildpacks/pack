@@ -5,10 +5,10 @@ github.com/Azure/go-ansiterm
 github.com/BurntSushi/toml
 # github.com/Microsoft/go-winio v0.4.12
 github.com/Microsoft/go-winio
-# github.com/buildpack/imgutil v0.0.0-20190503183250-888014bf7744
+# github.com/buildpack/imgutil v0.0.0-20190509214933-76de939dfb34
 github.com/buildpack/imgutil
 github.com/buildpack/imgutil/fakes
-# github.com/buildpack/lifecycle v0.1.1-0.20190425153938-c98efaecd3c0
+# github.com/buildpack/lifecycle v0.1.1-0.20190510142604-8612386b1cea
 github.com/buildpack/lifecycle/metadata
 github.com/buildpack/lifecycle/image/auth
 github.com/buildpack/lifecycle/cmd
@@ -44,26 +44,28 @@ github.com/docker/docker/api/types/swarm/runtime
 github.com/docker/go-connections/nat
 github.com/docker/go-connections/sockets
 github.com/docker/go-connections/tlsconfig
-# github.com/docker/go-units v0.3.3
+# github.com/docker/go-units v0.4.0
 github.com/docker/go-units
 # github.com/fatih/color v1.7.0
 github.com/fatih/color
 # github.com/gogo/protobuf v1.2.1
 github.com/gogo/protobuf/proto
-# github.com/golang/mock v1.2.0
+# github.com/golang/mock v1.3.0
 github.com/golang/mock/gomock
-# github.com/golang/protobuf v1.3.0
+# github.com/golang/protobuf v1.3.1
 github.com/golang/protobuf/proto
-# github.com/google/go-cmp v0.2.0
+# github.com/google/go-cmp v0.3.0
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
+github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/go-containerregistry v0.0.0-20190306174256-678f6c51f585
+# github.com/google/go-containerregistry v0.0.0-20190503220729-1c6c7f61e8a5
 github.com/google/go-containerregistry/pkg/name
 github.com/google/go-containerregistry/pkg/authn
 github.com/google/go-containerregistry/pkg/v1
 github.com/google/go-containerregistry/pkg/v1/mutate
+github.com/google/go-containerregistry/pkg/v1/random
 github.com/google/go-containerregistry/pkg/v1/remote
 github.com/google/go-containerregistry/pkg/v1/remote/transport
 github.com/google/go-containerregistry/pkg/v1/tarball
@@ -72,7 +74,6 @@ github.com/google/go-containerregistry/pkg/v1/empty
 github.com/google/go-containerregistry/pkg/v1/partial
 github.com/google/go-containerregistry/pkg/v1/stream
 github.com/google/go-containerregistry/pkg/v1/v1util
-github.com/google/go-containerregistry/pkg/v1/random
 # github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d
 github.com/hashicorp/yamux
 # github.com/inconshreveable/mousetrap v1.0.0
@@ -115,18 +116,18 @@ github.com/sirupsen/logrus
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag
-# golang.org/x/net v0.0.0-20190415214537-1da14a5a36f2
+# golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c
 golang.org/x/net/proxy
 golang.org/x/net/internal/socks
 golang.org/x/net/html/charset
 golang.org/x/net/html
 golang.org/x/net/html/atom
-# golang.org/x/sync v0.0.0-20190412183630-56d357773e84
+# golang.org/x/sync v0.0.0-20190423024810-112230192c58
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.0.0-20190416152802-12500544f89f
+# golang.org/x/sys v0.0.0-20190509141414-a5b02f93d862
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.3.0
+# golang.org/x/text v0.3.1
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
@@ -141,6 +142,8 @@ golang.org/x/text/encoding/unicode
 golang.org/x/text/language
 golang.org/x/text/internal/utf8internal
 golang.org/x/text/runes
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
 golang.org/x/text/internal/tag
 # gopkg.in/yaml.v2 v2.2.1
 gopkg.in/yaml.v2

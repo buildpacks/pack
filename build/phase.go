@@ -36,8 +36,8 @@ func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (
 	}
 	hostConf := &dcontainer.HostConfig{
 		Binds: []string{
-			fmt.Sprintf("%s:%s:", l.LayersVolume, layersDir),
-			fmt.Sprintf("%s:%s:", l.AppVolume, appDir),
+			fmt.Sprintf("%s:%s", l.LayersVolume, layersDir),
+			fmt.Sprintf("%s:%s", l.AppVolume, appDir),
 		},
 	}
 	ctrConf.Cmd = []string{"/lifecycle/" + name}
@@ -84,6 +84,13 @@ func WithDaemonAccess() func(*Phase) (*Phase, error) {
 	return func(phase *Phase) (*Phase, error) {
 		phase.ctrConf.User = "root"
 		phase.hostConf.Binds = append(phase.hostConf.Binds, "/var/run/docker.sock:/var/run/docker.sock")
+		return phase, nil
+	}
+}
+
+func WithBinds(binds ...string) func(*Phase) (*Phase, error) {
+	return func(phase *Phase) (*Phase, error) {
+		phase.hostConf.Binds = append(phase.hostConf.Binds, binds...)
 		return phase, nil
 	}
 }

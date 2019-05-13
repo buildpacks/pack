@@ -41,6 +41,9 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "proxy" {
 		testProxy()
 	}
+	if len(os.Args) > 1 && os.Args[1] == "binds" {
+		testBinds()
+	}
 }
 
 func testWrite(filename, contents string) {
@@ -136,6 +139,11 @@ func testProxy() {
 	fmt.Println("HTTP_PROXY="+os.Getenv("HTTP_PROXY"))
 	fmt.Println("HTTPS_PROXY="+os.Getenv("HTTPS_PROXY"))
 	fmt.Println("NO_PROXY="+os.Getenv("NO_PROXY"))
+}
+
+func testBinds() {
+	fmt.Println("binds test")
+	readDir("/mounted")
 }
 
 func readDir(dir string) {
