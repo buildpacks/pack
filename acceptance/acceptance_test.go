@@ -215,11 +215,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				t.Log("exporter reuses unchanged layers")
 				h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
 
-				if lifecycleVersion == "0.2.0" {
-					t.Log("uses a launch cache volume when appropriate")
-					h.AssertContains(t, output, "Using launch cache volume")
-				}
-
 				t.Log("cacher adds layers")
 				h.AssertContainsMatch(t, output, `\[cacher] (Caching|adding) layer 'simple/layers:cached-launch-layer'`)
 			})

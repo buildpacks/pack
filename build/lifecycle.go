@@ -3,8 +3,6 @@ package build
 import (
 	"context"
 	"math/rand"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -60,13 +58,11 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	l.Setup(opts)
 	defer l.Cleanup()
 
-	lifecycle020OrLater := l.hasVersion020OrLater()
 	var buildCache, launchCache Cache
-	if lifecycle020OrLater {
+	if l.supportsVolumeCache() {
 		buildCache = cache.NewVolumeCache(opts.Image, "build", l.docker)
 		launchCache = cache.NewVolumeCache(opts.Image, "launch", l.docker)
 		l.logger.Verbose("Using build cache volume %s", style.Symbol(buildCache.Name()))
-		l.logger.Verbose("Using launch cache volume %s", style.Symbol(launchCache.Name()))
 	} else {
 		buildCache = cache.NewImageCache(opts.Image, l.docker)
 		l.logger.Verbose("Using build cache image %s", style.Symbol(buildCache.Name()))
@@ -77,13 +73,6 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 			return errors.Wrap(err, "clearing build cache")
 		}
 		l.logger.Verbose("Build cache %s cleared", style.Symbol(buildCache.Name()))
-
-		if lifecycle020OrLater {
-			if err := launchCache.Clear(ctx); err != nil {
-				return errors.Wrap(err, "clearing launch cache")
-			}
-			l.logger.Verbose("Launch cache %s cleared", style.Symbol(launchCache.Name()))
-		}
 	}
 
 	if lifecycleVersion := l.builder.GetLifecycleVersion(); lifecycleVersion == "" {
@@ -100,7 +89,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	l.logger.Verbose(style.Step("RESTORING"))
 	if opts.ClearCache {
 		l.logger.Verbose("Skipping 'restore' due to clearing cache")
-	} else if err := l.Restore(ctx, lifecycle020OrLater, buildCache.Name()); err != nil {
+	} else if err := l.Restore(ctx, l.supportsVolumeCache(), buildCache.Name()); err != nil {
 		return err
 	}
 
@@ -120,7 +109,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 
 	l.logger.Verbose(style.Step("EXPORTING"))
 	launchCacheName := ""
-	if lifecycle020OrLater {
+	if l.supportsVolumeCache() {
 		launchCacheName = launchCache.Name()
 	}
 	if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCacheName); err != nil {
@@ -128,7 +117,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	}
 
 	l.logger.Verbose(style.Step("CACHING"))
-	if err := l.Cache(ctx, lifecycle020OrLater, buildCache.Name()); err != nil {
+	if err := l.Cache(ctx, l.supportsVolumeCache(), buildCache.Name()); err != nil {
 		return err
 	}
 	return nil
@@ -164,19 +153,6 @@ func randString(n int) string {
 	return string(b)
 }
 
-func (l *Lifecycle) hasVersion020OrLater() bool {
-	version := l.builder.GetLifecycleVersion()
-	parts := strings.Split(version, ".")
-	if len(parts) < 2 {
-		return false
-	}
-	major, err := strconv.ParseUint(parts[0], 10, 64)
-	if err != nil {
-		return false
-	}
-	minor, err := strconv.ParseUint(parts[1], 10, 64)
-	if err != nil {
-		return false
-	}
-	return major > 0 || (major == 0 && minor >= 2)
+func (l *Lifecycle) supportsVolumeCache() bool {
+	return l.builder.GetLifecycleVersion() >= "0.2.0"
 }

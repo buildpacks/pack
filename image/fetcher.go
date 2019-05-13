@@ -65,9 +65,7 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 		return nil, err
 	}
 
-	found := image.Found()
-
-	if !found {
+	if !image.Found() {
 		return nil, errors.Wrapf(ErrNotFound, "image %s does not exist on the daemon", style.Symbol(name))
 	}
 	return image, nil
