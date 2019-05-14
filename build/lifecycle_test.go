@@ -145,6 +145,9 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, outBuf.String(), "HTTP_PROXY=some-http-proxy")
 				h.AssertContains(t, outBuf.String(), "HTTPS_PROXY=some-https-proxy")
 				h.AssertContains(t, outBuf.String(), "NO_PROXY=some-no-proxy")
+				h.AssertContains(t, outBuf.String(), "http_proxy=some-http-proxy")
+				h.AssertContains(t, outBuf.String(), "https_proxy=some-https-proxy")
+				h.AssertContains(t, outBuf.String(), "no_proxy=some-no-proxy")
 			})
 
 			when("#WithArgs", func() {

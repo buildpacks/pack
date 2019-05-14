@@ -55,12 +55,15 @@ func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (
 
 	if l.httpProxy != "" {
 		phase.ctrConf.Env = append(phase.ctrConf.Env, "HTTP_PROXY="+l.httpProxy)
+		phase.ctrConf.Env = append(phase.ctrConf.Env, "http_proxy="+l.httpProxy)
 	}
 	if l.httpsProxy != "" {
 		phase.ctrConf.Env = append(phase.ctrConf.Env, "HTTPS_PROXY="+l.httpsProxy)
+		phase.ctrConf.Env = append(phase.ctrConf.Env, "https_proxy="+l.httpsProxy)
 	}
 	if l.noProxy != "" {
 		phase.ctrConf.Env = append(phase.ctrConf.Env, "NO_PROXY="+l.noProxy)
+		phase.ctrConf.Env = append(phase.ctrConf.Env, "no_proxy="+l.noProxy)
 	}
 
 	var err error
