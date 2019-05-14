@@ -104,7 +104,11 @@ func CreateSingleFileTar(tarFile, path, txt string) error {
 	}
 
 	tw := tar.NewWriter(fh)
-	if err := tw.WriteHeader(&tar.Header{Name: path, Size: int64(len(txt)), Mode: 0666}); err != nil {
+	if err := tw.WriteHeader(&tar.Header{
+		Name: path,
+		Size: int64(len(txt)),
+		Mode: 0644,
+	}); err != nil {
 		return err
 	}
 
@@ -118,7 +122,11 @@ func CreateSingleFileTar(tarFile, path, txt string) error {
 func CreateSingleFileTarReader(path, txt string) (io.Reader, error) {
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
-	if err := tw.WriteHeader(&tar.Header{Name: path, Size: int64(len(txt)), Mode: 0666}); err != nil {
+	if err := tw.WriteHeader(&tar.Header{
+		Name: path,
+		Size: int64(len(txt)),
+		Mode: 0644,
+	}); err != nil {
 		return nil, err
 	}
 

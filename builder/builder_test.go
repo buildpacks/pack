@@ -124,7 +124,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				layerTar, err := baseImage.FindLayerWithPath("/workspace")
 				h.AssertNil(t, err)
 				h.AssertOnTarEntry(t, layerTar, "/workspace", h.HasOwnerAndGroup(1234, 4321))
-				h.AssertOnTarEntry(t, layerTar, "/workspace", h.HasFileMode(0775))
+				h.AssertOnTarEntry(t, layerTar, "/workspace", h.HasFileMode(0755))
 			})
 
 			it("creates the layers dir with CNB user and group", func() {
@@ -134,7 +134,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				layerTar, err := baseImage.FindLayerWithPath("/layers")
 				h.AssertNil(t, err)
 				h.AssertOnTarEntry(t, layerTar, "/layers", h.HasOwnerAndGroup(1234, 4321))
-				h.AssertOnTarEntry(t, layerTar, "/layers", h.HasFileMode(0775))
+				h.AssertOnTarEntry(t, layerTar, "/layers", h.HasFileMode(0755))
 			})
 
 			it("creates the buildpacks dir", func() {
@@ -144,7 +144,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				layerTar, err := baseImage.FindLayerWithPath("/buildpacks")
 				h.AssertNil(t, err)
 				h.AssertOnTarEntry(t, layerTar, "/buildpacks", h.HasOwnerAndGroup(0, 0))
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks", h.HasFileMode(0555))
+				h.AssertOnTarEntry(t, layerTar, "/buildpacks", h.HasFileMode(0755))
 			})
 
 			it("creates the platform dir", func() {
@@ -154,7 +154,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				layerTar, err := baseImage.FindLayerWithPath("/platform")
 				h.AssertNil(t, err)
 				h.AssertOnTarEntry(t, layerTar, "/platform", h.HasOwnerAndGroup(0, 0))
-				h.AssertOnTarEntry(t, layerTar, "/platform", h.HasFileMode(0555))
+				h.AssertOnTarEntry(t, layerTar, "/platform", h.HasFileMode(0755))
 			})
 
 			it("sets the working dir to the layers dir", func() {
@@ -207,41 +207,41 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should add the lifecycle binaries as an image layer", func() {
 				layerTar, err := baseImage.FindLayerWithPath("/lifecycle")
 				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/lifecycle", h.HasFileMode(0555))
+				h.AssertOnTarEntry(t, layerTar, "/lifecycle", h.HasFileMode(0755))
 
 				h.AssertOnTarEntry(t, layerTar, "/lifecycle/detector",
 					h.ContentEquals("detector"),
-					h.HasFileMode(0555),
+					h.HasFileMode(0755),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/lifecycle/restorer",
 					h.ContentEquals("restorer"),
-					h.HasFileMode(0555),
+					h.HasFileMode(0755),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/lifecycle/analyzer",
 					h.ContentEquals("analyzer"),
-					h.HasFileMode(0555),
+					h.HasFileMode(0755),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/lifecycle/builder",
 					h.ContentEquals("builder"),
-					h.HasFileMode(0555),
+					h.HasFileMode(0755),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/lifecycle/exporter",
 					h.ContentEquals("exporter"),
-					h.HasFileMode(0555),
+					h.HasFileMode(0755),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/lifecycle/cacher",
 					h.ContentEquals("cacher"),
-					h.HasFileMode(0555),
+					h.HasFileMode(0755),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/lifecycle/launcher",
 					h.ContentEquals("launcher"),
-					h.HasFileMode(0555),
+					h.HasFileMode(0755),
 				)
 			})
 		})
@@ -294,7 +294,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertOnTarEntry(t,
 						layerTar,
 						"/buildpacks/other-buildpack-id/latest",
-						h.HasFileMode(0444),
+						h.HasFileMode(0644),
 					)
 				})
 

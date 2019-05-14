@@ -330,45 +330,45 @@ func (b *Builder) defaultDirsLayer(dest string) (string, error) {
 
 	now := time.Now()
 
-	if err := tw.WriteHeader(b.rwDir(workspaceDir, now)); err != nil {
+	if err := tw.WriteHeader(b.packOwnedDir(workspaceDir, now)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(workspaceDir))
 	}
 
-	if err := tw.WriteHeader(b.rwDir(layersDir, now)); err != nil {
+	if err := tw.WriteHeader(b.packOwnedDir(layersDir, now)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(layersDir))
 	}
 
-	if err := tw.WriteHeader(b.roDir(buildpacksDir, now)); err != nil {
+	if err := tw.WriteHeader(b.rootOwnedDir(buildpacksDir, now)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(buildpacksDir))
 	}
 
-	if err := tw.WriteHeader(b.roDir(platformDir, now)); err != nil {
+	if err := tw.WriteHeader(b.rootOwnedDir(platformDir, now)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(platformDir))
 	}
 
-	if err := tw.WriteHeader(b.roDir(platformDir+"/env", now)); err != nil {
+	if err := tw.WriteHeader(b.rootOwnedDir(platformDir+"/env", now)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(platformDir+"/env"))
 	}
 
 	return fh.Name(), nil
 }
 
-func (b *Builder) rwDir(path string, time time.Time) *tar.Header {
+func (b *Builder) packOwnedDir(path string, time time.Time) *tar.Header {
 	return &tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     path,
-		Mode:     0775,
+		Mode:     0755,
 		ModTime:  time,
 		Uid:      b.UID,
 		Gid:      b.GID,
 	}
 }
 
-func (b *Builder) roDir(path string, time time.Time) *tar.Header {
+func (b *Builder) rootOwnedDir(path string, time time.Time) *tar.Header {
 	return &tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     path,
-		Mode:     0555,
+		Mode:     0755,
 		ModTime:  time,
 	}
 }
@@ -422,7 +422,7 @@ func (b *Builder) buildpackLayer(dest string, bp buildpack.Buildpack) (string, e
 	if err := tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     buildpacksDir + "/" + bp.EscapedID(),
-		Mode:     0555,
+		Mode:     0755,
 		ModTime:  now,
 	}); err != nil {
 		return "", err
@@ -431,13 +431,19 @@ func (b *Builder) buildpackLayer(dest string, bp buildpack.Buildpack) (string, e
 	if err := tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     buildpacksDir + "/" + bp.EscapedID() + "/" + bp.Version,
-		Mode:     0555,
+		Mode:     0755,
 		ModTime:  now,
 	}); err != nil {
 		return "", err
 	}
 
-	if err := archive.WriteDirToTar(tw, bp.Dir, fmt.Sprintf("%s/%s/%s", buildpacksDir, bp.EscapedID(), bp.Version), b.UID, b.GID); err != nil {
+	if err := archive.WriteDirToTar(
+		tw,
+		bp.Dir,
+		fmt.Sprintf("%s/%s/%s", buildpacksDir, bp.EscapedID(), bp.Version),
+		b.UID,
+		b.GID,
+	); err != nil {
 		return "", errors.Wrapf(err, "creating layer tar for buildpack '%s:%s'", bp.ID, bp.Version)
 	}
 
@@ -446,7 +452,7 @@ func (b *Builder) buildpackLayer(dest string, bp buildpack.Buildpack) (string, e
 			Name:     fmt.Sprintf("%s/%s/%s", buildpacksDir, bp.EscapedID(), "latest"),
 			Linkname: fmt.Sprintf("%s/%s/%s", buildpacksDir, bp.EscapedID(), bp.Version),
 			Typeflag: tar.TypeSymlink,
-			Mode:     0444,
+			Mode:     0644,
 		})
 		if err != nil {
 			return "", errors.Wrapf(err, "creating latest symlink for buildpack '%s:%s'", bp.ID, bp.Version)
@@ -469,7 +475,12 @@ func (b *Builder) envLayer(dest string, env map[string]string) (string, error) {
 	now := time.Now()
 
 	for k, v := range env {
-		if err := tw.WriteHeader(&tar.Header{Name: platformDir + "/env/" + k, Size: int64(len(v)), Mode: 0444, ModTime: now}); err != nil {
+		if err := tw.WriteHeader(&tar.Header{
+			Name:    platformDir + "/env/" + k,
+			Size:    int64(len(v)),
+			Mode:    0644,
+			ModTime: now,
+		}); err != nil {
 			return "", err
 		}
 		if _, err := tw.Write([]byte(v)); err != nil {
@@ -492,7 +503,12 @@ func (b *Builder) lifecycleLayer(dest string) (string, error) {
 
 	now := time.Now()
 
-	if err := tw.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: lifecycleDir, Mode: 0555, ModTime: now}); err != nil {
+	if err := tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeDir,
+		Name:     lifecycleDir,
+		Mode:     0755,
+		ModTime:  now,
+	}); err != nil {
 		return "", err
 	}
 
@@ -511,7 +527,12 @@ func writeLifecycleBinary(lifecyclePath, binary string, tw *tar.Writer, now time
 		return errors.Wrap(err, "reading lifecycle binary")
 	}
 
-	if err := tw.WriteHeader(&tar.Header{Name: lifecycleDir + "/" + binary, Size: int64(len(buf)), Mode: 0555, ModTime: now}); err != nil {
+	if err := tw.WriteHeader(&tar.Header{
+		Name:    lifecycleDir + "/" + binary,
+		Size:    int64(len(buf)),
+		Mode:    0755,
+		ModTime: now,
+	}); err != nil {
 		return err
 	}
 
