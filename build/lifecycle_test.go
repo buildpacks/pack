@@ -169,6 +169,29 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("#WithBinds", func() {
+				it.After(func() {
+					docker.VolumeRemove(context.TODO(), "some-volume", true)
+				})
+
+				it("mounts volumes inside container", func() {
+					phase, err := subject.NewPhase(
+						"phase",
+						build.WithArgs("binds"),
+						build.WithBinds("some-volume:/mounted"),
+					)
+					h.AssertNil(t, err)
+					assertRunSucceeds(t, phase, &outBuf, &errBuf)
+					h.AssertContains(t, outBuf.String(), "[phase] binds test")
+					body, err := docker.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
+						Key:   "name",
+						Value: "some-volume",
+					}))
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(body.Volumes), 1)
+				})
+			})
+
 			when("#WithRegistryAccess", func() {
 				var registry *h.TestRegistryConfig
 

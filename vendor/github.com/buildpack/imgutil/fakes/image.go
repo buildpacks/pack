@@ -19,35 +19,37 @@ import (
 
 func NewImage(name, topLayerSha, digest string) *Image {
 	return &Image{
-		alreadySaved: false,
-		labels:       map[string]string{},
-		env:          map[string]string{},
-		topLayerSha:  topLayerSha,
-		digest:       digest,
-		name:         name,
-		cmd:          []string{"initialCMD"},
-		layersMap:    map[string]string{},
-		createdAt:    time.Now(),
+		alreadySaved:  false,
+		labels:        map[string]string{},
+		env:           map[string]string{},
+		topLayerSha:   topLayerSha,
+		digest:        digest,
+		name:          name,
+		cmd:           []string{"initialCMD"},
+		layersMap:     map[string]string{},
+		prevLayersMap: map[string]string{},
+		createdAt:     time.Now(),
 	}
 }
 
 type Image struct {
-	alreadySaved bool
-	deleted      bool
-	layers       []string
-	layersMap    map[string]string
-	reusedLayers []string
-	labels       map[string]string
-	env          map[string]string
-	topLayerSha  string
-	digest       string
-	name         string
-	entryPoint   []string
-	cmd          []string
-	base         string
-	createdAt    time.Time
-	layerDir     string
-	workingDir   string
+	alreadySaved  bool
+	deleted       bool
+	layers        []string
+	layersMap     map[string]string
+	prevLayersMap map[string]string
+	reusedLayers  []string
+	labels        map[string]string
+	env           map[string]string
+	topLayerSha   string
+	digest        string
+	name          string
+	entryPoint    []string
+	cmd           []string
+	base          string
+	createdAt     time.Time
+	layerDir      string
+	workingDir    string
 }
 
 func (f *Image) CreatedAt() (time.Time, error) {
@@ -134,12 +136,6 @@ func shaForFile(path string) (string, error) {
 }
 
 func (f *Image) GetLayer(sha string) (io.ReadCloser, error) {
-	for _, s := range f.reusedLayers {
-		if s == sha {
-			return ioutil.NopCloser(strings.NewReader("dummy data")), nil
-		}
-	}
-
 	path, ok := f.layersMap[sha]
 	if !ok {
 		return nil, fmt.Errorf("failed to get layer with sha '%s'", sha)
@@ -149,7 +145,12 @@ func (f *Image) GetLayer(sha string) (io.ReadCloser, error) {
 }
 
 func (f *Image) ReuseLayer(sha string) error {
+	prevLayer, ok := f.prevLayersMap[sha]
+	if !ok {
+		return fmt.Errorf("image does not have previous layer with sha '%s'", sha)
+	}
 	f.reusedLayers = append(f.reusedLayers, sha)
+	f.layersMap[sha] = prevLayer
 	return nil
 }
 
@@ -201,8 +202,8 @@ func (f *Image) Delete() error {
 	return nil
 }
 
-func (f *Image) Found() (bool, error) {
-	return !f.deleted, nil
+func (f *Image) Found() bool {
+	return !f.deleted
 }
 
 // test methods
@@ -233,6 +234,10 @@ func (f *Image) ReusedLayers() []string {
 
 func (f *Image) WorkingDir() string {
 	return f.workingDir
+}
+
+func (f *Image) AddPreviousLayer(sha, path string) {
+	f.prevLayersMap[sha] = path
 }
 
 func (f *Image) FindLayerWithPath(path string) (string, error) {

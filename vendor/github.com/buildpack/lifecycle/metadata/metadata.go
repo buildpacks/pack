@@ -79,9 +79,7 @@ func GetAppMetadata(image imgutil.Image) (AppImageMetadata, error) {
 }
 
 func GetRawMetadata(image imgutil.Image, metadataLabel string) (string, error) {
-	if found, err := image.Found(); err != nil {
-		return "", err
-	} else if !found {
+	if !image.Found() {
 		return "", nil
 	}
 	contents, err := image.Label(metadataLabel)

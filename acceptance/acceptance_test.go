@@ -132,8 +132,12 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
 			ref, err := name.ParseReference(repoName, name.WeakValidation)
 			h.AssertNil(t, err)
-			cacheImage := cache.New(ref, dockerCli)
+			cacheImage := cache.NewImageCache(ref, dockerCli)
+			buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
+			launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
 			cacheImage.Clear(context.TODO())
+			buildCacheVolume.Clear(context.TODO())
+			launchCacheVolume.Clear(context.TODO())
 		})
 
 		when("default builder is set", func() {
@@ -152,6 +156,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				sha, err := imgSHAFromOutput(output, repoName)
 				h.AssertNil(t, err)
 				defer h.DockerRmi(dockerCli, sha)
+
+				if lifecycleVersion == "0.2.0" {
+					t.Log("uses a build cache volume when appropriate")
+					h.AssertContains(t, output, "Using build cache volume")
+				} else {
+					t.Log("uses a build cache image when appropriate")
+					h.AssertContains(t, output, "Using build cache image")
+				}
 
 				t.Log("app is runnable")
 				assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
@@ -204,11 +216,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
 
 				t.Log("cacher adds layers")
-				if lifecycleVersion == "0.1.0" {
-					h.AssertContainsMatch(t, output, `\[cacher] adding layer 'simple/layers:cached-launch-layer'`)
-				} else {
-					h.AssertContainsMatch(t, output, `\[cacher] Caching layer 'simple/layers:cached-launch-layer'`)
-				}
+				h.AssertContainsMatch(t, output, `\[cacher] (Caching|adding) layer 'simple/layers:cached-launch-layer'`)
 			})
 
 			when("--buildpack", func() {
@@ -456,8 +464,12 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				ref, err := name.ParseReference(repoName, name.WeakValidation)
 				h.AssertNil(t, err)
 				h.DockerRmi(dockerCli, repoName)
-				cacheImage := cache.New(ref, dockerCli)
+				cacheImage := cache.NewImageCache(ref, dockerCli)
+				buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
+				launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
 				cacheImage.Clear(context.TODO())
+				buildCacheVolume.Clear(context.TODO())
+				launchCacheVolume.Clear(context.TODO())
 			})
 
 			it("starts an image", func() {
@@ -543,8 +555,12 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				ref, err := name.ParseReference(repoName, name.WeakValidation)
 				h.AssertNil(t, err)
 				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
-				cacheImage := cache.New(ref, dockerCli)
+				cacheImage := cache.NewImageCache(ref, dockerCli)
+				buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
+				launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
 				cacheImage.Clear(context.TODO())
+				buildCacheVolume.Clear(context.TODO())
+				launchCacheVolume.Clear(context.TODO())
 			})
 
 			it("rebases", func() {
@@ -584,8 +600,12 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				ref, err := name.ParseReference(repoName, name.WeakValidation)
 				h.AssertNil(t, err)
 				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
-				cacheImage := cache.New(ref, dockerCli)
+				cacheImage := cache.NewImageCache(ref, dockerCli)
+				buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
+				launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
 				cacheImage.Clear(context.TODO())
+				buildCacheVolume.Clear(context.TODO())
+				launchCacheVolume.Clear(context.TODO())
 			})
 
 			it("rebases on the registry", func() {
@@ -635,8 +655,12 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				ref, err := name.ParseReference(repoName, name.WeakValidation)
 				h.AssertNil(t, err)
 				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
-				cacheImage := cache.New(ref, dockerCli)
+				cacheImage := cache.NewImageCache(ref, dockerCli)
+				buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
+				launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
 				cacheImage.Clear(context.TODO())
+				buildCacheVolume.Clear(context.TODO())
+				launchCacheVolume.Clear(context.TODO())
 			})
 
 			it("rebases", func() {
