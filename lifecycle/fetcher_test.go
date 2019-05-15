@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Masterminds/semver"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -43,9 +44,9 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					Download("https://github.com/buildpack/lifecycle/releases/download/v1.2.3/lifecycle-v1.2.3+linux.x86-64.tgz").
 					Return(filepath.Join("testdata", "download-dir"), nil)
 
-				md, err := subject.Fetch("1.2.3", "")
+				md, err := subject.Fetch(semver.MustParse("1.2.3"), "")
 				h.AssertNil(t, err)
-				h.AssertEq(t, md.Version, "1.2.3")
+				h.AssertEq(t, md.Version.String(), "1.2.3")
 				h.AssertEq(t, md.Dir, filepath.Join("testdata", "download-dir", "fake-lifecycle"))
 			})
 		})
@@ -56,9 +57,9 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					Download("https://lifecycle.example.com").
 					Return(filepath.Join("testdata", "download-dir"), nil)
 
-				md, err := subject.Fetch("", "https://lifecycle.example.com")
+				md, err := subject.Fetch(nil, "https://lifecycle.example.com")
 				h.AssertNil(t, err)
-				h.AssertEq(t, md.Version, "")
+				h.AssertNil(t, md.Version)
 				h.AssertEq(t, md.Dir, filepath.Join("testdata", "download-dir", "fake-lifecycle"))
 			})
 		})
@@ -69,9 +70,9 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					Download("https://lifecycle.example.com").
 					Return(filepath.Join("testdata", "download-dir"), nil)
 
-				md, err := subject.Fetch("1.2.3", "https://lifecycle.example.com")
+				md, err := subject.Fetch(semver.MustParse("1.2.3"), "https://lifecycle.example.com")
 				h.AssertNil(t, err)
-				h.AssertEq(t, md.Version, "1.2.3")
+				h.AssertEq(t, md.Version.String(), "1.2.3")
 				h.AssertEq(t, md.Dir, filepath.Join("testdata", "download-dir", "fake-lifecycle"))
 			})
 		})
@@ -79,12 +80,12 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 		when("neither is uri nor version is provided", func() {
 			it("returns the default lifecycle", func() {
 				mockDownloader.EXPECT().
-					Download("https://github.com/buildpack/lifecycle/releases/download/v0.1.0/lifecycle-v0.1.0+linux.x86-64.tgz").
+					Download("https://github.com/buildpack/lifecycle/releases/download/v0.2.0/lifecycle-v0.2.0+linux.x86-64.tgz").
 					Return(filepath.Join("testdata", "download-dir"), nil)
 
-				md, err := subject.Fetch("", "")
+				md, err := subject.Fetch(nil, "")
 				h.AssertNil(t, err)
-				h.AssertEq(t, md.Version, "0.1.0")
+				h.AssertEq(t, md.Version.String(), "0.2.0")
 				h.AssertEq(t, md.Dir, filepath.Join("testdata", "download-dir", "fake-lifecycle"))
 			})
 		})
@@ -96,10 +97,10 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				defer os.RemoveAll(tmp)
 
 				mockDownloader.EXPECT().
-					Download("https://github.com/buildpack/lifecycle/releases/download/v0.1.0/lifecycle-v0.1.0+linux.x86-64.tgz").
+					Download("https://github.com/buildpack/lifecycle/releases/download/v0.2.0/lifecycle-v0.2.0+linux.x86-64.tgz").
 					Return(tmp, nil)
 
-				_, err = subject.Fetch("", "")
+				_, err = subject.Fetch(nil, "")
 				h.AssertError(t, err, "invalid lifecycle")
 			})
 		})
@@ -115,10 +116,10 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmp, "builder"), []byte("content"), os.ModePerm))
 
 				mockDownloader.EXPECT().
-					Download("https://github.com/buildpack/lifecycle/releases/download/v0.1.0/lifecycle-v0.1.0+linux.x86-64.tgz").
+					Download("https://github.com/buildpack/lifecycle/releases/download/v0.2.0/lifecycle-v0.2.0+linux.x86-64.tgz").
 					Return(tmp, nil)
 
-				_, err = subject.Fetch("", "")
+				_, err = subject.Fetch(nil, "")
 				h.AssertError(t, err, "invalid lifecycle")
 			})
 		})

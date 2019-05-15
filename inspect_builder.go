@@ -48,6 +48,11 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		localMirrors = runImageConfig.Mirrors
 	}
 
+	var lifecycleVersion string
+	if ver := bldr.GetLifecycleVersion(); ver != nil {
+		lifecycleVersion = ver.String()
+	}
+
 	return &BuilderInfo{
 		Description:          bldr.Description(),
 		Stack:                bldr.StackID,
@@ -56,6 +61,6 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		LocalRunImageMirrors: localMirrors,
 		Buildpacks:           bldr.GetBuildpacks(),
 		Groups:               bldr.GetOrder(),
-		LifecycleVersion:     bldr.GetLifecycleVersion(),
+		LifecycleVersion:     lifecycleVersion,
 	}, nil
 }

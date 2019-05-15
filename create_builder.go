@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
@@ -21,6 +22,11 @@ type CreateBuilderOptions struct {
 
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
 	if err := validateBuilderConfig(opts.BuilderConfig); err != nil {
+		return errors.Wrap(err, "invalid builder config")
+	}
+
+	lifecycleVersion, err := processLifecycleVersion(opts.BuilderConfig.Lifecycle.Version)
+	if err != nil {
 		return errors.Wrap(err, "invalid builder config")
 	}
 
@@ -70,7 +76,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 
 	builderImage.SetStackInfo(opts.BuilderConfig.Stack)
 
-	lifecycleMd, err := c.lifecycleFetcher.Fetch(opts.BuilderConfig.Lifecycle.Version, opts.BuilderConfig.Lifecycle.URI)
+	lifecycleMd, err := c.lifecycleFetcher.Fetch(lifecycleVersion, opts.BuilderConfig.Lifecycle.URI)
 	if err != nil {
 		return errors.Wrap(err, "fetching lifecycle")
 	}
@@ -80,6 +86,17 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 
 	return builderImage.Save()
+}
+
+func processLifecycleVersion(version string) (*semver.Version, error) {
+	if version == "" {
+		return nil, nil
+	}
+	v, err := semver.NewVersion(version)
+	if err != nil {
+		return nil, errors.Wrap(err, "lifecycle.version must be a valid semver")
+	}
+	return v, nil
 }
 
 func validateBuilderConfig(conf builder.Config) error {

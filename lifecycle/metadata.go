@@ -1,6 +1,10 @@
 package lifecycle
 
+import (
+	"github.com/Masterminds/semver"
+)
+
 type Metadata struct {
-	Version     string `json:"version"`
-	Dir         string `json:"-"`
+	Version *semver.Version `json:"version"`
+	Dir     string          `json:"-"`
 }

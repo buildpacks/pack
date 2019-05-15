@@ -2,6 +2,7 @@ module github.com/buildpack/pack
 
 require (
 	github.com/BurntSushi/toml v0.3.1
+	github.com/Masterminds/semver v1.4.2
 	github.com/buildpack/imgutil v0.0.0-20190509214933-76de939dfb34
 	github.com/buildpack/lifecycle v0.1.1-0.20190510142604-8612386b1cea
 	github.com/dgodd/dockerdial v1.0.1

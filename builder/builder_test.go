@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
@@ -193,7 +194,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("#SetLifecycle", func() {
 			it.Before(func() {
 				h.AssertNil(t, subject.SetLifecycle(lifecycle.Metadata{
-					Version: "1.2.3",
+					Version: semver.MustParse("1.2.3"),
 					Dir:     filepath.Join("testdata", "lifecycle"),
 				}))
 				h.AssertNil(t, subject.Save())
@@ -201,7 +202,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should set the lifecycle version successfully", func() {
-				h.AssertEq(t, subject.GetLifecycleVersion(), "1.2.3")
+				h.AssertEq(t, subject.GetLifecycleVersion().String(), "1.2.3")
 			})
 
 			it("should add the lifecycle binaries as an image layer", func() {
@@ -243,6 +244,15 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.ContentEquals("launcher"),
 					h.HasFileMode(0755),
 				)
+			})
+
+			it("sets the lifecycle version on the metadata", func() {
+				label, err := baseImage.Label("io.buildpacks.builder.metadata")
+				h.AssertNil(t, err)
+
+				var metadata builder.Metadata
+				h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
+				h.AssertEq(t, metadata.Lifecycle.Version.String(), "1.2.3")
 			})
 		})
 
@@ -348,7 +358,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("base image already has metadata", func() {
 				it.Before(func() {
-					h.AssertNil(t, baseImage.SetLabel("io.buildpacks.builder.metadata", `{"buildpacks": [{"id": "prev.id"}], "groups": [{"buildpacks": [{"id": "prev.id"}]}], "stack": {"runImage": {"image": "prev/run", "mirrors": ["prev/mirror"]}}}`))
+					h.AssertNil(t, baseImage.SetLabel(
+						"io.buildpacks.builder.metadata",
+						`{"buildpacks": [{"id": "prev.id"}], "groups": [{"buildpacks": [{"id": "prev.id"}]}], "stack": {"runImage": {"image": "prev/run", "mirrors": ["prev/mirror"]}}, "lifecycle": {"version": "6.6.6"}}`,
+					))
 
 					var err error
 					subject, err = builder.New(baseImage, "some/builder")
@@ -377,6 +390,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, metadata.Groups[0].Buildpacks[0].ID, "prev.id")
 					h.AssertEq(t, metadata.Stack.RunImage.Image, "prev/run")
 					h.AssertEq(t, metadata.Stack.RunImage.Mirrors[0], "prev/mirror")
+					h.AssertEq(t, subject.GetLifecycleVersion().String(), "6.6.6")
 
 					// adds new buildpack
 					h.AssertEq(t, metadata.Buildpacks[1].ID, "some-buildpack-id")

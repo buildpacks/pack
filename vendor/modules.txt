@@ -3,6 +3,8 @@ github.com/Azure/go-ansiterm/winterm
 github.com/Azure/go-ansiterm
 # github.com/BurntSushi/toml v0.3.1
 github.com/BurntSushi/toml
+# github.com/Masterminds/semver v1.4.2
+github.com/Masterminds/semver
 # github.com/Microsoft/go-winio v0.4.12
 github.com/Microsoft/go-winio
 # github.com/buildpack/imgutil v0.0.0-20190509214933-76de939dfb34
