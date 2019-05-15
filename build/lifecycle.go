@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -75,10 +76,10 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		l.logger.Verbose("Build cache %s cleared", style.Symbol(buildCache.Name()))
 	}
 
-	if lifecycleVersion := l.builder.GetLifecycleVersion(); lifecycleVersion == "" {
+	if lifecycleVersion := l.builder.GetLifecycleVersion(); lifecycleVersion == nil {
 		l.logger.Verbose("Warning: lifecycle version unknown")
 	} else {
-		l.logger.Verbose("Executing lifecycle version %s", style.Symbol(lifecycleVersion))
+		l.logger.Verbose("Executing lifecycle version %s", style.Symbol(lifecycleVersion.String()))
 	}
 
 	l.logger.Verbose(style.Step("DETECTING"))
@@ -154,5 +155,8 @@ func randString(n int) string {
 }
 
 func (l *Lifecycle) supportsVolumeCache() bool {
-	return l.builder.GetLifecycleVersion() >= "0.2.0"
+	if l.builder.GetLifecycleVersion() == nil {
+		return false
+	}
+	return l.builder.GetLifecycleVersion().Compare(semver.MustParse("0.2.0")) >= 0
 }

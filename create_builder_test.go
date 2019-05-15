@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
@@ -82,7 +83,11 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			mockBPFetcher.EXPECT().FetchBuildpack(gomock.Any()).Return(bp, nil).AnyTimes()
 
-			mockLifecycleFetcher.EXPECT().Fetch(gomock.Any(), gomock.Any()).Return(lifecycle.Metadata{Dir: filepath.Join("testdata", "lifecycle"), Version: "3.4.5"}, nil).AnyTimes()
+			mockLifecycleFetcher.EXPECT().Fetch(gomock.Any(), gomock.Any()).
+				Return(lifecycle.Metadata{
+					Dir:     filepath.Join("testdata", "lifecycle"),
+					Version: semver.MustParse("3.4.5"),
+				}, nil).AnyTimes()
 
 			logOut, logErr = &bytes.Buffer{}, &bytes.Buffer{}
 
@@ -150,6 +155,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertError(t, err, "stack.run-image is required")
 			})
+
+			it("should fail when lifecycle version is not a semver", func() {
+				opts.BuilderConfig.Lifecycle.Version = "not-semver"
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "lifecycle.version must be a valid semver")
+			})
 		})
 
 		when("validating the run image config", func() {
@@ -201,7 +212,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Optional: false,
 				}},
 			}})
-			h.AssertEq(t, builderImage.GetLifecycleVersion(), "3.4.5")
+			h.AssertEq(t, builderImage.GetLifecycleVersion().String(), "3.4.5")
 
 			layerTar, err := fakeBuildImage.FindLayerWithPath("/lifecycle")
 			h.AssertNil(t, err)

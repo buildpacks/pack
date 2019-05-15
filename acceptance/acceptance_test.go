@@ -912,6 +912,7 @@ func isCommandRunning(cmd *exec.Cmd) bool {
 	return true
 }
 
+// FIXME : buf needs a mutex
 func terminateAtStep(t *testing.T, cmd *exec.Cmd, buf *bytes.Buffer, pattern string) {
 	t.Helper()
 	var interruptSignal os.Signal

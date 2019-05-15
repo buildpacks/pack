@@ -5,13 +5,14 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/style"
 )
 
 const (
-	DefaultLifecycleVersion = "0.1.0"
+	DefaultLifecycleVersion = "0.2.0"
 )
 
 //go:generate mockgen -package mocks -destination mocks/downloader.go github.com/buildpack/pack/lifecycle Downloader
@@ -28,13 +29,13 @@ func NewFetcher(downloader Downloader) *Fetcher {
 	return &Fetcher{downloader: downloader}
 }
 
-func (f *Fetcher) Fetch(version, uri string) (Metadata, error) {
-	if version == "" && uri == "" {
-		version = DefaultLifecycleVersion
+func (f *Fetcher) Fetch(version *semver.Version, uri string) (Metadata, error) {
+	if version == nil && uri == "" {
+		version = semver.MustParse(DefaultLifecycleVersion)
 	}
 
 	if uri == "" {
-		uri = fmt.Sprintf("https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", version, version)
+		uri = fmt.Sprintf("https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", version.String(), version.String())
 	}
 
 	downloadDir, err := f.downloader.Download(uri)

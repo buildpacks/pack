@@ -3,6 +3,7 @@ package pack
 import (
 	"context"
 
+	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil"
 
 	"github.com/buildpack/pack/buildpack"
@@ -24,5 +25,5 @@ type BuildpackFetcher interface {
 //go:generate mockgen -package mocks -destination mocks/lifecycle_fetcher.go github.com/buildpack/pack LifecycleFetcher
 
 type LifecycleFetcher interface {
-	Fetch(version, uri string) (lifecycle.Metadata, error)
+	Fetch(version *semver.Version, uri string) (lifecycle.Metadata, error)
 }

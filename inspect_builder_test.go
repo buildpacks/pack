@@ -103,7 +103,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
       ]
     }
   ],
-  "lifecycle": {"version": "some-lifecycle-version"}
+  "lifecycle": {"version": "1.2.3"}
 }`))
 					})
 
@@ -159,7 +159,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					it("sets the lifecycle version", func() {
 						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.LifecycleVersion, "some-lifecycle-version")
+						h.AssertEq(t, builderInfo.LifecycleVersion, "1.2.3")
 					})
 				})
 			})

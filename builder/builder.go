@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
@@ -82,7 +83,7 @@ func (b *Builder) Description() string {
 	return b.metadata.Description
 }
 
-func (b *Builder) GetLifecycleVersion() string {
+func (b *Builder) GetLifecycleVersion() *semver.Version {
 	return b.metadata.Lifecycle.Version
 }
 

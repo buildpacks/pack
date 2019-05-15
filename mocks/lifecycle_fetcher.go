@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	semver "github.com/Masterminds/semver"
 	lifecycle "github.com/buildpack/pack/lifecycle"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
@@ -34,7 +35,7 @@ func (m *MockLifecycleFetcher) EXPECT() *MockLifecycleFetcherMockRecorder {
 }
 
 // Fetch mocks base method
-func (m *MockLifecycleFetcher) Fetch(arg0, arg1 string) (lifecycle.Metadata, error) {
+func (m *MockLifecycleFetcher) Fetch(arg0 *semver.Version, arg1 string) (lifecycle.Metadata, error) {
 	ret := m.ctrl.Call(m, "Fetch", arg0, arg1)
 	ret0, _ := ret[0].(lifecycle.Metadata)
 	ret1, _ := ret[1].(error)
