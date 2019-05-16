@@ -228,11 +228,8 @@ image associated with a given stack.
 #### Lifecycle
 
 A builder also includes a layer with a series of binaries that are executed during [`build`](#building-explained).
-These binaries represent a specific implementation of the buildpack **lifecycle**, as defined by the
-[Cloud Native Buildpacks API Specification](https://github.com/buildpack/spec#buildpack-api-v3---specification). While
-most users will find the [default lifecycle implementation](https://github.com/buildpack/lifecycle#lifecycle)
-sufficient, users are free to implement their own or use a different release of the default implementation. See
-[Builder configuration](#builder-configuration) for more information on configuring which lifecycle to use for a builder.
+These binaries collectively represent the [buildpack lifecycle](https://github.com/buildpack/lifecycle#lifecycle). See
+[Builder configuration](#builder-configuration) for more information on configuring the lifecycle for a builder.
 
 ### Builder configuration
 
