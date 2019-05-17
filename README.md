@@ -15,7 +15,7 @@ Otherwise, read the rest of this document for detailed explanations and examples
 - [Building app images using `build`](#building-app-images-using-build)
   - [Example: Building using the default builder image](#example-building-using-the-default-builder-image)
   - [Example: Building using a specified buildpack](#example-building-using-a-specified-buildpack)
-  - [Example: Building with user provided environment variables](#example-building-with-user-provided-environment-variables)
+  - [Example: Building with user-provided environment variables](#example-building-with-user-provided-environment-variables)
   - [Building explained](#building-explained)
 - [Updating app images using `rebase`](#updating-app-images-using-rebase)
   - [Example: Rebasing an app image](#example-rebasing-an-app-image)
