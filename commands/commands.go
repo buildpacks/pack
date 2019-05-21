@@ -23,7 +23,6 @@ type PackClient interface {
 	CreateBuilder(context.Context, pack.CreateBuilderOptions) error
 }
 
-
 type suggestedBuilder struct {
 	name  string
 	image string
@@ -119,4 +118,29 @@ func getBuilderDescription(builderName string, client PackClient) string {
 	}
 
 	return desc
+}
+
+func suggestStacks(logger *logging.Logger) {
+	logger.Info(`
+Stacks maintained by the Cloud Native Buildpacks project:
+
+    Stack ID: io.buildpacks.stacks.bionic
+    Description: Minimal Ubuntu 18.04 stack
+    Maintainer: Cloud Native Buildpacks
+    Build Image: cnbs/build:bionic
+    Run Image: cnbs/run:bionic
+
+Stacks maintained by the community:
+
+    Stack ID: heroku-18
+    Description: The official Heroku stack based on Ubuntu 18.04
+    Maintainer: Heroku
+    Build Image: heroku/pack:18-build
+    Run Image: heroku/pack:18
+
+    Stack ID: org.cloudfoundry.stacks.cflinuxfs3
+    Description: The official Cloud Foundry stack based on Ubuntu 18.04
+    Maintainer: Cloud Foundry
+    Build Image: cfbuildpacks/cflinuxfs3-cnb-experimental:build
+    Run Image: cfbuildpacks/cflinuxfs3-cnb-experimental:run`)
 }

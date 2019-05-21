@@ -45,6 +45,8 @@ func main() {
 	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger, &packClient))
 	rootCmd.AddCommand(commands.SuggestBuilders(&logger, &packClient))
 
+	rootCmd.AddCommand(commands.SuggestStacks(&logger))
+
 	rootCmd.AddCommand(commands.Version(&logger, Version))
 
 	if err := rootCmd.Execute(); err != nil {
