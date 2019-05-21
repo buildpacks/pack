@@ -25,6 +25,7 @@ jobs:
     os: windows
     env:
     - NO_DOCKER=true
+    script: go test -count=1 -parallel=1 -v ./...
     after_success:
     |
       go build -o pack ./cmd/pack
@@ -32,6 +33,7 @@ jobs:
     os: osx
     env:
     - NO_DOCKER=true
+    script: go test -count=1 -parallel=1 -v ./...
     after_success:
     |
       go build -o pack ./cmd/pack
