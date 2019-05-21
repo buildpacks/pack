@@ -6,7 +6,7 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-func SuggestBuilders(logger logging.LoggerWithWriter, client PackClient) *cobra.Command {
+func SuggestBuilders(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "suggest-builders",
 		Short: "Display list of recommended builders",

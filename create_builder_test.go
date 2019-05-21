@@ -51,7 +51,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			fakeRunImageMirror   *fakes.Image
 			opts                 pack.CreateBuilderOptions
 			subject              *pack.Client
-			log                  logging.LoggerWithWriter
+			log                  logging.Logger
 			out bytes.Buffer
 		)
 

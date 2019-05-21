@@ -10,7 +10,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func SetDefaultBuilder(logger logging.LoggerWithWriter, client PackClient) *cobra.Command {
+func SetDefaultBuilder(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set-default-builder <builder-name>",
 		Short: "Set default builder used by other commands",

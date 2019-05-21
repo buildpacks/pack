@@ -3,13 +3,14 @@ package main
 import (
 	"os"
 
-	"github.com/apex/log"
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
+
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/commands"
 	"github.com/buildpack/pack/config"
 	clilogger "github.com/buildpack/pack/internal/logging"
 	"github.com/buildpack/pack/logging"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -20,8 +21,7 @@ var (
 
 func main() {
 	// create logger with defaults
-	handler := clilogger.NewLogHandler(os.Stderr)
-	logger := clilogger.NewLogWithWriter(handler)
+	logger := clilogger.NewLogWithWriters()
 
 	cobra.EnableCommandSorting = false
 	rootCmd := &cobra.Command{
@@ -29,15 +29,13 @@ func main() {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if fs := cmd.Flags(); fs != nil {
 				if flag, err := fs.GetBool("no-color"); err != nil {
-					handler.NoColor = flag
+					color.NoColor = flag
 				}
 				if flag, err := fs.GetBool("quiet"); err != nil {
-					if flag {
-						logger.Level = log.ErrorLevel
-					}
+					logger.WantQuiet(flag)
 				}
 				if flag, err := fs.GetBool("timestamps"); err != nil {
-					handler.WantTime = flag
+					logger.WantTime(flag)
 				}
 			}
 
@@ -47,7 +45,7 @@ func main() {
 	}
 	rootCmd.PersistentFlags().Bool("no-color", false, "Disable color output")
 	rootCmd.PersistentFlags().Bool("timestamps", false, "Enable timestamps in output")
-	rootCmd.PersistentFlags().Bool("quiet", false, "Show less output")
+	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Show less output")
 	commands.AddHelpFlag(rootCmd, "pack")
 
 	rootCmd.AddCommand(commands.Build(logger, &cfg, &packClient))
@@ -80,7 +78,7 @@ func initConfig(logger logging.Logger) config.Config {
 }
 
 func initClient(cfg *config.Config, logger logging.Logger) pack.Client {
-	client, err := pack.DefaultClient(cfg, logger)
+	client, err := pack.DefaultClient(cfg, pack.WithLogger(logger))
 	if err != nil {
 		exitError(logger, err)
 	}

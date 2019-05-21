@@ -26,7 +26,7 @@ func testSetDefaultBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 	var (
 		command        *cobra.Command
-		logger         logging.LoggerWithWriter
+		logger         logging.Logger
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
 		mockClient     *cmdmocks.MockPackClient

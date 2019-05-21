@@ -26,7 +26,7 @@ type BuildFlags struct {
 	Buildpacks []string
 }
 
-func Build(logger logging.LoggerWithWriter, config *config.Config, packClient *pack.Client) *cobra.Command {
+func Build(logger logging.Logger, config *config.Config, packClient *pack.Client) *cobra.Command {
 	var flags BuildFlags
 	ctx := createCancellableContext()
 

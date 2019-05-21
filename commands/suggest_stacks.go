@@ -6,12 +6,12 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-func SuggestStacks(logger *logging.Logger) *cobra.Command {
+func SuggestStacks(logger logging.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "suggest-stacks",
 		Short: "Display list of recommended stacks",
 		Args:  cobra.NoArgs,
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(nil, func(cmd *cobra.Command, args []string) error {
 			suggestStacks(logger)
 			return nil
 		}),

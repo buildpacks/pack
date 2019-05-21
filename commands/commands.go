@@ -74,20 +74,17 @@ func createCancellableContext() context.Context {
 	return ctx
 }
 
-func suggestSettingBuilder(logger logging.LoggerWithWriter, client PackClient) {
-	out := logger.Writer()
-	_, _ = fmt.Fprintln(out, "Please select a default builder with:")
-	_, _ = fmt.Fprintln(out)
-	_, _ = fmt.Fprintln(out,"\tpack set-default-builder <builder image>")
-	_, _ = fmt.Fprintln(out)
+func suggestSettingBuilder(logger logging.Logger, client PackClient) {
+	logger.Info("Please select a default builder with:")
+	logger.Info("")
+	logger.Info("\tpack set-default-builder <builder image>")
+	logger.Info("")
 	suggestBuilders(logger, client)
 }
 
-func suggestBuilders(logger logging.LoggerWithWriter, client PackClient) {
-	out := logger.Writer()
-	_, _ = fmt.Fprintln(out, "Suggested builders:")
-	_, _ = fmt.Fprintln(out)
-	tw := tabwriter.NewWriter(out, 10, 10, 5, ' ', tabwriter.TabIndent)
+func suggestBuilders(logger logging.Logger, client PackClient) {
+	logger.Info("Suggested builders:")
+	tw := tabwriter.NewWriter(logger.Writer(), 10, 10, 5, ' ', tabwriter.TabIndent)
 	for _, i := range rand.Perm(len(suggestedBuilders)) {
 		builders := suggestedBuilders[i]
 		for _, builder := range builders {
@@ -124,8 +121,8 @@ func getBuilderDescription(builderName string, client PackClient) string {
 	return desc
 }
 
-func suggestStacks(logger *logging.Logger) {
-	logger.Info(`
+func suggestStacks(log logging.Logger) {
+	log.Info(`
 Stacks maintained by the Cloud Native Buildpacks project:
 
     Stack ID: io.buildpacks.stacks.bionic
