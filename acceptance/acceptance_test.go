@@ -687,6 +687,18 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("pack suggest-stacks", func() {
+		it("displays suggested stacks", func() {
+			cmd := packCmd("suggest-stacks")
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("suggest-stacks command failed: %s: %s", output, err)
+			}
+			h.AssertContains(t, string(output), "Stacks maintained by the Cloud Native Buildpacks project:")
+			h.AssertContains(t, string(output), "Stacks maintained by the community:")
+		})
+	})
+
 	when("pack set-default-builder", func() {
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
 			cmd := packCmd("set-default-builder", "cloudfoundry/cnb:bionic")
