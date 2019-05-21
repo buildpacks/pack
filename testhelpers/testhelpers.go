@@ -412,4 +412,3 @@ func RunContainer(ctx context.Context, dockerCli *client.Client, id string, stdo
 	}
 	return <-copyErr
 }
-

@@ -1,4 +1,5 @@
 /pack
+out/
 
 # Jetbrains Goland
 .idea/
