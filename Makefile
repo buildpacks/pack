@@ -22,7 +22,7 @@ endif
 imports:
 ifeq ($(PACK_CI), true)
 		$(eval files := $(shell goimports -l -local github.com/buildpack/pack $(shell find . -type f -name '*.go' -not -path "./vendor/*")))
-		@if [[ "$(files)" ]]; then \
+		@if [ "$(files)" ]; then \
 			echo "The following files have imports that must be reordered:\n $(files)"; \
 			exit 1; \
 		fi
@@ -31,9 +31,9 @@ else
 endif
 
 vet:
-	$(GOCMD) vet $$($(GOCMD) list ./... | grep -v /testdata/)
+	$(GOCMD) vet -mod=vendor $$($(GOCMD) list ./... | grep -v /testdata/)
 
-test: format imports vet unit acceptance
+test: unit acceptance
 	
 unit: format imports vet
 	$(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 ./...

@@ -5,9 +5,11 @@
 package mocks
 
 import (
-	buildpack "github.com/buildpack/pack/buildpack"
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
+
+	buildpack "github.com/buildpack/pack/buildpack"
 )
 
 // MockBuildpackFetcher is a mock of BuildpackFetcher interface
