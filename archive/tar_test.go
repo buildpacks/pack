@@ -142,6 +142,12 @@ func (v *tarVerifier) nextFile(name, expectedFileContents string) {
 	if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
 		v.t.Fatalf(`expected %s to have been normalized, got: %s`, header.Name, header.ModTime.String())
 	}
+
+	if runtime.GOOS == "windows" {
+		if header.Mode != 0777 {
+			v.t.Fatal("files from windows should have mode 0777")
+		}
+	}
 }
 
 func (v *tarVerifier) nextSymLink(name, link string) {

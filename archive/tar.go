@@ -55,6 +55,7 @@ func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int) error {
 		header.Name = filepath.Join(tarDir, relPath)
 		if runtime.GOOS == "windows" {
 			header.Name = strings.Replace(header.Name, "\\", "/", -1)
+			header.Mode = 0777 // We lose permission bits from windows, so we simply make everything an exe
 		}
 		header.ModTime = NormalizedDateTime
 		header.Uid = uid
