@@ -1,13 +1,16 @@
 [[buildpacks]]
   id = "simple/layers"
+  version = "simple-layers-version"
   uri = "simple-layers-buildpack"
 
 [[buildpacks]]
   id = "read/env"
+  version = "read-env-version"
   uri = "read-env-buildpack"
 
 [[buildpacks]]
   id = "noop.buildpack"
+  version = "noop.buildpack.version"
   uri = "noop-buildpack"
   latest = true
 

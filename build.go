@@ -245,7 +245,7 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, 
 			c.logger.Verbose("fetching buildpack from %s", style.Symbol(bp))
 			fetchedBP, err := c.buildpackFetcher.FetchBuildpack(bp)
 			if err != nil {
-				return nil, builder.GroupMetadata{}, errors.Wrapf(err, "failed to fetch buildpack from uri '%s'", bp)
+				return nil, builder.GroupMetadata{}, errors.Wrapf(err, "failed to fetch buildpack from URI '%s'", bp)
 			}
 			bps = append(bps, fetchedBP)
 			group.Buildpacks = append(group.Buildpacks, builder.GroupBuildpack{ID: fetchedBP.ID, Version: fetchedBP.Version})

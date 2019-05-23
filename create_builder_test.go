@@ -106,7 +106,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				BuilderConfig: builder.Config{
 					Description: "Some description",
 					Buildpacks: []builder.BuildpackConfig{
-						{ID: "bp.one", URI: "https://example.fake/bp-one.tgz", Latest: true},
+						{
+							ID:      "bp.one",
+							Version: "1.2.3",
+							URI:     "https://example.fake/bp-one.tgz",
+							Latest:  true,
+						},
 					},
 					Groups: []builder.GroupMetadata{{
 						Buildpacks: []builder.GroupBuildpack{
@@ -160,6 +165,18 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				opts.BuilderConfig.Lifecycle.Version = "not-semver"
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertError(t, err, "lifecycle.version must be a valid semver")
+			})
+
+			it("should fail when buildpack ID does not match downloaded buildpack", func() {
+				opts.BuilderConfig.Buildpacks[0].ID = "does.not.match"
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "buildpack from URI 'https://example.fake/bp-one.tgz' has ID 'bp.one' which does not match ID 'does.not.match' from builder config")
+			})
+
+			it("should fail when buildpack version does not match downloaded buildpack", func() {
+				opts.BuilderConfig.Buildpacks[0].Version = "0.0.0"
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "buildpack from URI 'https://example.fake/bp-one.tgz' has version '1.2.3' which does not match version '0.0.0' from builder config")
 			})
 		})
 
