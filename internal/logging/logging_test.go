@@ -117,5 +117,13 @@ func TestPackCLILogger(t *testing.T) {
 			}
 		})
 
+		it("will convert an empty string to a line feed", func() {
+			logger.Info("")
+			expected := "\n"
+			if log.String() != expected {
+				t.Fatal("expected empty string to log an unpadded line feed")
+			}
+		})
+
 	})
 }
