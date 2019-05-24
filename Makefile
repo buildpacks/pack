@@ -20,12 +20,9 @@ endif
 
 
 imports:
+	go install -mod=vendor golang.org/x/tools/cmd/goimports
 ifeq ($(PACK_CI), true)
-		$(eval files := $(shell goimports -l -local github.com/buildpack/pack $(shell find . -type f -name '*.go' -not -path "./vendor/*")))
-		@if [ "$(files)" ]; then \
-			echo "The following files have imports that must be reordered:\n $(files)"; \
-			exit 1; \
-		fi
+		test -z $$(goimports -l -local github.com/buildpack/pack $$(find . -type f -name '*.go' -not -path "./vendor/*"))
 else
 		goimports -l -w -local github.com/buildpack/pack $$(find . -type f -name '*.go' -not -path "./vendor/*")
 endif
