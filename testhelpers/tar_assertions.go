@@ -2,39 +2,22 @@ package testhelpers
 
 import (
 	"archive/tar"
-	"io"
-	"io/ioutil"
-	"os"
 	"testing"
+
+	"github.com/buildpack/pack/internal/archive"
 )
 
 type TarEntryAssertion func(*testing.T, *tar.Header, []byte)
 
 func AssertOnTarEntry(t *testing.T, tarFile, entryPath string, assertFns ...TarEntryAssertion) {
 	t.Helper()
-	r, err := os.Open(tarFile)
+
+	header, bytes, err := archive.ReadTarEntry(tarFile, entryPath)
 	AssertNil(t, err)
-	defer r.Close()
 
-	tr := tar.NewReader(r)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		AssertNil(t, err)
-
-		if header.Name == entryPath {
-			buf, err := ioutil.ReadAll(tr)
-			AssertNil(t, err)
-			for _, fn := range assertFns {
-				fn(t, header, buf)
-			}
-			return
-		}
+	for _, fn := range assertFns {
+		fn(t, header, bytes)
 	}
-
-	t.Fatalf("'%s' does not exist in '%s'", entryPath, tarFile)
 }
 
 func ContentEquals(expected string) TarEntryAssertion {
@@ -72,6 +55,15 @@ func HasFileMode(expectedMode int64) TarEntryAssertion {
 		t.Helper()
 		if header.Mode != expectedMode {
 			t.Fatalf("expected '%s' to have mode '%o', but got '%o'", header.Name, expectedMode, header.Mode)
+		}
+	}
+}
+
+func IsDirectory() TarEntryAssertion {
+	return func(t *testing.T, header *tar.Header, _ []byte) {
+		t.Helper()
+		if header.Typeflag != tar.TypeDir {
+			t.Fatalf("expected '%s' to be a directory but was '%d'", header.Name, header.Typeflag)
 		}
 	}
 }

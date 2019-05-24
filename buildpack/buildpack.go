@@ -10,7 +10,7 @@ type BuildpackTOML struct {
 type Buildpack struct {
 	ID      string
 	Latest  bool
-	Dir     string
+	Path    string
 	Version string
 	Stacks  []Stack
 }

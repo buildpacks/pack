@@ -9,10 +9,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/internal/paths"
+
 	"github.com/buildpack/pack/logging"
 )
 
@@ -21,6 +23,8 @@ type Downloader struct {
 	cacheDir string
 }
 
+var schemeRegexp = regexp.MustCompile(`^.+://.*`)
+
 func NewDownloader(logger logging.Logger, cacheDir string) *Downloader {
 	return &Downloader{
 		logger:   logger,
@@ -28,54 +32,48 @@ func NewDownloader(logger logging.Logger, cacheDir string) *Downloader {
 	}
 }
 
-func (d *Downloader) Download(uri string) (string, error) {
-	url, err := url.Parse(uri)
-	if err != nil {
-		return "", err
-	}
+func (d *Downloader) Download(pathOrUri string) (string, error) {
+	hasScheme := schemeRegexp.MatchString(pathOrUri)
+	if hasScheme {
+		parsedUrl, err := url.Parse(pathOrUri)
+		if err != nil {
+			return "", err
+		}
 
-	switch url.Scheme {
-	case "", "file":
-		return d.handleFile(url)
-	case "http", "https":
-		return d.handleHTTP(uri)
-	default:
-		return "", fmt.Errorf("unsupported protocol in URI %q", uri)
+		switch parsedUrl.Scheme {
+		case "file":
+			return paths.UriToFilePath(pathOrUri)
+		case "http", "https":
+			return d.handleHTTP(pathOrUri)
+		default:
+			return "", fmt.Errorf("unsupported protocol '%s' in URI %q", parsedUrl.Scheme, pathOrUri)
+		}
+	} else {
+		return d.handleFile(pathOrUri)
 	}
 }
 
-func (d *Downloader) handleFile(bpURL *url.URL) (string, error) {
-	path := bpURL.Path
+func (d *Downloader) handleFile(path string) (string, error) {
+	var (
+		err error
+	)
 
-	if filepath.Ext(path) != ".tgz" {
-		return path, nil
+	if path, err = filepath.Abs(path); err != nil {
+		return "", nil
 	}
 
-	file, err := os.Open(path)
-	if err != nil {
-		return "", errors.Wrapf(err, "could not open file to untar: %q", path)
-	}
-	defer file.Close()
-
-	tmpDir, err := ioutil.TempDir("", "")
-	if err != nil {
-		return "", fmt.Errorf(`failed to create temporary directory: %s`, err)
-	}
-
-	if err = archive.ExtractTarGZ(file, tmpDir); err != nil {
-		return "", err
-	}
-
-	return tmpDir, nil
+	return path, nil
 }
 
 func (d *Downloader) handleHTTP(uri string) (string, error) {
-	bpCache := filepath.Join(d.cacheDir, fmt.Sprintf("%x", sha256.Sum256([]byte(uri))))
-	if err := os.MkdirAll(bpCache, 0744); err != nil {
+	if err := os.MkdirAll(d.cacheDir, 0744); err != nil {
 		return "", err
 	}
 
-	etagFile := bpCache + ".etag"
+	cachePath := filepath.Join(d.cacheDir, fmt.Sprintf("%x", sha256.Sum256([]byte(uri))))
+	tgzFile := cachePath + ".tgz"
+
+	etagFile := cachePath + ".etag"
 	etagExists, err := fileExists(etagFile)
 	if err != nil {
 		return "", err
@@ -94,11 +92,18 @@ func (d *Downloader) handleHTTP(uri string) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to download from %q", uri)
 	} else if reader == nil {
-		return bpCache, nil
+		return tgzFile, nil
 	}
 	defer reader.Close()
 
-	if err = archive.ExtractTarGZ(reader, bpCache); err != nil {
+	fh, err := os.Create(tgzFile)
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+
+	_, err = io.Copy(fh, reader)
+	if err != nil {
 		return "", err
 	}
 
@@ -106,7 +111,7 @@ func (d *Downloader) handleHTTP(uri string) (string, error) {
 		return "", err
 	}
 
-	return bpCache, nil
+	return tgzFile, nil
 }
 
 func (d *Downloader) downloadAsStream(uri string, etag string) (io.ReadCloser, string, error) {

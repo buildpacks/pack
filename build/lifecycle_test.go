@@ -267,7 +267,7 @@ func CreateFakeLifecycleImage(t *testing.T, dockerCli *client.Client, repoName s
 
 	wd, err := os.Getwd()
 	h.AssertNil(t, err)
-	buildContext, _ := archive.CreateTarReader(filepath.Join(wd, "testdata", "fake-lifecycle"), "/", 0, 0, false)
+	buildContext, _ := archive.CreateTarReader(filepath.Join(wd, "testdata", "fake-lifecycle"), "/", 0, 0, -1)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
 		Tags:        []string{repoName},
