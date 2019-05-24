@@ -61,11 +61,11 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 			return err
 		}
 		fetchedBuildpack.Latest = b.Latest
-		if fetchedBuildpack.ID != b.ID {
+		if b.ID != "" && fetchedBuildpack.ID != b.ID {
 			return fmt.Errorf("buildpack from URI '%s' has ID '%s' which does not match ID '%s' from builder config", b.URI, fetchedBuildpack.ID, b.ID)
 		}
 
-		if fetchedBuildpack.Version != b.Version {
+		if b.Version != "" && fetchedBuildpack.Version != b.Version {
 			return fmt.Errorf("buildpack from URI '%s' has version '%s' which does not match version '%s' from builder config", b.URI, fetchedBuildpack.Version, b.Version)
 		}
 

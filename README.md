@@ -246,11 +246,11 @@ referred to as `builder.toml`). This file has a number of fields.
   <br>
   A list of buildpacks, each with the following fields:
   
-  - **`id`** _(string, required)_
+  - **`id`** _(string, optional)_
     <br>
     An identifier for the buildpack. Must match ID specified in buildpack's `buildpack.toml` file.
   
-  - **`version`** _(string, required)_
+  - **`version`** _(string, optional)_
       <br>
       Version of the buildpack. Must match version specified in buildpack's `buildpack.toml` file.
       
