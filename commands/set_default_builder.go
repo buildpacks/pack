@@ -2,10 +2,12 @@ package commands
 
 import (
 	"fmt"
+
+	"github.com/spf13/cobra"
+
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
-	"github.com/spf13/cobra"
 )
 
 func SetDefaultBuilder(logger *logging.Logger, client PackClient) *cobra.Command {

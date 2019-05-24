@@ -5,10 +5,12 @@
 package mocks
 
 import (
-	semver "github.com/Masterminds/semver"
-	lifecycle "github.com/buildpack/pack/lifecycle"
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	semver "github.com/Masterminds/semver"
+	gomock "github.com/golang/mock/gomock"
+
+	lifecycle "github.com/buildpack/pack/lifecycle"
 )
 
 // MockLifecycleFetcher is a mock of LifecycleFetcher interface

@@ -1,8 +1,9 @@
 package commands
 
 import (
-	"github.com/buildpack/pack/logging"
 	"github.com/spf13/cobra"
+
+	"github.com/buildpack/pack/logging"
 )
 
 func SuggestBuilders(logger *logging.Logger, client PackClient) *cobra.Command {
