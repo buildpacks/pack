@@ -20,6 +20,7 @@ endif
 
 
 imports:
+	go install -mod=vendor golang.org/x/tools/cmd/goimports
 ifeq ($(PACK_CI), true)
 		$(eval files := $(shell goimports -l -local github.com/buildpack/pack $(shell find . -type f -name '*.go' -not -path "./vendor/*")))
 		@if [ "$(files)" ]; then \
