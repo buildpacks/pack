@@ -1,10 +1,13 @@
 package buildpack
 
 import (
+	"io/ioutil"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/internal/archive"
 )
 
 //go:generate mockgen -package mocks -destination mocks/downloader.go github.com/buildpack/pack/lifecycle Downloader
@@ -30,18 +33,18 @@ func NewFetcher(downloader Downloader) *Fetcher {
 }
 
 func (f *Fetcher) FetchBuildpack(uri string) (Buildpack, error) {
-	dir, err := f.downloader.Download(uri)
+	downloadedPath, err := f.downloader.Download(uri)
 	if err != nil {
 		return Buildpack{}, errors.Wrap(err, "fetching buildpack")
 	}
 
-	data, err := readTOML(filepath.Join(dir, "buildpack.toml"))
+	data, err := readTOML(downloadedPath)
 	if err != nil {
 		return Buildpack{}, err
 	}
 
 	return Buildpack{
-		Dir:     dir,
+		Path:    downloadedPath,
 		ID:      data.Buildpack.ID,
 		Version: data.Buildpack.Version,
 		Stacks:  data.Stacks,
@@ -49,10 +52,24 @@ func (f *Fetcher) FetchBuildpack(uri string) (Buildpack, error) {
 }
 
 func readTOML(path string) (buildpackTOML, error) {
-	data := buildpackTOML{}
-	_, err := toml.DecodeFile(path, &data)
+	var (
+		buf []byte
+		err error
+	)
+	if filepath.Ext(path) == ".tgz" {
+		_, buf, err = archive.ReadTarEntry(path, "./buildpack.toml", "buildpack.toml", "/buildpack.toml")
+	} else {
+		buf, err = ioutil.ReadFile(filepath.Join(path, "buildpack.toml"))
+	}
+
+	if err != nil {
+		return buildpackTOML{}, err
+	}
+
+	bpTOML := buildpackTOML{}
+	_, err = toml.Decode(string(buf), &bpTOML)
 	if err != nil {
 		return buildpackTOML{}, errors.Wrapf(err, "reading buildpack.toml from path %s", path)
 	}
-	return data, nil
+	return bpTOML, nil
 }

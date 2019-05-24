@@ -6,5 +6,5 @@ import (
 
 type Metadata struct {
 	Version *semver.Version `json:"version"`
-	Dir     string          `json:"-"`
+	Path    string          `json:"-"`
 }

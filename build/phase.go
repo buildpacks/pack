@@ -118,7 +118,13 @@ func (p *Phase) Run(context context.Context) error {
 		return errors.Wrapf(err, "failed to create '%s' container", p.name)
 	}
 	p.appOnce.Do(func() {
-		appReader, _ := archive.CreateTarReader(p.appDir, appDir, p.uid, p.gid, runtime.GOOS == "windows")
+
+		var mode int64 = -1
+		if runtime.GOOS == "windows" {
+			mode = 0777
+		}
+
+		appReader, _ := archive.CreateTarReader(p.appDir, appDir, p.uid, p.gid, mode)
 		if err = p.docker.CopyToContainer(context, p.ctr.ID, "/", appReader, types.CopyToContainerOptions{}); err != nil {
 			err = errors.Wrapf(err, "failed to copy files to '%s' container", p.name)
 		}

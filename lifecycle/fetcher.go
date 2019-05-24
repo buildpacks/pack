@@ -1,18 +1,20 @@
 package lifecycle
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
-
-	"github.com/buildpack/pack/style"
 )
 
 const (
-	DefaultLifecycleVersion = "0.2.0"
+	DefaultLifecycleVersion = "0.2.1"
 )
 
 //go:generate mockgen -package mocks -destination mocks/downloader.go github.com/buildpack/pack/lifecycle Downloader
@@ -38,48 +40,77 @@ func (f *Fetcher) Fetch(version *semver.Version, uri string) (Metadata, error) {
 		uri = fmt.Sprintf("https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", version.String(), version.String())
 	}
 
-	downloadDir, err := f.downloader.Download(uri)
+	path, err := f.downloader.Download(uri)
 	if err != nil {
 		return Metadata{}, errors.Wrapf(err, "retrieving lifecycle from %s", uri)
 	}
 
-	dir, err := getLifecycleParentDir(downloadDir)
+	err = validateTarEntries(
+		path,
+		"detector",
+		"restorer",
+		"analyzer",
+		"builder",
+		"exporter",
+		"cacher",
+		"launcher",
+	)
 	if err != nil {
 		return Metadata{}, errors.Wrapf(err, "invalid lifecycle")
 	}
 
-	return Metadata{Version: version, Dir: dir}, nil
+	return Metadata{Version: version, Path: path}, nil
 }
 
-func getLifecycleParentDir(root string) (string, error) {
-	fis, err := ioutil.ReadDir(root)
+func validateTarEntries(tarPath string, entryPath ...string) error {
+	var (
+		tarFile    *os.File
+		gzipReader *gzip.Reader
+		fhFinal    io.Reader
+		err        error
+	)
+
+	tarFile, err = os.Open(tarPath)
+	fhFinal = tarFile
 	if err != nil {
-		return "", err
+		return errors.Wrapf(err, "failed to open tar '%s' for validation", tarPath)
 	}
-	if len(fis) == 1 && fis[0].IsDir() {
-		return getLifecycleParentDir(filepath.Join(root, fis[0].Name()))
+	defer tarFile.Close()
+
+	if filepath.Ext(tarPath) == ".tgz" {
+		gzipReader, err = gzip.NewReader(tarFile)
+		fhFinal = gzipReader
+		if err != nil {
+			return errors.Wrap(err, "failed to create gzip reader")
+		}
+
+		defer gzipReader.Close()
 	}
 
-	bins := map[string]bool{
-		"detector": false,
-		"restorer": false,
-		"analyzer": false,
-		"builder":  false,
-		"exporter": false,
-		"cacher":   false,
-		"launcher": false,
-	}
+	regex := regexp.MustCompile(`^[^/]+/([^/]+)$`)
+	headers := map[string]bool{}
+	tr := tar.NewReader(fhFinal)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return errors.Wrap(err, "failed to get next tar entry")
+		}
 
-	for _, fi := range fis {
-		if _, ok := bins[fi.Name()]; ok {
-			bins[fi.Name()] = true
+		pathMatches := regex.FindStringSubmatch(header.Name)
+		if pathMatches != nil {
+			headers[pathMatches[1]] = true
 		}
 	}
 
-	for bin, found := range bins {
+	for _, p := range entryPath {
+		_, found := headers[p]
 		if !found {
-			return "", fmt.Errorf("missing required lifecycle binary %s", style.Symbol(bin))
+			return fmt.Errorf("did not find '%s' in tar", p)
 		}
 	}
-	return root, nil
+
+	return nil
 }

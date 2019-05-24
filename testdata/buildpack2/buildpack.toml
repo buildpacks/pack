@@ -1,0 +1,6 @@
+[buildpack]
+id = "some-other-buildpack-id"
+version = "some-other-buildpack-version"
+
+[[stacks]]
+id = "default.stack"
