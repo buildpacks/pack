@@ -14,6 +14,8 @@ jobs:
     env:
     - PACK_CI=true
     - GO111MODULE=on
+    install:
+    - go install -mod=vendor golang.org/x/tools/cmd/goimports
     script:
     - make
   - name: tests
