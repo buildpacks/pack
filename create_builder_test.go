@@ -18,17 +18,15 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/lifecycle"
-
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/config"
 	imocks "github.com/buildpack/pack/internal/mocks"
+	"github.com/buildpack/pack/lifecycle"
 	"github.com/buildpack/pack/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
-
 
 func TestCreateBuilder(t *testing.T) {
 	h.RequireDocker(t)
@@ -45,14 +43,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockController       *gomock.Controller
 			mockBPFetcher        *mocks.MockBuildpackFetcher
 			mockLifecycleFetcher *mocks.MockLifecycleFetcher
-			imageFetcher         *h.FakeImageFetcher
+			imageFetcher         *imocks.FakeImageFetcher
 			fakeBuildImage       *fakes.Image
 			fakeRunImage         *fakes.Image
 			fakeRunImageMirror   *fakes.Image
 			opts                 pack.CreateBuilderOptions
 			subject              *pack.Client
 			log                  logging.Logger
-			out bytes.Buffer
+			out                  bytes.Buffer
 		)
 
 		it.Before(func() {
@@ -72,7 +70,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			fakeRunImageMirror = fakes.NewImage("localhost:5000/some-run-image", "", "")
 			h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 
-			imageFetcher = h.NewFakeImageFetcher()
+			imageFetcher = imocks.NewFakeImageFetcher()
 			imageFetcher.LocalImages["some/build-image"] = fakeBuildImage
 			imageFetcher.LocalImages["some/run-image"] = fakeRunImage
 			imageFetcher.RemoteImages["localhost:5000/some-run-image"] = fakeRunImageMirror

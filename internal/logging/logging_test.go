@@ -10,6 +10,8 @@ import (
 	"github.com/apex/log"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
+
+	h "github.com/buildpack/pack/testhelpers"
 )
 
 const testTime = "2019/05/15 01:01:01.000000"
@@ -33,97 +35,73 @@ func newTestLogger(stdout, stderr io.Writer) *logWithWriters {
 
 func TestPackCLILogger(t *testing.T) {
 	spec.Run(t, "PackCLILogger", func(t *testing.T, when spec.G, it spec.S) {
-		var log, errlog bytes.Buffer
+		var log, errLog bytes.Buffer
 		var logger *logWithWriters
 
 		it.Before(func() {
 			color.NoColor = false
-			logger = newTestLogger(&log, &errlog)
+			logger = newTestLogger(&log, &errLog)
 		})
 
 		it.After(func() {
 			log.Reset()
-			errlog.Reset()
+			errLog.Reset()
 		})
 
 		it("can enable time in logs", func() {
 			logger.WantTime(true)
 			logger.Error("test")
 			expected := "2019/05/15 01:01:01.000000 \x1b[31;1mERROR  \x1b[0mtest                     \n"
-			if expected != log.String() {
-				t.Fatalf("actual %q expected %q", log.String(), expected)
-			}
+			h.AssertEq(t, log.String(), expected)
 		})
 
 		it("it has no time and color by default", func() {
 			logger.Error("test")
 			expected := "\x1b[31;1mERROR  \x1b[0mtest                     \n"
-			if expected != log.String() {
-				t.Log(log.String())
-				t.Fatalf("actual %q expected %q", log.String(), expected)
-			}
+			h.AssertEq(t, log.String(), expected)
 		})
 
 		it("can disable color logs", func() {
 			color.NoColor = true
 			logger.Error("test")
 			expected := "ERROR  test                     \n"
-			if expected != log.String() {
-				t.Fatalf("actual %q expected %q", log.String(), expected)
-			}
+			h.AssertEq(t, log.String(), expected)
 		})
 
 		it("non-error levels not shown", func() {
 			logger.Info("test")
 			expected := "test                     \n"
-			if expected != log.String() {
-				t.Fatalf("actual %q expected %q", log.String(), expected)
-			}
+			h.AssertEq(t, log.String(), expected)
 		})
 
 		it("will not show verbose messages if quiet", func() {
 			logger.WantQuiet(true)
 			logger.Debug("hello")
 			logger.Debugf("there")
-			if log.String() != "" {
-				t.Fatal("should not be a string in quiet mode")
-			}
+			h.AssertEq(t, log.String(), "")
 			logger.Info("test")
 			expected := "test                     \n"
-			if log.String() != expected {
-				t.Fatalf("actual %q expected %q", log.String(), expected)
-			}
+			h.AssertEq(t, log.String(), expected)
 
 			testOut := logger.Writer()
-			if testOut != ioutil.Discard {
-				t.Fatal("writer should be /dev/null")
-			}
+			h.AssertSameInstance(t, testOut, &log)
 
 			testOut = logger.DebugErrorWriter()
-			if testOut != ioutil.Discard {
-				t.Fatal("error writer should be /dev/null")
-			}
+			h.AssertSameInstance(t, testOut, ioutil.Discard)
 		})
 
 		it("will return correct writers", func() {
 			testOut := logger.Writer()
-			if testOut != &log {
-				t.Fatal("incorrect writer")
-			}
+			h.AssertSameInstance(t, testOut, &log)
 
 			testOut = logger.DebugErrorWriter()
-			if testOut != &errlog {
-				t.Fatal("incorrect error writer")
-			}
+			h.AssertSameInstance(t, testOut, &errLog)
 		})
 
 		it("will convert an empty string to a line feed", func() {
 			logger.Info("")
 			expected := "\n"
-			if log.String() != expected {
-				t.Fatal("expected empty string to log an unpadded line feed")
-			}
+			h.AssertEq(t, log.String(), expected)
 		})
-
 	})
 }

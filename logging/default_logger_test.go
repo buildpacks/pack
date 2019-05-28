@@ -1,12 +1,12 @@
 package logging
 
-
 import (
 	"bytes"
-	"regexp"
 	"testing"
 
 	"github.com/sclevine/spec"
+
+	h "github.com/buildpack/pack/testhelpers"
 )
 
 const (
@@ -20,61 +20,47 @@ func TestDefaultLogger(t *testing.T) {
 		var w bytes.Buffer
 		var logger Logger
 
-		it.Before(func(){
+		it.Before(func() {
 			logger = New(&w)
 		})
 
-		it.After(func(){
+		it.After(func() {
 			w.Reset()
 		})
 
-		it("should print debug messages properly", func(){
+		it("should print debug messages properly", func() {
 			logger.Debug("test")
-			if f, _ := regexp.MatchString(debugMatcher, w.String()); !f {
-				t.Fatalf("unexpected %q", w.String())
-			}
+			h.AssertMatch(t, w.String(), debugMatcher)
 		})
 
-		it("should format debug messages properly", func(){
-			logger.Debugf( "test%s", "foo")
-			if f, _ := regexp.MatchString(debugMatcher, w.String()); !f {
-				t.Fatalf("unexpected %q", w.String())
-			}
+		it("should format debug messages properly", func() {
+			logger.Debugf("test%s", "foo")
+			h.AssertMatch(t, w.String(), debugMatcher)
 		})
 
-		it("should print info messages properly", func(){
+		it("should print info messages properly", func() {
 			logger.Info("test")
-			if f, _ := regexp.MatchString(infoMatcher, w.String()); !f {
-				t.Fatalf("unexpected %q", w.String())
-			}
+			h.AssertMatch(t, w.String(), infoMatcher)
 		})
 
-		it("should format info messages properly", func(){
-			logger.Infof( "test%s", "foo")
-			if f, _ := regexp.MatchString(infoMatcher, w.String()); !f {
-				t.Fatalf("unexpected %q", w.String())
-			}
+		it("should format info messages properly", func() {
+			logger.Infof("test%s", "foo")
+			h.AssertMatch(t, w.String(), infoMatcher)
 		})
 
-		it("should print error messages properly", func(){
+		it("should print error messages properly", func() {
 			logger.Error("test")
-			if f, _ := regexp.MatchString(errorMatcher, w.String()); !f {
-				t.Fatalf("unexpected %q", w.String())
-			}
+			h.AssertMatch(t, w.String(), errorMatcher)
 		})
 
-		it("should format error messages properly", func(){
-			logger.Errorf( "test%s", "foo")
-			if f, _ := regexp.MatchString(errorMatcher, w.String()); !f {
-				t.Fatalf("unexpected %q", w.String())
-			}
+		it("should format error messages properly", func() {
+			logger.Errorf("test%s", "foo")
+			h.AssertMatch(t, w.String(), errorMatcher)
 		})
 
-		it("should not format writer messages", func(){
+		it("should not format writer messages", func() {
 			_, _ = logger.Writer().Write([]byte("test"))
-			if w.String() != "test" {
-				t.Fatalf("expected %q but got %q", "test", w.String())
-			}
+			h.AssertEq(t, w.String(), "test")
 		})
 	})
 }

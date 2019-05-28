@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"github.com/buildpack/imgutil/fakes"
-	"github.com/buildpack/pack/internal/mocks"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/internal/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -24,16 +24,16 @@ func TestRebase(t *testing.T) {
 func testRebase(t *testing.T, when spec.G, it spec.S) {
 	when("#Rebase", func() {
 		var (
-			fakeImageFetcher   *h.FakeImageFetcher
+			fakeImageFetcher   *mocks.FakeImageFetcher
 			client             *pack.Client
 			cfg                *config.Config
 			fakeAppImage       *fakes.Image
 			fakeRunImage       *fakes.Image
 			fakeRunImageMirror *fakes.Image
-			out bytes.Buffer
+			out                bytes.Buffer
 		)
 		it.Before(func() {
-			fakeImageFetcher = h.NewFakeImageFetcher()
+			fakeImageFetcher = mocks.NewFakeImageFetcher()
 
 			fakeAppImage = fakes.NewImage("some/app", "", "")
 			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",

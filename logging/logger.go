@@ -54,10 +54,11 @@ type PrefixWriter struct {
 	prefix string
 }
 
-// NewPrefixWriter takes a writer and creates a PrefixWriter.
-func NewPrefixWriter(w io.Writer) *PrefixWriter {
+// NewPrefixWriter writes by w will be prefixed
+func NewPrefixWriter(w io.Writer, prefix string ) *PrefixWriter {
 	return &PrefixWriter{
 		out: w,
+		prefix: fmt.Sprintf("[%s] ", style.Prefix(prefix)),
 	}
 }
 
@@ -65,12 +66,6 @@ func NewPrefixWriter(w io.Writer) *PrefixWriter {
 func (w *PrefixWriter) Write(buf []byte) (int, error) {
 	_, _ = fmt.Fprint(w.out, w.prefix+string(buf))
 	return len(buf), nil
-}
-
-// WithPrefix prepends prefix to log messages
-func (w *PrefixWriter) WithPrefix(prefix string) *PrefixWriter {
-	w.prefix = fmt.Sprintf("%s[%s] ", w.prefix, style.Prefix(prefix))
-	return w
 }
 
 // Tip logs a tip.

@@ -37,8 +37,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject               *pack.Client
 		clientConfig          *config.Config
-		fakeImageFetcher      *h.FakeImageFetcher
-		fakeLifecycle         *h.FakeLifecycle
+		fakeImageFetcher      *mocks.FakeImageFetcher
+		fakeLifecycle         *mocks.FakeLifecycle
 		defaultBuilderStackID string
 		defaultBuilderImage   *fakes.Image
 		fakeDefaultRunImage   *fakes.Image
@@ -47,14 +47,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		tmpDir                string
 	)
 	it.Before(func() {
-		fakeImageFetcher = h.NewFakeImageFetcher()
-		fakeLifecycle = &h.FakeLifecycle{}
+		fakeImageFetcher = mocks.NewFakeImageFetcher()
+		fakeLifecycle = &mocks.FakeLifecycle{}
 
 		clientConfig = &config.Config{
 			DefaultBuilder: "example.com/default/builder:tag",
 		}
 		defaultBuilderStackID = "default.stack"
-		defaultBuilderImage = h.NewFakeBuilderImage(t,
+		defaultBuilderImage = mocks.NewFakeBuilderImage(t,
 			clientConfig.DefaultBuilder,
 			[]builder.BuildpackMetadata{
 				{ID: "buildpack.id", Version: "buildpack.version", Latest: true},
@@ -289,7 +289,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				)
 
 				it.Before(func() {
-					customBuilderImage = h.NewFakeBuilderImage(t,
+					customBuilderImage = mocks.NewFakeBuilderImage(t,
 						"index.docker.io/some/builder:latest",
 						[]builder.BuildpackMetadata{},
 						builder.Config{
