@@ -129,8 +129,8 @@ func (p *Phase) Run(context context.Context) error {
 		context,
 		p.docker,
 		p.ctr.ID,
-		logging.NewPrefixWriter(p.logger.Writer()).WithPrefix(p.name),
-		logging.NewPrefixWriter(logging.GetErrorWriter(p.logger)).WithPrefix(p.name),
+		logging.NewPrefixWriter(logging.GetDebugWriter(p.logger)).WithPrefix(p.name),
+		logging.NewPrefixWriter(logging.GetDebugErrorWriter(p.logger)).WithPrefix(p.name),
 	)
 }
 

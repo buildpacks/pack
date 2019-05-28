@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpack/lifecycle/metadata"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -27,7 +28,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/lifecycle/metadata"
 	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/lifecycle"
@@ -712,7 +712,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			configuredRunImage := "some-registry.com/pack-test/run1"
 			cmd := packCmd("set-run-image-mirrors", "pack-test/run", "--mirror", configuredRunImage)
 			output := h.Run(t, cmd)
-			h.AssertContains(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
+			h.AssertEq(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 			cmd = packCmd("inspect-builder", builder)
 			output = h.Run(t, cmd)

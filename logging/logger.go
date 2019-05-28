@@ -19,16 +19,31 @@ type Logger interface {
 	Writer() io.Writer
 }
 
-// WithErrorWriter is an optional interface for loggers that want to support a separate writer for errors and standard logging.
-type WithErrorWriter interface {
-	ErrorWriter() io.Writer
+// WithDebugErrorWriter is an optional interface for loggers that want to support a separate writer for errors and standard logging.
+// the DebugErrorWriter should write to stderr if quiet is false.
+type WithDebugErrorWriter interface {
+	DebugErrorWriter() io.Writer
 }
 
-// GetErrorWriter will return an ErrorWriter, typically stderr if one exists, otherwise the standard logger writer
+// WithDebugWriter is an optional interface what will return a writer that will write raw output if quiet is false.
+type WithDebugWriter interface {
+	DebugWriter() io.Writer
+}
+
+// GetDebugErrorWriter will return an ErrorWriter, typically stderr if one exists, otherwise the standard logger writer
 // will be returned.
-func GetErrorWriter(l Logger) io.Writer {
-	if er, ok := l.(WithErrorWriter); ok {
-		return er.ErrorWriter()
+func GetDebugErrorWriter(l Logger) io.Writer {
+	if er, ok := l.(WithDebugErrorWriter); ok {
+		return er.DebugErrorWriter()
+	}
+	return l.Writer()
+}
+
+// GetDebugWriter returns a writer
+// See WithDebugWriter
+func GetDebugWriter(l Logger) io.Writer {
+	if ew, ok := l.(WithDebugWriter); ok {
+		return ew.DebugWriter()
 	}
 	return l.Writer()
 }

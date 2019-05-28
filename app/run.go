@@ -50,8 +50,8 @@ func (i *Image) Run(ctx context.Context, docker *client.Client, ports []string) 
 		ctx,
 		docker,
 		ctr.ID,
-		i.Logger.Writer(),
-		logging.GetErrorWriter(i.Logger),
+		logging.GetDebugWriter(i.Logger),
+		logging.GetDebugErrorWriter(i.Logger),
 	); err != nil {
 		return errors.Wrap(err, "run container")
 	}

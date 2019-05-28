@@ -78,18 +78,22 @@ type logWithWriters struct {
 	handler *handler
 }
 
-// Writer returns stdout if level is verbose (debug)
 func(lw *logWithWriters) Writer() io.Writer {
+	return lw.out
+}
+
+// DebugErrorWriter - returns stderr if log level is not set to quiet.
+func(lw *logWithWriters) DebugErrorWriter() io.Writer {
 	if lw.Level == log.DebugLevel {
-		return lw.out
+		return lw.errOut
 	}
 	return ioutil.Discard
 }
 
-// ErrorWriter - returns stderr if level is verbose (debug)
-func(lw *logWithWriters) ErrorWriter() io.Writer {
+// DebugWriter returns stdout if logging is not set to quiet.
+func(lw *logWithWriters) DebugWriter() io.Writer {
 	if lw.Level == log.DebugLevel {
-		return lw.errOut
+		return lw.out
 	}
 	return ioutil.Discard
 }
@@ -99,7 +103,11 @@ func(lw *logWithWriters) WantTime(f bool) {
 }
 
 func(lw *logWithWriters) WantQuiet(f bool) {
-	lw.Level = log.InfoLevel
+	if f {
+		lw.Level = log.InfoLevel
+	} else {
+		lw.Level = log.DebugLevel
+	}
 }
 
 // NewLogWithWriters creates a logger to be used with pack CLI.

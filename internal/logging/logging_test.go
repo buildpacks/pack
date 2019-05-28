@@ -99,7 +99,7 @@ func TestPackCLILogger(t *testing.T) {
 				t.Fatal("writer should be /dev/null")
 			}
 
-			testOut = logger.ErrorWriter()
+			testOut = logger.DebugErrorWriter()
 			if testOut != ioutil.Discard {
 				t.Fatal("error writer should be /dev/null")
 			}
@@ -111,7 +111,7 @@ func TestPackCLILogger(t *testing.T) {
 				t.Fatal("incorrect writer")
 			}
 
-			testOut = logger.ErrorWriter()
+			testOut = logger.DebugErrorWriter()
 			if testOut != &errlog {
 				t.Fatal("incorrect error writer")
 			}
