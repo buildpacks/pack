@@ -70,11 +70,13 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertContains(t, outBuf.String(), `Remote
 ------
-some remote error
+
+ERROR: some remote error
 
 Local
 -----
-some local error
+
+ERROR: some local error
 `)
 			})
 		})

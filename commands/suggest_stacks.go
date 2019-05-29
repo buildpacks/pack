@@ -11,7 +11,7 @@ func SuggestStacks(logger logging.Logger) *cobra.Command {
 		Use:   "suggest-stacks",
 		Short: "Display list of recommended stacks",
 		Args:  cobra.NoArgs,
-		RunE: logError(nil, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			suggestStacks(logger)
 			return nil
 		}),

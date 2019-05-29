@@ -23,6 +23,10 @@ func NewMockLogger(w io.Writer) *mockLog {
 }
 
 func (ml *mockLog) HandleLog(e *log.Entry) error {
+	if e.Level == log.ErrorLevel {
+		_, _ = fmt.Fprintf(ml.w, "ERROR: %s\n", e.Message)
+		return nil
+	}
 	_, _ = fmt.Fprintln(ml.w, e.Message)
 	return nil
 }

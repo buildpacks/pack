@@ -110,7 +110,7 @@ func testSetDefaultBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{imageName})
 
 				h.AssertNotNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "failed to inspect image nonbuilder/image")
+				h.AssertContains(t, outBuf.String(), "ERROR: failed to inspect image nonbuilder/image")
 			})
 		})
 
@@ -129,7 +129,7 @@ func testSetDefaultBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{imageName})
 
 				h.AssertNotNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "builder 'nonexisting/image' not found")
+				h.AssertContains(t, outBuf.String(), "ERROR: builder 'nonexisting/image' not found")
 			})
 		})
 	})

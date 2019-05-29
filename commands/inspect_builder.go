@@ -56,7 +56,8 @@ func InspectBuilder(logger logging.Logger, cfg *config.Config, client PackClient
 func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName string, local bool) {
 	info, err := client.InspectBuilder(imageName, local)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Info("")
+		logger.Error( err.Error())
 		return
 	}
 
