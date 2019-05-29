@@ -11,6 +11,7 @@ type mockLog struct {
 	log.Logger
 	w io.Writer
 }
+
 // NewMockLogger create a logger to capture output for testing purposes.
 func NewMockLogger(w io.Writer) *mockLog {
 	ml := &mockLog{

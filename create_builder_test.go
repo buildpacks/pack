@@ -12,11 +12,12 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil/fakes"
-	"github.com/buildpack/pack/logging"
 	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack/logging"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/builder"

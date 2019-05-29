@@ -41,7 +41,7 @@ func formatLevel(ll log.Level) string {
 }
 
 // preserve behavior of other loggers
-func appendMissingLineFeed( msg string ) string {
+func appendMissingLineFeed(msg string) string {
 	buff := []byte(msg)
 	if buff[len(buff)-1] != '\n' {
 		buff = append(buff, '\n')
@@ -66,24 +66,24 @@ func (h *handler) HandleLog(e *log.Entry) error {
 		return nil
 	}
 
-	_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf( "%s%-25s", formatLevel(e.Level), e.Message)))
+	_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf("%s%-25s", formatLevel(e.Level), e.Message)))
 
 	return nil
 }
 
 type logWithWriters struct {
 	log.Logger
-	out io.Writer
-	errOut io.Writer
+	out     io.Writer
+	errOut  io.Writer
 	handler *handler
 }
 
-func(lw *logWithWriters) Writer() io.Writer {
+func (lw *logWithWriters) Writer() io.Writer {
 	return lw.out
 }
 
 // DebugErrorWriter - returns stderr if log level is not set to quiet.
-func(lw *logWithWriters) DebugErrorWriter() io.Writer {
+func (lw *logWithWriters) DebugErrorWriter() io.Writer {
 	if lw.Level == log.DebugLevel {
 		return lw.errOut
 	}
@@ -91,18 +91,18 @@ func(lw *logWithWriters) DebugErrorWriter() io.Writer {
 }
 
 // DebugWriter returns stdout if logging is not set to quiet.
-func(lw *logWithWriters) DebugWriter() io.Writer {
+func (lw *logWithWriters) DebugWriter() io.Writer {
 	if lw.Level == log.DebugLevel {
 		return lw.out
 	}
 	return ioutil.Discard
 }
 
-func(lw *logWithWriters) WantTime(f bool) {
+func (lw *logWithWriters) WantTime(f bool) {
 	lw.handler.wantTime = f
 }
 
-func(lw *logWithWriters) WantQuiet(f bool) {
+func (lw *logWithWriters) WantQuiet(f bool) {
 	if f {
 		lw.Level = log.InfoLevel
 	} else {
@@ -126,6 +126,3 @@ func NewLogWithWriters() *logWithWriters {
 	lw.Logger.Level = log.DebugLevel
 	return &lw
 }
-
-
-

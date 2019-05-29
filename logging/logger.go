@@ -55,9 +55,9 @@ type PrefixWriter struct {
 }
 
 // NewPrefixWriter writes by w will be prefixed
-func NewPrefixWriter(w io.Writer, prefix string ) *PrefixWriter {
+func NewPrefixWriter(w io.Writer, prefix string) *PrefixWriter {
 	return &PrefixWriter{
-		out: w,
+		out:    w,
 		prefix: fmt.Sprintf("[%s] ", style.Prefix(prefix)),
 	}
 }

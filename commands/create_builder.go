@@ -47,7 +47,7 @@ func CreateBuilder(logger logging.Logger, client PackClient) *cobra.Command {
 				return err
 			}
 			logger.Infof("Successfully created builder image %s", style.Symbol(imageName))
-			logging.Tip(logger,"Run %s to use this builder", style.Symbol(fmt.Sprintf("pack build <image-name> --builder %s", imageName)))
+			logging.Tip(logger, "Run %s to use this builder", style.Symbol(fmt.Sprintf("pack build <image-name> --builder %s", imageName)))
 			return nil
 		}),
 	}

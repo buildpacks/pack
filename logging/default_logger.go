@@ -9,7 +9,7 @@ import (
 // New creates a default logger for the pack library. Note that the pack CLI has it's own logger.
 func New(w io.Writer) *defaultLogger {
 	return &defaultLogger{
-		out: log.New(w, "", log.LstdFlags | log.Lmicroseconds),
+		out: log.New(w, "", log.LstdFlags|log.Lmicroseconds),
 	}
 }
 
@@ -21,7 +21,7 @@ const (
 	debugPrefix = "DEBUG:"
 	infoPrefix  = "INFO:"
 	errorPrefix = "ERROR:"
-	prefixFmt = "%-7s %s"
+	prefixFmt   = "%-7s %s"
 )
 
 func (l *defaultLogger) Debug(msg string) {
@@ -29,7 +29,7 @@ func (l *defaultLogger) Debug(msg string) {
 }
 
 func (l *defaultLogger) Debugf(format string, v ...interface{}) {
-	l.out.Printf(prefixFmt, debugPrefix, fmt.Sprintf(format, v... ))
+	l.out.Printf(prefixFmt, debugPrefix, fmt.Sprintf(format, v...))
 }
 
 func (l *defaultLogger) Info(msg string) {
@@ -37,7 +37,7 @@ func (l *defaultLogger) Info(msg string) {
 }
 
 func (l *defaultLogger) Infof(format string, v ...interface{}) {
-	l.out.Printf(prefixFmt, infoPrefix, fmt.Sprintf(format, v... ))
+	l.out.Printf(prefixFmt, infoPrefix, fmt.Sprintf(format, v...))
 }
 
 func (l *defaultLogger) Error(msg string) {
@@ -45,14 +45,9 @@ func (l *defaultLogger) Error(msg string) {
 }
 
 func (l *defaultLogger) Errorf(format string, v ...interface{}) {
-	l.out.Printf(prefixFmt, errorPrefix, fmt.Sprintf(format, v... ))
+	l.out.Printf(prefixFmt, errorPrefix, fmt.Sprintf(format, v...))
 }
 
 func (l *defaultLogger) Writer() io.Writer {
 	return l.out.Writer()
 }
-
-
-
-
-

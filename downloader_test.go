@@ -8,10 +8,11 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/buildpack/pack/internal/mocks"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/pack/internal/mocks"
 
 	h "github.com/buildpack/pack/testhelpers"
 )
