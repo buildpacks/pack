@@ -1,6 +1,7 @@
 package lifecycle_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -80,12 +81,12 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 		when("neither is uri nor version is provided", func() {
 			it("returns the default lifecycle", func() {
 				mockDownloader.EXPECT().
-					Download("https://github.com/buildpack/lifecycle/releases/download/v0.2.0/lifecycle-v0.2.0+linux.x86-64.tgz").
+					Download(fmt.Sprintf("https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", lifecycle.DefaultLifecycleVersion, lifecycle.DefaultLifecycleVersion)).
 					Return(filepath.Join("testdata", "download-dir"), nil)
 
 				md, err := subject.Fetch(nil, "")
 				h.AssertNil(t, err)
-				h.AssertEq(t, md.Version.String(), "0.2.0")
+				h.AssertEq(t, md.Version.String(), lifecycle.DefaultLifecycleVersion)
 				h.AssertEq(t, md.Dir, filepath.Join("testdata", "download-dir", "fake-lifecycle"))
 			})
 		})
@@ -97,7 +98,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				defer os.RemoveAll(tmp)
 
 				mockDownloader.EXPECT().
-					Download("https://github.com/buildpack/lifecycle/releases/download/v0.2.0/lifecycle-v0.2.0+linux.x86-64.tgz").
+					Download(fmt.Sprintf("https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", lifecycle.DefaultLifecycleVersion, lifecycle.DefaultLifecycleVersion)).
 					Return(tmp, nil)
 
 				_, err = subject.Fetch(nil, "")
@@ -116,7 +117,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmp, "builder"), []byte("content"), os.ModePerm))
 
 				mockDownloader.EXPECT().
-					Download("https://github.com/buildpack/lifecycle/releases/download/v0.2.0/lifecycle-v0.2.0+linux.x86-64.tgz").
+					Download(fmt.Sprintf("https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", lifecycle.DefaultLifecycleVersion, lifecycle.DefaultLifecycleVersion)).
 					Return(tmp, nil)
 
 				_, err = subject.Fetch(nil, "")
