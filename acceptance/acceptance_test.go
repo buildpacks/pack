@@ -440,9 +440,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				cmd := packCmd("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
 				output, err := h.RunE(cmd)
 				h.AssertNotNil(t, err)
-				h.AssertContains(t, output, `Please select a default builder with:
-
-	pack set-default-builder <builder image>`)
+				h.AssertContains(t, output, `Please select a default builder with:`)
 				h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
 				h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
 				h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks'`)
@@ -495,9 +493,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				cmd := packCmd("run", "-p", filepath.Join("testdata", "mock_app"))
 				output, err := h.RunE(cmd)
 				h.AssertNotNil(t, err)
-				h.AssertContains(t, output, `Please select a default builder with:
-
-	pack set-default-builder <builder image>`)
+				h.AssertContains(t, output, `Please select a default builder with:`)
 				h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
 				h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
 				h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks'`)
@@ -720,10 +716,8 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 			cmd = packCmd("inspect-builder", builder)
 			output = h.Run(t, cmd)
-
 			expected, err := ioutil.ReadFile(filepath.Join("testdata", "inspect_builder_output.txt"))
 			h.AssertNil(t, err)
-
 			h.AssertEq(t, output, fmt.Sprintf(string(expected), builder, lifecycleVersion, runImageMirror, lifecycleVersion, runImageMirror))
 		})
 	})

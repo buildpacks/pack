@@ -1,15 +1,15 @@
 Inspecting builder: '%s'
 
-Remote
-------
+Remote                   
+------                   
 
-Stack: pack.test.stack
+Stack: pack.test.stack   
 
-Lifecycle Version: %s
+Lifecycle Version: %-6s
 
-Run Images:
+Run Images:              
   some-registry.com/pack-test/run1 (user-configured)
-  pack-test/run
+  pack-test/run          
   %s
 
 Buildpacks:
@@ -18,21 +18,21 @@ Buildpacks:
   read/env              read-env-version              false
   noop.buildpack        noop.buildpack.version        true
 
-Detection Order:
-  Group #1:
+Detection Order:        
+  Group #1:              
     simple/layers@simple-layers-version    
     read/env@read-env-version              (optional)
 
-Local
------
+Local                    
+-----                    
 
-Stack: pack.test.stack
+Stack: pack.test.stack   
 
-Lifecycle Version: %s
+Lifecycle Version: %-6s
 
-Run Images:
+Run Images:              
   some-registry.com/pack-test/run1 (user-configured)
-  pack-test/run
+  pack-test/run          
   %s
 
 Buildpacks:
@@ -41,7 +41,7 @@ Buildpacks:
   read/env              read-env-version              false
   noop.buildpack        noop.buildpack.version        true
 
-Detection Order:
-  Group #1:
+Detection Order:        
+  Group #1:              
     simple/layers@simple-layers-version    
     read/env@read-env-version              (optional)

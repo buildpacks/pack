@@ -12,17 +12,13 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpack/pack/internal/mocks"
+
 	h "github.com/buildpack/pack/testhelpers"
 )
 
 func TestDownloader(t *testing.T) {
 	spec.Run(t, "Downloader", testDownloader, spec.Parallel(), spec.Report(report.Terminal{}))
-}
-
-type emptyLogger struct {
-}
-
-func (e *emptyLogger) Verbose(format string, a ...interface{}) {
 }
 
 func testDownloader(t *testing.T, when spec.G, it spec.S) {
@@ -45,7 +41,7 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 			cacheDir, err = ioutil.TempDir("", "")
 			h.AssertNil(t, err)
 
-			subject = NewDownloader(&emptyLogger{}, cacheDir)
+			subject = NewDownloader(mocks.NewMockLogger(ioutil.Discard), cacheDir)
 		})
 
 		it.After(func() {

@@ -22,7 +22,7 @@ type CreateBuilderFlags struct {
 	NoPull          bool
 }
 
-func CreateBuilder(logger *logging.Logger, client PackClient) *cobra.Command {
+func CreateBuilder(logger logging.Logger, client PackClient) *cobra.Command {
 	var flags CreateBuilderFlags
 	ctx := createCancellableContext()
 	cmd := &cobra.Command{
@@ -46,8 +46,8 @@ func CreateBuilder(logger *logging.Logger, client PackClient) *cobra.Command {
 			}); err != nil {
 				return err
 			}
-			logger.Info("Successfully created builder image %s", style.Symbol(imageName))
-			logger.Tip("Run %s to use this builder", style.Symbol(fmt.Sprintf("pack build <image-name> --builder %s", imageName)))
+			logger.Infof("Successfully created builder image %s", style.Symbol(imageName))
+			logging.Tip(logger, "Run %s to use this builder", style.Symbol(fmt.Sprintf("pack build <image-name> --builder %s", imageName)))
 			return nil
 		}),
 	}

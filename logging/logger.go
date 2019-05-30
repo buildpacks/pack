@@ -1,116 +1,74 @@
+// Package logging defines the minimal interface that loggers must support to be used by pack.
 package logging
 
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
-
-	"github.com/fatih/color"
 
 	"github.com/buildpack/pack/style"
 )
 
-type Logger struct {
-	verbose bool
-	out     *logWriter
-	err     *logWriter
+// Logger defines behavior required by a logging package used by pack libraries
+type Logger interface {
+	Debug(msg string)
+	Debugf(fmt string, v ...interface{})
+	Info(msg string)
+	Infof(fmt string, v ...interface{})
+	Error(msg string)
+	Errorf(fmt string, v ...interface{})
+	Writer() io.Writer
 }
 
-func NewLogger(stdout, stderr io.Writer, verbose, timestamps bool) *Logger {
-	return &Logger{
-		verbose: verbose,
-		out:     newLogWriter(stdout, timestamps),
-		err:     newLogWriter(stderr, timestamps),
+// WithDebugErrorWriter is an optional interface for loggers that want to support a separate writer for errors and standard logging.
+// the DebugErrorWriter should write to stderr if quiet is false.
+type WithDebugErrorWriter interface {
+	DebugErrorWriter() io.Writer
+}
+
+// WithDebugWriter is an optional interface what will return a writer that will write raw output if quiet is false.
+type WithDebugWriter interface {
+	DebugWriter() io.Writer
+}
+
+// GetDebugErrorWriter will return an ErrorWriter, typically stderr if one exists, otherwise the standard logger writer
+// will be returned.
+func GetDebugErrorWriter(l Logger) io.Writer {
+	if er, ok := l.(WithDebugErrorWriter); ok {
+		return er.DebugErrorWriter()
 	}
+	return l.Writer()
 }
 
-func (l *Logger) printf(w *logWriter, format string, a ...interface{}) {
-	w.Write([]byte(fmt.Sprintf(format+"\n", a...)))
-}
-
-func (l *Logger) Info(format string, a ...interface{}) {
-	l.printf(l.out, format, a...)
-}
-
-func (l *Logger) Verbose(format string, a ...interface{}) {
-	if l.verbose {
-		l.printf(l.out, format, a...)
+// GetDebugWriter returns a writer
+// See WithDebugWriter
+func GetDebugWriter(l Logger) io.Writer {
+	if ew, ok := l.(WithDebugWriter); ok {
+		return ew.DebugWriter()
 	}
+	return l.Writer()
 }
 
-func (l *Logger) Error(format string, a ...interface{}) {
-	l.printf(l.err, "\n"+style.Error("ERROR: ")+format, a...)
-}
-
-func (l *Logger) Tip(format string, a ...interface{}) {
-	l.printf(l.out, style.Tip("Tip: ")+format, a...)
-}
-
-func (l *Logger) VerboseWriter() *logWriter {
-	if !l.verbose {
-		return nullLogWriter
-	}
-	return l.out
-}
-
-func (l *Logger) RawVerboseWriter() io.Writer {
-	if !l.verbose {
-		return ioutil.Discard
-	}
-	return l.out.rawOut
-}
-
-func (l *Logger) RawWriter() io.Writer {
-	return l.out.rawOut
-}
-
-func (l *Logger) VerboseErrorWriter() *logWriter {
-	if !l.verbose {
-		return nullLogWriter
-	}
-	return l.err
-}
-
-type logWriter struct {
+// PrefixWriter will prefix writes
+type PrefixWriter struct {
+	out    io.Writer
 	prefix string
-	log    *log.Logger
-	rawOut io.Writer
 }
 
-var nullLogWriter = newLogWriter(ioutil.Discard, false)
-
-func newLogWriter(out io.Writer, timestamps bool) *logWriter {
-	flags := 0
-	timestampStart := ""
-	timestampEnd := ""
-	if !color.NoColor {
-		// Go logger prefixes appear before timestamp, so insert color start/end sequences around timestamp
-		timestampStart = fmt.Sprintf("\x1b[%dm", style.TimestampColorCode)
-		timestampEnd = fmt.Sprintf("\x1b[%dm", color.Reset)
-	}
-	prefix := ""
-	if timestamps {
-		flags = log.LstdFlags
-		prefix = " "
-	}
-
-	return &logWriter{
-		prefix: timestampEnd + prefix,
-		log:    log.New(out, timestampStart, flags),
-		rawOut: out,
+// NewPrefixWriter writes by w will be prefixed
+func NewPrefixWriter(w io.Writer, prefix string) *PrefixWriter {
+	return &PrefixWriter{
+		out:    w,
+		prefix: fmt.Sprintf("[%s] ", style.Prefix(prefix)),
 	}
 }
 
-func (w *logWriter) WithPrefix(prefix string) *logWriter {
-	return &logWriter{
-		log:    w.log,
-		prefix: fmt.Sprintf("%s[%s] ", w.prefix, style.Prefix(prefix)),
-		rawOut: w.rawOut,
-	}
+// Writes bytes to the embedded log function
+func (w *PrefixWriter) Write(buf []byte) (int, error) {
+	_, _ = fmt.Fprint(w.out, w.prefix+string(buf))
+	return len(buf), nil
 }
 
-func (w *logWriter) Write(p []byte) (n int, err error) {
-	w.log.Print(w.prefix + string(p))
-	return len(p), nil
+// Tip logs a tip.
+func Tip(l Logger, format string, v ...interface{}) {
+	l.Infof(style.Tip("Tip: ")+format, v...)
 }

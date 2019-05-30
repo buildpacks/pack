@@ -43,6 +43,6 @@ func (c *Client) Run(ctx context.Context, opts RunOptions) error {
 		return errors.Wrap(err, "build failed")
 	}
 	appImage := &app.Image{RepoName: imageName, Logger: c.logger}
-	c.logger.Verbose(style.Step("RUNNING"))
+	c.logger.Debug(style.Step("RUNNING"))
 	return appImage.Run(ctx, c.docker, opts.Ports)
 }

@@ -19,7 +19,7 @@ import (
 
 type Phase struct {
 	name     string
-	logger   *logging.Logger
+	logger   logging.Logger
 	docker   *client.Client
 	ctrConf  *dcontainer.Config
 	hostConf *dcontainer.HostConfig
@@ -129,8 +129,8 @@ func (p *Phase) Run(context context.Context) error {
 		context,
 		p.docker,
 		p.ctr.ID,
-		p.logger.VerboseWriter().WithPrefix(p.name),
-		p.logger.VerboseErrorWriter().WithPrefix(p.name),
+		logging.NewPrefixWriter(logging.GetDebugWriter(p.logger), p.name),
+		logging.NewPrefixWriter(logging.GetDebugErrorWriter(p.logger), p.name),
 	)
 }
 

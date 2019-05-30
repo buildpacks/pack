@@ -46,7 +46,13 @@ func (i *Image) Run(ctx context.Context, docker *client.Client, ports []string) 
 	defer docker.ContainerRemove(context.Background(), ctr.ID, types.ContainerRemoveOptions{Force: true})
 
 	logContainerListening(i.Logger, portBindings)
-	if err = container.Run(ctx, docker, ctr.ID, i.Logger.VerboseWriter(), i.Logger.VerboseErrorWriter()); err != nil {
+	if err = container.Run(
+		ctx,
+		docker,
+		ctr.ID,
+		logging.GetDebugWriter(i.Logger),
+		logging.GetDebugErrorWriter(i.Logger),
+	); err != nil {
 		return errors.Wrap(err, "run container")
 	}
 
@@ -78,7 +84,7 @@ func parsePorts(ports []string) (nat.PortSet, nat.PortMap, error) {
 	return nat.ParsePortSpecs(ports)
 }
 
-func logContainerListening(logger *logging.Logger, portBindings nat.PortMap) {
+func logContainerListening(logger logging.Logger, portBindings nat.PortMap) {
 	// TODO handle case with multiple ports, for now when there is more than
 	// one port we assume you know what you're doing and don't need guidance
 	if len(portBindings) == 1 {
@@ -91,7 +97,7 @@ func logContainerListening(logger *logging.Logger, portBindings nat.PortMap) {
 					host = "localhost"
 				}
 				// TODO the service may not be http based
-				logger.Info("Starting container listening at http://%s:%s/\n", host, port)
+				logger.Infof("Starting container listening at http://%s:%s/\n", host, port)
 			}
 		}
 	}

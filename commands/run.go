@@ -8,7 +8,7 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-func Run(logger *logging.Logger, config *config.Config, packClient *pack.Client) *cobra.Command {
+func Run(logger logging.Logger, config *config.Config, packClient *pack.Client) *cobra.Command {
 	var flags BuildFlags
 	var ports []string
 	ctx := createCancellableContext()

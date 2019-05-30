@@ -10,7 +10,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func SetDefaultBuilder(logger *logging.Logger, client PackClient) *cobra.Command {
+func SetDefaultBuilder(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set-default-builder <builder-name>",
 		Short: "Set default builder used by other commands",
@@ -18,21 +18,21 @@ func SetDefaultBuilder(logger *logging.Logger, client PackClient) *cobra.Command
 		Args:  cobra.MaximumNArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 || args[0] == "" {
-				logger.Info(fmt.Sprintf("Usage:\n\t%s\n", cmd.UseLine()))
+				logger.Infof("Usage:\n\t%s\n", cmd.UseLine())
 				suggestBuilders(logger, client)
 				return nil
 			}
 
 			imageName := args[0]
 
-			logger.Verbose("Verifying local image...")
+			logger.Debug("Verifying local image...")
 			info, err := client.InspectBuilder(imageName, true)
 			if err != nil {
 				return err
 			}
 
 			if info == nil {
-				logger.Verbose("Verifying remote image...")
+				logger.Debug("Verifying remote image...")
 				info, err := client.InspectBuilder(imageName, false)
 				if err != nil {
 					return err
@@ -51,7 +51,7 @@ func SetDefaultBuilder(logger *logging.Logger, client PackClient) *cobra.Command
 			if err != nil {
 				return err
 			}
-			logger.Info("Builder %s is now the default builder", style.Symbol(imageName))
+			logger.Infof("Builder %s is now the default builder", style.Symbol(imageName))
 			return nil
 		}),
 	}

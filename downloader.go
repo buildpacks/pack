@@ -13,18 +13,15 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/archive"
+	"github.com/buildpack/pack/logging"
 )
 
-type Logger interface {
-	Verbose(format string, a ...interface{})
-}
-
 type Downloader struct {
-	logger   Logger
+	logger   logging.Logger
 	cacheDir string
 }
 
-func NewDownloader(logger Logger, cacheDir string) *Downloader {
+func NewDownloader(logger logging.Logger, cacheDir string) *Downloader {
 	return &Downloader{
 		logger:   logger,
 		cacheDir: cacheDir,
@@ -128,12 +125,12 @@ func (d *Downloader) downloadAsStream(uri string, etag string) (io.ReadCloser, s
 	}
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		d.logger.Verbose("Downloading from %q\n", uri)
+		d.logger.Debugf("Downloading from %q", uri)
 		return resp.Body, resp.Header.Get("Etag"), nil
 	}
 
 	if resp.StatusCode == 304 {
-		d.logger.Verbose("Using cached version of %q\n", uri)
+		d.logger.Debugf("Using cached version of %q", uri)
 		return nil, etag, nil
 	}
 

@@ -42,7 +42,7 @@ func AddHelpFlag(cmd *cobra.Command, commandName string) {
 	cmd.Flags().BoolP("help", "h", false, fmt.Sprintf("Help for '%s'", commandName))
 }
 
-func logError(logger *logging.Logger, f func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {
+func logError(logger logging.Logger, f func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		cmd.SilenceUsage = true
@@ -74,16 +74,17 @@ func createCancellableContext() context.Context {
 	return ctx
 }
 
-func suggestSettingBuilder(logger *logging.Logger, client PackClient) {
-	logger.Info("Please select a default builder with:\n")
-	logger.Info("\tpack set-default-builder <builder image>\n")
+func suggestSettingBuilder(logger logging.Logger, client PackClient) {
+	logger.Info("Please select a default builder with:")
+	logger.Info("")
+	logger.Info("\tpack set-default-builder <builder image>")
+	logger.Info("")
 	suggestBuilders(logger, client)
 }
 
-func suggestBuilders(logger *logging.Logger, client PackClient) {
-	logger.Info("Suggested builders:\n")
-
-	tw := tabwriter.NewWriter(logger.RawWriter(), 10, 10, 5, ' ', tabwriter.TabIndent)
+func suggestBuilders(logger logging.Logger, client PackClient) {
+	logger.Info("Suggested builders:")
+	tw := tabwriter.NewWriter(logger.Writer(), 10, 10, 5, ' ', tabwriter.TabIndent)
 	for _, i := range rand.Perm(len(suggestedBuilders)) {
 		builders := suggestedBuilders[i]
 		for _, builder := range builders {
@@ -93,7 +94,7 @@ func suggestBuilders(logger *logging.Logger, client PackClient) {
 	_ = tw.Flush()
 
 	logger.Info("")
-	logger.Tip("Learn more about a specific builder with:\n")
+	logging.Tip(logger, "Learn more about a specific builder with:\n")
 	logger.Info("\tpack inspect-builder [builder image]")
 }
 
@@ -120,8 +121,8 @@ func getBuilderDescription(builderName string, client PackClient) string {
 	return desc
 }
 
-func suggestStacks(logger *logging.Logger) {
-	logger.Info(`
+func suggestStacks(log logging.Logger) {
+	log.Info(`
 Stacks maintained by the Cloud Native Buildpacks project:
 
     Stack ID: io.buildpacks.stacks.bionic

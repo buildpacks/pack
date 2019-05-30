@@ -6,7 +6,7 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-func SuggestStacks(logger *logging.Logger) *cobra.Command {
+func SuggestStacks(logger logging.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "suggest-stacks",
 		Short: "Display list of recommended stacks",

@@ -106,7 +106,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 func (c *Client) processBuilderName(builderName string) (name.Reference, error) {
 	if builderName == "" {
 		if c.config.DefaultBuilder != "" {
-			c.logger.Verbose("Using default builder image %s", style.Symbol(c.config.DefaultBuilder))
+			c.logger.Debugf("Using default builder image %s", style.Symbol(c.config.DefaultBuilder))
 			builderName = c.config.DefaultBuilder
 		} else {
 			return nil, errors.New("builder is a required parameter if the client has no default builder")
@@ -128,7 +128,7 @@ func (c *Client) processBuilderImage(img imgutil.Image) (*builder.Builder, error
 
 func (c *Client) processRunImageName(runImage, targetRegistry string, builderStackInfo stack.Metadata) string {
 	if runImage != "" {
-		c.logger.Verbose("Using provided run-image %s", style.Symbol(runImage))
+		c.logger.Debugf("Using provided run-image %s", style.Symbol(runImage))
 		return runImage
 	}
 	var localMirrors []string
@@ -141,12 +141,12 @@ func (c *Client) processRunImageName(runImage, targetRegistry string, builderSta
 	// log run image source
 	if runImageName == builderStackInfo.GetBestMirror(targetRegistry, []string{}) {
 		if runImageName == builderStackInfo.RunImage.Image {
-			c.logger.Verbose("Selected run image %s from builder", style.Symbol(runImageName))
+			c.logger.Debugf("Selected run image %s from builder", style.Symbol(runImageName))
 		} else {
-			c.logger.Verbose("Selected run image mirror %s from builder", style.Symbol(runImageName))
+			c.logger.Debugf("Selected run image mirror %s from builder", style.Symbol(runImageName))
 		}
 	} else {
-		c.logger.Verbose("Selected run image mirror %s from local config", style.Symbol(runImageName))
+		c.logger.Debugf("Selected run image mirror %s from local config", style.Symbol(runImageName))
 	}
 	return runImageName
 }
@@ -242,7 +242,7 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, 
 			if runtime.GOOS == "windows" {
 				return nil, builder.GroupMetadata{}, fmt.Errorf("directory buildpacks are not implemented on windows")
 			}
-			c.logger.Verbose("fetching buildpack from %s", style.Symbol(bp))
+			c.logger.Debugf("fetching buildpack from %s", style.Symbol(bp))
 			fetchedBP, err := c.buildpackFetcher.FetchBuildpack(bp)
 			if err != nil {
 				return nil, builder.GroupMetadata{}, errors.Wrapf(err, "failed to fetch buildpack from URI '%s'", bp)
@@ -281,7 +281,7 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 	if len(parts) == 2 {
 		return parts[0], parts[1]
 	}
-	c.logger.Verbose("No version for %s buildpack provided, will use %s", style.Symbol(parts[0]), style.Symbol(parts[0]+"@latest"))
+	c.logger.Debugf("No version for %s buildpack provided, will use %s", style.Symbol(parts[0]), style.Symbol(parts[0]+"@latest"))
 	return parts[0], "latest"
 }
 
@@ -293,13 +293,13 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 	}
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {
-		c.logger.Verbose("adding buildpack %s version %s to builder", style.Symbol(bp.ID), style.Symbol(bp.Version))
+		c.logger.Debugf("adding buildpack %s version %s to builder", style.Symbol(bp.ID), style.Symbol(bp.Version))
 		if err := bldr.AddBuildpack(bp); err != nil {
 			return nil, errors.Wrapf(err, "failed to add buildpack %s version %s to builder", style.Symbol(bp.ID), style.Symbol(bp.Version))
 		}
 	}
 	if len(group.Buildpacks) > 0 {
-		c.logger.Verbose("setting custom order")
+		c.logger.Debug("setting custom order")
 		if err := bldr.SetOrder([]builder.GroupMetadata{group}); err != nil {
 			return nil, errors.Wrap(err, "failed to set custom buildpack order")
 		}

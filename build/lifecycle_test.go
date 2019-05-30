@@ -22,7 +22,7 @@ import (
 	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/internal/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -57,7 +57,8 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger := logging.NewLogger(&outBuf, &errBuf, true, false)
+		logger := mocks.NewMockLogger(&outBuf)
+
 		var err error
 		docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
