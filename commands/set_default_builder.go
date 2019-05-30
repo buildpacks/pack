@@ -12,7 +12,7 @@ func SetDefaultBuilder(logger *logging.Logger, client PackClient) *cobra.Command
 	cmd := &cobra.Command{
 		Use:   "set-default-builder <builder-name>",
 		Short: "Set default builder used by other commands",
-		Long: "Set default builder used by other commands.\n\n** For suggested builders simply leave builder name empty. **",
+		Long:  "Set default builder used by other commands.\n\n** For suggested builders simply leave builder name empty. **",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 || args[0] == "" {

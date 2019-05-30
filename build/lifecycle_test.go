@@ -67,11 +67,11 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 		bldr, err := builder.GetBuilder(builderImage)
 		h.AssertNil(t, err)
 		subject.Setup(build.LifecycleOptions{
-			AppDir:  filepath.Join("testdata", "fake-app"),
-			Builder: bldr,
-			HTTPProxy: "some-http-proxy",
+			AppDir:     filepath.Join("testdata", "fake-app"),
+			Builder:    bldr,
+			HTTPProxy:  "some-http-proxy",
 			HTTPSProxy: "some-https-proxy",
-			NoProxy: "some-no-proxy",
+			NoProxy:    "some-no-proxy",
 		})
 	})
 

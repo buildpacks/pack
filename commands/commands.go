@@ -23,7 +23,6 @@ type PackClient interface {
 	CreateBuilder(context.Context, pack.CreateBuilderOptions) error
 }
 
-
 type suggestedBuilder struct {
 	name  string
 	image string

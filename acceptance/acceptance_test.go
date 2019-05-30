@@ -157,7 +157,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				defer h.DockerRmi(dockerCli, sha)
 
-				if lifecycleVersion == "0.2.0" {
+				if lifecycleVersion >= "0.2.0" {
 					t.Log("uses a build cache volume when appropriate")
 					h.AssertContains(t, output, "Using build cache volume")
 				} else {
