@@ -28,7 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/archive"
+	"github.com/buildpack/pack/internal/archive"
 )
 
 func RandString(n int) string {

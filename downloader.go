@@ -12,7 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/archive"
+	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/logging"
 )
 

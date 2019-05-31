@@ -21,7 +21,7 @@ func init() {
 	NormalizedDateTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
 }
 
-func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int) error {
+func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int, forceExec bool) error {
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -55,7 +55,9 @@ func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int) error {
 		header.Name = filepath.Join(tarDir, relPath)
 		if runtime.GOOS == "windows" {
 			header.Name = strings.Replace(header.Name, "\\", "/", -1)
-			header.Mode = 0777 // We lose permission bits from windows, so we simply make everything an exe
+		}
+		if forceExec {
+			header.Mode = 0777
 		}
 		header.ModTime = NormalizedDateTime
 		header.Uid = uid
@@ -83,7 +85,7 @@ func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int) error {
 	})
 }
 
-func CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error) {
+func CreateTarReader(srcDir, tarDir string, uid, gid int, forceExec bool) (io.Reader, chan error) {
 	r, w := io.Pipe()
 	errChan := make(chan error, 1)
 	go func() {
@@ -92,7 +94,7 @@ func CreateTarReader(srcDir, tarDir string, uid, gid int) (io.Reader, chan error
 		tw := tar.NewWriter(w)
 		defer tw.Close()
 
-		err := WriteDirToTar(tw, srcDir, tarDir, uid, gid)
+		err := WriteDirToTar(tw, srcDir, tarDir, uid, gid, forceExec)
 		errChan <- err
 	}()
 	return r, errChan

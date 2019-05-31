@@ -16,8 +16,8 @@ import (
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/buildpack"
+	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/lifecycle"
 	"github.com/buildpack/pack/stack"
 	"github.com/buildpack/pack/style"
@@ -444,6 +444,7 @@ func (b *Builder) buildpackLayer(dest string, bp buildpack.Buildpack) (string, e
 		fmt.Sprintf("%s/%s/%s", buildpacksDir, bp.EscapedID(), bp.Version),
 		b.UID,
 		b.GID,
+		false,
 	); err != nil {
 		return "", errors.Wrapf(err, "creating layer tar for buildpack '%s:%s'", bp.ID, bp.Version)
 	}

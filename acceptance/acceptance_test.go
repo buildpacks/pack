@@ -28,8 +28,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/lifecycle"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -780,7 +780,7 @@ func createStack(t *testing.T, dockerCli *client.Client) {
 
 func createStackImage(t *testing.T, dockerCli *client.Client, repoName string, dir string) {
 	ctx := context.Background()
-	buildContext, _ := archive.CreateTarReader(dir, "/", 0, 0)
+	buildContext, _ := archive.CreateTarReader(dir, "/", 0, 0, false)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
 		Tags:        []string{repoName},
