@@ -13,9 +13,9 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
+	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/lifecycle"
 	h "github.com/buildpack/pack/testhelpers"
 )

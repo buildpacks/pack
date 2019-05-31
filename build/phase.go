@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 
 	"github.com/buildpack/lifecycle/image/auth"
@@ -12,8 +13,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/archive"
 	"github.com/buildpack/pack/container"
+	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/logging"
 )
 
@@ -117,8 +118,8 @@ func (p *Phase) Run(context context.Context) error {
 		return errors.Wrapf(err, "failed to create '%s' container", p.name)
 	}
 	p.appOnce.Do(func() {
-		appReader, _ := archive.CreateTarReader(p.appDir, appDir, p.uid, p.gid)
-		if err := p.docker.CopyToContainer(context, p.ctr.ID, "/", appReader, types.CopyToContainerOptions{}); err != nil {
+		appReader, _ := archive.CreateTarReader(p.appDir, appDir, p.uid, p.gid, runtime.GOOS == "windows")
+		if err = p.docker.CopyToContainer(context, p.ctr.ID, "/", appReader, types.CopyToContainerOptions{}); err != nil {
 			err = errors.Wrapf(err, "failed to copy files to '%s' container", p.name)
 		}
 	})

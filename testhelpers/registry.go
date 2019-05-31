@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/pack/archive"
+	"github.com/buildpack/pack/internal/archive"
 
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"

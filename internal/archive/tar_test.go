@@ -11,11 +11,10 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/archive"
+	"github.com/buildpack/pack/internal/archive"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -45,29 +44,58 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		}
 	})
 
-	it("writes a tar to the dest dir", func() {
-		fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
-		h.AssertNil(t, err)
+	when("force exec is true", func() {
+		it("writes a tar to the dest dir with 0777", func() {
+			fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+			h.AssertNil(t, err)
 
-		tw := tar.NewWriter(fh)
+			tw := tar.NewWriter(fh)
 
-		err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345)
-		h.AssertNil(t, err)
-		h.AssertNil(t, tw.Close())
-		h.AssertNil(t, fh.Close())
+			err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, true)
+			h.AssertNil(t, err)
+			h.AssertNil(t, tw.Close())
+			h.AssertNil(t, fh.Close())
 
-		file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
-		h.AssertNil(t, err)
-		defer file.Close()
+			file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+			h.AssertNil(t, err)
+			defer file.Close()
 
-		tr := tar.NewReader(file)
+			tr := tar.NewReader(file)
 
-		verify := tarVerifier{t, tr, 1234, 2345}
-		verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content")
-		verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir", fileMode(t, filepath.Join(src, "sub-dir")))
-		if runtime.GOOS != "windows" {
-			verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
-		}
+			verify := tarVerifier{t, tr, 1234, 2345}
+			verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", int64(os.ModePerm))
+			verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir", int64(os.ModePerm))
+			if runtime.GOOS != "windows" {
+				verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+			}
+		})
+	})
+
+	when("force exec is false", func() {
+		it("writes a tar to the dest dir with preexisting file mode", func() {
+			fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+			h.AssertNil(t, err)
+
+			tw := tar.NewWriter(fh)
+
+			err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, false)
+			h.AssertNil(t, err)
+			h.AssertNil(t, tw.Close())
+			h.AssertNil(t, fh.Close())
+
+			file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+			h.AssertNil(t, err)
+			defer file.Close()
+
+			tr := tar.NewReader(file)
+
+			verify := tarVerifier{t, tr, 1234, 2345}
+			verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", fileMode(t, filepath.Join(src, "some-file.txt")))
+			verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir", fileMode(t, filepath.Join(src, "sub-dir")))
+			if runtime.GOOS != "windows" {
+				verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+			}
+		})
 	})
 }
 
@@ -114,7 +142,7 @@ func (v *tarVerifier) nextDirectory(name string, mode int64) {
 	}
 }
 
-func (v *tarVerifier) nextFile(name, expectedFileContents string) {
+func (v *tarVerifier) nextFile(name, expectedFileContents string, expectedFileMode int64) {
 	header, err := v.tr.Next()
 	if err != nil {
 		v.t.Fatalf("Failed to get next file: %s", err)
@@ -143,10 +171,8 @@ func (v *tarVerifier) nextFile(name, expectedFileContents string) {
 		v.t.Fatalf(`expected %s to have been normalized, got: %s`, header.Name, header.ModTime.String())
 	}
 
-	if runtime.GOOS == "windows" {
-		if header.Mode != 0777 {
-			v.t.Fatal("files from windows should have mode 0777")
-		}
+	if header.Mode != expectedFileMode {
+		v.t.Fatalf("files should have mode %o, got: %o", expectedFileMode, header.Mode)
 	}
 }
 
