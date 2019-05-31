@@ -15,7 +15,6 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
-	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -212,7 +211,7 @@ loop:
 		}
 	}
 	cancel()
-	if err := <-done; errors.Cause(err) != context.Canceled {
+	if err := <-done; !strings.Contains(err.Error(), context.Canceled.Error()) {
 		t.Fatalf("expected canceled context, failed with a different error: %s", err)
 	}
 }
