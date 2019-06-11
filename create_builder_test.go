@@ -204,6 +204,19 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertContains(t, out.String(), "Warning: run image 'some/run-image' is not accessible")
 			})
+
+			when("publish is true", func() {
+				it("should only try to validate the remote run image", func() {
+					delete(imageFetcher.LocalImages, "some/run-image")
+					delete(imageFetcher.LocalImages, "some/build-image")
+					imageFetcher.RemoteImages["some/run-image"] = fakeRunImage
+					imageFetcher.RemoteImages["some/build-image"] = fakeBuildImage
+
+					opts.Publish = true
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertNil(t, err)
+				})
+			})
 		})
 
 		it("should create a new builder image", func() {
