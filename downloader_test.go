@@ -7,14 +7,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpack/pack/internal/paths"
-
 	"github.com/onsi/gomega/ghttp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/internal/mocks"
-
+	"github.com/buildpack/pack/internal/paths"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
