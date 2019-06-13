@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -134,6 +135,20 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				readPhase2.Cleanup()
 				h.AssertNotNil(t, err)
 				h.AssertContains(t, outBuf.String(), "failed to read file")
+			})
+
+			it("bails with error when generating the tar archive produces an error", func() {
+				fakeAppDir := filepath.Join("testdata", "fake-app")
+				unixSocket := filepath.Join(fakeAppDir, "fake-socket")
+				listener, err := net.Listen("unix", unixSocket)
+				defer listener.Close()
+
+				readPhase, err := subject.NewPhase("phase", build.WithArgs("read", "/workspace/fake-app-file"))
+				h.AssertNil(t, err)
+				err = readPhase.Run(context.TODO())
+				defer readPhase.Cleanup()
+				h.AssertNotNil(t, err)
+				h.AssertContains(t, err.Error(), "run phase container: create tar archive from 'testdata/fake-app': archive/tar: sockets not supported")
 			})
 
 			it("sets the proxy vars in the container", func() {
