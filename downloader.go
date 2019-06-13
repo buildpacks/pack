@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/internal/paths"
-
 	"github.com/buildpack/pack/logging"
 )
 

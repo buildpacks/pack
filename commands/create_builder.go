@@ -9,10 +9,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack/internal/paths"
-
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/internal/paths"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )

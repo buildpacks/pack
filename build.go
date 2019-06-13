@@ -3,12 +3,13 @@ package pack
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/docker/docker/api/types"
 
 	"github.com/buildpack/imgutil"
 	"github.com/google/go-containerregistry/pkg/name"
