@@ -32,9 +32,6 @@ import (
 func TestCreateBuilder(t *testing.T) {
 	h.RequireDocker(t)
 	color.NoColor = true
-	if runtime.GOOS == "windows" {
-		t.Skip("create builder is not implemented on windows")
-	}
 	spec.Run(t, "create_builder", testCreateBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -79,7 +76,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			bp := buildpack.Buildpack{
 				ID:      "bp.one",
 				Latest:  true,
-				Dir:     filepath.Join("testdata", "buildpack"),
+				Path:    filepath.Join("testdata", "buildpack"),
 				Version: "1.2.3",
 				Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
 			}
@@ -88,7 +85,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			mockLifecycleFetcher.EXPECT().Fetch(gomock.Any(), gomock.Any()).
 				Return(lifecycle.Metadata{
-					Dir:     filepath.Join("testdata", "lifecycle"),
+					Path:    filepath.Join("testdata", "lifecycle.tgz"),
 					Version: semver.MustParse("3.4.5"),
 				}, nil).AnyTimes()
 
@@ -254,6 +251,32 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			assertTarHasFile(t, layerTar, "/lifecycle/exporter")
 			assertTarHasFile(t, layerTar, "/lifecycle/cacher")
 			assertTarHasFile(t, layerTar, "/lifecycle/launcher")
+		})
+
+		when("windows", func() {
+			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
+			})
+
+			it("only allows tgz buildpacks", func() {
+				opts.BuilderConfig.Buildpacks[0].URI = "some/buildpack/dir"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "buildpack 'bp.one': Windows only supports .tgz-based buildpacks")
+			})
+		})
+
+		when("is *nix", func() {
+			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
+			})
+
+			it("supports directory buildpacks", func() {
+				opts.BuilderConfig.Buildpacks[0].URI = "some/buildpack/dir"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+			})
 		})
 	})
 }

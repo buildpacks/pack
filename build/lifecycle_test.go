@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -137,18 +138,24 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, outBuf.String(), "failed to read file")
 			})
 
-			it("bails with error when generating the tar archive produces an error", func() {
-				fakeAppDir := filepath.Join("testdata", "fake-app")
-				unixSocket := filepath.Join(fakeAppDir, "fake-socket")
-				listener, err := net.Listen("unix", unixSocket)
-				defer listener.Close()
+			when("is *nix", func() {
+				it.Before(func() {
+					h.SkipIf(t, runtime.GOOS == "windows", "Skipping on windows")
+				})
 
-				readPhase, err := subject.NewPhase("phase", build.WithArgs("read", "/workspace/fake-app-file"))
-				h.AssertNil(t, err)
-				err = readPhase.Run(context.TODO())
-				defer readPhase.Cleanup()
-				h.AssertNotNil(t, err)
-				h.AssertContains(t, err.Error(), "run phase container: create tar archive from 'testdata/fake-app': archive/tar: sockets not supported")
+				it("bails with error when generating the tar archive produces an error", func() {
+					listener, err := net.Listen("unix", filepath.Join("testdata", "fake-app", "fake-socket"))
+					h.AssertNil(t, err)
+					defer listener.Close()
+
+					readPhase, err := subject.NewPhase("phase", build.WithArgs("read", "/workspace/fake-app-file"))
+					h.AssertNil(t, err)
+					err = readPhase.Run(context.TODO())
+					defer readPhase.Cleanup()
+
+					h.AssertNotNil(t, err)
+					h.AssertContains(t, err.Error(), "run phase container: create tar archive from 'testdata/fake-app': archive/tar: sockets not supported")
+				})
 			})
 
 			it("sets the proxy vars in the container", func() {
@@ -282,7 +289,7 @@ func CreateFakeLifecycleImage(t *testing.T, dockerCli *client.Client, repoName s
 
 	wd, err := os.Getwd()
 	h.AssertNil(t, err)
-	buildContext, _ := archive.CreateTarReader(filepath.Join(wd, "testdata", "fake-lifecycle"), "/", 0, 0, false)
+	buildContext, _ := archive.CreateTarReader(filepath.Join(wd, "testdata", "fake-lifecycle"), "/", 0, 0, -1)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
 		Tags:        []string{repoName},

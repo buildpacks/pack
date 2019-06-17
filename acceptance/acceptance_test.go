@@ -149,7 +149,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				t.Log("no previous image exists")
 				cmd := packCmd(
 					"build", repoName,
-					"-p", "testdata/mock_app/.",
+					"-p", filepath.Join("testdata", "mock_app"),
 				)
 				output := h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
@@ -183,7 +183,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				t.Log("rebuild")
-				cmd = packCmd("build", repoName, "-p", "testdata/mock_app/.")
+				cmd = packCmd("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
 				output = h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 				sha, err = imgSHAFromOutput(output, repoName)
@@ -220,13 +220,22 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("--buildpack", func() {
-				when("the argument is a directory or id", func() {
+				when("the argument is a tgz or id", func() {
+					var notBuilderTgz string
+
+					it.Before(func() {
+						notBuilderTgz = h.CreateTgz(t, filepath.Join("testdata", "mock_buildpacks", "not-in-builder-buildpack"), "./", 0766)
+					})
+
+					it.After(func() {
+						h.AssertNil(t, os.Remove(notBuilderTgz))
+					})
+
 					it("adds the buildpacks to the builder if necessary and runs them", func() {
-						skipOnWindows(t, "buildpack directories not supported on windows")
 						cmd := packCmd(
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
-							"--buildpack", filepath.Join("testdata", "mock_buildpacks", "not-in-builder-buildpack"),
+							"--buildpack", notBuilderTgz,
 							"--buildpack", "simple/layers@simple-layers-version",
 							"--buildpack", "noop.buildpack",
 						)
@@ -241,18 +250,44 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 						)
 					})
 
-					when("the buildpack stack doesn't match the builder", func() {
-						it("errors", func() {
-							skipOnWindows(t, "buildpack directories not supported on windows")
-							cmd := packCmd(
-								"build", repoName,
-								"-p", filepath.Join("testdata", "mock_app"),
-								"--buildpack", filepath.Join("testdata", "mock_buildpacks", "other-stack"),
-							)
-							txt, err := h.RunE(cmd)
-							h.AssertNotNil(t, err)
-							h.AssertContains(t, txt, "buildpack 'other/stack/bp' version 'other-stack-version' does not support stack 'pack.test.stack'")
-						})
+				})
+
+				when("the argument is directory", func() {
+					it("adds the buildpacks to the builder if necessary and runs them", func() {
+						h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
+
+						cmd := packCmd(
+							"build", repoName,
+							"-p", filepath.Join("testdata", "mock_app"),
+							"--buildpack", filepath.Join("testdata", "mock_buildpacks", "not-in-builder-buildpack"),
+						)
+						output := h.Run(t, cmd)
+						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+						t.Log("app is runnable")
+						assertMockAppRunsWithOutput(t, repoName, "Local Buildpack Dep Contents")
+					})
+				})
+
+				when("the buildpack stack doesn't match the builder", func() {
+					var otherStackBuilderTgz string
+
+					it.Before(func() {
+						otherStackBuilderTgz = h.CreateTgz(t, filepath.Join("testdata", "mock_buildpacks", "other-stack-buildpack"), "./", 0766)
+					})
+
+					it.After(func() {
+						h.AssertNil(t, os.Remove(otherStackBuilderTgz))
+					})
+
+					it("errors", func() {
+						cmd := packCmd(
+							"build", repoName,
+							"-p", filepath.Join("testdata", "mock_app"),
+							"--buildpack", otherStackBuilderTgz,
+						)
+						txt, err := h.RunE(cmd)
+						h.AssertNotNil(t, err)
+						h.AssertContains(t, txt, "buildpack 'other/stack/bp' version 'other-stack-version' does not support stack 'pack.test.stack'")
 					})
 				})
 			})
@@ -261,10 +296,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				var envPath string
 
 				it.Before(func() {
-					skipOnWindows(t, "directory buildpacks are not implemented on windows")
-
 					envfile, err := ioutil.TempFile("", "envfile")
 					h.AssertNil(t, err)
+					defer envfile.Close()
+
 					err = os.Setenv("ENV2_CONTENTS", "Env2 Layer Contents From Environment")
 					h.AssertNil(t, err)
 					envfile.WriteString(`
@@ -294,7 +329,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 			when("--env", func() {
 				it.Before(func() {
-					skipOnWindows(t, "directory buildpacks are not implemented on windows")
 					h.AssertNil(t,
 						os.Setenv("ENV2_CONTENTS", "Env2 Layer Contents From Environment"),
 					)
@@ -450,30 +484,40 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 	when("pack run", func() {
 		it.Before(func() {
-			skipOnWindows(t, "cleaning up from this test is leaving containers on windows")
+			h.SkipIf(t, runtime.GOOS == "windows", "Skipping because windows fails to clean up properly")
 		})
 
 		when("there is a builder", func() {
+			var (
+				listeningPort string
+				err           error
+			)
+
+			it.Before(func() {
+				listeningPort, err = h.GetFreePort()
+				h.AssertNil(t, err)
+			})
+
 			it.After(func() {
 				absPath, err := filepath.Abs(filepath.Join("testdata", "mock_app"))
 				h.AssertNil(t, err)
+
 				sum := sha256.Sum256([]byte(absPath))
 				repoName := fmt.Sprintf("pack.local/run/%x", sum[:8])
 				ref, err := name.ParseReference(repoName, name.WeakValidation)
 				h.AssertNil(t, err)
+
 				h.DockerRmi(dockerCli, repoName)
-				cacheImage := cache.NewImageCache(ref, dockerCli)
-				buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
-				launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
-				cacheImage.Clear(context.TODO())
-				buildCacheVolume.Clear(context.TODO())
-				launchCacheVolume.Clear(context.TODO())
+
+				cache.NewImageCache(ref, dockerCli).Clear(context.TODO())
+				cache.NewVolumeCache(ref, "build", dockerCli).Clear(context.TODO())
+				cache.NewVolumeCache(ref, "launch", dockerCli).Clear(context.TODO())
 			})
 
 			it("starts an image", func() {
 				var buf bytes.Buffer
 				cmd := packCmd("run",
-					"--port", "3000:8080",
+					"--port", listeningPort+":8080",
 					"-p", filepath.Join("testdata", "mock_app"),
 					"--builder", builder,
 				)
@@ -484,7 +528,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				defer ctrlCProc(cmd)
 
 				h.AssertEq(t, isCommandRunning(cmd), true)
-				assertMockAppResponseContains(t, "3000", 30*time.Second, "Launch Dep Contents", "Cached Dep Contents")
+				assertMockAppResponseContains(t, listeningPort, 30*time.Second, "Launch Dep Contents", "Cached Dep Contents")
 			})
 		})
 
@@ -648,12 +692,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 			it.After(func() {
 				h.DockerRmi(dockerCli, origID, builderName, origRunImageID, runImage)
+
 				ref, err := name.ParseReference(repoName, name.WeakValidation)
 				h.AssertNil(t, err)
 				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 				cacheImage := cache.NewImageCache(ref, dockerCli)
 				buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
 				launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
+
 				cacheImage.Clear(context.TODO())
 				buildCacheVolume.Clear(context.TODO())
 				launchCacheVolume.Clear(context.TODO())
@@ -724,7 +770,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 }
 
 func createBuilder(t *testing.T, runImageMirror string) string {
-	skipOnWindows(t, "create builder is not implemented on windows")
 	t.Log("create builder image")
 
 	tmpDir, err := ioutil.TempDir("", "create-test-builder")
@@ -732,6 +777,20 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 	defer os.RemoveAll(tmpDir)
 
 	h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks"), tmpDir)
+
+	buildpacks := []string{
+		"noop-buildpack",
+		"not-in-builder-buildpack",
+		"other-stack-buildpack",
+		"read-env-buildpack",
+		"simple-layers-buildpack",
+	}
+
+	for _, v := range buildpacks {
+		tgz := h.CreateTgz(t, filepath.Join("testdata", "mock_buildpacks", v), "./", 0766)
+		err := os.Rename(tgz, filepath.Join(tmpDir, v+".tgz"))
+		h.AssertNil(t, err)
+	}
 
 	builderConfigFile, err := os.OpenFile(filepath.Join(tmpDir, "builder.toml"), os.O_RDWR|os.O_APPEND, 0666)
 	h.AssertNil(t, err)
@@ -747,7 +806,7 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 			t.Fatal("LIFECYCLE_PATH must be an absolute path")
 		}
 		t.Logf("Adding lifecycle path '%s' to builder config", lifecyclePath)
-		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("uri = \"%s\"\n", lifecyclePath)))
+		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("uri = \"%s\"\n", strings.ReplaceAll(lifecyclePath, `\`, `\\`))))
 		h.AssertNil(t, err)
 	}
 	if lcver, ok := os.LookupEnv("LIFECYCLE_VERSION"); ok {
@@ -780,7 +839,7 @@ func createStack(t *testing.T, dockerCli *client.Client) {
 
 func createStackImage(t *testing.T, dockerCli *client.Client, repoName string, dir string) {
 	ctx := context.Background()
-	buildContext, _ := archive.CreateTarReader(dir, "/", 0, 0, false)
+	buildContext, _ := archive.CreateTarReader(dir, "/", 0, 0, -1)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
 		Tags:        []string{repoName},
@@ -901,19 +960,10 @@ func ctrlCProc(cmd *exec.Cmd) error {
 	return err
 }
 
-func skipOnWindows(t *testing.T, message string) {
-	if runtime.GOOS == "windows" {
-		t.Skip(message)
-	}
-}
-
 func isCommandRunning(cmd *exec.Cmd) bool {
 	_, err := os.FindProcess(cmd.Process.Pid)
 	if err != nil {
 		return false
-	}
-	if runtime.GOOS == "windows" {
-		return true
 	}
 	return true
 }

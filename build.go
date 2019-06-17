@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 
-	"github.com/buildpack/imgutil"
 	"github.com/docker/docker/api/types"
+
+	"github.com/buildpack/imgutil"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -238,9 +238,12 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, 
 	group := builder.GroupMetadata{Buildpacks: []builder.GroupBuildpack{}}
 	var bps []buildpack.Buildpack
 	for _, bp := range buildpacks {
-		if isFetchableBuildpack(bp) {
-			if runtime.GOOS == "windows" {
-				return nil, builder.GroupMetadata{}, fmt.Errorf("directory buildpacks are not implemented on windows")
+		if isBuildpackId(bp) {
+			id, version := c.parseBuildpack(bp)
+			group.Buildpacks = append(group.Buildpacks, builder.GroupBuildpack{ID: id, Version: version})
+		} else {
+			if runtime.GOOS == "windows" && filepath.Ext(bp) != ".tgz" {
+				return nil, builder.GroupMetadata{}, fmt.Errorf("buildpack %s: Windows only supports .tgz-based buildpacks", style.Symbol(bp))
 			}
 			c.logger.Debugf("fetching buildpack from %s", style.Symbol(bp))
 			fetchedBP, err := c.buildpackFetcher.FetchBuildpack(bp)
@@ -249,31 +252,24 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, 
 			}
 			bps = append(bps, fetchedBP)
 			group.Buildpacks = append(group.Buildpacks, builder.GroupBuildpack{ID: fetchedBP.ID, Version: fetchedBP.Version})
-		} else {
-			id, version := c.parseBuildpack(bp)
-			group.Buildpacks = append(group.Buildpacks, builder.GroupBuildpack{ID: id, Version: version})
 		}
 	}
 	return bps, group, nil
 }
 
-func isFetchableBuildpack(path string) bool {
+func isBuildpackId(path string) bool {
 	if _, err := os.Stat(filepath.Join(path, "buildpack.toml")); err == nil {
-		return true
-	}
-
-	bpURL, err := url.Parse(path)
-	if err != nil {
 		return false
 	}
 
-	if bpURL.Scheme == "" || bpURL.Scheme == "file" || bpURL.Scheme == "http" || bpURL.Scheme == "https" {
-		if filepath.Ext(path) == ".tgz" {
-			return true
+	hasScheme := schemeRegexp.MatchString(path)
+	if !hasScheme {
+		if _, err := os.Stat(path); err == nil {
+			return false
 		}
 	}
 
-	return false
+	return true
 }
 
 func (c *Client) parseBuildpack(bp string) (string, string) {

@@ -2,6 +2,7 @@ package testhelpers
 
 import (
 	"archive/tar"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -307,7 +309,7 @@ func Run(t *testing.T, cmd *exec.Cmd) string {
 func RunE(cmd *exec.Cmd) (string, error) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return string(output), fmt.Errorf("Failed to execute command: %v, %s, %s", cmd.Args, err, output)
+		return string(output), fmt.Errorf("failed to execute command: %v, %s, %s", cmd.Args, err, output)
 	}
 
 	return string(output), nil
@@ -353,31 +355,14 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 	AssertNil(t, err)
 }
 
-func UntarSingleFile(r io.Reader, fileName string) ([]byte, error) {
-	tr := tar.NewReader(r)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			// end of tar archive
-			return []byte{}, fmt.Errorf("file '%s' does not exist in tar", fileName)
-		}
-		if err != nil {
-			return []byte{}, err
-		}
-
-		switch hdr.Typeflag {
-		case tar.TypeReg, tar.TypeRegA:
-			if hdr.Name == fileName {
-				return ioutil.ReadAll(tr)
-			}
-		}
-	}
+func RequireDocker(t *testing.T) {
+	_, isSet := os.LookupEnv("NO_DOCKER")
+	SkipIf(t, isSet, "Skipping because docker daemon unavailable")
 }
 
-func RequireDocker(t *testing.T) {
-	_, ok := os.LookupEnv("NO_DOCKER")
-	if ok {
-		t.Skip("Skipping because docker daemon unavailable")
+func SkipIf(t *testing.T, expression bool, reason string) {
+	if expression {
+		t.Skip(reason)
 	}
 }
 
@@ -411,4 +396,43 @@ func RunContainer(ctx context.Context, dockerCli *client.Client, id string, stdo
 		return err
 	}
 	return <-copyErr
+}
+
+func GetFreePort() (string, error) {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return "", err
+	}
+
+	l, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		return "", err
+	}
+	defer l.Close()
+
+	return strconv.Itoa(l.Addr().(*net.TCPAddr).Port), nil
+}
+
+func CreateTgz(t *testing.T, srcDir, tarDir string, mode int64) string {
+	t.Helper()
+
+	fh, err := ioutil.TempFile("", "*.tgz")
+	AssertNil(t, err)
+	defer fh.Close()
+
+	gw := gzip.NewWriter(fh)
+	defer gw.Close()
+
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	err = archive.WriteDirToTar(
+		tw,
+		srcDir,
+		tarDir,
+		0, 0, mode,
+	)
+	AssertNil(t, err)
+
+	return fh.Name()
 }

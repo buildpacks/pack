@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -75,7 +73,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 			var containerPort string
 
 			it.Before(func() {
-				containerPort, err = freePort()
+				containerPort, err = h.GetFreePort()
 				h.AssertNil(t, err)
 				h.CreateImageOnLocal(
 					t,
@@ -119,7 +117,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 			)
 
 			it.Before(func() {
-				containerPort, err = freePort()
+				containerPort, err = h.GetFreePort()
 				h.AssertNil(t, err)
 				h.CreateImageOnLocal(
 					t,
@@ -152,7 +150,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("binds each port to the container", func() {
-				hostPort, err := freePort()
+				hostPort, err := h.GetFreePort()
 				h.AssertNil(t, err)
 
 				assertOnRunningContainer(
@@ -214,19 +212,4 @@ loop:
 	if err := <-done; !strings.Contains(err.Error(), context.Canceled.Error()) {
 		t.Fatalf("expected canceled context, failed with a different error: %s", err)
 	}
-}
-
-func freePort() (string, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	if err != nil {
-		return "", err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return "", err
-	}
-	defer l.Close()
-
-	return strconv.Itoa(l.Addr().(*net.TCPAddr).Port), nil
 }

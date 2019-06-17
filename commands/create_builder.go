@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
-	"runtime"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/internal/paths"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
@@ -30,9 +30,6 @@ func CreateBuilder(logger logging.Logger, client PackClient) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Short: "Create builder image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if runtime.GOOS == "windows" {
-				return fmt.Errorf("%s is not implemented on Windows", style.Symbol("create-builder"))
-			}
 			builderConfig, err := readBuilderConfig(flags.BuilderTomlPath)
 			if err != nil {
 				return errors.Wrap(err, "invalid builder toml")
@@ -94,10 +91,13 @@ func transformRelativePath(uri, relativeTo string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	if parsed.Scheme == "" {
 		if !filepath.IsAbs(parsed.Path) {
-			return fmt.Sprintf("file://" + filepath.Join(relativeTo, parsed.Path)), nil
+			absPath := filepath.Join(relativeTo, parsed.Path)
+			return paths.FilePathToUri(absPath)
 		}
 	}
+
 	return uri, nil
 }
