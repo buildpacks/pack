@@ -132,17 +132,19 @@ func validateBuilderConfig(conf builder.Config) error {
 func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions) error {
 	var runImages []imgutil.Image
 	for _, i := range append([]string{opts.BuilderConfig.Stack.RunImage}, opts.BuilderConfig.Stack.RunImageMirrors...) {
-		img, err := c.imageFetcher.Fetch(ctx, i, true, false)
-		if err != nil {
-			if errors.Cause(err) != image.ErrNotFound {
-				return err
+		if !opts.Publish {
+			img, err := c.imageFetcher.Fetch(ctx, i, true, false)
+			if err != nil {
+				if errors.Cause(err) != image.ErrNotFound {
+					return err
+				}
+			} else {
+				runImages = append(runImages, img)
+				continue
 			}
-		} else {
-			runImages = append(runImages, img)
-			continue
 		}
 
-		img, err = c.imageFetcher.Fetch(ctx, i, false, false)
+		img, err := c.imageFetcher.Fetch(ctx, i, false, false)
 		if err != nil {
 			if errors.Cause(err) != image.ErrNotFound {
 				return err
