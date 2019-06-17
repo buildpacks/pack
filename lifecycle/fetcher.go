@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 
@@ -99,7 +100,7 @@ func validateTarEntries(tarPath string, entryPath ...string) error {
 			return errors.Wrap(err, "failed to get next tar entry")
 		}
 
-		pathMatches := regex.FindStringSubmatch(header.Name)
+		pathMatches := regex.FindStringSubmatch(path.Clean(header.Name))
 		if pathMatches != nil {
 			headers[pathMatches[1]] = true
 		}

@@ -575,7 +575,7 @@ func (b *Builder) embedLifecycleTar(tw *tar.Writer, srcTar string) error {
 			return errors.Wrap(err, "failed to get next tar entry")
 		}
 
-		pathMatches := regex.FindStringSubmatch(header.Name)
+		pathMatches := regex.FindStringSubmatch(path.Clean(header.Name))
 		if pathMatches != nil {
 			binaryName := pathMatches[1]
 
