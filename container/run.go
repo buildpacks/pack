@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Run starts a docker container, streams its logs and waits for it to have finished running
 func Run(ctx context.Context, docker *client.Client, ctrID string, out, errOut io.Writer) error {
 	bodyChan, errChan := docker.ContainerWait(ctx, ctrID, dcontainer.WaitConditionNextExit)
 
@@ -39,7 +40,17 @@ func Run(ctx context.Context, docker *client.Client, ctrID string, out, errOut i
 			return fmt.Errorf("failed with status code: %d", body.StatusCode)
 		}
 	case err := <-errChan:
+		if err == context.Canceled {
+			return docker.ContainerStop(context.Background(), ctrID, nil)
+		}
+
 		return err
 	}
-	return <-copyErr
+
+	err = <-copyErr
+	if err == context.Canceled {
+		return docker.ContainerStop(context.Background(), ctrID, nil)
+	}
+
+	return err
 }
