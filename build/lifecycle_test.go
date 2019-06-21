@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpack/imgutil"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -19,7 +20,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/imgutil"
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/internal/archive"
