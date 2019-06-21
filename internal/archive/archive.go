@@ -144,14 +144,12 @@ func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int, mode int
 			return err
 		}
 
-		isSymlink := fi.Mode()&os.ModeSymlink != 0
-
-		if !fi.Mode().IsRegular() && !fi.IsDir() && !isSymlink {
+		if fi.Mode()&os.ModeSocket != 0 {
 			return nil
 		}
 
 		var header *tar.Header
-		if isSymlink {
+		if fi.Mode()&os.ModeSymlink != 0 {
 			target, err := os.Readlink(file)
 			if err != nil {
 				return err
