@@ -1,42 +1,53 @@
 # Go parameters
-GOCMD=go
+GOCMD?=go
 GOENV=CGO_ENABLED=0
 PACK_VERSION?=dev
 PACK_BIN?=pack
+PACKAGE_BASE=github.com/buildpack/pack
+PACKAGES:=$(shell $(GOCMD) list ./... | grep -v /testdata/)
+SRC:=$(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
-all: clean test build
+all: clean verify test build
 
-build: format imports vet
+build: format vet
+	@echo "> Building..."
 	mkdir -p ./out
 	$(GOENV) $(GOCMD) build -mod=vendor -ldflags "-X 'main.Version=${PACK_VERSION}'" -o ./out/$(PACK_BIN) -a ./cmd/pack
 
-format:
-ifeq ($(PACK_CI), true)
-		test -z $$($(GOCMD) fmt ./...)
-else
-		$(GOCMD) fmt ./...
-endif
-
-imports:
+install-goimports:
+	@echo "> Installing goimports..."
 	go install -mod=vendor golang.org/x/tools/cmd/goimports
-ifeq ($(PACK_CI), true)
-		test -z $$(goimports -l -local github.com/buildpack/pack $$(find . -type f -name '*.go' -not -path "./vendor/*"))
-else
-		goimports -l -w -local github.com/buildpack/pack $$(find . -type f -name '*.go' -not -path "./vendor/*")
-endif
+
+format: install-goimports
+	@echo "> Formating code..."
+	@goimports -l -w -local ${PACKAGE_BASE} ${SRC}
 
 vet:
-	$(GOCMD) vet -mod=vendor $$($(GOCMD) list ./... | grep -v /testdata/)
+	@echo "> Vetting code..."
+	@$(GOCMD) vet -mod=vendor ${PACKAGES}
 
 test: unit acceptance
 
-unit: format imports vet
+unit: format vet
+	@echo "> Running unit/integration tests..."
 	$(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 ./...
-
-acceptance: format imports vet
+	
+acceptance: format vet
+	@echo "> Running acceptance tests..."
 	$(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 -tags=acceptance ./acceptance
 
 clean:
+	@echo "> Cleaning workspace..."
 	rm -rf ./out
 
-.PHONY: clean build format imports vet test unit acceptance
+verify: verify-format vet
+
+verify-format: install-goimports
+	@echo "> Verifying format..."
+	@test -z "$(shell goimports -l -local ${PACKAGE_BASE} ${SRC})";\
+	_err=$$?;\
+	[ $$_err -ne 0 ] && echo "ERROR: Format verification failed!\n" &&\
+	goimports -d -local ${PACKAGE_BASE} ${SRC} && exit $$_err;\
+	exit 0;
+
+.PHONY: clean build format imports vet test unit acceptance verify verify-format
