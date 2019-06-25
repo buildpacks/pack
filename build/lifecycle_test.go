@@ -3,6 +3,7 @@ package build_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -129,28 +130,52 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("is posix", func() {
+
 				it.Before(func() {
 					h.SkipIf(t, runtime.GOOS == "windows", "Skipping on windows")
 				})
 
-				it("bails with error when generating the tar archive produces an error", func() {
-					badFakeApp := filepath.Join("testdata", "bad-fake-app")
-					dirWithoutAccess := filepath.Join(badFakeApp, "bad-dir")
-					err := os.MkdirAll(dirWithoutAccess, 0000)
-					h.AssertNil(t, err)
-					defer os.RemoveAll(dirWithoutAccess)
+				when("restricted directory is present", func() {
+					var (
+						err              error
+						tmpFakeAppDir    string
+						dirWithoutAccess string
+					)
 
-					logger := mocks.NewMockLogger(&outBuf)
-					subject, err = CreateFakeLifecycle(badFakeApp, docker, logger)
-					h.AssertNil(t, err)
+					it.Before(func() {
+						tmpFakeAppDir, err = ioutil.TempDir("", "fake-app")
+						h.AssertNil(t, err)
 
-					readPhase, err := subject.NewPhase("phase", build.WithArgs("read", "/workspace/fake-app-file"))
-					h.AssertNil(t, err)
-					err = readPhase.Run(context.TODO())
-					defer readPhase.Cleanup()
+						h.RecursiveCopy(t, filepath.Join("testdata", "fake-app"), tmpFakeAppDir)
 
-					h.AssertNotNil(t, err)
-					h.AssertContains(t, err.Error(), "open testdata/bad-fake-app/bad-dir: permission denied")
+						dirWithoutAccess = filepath.Join(tmpFakeAppDir, "bad-dir")
+						err := os.MkdirAll(dirWithoutAccess, 0222)
+						h.AssertNil(t, err)
+					})
+
+					it.After(func() {
+						h.AssertNil(t, os.RemoveAll(tmpFakeAppDir))
+					})
+
+					it("returns an error", func() {
+						logger := mocks.NewMockLogger(&outBuf)
+						subject, err = CreateFakeLifecycle(tmpFakeAppDir, docker, logger)
+						h.AssertNil(t, err)
+
+						readPhase, err := subject.NewPhase(
+							"phase",
+							build.WithArgs("read", "/workspace/fake-app-file"),
+						)
+						h.AssertNil(t, err)
+						err = readPhase.Run(context.TODO())
+						defer readPhase.Cleanup()
+
+						h.AssertNotNil(t, err)
+						h.AssertContains(t,
+							err.Error(),
+							fmt.Sprintf("open %s: permission denied", dirWithoutAccess),
+						)
+					})
 				})
 			})
 

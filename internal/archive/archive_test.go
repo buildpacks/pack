@@ -2,8 +2,10 @@ package archive_test
 
 import (
 	"archive/tar"
+	"io"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -134,6 +136,65 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 		})
+
+		when("is posix", func() {
+
+			it.Before(func() {
+				h.SkipIf(t, runtime.GOOS == "windows", "Skipping on windows")
+			})
+
+			when("socket is present", func() {
+				var (
+					err        error
+					tmpSrcDir  string
+					fakeSocket net.Listener
+				)
+
+				it.Before(func() {
+					tmpSrcDir, err = ioutil.TempDir("", "socket-test")
+					h.AssertNil(t, err)
+
+					fakeSocket, err = net.Listen(
+						"unix",
+						filepath.Join(tmpSrcDir, "fake-socket"),
+					)
+
+					err = ioutil.WriteFile(filepath.Join(tmpSrcDir, "fake-file"), []byte("some-content"), 0777)
+					h.AssertNil(t, err)
+				})
+
+				it.After(func() {
+					os.RemoveAll(tmpSrcDir)
+					fakeSocket.Close()
+				})
+
+				it("silently ignore socket", func() {
+					fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+					h.AssertNil(t, err)
+
+					tw := tar.NewWriter(fh)
+
+					err = archive.WriteDirToTar(tw, tmpSrcDir, "/nested/dir/dir-in-archive", 1234, 2345, 0777)
+					h.AssertNil(t, err)
+					h.AssertNil(t, tw.Close())
+					h.AssertNil(t, fh.Close())
+
+					file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+					h.AssertNil(t, err)
+					defer file.Close()
+
+					tr := tar.NewReader(file)
+
+					verify := tarVerifier{t, tr, 1234, 2345}
+					verify.nextFile(
+						"/nested/dir/dir-in-archive/fake-file",
+						"some-content",
+						0777,
+					)
+					verify.noMoreFilesExist()
+				})
+			})
+		})
 	})
 
 }
@@ -181,7 +242,18 @@ func (v *tarVerifier) nextDirectory(name string, mode int64) {
 	}
 }
 
+func (v *tarVerifier) noMoreFilesExist() {
+	v.t.Helper()
+	header, err := v.tr.Next()
+	if err == nil {
+		v.t.Fatalf(`expected no more files but found: %s`, header.Name)
+	} else if err != io.EOF {
+		v.t.Error(err.Error())
+	}
+}
+
 func (v *tarVerifier) nextFile(name, expectedFileContents string, expectedFileMode int64) {
+	v.t.Helper()
 	header, err := v.tr.Next()
 	if err != nil {
 		v.t.Fatalf("Failed to get next file: %s", err)
@@ -216,6 +288,7 @@ func (v *tarVerifier) nextFile(name, expectedFileContents string, expectedFileMo
 }
 
 func (v *tarVerifier) nextSymLink(name, link string) {
+	v.t.Helper()
 	header, err := v.tr.Next()
 	if err != nil {
 		v.t.Fatalf("Failed to get next file: %s", err)
