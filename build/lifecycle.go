@@ -82,9 +82,17 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		l.logger.Debugf("Executing lifecycle version %s", style.Symbol(lifecycleVersion.String()))
 	}
 
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	l.logger.Debug(style.Step("DETECTING"))
 	if err := l.Detect(ctx); err != nil {
 		return err
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 
 	l.logger.Debug(style.Step("RESTORING"))
@@ -92,6 +100,10 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		l.logger.Debug("Skipping 'restore' due to clearing cache")
 	} else if err := l.Restore(ctx, l.supportsVolumeCache(), buildCache.Name()); err != nil {
 		return err
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 
 	l.logger.Debug(style.Step("ANALYZING"))
@@ -103,9 +115,17 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		}
 	}
 
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	l.logger.Debug(style.Step("BUILDING"))
 	if err := l.Build(ctx); err != nil {
 		return err
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 
 	l.logger.Debug(style.Step("EXPORTING"))
@@ -115,6 +135,10 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	}
 	if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCacheName); err != nil {
 		return err
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
 	}
 
 	l.logger.Debug(style.Step("CACHING"))
