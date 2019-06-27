@@ -3,10 +3,10 @@ package build_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
-	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -25,6 +25,7 @@ import (
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/internal/mocks"
+	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -64,18 +65,8 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 		var err error
 		docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
-		subject = build.NewLifecycle(docker, logger)
-		builderImage, err := imgutil.NewLocalImage(repoName, docker)
+		subject, err = CreateFakeLifecycle(filepath.Join("testdata", "fake-app"), docker, logger)
 		h.AssertNil(t, err)
-		bldr, err := builder.GetBuilder(builderImage)
-		h.AssertNil(t, err)
-		subject.Setup(build.LifecycleOptions{
-			AppDir:     filepath.Join("testdata", "fake-app"),
-			Builder:    bldr,
-			HTTPProxy:  "some-http-proxy",
-			HTTPSProxy: "some-https-proxy",
-			NoProxy:    "some-no-proxy",
-		})
 	})
 
 	it.After(func() {
@@ -138,23 +129,53 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, outBuf.String(), "failed to read file")
 			})
 
-			when("is *nix", func() {
+			when("is posix", func() {
+
 				it.Before(func() {
 					h.SkipIf(t, runtime.GOOS == "windows", "Skipping on windows")
 				})
 
-				it("bails with error when generating the tar archive produces an error", func() {
-					listener, err := net.Listen("unix", filepath.Join("testdata", "fake-app", "fake-socket"))
-					h.AssertNil(t, err)
-					defer listener.Close()
+				when("restricted directory is present", func() {
+					var (
+						err              error
+						tmpFakeAppDir    string
+						dirWithoutAccess string
+					)
 
-					readPhase, err := subject.NewPhase("phase", build.WithArgs("read", "/workspace/fake-app-file"))
-					h.AssertNil(t, err)
-					err = readPhase.Run(context.TODO())
-					defer readPhase.Cleanup()
+					it.Before(func() {
+						tmpFakeAppDir, err = ioutil.TempDir("", "fake-app")
+						h.AssertNil(t, err)
 
-					h.AssertNotNil(t, err)
-					h.AssertContains(t, err.Error(), "run phase container: create tar archive from 'testdata/fake-app': archive/tar: sockets not supported")
+						h.RecursiveCopy(t, filepath.Join("testdata", "fake-app"), tmpFakeAppDir)
+
+						dirWithoutAccess = filepath.Join(tmpFakeAppDir, "bad-dir")
+						err := os.MkdirAll(dirWithoutAccess, 0222)
+						h.AssertNil(t, err)
+					})
+
+					it.After(func() {
+						h.AssertNil(t, os.RemoveAll(tmpFakeAppDir))
+					})
+
+					it("returns an error", func() {
+						logger := mocks.NewMockLogger(&outBuf)
+						subject, err = CreateFakeLifecycle(tmpFakeAppDir, docker, logger)
+						h.AssertNil(t, err)
+
+						readPhase, err := subject.NewPhase(
+							"phase",
+							build.WithArgs("read", "/workspace/fake-app-file"),
+						)
+						h.AssertNil(t, err)
+						err = readPhase.Run(context.TODO())
+						defer readPhase.Cleanup()
+
+						h.AssertNotNil(t, err)
+						h.AssertContains(t,
+							err.Error(),
+							fmt.Sprintf("open %s: permission denied", dirWithoutAccess),
+						)
+					})
 				})
 			})
 
@@ -300,4 +321,26 @@ func CreateFakeLifecycleImage(t *testing.T, dockerCli *client.Client, repoName s
 
 	io.Copy(ioutil.Discard, res.Body)
 	res.Body.Close()
+}
+
+func CreateFakeLifecycle(appDir string, docker *client.Client, logger logging.Logger) (*build.Lifecycle, error) {
+	subject := build.NewLifecycle(docker, logger)
+	builderImage, err := imgutil.NewLocalImage(repoName, docker)
+	if err != nil {
+		return nil, err
+	}
+
+	bldr, err := builder.GetBuilder(builderImage)
+	if err != nil {
+		return nil, err
+	}
+
+	subject.Setup(build.LifecycleOptions{
+		AppDir:     appDir,
+		Builder:    bldr,
+		HTTPProxy:  "some-http-proxy",
+		HTTPSProxy: "some-https-proxy",
+		NoProxy:    "some-no-proxy",
+	})
+	return subject, nil
 }

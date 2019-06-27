@@ -144,6 +144,10 @@ func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int, mode int
 			return err
 		}
 
+		if fi.Mode()&os.ModeSocket != 0 {
+			return nil
+		}
+
 		var header *tar.Header
 		if fi.Mode()&os.ModeSymlink != 0 {
 			target, err := os.Readlink(file)
