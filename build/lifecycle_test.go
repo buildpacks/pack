@@ -143,11 +143,10 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 					)
 
 					it.Before(func() {
+						h.SkipIf(t, os.Getuid() == 0, "Skipping b/c current user is root")
+
 						tmpFakeAppDir, err = ioutil.TempDir("", "fake-app")
 						h.AssertNil(t, err)
-
-						h.RecursiveCopy(t, filepath.Join("testdata", "fake-app"), tmpFakeAppDir)
-
 						dirWithoutAccess = filepath.Join(tmpFakeAppDir, "bad-dir")
 						err := os.MkdirAll(dirWithoutAccess, 0222)
 						h.AssertNil(t, err)
