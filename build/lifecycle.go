@@ -13,6 +13,7 @@ import (
 
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/lifecycle"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
@@ -76,8 +77,10 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		l.logger.Debugf("Build cache %s cleared", style.Symbol(buildCache.Name()))
 	}
 
-	if lifecycleVersion := l.builder.GetLifecycleVersion(); lifecycleVersion == nil {
+	lifecycleVersion := l.builder.GetLifecycleVersion()
+	if lifecycleVersion == nil {
 		l.logger.Debug("Warning: lifecycle version unknown")
+		lifecycleVersion = semver.MustParse(lifecycle.DefaultLifecycleVersion)
 	} else {
 		l.logger.Debugf("Executing lifecycle version %s", style.Symbol(lifecycleVersion.String()))
 	}
@@ -90,15 +93,17 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	l.logger.Debug(style.Step("RESTORING"))
 	if opts.ClearCache {
 		l.logger.Debug("Skipping 'restore' due to clearing cache")
-	} else if err := l.Restore(ctx, l.supportsVolumeCache(), buildCache.Name()); err != nil {
-		return err
+	} else {
+		if err := l.Restore(ctx, l.supportsVolumeCache(), buildCache.Name()); err != nil {
+			return err
+		}
 	}
 
 	l.logger.Debug(style.Step("ANALYZING"))
-	if opts.ClearCache {
+	if opts.ClearCache && lifecycleVersion.LessThan(semver.MustParse("0.3.0")) {
 		l.logger.Debug("Skipping 'analyze' due to clearing cache")
 	} else {
-		if err := l.Analyze(ctx, opts.Image.Name(), opts.Publish); err != nil {
+		if err := l.Analyze(ctx, opts.Image.Name(), opts.Publish, opts.ClearCache); err != nil {
 			return err
 		}
 	}

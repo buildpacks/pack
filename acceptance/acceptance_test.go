@@ -19,12 +19,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/buildpack/lifecycle/metadata"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -42,7 +44,9 @@ var (
 	buildImage       = "pack-test/build"
 	runImageMirror   string
 	builder          string
-	lifecycleVersion = lifecycle.DefaultLifecycleVersion
+	lifecycleVersion = semver.MustParse(lifecycle.DefaultLifecycleVersion)
+	lifecycleV020    = semver.MustParse("0.2.0")
+	lifecycleV030    = semver.MustParse("0.3.0")
 )
 
 func TestAcceptance(t *testing.T) {
@@ -153,11 +157,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				)
 				output := h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-				sha, err := imgSHAFromOutput(output, repoName)
-				h.AssertNil(t, err)
-				defer h.DockerRmi(dockerCli, sha)
+				imgId, err := imgIdFromOutput(output, repoName)
+				if err != nil {
+					t.Log(output)
+					t.Fatal("Could not determine image id for built image")
+				}
+				defer h.DockerRmi(dockerCli, imgId)
 
-				if lifecycleVersion >= "0.2.0" {
+				if lifecycleVersion.GreaterThan(lifecycleV020) || lifecycleVersion.Equal(lifecycleV020) {
 					t.Log("uses a build cache volume when appropriate")
 					h.AssertContains(t, output, "Using build cache volume")
 				} else {
@@ -186,16 +193,19 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				cmd = packCmd("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
 				output = h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-				sha, err = imgSHAFromOutput(output, repoName)
-				h.AssertNil(t, err)
-				defer h.DockerRmi(dockerCli, sha)
+				imgId, err = imgIdFromOutput(output, repoName)
+				if err != nil {
+					t.Log(output)
+					t.Fatal("Could not determine image id for built image")
+				}
+				defer h.DockerRmi(dockerCli, imgId)
 
 				t.Log("app is runnable")
 				assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
 				t.Log("restores the cache")
-				h.AssertContainsMatch(t, output, `\[restorer] restoring cached layer 'simple/layers:cached-launch-layer'`)
-				h.AssertContainsMatch(t, output, `\[analyzer] using cached launch layer 'simple/layers:cached-launch-layer'`)
+				h.AssertContainsMatch(t, output, `(?i)\[restorer] restoring cached layer 'simple/layers:cached-launch-layer'`)
+				h.AssertContainsMatch(t, output, `(?i)\[analyzer] using cached launch layer 'simple/layers:cached-launch-layer'`)
 
 				t.Log("exporter and cacher reuse unchanged layers")
 				h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
@@ -209,14 +219,16 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				t.Log("skips restore")
 				h.AssertContains(t, output, "Skipping 'restore' due to clearing cache")
 
-				t.Log("skips analyze")
-				h.AssertContains(t, output, "Skipping 'analyze' due to clearing cache")
+				if lifecycleVersion.GreaterThan(lifecycleV030) || lifecycleVersion.Equal(lifecycleV030) {
+					t.Log("skips buildpack layer analysis")
+					h.AssertContainsMatch(t, output, `(?i)\[analyzer] Skipping buildpack layer analysis`)
 
-				t.Log("exporter reuses unchanged layers")
-				h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+					t.Log("exporter reuses unchanged layers")
+					h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+				}
 
 				t.Log("cacher adds layers")
-				h.AssertContainsMatch(t, output, `\[cacher] (Caching|adding) layer 'simple/layers:cached-launch-layer'`)
+				h.AssertContainsMatch(t, output, `(?i)\[cacher] (Caching|adding) layer 'simple/layers:cached-launch-layer'`)
 			})
 
 			when("--buildpack", func() {
@@ -430,7 +442,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					}
 					output := runPackBuild()
 					h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-					imgSHA, err := imgSHAFromOutput(output, repoName)
+					imgDigest, err := imgDigestFromOutput(output, repoName)
 					if err != nil {
 						t.Log(output)
 						t.Fatal("Could not determine sha for built image")
@@ -443,11 +455,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 						t.Fatalf("Expected to see image %s in %s", repo, contents)
 					}
 
-					h.AssertNil(t, h.PullImageWithAuth(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA), registryConfig.RegistryAuth()))
-					defer h.DockerRmi(dockerCli, fmt.Sprintf("%s@%s", repoName, imgSHA))
+					h.AssertNil(t, h.PullImageWithAuth(dockerCli, fmt.Sprintf("%s@%s", repoName, imgDigest), registryConfig.RegistryAuth()))
+					defer h.DockerRmi(dockerCli, fmt.Sprintf("%s@%s", repoName, imgDigest))
 
 					t.Log("app is runnable")
-					assertMockAppRunsWithOutput(t, fmt.Sprintf("%s@%s", repoName, imgSHA), "Launch Dep Contents", "Cached Dep Contents")
+					assertMockAppRunsWithOutput(t, fmt.Sprintf("%s@%s", repoName, imgDigest), "Launch Dep Contents", "Cached Dep Contents")
 				})
 			})
 
@@ -801,7 +813,7 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 	_, err = builderConfigFile.Write([]byte("[lifecycle]\n"))
 	h.AssertNil(t, err)
 	if lifecyclePath, ok := os.LookupEnv("LIFECYCLE_PATH"); ok {
-		lifecycleVersion = "Unknown"
+		lifecycleVersion = semver.MustParse("0.0.0")
 		if !filepath.IsAbs(lifecyclePath) {
 			t.Fatal("LIFECYCLE_PATH must be an absolute path")
 		}
@@ -810,9 +822,9 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 		h.AssertNil(t, err)
 	}
 	if lcver, ok := os.LookupEnv("LIFECYCLE_VERSION"); ok {
-		lifecycleVersion = lcver
+		lifecycleVersion = semver.MustParse(lcver)
 		t.Logf("Adding lifecycle version '%s' to builder config", lifecycleVersion)
-		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("version = \"%s\"\n", lifecycleVersion)))
+		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("version = \"%s\"\n", lifecycleVersion.String())))
 		h.AssertNil(t, err)
 	}
 
@@ -894,14 +906,32 @@ func fetchHostPort(t *testing.T, dockerID string) string {
 	return ""
 }
 
-func imgSHAFromOutput(txt, repoName string) (string, error) {
-	for _, m := range regexp.MustCompile(`\*\*\* Image: (.+)@(.+)`).FindAllStringSubmatch(txt, -1) {
-		// remove the :latest tag check once we fix tag + sha output error in lifecycle
-		if m[1] == repoName || m[1] == repoName+":latest" {
-			return m[2], nil
+func imgDigestFromOutput(txt, repoName string) (string, error) {
+	if lifecycleVersion.LessThan(lifecycleV030) {
+		for _, m := range regexp.MustCompile(`\*\*\* Image: (.+)@(.+)`).FindAllStringSubmatch(txt, -1) {
+			if m[1] == repoName || m[1] == repoName+":latest" {
+				return m[2], nil
+			}
 		}
 	}
-	return "", fmt.Errorf("could not find Image: %s@[SHA] in output", repoName)
+
+	for _, m := range regexp.MustCompile(`\*\*\* Digest: (.+)`).FindAllStringSubmatch(txt, -1) {
+		return m[1], nil
+	}
+
+	return "", errors.New("could not find digest in output")
+}
+
+func imgIdFromOutput(txt, repoName string) (string, error) {
+	if lifecycleVersion.LessThan(lifecycleV030) {
+		return imgDigestFromOutput(txt, repoName)
+	}
+
+	for _, m := range regexp.MustCompile(`\*\*\* Image ID: (.+)`).FindAllStringSubmatch(txt, -1) {
+		return m[1], nil
+	}
+
+	return "", errors.New("could not find image ID in output")
 }
 
 func runDockerImageExposePort(t *testing.T, containerName, repoName string) string {
