@@ -17,8 +17,6 @@ else
 		$(GOCMD) fmt ./...
 endif
 
-
-
 imports:
 	go install -mod=vendor golang.org/x/tools/cmd/goimports
 ifeq ($(PACK_CI), true)
@@ -31,10 +29,10 @@ vet:
 	$(GOCMD) vet -mod=vendor $$($(GOCMD) list ./... | grep -v /testdata/)
 
 test: unit acceptance
-	
+
 unit: format imports vet
 	$(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 ./...
-	
+
 acceptance: format imports vet
 	$(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 -tags=acceptance ./acceptance
 

@@ -69,8 +69,8 @@ func (l *Lifecycle) Restore(ctx context.Context, useVolumeCache bool, cacheName 
 	return restore.Run(ctx)
 }
 
-func (l *Lifecycle) Analyze(ctx context.Context, repoName string, publish bool) error {
-	analyze, err := l.newAnalyze(repoName, publish)
+func (l *Lifecycle) Analyze(ctx context.Context, repoName string, publish, clearCache bool) error {
+	analyze, err := l.newAnalyze(repoName, publish, clearCache)
 	if err != nil {
 		return err
 	}
@@ -78,29 +78,36 @@ func (l *Lifecycle) Analyze(ctx context.Context, repoName string, publish bool) 
 	return analyze.Run(ctx)
 }
 
-func (l *Lifecycle) newAnalyze(repoName string, publish bool) (*Phase, error) {
+func (l *Lifecycle) newAnalyze(repoName string, publish, clearCache bool) (*Phase, error) {
+	args := []string{
+		"-layers", layersDir,
+		"-group", groupPath,
+		repoName,
+	}
+	if clearCache {
+		args = prependArg("-skip-layers", args)
+	}
+
 	if publish {
 		return l.NewPhase(
 			"analyzer",
 			WithRegistryAccess(repoName),
-			WithArgs(
-				"-layers", layersDir,
-				"-group", groupPath,
-				repoName,
-			),
+			WithArgs(args...),
 		)
 	} else {
 		return l.NewPhase(
 			"analyzer",
 			WithDaemonAccess(),
-			WithArgs(
-				"-layers", layersDir,
-				"-group", groupPath,
+			WithArgs(prependArg(
 				"-daemon",
-				repoName,
-			),
+				args,
+			)...),
 		)
 	}
+}
+
+func prependArg(arg string, args []string) []string {
+	return append([]string{arg}, args...)
 }
 
 func (l *Lifecycle) Build(ctx context.Context) error {

@@ -34,7 +34,7 @@ var (
 	dockerCli *client.Client
 )
 
-func TestLifecycle(t *testing.T) {
+func TestPhase(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	color.NoColor = true
@@ -49,10 +49,10 @@ func TestLifecycle(t *testing.T) {
 	CreateFakeLifecycleImage(t, dockerCli, repoName)
 	defer h.DockerRmi(dockerCli, repoName)
 
-	spec.Run(t, "lifecycle", testLifecycle, spec.Report(report.Terminal{}), spec.Parallel())
+	spec.Run(t, "lifecycle", testPhase, spec.Report(report.Terminal{}), spec.Parallel())
 }
 
-func testLifecycle(t *testing.T, when spec.G, it spec.S) {
+func testPhase(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject        *build.Lifecycle
 		outBuf, errBuf bytes.Buffer
@@ -130,7 +130,6 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("is posix", func() {
-
 				it.Before(func() {
 					h.SkipIf(t, runtime.GOOS == "windows", "Skipping on windows")
 				})
