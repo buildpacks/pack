@@ -1,32 +1,30 @@
 sudo: required
 language: go
 go:
-- 1.12.x
+  - 1.12.x
 services:
-- docker
+  - docker
 jobs:
   include:
-  - name: tests
-    os: linux
-    cache:
-      directories:
-      - $GOPATH/pkg/mod
-    env:
-    - PACK_CI=true
-    - GO111MODULE=on
-    script:
-    - make
-  - name: tests
-    os: windows
-    env:
-      - NO_DOCKER=true
-      - GO111MODULE=on
-    script: go test -mod=vendor -count=1 -parallel=1 -v ./...
-    after_success:  go build -mod=vendor -o pack ./cmd/pack
-  - name: tests
-    os: osx
-    env:
-      - NO_DOCKER=true
-      - GO111MODULE=on
-    script: go test -mod=vendor -count=1 -parallel=1 -v ./...
-    after_success:  go build -mod=vendor -o pack ./cmd/pack
+    - name: tests
+      os: linux
+      cache:
+        directories:
+          - $GOPATH/pkg/mod
+      env:
+        - GO111MODULE=on
+      script:
+        - make
+    - name: tests
+      os: osx
+      env:
+        - NO_DOCKER=true
+        - GO111MODULE=on
+      script: make
+    - name: tests
+      os: windows
+      env:
+        - NO_DOCKER=true
+        - GO111MODULE=on
+      script: go test -mod=vendor -count=1 -parallel=1 -v ./...
+      after_success: go build -mod=vendor -o pack ./cmd/pack
