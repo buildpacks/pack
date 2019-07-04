@@ -9,7 +9,7 @@ SRC:=$(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
 all: clean verify test build
 
-build: format vet
+build:
 	@echo "> Building..."
 	mkdir -p ./out
 	$(GOENV) $(GOCMD) build -mod=vendor -ldflags "-X 'main.Version=${PACK_VERSION}'" -o ./out/$(PACK_BIN) -a ./cmd/pack
