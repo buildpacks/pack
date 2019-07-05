@@ -335,7 +335,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					)
 					output := h.Run(t, cmd)
 					h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-					assertMockAppRunsWithOutput(t, repoName, "Env2 Layer Contents From Environment", "Env1 Layer Contents From File")
+					assertMockAppRunsWithOutput(t,
+						repoName,
+						"Env2 Layer Contents From Environment",
+						"Env1 Layer Contents From File",
+					)
 				})
 			})
 
@@ -875,6 +879,7 @@ func assertMockAppRunsWithOutput(t *testing.T, repoName string, expectedOutputs 
 }
 
 func assertMockAppResponseContains(t *testing.T, launchPort string, timeout time.Duration, expectedOutputs ...string) {
+	t.Helper()
 	resp := waitForResponse(t, launchPort, timeout)
 	for _, expected := range expectedOutputs {
 		h.AssertContains(t, resp, expected)
