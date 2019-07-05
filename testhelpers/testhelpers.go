@@ -332,15 +332,22 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 	AssertNil(t, err)
 	for _, fi := range fis {
 		if fi.Mode().IsRegular() {
-			srcFile, err := os.Open(filepath.Join(src, fi.Name()))
-			AssertNil(t, err)
-			dstFile, err := os.OpenFile(filepath.Join(dst, fi.Name()), os.O_RDWR|os.O_CREATE|os.O_TRUNC, fi.Mode())
-			AssertNil(t, err)
-			_, err = io.Copy(dstFile, srcFile)
-			AssertNil(t, err)
-			modifiedtime := time.Time{}
-			err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedtime, modifiedtime)
-			AssertNil(t, err)
+			func() {
+				srcFile, err := os.Open(filepath.Join(src, fi.Name()))
+				AssertNil(t, err)
+				defer srcFile.Close()
+
+				dstFile, err := os.OpenFile(filepath.Join(dst, fi.Name()), os.O_RDWR|os.O_CREATE|os.O_TRUNC, fi.Mode())
+				AssertNil(t, err)
+				defer dstFile.Close()
+
+				_, err = io.Copy(dstFile, srcFile)
+				AssertNil(t, err)
+
+				modifiedtime := time.Time{}
+				err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedtime, modifiedtime)
+				AssertNil(t, err)
+			}()
 		}
 		if fi.IsDir() {
 			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
