@@ -17,17 +17,22 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
+const (
+	cacheDirPrefix = "c"
+	cacheVersion   = "1"
+)
+
 type Downloader struct {
-	logger   logging.Logger
-	cacheDir string
+	logger       logging.Logger
+	baseCacheDir string
 }
 
 var schemeRegexp = regexp.MustCompile(`^.+://.*`)
 
-func NewDownloader(logger logging.Logger, cacheDir string) *Downloader {
+func NewDownloader(logger logging.Logger, baseCacheDir string) *Downloader {
 	return &Downloader{
-		logger:   logger,
-		cacheDir: cacheDir,
+		logger:       logger,
+		baseCacheDir: baseCacheDir,
 	}
 }
 
@@ -65,11 +70,13 @@ func (d *Downloader) handleFile(path string) (string, error) {
 }
 
 func (d *Downloader) handleHTTP(uri string) (string, error) {
-	if err := os.MkdirAll(d.cacheDir, 0744); err != nil {
+	cacheDir := d.versionedCacheDir()
+
+	if err := os.MkdirAll(cacheDir, 0744); err != nil {
 		return "", err
 	}
 
-	cachePath := filepath.Join(d.cacheDir, fmt.Sprintf("%x", sha256.Sum256([]byte(uri))))
+	cachePath := filepath.Join(cacheDir, fmt.Sprintf("%x", sha256.Sum256([]byte(uri))))
 	tgzFile := cachePath + ".tgz"
 
 	etagFile := cachePath + ".etag"
@@ -139,6 +146,10 @@ func (d *Downloader) downloadAsStream(uri string, etag string) (io.ReadCloser, s
 	}
 
 	return nil, "", fmt.Errorf("could not download from %q, code http status %d", uri, resp.StatusCode)
+}
+
+func (d *Downloader) versionedCacheDir() string {
+	return filepath.Join(d.baseCacheDir, cacheDirPrefix+cacheVersion)
 }
 
 func fileExists(file string) (bool, error) {
