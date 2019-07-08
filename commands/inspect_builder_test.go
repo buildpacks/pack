@@ -217,7 +217,7 @@ Detection Order:
 	pack set-default-builder <builder image>`)
 				h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
 				h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
-				h.AssertMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks'`)
+				h.AssertMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks:18'`)
 			})
 		})
 	})

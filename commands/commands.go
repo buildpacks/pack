@@ -36,7 +36,7 @@ var suggestedBuilders = [][]suggestedBuilder{
 		{"Cloud Foundry", "cloudfoundry/cnb:cflinuxfs3", "larger base image with Java, Node.js & Python"},
 	},
 	{
-		{"Heroku", "heroku/buildpacks", "heroku-18 base image with official Heroku buildpacks"},
+		{"Heroku", "heroku/buildpacks:18", "heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP"},
 	},
 }
 
