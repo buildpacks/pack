@@ -61,7 +61,7 @@ func main() {
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
 	rootCmd.AddCommand(commands.Version(logger, Version))
 
-	rootCmd.AddCommand(commands.AutoCompletionCommand())
+	rootCmd.AddCommand(commands.CompletionCommand(logger))
 
 	if err := rootCmd.Execute(); err != nil {
 		if commands.IsSoftError(err) {

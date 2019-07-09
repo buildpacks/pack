@@ -21,11 +21,7 @@ type RunImage struct {
 }
 
 func NewDefault() (*Config, error) {
-	packHome := os.Getenv("PACK_HOME")
-	if packHome == "" {
-		packHome = filepath.Join(os.Getenv("HOME"), ".pack")
-	}
-	return New(packHome)
+	return New(PackHome())
 }
 
 func New(path string) (*Config, error) {
@@ -42,6 +38,14 @@ func New(path string) (*Config, error) {
 	}
 
 	return config, nil
+}
+
+func PackHome() string {
+	packHome := os.Getenv("PACK_HOME")
+	if packHome == "" {
+		packHome = filepath.Join(os.Getenv("HOME"), ".pack")
+	}
+	return packHome
 }
 
 func (c *Config) save() error {
