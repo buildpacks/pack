@@ -10,6 +10,14 @@
 - [Latest `pack` Documentation](https://buildpacks.io/docs/using-pack)
 - [Buildpack & Platform Specifications](https://github.com/buildpack/spec)
 
+## Auto-completion
+
+To configure your bash shell to load completions for each session, add the following to your `.bashrc` or `.bash_profile`:
+
+```bash
+. $(pack completion)
+```
+
 ## Contributing
 
 For information on how to contribute to this project including it's development 
