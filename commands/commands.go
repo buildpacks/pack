@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
@@ -72,6 +73,14 @@ func createCancellableContext() context.Context {
 	}()
 
 	return ctx
+}
+
+func getMirrors(config config.Config) map[string][]string {
+	mirrors := map[string][]string{}
+	for _, ri := range config.RunImages {
+		mirrors[ri.Image] = ri.Mirrors
+	}
+	return mirrors
 }
 
 func suggestSettingBuilder(logger logging.Logger, client PackClient) {

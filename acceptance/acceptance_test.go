@@ -78,7 +78,7 @@ func TestAcceptance(t *testing.T) {
 	builder = createBuilder(t, runImageMirror)
 	defer h.DockerRmi(dockerCli, runImage, buildImage, builder, runImageMirror)
 
-	spec.Run(t, "acceptance", testAcceptance, spec.Report(report.Terminal{}))
+	spec.Run(t, "pack", testAcceptance, spec.Report(report.Terminal{}))
 }
 
 func testAcceptance(t *testing.T, when spec.G, it spec.S) {
@@ -108,7 +108,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 	})
 
-	when("subcommand is invalid", func() {
+	when("invalid subcommand", func() {
 		it("prints usage", func() {
 			cmd := packCmd("some-bad-command")
 			output, _ := cmd.CombinedOutput()
@@ -121,7 +121,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("pack build", func() {
+	when("build", func() {
 		var repo, repoName, containerName string
 
 		it.Before(func() {
@@ -175,7 +175,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				t.Log("app is runnable")
 				assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
-				t.Log("it uses the default run image as a base image")
+				t.Log("selects the best run image mirror")
+				h.AssertContains(t, output, fmt.Sprintf("Selected run image mirror '%s'", runImageMirror))
+
+				t.Log("it uses the run image as a base image")
 				assertHasBase(t, repoName, runImage)
 
 				t.Log("sets the run image metadata")
@@ -189,6 +192,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("Should not have published image without the '--publish' flag: got %s", contents)
 				}
 
+				t.Log("add a local mirror")
+				localRunImageMirror := registryConfig.RepoName("pack-test/run-mirror")
+				h.AssertNil(t, dockerCli.ImageTag(context.TODO(), runImage, localRunImageMirror))
+				defer h.DockerRmi(dockerCli, localRunImageMirror)
+				cmd = packCmd("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+				h.Run(t, cmd)
+
 				t.Log("rebuild")
 				cmd = packCmd("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
 				output = h.Run(t, cmd)
@@ -199,6 +209,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					t.Fatal("Could not determine image id for built image")
 				}
 				defer h.DockerRmi(dockerCli, imgId)
+
+				t.Log("local run-image mirror is selected")
+				h.AssertContains(t, output, fmt.Sprintf("Selected run image mirror '%s' from local config", localRunImageMirror))
 
 				t.Log("app is runnable")
 				assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
@@ -498,7 +511,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("pack run", func() {
+	when("run", func() {
 		it.Before(func() {
 			h.SkipIf(t, runtime.GOOS == "windows", "Skipping because windows fails to clean up properly")
 		})
@@ -561,15 +574,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("pack rebase", func() {
-		var repoName, containerName, runBefore, runAfter string
+	when("rebase", func() {
+		var repoName, runBefore, origID string
 		var buildRunImage func(string, string, string)
 
 		it.Before(func() {
-			containerName = "test-" + h.RandString(10)
-			repoName = "some-org/" + h.RandString(10)
-			runBefore = "run-before/" + h.RandString(10)
-			runAfter = "run-after/" + h.RandString(10)
+			repoName = registryConfig.RepoName("some-org/" + h.RandString(10))
+			runBefore = registryConfig.RepoName("run-before/" + h.RandString(10))
 
 			buildRunImage = func(newRunImage, contents1, contents2 string) {
 				h.CreateImageOnLocal(t, dockerCli, newRunImage, fmt.Sprintf(`
@@ -580,160 +591,128 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 													USER pack
 												`, runImage, contents1, contents2))
 			}
+			buildRunImage(runBefore, "contents-before-1", "contents-before-2")
+
+			cmd := packCmd(
+				"build", repoName,
+				"-p", filepath.Join("testdata", "mock_app"),
+				"--builder", builder,
+				"--run-image", runBefore,
+				"--no-pull",
+			)
+			h.Run(t, cmd)
+			origID = h.ImageID(t, repoName)
+			assertMockAppRunsWithOutput(t, repoName, "contents-before-1", "contents-before-2")
 		})
 
 		it.After(func() {
-			dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
-			dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
-
-			h.DockerRmi(dockerCli, repoName)
+			h.AssertNil(t, h.DockerRmi(dockerCli, origID, repoName, runBefore))
+			ref, err := name.ParseReference(repoName, name.WeakValidation)
+			h.AssertNil(t, err)
+			buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
+			launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
+			h.AssertNil(t, buildCacheVolume.Clear(context.TODO()))
+			h.AssertNil(t, launchCacheVolume.Clear(context.TODO()))
 		})
 
-		when("run on daemon", func() {
-			var origID string
+		when("daemon", func() {
+			when("--run-image", func() {
+				var runAfter string
 
-			it.Before(func() {
-				buildRunImage(runBefore, "contents-before-1", "contents-before-2")
-				cmd := packCmd(
-					"build", repoName,
-					"-p", filepath.Join("testdata", "mock_app"),
-					"--builder", builder,
-					"--run-image", runBefore,
-					"--no-pull",
-				)
-				h.Run(t, cmd)
-				origID = h.ImageID(t, repoName)
-				assertMockAppRunsWithOutput(t, repoName, "contents-before-1", "contents-before-2")
+				it.Before(func() {
+					runAfter = registryConfig.RepoName("run-after/" + h.RandString(10))
+					buildRunImage(runAfter, "contents-after-1", "contents-after-2")
+				})
+
+				it.After(func() {
+					h.AssertNil(t, h.DockerRmi(dockerCli, runAfter))
+				})
+
+				it("uses provided run image", func() {
+					cmd := packCmd("rebase", repoName, "--no-pull", "--run-image", runAfter)
+					output := h.Run(t, cmd)
+
+					h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
+					assertMockAppRunsWithOutput(t, repoName, "contents-after-1", "contents-after-2")
+				})
 			})
 
-			it.After(func() {
-				h.DockerRmi(dockerCli, origID, runBefore, runAfter)
-				ref, err := name.ParseReference(repoName, name.WeakValidation)
-				h.AssertNil(t, err)
-				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
-				cacheImage := cache.NewImageCache(ref, dockerCli)
-				buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
-				launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
-				cacheImage.Clear(context.TODO())
-				buildCacheVolume.Clear(context.TODO())
-				launchCacheVolume.Clear(context.TODO())
+			when("local config has a mirror", func() {
+				var localRunImageMirror string
+
+				it.Before(func() {
+					localRunImageMirror = registryConfig.RepoName("run-after/" + h.RandString(10))
+					buildRunImage(localRunImageMirror, "local-mirror-after-1", "local-mirror-after-2")
+					cmd := packCmd("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+					h.Run(t, cmd)
+				})
+
+				it.After(func() {
+					h.AssertNil(t, h.DockerRmi(dockerCli, localRunImageMirror))
+				})
+
+				it("prefers the local mirror", func() {
+					cmd := packCmd("rebase", repoName, "--no-pull")
+					output := h.Run(t, cmd)
+
+					h.AssertContains(t, output, fmt.Sprintf("Selected run image mirror '%s' from local config", localRunImageMirror))
+
+					h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
+					assertMockAppRunsWithOutput(t, repoName, "local-mirror-after-1", "local-mirror-after-2")
+				})
 			})
 
-			it("rebases", func() {
-				buildRunImage(runAfter, "contents-after-1", "contents-after-2")
+			when("image metadata has a mirror", func() {
+				it.Before(func() {
+					//clean up existing mirror first to avoid leaking images
+					h.AssertNil(t, h.DockerRmi(dockerCli, runImageMirror))
 
-				cmd := packCmd("rebase", repoName, "--no-pull", "--run-image", runAfter)
-				output := h.Run(t, cmd)
+					buildRunImage(runImageMirror, "mirror-after-1", "mirror-after-2")
+				})
 
-				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
-				assertMockAppRunsWithOutput(t, repoName, "contents-after-1", "contents-after-2")
+				it("selects the best mirror", func() {
+					cmd := packCmd("rebase", repoName, "--no-pull")
+					output := h.Run(t, cmd)
+
+					h.AssertContains(t, output, fmt.Sprintf("Selected run image mirror '%s'", runImageMirror))
+
+					h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
+					assertMockAppRunsWithOutput(t, repoName, "mirror-after-1", "mirror-after-2")
+				})
 			})
 		})
 
 		when("--publish", func() {
 			it.Before(func() {
-				repoName = registryConfig.RepoName(repoName)
-				runBefore = registryConfig.RepoName(runBefore)
-				runAfter = registryConfig.RepoName(runAfter)
-
-				buildRunImage(runBefore, "contents-before-1", "contents-before-2")
-				h.AssertNil(t, h.PushImage(dockerCli, runBefore, registryConfig))
-
-				cmd := packCmd("build", repoName,
-					"-p", filepath.Join("testdata", "mock_app"),
-					"--builder", builder,
-					"--run-image", runBefore,
-					"--publish")
-				h.Run(t, cmd)
-
-				h.AssertNil(t, h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
-				assertMockAppRunsWithOutput(t, repoName, "contents-before-1", "contents-before-2")
-				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+				h.AssertNil(t, h.PushImage(dockerCli, repoName, registryConfig))
 			})
 
-			it.After(func() {
-				h.DockerRmi(dockerCli, runBefore, runAfter)
-				ref, err := name.ParseReference(repoName, name.WeakValidation)
-				h.AssertNil(t, err)
-				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
-				cacheImage := cache.NewImageCache(ref, dockerCli)
-				buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
-				launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
-				cacheImage.Clear(context.TODO())
-				buildCacheVolume.Clear(context.TODO())
-				launchCacheVolume.Clear(context.TODO())
-			})
+			when("--run-image", func() {
+				var runAfter string
 
-			it("rebases on the registry", func() {
-				buildRunImage(runAfter, "contents-after-1", "contents-after-2")
-				h.AssertNil(t, h.PushImage(dockerCli, runAfter, registryConfig))
+				it.Before(func() {
+					runAfter = registryConfig.RepoName("run-after/" + h.RandString(10))
+					buildRunImage(runAfter, "contents-after-1", "contents-after-2")
+					h.AssertNil(t, h.PushImage(dockerCli, runAfter, registryConfig))
+				})
 
-				cmd := packCmd("rebase", repoName, "--publish", "--run-image", runAfter)
-				output := h.Run(t, cmd)
+				it.After(func() {
+					h.DockerRmi(dockerCli, runAfter)
+				})
 
-				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
-				h.AssertNil(t, h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
-				assertMockAppRunsWithOutput(t, repoName, "contents-after-1", "contents-after-2")
-			})
-		})
+				it("uses provided run image", func() {
+					cmd := packCmd("rebase", repoName, "--publish", "--run-image", runAfter)
+					output := h.Run(t, cmd)
 
-		when("no run-image flag", func() {
-			var origID string
-			var origRunImageID string
-			var builderName = "some-org/" + h.RandString(10)
-			var runImage = "some-org/" + h.RandString(10)
-
-			it.Before(func() {
-				buildRunImage(runImage, "contents-before-1", "contents-before-2")
-				origRunImageID = h.ImageID(t, runImage)
-
-				h.CreateImageOnLocal(t, dockerCli, builderName, fmt.Sprintf(`
-								FROM %s
-								LABEL io.buildpacks.builder.metadata="{\"buildpacks\": [{\"id\": \"simple/layers\", \"version\": \"simple-layers-version\"}], \"groups\": [{\"buildpacks\": [{\"id\": \"simple/layers\", \"version\": \"simple-layers-version\"}]}], \"stack\":{\"runImage\": {\"image\": \"%s\"}}}"
-								USER root
-								RUN echo "[run-image]\n  image=\"%s\"" > /buildpacks/stack.toml
-								USER pack
-							`, builder, runImage, runImage))
-
-				cmd := packCmd(
-					"build", repoName,
-					"-p", filepath.Join("testdata", "mock_app"),
-					"--builder", builderName,
-					"--no-pull",
-				)
-				h.Run(t, cmd)
-				origID = h.ImageID(t, repoName)
-				assertMockAppRunsWithOutput(t, repoName, "contents-before-1", "contents-before-2")
-			})
-
-			it.After(func() {
-				h.DockerRmi(dockerCli, origID, builderName, origRunImageID, runImage)
-
-				ref, err := name.ParseReference(repoName, name.WeakValidation)
-				h.AssertNil(t, err)
-				h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
-				cacheImage := cache.NewImageCache(ref, dockerCli)
-				buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
-				launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
-
-				cacheImage.Clear(context.TODO())
-				buildCacheVolume.Clear(context.TODO())
-				launchCacheVolume.Clear(context.TODO())
-			})
-
-			it("rebases", func() {
-				buildRunImage(runImage, "contents-after-1", "contents-after-2")
-
-				cmd := packCmd("rebase", repoName, "--no-pull")
-				output := h.Run(t, cmd)
-
-				h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
-				assertMockAppRunsWithOutput(t, repoName, "contents-after-1", "contents-after-2")
+					h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
+					h.AssertNil(t, h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+					assertMockAppRunsWithOutput(t, repoName, "contents-after-1", "contents-after-2")
+				})
 			})
 		})
 	})
 
-	when("pack suggest-builders", func() {
+	when("suggest-builders", func() {
 		it("displays suggested builders", func() {
 			cmd := packCmd("suggest-builders")
 			output, err := cmd.CombinedOutput()
@@ -745,7 +724,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("pack suggest-stacks", func() {
+	when("suggest-stacks", func() {
 		it("displays suggested stacks", func() {
 			cmd := packCmd("suggest-stacks")
 			output, err := cmd.CombinedOutput()
@@ -757,7 +736,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("pack set-default-builder", func() {
+	when("set-default-builder", func() {
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
 			cmd := packCmd("set-default-builder", "cloudfoundry/cnb:bionic")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
@@ -769,7 +748,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("pack inspect-builder", func() {
+	when("inspect-builder", func() {
 		it("displays configuration for a builder (local and remote)", func() {
 			configuredRunImage := "some-registry.com/pack-test/run1"
 			cmd := packCmd("set-run-image-mirrors", "pack-test/run", "--mirror", configuredRunImage)

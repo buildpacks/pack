@@ -10,7 +10,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func SetDefaultBuilder(logger logging.Logger, client PackClient) *cobra.Command {
+func SetDefaultBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set-default-builder <builder-name>",
 		Short: "Set default builder used by other commands",
@@ -43,12 +43,8 @@ func SetDefaultBuilder(logger logging.Logger, client PackClient) *cobra.Command 
 				}
 			}
 
-			cfg, err := config.NewDefault()
-			if err != nil {
-				return err
-			}
-			err = cfg.SetDefaultBuilder(args[0])
-			if err != nil {
+			cfg.DefaultBuilder = imageName
+			if err := config.Write(cfg, config.DefaultConfigPath()); err != nil {
 				return err
 			}
 			logger.Infof("Builder %s is now the default builder", style.Symbol(imageName))

@@ -10,6 +10,8 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpack/pack/config"
+
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/commands"
 	cmdmocks "github.com/buildpack/pack/commands/mocks"
@@ -36,7 +38,7 @@ func testSetDefaultBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockClient = cmdmocks.NewMockPackClient(mockController)
 		logger = mocks.NewMockLogger(&outBuf)
-		command = commands.SetDefaultBuilder(logger, mockClient)
+		command = commands.SetDefaultBuilder(logger, config.Config{}, mockClient)
 	})
 
 	it.After(func() {

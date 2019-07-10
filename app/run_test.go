@@ -52,6 +52,10 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
+		it.After(func() {
+			h.AssertNil(t, h.DockerRmi(docker, repo, "hashicorp/http-echo"))
+		})
+
 		when("there is no exposed or provided ports", func() {
 			it.Before(func() {
 				h.CreateImageOnLocal(

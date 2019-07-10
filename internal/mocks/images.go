@@ -7,7 +7,6 @@ import (
 	"github.com/buildpack/imgutil/fakes"
 
 	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/stack"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -19,8 +18,8 @@ func NewFakeBuilderImage(t *testing.T, name string, buildpacks []builder.Buildpa
 	metadata := builder.Metadata{
 		Buildpacks: buildpacks,
 		Groups:     config.Groups,
-		Stack: stack.Metadata{
-			RunImage: stack.RunImageMetadata{
+		Stack: builder.StackMetadata{
+			RunImage: builder.RunImageMetadata{
 				Image:   config.Stack.RunImage,
 				Mirrors: config.Stack.RunImageMirrors,
 			},

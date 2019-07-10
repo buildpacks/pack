@@ -1,4 +1,4 @@
-package pack_test
+package pack
 
 import (
 	"bytes"
@@ -12,9 +12,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/image"
 	m "github.com/buildpack/pack/internal/mocks"
 	"github.com/buildpack/pack/mocks"
@@ -28,7 +26,7 @@ func TestInspectBuilder(t *testing.T) {
 
 func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		client           *pack.Client
+		subject          *Client
 		mockImageFetcher *mocks.MockImageFetcher
 		mockBPFetcher    *mocks.MockBuildpackFetcher
 		mockController   *gomock.Controller
@@ -41,18 +39,12 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockImageFetcher = mocks.NewMockImageFetcher(mockController)
 		mockBPFetcher = mocks.NewMockBuildpackFetcher(mockController)
 
-		client = pack.NewClient(&config.Config{
-			RunImages: []config.RunImage{
-				{Image: "some/run-image", Mirrors: []string{"some/local-mirror"}},
-			},
-		},
-			m.NewMockLogger(&out),
-			mockImageFetcher,
-			mockBPFetcher,
-			nil,
-			nil,
-			nil,
-		)
+		subject = &Client{
+			logger:           m.NewMockLogger(&out),
+			imageFetcher:     mockImageFetcher,
+			buildpackFetcher: mockBPFetcher,
+		}
+
 		builderImage = fakes.NewImage("some/builder", "", "")
 		h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
 		h.AssertNil(t, builderImage.SetEnv("CNB_USER_ID", "1234"))
@@ -109,37 +101,31 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("returns the builder with the given name", func() {
-						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.RunImage, "some/run-image")
 					})
 
 					it("set the description", func() {
-						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.Description, "Some description")
 					})
 
 					it("set the stack ID", func() {
-						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.Stack, "test.stack.id")
 					})
 
-					it("set the local run image mirrors", func() {
-						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
-						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.LocalRunImageMirrors, []string{"some/local-mirror"})
-					})
-
 					it("set the defaults run image mirrors", func() {
-						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.RunImageMirrors, []string{"gcr.io/some/default"})
 					})
 
 					it("sets the buildpacks", func() {
-						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.Buildpacks[0], builder.BuildpackMetadata{
 							ID:      "test.bp.one",
@@ -149,7 +135,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("sets the groups", func() {
-						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.Groups[0].Buildpacks[0], builder.GroupBuildpack{
 							ID:      "test.bp.one",
@@ -158,7 +144,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("sets the lifecycle version", func() {
-						builderInfo, err := client.InspectBuilder("some/builder", useDaemon)
+						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.LifecycleVersion, "1.2.3")
 					})
@@ -173,7 +159,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("returns an error", func() {
-			_, err := client.InspectBuilder("some/builder", false)
+			_, err := subject.InspectBuilder("some/builder", false)
 			h.AssertError(t, err, "some-error")
 		})
 	})
@@ -186,7 +172,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("return nil metadata", func() {
-			metadata, err := client.InspectBuilder("some/builder", true)
+			metadata, err := subject.InspectBuilder("some/builder", true)
 			h.AssertNil(t, err)
 			h.AssertNil(t, metadata)
 		})

@@ -1,4 +1,4 @@
-package pack_test
+package pack
 
 import (
 	"bytes"
@@ -10,8 +10,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/internal/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -25,8 +23,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 	when("#Rebase", func() {
 		var (
 			fakeImageFetcher   *mocks.FakeImageFetcher
-			client             *pack.Client
-			cfg                *config.Config
+			subject            *Client
 			fakeAppImage       *fakes.Image
 			fakeRunImage       *fakes.Image
 			fakeRunImageMirror *fakes.Image
@@ -46,16 +43,10 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			fakeRunImageMirror = fakes.NewImage("example.com/some/run", "mirror-top-layer-sha", "mirror-digest")
 			fakeImageFetcher.LocalImages["example.com/some/run"] = fakeRunImageMirror
 
-			cfg = &config.Config{}
-			client = pack.NewClient(
-				cfg,
-				mocks.NewMockLogger(&out),
-				fakeImageFetcher,
-				nil,
-				nil,
-				nil,
-				nil,
-			)
+			subject = &Client{
+				logger:       mocks.NewMockLogger(&out),
+				imageFetcher: fakeImageFetcher,
+			}
 		})
 
 		it.After(func() {
@@ -79,7 +70,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("uses the run image provided by the user", func() {
-						h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+						h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 							RunImage: "custom/run",
 							RepoName: "some/app",
 						}))
@@ -93,7 +84,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			when("run image is NOT provided by the user", func() {
 				when("the image has a label with a run image specified", func() {
 					it("uses the run image provided in the App image label", func() {
-						h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+						h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 							RepoName: "some/app",
 						}))
 						h.AssertEq(t, fakeAppImage.Base(), "some/run")
@@ -103,13 +94,13 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("the image has a label with a run image mirrors specified", func() {
-					when("there are no locally-configured mirrors", func() {
+					when("there are no user provided mirrors", func() {
 						it.Before(func() {
 							fakeImageFetcher.LocalImages["example.com/some/app"] = fakeAppImage
 						})
 
 						it("chooses a matching mirror from the app image label", func() {
-							h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName: "example.com/some/app",
 							}))
 							h.AssertEq(t, fakeAppImage.Base(), "example.com/some/run")
@@ -118,7 +109,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 
-					when("there are locally-configured mirrors", func() {
+					when("there are user provided mirrors", func() {
 						var (
 							fakeLocalMirror *fakes.Image
 						)
@@ -126,12 +117,6 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 							fakeImageFetcher.LocalImages["example.com/some/app"] = fakeAppImage
 							fakeLocalMirror = fakes.NewImage("example.com/some/local-run", "local-mirror-top-layer-sha", "local-mirror-digest")
 							fakeImageFetcher.LocalImages["example.com/some/local-run"] = fakeLocalMirror
-							cfg.RunImages = []config.RunImage{
-								{
-									Image:   "some/run",
-									Mirrors: []string{"example.com/some/local-run"},
-								},
-							}
 						})
 
 						it.After(func() {
@@ -139,8 +124,11 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("chooses a matching local mirror first", func() {
-							h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName: "example.com/some/app",
+								AdditionalMirrors: map[string][]string{
+									"some/run": {"example.com/some/local-run"},
+								},
 							}))
 							h.AssertEq(t, fakeAppImage.Base(), "example.com/some/local-run")
 							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
@@ -152,7 +140,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				when("the image does not have a label with a run image specified", func() {
 					it("returns an error", func() {
 						h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata", "{}"))
-						err := client.Rebase(context.TODO(), pack.RebaseOptions{
+						err := subject.Rebase(context.TODO(), RebaseOptions{
 							RepoName: "some/app",
 						})
 						h.AssertError(t, err, "run image must be specified")
@@ -177,7 +165,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				when("is false", func() {
 					when("skip pull is false", func() {
 						it("updates the local image", func() {
-							h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName: "some/app",
 								SkipPull: false,
 							}))
@@ -189,7 +177,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 					when("skip pull is true", func() {
 						it("uses local image", func() {
-							h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName: "some/app",
 								SkipPull: true,
 							}))
@@ -207,7 +195,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 					when("skip pull is anything", func() {
 						it("uses remote image", func() {
-							h.AssertNil(t, client.Rebase(context.TODO(), pack.RebaseOptions{
+							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName: "some/app",
 								Publish:  true,
 							}))

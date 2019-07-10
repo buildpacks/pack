@@ -26,7 +26,7 @@ type BuildFlags struct {
 	Buildpacks []string
 }
 
-func Build(logger logging.Logger, config *config.Config, packClient *pack.Client) *cobra.Command {
+func Build(logger logging.Logger, cfg config.Config, packClient *pack.Client) *cobra.Command {
 	var flags BuildFlags
 	ctx := createCancellableContext()
 
@@ -36,7 +36,7 @@ func Build(logger logging.Logger, config *config.Config, packClient *pack.Client
 		Short: "Generate app image from source code",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			imageName := args[0]
-			if config.DefaultBuilder == "" && flags.Builder == "" {
+			if flags.Builder == "" {
 				suggestSettingBuilder(logger, packClient)
 				return MakeSoftError()
 			}
@@ -45,15 +45,16 @@ func Build(logger logging.Logger, config *config.Config, packClient *pack.Client
 				return err
 			}
 			if err := packClient.Build(ctx, pack.BuildOptions{
-				AppDir:     flags.AppDir,
-				Builder:    flags.Builder,
-				RunImage:   flags.RunImage,
-				Env:        env,
-				Image:      imageName,
-				Publish:    flags.Publish,
-				NoPull:     flags.NoPull,
-				ClearCache: flags.ClearCache,
-				Buildpacks: flags.Buildpacks,
+				AppDir:            flags.AppDir,
+				Builder:           flags.Builder,
+				AdditionalMirrors: getMirrors(cfg),
+				RunImage:          flags.RunImage,
+				Env:               env,
+				Image:             imageName,
+				Publish:           flags.Publish,
+				NoPull:            flags.NoPull,
+				ClearCache:        flags.ClearCache,
+				Buildpacks:        flags.Buildpacks,
 			}); err != nil {
 				return err
 			}
@@ -61,15 +62,15 @@ func Build(logger logging.Logger, config *config.Config, packClient *pack.Client
 			return nil
 		}),
 	}
-	buildCommandFlags(cmd, &flags)
+	buildCommandFlags(cmd, &flags, cfg)
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "build")
 	return cmd
 }
 
-func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags) {
+func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Config) {
 	cmd.Flags().StringVarP(&buildFlags.AppDir, "path", "p", "", "Path to app dir (defaults to current working directory)")
-	cmd.Flags().StringVar(&buildFlags.Builder, "builder", "", "Builder (defaults to builder configured by 'set-default-builder')")
+	cmd.Flags().StringVar(&buildFlags.Builder, "builder", cfg.DefaultBuilder, "Builder (defaults to builder configured by 'set-default-builder')")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
 	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file.")
 	cmd.Flags().StringVar(&buildFlags.EnvFile, "env-file", "", "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed")

@@ -1,4 +1,4 @@
-package pack_test
+package pack
 
 import (
 	"archive/tar"
@@ -19,10 +19,8 @@ import (
 
 	"github.com/buildpack/pack/logging"
 
-	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
-	"github.com/buildpack/pack/config"
 	imocks "github.com/buildpack/pack/internal/mocks"
 	"github.com/buildpack/pack/lifecycle"
 	"github.com/buildpack/pack/mocks"
@@ -45,8 +43,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			fakeBuildImage       *fakes.Image
 			fakeRunImage         *fakes.Image
 			fakeRunImageMirror   *fakes.Image
-			opts                 pack.CreateBuilderOptions
-			subject              *pack.Client
+			opts                 CreateBuilderOptions
+			subject              *Client
 			log                  logging.Logger
 			out                  bytes.Buffer
 		)
@@ -89,17 +87,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Version: semver.MustParse("3.4.5"),
 				}, nil).AnyTimes()
 
-			subject = pack.NewClient(
-				&config.Config{},
-				log,
-				imageFetcher,
-				mockBPFetcher,
-				mockLifecycleFetcher,
-				nil,
-				nil,
-			)
+			subject = &Client{
+				logger:           log,
+				imageFetcher:     imageFetcher,
+				buildpackFetcher: mockBPFetcher,
+				lifecycleFetcher: mockLifecycleFetcher,
+			}
 
-			opts = pack.CreateBuilderOptions{
+			opts = CreateBuilderOptions{
 				BuilderName: "some/builder",
 				BuilderConfig: builder.Config{
 					Description: "Some description",
