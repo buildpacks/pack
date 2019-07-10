@@ -11,14 +11,13 @@ import (
 )
 
 type BuilderInfo struct {
-	Description          string
-	Stack                string
-	RunImage             string
-	RunImageMirrors      []string
-	LocalRunImageMirrors []string
-	Buildpacks           []builder.BuildpackMetadata
-	Groups               []builder.GroupMetadata
-	LifecycleVersion     string
+	Description      string
+	Stack            string
+	RunImage         string
+	RunImageMirrors  []string
+	Buildpacks       []builder.BuildpackMetadata
+	Groups           []builder.GroupMetadata
+	LifecycleVersion string
 }
 
 type BuildpackInfo struct {
@@ -41,26 +40,18 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(name))
 	}
 
-	runImageConfig := c.config.GetRunImage(bldr.GetStackInfo().RunImage.Image)
-
-	var localMirrors []string
-	if runImageConfig != nil {
-		localMirrors = runImageConfig.Mirrors
-	}
-
 	var lifecycleVersion string
 	if ver := bldr.GetLifecycleVersion(); ver != nil {
 		lifecycleVersion = ver.String()
 	}
 
 	return &BuilderInfo{
-		Description:          bldr.Description(),
-		Stack:                bldr.StackID,
-		RunImage:             bldr.GetStackInfo().RunImage.Image,
-		RunImageMirrors:      bldr.GetStackInfo().RunImage.Mirrors,
-		LocalRunImageMirrors: localMirrors,
-		Buildpacks:           bldr.GetBuildpacks(),
-		Groups:               bldr.GetOrder(),
-		LifecycleVersion:     lifecycleVersion,
+		Description:      bldr.Description(),
+		Stack:            bldr.StackID,
+		RunImage:         bldr.GetStackInfo().RunImage.Image,
+		RunImageMirrors:  bldr.GetStackInfo().RunImage.Mirrors,
+		Buildpacks:       bldr.GetBuildpacks(),
+		Groups:           bldr.GetOrder(),
+		LifecycleVersion: lifecycleVersion,
 	}, nil
 }

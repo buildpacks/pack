@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/fatih/color"
@@ -15,7 +16,6 @@ import (
 
 var (
 	Version    = "0.0.0"
-	cfg        config.Config
 	packClient pack.Client
 )
 
@@ -24,6 +24,8 @@ func main() {
 	logger := clilogger.NewLogWithWriters()
 
 	cobra.EnableCommandSorting = false
+	cfg := initConfig()
+
 	rootCmd := &cobra.Command{
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -39,8 +41,7 @@ func main() {
 				}
 			}
 
-			cfg = initConfig(logger)
-			packClient = initClient(&cfg, logger)
+			packClient = initClient(logger)
 		},
 	}
 	rootCmd.PersistentFlags().Bool("no-color", false, "Disable color output")
@@ -48,14 +49,14 @@ func main() {
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Show less output")
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(logger, &cfg, &packClient))
-	rootCmd.AddCommand(commands.Run(logger, &cfg, &packClient))
-	rootCmd.AddCommand(commands.Rebase(logger, &packClient))
+	rootCmd.AddCommand(commands.Build(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.Run(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.Rebase(logger, cfg, &packClient))
 
 	rootCmd.AddCommand(commands.CreateBuilder(logger, &packClient))
-	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger))
-	rootCmd.AddCommand(commands.InspectBuilder(logger, &cfg, &packClient))
-	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, &packClient))
+	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
+	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
 
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
@@ -71,16 +72,17 @@ func main() {
 	}
 }
 
-func initConfig(logger logging.Logger) config.Config {
-	cfg, err := config.NewDefault()
+func initConfig() config.Config {
+	cfg, err := config.Read(config.DefaultConfigPath())
 	if err != nil {
-		exitError(logger, err)
+		fmt.Printf("WARN: %s\n", err.Error())
+		return config.Config{}
 	}
-	return *cfg
+	return cfg
 }
 
-func initClient(cfg *config.Config, logger logging.Logger) pack.Client {
-	client, err := pack.DefaultClient(cfg, pack.WithLogger(logger))
+func initClient(logger logging.Logger) pack.Client {
+	client, err := pack.NewClient(pack.WithLogger(logger))
 	if err != nil {
 		exitError(logger, err)
 	}

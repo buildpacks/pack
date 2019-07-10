@@ -24,7 +24,6 @@ import (
 	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/lifecycle"
-	"github.com/buildpack/pack/stack"
 	"github.com/buildpack/pack/style"
 )
 
@@ -104,7 +103,7 @@ func (b *Builder) Name() string {
 	return b.image.Name()
 }
 
-func (b *Builder) GetStackInfo() stack.Metadata {
+func (b *Builder) GetStackInfo() StackMetadata {
 	return b.metadata.Stack
 }
 
@@ -209,8 +208,8 @@ func (b *Builder) SetDescription(description string) {
 }
 
 func (b *Builder) SetStackInfo(stackConfig StackConfig) {
-	b.metadata.Stack = stack.Metadata{
-		RunImage: stack.RunImageMetadata{
+	b.metadata.Stack = StackMetadata{
+		RunImage: RunImageMetadata{
 			Image:   stackConfig.RunImage,
 			Mirrors: stackConfig.RunImageMirrors,
 		},

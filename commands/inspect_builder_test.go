@@ -32,11 +32,16 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
 		mockClient     *cmdmocks.MockPackClient
-		cfg            *config.Config
+		cfg            config.Config
 	)
 
 	it.Before(func() {
-		cfg = &config.Config{}
+		cfg = config.Config{
+			DefaultBuilder: "default/builder",
+			RunImages: []config.RunImage{
+				{Image: "some/run-image", Mirrors: []string{"first/local", "second/local"}},
+			},
+		}
 		mockController = gomock.NewController(t)
 		mockClient = cmdmocks.NewMockPackClient(mockController)
 		logger = mocks.NewMockLogger(&outBuf)
@@ -124,18 +129,22 @@ ERROR: some local error
 		})
 
 		when("is successful", func() {
+			var (
+				remoteInfo *pack.BuilderInfo
+				localInfo  *pack.BuilderInfo
+			)
+
 			it.Before(func() {
 				buildpacks := []builder.BuildpackMetadata{
 					{ID: "test.bp.one", Version: "1.0.0", Latest: true},
 					{ID: "test.bp.two", Version: "2.0.0", Latest: false},
 				}
-				remoteInfo := &pack.BuilderInfo{
-					Description:          "Some remote description",
-					Stack:                "test.stack.id",
-					RunImage:             "some/run-image",
-					RunImageMirrors:      []string{"first/default", "second/default"},
-					LocalRunImageMirrors: []string{"first/image", "second/image"},
-					Buildpacks:           buildpacks,
+				remoteInfo = &pack.BuilderInfo{
+					Description:     "Some remote description",
+					Stack:           "test.stack.id",
+					RunImage:        "some/run-image",
+					RunImageMirrors: []string{"first/default", "second/default"},
+					Buildpacks:      buildpacks,
 					Groups: []builder.GroupMetadata{
 						{Buildpacks: []builder.GroupBuildpack{
 							{ID: "test.bp.one", Version: "1.0.0", Optional: true},
@@ -143,41 +152,32 @@ ERROR: some local error
 						}}},
 					LifecycleVersion: "6.7.8",
 				}
-				mockClient.EXPECT().InspectBuilder("some/image", false).Return(remoteInfo, nil)
-
-				localInfo := &pack.BuilderInfo{
-					Description:          "Some local description",
-					Stack:                "test.stack.id",
-					RunImage:             "some/run-image",
-					RunImageMirrors:      []string{"first/local-default", "second/local-default"},
-					LocalRunImageMirrors: []string{"first/local", "second/local"},
-					Buildpacks:           buildpacks,
+				localInfo = &pack.BuilderInfo{
+					Description:     "Some local description",
+					Stack:           "test.stack.id",
+					RunImage:        "some/run-image",
+					RunImageMirrors: []string{"first/local-default", "second/local-default"},
+					Buildpacks:      buildpacks,
 					Groups: []builder.GroupMetadata{
 						{Buildpacks: []builder.GroupBuildpack{{ID: "test.bp.one", Version: "1.0.0"}}},
 						{Buildpacks: []builder.GroupBuildpack{{ID: "test.bp.two", Version: "2.0.0", Optional: true}}},
 					},
 					LifecycleVersion: "4.5.6",
 				}
-				mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
 			})
 
 			when("using the default builder", func() {
 				it.Before(func() {
 					cfg.DefaultBuilder = "some/image"
+					mockClient.EXPECT().InspectBuilder("default/builder", false).Return(remoteInfo, nil)
+					mockClient.EXPECT().InspectBuilder("default/builder", true).Return(localInfo, nil)
 					command.SetArgs([]string{})
 				})
 
-				it("should print a different inspection message", func() {
+				it("inspects the default builder", func() {
 					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), "Inspecting default builder: 'some/image'")
-				})
-			})
-
-			it("displays builder information for local and remote", func() {
-				command.SetArgs([]string{"some/image"})
-				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Inspecting builder: 'some/image'")
-				h.AssertContains(t, outBuf.String(), `
+					h.AssertContains(t, outBuf.String(), "Inspecting default builder: 'default/builder'")
+					h.AssertContains(t, outBuf.String(), `
 Remote
 ------
 
@@ -188,8 +188,8 @@ Stack: test.stack.id
 Lifecycle Version: 6.7.8
 
 Run Images:
-  first/image (user-configured)
-  second/image (user-configured)
+  first/local (user-configured)
+  second/local (user-configured)
   some/run-image
   first/default
   second/default
@@ -205,7 +205,7 @@ Detection Order:
     test.bp.two@2.0.0
 `)
 
-				h.AssertContains(t, outBuf.String(), `
+					h.AssertContains(t, outBuf.String(), `
 Local
 -----
 
@@ -233,23 +233,98 @@ Detection Order:
   Group #2:
     test.bp.two@2.0.0    (optional)
 `)
+				})
+			})
+
+			when("a builder arg is passed", func() {
+				it.Before(func() {
+					command.SetArgs([]string{"some/image"})
+					mockClient.EXPECT().InspectBuilder("some/image", false).Return(remoteInfo, nil)
+					mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
+				})
+
+				it("displays builder information for local and remote", func() {
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Inspecting builder: 'some/image'")
+					h.AssertContains(t, outBuf.String(), `
+Remote
+------
+
+Description: Some remote description
+
+Stack: test.stack.id
+
+Lifecycle Version: 6.7.8
+
+Run Images:
+  first/local (user-configured)
+  second/local (user-configured)
+  some/run-image
+  first/default
+  second/default
+
+Buildpacks:
+  ID                 VERSION        LATEST
+  test.bp.one        1.0.0          true
+  test.bp.two        2.0.0          false
+
+Detection Order:
+  Group #1:
+    test.bp.one@1.0.0    (optional)
+    test.bp.two@2.0.0
+`)
+
+					h.AssertContains(t, outBuf.String(), `
+Local
+-----
+
+Description: Some local description
+
+Stack: test.stack.id
+
+Lifecycle Version: 4.5.6
+
+Run Images:
+  first/local (user-configured)
+  second/local (user-configured)
+  some/run-image
+  first/local-default
+  second/local-default
+
+Buildpacks:
+  ID                 VERSION        LATEST
+  test.bp.one        1.0.0          true
+  test.bp.two        2.0.0          false
+
+Detection Order:
+  Group #1:
+    test.bp.one@1.0.0
+  Group #2:
+    test.bp.two@2.0.0    (optional)
+`)
+				})
 			})
 		})
 
 		when("default builder is not set", func() {
-			it.Before(func() {
-				mockClient.EXPECT().InspectBuilder(gomock.Any(), false).Return(&pack.BuilderInfo{}, nil).AnyTimes()
-			})
+			when("no builder arg is passed", func() {
+				it.Before(func() {
+					command = commands.InspectBuilder(logger, config.Config{}, mockClient)
+					command.SetArgs([]string{})
 
-			it("informs the user", func() {
-				command.SetArgs([]string{})
-				h.AssertNotNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), `Please select a default builder with:
+					// expect client to fetch suggested builder descriptions
+					mockClient.EXPECT().InspectBuilder(gomock.Any(), false).Return(&pack.BuilderInfo{}, nil).AnyTimes()
+				})
+
+				it("informs the user", func() {
+					h.AssertNotNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), `Please select a default builder with:
 
 	pack set-default-builder <builder image>`)
-				h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
-				h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
-				h.AssertMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks'`)
+					h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
+					h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
+					h.AssertMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks'`)
+				})
 			})
 		})
 	})

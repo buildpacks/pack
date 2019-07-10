@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/docker/docker/client"
+	dockerClient "github.com/docker/docker/client"
 
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/buildpack"
@@ -15,33 +15,12 @@ import (
 )
 
 type Client struct {
-	config           *config.Config
 	logger           logging.Logger
 	imageFetcher     ImageFetcher
 	buildpackFetcher BuildpackFetcher
 	lifecycleFetcher LifecycleFetcher
 	lifecycle        Lifecycle
-	docker           *client.Client
-}
-
-func NewClient(
-	config *config.Config,
-	logger logging.Logger,
-	imageFetcher ImageFetcher,
-	buildpackFetcher BuildpackFetcher,
-	lifecycleFetcher LifecycleFetcher,
-	lifecycle Lifecycle,
-	docker *client.Client,
-) *Client {
-	return &Client{
-		config:           config,
-		logger:           logger,
-		imageFetcher:     imageFetcher,
-		buildpackFetcher: buildpackFetcher,
-		lifecycleFetcher: lifecycleFetcher,
-		lifecycle:        lifecycle,
-		docker:           docker,
-	}
+	docker           *dockerClient.Client
 }
 
 type ClientOption func(c *Client)
@@ -53,12 +32,14 @@ func WithLogger(l logging.Logger) ClientOption {
 	}
 }
 
-func DefaultClient(config *config.Config, opts ...ClientOption) (*Client, error) {
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
-	if err != nil {
-		return nil, err
+// WithDockerClient supply your own docker client.
+func WithDockerClient(docker *dockerClient.Client) ClientOption {
+	return func(c *Client) {
+		c.docker = docker
 	}
+}
 
+func NewClient(opts ...ClientOption) (*Client, error) {
 	var client Client
 
 	for _, opt := range opts {
@@ -69,13 +50,19 @@ func DefaultClient(config *config.Config, opts ...ClientOption) (*Client, error)
 		client.logger = logging.New(os.Stderr)
 	}
 
-	downloader := NewDownloader(client.logger, filepath.Join(config.Path(), "download-cache"))
-	client.config = config
-	client.imageFetcher = image.NewFetcher(client.logger, dockerClient)
+	if client.docker == nil {
+		var err error
+		client.docker, err = dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithVersion("1.38"))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	downloader := NewDownloader(client.logger, filepath.Join(config.PackHome(), "download-cache"))
+	client.imageFetcher = image.NewFetcher(client.logger, client.docker)
 	client.buildpackFetcher = buildpack.NewFetcher(downloader)
 	client.lifecycleFetcher = lifecycle.NewFetcher(downloader)
-	client.lifecycle = build.NewLifecycle(dockerClient, client.logger)
-	client.docker = dockerClient
+	client.lifecycle = build.NewLifecycle(client.docker, client.logger)
 
 	return &client, nil
 }

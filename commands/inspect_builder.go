@@ -13,7 +13,7 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func InspectBuilder(logger logging.Logger, cfg *config.Config, client PackClient) *cobra.Command {
+func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "inspect-builder <builder-image-name>",
 		Short: "Show information about a builder",
@@ -39,12 +39,12 @@ func InspectBuilder(logger logging.Logger, cfg *config.Config, client PackClient
 
 			logger.Info("Remote")
 			logger.Info("------")
-			inspectBuilderOutput(logger, client, imageName, false)
+			inspectBuilderOutput(logger, client, imageName, false, cfg)
 
 			logger.Info("")
 			logger.Info("Local")
 			logger.Info("-----")
-			inspectBuilderOutput(logger, client, imageName, true)
+			inspectBuilderOutput(logger, client, imageName, true, cfg)
 
 			return nil
 		}),
@@ -53,7 +53,7 @@ func InspectBuilder(logger logging.Logger, cfg *config.Config, client PackClient
 	return cmd
 }
 
-func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName string, local bool) {
+func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName string, local bool, cfg config.Config) {
 	info, err := client.InspectBuilder(imageName, local)
 	if err != nil {
 		logger.Info("")
@@ -87,7 +87,8 @@ func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName st
 		logger.Info("  Users must build with an explicitly specified run image")
 	} else {
 		logger.Info("Run Images:")
-		for _, r := range info.LocalRunImageMirrors {
+
+		for _, r := range getLocalMirrors(info.RunImage, cfg) {
 			logger.Infof("  %s (user-configured)", r)
 		}
 		logger.Infof("  %s", info.RunImage)
@@ -156,4 +157,13 @@ func logDetectionOrderInfo(logger logging.Logger, info *pack.BuilderInfo) {
 		}
 		logger.Info(buf.String())
 	}
+}
+
+func getLocalMirrors(runImage string, cfg config.Config) []string {
+	for _, ri := range cfg.RunImages {
+		if ri.Image == runImage {
+			return ri.Mirrors
+		}
+	}
+	return nil
 }

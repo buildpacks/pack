@@ -205,6 +205,7 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 }
 
 func CreateImageOnLocal(t *testing.T, dockerCli *client.Client, repoName, dockerFile string) {
+	t.Helper()
 	ctx := context.Background()
 
 	buildContext, err := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)

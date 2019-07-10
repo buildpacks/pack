@@ -1,18 +1,16 @@
 package config
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/pkg/errors"
 )
 
 type Config struct {
 	RunImages      []RunImage `toml:"run-images"`
 	DefaultBuilder string     `toml:"default-builder-image,omitempty"`
-	configPath     string
 }
 
 type RunImage struct {
@@ -20,24 +18,8 @@ type RunImage struct {
 	Mirrors []string `toml:"mirrors"`
 }
 
-func NewDefault() (*Config, error) {
-	return New(PackHome())
-}
-
-func New(path string) (*Config, error) {
-	configPath := filepath.Join(path, "config.toml")
-	config, err := previousConfig(path)
-	if err != nil {
-		return nil, err
-	}
-
-	config.configPath = configPath
-
-	if err := config.save(); err != nil {
-		return nil, err
-	}
-
-	return config, nil
+func DefaultConfigPath() string {
+	return filepath.Join(PackHome(), "config.toml")
 }
 
 func PackHome() string {
@@ -48,81 +30,36 @@ func PackHome() string {
 	return packHome
 }
 
-func (c *Config) save() error {
-	if err := os.MkdirAll(filepath.Dir(c.configPath), 0777); err != nil {
+func Read(path string) (Config, error) {
+	cfg := Config{}
+	_, err := toml.DecodeFile(path, &cfg)
+	if err != nil && !os.IsNotExist(err) {
+		return Config{}, errors.Wrapf(err, "failed to read config file at path %s", path)
+	}
+
+	return cfg, nil
+}
+
+func Write(cfg Config, path string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
 	}
-	w, err := os.Create(c.configPath)
+	w, err := os.Create(path)
 	if err != nil {
 		return err
 	}
 	defer w.Close()
 
-	return toml.NewEncoder(w).Encode(c)
+	return toml.NewEncoder(w).Encode(cfg)
 }
 
-func previousConfig(path string) (*Config, error) {
-	configPath := filepath.Join(path, "config.toml")
-	config := &Config{}
-	_, err := toml.DecodeFile(configPath, config)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-
-	return config, nil
-}
-
-// Path returns the directory path where the config is stored as a toml file.
-// That directory may also contain other `pack` related files.
-func (c *Config) Path() string {
-	return filepath.Dir(c.configPath)
-}
-
-func (c *Config) SetDefaultBuilder(builder string) error {
-	c.DefaultBuilder = builder
-	return c.save()
-}
-
-func (c *Config) GetRunImage(runImageTag string) *RunImage {
-	for i := range c.RunImages {
-		runImage := &c.RunImages[i]
-		if runImage.Image == runImageTag {
-			return runImage
+func SetRunImageMirrors(cfg Config, image string, mirrors []string) Config {
+	for i := range cfg.RunImages {
+		if cfg.RunImages[i].Image == image {
+			cfg.RunImages[i].Mirrors = mirrors
+			return cfg
 		}
 	}
-	return nil
-}
-
-func (c *Config) SetRunImageMirrors(image string, mirrors []string) {
-	if runImage := c.GetRunImage(image); runImage != nil {
-		runImage.Mirrors = mirrors
-	} else {
-		c.RunImages = append(c.RunImages, RunImage{Image: image, Mirrors: mirrors})
-	}
-	c.save()
-}
-
-func ImageByRegistry(registry string, images []string) (string, error) {
-	if len(images) < 1 {
-		return "", errors.New("no images provided to search")
-	}
-
-	for _, i := range images {
-		reg, err := Registry(i)
-		if err != nil {
-			continue
-		}
-		if registry == reg {
-			return i, nil
-		}
-	}
-	return images[0], nil
-}
-
-func Registry(imageName string) (string, error) {
-	ref, err := name.ParseReference(imageName, name.WeakValidation)
-	if err != nil {
-		return "", err
-	}
-	return ref.Context().RegistryStr(), nil
+	cfg.RunImages = append(cfg.RunImages, RunImage{Image: image, Mirrors: mirrors})
+	return cfg
 }

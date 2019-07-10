@@ -18,7 +18,6 @@ import (
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
-	"github.com/buildpack/pack/stack"
 	"github.com/buildpack/pack/style"
 )
 
@@ -27,16 +26,17 @@ type Lifecycle interface {
 }
 
 type BuildOptions struct {
-	AppDir      string // defaults to current working directory
-	Builder     string // defaults to default builder on the client config
-	RunImage    string // defaults to the best mirror from the builder image or pack config
-	Env         map[string]string
-	Image       string // required
-	Publish     bool
-	NoPull      bool
-	ClearCache  bool
-	Buildpacks  []string
-	ProxyConfig *ProxyConfig // defaults to  environment proxy vars
+	Image             string              // required
+	Builder           string              // required
+	AppDir            string              // defaults to current working directory
+	RunImage          string              // defaults to the best mirror from the builder metadata or AdditionalMirrors
+	AdditionalMirrors map[string][]string // only considered if RunImage is not provided
+	Env               map[string]string
+	Publish           bool
+	NoPull            bool
+	ClearCache        bool
+	Buildpacks        []string
+	ProxyConfig       *ProxyConfig // defaults to  environment proxy vars
 }
 
 type ProxyConfig struct {
@@ -46,7 +46,7 @@ type ProxyConfig struct {
 }
 
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
-	imageRef, err := c.validateImageReference(opts.Image)
+	imageRef, err := c.parseTagReference(opts.Image)
 	if err != nil {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.Image)
 	}
@@ -73,7 +73,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
-	runImage := c.processRunImageName(opts.RunImage, imageRef.Context().RegistryStr(), builderImage.GetStackInfo())
+	runImage := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), builderImage.GetStackInfo(), opts.AdditionalMirrors)
 
 	if _, err := c.validateRunImage(ctx, runImage, opts.NoPull, opts.Publish, builderImage.StackID); err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImage)
@@ -105,12 +105,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 func (c *Client) processBuilderName(builderName string) (name.Reference, error) {
 	if builderName == "" {
-		if c.config.DefaultBuilder != "" {
-			c.logger.Debugf("Using default builder image %s", style.Symbol(c.config.DefaultBuilder))
-			builderName = c.config.DefaultBuilder
-		} else {
-			return nil, errors.New("builder is a required parameter if the client has no default builder")
-		}
+		return nil, errors.New("builder is a required parameter if the client has no default builder")
 	}
 	return name.ParseReference(builderName, name.WeakValidation)
 }
@@ -126,32 +121,10 @@ func (c *Client) processBuilderImage(img imgutil.Image) (*builder.Builder, error
 	return builder, nil
 }
 
-func (c *Client) processRunImageName(runImage, targetRegistry string, builderStackInfo stack.Metadata) string {
-	if runImage != "" {
-		c.logger.Debugf("Using provided run-image %s", style.Symbol(runImage))
-		return runImage
-	}
-	var localMirrors []string
-	localRunImageConfig := c.config.GetRunImage(builderStackInfo.RunImage.Image)
-	if localRunImageConfig != nil {
-		localMirrors = localRunImageConfig.Mirrors
-	}
-	runImageName := builderStackInfo.GetBestMirror(targetRegistry, localMirrors)
-
-	// log run image source
-	if runImageName == builderStackInfo.GetBestMirror(targetRegistry, []string{}) {
-		if runImageName == builderStackInfo.RunImage.Image {
-			c.logger.Debugf("Selected run image %s from builder", style.Symbol(runImageName))
-		} else {
-			c.logger.Debugf("Selected run image mirror %s from builder", style.Symbol(runImageName))
-		}
-	} else {
-		c.logger.Debugf("Selected run image mirror %s from local config", style.Symbol(runImageName))
-	}
-	return runImageName
-}
-
 func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (imgutil.Image, error) {
+	if name == "" {
+		return nil, errors.New("run image must be specified")
+	}
 	img, err := c.imageFetcher.Fetch(context, name, !publish, !noPull)
 	if err != nil {
 		return nil, err
@@ -164,21 +137,6 @@ func (c *Client) validateRunImage(context context.Context, name string, noPull b
 		return nil, fmt.Errorf("run-image stack id '%s' does not match builder stack '%s'", stackID, expectedStack)
 	}
 	return img, nil
-}
-
-func (c *Client) validateImageReference(imageName string) (name.Reference, error) {
-	if imageName == "" {
-		return nil, errors.New("image name is a required parameter")
-	}
-	if _, err := name.ParseReference(imageName, name.WeakValidation); err != nil {
-		return nil, err
-	}
-	ref, err := name.NewTag(imageName, name.WeakValidation)
-	if err != nil {
-		return nil, fmt.Errorf("'%s' is not a tag reference", imageName)
-	}
-
-	return ref, nil
 }
 
 func (c *Client) processAppDir(appDir string) (string, error) {
