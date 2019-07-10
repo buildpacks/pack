@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	DefaultLifecycleVersion = "0.2.1"
+	DefaultLifecycleVersion = "0.3.0"
 )
 
 //go:generate mockgen -package mocks -destination mocks/downloader.go github.com/buildpack/pack/lifecycle Downloader
