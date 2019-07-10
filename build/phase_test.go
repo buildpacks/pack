@@ -45,11 +45,11 @@ func TestPhase(t *testing.T) {
 	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 
-	repoName = "lifecycle.test." + h.RandString(10)
+	repoName = "phase.test." + h.RandString(10)
 	CreateFakeLifecycleImage(t, dockerCli, repoName)
 	defer h.DockerRmi(dockerCli, repoName)
 
-	spec.Run(t, "lifecycle", testPhase, spec.Report(report.Terminal{}), spec.Parallel())
+	spec.Run(t, "phase", testPhase, spec.Report(report.Terminal{}), spec.Parallel())
 }
 
 func testPhase(t *testing.T, when spec.G, it spec.S) {
@@ -308,7 +308,7 @@ func CreateFakeLifecycleImage(t *testing.T, dockerCli *client.Client, repoName s
 
 	wd, err := os.Getwd()
 	h.AssertNil(t, err)
-	buildContext, _ := archive.CreateTarReader(filepath.Join(wd, "testdata", "fake-lifecycle"), "/", 0, 0, -1)
+	buildContext := archive.ReadDirAsTar(filepath.Join(wd, "testdata", "fake-lifecycle"), "/", 0, 0, -1)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
 		Tags:        []string{repoName},
@@ -334,7 +334,7 @@ func CreateFakeLifecycle(appDir string, docker *client.Client, logger logging.Lo
 	}
 
 	subject.Setup(build.LifecycleOptions{
-		AppDir:     appDir,
+		AppPath:    appDir,
 		Builder:    bldr,
 		HTTPProxy:  "some-http-proxy",
 		HTTPSProxy: "some-https-proxy",

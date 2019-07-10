@@ -149,11 +149,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.Run(t, packCmd("set-default-builder", builder))
 			})
 
-			it("creates image on the daemon", func() {
-				t.Log("no previous image exists")
+			it("creates a runnable, rebuildable image on daemon from app dir", func() {
+				appPath := filepath.Join("testdata", "mock_app")
 				cmd := packCmd(
 					"build", repoName,
-					"-p", filepath.Join("testdata", "mock_app"),
+					"-p", appPath,
 				)
 				output := h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
@@ -200,7 +200,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.Run(t, cmd)
 
 				t.Log("rebuild")
-				cmd = packCmd("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
+				cmd = packCmd("build", repoName, "-p", appPath)
 				output = h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 				imgId, err = imgIdFromOutput(output, repoName)
@@ -225,7 +225,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContainsMatch(t, output, `(?i)\[cacher] reusing layer 'simple/layers:cached-launch-layer'`)
 
 				t.Log("rebuild with --clear-cache")
-				cmd = packCmd("build", repoName, "-p", "testdata/mock_app/.", "--clear-cache")
+				cmd = packCmd("build", repoName, "-p", appPath, "--clear-cache")
 				output = h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
@@ -242,6 +242,22 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 
 				t.Log("cacher adds layers")
 				h.AssertContainsMatch(t, output, `(?i)\[cacher] (Caching|adding) layer 'simple/layers:cached-launch-layer'`)
+			})
+
+			it("supports building app from a zip file", func() {
+				appPath := filepath.Join("testdata", "mock_app.zip")
+				cmd := packCmd(
+					"build", repoName,
+					"-p", appPath,
+				)
+				output := h.Run(t, cmd)
+				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+				imgId, err := imgIdFromOutput(output, repoName)
+				if err != nil {
+					t.Log(output)
+					t.Fatal("Could not determine image id for built image")
+				}
+				defer h.DockerRmi(dockerCli, imgId)
 			})
 
 			when("--buildpack", func() {
@@ -834,7 +850,7 @@ func createStack(t *testing.T, dockerCli *client.Client) {
 
 func createStackImage(t *testing.T, dockerCli *client.Client, repoName string, dir string) {
 	ctx := context.Background()
-	buildContext, _ := archive.CreateTarReader(dir, "/", 0, 0, -1)
+	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
 		Tags:        []string{repoName},

@@ -23,7 +23,7 @@ import (
 func TestArchive(t *testing.T) {
 	color.NoColor = true
 	rand.Seed(time.Now().UTC().UnixNano())
-	spec.Run(t, "Archive", testArchive, spec.Report(report.Terminal{}))
+	spec.Run(t, "Archive", testArchive, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testArchive(t *testing.T, when spec.G, it spec.S) {
@@ -197,9 +197,70 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("#WriteZipToTar", func() {
+		var src string
+		it.Before(func() {
+			src = filepath.Join("testdata", "zip-to-tar.zip")
+		})
+
+		when("mode is set to 0777", func() {
+			it("writes a tar to the dest dir with 0777", func() {
+				fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777)
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				tr := tar.NewReader(file)
+
+				verify := tarVerifier{t, tr, 1234, 2345}
+				verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
+				verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir", 0777)
+				if runtime.GOOS != "windows" {
+					verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+				}
+			})
+		})
+
+		when("mode is set to -1", func() {
+			it("writes a tar to the dest dir with preexisting file mode", func() {
+				fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1)
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				tr := tar.NewReader(file)
+
+				verify := tarVerifier{t, tr, 1234, 2345}
+				verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0644)
+				verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir", 0755)
+				if runtime.GOOS != "windows" {
+					verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+				}
+			})
+		})
+	})
 }
 
 func fileMode(t *testing.T, path string) int64 {
+	t.Helper()
 	info, err := os.Stat(path)
 	if err != nil {
 		t.Fatalf("failed to stat %s", path)

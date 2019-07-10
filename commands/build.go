@@ -15,7 +15,7 @@ import (
 )
 
 type BuildFlags struct {
-	AppDir     string
+	AppPath    string
 	Builder    string
 	RunImage   string
 	Env        []string
@@ -45,7 +45,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient *pack.Client) *c
 				return err
 			}
 			if err := packClient.Build(ctx, pack.BuildOptions{
-				AppDir:            flags.AppDir,
+				AppPath:           flags.AppPath,
 				Builder:           flags.Builder,
 				AdditionalMirrors: getMirrors(cfg),
 				RunImage:          flags.RunImage,
@@ -69,7 +69,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient *pack.Client) *c
 }
 
 func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Config) {
-	cmd.Flags().StringVarP(&buildFlags.AppDir, "path", "p", "", "Path to app dir (defaults to current working directory)")
+	cmd.Flags().StringVarP(&buildFlags.AppPath, "path", "p", "", "Path to app dir or zip-formatted file (defaults to current working directory)")
 	cmd.Flags().StringVar(&buildFlags.Builder, "builder", cfg.DefaultBuilder, "Builder (defaults to builder configured by 'set-default-builder')")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
 	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file.")

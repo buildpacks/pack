@@ -57,6 +57,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	when("the image exists", func() {
 		for _, useDaemon := range []bool{true, false} {
+			useDaemon := useDaemon
 			when(fmt.Sprintf("daemon is %t", useDaemon), func() {
 				it.Before(func() {
 					if useDaemon {
