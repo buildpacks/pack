@@ -27,7 +27,7 @@ func Run(logger logging.Logger, cfg config.Config, packClient *pack.Client) *cob
 				return err
 			}
 			return packClient.Run(ctx, pack.RunOptions{
-				AppDir:     flags.AppDir,
+				AppPath:    flags.AppPath,
 				Builder:    flags.Builder,
 				RunImage:   flags.RunImage,
 				Env:        env,

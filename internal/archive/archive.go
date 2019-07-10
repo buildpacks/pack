@@ -2,6 +2,7 @@ package archive
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"fmt"
@@ -9,7 +10,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/pkg/errors"
@@ -21,19 +21,28 @@ func init() {
 	NormalizedDateTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
 }
 
-func CreateTarReader(srcDir, tarDir string, uid, gid int, mode int64) (io.Reader, chan error) {
+func ReadDirAsTar(srcDir, basePath string, uid, gid int, mode int64) io.ReadCloser {
+	return readAsTar(srcDir, basePath, uid, gid, mode, WriteDirToTar)
+}
+
+func ReadZipAsTar(srcPath, basePath string, uid, gid int, mode int64) io.ReadCloser {
+	return readAsTar(srcPath, basePath, uid, gid, mode, WriteZipToTar)
+}
+
+func readAsTar(src, basePath string, uid, gid int, mode int64, writeFn func(tw *tar.Writer, srcDir, basePath string, uid, gid int, mode int64) error) io.ReadCloser {
 	r, w := io.Pipe()
-	errChan := make(chan error, 1)
 	go func() {
-		defer w.Close()
+		var err error
+		defer func() {
+			w.CloseWithError(err)
+		}()
 
 		tw := tar.NewWriter(w)
 		defer tw.Close()
 
-		err := WriteDirToTar(tw, srcDir, tarDir, uid, gid, mode)
-		errChan <- err
+		err = writeFn(tw, src, basePath, uid, gid, mode)
 	}()
-	return r, errChan
+	return r
 }
 
 func CreateSingleFileTarReader(path, txt string) (io.Reader, error) {
@@ -138,7 +147,7 @@ func contains(slice []string, element string) bool {
 	return false
 }
 
-func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int, mode int64) error {
+func WriteDirToTar(tw *tar.Writer, srcDir, basePath string, uid, gid int, mode int64) error {
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -173,18 +182,8 @@ func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int, mode int
 			return nil
 		}
 
-		header.Name = filepath.Join(tarDir, relPath)
-		if runtime.GOOS == "windows" {
-			header.Name = filepath.ToSlash(header.Name)
-		}
-		if mode != -1 {
-			header.Mode = mode
-		}
-		header.ModTime = NormalizedDateTime
-		header.Uid = uid
-		header.Gid = gid
-		header.Uname = ""
-		header.Gname = ""
+		header.Name = filepath.ToSlash(filepath.Join(basePath, relPath))
+		finalizeHeader(header, uid, gid, mode)
 
 		if err := tw.WriteHeader(header); err != nil {
 			return err
@@ -204,4 +203,96 @@ func WriteDirToTar(tw *tar.Writer, srcDir, tarDir string, uid, gid int, mode int
 
 		return nil
 	})
+}
+
+func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode int64) error {
+	zipReader, err := zip.OpenReader(srcZip)
+	if err != nil {
+		return err
+	}
+	defer zipReader.Close()
+
+	for _, f := range zipReader.File {
+		var header *tar.Header
+		if f.Mode()&os.ModeSymlink != 0 {
+			target, err := func() (string, error) {
+				r, err := f.Open()
+				if err != nil {
+					return "", nil
+				}
+				defer r.Close()
+
+				// contents is the target of the symlink
+				target, err := ioutil.ReadAll(r)
+				if err != nil {
+					return "", err
+				}
+
+				return string(target), nil
+			}()
+
+			if err != nil {
+				return err
+			}
+
+			header, err = tar.FileInfoHeader(f.FileInfo(), target)
+			if err != nil {
+				return err
+			}
+		} else {
+			header, err = tar.FileInfoHeader(f.FileInfo(), f.Name)
+			if err != nil {
+				return err
+			}
+		}
+
+		header.Name = filepath.ToSlash(filepath.Join(basePath, f.Name))
+		finalizeHeader(header, uid, gid, mode)
+
+		if err := tw.WriteHeader(header); err != nil {
+			return err
+		}
+
+		if f.Mode().IsRegular() {
+			err := func() error {
+				fi, err := f.Open()
+				if err != nil {
+					return err
+				}
+				defer fi.Close()
+
+				_, err = io.Copy(tw, fi)
+				return err
+			}()
+
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func finalizeHeader(header *tar.Header, uid, gid int, mode int64) {
+	if mode != -1 {
+		header.Mode = mode
+	}
+	header.ModTime = NormalizedDateTime
+	header.Uid = uid
+	header.Gid = gid
+	header.Uname = ""
+	header.Gname = ""
+}
+
+func IsZip(file *os.File) (bool, error) {
+	b := make([]byte, 4)
+	_, err := file.Read(b)
+	if err != nil && err != io.EOF {
+		return false, err
+	} else if err == io.EOF {
+		return false, nil
+	}
+
+	return bytes.Equal(b, []byte("\x50\x4B\x03\x04")), nil
 }

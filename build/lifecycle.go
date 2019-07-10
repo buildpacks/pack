@@ -22,7 +22,7 @@ type Lifecycle struct {
 	builder      *builder.Builder
 	logger       logging.Logger
 	docker       *client.Client
-	appDir       string
+	appPath      string
 	appOnce      *sync.Once
 	httpProxy    string
 	httpsProxy   string
@@ -45,7 +45,7 @@ func NewLifecycle(docker *client.Client, logger logging.Logger) *Lifecycle {
 }
 
 type LifecycleOptions struct {
-	AppDir     string
+	AppPath    string
 	Image      name.Reference
 	Builder    *builder.Builder
 	RunImage   string
@@ -132,7 +132,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.LayersVolume = "pack-layers-" + randString(10)
 	l.AppVolume = "pack-app-" + randString(10)
-	l.appDir = opts.AppDir
+	l.appPath = opts.AppPath
 	l.appOnce = &sync.Once{}
 	l.builder = opts.Builder
 	l.httpProxy = opts.HTTPProxy

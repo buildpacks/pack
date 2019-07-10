@@ -156,38 +156,54 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				resolvedWd, err := filepath.EvalSymlinks(wd)
 				h.AssertNil(t, err)
-				h.AssertEq(t, fakeLifecycle.Opts.AppDir, resolvedWd)
+				h.AssertEq(t, fakeLifecycle.Opts.AppPath, resolvedWd)
 			})
+			for fileDesc, appPath := range map[string]string{
+				"zip": filepath.Join("testdata", "zip-file.zip"),
+				"jar": filepath.Join("testdata", "jar-file.jar"),
+			} {
+				fileDesc := fileDesc
+				appPath := appPath
 
-			it("path must exist", func() {
-				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
-					Image:   "some/app",
-					Builder: builderName,
-					AppDir:  "not/exist/path",
-				}),
-					"invalid app dir 'not/exist/path'",
-				)
-			})
+				it(fmt.Sprintf("supports %s files", fileDesc), func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						AppPath: appPath,
+					})
+					h.AssertNil(t, err)
+				})
+			}
 
-			it("path must be a dir", func() {
-				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
-					Image:   "some/app",
-					Builder: builderName,
-					AppDir:  filepath.Join("testdata", "just-a-file.txt"),
-				}),
-					fmt.Sprintf("invalid app dir '%s'", filepath.Join("testdata", "just-a-file.txt")),
-				)
-			})
+			for fileDesc, testData := range map[string][]string{
+				"non-existent": {"not/exist/path", "does not exist"},
+				"empty":        {filepath.Join("testdata", "empty-file"), "app path must be a directory or zip"},
+				"non-zip":      {filepath.Join("testdata", "non-zip-file"), "app path must be a directory or zip"},
+			} {
+				fileDesc := fileDesc
+				appPath := testData[0]
+				errMessage := testData[0]
+
+				it(fmt.Sprintf("does NOT support %s files", fileDesc), func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						AppPath: appPath,
+					})
+
+					h.AssertError(t, err, errMessage)
+				})
+			}
 
 			it("resolves the absolute path", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 					Image:   "some/app",
 					Builder: builderName,
-					AppDir:  filepath.Join("testdata", "some-app"),
+					AppPath: filepath.Join("testdata", "some-app"),
 				}))
 				absPath, err := filepath.Abs(filepath.Join("testdata", "some-app"))
 				h.AssertNil(t, err)
-				h.AssertEq(t, fakeLifecycle.Opts.AppDir, absPath)
+				h.AssertEq(t, fakeLifecycle.Opts.AppPath, absPath)
 			})
 
 			when("appDir is a symlink", func() {
@@ -223,10 +239,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
 						Builder: builderName,
-						AppDir:  relLink,
+						AppPath: relLink,
 					}))
 
-					h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+					h.AssertEq(t, fakeLifecycle.Opts.AppPath, absoluteAppDir)
 				})
 
 				it("resolves absolute symbolic links", func() {
@@ -236,10 +252,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
 						Builder: builderName,
-						AppDir:  relLink,
+						AppPath: relLink,
 					}))
 
-					h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+					h.AssertEq(t, fakeLifecycle.Opts.AppPath, absoluteAppDir)
 				})
 
 				it("resolves symbolic links recursively", func() {
@@ -255,10 +271,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
 						Builder: builderName,
-						AppDir:  symbolicLink,
+						AppPath: symbolicLink,
 					}))
 
-					h.AssertEq(t, fakeLifecycle.Opts.AppDir, absoluteAppDir)
+					h.AssertEq(t, fakeLifecycle.Opts.AppPath, absoluteAppDir)
 				})
 			})
 		})
@@ -561,7 +577,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				when("is *nix", func() {
+				when("is posix", func() {
 					it.Before(func() {
 						h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
 					})

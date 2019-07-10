@@ -9,15 +9,15 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/docker/docker/api/types"
-
 	"github.com/buildpack/imgutil"
+	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
+	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/style"
 )
 
@@ -28,7 +28,7 @@ type Lifecycle interface {
 type BuildOptions struct {
 	Image             string              // required
 	Builder           string              // required
-	AppDir            string              // defaults to current working directory
+	AppPath           string              // defaults to current working directory
 	RunImage          string              // defaults to the best mirror from the builder metadata or AdditionalMirrors
 	AdditionalMirrors map[string][]string // only considered if RunImage is not provided
 	Env               map[string]string
@@ -51,9 +51,9 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.Image)
 	}
 
-	appDir, err := c.processAppDir(opts.AppDir)
+	appPath, err := c.processAppPath(opts.AppPath)
 	if err != nil {
-		return errors.Wrapf(err, "invalid app dir '%s'", opts.AppDir)
+		return errors.Wrapf(err, "invalid app path '%s'", opts.AppPath)
 	}
 
 	proxyConfig := c.processProxyConfig(opts.ProxyConfig)
@@ -91,7 +91,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
 	return c.lifecycle.Execute(ctx, build.LifecycleOptions{
-		AppDir:     appDir,
+		AppPath:    appPath,
 		Image:      imageRef,
 		Builder:    ephemeralBuilder,
 		RunImage:   runImage,
@@ -139,33 +139,49 @@ func (c *Client) validateRunImage(context context.Context, name string, noPull b
 	return img, nil
 }
 
-func (c *Client) processAppDir(appDir string) (string, error) {
+func (c *Client) processAppPath(appPath string) (string, error) {
 	var (
-		resolvedAppDir = appDir
-		err            error
+		resolvedAppPath = appPath
+		err             error
 	)
 
-	if appDir == "" {
-		if appDir, err = os.Getwd(); err != nil {
-			return "", err
+	if appPath == "" {
+		if appPath, err = os.Getwd(); err != nil {
+			return "", errors.Wrap(err, "get working dir")
 		}
 	}
 
-	if resolvedAppDir, err = filepath.EvalSymlinks(appDir); err != nil {
-		return "", err
+	if resolvedAppPath, err = filepath.EvalSymlinks(appPath); err != nil {
+		return "", errors.Wrap(err, "evaluate symlink")
 	}
 
-	if resolvedAppDir, err = filepath.Abs(resolvedAppDir); err != nil {
-		return "", err
+	if resolvedAppPath, err = filepath.Abs(resolvedAppPath); err != nil {
+		return "", errors.Wrap(err, "resolve absolute path")
 	}
 
-	if fi, err := os.Stat(resolvedAppDir); err != nil {
-		return "", err
-	} else if !fi.IsDir() {
-		return "", fmt.Errorf("%s is not a directory", appDir)
+	fi, err := os.Stat(resolvedAppPath)
+	if err != nil {
+		return "", errors.Wrap(err, "stat file")
 	}
 
-	return resolvedAppDir, nil
+	if !fi.IsDir() {
+		fh, err := os.Open(resolvedAppPath)
+		if err != nil {
+			return "", errors.Wrap(err, "read file")
+		}
+		defer fh.Close()
+
+		isZip, err := archive.IsZip(fh)
+		if err != nil {
+			return "", errors.Wrap(err, "check zip")
+		}
+
+		if !isZip {
+			return "", errors.New("app path must be a directory or zip")
+		}
+	}
+
+	return resolvedAppPath, nil
 }
 
 func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {

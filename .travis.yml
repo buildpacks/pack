@@ -28,3 +28,7 @@ jobs:
         - GO111MODULE=on
       script: go test -mod=vendor -count=1 -parallel=1 -v ./...
       after_success: go build -mod=vendor -o pack ./cmd/pack
+
+branches:
+  only:
+    - master
