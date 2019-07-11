@@ -1,24 +1,25 @@
 # pack - Buildpack CLI [![Travis Build Status](https://travis-ci.org/buildpack/pack.svg?branch=master)](https://travis-ci.org/buildpack/pack)
 
-**`pack`** makes it easy for
-- **Application developers** to use [Cloud Native Buildpacks](https://buildpacks.io/) to convert code into runnable images
-- **Buildpack authors** to develop and package buildpacks for distribution
+**`pack`** is a CLI implementation of the [Platform Interface Specification][platform-spec] for [Cloud Native Buildpacks][buildpacks.io].
 
-## Resources
+**`pack`** makes it easy for...
+- **Application developers** to use [Cloud Native Buildpacks][buildpacks.io] to convert code into runnable images.
+- **Buildpack authors** to develop and package buildpacks for distribution.
 
-- [Get Started with `pack`](https://buildpacks.io/docs/app-journey)
-- [Latest `pack` Documentation](https://buildpacks.io/docs/using-pack)
-- [Buildpack & Platform Specifications](https://github.com/buildpack/spec)
+## Usage
 
-## Auto-completion
-
-To configure your bash shell to load completions for each session, add the following to your `.bashrc` or `.bash_profile`:
-
-```bash
-. $(pack completion)
-```
+- [Installing](https://buildpacks.io/docs/install-pack/)
+- [Getting Started](https://buildpacks.io/docs/app-journey)
+- [Documentation](https://buildpacks.io/docs/using-pack)
 
 ## Contributing
 
-For information on how to contribute to this project including it's development 
+For information on how to contribute to this project including its development 
 process see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Resources
+- [Buildpack Specification](https://github.com/buildpack/spec/blob/master/buildpack.md)
+- [Platform Specification][platform-spec]
+
+[buildpacks.io]: https://buildpacks.io/
+[platform-spec]: https://github.com/buildpack/spec/blob/master/platform.md
