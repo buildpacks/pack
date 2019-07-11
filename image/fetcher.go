@@ -22,10 +22,10 @@ import (
 
 type Fetcher struct {
 	docker *client.Client
-	logger *logging.Logger
+	logger logging.Logger
 }
 
-func NewFetcher(logger *logging.Logger, docker *client.Client) *Fetcher {
+func NewFetcher(logger logging.Logger, docker *client.Client) *Fetcher {
 	return &Fetcher{
 		logger: logger,
 		docker: docker,
@@ -40,14 +40,11 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (im
 		return nil, err
 	}
 
-	remoteFound, err := image.Found()
-	if err != nil {
-		return nil, err
-	}
+	remoteFound := image.Found()
 
 	if daemon {
 		if remoteFound && pull {
-			f.logger.Verbose("Pulling image %s", style.Symbol(name))
+			f.logger.Debugf("Pulling image %s", style.Symbol(name))
 			if err := f.pullImage(ctx, name); err != nil {
 				return nil, err
 			}
@@ -68,12 +65,7 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 		return nil, err
 	}
 
-	found, err := image.Found()
-	if err != nil {
-		return nil, err
-	}
-
-	if !found {
+	if !image.Found() {
 		return nil, errors.Wrapf(ErrNotFound, "image %s does not exist on the daemon", style.Symbol(name))
 	}
 	return image, nil
@@ -90,8 +82,9 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
 	if err != nil {
 		return err
 	}
-	termFd, isTerm := term.GetFdInfo(f.logger.RawVerboseWriter())
-	err = jsonmessage.DisplayJSONMessagesStream(rc, &colorizedWriter{f.logger.RawVerboseWriter()}, termFd, isTerm, nil)
+	writer := logging.GetDebugWriter(f.logger)
+	termFd, isTerm := term.GetFdInfo(writer)
+	err = jsonmessage.DisplayJSONMessagesStream(rc, &colorizedWriter{writer}, termFd, isTerm, nil)
 	if err != nil {
 		return err
 	}

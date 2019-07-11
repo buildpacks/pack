@@ -23,12 +23,10 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
-	"github.com/google/go-containerregistry/pkg/v1/stream"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"golang.org/x/sync/errgroup"
 )
@@ -40,14 +38,19 @@ type manifest interface {
 }
 
 // Write pushes the provided img to the specified image reference.
-func Write(ref name.Reference, img v1.Image, auth authn.Authenticator, t http.RoundTripper) error {
+func Write(ref name.Reference, img v1.Image, options ...Option) error {
 	ls, err := img.Layers()
 	if err != nil {
 		return err
 	}
 
+	o, err := makeOptions(ref.Context().Registry, options...)
+	if err != nil {
+		return err
+	}
+
 	scopes := scopesForUploadingImage(ref, ls)
-	tr, err := transport.New(ref.Context().Registry, auth, t, scopes)
+	tr, err := transport.New(ref.Context().Registry, o.auth, o.transport, scopes)
 	if err != nil {
 		return err
 	}
@@ -57,17 +60,17 @@ func Write(ref name.Reference, img v1.Image, auth authn.Authenticator, t http.Ro
 	}
 
 	// Upload individual layers in goroutines and collect any errors.
-	// If we can dedupe by the layer digest, try to do so. If the layer is
-	// a stream.Layer, we can't dedupe and might re-upload.
+	// If we can dedupe by the layer digest, try to do so. If we can't determine
+	// the digest for whatever reason, we can't dedupe and might re-upload.
 	var g errgroup.Group
 	uploaded := map[v1.Hash]bool{}
 	for _, l := range ls {
 		l := l
-		if _, ok := l.(*stream.Layer); !ok {
-			h, err := l.Digest()
-			if err != nil {
-				return err
-			}
+
+		// Streaming layers calculate their digests while uploading them. Assume
+		// an error here indicates we need to upload the layer.
+		h, err := l.Digest()
+		if err == nil {
 			// If we can determine the layer's digest ahead of
 			// time, use it to dedupe uploads.
 			if uploaded[h] {
@@ -81,14 +84,15 @@ func Write(ref name.Reference, img v1.Image, auth authn.Authenticator, t http.Ro
 		})
 	}
 
-	if l, err := partial.ConfigLayer(img); err == stream.ErrNotComputed {
-		// We can't read the ConfigLayer, because of streaming layers, since the
-		// config hasn't been calculated yet.
+	if l, err := partial.ConfigLayer(img); err != nil {
+		// We can't read the ConfigLayer, possibly because of streaming layers,
+		// since the layer DiffIDs haven't been calculated yet. Attempt to wait
+		// for the other layers to be uploaded, then try the config again.
 		if err := g.Wait(); err != nil {
 			return err
 		}
 
-		// Now that all the layers are uploaded, upload the config file blob.
+		// Now that all the layers are uploaded, try to upload the config file blob.
 		l, err := partial.ConfigLayer(img)
 		if err != nil {
 			return err
@@ -96,9 +100,6 @@ func Write(ref name.Reference, img v1.Image, auth authn.Authenticator, t http.Ro
 		if err := w.uploadOne(l); err != nil {
 			return err
 		}
-	} else if err != nil {
-		// This is an actual error, not a streaming error, just return it.
-		return err
 	} else {
 		// We *can* read the ConfigLayer, so upload it concurrently with the layers.
 		g.Go(func() error {
@@ -200,10 +201,9 @@ func (w *writer) checkExistingManifest(h v1.Hash, mt types.MediaType) (bool, err
 func (w *writer) initiateUpload(from, mount string) (location string, mounted bool, err error) {
 	u := w.url(fmt.Sprintf("/v2/%s/blobs/uploads/", w.ref.Context().RepositoryStr()))
 	uv := url.Values{}
-	if mount != "" {
+	if mount != "" && from != "" {
+		// Quay will fail if we specify a "mount" without a "from".
 		uv["mount"] = []string{mount}
-	}
-	if from != "" {
 		uv["from"] = []string{from}
 	}
 	u.RawQuery = uv.Encode()
@@ -286,19 +286,10 @@ func (w *writer) commitBlob(location, digest string) error {
 
 // uploadOne performs a complete upload of a single layer.
 func (w *writer) uploadOne(l v1.Layer) error {
-	var from, mount, digest string
-	if _, ok := l.(*stream.Layer); !ok {
-		// Layer isn't streamable, we should take advantage of that to
-		// skip uploading if possible.
-		// By sending ?digest= in the request, we'll also check that
-		// our computed digest matches the one computed by the
-		// registry.
-		h, err := l.Digest()
-		if err != nil {
-			return err
-		}
-		digest = h.String()
-
+	var from, mount string
+	if h, err := l.Digest(); err == nil {
+		// If we know the digest, this isn't a streaming layer. Do an existence
+		// check so we can skip uploading the layer if possible.
 		existing, err := w.checkExistingBlob(h)
 		if err != nil {
 			return err
@@ -341,7 +332,7 @@ func (w *writer) uploadOne(l v1.Layer) error {
 	if err != nil {
 		return err
 	}
-	digest = h.String()
+	digest := h.String()
 
 	if err := w.commitBlob(location, digest); err != nil {
 		return err
@@ -417,14 +408,18 @@ func scopesForUploadingImage(ref name.Reference, layers []v1.Layer) []string {
 // WriteIndex pushes the provided ImageIndex to the specified image reference.
 // WriteIndex will attempt to push all of the referenced manifests before
 // attempting to push the ImageIndex, to retain referential integrity.
-func WriteIndex(ref name.Reference, ii v1.ImageIndex, auth authn.Authenticator, t http.RoundTripper) error {
+func WriteIndex(ref name.Reference, ii v1.ImageIndex, options ...Option) error {
 	index, err := ii.IndexManifest()
 	if err != nil {
 		return err
 	}
 
+	o, err := makeOptions(ref.Context().Registry, options...)
+	if err != nil {
+		return err
+	}
 	scopes := []string{ref.Scope(transport.PushScope)}
-	tr, err := transport.New(ref.Context().Registry, auth, t, scopes)
+	tr, err := transport.New(ref.Context().Registry, o.auth, o.transport, scopes)
 	if err != nil {
 		return err
 	}
@@ -454,7 +449,7 @@ func WriteIndex(ref name.Reference, ii v1.ImageIndex, auth authn.Authenticator, 
 				return err
 			}
 
-			if err := WriteIndex(ref, ii, auth, t); err != nil {
+			if err := WriteIndex(ref, ii, WithAuth(o.auth), WithTransport(o.transport)); err != nil {
 				return err
 			}
 		case types.OCIManifestSchema1, types.DockerManifestSchema2:
@@ -462,7 +457,7 @@ func WriteIndex(ref name.Reference, ii v1.ImageIndex, auth authn.Authenticator, 
 			if err != nil {
 				return err
 			}
-			if err := Write(ref, img, auth, t); err != nil {
+			if err := Write(ref, img, WithAuth(o.auth), WithTransport(o.transport)); err != nil {
 				return err
 			}
 		}

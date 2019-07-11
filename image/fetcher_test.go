@@ -15,7 +15,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/image"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/internal/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -51,7 +51,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		repo = "some-org/" + h.RandString(10)
 		repoName = registryConfig.RepoName(repo)
-		fetcher = image.NewFetcher(logging.NewLogger(ioutil.Discard, ioutil.Discard, false, false), docker)
+		fetcher = image.NewFetcher(mocks.NewMockLogger(ioutil.Discard), docker)
 	})
 
 	when("#Fetch", func() {

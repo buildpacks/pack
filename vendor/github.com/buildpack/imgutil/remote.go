@@ -12,6 +12,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
@@ -46,11 +47,21 @@ func newV1Image(keychain authn.Keychain, repoName string) (v1.Image, error) {
 	if err != nil {
 		return nil, err
 	}
-	image, err := remote.Image(ref, remote.WithAuth(auth))
+	image, err := remote.Image(ref, remote.WithAuth(auth), remote.WithTransport(http.DefaultTransport))
 	if err != nil {
+		if transportErr, ok := err.(*transport.Error); ok && len(transportErr.Errors) > 0 {
+			switch transportErr.Errors[0].Code {
+			case transport.UnauthorizedErrorCode, transport.ManifestUnknownErrorCode:
+				return emptyRemoteImage()
+			}
+		}
 		return nil, fmt.Errorf("connect to repo store '%s': %s", repoName, err.Error())
 	}
 	return image, nil
+}
+
+func emptyRemoteImage() (v1.Image, error) {
+	return random.Image(0, 0)
 }
 
 func referenceForRepoName(keychain authn.Keychain, ref string) (name.Reference, authn.Authenticator, error) {
@@ -70,7 +81,7 @@ func referenceForRepoName(keychain authn.Keychain, ref string) (name.Reference, 
 func (r *remoteImage) Label(key string) (string, error) {
 	cfg, err := r.image.ConfigFile()
 	if err != nil || cfg == nil {
-		return "", fmt.Errorf("failed to get label, image '%s' does not exist", r.repoName)
+		return "", fmt.Errorf("failed to get config file for image '%s'", r.repoName)
 	}
 	labels := cfg.Config.Labels
 	return labels[key], nil
@@ -80,7 +91,7 @@ func (r *remoteImage) Label(key string) (string, error) {
 func (r *remoteImage) Env(key string) (string, error) {
 	cfg, err := r.image.ConfigFile()
 	if err != nil || cfg == nil {
-		return "", fmt.Errorf("failed to get env var, image '%s' does not exist", r.repoName)
+		return "", fmt.Errorf("failed to get config file for image '%s'", r.repoName)
 	}
 	for _, envVar := range cfg.Config.Env {
 		parts := strings.Split(envVar, "=")
@@ -99,17 +110,16 @@ func (r *remoteImage) Name() string {
 	return r.repoName
 }
 
-func (r *remoteImage) Found() (bool, error) {
-	if _, err := r.image.RawManifest(); err != nil {
-		if transportErr, ok := err.(*transport.Error); ok && len(transportErr.Errors) > 0 {
-			switch transportErr.Errors[0].Code {
-			case transport.UnauthorizedErrorCode, transport.ManifestUnknownErrorCode:
-				return false, nil
-			}
-		}
-		return false, err
+func (r *remoteImage) Found() bool {
+	ref, auth, err := referenceForRepoName(r.keychain, r.repoName)
+	if err != nil {
+		return false
 	}
-	return true, nil
+	_, err = remote.Image(ref, remote.WithAuth(auth), remote.WithTransport(http.DefaultTransport))
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func (r *remoteImage) Digest() (string, error) {
@@ -174,6 +184,17 @@ func (r *remoteImage) SetEnv(key, val string) error {
 		}
 	}
 	config.Env = append(config.Env, fmt.Sprintf("%s=%s", key, val))
+	r.image, err = mutate.Config(r.image, config)
+	return err
+}
+
+func (r *remoteImage) SetWorkingDir(dir string) error {
+	configFile, err := r.image.ConfigFile()
+	if err != nil {
+		return err
+	}
+	config := *configFile.Config.DeepCopy()
+	config.WorkingDir = dir
 	r.image, err = mutate.Config(r.image, config)
 	return err
 }
@@ -246,6 +267,9 @@ func (r *remoteImage) ReuseLayer(sha string) error {
 	if outerErr != nil {
 		return outerErr
 	}
+	if len(r.prevLayers) == 0 {
+		return fmt.Errorf("there is no previous image with name '%s'", r.repoName)
+	}
 
 	layer, err := findLayerWithSha(r.prevLayers, sha)
 	if err != nil {
@@ -279,7 +303,7 @@ func (r *remoteImage) Save() (string, error) {
 		return "", err
 	}
 
-	if err := remote.Write(ref, r.image, auth, http.DefaultTransport); err != nil {
+	if err := remote.Write(ref, r.image, remote.WithAuth(auth)); err != nil {
 		return "", err
 	}
 

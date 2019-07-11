@@ -2,7 +2,6 @@ package pack
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -22,8 +21,7 @@ import (
 
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
-	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/internal/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -36,28 +34,24 @@ func TestBuild(t *testing.T) {
 func testBuild(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject               *Client
-		logOut, logErr        *bytes.Buffer
-		clientConfig          *config.Config
-		fakeImageFetcher      *h.FakeImageFetcher
-		fakeLifecycle         *h.FakeLifecycle
+		fakeImageFetcher      *mocks.FakeImageFetcher
+		fakeLifecycle         *mocks.FakeLifecycle
 		defaultBuilderStackID string
 		defaultBuilderImage   *fakes.Image
+		builderName           string
 		fakeDefaultRunImage   *fakes.Image
 		fakeMirror1           *fakes.Image
 		fakeMirror2           *fakes.Image
 		tmpDir                string
 	)
 	it.Before(func() {
-		fakeImageFetcher = h.NewFakeImageFetcher()
-		fakeLifecycle = &h.FakeLifecycle{}
+		fakeImageFetcher = mocks.NewFakeImageFetcher()
+		fakeLifecycle = &mocks.FakeLifecycle{}
 
-		logOut, logErr = &bytes.Buffer{}, &bytes.Buffer{}
-		clientConfig = &config.Config{
-			DefaultBuilder: "example.com/default/builder:tag",
-		}
+		builderName = "example.com/default/builder:tag"
 		defaultBuilderStackID = "default.stack"
-		defaultBuilderImage = h.NewFakeBuilderImage(t,
-			clientConfig.DefaultBuilder,
+		defaultBuilderImage = mocks.NewFakeBuilderImage(t,
+			builderName,
 			[]builder.BuildpackMetadata{
 				{ID: "buildpack.id", Version: "buildpack.version", Latest: true},
 			},
@@ -92,14 +86,15 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
 
-		subject = NewClient(
-			clientConfig,
-			logging.NewLogger(logOut, logErr, true, false),
-			fakeImageFetcher,
-			fakeLifecycle,
-			buildpack.NewFetcher(logging.NewLogger(logOut, logErr, true, false), tmpDir),
-			docker,
-		)
+		logger := mocks.NewMockLogger(ioutil.Discard)
+
+		subject = &Client{
+			logger:           logger,
+			imageFetcher:     fakeImageFetcher,
+			buildpackFetcher: buildpack.NewFetcher(NewDownloader(logger, tmpDir)),
+			lifecycle:        fakeLifecycle,
+			docker:           docker,
+		}
 	})
 
 	it.After(func() {
@@ -114,7 +109,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		when("Image option", func() {
 			it("is required", func() {
 				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
-					Image: "",
+					Image:   "",
+					Builder: builderName,
 				}),
 					"invalid image name ''",
 				)
@@ -122,7 +118,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			it("must be a valid image reference", func() {
 				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
-					Image: "not@valid",
+					Image:   "not@valid",
+					Builder: builderName,
 				}),
 					"invalid image name 'not@valid'",
 				)
@@ -130,7 +127,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			it("must be a valid tag reference", func() {
 				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
-					Image: "registry.com/my/image@sha256:954e1f01e80ce09d0887ff6ea10b13a812cb01932a0781d6b0cc23f743a874fd",
+					Image:   "registry.com/my/image@sha256:954e1f01e80ce09d0887ff6ea10b13a812cb01932a0781d6b0cc23f743a874fd",
+					Builder: builderName,
 				}),
 					"invalid image name 'registry.com/my/image@sha256:954e1f01e80ce09d0887ff6ea10b13a812cb01932a0781d6b0cc23f743a874fd'",
 				)
@@ -138,7 +136,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			it("lifecycle receives resolved reference", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-					Image: "example.com/some/repo:tag",
+					Builder: builderName,
+					Image:   "example.com/some/repo:tag",
 				}))
 				h.AssertEq(t, fakeLifecycle.Opts.Image.Context().RegistryStr(), "example.com")
 				h.AssertEq(t, fakeLifecycle.Opts.Image.Context().RepositoryStr(), "some/repo")
@@ -149,65 +148,144 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		when("AppDir option", func() {
 			it("defaults to the current working directory", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-					Image: "some/app",
+					Image:   "some/app",
+					Builder: builderName,
 				}))
 
 				wd, err := os.Getwd()
 				h.AssertNil(t, err)
-				h.AssertEq(t, fakeLifecycle.Opts.AppDir, wd)
+				resolvedWd, err := filepath.EvalSymlinks(wd)
+				h.AssertNil(t, err)
+				h.AssertEq(t, fakeLifecycle.Opts.AppPath, resolvedWd)
 			})
+			for fileDesc, appPath := range map[string]string{
+				"zip": filepath.Join("testdata", "zip-file.zip"),
+				"jar": filepath.Join("testdata", "jar-file.jar"),
+			} {
+				fileDesc := fileDesc
+				appPath := appPath
 
-			it("path must exist", func() {
-				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
-					Image:  "some/app",
-					AppDir: "not/exist/path",
-				}),
-					"invalid app dir 'not/exist/path'",
-				)
-			})
+				it(fmt.Sprintf("supports %s files", fileDesc), func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						AppPath: appPath,
+					})
+					h.AssertNil(t, err)
+				})
+			}
 
-			it("path must be a dir", func() {
-				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
-					Image:  "some/app",
-					AppDir: filepath.Join("testdata", "just-a-file.txt"),
-				}),
-					fmt.Sprintf("invalid app dir '%s'", filepath.Join("testdata", "just-a-file.txt")),
-				)
-			})
+			for fileDesc, testData := range map[string][]string{
+				"non-existent": {"not/exist/path", "does not exist"},
+				"empty":        {filepath.Join("testdata", "empty-file"), "app path must be a directory or zip"},
+				"non-zip":      {filepath.Join("testdata", "non-zip-file"), "app path must be a directory or zip"},
+			} {
+				fileDesc := fileDesc
+				appPath := testData[0]
+				errMessage := testData[0]
+
+				it(fmt.Sprintf("does NOT support %s files", fileDesc), func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						AppPath: appPath,
+					})
+
+					h.AssertError(t, err, errMessage)
+				})
+			}
 
 			it("resolves the absolute path", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-					Image:  "some/app",
-					AppDir: filepath.Join("testdata", "some-app"),
+					Image:   "some/app",
+					Builder: builderName,
+					AppPath: filepath.Join("testdata", "some-app"),
 				}))
 				absPath, err := filepath.Abs(filepath.Join("testdata", "some-app"))
 				h.AssertNil(t, err)
-				h.AssertEq(t, fakeLifecycle.Opts.AppDir, absPath)
+				h.AssertEq(t, fakeLifecycle.Opts.AppPath, absPath)
+			})
+
+			when("appDir is a symlink", func() {
+				var (
+					appDirName     = "some-app"
+					absoluteAppDir string
+					tmpDir         string
+					err            error
+				)
+
+				it.Before(func() {
+					tmpDir, err = ioutil.TempDir("", "build-symlink-test")
+					h.AssertNil(t, err)
+
+					appDirPath := filepath.Join(tmpDir, appDirName)
+					h.AssertNil(t, os.MkdirAll(filepath.Join(tmpDir, appDirName), 0666))
+
+					absoluteAppDir, err = filepath.Abs(appDirPath)
+					h.AssertNil(t, err)
+
+					absoluteAppDir, err = filepath.EvalSymlinks(appDirPath)
+					h.AssertNil(t, err)
+				})
+
+				it.After(func() {
+					os.RemoveAll(tmpDir)
+				})
+
+				it("resolves relative symbolic links", func() {
+					relLink := filepath.Join(tmpDir, "some-app.link")
+					h.AssertNil(t, os.Symlink(filepath.Join(".", appDirName), relLink))
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						AppPath: relLink,
+					}))
+
+					h.AssertEq(t, fakeLifecycle.Opts.AppPath, absoluteAppDir)
+				})
+
+				it("resolves absolute symbolic links", func() {
+					relLink := filepath.Join(tmpDir, "some-app.link")
+					h.AssertNil(t, os.Symlink(absoluteAppDir, relLink))
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						AppPath: relLink,
+					}))
+
+					h.AssertEq(t, fakeLifecycle.Opts.AppPath, absoluteAppDir)
+				})
+
+				it("resolves symbolic links recursively", func() {
+					linkRef1 := absoluteAppDir
+					absoluteLink1 := filepath.Join(tmpDir, "some-app-abs-1.link")
+
+					linkRef2 := "some-app-abs-1.link"
+					symbolicLink := filepath.Join(tmpDir, "some-app-rel-2.link")
+
+					h.AssertNil(t, os.Symlink(linkRef1, absoluteLink1))
+					h.AssertNil(t, os.Symlink(linkRef2, symbolicLink))
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						AppPath: symbolicLink,
+					}))
+
+					h.AssertEq(t, fakeLifecycle.Opts.AppPath, absoluteAppDir)
+				})
 			})
 		})
 
 		when("Builder option", func() {
-			when("the client has a default builder", func() {
-				it("defaults to the client's default builder", func() {
-					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-						Image: "some/app",
-					}))
-					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-				})
-			})
-
-			when("the client doesn't have a default builder", func() {
-				it.Before(func() {
-					clientConfig.DefaultBuilder = ""
-				})
-
-				it("builder is required", func() {
-					h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
-						Image: "some/app",
-					}),
-						"invalid builder ''",
-					)
-				})
+			it("builder is required", func() {
+				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
+					Image: "some/app",
+				}),
+					"invalid builder ''",
+				)
 			})
 
 			when("the builder name is provided", func() {
@@ -217,8 +295,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				)
 
 				it.Before(func() {
-					customBuilderImage = h.NewFakeBuilderImage(t,
-						"index.docker.io/some/builder:latest",
+					customBuilderImage = mocks.NewFakeBuilderImage(t,
+						builderName,
 						[]builder.BuildpackMetadata{},
 						builder.Config{
 							Stack: builder.StackConfig{ID: "some.stack.id", RunImage: "some/run"},
@@ -238,7 +316,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it("it uses the provided builder", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
-						Builder: "some/builder",
+						Builder: builderName,
 					}))
 					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), customBuilderImage.Name())
 				})
@@ -267,6 +345,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it("uses the provided image", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:    "some/app",
+						Builder:  builderName,
 						RunImage: "custom/run",
 					}))
 					h.AssertEq(t, fakeLifecycle.Opts.RunImage, "custom/run")
@@ -281,6 +360,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it("errors", func() {
 					h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
 						Image:    "some/app",
+						Builder:  builderName,
 						RunImage: "custom/run",
 					}),
 						"invalid run-image 'custom/run': run-image stack id 'other.stack' does not match builder stack 'default.stack'",
@@ -292,21 +372,24 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				when("there are no locally configured mirrors", func() {
 					it("chooses the best mirror from the builder", func() {
 						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image: "some/app",
+							Image:   "some/app",
+							Builder: builderName,
 						}))
 						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "default/run")
 					})
 
 					it("chooses the best mirror from the builder", func() {
 						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image: "registry1.example.com/some/app",
+							Image:   "registry1.example.com/some/app",
+							Builder: builderName,
 						}))
 						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry1.example.com/run/mirror")
 					})
 
 					it("chooses the best mirror from the builder", func() {
 						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image: "registry2.example.com/some/app",
+							Image:   "registry2.example.com/some/app",
+							Builder: builderName,
 						}))
 						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry2.example.com/run/mirror")
 					})
@@ -321,16 +404,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					)
 
 					it.Before(func() {
-						clientConfig.RunImages = []config.RunImage{
-							{
-								Image: "default/run",
-								Mirrors: []string{
-									"local/mirror",
-									"registry1.example.com/local/mirror",
-								},
-							},
-						}
-
 						fakeLocalMirror = fakes.NewImage("local/mirror", "", "")
 						h.AssertNil(t, fakeLocalMirror.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 						fakeImageFetcher.LocalImages[fakeLocalMirror.Name()] = fakeLocalMirror
@@ -345,25 +418,39 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						fakeLocalMirror1.Cleanup()
 					})
 
-					it("prefers locally configured mirrors", func() {
+					it("prefers user provided mirrors", func() {
 						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image: "some/app",
+							Image:   "some/app",
+							Builder: builderName,
+							AdditionalMirrors: map[string][]string{
+								"default/run": {"local/mirror", "registry1.example.com/local/mirror"},
+							},
 						}))
 						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "local/mirror")
 					})
 
-					it("choose the correct locally configured mirror for the registry", func() {
+					it("choose the correct user provided mirror for the registry", func() {
 						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image: "registry1.example.com/some/app",
+							Image:   "registry1.example.com/some/app",
+							Builder: builderName,
+							AdditionalMirrors: map[string][]string{
+								"default/run": {"local/mirror", "registry1.example.com/local/mirror"},
+							},
 						}))
 						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry1.example.com/local/mirror")
 					})
 
-					it("falls back to builder mirrors", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image: "registry2.example.com/some/app",
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry2.example.com/run/mirror")
+					when("there is no user provided mirror for the registry", func() {
+						it("chooses from builder mirrors", func() {
+							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+								Image:   "registry2.example.com/some/app",
+								Builder: builderName,
+								AdditionalMirrors: map[string][]string{
+									"default/run": {"local/mirror", "registry1.example.com/local/mirror"},
+								},
+							}))
+							h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry2.example.com/run/mirror")
+						})
 					})
 				})
 			})
@@ -373,6 +460,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			it("passes it through to lifecycle", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 					Image:      "some/app",
+					Builder:    builderName,
 					ClearCache: true,
 				}))
 				h.AssertEq(t, fakeLifecycle.Opts.ClearCache, true)
@@ -380,7 +468,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			it("defaults to false", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-					Image: "some/app",
+					Image:   "some/app",
+					Builder: builderName,
 				}))
 				h.AssertEq(t, fakeLifecycle.Opts.ClearCache, false)
 			})
@@ -390,6 +479,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			it("builder order is overwritten", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 					Image:      "some/app",
+					Builder:    builderName,
 					ClearCache: true,
 					Buildpacks: []string{"buildpack.id@buildpack.version"},
 				}))
@@ -405,6 +495,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it("assumes latest", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:      "some/app",
+						Builder:    builderName,
 						ClearCache: true,
 						Buildpacks: []string{"buildpack.id"},
 					}))
@@ -420,6 +511,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			it("ensures buildpacks exist on builder", func() {
 				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
 					Image:      "some/app",
+					Builder:    builderName,
 					ClearCache: true,
 					Buildpacks: []string{"missing.bp@version"},
 				}),
@@ -427,34 +519,97 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				)
 			})
 
-			when("buildpacks include uris", func() {
+			when("buildpacks include URIs", func() {
+				var buildpackTgz string
+
 				it.Before(func() {
-					if runtime.GOOS == "windows" {
-						t.Skip("buildpack directories are not implemented on windows")
-					}
+					buildpackTgz = h.CreateTgz(t, filepath.Join("testdata", "buildpack2"), "./", 0755)
 				})
 
-				it("buildpacks are added to ephemeral builder", func() {
-					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-						Image:      "some/app",
-						ClearCache: true,
-						Buildpacks: []string{
-							"buildpack.id@buildpack.version",
-							filepath.Join("testdata", "buildpack"),
-						},
-					}))
-					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-					bldr, err := builder.GetBuilder(defaultBuilderImage)
-					h.AssertNil(t, err)
-					h.AssertEq(t, bldr.GetOrder(), []builder.GroupMetadata{
-						{Buildpacks: []builder.GroupBuildpack{
-							{ID: "buildpack.id", Version: "buildpack.version"},
-							{ID: "some-buildpack-id", Version: "some-buildpack-version"},
-						}},
+				it.After(func() {
+					h.AssertNil(t, os.Remove(buildpackTgz))
+				})
+
+				when("is windows", func() {
+					it.Before(func() {
+						h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
 					})
-					h.AssertEq(t, bldr.GetBuildpacks(), []builder.BuildpackMetadata{
-						{ID: "buildpack.id", Version: "buildpack.version", Latest: true},
-						{ID: "some-buildpack-id", Version: "some-buildpack-version"},
+
+					it("only allows tgz buildpacks", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    builderName,
+							ClearCache: true,
+							Buildpacks: []string{
+								"buildid@buildpack.version",
+								filepath.Join("testdata", "buildpack"),
+							},
+						})
+
+						h.AssertError(t, err, fmt.Sprintf("buildpack '%s': Windows only supports .tgz-based buildpacks", filepath.Join("testdata", "buildpack")))
+					})
+
+					it("buildpacks are added to ephemeral builder", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    builderName,
+							ClearCache: true,
+							Buildpacks: []string{
+								"buildpack.id@buildpack.version",
+								buildpackTgz,
+							},
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.GetBuilder(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.GetOrder(), []builder.GroupMetadata{
+							{Buildpacks: []builder.GroupBuildpack{
+								{ID: "buildpack.id", Version: "buildpack.version"},
+								{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+							}},
+						})
+						h.AssertEq(t, bldr.GetBuildpacks(), []builder.BuildpackMetadata{
+							{ID: "buildpack.id", Version: "buildpack.version", Latest: true},
+							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+						})
+					})
+				})
+
+				when("is posix", func() {
+					it.Before(func() {
+						h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
+					})
+
+					it("buildpacks are added to ephemeral builder", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    builderName,
+							ClearCache: true,
+							Buildpacks: []string{
+								"buildpack.id@buildpack.version",
+								filepath.Join("testdata", "buildpack"),
+								buildpackTgz,
+							},
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.GetBuilder(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.GetOrder(), []builder.GroupMetadata{
+							{Buildpacks: []builder.GroupBuildpack{
+								{ID: "buildpack.id", Version: "buildpack.version"},
+								{ID: "some-buildpack-id", Version: "some-buildpack-version"},
+								{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+							}},
+						})
+						h.AssertEq(t, bldr.GetBuildpacks(), []builder.BuildpackMetadata{
+							{ID: "buildpack.id", Version: "buildpack.version", Latest: true},
+							{ID: "some-buildpack-id", Version: "some-buildpack-version"},
+							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+						})
 					})
 				})
 
@@ -465,13 +620,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		when("Env option", func() {
 			it("should set the env on the ephemeral builder", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-					Image: "some/app",
+					Image:   "some/app",
+					Builder: builderName,
 					Env: map[string]string{
 						"key1": "value1",
 						"key2": "value2",
 					},
 				}))
-				layerTar, err := defaultBuilderImage.FindLayerWithPath("/platform/env")
+				layerTar, err := defaultBuilderImage.FindLayerWithPath("/platform/env/key1")
 				h.AssertNil(t, err)
 				assertTarFileContents(t, layerTar, "/platform/env/key1", `value1`)
 				assertTarFileContents(t, layerTar, "/platform/env/key2", `value2`)
@@ -495,6 +651,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it("uses a remote run image", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
+						Builder: builderName,
 						Publish: true,
 					}))
 					h.AssertEq(t, fakeLifecycle.Opts.Publish, true)
@@ -502,7 +659,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					args := fakeImageFetcher.FetchCalls["default/run"]
 					h.AssertEq(t, args.Daemon, false)
 
-					args = fakeImageFetcher.FetchCalls[clientConfig.DefaultBuilder]
+					args = fakeImageFetcher.FetchCalls[builderName]
 					h.AssertEq(t, args.Daemon, true)
 
 				})
@@ -511,6 +668,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					it("uses a local run image", func() {
 						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 							Image:   "some/app",
+							Builder: builderName,
 							Publish: false,
 						}))
 						h.AssertEq(t, fakeLifecycle.Opts.Publish, false)
@@ -519,7 +677,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, args.Daemon, true)
 						h.AssertEq(t, args.Pull, true)
 
-						args = fakeImageFetcher.FetchCalls[clientConfig.DefaultBuilder]
+						args = fakeImageFetcher.FetchCalls[builderName]
 						h.AssertEq(t, args.Daemon, true)
 						h.AssertEq(t, args.Pull, true)
 					})
@@ -530,15 +688,16 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				when("true", func() {
 					it("uses the local builder and run images without updating", func() {
 						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:  "some/app",
-							NoPull: true,
+							Image:   "some/app",
+							Builder: builderName,
+							NoPull:  true,
 						}))
 
 						args := fakeImageFetcher.FetchCalls["default/run"]
 						h.AssertEq(t, args.Daemon, true)
 						h.AssertEq(t, args.Pull, false)
 
-						args = fakeImageFetcher.FetchCalls[clientConfig.DefaultBuilder]
+						args = fakeImageFetcher.FetchCalls[builderName]
 						h.AssertEq(t, args.Daemon, true)
 						h.AssertEq(t, args.Pull, false)
 					})
@@ -547,17 +706,79 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				when("false", func() {
 					it("uses pulls the builder and run image before using them", func() {
 						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:  "some/app",
-							NoPull: false,
+							Image:   "some/app",
+							Builder: builderName,
+							NoPull:  false,
 						}))
 
 						args := fakeImageFetcher.FetchCalls["default/run"]
 						h.AssertEq(t, args.Daemon, true)
 						h.AssertEq(t, args.Pull, true)
 
-						args = fakeImageFetcher.FetchCalls[clientConfig.DefaultBuilder]
+						args = fakeImageFetcher.FetchCalls[builderName]
 						h.AssertEq(t, args.Daemon, true)
 						h.AssertEq(t, args.Pull, true)
+					})
+				})
+			})
+
+			when("ProxyConfig option", func() {
+				when("ProxyConfig is nil", func() {
+					it.Before(func() {
+						h.AssertNil(t, os.Setenv("http_proxy", "other-http-proxy"))
+						h.AssertNil(t, os.Setenv("https_proxy", "other-https-proxy"))
+						h.AssertNil(t, os.Setenv("no_proxy", "other-no-proxy"))
+					})
+
+					when("*_PROXY env vars are set", func() {
+						it.Before(func() {
+							h.AssertNil(t, os.Setenv("HTTP_PROXY", "some-http-proxy"))
+							h.AssertNil(t, os.Setenv("HTTPS_PROXY", "some-https-proxy"))
+							h.AssertNil(t, os.Setenv("NO_PROXY", "some-no-proxy"))
+						})
+
+						it.After(func() {
+							h.AssertNil(t, os.Unsetenv("HTTP_PROXY"))
+							h.AssertNil(t, os.Unsetenv("HTTPS_PROXY"))
+							h.AssertNil(t, os.Unsetenv("NO_PROXY"))
+						})
+
+						it("defaults to the *_PROXY environment variables", func() {
+							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+								Image:   "some/app",
+								Builder: builderName,
+							}))
+							h.AssertEq(t, fakeLifecycle.Opts.HTTPProxy, "some-http-proxy")
+							h.AssertEq(t, fakeLifecycle.Opts.HTTPSProxy, "some-https-proxy")
+							h.AssertEq(t, fakeLifecycle.Opts.NoProxy, "some-no-proxy")
+						})
+					})
+
+					it("falls back to the *_proxy environment variables", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: builderName,
+						}))
+						h.AssertEq(t, fakeLifecycle.Opts.HTTPProxy, "other-http-proxy")
+						h.AssertEq(t, fakeLifecycle.Opts.HTTPSProxy, "other-https-proxy")
+						h.AssertEq(t, fakeLifecycle.Opts.NoProxy, "other-no-proxy")
+					})
+				}, spec.Sequential())
+
+				when("ProxyConfig is not nil", func() {
+					it("passes the values through", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: builderName,
+							ProxyConfig: &ProxyConfig{
+								HTTPProxy:  "custom-http-proxy",
+								HTTPSProxy: "custom-https-proxy",
+								NoProxy:    "custom-no-proxy",
+							},
+						}))
+						h.AssertEq(t, fakeLifecycle.Opts.HTTPProxy, "custom-http-proxy")
+						h.AssertEq(t, fakeLifecycle.Opts.HTTPSProxy, "custom-https-proxy")
+						h.AssertEq(t, fakeLifecycle.Opts.NoProxy, "custom-no-proxy")
 					})
 				})
 			})

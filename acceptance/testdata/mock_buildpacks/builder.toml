@@ -1,14 +1,17 @@
 [[buildpacks]]
   id = "simple/layers"
-  uri = "simple-layers-buildpack"
+  version = "simple-layers-version"
+  uri = "simple-layers-buildpack.tgz"
 
 [[buildpacks]]
   id = "read/env"
-  uri = "read-env-buildpack"
+  version = "read-env-version"
+  uri = "read-env-buildpack.tgz"
 
 [[buildpacks]]
   id = "noop.buildpack"
-  uri = "noop-buildpack"
+  version = "noop.buildpack.version"
+  uri = "noop-buildpack.tgz"
   latest = true
 
 [[groups]]
@@ -25,4 +28,4 @@
   build-image = "pack-test/build"
   run-image = "pack-test/run"
 
-# run-image-mirror is append by accpetance tests
+# run-image-mirror and lifecycle are appended by acceptance tests

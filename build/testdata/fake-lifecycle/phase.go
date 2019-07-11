@@ -38,6 +38,12 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "buildpacks" {
 		testBuildpacks()
 	}
+	if len(os.Args) > 1 && os.Args[1] == "proxy" {
+		testProxy()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "binds" {
+		testBinds()
+	}
 }
 
 func testWrite(filename, contents string) {
@@ -78,7 +84,7 @@ func testRegistryAccess(repoName string) {
 	}
 	_, err = v1remote.Image(ref, v1remote.WithAuth(auth))
 	if err != nil {
-		fmt.Println("failed to access image")
+		fmt.Println("failed to access image:", err)
 		os.Exit(6)
 	}
 }
@@ -126,6 +132,21 @@ func testBuildpacks() {
 	fmt.Println("buildpacks test")
 
 	readDir("/buildpacks")
+}
+
+func testProxy() {
+	fmt.Println("proxy test")
+	fmt.Println("HTTP_PROXY=" + os.Getenv("HTTP_PROXY"))
+	fmt.Println("HTTPS_PROXY=" + os.Getenv("HTTPS_PROXY"))
+	fmt.Println("NO_PROXY=" + os.Getenv("NO_PROXY"))
+	fmt.Println("http_proxy=" + os.Getenv("http_proxy"))
+	fmt.Println("https_proxy=" + os.Getenv("https_proxy"))
+	fmt.Println("no_proxy=" + os.Getenv("no_proxy"))
+}
+
+func testBinds() {
+	fmt.Println("binds test")
+	readDir("/mounted")
 }
 
 func readDir(dir string) {

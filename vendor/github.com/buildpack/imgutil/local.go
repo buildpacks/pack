@@ -64,7 +64,7 @@ func NewLocalImage(repoName string, dockerClient *client.Client) (Image, error) 
 
 func (l *localImage) Label(key string) (string, error) {
 	if l.inspect.Config == nil {
-		return "", fmt.Errorf("failed to get label, image '%s' does not exist", l.repoName)
+		return "", nil
 	}
 	labels := l.inspect.Config.Labels
 	return labels[key], nil
@@ -72,7 +72,7 @@ func (l *localImage) Label(key string) (string, error) {
 
 func (l *localImage) Env(key string) (string, error) {
 	if l.inspect.Config == nil {
-		return "", fmt.Errorf("failed to get env var, image '%s' does not exist", l.repoName)
+		return "", nil
 	}
 	for _, envVar := range l.inspect.Config.Env {
 		parts := strings.Split(envVar, "=")
@@ -110,14 +110,12 @@ func (l *localImage) Name() string {
 	return l.repoName
 }
 
-func (l *localImage) Found() (bool, error) {
-	return l.inspect.Config != nil, nil
+func (l *localImage) Found() bool {
+	return l.inspect.Config != nil
 }
 
 func (l *localImage) Digest() (string, error) {
-	if found, err := l.Found(); err != nil {
-		return "", errors.Wrap(err, "determining image existence")
-	} else if !found {
+	if !l.Found() {
 		return "", fmt.Errorf("failed to get digest, image '%s' does not exist", l.repoName)
 	}
 	if len(l.inspect.RepoDigests) == 0 {
@@ -204,6 +202,14 @@ func (l *localImage) SetEnv(key, val string) error {
 		return fmt.Errorf("failed to set env var, image '%s' does not exist", l.repoName)
 	}
 	l.inspect.Config.Env = append(l.inspect.Config.Env, fmt.Sprintf("%s=%s", key, val))
+	return nil
+}
+
+func (l *localImage) SetWorkingDir(dir string) error {
+	if l.inspect.Config == nil {
+		return fmt.Errorf("failed to set working dir, image '%s' does not exist", l.repoName)
+	}
+	l.inspect.Config.WorkingDir = dir
 	return nil
 }
 
@@ -387,19 +393,15 @@ func (l *localImage) configFile() ([]byte, error) {
 }
 
 func (l *localImage) Delete() error {
-	if found, err := l.Found(); err != nil {
-		return errors.Wrap(err, "determining image existence")
-	} else if found {
-		options := types.ImageRemoveOptions{
-			Force:         true,
-			PruneChildren: true,
-		}
-		_, err := l.docker.ImageRemove(context.Background(), l.inspect.ID, options)
-		if err != nil {
-			return err
-		}
+	if !l.Found() {
+		return nil
 	}
-	return nil
+	options := types.ImageRemoveOptions{
+		Force:         true,
+		PruneChildren: true,
+	}
+	_, err := l.docker.ImageRemove(context.Background(), l.inspect.ID, options)
+	return err
 }
 
 func (l *localImage) prevDownload() error {

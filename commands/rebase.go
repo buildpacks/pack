@@ -3,12 +3,14 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/buildpack/pack/config"
+
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
 
-func Rebase(logger *logging.Logger, client PackClient) *cobra.Command {
+func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	var opts pack.RebaseOptions
 	ctx := createCancellableContext()
 
@@ -18,10 +20,11 @@ func Rebase(logger *logging.Logger, client PackClient) *cobra.Command {
 		Short: "Rebase app image with latest run image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			opts.RepoName = args[0]
+			opts.AdditionalMirrors = getMirrors(cfg)
 			if err := client.Rebase(ctx, opts); err != nil {
 				return err
 			}
-			logger.Info("Successfully rebased image %s", style.Symbol(opts.RepoName))
+			logger.Infof("Successfully rebased image %s", style.Symbol(opts.RepoName))
 			return nil
 		}),
 	}

@@ -13,14 +13,14 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-func InspectBuilder(logger *logging.Logger, cfg *config.Config, client PackClient) *cobra.Command {
+func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "inspect-builder <builder-image-name>",
 		Short: "Show information about a builder",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if cfg.DefaultBuilder == "" && len(args) == 0 {
-				suggestSettingBuilder(logger)
+				suggestSettingBuilder(logger, client)
 				return MakeSoftError()
 			}
 
@@ -30,16 +30,21 @@ func InspectBuilder(logger *logging.Logger, cfg *config.Config, client PackClien
 			}
 
 			if imageName == cfg.DefaultBuilder {
-				logger.Info("Inspecting default builder: %s\n", style.Symbol(imageName))
+				logger.Infof("Inspecting default builder: %s", style.Symbol(imageName))
+				logger.Info("")
 			} else {
-				logger.Info("Inspecting builder: %s\n", style.Symbol(imageName))
+				logger.Infof("Inspecting builder: %s", style.Symbol(imageName))
+				logger.Info("")
 			}
 
-			logger.Info("Remote\n------")
-			inspectBuilderOutput(logger, client, imageName, false)
+			logger.Info("Remote")
+			logger.Info("------")
+			inspectBuilderOutput(logger, client, imageName, false, cfg)
 
-			logger.Info("\nLocal\n-----")
-			inspectBuilderOutput(logger, client, imageName, true)
+			logger.Info("")
+			logger.Info("Local")
+			logger.Info("-----")
+			inspectBuilderOutput(logger, client, imageName, true, cfg)
 
 			return nil
 		}),
@@ -48,53 +53,74 @@ func InspectBuilder(logger *logging.Logger, cfg *config.Config, client PackClien
 	return cmd
 }
 
-func inspectBuilderOutput(logger *logging.Logger, client PackClient, imageName string, local bool) {
+func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName string, local bool, cfg config.Config) {
 	info, err := client.InspectBuilder(imageName, local)
 	if err != nil {
+		logger.Info("")
 		logger.Error(err.Error())
 		return
 	}
 
 	if info == nil {
-		logger.Info("\nNot present")
+		logger.Info("")
+		logger.Info("Not present")
 		return
 	}
 
-	logger.Info("\nStack: %s\n", info.Stack)
-
-	logger.Info("Run Images:")
-	for _, r := range info.LocalRunImageMirrors {
-		logger.Info("  %s (user-configured)", r)
+	if info.Description != "" {
+		logger.Infof("\nDescription: %s", info.Description)
 	}
-	logger.Info("  %s", info.RunImage)
-	for _, r := range info.RunImageMirrors {
-		logger.Info("  %s", r)
+
+	logger.Info("")
+	logger.Infof("Stack: %s", info.Stack)
+	logger.Info("")
+
+	lcycleVer := info.LifecycleVersion
+	if lcycleVer == "" {
+		lcycleVer = "Unknown"
+	}
+	logger.Infof("Lifecycle Version: %s", lcycleVer)
+	logger.Info("")
+
+	if info.RunImage == "" {
+		logger.Infof("\nWarning: '%s' does not specify a run image", imageName)
+		logger.Info("  Users must build with an explicitly specified run image")
+	} else {
+		logger.Info("Run Images:")
+
+		for _, r := range getLocalMirrors(info.RunImage, cfg) {
+			logger.Infof("  %s (user-configured)", r)
+		}
+		logger.Infof("  %s", info.RunImage)
+		for _, r := range info.RunImageMirrors {
+			logger.Infof("  %s", r)
+		}
 	}
 
 	if len(info.Buildpacks) == 0 {
-		logger.Info("\nWarning: '%s' has no buildpacks", imageName)
+		logger.Infof("\nWarning: '%s' has no buildpacks", imageName)
 		logger.Info("  Users must supply buildpacks from the host machine")
 	} else {
 		logBuildpacksInfo(logger, info)
 	}
 
 	if len(info.Groups) == 0 {
-		logger.Info("\nWarning: '%s' does not specify detection order", imageName)
+		logger.Infof("\nWarning: '%s' does not specify detection order", imageName)
 		logger.Info("  Users must build with explicitly specified buildpacks")
 	} else {
 		logDetectionOrderInfo(logger, info)
 	}
 }
 
-func logBuildpacksInfo(logger *logging.Logger, info *pack.BuilderInfo) {
+func logBuildpacksInfo(logger logging.Logger, info *pack.BuilderInfo) {
 	buf := &bytes.Buffer{}
 	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 8, ' ', 0)
-	if _, err := fmt.Fprint(tabWriter, "\n  ID\tVERSION\tLATEST\t"); err != nil {
+	if _, err := fmt.Fprint(tabWriter, "\n  ID\tVERSION\tLATEST"); err != nil {
 		logger.Error(err.Error())
 	}
 
 	for _, bp := range info.Buildpacks {
-		if _, err := fmt.Fprint(tabWriter, fmt.Sprintf("\n  %s\t%s\t%t\t", bp.ID, bp.Version, bp.Latest)); err != nil {
+		if _, err := fmt.Fprint(tabWriter, fmt.Sprintf("\n  %s\t%s\t%t", bp.ID, bp.Version, bp.Latest)); err != nil {
 			logger.Error(err.Error())
 		}
 	}
@@ -106,12 +132,38 @@ func logBuildpacksInfo(logger *logging.Logger, info *pack.BuilderInfo) {
 	logger.Info("\nBuildpacks:" + buf.String())
 }
 
-func logDetectionOrderInfo(logger *logging.Logger, info *pack.BuilderInfo) {
+func logDetectionOrderInfo(logger logging.Logger, info *pack.BuilderInfo) {
 	logger.Info("\nDetection Order:")
 	for i, group := range info.Groups {
-		logger.Info(fmt.Sprintf("  Group #%d:", i+1))
-		for _, bp := range group.Buildpacks {
-			logger.Info(fmt.Sprintf("    %s@%s", bp.ID, bp.Version))
+		logger.Infof("  Group #%d:", i+1)
+		buf := &bytes.Buffer{}
+		tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 4, ' ', 0)
+		for i, bp := range group.Buildpacks {
+			var optional string
+			if bp.Optional {
+				optional = "(optional)"
+			}
+			if _, err := fmt.Fprintf(tabWriter, "    %s@%s\t%s", bp.ID, bp.Version, optional); err != nil {
+				logger.Error(err.Error())
+			}
+			if i < len(group.Buildpacks)-1 {
+				if _, err := fmt.Fprint(tabWriter, "\n"); err != nil {
+					logger.Error(err.Error())
+				}
+			}
+		}
+		if err := tabWriter.Flush(); err != nil {
+			logger.Error(err.Error())
+		}
+		logger.Info(buf.String())
+	}
+}
+
+func getLocalMirrors(runImage string, cfg config.Config) []string {
+	for _, ri := range cfg.RunImages {
+		if ri.Image == runImage {
+			return ri.Mirrors
 		}
 	}
+	return nil
 }

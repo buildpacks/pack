@@ -1,51 +1,68 @@
 package main
 
 import (
+	"fmt"
 	"os"
+
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/commands"
 	"github.com/buildpack/pack/config"
+	clilogger "github.com/buildpack/pack/internal/logging"
 	"github.com/buildpack/pack/logging"
-
-	"github.com/fatih/color"
-	"github.com/spf13/cobra"
 )
 
 var (
-	Version           = "0.0.0"
-	timestamps, quiet bool
-	logger            logging.Logger
-	cfg               config.Config
-	packClient        pack.Client
+	Version    = "0.0.0"
+	packClient pack.Client
 )
 
 func main() {
+	// create logger with defaults
+	logger := clilogger.NewLogWithWriters()
+
 	cobra.EnableCommandSorting = false
+	cfg := initConfig()
+
 	rootCmd := &cobra.Command{
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			logger = *logging.NewLogger(os.Stdout, os.Stderr, !quiet, timestamps)
-			cfg = initConfig(&logger)
-			packClient = initClient(&cfg, &logger)
+			if fs := cmd.Flags(); fs != nil {
+				if flag, err := fs.GetBool("no-color"); err != nil {
+					color.NoColor = flag
+				}
+				if flag, err := fs.GetBool("quiet"); err != nil {
+					logger.WantQuiet(flag)
+				}
+				if flag, err := fs.GetBool("timestamps"); err != nil {
+					logger.WantTime(flag)
+				}
+			}
+
+			packClient = initClient(logger)
 		},
 	}
-	rootCmd.PersistentFlags().BoolVar(&color.NoColor, "no-color", false, "Disable color output")
-	rootCmd.PersistentFlags().BoolVar(&timestamps, "timestamps", false, "Enable timestamps in output")
-	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Show less output")
+	rootCmd.PersistentFlags().Bool("no-color", false, "Disable color output")
+	rootCmd.PersistentFlags().Bool("timestamps", false, "Enable timestamps in output")
+	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Show less output")
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(&logger, &cfg, &packClient))
-	rootCmd.AddCommand(commands.Run(&logger, &cfg, &packClient))
-	rootCmd.AddCommand(commands.Rebase(&logger, &packClient))
+	rootCmd.AddCommand(commands.Build(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.Run(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.Rebase(logger, cfg, &packClient))
 
-	rootCmd.AddCommand(commands.CreateBuilder(&logger, &packClient))
-	rootCmd.AddCommand(commands.SetRunImagesMirrors(&logger))
-	rootCmd.AddCommand(commands.InspectBuilder(&logger, &cfg, &packClient))
-	rootCmd.AddCommand(commands.SetDefaultBuilder(&logger, &packClient))
-	rootCmd.AddCommand(commands.SuggestBuilders(&logger))
+	rootCmd.AddCommand(commands.CreateBuilder(logger, &packClient))
+	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
+	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
 
-	rootCmd.AddCommand(commands.Version(&logger, Version))
+	rootCmd.AddCommand(commands.SuggestStacks(logger))
+	rootCmd.AddCommand(commands.Version(logger, Version))
+
+	rootCmd.AddCommand(commands.CompletionCommand(logger))
 
 	if err := rootCmd.Execute(); err != nil {
 		if commands.IsSoftError(err) {
@@ -55,23 +72,24 @@ func main() {
 	}
 }
 
-func initConfig(logger *logging.Logger) config.Config {
-	cfg, err := config.NewDefault()
+func initConfig() config.Config {
+	cfg, err := config.Read(config.DefaultConfigPath())
 	if err != nil {
-		exitError(logger, err)
+		fmt.Printf("WARN: %s\n", err.Error())
+		return config.Config{}
 	}
-	return *cfg
+	return cfg
 }
 
-func initClient(cfg *config.Config, logger *logging.Logger) pack.Client {
-	client, err := pack.DefaultClient(cfg, logger)
+func initClient(logger logging.Logger) pack.Client {
+	client, err := pack.NewClient(pack.WithLogger(logger))
 	if err != nil {
 		exitError(logger, err)
 	}
 	return *client
 }
 
-func exitError(logger *logging.Logger, err error) {
+func exitError(logger logging.Logger, err error) {
 	logger.Error(err.Error())
 	os.Exit(1)
 }

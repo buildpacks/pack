@@ -12,7 +12,7 @@ import (
 )
 
 type RunOptions struct {
-	AppDir     string // defaults to current working directory
+	AppPath    string // defaults to current working directory
 	Builder    string // defaults to default builder on the client config
 	RunImage   string // defaults to the best mirror from the builder image
 	Env        map[string]string
@@ -23,14 +23,14 @@ type RunOptions struct {
 }
 
 func (c *Client) Run(ctx context.Context, opts RunOptions) error {
-	appDir, err := c.processAppDir(opts.AppDir)
+	appPath, err := c.processAppPath(opts.AppPath)
 	if err != nil {
-		return errors.Wrapf(err, "invalid app dir '%s'", opts.AppDir)
+		return errors.Wrapf(err, "invalid app dir '%s'", opts.AppPath)
 	}
-	sum := sha256.Sum256([]byte(appDir))
+	sum := sha256.Sum256([]byte(appPath))
 	imageName := fmt.Sprintf("pack.local/run/%x", sum[:8])
 	err = c.Build(ctx, BuildOptions{
-		AppDir:     appDir,
+		AppPath:    appPath,
 		Builder:    opts.Builder,
 		RunImage:   opts.RunImage,
 		Env:        opts.Env,
@@ -43,6 +43,6 @@ func (c *Client) Run(ctx context.Context, opts RunOptions) error {
 		return errors.Wrap(err, "build failed")
 	}
 	appImage := &app.Image{RepoName: imageName, Logger: c.logger}
-	c.logger.Verbose(style.Step("RUNNING"))
+	c.logger.Debug(style.Step("RUNNING"))
 	return appImage.Run(ctx, c.docker, opts.Ports)
 }

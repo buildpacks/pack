@@ -4,15 +4,15 @@ import "strings"
 
 type BuildpackTOML struct {
 	Buildpack Buildpack
-	Stacks []Stack
+	Stacks    []Stack
 }
 
 type Buildpack struct {
 	ID      string
 	Latest  bool
-	Dir     string
+	Path    string
 	Version string
-	Stacks []Stack
+	Stacks  []Stack
 }
 
 type Stack struct {

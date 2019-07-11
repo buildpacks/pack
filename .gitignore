@@ -1,4 +1,6 @@
+.pack/
 /pack
+out/
 
 # Jetbrains Goland
 .idea/
@@ -9,6 +11,3 @@ artifacts/
 
 # Travis unencrypted file
 .travis/key.pem
-
-# Appveyor tools
-/appveyor-tools/

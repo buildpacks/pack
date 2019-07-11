@@ -9,7 +9,7 @@ require (
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/google/go-cmp v0.2.0
-	github.com/google/go-containerregistry v0.0.0-20190110221225-f514e780f7cd
+	github.com/google/go-containerregistry v0.0.0-20190503220729-1c6c7f61e8a5
 	github.com/gorilla/mux v1.7.1 // indirect
 	github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect

@@ -2,13 +2,18 @@ package commands_test
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/commands"
+	"github.com/buildpack/pack/commands/mocks"
+	m "github.com/buildpack/pack/internal/mocks"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -18,24 +23,77 @@ func TestSuggestBuilders(t *testing.T) {
 }
 
 func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
-
 	var (
-		command *cobra.Command
-		logger  *logging.Logger
-		outBuf  bytes.Buffer
+		command        *cobra.Command
+		logger         logging.Logger
+		outBuf         bytes.Buffer
+		mockController *gomock.Controller
+		mockClient     *mocks.MockPackClient
 	)
 
 	it.Before(func() {
-		logger = logging.NewLogger(&outBuf, &outBuf, false, false)
-		command = commands.SuggestBuilders(logger)
+		mockController = gomock.NewController(t)
+		mockClient = mocks.NewMockPackClient(mockController)
+		logger = m.NewMockLogger(&outBuf)
+		command = commands.SuggestBuilders(logger, mockClient)
 	})
 
 	when("#SuggestBuilders", func() {
-		it("display suggested builders", func() {
-			command.SetArgs([]string{})
-			h.AssertNil(t, command.Execute())
-			h.AssertContains(t, outBuf.String(), "Suggested builders:")
-			h.AssertContains(t, outBuf.String(), "cloudfoundry/cnb:bionic")
+		when("description metadata exists", func() {
+			it.Before(func() {
+				mockClient.EXPECT().InspectBuilder("cloudfoundry/cnb:bionic", false).Return(&pack.BuilderInfo{
+					Description: "Bionic description",
+				}, nil)
+				mockClient.EXPECT().InspectBuilder("cloudfoundry/cnb:cflinuxfs3", false).Return(&pack.BuilderInfo{
+					Description: "CFLinuxFS3 description",
+				}, nil)
+				mockClient.EXPECT().InspectBuilder("heroku/buildpacks", false).Return(&pack.BuilderInfo{
+					Description: "Heroku description",
+				}, nil)
+			})
+
+			it("displays descriptions from metadata", func() {
+				command.SetArgs([]string{})
+				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Suggested builders:")
+				h.AssertContainsMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'\s+Bionic description`)
+				h.AssertContainsMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'\s+CFLinuxFS3 description`)
+				h.AssertContainsMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks'\s+Heroku description`)
+			})
+		})
+
+		when("description metadata does not exist", func() {
+			it.Before(func() {
+				mockClient.EXPECT().InspectBuilder(gomock.Any(), false).Return(&pack.BuilderInfo{
+					Description: "",
+				}, nil).AnyTimes()
+			})
+
+			it("displays default descriptions", func() {
+				command.SetArgs([]string{})
+				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Suggested builders:")
+				assertDefaultDescriptions(t, outBuf)
+			})
+		})
+
+		when("error inspecting images", func() {
+			it.Before(func() {
+				mockClient.EXPECT().InspectBuilder(gomock.Any(), false).Return(nil, errors.New("some error")).AnyTimes()
+			})
+
+			it("displays default descriptions", func() {
+				command.SetArgs([]string{})
+				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Suggested builders:")
+				assertDefaultDescriptions(t, outBuf)
+			})
 		})
 	})
+}
+
+func assertDefaultDescriptions(t *testing.T, outBuf bytes.Buffer) {
+	h.AssertContainsMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'\s+Small base image with Java & Node.js`)
+	h.AssertContainsMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'\s+Larger base image with Java, Node.js & Python`)
+	h.AssertContainsMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks'\s+heroku-18 base image with official Heroku buildpacks`)
 }

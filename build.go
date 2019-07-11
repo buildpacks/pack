@@ -17,7 +17,7 @@ import (
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/buildpack"
-	"github.com/buildpack/pack/stack"
+	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/style"
 )
 
@@ -26,32 +26,43 @@ type Lifecycle interface {
 }
 
 type BuildOptions struct {
-	AppDir     string // defaults to current working directory
-	Builder    string // defaults to default builder on the client config
-	RunImage   string // defaults to the best mirror from the builder image or pack config
-	Env        map[string]string
-	Image      string // required
-	Publish    bool
-	NoPull     bool
-	ClearCache bool
-	Buildpacks []string
+	Image             string              // required
+	Builder           string              // required
+	AppPath           string              // defaults to current working directory
+	RunImage          string              // defaults to the best mirror from the builder metadata or AdditionalMirrors
+	AdditionalMirrors map[string][]string // only considered if RunImage is not provided
+	Env               map[string]string
+	Publish           bool
+	NoPull            bool
+	ClearCache        bool
+	Buildpacks        []string
+	ProxyConfig       *ProxyConfig // defaults to  environment proxy vars
+}
+
+type ProxyConfig struct {
+	HTTPProxy  string
+	HTTPSProxy string
+	NoProxy    string
 }
 
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
-	imageRef, err := c.validateImageReference(opts.Image)
+	imageRef, err := c.parseTagReference(opts.Image)
 	if err != nil {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.Image)
 	}
 
-	appDir, err := c.processAppDir(opts.AppDir)
+	appPath, err := c.processAppPath(opts.AppPath)
 	if err != nil {
-		return errors.Wrapf(err, "invalid app dir '%s'", opts.AppDir)
+		return errors.Wrapf(err, "invalid app path '%s'", opts.AppPath)
 	}
+
+	proxyConfig := c.processProxyConfig(opts.ProxyConfig)
 
 	builderRef, err := c.processBuilderName(opts.Builder)
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
+
 	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), true, !opts.NoPull)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
@@ -62,7 +73,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
-	runImage := c.processRunImageName(opts.RunImage, imageRef.Context().RegistryStr(), builderImage.GetStackInfo())
+	runImage := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), builderImage.GetStackInfo(), opts.AdditionalMirrors)
 
 	if _, err := c.validateRunImage(ctx, runImage, opts.NoPull, opts.Publish, builderImage.StackID); err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImage)
@@ -80,23 +91,21 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
 	return c.lifecycle.Execute(ctx, build.LifecycleOptions{
-		AppDir:     appDir,
+		AppPath:    appPath,
 		Image:      imageRef,
 		Builder:    ephemeralBuilder,
 		RunImage:   runImage,
 		ClearCache: opts.ClearCache,
 		Publish:    opts.Publish,
+		HTTPProxy:  proxyConfig.HTTPProxy,
+		HTTPSProxy: proxyConfig.HTTPSProxy,
+		NoProxy:    proxyConfig.NoProxy,
 	})
 }
 
 func (c *Client) processBuilderName(builderName string) (name.Reference, error) {
 	if builderName == "" {
-		if c.config.DefaultBuilder != "" {
-			c.logger.Verbose("Using default builder image %s", style.Symbol(c.config.DefaultBuilder))
-			builderName = c.config.DefaultBuilder
-		} else {
-			return nil, errors.New("builder is a required parameter if the client has no default builder")
-		}
+		return nil, errors.New("builder is a required parameter if the client has no default builder")
 	}
 	return name.ParseReference(builderName, name.WeakValidation)
 }
@@ -112,32 +121,10 @@ func (c *Client) processBuilderImage(img imgutil.Image) (*builder.Builder, error
 	return builder, nil
 }
 
-func (c *Client) processRunImageName(runImage, targetRegistry string, builderStackInfo stack.Metadata) string {
-	if runImage != "" {
-		c.logger.Verbose("Using provided run-image %s", style.Symbol(runImage))
-		return runImage
-	}
-	var localMirrors []string
-	localRunImageConfig := c.config.GetRunImage(builderStackInfo.RunImage.Image)
-	if localRunImageConfig != nil {
-		localMirrors = localRunImageConfig.Mirrors
-	}
-	runImageName := builderStackInfo.GetBestMirror(targetRegistry, localMirrors)
-
-	// log run image source
-	if runImageName == builderStackInfo.GetBestMirror(targetRegistry, []string{}) {
-		if runImageName == builderStackInfo.RunImage.Image {
-			c.logger.Verbose("Selected run image %s from builder", style.Symbol(runImageName))
-		} else {
-			c.logger.Verbose("Selected run image mirror %s from builder", style.Symbol(runImageName))
-		}
-	} else {
-		c.logger.Verbose("Selected run image mirror %s from local config", style.Symbol(runImageName))
-	}
-	return runImageName
-}
-
 func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (imgutil.Image, error) {
+	if name == "" {
+		return nil, errors.New("run image must be specified")
+	}
 	img, err := c.imageFetcher.Fetch(context, name, !publish, !noPull)
 	if err != nil {
 		return nil, err
@@ -152,65 +139,111 @@ func (c *Client) validateRunImage(context context.Context, name string, noPull b
 	return img, nil
 }
 
-func (c *Client) validateImageReference(imageName string) (name.Reference, error) {
-	if imageName == "" {
-		return nil, errors.New("image name is a required parameter")
-	}
-	if _, err := name.ParseReference(imageName, name.WeakValidation); err != nil {
-		return nil, err
-	}
-	ref, err := name.NewTag(imageName, name.WeakValidation)
-	if err != nil {
-		return nil, fmt.Errorf("'%s' is not a tag reference", imageName)
-	}
+func (c *Client) processAppPath(appPath string) (string, error) {
+	var (
+		resolvedAppPath = appPath
+		err             error
+	)
 
-	return ref, nil
-}
-
-func (c *Client) processAppDir(appDir string) (string, error) {
-	if appDir == "" {
-		var err error
-		appDir, err = os.Getwd()
-		if err != nil {
-			return "", err
+	if appPath == "" {
+		if appPath, err = os.Getwd(); err != nil {
+			return "", errors.Wrap(err, "get working dir")
 		}
 	}
-	if fi, err := os.Stat(appDir); err != nil {
-		return "", err
-	} else if !fi.IsDir() {
-		return "", fmt.Errorf("%s is not a directory", appDir)
+
+	if resolvedAppPath, err = filepath.EvalSymlinks(appPath); err != nil {
+		return "", errors.Wrap(err, "evaluate symlink")
 	}
-	return filepath.Abs(appDir)
+
+	if resolvedAppPath, err = filepath.Abs(resolvedAppPath); err != nil {
+		return "", errors.Wrap(err, "resolve absolute path")
+	}
+
+	fi, err := os.Stat(resolvedAppPath)
+	if err != nil {
+		return "", errors.Wrap(err, "stat file")
+	}
+
+	if !fi.IsDir() {
+		fh, err := os.Open(resolvedAppPath)
+		if err != nil {
+			return "", errors.Wrap(err, "read file")
+		}
+		defer fh.Close()
+
+		isZip, err := archive.IsZip(fh)
+		if err != nil {
+			return "", errors.Wrap(err, "check zip")
+		}
+
+		if !isZip {
+			return "", errors.New("app path must be a directory or zip")
+		}
+	}
+
+	return resolvedAppPath, nil
+}
+
+func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
+	var (
+		httpProxy, httpsProxy, noProxy string
+		ok                             bool
+	)
+	if config != nil {
+		return *config
+	}
+	if httpProxy, ok = os.LookupEnv("HTTP_PROXY"); !ok {
+		httpProxy = os.Getenv("http_proxy")
+	}
+	if httpsProxy, ok = os.LookupEnv("HTTPS_PROXY"); !ok {
+		httpsProxy = os.Getenv("https_proxy")
+	}
+	if noProxy, ok = os.LookupEnv("NO_PROXY"); !ok {
+		noProxy = os.Getenv("no_proxy")
+	}
+	return ProxyConfig{
+		HTTPProxy:  httpProxy,
+		HTTPSProxy: httpsProxy,
+		NoProxy:    noProxy,
+	}
 }
 
 func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, builder.GroupMetadata, error) {
 	group := builder.GroupMetadata{Buildpacks: []builder.GroupBuildpack{}}
 	var bps []buildpack.Buildpack
 	for _, bp := range buildpacks {
-		if isLocalBuildpack(bp) {
-			if runtime.GOOS == "windows" {
-				return nil, builder.GroupMetadata{}, fmt.Errorf("directory buildpacks are not implemented on windows")
+		if isBuildpackId(bp) {
+			id, version := c.parseBuildpack(bp)
+			group.Buildpacks = append(group.Buildpacks, builder.GroupBuildpack{ID: id, Version: version})
+		} else {
+			if runtime.GOOS == "windows" && filepath.Ext(bp) != ".tgz" {
+				return nil, builder.GroupMetadata{}, fmt.Errorf("buildpack %s: Windows only supports .tgz-based buildpacks", style.Symbol(bp))
 			}
-			c.logger.Verbose("fetching buildpack from %s", style.Symbol(bp))
+			c.logger.Debugf("fetching buildpack from %s", style.Symbol(bp))
 			fetchedBP, err := c.buildpackFetcher.FetchBuildpack(bp)
 			if err != nil {
-				return nil, builder.GroupMetadata{}, errors.Wrapf(err, "failed to fetch buildpack from uri '%s'", bp)
+				return nil, builder.GroupMetadata{}, errors.Wrapf(err, "failed to fetch buildpack from URI '%s'", bp)
 			}
 			bps = append(bps, fetchedBP)
 			group.Buildpacks = append(group.Buildpacks, builder.GroupBuildpack{ID: fetchedBP.ID, Version: fetchedBP.Version})
-		} else {
-			id, version := c.parseBuildpack(bp)
-			group.Buildpacks = append(group.Buildpacks, builder.GroupBuildpack{ID: id, Version: version})
 		}
 	}
 	return bps, group, nil
 }
 
-func isLocalBuildpack(path string) bool {
-	if _, err := os.Stat(filepath.Join(path, "buildpack.toml")); !os.IsNotExist(err) {
-		return true
+func isBuildpackId(path string) bool {
+	if _, err := os.Stat(filepath.Join(path, "buildpack.toml")); err == nil {
+		return false
 	}
-	return false
+
+	hasScheme := schemeRegexp.MatchString(path)
+	if !hasScheme {
+		if _, err := os.Stat(path); err == nil {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (c *Client) parseBuildpack(bp string) (string, string) {
@@ -218,7 +251,7 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 	if len(parts) == 2 {
 		return parts[0], parts[1]
 	}
-	c.logger.Verbose("No version for %s buildpack provided, will use %s", style.Symbol(parts[0]), style.Symbol(parts[0]+"@latest"))
+	c.logger.Debugf("No version for %s buildpack provided, will use %s", style.Symbol(parts[0]), style.Symbol(parts[0]+"@latest"))
 	return parts[0], "latest"
 }
 
@@ -230,13 +263,13 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 	}
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {
-		c.logger.Verbose("adding buildpack %s version %s to builder", style.Symbol(bp.ID), style.Symbol(bp.Version))
+		c.logger.Debugf("adding buildpack %s version %s to builder", style.Symbol(bp.ID), style.Symbol(bp.Version))
 		if err := bldr.AddBuildpack(bp); err != nil {
 			return nil, errors.Wrapf(err, "failed to add buildpack %s version %s to builder", style.Symbol(bp.ID), style.Symbol(bp.Version))
 		}
 	}
 	if len(group.Buildpacks) > 0 {
-		c.logger.Verbose("setting custom order")
+		c.logger.Debug("setting custom order")
 		if err := bldr.SetOrder([]builder.GroupMetadata{group}); err != nil {
 			return nil, errors.Wrap(err, "failed to set custom buildpack order")
 		}

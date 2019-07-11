@@ -14,13 +14,14 @@ type Image interface {
 	Env(key string) (string, error)
 	SetEnv(string, string) error
 	SetEntrypoint(...string) error
+	SetWorkingDir(string) error
 	SetCmd(...string) error
 	Rebase(string, Image) error
 	AddLayer(path string) error
 	ReuseLayer(sha string) error
 	TopLayer() (string, error)
 	Save() (string, error)
-	Found() (bool, error)
+	Found() bool
 	GetLayer(string) (io.ReadCloser, error)
 	Delete() error
 	CreatedAt() (time.Time, error)
