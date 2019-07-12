@@ -35,7 +35,7 @@ var suggestedBuilders = [][]suggestedBuilder{
 		{"Cloud Foundry", "cloudfoundry/cnb:cflinuxfs3"},
 	},
 	{
-		{"Heroku", "heroku/buildpacks:18", "heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP"},
+		{"Heroku", "heroku/buildpacks:18"},
 	},
 }
 
@@ -110,7 +110,7 @@ func suggestBuilders(logger logging.Logger, client PackClient) {
 var defaultBuilderDescriptions = map[string]string{
 	"cloudfoundry/cnb:bionic":     "Small base image with Java & Node.js",
 	"cloudfoundry/cnb:cflinuxfs3": "Larger base image with Java, Node.js & Python",
-	"heroku/buildpacks":           "heroku-18 base image with official Heroku buildpacks",
+	"heroku/buildpacks":           "heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP",
 }
 
 func getBuilderDescription(builderName string, client PackClient) string {
