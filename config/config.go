@@ -18,16 +18,24 @@ type RunImage struct {
 	Mirrors []string `toml:"mirrors"`
 }
 
-func DefaultConfigPath() string {
-	return filepath.Join(PackHome(), "config.toml")
+func DefaultConfigPath() (string, error) {
+	home, err := PackHome()
+	if err != nil {
+		return "", errors.Wrap(err, "getting pack home")
+	}
+	return filepath.Join(home, "config.toml"), nil
 }
 
-func PackHome() string {
+func PackHome() (string, error) {
 	packHome := os.Getenv("PACK_HOME")
 	if packHome == "" {
-		packHome = filepath.Join(os.Getenv("HOME"), ".pack")
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", errors.Wrap(err, "getting user home")
+		}
+		packHome = filepath.Join(home, ".pack")
 	}
-	return packHome
+	return packHome, nil
 }
 
 func Read(path string) (Config, error) {

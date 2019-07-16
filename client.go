@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	dockerClient "github.com/docker/docker/client"
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/buildpack"
@@ -58,7 +59,11 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		}
 	}
 
-	downloader := NewDownloader(client.logger, filepath.Join(config.PackHome(), "download-cache"))
+	packHome, err := config.PackHome()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting pack home")
+	}
+	downloader := NewDownloader(client.logger, filepath.Join(packHome, "download-cache"))
 	client.imageFetcher = image.NewFetcher(client.logger, client.docker)
 	client.buildpackFetcher = buildpack.NewFetcher(downloader)
 	client.lifecycleFetcher = lifecycle.NewFetcher(downloader)
