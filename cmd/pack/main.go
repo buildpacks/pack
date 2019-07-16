@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/fatih/color"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -24,7 +24,11 @@ func main() {
 	logger := clilogger.NewLogWithWriters()
 
 	cobra.EnableCommandSorting = false
-	cfg := initConfig()
+	cfg, err := initConfig()
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
 
 	rootCmd := &cobra.Command{
 		Use: "pack",
@@ -72,13 +76,17 @@ func main() {
 	}
 }
 
-func initConfig() config.Config {
-	cfg, err := config.Read(config.DefaultConfigPath())
+func initConfig() (config.Config, error) {
+	path, err := config.DefaultConfigPath()
 	if err != nil {
-		fmt.Printf("WARN: %s\n", err.Error())
-		return config.Config{}
+		return config.Config{}, errors.Wrap(err, "getting config path")
 	}
-	return cfg
+
+	cfg, err := config.Read(path)
+	if err != nil {
+		return config.Config{}, errors.Wrap(err, "reading pack config")
+	}
+	return cfg, nil
 }
 
 func initClient(logger logging.Logger) pack.Client {

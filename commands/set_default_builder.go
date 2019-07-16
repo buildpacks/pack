@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack/config"
@@ -44,7 +45,11 @@ func SetDefaultBuilder(logger logging.Logger, cfg config.Config, client PackClie
 			}
 
 			cfg.DefaultBuilder = imageName
-			if err := config.Write(cfg, config.DefaultConfigPath()); err != nil {
+			configPath, err := config.DefaultConfigPath()
+			if err != nil {
+				return errors.Wrap(err, "getting config path")
+			}
+			if err := config.Write(cfg, configPath); err != nil {
 				return err
 			}
 			logger.Infof("Builder %s is now the default builder", style.Symbol(imageName))

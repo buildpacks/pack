@@ -3,6 +3,7 @@ package commands
 import (
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack/config"
@@ -20,7 +21,11 @@ To configure your bash shell to load completions for each session, add the follo
 	. $(pack completion)
 	`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			completionPath := filepath.Join(config.PackHome(), "completion")
+			packHome, err := config.PackHome()
+			if err != nil {
+				return errors.Wrap(err, "getting pack home")
+			}
+			completionPath := filepath.Join(packHome, "completion")
 
 			if err := cmd.Parent().GenBashCompletionFile(completionPath); err != nil {
 				return err

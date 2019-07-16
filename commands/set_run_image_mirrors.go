@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack/config"
@@ -18,7 +19,11 @@ func SetRunImagesMirrors(logger logging.Logger, cfg config.Config) *cobra.Comman
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			runImage := args[0]
 			cfg = config.SetRunImageMirrors(cfg, runImage, mirrors)
-			if err := config.Write(cfg, config.DefaultConfigPath()); err != nil {
+			configPath, err := config.DefaultConfigPath()
+			if err != nil {
+				return errors.Wrap(err, "getting config path")
+			}
+			if err := config.Write(cfg, configPath); err != nil {
 				return err
 			}
 
