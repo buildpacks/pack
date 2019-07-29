@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -16,6 +17,7 @@ import (
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
+	"github.com/onsi/gomega/ghttp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -613,7 +615,51 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				// TODO: support other uris
+				when("uri is a http url", func() {
+					var server *ghttp.Server
+
+					it.Before(func() {
+						h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
+						server = ghttp.NewServer()
+						server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
+							http.ServeFile(w, r, buildpackTgz)
+						})
+					})
+
+					it.After(func() {
+						server.Close()
+					})
+
+					it("adds the buildpack", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    builderName,
+							ClearCache: true,
+							Buildpacks: []string{
+								"buildpack.id@buildpack.version",
+								filepath.Join("testdata", "buildpack"),
+								server.URL(),
+							},
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.GetBuilder(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.GetOrder(), []builder.GroupMetadata{
+							{Buildpacks: []builder.GroupBuildpack{
+								{ID: "buildpack.id", Version: "buildpack.version"},
+								{ID: "some-buildpack-id", Version: "some-buildpack-version"},
+								{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+							}},
+						})
+						h.AssertEq(t, bldr.GetBuildpacks(), []builder.BuildpackMetadata{
+							{ID: "buildpack.id", Version: "buildpack.version", Latest: true},
+							{ID: "some-buildpack-id", Version: "some-buildpack-version"},
+							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+						})
+					})
+				})
 			})
 		})
 
