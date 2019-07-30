@@ -236,14 +236,13 @@ func isBuildpackId(path string) bool {
 		return false
 	}
 
-	hasScheme := schemeRegexp.MatchString(path)
-	if !hasScheme {
-		if _, err := os.Stat(path); err == nil {
-			return false
+	if !schemeRegexp.MatchString(path) {
+		if _, err := os.Stat(path); err != nil {
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
 func (c *Client) parseBuildpack(bp string) (string, string) {
