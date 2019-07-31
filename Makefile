@@ -4,7 +4,7 @@ GOENV=CGO_ENABLED=0
 PACK_VERSION?=dev
 PACK_BIN?=pack
 PACKAGE_BASE=github.com/buildpack/pack
-PACKAGES:=$(shell $(GOCMD) list ./... | grep -v /testdata/)
+PACKAGES:=$(shell $(GOCMD) list -mod=vendor ./... | grep -v /testdata/)
 SRC:=$(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
 all: clean verify test build
