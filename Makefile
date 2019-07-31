@@ -16,7 +16,7 @@ build:
 
 install-goimports:
 	@echo "> Installing goimports..."
-	go install -mod=vendor golang.org/x/tools/cmd/goimports
+	$(GOCMD) install -mod=vendor golang.org/x/tools/cmd/goimports
 
 format: install-goimports
 	@echo "> Formating code..."
