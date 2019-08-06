@@ -230,8 +230,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				BuildpackInfo: bpInfo,
 				Latest:        true,
 			}})
-			h.AssertEq(t, builderImage.GetOrder(), []builder.V1Group{{
-				Buildpacks: []builder.BuildpackRef{{
+			h.AssertEq(t, builderImage.GetOrder(), builder.Order{{
+				Group: []builder.BuildpackRef{{
 					BuildpackInfo: bpInfo,
 					Optional:      false,
 				}},

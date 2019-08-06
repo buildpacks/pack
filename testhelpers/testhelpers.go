@@ -327,28 +327,33 @@ func PullImageWithAuth(dockerCli *client.Client, ref, registryAuth string) error
 	return rc.Close()
 }
 
+func CopyFile(t *testing.T, src, dst string) {
+	fi, err := os.Stat(src)
+	AssertNil(t, err)
+
+	srcFile, err := os.Open(src)
+	AssertNil(t, err)
+	defer srcFile.Close()
+
+	dstFile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fi.Mode())
+	AssertNil(t, err)
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	AssertNil(t, err)
+
+	modifiedtime := time.Time{}
+	err = os.Chtimes(dst, modifiedtime, modifiedtime)
+	AssertNil(t, err)
+}
+
 func RecursiveCopy(t *testing.T, src, dst string) {
 	t.Helper()
 	fis, err := ioutil.ReadDir(src)
 	AssertNil(t, err)
 	for _, fi := range fis {
 		if fi.Mode().IsRegular() {
-			func() {
-				srcFile, err := os.Open(filepath.Join(src, fi.Name()))
-				AssertNil(t, err)
-				defer srcFile.Close()
-
-				dstFile, err := os.OpenFile(filepath.Join(dst, fi.Name()), os.O_RDWR|os.O_CREATE|os.O_TRUNC, fi.Mode())
-				AssertNil(t, err)
-				defer dstFile.Close()
-
-				_, err = io.Copy(dstFile, srcFile)
-				AssertNil(t, err)
-
-				modifiedtime := time.Time{}
-				err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedtime, modifiedtime)
-				AssertNil(t, err)
-			}()
+			CopyFile(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
 		}
 		if fi.IsDir() {
 			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
@@ -444,4 +449,47 @@ func CreateTgz(t *testing.T, srcDir, tarDir string, mode int64) string {
 	AssertNil(t, err)
 
 	return fh.Name()
+}
+
+func ListTarContents(tarPath string) ([]tar.Header, error) {
+	var (
+		tarFile    *os.File
+		gzipReader *gzip.Reader
+		fhFinal    io.Reader
+		err        error
+	)
+
+	tarFile, err = os.Open(tarPath)
+	fhFinal = tarFile
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to open tar '%s'", tarPath)
+	}
+
+	defer tarFile.Close()
+
+	if filepath.Ext(tarPath) == ".tgz" {
+		gzipReader, err = gzip.NewReader(tarFile)
+		fhFinal = gzipReader
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create gzip reader")
+		}
+
+		defer gzipReader.Close()
+	}
+
+	var headers []tar.Header
+	tr := tar.NewReader(fhFinal)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get next tar entry")
+		}
+
+		headers = append(headers, *header)
+	}
+
+	return headers, nil
 }

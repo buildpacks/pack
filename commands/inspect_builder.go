@@ -139,7 +139,7 @@ func logDetectionOrderInfo(logger logging.Logger, info *pack.BuilderInfo) {
 		logger.Infof("  Group #%d:", i+1)
 		buf := &bytes.Buffer{}
 		tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 4, ' ', 0)
-		for i, bp := range group.Buildpacks {
+		for i, bp := range group.Group {
 			var optional string
 			if bp.Optional {
 				optional = "(optional)"
@@ -147,7 +147,7 @@ func logDetectionOrderInfo(logger logging.Logger, info *pack.BuilderInfo) {
 			if _, err := fmt.Fprintf(tabWriter, "    %s@%s\t%s", bp.ID, bp.Version, optional); err != nil {
 				logger.Error(err.Error())
 			}
-			if i < len(group.Buildpacks)-1 {
+			if i < len(group.Group)-1 {
 				if _, err := fmt.Fprint(tabWriter, "\n"); err != nil {
 					logger.Error(err.Error())
 				}

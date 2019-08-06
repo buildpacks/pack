@@ -27,6 +27,18 @@ func ContentEquals(expected string) TarEntryAssertion {
 	}
 }
 
+func SymlinksTo(expectedTarget string) TarEntryAssertion {
+	return func(t *testing.T, header *tar.Header, _ []byte) {
+		if header.Typeflag != tar.TypeSymlink {
+			t.Fatalf("path '%s' is not a symlink, type flag is '%c'", header.Name, header.Typeflag)
+		}
+
+		if header.Linkname != expectedTarget {
+			t.Fatalf("symlink '%s' does not point to '%s', instead it points to '%s'", header.Name, expectedTarget, header.Linkname)
+		}
+	}
+}
+
 func HasOwnerAndGroup(expectedUID int, expectedGID int) TarEntryAssertion {
 	return func(t *testing.T, header *tar.Header, _ []byte) {
 		t.Helper()
