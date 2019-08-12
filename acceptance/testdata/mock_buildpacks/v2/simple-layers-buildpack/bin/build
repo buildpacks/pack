@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+echo "---> Simple mock buildpack"
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+launch_dir=$1
+
+## makes a launch layer
+echo "making launch layer"
+mkdir "$launch_dir/launch-layer"
+echo "Launch Dep Contents" > "$launch_dir/launch-layer/launch-dep"
+ln -snf "$launch_dir/launch-layer/launch-dep" launch-dep
+echo "launch = true" > "$launch_dir/launch-layer.toml"
+
+## makes a cached launch layer
+if [[ ! -f "$launch_dir/cached-launch-layer.toml" ]]; then
+    echo "making cached launch layer"
+    mkdir "$launch_dir/cached-launch-layer"
+    echo "Cached Dep Contents" > "$launch_dir/cached-launch-layer/cached-dep"
+    ln -snf "$launch_dir/cached-launch-layer/cached-dep" cached-dep
+    echo "launch = true" > "$launch_dir/cached-launch-layer.toml"
+    echo "cache = true" >> "$launch_dir/cached-launch-layer.toml"
+else
+  echo "reusing cached launch layer"
+  ln -snf "$launch_dir/cached-launch-layer/cached-dep" cached-dep
+fi
+
+## adds a process
+echo 'processes = [{ type = "web", command = "./run"}]' > "$launch_dir/launch.toml"
+
+echo "---> Done"

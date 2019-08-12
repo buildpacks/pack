@@ -209,12 +209,12 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 }
 
 func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, builder.GroupMetadata, error) {
-	group := builder.GroupMetadata{Buildpacks: []builder.GroupBuildpack{}}
+	group := builder.GroupMetadata{Buildpacks: []builder.BuildpackRefMetadata{}}
 	var bps []buildpack.Buildpack
 	for _, bp := range buildpacks {
 		if isBuildpackId(bp) {
 			id, version := c.parseBuildpack(bp)
-			group.Buildpacks = append(group.Buildpacks, builder.GroupBuildpack{ID: id, Version: version})
+			group.Buildpacks = append(group.Buildpacks, builder.BuildpackRefMetadata{ID: id, Version: version})
 		} else {
 			if runtime.GOOS == "windows" && filepath.Ext(bp) != ".tgz" {
 				return nil, builder.GroupMetadata{}, fmt.Errorf("buildpack %s: Windows only supports .tgz-based buildpacks", style.Symbol(bp))
@@ -225,7 +225,7 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, 
 				return nil, builder.GroupMetadata{}, errors.Wrapf(err, "failed to fetch buildpack from URI '%s'", bp)
 			}
 			bps = append(bps, fetchedBP)
-			group.Buildpacks = append(group.Buildpacks, builder.GroupBuildpack{ID: fetchedBP.ID, Version: fetchedBP.Version})
+			group.Buildpacks = append(group.Buildpacks, builder.BuildpackRefMetadata{ID: fetchedBP.ID, Version: fetchedBP.Version})
 		}
 	}
 	return bps, group, nil
@@ -248,10 +248,14 @@ func isBuildpackId(path string) bool {
 func (c *Client) parseBuildpack(bp string) (string, string) {
 	parts := strings.Split(bp, "@")
 	if len(parts) == 2 {
+		if parts[1] == "latest" {
+			return parts[0], ""
+		}
+
 		return parts[0], parts[1]
 	}
-	c.logger.Debugf("No version for %s buildpack provided, will use %s", style.Symbol(parts[0]), style.Symbol(parts[0]+"@latest"))
-	return parts[0], "latest"
+
+	return parts[0], ""
 }
 
 func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, group builder.GroupMetadata, buildpacks []buildpack.Buildpack) (*builder.Builder, error) {
@@ -263,15 +267,11 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {
 		c.logger.Debugf("adding buildpack %s version %s to builder", style.Symbol(bp.ID), style.Symbol(bp.Version))
-		if err := bldr.AddBuildpack(bp); err != nil {
-			return nil, errors.Wrapf(err, "failed to add buildpack %s version %s to builder", style.Symbol(bp.ID), style.Symbol(bp.Version))
-		}
+		bldr.AddBuildpack(bp)
 	}
 	if len(group.Buildpacks) > 0 {
 		c.logger.Debug("setting custom order")
-		if err := bldr.SetOrder([]builder.GroupMetadata{group}); err != nil {
-			return nil, errors.Wrap(err, "failed to set custom buildpack order")
-		}
+		bldr.SetOrder(builder.OrderMetadata{group})
 	}
 	if err := bldr.Save(); err != nil {
 		return nil, err

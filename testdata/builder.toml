@@ -11,16 +11,19 @@ id = "some/bp2"
 uri = "some-latest-path-2"
 latest = true
 
-[[groups]]
-buildpacks = [
-  { id = "some.bp1", version = "1.2.3" },
-  { id = "some/bp2", version = "1.2.4" },
-]
+[[order]]
+[[order.group]]
+  id = "some.bp1"
+  version = "1.2.3"
 
-[[groups]]
-buildpacks = [
-  { id = "some.bp1", version = "1.2.3" },
-]
+[[order.group]]
+  id = "some/bp2"
+  version = "1.2.4"
+
+[[order]]
+[[order.group]]
+  id = "some.bp1"
+  version = "1.2.3"
 
 [stack]
 id = "com.example.stack"

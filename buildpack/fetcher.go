@@ -21,6 +21,7 @@ type buildpackTOML struct {
 		ID      string `toml:"id"`
 		Version string `toml:"version"`
 	} `toml:"buildpack"`
+	Order  Order   `toml:"order"`
 	Stacks []Stack `toml:"stacks"`
 }
 
@@ -47,6 +48,7 @@ func (f *Fetcher) FetchBuildpack(uri string) (Buildpack, error) {
 		Path:    downloadedPath,
 		ID:      data.Buildpack.ID,
 		Version: data.Buildpack.Version,
+		Order:   data.Order,
 		Stacks:  data.Stacks,
 	}, err
 }

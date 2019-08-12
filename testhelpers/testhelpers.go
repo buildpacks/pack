@@ -369,6 +369,7 @@ func RequireDocker(t *testing.T) {
 }
 
 func SkipIf(t *testing.T, expression bool, reason string) {
+	t.Helper()
 	if expression {
 		t.Skip(reason)
 	}

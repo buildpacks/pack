@@ -73,7 +73,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			bp := buildpack.Buildpack{
 				ID:      "bp.one",
-				Latest:  true,
 				Path:    filepath.Join("testdata", "buildpack"),
 				Version: "1.2.3",
 				Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
@@ -103,11 +102,10 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							ID:      "bp.one",
 							Version: "1.2.3",
 							URI:     "https://example.fake/bp-one.tgz",
-							Latest:  true,
 						},
 					},
-					Groups: []builder.GroupMetadata{{
-						Buildpacks: []builder.GroupBuildpack{
+					Order: []builder.GroupConfig{{
+						Group: []builder.BuildpackRefConfig{
 							{ID: "bp.one", Version: "1.2.3", Optional: false},
 						}},
 					},
@@ -229,7 +227,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				Latest:  true,
 			}})
 			h.AssertEq(t, builderImage.GetOrder(), []builder.GroupMetadata{{
-				Buildpacks: []builder.GroupBuildpack{{
+				Buildpacks: []builder.BuildpackRefMetadata{{
 					ID:       "bp.one",
 					Version:  "1.2.3",
 					Optional: false,

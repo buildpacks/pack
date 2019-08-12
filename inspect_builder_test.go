@@ -138,7 +138,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					it("sets the groups", func() {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.Groups[0].Buildpacks[0], builder.GroupBuildpack{
+						h.AssertEq(t, builderInfo.Groups[0].Buildpacks[0], builder.BuildpackRefMetadata{
 							ID:      "test.bp.one",
 							Version: "1.0.0",
 						})

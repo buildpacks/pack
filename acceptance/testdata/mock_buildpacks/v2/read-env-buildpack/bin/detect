@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+echo "---> DETECT: Printenv buildpack"
+
+set -o errexit
+set -o pipefail
+
+platform_dir=$1
+
+if [[ ! -f $platform_dir/env/DETECT_ENV_BUILDPACK ]]; then
+ exit 1
+fi

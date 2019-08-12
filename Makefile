@@ -6,6 +6,7 @@ PACK_BIN?=pack
 PACKAGE_BASE=github.com/buildpack/pack
 PACKAGES:=$(shell $(GOCMD) list -mod=vendor ./... | grep -v /testdata/)
 SRC:=$(shell find . -type f -name '*.go' -not -path "./vendor/*")
+ARCHIVE_NAME=pack-$(PACK_VERSION)
 
 all: clean verify test build
 
@@ -13,6 +14,9 @@ build:
 	@echo "> Building..."
 	mkdir -p ./out
 	$(GOENV) $(GOCMD) build -mod=vendor -ldflags "-X 'main.Version=${PACK_VERSION}'" -o ./out/$(PACK_BIN) -a ./cmd/pack
+
+package:
+	tar czf ./out/$(ARCHIVE_NAME).tgz -C out/ pack
 
 install-goimports:
 	@echo "> Installing goimports..."
@@ -31,7 +35,7 @@ test: unit acceptance
 unit: format vet
 	@echo "> Running unit/integration tests..."
 	$(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 ./...
-	
+
 acceptance: format vet
 	@echo "> Running acceptance tests..."
 	$(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 -tags=acceptance ./acceptance

@@ -129,7 +129,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, outBuf.String(), "failed to read file")
 			})
 
-			when("is posix", func() {
+			when.Pend("is posix", func() {
 				it.Before(func() {
 					h.SkipIf(t, runtime.GOOS == "windows", "Skipping on windows")
 				})

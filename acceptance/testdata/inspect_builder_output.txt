@@ -13,10 +13,10 @@ Run Images:
   %s
 
 Buildpacks:
-  ID                    VERSION                       LATEST
-  simple/layers         simple-layers-version         false
-  read/env              read-env-version              false
-  noop.buildpack        noop.buildpack.version        true
+  ID                    VERSION
+  simple/layers         simple-layers-version
+  read/env              read-env-version
+  noop.buildpack        noop.buildpack.version
 
 Detection Order:        
   Group #1:              
@@ -36,10 +36,10 @@ Run Images:
   %s
 
 Buildpacks:
-  ID                    VERSION                       LATEST
-  simple/layers         simple-layers-version         false
-  read/env              read-env-version              false
-  noop.buildpack        noop.buildpack.version        true
+  ID                    VERSION
+  simple/layers         simple-layers-version
+  read/env              read-env-version
+  noop.buildpack        noop.buildpack.version
 
 Detection Order:        
   Group #1:              

@@ -9,10 +9,21 @@ type BuildpackTOML struct {
 
 type Buildpack struct {
 	ID      string
-	Latest  bool
 	Path    string
 	Version string
 	Stacks  []Stack
+	Order   Order
+}
+
+type Order []Group
+
+type Group struct {
+	Group []BuildpackRef
+}
+
+type BuildpackRef struct {
+	ID      string
+	Version string
 }
 
 type Stack struct {

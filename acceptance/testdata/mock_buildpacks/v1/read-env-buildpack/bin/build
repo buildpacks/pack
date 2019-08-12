@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-#!/usr/bin/env bash
-
 echo "---> Read Env Buildpack"
 
 set -o errexit

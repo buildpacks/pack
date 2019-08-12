@@ -489,12 +489,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				bldr, err := builder.GetBuilder(defaultBuilderImage)
 				h.AssertNil(t, err)
 				h.AssertEq(t, bldr.GetOrder(), []builder.GroupMetadata{
-					{Buildpacks: []builder.GroupBuildpack{{ID: "buildpack.id", Version: "buildpack.version"}}},
+					{Buildpacks: []builder.BuildpackRefMetadata{{ID: "buildpack.id", Version: "buildpack.version"}}},
 				})
 			})
 
 			when("no version is provided", func() {
-				it("assumes latest", func() {
+				it("resolves version", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:      "some/app",
 						Builder:    builderName,
@@ -505,7 +505,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					bldr, err := builder.GetBuilder(defaultBuilderImage)
 					h.AssertNil(t, err)
 					h.AssertEq(t, bldr.GetOrder(), []builder.GroupMetadata{
-						{Buildpacks: []builder.GroupBuildpack{{ID: "buildpack.id", Version: "latest"}}},
+						{Buildpacks: []builder.BuildpackRefMetadata{{ID: "buildpack.id", Version: "buildpack.version"}}},
 					})
 				})
 			})
@@ -517,7 +517,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					ClearCache: true,
 					Buildpacks: []string{"missing.bp@version"},
 				}),
-					"failed to set custom buildpack order",
+					"no versions of buildpack 'missing.bp' were found on the builder",
 				)
 			})
 
@@ -567,14 +567,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						bldr, err := builder.GetBuilder(defaultBuilderImage)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.GetOrder(), []builder.GroupMetadata{
-							{Buildpacks: []builder.GroupBuildpack{
+							{Buildpacks: []builder.BuildpackRefMetadata{
 								{ID: "buildpack.id", Version: "buildpack.version"},
 								{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
 							}},
 						})
 						h.AssertEq(t, bldr.GetBuildpacks(), []builder.BuildpackMetadata{
 							{ID: "buildpack.id", Version: "buildpack.version", Latest: true},
-							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version", Latest: true},
 						})
 					})
 				})
@@ -601,7 +601,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						bldr, err := builder.GetBuilder(defaultBuilderImage)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.GetOrder(), []builder.GroupMetadata{
-							{Buildpacks: []builder.GroupBuildpack{
+							{Buildpacks: []builder.BuildpackRefMetadata{
 								{ID: "buildpack.id", Version: "buildpack.version"},
 								{ID: "some-buildpack-id", Version: "some-buildpack-version"},
 								{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
@@ -609,8 +609,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 						h.AssertEq(t, bldr.GetBuildpacks(), []builder.BuildpackMetadata{
 							{ID: "buildpack.id", Version: "buildpack.version", Latest: true},
-							{ID: "some-buildpack-id", Version: "some-buildpack-version"},
-							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+							{ID: "some-buildpack-id", Version: "some-buildpack-version", Latest: true},
+							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version", Latest: true},
 						})
 					})
 				})
@@ -647,7 +647,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						bldr, err := builder.GetBuilder(defaultBuilderImage)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.GetOrder(), []builder.GroupMetadata{
-							{Buildpacks: []builder.GroupBuildpack{
+							{Buildpacks: []builder.BuildpackRefMetadata{
 								{ID: "buildpack.id", Version: "buildpack.version"},
 								{ID: "some-buildpack-id", Version: "some-buildpack-version"},
 								{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
@@ -655,8 +655,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 						h.AssertEq(t, bldr.GetBuildpacks(), []builder.BuildpackMetadata{
 							{ID: "buildpack.id", Version: "buildpack.version", Latest: true},
-							{ID: "some-buildpack-id", Version: "some-buildpack-version"},
-							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+							{ID: "some-buildpack-id", Version: "some-buildpack-version", Latest: true},
+							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version", Latest: true},
 						})
 					})
 				})
@@ -707,7 +707,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					args = fakeImageFetcher.FetchCalls[builderName]
 					h.AssertEq(t, args.Daemon, true)
-
 				})
 
 				when("false", func() {
