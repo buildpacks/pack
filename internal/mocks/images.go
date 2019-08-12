@@ -19,7 +19,7 @@ func NewFakeBuilderImage(t *testing.T, name string, buildpacks []builder.Buildpa
 	h.AssertNil(t, fakeBuilderImage.SetEnv("CNB_GROUP_ID", "4321"))
 	metadata := builder.Metadata{
 		Buildpacks: buildpacks,
-		Groups:     config.Order.ToMetadata(),
+		Groups:     config.Order.ToV1Order(),
 		Stack: builder.StackMetadata{
 			RunImage: builder.RunImageMetadata{
 				Image:   config.Stack.RunImage,

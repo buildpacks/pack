@@ -204,11 +204,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("order is invalid", func() {
 				it("produces an error", func() {
-					subject.SetOrder(builder.OrderMetadata{
-						{Buildpacks: []builder.BuildpackRefMetadata{
-							{ID: "missing-buildpack-id", Version: "missing-buildpack-version"},
-						}},
-					})
+					subject.SetOrder(builder.Order{{
+						Group: []builder.BuildpackRef{
+							{BuildpackInfo: buildpack.BuildpackInfo{ID: "missing-buildpack-id", Version: "missing-buildpack-version"}}},
+					}})
 
 					err := subject.Save()
 
@@ -220,9 +219,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("buildpack is missing both order and stack", func() {
 					it("returns an error", func() {
 						subject.AddBuildpack(buildpack.Buildpack{
-							ID:      "some-buildpack-id",
-							Version: "some-buildpack-version",
-							Path:    filepath.Join("testdata", "buildpack"),
+							BuildpackInfo: buildpack.BuildpackInfo{
+								ID:      "some-buildpack-id",
+								Version: "some-buildpack-version",
+							},
+							Path: filepath.Join("testdata", "buildpack"),
 						})
 
 						err := subject.Save()
@@ -234,12 +235,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("buildpack has both order and stack", func() {
 					it("returns an error", func() {
 						subject.AddBuildpack(buildpack.Buildpack{
-							ID:      "some-buildpack-id",
-							Version: "some-buildpack-version",
-							Path:    filepath.Join("testdata", "buildpack"),
+							BuildpackInfo: buildpack.BuildpackInfo{
+								ID:      "some-buildpack-id",
+								Version: "some-buildpack-version",
+							},
+							Path: filepath.Join("testdata", "buildpack"),
 							Order: buildpack.Order{
 								{
-									Group: []buildpack.BuildpackRef{
+									Group: []buildpack.BuildpackInfo{
 										{ID: "some-buildpack-id", Version: "some-buildpack-version"},
 									},
 								},
@@ -259,12 +262,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					when("buildpack by id does not exist", func() {
 						it("returns an error", func() {
 							subject.AddBuildpack(buildpack.Buildpack{
-								ID:      "some-buildpack-id",
-								Version: "some-buildpack-version",
-								Path:    filepath.Join("testdata", "buildpack"),
+								BuildpackInfo: buildpack.BuildpackInfo{
+									ID:      "some-buildpack-id",
+									Version: "some-buildpack-version",
+								},
+								Path: filepath.Join("testdata", "buildpack"),
 								Order: buildpack.Order{
 									{
-										Group: []buildpack.BuildpackRef{
+										Group: []buildpack.BuildpackInfo{
 											{ID: "missing-buildpack-id", Version: "missing-buildpack-version"},
 										},
 									},
@@ -280,12 +285,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					when("buildpack version does not exist", func() {
 						it("returns an error", func() {
 							subject.AddBuildpack(buildpack.Buildpack{
-								ID:      "some-buildpack-id",
-								Version: "some-buildpack-version",
-								Path:    filepath.Join("testdata", "buildpack"),
+								BuildpackInfo: buildpack.BuildpackInfo{
+									ID:      "some-buildpack-id",
+									Version: "some-buildpack-version",
+								},
+								Path: filepath.Join("testdata", "buildpack"),
 								Order: buildpack.Order{
 									{
-										Group: []buildpack.BuildpackRef{
+										Group: []buildpack.BuildpackInfo{
 											{ID: "some-buildpack-id", Version: "missing-buildpack-version"},
 										},
 									},
@@ -302,10 +309,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("buildpack stack id does not match", func() {
 					it("returns an error", func() {
 						subject.AddBuildpack(buildpack.Buildpack{
-							ID:      "some-buildpack-id",
-							Version: "some-buildpack-version",
-							Path:    filepath.Join("testdata", "buildpack"),
-							Stacks:  []buildpack.Stack{{ID: "other.stack.id"}},
+							BuildpackInfo: buildpack.BuildpackInfo{
+								ID:      "some-buildpack-id",
+								Version: "some-buildpack-version",
+							},
+							Path:   filepath.Join("testdata", "buildpack"),
+							Stacks: []buildpack.Stack{{ID: "other.stack.id"}},
 						})
 
 						err := subject.Save()
@@ -402,12 +411,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				buildpackTgz = h.CreateTgz(t, filepath.Join("testdata", "buildpack"), "./", 0644)
 
 				subject.AddBuildpack(buildpack.Buildpack{
-					ID:      "buildpack-1-id",
-					Version: "buildpack-1-version",
-					Path:    buildpackTgz,
+					BuildpackInfo: buildpack.BuildpackInfo{
+						ID:      "buildpack-1-id",
+						Version: "buildpack-1-version",
+					},
+					Path: buildpackTgz,
 					Order: buildpack.Order{
 						{
-							Group: []buildpack.BuildpackRef{
+							Group: []buildpack.BuildpackInfo{
 								{
 									ID:      "buildpack-2-id",
 									Version: "buildpack-2-version",
@@ -418,25 +429,40 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				subject.AddBuildpack(buildpack.Buildpack{
-					ID:      "buildpack-2-id",
-					Version: "buildpack-2-version",
-					Path:    buildpackTgz,
-					Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
+					BuildpackInfo: buildpack.BuildpackInfo{
+						ID:      "buildpack-2-id",
+						Version: "buildpack-2-version",
+					},
+					Path:   buildpackTgz,
+					Stacks: []buildpack.Stack{{ID: "some.stack.id"}},
 				})
 
 				subject.AddBuildpack(buildpack.Buildpack{
-					ID:      "buildpack-3-id",
-					Version: "buildpack-3-version",
-					Path:    buildpackTgz,
-					Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
+					BuildpackInfo: buildpack.BuildpackInfo{
+						ID:      "buildpack-2-id",
+						Version: "buildpack-2-other-version",
+					},
+					Path:   buildpackTgz,
+					Stacks: []buildpack.Stack{{ID: "some.stack.id"}},
+				})
+
+				subject.AddBuildpack(buildpack.Buildpack{
+					BuildpackInfo: buildpack.BuildpackInfo{
+						ID:      "buildpack-3-id",
+						Version: "buildpack-3-version",
+					},
+					Path:   buildpackTgz,
+					Stacks: []buildpack.Stack{{ID: "some.stack.id"}},
 				})
 
 				if runtime.GOOS != "windows" {
 					subject.AddBuildpack(buildpack.Buildpack{
-						ID:      "dir-buildpack-id",
-						Version: "dir-buildpack-version",
-						Path:    filepath.Join("testdata", "buildpack"),
-						Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
+						BuildpackInfo: buildpack.BuildpackInfo{
+							ID:      "dir-buildpack-id",
+							Version: "dir-buildpack-version",
+						},
+						Path:   filepath.Join("testdata", "buildpack"),
+						Stacks: []buildpack.Stack{{ID: "some.stack.id"}},
 					})
 				}
 
@@ -479,6 +505,18 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.HasFileMode(0644),
 				)
 
+				layerTar, err = baseImage.FindLayerWithPath("/buildpacks/buildpack-2-id/buildpack-2-other-version")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-2-id/buildpack-2-other-version",
+					h.IsDirectory(),
+				)
+
+				h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-2-id/buildpack-2-other-version/buildpack-file",
+					h.ContentEquals("buildpack-contents"),
+					h.HasOwnerAndGroup(1234, 4321),
+					h.HasFileMode(0644),
+				)
+
 				layerTar, err = baseImage.FindLayerWithPath("/buildpacks/buildpack-3-id/buildpack-3-version")
 				h.AssertNil(t, err)
 				h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-3-id/buildpack-3-version",
@@ -513,9 +551,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				var metadata builder.Metadata
 				h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
 				if runtime.GOOS == "windows" {
-					h.AssertEq(t, len(metadata.Buildpacks), 3)
-				} else {
 					h.AssertEq(t, len(metadata.Buildpacks), 4)
+				} else {
+					h.AssertEq(t, len(metadata.Buildpacks), 5)
 				}
 
 				h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack-1-id")
@@ -524,16 +562,20 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, metadata.Buildpacks[1].ID, "buildpack-2-id")
 				h.AssertEq(t, metadata.Buildpacks[1].Version, "buildpack-2-version")
-				h.AssertEq(t, metadata.Buildpacks[1].Latest, true)
+				h.AssertEq(t, metadata.Buildpacks[1].Latest, false)
 
-				h.AssertEq(t, metadata.Buildpacks[2].ID, "buildpack-3-id")
-				h.AssertEq(t, metadata.Buildpacks[2].Version, "buildpack-3-version")
-				h.AssertEq(t, metadata.Buildpacks[2].Latest, true)
+				h.AssertEq(t, metadata.Buildpacks[2].ID, "buildpack-2-id")
+				h.AssertEq(t, metadata.Buildpacks[2].Version, "buildpack-2-other-version")
+				h.AssertEq(t, metadata.Buildpacks[2].Latest, false)
+
+				h.AssertEq(t, metadata.Buildpacks[3].ID, "buildpack-3-id")
+				h.AssertEq(t, metadata.Buildpacks[3].Version, "buildpack-3-version")
+				h.AssertEq(t, metadata.Buildpacks[3].Latest, true)
 
 				if runtime.GOOS != "windows" {
-					h.AssertEq(t, metadata.Buildpacks[3].ID, "dir-buildpack-id")
-					h.AssertEq(t, metadata.Buildpacks[3].Version, "dir-buildpack-version")
-					h.AssertEq(t, metadata.Buildpacks[3].Latest, true)
+					h.AssertEq(t, metadata.Buildpacks[4].ID, "dir-buildpack-id")
+					h.AssertEq(t, metadata.Buildpacks[4].Version, "dir-buildpack-version")
+					h.AssertEq(t, metadata.Buildpacks[4].Latest, true)
 				}
 			})
 
@@ -549,10 +591,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					subject.AddBuildpack(buildpack.Buildpack{
-						ID:      "some-buildpack-id",
-						Version: "some-buildpack-version",
-						Path:    filepath.Join("testdata", "buildpack"),
-						Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
+						BuildpackInfo: buildpack.BuildpackInfo{
+							ID:      "some-buildpack-id",
+							Version: "some-buildpack-version",
+						},
+						Path:   filepath.Join("testdata", "buildpack"),
+						Stacks: []buildpack.Stack{{ID: "some.stack.id"}},
 					})
 					h.AssertNil(t, subject.Save())
 					h.AssertEq(t, baseImage.IsSaved(), true)
@@ -585,32 +629,42 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("the buildpacks exist in the image", func() {
 				it.Before(func() {
 					subject.AddBuildpack(buildpack.Buildpack{
-						ID:      "some-buildpack-id",
-						Version: "some-buildpack-version",
-						Path:    filepath.Join("testdata", "buildpack"),
-						Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
+						BuildpackInfo: buildpack.BuildpackInfo{
+							ID:      "some-buildpack-id",
+							Version: "some-buildpack-version",
+						},
+						Path:   filepath.Join("testdata", "buildpack"),
+						Stacks: []buildpack.Stack{{ID: "some.stack.id"}},
 					})
 					subject.AddBuildpack(buildpack.Buildpack{
-						ID:      "optional-buildpack-id",
-						Version: "older-optional-buildpack-version",
-						Path:    filepath.Join("testdata", "buildpack"),
-						Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
+						BuildpackInfo: buildpack.BuildpackInfo{
+							ID:      "optional-buildpack-id",
+							Version: "older-optional-buildpack-version",
+						},
+						Path:   filepath.Join("testdata", "buildpack"),
+						Stacks: []buildpack.Stack{{ID: "some.stack.id"}},
 					})
 					subject.AddBuildpack(buildpack.Buildpack{
-						ID:      "optional-buildpack-id",
-						Version: "optional-buildpack-version",
-						Path:    filepath.Join("testdata", "buildpack"),
-						Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
+						BuildpackInfo: buildpack.BuildpackInfo{
+							ID:      "optional-buildpack-id",
+							Version: "optional-buildpack-version",
+						},
+						Path:   filepath.Join("testdata", "buildpack"),
+						Stacks: []buildpack.Stack{{ID: "some.stack.id"}},
 					})
-					subject.SetOrder(builder.OrderMetadata{
-						{Buildpacks: []builder.BuildpackRefMetadata{
+					subject.SetOrder(builder.Order{
+						{Group: []builder.BuildpackRef{
 							{
-								ID:      "some-buildpack-id",
-								Version: "some-buildpack-version",
+								BuildpackInfo: buildpack.BuildpackInfo{
+									ID:      "some-buildpack-id",
+									Version: "some-buildpack-version",
+								},
 							},
 							{
-								ID:       "optional-buildpack-id",
-								Version:  "optional-buildpack-version",
+								BuildpackInfo: buildpack.BuildpackInfo{
+									ID:      "optional-buildpack-id",
+									Version: "optional-buildpack-version",
+								},
 								Optional: true,
 							},
 						}},

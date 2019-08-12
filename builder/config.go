@@ -9,53 +9,21 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/internal/paths"
 )
 
 type Config struct {
 	Description string            `toml:"description"`
 	Buildpacks  []BuildpackConfig `toml:"buildpacks"`
-	Order       OrderConfig       `toml:"order"`
+	Order       Order             `toml:"order"`
 	Stack       StackConfig       `toml:"stack"`
 	Lifecycle   LifecycleConfig   `toml:"lifecycle"`
 }
 
-type OrderConfig []GroupConfig
-
-func (o OrderConfig) ToMetadata() OrderMetadata {
-	var order OrderMetadata
-	for _, gp := range o {
-		var buildpacks []BuildpackRefMetadata
-		for _, bp := range gp.Group {
-			buildpacks = append(buildpacks, BuildpackRefMetadata{
-				ID:       bp.ID,
-				Version:  bp.Version,
-				Optional: bp.Optional,
-			})
-		}
-
-		order = append(order, GroupMetadata{
-			Buildpacks: buildpacks,
-		})
-	}
-
-	return order
-}
-
-type GroupConfig struct {
-	Group []BuildpackRefConfig `toml:"group"`
-}
-
-type BuildpackRefConfig struct {
-	ID       string `toml:"id"`
-	Version  string `toml:"version"`
-	Optional bool   `toml:"optional,omitempty"`
-}
-
 type BuildpackConfig struct {
-	ID      string `toml:"id"`
-	Version string `toml:"version"`
-	URI     string `toml:"uri"`
+	buildpack.BuildpackInfo
+	URI string `toml:"uri"`
 }
 
 type StackConfig struct {

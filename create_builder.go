@@ -73,9 +73,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		builderImage.AddBuildpack(fetchedBuildpack)
 	}
 
-	groupMetadata := opts.BuilderConfig.Order.ToMetadata()
-
-	builderImage.SetOrder(groupMetadata)
+	builderImage.SetOrder(opts.BuilderConfig.Order)
 	builderImage.SetStackInfo(opts.BuilderConfig.Stack)
 
 	lifecycleMd, err := c.lifecycleFetcher.Fetch(lifecycleVersion, opts.BuilderConfig.Lifecycle.URI)

@@ -276,18 +276,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 						cmd := packCmd(
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
-
-							// tgz not in builder
-							"--buildpack", notBuilderTgz,
-
-							// with version
-							"--buildpack", "simple/layers@simple-layers-version",
-
-							// without version
-							"--buildpack", "noop.buildpack",
-
-							// latest (for backwards compatibility)
-							"--buildpack", "read/env@latest",
+							"--buildpack", notBuilderTgz, // tgz not in builder
+							"--buildpack", "simple/layers@simple-layers-version", // with version
+							"--buildpack", "noop.buildpack", // without version
+							"--buildpack", "read/env@latest", // latest (for backwards compatibility)
 							"--env", "DETECT_ENV_BUILDPACK=true",
 						)
 						output := h.Run(t, cmd)
@@ -826,7 +818,7 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 	t.Log("Using buildpacks from: ", testBuildpacksDir())
 	h.RecursiveCopy(t, testBuildpacksDir(), tmpDir)
 
-	// COPY builder.toml
+	// AMEND builder.toml
 	builderConfigFile, err := os.OpenFile(filepath.Join(tmpDir, "builder.toml"), os.O_RDWR|os.O_APPEND, 0666)
 	h.AssertNil(t, err)
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/commands"
 	cmdmocks "github.com/buildpack/pack/commands/mocks"
 	"github.com/buildpack/pack/config"
@@ -135,9 +136,11 @@ ERROR: some local error
 			)
 
 			it.Before(func() {
+				buildpack1Info := buildpack.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
+				buildpack2Info := buildpack.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0"}
 				buildpacks := []builder.BuildpackMetadata{
-					{ID: "test.bp.one", Version: "1.0.0", Latest: true},
-					{ID: "test.bp.two", Version: "2.0.0", Latest: false},
+					{BuildpackInfo: buildpack1Info, Latest: true},
+					{BuildpackInfo: buildpack2Info, Latest: false},
 				}
 				remoteInfo = &pack.BuilderInfo{
 					Description:     "Some remote description",
@@ -145,10 +148,10 @@ ERROR: some local error
 					RunImage:        "some/run-image",
 					RunImageMirrors: []string{"first/default", "second/default"},
 					Buildpacks:      buildpacks,
-					Groups: []builder.GroupMetadata{
-						{Buildpacks: []builder.BuildpackRefMetadata{
-							{ID: "test.bp.one", Version: "1.0.0", Optional: true},
-							{ID: "test.bp.two", Version: "2.0.0"},
+					Groups: []builder.V1Group{
+						{Buildpacks: []builder.BuildpackRef{
+							{BuildpackInfo: buildpack1Info, Optional: true},
+							{BuildpackInfo: buildpack2Info},
 						}}},
 					LifecycleVersion: "6.7.8",
 				}
@@ -158,9 +161,9 @@ ERROR: some local error
 					RunImage:        "some/run-image",
 					RunImageMirrors: []string{"first/local-default", "second/local-default"},
 					Buildpacks:      buildpacks,
-					Groups: []builder.GroupMetadata{
-						{Buildpacks: []builder.BuildpackRefMetadata{{ID: "test.bp.one", Version: "1.0.0"}}},
-						{Buildpacks: []builder.BuildpackRefMetadata{{ID: "test.bp.two", Version: "2.0.0", Optional: true}}},
+					Groups: []builder.V1Group{
+						{Buildpacks: []builder.BuildpackRef{{BuildpackInfo: buildpack1Info}}},
+						{Buildpacks: []builder.BuildpackRef{{BuildpackInfo: buildpack2Info, Optional: true}}},
 					},
 					LifecycleVersion: "4.5.6",
 				}

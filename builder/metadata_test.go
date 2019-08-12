@@ -8,6 +8,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/lifecycle"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -23,12 +24,12 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 			it("should resolve unset version", func() {
 				md := Metadata{
 					Buildpacks: []BuildpackMetadata{
-						{ID: "bp.id.1", Version: "1.2.3"},
+						{BuildpackInfo: buildpack.BuildpackInfo{ID: "bp.id.1", Version: "1.2.3"}},
 					},
-					Groups: []GroupMetadata{
+					Groups: []V1Group{
 						{
-							Buildpacks: []BuildpackRefMetadata{
-								{ID: "bp.id.1", Version: ""},
+							Buildpacks: []BuildpackRef{
+								{BuildpackInfo: buildpack.BuildpackInfo{ID: "bp.id.1", Version: ""}},
 							},
 						},
 					},
@@ -45,15 +46,17 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 		when("the buildpack has multiple versions", func() {
 			when("order contains specific version", func() {
 				it("nothing should be updated", func() {
+					bpInfo1 := buildpack.BuildpackInfo{ID: "bp.id.1", Version: "1.2.3"}
+					bpInfo2 := buildpack.BuildpackInfo{ID: "bp.id.1", Version: "4.5.6"}
 					md := Metadata{
 						Buildpacks: []BuildpackMetadata{
-							{ID: "bp.id.1", Version: "1.2.3"},
-							{ID: "bp.id.1", Version: "4.5.6"},
+							{BuildpackInfo: bpInfo1},
+							{BuildpackInfo: bpInfo2},
 						},
-						Groups: []GroupMetadata{
+						Groups: []V1Group{
 							{
-								Buildpacks: []BuildpackRefMetadata{
-									{ID: "bp.id.1", Version: "1.2.3"},
+								Buildpacks: []BuildpackRef{
+									{BuildpackInfo: bpInfo1},
 								},
 							},
 						},
@@ -67,13 +70,13 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 
 					expected := Metadata{
 						Buildpacks: []BuildpackMetadata{
-							{ID: "bp.id.1", Version: "1.2.3"},
-							{ID: "bp.id.1", Version: "4.5.6"},
+							{BuildpackInfo: bpInfo1},
+							{BuildpackInfo: bpInfo2},
 						},
-						Groups: []GroupMetadata{
+						Groups: []V1Group{
 							{
-								Buildpacks: []BuildpackRefMetadata{
-									{ID: "bp.id.1", Version: "1.2.3"},
+								Buildpacks: []BuildpackRef{
+									{BuildpackInfo: bpInfo1},
 								},
 							},
 						},
@@ -88,15 +91,17 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 
 			when("order contains 'latest'", func() {
 				it("should error", func() {
+					bpInfo1 := buildpack.BuildpackInfo{ID: "bp.id.1", Version: "1.2.3"}
+					bpInfo2 := buildpack.BuildpackInfo{ID: "bp.id.1", Version: "4.5.6"}
 					md := Metadata{
 						Buildpacks: []BuildpackMetadata{
-							{ID: "bp.id.1", Version: "1.2.3"},
-							{ID: "bp.id.1", Version: "4.5.6"},
+							{BuildpackInfo: bpInfo1},
+							{BuildpackInfo: bpInfo2},
 						},
-						Groups: []GroupMetadata{
+						Groups: []V1Group{
 							{
-								Buildpacks: []BuildpackRefMetadata{
-									{ID: "bp.id.1", Version: ""},
+								Buildpacks: []BuildpackRef{
+									{BuildpackInfo: buildpack.BuildpackInfo{ID: "bp.id.1", Version: ""}},
 								},
 							},
 						},
@@ -113,12 +118,12 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 				it("should error", func() {
 					md := Metadata{
 						Buildpacks: []BuildpackMetadata{
-							{ID: "bp.id.1", Version: "1.2.3"},
+							{BuildpackInfo: buildpack.BuildpackInfo{ID: "bp.id.1", Version: "1.2.3"}},
 						},
-						Groups: []GroupMetadata{
+						Groups: []V1Group{
 							{
-								Buildpacks: []BuildpackRefMetadata{
-									{ID: "bp.id.no-exists", Version: ""},
+								Buildpacks: []BuildpackRef{
+									{BuildpackInfo: buildpack.BuildpackInfo{ID: "bp.id.no-exists", Version: ""}},
 								},
 							},
 						},
@@ -133,12 +138,12 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 				it("should error", func() {
 					md := Metadata{
 						Buildpacks: []BuildpackMetadata{
-							{ID: "bp.id.1", Version: "1.2.3"},
+							{BuildpackInfo: buildpack.BuildpackInfo{ID: "bp.id.1", Version: "1.2.3"}},
 						},
-						Groups: []GroupMetadata{
+						Groups: []V1Group{
 							{
-								Buildpacks: []BuildpackRefMetadata{
-									{ID: "bp.id.no-exists", Version: "4.5.6"},
+								Buildpacks: []BuildpackRef{
+									{BuildpackInfo: buildpack.BuildpackInfo{ID: "bp.id.no-exists", Version: "4.5.6"}},
 								},
 							},
 						},

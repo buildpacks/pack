@@ -9,8 +9,7 @@
   uri = "read-env-buildpack.tgz"
 
 [[buildpacks]]
-  id = "noop.buildpack"
-  version = "noop.buildpack.version"
+  # intentionally missing id/version as they are optional
   uri = "noop-buildpack.tgz"
 
 [[order]]

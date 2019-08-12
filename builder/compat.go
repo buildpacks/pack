@@ -1,37 +1,27 @@
 package builder
 
+type V1Order []V1Group
+
+type V1Group struct {
+	Buildpacks []BuildpackRef `toml:"buildpacks" json:"buildpacks"`
+}
+
 type v1OrderTOML struct {
-	Groups []v1Group `toml:"groups"`
+	Groups []V1Group `toml:"groups" json:"groups"`
 }
 
-type v1Group struct {
-	Buildpacks []v1BuildpackRef `toml:"buildpacks"`
-}
-
-type v1BuildpackRef struct {
-	ID       string `toml:"id"`
-	Version  string `toml:"version"`
-	Optional bool   `toml:"optional,omitempty"`
-}
-
-func v1OrderTOMLFromOrderTOML(order orderTOML) v1OrderTOML {
-	var groups []v1Group
-	for _, g := range order.Order {
-		var bps []v1BuildpackRef
-		for _, b := range g.Group {
-			bps = append(bps, v1BuildpackRef{
-				ID:       b.ID,
-				Version:  b.Version,
-				Optional: b.Optional,
-			})
+func (o Order) ToV1Order() V1Order {
+	var order V1Order
+	for _, gp := range o {
+		var buildpacks []BuildpackRef
+		for _, bp := range gp.Group {
+			buildpacks = append(buildpacks, bp)
 		}
 
-		groups = append(groups, v1Group{
-			Buildpacks: bps,
+		order = append(order, V1Group{
+			Buildpacks: buildpacks,
 		})
 	}
 
-	return v1OrderTOML{
-		Groups: groups,
-	}
+	return order
 }

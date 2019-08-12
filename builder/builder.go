@@ -46,19 +46,22 @@ type Builder struct {
 	UID, GID      int
 	StackID       string
 	replaceOrder  bool
+	order         Order
 }
 
 type orderTOML struct {
-	Order OrderConfig `toml:"order"`
+	Order Order `toml:"order"`
 }
 
-type stackTOML struct {
-	RunImage stackTOMLRunImage `toml:"run-image"`
+type Order []OrderEntry
+
+type OrderEntry struct {
+	Group []BuildpackRef `toml:"group"`
 }
 
-type stackTOMLRunImage struct {
-	Image   string   `toml:"image"`
-	Mirrors []string `toml:"mirrors"`
+type BuildpackRef struct {
+	buildpack.BuildpackInfo
+	Optional bool `toml:"optional,omitempty"`
 }
 
 func GetBuilder(img imgutil.Image) (*Builder, error) {
@@ -107,7 +110,8 @@ func (b *Builder) GetBuildpacks() []BuildpackMetadata {
 	return b.metadata.Buildpacks
 }
 
-func (b *Builder) GetOrder() []GroupMetadata {
+// TODO: change to v2 order type when order label is added
+func (b *Builder) GetOrder() []V1Group {
 	return b.metadata.Groups
 }
 
@@ -158,7 +162,9 @@ func New(img imgutil.Image, name string) (*Builder, error) {
 
 func (b *Builder) AddBuildpack(bp buildpack.Buildpack) {
 	b.buildpacks = append(b.buildpacks, bp)
-	b.metadata.Buildpacks = append(b.metadata.Buildpacks, BuildpackMetadata{ID: bp.ID, Version: bp.Version})
+	b.metadata.Buildpacks = append(b.metadata.Buildpacks, BuildpackMetadata{
+		BuildpackInfo: bp.BuildpackInfo,
+	})
 }
 
 func (b *Builder) SetLifecycle(md lifecycle.Metadata) error {
@@ -171,8 +177,9 @@ func (b *Builder) SetEnv(env map[string]string) {
 	b.env = env
 }
 
-func (b *Builder) SetOrder(order OrderMetadata) {
-	b.metadata.Groups = order
+func (b *Builder) SetOrder(order Order) {
+	b.metadata.Groups = order.ToV1Order()
+	b.order = order
 	b.replaceOrder = true
 }
 
@@ -401,9 +408,9 @@ func (b *Builder) orderLayer(dest string) (string, error) {
 
 	var tomlData interface{}
 	if lifecycleVersion != nil && lifecycleVersion.LessThan(semver.MustParse("0.4.0")) {
-		tomlData = v1OrderTOMLFromOrderTOML(orderTOML{Order: b.metadata.Groups.ToConfig()})
+		tomlData = v1OrderTOML{Groups: b.metadata.Groups}
 	} else {
-		tomlData = orderTOML{Order: b.metadata.Groups.ToConfig()}
+		tomlData = orderTOML{Order: b.order}
 	}
 
 	err := toml.NewEncoder(buf).Encode(tomlData)
@@ -422,12 +429,7 @@ func (b *Builder) orderLayer(dest string) (string, error) {
 
 func (b *Builder) stackLayer(dest string) (string, error) {
 	buf := &bytes.Buffer{}
-	err := toml.NewEncoder(buf).Encode(stackTOML{
-		stackTOMLRunImage{
-			Image:   b.metadata.Stack.RunImage.Image,
-			Mirrors: b.metadata.Stack.RunImage.Mirrors,
-		},
-	})
+	err := toml.NewEncoder(buf).Encode(b.metadata.Stack)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to marshal stack.toml")
 	}

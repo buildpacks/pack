@@ -72,10 +72,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			imageFetcher.RemoteImages["localhost:5000/some-run-image"] = fakeRunImageMirror
 
 			bp := buildpack.Buildpack{
-				ID:      "bp.one",
-				Path:    filepath.Join("testdata", "buildpack"),
-				Version: "1.2.3",
-				Stacks:  []buildpack.Stack{{ID: "some.stack.id"}},
+				BuildpackInfo: buildpack.BuildpackInfo{
+					ID:      "bp.one",
+					Version: "1.2.3",
+				},
+				Path:   filepath.Join("testdata", "buildpack"),
+				Stacks: []buildpack.Stack{{ID: "some.stack.id"}},
 			}
 
 			mockBPFetcher.EXPECT().FetchBuildpack(gomock.Any()).Return(bp, nil).AnyTimes()
@@ -99,14 +101,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Description: "Some description",
 					Buildpacks: []builder.BuildpackConfig{
 						{
-							ID:      "bp.one",
-							Version: "1.2.3",
-							URI:     "https://example.fake/bp-one.tgz",
+							BuildpackInfo: buildpack.BuildpackInfo{ID: "bp.one", Version: "1.2.3"},
+							URI:           "https://example.fake/bp-one.tgz",
 						},
 					},
-					Order: []builder.GroupConfig{{
-						Group: []builder.BuildpackRefConfig{
-							{ID: "bp.one", Version: "1.2.3", Optional: false},
+					Order: []builder.OrderEntry{{
+						Group: []builder.BuildpackRef{
+							{BuildpackInfo: buildpack.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
 						}},
 					},
 					Stack: builder.StackConfig{
@@ -221,16 +222,18 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, builderImage.UID, 1234)
 			h.AssertEq(t, builderImage.GID, 4321)
 			h.AssertEq(t, builderImage.StackID, "some.stack.id")
-			h.AssertEq(t, builderImage.GetBuildpacks(), []builder.BuildpackMetadata{{
+			bpInfo := buildpack.BuildpackInfo{
 				ID:      "bp.one",
 				Version: "1.2.3",
-				Latest:  true,
+			}
+			h.AssertEq(t, builderImage.GetBuildpacks(), []builder.BuildpackMetadata{{
+				BuildpackInfo: bpInfo,
+				Latest:        true,
 			}})
-			h.AssertEq(t, builderImage.GetOrder(), []builder.GroupMetadata{{
-				Buildpacks: []builder.BuildpackRefMetadata{{
-					ID:       "bp.one",
-					Version:  "1.2.3",
-					Optional: false,
+			h.AssertEq(t, builderImage.GetOrder(), []builder.V1Group{{
+				Buildpacks: []builder.BuildpackRef{{
+					BuildpackInfo: bpInfo,
+					Optional:      false,
 				}},
 			}})
 			h.AssertEq(t, builderImage.GetLifecycleVersion().String(), "3.4.5")

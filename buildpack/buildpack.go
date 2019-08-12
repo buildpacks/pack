@@ -8,22 +8,21 @@ type BuildpackTOML struct {
 }
 
 type Buildpack struct {
-	ID      string
-	Path    string
-	Version string
-	Stacks  []Stack
-	Order   Order
+	BuildpackInfo
+	Path   string
+	Stacks []Stack
+	Order  Order
 }
 
 type Order []Group
 
 type Group struct {
-	Group []BuildpackRef
+	Group []BuildpackInfo
 }
 
-type BuildpackRef struct {
-	ID      string
-	Version string
+type BuildpackInfo struct {
+	ID      string `toml:"id" json:"id"`
+	Version string `toml:"version" json:"version"`
 }
 
 type Stack struct {

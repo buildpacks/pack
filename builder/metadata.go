@@ -3,6 +3,8 @@ package builder
 import (
 	"fmt"
 
+	"github.com/buildpack/pack/buildpack"
+
 	"github.com/buildpack/pack/lifecycle"
 	"github.com/buildpack/pack/style"
 )
@@ -12,57 +14,23 @@ const MetadataLabel = "io.buildpacks.builder.metadata"
 type Metadata struct {
 	Description string              `json:"description"`
 	Buildpacks  []BuildpackMetadata `json:"buildpacks"`
-	Groups      OrderMetadata       `json:"groups"`
+	Groups      V1Order             `json:"groups"` // deprecated
 	Stack       StackMetadata       `json:"stack"`
 	Lifecycle   lifecycle.Metadata  `json:"lifecycle"`
 }
 
 type BuildpackMetadata struct {
-	ID      string `json:"id"`
-	Version string `json:"version"`
-	Latest  bool   `json:"latest"` // deprecated
-}
-
-type OrderMetadata []GroupMetadata
-
-func (o OrderMetadata) ToConfig() OrderConfig {
-	var order OrderConfig
-
-	for _, group := range o {
-		var buildpacks []BuildpackRefConfig
-		for _, bp := range group.Buildpacks {
-			buildpacks = append(buildpacks, BuildpackRefConfig{
-				ID:       bp.ID,
-				Version:  bp.Version,
-				Optional: bp.Optional,
-			})
-		}
-
-		order = append(order, GroupConfig{
-			Group: buildpacks,
-		})
-	}
-
-	return order
-}
-
-type GroupMetadata struct {
-	Buildpacks []BuildpackRefMetadata `json:"buildpacks"`
-}
-
-type BuildpackRefMetadata struct {
-	ID       string `json:"id"`
-	Version  string `json:"version"`
-	Optional bool   `json:"optional,omitempty"`
+	buildpack.BuildpackInfo
+	Latest bool `json:"latest"` // deprecated
 }
 
 type StackMetadata struct {
-	RunImage RunImageMetadata `json:"runImage"`
+	RunImage RunImageMetadata `json:"runImage" toml:"run-image"`
 }
 
 type RunImageMetadata struct {
-	Image   string   `json:"image"`
-	Mirrors []string `json:"mirrors"`
+	Image   string   `json:"image" toml:"image"`
+	Mirrors []string `json:"mirrors" toml:"mirrors"`
 }
 
 func bpsWithID(metadata Metadata, id string) []BuildpackMetadata {
