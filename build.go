@@ -256,7 +256,7 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 	parts := strings.Split(bp, "@")
 	if len(parts) == 2 {
 		if parts[1] == "latest" {
-			c.logger.Info(style.Tip("WARNING: ") + "@latest syntax is deprecated, will not work in future releases")
+			c.logger.Warn("@latest syntax is deprecated, will not work in future releases")
 			return parts[0], ""
 		}
 

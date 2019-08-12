@@ -26,10 +26,14 @@ func CreateBuilder(logger logging.Logger, client PackClient) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Short: "Create builder image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			builderConfig, err := builder.ReadConfig(flags.BuilderTomlPath)
+			builderConfig, warns, err := builder.ReadConfig(flags.BuilderTomlPath)
 			if err != nil {
 				return errors.Wrap(err, "invalid builder toml")
 			}
+			for _, w := range warns {
+				logger.Warnf("builder configuration: %s", w)
+			}
+
 			imageName := args[0]
 			if err := client.CreateBuilder(ctx, pack.CreateBuilderOptions{
 				BuilderName:   imageName,

@@ -40,22 +40,80 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 		when("file is written properly", func() {
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
-[stack]
-id = "com.example.stack"
+[[buildpacks]]
+  id = "some.buildpack"
+
+[[order]]
+[[order.group]]
+  id = "some.buildpack"
 `), 0666))
 			})
 
 			it("returns a builder config", func() {
-				builderConfig, err := builder.ReadConfig(builderConfigPath)
+				builderConfig, warns, err := builder.ReadConfig(builderConfigPath)
 				h.AssertNil(t, err)
-				h.AssertEq(t, builderConfig.Stack.ID, "com.example.stack")
+				h.AssertEq(t, len(warns), 0)
+				h.AssertEq(t, builderConfig.Buildpacks[0].ID, "some.buildpack")
 			})
 		})
 
 		when("an error occurs while reading", func() {
 			it("bubbles up the error", func() {
-				_, err := builder.ReadConfig(builderConfigPath)
+				_, _, err := builder.ReadConfig(builderConfigPath)
 				h.AssertError(t, err, "opening config file")
+			})
+		})
+
+		when("detecting warnings", func() {
+			when("'latest' field is used on buildpack", func() {
+				it.Before(func() {
+					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+[[buildpacks]]
+  id = "some.buildpack"
+  latest = true
+
+[[buildpacks]]
+  id = "other.buildpack"
+  latest = true
+
+[[order]]
+[[order.group]]
+  id = "some.buildpack"
+`), 0666))
+				})
+
+				it("returns a warning", func() {
+					_, warns, err := builder.ReadConfig(builderConfigPath)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, len(warns), 1)
+					h.AssertSliceContains(t, warns, "'latest' field on a buildpack is obsolete and will be ignored")
+				})
+
+			})
+
+			when("'groups' field is used instead of 'order'", func() {
+				it.Before(func() {
+					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+[[buildpacks]]
+  id = "some.buildpack"
+  version = "some.buildpack.version"
+
+[[groups]]
+[[groups.buildpacks]]
+  id = "some.buildpack"
+  version = "some.buildpack.version"
+`), 0666))
+				})
+
+				it("returns warnings", func() {
+					_, warns, err := builder.ReadConfig(builderConfigPath)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, len(warns), 2)
+					h.AssertSliceContains(t, warns, "'groups' field is obsolete in favor of 'order'")
+					h.AssertSliceContains(t, warns, "empty 'order' definition")
+				})
 			})
 		})
 	})

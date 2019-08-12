@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/fatih/color"
 
 	"github.com/buildpack/pack/style"
 )
 
-// Terminal colors
 const (
-	errorLevelText = "ERROR"
+	errorLevelText = "ERROR: "
+	warnLevelText  = "Warning: "
+
 	// time format the out logging uses
 	timeFmt = "2006/01/02 15:04:05.000000"
 )
@@ -31,12 +31,13 @@ type handler struct {
 }
 
 func formatLevel(ll log.Level) string {
-	if ll == log.ErrorLevel {
-		if color.NoColor {
-			return fmt.Sprintf("%-6s ", errorLevelText)
-		}
-		return style.Error("%-6s ", errorLevelText)
+	switch ll {
+	case log.ErrorLevel:
+		return style.Error(errorLevelText)
+	case log.WarnLevel:
+		return style.Warn(warnLevelText)
 	}
+
 	return ""
 }
 

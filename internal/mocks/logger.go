@@ -23,11 +23,15 @@ func NewMockLogger(w io.Writer) *mockLog {
 }
 
 func (ml *mockLog) HandleLog(e *log.Entry) error {
-	if e.Level == log.ErrorLevel {
+	switch e.Level {
+	case log.WarnLevel:
+		_, _ = fmt.Fprintf(ml.w, "Warning: %s\n", e.Message)
+	case log.ErrorLevel:
 		_, _ = fmt.Fprintf(ml.w, "ERROR: %s\n", e.Message)
-		return nil
+	default:
+		_, _ = fmt.Fprintln(ml.w, e.Message)
 	}
-	_, _ = fmt.Fprintln(ml.w, e.Message)
+
 	return nil
 }
 
