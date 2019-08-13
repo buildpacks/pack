@@ -113,16 +113,19 @@ func WithRegistryAccess(repos ...string) func(*Phase) (*Phase, error) {
 	}
 }
 
-func (p *Phase) Run(context context.Context) error {
+func (p *Phase) Run(ctx context.Context) error {
 	var err error
 
-	p.ctr, err = p.docker.ContainerCreate(context, p.ctrConf, p.hostConf, nil, "")
+	p.ctr, err = p.docker.ContainerCreate(ctx, p.ctrConf, p.hostConf, nil, "")
 	if err != nil {
 		return errors.Wrapf(err, "failed to create '%s' container", p.name)
 	}
 
 	p.appOnce.Do(func() {
-		var appReader io.ReadCloser
+		var (
+			appReader io.ReadCloser
+			clientErr error
+		)
 		appReader, err = p.createAppReader()
 		if err != nil {
 			err = errors.Wrapf(err, "create tar archive from '%s'", p.appPath)
@@ -130,17 +133,29 @@ func (p *Phase) Run(context context.Context) error {
 		}
 		defer appReader.Close()
 
-		if err = p.docker.CopyToContainer(context, p.ctr.ID, "/", appReader, types.CopyToContainerOptions{}); err != nil {
-			err = errors.Wrapf(err, "failed to copy files to '%s' container", p.name)
-			return
+		doneChan := make(chan interface{})
+		pr, pw := io.Pipe()
+		go func() {
+			clientErr = p.docker.CopyToContainer(ctx, p.ctr.ID, "/", pr, types.CopyToContainerOptions{})
+			close(doneChan)
+		}()
+		func() {
+			defer pw.Close()
+			_, err = io.Copy(pw, appReader)
+		}()
+
+		<-doneChan
+		if err == nil {
+			err = clientErr
 		}
 	})
+
 	if err != nil {
-		return errors.Wrapf(err, "run %s container", p.name)
+		return errors.Wrapf(err, "failed to copy files to '%s' container", p.name)
 	}
 
 	return container.Run(
-		context,
+		ctx,
 		p.docker,
 		p.ctr.ID,
 		logging.NewPrefixWriter(logging.GetDebugWriter(p.logger), p.name),

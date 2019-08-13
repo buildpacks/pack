@@ -16,7 +16,7 @@ type BuilderInfo struct {
 	RunImage         string
 	RunImageMirrors  []string
 	Buildpacks       []builder.BuildpackMetadata
-	Groups           []builder.GroupMetadata
+	Groups           []builder.V1Group // TODO: change to v2 order type when order label is added
 	LifecycleVersion string
 }
 

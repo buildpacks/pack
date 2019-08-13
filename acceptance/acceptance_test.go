@@ -265,7 +265,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					var notBuilderTgz string
 
 					it.Before(func() {
-						notBuilderTgz = h.CreateTgz(t, filepath.Join("testdata", "mock_buildpacks", "not-in-builder-buildpack"), "./", 0766)
+						notBuilderTgz = h.CreateTgz(t, filepath.Join(testBuildpacksDir(), "not-in-builder-buildpack"), "./", 0766)
 					})
 
 					it.After(func() {
@@ -276,13 +276,17 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 						cmd := packCmd(
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
-							"--buildpack", notBuilderTgz,
-							"--buildpack", "simple/layers@simple-layers-version",
-							"--buildpack", "noop.buildpack",
+							"--buildpack", notBuilderTgz, // tgz not in builder
+							"--buildpack", "simple/layers@simple-layers-version", // with version
+							"--buildpack", "noop.buildpack", // without version
+							"--buildpack", "read/env@latest", // latest (for backwards compatibility)
+							"--env", "DETECT_ENV_BUILDPACK=true",
 						)
 						output := h.Run(t, cmd)
 						h.AssertContains(t, output, "NOOP Buildpack")
+						h.AssertContains(t, output, "Read Env Buildpack")
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+
 						t.Log("app is runnable")
 						assertMockAppRunsWithOutput(t, repoName,
 							"Local Buildpack Dep Contents",
@@ -290,7 +294,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 							"Cached Dep Contents",
 						)
 					})
-
 				})
 
 				when("the argument is directory", func() {
@@ -300,7 +303,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 						cmd := packCmd(
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
-							"--buildpack", filepath.Join("testdata", "mock_buildpacks", "not-in-builder-buildpack"),
+							"--buildpack", filepath.Join(testBuildpacksDir(), "not-in-builder-buildpack"),
 						)
 						output := h.Run(t, cmd)
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
@@ -313,7 +316,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 					var otherStackBuilderTgz string
 
 					it.Before(func() {
-						otherStackBuilderTgz = h.CreateTgz(t, filepath.Join("testdata", "mock_buildpacks", "other-stack-buildpack"), "./", 0766)
+						otherStackBuilderTgz = h.CreateTgz(t, filepath.Join(testBuildpacksDir(), "other-stack-buildpack"), "./", 0766)
 					})
 
 					it.After(func() {
@@ -328,7 +331,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 						)
 						txt, err := h.RunE(cmd)
 						h.AssertNotNil(t, err)
-						h.AssertContains(t, txt, "buildpack 'other/stack/bp' version 'other-stack-version' does not support stack 'pack.test.stack'")
+						h.AssertContains(t, txt, "buildpack 'other/stack/bp@other-stack-version' does not support stack 'pack.test.stack'")
 					})
 				})
 			})
@@ -780,15 +783,66 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func createBuilder(t *testing.T, runImageMirror string) string {
-	t.Log("create builder image")
+func testBuildpacksDir() string {
+	d := "v1"
+	if lifecycleVersion.GreaterThan(lifecycleV030) {
+		d = "v2"
+	}
+	return filepath.Join("testdata", "mock_buildpacks", d)
+}
 
+func createBuilder(t *testing.T, runImageMirror string) string {
+	t.Log("Creating builder image...")
+
+	// CREATE TEMP WORKING DIR
 	tmpDir, err := ioutil.TempDir("", "create-test-builder")
 	h.AssertNil(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks"), tmpDir)
+	// DETERMINE LIFECYCLE
+	lifecyclePath, hasLifecyclePath := os.LookupEnv("LIFECYCLE_PATH")
+	if hasLifecyclePath {
+		lifecycleVersion = semver.MustParse("0.0.0")
 
+		if !filepath.IsAbs(lifecyclePath) {
+			lifecyclePath, err = filepath.Abs(lifecyclePath)
+			h.AssertNil(t, err)
+		}
+	}
+
+	if v, ok := os.LookupEnv("LIFECYCLE_VERSION"); ok {
+		lifecycleVersion = semver.MustParse(v)
+	}
+
+	// DETERMINE TEST DATA
+	t.Log("Using buildpacks from: ", testBuildpacksDir())
+	h.RecursiveCopy(t, testBuildpacksDir(), tmpDir)
+
+	// AMEND builder.toml
+	builderConfigFile, err := os.OpenFile(filepath.Join(tmpDir, "builder.toml"), os.O_RDWR|os.O_APPEND, 0666)
+	h.AssertNil(t, err)
+
+	// ADD run-image-mirrors
+	_, err = builderConfigFile.Write([]byte(fmt.Sprintf("run-image-mirrors = [\"%s\"]\n", runImageMirror)))
+	h.AssertNil(t, err)
+
+	// ADD lifecycle
+	_, err = builderConfigFile.Write([]byte("[lifecycle]\n"))
+	h.AssertNil(t, err)
+
+	if hasLifecyclePath {
+		t.Logf("Adding lifecycle path '%s' to builder config", lifecyclePath)
+		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("uri = \"%s\"\n", strings.ReplaceAll(lifecyclePath, `\`, `\\`))))
+		h.AssertNil(t, err)
+	}
+
+	t.Logf("Adding lifecycle version '%s' to builder config", lifecycleVersion)
+	_, err = builderConfigFile.Write([]byte(fmt.Sprintf("version = \"%s\"\n", lifecycleVersion.String())))
+	h.AssertNil(t, err)
+
+	builderConfigFile.Close()
+
+	// PACKAGE BUILDPACKS
 	buildpacks := []string{
 		"noop-buildpack",
 		"not-in-builder-buildpack",
@@ -798,39 +852,15 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 	}
 
 	for _, v := range buildpacks {
-		tgz := h.CreateTgz(t, filepath.Join("testdata", "mock_buildpacks", v), "./", 0766)
+		tgz := h.CreateTgz(t, filepath.Join(testBuildpacksDir(), v), "./", 0766)
 		err := os.Rename(tgz, filepath.Join(tmpDir, v+".tgz"))
 		h.AssertNil(t, err)
 	}
 
-	builderConfigFile, err := os.OpenFile(filepath.Join(tmpDir, "builder.toml"), os.O_RDWR|os.O_APPEND, 0666)
-	h.AssertNil(t, err)
-
-	_, err = builderConfigFile.Write([]byte(fmt.Sprintf("run-image-mirrors = [\"%s\"]\n", runImageMirror)))
-	h.AssertNil(t, err)
-
-	_, err = builderConfigFile.Write([]byte("[lifecycle]\n"))
-	h.AssertNil(t, err)
-	if lifecyclePath, ok := os.LookupEnv("LIFECYCLE_PATH"); ok {
-		lifecycleVersion = semver.MustParse("0.0.0")
-		if !filepath.IsAbs(lifecyclePath) {
-			t.Fatal("LIFECYCLE_PATH must be an absolute path")
-		}
-		t.Logf("Adding lifecycle path '%s' to builder config", lifecyclePath)
-		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("uri = \"%s\"\n", strings.ReplaceAll(lifecyclePath, `\`, `\\`))))
-		h.AssertNil(t, err)
-	}
-	if lcver, ok := os.LookupEnv("LIFECYCLE_VERSION"); ok {
-		lifecycleVersion = semver.MustParse(lcver)
-		t.Logf("Adding lifecycle version '%s' to builder config", lifecycleVersion)
-		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("version = \"%s\"\n", lifecycleVersion.String())))
-		h.AssertNil(t, err)
-	}
-
-	builderConfigFile.Close()
-
+	// NAME BUILDER
 	builder := registryConfig.RepoName("some-org/" + h.RandString(10))
 
+	// CREATE BUILDER
 	t.Logf("Creating builder. Lifecycle version '%s' will be used.", lifecycleVersion)
 	cmd := exec.Command(packPath, "create-builder", "--no-color", builder, "-b", filepath.Join(tmpDir, "builder.toml"))
 	output := h.Run(t, cmd)
@@ -841,7 +871,7 @@ func createBuilder(t *testing.T, runImageMirror string) string {
 }
 
 func createStack(t *testing.T, dockerCli *client.Client) {
-	t.Log("create stack images")
+	t.Log("Creating stack images...")
 	createStackImage(t, dockerCli, runImage, filepath.Join("testdata", "mock_stack"))
 	h.AssertNil(t, dockerCli.ImageTag(context.Background(), runImage, buildImage))
 	h.AssertNil(t, dockerCli.ImageTag(context.Background(), runImage, runImageMirror))

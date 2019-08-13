@@ -9,22 +9,21 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/internal/paths"
 )
 
 type Config struct {
 	Description string            `toml:"description"`
 	Buildpacks  []BuildpackConfig `toml:"buildpacks"`
-	Groups      []GroupMetadata   `toml:"groups"`
+	Order       Order             `toml:"order"`
 	Stack       StackConfig       `toml:"stack"`
 	Lifecycle   LifecycleConfig   `toml:"lifecycle"`
 }
 
 type BuildpackConfig struct {
-	ID      string `toml:"id"`
-	Version string `toml:"version"`
-	URI     string `toml:"uri"`
-	Latest  bool   `toml:"latest"`
+	buildpack.BuildpackInfo
+	URI string `toml:"uri"`
 }
 
 type StackConfig struct {

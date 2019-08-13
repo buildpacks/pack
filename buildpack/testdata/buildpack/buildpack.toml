@@ -1,6 +1,13 @@
 [buildpack]
-id = "bp.one"
-version = "some-buildpack-version"
+  id = "bp.one"
+  version = "bp.one.version"
+
+# technically, this is invalid as a buildpack cannot have both an order and stacks
+# however, we're just testing that all the correct fields are parsed
+[[order]]
+[[order.group]]
+  id = "bp.nested"
+  version = "bp.nested.version"
 
 [[stacks]]
   id = "some.stack.id"

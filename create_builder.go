@@ -62,7 +62,6 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		if err != nil {
 			return err
 		}
-		fetchedBuildpack.Latest = b.Latest
 		if b.ID != "" && fetchedBuildpack.ID != b.ID {
 			return fmt.Errorf("buildpack from URI '%s' has ID '%s' which does not match ID '%s' from builder config", b.URI, fetchedBuildpack.ID, b.ID)
 		}
@@ -71,15 +70,10 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 			return fmt.Errorf("buildpack from URI '%s' has version '%s' which does not match version '%s' from builder config", b.URI, fetchedBuildpack.Version, b.Version)
 		}
 
-		if err := builderImage.AddBuildpack(fetchedBuildpack); err != nil {
-			return err
-		}
+		builderImage.AddBuildpack(fetchedBuildpack)
 	}
 
-	if err := builderImage.SetOrder(opts.BuilderConfig.Groups); err != nil {
-		return errors.Wrap(err, "builder config has invalid groups")
-	}
-
+	builderImage.SetOrder(opts.BuilderConfig.Order)
 	builderImage.SetStackInfo(opts.BuilderConfig.Stack)
 
 	lifecycleMd, err := c.lifecycleFetcher.Fetch(lifecycleVersion, opts.BuilderConfig.Lifecycle.URI)

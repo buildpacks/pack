@@ -22,19 +22,8 @@ func AssertOnTarEntry(t *testing.T, tarFile, entryPath string, assertFns ...TarE
 
 func ContentEquals(expected string) TarEntryAssertion {
 	return func(t *testing.T, header *tar.Header, contents []byte) {
+		t.Helper()
 		AssertEq(t, string(contents), expected)
-	}
-}
-
-func SymlinksTo(expectedTarget string) TarEntryAssertion {
-	return func(t *testing.T, header *tar.Header, _ []byte) {
-		if header.Typeflag != tar.TypeSymlink {
-			t.Fatalf("path '%s' is not a symlink, type flag is '%c'", header.Name, header.Typeflag)
-		}
-
-		if header.Linkname != expectedTarget {
-			t.Fatalf("symlink '%s' does not point to '%s', instead it points to '%s'", header.Name, expectedTarget, header.Linkname)
-		}
 	}
 }
 

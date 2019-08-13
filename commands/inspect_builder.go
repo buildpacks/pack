@@ -53,6 +53,7 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 	return cmd
 }
 
+// TODO: If necessary, how do we present buildpack order (nested order)?
 func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName string, local bool, cfg config.Config) {
 	info, err := client.InspectBuilder(imageName, local)
 	if err != nil {
@@ -115,12 +116,12 @@ func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName st
 func logBuildpacksInfo(logger logging.Logger, info *pack.BuilderInfo) {
 	buf := &bytes.Buffer{}
 	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 8, ' ', 0)
-	if _, err := fmt.Fprint(tabWriter, "\n  ID\tVERSION\tLATEST"); err != nil {
+	if _, err := fmt.Fprint(tabWriter, "\n  ID\tVERSION"); err != nil {
 		logger.Error(err.Error())
 	}
 
 	for _, bp := range info.Buildpacks {
-		if _, err := fmt.Fprint(tabWriter, fmt.Sprintf("\n  %s\t%s\t%t", bp.ID, bp.Version, bp.Latest)); err != nil {
+		if _, err := fmt.Fprint(tabWriter, fmt.Sprintf("\n  %s\t%s", bp.ID, bp.Version)); err != nil {
 			logger.Error(err.Error())
 		}
 	}
