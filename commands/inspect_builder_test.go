@@ -148,8 +148,8 @@ ERROR: some local error
 					RunImage:        "some/run-image",
 					RunImageMirrors: []string{"first/default", "second/default"},
 					Buildpacks:      buildpacks,
-					Groups: []builder.V1Group{
-						{Buildpacks: []builder.BuildpackRef{
+					Groups: builder.Order{
+						{Group: []builder.BuildpackRef{
 							{BuildpackInfo: buildpack1Info, Optional: true},
 							{BuildpackInfo: buildpack2Info},
 						}}},
@@ -161,9 +161,9 @@ ERROR: some local error
 					RunImage:        "some/run-image",
 					RunImageMirrors: []string{"first/local-default", "second/local-default"},
 					Buildpacks:      buildpacks,
-					Groups: []builder.V1Group{
-						{Buildpacks: []builder.BuildpackRef{{BuildpackInfo: buildpack1Info}}},
-						{Buildpacks: []builder.BuildpackRef{{BuildpackInfo: buildpack2Info, Optional: true}}},
+					Groups: builder.Order{
+						{Group: []builder.BuildpackRef{{BuildpackInfo: buildpack1Info}}},
+						{Group: []builder.BuildpackRef{{BuildpackInfo: buildpack2Info, Optional: true}}},
 					},
 					LifecycleVersion: "4.5.6",
 				}

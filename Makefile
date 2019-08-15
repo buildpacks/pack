@@ -40,6 +40,10 @@ acceptance: format vet
 	@echo "> Running acceptance tests..."
 	$(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 -tags=acceptance ./acceptance
 
+acceptance-all: format vet
+	@echo "> Running acceptance tests..."
+	ACCEPTANCE_SUITE_CONFIG=$$(cat ./acceptance/testconfig/all.json) $(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 -tags=acceptance ./acceptance
+
 clean:
 	@echo "> Cleaning workspace..."
 	rm -rf ./out

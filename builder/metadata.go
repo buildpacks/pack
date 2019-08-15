@@ -1,12 +1,9 @@
 package builder
 
 import (
-	"fmt"
-
 	"github.com/buildpack/pack/buildpack"
 
 	"github.com/buildpack/pack/lifecycle"
-	"github.com/buildpack/pack/style"
 )
 
 const MetadataLabel = "io.buildpacks.builder.metadata"
@@ -33,52 +30,17 @@ type RunImageMetadata struct {
 	Mirrors []string `json:"mirrors" toml:"mirrors"`
 }
 
-func bpsWithID(metadata Metadata, id string) []BuildpackMetadata {
-	var matchingBps []BuildpackMetadata
-	for _, bp := range metadata.Buildpacks {
-		if id == bp.ID {
-			matchingBps = append(matchingBps, bp)
-		}
-	}
-	return matchingBps
-}
-
-func hasBPWithVersion(bps []BuildpackMetadata, version string) bool {
-	for _, bp := range bps {
-		if bp.Version == version {
-			return true
-		}
-	}
-	return false
-}
-
 func processMetadata(md *Metadata) error {
 	for i, bp := range md.Buildpacks {
-		if len(bpsWithID(*md, bp.ID)) == 1 {
-			md.Buildpacks[i].Latest = true
+		var matchingBps []buildpack.BuildpackInfo
+		for _, bp2 := range md.Buildpacks {
+			if bp.ID == bp2.ID {
+				matchingBps = append(matchingBps, bp.BuildpackInfo)
+			}
 		}
-	}
 
-	for _, g := range md.Groups {
-		for i := range g.Buildpacks {
-			bpRef := &g.Buildpacks[i]
-			bps := bpsWithID(*md, bpRef.ID)
-
-			if len(bps) == 0 {
-				return fmt.Errorf("no versions of buildpack %s were found on the builder", style.Symbol(bpRef.ID))
-			}
-
-			if bpRef.Version == "" {
-				if len(bps) > 1 {
-					return fmt.Errorf("unable to resolve version: multiple versions of %s - must specify an explicit version", style.Symbol(bpRef.ID))
-				}
-
-				bpRef.Version = bps[0].Version
-			}
-
-			if !hasBPWithVersion(bps, bpRef.Version) {
-				return fmt.Errorf("buildpack %s with version %s was not found on the builder", style.Symbol(bpRef.ID), style.Symbol(bpRef.Version))
-			}
+		if len(matchingBps) == 1 {
+			md.Buildpacks[i].Latest = true
 		}
 	}
 

@@ -493,8 +493,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
 				bldr, err := builder.GetBuilder(defaultBuilderImage)
 				h.AssertNil(t, err)
-				h.AssertEq(t, bldr.GetOrder(), []builder.V1Group{
-					{Buildpacks: []builder.BuildpackRef{{
+				h.AssertEq(t, bldr.GetOrder(), builder.Order{
+					{Group: []builder.BuildpackRef{{
 						BuildpackInfo: buildpack.BuildpackInfo{
 							ID:      "buildpack.id",
 							Version: "buildpack.version",
@@ -514,8 +514,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
 					bldr, err := builder.GetBuilder(defaultBuilderImage)
 					h.AssertNil(t, err)
-					h.AssertEq(t, bldr.GetOrder(), []builder.V1Group{
-						{Buildpacks: []builder.BuildpackRef{{
+					h.AssertEq(t, bldr.GetOrder(), builder.Order{
+						{Group: []builder.BuildpackRef{{
 							BuildpackInfo: buildpack.BuildpackInfo{
 								ID:      "buildpack.id",
 								Version: "buildpack.version",
@@ -536,8 +536,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
 					bldr, err := builder.GetBuilder(defaultBuilderImage)
 					h.AssertNil(t, err)
-					h.AssertEq(t, bldr.GetOrder(), []builder.V1Group{
-						{Buildpacks: []builder.BuildpackRef{{
+					h.AssertEq(t, bldr.GetOrder(), builder.Order{
+						{Group: []builder.BuildpackRef{{
 							BuildpackInfo: buildpack.BuildpackInfo{
 								ID:      "buildpack.id",
 								Version: "buildpack.version",
@@ -604,8 +604,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
 						bldr, err := builder.GetBuilder(defaultBuilderImage)
 						h.AssertNil(t, err)
-						h.AssertEq(t, bldr.GetOrder(), []builder.V1Group{
-							{Buildpacks: []builder.BuildpackRef{
+						h.AssertEq(t, bldr.GetOrder(), builder.Order{
+							{Group: []builder.BuildpackRef{
 								{BuildpackInfo: buildpack.BuildpackInfo{ID: "buildpack.id", Version: "buildpack.version"}},
 								{BuildpackInfo: buildpack.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
 							}},
@@ -653,8 +653,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						buildpackInfo := buildpack.BuildpackInfo{ID: "buildpack.id", Version: "buildpack.version"}
 						dirBuildpackInfo := buildpack.BuildpackInfo{ID: "some-buildpack-id", Version: "some-buildpack-version"}
 						tgzBuildpackInfo := buildpack.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}
-						h.AssertEq(t, bldr.GetOrder(), []builder.V1Group{
-							{Buildpacks: []builder.BuildpackRef{
+						h.AssertEq(t, bldr.GetOrder(), builder.Order{
+							{Group: []builder.BuildpackRef{
 								{BuildpackInfo: buildpackInfo},
 								{BuildpackInfo: dirBuildpackInfo},
 								{BuildpackInfo: tgzBuildpackInfo},
@@ -699,8 +699,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
 						bldr, err := builder.GetBuilder(defaultBuilderImage)
 						h.AssertNil(t, err)
-						h.AssertEq(t, bldr.GetOrder(), []builder.V1Group{
-							{Buildpacks: []builder.BuildpackRef{
+						h.AssertEq(t, bldr.GetOrder(), builder.Order{
+							{Group: []builder.BuildpackRef{
 								{BuildpackInfo: buildpack.BuildpackInfo{ID: "buildpack.id", Version: "buildpack.version"}},
 								{BuildpackInfo: buildpack.BuildpackInfo{ID: "some-buildpack-id", Version: "some-buildpack-version"}},
 								{BuildpackInfo: buildpack.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
