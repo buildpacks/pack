@@ -55,7 +55,7 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	}
 	defer file.Close()
 
-	warnings, err = getWarnings(file)
+	warnings, err = getWarningsForObsoleteFields(file)
 	if err != nil {
 		return Config{}, nil, errors.Wrapf(err, "check warnings for file '%s'", path)
 	}
@@ -68,10 +68,14 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 		return Config{}, nil, errors.Wrapf(err, "parse contents of '%s'", path)
 	}
 
+	if len(config.Order) == 0 {
+		warnings = append(warnings, fmt.Sprintf("empty %s definition", style.Symbol("order")))
+	}
+
 	return config, warnings, nil
 }
 
-func getWarnings(reader io.Reader) ([]string, error) {
+func getWarningsForObsoleteFields(reader io.Reader) ([]string, error) {
 	var warnings []string
 
 	var obsoleteConfig = struct {
@@ -79,9 +83,6 @@ func getWarnings(reader io.Reader) ([]string, error) {
 			Latest bool
 		}
 		Groups []interface{}
-		Order  []struct {
-			Group []interface{}
-		}
 	}{}
 
 	if _, err := toml.DecodeReader(reader, &obsoleteConfig); err != nil {
@@ -102,19 +103,11 @@ func getWarnings(reader io.Reader) ([]string, error) {
 		warnings = append(warnings, fmt.Sprintf("%s field is obsolete in favor of %s", style.Symbol("groups"), style.Symbol("order")))
 	}
 
-	totalOrderItems := 0
-	for _, g := range obsoleteConfig.Order {
-		totalOrderItems += len(g.Group)
-	}
-	if totalOrderItems == 0 {
-		warnings = append(warnings, fmt.Sprintf("empty %s definition", style.Symbol("order")))
-	}
-
 	return warnings, nil
 }
 
 // parseConfig reads a builder configuration from reader and resolves relative buildpack paths using `relativeToDir`
-func parseConfig(reader io.Reader, relativeToDir string) (config Config, err error) {
+func parseConfig(reader io.Reader, relativeToDir string) (Config, error) {
 	var builderConfig Config
 	if _, err := toml.DecodeReader(reader, &builderConfig); err != nil {
 		return Config{}, errors.Wrap(err, "decoding toml contents")
