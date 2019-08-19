@@ -34,13 +34,13 @@ func main() {
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if fs := cmd.Flags(); fs != nil {
-				if flag, err := fs.GetBool("no-color"); err != nil {
+				if flag, err := fs.GetBool("no-color"); err == nil {
 					color.NoColor = flag
 				}
-				if flag, err := fs.GetBool("quiet"); err != nil {
+				if flag, err := fs.GetBool("quiet"); err == nil {
 					logger.WantQuiet(flag)
 				}
-				if flag, err := fs.GetBool("timestamps"); err != nil {
+				if flag, err := fs.GetBool("timestamps"); err == nil {
 					logger.WantTime(flag)
 				}
 			}

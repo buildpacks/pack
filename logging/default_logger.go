@@ -20,6 +20,7 @@ type defaultLogger struct {
 const (
 	debugPrefix = "DEBUG:"
 	infoPrefix  = "INFO:"
+	warnPrefix  = "WARN:"
 	errorPrefix = "ERROR:"
 	prefixFmt   = "%-7s %s"
 )
@@ -38,6 +39,14 @@ func (l *defaultLogger) Info(msg string) {
 
 func (l *defaultLogger) Infof(format string, v ...interface{}) {
 	l.out.Printf(prefixFmt, infoPrefix, fmt.Sprintf(format, v...))
+}
+
+func (l *defaultLogger) Warn(msg string) {
+	l.out.Printf(prefixFmt, warnPrefix, msg)
+}
+
+func (l *defaultLogger) Warnf(format string, v ...interface{}) {
+	l.out.Printf(prefixFmt, warnPrefix, fmt.Sprintf(format, v...))
 }
 
 func (l *defaultLogger) Error(msg string) {

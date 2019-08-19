@@ -143,7 +143,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 			if errors.Cause(err) != image.ErrNotFound {
 				return err
 			}
-			c.logger.Infof("Warning: run image %s is not accessible", style.Symbol(i))
+			c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
 		} else {
 			runImages = append(runImages, img)
 		}

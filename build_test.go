@@ -544,7 +544,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							}},
 						}},
 					})
-					h.AssertContains(t, outBuf.String(), "WARNING: @latest syntax is deprecated, will not work in future releases")
+					h.AssertContains(t, outBuf.String(), "Warning: @latest syntax is deprecated, will not work in future releases")
 				})
 			})
 

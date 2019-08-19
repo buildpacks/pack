@@ -21,6 +21,8 @@ var Key = color.HiBlueString
 
 var Tip = color.New(color.FgGreen, color.Bold).SprintfFunc()
 
+var Warn = color.New(color.FgYellow, color.Bold).SprintfFunc()
+
 var Error = color.New(color.FgRed, color.Bold).SprintfFunc()
 
 var Step = func(format string, a ...interface{}) string {

@@ -84,7 +84,8 @@ func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName st
 	logger.Info("")
 
 	if info.RunImage == "" {
-		logger.Infof("\nWarning: '%s' does not specify a run image", imageName)
+		logger.Info("")
+		logger.Warnf("%s does not specify a run image", style.Symbol(imageName))
 		logger.Info("  Users must build with an explicitly specified run image")
 	} else {
 		logger.Info("Run Images:")
@@ -99,14 +100,16 @@ func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName st
 	}
 
 	if len(info.Buildpacks) == 0 {
-		logger.Infof("\nWarning: '%s' has no buildpacks", imageName)
+		logger.Info("")
+		logger.Warnf("%s has no buildpacks", style.Symbol(imageName))
 		logger.Info("  Users must supply buildpacks from the host machine")
 	} else {
 		logBuildpacksInfo(logger, info)
 	}
 
 	if len(info.Groups) == 0 {
-		logger.Infof("\nWarning: '%s' does not specify detection order", imageName)
+		logger.Info("")
+		logger.Warnf("%s does not specify detection order", style.Symbol(imageName))
 		logger.Info("  Users must build with explicitly specified buildpacks")
 	} else {
 		logDetectionOrderInfo(logger, info)

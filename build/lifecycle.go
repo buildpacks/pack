@@ -79,7 +79,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 
 	lifecycleVersion := l.builder.GetLifecycleVersion()
 	if lifecycleVersion == nil {
-		l.logger.Debug("Warning: lifecycle version unknown")
+		l.logger.Warn("lifecycle version unknown")
 		lifecycleVersion = semver.MustParse(lifecycle.DefaultLifecycleVersion)
 	} else {
 		l.logger.Debugf("Executing lifecycle version %s", style.Symbol(lifecycleVersion.String()))
