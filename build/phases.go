@@ -7,25 +7,18 @@ import (
 
 const (
 	layersDir      = "/layers"
-	buildpacksDir  = "/buildpacks"
-	platformDir    = "/platform"
-	orderPath      = "/buildpacks/order.toml"
-	groupPath      = `/layers/group.toml`
-	planPath       = "/layers/plan.toml"
 	appDir         = "/workspace"
 	cacheDir       = "/cache"
 	launchCacheDir = "/launch-cache"
+	platformDir    = "/platform"
 )
 
 func (l *Lifecycle) Detect(ctx context.Context) error {
 	detect, err := l.NewPhase(
 		"detector",
 		WithArgs(
-			"-buildpacks", buildpacksDir,
-			"-order", orderPath,
-			"-group", groupPath,
-			"-plan", planPath,
 			"-app", appDir,
+			"-platform", platformDir,
 		),
 	)
 	if err != nil {
@@ -45,7 +38,6 @@ func (l *Lifecycle) Restore(ctx context.Context, useVolumeCache bool, cacheName 
 			WithDaemonAccess(),
 			WithArgs(
 				"-path", cacheDir,
-				"-group", groupPath,
 				"-layers", layersDir,
 			),
 			WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
@@ -56,7 +48,6 @@ func (l *Lifecycle) Restore(ctx context.Context, useVolumeCache bool, cacheName 
 			WithDaemonAccess(),
 			WithArgs(
 				"-image", cacheName,
-				"-group", groupPath,
 				"-layers", layersDir,
 			),
 		)
@@ -81,7 +72,6 @@ func (l *Lifecycle) Analyze(ctx context.Context, repoName string, publish, clear
 func (l *Lifecycle) newAnalyze(repoName string, publish, clearCache bool) (*Phase, error) {
 	args := []string{
 		"-layers", layersDir,
-		"-group", groupPath,
 		repoName,
 	}
 	if clearCache {
@@ -114,11 +104,8 @@ func (l *Lifecycle) Build(ctx context.Context) error {
 	build, err := l.NewPhase(
 		"builder",
 		WithArgs(
-			"-buildpacks", buildpacksDir,
 			"-layers", layersDir,
 			"-app", appDir,
-			"-group", groupPath,
-			"-plan", planPath,
 			"-platform", platformDir,
 		),
 	)
@@ -147,7 +134,6 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 				"-image", runImage,
 				"-layers", layersDir,
 				"-app", appDir,
-				"-group", groupPath,
 				repoName,
 			),
 		)
@@ -160,7 +146,6 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 					"-image", runImage,
 					"-layers", layersDir,
 					"-app", appDir,
-					"-group", groupPath,
 					"-daemon",
 					"-launch-cache", launchCacheDir,
 					repoName,
@@ -175,7 +160,6 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 					"-image", runImage,
 					"-layers", layersDir,
 					"-app", appDir,
-					"-group", groupPath,
 					"-daemon",
 					repoName,
 				),
@@ -194,7 +178,6 @@ func (l *Lifecycle) Cache(ctx context.Context, useVolumeCache bool, cacheName st
 			WithDaemonAccess(),
 			WithArgs(
 				"-path", cacheDir,
-				"-group", groupPath,
 				"-layers", layersDir,
 			),
 			WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
@@ -205,7 +188,6 @@ func (l *Lifecycle) Cache(ctx context.Context, useVolumeCache bool, cacheName st
 			WithDaemonAccess(),
 			WithArgs(
 				"-image", cacheName,
-				"-group", groupPath,
 				"-layers", layersDir,
 			),
 		)

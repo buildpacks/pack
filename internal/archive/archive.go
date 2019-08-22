@@ -80,6 +80,11 @@ func CreateSingleFileTar(tarFile, path, txt string) error {
 	defer fh.Close()
 
 	tw := tar.NewWriter(fh)
+	defer tw.Close()
+	return AddFileToTar(tw, path, txt)
+}
+
+func AddFileToTar(tw *tar.Writer, path string, txt string) error {
 	if err := tw.WriteHeader(&tar.Header{
 		Name: path,
 		Size: int64(len(txt)),
@@ -87,12 +92,10 @@ func CreateSingleFileTar(tarFile, path, txt string) error {
 	}); err != nil {
 		return err
 	}
-
 	if _, err := tw.Write([]byte(txt)); err != nil {
 		return err
 	}
-
-	return tw.Close()
+	return nil
 }
 
 func ReadTarEntry(tarPath string, entryPath ...string) (*tar.Header, []byte, error) {
