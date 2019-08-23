@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path/filepath"
+	"path"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -67,7 +67,7 @@ func (o Order) ToV1Order() V1Order {
 }
 
 func (b *Builder) compatLayer(dest string) (string, error) {
-	compatTar := filepath.Join(dest, "compat.tar")
+	compatTar := path.Join(dest, "compat.tar")
 	fh, err := os.Create(compatTar)
 	if err != nil {
 		return "", err
@@ -109,12 +109,12 @@ func (b *Builder) compatBuildpacks(tw *tar.Writer) error {
 		return errors.Wrapf(err, "creating %s dir in layer", style.Symbol(buildpacksDir))
 	}
 	for _, bp := range b.additionalBuildpacks {
-		compatDir := filepath.Join(compatBuildpacksDir, bp.EscapedID())
+		compatDir := path.Join(compatBuildpacksDir, bp.EscapedID())
 		if err := tw.WriteHeader(b.rootOwnedDir(compatDir, now)); err != nil {
 			return errors.Wrapf(err, "creating %s dir in layer", style.Symbol(compatDir))
 		}
-		compatLink := filepath.Join(compatDir, bp.Version)
-		bpDir := filepath.Join(buildpacksDir, bp.EscapedID(), bp.Version)
+		compatLink := path.Join(compatDir, bp.Version)
+		bpDir := path.Join(buildpacksDir, bp.EscapedID(), bp.Version)
 		if err := addSymlink(tw, compatLink, bpDir); err != nil {
 			return err
 		}
