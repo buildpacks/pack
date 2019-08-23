@@ -428,7 +428,7 @@ func (b *Builder) defaultDirsLayer(dest string) (string, error) {
 	}
 
 	if err := tw.WriteHeader(b.rootOwnedDir(cnbDir, now)); err != nil {
-		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(buildpacksDir))
+		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(cnbDir))
 	}
 
 	if err := tw.WriteHeader(b.rootOwnedDir(buildpacksDir, now)); err != nil {

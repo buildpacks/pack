@@ -23,7 +23,7 @@ import (
 
 func TestCompat(t *testing.T) {
 	color.NoColor = true
-	spec.Run(t, "Builder", testCompat, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Compat", testCompat, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testCompat(t *testing.T, when spec.G, it spec.S) {

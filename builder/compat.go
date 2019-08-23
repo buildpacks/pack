@@ -124,7 +124,6 @@ func (b *Builder) compatBuildpacks(tw *tar.Writer) error {
 				return err
 			}
 		}
-
 	}
 	return nil
 }
