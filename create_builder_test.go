@@ -238,15 +238,15 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			}})
 			h.AssertEq(t, builderImage.GetLifecycleVersion().String(), "3.4.5")
 
-			layerTar, err := fakeBuildImage.FindLayerWithPath("/lifecycle")
+			layerTar, err := fakeBuildImage.FindLayerWithPath("/cnb/lifecycle")
 			h.AssertNil(t, err)
-			assertTarHasFile(t, layerTar, "/lifecycle/detector")
-			assertTarHasFile(t, layerTar, "/lifecycle/restorer")
-			assertTarHasFile(t, layerTar, "/lifecycle/analyzer")
-			assertTarHasFile(t, layerTar, "/lifecycle/builder")
-			assertTarHasFile(t, layerTar, "/lifecycle/exporter")
-			assertTarHasFile(t, layerTar, "/lifecycle/cacher")
-			assertTarHasFile(t, layerTar, "/lifecycle/launcher")
+			assertTarHasFile(t, layerTar, "/cnb/lifecycle/detector")
+			assertTarHasFile(t, layerTar, "/cnb/lifecycle/restorer")
+			assertTarHasFile(t, layerTar, "/cnb/lifecycle/analyzer")
+			assertTarHasFile(t, layerTar, "/cnb/lifecycle/builder")
+			assertTarHasFile(t, layerTar, "/cnb/lifecycle/exporter")
+			assertTarHasFile(t, layerTar, "/cnb/lifecycle/cacher")
+			assertTarHasFile(t, layerTar, "/cnb/lifecycle/launcher")
 		})
 
 		when("windows", func() {

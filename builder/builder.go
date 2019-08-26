@@ -27,9 +27,12 @@ import (
 )
 
 const (
-	buildpacksDir = "/buildpacks"
+	cnbDir        = "/cnb"
+	buildpacksDir = "/cnb/buildpacks"
+	orderPath     = "/cnb/order.toml"
+	stackPath     = "/cnb/stack.toml"
 	platformDir   = "/platform"
-	lifecycleDir  = "/lifecycle"
+	lifecycleDir  = "/cnb/lifecycle"
 	workspaceDir  = "/workspace"
 	layersDir     = "/layers"
 	stackLabel    = "io.buildpacks.stack.id"
@@ -226,14 +229,6 @@ func (b *Builder) Save() error {
 		return errors.Wrap(err, "adding default dirs layer")
 	}
 
-	envTar, err := b.envLayer(tmpDir, b.env)
-	if err != nil {
-		return err
-	}
-	if err := b.image.AddLayer(envTar); err != nil {
-		return errors.Wrap(err, "adding env layer")
-	}
-
 	if b.lifecyclePath != "" {
 		lifecycleTar, err := b.lifecycleLayer(tmpDir)
 		if err != nil {
@@ -270,6 +265,22 @@ func (b *Builder) Save() error {
 	}
 	if err := b.image.AddLayer(stackTar); err != nil {
 		return errors.Wrap(err, "adding stack.tar layer")
+	}
+
+	compatTar, err := b.compatLayer(tmpDir)
+	if err != nil {
+		return err
+	}
+	if err := b.image.AddLayer(compatTar); err != nil {
+		return errors.Wrap(err, "adding compat.tar layer")
+	}
+
+	envTar, err := b.envLayer(tmpDir, b.env)
+	if err != nil {
+		return err
+	}
+	if err := b.image.AddLayer(envTar); err != nil {
+		return errors.Wrap(err, "adding env layer")
 	}
 
 	label, err := json.Marshal(b.metadata)
@@ -416,6 +427,10 @@ func (b *Builder) defaultDirsLayer(dest string) (string, error) {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(layersDir))
 	}
 
+	if err := tw.WriteHeader(b.rootOwnedDir(cnbDir, now)); err != nil {
+		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(cnbDir))
+	}
+
 	if err := tw.WriteHeader(b.rootOwnedDir(buildpacksDir, now)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(buildpacksDir))
 	}
@@ -452,28 +467,35 @@ func (b *Builder) rootOwnedDir(path string, time time.Time) *tar.Header {
 }
 
 func (b *Builder) orderLayer(dest string) (string, error) {
-	buf := &bytes.Buffer{}
-	lifecycleVersion := b.GetLifecycleVersion()
-
-	var tomlData interface{}
-	if lifecycleVersion != nil && lifecycleVersion.LessThan(semver.MustParse("0.4.0")) {
-		tomlData = v1OrderTOML{Groups: b.metadata.Groups}
-	} else {
-		tomlData = orderTOML{Order: b.order}
-	}
-
-	err := toml.NewEncoder(buf).Encode(tomlData)
+	contents, err := b.orderFileContents()
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to marshal order.toml")
+		return "", err
 	}
 
 	layerTar := filepath.Join(dest, "order.tar")
-	err = archive.CreateSingleFileTar(layerTar, path.Join(buildpacksDir, "order.toml"), buf.String())
+	err = archive.CreateSingleFileTar(layerTar, orderPath, contents)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create order.toml layer tar")
 	}
 
 	return layerTar, nil
+}
+
+func (b *Builder) orderFileContents() (string, error) {
+	buf := &bytes.Buffer{}
+	lifecycleVersion := b.GetLifecycleVersion()
+	var (
+		tomlData interface{}
+	)
+	if lifecycleVersion != nil && lifecycleVersion.LessThan(semver.MustParse("0.4.0")) {
+		tomlData = v1OrderTOML{Groups: b.metadata.Groups}
+	} else {
+		tomlData = orderTOML{Order: b.order}
+	}
+	if err := toml.NewEncoder(buf).Encode(tomlData); err != nil {
+		return "", errors.Wrapf(err, "failed to marshal order.toml")
+	}
+	return buf.String(), nil
 }
 
 func (b *Builder) stackLayer(dest string) (string, error) {
@@ -484,7 +506,7 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	}
 
 	layerTar := filepath.Join(dest, "stack.tar")
-	err = archive.CreateSingleFileTar(layerTar, path.Join(buildpacksDir, "stack.toml"), buf.String())
+	err = archive.CreateSingleFileTar(layerTar, stackPath, buf.String())
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create stack.toml layer tar")
 	}
@@ -545,12 +567,6 @@ func (b *Builder) buildpackLayer(dest string, bp buildpack.Buildpack) (string, e
 
 	if err != nil {
 		return "", errors.Wrapf(err, "creating layer tar for buildpack '%s:%s'", bp.ID, bp.Version)
-	}
-
-	if lifecycleVersion := b.GetLifecycleVersion(); lifecycleVersion != nil && lifecycleVersion.LessThan(semver.MustParse("0.4.0")) {
-		if err := symlinkLatest(tw, baseTarDir, bp, b.metadata); err != nil {
-			return "", err
-		}
 	}
 
 	return layerTar, nil

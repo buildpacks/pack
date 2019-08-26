@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/Masterminds/semver"
@@ -158,13 +157,26 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				)
 			})
 
+			it("creates the cnb dir", func() {
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				layerTar, err := baseImage.FindLayerWithPath("/cnb")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/cnb",
+					h.IsDirectory(),
+					h.HasOwnerAndGroup(0, 0),
+					h.HasFileMode(0755),
+				)
+			})
+
 			it("creates the buildpacks dir", func() {
 				h.AssertNil(t, subject.Save())
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
-				layerTar, err := baseImage.FindLayerWithPath("/buildpacks")
+				layerTar, err := baseImage.FindLayerWithPath("/cnb/buildpacks")
 				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/buildpacks",
 					h.IsDirectory(),
 					h.HasOwnerAndGroup(0, 0),
 					h.HasFileMode(0755),
@@ -178,6 +190,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				layerTar, err := baseImage.FindLayerWithPath("/platform")
 				h.AssertNil(t, err)
 				h.AssertOnTarEntry(t, layerTar, "/platform",
+					h.IsDirectory(),
+					h.HasOwnerAndGroup(0, 0),
+					h.HasFileMode(0755),
+				)
+				h.AssertOnTarEntry(t, layerTar, "/platform/env",
 					h.IsDirectory(),
 					h.HasOwnerAndGroup(0, 0),
 					h.HasFileMode(0755),
@@ -201,7 +218,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				defer f.Close()
 
-				err = archive.CreateSingleFileTar(f.Name(), "/buildpacks/order.toml", "some content")
+				err = archive.CreateSingleFileTar(f.Name(), "/cnb/order.toml", "some content")
 				h.AssertNil(t, err)
 
 				h.AssertNil(t, baseImage.AddLayer(layerFile))
@@ -210,9 +227,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, subject.Save())
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
-				layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")
+				layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
 				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/order.toml", h.ContentEquals("some content"))
+				h.AssertOnTarEntry(t, layerTar, "/cnb/order.toml", h.ContentEquals("some content"))
 			})
 
 			when("validating order", func() {
@@ -248,9 +265,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, metadata.Groups[0].Buildpacks[0].ID, "buildpack-1-id")
 						h.AssertEq(t, metadata.Groups[0].Buildpacks[0].Version, "buildpack-1-version")
 
-						layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")
+						layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
 						h.AssertNil(t, err)
-						h.AssertOnTarEntry(t, layerTar, "/buildpacks/order.toml", h.ContentEquals(`[[order]]
+						h.AssertOnTarEntry(t, layerTar, "/cnb/order.toml", h.ContentEquals(`[[order]]
 
   [[order.group]]
     id = "buildpack-1-id"
@@ -329,9 +346,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, metadata.Groups[0].Buildpacks[0].ID, "buildpack-1-id")
 							h.AssertEq(t, metadata.Groups[0].Buildpacks[0].Version, "buildpack-1-version")
 
-							layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")
+							layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
 							h.AssertNil(t, err)
-							h.AssertOnTarEntry(t, layerTar, "/buildpacks/order.toml", h.ContentEquals(`[[order]]
+							h.AssertOnTarEntry(t, layerTar, "/cnb/order.toml", h.ContentEquals(`[[order]]
 
   [[order.group]]
     id = "buildpack-1-id"
@@ -488,44 +505,44 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should add the lifecycle binaries as an image layer", func() {
-				layerTar, err := baseImage.FindLayerWithPath("/lifecycle")
+				layerTar, err := baseImage.FindLayerWithPath("/cnb/lifecycle")
 				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/lifecycle",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle",
 					h.IsDirectory(),
 					h.HasFileMode(0755),
 				)
 
-				h.AssertOnTarEntry(t, layerTar, "/lifecycle/detector",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/detector",
 					h.ContentEquals("detector"),
 					h.HasFileMode(0755),
 				)
 
-				h.AssertOnTarEntry(t, layerTar, "/lifecycle/restorer",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/restorer",
 					h.ContentEquals("restorer"),
 					h.HasFileMode(0755),
 				)
 
-				h.AssertOnTarEntry(t, layerTar, "/lifecycle/analyzer",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/analyzer",
 					h.ContentEquals("analyzer"),
 					h.HasFileMode(0755),
 				)
 
-				h.AssertOnTarEntry(t, layerTar, "/lifecycle/builder",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/builder",
 					h.ContentEquals("builder"),
 					h.HasFileMode(0755),
 				)
 
-				h.AssertOnTarEntry(t, layerTar, "/lifecycle/exporter",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/exporter",
 					h.ContentEquals("exporter"),
 					h.HasFileMode(0755),
 				)
 
-				h.AssertOnTarEntry(t, layerTar, "/lifecycle/cacher",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/cacher",
 					h.ContentEquals("cacher"),
 					h.HasFileMode(0755),
 				)
 
-				h.AssertOnTarEntry(t, layerTar, "/lifecycle/launcher",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/launcher",
 					h.ContentEquals("launcher"),
 					h.HasFileMode(0755),
 				)
@@ -619,130 +636,68 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, subject.Save())
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
-				layerTar, err = baseImage.FindLayerWithPath("/buildpacks/buildpack-1-id/buildpack-1-version")
+				layerTar, err = baseImage.FindLayerWithPath("/cnb/buildpacks/buildpack-1-id/buildpack-1-version")
 				h.AssertNil(t, err)
 
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-1-id/buildpack-1-version",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/buildpacks/buildpack-1-id/buildpack-1-version",
 					h.IsDirectory(),
 				)
 
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-1-id/buildpack-1-version/buildpack-file",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/buildpacks/buildpack-1-id/buildpack-1-version/buildpack-file",
 					h.ContentEquals("buildpack-contents"),
 					h.HasOwnerAndGroup(1234, 4321),
 					h.HasFileMode(0644),
 				)
 
-				layerTar, err = baseImage.FindLayerWithPath("/buildpacks/buildpack-2-id/buildpack-2-version")
+				layerTar, err = baseImage.FindLayerWithPath("/cnb/buildpacks/buildpack-2-id/buildpack-2-version")
 				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-2-id/buildpack-2-version",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/buildpacks/buildpack-2-id/buildpack-2-version",
 					h.IsDirectory(),
 				)
 
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-2-id/buildpack-2-version/buildpack-file",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/buildpacks/buildpack-2-id/buildpack-2-version/buildpack-file",
 					h.ContentEquals("buildpack-contents"),
 					h.HasOwnerAndGroup(1234, 4321),
 					h.HasFileMode(0644),
 				)
 
-				layerTar, err = baseImage.FindLayerWithPath("/buildpacks/buildpack-2-id/buildpack-2-other-version")
+				layerTar, err = baseImage.FindLayerWithPath("/cnb/buildpacks/buildpack-2-id/buildpack-2-other-version")
 				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-2-id/buildpack-2-other-version",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/buildpacks/buildpack-2-id/buildpack-2-other-version",
 					h.IsDirectory(),
 				)
 
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-2-id/buildpack-2-other-version/buildpack-file",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/buildpacks/buildpack-2-id/buildpack-2-other-version/buildpack-file",
 					h.ContentEquals("buildpack-contents"),
 					h.HasOwnerAndGroup(1234, 4321),
 					h.HasFileMode(0644),
 				)
 
-				layerTar, err = baseImage.FindLayerWithPath("/buildpacks/buildpack-3-id/buildpack-3-version")
+				layerTar, err = baseImage.FindLayerWithPath("/cnb/buildpacks/buildpack-3-id/buildpack-3-version")
 				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-3-id/buildpack-3-version",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/buildpacks/buildpack-3-id/buildpack-3-version",
 					h.IsDirectory(),
 				)
 
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-3-id/buildpack-3-version/buildpack-file",
+				h.AssertOnTarEntry(t, layerTar, "/cnb/buildpacks/buildpack-3-id/buildpack-3-version/buildpack-file",
 					h.ContentEquals("buildpack-contents"),
 					h.HasOwnerAndGroup(1234, 4321),
 					h.HasFileMode(0644),
 				)
 
 				if runtime.GOOS != "windows" {
-					layerTar, err = baseImage.FindLayerWithPath("/buildpacks/dir-buildpack-id/dir-buildpack-version")
+					layerTar, err = baseImage.FindLayerWithPath("/cnb/buildpacks/dir-buildpack-id/dir-buildpack-version")
 					h.AssertNil(t, err)
-					h.AssertOnTarEntry(t, layerTar, "/buildpacks/dir-buildpack-id/dir-buildpack-version",
+					h.AssertOnTarEntry(t, layerTar, "/cnb/buildpacks/dir-buildpack-id/dir-buildpack-version",
 						h.IsDirectory(),
 					)
 
-					h.AssertOnTarEntry(t, layerTar, "/buildpacks/dir-buildpack-id/dir-buildpack-version/buildpack-file",
+					h.AssertOnTarEntry(t, layerTar, "/cnb/buildpacks/dir-buildpack-id/dir-buildpack-version/buildpack-file",
 						h.ContentEquals("buildpack-contents"),
 						h.HasOwnerAndGroup(1234, 4321),
 						h.HasFileMode(0644),
 					)
 				}
-			})
-
-			when("lifecycle version is < 0.4.0", func() {
-				var lifecycleTgz string
-
-				it.Before(func() {
-					lifecycleTgz = h.CreateTgz(t, filepath.Join("testdata", "lifecycle"), "./lifecycle", 0755)
-
-					h.AssertNil(t, subject.SetLifecycle(lifecycle.Metadata{
-						Version: semver.MustParse("0.3.9"),
-						Path:    lifecycleTgz,
-					}))
-
-					h.AssertNil(t, subject.Save())
-					h.AssertEq(t, baseImage.IsSaved(), true)
-				})
-
-				it.After(func() {
-					h.AssertNil(t, os.Remove(lifecycleTgz))
-				})
-
-				it("adds latest symlinks", func() {
-					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/buildpack-1-id/buildpack-1-version")
-					h.AssertNil(t, err)
-
-					h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-1-id/latest",
-						h.SymlinksTo("/buildpacks/buildpack-1-id/buildpack-1-version"),
-					)
-				})
-			})
-
-			when("lifecycle version is >= 0.4.0", func() {
-				var lifecycleTgz string
-
-				it.Before(func() {
-					lifecycleTgz = h.CreateTgz(t, filepath.Join("testdata", "lifecycle"), "./lifecycle", 0755)
-
-					h.AssertNil(t, subject.SetLifecycle(lifecycle.Metadata{
-						Version: semver.MustParse("0.4.0"),
-						Path:    lifecycleTgz,
-					}))
-
-					h.AssertNil(t, subject.Save())
-					h.AssertEq(t, baseImage.IsSaved(), true)
-				})
-
-				it.After(func() {
-					h.AssertNil(t, os.Remove(lifecycleTgz))
-				})
-
-				it("doesn't add the latest symlink", func() {
-					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/buildpack-1-id/buildpack-1-version")
-					h.AssertNil(t, err)
-
-					headers, err := h.ListTarContents(layerTar)
-					h.AssertNil(t, err)
-					for _, header := range headers {
-						if strings.Contains(header.Name, "latest") {
-							t.Fatalf("found an unexpected latest entry %s", header.Name)
-						}
-					}
-				})
 			})
 
 			it("adds the buildpack metadata", func() {
@@ -879,9 +834,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("adds the order.toml to the image", func() {
-					layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")
+					layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
 					h.AssertNil(t, err)
-					h.AssertOnTarEntry(t, layerTar, "/buildpacks/order.toml", h.ContentEquals(`[[order]]
+					h.AssertOnTarEntry(t, layerTar, "/cnb/order.toml", h.ContentEquals(`[[order]]
 
   [[order.group]]
     id = "some-buildpack-id"
@@ -942,9 +897,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("adds the stack.toml to the image", func() {
-				layerTar, err := baseImage.FindLayerWithPath("/buildpacks/stack.toml")
+				layerTar, err := baseImage.FindLayerWithPath("/cnb/stack.toml")
 				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/stack.toml", h.ContentEquals(`[run-image]
+				h.AssertOnTarEntry(t, layerTar, "/cnb/stack.toml", h.ContentEquals(`[run-image]
   image = "some/run"
   mirrors = ["some/mirror", "other/mirror"]
 `))
