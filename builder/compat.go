@@ -9,10 +9,8 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/style"
 )
@@ -77,7 +75,7 @@ func (b *Builder) compatLayer(dest string) (string, error) {
 	tw := tar.NewWriter(fh)
 	defer tw.Close()
 
-	if b.lifecyclePath != "" {
+	if b.lifecycle != nil {
 		if err := compatLifecycle(tw); err != nil {
 			return "", err
 		}
@@ -87,15 +85,16 @@ func (b *Builder) compatLayer(dest string) (string, error) {
 		return "", err
 	}
 
-	if err := b.compatStack(tw); err != nil {
-		return "", errors.Wrapf(err, "failed to add %s to compat layer", style.Symbol(compatStackPath))
-	}
-
 	if b.replaceOrder {
 		if err := b.compatOrder(tw); err != nil {
 			return "", errors.Wrapf(err, "failed to add %s to compat layer", style.Symbol(compatOrderPath))
 		}
 	}
+
+	if err := b.compatStack(tw); err != nil {
+		return "", errors.Wrapf(err, "failed to add %s to compat layer", style.Symbol(compatStackPath))
+	}
+
 	return compatTar, nil
 }
 
@@ -109,18 +108,21 @@ func (b *Builder) compatBuildpacks(tw *tar.Writer) error {
 		return errors.Wrapf(err, "creating %s dir in layer", style.Symbol(buildpacksDir))
 	}
 	for _, bp := range b.additionalBuildpacks {
-		compatDir := path.Join(compatBuildpacksDir, bp.EscapedID())
+		descriptor := bp.Descriptor()
+
+		compatDir := path.Join(compatBuildpacksDir, descriptor.EscapedID())
 		if err := tw.WriteHeader(b.rootOwnedDir(compatDir, now)); err != nil {
 			return errors.Wrapf(err, "creating %s dir in layer", style.Symbol(compatDir))
 		}
-		compatLink := path.Join(compatDir, bp.Version)
-		bpDir := path.Join(buildpacksDir, bp.EscapedID(), bp.Version)
+		compatLink := path.Join(compatDir, descriptor.Info.Version)
+		bpDir := path.Join(buildpacksDir, descriptor.EscapedID(), descriptor.Info.Version)
 		if err := addSymlink(tw, compatLink, bpDir); err != nil {
 			return err
 		}
 
-		if lifecycleVersion := b.GetLifecycleVersion(); lifecycleVersion != nil && lifecycleVersion.LessThan(semver.MustParse("0.4.0")) {
-			if err := symlinkLatest(tw, bpDir, bp, b.metadata); err != nil {
+		lcVersion := b.lifecycleDescriptor.Info.Version
+		if lcVersion != nil && lcVersion.LessThan(v0_4_0) {
+			if err := symlinkLatest(tw, bpDir, descriptor, b.metadata); err != nil {
 				return err
 			}
 		}
@@ -158,12 +160,12 @@ func addSymlink(tw *tar.Writer, name, linkName string) error {
 
 // Deprecated: The 'latest' symlink is in place for backwards compatibility only. This should be removed as soon
 // as we no longer support older releases that rely on it.
-func symlinkLatest(tw *tar.Writer, baseTarDir string, bp buildpack.Buildpack, metadata Metadata) error {
+func symlinkLatest(tw *tar.Writer, baseTarDir string, bp BuildpackDescriptor, metadata Metadata) error {
 	for _, b := range metadata.Buildpacks {
-		if b.ID == bp.ID && b.Version == bp.Version && b.Latest {
+		if b.ID == bp.Info.ID && b.Version == bp.Info.Version && b.Latest {
 			name := fmt.Sprintf("%s/%s/%s", compatBuildpacksDir, bp.EscapedID(), "latest")
 			if err := addSymlink(tw, name, baseTarDir); err != nil {
-				return errors.Wrapf(err, "creating latest symlink for buildpack '%s:%s'", bp.ID, bp.Version)
+				return errors.Wrapf(err, "creating latest symlink for buildpack '%s:%s'", bp.Info.ID, bp.Info.Version)
 			}
 			break
 		}

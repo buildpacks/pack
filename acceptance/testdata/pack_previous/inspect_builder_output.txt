@@ -1,16 +1,16 @@
-Inspecting builder: '%s'
+Inspecting builder: '{{.builder_name}}'
 
 Remote                   
 ------                   
 
 Stack: pack.test.stack   
 
-Lifecycle Version: %-6s
+Lifecycle Version: {{.lifecycle_version}} 
 
 Run Images:              
   some-registry.com/pack-test/run1 (user-configured)
   pack-test/run          
-  %s
+  {{.run_image_mirror}}
 
 Buildpacks:
   ID                    VERSION                       LATEST
@@ -28,12 +28,12 @@ Local
 
 Stack: pack.test.stack   
 
-Lifecycle Version: %-6s
+Lifecycle Version: {{.lifecycle_version}} 
 
 Run Images:              
   some-registry.com/pack-test/run1 (user-configured)
   pack-test/run          
-  %s
+  {{.run_image_mirror}}
 
 Buildpacks:
   ID                    VERSION                       LATEST

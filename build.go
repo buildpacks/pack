@@ -16,8 +16,8 @@ import (
 
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/internal/paths"
 	"github.com/buildpack/pack/style"
 )
 
@@ -208,14 +208,14 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 	}
 }
 
-func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, builder.OrderEntry, error) {
+func (c *Client) processBuildpacks(buildpacks []string) ([]builder.Buildpack, builder.OrderEntry, error) {
 	group := builder.OrderEntry{Group: []builder.BuildpackRef{}}
-	var bps []buildpack.Buildpack
+	var bps []builder.Buildpack
 	for _, bp := range buildpacks {
 		if isBuildpackId(bp) {
 			id, version := c.parseBuildpack(bp)
 			group.Group = append(group.Group, builder.BuildpackRef{
-				BuildpackInfo: buildpack.BuildpackInfo{
+				BuildpackInfo: builder.BuildpackInfo{
 					ID:      id,
 					Version: version,
 				},
@@ -224,31 +224,34 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]buildpack.Buildpack, 
 			if runtime.GOOS == "windows" && filepath.Ext(bp) != ".tgz" {
 				return nil, builder.OrderEntry{}, fmt.Errorf("buildpack %s: Windows only supports .tgz-based buildpacks", style.Symbol(bp))
 			}
+
 			c.logger.Debugf("fetching buildpack from %s", style.Symbol(bp))
-			fetchedBP, err := c.buildpackFetcher.FetchBuildpack(bp)
+
+			blob, err := c.downloader.Download(bp)
 			if err != nil {
-				return nil, builder.OrderEntry{}, errors.Wrapf(err, "failed to fetch buildpack from URI '%s'", bp)
+				return nil, builder.OrderEntry{}, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
 			}
+
+			fetchedBP, err := builder.NewBuildpack(blob)
+			if err != nil {
+				return nil, builder.OrderEntry{}, errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bp))
+			}
+
 			bps = append(bps, fetchedBP)
 			group.Group = append(group.Group, builder.BuildpackRef{
-				BuildpackInfo: fetchedBP.BuildpackInfo,
+				BuildpackInfo: fetchedBP.Descriptor().Info,
 			})
 		}
 	}
 	return bps, group, nil
 }
 
-func isBuildpackId(path string) bool {
-	if _, err := os.Stat(filepath.Join(path, "buildpack.toml")); err == nil {
-		return false
-	}
-
-	if !schemeRegexp.MatchString(path) {
-		if _, err := os.Stat(path); err != nil {
+func isBuildpackId(bp string) bool {
+	if !paths.IsURI(bp) {
+		if _, err := os.Stat(bp); err != nil {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -266,7 +269,7 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 	return parts[0], ""
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, group builder.OrderEntry, buildpacks []buildpack.Buildpack) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, group builder.OrderEntry, buildpacks []builder.Buildpack) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {
@@ -274,7 +277,8 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 	}
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {
-		c.logger.Debugf("adding buildpack %s version %s to builder", style.Symbol(bp.ID), style.Symbol(bp.Version))
+		bpInfo := bp.Descriptor().Info
+		c.logger.Debugf("adding buildpack %s version %s to builder", style.Symbol(bpInfo.ID), style.Symbol(bpInfo.Version))
 		bldr.AddBuildpack(bp)
 	}
 	if len(group.Group) > 0 {

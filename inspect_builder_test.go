@@ -13,11 +13,10 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/image"
-	m "github.com/buildpack/pack/internal/mocks"
-	"github.com/buildpack/pack/mocks"
+	ifakes "github.com/buildpack/pack/internal/fakes"
 	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpack/pack/testmocks"
 )
 
 func TestInspectBuilder(t *testing.T) {
@@ -28,8 +27,7 @@ func TestInspectBuilder(t *testing.T) {
 func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject          *Client
-		mockImageFetcher *mocks.MockImageFetcher
-		mockBPFetcher    *mocks.MockBuildpackFetcher
+		mockImageFetcher *testmocks.MockImageFetcher
 		mockController   *gomock.Controller
 		builderImage     *fakes.Image
 		out              bytes.Buffer
@@ -37,13 +35,11 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
-		mockImageFetcher = mocks.NewMockImageFetcher(mockController)
-		mockBPFetcher = mocks.NewMockBuildpackFetcher(mockController)
+		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 
 		subject = &Client{
-			logger:           m.NewMockLogger(&out),
-			imageFetcher:     mockImageFetcher,
-			buildpackFetcher: mockBPFetcher,
+			logger:       ifakes.NewFakeLogger(&out),
+			imageFetcher: mockImageFetcher,
 		}
 
 		builderImage = fakes.NewImage("some/builder", "", "")
@@ -130,7 +126,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.Buildpacks[0], builder.BuildpackMetadata{
-							BuildpackInfo: buildpack.BuildpackInfo{
+							BuildpackInfo: builder.BuildpackInfo{
 								ID:      "test.bp.one",
 								Version: "1.0.0",
 							},
@@ -142,7 +138,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.Groups[0].Group[0], builder.BuildpackRef{
-							BuildpackInfo: buildpack.BuildpackInfo{
+							BuildpackInfo: builder.BuildpackInfo{
 								ID:      "test.bp.one",
 								Version: "1.0.0",
 							},
@@ -152,7 +148,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					it("sets the lifecycle version", func() {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.LifecycleVersion, "1.2.3")
+						h.AssertEq(t, builderInfo.Lifecycle.Info.Version.String(), "1.2.3")
 					})
 				})
 			})

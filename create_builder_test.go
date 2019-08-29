@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
@@ -19,12 +18,11 @@ import (
 
 	"github.com/buildpack/pack/logging"
 
+	"github.com/buildpack/pack/blob"
 	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/buildpack"
-	imocks "github.com/buildpack/pack/internal/mocks"
-	"github.com/buildpack/pack/lifecycle"
-	"github.com/buildpack/pack/mocks"
+	ifakes "github.com/buildpack/pack/internal/fakes"
 	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpack/pack/testmocks"
 )
 
 func TestCreateBuilder(t *testing.T) {
@@ -36,24 +34,22 @@ func TestCreateBuilder(t *testing.T) {
 func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#CreateBuilder", func() {
 		var (
-			mockController       *gomock.Controller
-			mockBPFetcher        *mocks.MockBuildpackFetcher
-			mockLifecycleFetcher *mocks.MockLifecycleFetcher
-			imageFetcher         *imocks.FakeImageFetcher
-			fakeBuildImage       *fakes.Image
-			fakeRunImage         *fakes.Image
-			fakeRunImageMirror   *fakes.Image
-			opts                 CreateBuilderOptions
-			subject              *Client
-			log                  logging.Logger
-			out                  bytes.Buffer
+			mockController     *gomock.Controller
+			mockDownloader     *testmocks.MockDownloader
+			imageFetcher       *ifakes.FakeImageFetcher
+			fakeBuildImage     *fakes.Image
+			fakeRunImage       *fakes.Image
+			fakeRunImageMirror *fakes.Image
+			opts               CreateBuilderOptions
+			subject            *Client
+			log                logging.Logger
+			out                bytes.Buffer
 		)
 
 		it.Before(func() {
-			log = imocks.NewMockLogger(&out)
+			log = ifakes.NewFakeLogger(&out)
 			mockController = gomock.NewController(t)
-			mockBPFetcher = mocks.NewMockBuildpackFetcher(mockController)
-			mockLifecycleFetcher = mocks.NewMockLifecycleFetcher(mockController)
+			mockDownloader = testmocks.NewMockDownloader(mockController)
 
 			fakeBuildImage = fakes.NewImage("some/build-image", "", "")
 			h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
@@ -66,33 +62,19 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			fakeRunImageMirror = fakes.NewImage("localhost:5000/some-run-image", "", "")
 			h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 
-			imageFetcher = imocks.NewFakeImageFetcher()
+			imageFetcher = ifakes.NewFakeImageFetcher()
 			imageFetcher.LocalImages["some/build-image"] = fakeBuildImage
 			imageFetcher.LocalImages["some/run-image"] = fakeRunImage
 			imageFetcher.RemoteImages["localhost:5000/some-run-image"] = fakeRunImageMirror
 
-			bp := buildpack.Buildpack{
-				BuildpackInfo: buildpack.BuildpackInfo{
-					ID:      "bp.one",
-					Version: "1.2.3",
-				},
-				Path:   filepath.Join("testdata", "buildpack"),
-				Stacks: []buildpack.Stack{{ID: "some.stack.id"}},
-			}
-
-			mockBPFetcher.EXPECT().FetchBuildpack(gomock.Any()).Return(bp, nil).AnyTimes()
-
-			mockLifecycleFetcher.EXPECT().Fetch(gomock.Any(), gomock.Any()).
-				Return(lifecycle.Metadata{
-					Path:    filepath.Join("testdata", "lifecycle.tgz"),
-					Version: semver.MustParse("3.4.5"),
-				}, nil).AnyTimes()
+			mockDownloader.EXPECT().Download("https://example.fake/bp-one.tgz").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
+			mockDownloader.EXPECT().Download("some/buildpack/dir").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
+			mockDownloader.EXPECT().Download("file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil).AnyTimes()
 
 			subject = &Client{
-				logger:           log,
-				imageFetcher:     imageFetcher,
-				buildpackFetcher: mockBPFetcher,
-				lifecycleFetcher: mockLifecycleFetcher,
+				logger:       log,
+				imageFetcher: imageFetcher,
+				downloader:   mockDownloader,
 			}
 
 			opts = CreateBuilderOptions{
@@ -101,13 +83,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Description: "Some description",
 					Buildpacks: []builder.BuildpackConfig{
 						{
-							BuildpackInfo: buildpack.BuildpackInfo{ID: "bp.one", Version: "1.2.3"},
+							BuildpackInfo: builder.BuildpackInfo{ID: "bp.one", Version: "1.2.3"},
 							URI:           "https://example.fake/bp-one.tgz",
 						},
 					},
 					Order: []builder.OrderEntry{{
 						Group: []builder.BuildpackRef{
-							{BuildpackInfo: buildpack.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
+							{BuildpackInfo: builder.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
 						}},
 					},
 					Stack: builder.StackConfig{
@@ -116,7 +98,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						RunImage:        "some/run-image",
 						RunImageMirrors: []string{"localhost:5000/some-run-image"},
 					},
-					Lifecycle: builder.LifecycleConfig{Version: "3.4.5"},
+					Lifecycle: builder.LifecycleConfig{URI: "file:///some-lifecycle"},
 				},
 				Publish: false,
 				NoPull:  false,
@@ -154,9 +136,17 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should fail when lifecycle version is not a semver", func() {
+				opts.BuilderConfig.Lifecycle.URI = ""
 				opts.BuilderConfig.Lifecycle.Version = "not-semver"
 				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err, "lifecycle.version must be a valid semver")
+				h.AssertError(t, err, "'lifecycle.version' must be a valid semver")
+			})
+
+			it("should fail when both lifecycle version and uri are present", func() {
+				opts.BuilderConfig.Lifecycle.URI = "file://some-lifecycle"
+				opts.BuilderConfig.Lifecycle.Version = "not-semver"
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "'lifecycle' can only declare 'version' or 'uri', not both")
 			})
 
 			it("should fail when buildpack ID does not match downloaded buildpack", func() {
@@ -210,6 +200,24 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("only lifecycle version is provided", func() {
+			it.Before(func() {
+				opts.BuilderConfig.Lifecycle.URI = ""
+				opts.BuilderConfig.Lifecycle.Version = "3.4.5"
+			})
+
+			it("should download from predetermined uri", func() {
+				mockDownloader.EXPECT().Download(
+					"https://github.com/buildpack/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+linux.x86-64.tgz",
+				).Return(
+					blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil,
+				).MinTimes(1)
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+			})
+		})
+
 		it("should create a new builder image", func() {
 			err := subject.CreateBuilder(context.TODO(), opts)
 			h.AssertNil(t, err)
@@ -222,7 +230,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, builderImage.UID, 1234)
 			h.AssertEq(t, builderImage.GID, 4321)
 			h.AssertEq(t, builderImage.StackID, "some.stack.id")
-			bpInfo := buildpack.BuildpackInfo{
+			bpInfo := builder.BuildpackInfo{
 				ID:      "bp.one",
 				Version: "1.2.3",
 			}
@@ -236,7 +244,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Optional:      false,
 				}},
 			}})
-			h.AssertEq(t, builderImage.GetLifecycleVersion().String(), "3.4.5")
+			h.AssertEq(t, builderImage.GetLifecycleDescriptor().Info.Version.String(), "3.4.5")
 
 			layerTar, err := fakeBuildImage.FindLayerWithPath("/cnb/lifecycle")
 			h.AssertNil(t, err)

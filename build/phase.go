@@ -15,8 +15,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/container"
 	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/internal/container"
 	"github.com/buildpack/pack/logging"
 )
 

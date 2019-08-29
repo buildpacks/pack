@@ -9,13 +9,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpack/pack/internal/fakes"
+
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/image"
-	"github.com/buildpack/pack/internal/mocks"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -51,7 +52,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		repo = "some-org/" + h.RandString(10)
 		repoName = registryConfig.RepoName(repo)
-		fetcher = image.NewFetcher(mocks.NewMockLogger(ioutil.Discard), docker)
+		fetcher = image.NewFetcher(fakes.NewFakeLogger(ioutil.Discard), docker)
 	})
 
 	when("#Fetch", func() {

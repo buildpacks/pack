@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
@@ -53,7 +54,7 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 	return cmd
 }
 
-// TODO: If necessary, how do we present buildpack order (nested order)?
+// TODO: present buildpack order (inc. nested) [https://github.com/buildpack/pack/issues/253].
 func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName string, local bool, cfg config.Config) {
 	info, err := client.InspectBuilder(imageName, local)
 	if err != nil {
@@ -76,11 +77,25 @@ func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName st
 	logger.Infof("Stack: %s", info.Stack)
 	logger.Info("")
 
-	lcycleVer := info.LifecycleVersion
-	if lcycleVer == "" {
-		lcycleVer = "Unknown"
+	lcVersion := info.Lifecycle.Info.Version
+	if info.Lifecycle.Info.Version == nil {
+		lcVersion = builder.AssumedLifecycleDescriptor.Info.Version
 	}
-	logger.Infof("Lifecycle Version: %s", lcycleVer)
+
+	apiBpVersion := info.Lifecycle.API.BuildpackVersion
+	if info.Lifecycle.API.BuildpackVersion == nil {
+		apiBpVersion = builder.AssumedLifecycleDescriptor.API.BuildpackVersion
+	}
+
+	apiPlatformVersion := info.Lifecycle.API.PlatformVersion
+	if info.Lifecycle.API.PlatformVersion == nil {
+		apiPlatformVersion = builder.AssumedLifecycleDescriptor.API.PlatformVersion
+	}
+
+	logger.Info("Lifecycle:")
+	logger.Infof("  Version: %s", lcVersion.String())
+	logger.Infof("  Buildpack API: %s", apiBpVersion.String())
+	logger.Infof("  Platform API: %s", apiPlatformVersion.String())
 	logger.Info("")
 
 	if info.RunImage == "" {
@@ -147,9 +162,11 @@ func logDetectionOrderInfo(logger logging.Logger, info *pack.BuilderInfo) {
 			if bp.Optional {
 				optional = "(optional)"
 			}
+
 			if _, err := fmt.Fprintf(tabWriter, "    %s@%s\t%s", bp.ID, bp.Version, optional); err != nil {
 				logger.Error(err.Error())
 			}
+
 			if i < len(group.Group)-1 {
 				if _, err := fmt.Fprint(tabWriter, "\n"); err != nil {
 					logger.Error(err.Error())

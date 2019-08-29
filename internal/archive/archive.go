@@ -4,12 +4,12 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"bytes"
-	"compress/gzip"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -98,32 +98,10 @@ func AddFileToTar(tw *tar.Writer, path string, txt string) error {
 	return nil
 }
 
-func ReadTarEntry(tarPath string, entryPath ...string) (*tar.Header, []byte, error) {
-	var (
-		tarFile    *os.File
-		gzipReader *gzip.Reader
-		fhFinal    io.Reader
-		err        error
-	)
+var ErrEntryNotExist = errors.New("not exist")
 
-	tarFile, err = os.Open(tarPath)
-	fhFinal = tarFile
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to open tar '%s'", tarPath)
-	}
-	defer tarFile.Close()
-
-	if filepath.Ext(tarPath) == ".tgz" {
-		gzipReader, err = gzip.NewReader(tarFile)
-		fhFinal = gzipReader
-		if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to create gzip reader")
-		}
-
-		defer gzipReader.Close()
-	}
-
-	tr := tar.NewReader(fhFinal)
+func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
+	tr := tar.NewReader(rc)
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
@@ -133,7 +111,7 @@ func ReadTarEntry(tarPath string, entryPath ...string) (*tar.Header, []byte, err
 			return nil, nil, errors.Wrap(err, "failed to get next tar entry")
 		}
 
-		if contains(entryPath, header.Name) {
+		if strings.Contains(header.Name, entryPath) {
 			buf, err := ioutil.ReadAll(tr)
 			if err != nil {
 				return nil, nil, errors.Wrapf(err, "failed to read contents of '%s'", entryPath)
@@ -143,16 +121,7 @@ func ReadTarEntry(tarPath string, entryPath ...string) (*tar.Header, []byte, err
 		}
 	}
 
-	return nil, nil, fmt.Errorf("could not find entry path '%s' in tar", entryPath)
-}
-
-func contains(slice []string, element string) bool {
-	for _, a := range slice {
-		if a == element {
-			return true
-		}
-	}
-	return false
+	return nil, nil, errors.Wrapf(ErrEntryNotExist, "could not find entry path '%s'", entryPath)
 }
 
 func WriteDirToTar(tw *tar.Writer, srcDir, basePath string, uid, gid int, mode int64) error {

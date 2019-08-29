@@ -12,7 +12,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/internal/paths"
 )
 
@@ -25,7 +24,7 @@ type Config struct {
 }
 
 type BuildpackConfig struct {
-	buildpack.BuildpackInfo
+	BuildpackInfo
 	URI string `toml:"uri"`
 }
 

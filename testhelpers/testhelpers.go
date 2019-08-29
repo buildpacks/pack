@@ -70,7 +70,12 @@ func AssertError(t *testing.T, actual error, expected string) {
 func AssertContains(t *testing.T, actual, expected string) {
 	t.Helper()
 	if !strings.Contains(actual, expected) {
-		t.Fatalf("Expected: '%s' to contain '%s'", actual, expected)
+		t.Fatalf(
+			"Expected: '%s' to contain '%s'\n\nDiff:%s",
+			actual,
+			expected,
+			cmp.Diff(actual, expected),
+		)
 	}
 }
 
@@ -123,23 +128,6 @@ func AssertNotNil(t *testing.T, actual interface{}) {
 
 func isNil(value interface{}) bool {
 	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
-}
-
-func AssertNotEq(t *testing.T, actual, expected interface{}) {
-	t.Helper()
-	if diff := cmp.Diff(actual, expected); diff == "" {
-		t.Fatalf("Expected values to differ: %s", actual)
-	}
-}
-
-func AssertDirContainsFileWithContents(t *testing.T, dir string, file string, expected string) {
-	t.Helper()
-	path := filepath.Join(dir, file)
-	bytes, err := ioutil.ReadFile(path)
-	AssertNil(t, err)
-	if string(bytes) != expected {
-		t.Fatalf("file %s in dir %s has wrong contents: %s != %s", file, dir, string(bytes), expected)
-	}
 }
 
 var dockerCliVal *client.Client
@@ -427,7 +415,7 @@ func GetFreePort() (string, error) {
 	return strconv.Itoa(l.Addr().(*net.TCPAddr).Port), nil
 }
 
-func CreateTgz(t *testing.T, srcDir, tarDir string, mode int64) string {
+func CreateTGZ(t *testing.T, srcDir, tarDir string, mode int64) string {
 	t.Helper()
 
 	fh, err := ioutil.TempFile("", "*.tgz")
@@ -437,18 +425,35 @@ func CreateTgz(t *testing.T, srcDir, tarDir string, mode int64) string {
 	gw := gzip.NewWriter(fh)
 	defer gw.Close()
 
-	tw := tar.NewWriter(gw)
+	writeTAR(t, srcDir, tarDir, mode, gw)
+
+	return fh.Name()
+}
+
+func CreateTAR(t *testing.T, srcDir, tarDir string, mode int64) string {
+	t.Helper()
+
+	fh, err := ioutil.TempFile("", "*.tgz")
+	AssertNil(t, err)
+	defer fh.Close()
+
+	writeTAR(t, srcDir, tarDir, mode, fh)
+
+	return fh.Name()
+}
+
+func writeTAR(t *testing.T, srcDir, tarDir string, mode int64, w io.Writer) {
+	t.Helper()
+	tw := tar.NewWriter(w)
 	defer tw.Close()
 
-	err = archive.WriteDirToTar(
+	err := archive.WriteDirToTar(
 		tw,
 		srcDir,
 		tarDir,
 		0, 0, mode,
 	)
 	AssertNil(t, err)
-
-	return fh.Name()
 }
 
 func ListTarContents(tarPath string) ([]tar.Header, error) {

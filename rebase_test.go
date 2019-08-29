@@ -10,7 +10,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/mocks"
+	ifakes "github.com/buildpack/pack/internal/fakes"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -22,7 +22,7 @@ func TestRebase(t *testing.T) {
 func testRebase(t *testing.T, when spec.G, it spec.S) {
 	when("#Rebase", func() {
 		var (
-			fakeImageFetcher   *mocks.FakeImageFetcher
+			fakeImageFetcher   *ifakes.FakeImageFetcher
 			subject            *Client
 			fakeAppImage       *fakes.Image
 			fakeRunImage       *fakes.Image
@@ -30,7 +30,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			out                bytes.Buffer
 		)
 		it.Before(func() {
-			fakeImageFetcher = mocks.NewFakeImageFetcher()
+			fakeImageFetcher = ifakes.NewFakeImageFetcher()
 
 			fakeAppImage = fakes.NewImage("some/app", "", "")
 			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata",
@@ -44,7 +44,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			fakeImageFetcher.LocalImages["example.com/some/run"] = fakeRunImageMirror
 
 			subject = &Client{
-				logger:       mocks.NewMockLogger(&out),
+				logger:       ifakes.NewFakeLogger(&out),
 				imageFetcher: fakeImageFetcher,
 			}
 		})
