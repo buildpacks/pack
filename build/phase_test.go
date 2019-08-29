@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpack/pack/internal/fakes"
+
 	"github.com/buildpack/imgutil"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -24,7 +26,6 @@ import (
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/internal/archive"
-	"github.com/buildpack/pack/internal/mocks"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -60,7 +61,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger := mocks.NewMockLogger(&outBuf)
+		logger := fakes.NewFakeLogger(&outBuf)
 
 		var err error
 		docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
@@ -156,7 +157,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("returns an error", func() {
-						logger := mocks.NewMockLogger(&outBuf)
+						logger := fakes.NewFakeLogger(&outBuf)
 						subject, err = CreateFakeLifecycle(tmpFakeAppDir, docker, logger)
 						h.AssertNil(t, err)
 

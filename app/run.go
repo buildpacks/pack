@@ -12,7 +12,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/container"
+	"github.com/buildpack/pack/internal/container"
 	"github.com/buildpack/pack/logging"
 )
 

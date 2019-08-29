@@ -51,26 +51,26 @@ func TestPackCLILogger(t *testing.T) {
 		it("can enable time in logs", func() {
 			logger.WantTime(true)
 			logger.Error("test")
-			expected := "2019/05/15 01:01:01.000000 \x1b[31;1mERROR: \x1b[0mtest                     \n"
+			expected := "2019/05/15 01:01:01.000000 \x1b[31;1mERROR: \x1b[0mtest\n"
 			h.AssertEq(t, log.String(), expected)
 		})
 
 		it("it has no time and color by default", func() {
 			logger.Error("test")
-			expected := "\x1b[31;1mERROR: \x1b[0mtest                     \n"
+			expected := "\x1b[31;1mERROR: \x1b[0mtest\n"
 			h.AssertEq(t, log.String(), expected)
 		})
 
 		it("can disable color logs", func() {
 			color.NoColor = true
 			logger.Error("test")
-			expected := "ERROR: test                     \n"
+			expected := "ERROR: test\n"
 			h.AssertEq(t, log.String(), expected)
 		})
 
 		it("non-error levels not shown", func() {
 			logger.Info("test")
-			expected := "test                     \n"
+			expected := "test\n"
 			h.AssertEq(t, log.String(), expected)
 		})
 
@@ -80,7 +80,7 @@ func TestPackCLILogger(t *testing.T) {
 			logger.Debugf("there")
 			h.AssertEq(t, log.String(), "")
 			logger.Info("test")
-			expected := "test                     \n"
+			expected := "test\n"
 			h.AssertEq(t, log.String(), expected)
 
 			testOut := logger.Writer()

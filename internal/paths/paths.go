@@ -3,9 +3,16 @@ package paths
 import (
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
+
+var schemeRegexp = regexp.MustCompile(`^.+://.*`)
+
+func IsURI(ref string) bool {
+	return schemeRegexp.MatchString(ref)
+}
 
 func FilePathToUri(path string) (string, error) {
 	var err error

@@ -2,7 +2,13 @@ package testhelpers
 
 import (
 	"archive/tar"
+	"compress/gzip"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/internal/archive"
 )
@@ -12,12 +18,40 @@ type TarEntryAssertion func(*testing.T, *tar.Header, []byte)
 func AssertOnTarEntry(t *testing.T, tarFile, entryPath string, assertFns ...TarEntryAssertion) {
 	t.Helper()
 
-	header, bytes, err := archive.ReadTarEntry(tarFile, entryPath)
+	header, bytes, err := readTarFileEntry(tarFile, entryPath)
 	AssertNil(t, err)
 
 	for _, fn := range assertFns {
 		fn(t, header, bytes)
 	}
+}
+
+func readTarFileEntry(tarPath string, entryPath string) (*tar.Header, []byte, error) {
+	var (
+		tarFile    *os.File
+		gzipReader *gzip.Reader
+		fhFinal    io.Reader
+		err        error
+	)
+
+	tarFile, err = os.Open(tarPath)
+	fhFinal = tarFile
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to open tar '%s'", tarPath)
+	}
+	defer tarFile.Close()
+
+	if filepath.Ext(tarPath) == ".tgz" {
+		gzipReader, err = gzip.NewReader(tarFile)
+		fhFinal = gzipReader
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "failed to create gzip reader")
+		}
+
+		defer gzipReader.Close()
+	}
+
+	return archive.ReadTarEntry(fhFinal, entryPath)
 }
 
 func ContentEquals(expected string) TarEntryAssertion {

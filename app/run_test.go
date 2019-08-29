@@ -17,7 +17,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/app"
-	"github.com/buildpack/pack/internal/mocks"
+	"github.com/buildpack/pack/internal/fakes"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -44,7 +44,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 
 			repo = "some-org/" + h.RandString(10)
 
-			logger := mocks.NewMockLogger(&errBuf)
+			logger := fakes.NewFakeLogger(&errBuf)
 
 			subject = &app.Image{
 				RepoName: repo,

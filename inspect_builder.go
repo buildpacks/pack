@@ -11,13 +11,13 @@ import (
 )
 
 type BuilderInfo struct {
-	Description      string
-	Stack            string
-	RunImage         string
-	RunImageMirrors  []string
-	Buildpacks       []builder.BuildpackMetadata
-	Groups           builder.Order
-	LifecycleVersion string
+	Description     string
+	Stack           string
+	RunImage        string
+	RunImageMirrors []string
+	Buildpacks      []builder.BuildpackMetadata
+	Groups          builder.Order
+	Lifecycle       builder.LifecycleDescriptor
 }
 
 type BuildpackInfo struct {
@@ -40,18 +40,13 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(name))
 	}
 
-	var lifecycleVersion string
-	if ver := bldr.GetLifecycleVersion(); ver != nil {
-		lifecycleVersion = ver.String()
-	}
-
 	return &BuilderInfo{
-		Description:      bldr.Description(),
-		Stack:            bldr.StackID,
-		RunImage:         bldr.GetStackInfo().RunImage.Image,
-		RunImageMirrors:  bldr.GetStackInfo().RunImage.Mirrors,
-		Buildpacks:       bldr.GetBuildpacks(),
-		Groups:           bldr.GetOrder(),
-		LifecycleVersion: lifecycleVersion,
+		Description:     bldr.Description(),
+		Stack:           bldr.StackID,
+		RunImage:        bldr.GetStackInfo().RunImage.Image,
+		RunImageMirrors: bldr.GetStackInfo().RunImage.Mirrors,
+		Buildpacks:      bldr.GetBuildpacks(),
+		Groups:          bldr.GetOrder(),
+		Lifecycle:       bldr.GetLifecycleDescriptor(),
 	}, nil
 }

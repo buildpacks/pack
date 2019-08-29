@@ -61,20 +61,6 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		it.After(func() {
 			_ = tarFile.Close()
 		})
-
-		when("multiple paths are provided", func() {
-			it("returns the first match", func() {
-				_, bytes, err := archive.ReadTarEntry(tarFile.Name(), "file1", "./file1")
-				h.AssertNil(t, err)
-				h.AssertEq(t, string(bytes), "file-1 content")
-			})
-
-			it("skips non-existent files", func() {
-				_, bytes, err := archive.ReadTarEntry(tarFile.Name(), "file2", "./file1")
-				h.AssertNil(t, err)
-				h.AssertEq(t, string(bytes), "file-1 content")
-			})
-		})
 	})
 
 	when("#WriteDirToTar", func() {

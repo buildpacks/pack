@@ -7,21 +7,19 @@ import (
 	dockerClient "github.com/docker/docker/client"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/blob"
 	"github.com/buildpack/pack/build"
-	"github.com/buildpack/pack/buildpack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/image"
-	"github.com/buildpack/pack/lifecycle"
 	"github.com/buildpack/pack/logging"
 )
 
 type Client struct {
-	logger           logging.Logger
-	imageFetcher     ImageFetcher
-	buildpackFetcher BuildpackFetcher
-	lifecycleFetcher LifecycleFetcher
-	lifecycle        Lifecycle
-	docker           *dockerClient.Client
+	logger       logging.Logger
+	imageFetcher ImageFetcher
+	downloader   Downloader
+	lifecycle    Lifecycle
+	docker       *dockerClient.Client
 }
 
 type ClientOption func(c *Client)
@@ -30,6 +28,13 @@ type ClientOption func(c *Client)
 func WithLogger(l logging.Logger) ClientOption {
 	return func(c *Client) {
 		c.logger = l
+	}
+}
+
+// WithLogger supply your own logger.
+func WithCacheDir(path string) ClientOption {
+	return func(c *Client) {
+		c.downloader = blob.NewDownloader(c.logger, path)
 	}
 }
 
@@ -59,14 +64,15 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		}
 	}
 
-	packHome, err := config.PackHome()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting pack home")
+	if client.downloader == nil {
+		packHome, err := config.PackHome()
+		if err != nil {
+			return nil, errors.Wrap(err, "getting pack home")
+		}
+		client.downloader = blob.NewDownloader(client.logger, filepath.Join(packHome, "download-cache"))
 	}
-	downloader := NewDownloader(client.logger, filepath.Join(packHome, "download-cache"))
+
 	client.imageFetcher = image.NewFetcher(client.logger, client.docker)
-	client.buildpackFetcher = buildpack.NewFetcher(downloader)
-	client.lifecycleFetcher = lifecycle.NewFetcher(downloader)
 	client.lifecycle = build.NewLifecycle(client.docker, client.logger)
 
 	return &client, nil

@@ -18,6 +18,10 @@ build:
 package:
 	tar czf ./out/$(ARCHIVE_NAME).tgz -C out/ pack
 
+install-mockgen:
+	@echo "> Installing mockgen..."
+	$(GOCMD) install -mod=vendor github.com/golang/mock/mockgen
+
 install-goimports:
 	@echo "> Installing goimports..."
 	$(GOCMD) install -mod=vendor golang.org/x/tools/cmd/goimports
@@ -49,6 +53,10 @@ clean:
 	rm -rf ./out
 
 verify: verify-format vet
+
+generate: install-mockgen
+	@echo "> Generating mocks..."
+	$(GOCMD) generate -mod=vendor ./...
 
 verify-format: install-goimports
 	@echo "> Verifying format..."

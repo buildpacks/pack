@@ -63,11 +63,11 @@ func (h *handler) HandleLog(e *log.Entry) error {
 
 	if h.wantTime {
 		ts := h.timer().Format(timeFmt)
-		_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf("%s %s%-25s", ts, formatLevel(e.Level), e.Message)))
+		_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf("%s %s%s", ts, formatLevel(e.Level), e.Message)))
 		return nil
 	}
 
-	_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf("%s%-25s", formatLevel(e.Level), e.Message)))
+	_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf("%s%s", formatLevel(e.Level), e.Message)))
 
 	return nil
 }
