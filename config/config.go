@@ -49,7 +49,7 @@ func Read(path string) (Config, error) {
 }
 
 func Write(cfg Config, path string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
+	if err := MkdirAll(filepath.Dir(path)); err != nil {
 		return err
 	}
 	w, err := os.Create(path)
@@ -59,6 +59,10 @@ func Write(cfg Config, path string) error {
 	defer w.Close()
 
 	return toml.NewEncoder(w).Encode(cfg)
+}
+
+func MkdirAll(path string) error {
+	return os.MkdirAll(path, 0777)
 }
 
 func SetRunImageMirrors(cfg Config, image string, mirrors []string) Config {

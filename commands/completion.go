@@ -25,6 +25,10 @@ To configure your bash shell to load completions for each session, add the follo
 			if err != nil {
 				return errors.Wrap(err, "getting pack home")
 			}
+
+			if err = config.MkdirAll(packHome); err != nil {
+				return errors.Wrapf(err, "creating pack home: %s", packHome)
+			}
 			completionPath := filepath.Join(packHome, "completion")
 
 			if err := cmd.Parent().GenBashCompletionFile(completionPath); err != nil {
