@@ -108,6 +108,29 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("#MkdirAll", func() {
+		when("the directory doesn't exist yet", func() {
+			it("creates the directory", func() {
+				path := filepath.Join(tmpDir, "a-new-dir")
+				err := config.MkdirAll(path)
+				h.AssertNil(t, err)
+				fi, err := os.Stat(path)
+				h.AssertNil(t, err)
+				h.AssertEq(t, fi.Mode().IsDir(), true)
+			})
+		})
+
+		when("the directory already exists", func() {
+			it("doesn't error", func() {
+				err := config.MkdirAll(tmpDir)
+				h.AssertNil(t, err)
+				fi, err := os.Stat(tmpDir)
+				h.AssertNil(t, err)
+				h.AssertEq(t, fi.Mode().IsDir(), true)
+			})
+		})
+	})
+
 	when("#SetRunImageMirrors", func() {
 		when("run image exists in config", func() {
 			it("replaces the mirrors", func() {
