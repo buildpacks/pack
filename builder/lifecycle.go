@@ -7,12 +7,11 @@ import (
 	"path"
 	"regexp"
 
-	"github.com/buildpack/pack/api"
-
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/internal/archive"
 )
 
@@ -87,6 +86,8 @@ type lifecycle struct {
 }
 
 func NewLifecycle(blob Blob) (Lifecycle, error) {
+	var err error
+
 	br, err := blob.Open()
 	if err != nil {
 		return nil, errors.Wrap(err, "open lifecycle blob")
@@ -96,7 +97,7 @@ func NewLifecycle(blob Blob) (Lifecycle, error) {
 	var descriptor LifecycleDescriptor
 	_, buf, err := archive.ReadTarEntry(br, "lifecycle.toml")
 
-	// TODO: make lifecycle descriptor required after v0.4.0 release [https://github.com/buildpack/pack/issues/267]
+	//TODO: make lifecycle descriptor required after v0.4.0 release [https://github.com/buildpack/pack/issues/267]
 	if err != nil && errors.Cause(err) == archive.ErrEntryNotExist {
 		return &lifecycle{
 			Blob:       blob,

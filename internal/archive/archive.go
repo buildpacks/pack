@@ -9,9 +9,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
+	"github.com/docker/docker/pkg/ioutils"
 	"github.com/pkg/errors"
 )
 
@@ -30,24 +30,56 @@ func ReadZipAsTar(srcPath, basePath string, uid, gid int, mode int64) io.ReadClo
 }
 
 func readAsTar(src, basePath string, uid, gid int, mode int64, writeFn func(tw *tar.Writer, srcDir, basePath string, uid, gid int, mode int64) error) io.ReadCloser {
-	r, w := io.Pipe()
-	go func() {
-		var err error
-		defer func() {
-			w.CloseWithError(err)
-		}()
+	var (
+		errChan = make(chan error)
+		r, w    = io.Pipe()
+	)
 
+	go func() {
 		tw := tar.NewWriter(w)
 		defer func() {
-			// only close if no errors have occurred
-			if err == nil {
+			if r := recover(); r != nil {
 				tw.Close()
+				w.CloseWithError(errors.Errorf("panic: %v", r))
 			}
 		}()
 
-		err = writeFn(tw, src, basePath, uid, gid, mode)
+		err := writeFn(tw, src, basePath, uid, gid, mode)
+
+		closeErr := tw.Close()
+		closeErr = aggregateError(closeErr, w.CloseWithError(err))
+
+		errChan <- closeErr
 	}()
-	return r
+
+	return ioutils.NewReadCloserWrapper(r, func() error {
+		var compErr error
+
+		// closing the reader ensures that if anything attempts
+		// further reading it doesn't block waiting for content
+		if err := r.Close(); err != nil {
+			compErr = aggregateError(compErr, err)
+		}
+
+		// wait until everything closes properly specially contents inside `writeFn`
+		if err := <-errChan; err != nil {
+			compErr = aggregateError(compErr, err)
+		}
+
+		return compErr
+	})
+}
+
+func aggregateError(base, addition error) error {
+	if addition == nil {
+		return base
+	}
+
+	if base == nil {
+		return addition
+	}
+
+	return errors.Wrap(addition, base.Error())
 }
 
 func CreateSingleFileTarReader(path, txt string) (io.Reader, error) {
@@ -111,7 +143,7 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 			return nil, nil, errors.Wrap(err, "failed to get next tar entry")
 		}
 
-		if strings.Contains(header.Name, entryPath) {
+		if header.Name == entryPath {
 			buf, err := ioutil.ReadAll(tr)
 			if err != nil {
 				return nil, nil, errors.Wrapf(err, "failed to read contents of '%s'", entryPath)

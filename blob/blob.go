@@ -25,9 +25,7 @@ func NewBlob(path string) Blob {
 }
 
 // Open returns an io.ReadCloser whose contents are in tar archive format
-func (b blob) Open() (io.ReadCloser, error) {
-	var err error
-
+func (b blob) Open() (r io.ReadCloser, err error) {
 	fi, err := os.Stat(b.path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "read blob at path '%s'", b.path)
@@ -41,7 +39,7 @@ func (b blob) Open() (io.ReadCloser, error) {
 		return nil, errors.Wrap(err, "open buildpack archive")
 	}
 	defer func() {
-		if err != nil && fh != nil {
+		if err != nil {
 			fh.Close()
 		}
 	}()
