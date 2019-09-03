@@ -575,7 +575,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
 					})
 
-					it("only allows tgz buildpacks", func() {
+					it("disallows directory-based buildpacks", func() {
 						err := subject.Build(context.TODO(), BuildOptions{
 							Image:      "some/app",
 							Builder:    builderName,
@@ -586,7 +586,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 						})
 
-						h.AssertError(t, err, fmt.Sprintf("buildpack '%s': Windows only supports .tgz-based buildpacks", filepath.Join("testdata", "buildpack")))
+						h.AssertError(t, err, fmt.Sprintf("buildpack '%s': directory-based buildpacks are not currently supported on Windows", filepath.Join("testdata", "buildpack")))
 					})
 
 					it("buildpacks are added to ephemeral builder", func() {

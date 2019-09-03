@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -221,8 +222,9 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]builder.Buildpack, bu
 				},
 			})
 		} else {
-			if runtime.GOOS == "windows" && filepath.Ext(bp) != ".tgz" {
-				return nil, builder.OrderEntry{}, fmt.Errorf("buildpack %s: Windows only supports .tgz-based buildpacks", style.Symbol(bp))
+			err := ensureBPSupport(bp)
+			if err != nil {
+				return nil, builder.OrderEntry{}, err
 			}
 
 			c.logger.Debugf("fetching buildpack from %s", style.Symbol(bp))
@@ -253,6 +255,37 @@ func isBuildpackID(bp string) bool {
 		}
 	}
 	return false
+}
+
+func ensureBPSupport(bpPath string) (err error) {
+	p := bpPath
+	if paths.IsURI(bpPath) {
+		var u *url.URL
+		u, err = url.Parse(bpPath)
+		if err != nil {
+			return err
+		}
+
+		if u.Scheme == "file" {
+			p, err = paths.UriToFilePath(bpPath)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if runtime.GOOS == "windows" {
+		isDir, err := paths.IsDir(p)
+		if err != nil {
+			return err
+		}
+
+		if isDir {
+			return fmt.Errorf("buildpack %s: directory-based buildpacks are not currently supported on Windows", style.Symbol(bpPath))
+		}
+	}
+
+	return nil
 }
 
 func (c *Client) parseBuildpack(bp string) (string, string) {
