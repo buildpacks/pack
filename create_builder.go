@@ -53,6 +53,11 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 
 	for _, b := range opts.BuilderConfig.Buildpacks {
+		err := ensureBPSupport(b.URI)
+		if err != nil {
+			return err
+		}
+
 		blob, err := c.downloader.Download(b.URI)
 		if err != nil {
 			return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))
@@ -142,7 +147,7 @@ func validateBuilderConfig(conf builder.Config) error {
 	if runtime.GOOS == "windows" {
 		for _, bp := range conf.Buildpacks {
 			if filepath.Ext(bp.URI) != ".tgz" {
-				return fmt.Errorf("buildpack %s: Windows only supports .tgz-based buildpacks", style.Symbol(bp.ID))
+				return fmt.Errorf("buildpack %s: directory-based buildpacks are not currently supported on Windows", style.Symbol(bp.ID))
 			}
 		}
 	}

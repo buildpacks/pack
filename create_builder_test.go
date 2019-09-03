@@ -262,15 +262,15 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
 			})
 
-			it("only allows tgz buildpacks", func() {
+			it("disallows directory-based buildpacks", func() {
 				opts.BuilderConfig.Buildpacks[0].URI = "some/buildpack/dir"
 
 				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err, "buildpack 'bp.one': Windows only supports .tgz-based buildpacks")
+				h.AssertError(t, err, "buildpack 'bp.one': directory-based buildpacks are not currently supported on Windows")
 			})
 		})
 
-		when("is *nix", func() {
+		when("is posix", func() {
 			it.Before(func() {
 				h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
 			})
