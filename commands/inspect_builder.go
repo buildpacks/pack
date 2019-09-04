@@ -77,19 +77,21 @@ func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName st
 	logger.Infof("Stack: %s", info.Stack)
 	logger.Info("")
 
+	assumedDescriptor := builder.AssumedLifecycleDescriptor()
+
 	lcVersion := info.Lifecycle.Info.Version
 	if info.Lifecycle.Info.Version == nil {
-		lcVersion = builder.AssumedLifecycleDescriptor.Info.Version
+		lcVersion = assumedDescriptor.Info.Version
 	}
 
 	apiBpVersion := info.Lifecycle.API.BuildpackVersion
 	if info.Lifecycle.API.BuildpackVersion == nil {
-		apiBpVersion = builder.AssumedLifecycleDescriptor.API.BuildpackVersion
+		apiBpVersion = assumedDescriptor.API.BuildpackVersion
 	}
 
 	apiPlatformVersion := info.Lifecycle.API.PlatformVersion
 	if info.Lifecycle.API.PlatformVersion == nil {
-		apiPlatformVersion = builder.AssumedLifecycleDescriptor.API.PlatformVersion
+		apiPlatformVersion = assumedDescriptor.API.PlatformVersion
 	}
 
 	logger.Info("Lifecycle:")

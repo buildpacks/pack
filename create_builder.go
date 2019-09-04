@@ -52,6 +52,15 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		)
 	}
 
+	lifecycle, err := c.fetchLifecycle(opts.BuilderConfig.Lifecycle)
+	if err != nil {
+		return errors.Wrap(err, "fetch lifecycle")
+	}
+
+	if err := builderImage.SetLifecycle(lifecycle); err != nil {
+		return errors.Wrap(err, "setting lifecycle")
+	}
+
 	for _, b := range opts.BuilderConfig.Buildpacks {
 		err := ensureBPSupport(b.URI)
 		if err != nil {
@@ -63,35 +72,48 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 			return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))
 		}
 
-		fetchedBuildpack, err := builder.NewBuildpack(blob)
+		fetchedBp, err := builder.NewBuildpack(blob)
 		if err != nil {
 			return errors.Wrap(err, "creating buildpack")
 		}
 
-		if b.ID != "" && fetchedBuildpack.Descriptor().Info.ID != b.ID {
-			return fmt.Errorf("buildpack from URI '%s' has ID '%s' which does not match ID '%s' from builder config", b.URI, fetchedBuildpack.Descriptor().Info.ID, b.ID)
+		err = validateBuildpack(fetchedBp, b.URI, b.ID, b.Version)
+		if err != nil {
+			return errors.Wrap(err, "invalid buildpack")
 		}
 
-		if b.Version != "" && fetchedBuildpack.Descriptor().Info.Version != b.Version {
-			return fmt.Errorf("buildpack from URI '%s' has version '%s' which does not match version '%s' from builder config", b.URI, fetchedBuildpack.Descriptor().Info.Version, b.Version)
-		}
-
-		builderImage.AddBuildpack(fetchedBuildpack)
+		builderImage.AddBuildpack(builder.AdditionalBuildpack{
+			Source:    b.URI,
+			Buildpack: fetchedBp,
+		})
 	}
 
 	builderImage.SetOrder(opts.BuilderConfig.Order)
 	builderImage.SetStackInfo(opts.BuilderConfig.Stack)
 
-	lifecycle, err := c.fetchLifecycle(opts.BuilderConfig.Lifecycle)
-	if err != nil {
-		return errors.Wrap(err, "fetch lifecycle")
-	}
-
-	if err := builderImage.SetLifecycle(lifecycle); err != nil {
-		return errors.Wrap(err, "setting lifecycle")
-	}
-
 	return builderImage.Save()
+}
+
+func validateBuildpack(bp builder.Buildpack, source, expectedID, expectedBPVersion string) error {
+	if expectedID != "" && bp.Descriptor().Info.ID != expectedID {
+		return fmt.Errorf(
+			"buildpack from URI %s has ID %s which does not match ID %s from builder config",
+			style.Symbol(source),
+			style.Symbol(bp.Descriptor().Info.ID),
+			style.Symbol(expectedID),
+		)
+	}
+
+	if expectedBPVersion != "" && bp.Descriptor().Info.Version != expectedBPVersion {
+		return fmt.Errorf(
+			"buildpack from URI %s has version %s which does not match version %s from builder config",
+			style.Symbol(source),
+			style.Symbol(bp.Descriptor().Info.Version),
+			style.Symbol(expectedBPVersion),
+		)
+	}
+
+	return nil
 }
 
 func (c *Client) fetchLifecycle(config builder.LifecycleConfig) (builder.Lifecycle, error) {
@@ -110,8 +132,10 @@ func (c *Client) fetchLifecycle(config builder.LifecycleConfig) (builder.Lifecyc
 		}
 
 		uri = uriFromLifecycleVersion(*v)
-	} else {
+	} else if config.URI != "" {
 		uri = config.URI
+	} else {
+		uri = uriFromLifecycleVersion(builder.DefaultLifecycleDescriptor().Info.Version.Version)
 	}
 
 	b, err := c.downloader.Download(uri)

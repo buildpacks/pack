@@ -16,44 +16,42 @@ import (
 )
 
 var (
-	apiVersionAssumed = api.MustParse("0.1")
-	apiVersionLatest  = api.MustParse("0.2")
+	v0_3_0 = *semver.MustParse("0.3.0")
+	v0_4_0 = *semver.MustParse("0.4.0")
 
-	v0_3_0 = semver.MustParse("0.3.0")
-	v0_4_0 = semver.MustParse("0.4.0")
-
-	lifecycleVersionAssumed = &Version{Version: *v0_3_0}
-	lifecycleVersionLatest  = &Version{Version: *v0_4_0}
+	lifecycleBinaries = []string{
+		"detector",
+		"restorer",
+		"analyzer",
+		"builder",
+		"exporter",
+		"cacher",
+		"launcher",
+	}
 )
 
-var AssumedLifecycleDescriptor = LifecycleDescriptor{
-	Info: LifecycleInfo{
-		Version: lifecycleVersionAssumed,
-	},
-	API: LifecycleAPI{
-		PlatformVersion:  apiVersionAssumed,
-		BuildpackVersion: apiVersionAssumed,
-	},
+func AssumedLifecycleDescriptor() LifecycleDescriptor {
+	return LifecycleDescriptor{
+		Info: LifecycleInfo{
+			Version: &Version{Version: v0_3_0},
+		},
+		API: LifecycleAPI{
+			PlatformVersion:  api.MustParse("0.1"),
+			BuildpackVersion: api.MustParse("0.1"),
+		},
+	}
 }
 
-var LatestLifecycleDescriptor = LifecycleDescriptor{
-	Info: LifecycleInfo{
-		Version: lifecycleVersionLatest,
-	},
-	API: LifecycleAPI{
-		PlatformVersion:  apiVersionLatest,
-		BuildpackVersion: apiVersionLatest,
-	},
-}
-
-var lifecycleBinaries = []string{
-	"detector",
-	"restorer",
-	"analyzer",
-	"builder",
-	"exporter",
-	"cacher",
-	"launcher",
+func DefaultLifecycleDescriptor() LifecycleDescriptor {
+	return LifecycleDescriptor{
+		Info: LifecycleInfo{
+			Version: &Version{Version: v0_3_0},
+		},
+		API: LifecycleAPI{
+			PlatformVersion:  api.MustParse("0.1"),
+			BuildpackVersion: api.MustParse("0.1"),
+		},
+	}
 }
 
 type Blob interface {
@@ -101,7 +99,8 @@ func NewLifecycle(blob Blob) (Lifecycle, error) {
 	if err != nil && errors.Cause(err) == archive.ErrEntryNotExist {
 		return &lifecycle{
 			Blob:       blob,
-			descriptor: AssumedLifecycleDescriptor}, nil
+			descriptor: AssumedLifecycleDescriptor(),
+		}, nil
 	} else if err != nil {
 		return nil, errors.Wrap(err, "decode lifecycle descriptor")
 	}

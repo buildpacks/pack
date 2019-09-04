@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
@@ -22,6 +23,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/blob"
 	"github.com/buildpack/pack/builder"
 	ifakes "github.com/buildpack/pack/internal/fakes"
@@ -49,30 +51,51 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		outBuf                bytes.Buffer
 	)
 	it.Before(func() {
+		var err error
+
 		fakeImageFetcher = ifakes.NewFakeImageFetcher()
 		fakeLifecycle = &ifakes.FakeLifecycle{}
+
+		tmpDir, err = ioutil.TempDir("", "build-test")
+		h.AssertNil(t, err)
 
 		builderName = "example.com/default/builder:tag"
 		defaultBuilderStackID = "some.stack.id"
 		defaultBuilderImage = ifakes.NewFakeBuilderImage(t,
 			builderName,
-			[]builder.BuildpackMetadata{
-				{
-					BuildpackInfo: builder.BuildpackInfo{ID: "buildpack.id", Version: "buildpack.version"},
-					Latest:        true,
+			defaultBuilderStackID,
+			"1234",
+			"5678",
+			builder.Metadata{
+				Buildpacks: []builder.BuildpackMetadata{
+					{
+						BuildpackInfo: builder.BuildpackInfo{ID: "buildpack.id", Version: "buildpack.version"},
+						Latest:        true,
+					},
 				},
-			},
-			builder.Config{
-				Stack: builder.StackConfig{
-					ID:       defaultBuilderStackID,
-					RunImage: "default/run",
-					RunImageMirrors: []string{
-						"registry1.example.com/run/mirror",
-						"registry2.example.com/run/mirror",
+				Stack: builder.StackMetadata{
+					RunImage: builder.RunImageMetadata{
+						Image: "default/run",
+						Mirrors: []string{
+							"registry1.example.com/run/mirror",
+							"registry2.example.com/run/mirror",
+						},
+					},
+				},
+				Lifecycle: builder.LifecycleMetadata{
+					LifecycleInfo: builder.LifecycleInfo{
+						Version: &builder.Version{
+							Version: *semver.MustParse("0.3.0"),
+						},
+					},
+					API: builder.LifecycleAPI{
+						BuildpackVersion: api.MustParse("0.3"),
+						PlatformVersion:  api.MustParse("0.2"),
 					},
 				},
 			},
 		)
+
 		fakeImageFetcher.LocalImages[defaultBuilderImage.Name()] = defaultBuilderImage
 
 		fakeDefaultRunImage = fakes.NewImage("default/run", "", "")
@@ -86,19 +109,19 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeMirror2 = fakes.NewImage("registry2.example.com/run/mirror", "", "")
 		h.AssertNil(t, fakeMirror2.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 		fakeImageFetcher.LocalImages[fakeMirror2.Name()] = fakeMirror2
-		var err error
-		tmpDir, err = ioutil.TempDir("", "build-test-bp-fetch-cache")
-		h.AssertNil(t, err)
 
 		docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
 
 		logger := ifakes.NewFakeLogger(&outBuf)
 
+		dlCacheDir, err := ioutil.TempDir(tmpDir, "dl-cache")
+		h.AssertNil(t, err)
+
 		subject = &Client{
 			logger:       logger,
 			imageFetcher: fakeImageFetcher,
-			downloader:   blob.NewDownloader(logger, tmpDir),
+			downloader:   blob.NewDownloader(logger, dlCacheDir),
 			lifecycle:    fakeLifecycle,
 			docker:       docker,
 		}
@@ -304,10 +327,17 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					customBuilderImage = ifakes.NewFakeBuilderImage(t,
 						builderName,
-						[]builder.BuildpackMetadata{},
-						builder.Config{
-							Stack: builder.StackConfig{ID: "some.stack.id", RunImage: "some/run"},
+						"some.stack.id",
+						"1234",
+						"5678",
+						builder.Metadata{
+							Stack: builder.StackMetadata{
+								RunImage: builder.RunImageMetadata{
+									Image: "some/run",
+								},
+							},
 						})
+
 					fakeImageFetcher.LocalImages[customBuilderImage.Name()] = customBuilderImage
 
 					fakeRunImage = fakes.NewImage("some/run", "", "")
@@ -568,6 +598,51 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 				it.After(func() {
 					h.AssertNil(t, os.Remove(buildpackTgz))
+				})
+
+				when("buildpack is an older api version", func() {
+					var (
+						incompatibleBuildpackTGZ *os.File
+						err                      error
+					)
+
+					it.Before(func() {
+						incompatibleBuildpackTGZ, err = ifakes.CreateBuildpackTGZ(tmpDir, builder.BuildpackDescriptor{
+							API: api.MustParse("0.9"),
+							Info: builder.BuildpackInfo{
+								ID:      "incompatible.id",
+								Version: "incompatible.id.version",
+							},
+							Stacks: []builder.Stack{
+								{
+									ID: "some.stack.id",
+								},
+							},
+							Order: nil,
+						})
+
+						h.AssertNil(t, err)
+					})
+
+					it("should error", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    builderName,
+							ClearCache: true,
+							Buildpacks: []string{
+								"buildpack.id@buildpack.version",
+								incompatibleBuildpackTGZ.Name(),
+							},
+						})
+
+						h.AssertError(t, err, fmt.Sprintf(
+							"buildpack from URI '%s' (Buildpack API version %s) is incompatible with lifecycle '%s' (Buildpack API version %s)",
+							incompatibleBuildpackTGZ.Name(),
+							"0.9",
+							"0.3.0",
+							"0.3",
+						))
+					})
 				})
 
 				when("is windows", func() {

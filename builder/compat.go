@@ -121,7 +121,7 @@ func (b *Builder) compatBuildpacks(tw *tar.Writer) error {
 		}
 
 		lcVersion := b.lifecycleDescriptor.Info.Version
-		if lcVersion != nil && lcVersion.LessThan(v0_4_0) {
+		if lcVersion != nil && lcVersion.LessThan(&v0_4_0) {
 			if err := symlinkLatest(tw, bpDir, descriptor, b.metadata); err != nil {
 				return err
 			}
