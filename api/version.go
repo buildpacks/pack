@@ -76,3 +76,56 @@ func (v *Version) UnmarshalText(text []byte) error {
 
 	return nil
 }
+
+// SupportsVersion determines whether the argument version is compatible based on matching `major` version with the
+// exception of pre-stable version. Any version with `major` equal to 0 is not compatible if `minor` value does not
+// match.
+func (v *Version) SupportsVersion(v2 *Version) bool {
+	if v.Compare(v2) == 0 {
+		return true
+	}
+
+	if v != nil && v2 != nil {
+		if v.major > 0 && v.major == v2.major {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (v *Version) Compare(v2 *Version) int {
+	if v == nil && v2 == nil {
+		return 0
+	}
+
+	if v == nil {
+		return -1
+	}
+
+	if v2 == nil {
+		return 1
+	}
+
+	if v.major != v2.major {
+		if v.major < v2.major {
+			return -1
+		}
+
+		if v.major > v2.major {
+			return 1
+		}
+	}
+
+	if v.minor != v2.minor {
+		if v.minor < v2.minor {
+			return -1
+		}
+
+		if v.minor > v2.minor {
+			return 1
+		}
+	}
+
+	return 0
+}

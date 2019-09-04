@@ -16,10 +16,6 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
-const (
-	DefaultLifecycleVersion = "0.3.0"
-)
-
 type Lifecycle struct {
 	builder      *builder.Builder
 	logger       logging.Logger
@@ -76,7 +72,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	lifecycleVersion := l.builder.GetLifecycleDescriptor().Info.Version
 	if lifecycleVersion == nil {
 		l.logger.Warn("lifecycle version unknown")
-		lifecycleVersion = builder.AssumedLifecycleDescriptor.Info.Version
+		lifecycleVersion = builder.AssumedLifecycleDescriptor().Info.Version
 	} else {
 		l.logger.Debugf("Executing lifecycle version %s", style.Symbol(lifecycleVersion.String()))
 	}

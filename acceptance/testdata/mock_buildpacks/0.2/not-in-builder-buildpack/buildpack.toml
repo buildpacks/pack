@@ -1,3 +1,5 @@
+api = "0.2"
+
 [buildpack]
   id = "local/bp"
   version = "local-bp-version"

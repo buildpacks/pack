@@ -80,12 +80,12 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImage)
 	}
 
-	extraBuildpacks, group, err := c.processBuildpacks(opts.Buildpacks)
+	fetchedBps, group, err := c.processBuildpacks(opts.Buildpacks)
 	if err != nil {
 		return errors.Wrap(err, "invalid buildpack")
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, opts.Env, group, extraBuildpacks)
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, opts.Env, group, fetchedBps)
 	if err != nil {
 		return err
 	}
@@ -209,9 +209,9 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 	}
 }
 
-func (c *Client) processBuildpacks(buildpacks []string) ([]builder.Buildpack, builder.OrderEntry, error) {
+func (c *Client) processBuildpacks(buildpacks []string) ([]builder.AdditionalBuildpack, builder.OrderEntry, error) {
 	group := builder.OrderEntry{Group: []builder.BuildpackRef{}}
-	var bps []builder.Buildpack
+	var bps []builder.AdditionalBuildpack
 	for _, bp := range buildpacks {
 		if isBuildpackID(bp) {
 			id, version := c.parseBuildpack(bp)
@@ -239,7 +239,11 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]builder.Buildpack, bu
 				return nil, builder.OrderEntry{}, errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bp))
 			}
 
-			bps = append(bps, fetchedBP)
+			bps = append(bps, builder.AdditionalBuildpack{
+				Source:    bp,
+				Buildpack: fetchedBP,
+			})
+
 			group.Group = append(group.Group, builder.BuildpackRef{
 				BuildpackInfo: fetchedBP.Descriptor().Info,
 			})
@@ -302,7 +306,7 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 	return parts[0], ""
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, group builder.OrderEntry, buildpacks []builder.Buildpack) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, group builder.OrderEntry, buildpacks []builder.AdditionalBuildpack) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {

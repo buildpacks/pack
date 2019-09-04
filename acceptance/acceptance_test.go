@@ -81,7 +81,7 @@ func TestAcceptance(t *testing.T) {
 
 	previousPackPath := os.Getenv(envPreviousPackPath)
 
-	lifecycleDescriptor := builder.AssumedLifecycleDescriptor
+	lifecycleDescriptor := builder.DefaultLifecycleDescriptor()
 	lifecyclePath := os.Getenv(envLifecyclePath)
 	if lifecyclePath != "" {
 		lifecyclePath, err = filepath.Abs(lifecyclePath)

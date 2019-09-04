@@ -1,3 +1,5 @@
+api = "0.2"
+
 [buildpack]
   id = "read/env"
   version = "read-env-version"

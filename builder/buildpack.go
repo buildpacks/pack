@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/buildpack/pack/style"
-
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/style"
 )
 
 type buildpack struct {
@@ -22,6 +22,7 @@ func (b *buildpack) Descriptor() BuildpackDescriptor {
 }
 
 type BuildpackDescriptor struct {
+	API    *api.Version  `toml:"api"`
 	Info   BuildpackInfo `toml:"buildpack"`
 	Stacks []Stack       `toml:"stacks"`
 	Order  Order         `toml:"order"`
@@ -55,6 +56,7 @@ func NewBuildpack(blob Blob) (Buildpack, error) {
 		return nil, errors.Wrapf(err, "reading buildpack.toml")
 	}
 
+	bpd.API = AssumedLifecycleDescriptor().API.BuildpackVersion
 	_, err = toml.Decode(string(buf), &bpd)
 	if err != nil {
 		return nil, errors.Wrapf(err, "decoding buildpack.toml")

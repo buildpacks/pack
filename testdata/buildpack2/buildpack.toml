@@ -1,3 +1,5 @@
+api = "0.3"
+
 [buildpack]
 id = "some-other-buildpack-id"
 version = "some-other-buildpack-version"

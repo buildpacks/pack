@@ -40,7 +40,7 @@ type Builder struct {
 	image                imgutil.Image
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
-	additionalBuildpacks []Buildpack
+	additionalBuildpacks []AdditionalBuildpack
 	metadata             Metadata
 	env                  map[string]string
 	UID, GID             int
@@ -112,17 +112,19 @@ func constructBuilder(img imgutil.Image, newName string, label string) (*Builder
 		img.Rename(newName)
 	}
 
-	lifecycleVersion := lifecycleVersionAssumed
+	assumedDescriptor := AssumedLifecycleDescriptor()
+
+	lifecycleVersion := assumedDescriptor.Info.Version
 	if metadata.Lifecycle.Version != nil {
 		lifecycleVersion = metadata.Lifecycle.Version
 	}
 
-	buildpackApiVersion := apiVersionAssumed
+	buildpackApiVersion := assumedDescriptor.API.BuildpackVersion
 	if metadata.Lifecycle.API.BuildpackVersion != nil {
 		buildpackApiVersion = metadata.Lifecycle.API.BuildpackVersion
 	}
 
-	platformApiVersion := apiVersionAssumed
+	platformApiVersion := assumedDescriptor.API.PlatformVersion
 	if metadata.Lifecycle.API.PlatformVersion != nil {
 		platformApiVersion = metadata.Lifecycle.API.PlatformVersion
 	}
@@ -171,7 +173,7 @@ func (b *Builder) GetStackInfo() StackMetadata {
 	return b.metadata.Stack
 }
 
-func (b *Builder) AddBuildpack(bp Buildpack) {
+func (b *Builder) AddBuildpack(bp AdditionalBuildpack) {
 	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
 	b.metadata.Buildpacks = append(b.metadata.Buildpacks, BuildpackMetadata{
 		BuildpackInfo: bp.Descriptor().Info,
@@ -216,10 +218,6 @@ func (b *Builder) Save() error {
 		return errors.Wrap(err, "processing metadata")
 	}
 
-	if err := validateBuildpacks(b.StackID, b.additionalBuildpacks); err != nil {
-		return errors.Wrap(err, "validating buildpacks")
-	}
-
 	tmpDir, err := ioutil.TempDir("", "create-builder-scratch")
 	if err != nil {
 		return err
@@ -244,6 +242,10 @@ func (b *Builder) Save() error {
 		if err := b.image.AddLayer(lifecycleTar); err != nil {
 			return errors.Wrap(err, "adding lifecycle layer")
 		}
+	}
+
+	if err := validateBuildpacks(b.StackID, b.GetLifecycleDescriptor(), b.additionalBuildpacks); err != nil {
+		return errors.Wrap(err, "validating buildpacks")
 	}
 
 	for _, bp := range b.additionalBuildpacks {
@@ -350,8 +352,7 @@ func hasBuildpackWithVersion(bps []BuildpackInfo, version string) bool {
 	return false
 }
 
-// TODO: error out when using incompatible lifecycle and buildpacks [https://github.com/buildpack/pack/issues/254]
-func validateBuildpacks(stackID string, bps []Buildpack) error {
+func validateBuildpacks(stackID string, lifecycleDescriptor LifecycleDescriptor, bps []AdditionalBuildpack) error {
 	bpLookup := map[string]interface{}{}
 
 	for _, bp := range bps {
@@ -361,17 +362,33 @@ func validateBuildpacks(stackID string, bps []Buildpack) error {
 
 	for _, bp := range bps {
 		bpd := bp.Descriptor()
+
+		if !bpd.API.SupportsVersion(lifecycleDescriptor.API.BuildpackVersion) {
+			return fmt.Errorf(
+				"buildpack from URI %s (Buildpack API version %s) is incompatible with lifecycle %s (Buildpack API version %s)",
+				style.Symbol(bp.Source),
+				bpd.API.String(),
+				style.Symbol(lifecycleDescriptor.Info.Version.String()),
+				lifecycleDescriptor.API.BuildpackVersion.String(),
+			)
+		}
+
 		if len(bpd.Stacks) >= 1 && !bpd.SupportsStack(stackID) {
 			return fmt.Errorf(
-				"buildpack %s does not support stack %s",
-				style.Symbol(bpd.Info.ID+"@"+bpd.Info.Version), style.Symbol(stackID),
+				"buildpack from URI %s (%s) does not support stack %s",
+				style.Symbol(bp.Source),
+				bpd.Info.ID+"@"+bpd.Info.Version,
+				style.Symbol(stackID),
 			)
 		}
 
 		for _, g := range bpd.Order {
 			for _, r := range g.Group {
 				if _, ok := bpLookup[r.ID+"@"+r.Version]; !ok {
-					return fmt.Errorf("buildpack %s not found on the builder", style.Symbol(r.ID+"@"+r.Version))
+					return fmt.Errorf(
+						"buildpack (%s) not found on the builder",
+						r.ID+"@"+r.Version,
+					)
 				}
 			}
 		}
@@ -488,7 +505,7 @@ func (b *Builder) orderFileContents() (string, error) {
 	lifecycleVersion := b.GetLifecycleDescriptor().Info.Version
 
 	var tomlData interface{}
-	if lifecycleVersion != nil && lifecycleVersion.LessThan(v0_4_0) {
+	if lifecycleVersion != nil && lifecycleVersion.LessThan(&v0_4_0) {
 		tomlData = v1OrderTOML{Groups: b.metadata.Groups}
 	} else {
 		tomlData = orderTOML{Order: b.order}
@@ -708,4 +725,9 @@ func (b *Builder) lifecycleLayer(dest string) (string, error) {
 	}
 
 	return fh.Name(), nil
+}
+
+type AdditionalBuildpack struct {
+	Source string
+	Buildpack
 }
