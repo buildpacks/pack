@@ -9,14 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/pack/internal/fakes"
-
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/image"
+	"github.com/buildpack/pack/internal/fakes"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
