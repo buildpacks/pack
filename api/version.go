@@ -14,7 +14,7 @@ var regex = regexp.MustCompile(`^v?(\d+)\.(\d*)$`)
 
 type Version struct {
 	major,
-	minor int64
+	minor uint64
 }
 
 func MustParse(v string) *Version {
@@ -33,16 +33,16 @@ func NewVersion(v string) (*Version, error) {
 	}
 
 	var (
-		major, minor int64
+		major, minor uint64
 		err          error
 	)
 	if len(matches[0]) == 3 {
-		major, err = strconv.ParseInt(matches[0][1], 10, 64)
+		major, err = strconv.ParseUint(matches[0][1], 10, 64)
 		if err != nil {
 			return nil, errors.Wrapf(err, "parsing major %s", style.Symbol(matches[0][1]))
 		}
 
-		minor, err = strconv.ParseInt(matches[0][2], 10, 64)
+		minor, err = strconv.ParseUint(matches[0][2], 10, 64)
 		if err != nil {
 			return nil, errors.Wrapf(err, "parsing minor %s", style.Symbol(matches[0][2]))
 		}

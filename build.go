@@ -212,7 +212,7 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]builder.Buildpack, bu
 	group := builder.OrderEntry{Group: []builder.BuildpackRef{}}
 	var bps []builder.Buildpack
 	for _, bp := range buildpacks {
-		if isBuildpackId(bp) {
+		if isBuildpackID(bp) {
 			id, version := c.parseBuildpack(bp)
 			group.Group = append(group.Group, builder.BuildpackRef{
 				BuildpackInfo: builder.BuildpackInfo{
@@ -246,7 +246,7 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]builder.Buildpack, bu
 	return bps, group, nil
 }
 
-func isBuildpackId(bp string) bool {
+func isBuildpackID(bp string) bool {
 	if !paths.IsURI(bp) {
 		if _, err := os.Stat(bp); err != nil {
 			return true

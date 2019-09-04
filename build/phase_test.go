@@ -13,8 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/pack/internal/fakes"
-
 	"github.com/buildpack/imgutil"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -26,6 +24,7 @@ import (
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/internal/fakes"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )

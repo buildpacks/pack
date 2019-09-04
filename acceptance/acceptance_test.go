@@ -21,12 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/pack/api"
-	"github.com/buildpack/pack/blob"
-	"github.com/buildpack/pack/builder"
-
-	"github.com/buildpack/pack/style"
-
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -36,8 +30,12 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpack/pack/api"
+	"github.com/buildpack/pack/blob"
+	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/cache"
 	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/style"
 	h "github.com/buildpack/pack/testhelpers"
 )
 

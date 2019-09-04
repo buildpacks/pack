@@ -6,21 +6,18 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
-
-	"github.com/buildpack/pack/api"
-
-	"github.com/buildpack/pack/internal/fakes"
-
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/commands"
 	cmdmocks "github.com/buildpack/pack/commands/mocks"
 	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/internal/fakes"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
