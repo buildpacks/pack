@@ -94,6 +94,10 @@ func (v *Version) SupportsVersion(v2 *Version) bool {
 	return false
 }
 
+func (v *Version) Equal(v2 *Version) bool {
+	return v.Compare(v2) == 0
+}
+
 func (v *Version) Compare(v2 *Version) int {
 	if v == nil && v2 == nil {
 		return 0
