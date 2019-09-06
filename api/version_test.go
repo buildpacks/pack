@@ -15,6 +15,22 @@ func TestAPIVersion(t *testing.T) {
 }
 
 func testAPIVersion(t *testing.T, when spec.G, it spec.S) {
+	when("#Equal", func() {
+		it("is equal to comparison", func() {
+			subject := api.MustParse("0.2")
+			comparison := api.MustParse("0.2")
+
+			h.AssertEq(t, subject.Equal(comparison), true)
+		})
+
+		it("is not equal to comparison", func() {
+			subject := api.MustParse("0.2")
+			comparison := api.MustParse("0.3")
+
+			h.AssertEq(t, subject.Equal(comparison), false)
+		})
+	})
+
 	when("#SupportsVersion", func() {
 		it("is none-stable with matching minor value", func() {
 			subject := api.MustParse("0.2")

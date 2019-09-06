@@ -18,6 +18,7 @@ import (
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/style"
 )
@@ -502,10 +503,13 @@ func (b *Builder) orderLayer(dest string) (string, error) {
 
 func (b *Builder) orderFileContents() (string, error) {
 	buf := &bytes.Buffer{}
-	lifecycleVersion := b.GetLifecycleDescriptor().Info.Version
+	bpAPIVersion := AssumedLifecycleDescriptor().API.BuildpackVersion
+	if b.GetLifecycleDescriptor().Info.Version != nil {
+		bpAPIVersion = b.GetLifecycleDescriptor().API.BuildpackVersion
+	}
 
 	var tomlData interface{}
-	if lifecycleVersion != nil && lifecycleVersion.LessThan(&v0_4_0) {
+	if bpAPIVersion.Equal(api.MustParse("0.1")) {
 		tomlData = v1OrderTOML{Groups: b.metadata.Groups}
 	} else {
 		tomlData = orderTOML{Order: b.order}
