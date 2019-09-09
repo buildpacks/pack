@@ -56,7 +56,7 @@ func NewBuildpack(blob Blob) (Buildpack, error) {
 		return nil, errors.Wrapf(err, "reading buildpack.toml")
 	}
 
-	bpd.API = AssumedLifecycleDescriptor().API.BuildpackVersion
+	bpd.API = api.MustParse(AssumedBuildpackAPIVersion)
 	_, err = toml.Decode(string(buf), &bpd)
 	if err != nil {
 		return nil, errors.Wrapf(err, "decoding buildpack.toml")

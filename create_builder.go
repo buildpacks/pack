@@ -82,10 +82,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 			return errors.Wrap(err, "invalid buildpack")
 		}
 
-		builderImage.AddBuildpack(builder.AdditionalBuildpack{
-			Source:    b.URI,
-			Buildpack: fetchedBp,
-		})
+		builderImage.AddBuildpack(fetchedBp)
 	}
 
 	builderImage.SetOrder(opts.BuilderConfig.Order)
@@ -135,7 +132,7 @@ func (c *Client) fetchLifecycle(config builder.LifecycleConfig) (builder.Lifecyc
 	} else if config.URI != "" {
 		uri = config.URI
 	} else {
-		uri = uriFromLifecycleVersion(builder.DefaultLifecycleDescriptor().Info.Version.Version)
+		uri = uriFromLifecycleVersion(*semver.MustParse(builder.AssumedLifecycleVersion))
 	}
 
 	b, err := c.downloader.Download(uri)

@@ -8,17 +8,23 @@ import (
 	"regexp"
 
 	"github.com/BurntSushi/toml"
-	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/internal/archive"
 )
 
-var (
-	v0_3_0 = *semver.MustParse("0.3.0")
-	v0_4_0 = *semver.MustParse("0.4.0")
+const (
+	AssumedLifecycleVersion    = "0.3.0"
+	AssumedBuildpackAPIVersion = "0.1"
+	AssumedPlatformAPIVersion  = "0.1"
 
+	DefaultLifecycleVersion    = "0.3.0"
+	DefaultBuildpackAPIVersion = "0.1"
+	DefaultPlatformAPIVersion  = "0.1"
+)
+
+var (
 	lifecycleBinaries = []string{
 		"detector",
 		"restorer",
@@ -29,30 +35,6 @@ var (
 		"launcher",
 	}
 )
-
-func AssumedLifecycleDescriptor() LifecycleDescriptor {
-	return LifecycleDescriptor{
-		Info: LifecycleInfo{
-			Version: &Version{Version: v0_3_0},
-		},
-		API: LifecycleAPI{
-			PlatformVersion:  api.MustParse("0.1"),
-			BuildpackVersion: api.MustParse("0.1"),
-		},
-	}
-}
-
-func DefaultLifecycleDescriptor() LifecycleDescriptor {
-	return LifecycleDescriptor{
-		Info: LifecycleInfo{
-			Version: &Version{Version: v0_3_0},
-		},
-		API: LifecycleAPI{
-			PlatformVersion:  api.MustParse("0.1"),
-			BuildpackVersion: api.MustParse("0.1"),
-		},
-	}
-}
 
 type Blob interface {
 	Open() (io.ReadCloser, error)
@@ -98,8 +80,16 @@ func NewLifecycle(blob Blob) (Lifecycle, error) {
 	//TODO: make lifecycle descriptor required after v0.4.0 release [https://github.com/buildpack/pack/issues/267]
 	if err != nil && errors.Cause(err) == archive.ErrEntryNotExist {
 		return &lifecycle{
-			Blob:       blob,
-			descriptor: AssumedLifecycleDescriptor(),
+			Blob: blob,
+			descriptor: LifecycleDescriptor{
+				Info: LifecycleInfo{
+					Version: VersionMustParse(AssumedLifecycleVersion),
+				},
+				API: LifecycleAPI{
+					BuildpackVersion: api.MustParse(AssumedBuildpackAPIVersion),
+					PlatformVersion:  api.MustParse(AssumedPlatformAPIVersion),
+				},
+			},
 		}, nil
 	} else if err != nil {
 		return nil, errors.Wrap(err, "decode lifecycle descriptor")

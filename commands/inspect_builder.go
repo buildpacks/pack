@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
@@ -77,21 +78,19 @@ func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName st
 	logger.Infof("Stack: %s", info.Stack)
 	logger.Info("")
 
-	assumedDescriptor := builder.AssumedLifecycleDescriptor()
-
 	lcVersion := info.Lifecycle.Info.Version
 	if info.Lifecycle.Info.Version == nil {
-		lcVersion = assumedDescriptor.Info.Version
+		lcVersion = builder.VersionMustParse(builder.AssumedLifecycleVersion)
 	}
 
 	apiBpVersion := info.Lifecycle.API.BuildpackVersion
 	if info.Lifecycle.API.BuildpackVersion == nil {
-		apiBpVersion = assumedDescriptor.API.BuildpackVersion
+		apiBpVersion = api.MustParse(builder.AssumedBuildpackAPIVersion)
 	}
 
 	apiPlatformVersion := info.Lifecycle.API.PlatformVersion
 	if info.Lifecycle.API.PlatformVersion == nil {
-		apiPlatformVersion = assumedDescriptor.API.PlatformVersion
+		apiPlatformVersion = api.MustParse(builder.AssumedPlatformAPIVersion)
 	}
 
 	logger.Info("Lifecycle:")

@@ -600,51 +600,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, os.Remove(buildpackTgz))
 				})
 
-				when("buildpack is an older api version", func() {
-					var (
-						incompatibleBuildpackTGZ *os.File
-						err                      error
-					)
-
-					it.Before(func() {
-						incompatibleBuildpackTGZ, err = ifakes.CreateBuildpackTGZ(tmpDir, builder.BuildpackDescriptor{
-							API: api.MustParse("0.9"),
-							Info: builder.BuildpackInfo{
-								ID:      "incompatible.id",
-								Version: "incompatible.id.version",
-							},
-							Stacks: []builder.Stack{
-								{
-									ID: "some.stack.id",
-								},
-							},
-							Order: nil,
-						})
-
-						h.AssertNil(t, err)
-					})
-
-					it("should error", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:      "some/app",
-							Builder:    builderName,
-							ClearCache: true,
-							Buildpacks: []string{
-								"buildpack.id@buildpack.version",
-								incompatibleBuildpackTGZ.Name(),
-							},
-						})
-
-						h.AssertError(t, err, fmt.Sprintf(
-							"buildpack from URI '%s' (Buildpack API version %s) is incompatible with lifecycle '%s' (Buildpack API version %s)",
-							incompatibleBuildpackTGZ.Name(),
-							"0.9",
-							"0.3.0",
-							"0.3",
-						))
-					})
-				})
-
 				when("is windows", func() {
 					it.Before(func() {
 						h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")

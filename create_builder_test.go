@@ -18,7 +18,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/blob"
 	"github.com/buildpack/pack/builder"
 	ifakes "github.com/buildpack/pack/internal/fakes"
@@ -168,31 +167,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertError(t, err, "buildpack from URI 'https://example.fake/bp-one.tgz' has version '1.2.3' which does not match version '0.0.0' from builder config")
 			})
-
-			it("should fail when buildpack is not compatible with lifecycle", func() {
-				mockDownloader.EXPECT().Download("http://example.com/incompatible-bp.tgz").Return(ifakes.NewFakeBuildpackBlob(
-					tmpDir,
-					builder.BuildpackDescriptor{
-						API: api.MustParse("0.4"),
-						Info: builder.BuildpackInfo{
-							ID:      "incompatible.bp",
-							Version: "incompatible.bp.version",
-						},
-						Stacks: []builder.Stack{{
-							ID: "some.stack.id",
-						}},
-						Order: nil,
-					},
-				), nil).AnyTimes()
-
-				opts.BuilderConfig.Buildpacks = append(opts.BuilderConfig.Buildpacks, builder.BuildpackConfig{
-					URI: "http://example.com/incompatible-bp.tgz",
-				})
-
-				err := subject.CreateBuilder(context.TODO(), opts)
-
-				h.AssertError(t, err, "buildpack from URI 'http://example.com/incompatible-bp.tgz' (Buildpack API version 0.4) is incompatible with lifecycle '3.4.5' (Buildpack API version 0.3)")
-			})
 		})
 
 		when("validating the run image config", func() {
@@ -258,12 +232,11 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should download from predetermined uri", func() {
-				defaultLifecycleDescriptor := builder.DefaultLifecycleDescriptor()
 				mockDownloader.EXPECT().Download(
 					fmt.Sprintf(
 						"https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz",
-						defaultLifecycleDescriptor.Info.Version.String(),
-						defaultLifecycleDescriptor.Info.Version.String(),
+						builder.DefaultLifecycleVersion,
+						builder.DefaultLifecycleVersion,
 					),
 				).Return(
 					blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil,

@@ -36,10 +36,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		subject        *builder.Builder
 		mockController *gomock.Controller
 		mockLifecycle  *testmocks.MockLifecycle
-		bp1v1          builder.AdditionalBuildpack
-		bp1v2          builder.AdditionalBuildpack
-		bp2v1          builder.AdditionalBuildpack
-		bpOrder        builder.AdditionalBuildpack
+		bp1v1          builder.Buildpack
+		bp1v2          builder.Buildpack
+		bp2v1          builder.Buildpack
+		bpOrder        builder.Buildpack
 	)
 
 	it.Before(func() {
@@ -58,31 +58,31 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			},
 		}).AnyTimes()
 
-		bp1v1 = builder.AdditionalBuildpack{Buildpack: &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		bp1v1 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
 			Info: builder.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-1",
 			},
 			Stacks: []builder.Stack{{ID: "some.stack.id"}},
-		}}}
-		bp1v2 = builder.AdditionalBuildpack{Buildpack: &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		}}
+		bp1v2 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
 			Info: builder.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-2",
 			},
 			Stacks: []builder.Stack{{ID: "some.stack.id"}},
-		}}}
-		bp2v1 = builder.AdditionalBuildpack{Buildpack: &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		}}
+		bp2v1 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
 			Info: builder.BuildpackInfo{
 				ID:      "buildpack-2-id",
 				Version: "buildpack-2-version-1",
 			},
 			Stacks: []builder.Stack{{ID: "some.stack.id"}},
-		}}}
-		bpOrder = builder.AdditionalBuildpack{Buildpack: &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		}}
+		bpOrder = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
 			Info: builder.BuildpackInfo{
 				ID:      "order-buildpack-id",
@@ -100,7 +100,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			}},
-		}}}
+		}}
 	})
 
 	it.After(func() {
@@ -415,7 +415,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							// order buildpack requires bp2v1
 							err := subject.Save()
 
-							h.AssertError(t, err, "buildpack (buildpack-2-id@buildpack-2-version-1) not found on the builder")
+							h.AssertError(t, err, "buildpack 'buildpack-2-id@buildpack-2-version-1' not found on the builder")
 						})
 					})
 
@@ -429,25 +429,38 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 							err := subject.Save()
 
-							h.AssertError(t, err, "buildpack (buildpack-1-id@buildpack-1-version-1) not found on the builder")
+							h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' not found on the builder")
 						})
 					})
 				})
 
 				when("buildpack stack id does not match", func() {
 					it("returns an error", func() {
-						subject.AddBuildpack(builder.AdditionalBuildpack{
-							Buildpack: &fakeBuildpack{
-								descriptor: builder.BuildpackDescriptor{
-									API:    api.MustParse("0.2"),
-									Info:   bp1v1.Descriptor().Info,
-									Stacks: []builder.Stack{{ID: "other.stack.id"}},
-								}},
-						})
+						subject.AddBuildpack(&fakeBuildpack{
+							descriptor: builder.BuildpackDescriptor{
+								API:    api.MustParse("0.2"),
+								Info:   bp1v1.Descriptor().Info,
+								Stacks: []builder.Stack{{ID: "other.stack.id"}},
+							}})
 
 						err := subject.Save()
 
-						h.AssertError(t, err, "(buildpack-1-id@buildpack-1-version-1) does not support stack 'some.stack.id'")
+						h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' does not support stack 'some.stack.id'")
+					})
+				})
+
+				when("buildpack is not compatible with lifecycle", func() {
+					it("returns an error", func() {
+						subject.AddBuildpack(&fakeBuildpack{
+							descriptor: builder.BuildpackDescriptor{
+								API:    api.MustParse("0.1"),
+								Info:   bp1v1.Descriptor().Info,
+								Stacks: []builder.Stack{{ID: "some.stack.id"}},
+							}})
+
+						err := subject.Save()
+
+						h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' (Buildpack API version 0.1) is incompatible with lifecycle '1.2.3' (Buildpack API version 0.2)")
 					})
 				})
 			})

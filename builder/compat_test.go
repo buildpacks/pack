@@ -32,10 +32,10 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		subject        *builder.Builder
 		mockController *gomock.Controller
 		mockLifecycle  *testmocks.MockLifecycle
-		bp1v1          builder.AdditionalBuildpack
-		bp1v2          builder.AdditionalBuildpack
-		bp2v1          builder.AdditionalBuildpack
-		bpOrder        builder.AdditionalBuildpack
+		bp1v1          builder.Buildpack
+		bp1v2          builder.Buildpack
+		bp2v1          builder.Buildpack
+		bpOrder        builder.Buildpack
 	)
 
 	it.Before(func() {
@@ -46,31 +46,31 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		mockLifecycle.EXPECT().Open().Return(archive.ReadDirAsTar(
 			filepath.Join("testdata", "lifecycle"), ".", 0, 0, -1), nil).AnyTimes()
 
-		bp1v1 = builder.AdditionalBuildpack{Buildpack: &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		bp1v1 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
 			Info: builder.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-1",
 			},
 			Stacks: []builder.Stack{{ID: "some.stack.id"}},
-		}}}
-		bp1v2 = builder.AdditionalBuildpack{Buildpack: &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		}}
+		bp1v2 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
 			Info: builder.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-2",
 			},
 			Stacks: []builder.Stack{{ID: "some.stack.id"}},
-		}}}
-		bp2v1 = builder.AdditionalBuildpack{Buildpack: &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		}}
+		bp2v1 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
 			Info: builder.BuildpackInfo{
 				ID:      "buildpack-2-id",
 				Version: "buildpack-2-version-1",
 			},
 			Stacks: []builder.Stack{{ID: "some.stack.id"}},
-		}}}
-		bpOrder = builder.AdditionalBuildpack{Buildpack: &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		}}
+		bpOrder = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
 			Info: builder.BuildpackInfo{
 				ID:      "order-buildpack-id",
@@ -88,7 +88,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			}},
-		}}}
+		}}
 
 		h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
 		h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
@@ -364,16 +364,13 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func updateFakeAPIVersion(buildpack builder.AdditionalBuildpack, version *api.Version) builder.AdditionalBuildpack {
-	return builder.AdditionalBuildpack{
-		Source: buildpack.Source,
-		Buildpack: &fakeBuildpack{
-			descriptor: builder.BuildpackDescriptor{
-				API:    version,
-				Info:   buildpack.Descriptor().Info,
-				Stacks: buildpack.Descriptor().Stacks,
-				Order:  buildpack.Descriptor().Order,
-			},
+func updateFakeAPIVersion(buildpack builder.Buildpack, version *api.Version) builder.Buildpack {
+	return &fakeBuildpack{
+		descriptor: builder.BuildpackDescriptor{
+			API:    version,
+			Info:   buildpack.Descriptor().Info,
+			Stacks: buildpack.Descriptor().Stacks,
+			Order:  buildpack.Descriptor().Order,
 		},
 	}
 }

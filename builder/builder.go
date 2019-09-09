@@ -41,7 +41,7 @@ type Builder struct {
 	image                imgutil.Image
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
-	additionalBuildpacks []AdditionalBuildpack
+	additionalBuildpacks []Buildpack
 	metadata             Metadata
 	env                  map[string]string
 	UID, GID             int
@@ -113,19 +113,17 @@ func constructBuilder(img imgutil.Image, newName string, label string) (*Builder
 		img.Rename(newName)
 	}
 
-	assumedDescriptor := AssumedLifecycleDescriptor()
-
-	lifecycleVersion := assumedDescriptor.Info.Version
+	lifecycleVersion := VersionMustParse(AssumedLifecycleVersion)
 	if metadata.Lifecycle.Version != nil {
 		lifecycleVersion = metadata.Lifecycle.Version
 	}
 
-	buildpackApiVersion := assumedDescriptor.API.BuildpackVersion
+	buildpackApiVersion := api.MustParse(AssumedBuildpackAPIVersion)
 	if metadata.Lifecycle.API.BuildpackVersion != nil {
 		buildpackApiVersion = metadata.Lifecycle.API.BuildpackVersion
 	}
 
-	platformApiVersion := assumedDescriptor.API.PlatformVersion
+	platformApiVersion := api.MustParse(AssumedPlatformAPIVersion)
 	if metadata.Lifecycle.API.PlatformVersion != nil {
 		platformApiVersion = metadata.Lifecycle.API.PlatformVersion
 	}
@@ -174,7 +172,7 @@ func (b *Builder) GetStackInfo() StackMetadata {
 	return b.metadata.Stack
 }
 
-func (b *Builder) AddBuildpack(bp AdditionalBuildpack) {
+func (b *Builder) AddBuildpack(bp Buildpack) {
 	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
 	b.metadata.Buildpacks = append(b.metadata.Buildpacks, BuildpackMetadata{
 		BuildpackInfo: bp.Descriptor().Info,
@@ -353,7 +351,7 @@ func hasBuildpackWithVersion(bps []BuildpackInfo, version string) bool {
 	return false
 }
 
-func validateBuildpacks(stackID string, lifecycleDescriptor LifecycleDescriptor, bps []AdditionalBuildpack) error {
+func validateBuildpacks(stackID string, lifecycleDescriptor LifecycleDescriptor, bps []Buildpack) error {
 	bpLookup := map[string]interface{}{}
 
 	for _, bp := range bps {
@@ -366,30 +364,31 @@ func validateBuildpacks(stackID string, lifecycleDescriptor LifecycleDescriptor,
 
 		if !bpd.API.SupportsVersion(lifecycleDescriptor.API.BuildpackVersion) {
 			return fmt.Errorf(
-				"buildpack from URI %s (Buildpack API version %s) is incompatible with lifecycle %s (Buildpack API version %s)",
-				style.Symbol(bp.Source),
+				"buildpack %s (Buildpack API version %s) is incompatible with lifecycle %s (Buildpack API version %s)",
+				style.Symbol(bpd.Info.ID+"@"+bpd.Info.Version),
 				bpd.API.String(),
 				style.Symbol(lifecycleDescriptor.Info.Version.String()),
 				lifecycleDescriptor.API.BuildpackVersion.String(),
 			)
 		}
 
-		if len(bpd.Stacks) >= 1 && !bpd.SupportsStack(stackID) {
-			return fmt.Errorf(
-				"buildpack from URI %s (%s) does not support stack %s",
-				style.Symbol(bp.Source),
-				bpd.Info.ID+"@"+bpd.Info.Version,
-				style.Symbol(stackID),
-			)
-		}
-
-		for _, g := range bpd.Order {
-			for _, r := range g.Group {
-				if _, ok := bpLookup[r.ID+"@"+r.Version]; !ok {
-					return fmt.Errorf(
-						"buildpack (%s) not found on the builder",
-						r.ID+"@"+r.Version,
-					)
+		if len(bpd.Stacks) >= 1 { // standard buildpack
+			if !bpd.SupportsStack(stackID) {
+				return fmt.Errorf(
+					"buildpack %s does not support stack %s",
+					style.Symbol(bpd.Info.ID+"@"+bpd.Info.Version),
+					style.Symbol(stackID),
+				)
+			}
+		} else { // order buildpack
+			for _, g := range bpd.Order {
+				for _, r := range g.Group {
+					if _, ok := bpLookup[r.ID+"@"+r.Version]; !ok {
+						return fmt.Errorf(
+							"buildpack %s not found on the builder",
+							style.Symbol(r.ID+"@"+r.Version),
+						)
+					}
 				}
 			}
 		}
@@ -503,7 +502,7 @@ func (b *Builder) orderLayer(dest string) (string, error) {
 
 func (b *Builder) orderFileContents() (string, error) {
 	buf := &bytes.Buffer{}
-	bpAPIVersion := AssumedLifecycleDescriptor().API.BuildpackVersion
+	bpAPIVersion := api.MustParse(AssumedBuildpackAPIVersion)
 	if b.GetLifecycleDescriptor().Info.Version != nil {
 		bpAPIVersion = b.GetLifecycleDescriptor().API.BuildpackVersion
 	}
@@ -729,9 +728,4 @@ func (b *Builder) lifecycleLayer(dest string) (string, error) {
 	}
 
 	return fh.Name(), nil
-}
-
-type AdditionalBuildpack struct {
-	Source string
-	Buildpack
 }
