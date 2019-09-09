@@ -37,6 +37,8 @@ func testBuildpack(t *testing.T, when spec.G, it spec.S) {
 	when("#NewBuildpack", func() {
 		it("makes a buildpack from a blob", func() {
 			h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpBpDir, "buildpack.toml"), []byte(`
+api = "0.3"
+
 [buildpack]
 id = "bp.one"
 version = "1.2.3"
@@ -47,6 +49,7 @@ id = "some.stack.id"
 
 			bp, err := builder.NewBuildpack(blob.NewBlob(tmpBpDir))
 			h.AssertNil(t, err)
+			h.AssertEq(t, bp.Descriptor().API.String(), "0.3")
 			h.AssertEq(t, bp.Descriptor().Info.ID, "bp.one")
 			h.AssertEq(t, bp.Descriptor().Info.Version, "1.2.3")
 			h.AssertEq(t, bp.Descriptor().Stacks[0].ID, "some.stack.id")
@@ -56,6 +59,23 @@ id = "some.stack.id"
 			it("returns error", func() {
 				_, err := builder.NewBuildpack(blob.NewBlob(tmpBpDir))
 				h.AssertError(t, err, "could not find entry path 'buildpack.toml'")
+			})
+		})
+
+		when("there is no api field", func() {
+			it("assumes a version", func() {
+				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpBpDir, "buildpack.toml"), []byte(`
+[buildpack]
+id = "bp.one"
+version = "1.2.3"
+
+[[stacks]]
+id = "some.stack.id"
+`), os.ModePerm))
+
+				bp, err := builder.NewBuildpack(blob.NewBlob(tmpBpDir))
+				h.AssertNil(t, err)
+				h.AssertEq(t, bp.Descriptor().API.String(), "0.1")
 			})
 		})
 

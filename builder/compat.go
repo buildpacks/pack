@@ -11,6 +11,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/style"
 )
@@ -120,8 +121,8 @@ func (b *Builder) compatBuildpacks(tw *tar.Writer) error {
 			return err
 		}
 
-		lcVersion := b.lifecycleDescriptor.Info.Version
-		if lcVersion != nil && lcVersion.LessThan(&v0_4_0) {
+		bpAPIVersion := b.lifecycleDescriptor.API.BuildpackVersion
+		if bpAPIVersion != nil && bpAPIVersion.Equal(api.MustParse("0.1")) {
 			if err := symlinkLatest(tw, bpDir, descriptor, b.metadata); err != nil {
 				return err
 			}

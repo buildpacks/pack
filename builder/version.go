@@ -10,6 +10,10 @@ type Version struct {
 	semver.Version
 }
 
+func VersionMustParse(v string) *Version {
+	return &Version{Version: *semver.MustParse(v)}
+}
+
 func (v *Version) String() string {
 	return v.Version.String()
 }

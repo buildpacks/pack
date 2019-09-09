@@ -71,8 +71,8 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 
 	lifecycleVersion := l.builder.GetLifecycleDescriptor().Info.Version
 	if lifecycleVersion == nil {
-		l.logger.Warn("lifecycle version unknown")
-		lifecycleVersion = builder.AssumedLifecycleDescriptor().Info.Version
+		l.logger.Warnf("lifecycle version unknown, assuming %s", style.Symbol(builder.AssumedLifecycleVersion))
+		lifecycleVersion = builder.VersionMustParse(builder.AssumedLifecycleVersion)
 	} else {
 		l.logger.Debugf("Executing lifecycle version %s", style.Symbol(lifecycleVersion.String()))
 	}

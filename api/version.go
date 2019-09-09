@@ -77,56 +77,42 @@ func (v *Version) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// SupportsVersion determines whether the argument version is compatible based on matching `major` version with the
-// exception of pre-stable version. Any version with `major` equal to 0 is not compatible if `minor` value does not
-// match.
-func (v *Version) SupportsVersion(v2 *Version) bool {
-	if v.Compare(v2) == 0 {
+// SupportsVersion determines whether this version supports a given version. If comparing two pre-stable (major == 0)
+// versions, minors must match exactly. Otherwise, this minor must be greater than or equal to the given minor. Majors
+// must always match.
+func (v *Version) SupportsVersion(o *Version) bool {
+	if v.Equal(o) {
 		return true
 	}
 
-	if v != nil && v2 != nil {
-		if v.major > 0 && v.major == v2.major {
-			return true
-		}
+	if v.major != 0 {
+		return v.major == o.major && v.minor >= o.minor
 	}
 
 	return false
 }
 
-func (v *Version) Equal(v2 *Version) bool {
-	return v.Compare(v2) == 0
+func (v *Version) Equal(o *Version) bool {
+	return v.Compare(o) == 0
 }
 
-func (v *Version) Compare(v2 *Version) int {
-	if v == nil && v2 == nil {
-		return 0
-	}
-
-	if v == nil {
-		return -1
-	}
-
-	if v2 == nil {
-		return 1
-	}
-
-	if v.major != v2.major {
-		if v.major < v2.major {
+func (v *Version) Compare(o *Version) int {
+	if v.major != o.major {
+		if v.major < o.major {
 			return -1
 		}
 
-		if v.major > v2.major {
+		if v.major > o.major {
 			return 1
 		}
 	}
 
-	if v.minor != v2.minor {
-		if v.minor < v2.minor {
+	if v.minor != o.minor {
+		if v.minor < o.minor {
 			return -1
 		}
 
-		if v.minor > v2.minor {
+		if v.minor > o.minor {
 			return 1
 		}
 	}
