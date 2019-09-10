@@ -151,6 +151,6 @@ Stacks maintained by the community:
     Stack ID: org.cloudfoundry.stacks.cflinuxfs3
     Description: The official Cloud Foundry stack based on Ubuntu 18.04
     Maintainer: Cloud Foundry
-    Build Image: cfbuildpacks/cflinuxfs3-cnb-experimental:build
-    Run Image: cfbuildpacks/cflinuxfs3-cnb-experimental:run`)
+    Build Image: cloudfoundry/build:full-cnb
+    Run Image: cloudfoundry/run:full-cnb`)
 }
