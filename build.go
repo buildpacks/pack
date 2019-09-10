@@ -275,7 +275,7 @@ func ensureBPSupport(bpPath string) (err error) {
 		}
 	}
 
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" && !paths.IsURI(p) {
 		isDir, err := paths.IsDir(p)
 		if err != nil {
 			return err
