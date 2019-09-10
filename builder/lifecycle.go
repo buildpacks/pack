@@ -19,8 +19,8 @@ const (
 	AssumedBuildpackAPIVersion = "0.1"
 	AssumedPlatformAPIVersion  = "0.1"
 
-	DefaultLifecycleVersion    = "0.3.0"
-	DefaultBuildpackAPIVersion = "0.1"
+	DefaultLifecycleVersion    = "0.4.0"
+	DefaultBuildpackAPIVersion = "0.2"
 	DefaultPlatformAPIVersion  = "0.1"
 )
 
