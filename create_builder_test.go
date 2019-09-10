@@ -231,12 +231,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				opts.BuilderConfig.Lifecycle.Version = ""
 			})
 
-			it("should download from predetermined uri", func() {
+			it("should download default lifecycle", func() {
+				expectedDefaultLifecycleVersion := "0.4.0"
 				mockDownloader.EXPECT().Download(
 					fmt.Sprintf(
 						"https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz",
-						builder.DefaultLifecycleVersion,
-						builder.DefaultLifecycleVersion,
+						expectedDefaultLifecycleVersion,
+						expectedDefaultLifecycleVersion,
 					),
 				).Return(
 					blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil,

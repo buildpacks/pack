@@ -132,7 +132,7 @@ func (c *Client) fetchLifecycle(config builder.LifecycleConfig) (builder.Lifecyc
 	} else if config.URI != "" {
 		uri = config.URI
 	} else {
-		uri = uriFromLifecycleVersion(*semver.MustParse(builder.AssumedLifecycleVersion))
+		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion))
 	}
 
 	b, err := c.downloader.Download(uri)
