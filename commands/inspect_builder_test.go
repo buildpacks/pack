@@ -153,7 +153,7 @@ ERROR: some local error
 					Groups: builder.Order{
 						{Group: []builder.BuildpackRef{
 							{BuildpackInfo: buildpack1Info, Optional: true},
-							{BuildpackInfo: buildpack2Info},
+							{BuildpackInfo: builder.BuildpackInfo{ID: buildpack2Info.ID}},
 						}}},
 					Lifecycle: builder.LifecycleDescriptor{
 						Info: builder.LifecycleInfo{
@@ -175,7 +175,7 @@ ERROR: some local error
 					Buildpacks:      buildpacks,
 					Groups: builder.Order{
 						{Group: []builder.BuildpackRef{{BuildpackInfo: buildpack1Info}}},
-						{Group: []builder.BuildpackRef{{BuildpackInfo: buildpack2Info, Optional: true}}},
+						{Group: []builder.BuildpackRef{{BuildpackInfo: builder.BuildpackInfo{ID: buildpack2Info.ID}, Optional: true}}},
 					},
 					Lifecycle: builder.LifecycleDescriptor{
 						Info: builder.LifecycleInfo{
@@ -230,7 +230,7 @@ Buildpacks:
 Detection Order:
   Group #1:
     test.bp.one@1.0.0    (optional)
-    test.bp.two@2.0.0
+    test.bp.two
 `)
 
 					h.AssertContains(t, outBuf.String(), `
@@ -262,7 +262,7 @@ Detection Order:
   Group #1:
     test.bp.one@1.0.0
   Group #2:
-    test.bp.two@2.0.0    (optional)
+    test.bp.two    (optional)
 `)
 				})
 			})
@@ -305,7 +305,7 @@ Buildpacks:
 Detection Order:
   Group #1:
     test.bp.one@1.0.0    (optional)
-    test.bp.two@2.0.0
+    test.bp.two
 `)
 
 					h.AssertContains(t, outBuf.String(), `
@@ -337,7 +337,7 @@ Detection Order:
   Group #1:
     test.bp.one@1.0.0
   Group #2:
-    test.bp.two@2.0.0    (optional)
+    test.bp.two    (optional)
 `)
 				})
 			})

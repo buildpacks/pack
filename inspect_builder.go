@@ -35,7 +35,7 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		return nil, err
 	}
 
-	bldr, err := builder.GetBuilder(img)
+	bldr, err := builder.GetBuilder(c.logger, img)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(name))
 	}

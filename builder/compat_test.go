@@ -18,6 +18,7 @@ import (
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/builder/testmocks"
 	"github.com/buildpack/pack/internal/archive"
+	ifakes "github.com/buildpack/pack/internal/fakes"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -95,7 +96,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 
 		var err error
-		subject, err = builder.New(baseImage, "some/builder")
+		subject, err = builder.New(ifakes.NewFakeLogger(ioutil.Discard), baseImage, "some/builder")
 		h.AssertNil(t, err)
 	})
 

@@ -23,8 +23,8 @@ Buildpacks:
 
 Detection Order:
   Group #1:
-    simple/layers@simple-layers-version    
-    read/env@read-env-version              (optional)
+    simple/layers                
+    read/env@read-env-version    (optional)
 
 Local
 -----
@@ -49,5 +49,5 @@ Buildpacks:
 
 Detection Order:
   Group #1:
-    simple/layers@simple-layers-version    
-    read/env@read-env-version              (optional)
+    simple/layers                
+    read/env@read-env-version    (optional)

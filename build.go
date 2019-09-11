@@ -138,14 +138,14 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 }
 
 func (c *Client) processBuilderImage(img imgutil.Image) (*builder.Builder, error) {
-	builder, err := builder.GetBuilder(img)
+	bldr, err := builder.GetBuilder(c.logger, img)
 	if err != nil {
 		return nil, err
 	}
-	if builder.GetStackInfo().RunImage.Image == "" {
+	if bldr.GetStackInfo().RunImage.Image == "" {
 		return nil, errors.New("builder metadata is missing runImage")
 	}
-	return builder, nil
+	return bldr, nil
 }
 
 func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (imgutil.Image, error) {
@@ -331,7 +331,7 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 
 func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, group builder.OrderEntry, buildpacks []builder.Buildpack) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
-	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
+	bldr, err := builder.New(c.logger, rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}

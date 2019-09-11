@@ -1,6 +1,7 @@
 package builder_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
-
 	"github.com/buildpack/imgutil"
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/fatih/color"
@@ -22,6 +22,8 @@ import (
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/builder/testmocks"
 	"github.com/buildpack/pack/internal/archive"
+	ifakes "github.com/buildpack/pack/internal/fakes"
+	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -40,9 +42,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		bp1v2          builder.Buildpack
 		bp2v1          builder.Buildpack
 		bpOrder        builder.Buildpack
+		buf            bytes.Buffer
+		logger         logging.Logger
 	)
 
 	it.Before(func() {
+		logger = ifakes.NewFakeLogger(&buf)
 		baseImage = fakes.NewImage("base/image", "", "")
 		mockController = gomock.NewController(t)
 		mockLifecycle = testmocks.NewMockLifecycle(mockController)
@@ -92,7 +97,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				Group: []builder.BuildpackRef{
 					{
 						BuildpackInfo: bp1v1.Descriptor().Info,
-						Optional:      false,
+						Optional:      true,
 					},
 					{
 						BuildpackInfo: bp2v1.Descriptor().Info,
@@ -112,7 +117,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("#New", func() {
 			when("missing CNB_USER_ID", func() {
 				it("returns an error", func() {
-					_, err := builder.New(baseImage, "some/builder")
+					_, err := builder.New(logger, baseImage, "some/builder")
 					h.AssertError(t, err, "image 'base/image' missing required env var 'CNB_USER_ID'")
 				})
 			})
@@ -123,7 +128,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns an error", func() {
-					_, err := builder.New(baseImage, "some/builder")
+					_, err := builder.New(logger, baseImage, "some/builder")
 					h.AssertError(t, err, "image 'base/image' missing required env var 'CNB_GROUP_ID'")
 				})
 			})
@@ -135,7 +140,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns an error", func() {
-					_, err := builder.New(baseImage, "some/builder")
+					_, err := builder.New(logger, baseImage, "some/builder")
 					h.AssertError(t, err, "failed to parse 'CNB_USER_ID', value 'not an int' should be an integer")
 				})
 			})
@@ -147,7 +152,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns an error", func() {
-					_, err := builder.New(baseImage, "some/builder")
+					_, err := builder.New(logger, baseImage, "some/builder")
 					h.AssertError(t, err, "failed to parse 'CNB_GROUP_ID', value 'not an int' should be an integer")
 				})
 			})
@@ -159,7 +164,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns an error", func() {
-					_, err := builder.New(baseImage, "some/builder")
+					_, err := builder.New(logger, baseImage, "some/builder")
 					h.AssertError(t, err, "image 'base/image' missing label 'io.buildpacks.stack.id'")
 				})
 			})
@@ -172,7 +177,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
 			h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
 			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
-			subject, err = builder.New(baseImage, "some/builder")
+			subject, err = builder.New(logger, baseImage, "some/builder")
 			h.AssertNil(t, err)
 
 			h.AssertNil(t, subject.SetLifecycle(mockLifecycle))
@@ -300,7 +305,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						subject.AddBuildpack(bp1v1)
 					})
 
-					it("should resolve unset version", func() {
+					it("should resolve unset version (to legacy label and order.toml)", func() {
 						subject.SetOrder(builder.Order{{
 							Group: []builder.BuildpackRef{
 								{BuildpackInfo: builder.BuildpackInfo{ID: bp1v1.Descriptor().Info.ID}}},
@@ -537,11 +542,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("#AddBuildpack", func() {
 			it.Before(func() {
 				subject.AddBuildpack(bp1v1)
-
 				subject.AddBuildpack(bp1v2)
-
 				subject.AddBuildpack(bp2v1)
-
 				subject.AddBuildpack(bpOrder)
 			})
 
@@ -582,6 +584,97 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, metadata.Buildpacks[3].Latest, true)
 			})
 
+			it("adds the buildpack layers label", func() {
+				h.AssertNil(t, subject.Save())
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				label, err := baseImage.Label("io.buildpacks.buildpack.layers")
+				h.AssertNil(t, err)
+
+				var layers builder.BuildpackLayers
+				h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
+				h.AssertEq(t, len(layers), 3)
+				h.AssertEq(t, len(layers["buildpack-1-id"]), 2)
+				h.AssertEq(t, len(layers["buildpack-2-id"]), 1)
+
+				h.AssertUnique(t,
+					layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDigest,
+					layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDigest,
+					layers["buildpack-2-id"]["buildpack-2-version-1"].LayerDigest,
+					layers["order-buildpack-id"]["order-buildpack-version"].LayerDigest,
+				)
+
+				h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-1"].Order), 0)
+				h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-2"].Order), 0)
+				h.AssertEq(t, len(layers["buildpack-2-id"]["buildpack-2-version-1"].Order), 0)
+				h.AssertEq(t, len(layers["order-buildpack-id"]["order-buildpack-version"].Order), 1)
+				h.AssertEq(t, len(layers["order-buildpack-id"]["order-buildpack-version"].Order[0].Group), 2)
+				h.AssertEq(t, layers["order-buildpack-id"]["order-buildpack-version"].Order[0].Group[0].ID, "buildpack-1-id")
+				h.AssertEq(t, layers["order-buildpack-id"]["order-buildpack-version"].Order[0].Group[0].Version, "buildpack-1-version-1")
+				h.AssertEq(t, layers["order-buildpack-id"]["order-buildpack-version"].Order[0].Group[0].Optional, true)
+				h.AssertEq(t, layers["order-buildpack-id"]["order-buildpack-version"].Order[0].Group[1].ID, "buildpack-2-id")
+				h.AssertEq(t, layers["order-buildpack-id"]["order-buildpack-version"].Order[0].Group[1].Version, "buildpack-2-version-1")
+				h.AssertEq(t, layers["order-buildpack-id"]["order-buildpack-version"].Order[0].Group[1].Optional, false)
+			})
+
+			when("base image already has buildpack layers label", func() {
+				it.Before(func() {
+					h.AssertNil(t, baseImage.SetLabel(
+						"io.buildpacks.buildpack.layers",
+						`{ "buildpack-1-id": { "buildpack-1-version-1": { "layerDigest": "sha256:buildpack-1-version-1-sha" }, "buildpack-1-version-2": { "layerDigest": "sha256:buildpack-1-version-2-orig-sha" } } }`,
+					))
+
+					var err error
+					subject, err = builder.New(logger, baseImage, "some/builder")
+					h.AssertNil(t, err)
+
+					subject.AddBuildpack(bp1v2)
+					subject.AddBuildpack(bp2v1)
+
+					h.AssertNil(t, subject.SetLifecycle(mockLifecycle))
+
+					h.AssertNil(t, subject.Save())
+					h.AssertEq(t, baseImage.IsSaved(), true)
+				})
+
+				it("appends buildpack layer info", func() {
+					label, err := baseImage.Label("io.buildpacks.buildpack.layers")
+					h.AssertNil(t, err)
+
+					var layers builder.BuildpackLayers
+					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
+					h.AssertEq(t, len(layers), 2)
+					h.AssertEq(t, len(layers["buildpack-1-id"]), 2)
+					h.AssertEq(t, len(layers["buildpack-2-id"]), 1)
+
+					h.AssertEq(t, layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDigest, "sha256:buildpack-1-version-1-sha")
+					h.AssertUnique(t,
+						layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDigest,
+						layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDigest,
+						layers["buildpack-2-id"]["buildpack-2-version-1"].LayerDigest,
+					)
+
+					h.AssertMatch(t, layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDigest, "^sha256:.*")
+					h.AssertMatch(t, layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDigest, "^sha256:.*")
+					h.AssertMatch(t, layers["buildpack-2-id"]["buildpack-2-version-1"].LayerDigest, "^sha256:.*")
+
+					h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-1"].Order), 0)
+					h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-2"].Order), 0)
+					h.AssertEq(t, len(layers["buildpack-2-id"]["buildpack-2-version-1"].Order), 0)
+				})
+
+				it("warns when overriding existing buildpack", func() {
+					label, err := baseImage.Label("io.buildpacks.buildpack.layers")
+					h.AssertNil(t, err)
+
+					var layers builder.BuildpackLayers
+					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
+
+					h.AssertContains(t, buf.String(), "Warning: buildpack 'buildpack-1-id@buildpack-1-version-2' already exists on builder and will be overridden")
+					h.AssertNotContains(t, layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDigest, "buildpack-1-version-2-orig-sha")
+				})
+			})
+
 			when("base image already has metadata", func() {
 				it.Before(func() {
 					h.AssertNil(t, baseImage.SetLabel(
@@ -590,7 +683,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					))
 
 					var err error
-					subject, err = builder.New(baseImage, "some/builder")
+					subject, err = builder.New(logger, baseImage, "some/builder")
 					h.AssertNil(t, err)
 
 					subject.AddBuildpack(bp1v1)
@@ -629,7 +722,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					subject.SetOrder(builder.Order{
 						{Group: []builder.BuildpackRef{
 							{
-								BuildpackInfo: bp1v1.Descriptor().Info,
+								BuildpackInfo: builder.BuildpackInfo{
+									ID: bp1v1.Descriptor().Info.ID,
+									// Version excluded intentionally
+								},
 							},
 							{
 								BuildpackInfo: bp2v1.Descriptor().Info,
@@ -674,6 +770,22 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, metadata.Groups[0].Buildpacks[1].ID, "buildpack-2-id")
 					h.AssertEq(t, metadata.Groups[0].Buildpacks[1].Version, "buildpack-2-version-1")
 					h.AssertEq(t, metadata.Groups[0].Buildpacks[1].Optional, true)
+				})
+
+				it("adds the order to the order label", func() {
+					label, err := baseImage.Label("io.buildpacks.buildpack.order")
+					h.AssertNil(t, err)
+
+					var order builder.Order
+					h.AssertNil(t, json.Unmarshal([]byte(label), &order))
+					h.AssertEq(t, len(order), 1)
+					h.AssertEq(t, len(order[0].Group), 2)
+					h.AssertEq(t, order[0].Group[0].ID, "buildpack-1-id")
+					h.AssertEq(t, order[0].Group[0].Version, "")
+					h.AssertEq(t, order[0].Group[0].Optional, false)
+					h.AssertEq(t, order[0].Group[1].ID, "buildpack-2-id")
+					h.AssertEq(t, order[0].Group[1].Version, "buildpack-2-version-1")
+					h.AssertEq(t, order[0].Group[1].Optional, true)
 				})
 			})
 		})
@@ -754,18 +866,32 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 			h.AssertNil(t, baseImage.SetLabel(
 				"io.buildpacks.builder.metadata",
-				`{"buildpacks": [{"id": "prev.id"}], "groups": [{"buildpacks": [{"id": "prev.id"}]}], "stack": {"runImage": {"image": "prev/run", "mirrors": ["prev/mirror"]}}, "lifecycle": {"version": "6.6.6"}}`,
+				`{"buildpacks": [{"id": "buildpack-1-id"}, {"id": "buildpack-2-id"}], "groups": [{"buildpacks": [{"id": "buildpack-1-id", "version": "buildpack-1-version", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}], "stack": {"runImage": {"image": "prev/run", "mirrors": ["prev/mirror"]}}, "lifecycle": {"version": "6.6.6"}}`,
+			))
+			h.AssertNil(t, baseImage.SetLabel(
+				"io.buildpacks.buildpack.order",
+				`[{"group": [{"id": "buildpack-1-id", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}]`,
 			))
 
 			builderImage = baseImage
 		})
 
-		when("#Get", func() {
+		when("#GetBuilder", func() {
 			it("gets builder from image", func() {
-				bldr, err := builder.GetBuilder(builderImage)
+				bldr, err := builder.GetBuilder(logger, builderImage)
 				h.AssertNil(t, err)
-				h.AssertEq(t, bldr.GetBuildpacks()[0].ID, "prev.id")
-				h.AssertEq(t, bldr.GetOrder()[0].Group[0].ID, "prev.id")
+				h.AssertEq(t, bldr.GetBuildpacks()[0].ID, "buildpack-1-id")
+				h.AssertEq(t, bldr.GetBuildpacks()[1].ID, "buildpack-2-id")
+
+				order := bldr.GetOrder()
+				h.AssertEq(t, len(order), 1)
+				h.AssertEq(t, len(order[0].Group), 2)
+				h.AssertEq(t, order[0].Group[0].ID, "buildpack-1-id")
+				h.AssertEq(t, order[0].Group[0].Version, "")
+				h.AssertEq(t, order[0].Group[0].Optional, false)
+				h.AssertEq(t, order[0].Group[1].ID, "buildpack-2-id")
+				h.AssertEq(t, order[0].Group[1].Version, "buildpack-2-version-1")
+				h.AssertEq(t, order[0].Group[1].Optional, true)
 			})
 
 			when("metadata is missing", func() {
@@ -777,7 +903,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("should error", func() {
-					_, err := builder.GetBuilder(builderImage)
+					_, err := builder.GetBuilder(logger, builderImage)
 					h.AssertError(t, err, "missing label 'io.buildpacks.builder.metadata'")
 				})
 			})
