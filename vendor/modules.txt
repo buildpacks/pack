@@ -92,6 +92,8 @@ github.com/konsorten/go-windows-terminal-sequences
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.4
 github.com/mattn/go-isatty
+# github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
+github.com/mitchellh/ioprogress
 # github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c
 github.com/morikuni/aec
 # github.com/onsi/gomega v1.5.0
