@@ -2,6 +2,7 @@ package commands_test
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -45,12 +46,9 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 	when("#BuildCommand", func() {
 		when("no env file is provided", func() {
 			it("builds an image with a builder", func() {
-				mockClient.EXPECT().Build(gomock.Any(), pack.BuildOptions{
-					Builder:           "my-builder",
-					Image:             "image",
-					AdditionalMirrors: map[string][]string{},
-					Env:               map[string]string{},
-				}).Return(nil)
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
+					Return(nil)
 
 				command.SetArgs([]string{"--builder", "my-builder", "image"})
 				h.AssertNil(t, command.Execute())
@@ -70,14 +68,11 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("builds an image with a builder", func() {
-				mockClient.EXPECT().Build(gomock.Any(), pack.BuildOptions{
-					Builder:           "my-builder",
-					Image:             "image",
-					AdditionalMirrors: map[string][]string{},
-					Env: map[string]string{
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
 						"KEY": "VALUE",
-					},
-				}).Return(nil)
+					})).
+					Return(nil)
 
 				command.SetArgs([]string{"--builder", "my-builder", "image", "--env-file", envPath})
 				h.AssertNil(t, command.Execute())
@@ -105,19 +100,60 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("builds an image with a builder", func() {
-				mockClient.EXPECT().Build(gomock.Any(), pack.BuildOptions{
-					Builder:           "my-builder",
-					Image:             "image",
-					AdditionalMirrors: map[string][]string{},
-					Env: map[string]string{
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
 						"KEY1": "VALUE1",
 						"KEY2": "VALUE2",
-					},
-				}).Return(nil)
+					})).
+					Return(nil)
 
 				command.SetArgs([]string{"--builder", "my-builder", "image", "--env-file", envPath1, "--env-file", envPath2})
 				h.AssertNil(t, command.Execute())
 			})
 		})
 	})
+}
+
+func EqBuildOptionsWithImage(builder, image string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Builder=%s and Image=%s", builder, image),
+		equals: func(o pack.BuildOptions) bool {
+			return o.Builder == builder && o.Image == image
+		},
+	}
+}
+
+func EqBuildOptionsWithEnv(env map[string]string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Env=%+v", env),
+		equals: func(o pack.BuildOptions) bool {
+			for k, v := range o.Env {
+				if env[k] != v {
+					return false
+				}
+			}
+			for k, v := range env {
+				if o.Env[k] != v {
+					return false
+				}
+			}
+			return true
+		},
+	}
+}
+
+type buildOptionsMatcher struct {
+	equals      func(pack.BuildOptions) bool
+	description string
+}
+
+func (m buildOptionsMatcher) Matches(x interface{}) bool {
+	if b, ok := x.(pack.BuildOptions); ok {
+		return m.equals(b)
+	}
+	return false
+}
+
+func (m buildOptionsMatcher) String() string {
+	return "is a BuildOptions with " + m.description
 }
