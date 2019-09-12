@@ -9,6 +9,8 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
+	context "context"
+
 	blob "github.com/buildpack/pack/blob"
 )
 
@@ -36,16 +38,16 @@ func (m *MockDownloader) EXPECT() *MockDownloaderMockRecorder {
 }
 
 // Download mocks base method
-func (m *MockDownloader) Download(arg0 string) (blob.Blob, error) {
+func (m *MockDownloader) Download(arg0 context.Context, arg1 string) (blob.Blob, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Download", arg0)
+	ret := m.ctrl.Call(m, "Download", arg0, arg1)
 	ret0, _ := ret[0].(blob.Blob)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Download indicates an expected call of Download
-func (mr *MockDownloaderMockRecorder) Download(arg0 interface{}) *gomock.Call {
+func (mr *MockDownloaderMockRecorder) Download(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Download", reflect.TypeOf((*MockDownloader)(nil).Download), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Download", reflect.TypeOf((*MockDownloader)(nil).Download), arg0, arg1)
 }

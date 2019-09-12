@@ -1,6 +1,7 @@
 package blob
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -34,7 +35,7 @@ func NewDownloader(logger logging.Logger, baseCacheDir string) *downloader {
 	}
 }
 
-func (d *downloader) Download(pathOrUri string) (Blob, error) {
+func (d *downloader) Download(ctx context.Context, pathOrUri string) (Blob, error) {
 	if paths.IsURI(pathOrUri) {
 		parsedUrl, err := url.Parse(pathOrUri)
 		if err != nil {
@@ -46,7 +47,7 @@ func (d *downloader) Download(pathOrUri string) (Blob, error) {
 		case "file":
 			path, err = paths.UriToFilePath(pathOrUri)
 		case "http", "https":
-			path, err = d.handleHTTP(pathOrUri)
+			path, err = d.handleHTTP(ctx, pathOrUri)
 		default:
 			err = fmt.Errorf("unsupported protocol %s in URI %s", style.Symbol(parsedUrl.Scheme), style.Symbol(pathOrUri))
 		}
@@ -74,7 +75,7 @@ func (d *downloader) handleFile(path string) (string, error) {
 	return path, nil
 }
 
-func (d *downloader) handleHTTP(uri string) (string, error) {
+func (d *downloader) handleHTTP(ctx context.Context, uri string) (string, error) {
 	cacheDir := d.versionedCacheDir()
 
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
@@ -98,7 +99,7 @@ func (d *downloader) handleHTTP(uri string) (string, error) {
 		etag = string(bytes)
 	}
 
-	reader, etag, err := d.downloadAsStream(uri, etag)
+	reader, etag, err := d.downloadAsStream(ctx, uri, etag)
 	if err != nil {
 		return "", err
 	} else if reader == nil {
@@ -124,11 +125,12 @@ func (d *downloader) handleHTTP(uri string) (string, error) {
 	return cachePath, nil
 }
 
-func (d *downloader) downloadAsStream(uri string, etag string) (io.ReadCloser, string, error) {
+func (d *downloader) downloadAsStream(ctx context.Context, uri string, etag string) (io.ReadCloser, string, error) {
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		return nil, "", err
 	}
+	req = req.WithContext(ctx)
 
 	if etag != "" {
 		req.Header.Set("If-None-Match", etag)
