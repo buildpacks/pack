@@ -15,8 +15,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/cmd"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/internal/paths"
 	"github.com/buildpack/pack/style"
@@ -69,14 +71,14 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
 	}
 
-	builderImage, err := c.processBuilderImage(rawBuilderImage)
+	bldr, err := c.processBuilderImage(rawBuilderImage)
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
-	runImage := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), builderImage.GetStackInfo(), opts.AdditionalMirrors)
+	runImage := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), bldr.GetStackInfo(), opts.AdditionalMirrors)
 
-	if _, err := c.validateRunImage(ctx, runImage, opts.NoPull, opts.Publish, builderImage.StackID); err != nil {
+	if _, err := c.validateRunImage(ctx, runImage, opts.NoPull, opts.Publish, bldr.StackID); err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImage)
 	}
 
@@ -90,6 +92,30 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
+
+	descriptor := ephemeralBuilder.GetLifecycleDescriptor()
+	lifecycleVersion := descriptor.Info.Version
+	if lifecycleVersion == nil {
+		c.logger.Warnf("lifecycle version unknown, assuming %s", style.Symbol(builder.AssumedLifecycleVersion))
+		lifecycleVersion = builder.VersionMustParse(builder.AssumedLifecycleVersion)
+	} else {
+		c.logger.Debugf("Executing lifecycle version %s", style.Symbol(lifecycleVersion.String()))
+	}
+
+	lcPlatformAPIVersion := api.MustParse(builder.AssumedPlatformAPIVersion)
+	if descriptor.API.PlatformVersion != nil {
+		lcPlatformAPIVersion = descriptor.API.PlatformVersion
+	}
+
+	if !api.MustParse(build.PlatformAPIVersion).SupportsVersion(lcPlatformAPIVersion) {
+		return errors.Errorf(
+			"pack %s (Platform API version %s) is incompatible with builder %s (Platform API version %s)",
+			cmd.Version,
+			build.PlatformAPIVersion,
+			style.Symbol(opts.Builder),
+			lcPlatformAPIVersion,
+		)
+	}
 
 	return c.lifecycle.Execute(ctx, build.LifecycleOptions{
 		AppPath:    appPath,

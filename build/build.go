@@ -16,6 +16,9 @@ import (
 	"github.com/buildpack/pack/style"
 )
 
+// PlatformAPIVersion is the current Platform API Version supported by this version of pack.
+const PlatformAPIVersion = "0.1"
+
 type Lifecycle struct {
 	builder      *builder.Builder
 	logger       logging.Logger
@@ -67,14 +70,6 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 			return errors.Wrap(err, "clearing build cache")
 		}
 		l.logger.Debugf("Build cache %s cleared", style.Symbol(buildCache.Name()))
-	}
-
-	lifecycleVersion := l.builder.GetLifecycleDescriptor().Info.Version
-	if lifecycleVersion == nil {
-		l.logger.Warnf("lifecycle version unknown, assuming %s", style.Symbol(builder.AssumedLifecycleVersion))
-		lifecycleVersion = builder.VersionMustParse(builder.AssumedLifecycleVersion)
-	} else {
-		l.logger.Debugf("Executing lifecycle version %s", style.Symbol(lifecycleVersion.String()))
 	}
 
 	l.logger.Debug(style.Step("DETECTING"))
