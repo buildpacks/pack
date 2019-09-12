@@ -22,7 +22,7 @@ func Run(logger logging.Logger, cfg config.Config, packClient *pack.Client) *cob
 				suggestSettingBuilder(logger, packClient)
 				return MakeSoftError()
 			}
-			env, err := parseEnv(flags.EnvFile, flags.Env)
+			env, err := parseEnv(flags.EnvFiles, flags.Env)
 			if err != nil {
 				return err
 			}

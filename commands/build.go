@@ -19,14 +19,14 @@ type BuildFlags struct {
 	Builder    string
 	RunImage   string
 	Env        []string
-	EnvFile    string
+	EnvFiles   []string
 	Publish    bool
 	NoPull     bool
 	ClearCache bool
 	Buildpacks []string
 }
 
-func Build(logger logging.Logger, cfg config.Config, packClient *pack.Client) *cobra.Command {
+func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
 	var flags BuildFlags
 	ctx := createCancellableContext()
 
@@ -40,7 +40,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient *pack.Client) *c
 				suggestSettingBuilder(logger, packClient)
 				return MakeSoftError()
 			}
-			env, err := parseEnv(flags.EnvFile, flags.Env)
+			env, err := parseEnv(flags.EnvFiles, flags.Env)
 			if err != nil {
 				return err
 			}
@@ -73,19 +73,23 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVar(&buildFlags.Builder, "builder", cfg.DefaultBuilder, "Builder image")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
 	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file.")
-	cmd.Flags().StringVar(&buildFlags.EnvFile, "env-file", "", "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed")
+	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed")
 	cmd.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "Skip pulling builder and run images before use")
 	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
 	cmd.Flags().StringSliceVar(&buildFlags.Buildpacks, "buildpack", nil, "Buildpack ID, path to a Buildpack directory, or path/URL to a Buildpack .tgz file"+multiValueHelp("buildpack"))
 }
 
-func parseEnv(envFile string, envVars []string) (map[string]string, error) {
+func parseEnv(envFiles []string, envVars []string) (map[string]string, error) {
 	env := map[string]string{}
-	if envFile != "" {
-		var err error
-		env, err = parseEnvFile(envFile)
+
+	for _, envFile := range envFiles {
+		envFileVars, err := parseEnvFile(envFile)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse env file '%s'", envFile)
+		}
+
+		for k, v := range envFileVars {
+			env[k] = v
 		}
 	}
 	for _, envVar := range envVars {
