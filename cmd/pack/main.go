@@ -8,16 +8,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
+	"github.com/buildpack/pack/cmd"
 	"github.com/buildpack/pack/commands"
 	"github.com/buildpack/pack/config"
 	clilogger "github.com/buildpack/pack/internal/logging"
 	"github.com/buildpack/pack/logging"
 )
 
-var (
-	Version    = "0.0.0"
-	packClient pack.Client
-)
+var packClient pack.Client
 
 func main() {
 	// create logger with defaults
@@ -64,7 +62,7 @@ func main() {
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
 
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
-	rootCmd.AddCommand(commands.Version(logger, Version))
+	rootCmd.AddCommand(commands.Version(logger, cmd.Version))
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger))
 

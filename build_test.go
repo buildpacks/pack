@@ -25,8 +25,11 @@ import (
 
 	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/blob"
+	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/cmd"
 	ifakes "github.com/buildpack/pack/internal/fakes"
+	"github.com/buildpack/pack/style"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -90,7 +93,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					},
 					API: builder.LifecycleAPI{
 						BuildpackVersion: api.MustParse("0.3"),
-						PlatformVersion:  api.MustParse("0.2"),
+						PlatformVersion:  api.MustParse(build.PlatformAPIVersion),
 					},
 				},
 			},
@@ -334,6 +337,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Stack: builder.StackMetadata{
 								RunImage: builder.RunImageMetadata{
 									Image: "some/run",
+								},
+							},
+							Lifecycle: builder.LifecycleMetadata{
+								API: builder.LifecycleAPI{
+									PlatformVersion: api.MustParse(build.PlatformAPIVersion),
 								},
 							},
 						})
@@ -907,6 +915,80 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, fakeLifecycle.Opts.HTTPProxy, "custom-http-proxy")
 						h.AssertEq(t, fakeLifecycle.Opts.HTTPSProxy, "custom-https-proxy")
 						h.AssertEq(t, fakeLifecycle.Opts.NoProxy, "custom-no-proxy")
+					})
+				})
+			})
+		})
+
+		when("Lifecycle option", func() {
+			when("Platform API", func() {
+				when("lifecycle platform API is compatible", func() {
+					it("should succeed", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: builderName,
+						})
+
+						h.AssertNil(t, err)
+					})
+				})
+
+				when("lifecycle platform API is not compatible", func() {
+					var incompatibleBuilderImage *fakes.Image
+					it.Before(func() {
+						incompatibleBuilderImage = ifakes.NewFakeBuilderImage(t,
+							"incompatible-"+builderName,
+							defaultBuilderStackID,
+							"1234",
+							"5678",
+							builder.Metadata{
+								Stack: builder.StackMetadata{
+									RunImage: builder.RunImageMetadata{
+										Image: "default/run",
+										Mirrors: []string{
+											"registry1.example.com/run/mirror",
+											"registry2.example.com/run/mirror",
+										},
+									},
+								},
+								Lifecycle: builder.LifecycleMetadata{
+									LifecycleInfo: builder.LifecycleInfo{
+										Version: &builder.Version{
+											Version: *semver.MustParse("0.3.0"),
+										},
+									},
+									API: builder.LifecycleAPI{
+										BuildpackVersion: api.MustParse("0.3"),
+										PlatformVersion:  api.MustParse("0.9"),
+									},
+								},
+							},
+						)
+
+						fakeImageFetcher.LocalImages[incompatibleBuilderImage.Name()] = incompatibleBuilderImage
+					})
+
+					it.After(func() {
+						incompatibleBuilderImage.Cleanup()
+					})
+
+					it("should error", func() {
+						builderName := incompatibleBuilderImage.Name()
+
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: builderName,
+						})
+
+						h.AssertError(t,
+							err,
+							fmt.Sprintf(
+								"pack %s (Platform API version %s) is incompatible with builder %s (Platform API version %s)",
+								cmd.Version,
+								build.PlatformAPIVersion,
+								style.Symbol(builderName),
+								"0.9",
+							))
 					})
 				})
 			})
