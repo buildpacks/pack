@@ -100,11 +100,9 @@ id = "some.stack.id"
 				_, err := builder.NewBuildpack(blob.NewBlob(tmpBpDir))
 				h.AssertError(t, err, "cannot have both stacks and an order defined")
 			})
-
 		})
 
 		when("missing stacks and order", func() {
-
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpBpDir, "buildpack.toml"), []byte(`
 [buildpack]

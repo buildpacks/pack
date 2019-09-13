@@ -53,13 +53,36 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			tarFile, err = ioutil.TempFile(tmpDir, "file.tgz")
 			h.AssertNil(t, err)
-
-			err = archive.CreateSingleFileTar(tarFile.Name(), "./file1", "file-1 content")
-			h.AssertNil(t, err)
 		})
 
 		it.After(func() {
 			_ = tarFile.Close()
+		})
+
+		when("tgz has the path", func() {
+			it.Before(func() {
+				err = archive.CreateSingleFileTar(tarFile.Name(), "file1", "file-1 content")
+				h.AssertNil(t, err)
+			})
+
+			it("returns the file contents", func() {
+				_, contents, err := archive.ReadTarEntry(tarFile, "file1")
+				h.AssertNil(t, err)
+				h.AssertEq(t, string(contents), "file-1 content")
+			})
+		})
+
+		when("tgz has ./path", func() {
+			it.Before(func() {
+				err = archive.CreateSingleFileTar(tarFile.Name(), "./file1", "file-1 content")
+				h.AssertNil(t, err)
+			})
+
+			it("returns the file contents", func() {
+				_, contents, err := archive.ReadTarEntry(tarFile, "file1")
+				h.AssertNil(t, err)
+				h.AssertEq(t, string(contents), "file-1 content")
+			})
 		})
 	})
 

@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 
@@ -143,7 +144,7 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 			return nil, nil, errors.Wrap(err, "failed to get next tar entry")
 		}
 
-		if header.Name == entryPath {
+		if path.Clean(header.Name) == entryPath {
 			buf, err := ioutil.ReadAll(tr)
 			if err != nil {
 				return nil, nil, errors.Wrapf(err, "failed to read contents of '%s'", entryPath)
