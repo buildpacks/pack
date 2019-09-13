@@ -29,10 +29,7 @@ func (l *Lifecycle) Detect(ctx context.Context) error {
 }
 
 func (l *Lifecycle) Restore(ctx context.Context, cacheName string) error {
-	var restore *Phase
-	var err error
-
-	restore, err = l.NewPhase(
+	restore, err := l.NewPhase(
 		"restorer",
 		WithDaemonAccess(),
 		WithArgs(
@@ -41,7 +38,6 @@ func (l *Lifecycle) Restore(ctx context.Context, cacheName string) error {
 		),
 		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 	)
-
 	if err != nil {
 		return err
 	}
@@ -73,16 +69,15 @@ func (l *Lifecycle) newAnalyze(repoName string, publish, clearCache bool) (*Phas
 			WithRegistryAccess(repoName),
 			WithArgs(args...),
 		)
-	} else {
-		return l.NewPhase(
-			"analyzer",
-			WithDaemonAccess(),
-			WithArgs(prependArg(
-				"-daemon",
-				args,
-			)...),
-		)
 	}
+	return l.NewPhase(
+		"analyzer",
+		WithDaemonAccess(),
+		WithArgs(prependArg(
+			"-daemon",
+			args,
+		)...),
+	)
 }
 
 func prependArg(arg string, args []string) []string {
@@ -126,42 +121,37 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 				repoName,
 			),
 		)
-	} else {
-		if launchCacheName != "" {
-			return l.NewPhase(
-				"exporter",
-				WithDaemonAccess(),
-				WithArgs(
-					"-image", runImage,
-					"-layers", layersDir,
-					"-app", appDir,
-					"-daemon",
-					"-launch-cache", launchCacheDir,
-					repoName,
-				),
-				WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
-			)
-		} else {
-			return l.NewPhase(
-				"exporter",
-				WithDaemonAccess(),
-				WithArgs(
-					"-image", runImage,
-					"-layers", layersDir,
-					"-app", appDir,
-					"-daemon",
-					repoName,
-				),
-			)
-		}
 	}
+	if launchCacheName != "" {
+		return l.NewPhase(
+			"exporter",
+			WithDaemonAccess(),
+			WithArgs(
+				"-image", runImage,
+				"-layers", layersDir,
+				"-app", appDir,
+				"-daemon",
+				"-launch-cache", launchCacheDir,
+				repoName,
+			),
+			WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
+		)
+	}
+	return l.NewPhase(
+		"exporter",
+		WithDaemonAccess(),
+		WithArgs(
+			"-image", runImage,
+			"-layers", layersDir,
+			"-app", appDir,
+			"-daemon",
+			repoName,
+		),
+	)
 }
 
 func (l *Lifecycle) Cache(ctx context.Context, cacheName string) error {
-	var cache *Phase
-	var err error
-
-	cache, err = l.NewPhase(
+	cache, err := l.NewPhase(
 		"cacher",
 		WithDaemonAccess(),
 		WithArgs(
@@ -170,7 +160,6 @@ func (l *Lifecycle) Cache(ctx context.Context, cacheName string) error {
 		),
 		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 	)
-
 	if err != nil {
 		return err
 	}
