@@ -3,8 +3,6 @@ package pack
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"runtime"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil"
@@ -163,14 +161,6 @@ func validateBuilderConfig(conf builder.Config) error {
 
 	if conf.Stack.RunImage == "" {
 		return errors.New("stack.run-image is required")
-	}
-
-	if runtime.GOOS == "windows" {
-		for _, bp := range conf.Buildpacks {
-			if filepath.Ext(bp.URI) != ".tgz" {
-				return fmt.Errorf("buildpack %s: directory-based buildpacks are not currently supported on Windows", style.Symbol(bp.ID))
-			}
-		}
 	}
 
 	return nil
