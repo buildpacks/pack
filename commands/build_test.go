@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -44,7 +45,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#BuildCommand", func() {
-		when("no env file is provided", func() {
+		when("a builder and image are set", func() {
 			it("builds an image with a builder", func() {
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
@@ -67,7 +68,11 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				envPath = envfile.Name()
 			})
 
-			it("builds an image with a builder", func() {
+			it.After(func() {
+				h.AssertNil(t, os.RemoveAll(envPath))
+			})
+
+			it("builds an image env variables read from the env file", func() {
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
 						"KEY": "VALUE",
@@ -79,7 +84,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("two env files are provided", func() {
+		when("two env files are provided with conflicted keys", func() {
 			var envPath1 string
 			var envPath2 string
 
@@ -99,7 +104,12 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				envPath2 = envfile2.Name()
 			})
 
-			it("builds an image with a builder", func() {
+			it.After(func() {
+				h.AssertNil(t, os.RemoveAll(envPath1))
+				h.AssertNil(t, os.RemoveAll(envPath2))
+			})
+
+			it("builds an image with the last value of each env variable", func() {
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
 						"KEY1": "VALUE1",
