@@ -27,7 +27,6 @@ import (
 )
 
 func TestCreateBuilder(t *testing.T) {
-	h.RequireDocker(t)
 	color.NoColor = true
 	spec.Run(t, "create_builder", testCreateBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
@@ -295,10 +294,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("disallows directory-based buildpacks", func() {
-				opts.BuilderConfig.Buildpacks[0].URI = "some/buildpack/dir"
+				opts.BuilderConfig.Buildpacks[0].URI = "testdata/buildpack"
 
 				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err, "buildpack 'bp.one': directory-based buildpacks are not currently supported on Windows")
+				h.AssertError(t,
+					err,
+					"buildpack 'testdata/buildpack': directory-based buildpacks are not currently supported on Windows")
 			})
 		})
 
