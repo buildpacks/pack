@@ -52,7 +52,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		)
 	}
 
-	lifecycle, err := c.fetchLifecycle(opts.BuilderConfig.Lifecycle)
+	lifecycle, err := c.fetchLifecycle(ctx, opts.BuilderConfig.Lifecycle)
 	if err != nil {
 		return errors.Wrap(err, "fetch lifecycle")
 	}
@@ -67,7 +67,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 			return err
 		}
 
-		blob, err := c.downloader.Download(b.URI)
+		blob, err := c.downloader.Download(ctx, b.URI)
 		if err != nil {
 			return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))
 		}
@@ -113,7 +113,7 @@ func validateBuildpack(bp builder.Buildpack, source, expectedID, expectedBPVersi
 	return nil
 }
 
-func (c *Client) fetchLifecycle(config builder.LifecycleConfig) (builder.Lifecycle, error) {
+func (c *Client) fetchLifecycle(ctx context.Context, config builder.LifecycleConfig) (builder.Lifecycle, error) {
 	if config.Version != "" && config.URI != "" {
 		return nil, errors.Errorf(
 			"%s can only declare %s or %s, not both",
@@ -135,7 +135,7 @@ func (c *Client) fetchLifecycle(config builder.LifecycleConfig) (builder.Lifecyc
 		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion))
 	}
 
-	b, err := c.downloader.Download(uri)
+	b, err := c.downloader.Download(ctx, uri)
 	if err != nil {
 		return nil, errors.Wrap(err, "downloading lifecycle")
 	}

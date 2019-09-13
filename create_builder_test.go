@@ -69,9 +69,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			imageFetcher.LocalImages["some/run-image"] = fakeRunImage
 			imageFetcher.RemoteImages["localhost:5000/some-run-image"] = fakeRunImageMirror
 
-			mockDownloader.EXPECT().Download("https://example.fake/bp-one.tgz").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
-			mockDownloader.EXPECT().Download("some/buildpack/dir").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
-			mockDownloader.EXPECT().Download("file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil).AnyTimes()
+			mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
+			mockDownloader.EXPECT().Download(gomock.Any(), "some/buildpack/dir").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
+			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil).AnyTimes()
 
 			subject = &Client{
 				logger:       log,
@@ -215,6 +215,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			it("should download from predetermined uri", func() {
 				mockDownloader.EXPECT().Download(
+					gomock.Any(),
 					"https://github.com/buildpack/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+linux.x86-64.tgz",
 				).Return(
 					blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil,
@@ -234,6 +235,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should download default lifecycle", func() {
 				expectedDefaultLifecycleVersion := "0.4.0"
 				mockDownloader.EXPECT().Download(
+					gomock.Any(),
 					fmt.Sprintf(
 						"https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz",
 						expectedDefaultLifecycleVersion,

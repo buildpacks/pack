@@ -82,7 +82,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImage)
 	}
 
-	fetchedBps, group, err := c.processBuildpacks(opts.Buildpacks)
+	fetchedBps, group, err := c.processBuildpacks(ctx, opts.Buildpacks)
 	if err != nil {
 		return errors.Wrap(err, "invalid buildpack")
 	}
@@ -235,7 +235,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 	}
 }
 
-func (c *Client) processBuildpacks(buildpacks []string) ([]builder.Buildpack, builder.OrderEntry, error) {
+func (c *Client) processBuildpacks(ctx context.Context, buildpacks []string) ([]builder.Buildpack, builder.OrderEntry, error) {
 	group := builder.OrderEntry{Group: []builder.BuildpackRef{}}
 	var bps []builder.Buildpack
 	for _, bp := range buildpacks {
@@ -255,7 +255,7 @@ func (c *Client) processBuildpacks(buildpacks []string) ([]builder.Buildpack, bu
 
 			c.logger.Debugf("fetching buildpack from %s", style.Symbol(bp))
 
-			blob, err := c.downloader.Download(bp)
+			blob, err := c.downloader.Download(ctx, bp)
 			if err != nil {
 				return nil, builder.OrderEntry{}, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
 			}

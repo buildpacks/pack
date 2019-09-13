@@ -1,6 +1,7 @@
 package blob_test
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -55,7 +56,7 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 					absPath, err := filepath.Abs(relPath)
 					h.AssertNil(t, err)
 
-					b, err := subject.Download(absPath)
+					b, err := subject.Download(context.TODO(), absPath)
 					h.AssertNil(t, err)
 					assertBlob(t, b)
 				})
@@ -63,7 +64,7 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 
 			when("is relative", func() {
 				it("resolves the absolute path", func() {
-					b, err := subject.Download(relPath)
+					b, err := subject.Download(context.TODO(), relPath)
 					h.AssertNil(t, err)
 					assertBlob(t, b)
 				})
@@ -77,7 +78,7 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 					uri, err := paths.FilePathToUri(absPath)
 					h.AssertNil(t, err)
 
-					b, err := subject.Download(uri)
+					b, err := subject.Download(context.TODO(), uri)
 					h.AssertNil(t, err)
 					assertBlob(t, b)
 				})
@@ -116,17 +117,17 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("downloads from a 'http(s)://' URI", func() {
-					b, err := subject.Download(uri)
+					b, err := subject.Download(context.TODO(), uri)
 					h.AssertNil(t, err)
 					assertBlob(t, b)
 				})
 
 				it("uses cache from a 'http(s)://' URI tgz", func() {
-					b, err := subject.Download(uri)
+					b, err := subject.Download(context.TODO(), uri)
 					h.AssertNil(t, err)
 					assertBlob(t, b)
 
-					b, err = subject.Download(uri)
+					b, err = subject.Download(context.TODO(), uri)
 					h.AssertNil(t, err)
 					assertBlob(t, b)
 				})
@@ -141,7 +142,7 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("should return error", func() {
-						_, err := subject.Download(uri)
+						_, err := subject.Download(context.TODO(), uri)
 						h.AssertError(t, err, "could not download")
 						h.AssertError(t, err, "http status '404'")
 					})
@@ -149,7 +150,7 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 
 				when("uri is unsupported", func() {
 					it("should return error", func() {
-						_, err := subject.Download("not-supported://file.tgz")
+						_, err := subject.Download(context.TODO(), "not-supported://file.tgz")
 						h.AssertError(t, err, "unsupported protocol 'not-supported'")
 					})
 				})
