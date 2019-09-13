@@ -35,6 +35,10 @@ func NewFetcher(logger logging.Logger, docker *client.Client) *Fetcher {
 var ErrNotFound = errors.New("not found")
 
 func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (image imgutil.Image, err error) {
+	if daemon && !pull {
+		return f.fetchDaemonImage(name)
+	}
+
 	image, err = imgutil.NewRemoteImage(name, authn.DefaultKeychain)
 	if err != nil {
 		return nil, err
@@ -43,7 +47,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (im
 	remoteFound := image.Found()
 
 	if daemon {
-		if remoteFound && pull {
+		if remoteFound {
 			f.logger.Debugf("Pulling image %s", style.Symbol(name))
 			if err := f.pullImage(ctx, name); err != nil {
 				return nil, err

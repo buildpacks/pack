@@ -89,6 +89,11 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 			when("pull is false", func() {
 				when("there is a local image", func() {
 					it.Before(func() {
+						// Make sure the repoName is not a valid remote repo.
+						// This is to verify that no remote check is made
+						// when there's a valid local image.
+						repoName = "invalidhost" + repoName
+
 						h.CreateImageOnLocal(
 							t,
 							docker,
