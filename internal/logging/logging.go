@@ -2,10 +2,10 @@
 package logging
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"sync"
 	"time"
 
@@ -17,6 +17,7 @@ import (
 const (
 	errorLevelText = "ERROR: "
 	warnLevelText  = "Warning: "
+	lineFeed       = '\n'
 
 	// time format the out logging uses
 	timeFmt = "2006/01/02 15:04:05.000000"
@@ -44,8 +45,8 @@ func formatLevel(ll log.Level) string {
 // preserve behavior of other loggers
 func appendMissingLineFeed(msg string) string {
 	buff := []byte(msg)
-	if buff[len(buff)-1] != '\n' {
-		buff = append(buff, '\n')
+	if buff[len(buff)-1] != lineFeed {
+		buff = append(buff, lineFeed)
 	}
 	return string(buff)
 }
@@ -112,9 +113,9 @@ func (lw *logWithWriters) WantQuiet(f bool) {
 }
 
 // NewLogWithWriters creates a logger to be used with pack CLI.
-func NewLogWithWriters() *logWithWriters {
+func NewLogWithWriters(stdout, stderr io.Writer) *logWithWriters {
 	hnd := &handler{
-		writer: os.Stdout,
+		writer: stdout,
 		timer: func() time.Time {
 			return time.Now()
 		},
@@ -122,8 +123,64 @@ func NewLogWithWriters() *logWithWriters {
 	var lw logWithWriters
 	lw.handler = hnd
 	lw.out = hnd.writer
-	lw.errOut = os.Stderr
+	lw.errOut = stderr
 	lw.Logger.Handler = hnd
 	lw.Logger.Level = log.DebugLevel
 	return &lw
+}
+
+// Writer wraps console output file descriptors and will optionally strip ANSI color codes from output.  The reason
+// this is needed is because build pack scripts are generally bash shell scripts and are executed on a docker container.
+// The output from these scripts often contain color codes and the docker api returns this raw console output to
+// pack code.  If pack is running on Windows, the output containing the color codes looks like crap.
+type Writer struct {
+	sync.Mutex
+	buffer bytes.Buffer
+	out    io.Writer
+}
+
+// New creates writer taking something that implements io.Writer as an argument.
+func New(w io.Writer) *Writer {
+	return &Writer{
+		out: w,
+	}
+}
+
+func write(w *Writer, b []byte) {
+	if len(b) == 0 {
+		return
+	}
+	i := bytes.IndexByte(b, lineFeed)
+	if i == -1 {
+		w.buffer.Write(b)
+		return
+	}
+	w.buffer.Write(b[:i+1])
+	_, _ = fmt.Fprint(w.out, maybeStripColor(w.buffer.Bytes()))
+	w.buffer.Reset()
+	write(w, b[i+1:])
+}
+
+// Write buffered input is written to the underlying io.Writer when a line feed occurs.
+func (w *Writer) Write(b []byte) (n int, err error) {
+	w.Lock()
+	defer w.Unlock()
+	n = len(b)
+	write(w, b)
+	return n, err
+}
+
+// Close writes any remaining buffer contents to underlying io.Writer
+func (w *Writer) Close() error {
+	w.Lock()
+	defer w.Unlock()
+	if w.buffer.Len() == 0 {
+		return nil
+	}
+	contents := maybeStripColor(w.buffer.Bytes())
+	if len(contents) > 0 {
+		_, err := fmt.Fprintln(w.out, contents)
+		return err
+	}
+	return nil
 }
