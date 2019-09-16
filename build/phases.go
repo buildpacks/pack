@@ -122,21 +122,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 			),
 		)
 	}
-	if launchCacheName != "" {
-		return l.NewPhase(
-			"exporter",
-			WithDaemonAccess(),
-			WithArgs(
-				"-image", runImage,
-				"-layers", layersDir,
-				"-app", appDir,
-				"-daemon",
-				"-launch-cache", launchCacheDir,
-				repoName,
-			),
-			WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
-		)
-	}
+
 	return l.NewPhase(
 		"exporter",
 		WithDaemonAccess(),
@@ -145,8 +131,10 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 			"-layers", layersDir,
 			"-app", appDir,
 			"-daemon",
+			"-launch-cache", launchCacheDir,
 			repoName,
 		),
+		WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
 	)
 }
 
