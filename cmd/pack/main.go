@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"runtime"
 
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
@@ -18,8 +19,12 @@ import (
 var packClient pack.Client
 
 func main() {
+	stdout := clilogger.New(os.Stdout)
+	defer stdout.Close()
+	stderr := clilogger.New(os.Stderr)
+	defer stderr.Close()
 	// create logger with defaults
-	logger := clilogger.NewLogWithWriters()
+	logger := clilogger.NewLogWithWriters(stdout, stderr)
 
 	cobra.EnableCommandSorting = false
 	cfg, err := initConfig()
@@ -32,8 +37,10 @@ func main() {
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if fs := cmd.Flags(); fs != nil {
-				if flag, err := fs.GetBool("no-color"); err == nil {
-					color.NoColor = flag
+				if runtime.GOOS != "windows" {
+					if flag, err := fs.GetBool("no-color"); err == nil {
+						color.NoColor = flag
+					}
 				}
 				if flag, err := fs.GetBool("quiet"); err == nil {
 					logger.WantQuiet(flag)
@@ -46,6 +53,7 @@ func main() {
 			packClient = initClient(logger)
 		},
 	}
+
 	rootCmd.PersistentFlags().Bool("no-color", false, "Disable color output")
 	rootCmd.PersistentFlags().Bool("timestamps", false, "Enable timestamps in output")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Show less output")
