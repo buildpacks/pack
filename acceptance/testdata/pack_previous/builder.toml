@@ -9,17 +9,15 @@
   uri = "read-env-buildpack.tgz"
 
 [[buildpacks]]
-  id = "noop.buildpack"
-  version = "noop.buildpack.version"
+  # intentionally missing id/version as they are optional
   uri = "noop-buildpack.tgz"
-  latest = true
 
-[[groups]]
-[[groups.buildpacks]]
+[[order]]
+[[order.group]]
   id = "simple/layers"
-  version = "simple-layers-version"
+  # intentionlly missing version to test support
 
-[[groups.buildpacks]]
+[[order.group]]
   id = "read/env"
   version = "read-env-version"
   optional = true
