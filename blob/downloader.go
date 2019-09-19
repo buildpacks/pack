@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/mitchellh/ioprogress"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/internal/paths"
@@ -143,7 +144,7 @@ func (d *downloader) downloadAsStream(ctx context.Context, uri string, etag stri
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		d.logger.Debugf("Downloading from %s", style.Symbol(uri))
-		return resp.Body, resp.Header.Get("Etag"), nil
+		return withProgress(resp.Body, resp.ContentLength), resp.Header.Get("Etag"), nil
 	}
 
 	if resp.StatusCode == 304 {
@@ -155,6 +156,22 @@ func (d *downloader) downloadAsStream(ctx context.Context, uri string, etag stri
 		"could not download from %s, code http status %s",
 		style.Symbol(uri), style.Symbol("%d", resp.StatusCode),
 	)
+}
+
+func withProgress(rc io.ReadCloser, length int64) io.ReadCloser {
+	return &progressReader{
+		Closer: rc,
+		Reader: &ioprogress.Reader{
+			Reader:   rc,
+			Size:     length,
+			DrawFunc: ioprogress.DrawTerminalf(os.Stdout, ioprogress.DrawTextFormatBytes),
+		},
+	}
+}
+
+type progressReader struct {
+	*ioprogress.Reader
+	io.Closer
 }
 
 func (d *downloader) versionedCacheDir() string {
