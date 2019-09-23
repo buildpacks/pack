@@ -38,3 +38,7 @@ func (f *fakeLog) HandleLog(e *log.Entry) error {
 func (f *fakeLog) Writer() io.Writer {
 	return f.w
 }
+
+func (f *fakeLog) IsVerbose() bool {
+	return false
+}

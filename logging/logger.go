@@ -23,6 +23,8 @@ type Logger interface {
 	Errorf(fmt string, v ...interface{})
 
 	Writer() io.Writer
+
+	IsVerbose() bool
 }
 
 // WithDebugErrorWriter is an optional interface for loggers that want to support a separate writer for errors and standard logging.

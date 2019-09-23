@@ -17,6 +17,7 @@ func (l *Lifecycle) Detect(ctx context.Context) error {
 	detect, err := l.NewPhase(
 		"detector",
 		WithArgs(
+			"-log-level", l.determineLogLevel(),
 			"-app", appDir,
 			"-platform", platformDir,
 		),
@@ -33,6 +34,7 @@ func (l *Lifecycle) Restore(ctx context.Context, cacheName string) error {
 		"restorer",
 		WithDaemonAccess(),
 		WithArgs(
+			"-log-level", l.determineLogLevel(),
 			"-path", cacheDir,
 			"-layers", layersDir,
 		),
@@ -56,6 +58,7 @@ func (l *Lifecycle) Analyze(ctx context.Context, repoName string, publish, clear
 
 func (l *Lifecycle) newAnalyze(repoName string, publish, clearCache bool) (*Phase, error) {
 	args := []string{
+		"-log-level", l.determineLogLevel(),
 		"-layers", layersDir,
 		repoName,
 	}
@@ -115,6 +118,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 			"exporter",
 			WithRegistryAccess(repoName, runImage),
 			WithArgs(
+				"-log-level", l.determineLogLevel(),
 				"-image", runImage,
 				"-layers", layersDir,
 				"-app", appDir,
@@ -143,6 +147,7 @@ func (l *Lifecycle) Cache(ctx context.Context, cacheName string) error {
 		"cacher",
 		WithDaemonAccess(),
 		WithArgs(
+			"-log-level", l.determineLogLevel(),
 			"-path", cacheDir,
 			"-layers", layersDir,
 		),
@@ -153,4 +158,13 @@ func (l *Lifecycle) Cache(ctx context.Context, cacheName string) error {
 	}
 	defer cache.Cleanup()
 	return cache.Run(ctx)
+}
+
+func (l *Lifecycle) determineLogLevel() string {
+	// TODO if we are ok depending on lifecycle we can import these constants
+	if l.logger.IsVerbose() {
+		return "debug"
+	} else {
+		return "info"
+	}
 }

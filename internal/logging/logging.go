@@ -112,6 +112,18 @@ func (lw *logWithWriters) WantQuiet(f bool) {
 	}
 }
 
+func (lw *logWithWriters) WantVerbose(f bool) {
+	if f {
+		lw.Level = log.InfoLevel
+	} else {
+		lw.Level = log.DebugLevel
+	}
+}
+
+func (lw *logWithWriters) IsVerbose() bool {
+	return lw.Level == log.DebugLevel
+}
+
 // NewLogWithWriters creates a logger to be used with pack CLI.
 func NewLogWithWriters(stdout, stderr io.Writer) *logWithWriters {
 	hnd := &handler{

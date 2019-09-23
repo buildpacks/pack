@@ -60,3 +60,7 @@ func (l *defaultLogger) Errorf(format string, v ...interface{}) {
 func (l *defaultLogger) Writer() io.Writer {
 	return l.out.Writer()
 }
+
+func (l *defaultLogger) IsVerbose() bool {
+	return false
+}
