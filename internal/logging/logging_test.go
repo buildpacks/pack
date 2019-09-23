@@ -30,7 +30,7 @@ func newTestLogger(stdout, stderr io.Writer) *logWithWriters {
 	lw.out = hnd.writer
 	lw.errOut = stderr
 	lw.Logger.Handler = hnd
-	lw.Logger.Level = log.DebugLevel
+	lw.Logger.Level = log.InfoLevel
 	return &lw
 }
 
@@ -81,13 +81,15 @@ func TestPackCLILogger(t *testing.T) {
 			logger.Debugf("there")
 			h.AssertEq(t, log.String(), "")
 			logger.Info("test")
-			expected := "test\n"
-			h.AssertEq(t, log.String(), expected)
+			h.AssertEq(t, log.String(), "")
+			logger.Warn("oh no")
+			expected := "oh no\n"
+			h.AssertContains(t, log.String(), expected)
 
 			testOut := logger.Writer()
 			h.AssertSameInstance(t, testOut, &log)
 
-			testOut = logger.DebugErrorWriter()
+			testOut = logger.InfoErrorWriter()
 			h.AssertSameInstance(t, testOut, ioutil.Discard)
 		})
 
@@ -95,7 +97,7 @@ func TestPackCLILogger(t *testing.T) {
 			testOut := logger.Writer()
 			h.AssertSameInstance(t, testOut, &log)
 
-			testOut = logger.DebugErrorWriter()
+			testOut = logger.InfoErrorWriter()
 			h.AssertSameInstance(t, testOut, &errLog)
 		})
 
