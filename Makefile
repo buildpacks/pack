@@ -1,7 +1,7 @@
 # Go parameters
 GOCMD?=go
 GOENV=CGO_ENABLED=0
-PACK_VERSION?=dev
+PACK_VERSION?=dev-$(shell date +%Y-%m-%d-%H:%M:%S)
 PACK_BIN?=pack
 PACKAGE_BASE=github.com/buildpack/pack
 PACKAGES:=$(shell $(GOCMD) list -mod=vendor ./... | grep -v /testdata/)
