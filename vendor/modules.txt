@@ -7,15 +7,20 @@ github.com/BurntSushi/toml
 github.com/Masterminds/semver
 # github.com/Microsoft/go-winio v0.4.12
 github.com/Microsoft/go-winio
-# github.com/apex/log v1.1.0
+# github.com/apex/log v1.1.1
 github.com/apex/log
-# github.com/buildpack/imgutil v0.0.0-20190509214933-76de939dfb34
+# github.com/buildpack/imgutil v0.0.0-20190726132853-1f31ed20483a
 github.com/buildpack/imgutil
+github.com/buildpack/imgutil/local
+github.com/buildpack/imgutil/remote
 github.com/buildpack/imgutil/fakes
-# github.com/buildpack/lifecycle v0.1.1-0.20190510142604-8612386b1cea
+# github.com/buildpack/lifecycle v0.4.1-0.20190923204251-11f83ef99246
 github.com/buildpack/lifecycle/metadata
 github.com/buildpack/lifecycle/image/auth
 github.com/buildpack/lifecycle/cmd
+github.com/buildpack/lifecycle/internal/logging
+github.com/buildpack/lifecycle/logging
+github.com/buildpack/lifecycle/style
 # github.com/dgodd/dockerdial v1.0.1
 github.com/dgodd/dockerdial
 # github.com/docker/distribution v2.7.1+incompatible
@@ -88,9 +93,9 @@ github.com/hashicorp/yamux
 github.com/inconshreveable/mousetrap
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/mattn/go-colorable v0.0.9
+# github.com/mattn/go-colorable v0.1.2
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.4
+# github.com/mattn/go-isatty v0.0.9
 github.com/mattn/go-isatty
 # github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
 github.com/mitchellh/ioprogress
@@ -126,18 +131,19 @@ github.com/sirupsen/logrus
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag
-# golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c
+# golang.org/x/net v0.0.0-20190724013045-ca1201d0de80
 golang.org/x/net/proxy
 golang.org/x/net/internal/socks
 golang.org/x/net/html/charset
 golang.org/x/net/html
 golang.org/x/net/html/atom
 # golang.org/x/sync v0.0.0-20190423024810-112230192c58
+golang.org/x/sync/singleflight
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.0.0-20190509141414-a5b02f93d862
+# golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/text v0.3.1
+# golang.org/x/text v0.3.2
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
@@ -155,10 +161,10 @@ golang.org/x/text/runes
 golang.org/x/text/internal/language
 golang.org/x/text/internal/language/compact
 golang.org/x/text/internal/tag
-# golang.org/x/tools v0.0.0-20190425150028-36563e24a262
+# golang.org/x/tools v0.0.0-20190808195139-e713427fea3f
 golang.org/x/tools/cmd/goimports
 golang.org/x/tools/go/packages
-golang.org/x/tools/imports
+golang.org/x/tools/internal/imports
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/internal/packagesdriver
 golang.org/x/tools/internal/gopathwalk
@@ -167,5 +173,5 @@ golang.org/x/tools/go/ast/astutil
 golang.org/x/tools/internal/module
 golang.org/x/tools/go/internal/gcimporter
 golang.org/x/tools/internal/fastwalk
-# gopkg.in/yaml.v2 v2.2.1
+# gopkg.in/yaml.v2 v2.2.2
 gopkg.in/yaml.v2

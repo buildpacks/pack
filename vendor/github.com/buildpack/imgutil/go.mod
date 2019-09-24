@@ -19,9 +19,10 @@ require (
 	github.com/sirupsen/logrus v1.4.1 // indirect
 	github.com/stretchr/testify v1.3.0 // indirect
 	golang.org/x/net v0.0.0-20190415214537-1da14a5a36f2 // indirect
-	golang.org/x/sync v0.0.0-20190412183630-56d357773e84 // indirect
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/sys v0.0.0-20190416152802-12500544f89f // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
+	golang.org/x/tools v0.0.0-20190624190245-7f2218787638
 	google.golang.org/grpc v1.20.0 // indirect
 	gotest.tools v2.2.0+incompatible // indirect
 )

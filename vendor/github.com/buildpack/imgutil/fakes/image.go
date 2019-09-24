@@ -12,28 +12,28 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/imgutil"
 )
 
-func NewImage(name, topLayerSha, digest string) *Image {
+func NewImage(name, topLayerSha string, identifier imgutil.Identifier) *Image {
 	return &Image{
-		alreadySaved:  false,
 		labels:        map[string]string{},
 		env:           map[string]string{},
 		topLayerSha:   topLayerSha,
-		digest:        digest,
+		identifier:    identifier,
 		name:          name,
 		cmd:           []string{"initialCMD"},
 		layersMap:     map[string]string{},
 		prevLayersMap: map[string]string{},
 		createdAt:     time.Now(),
+		savedNames:    map[string]bool{},
 	}
 }
 
 type Image struct {
-	alreadySaved  bool
 	deleted       bool
 	layers        []string
 	layersMap     map[string]string
@@ -42,7 +42,7 @@ type Image struct {
 	labels        map[string]string
 	env           map[string]string
 	topLayerSha   string
-	digest        string
+	identifier    imgutil.Identifier
 	name          string
 	entryPoint    []string
 	cmd           []string
@@ -50,74 +50,75 @@ type Image struct {
 	createdAt     time.Time
 	layerDir      string
 	workingDir    string
+	savedNames    map[string]bool
 }
 
-func (f *Image) CreatedAt() (time.Time, error) {
-	return f.createdAt, nil
+func (i *Image) CreatedAt() (time.Time, error) {
+	return i.createdAt, nil
 }
 
-func (f *Image) Label(key string) (string, error) {
-	return f.labels[key], nil
+func (i *Image) Label(key string) (string, error) {
+	return i.labels[key], nil
 }
 
-func (f *Image) Rename(name string) {
-	f.name = name
+func (i *Image) Rename(name string) {
+	i.name = name
 }
 
-func (f *Image) Name() string {
-	return f.name
+func (i *Image) Name() string {
+	return i.name
 }
 
-func (f *Image) Digest() (string, error) {
-	return f.digest, nil
+func (i *Image) Identifier() (imgutil.Identifier, error) {
+	return i.identifier, nil
 }
 
-func (f *Image) Rebase(baseTopLayer string, newBase imgutil.Image) error {
-	f.base = newBase.Name()
+func (i *Image) Rebase(baseTopLayer string, newBase imgutil.Image) error {
+	i.base = newBase.Name()
 	return nil
 }
 
-func (f *Image) SetLabel(k string, v string) error {
-	f.labels[k] = v
+func (i *Image) SetLabel(k string, v string) error {
+	i.labels[k] = v
 	return nil
 }
 
-func (f *Image) SetEnv(k string, v string) error {
-	f.env[k] = v
+func (i *Image) SetEnv(k string, v string) error {
+	i.env[k] = v
 	return nil
 }
 
-func (f *Image) SetWorkingDir(dir string) error {
-	f.workingDir = dir
+func (i *Image) SetWorkingDir(dir string) error {
+	i.workingDir = dir
 	return nil
 }
 
-func (f *Image) SetEntrypoint(v ...string) error {
-	f.entryPoint = v
+func (i *Image) SetEntrypoint(v ...string) error {
+	i.entryPoint = v
 	return nil
 }
 
-func (f *Image) SetCmd(v ...string) error {
-	f.cmd = v
+func (i *Image) SetCmd(v ...string) error {
+	i.cmd = v
 	return nil
 }
 
-func (f *Image) Env(k string) (string, error) {
-	return f.env[k], nil
+func (i *Image) Env(k string) (string, error) {
+	return i.env[k], nil
 }
 
-func (f *Image) TopLayer() (string, error) {
-	return f.topLayerSha, nil
+func (i *Image) TopLayer() (string, error) {
+	return i.topLayerSha, nil
 }
 
-func (f *Image) AddLayer(path string) error {
+func (i *Image) AddLayer(path string) error {
 	sha, err := shaForFile(path)
 	if err != nil {
 		return err
 	}
 
-	f.layersMap["sha256:"+sha] = path
-	f.layers = append(f.layers, path)
+	i.layersMap["sha256:"+sha] = path
+	i.layers = append(i.layers, path)
 	return nil
 }
 
@@ -135,8 +136,8 @@ func shaForFile(path string) (string, error) {
 	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size()))), nil
 }
 
-func (f *Image) GetLayer(sha string) (io.ReadCloser, error) {
-	path, ok := f.layersMap[sha]
+func (i *Image) GetLayer(sha string) (io.ReadCloser, error) {
+	path, ok := i.layersMap[sha]
 	if !ok {
 		return nil, fmt.Errorf("failed to get layer with sha '%s'", sha)
 	}
@@ -144,40 +145,54 @@ func (f *Image) GetLayer(sha string) (io.ReadCloser, error) {
 	return os.Open(path)
 }
 
-func (f *Image) ReuseLayer(sha string) error {
-	prevLayer, ok := f.prevLayersMap[sha]
+func (i *Image) ReuseLayer(sha string) error {
+	prevLayer, ok := i.prevLayersMap[sha]
 	if !ok {
 		return fmt.Errorf("image does not have previous layer with sha '%s'", sha)
 	}
-	f.reusedLayers = append(f.reusedLayers, sha)
-	f.layersMap[sha] = prevLayer
+	i.reusedLayers = append(i.reusedLayers, sha)
+	i.layersMap[sha] = prevLayer
 	return nil
 }
 
-func (f *Image) Save() (string, error) {
-	f.alreadySaved = true
-
+func (i *Image) Save(additionalNames ...string) error {
 	var err error
-	f.layerDir, err = ioutil.TempDir("", "fake-image")
+	i.layerDir, err = ioutil.TempDir("", "fake-image")
 	if err != nil {
-		return "", errors.Wrap(err, "failed to create tmpDir")
+		return err
 	}
 
-	for sha, path := range f.layersMap {
-		newPath := filepath.Join(f.layerDir, filepath.Base(path))
-		f.copyLayer(path, newPath)
-		f.layersMap[sha] = newPath
+	for sha, path := range i.layersMap {
+		newPath := filepath.Join(i.layerDir, filepath.Base(path))
+		i.copyLayer(path, newPath)
+		i.layersMap[sha] = newPath
 	}
 
-	for i := range f.layers {
-		layerPath := f.layers[i]
-		f.layers[i] = filepath.Join(f.layerDir, filepath.Base(layerPath))
+	for l := range i.layers {
+		layerPath := i.layers[l]
+		i.layers[l] = filepath.Join(i.layerDir, filepath.Base(layerPath))
 	}
 
-	return "saved-digest-from-fake-run-image", nil
+	allNames := append([]string{i.name}, additionalNames...)
+
+	var errs []imgutil.SaveDiagnostic
+	for _, n := range allNames {
+		_, err := name.ParseReference(n, name.WeakValidation)
+		if err != nil {
+			errs = append(errs, imgutil.SaveDiagnostic{ImageName: n, Cause: err})
+		} else {
+			i.savedNames[n] = true
+		}
+	}
+
+	if len(errs) > 0 {
+		return imgutil.SaveError{Errors: errs}
+	}
+
+	return nil
 }
 
-func (f *Image) copyLayer(path, newPath string) error {
+func (i *Image) copyLayer(path, newPath string) error {
 	src, err := os.Open(path)
 	if err != nil {
 		return errors.Wrap(err, "opening layer during copy")
@@ -197,53 +212,57 @@ func (f *Image) copyLayer(path, newPath string) error {
 	return nil
 }
 
-func (f *Image) Delete() error {
-	f.deleted = true
+func (i *Image) Delete() error {
+	i.deleted = true
 	return nil
 }
 
-func (f *Image) Found() bool {
-	return !f.deleted
+func (i *Image) Found() bool {
+	return !i.deleted
 }
 
 // test methods
 
-func (f *Image) Cleanup() error {
-	return os.RemoveAll(f.layerDir)
+func (i *Image) SetIdentifier(identifier imgutil.Identifier) {
+	i.identifier = identifier
 }
 
-func (f *Image) AppLayerPath() string {
-	return f.layers[0]
+func (i *Image) Cleanup() error {
+	return os.RemoveAll(i.layerDir)
 }
 
-func (f *Image) Entrypoint() ([]string, error) {
-	return f.entryPoint, nil
+func (i *Image) AppLayerPath() string {
+	return i.layers[0]
 }
 
-func (f *Image) Cmd() ([]string, error) {
-	return f.cmd, nil
+func (i *Image) Entrypoint() ([]string, error) {
+	return i.entryPoint, nil
 }
 
-func (f *Image) ConfigLayerPath() string {
-	return f.layers[1]
+func (i *Image) Cmd() ([]string, error) {
+	return i.cmd, nil
 }
 
-func (f *Image) ReusedLayers() []string {
-	return f.reusedLayers
+func (i *Image) ConfigLayerPath() string {
+	return i.layers[1]
 }
 
-func (f *Image) WorkingDir() string {
-	return f.workingDir
+func (i *Image) ReusedLayers() []string {
+	return i.reusedLayers
 }
 
-func (f *Image) AddPreviousLayer(sha, path string) {
-	f.prevLayersMap[sha] = path
+func (i *Image) WorkingDir() string {
+	return i.workingDir
 }
 
-func (f *Image) FindLayerWithPath(path string) (string, error) {
+func (i *Image) AddPreviousLayer(sha, path string) {
+	i.prevLayersMap[sha] = path
+}
+
+func (i *Image) FindLayerWithPath(path string) (string, error) {
 	// we iterate backwards over the layer array b/c later layers could replace a file with a given path
-	for i := len(f.layers) - 1; i >= 0; i-- {
-		tarPath := f.layers[i]
+	for idx := len(i.layers) - 1; idx >= 0; idx-- {
+		tarPath := i.layers[idx]
 		r, _ := os.Open(tarPath)
 		defer r.Close()
 
@@ -261,12 +280,12 @@ func (f *Image) FindLayerWithPath(path string) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("Could not find %s in any layer. \n \n %s", path, f.tarContents())
+	return "", fmt.Errorf("Could not find %s in any layer. \n \n %s", path, i.tarContents())
 }
 
-func (f *Image) tarContents() string {
+func (i *Image) tarContents() string {
 	var strBuilder = strings.Builder{}
-	for _, tarPath := range f.layers {
+	for _, tarPath := range i.layers {
 		strBuilder.WriteString(fmt.Sprintf("layer %s --- \n Contents: \n", filepath.Base(tarPath)))
 
 		r, _ := os.Open(tarPath)
@@ -289,14 +308,23 @@ func (f *Image) tarContents() string {
 	return strBuilder.String()
 }
 
-func (f *Image) NumberOfAddedLayers() int {
-	return len(f.layers)
+func (i *Image) NumberOfAddedLayers() int {
+	return len(i.layers)
 }
 
-func (f *Image) IsSaved() bool {
-	return f.alreadySaved
+func (i *Image) IsSaved() bool {
+	return len(i.savedNames) > 0
 }
 
-func (f *Image) Base() string {
-	return f.base
+func (i *Image) Base() string {
+	return i.base
+}
+
+func (i *Image) SavedNames() []string {
+	var names []string
+	for k := range i.savedNames {
+		names = append(names, k)
+	}
+
+	return names
 }
