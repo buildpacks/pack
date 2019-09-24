@@ -43,7 +43,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		baseImage = fakes.NewImage("base/image", "", "")
+		baseImage = fakes.NewImage("base/image", "", nil)
 		mockController = gomock.NewController(t)
 		mockLifecycle = testmocks.NewMockLifecycle(mockController)
 		mockLifecycle.EXPECT().Open().Return(archive.ReadDirAsTar(

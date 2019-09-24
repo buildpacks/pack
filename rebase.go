@@ -31,7 +31,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return err
 	}
 
-	md, err := metadata.GetAppMetadata(appImage)
+	md, err := metadata.GetLayersMetdata(appImage)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,8 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return err
 	}
 
-	md.RunImage.SHA, err = baseImage.Digest()
+	id, err := baseImage.Identifier()
+	md.RunImage.Reference = id.String()
 	if err != nil {
 		return err
 	}
@@ -72,14 +73,19 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	}
 
 	newLabel, err := json.Marshal(md)
-	if err := appImage.SetLabel(metadata.AppMetadataLabel, string(newLabel)); err != nil {
+	if err := appImage.SetLabel(metadata.LayerMetadataLabel, string(newLabel)); err != nil {
 		return err
 	}
 
-	sha, err := appImage.Save()
+	err = appImage.Save()
 	if err != nil {
 		return err
 	}
-	c.logger.Infof("New sha: %s", style.Symbol(sha))
+
+	id, err = appImage.Identifier()
+	if err != nil {
+		return err
+	}
+	c.logger.Infof("New ID: %s", style.Symbol(id.String()))
 	return nil
 }

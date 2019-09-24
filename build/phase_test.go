@@ -13,13 +13,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/imgutil"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpack/imgutil/local"
 
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
@@ -323,7 +324,7 @@ func CreateFakeLifecycleImage(t *testing.T, dockerCli *client.Client, repoName s
 
 func CreateFakeLifecycle(appDir string, docker *client.Client, logger logging.Logger) (*build.Lifecycle, error) {
 	subject := build.NewLifecycle(docker, logger)
-	builderImage, err := imgutil.NewLocalImage(repoName, docker)
+	builderImage, err := local.NewImage(repoName, docker)
 	if err != nil {
 		return nil, err
 	}
