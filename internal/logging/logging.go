@@ -86,7 +86,8 @@ func (lw *logWithWriters) Writer() io.Writer {
 
 // DebugInfoWriter - returns stderr if log level is not set to quiet.
 func (lw *logWithWriters) InfoErrorWriter() io.Writer {
-	if lw.Level == log.InfoLevel {
+	if lw.Level == log.InfoLevel ||
+		lw.Level == log.DebugLevel {
 		return lw.errOut
 	}
 	return ioutil.Discard
@@ -94,7 +95,8 @@ func (lw *logWithWriters) InfoErrorWriter() io.Writer {
 
 // InfoWriter returns stdout if logging is not set to quiet.
 func (lw *logWithWriters) InfoWriter() io.Writer {
-	if lw.Level == log.InfoLevel {
+	if lw.Level == log.InfoLevel ||
+		lw.Level == log.DebugLevel {
 		return lw.out
 	}
 	return ioutil.Discard
@@ -107,16 +109,12 @@ func (lw *logWithWriters) WantTime(f bool) {
 func (lw *logWithWriters) WantQuiet(f bool) {
 	if f {
 		lw.Level = log.WarnLevel
-	} else {
-		lw.Level = log.InfoLevel
 	}
 }
 
 func (lw *logWithWriters) WantVerbose(f bool) {
 	if f {
 		lw.Level = log.DebugLevel
-	} else {
-		lw.Level = log.InfoLevel
 	}
 }
 

@@ -30,7 +30,7 @@ type Logger interface {
 // WithInfoErrorWriter is an optional interface for loggers that want to support a separate writer for errors and standard logging.
 // the DebugInfoWriter should write to stderr if quiet is false.
 type WithInfoErrorWriter interface {
-	DebugInfoWriter() io.Writer
+	InfoErrorWriter() io.Writer
 }
 
 // WithInfoWriter is an optional interface what will return a writer that will write raw output if quiet is false.
@@ -42,7 +42,7 @@ type WithInfoWriter interface {
 // will be returned.
 func GetInfoErrorWriter(l Logger) io.Writer {
 	if er, ok := l.(WithInfoErrorWriter); ok {
-		return er.DebugInfoWriter()
+		return er.InfoErrorWriter()
 	}
 	return l.Writer()
 }

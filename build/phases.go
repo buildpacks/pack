@@ -131,6 +131,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		"exporter",
 		WithDaemonAccess(),
 		WithArgs(
+			"-log-level", l.determineLogLevel(),
 			"-image", runImage,
 			"-layers", layersDir,
 			"-app", appDir,
