@@ -253,7 +253,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			err := subject.CreateBuilder(context.TODO(), opts)
 			h.AssertNil(t, err)
 
-			builderImage, err := builder.GetBuilder(logger, fakeBuildImage)
+			builderImage, err := builder.GetBuilder(fakeBuildImage)
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, builderImage.Name(), "some/builder")

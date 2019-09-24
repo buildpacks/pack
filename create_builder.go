@@ -35,7 +35,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
-	builderImage, err := builder.New(c.logger, baseImage, opts.BuilderName)
+	builderImage, err := builder.New(baseImage, opts.BuilderName)
 	if err != nil {
 		return errors.Wrap(err, "invalid build-image")
 	}
@@ -86,7 +86,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	builderImage.SetOrder(opts.BuilderConfig.Order)
 	builderImage.SetStackInfo(opts.BuilderConfig.Stack)
 
-	return builderImage.Save()
+	return builderImage.Save(c.logger)
 }
 
 func validateBuildpack(bp builder.Buildpack, source, expectedID, expectedBPVersion string) error {

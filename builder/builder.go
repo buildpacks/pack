@@ -44,7 +44,6 @@ type Builder struct {
 	image                imgutil.Image
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
-	logger               logging.Logger
 	additionalBuildpacks []Buildpack
 	metadata             Metadata
 	env                  map[string]string
@@ -70,26 +69,26 @@ type BuildpackRef struct {
 }
 
 // GetBuilder constructs builder from builder image
-func GetBuilder(logger logging.Logger, img imgutil.Image) (*Builder, error) {
+func GetBuilder(img imgutil.Image) (*Builder, error) {
 	var metadata Metadata
 	if ok, err := getLabel(img, MetadataLabel, &metadata); err != nil {
 		return nil, err
 	} else if !ok {
 		return nil, fmt.Errorf("builder %s missing label %s -- try recreating builder", style.Symbol(img.Name()), style.Symbol(MetadataLabel))
 	}
-	return constructBuilder(logger, img, "", metadata)
+	return constructBuilder(img, "", metadata)
 }
 
 // New constructs a new builder from base image
-func New(logger logging.Logger, baseImage imgutil.Image, name string) (*Builder, error) {
+func New(baseImage imgutil.Image, name string) (*Builder, error) {
 	var metadata Metadata
 	if _, err := getLabel(baseImage, MetadataLabel, &metadata); err != nil {
 		return nil, err
 	}
-	return constructBuilder(logger, baseImage, name, metadata)
+	return constructBuilder(baseImage, name, metadata)
 }
 
-func constructBuilder(logger logging.Logger, img imgutil.Image, newName string, metadata Metadata) (*Builder, error) {
+func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Builder, error) {
 	uid, gid, err := userAndGroupIDs(img)
 	if err != nil {
 		return nil, err
@@ -130,7 +129,6 @@ func constructBuilder(logger logging.Logger, img imgutil.Image, newName string, 
 	}
 
 	return &Builder{
-		logger:   logger,
 		image:    img,
 		metadata: metadata,
 		order:    order,
@@ -209,7 +207,7 @@ func (b *Builder) SetStackInfo(stackConfig StackConfig) {
 	}
 }
 
-func (b *Builder) Save() error {
+func (b *Builder) Save(logger logging.Logger) error {
 	resolvedOrder, err := processOrder(b.metadata.Buildpacks, b.order)
 	if err != nil {
 		return errors.Wrap(err, "processing order")
@@ -276,7 +274,7 @@ func (b *Builder) Save() error {
 		}
 
 		if _, ok := bpLayers[bpInfo.ID][bpInfo.Version]; ok {
-			b.logger.Warnf(
+			logger.Warnf(
 				"buildpack %s already exists on builder and will be overridden",
 				style.Symbol(bpInfo.ID+"@"+bpInfo.Version),
 			)

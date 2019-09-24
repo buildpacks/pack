@@ -138,7 +138,7 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 }
 
 func (c *Client) processBuilderImage(img imgutil.Image) (*builder.Builder, error) {
-	bldr, err := builder.GetBuilder(c.logger, img)
+	bldr, err := builder.GetBuilder(img)
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +331,7 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 
 func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, group builder.OrderEntry, buildpacks []builder.Buildpack) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
-	bldr, err := builder.New(c.logger, rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
+	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}
@@ -345,7 +345,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 		c.logger.Debug("setting custom order")
 		bldr.SetOrder([]builder.OrderEntry{group})
 	}
-	if err := bldr.Save(); err != nil {
+	if err := bldr.Save(c.logger); err != nil {
 		return nil, err
 	}
 	return bldr, nil
