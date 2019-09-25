@@ -101,9 +101,9 @@ func suggestBuilders(logger logging.Logger, client PackClient) {
 			_, _ = tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t%s\t\n", builder.name, style.Symbol(builder.image), getBuilderDescription(builder.image, client))))
 		}
 	}
+	_, _ = tw.Write([]byte("\n"))
 	_ = tw.Flush()
 
-	logger.Info("")
 	logging.Tip(logger, "Learn more about a specific builder with:\n")
 	logger.Info("\tpack inspect-builder [builder image]")
 }

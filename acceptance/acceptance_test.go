@@ -857,6 +857,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 			cmd = packCmd("inspect-builder", builder)
 			output = h.Run(t, cmd)
 
+			packVersion, err := detectPackVersion(packPath)
+			h.AssertNil(t, err)
+
 			expectedOutput := fillTemplate(t,
 				filepath.Join(packFixturesDir, "inspect_builder_output.txt"),
 				map[string]interface{}{
@@ -865,6 +868,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 					"buildpack_api_version": lifecycleDescriptor.API.BuildpackVersion.String(),
 					"platform_api_version":  lifecycleDescriptor.API.PlatformVersion.String(),
 					"run_image_mirror":      runImageMirror,
+					"pack_version":          packVersion,
 				},
 			)
 
@@ -981,6 +985,20 @@ func extractLifecycleDescriptor(lcPath string) (builder.LifecycleDescriptor, err
 	}
 
 	return lifecycle.Descriptor(), nil
+}
+
+func detectPackVersion(packPath string) (string, error) {
+	cmd := exec.Command(
+		packPath,
+		"version",
+	)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytes.TrimSpace(output)), nil
 }
 
 func buildpacksDir(bpAPIVersion api.Version) string {

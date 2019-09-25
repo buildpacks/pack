@@ -94,7 +94,8 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
       ]
     }
   ],
-  "lifecycle": {"version": "1.2.3"}
+  "lifecycle": {"version": "1.2.3"},
+  "createdBy": {"name": "pack", "version": "1.2.3"}
 }`))
 					})
 
@@ -102,6 +103,13 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.RunImage, "some/run-image")
+					})
+
+					it("set the creator info", func() {
+						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+						h.AssertEq(t, builderInfo.CreatedBy.Name, "pack")
+						h.AssertEq(t, builderInfo.CreatedBy.Version, "1.2.3")
 					})
 
 					it("set the description", func() {

@@ -194,6 +194,20 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, baseImage.Name(), "some/builder")
 			})
 
+			it("adds creator metadata", func() {
+				h.AssertNil(t, subject.Save(logger))
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				label, err := baseImage.Label("io.buildpacks.builder.metadata")
+				h.AssertNil(t, err)
+
+				var metadata builder.Metadata
+				h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
+
+				h.AssertEq(t, metadata.CreatedBy.Name, "Pack CLI")
+				h.AssertEq(t, metadata.CreatedBy.Version, "0.0.0")
+			})
+
 			it("creates the workspace dir with CNB user and group", func() {
 				h.AssertNil(t, subject.Save(logger))
 				h.AssertEq(t, baseImage.IsSaved(), true)

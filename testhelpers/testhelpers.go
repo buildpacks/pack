@@ -44,7 +44,7 @@ func RandString(n int) string {
 // Assert deep equality (and provide useful difference as a test failure)
 func AssertEq(t *testing.T, actual, expected interface{}) {
 	t.Helper()
-	if diff := cmp.Diff(actual, expected); diff != "" {
+	if diff := cmp.Diff(expected, actual); diff != "" {
 		t.Fatal(diff)
 	}
 }
@@ -85,7 +85,7 @@ func AssertContains(t *testing.T, actual, expected string) {
 			"Expected: '%s' to contain '%s'\n\nDiff:%s",
 			actual,
 			expected,
-			cmp.Diff(actual, expected),
+			cmp.Diff(expected, actual),
 		)
 	}
 }

@@ -17,7 +17,7 @@ import (
 	"github.com/buildpack/pack/commands"
 	cmdmocks "github.com/buildpack/pack/commands/mocks"
 	"github.com/buildpack/pack/config"
-	"github.com/buildpack/pack/internal/fakes"
+	ilogging "github.com/buildpack/pack/internal/logging"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -46,7 +46,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		}
 		mockController = gomock.NewController(t)
 		mockClient = cmdmocks.NewMockPackClient(mockController)
-		logger = fakes.NewFakeLogger(&outBuf)
+		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 
 		command = commands.InspectBuilder(logger, cfg, mockClient)
 	})
@@ -64,7 +64,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{"some/image"})
 				h.AssertNil(t, command.Execute())
 
-				h.AssertContains(t, outBuf.String(), "Remote\n------\n\nNot present\n\nLocal\n-----\n\nNot present\n")
+				h.AssertContains(t, outBuf.String(), "REMOTE:\n(not present)\n\nLOCAL:\n(not present)\n")
 			})
 		})
 
@@ -76,16 +76,8 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{"some/image"})
 				h.AssertNil(t, command.Execute())
 
-				h.AssertContains(t, outBuf.String(), `Remote
-------
-
-ERROR: some remote error
-
-Local
------
-
-ERROR: some local error
-`)
+				h.AssertContains(t, outBuf.String(), `ERROR: inspecting remote image 'some/image': some remote error`)
+				h.AssertContains(t, outBuf.String(), `ERROR: inspecting local image 'some/image': some local error`)
 			})
 		})
 
@@ -102,6 +94,11 @@ ERROR: some local error
 				command.SetArgs([]string{"some/image"})
 			})
 
+			it("missing creator info is skipped", func() {
+				h.AssertNil(t, command.Execute())
+				h.AssertNotContains(t, outBuf.String(), "Created By:")
+			})
+
 			it("missing description is skipped", func() {
 				h.AssertNil(t, command.Execute())
 				h.AssertNotContains(t, outBuf.String(), "Description:")
@@ -109,18 +106,21 @@ ERROR: some local error
 
 			it("missing buildpacks logs a warning", func() {
 				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Buildpacks:\n  (none)")
 				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' has no buildpacks")
 				h.AssertContains(t, outBuf.String(), "Users must supply buildpacks from the host machine")
 			})
 
 			it("missing groups logs a warning", func() {
 				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Detection Order:\n  (none)")
 				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify detection order")
 				h.AssertContains(t, outBuf.String(), "Users must build with explicitly specified buildpacks")
 			})
 
 			it("missing run image logs a warning", func() {
 				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Run Images:\n  (none)")
 				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify a run image")
 				h.AssertContains(t, outBuf.String(), "Users must build with an explicitly specified run image")
 			})
@@ -133,14 +133,9 @@ ERROR: some local error
 
 		when("is successful", func() {
 			var (
-				remoteInfo *pack.BuilderInfo
-				localInfo  *pack.BuilderInfo
-			)
-
-			it.Before(func() {
-				buildpack1Info := builder.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
-				buildpack2Info := builder.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0"}
-				buildpacks := []builder.BuildpackMetadata{
+				buildpack1Info = builder.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
+				buildpack2Info = builder.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0"}
+				buildpacks     = []builder.BuildpackMetadata{
 					{BuildpackInfo: buildpack1Info, Latest: true},
 					{BuildpackInfo: buildpack2Info, Latest: false},
 				}
@@ -166,6 +161,10 @@ ERROR: some local error
 							PlatformVersion:  api.MustParse("7.8"),
 						},
 					},
+					CreatedBy: builder.CreatorMetadata{
+						Name:    "Pack CLI",
+						Version: "1.2.3",
+					},
 				}
 				localInfo = &pack.BuilderInfo{
 					Description:     "Some local description",
@@ -188,8 +187,12 @@ ERROR: some local error
 							PlatformVersion:  api.MustParse("3.4"),
 						},
 					},
+					CreatedBy: builder.CreatorMetadata{
+						Name:    "Pack CLI",
+						Version: "4.5.6",
+					},
 				}
-			})
+			)
 
 			when("using the default builder", func() {
 				it.Before(func() {
@@ -203,10 +206,13 @@ ERROR: some local error
 					h.AssertNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), "Inspecting default builder: 'default/builder'")
 					h.AssertContains(t, outBuf.String(), `
-Remote
-------
+REMOTE:
 
 Description: Some remote description
+
+Created By:
+  Name: Pack CLI
+  Version: 1.2.3
 
 Stack: test.stack.id
 
@@ -216,8 +222,8 @@ Lifecycle:
   Platform API: 7.8
 
 Run Images:
-  first/local (user-configured)
-  second/local (user-configured)
+  first/local     (user-configured)
+  second/local    (user-configured)
   some/run-image
   first/default
   second/default
@@ -230,14 +236,17 @@ Buildpacks:
 Detection Order:
   Group #1:
     test.bp.one@1.0.0    (optional)
-    test.bp.two
+    test.bp.two          
 `)
 
 					h.AssertContains(t, outBuf.String(), `
-Local
------
+LOCAL:
 
 Description: Some local description
+
+Created By:
+  Name: Pack CLI
+  Version: 4.5.6
 
 Stack: test.stack.id
 
@@ -247,8 +256,8 @@ Lifecycle:
   Platform API: 3.4
 
 Run Images:
-  first/local (user-configured)
-  second/local (user-configured)
+  first/local     (user-configured)
+  second/local    (user-configured)
   some/run-image
   first/local-default
   second/local-default
@@ -260,7 +269,7 @@ Buildpacks:
 
 Detection Order:
   Group #1:
-    test.bp.one@1.0.0
+    test.bp.one@1.0.0    
   Group #2:
     test.bp.two    (optional)
 `)
@@ -278,10 +287,13 @@ Detection Order:
 					h.AssertNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), "Inspecting builder: 'some/image'")
 					h.AssertContains(t, outBuf.String(), `
-Remote
-------
+REMOTE:
 
 Description: Some remote description
+
+Created By:
+  Name: Pack CLI
+  Version: 1.2.3
 
 Stack: test.stack.id
 
@@ -291,8 +303,8 @@ Lifecycle:
   Platform API: 7.8
 
 Run Images:
-  first/local (user-configured)
-  second/local (user-configured)
+  first/local     (user-configured)
+  second/local    (user-configured)
   some/run-image
   first/default
   second/default
@@ -305,14 +317,17 @@ Buildpacks:
 Detection Order:
   Group #1:
     test.bp.one@1.0.0    (optional)
-    test.bp.two
+    test.bp.two          
 `)
 
 					h.AssertContains(t, outBuf.String(), `
-Local
------
+LOCAL:
 
 Description: Some local description
+
+Created By:
+  Name: Pack CLI
+  Version: 4.5.6
 
 Stack: test.stack.id
 
@@ -322,8 +337,8 @@ Lifecycle:
   Platform API: 3.4
 
 Run Images:
-  first/local (user-configured)
-  second/local (user-configured)
+  first/local     (user-configured)
+  second/local    (user-configured)
   some/run-image
   first/local-default
   second/local-default
@@ -335,7 +350,7 @@ Buildpacks:
 
 Detection Order:
   Group #1:
-    test.bp.one@1.0.0
+    test.bp.one@1.0.0    
   Group #2:
     test.bp.two    (optional)
 `)

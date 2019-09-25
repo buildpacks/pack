@@ -45,7 +45,7 @@ func formatLevel(ll log.Level) string {
 // preserve behavior of other loggers
 func appendMissingLineFeed(msg string) string {
 	buff := []byte(msg)
-	if buff[len(buff)-1] != lineFeed {
+	if len(buff) == 0 || buff[len(buff)-1] != lineFeed {
 		buff = append(buff, lineFeed)
 	}
 	return string(buff)
@@ -55,12 +55,6 @@ func appendMissingLineFeed(msg string) string {
 func (h *handler) HandleLog(e *log.Entry) error {
 	h.Lock()
 	defer h.Unlock()
-
-	// if we have a blank line we don't want padding or prefixes
-	if e.Message == "" {
-		_, _ = fmt.Fprintln(h.writer)
-		return nil
-	}
 
 	if h.wantTime {
 		ts := h.timer().Format(timeFmt)

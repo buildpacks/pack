@@ -3,8 +3,12 @@ package commands
 import (
 	"bytes"
 	"fmt"
+	"html/template"
+	"io"
+	"strings"
 	"text/tabwriter"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -32,21 +36,30 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 			}
 
 			if imageName == cfg.DefaultBuilder {
-				logger.Infof("Inspecting default builder: %s", style.Symbol(imageName))
-				logger.Info("")
+				logger.Infof("Inspecting default builder: %s\n", style.Symbol(imageName))
 			} else {
-				logger.Infof("Inspecting builder: %s", style.Symbol(imageName))
-				logger.Info("")
+				logger.Infof("Inspecting builder: %s\n", style.Symbol(imageName))
 			}
 
-			logger.Info("Remote")
-			logger.Info("------")
-			inspectBuilderOutput(logger, client, imageName, false, cfg)
+			remoteOutput, warnings, err := inspectBuilderOutput(client, cfg, imageName, false)
+			if err != nil {
+				logger.Error(err.Error())
+			} else {
+				logger.Infof("REMOTE:\n%s\n", remoteOutput)
+				for _, w := range warnings {
+					logger.Warn(w)
+				}
+			}
 
-			logger.Info("")
-			logger.Info("Local")
-			logger.Info("-----")
-			inspectBuilderOutput(logger, client, imageName, true, cfg)
+			localOutput, warnings, err := inspectBuilderOutput(client, cfg, imageName, true)
+			if err != nil {
+				logger.Error(err.Error())
+			} else {
+				logger.Infof("\nLOCAL:\n%s\n", localOutput)
+				for _, w := range warnings {
+					logger.Warn(w)
+				}
+			}
 
 			return nil
 		}),
@@ -55,110 +68,192 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 	return cmd
 }
 
-// TODO: present buildpack order (inc. nested) [https://github.com/buildpack/pack/issues/253].
-func inspectBuilderOutput(logger logging.Logger, client PackClient, imageName string, local bool, cfg config.Config) {
+func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string, local bool) (output string, warning []string, err error) {
+	source := "remote"
+	if local {
+		source = "local"
+	}
+
 	info, err := client.InspectBuilder(imageName, local)
 	if err != nil {
-		logger.Info("")
-		logger.Error(err.Error())
-		return
+		return "", nil, errors.Wrapf(err, "inspecting %s image '%s'", source, imageName)
 	}
 
 	if info == nil {
-		logger.Info("")
-		logger.Info("Not present")
-		return
+		return "(not present)", nil, nil
 	}
 
-	if info.Description != "" {
-		logger.Infof("\nDescription: %s", info.Description)
+	var buf bytes.Buffer
+	warnings, err := generateOutput(&buf, imageName, cfg, *info)
+	if err != nil {
+		return "", nil, errors.Wrapf(err, "writing output for %s image '%s'", source, imageName)
 	}
 
-	logger.Info("")
-	logger.Infof("Stack: %s", info.Stack)
-	logger.Info("")
+	return buf.String(), warnings, nil
+}
 
-	lcVersion := info.Lifecycle.Info.Version
-	if info.Lifecycle.Info.Version == nil {
-		lcVersion = builder.VersionMustParse(builder.AssumedLifecycleVersion)
-	}
+func generateOutput(writer io.Writer, imageName string, cfg config.Config, info pack.BuilderInfo) (warnings []string, err error) {
+	tpl := template.Must(template.New("").Parse(`
+{{ if ne .Info.Description "" -}}
+Description: {{ .Info.Description }}
 
-	apiBpVersion := info.Lifecycle.API.BuildpackVersion
-	if info.Lifecycle.API.BuildpackVersion == nil {
-		apiBpVersion = api.MustParse(builder.AssumedBuildpackAPIVersion)
-	}
+{{ end -}}
 
-	apiPlatformVersion := info.Lifecycle.API.PlatformVersion
-	if info.Lifecycle.API.PlatformVersion == nil {
-		apiPlatformVersion = api.MustParse(builder.AssumedPlatformAPIVersion)
-	}
+{{- if ne .Info.CreatedBy.Name "" -}}
+Created By:
+  Name: {{ .Info.CreatedBy.Name }}
+  Version: {{ .Info.CreatedBy.Version }}
 
-	logger.Info("Lifecycle:")
-	logger.Infof("  Version: %s", lcVersion.String())
-	logger.Infof("  Buildpack API: %s", apiBpVersion.String())
-	logger.Infof("  Platform API: %s", apiPlatformVersion.String())
-	logger.Info("")
+{{ end -}}
 
-	if info.RunImage == "" {
-		logger.Info("")
-		logger.Warnf("%s does not specify a run image", style.Symbol(imageName))
-		logger.Info("  Users must build with an explicitly specified run image")
-	} else {
-		logger.Info("Run Images:")
+Stack: {{ .Info.Stack }}
 
-		for _, r := range getLocalMirrors(info.RunImage, cfg) {
-			logger.Infof("  %s (user-configured)", r)
-		}
-		logger.Infof("  %s", info.RunImage)
-		for _, r := range info.RunImageMirrors {
-			logger.Infof("  %s", r)
-		}
+Lifecycle:
+  Version: {{ .Info.Lifecycle.Info.Version }}
+  Buildpack API: {{ .Info.Lifecycle.API.BuildpackVersion }}
+  Platform API: {{ .Info.Lifecycle.API.PlatformVersion }}
+
+Run Images:
+{{- if ne .RunImages "" }}
+{{ .RunImages }}
+{{- else }}
+  (none) 
+{{- end }}
+
+Buildpacks:
+{{- if .Info.Buildpacks }}
+{{ .Buildpacks }}
+{{- else }}
+  (none) 
+{{- end }}
+
+Detection Order:
+{{- if ne .Order "" }}
+{{ .Order }}
+{{- else }}
+  (none)
+{{ end }}`,
+	))
+
+	var (
+		bps     = ""
+		order   = ""
+		runImgs = ""
+	)
+
+	bps, err = buildpacksOutput(info.Buildpacks)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(info.Buildpacks) == 0 {
-		logger.Info("")
-		logger.Warnf("%s has no buildpacks", style.Symbol(imageName))
-		logger.Info("  Users must supply buildpacks from the host machine")
-	} else {
-		logBuildpacksInfo(logger, info)
+		warnings = append(warnings, fmt.Sprintf("%s has no buildpacks", style.Symbol(imageName)))
+		warnings = append(warnings, "Users must supply buildpacks from the host machine")
+	}
+
+	order, err = detectionOrderOutput(info.Groups)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(info.Groups) == 0 {
-		logger.Info("")
-		logger.Warnf("%s does not specify detection order", style.Symbol(imageName))
-		logger.Info("  Users must build with explicitly specified buildpacks")
-	} else {
-		logDetectionOrderInfo(logger, info)
+		warnings = append(warnings, fmt.Sprintf("%s does not specify detection order", style.Symbol(imageName)))
+		warnings = append(warnings, "Users must build with explicitly specified buildpacks")
 	}
+
+	runImgs, err = runImagesOutput(info.RunImage, info.RunImageMirrors, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	if info.RunImage == "" {
+		warnings = append(warnings, fmt.Sprintf("%s does not specify a run image", style.Symbol(imageName)))
+		warnings = append(warnings, "Users must build with an explicitly specified run image")
+	}
+
+	lcDescriptor := &info.Lifecycle
+	if lcDescriptor.Info.Version == nil {
+		lcDescriptor.Info.Version = builder.VersionMustParse(builder.AssumedLifecycleVersion)
+	}
+
+	if lcDescriptor.API.BuildpackVersion == nil {
+		lcDescriptor.API.BuildpackVersion = api.MustParse(builder.AssumedBuildpackAPIVersion)
+	}
+
+	if lcDescriptor.API.PlatformVersion == nil {
+		lcDescriptor.API.PlatformVersion = api.MustParse(builder.AssumedPlatformAPIVersion)
+	}
+
+	return warnings, tpl.Execute(writer, &struct {
+		Info       pack.BuilderInfo
+		Buildpacks string
+		RunImages  string
+		Order      string
+	}{
+		info,
+		bps,
+		runImgs,
+		order,
+	})
 }
 
-func logBuildpacksInfo(logger logging.Logger, info *pack.BuilderInfo) {
+// TODO: present buildpack order (inc. nested) [https://github.com/buildpack/pack/issues/253].
+func buildpacksOutput(bps []builder.BuildpackMetadata) (string, error) {
 	buf := &bytes.Buffer{}
 	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 8, ' ', 0)
-	if _, err := fmt.Fprint(tabWriter, "\n  ID\tVERSION"); err != nil {
-		logger.Error(err.Error())
+	if _, err := fmt.Fprint(tabWriter, "  ID\tVERSION\n"); err != nil {
+		return "", err
 	}
 
-	for _, bp := range info.Buildpacks {
-		if _, err := fmt.Fprint(tabWriter, fmt.Sprintf("\n  %s\t%s", bp.ID, bp.Version)); err != nil {
-			logger.Error(err.Error())
+	for _, bp := range bps {
+		if _, err := fmt.Fprint(tabWriter, fmt.Sprintf("  %s\t%s\n", bp.ID, bp.Version)); err != nil {
+			return "", err
 		}
 	}
 
 	if err := tabWriter.Flush(); err != nil {
-		logger.Error(err.Error())
+		return "", err
 	}
 
-	logger.Info("\nBuildpacks:" + buf.String())
+	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
-func logDetectionOrderInfo(logger logging.Logger, info *pack.BuilderInfo) {
-	logger.Info("\nDetection Order:")
-	for i, group := range info.Groups {
-		logger.Infof("  Group #%d:", i+1)
-		buf := &bytes.Buffer{}
-		tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 4, ' ', 0)
-		for i, bp := range group.Group {
+func runImagesOutput(runImage string, mirrors []string, cfg config.Config) (string, error) {
+	buf := &bytes.Buffer{}
+	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 4, ' ', 0)
+
+	for _, r := range getLocalMirrors(runImage, cfg) {
+		if _, err := fmt.Fprintf(tabWriter, "  %s\t(user-configured)\n", r); err != nil {
+			return "", err
+		}
+	}
+
+	if runImage != "" {
+		if _, err := fmt.Fprintf(tabWriter, "  %s\n", runImage); err != nil {
+			return "", err
+		}
+	}
+
+	for _, r := range mirrors {
+		if _, err := fmt.Fprintf(tabWriter, "  %s\n", r); err != nil {
+			return "", err
+		}
+	}
+
+	if err := tabWriter.Flush(); err != nil {
+		return "", err
+	}
+
+	return strings.TrimSuffix(buf.String(), "\n"), nil
+}
+
+func detectionOrderOutput(order builder.Order) (string, error) {
+	buf := strings.Builder{}
+	for i, group := range order {
+		buf.WriteString(fmt.Sprintf("  Group #%d:\n", i+1))
+
+		tabWriter := new(tabwriter.Writer).Init(&buf, 0, 0, 4, ' ', 0)
+		for _, bp := range group.Group {
 			var optional string
 			if bp.Optional {
 				optional = "(optional)"
@@ -169,21 +264,16 @@ func logDetectionOrderInfo(logger logging.Logger, info *pack.BuilderInfo) {
 				bpRef += "@" + bp.Version
 			}
 
-			if _, err := fmt.Fprintf(tabWriter, "    %s\t%s", bpRef, optional); err != nil {
-				logger.Error(err.Error())
-			}
-
-			if i < len(group.Group)-1 {
-				if _, err := fmt.Fprint(tabWriter, "\n"); err != nil {
-					logger.Error(err.Error())
-				}
+			if _, err := fmt.Fprintf(tabWriter, "    %s\t%s\n", bpRef, optional); err != nil {
+				return "", err
 			}
 		}
 		if err := tabWriter.Flush(); err != nil {
-			logger.Error(err.Error())
+			return "", err
 		}
-		logger.Info(buf.String())
 	}
+
+	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
 func getLocalMirrors(runImage string, cfg config.Config) []string {
