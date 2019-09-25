@@ -18,6 +18,7 @@ type BuilderInfo struct {
 	Buildpacks      []builder.BuildpackMetadata
 	Groups          builder.Order
 	Lifecycle       builder.LifecycleDescriptor
+	CreatedBy       builder.CreatorMetadata
 }
 
 type BuildpackInfo struct {
@@ -48,5 +49,6 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		Buildpacks:      bldr.GetBuildpacks(),
 		Groups:          bldr.GetOrder(),
 		Lifecycle:       bldr.GetLifecycleDescriptor(),
+		CreatedBy:       bldr.GetCreatedBy(),
 	}, nil
 }

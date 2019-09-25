@@ -1,6 +1,5 @@
 package builder
 
-const MetadataLabel = "io.buildpacks.builder.metadata"
 const OrderLabel = "io.buildpacks.buildpack.order"
 const BuildpackLayersLabel = "io.buildpacks.buildpack.layers"
 
@@ -17,6 +16,12 @@ type Metadata struct {
 	Groups      V1Order             `json:"groups"` // deprecated
 	Stack       StackMetadata       `json:"stack"`
 	Lifecycle   LifecycleMetadata   `json:"lifecycle"`
+	CreatedBy   CreatorMetadata     `json:"createdBy"`
+}
+
+type CreatorMetadata struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
 }
 
 type BuildpackMetadata struct {
