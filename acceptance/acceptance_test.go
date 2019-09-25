@@ -239,6 +239,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				cmd := packCmd(
 					"build", repoName,
 					"-p", appPath,
+					"--verbose",
 				)
 				output := h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
@@ -502,6 +503,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
 							"--run-image", runImageName,
+							"--verbose",
 						)
 
 						output := h.Run(t, cmd)
