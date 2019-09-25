@@ -12,7 +12,6 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/docker/docker/pkg/term"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
@@ -87,7 +86,15 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
 		return err
 	}
 	writer := logging.GetInfoWriter(f.logger)
-	termFd, isTerm := term.GetFdInfo(writer)
+	type descriptor interface {
+		Fd() uintptr
+	}
+	var termFd uintptr
+	isTerm := false
+	if f, ok := writer.(descriptor); ok {
+		isTerm = true
+		termFd = f.Fd()
+	}
 	err = jsonmessage.DisplayJSONMessagesStream(rc, &colorizedWriter{writer}, termFd, isTerm, nil)
 	if err != nil {
 		return err

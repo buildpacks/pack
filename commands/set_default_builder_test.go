@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
@@ -20,6 +21,8 @@ import (
 )
 
 func TestSetDefaultBuilder(t *testing.T) {
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	spec.Run(t, "Commands", testSetDefaultBuilderCommand, spec.Random(), spec.Report(report.Terminal{}))
 }
 

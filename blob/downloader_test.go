@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/heroku/color"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -21,6 +22,8 @@ import (
 )
 
 func TestDownloader(t *testing.T) {
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	spec.Run(t, "Downloader", testDownloader, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 

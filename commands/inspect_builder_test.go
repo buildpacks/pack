@@ -7,6 +7,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/golang/mock/gomock"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
@@ -23,6 +24,8 @@ import (
 )
 
 func TestInspectBuilderCommand(t *testing.T) {
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	spec.Run(t, "Commands", testInspectBuilderCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

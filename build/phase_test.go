@@ -17,7 +17,7 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/fatih/color"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -37,7 +37,8 @@ var (
 func TestPhase(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	color.NoColor = true
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 
 	h.RequireDocker(t)
 

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
-	"github.com/fatih/color"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -25,7 +25,8 @@ var registryConfig *h.TestRegistryConfig
 func TestFetcher(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	color.NoColor = true
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 
 	h.RequireDocker(t)
 

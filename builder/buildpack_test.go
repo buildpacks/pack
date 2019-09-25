@@ -8,7 +8,7 @@ import (
 
 	"github.com/buildpack/pack/blob"
 
-	"github.com/fatih/color"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -17,7 +17,8 @@ import (
 )
 
 func TestBuildpack(t *testing.T) {
-	color.NoColor = true
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	spec.Run(t, "buildpack", testBuildpack, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

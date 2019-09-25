@@ -19,7 +19,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/docker/docker/client"
-	"github.com/fatih/color"
+	"github.com/heroku/color"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -36,7 +36,8 @@ import (
 )
 
 func TestBuild(t *testing.T) {
-	color.NoColor = true
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "build", testBuild, spec.Report(report.Terminal{}))
 }

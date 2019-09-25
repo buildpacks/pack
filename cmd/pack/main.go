@@ -4,7 +4,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/fatih/color"
+	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -19,12 +19,8 @@ import (
 var packClient pack.Client
 
 func main() {
-	stdout := clilogger.New(os.Stdout)
-	defer stdout.Close()
-	stderr := clilogger.New(os.Stderr)
-	defer stderr.Close()
 	// create logger with defaults
-	logger := clilogger.NewLogWithWriters(stdout, stderr)
+	logger := clilogger.NewLogWithWriters(color.Stdout(), color.Stderr())
 
 	cobra.EnableCommandSorting = false
 	cfg, err := initConfig()
@@ -39,7 +35,7 @@ func main() {
 			if fs := cmd.Flags(); fs != nil {
 				if runtime.GOOS != "windows" {
 					if flag, err := fs.GetBool("no-color"); err == nil {
-						color.NoColor = flag
+						color.Disable(flag)
 					}
 				}
 				if flag, err := fs.GetBool("quiet"); err == nil {

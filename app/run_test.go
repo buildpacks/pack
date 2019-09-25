@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
-	"github.com/fatih/color"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -23,7 +23,8 @@ import (
 
 func TestApp(t *testing.T) {
 	h.RequireDocker(t)
-	color.NoColor = true
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "app", testApp, spec.Sequential(), spec.Report(report.Terminal{}))
 }
