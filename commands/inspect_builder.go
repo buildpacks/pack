@@ -164,7 +164,12 @@ func logDetectionOrderInfo(logger logging.Logger, info *pack.BuilderInfo) {
 				optional = "(optional)"
 			}
 
-			if _, err := fmt.Fprintf(tabWriter, "    %s@%s\t%s", bp.ID, bp.Version, optional); err != nil {
+			bpRef := bp.ID
+			if bp.Version != "" {
+				bpRef += "@" + bp.Version
+			}
+
+			if _, err := fmt.Fprintf(tabWriter, "    %s\t%s", bpRef, optional); err != nil {
 				logger.Error(err.Error())
 			}
 

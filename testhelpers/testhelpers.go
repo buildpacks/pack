@@ -49,6 +49,17 @@ func AssertEq(t *testing.T, actual, expected interface{}) {
 	}
 }
 
+func AssertUnique(t *testing.T, items ...interface{}) {
+	t.Helper()
+	itemMap := map[interface{}]interface{}{}
+	for _, item := range items {
+		itemMap[item] = nil
+	}
+	if len(itemMap) != len(items) {
+		t.Fatalf("Expected items in %v to be unique", items)
+	}
+}
+
 // Assert the simplistic pointer (or literal value) equality
 func AssertSameInstance(t *testing.T, actual, expected interface{}) {
 	t.Helper()

@@ -42,13 +42,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			fakeRunImageMirror *fakes.Image
 			opts               CreateBuilderOptions
 			subject            *Client
-			log                logging.Logger
+			logger             logging.Logger
 			out                bytes.Buffer
 			tmpDir             string
 		)
 
 		it.Before(func() {
-			log = ifakes.NewFakeLogger(&out)
+			logger = ifakes.NewFakeLogger(&out)
 			mockController = gomock.NewController(t)
 			mockDownloader = testmocks.NewMockDownloader(mockController)
 
@@ -73,7 +73,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil).AnyTimes()
 
 			subject = &Client{
-				logger:       log,
+				logger:       logger,
 				imageFetcher: imageFetcher,
 				downloader:   mockDownloader,
 			}

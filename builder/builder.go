@@ -3,6 +3,8 @@ package builder
 import (
 	"archive/tar"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,6 +22,7 @@ import (
 
 	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
 
@@ -57,38 +60,35 @@ type orderTOML struct {
 type Order []OrderEntry
 
 type OrderEntry struct {
-	Group []BuildpackRef `toml:"group"`
+	Group []BuildpackRef `toml:"group" json:"group"`
 }
 
 type BuildpackRef struct {
 	BuildpackInfo
-	Optional bool `toml:"optional,omitempty"`
+	Optional bool `toml:"optional,omitempty" json:"optional,omitempty"`
 }
 
 // GetBuilder constructs builder from builder image
 func GetBuilder(img imgutil.Image) (*Builder, error) {
-	label, err := img.Label(MetadataLabel)
-	if err != nil {
-		return nil, errors.Wrapf(err, "get label %s from image %s", style.Symbol(MetadataLabel), style.Symbol(img.Name()))
-	}
-	if label == "" {
+	var metadata Metadata
+	if ok, err := getLabel(img, MetadataLabel, &metadata); err != nil {
+		return nil, err
+	} else if !ok {
 		return nil, fmt.Errorf("builder %s missing label %s -- try recreating builder", style.Symbol(img.Name()), style.Symbol(MetadataLabel))
 	}
-
-	return constructBuilder(img, "", label)
+	return constructBuilder(img, "", metadata)
 }
 
 // New constructs a new builder from base image
 func New(baseImage imgutil.Image, name string) (*Builder, error) {
-	label, err := baseImage.Label(MetadataLabel)
-	if err != nil {
-		return nil, errors.Wrapf(err, "get label %s from image %s", style.Symbol(MetadataLabel), style.Symbol(baseImage.Name()))
+	var metadata Metadata
+	if _, err := getLabel(baseImage, MetadataLabel, &metadata); err != nil {
+		return nil, err
 	}
-
-	return constructBuilder(baseImage, name, label)
+	return constructBuilder(baseImage, name, metadata)
 }
 
-func constructBuilder(img imgutil.Image, newName string, label string) (*Builder, error) {
+func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Builder, error) {
 	uid, gid, err := userAndGroupIDs(img)
 	if err != nil {
 		return nil, err
@@ -100,13 +100,6 @@ func constructBuilder(img imgutil.Image, newName string, label string) (*Builder
 	}
 	if stackID == "" {
 		return nil, fmt.Errorf("image %s missing label %s", style.Symbol(img.Name()), style.Symbol(stackLabel))
-	}
-
-	var metadata Metadata
-	if label != "" {
-		if err := json.Unmarshal([]byte(label), &metadata); err != nil {
-			return nil, errors.Wrapf(err, "failed to parse metadata for builder %s", style.Symbol(img.Name()))
-		}
 	}
 
 	if newName != "" && img.Name() != newName {
@@ -128,10 +121,17 @@ func constructBuilder(img imgutil.Image, newName string, label string) (*Builder
 		platformApiVersion = metadata.Lifecycle.API.PlatformVersion
 	}
 
+	var order Order
+	if ok, err := getLabel(img, OrderLabel, &order); err != nil {
+		return nil, err
+	} else if !ok {
+		order = metadata.Groups.ToOrder()
+	}
+
 	return &Builder{
 		image:    img,
 		metadata: metadata,
-		order:    metadata.Groups.ToOrder(),
+		order:    order,
 		UID:      uid,
 		GID:      gid,
 		StackID:  stackID,
@@ -207,12 +207,13 @@ func (b *Builder) SetStackInfo(stackConfig StackConfig) {
 	}
 }
 
-func (b *Builder) Save() error {
-	if err := processOrder(b.metadata.Buildpacks, &b.order); err != nil {
+func (b *Builder) Save(logger logging.Logger) error {
+	resolvedOrder, err := processOrder(b.metadata.Buildpacks, b.order)
+	if err != nil {
 		return errors.Wrap(err, "processing order")
 	}
 
-	b.metadata.Groups = b.order.ToV1Order()
+	b.metadata.Groups = resolvedOrder.ToV1Order()
 	if err := processMetadata(&b.metadata); err != nil {
 		return errors.Wrap(err, "processing metadata")
 	}
@@ -247,23 +248,59 @@ func (b *Builder) Save() error {
 		return errors.Wrap(err, "validating buildpacks")
 	}
 
+	bpLayers := BuildpackLayers{}
+	if _, err := getLabel(b.image, BuildpackLayersLabel, &bpLayers); err != nil {
+		return err
+	}
+
 	for _, bp := range b.additionalBuildpacks {
 		bpLayerTar, err := b.buildpackLayer(tmpDir, bp)
 		if err != nil {
 			return err
 		}
+
 		if err := b.image.AddLayer(bpLayerTar); err != nil {
 			return errors.Wrapf(err, "adding layer tar for buildpack %s:%s", style.Symbol(bp.Descriptor().Info.ID), style.Symbol(bp.Descriptor().Info.Version))
 		}
+
+		sha, err := sha256ForFile(bpLayerTar)
+		if err != nil {
+			return errors.Wrapf(err, "generating sha for %s", style.Symbol(bpLayerTar))
+		}
+
+		bpInfo := bp.Descriptor().Info
+		if _, ok := bpLayers[bpInfo.ID]; !ok {
+			bpLayers[bpInfo.ID] = map[string]BuildpackLayerInfo{}
+		}
+
+		if _, ok := bpLayers[bpInfo.ID][bpInfo.Version]; ok {
+			logger.Warnf(
+				"buildpack %s already exists on builder and will be overridden",
+				style.Symbol(bpInfo.ID+"@"+bpInfo.Version),
+			)
+		}
+
+		bpLayers[bpInfo.ID][bpInfo.Version] = BuildpackLayerInfo{
+			LayerDigest: "sha256:" + sha,
+			Order:       bp.Descriptor().Order,
+		}
+	}
+
+	if err := setLabel(b.image, BuildpackLayersLabel, bpLayers); err != nil {
+		return err
 	}
 
 	if b.replaceOrder {
-		orderTar, err := b.orderLayer(tmpDir)
+		orderTar, err := b.orderLayer(resolvedOrder, tmpDir)
 		if err != nil {
 			return err
 		}
 		if err := b.image.AddLayer(orderTar); err != nil {
 			return errors.Wrap(err, "adding order.tar layer")
+		}
+
+		if err := setLabel(b.image, OrderLabel, b.order); err != nil {
+			return err
 		}
 	}
 
@@ -275,7 +312,7 @@ func (b *Builder) Save() error {
 		return errors.Wrap(err, "adding stack.tar layer")
 	}
 
-	compatTar, err := b.compatLayer(tmpDir)
+	compatTar, err := b.compatLayer(resolvedOrder, tmpDir)
 	if err != nil {
 		return err
 	}
@@ -292,13 +329,8 @@ func (b *Builder) Save() error {
 		return errors.Wrap(err, "adding env layer")
 	}
 
-	label, err := json.Marshal(b.metadata)
-	if err != nil {
-		return errors.Wrap(err, "failed marshal builder image metadata")
-	}
-
-	if err := b.image.SetLabel(MetadataLabel, string(label)); err != nil {
-		return errors.Wrap(err, "failed to set metadata label")
+	if err := setLabel(b.image, MetadataLabel, b.metadata); err != nil {
+		return err
 	}
 
 	if err := b.image.SetWorkingDir(layersDir); err != nil {
@@ -309,11 +341,51 @@ func (b *Builder) Save() error {
 	return err
 }
 
-func processOrder(buildpacks []BuildpackMetadata, order *Order) error {
-	for _, g := range *order {
-		for i := range g.Group {
-			bpRef := &g.Group[i]
+func getLabel(image imgutil.Image, label string, obj interface{}) (ok bool, err error) {
+	labelData, err := image.Label(label)
+	if err != nil {
+		return false, errors.Wrapf(err, "retrieving label %s", style.Symbol(label))
+	}
+	if labelData != "" {
+		if err := json.Unmarshal([]byte(labelData), obj); err != nil {
+			return false, errors.Wrapf(err, "unmarshalling label %s", style.Symbol(label))
+		}
+		return true, nil
+	}
+	return false, nil
+}
 
+func setLabel(image imgutil.Image, label string, data interface{}) error {
+	dataBytes, err := json.Marshal(data)
+	if err != nil {
+		return errors.Wrapf(err, "marshalling data to JSON for label %s", style.Symbol(label))
+	}
+	if err := image.SetLabel(label, string(dataBytes)); err != nil {
+		return errors.Wrapf(err, "setting label %s", style.Symbol(label))
+	}
+	return nil
+}
+
+func sha256ForFile(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to open file")
+	}
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return "", errors.Wrap(err, "failed to copy file to hasher")
+	}
+
+	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size()))), nil
+}
+
+func processOrder(buildpacks []BuildpackMetadata, order Order) (Order, error) {
+	resolvedOrder := Order{}
+
+	for gi, g := range order {
+		resolvedOrder = append(resolvedOrder, OrderEntry{})
+
+		for _, bpRef := range g.Group {
 			var matchingBps []BuildpackInfo
 			for _, bp := range buildpacks {
 				if bpRef.ID == bp.ID {
@@ -322,24 +394,26 @@ func processOrder(buildpacks []BuildpackMetadata, order *Order) error {
 			}
 
 			if len(matchingBps) == 0 {
-				return fmt.Errorf("no versions of buildpack %s were found on the builder", style.Symbol(bpRef.ID))
+				return Order{}, fmt.Errorf("no versions of buildpack %s were found on the builder", style.Symbol(bpRef.ID))
 			}
 
 			if bpRef.Version == "" {
 				if len(matchingBps) > 1 {
-					return fmt.Errorf("unable to resolve version: multiple versions of %s - must specify an explicit version", style.Symbol(bpRef.ID))
+					return Order{}, fmt.Errorf("unable to resolve version: multiple versions of %s - must specify an explicit version", style.Symbol(bpRef.ID))
 				}
 
 				bpRef.Version = matchingBps[0].Version
 			}
 
 			if !hasBuildpackWithVersion(matchingBps, bpRef.Version) {
-				return fmt.Errorf("buildpack %s with version %s was not found on the builder", style.Symbol(bpRef.ID), style.Symbol(bpRef.Version))
+				return Order{}, fmt.Errorf("buildpack %s with version %s was not found on the builder", style.Symbol(bpRef.ID), style.Symbol(bpRef.Version))
 			}
+
+			resolvedOrder[gi].Group = append(resolvedOrder[gi].Group, bpRef)
 		}
 	}
 
-	return nil
+	return resolvedOrder, nil
 }
 
 func hasBuildpackWithVersion(bps []BuildpackInfo, version string) bool {
@@ -485,8 +559,8 @@ func (b *Builder) rootOwnedDir(path string, time time.Time) *tar.Header {
 	}
 }
 
-func (b *Builder) orderLayer(dest string) (string, error) {
-	contents, err := b.orderFileContents()
+func (b *Builder) orderLayer(order Order, dest string) (string, error) {
+	contents, err := orderFileContents(b.GetLifecycleDescriptor().API.BuildpackVersion, order)
 	if err != nil {
 		return "", err
 	}
@@ -500,18 +574,18 @@ func (b *Builder) orderLayer(dest string) (string, error) {
 	return layerTar, nil
 }
 
-func (b *Builder) orderFileContents() (string, error) {
+func orderFileContents(bpAPIVersion *api.Version, order Order) (string, error) {
 	buf := &bytes.Buffer{}
-	bpAPIVersion := api.MustParse(AssumedBuildpackAPIVersion)
-	if b.GetLifecycleDescriptor().Info.Version != nil {
-		bpAPIVersion = b.GetLifecycleDescriptor().API.BuildpackVersion
+	apiVer := api.MustParse(AssumedBuildpackAPIVersion)
+	if bpAPIVersion != nil {
+		apiVer = bpAPIVersion
 	}
 
 	var tomlData interface{}
-	if bpAPIVersion.Equal(api.MustParse("0.1")) {
-		tomlData = v1OrderTOML{Groups: b.metadata.Groups}
+	if apiVer.Equal(api.MustParse("0.1")) {
+		tomlData = v1OrderTOML{Groups: order.ToV1Order()}
 	} else {
-		tomlData = orderTOML{Order: b.order}
+		tomlData = orderTOML{Order: order}
 	}
 	if err := toml.NewEncoder(buf).Encode(tomlData); err != nil {
 		return "", errors.Wrapf(err, "failed to marshal order.toml")

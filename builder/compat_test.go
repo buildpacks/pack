@@ -18,6 +18,7 @@ import (
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/builder/testmocks"
 	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -36,6 +37,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		bp1v2          builder.Buildpack
 		bp2v1          builder.Buildpack
 		bpOrder        builder.Buildpack
+		logger         logging.Logger
 	)
 
 	it.Before(func() {
@@ -94,6 +96,8 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
 		h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 
+		logger = logging.New(ioutil.Discard)
+
 		var err error
 		subject, err = builder.New(baseImage, "some/builder")
 		h.AssertNil(t, err)
@@ -131,7 +135,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 				err      error
 			)
 
-			h.AssertNil(t, subject.Save())
+			h.AssertNil(t, subject.Save(logger))
 			h.AssertEq(t, baseImage.IsSaved(), true)
 
 			layerTar, err = baseImage.FindLayerWithPath("/buildpacks/buildpack-1-id/buildpack-1-version-1")
@@ -150,7 +154,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("adds latest buildpack symlinks", func() {
-			h.AssertNil(t, subject.Save())
+			h.AssertNil(t, subject.Save(logger))
 			h.AssertEq(t, baseImage.IsSaved(), true)
 
 			layerTar, err := baseImage.FindLayerWithPath("/buildpacks/buildpack-2-id/buildpack-2-version-1")
@@ -162,7 +166,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("creates the compat buildpacks dir", func() {
-			h.AssertNil(t, subject.Save())
+			h.AssertNil(t, subject.Save(logger))
 			h.AssertEq(t, baseImage.IsSaved(), true)
 
 			layerTar, err := baseImage.FindLayerWithPath("/buildpacks")
@@ -180,7 +184,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 					RunImage:        "some/run",
 					RunImageMirrors: []string{"some/mirror", "other/mirror"},
 				})
-				h.AssertNil(t, subject.Save())
+				h.AssertNil(t, subject.Save(logger))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 			})
 
@@ -220,7 +224,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 					}},
 				})
 
-				h.AssertNil(t, subject.Save())
+				h.AssertNil(t, subject.Save(logger))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 			})
 
@@ -281,7 +285,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 				}},
 			})
 
-			h.AssertNil(t, subject.Save())
+			h.AssertNil(t, subject.Save(logger))
 			h.AssertEq(t, baseImage.IsSaved(), true)
 		})
 
@@ -332,7 +336,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should create a compat lifecycle symlink", func() {
-			h.AssertNil(t, subject.Save())
+			h.AssertNil(t, subject.Save(logger))
 			h.AssertEq(t, baseImage.IsSaved(), true)
 
 			layerTar, err := baseImage.FindLayerWithPath("/lifecycle")
@@ -354,7 +358,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 			_, err = baseImage.Save()
 			h.AssertNil(t, err)
 
-			h.AssertNil(t, subject.Save())
+			h.AssertNil(t, subject.Save(logger))
 			h.AssertEq(t, baseImage.IsSaved(), true)
 
 			layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")

@@ -65,7 +65,7 @@ func (o Order) ToV1Order() V1Order {
 	return order
 }
 
-func (b *Builder) compatLayer(dest string) (string, error) {
+func (b *Builder) compatLayer(order Order, dest string) (string, error) {
 	compatTar := path.Join(dest, "compat.tar")
 	fh, err := os.Create(compatTar)
 	if err != nil {
@@ -87,7 +87,7 @@ func (b *Builder) compatLayer(dest string) (string, error) {
 	}
 
 	if b.replaceOrder {
-		if err := b.compatOrder(tw); err != nil {
+		if err := b.compatOrder(tw, order); err != nil {
 			return "", errors.Wrapf(err, "failed to add %s to compat layer", style.Symbol(compatOrderPath))
 		}
 	}
@@ -139,8 +139,8 @@ func (b *Builder) compatStack(tw *tar.Writer) error {
 	return archive.AddFileToTar(tw, compatStackPath, stackBuf.String())
 }
 
-func (b *Builder) compatOrder(tw *tar.Writer) error {
-	orderContents, err := b.orderFileContents()
+func (b *Builder) compatOrder(tw *tar.Writer, order Order) error {
+	orderContents, err := orderFileContents(b.GetLifecycleDescriptor().API.BuildpackVersion, order)
 	if err != nil {
 		return err
 	}

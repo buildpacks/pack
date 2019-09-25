@@ -86,7 +86,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	builderImage.SetOrder(opts.BuilderConfig.Order)
 	builderImage.SetStackInfo(opts.BuilderConfig.Stack)
 
-	return builderImage.Save()
+	return builderImage.Save(c.logger)
 }
 
 func validateBuildpack(bp builder.Buildpack, source, expectedID, expectedBPVersion string) error {

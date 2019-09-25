@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -29,6 +30,7 @@ import (
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/cmd"
 	ifakes "github.com/buildpack/pack/internal/fakes"
+	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -52,6 +54,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeMirror2           *fakes.Image
 		tmpDir                string
 		outBuf                bytes.Buffer
+		logger                logging.Logger
 	)
 	it.Before(func() {
 		var err error
@@ -116,7 +119,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
 
-		logger := ifakes.NewFakeLogger(&outBuf)
+		logger = ifakes.NewFakeLogger(&outBuf)
 
 		dlCacheDir, err := ioutil.TempDir(tmpDir, "dl-cache")
 		h.AssertNil(t, err)
@@ -550,9 +553,15 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Buildpacks: []string{"buildpack.id"},
 					}))
 					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-					bldr, err := builder.GetBuilder(defaultBuilderImage)
+
+					data, err := defaultBuilderImage.Label("io.buildpacks.builder.metadata")
 					h.AssertNil(t, err)
-					h.AssertEq(t, bldr.GetOrder(), builder.Order{
+
+					var metadata builder.Metadata
+					err = json.Unmarshal([]byte(data), &metadata)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, metadata.Groups.ToOrder(), builder.Order{
 						{Group: []builder.BuildpackRef{{
 							BuildpackInfo: builder.BuildpackInfo{
 								ID:      "buildpack.id",
@@ -572,9 +581,16 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Buildpacks: []string{"buildpack.id@latest"},
 					}))
 					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-					bldr, err := builder.GetBuilder(defaultBuilderImage)
+					h.AssertContains(t, outBuf.String(), "Warning: @latest syntax is deprecated, will not work in future releases")
+
+					data, err := defaultBuilderImage.Label("io.buildpacks.builder.metadata")
 					h.AssertNil(t, err)
-					h.AssertEq(t, bldr.GetOrder(), builder.Order{
+
+					var metadata builder.Metadata
+					err = json.Unmarshal([]byte(data), &metadata)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, metadata.Groups.ToOrder(), builder.Order{
 						{Group: []builder.BuildpackRef{{
 							BuildpackInfo: builder.BuildpackInfo{
 								ID:      "buildpack.id",
@@ -582,7 +598,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							}},
 						}},
 					})
-					h.AssertContains(t, outBuf.String(), "Warning: @latest syntax is deprecated, will not work in future releases")
 				})
 			})
 

@@ -36,7 +36,7 @@ type Buildpack interface {
 
 type BuildpackInfo struct {
 	ID      string `toml:"id" json:"id"`
-	Version string `toml:"version" json:"version"`
+	Version string `toml:"version" json:"version,omitempty"`
 }
 
 type Stack struct {

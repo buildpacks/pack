@@ -138,14 +138,14 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 }
 
 func (c *Client) processBuilderImage(img imgutil.Image) (*builder.Builder, error) {
-	builder, err := builder.GetBuilder(img)
+	bldr, err := builder.GetBuilder(img)
 	if err != nil {
 		return nil, err
 	}
-	if builder.GetStackInfo().RunImage.Image == "" {
+	if bldr.GetStackInfo().RunImage.Image == "" {
 		return nil, errors.New("builder metadata is missing runImage")
 	}
-	return builder, nil
+	return bldr, nil
 }
 
 func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (imgutil.Image, error) {
@@ -345,7 +345,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 		c.logger.Debug("setting custom order")
 		bldr.SetOrder([]builder.OrderEntry{group})
 	}
-	if err := bldr.Save(); err != nil {
+	if err := bldr.Save(c.logger); err != nil {
 		return nil, err
 	}
 	return bldr, nil
