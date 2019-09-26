@@ -178,6 +178,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 		cmdArgs := append([]string{
 			name,
 			"--no-color",
+			"--verbose",
 		}, args...)
 		cmd := exec.Command(
 			packPath,

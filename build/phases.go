@@ -3,6 +3,8 @@ package build
 import (
 	"context"
 	"fmt"
+
+	"github.com/Masterminds/semver"
 )
 
 const (
@@ -17,8 +19,10 @@ func (l *Lifecycle) Detect(ctx context.Context) error {
 	detect, err := l.NewPhase(
 		"detector",
 		WithArgs(
-			"-app", appDir,
-			"-platform", platformDir,
+			l.withLogLevel(
+				"-app", appDir,
+				"-platform", platformDir,
+			)...,
 		),
 	)
 	if err != nil {
@@ -33,8 +37,10 @@ func (l *Lifecycle) Restore(ctx context.Context, cacheName string) error {
 		"restorer",
 		WithDaemonAccess(),
 		WithArgs(
-			"-path", cacheDir,
-			"-layers", layersDir,
+			l.withLogLevel(
+				"-path", cacheDir,
+				"-layers", layersDir,
+			)...,
 		),
 		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 	)
@@ -73,10 +79,14 @@ func (l *Lifecycle) newAnalyze(repoName string, publish, clearCache bool) (*Phas
 	return l.NewPhase(
 		"analyzer",
 		WithDaemonAccess(),
-		WithArgs(prependArg(
-			"-daemon",
-			args,
-		)...),
+		WithArgs(
+			l.withLogLevel(
+				prependArg(
+					"-daemon",
+					args,
+				)...,
+			)...,
+		),
 	)
 }
 
@@ -115,10 +125,12 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 			"exporter",
 			WithRegistryAccess(repoName, runImage),
 			WithArgs(
-				"-image", runImage,
-				"-layers", layersDir,
-				"-app", appDir,
-				repoName,
+				l.withLogLevel(
+					"-image", runImage,
+					"-layers", layersDir,
+					"-app", appDir,
+					repoName,
+				)...,
 			),
 		)
 	}
@@ -127,12 +139,14 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		"exporter",
 		WithDaemonAccess(),
 		WithArgs(
-			"-image", runImage,
-			"-layers", layersDir,
-			"-app", appDir,
-			"-daemon",
-			"-launch-cache", launchCacheDir,
-			repoName,
+			l.withLogLevel(
+				"-image", runImage,
+				"-layers", layersDir,
+				"-app", appDir,
+				"-daemon",
+				"-launch-cache", launchCacheDir,
+				repoName,
+			)...,
 		),
 		WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
 	)
@@ -143,8 +157,10 @@ func (l *Lifecycle) Cache(ctx context.Context, cacheName string) error {
 		"cacher",
 		WithDaemonAccess(),
 		WithArgs(
-			"-path", cacheDir,
-			"-layers", layersDir,
+			l.withLogLevel(
+				"-path", cacheDir,
+				"-layers", layersDir,
+			)...,
 		),
 		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 	)
@@ -153,4 +169,14 @@ func (l *Lifecycle) Cache(ctx context.Context, cacheName string) error {
 	}
 	defer cache.Cleanup()
 	return cache.Run(ctx)
+}
+
+func (l *Lifecycle) withLogLevel(args ...string) []string {
+	version := semver.MustParse(l.version)
+	if semver.MustParse("0.4.0").LessThan(version) {
+		if l.logger.IsVerbose() {
+			return append(args, "-log-level", "debug")
+		}
+	}
+	return args
 }

@@ -23,33 +23,35 @@ type Logger interface {
 	Errorf(fmt string, v ...interface{})
 
 	Writer() io.Writer
+
+	IsVerbose() bool
 }
 
-// WithDebugErrorWriter is an optional interface for loggers that want to support a separate writer for errors and standard logging.
-// the DebugErrorWriter should write to stderr if quiet is false.
-type WithDebugErrorWriter interface {
-	DebugErrorWriter() io.Writer
+// WithInfoErrorWriter is an optional interface for loggers that want to support a separate writer for errors and standard logging.
+// the DebugInfoWriter should write to stderr if quiet is false.
+type WithInfoErrorWriter interface {
+	InfoErrorWriter() io.Writer
 }
 
-// WithDebugWriter is an optional interface what will return a writer that will write raw output if quiet is false.
-type WithDebugWriter interface {
-	DebugWriter() io.Writer
+// WithInfoWriter is an optional interface what will return a writer that will write raw output if quiet is false.
+type WithInfoWriter interface {
+	InfoWriter() io.Writer
 }
 
-// GetDebugErrorWriter will return an ErrorWriter, typically stderr if one exists, otherwise the standard logger writer
+// GetInfoErrorWriter will return an ErrorWriter, typically stderr if one exists, otherwise the standard logger writer
 // will be returned.
-func GetDebugErrorWriter(l Logger) io.Writer {
-	if er, ok := l.(WithDebugErrorWriter); ok {
-		return er.DebugErrorWriter()
+func GetInfoErrorWriter(l Logger) io.Writer {
+	if er, ok := l.(WithInfoErrorWriter); ok {
+		return er.InfoErrorWriter()
 	}
 	return l.Writer()
 }
 
-// GetDebugWriter returns a writer
-// See WithDebugWriter
-func GetDebugWriter(l Logger) io.Writer {
-	if ew, ok := l.(WithDebugWriter); ok {
-		return ew.DebugWriter()
+// GetInfoWriter returns a writer
+// See WithInfoWriter
+func GetInfoWriter(l Logger) io.Writer {
+	if ew, ok := l.(WithInfoWriter); ok {
+		return ew.InfoWriter()
 	}
 	return l.Writer()
 }

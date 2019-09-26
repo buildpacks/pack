@@ -28,6 +28,7 @@ type Lifecycle struct {
 	httpProxy    string
 	httpsProxy   string
 	noProxy      string
+	version      string
 	LayersVolume string
 	AppVolume    string
 }
@@ -72,37 +73,37 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		l.logger.Debugf("Build cache %s cleared", style.Symbol(buildCache.Name()))
 	}
 
-	l.logger.Debug(style.Step("DETECTING"))
+	l.logger.Info(style.Step("DETECTING"))
 	if err := l.Detect(ctx); err != nil {
 		return err
 	}
 
-	l.logger.Debug(style.Step("RESTORING"))
+	l.logger.Info(style.Step("RESTORING"))
 	if opts.ClearCache {
-		l.logger.Debug("Skipping 'restore' due to clearing cache")
+		l.logger.Info("Skipping 'restore' due to clearing cache")
 	} else {
 		if err := l.Restore(ctx, buildCache.Name()); err != nil {
 			return err
 		}
 	}
 
-	l.logger.Debug(style.Step("ANALYZING"))
+	l.logger.Info(style.Step("ANALYZING"))
 	if err := l.Analyze(ctx, opts.Image.Name(), opts.Publish, opts.ClearCache); err != nil {
 		return err
 	}
 
-	l.logger.Debug(style.Step("BUILDING"))
+	l.logger.Info(style.Step("BUILDING"))
 	if err := l.Build(ctx); err != nil {
 		return err
 	}
 
-	l.logger.Debug(style.Step("EXPORTING"))
+	l.logger.Info(style.Step("EXPORTING"))
 	launchCacheName := launchCache.Name()
 	if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCacheName); err != nil {
 		return err
 	}
 
-	l.logger.Debug(style.Step("CACHING"))
+	l.logger.Info(style.Step("CACHING"))
 	if err := l.Cache(ctx, buildCache.Name()); err != nil {
 		return err
 	}
@@ -118,6 +119,7 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.httpProxy = opts.HTTPProxy
 	l.httpsProxy = opts.HTTPSProxy
 	l.noProxy = opts.NoProxy
+	l.version = opts.Builder.GetLifecycleDescriptor().Info.Version.String()
 }
 
 func (l *Lifecycle) Cleanup() error {

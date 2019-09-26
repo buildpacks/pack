@@ -158,8 +158,8 @@ func (p *Phase) Run(ctx context.Context) error {
 		ctx,
 		p.docker,
 		p.ctr.ID,
-		logging.NewPrefixWriter(logging.GetDebugWriter(p.logger), p.name),
-		logging.NewPrefixWriter(logging.GetDebugErrorWriter(p.logger), p.name),
+		logging.NewPrefixWriter(logging.GetInfoWriter(p.logger), p.name),
+		logging.NewPrefixWriter(logging.GetInfoErrorWriter(p.logger), p.name),
 	)
 }
 

@@ -45,6 +45,9 @@ func main() {
 				if flag, err := fs.GetBool("quiet"); err == nil {
 					logger.WantQuiet(flag)
 				}
+				if flag, err := fs.GetBool("verbose"); err == nil {
+					logger.WantVerbose(flag)
+				}
 				if flag, err := fs.GetBool("timestamps"); err == nil {
 					logger.WantTime(flag)
 				}
@@ -57,6 +60,7 @@ func main() {
 	rootCmd.PersistentFlags().Bool("no-color", false, "Disable color output")
 	rootCmd.PersistentFlags().Bool("timestamps", false, "Enable timestamps in output")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Show less output")
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Show more output")
 	commands.AddHelpFlag(rootCmd, "pack")
 
 	rootCmd.AddCommand(commands.Build(logger, cfg, &packClient))
