@@ -10,8 +10,8 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
-	"github.com/fatih/color"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -21,7 +21,8 @@ import (
 
 func TestVolumeCache(t *testing.T) {
 	h.RequireDocker(t)
-	color.NoColor = true
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	spec.Run(t, "VolumeCache", testCache, spec.Parallel(), spec.Report(report.Terminal{}))

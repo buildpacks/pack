@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fatih/color"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -15,7 +15,8 @@ import (
 )
 
 func TestConfig(t *testing.T) {
-	color.NoColor = true
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	spec.Run(t, "testConfig", testConfig, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

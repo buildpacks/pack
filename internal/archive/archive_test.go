@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fatih/color"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -21,7 +21,8 @@ import (
 )
 
 func TestArchive(t *testing.T) {
-	color.NoColor = true
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "Archive", testArchive, spec.Sequential(), spec.Report(report.Terminal{}))
 }

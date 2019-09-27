@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
@@ -20,7 +20,8 @@ import (
 )
 
 func TestCreateBuilderCommand(t *testing.T) {
-	color.NoColor = true
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	spec.Run(t, "Commands", testCreateBuilderCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

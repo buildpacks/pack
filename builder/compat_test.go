@@ -9,8 +9,8 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpack/imgutil/fakes"
-	"github.com/fatih/color"
 	"github.com/golang/mock/gomock"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -23,7 +23,8 @@ import (
 )
 
 func TestCompat(t *testing.T) {
-	color.NoColor = true
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	spec.Run(t, "Compat", testCompat, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

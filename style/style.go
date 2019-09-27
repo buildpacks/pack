@@ -3,7 +3,7 @@ package style
 import (
 	"fmt"
 
-	"github.com/fatih/color"
+	"github.com/heroku/color"
 )
 
 var Noop = func(format string, a ...interface{}) string {
@@ -11,10 +11,10 @@ var Noop = func(format string, a ...interface{}) string {
 }
 
 var Symbol = func(format string, a ...interface{}) string {
-	if color.NoColor {
-		format = fmt.Sprintf("'%s'", format)
+	if color.Enabled() {
+		return Key(format, a...)
 	}
-	return Key(format, a...)
+	return "'" + fmt.Sprintf(format, a...) + "'"
 }
 
 var Key = color.HiBlueString

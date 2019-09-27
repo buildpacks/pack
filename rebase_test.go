@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/buildpack/imgutil/fakes"
-	"github.com/fatih/color"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -15,7 +15,8 @@ import (
 )
 
 func TestRebase(t *testing.T) {
-	color.NoColor = true
+	color.Disable(true)
+	defer func() { color.Disable(false) }()
 	spec.Run(t, "rebase_factory", testRebase, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
