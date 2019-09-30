@@ -15,6 +15,7 @@ import (
 	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/logging"
 	"github.com/buildpack/pack/style"
 )
@@ -145,12 +146,12 @@ Detection Order:
 		warnings = append(warnings, "Users must supply buildpacks from the host machine")
 	}
 
-	order, err := detectionOrderOutput(info.Groups)
+	order, err := detectionOrderOutput(info.Order)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(info.Groups) == 0 {
+	if len(info.Order) == 0 {
 		warnings = append(warnings, fmt.Sprintf("%s does not specify detection order", style.Symbol(imageName)))
 		warnings = append(warnings, "Users must build with explicitly specified buildpacks")
 	}
@@ -171,7 +172,7 @@ Detection Order:
 	}
 
 	if lcDescriptor.API.BuildpackVersion == nil {
-		lcDescriptor.API.BuildpackVersion = api.MustParse(builder.AssumedBuildpackAPIVersion)
+		lcDescriptor.API.BuildpackVersion = api.MustParse(dist.AssumedBuildpackAPIVersion)
 	}
 
 	if lcDescriptor.API.PlatformVersion == nil {
@@ -241,7 +242,7 @@ func runImagesOutput(runImage string, mirrors []string, cfg config.Config) (stri
 	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
-func detectionOrderOutput(order builder.Order) (string, error) {
+func detectionOrderOutput(order dist.Order) (string, error) {
 	buf := strings.Builder{}
 	for i, group := range order {
 		buf.WriteString(fmt.Sprintf("  Group #%d:\n", i+1))

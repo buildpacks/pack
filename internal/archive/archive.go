@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -85,20 +84,10 @@ func aggregateError(base, addition error) error {
 
 func CreateSingleFileTarReader(path, txt string) (io.Reader, error) {
 	var buf bytes.Buffer
-	tw := tar.NewWriter(&buf)
-	if err := tw.WriteHeader(&tar.Header{
-		Name: path,
-		Size: int64(len(txt)),
-		Mode: 0644,
-	}); err != nil {
-		return nil, err
-	}
-
-	if _, err := tw.Write([]byte(txt)); err != nil {
-		return nil, err
-	}
-
-	if err := tw.Close(); err != nil {
+	tarBuilder := TarBuilder{}
+	tarBuilder.AddFile(path, 0644, []byte(txt))
+	_, err := tarBuilder.WriteTo(&buf)
+	if err != nil {
 		return nil, err
 	}
 
@@ -106,15 +95,9 @@ func CreateSingleFileTarReader(path, txt string) (io.Reader, error) {
 }
 
 func CreateSingleFileTar(tarFile, path, txt string) error {
-	fh, err := os.Create(tarFile)
-	if err != nil {
-		return fmt.Errorf("create file for tar: %s", err)
-	}
-	defer fh.Close()
-
-	tw := tar.NewWriter(fh)
-	defer tw.Close()
-	return AddFileToTar(tw, path, txt)
+	tarBuilder := TarBuilder{}
+	tarBuilder.AddFile(path, 0644, []byte(txt))
+	return tarBuilder.WriteToPath(tarFile)
 }
 
 func AddFileToTar(tw *tar.Writer, path string, txt string) error {

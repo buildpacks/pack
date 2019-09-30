@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/image"
 	"github.com/buildpack/pack/style"
 )
@@ -16,7 +17,7 @@ type BuilderInfo struct {
 	RunImage        string
 	RunImageMirrors []string
 	Buildpacks      []builder.BuildpackMetadata
-	Groups          builder.Order
+	Order           dist.Order
 	Lifecycle       builder.LifecycleDescriptor
 	CreatedBy       builder.CreatorMetadata
 }
@@ -47,7 +48,7 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		RunImage:        bldr.GetStackInfo().RunImage.Image,
 		RunImageMirrors: bldr.GetStackInfo().RunImage.Mirrors,
 		Buildpacks:      bldr.GetBuildpacks(),
-		Groups:          bldr.GetOrder(),
+		Order:           bldr.GetOrder(),
 		Lifecycle:       bldr.GetLifecycleDescriptor(),
 		CreatedBy:       bldr.GetCreatedBy(),
 	}, nil

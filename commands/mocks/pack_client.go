@@ -64,6 +64,20 @@ func (mr *MockPackClientMockRecorder) CreateBuilder(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBuilder", reflect.TypeOf((*MockPackClient)(nil).CreateBuilder), arg0, arg1)
 }
 
+// CreatePackage mocks base method
+func (m *MockPackClient) CreatePackage(arg0 context.Context, arg1 pack.CreatePackageOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreatePackage", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreatePackage indicates an expected call of CreatePackage
+func (mr *MockPackClientMockRecorder) CreatePackage(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePackage", reflect.TypeOf((*MockPackClient)(nil).CreatePackage), arg0, arg1)
+}
+
 // InspectBuilder mocks base method
 func (m *MockPackClient) InspectBuilder(arg0 string, arg1 bool) (*pack.BuilderInfo, error) {
 	m.ctrl.T.Helper()

@@ -174,20 +174,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 	var bpDir = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
 
-	var packCmd = func(name string, args ...string) *exec.Cmd {
-		cmdArgs := append([]string{
-			name,
-			"--no-color",
-			"--verbose",
-		}, args...)
-		cmd := exec.Command(
-			packPath,
-			cmdArgs...,
-		)
-		cmd.Env = append(os.Environ(), "PACK_HOME="+packHome, "DOCKER_CONFIG="+registryConfig.DockerConfigDir)
-		return cmd
-	}
-
 	it.Before(func() {
 		var err error
 		packHome, err = ioutil.TempDir("", "buildpack.pack.home.")
@@ -196,7 +182,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 	when("invalid subcommand", func() {
 		it("prints usage", func() {
-			cmd := packCmd("some-bad-command")
+			cmd := packCmd(packPath, "some-bad-command")
 			output, _ := cmd.CombinedOutput()
 			if !strings.Contains(string(output), `unknown command "some-bad-command" for "pack"`) {
 				t.Fatal("Failed to print usage", string(output))
@@ -232,12 +218,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 		when("default builder is set", func() {
 			it.Before(func() {
-				h.Run(t, packCmd("set-default-builder", builder))
+				h.Run(t, packCmd(packPath, "set-default-builder", builder))
 			})
 
 			it("creates a runnable, rebuildable image on daemon from app dir", func() {
 				appPath := filepath.Join("testdata", "mock_app")
 				cmd := packCmd(
+					packPath,
 					"build", repoName,
 					"-p", appPath,
 				)
@@ -277,11 +264,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				localRunImageMirror := registryConfig.RepoName("pack-test/run-mirror")
 				h.AssertNil(t, dockerCli.ImageTag(context.TODO(), runImage, localRunImageMirror))
 				defer h.DockerRmi(dockerCli, localRunImageMirror)
-				cmd = packCmd("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+				cmd = packCmd(packPath, "set-run-image-mirrors", runImage, "-m", localRunImageMirror)
 				h.Run(t, cmd)
 
 				t.Log("rebuild")
-				cmd = packCmd("build", repoName, "-p", appPath)
+				cmd = packCmd(packPath, "build", repoName, "-p", appPath)
 				output = h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 				imgId, err = imgIdFromOutput(output)
@@ -306,7 +293,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				h.AssertContainsMatch(t, output, `(?i)\[cacher] reusing layer 'simple/layers:cached-launch-layer'`)
 
 				t.Log("rebuild with --clear-cache")
-				cmd = packCmd("build", repoName, "-p", appPath, "--clear-cache")
+				cmd = packCmd(packPath, "build", repoName, "-p", appPath, "--clear-cache")
 				output = h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
@@ -326,6 +313,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 			it("supports building app from a zip file", func() {
 				appPath := filepath.Join("testdata", "mock_app.zip")
 				cmd := packCmd(
+					packPath,
 					"build", repoName,
 					"-p", appPath,
 				)
@@ -353,6 +341,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 					it("adds the buildpacks to the builder if necessary and runs them", func() {
 						cmd := packCmd(
+							packPath,
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
 							"--buildpack", notBuilderTgz, // tgz not in builder
@@ -380,6 +369,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 						h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
 
 						cmd := packCmd(
+							packPath,
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
 							"--buildpack", filepath.Join(bpDir, "not-in-builder-buildpack"),
@@ -404,6 +394,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 					it("errors", func() {
 						cmd := packCmd(
+							packPath,
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
 							"--buildpack", otherStackBuilderTgz,
@@ -442,6 +433,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 				it("provides the env vars to the build and detect steps", func() {
 					cmd := packCmd(
+						packPath,
 						"build", repoName,
 						"-p", filepath.Join("testdata", "mock_app"),
 						"--env-file", envPath,
@@ -469,6 +461,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 				it("provides the env vars to the build and detect steps", func() {
 					cmd := packCmd(
+						packPath,
 						"build", repoName,
 						"-p", filepath.Join("testdata", "mock_app"),
 						"--env", "DETECT_ENV_BUILDPACK=true",
@@ -500,6 +493,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 					it("uses the run image as the base image", func() {
 						cmd := packCmd(
+							packPath,
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
 							"--run-image", runImageName,
@@ -535,6 +529,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 					it("fails with a message", func() {
 						cmd := packCmd(
+							packPath,
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
 							"--run-image", runImageName,
@@ -551,6 +546,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 					runPackBuild := func() string {
 						t.Helper()
 						cmd := packCmd(
+							packPath,
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
 							"--publish",
@@ -583,7 +579,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 			when("ctrl+c", func() {
 				it("stops the execution", func() {
 					var buf bytes.Buffer
-					cmd := packCmd("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
+					cmd := packCmd(packPath, "build", repoName, "-p", filepath.Join("testdata", "mock_app"))
 					cmd.Stdout = &buf
 					cmd.Stderr = &buf
 
@@ -600,7 +596,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 		when("default builder is not set", func() {
 			it("informs the user", func() {
-				cmd := packCmd("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
+				cmd := packCmd(packPath, "build", repoName, "-p", filepath.Join("testdata", "mock_app"))
 				output, err := h.RunE(cmd)
 				h.AssertNotNil(t, err)
 				h.AssertContains(t, output, `Please select a default builder with:`)
@@ -645,7 +641,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 			it("starts an image", func() {
 				var buf bytes.Buffer
-				cmd := packCmd("run",
+				cmd := packCmd(
+					packPath,
+					"run",
 					"--port", listeningPort+":8080",
 					"-p", filepath.Join("testdata", "mock_app"),
 					"--builder", builder,
@@ -663,7 +661,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 		when("default builder is not set", func() {
 			it("informs the user", func() {
-				cmd := packCmd("run", "-p", filepath.Join("testdata", "mock_app"))
+				cmd := packCmd(packPath, "run", "-p", filepath.Join("testdata", "mock_app"))
 				output, err := h.RunE(cmd)
 				h.AssertNotNil(t, err)
 				h.AssertContains(t, output, `Please select a default builder with:`)
@@ -694,6 +692,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 			buildRunImage(runBefore, "contents-before-1", "contents-before-2")
 
 			cmd := packCmd(
+				packPath,
 				"build", repoName,
 				"-p", filepath.Join("testdata", "mock_app"),
 				"--builder", builder,
@@ -729,7 +728,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				})
 
 				it("uses provided run image", func() {
-					cmd := packCmd("rebase", repoName, "--no-pull", "--run-image", runAfter)
+					cmd := packCmd(packPath, "rebase", repoName, "--no-pull", "--run-image", runAfter)
 					output := h.Run(t, cmd)
 
 					h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
@@ -743,7 +742,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				it.Before(func() {
 					localRunImageMirror = registryConfig.RepoName("run-after/" + h.RandString(10))
 					buildRunImage(localRunImageMirror, "local-mirror-after-1", "local-mirror-after-2")
-					cmd := packCmd("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+					cmd := packCmd(packPath, "set-run-image-mirrors", runImage, "-m", localRunImageMirror)
 					h.Run(t, cmd)
 				})
 
@@ -752,7 +751,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				})
 
 				it("prefers the local mirror", func() {
-					cmd := packCmd("rebase", repoName, "--no-pull")
+					cmd := packCmd(packPath, "rebase", repoName, "--no-pull")
 					output := h.Run(t, cmd)
 
 					h.AssertContains(t, output, fmt.Sprintf("Selected run image mirror '%s' from local config", localRunImageMirror))
@@ -771,7 +770,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				})
 
 				it("selects the best mirror", func() {
-					cmd := packCmd("rebase", repoName, "--no-pull")
+					cmd := packCmd(packPath, "rebase", repoName, "--no-pull")
 					output := h.Run(t, cmd)
 
 					h.AssertContains(t, output, fmt.Sprintf("Selected run image mirror '%s'", runImageMirror))
@@ -801,7 +800,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				})
 
 				it("uses provided run image", func() {
-					cmd := packCmd("rebase", repoName, "--publish", "--run-image", runAfter)
+					cmd := packCmd(packPath, "rebase", repoName, "--publish", "--run-image", runAfter)
 					output := h.Run(t, cmd)
 
 					h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
@@ -814,7 +813,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 	when("suggest-builders", func() {
 		it("displays suggested builders", func() {
-			cmd := packCmd("suggest-builders")
+			cmd := packCmd(packPath, "suggest-builders")
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("suggest-builders command failed: %s: %s", output, err)
@@ -826,7 +825,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 	when("suggest-stacks", func() {
 		it("displays suggested stacks", func() {
-			cmd := packCmd("suggest-stacks")
+			cmd := packCmd(packPath, "suggest-stacks")
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("suggest-stacks command failed: %s: %s", output, err)
@@ -838,7 +837,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 	when("set-default-builder", func() {
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			cmd := packCmd("set-default-builder", "cloudfoundry/cnb:bionic")
+			cmd := packCmd(packPath, "set-default-builder", "cloudfoundry/cnb:bionic")
 			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
@@ -851,11 +850,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 	when("inspect-builder", func() {
 		it("displays configuration for a builder (local and remote)", func() {
 			configuredRunImage := "some-registry.com/pack-test/run1"
-			cmd := packCmd("set-run-image-mirrors", "pack-test/run", "--mirror", configuredRunImage)
+			cmd := packCmd(packPath, "set-run-image-mirrors", "pack-test/run", "--mirror", configuredRunImage)
 			output := h.Run(t, cmd)
 			h.AssertEq(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
-			cmd = packCmd("inspect-builder", builder)
+			cmd = packCmd(packPath, "inspect-builder", builder)
 			output = h.Run(t, cmd)
 
 			packVersion, err := detectPackVersion(packPath)
@@ -874,6 +873,69 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 			)
 
 			h.AssertEq(t, output, expectedOutput)
+		})
+	})
+
+	when("create-package", func() {
+		var tmpDir string
+
+		it.Before(func() {
+			h.SkipIf(t, !packSupports(packPath, "create-package"), "pack does not support 'create-package'")
+
+			var err error
+			tmpDir, err = ioutil.TempDir("", "create-package-tests")
+			h.AssertNil(t, err)
+
+			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package.toml"))
+
+			tgz := h.CreateTGZ(t, filepath.Join(bpDir, "noop-buildpack"), "./", 0755)
+			err = os.Rename(tgz, filepath.Join(tmpDir, "noop-buildpack.tgz"))
+			h.AssertNil(t, err)
+
+			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package.toml"))
+		})
+
+		it.After(func() {
+			h.AssertNil(t, os.RemoveAll(tmpDir))
+		})
+
+		it("creates the package", func() {
+			packageName := "test/package-" + h.RandString(10)
+			output, err := h.RunE(packCmd(
+				packPath,
+				"create-package",
+				"-p", filepath.Join(tmpDir, "package.toml"),
+				packageName,
+			))
+			h.AssertNil(t, err)
+			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
+
+			_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+			h.AssertNil(t, err)
+		})
+
+		when("--publish", func() {
+			it("publishes image to registry", func() {
+				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+
+				output, err := h.RunE(packCmd(
+					packPath,
+					"create-package",
+					"-p", filepath.Join(tmpDir, "package.toml"),
+					"--publish",
+					packageName,
+				))
+				h.AssertNil(t, err)
+				h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
+
+				_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+				h.AssertError(t, err, "No such image")
+
+				h.AssertNil(t, h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
+
+				_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+				h.AssertNil(t, err)
+			})
 		})
 	})
 }
@@ -988,8 +1050,22 @@ func extractLifecycleDescriptor(lcPath string) (builder.LifecycleDescriptor, err
 	return lifecycle.Descriptor(), nil
 }
 
-func detectPackVersion(packPath string) (string, error) {
+func packCmd(packPath, name string, args ...string) *exec.Cmd {
+	cmdArgs := append([]string{
+		name,
+		"--no-color",
+		"--verbose",
+	}, args...)
 	cmd := exec.Command(
+		packPath,
+		cmdArgs...,
+	)
+	cmd.Env = append(os.Environ(), "PACK_HOME="+packHome, "DOCKER_CONFIG="+registryConfig.DockerConfigDir)
+	return cmd
+}
+
+func detectPackVersion(packPath string) (string, error) {
+	cmd := packCmd(
 		packPath,
 		"version",
 	)
@@ -1000,6 +1076,14 @@ func detectPackVersion(packPath string) (string, error) {
 	}
 
 	return string(bytes.TrimSpace(output)), nil
+}
+
+func packSupports(packPath, command string) bool {
+	output, err := h.RunE(packCmd(packPath, "help"))
+	if err != nil {
+		panic(err)
+	}
+	return strings.Contains(output, command)
 }
 
 func buildpacksDir(bpAPIVersion api.Version) string {

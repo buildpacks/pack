@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/image"
 	"github.com/buildpack/pack/style"
 )
@@ -70,7 +71,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 			return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))
 		}
 
-		fetchedBp, err := builder.NewBuildpack(blob)
+		fetchedBp, err := dist.NewBuildpack(blob)
 		if err != nil {
 			return errors.Wrap(err, "creating buildpack")
 		}
@@ -89,7 +90,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	return builderImage.Save(c.logger)
 }
 
-func validateBuildpack(bp builder.Buildpack, source, expectedID, expectedBPVersion string) error {
+func validateBuildpack(bp dist.Buildpack, source, expectedID, expectedBPVersion string) error {
 	if expectedID != "" && bp.Descriptor().Info.ID != expectedID {
 		return fmt.Errorf(
 			"buildpack from URI %s has ID %s which does not match ID %s from builder config",

@@ -5,11 +5,10 @@
 package testmocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-
-	context "context"
 
 	blob "github.com/buildpack/pack/blob"
 )

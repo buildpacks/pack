@@ -21,6 +21,7 @@ import (
 	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/builder/testmocks"
+	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/internal/archive"
 	ifakes "github.com/buildpack/pack/internal/fakes"
 	"github.com/buildpack/pack/logging"
@@ -39,10 +40,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		subject        *builder.Builder
 		mockController *gomock.Controller
 		mockLifecycle  *testmocks.MockLifecycle
-		bp1v1          builder.Buildpack
-		bp1v2          builder.Buildpack
-		bp2v1          builder.Buildpack
-		bpOrder        builder.Buildpack
+		bp1v1          dist.Buildpack
+		bp1v2          dist.Buildpack
+		bp2v1          dist.Buildpack
+		bpOrder        dist.Buildpack
 		buf            bytes.Buffer
 		logger         logging.Logger
 	)
@@ -64,38 +65,38 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			},
 		}).AnyTimes()
 
-		bp1v1 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		bp1v1 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			Info: builder.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-1",
 			},
-			Stacks: []builder.Stack{{ID: "some.stack.id"}},
+			Stacks: []dist.Stack{{ID: "some.stack.id"}},
 		}}
-		bp1v2 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		bp1v2 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			Info: builder.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-2",
 			},
-			Stacks: []builder.Stack{{ID: "some.stack.id"}},
+			Stacks: []dist.Stack{{ID: "some.stack.id"}},
 		}}
-		bp2v1 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		bp2v1 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			Info: builder.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "buildpack-2-id",
 				Version: "buildpack-2-version-1",
 			},
-			Stacks: []builder.Stack{{ID: "some.stack.id"}},
+			Stacks: []dist.Stack{{ID: "some.stack.id"}},
 		}}
-		bpOrder = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		bpOrder = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			Info: builder.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "order-buildpack-id",
 				Version: "order-buildpack-version",
 			},
-			Order: []builder.OrderEntry{{
-				Group: []builder.BuildpackRef{
+			Order: []dist.OrderEntry{{
+				Group: []dist.BuildpackRef{
 					{
 						BuildpackInfo: bp1v1.Descriptor().Info,
 						Optional:      true,
@@ -321,22 +322,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("should resolve unset version (to legacy label and order.toml)", func() {
-						subject.SetOrder(builder.Order{{
-							Group: []builder.BuildpackRef{
-								{BuildpackInfo: builder.BuildpackInfo{ID: bp1v1.Descriptor().Info.ID}}},
+						subject.SetOrder(dist.Order{{
+							Group: []dist.BuildpackRef{
+								{BuildpackInfo: dist.BuildpackInfo{ID: bp1v1.Descriptor().Info.ID}}},
 						}})
 
 						err := subject.Save(logger)
 						h.AssertNil(t, err)
-
-						label, err := baseImage.Label("io.buildpacks.builder.metadata")
-						h.AssertNil(t, err)
-
-						var metadata builder.Metadata
-						h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
-
-						h.AssertEq(t, metadata.Groups[0].Buildpacks[0].ID, "buildpack-1-id")
-						h.AssertEq(t, metadata.Groups[0].Buildpacks[0].Version, "buildpack-1-version-1")
 
 						layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
 						h.AssertNil(t, err)
@@ -350,9 +342,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					when("order points to missing buildpack id", func() {
 						it("should error", func() {
-							subject.SetOrder(builder.Order{{
-								Group: []builder.BuildpackRef{
-									{BuildpackInfo: builder.BuildpackInfo{ID: "missing-buildpack-id"}}},
+							subject.SetOrder(dist.Order{{
+								Group: []dist.BuildpackRef{
+									{BuildpackInfo: dist.BuildpackInfo{ID: "missing-buildpack-id"}}},
 							}})
 
 							err := subject.Save(logger)
@@ -363,9 +355,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					when("order points to missing buildpack version", func() {
 						it("should error", func() {
-							subject.SetOrder(builder.Order{{
-								Group: []builder.BuildpackRef{
-									{BuildpackInfo: builder.BuildpackInfo{ID: "buildpack-1-id", Version: "missing-buildpack-version"}}},
+							subject.SetOrder(dist.Order{{
+								Group: []dist.BuildpackRef{
+									{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack-1-id", Version: "missing-buildpack-version"}}},
 							}})
 
 							err := subject.Save(logger)
@@ -383,22 +375,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					when("order explicitly sets version", func() {
 						it("should keep order version", func() {
-							subject.SetOrder(builder.Order{{
-								Group: []builder.BuildpackRef{
+							subject.SetOrder(dist.Order{{
+								Group: []dist.BuildpackRef{
 									{BuildpackInfo: bp1v1.Descriptor().Info}},
 							}})
 
 							err := subject.Save(logger)
 							h.AssertNil(t, err)
-
-							label, err := baseImage.Label("io.buildpacks.builder.metadata")
-							h.AssertNil(t, err)
-
-							var metadata builder.Metadata
-							h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
-
-							h.AssertEq(t, metadata.Groups[0].Buildpacks[0].ID, "buildpack-1-id")
-							h.AssertEq(t, metadata.Groups[0].Buildpacks[0].Version, "buildpack-1-version-1")
 
 							layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
 							h.AssertNil(t, err)
@@ -413,9 +396,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					when("order version is empty", func() {
 						it("return error", func() {
-							subject.SetOrder(builder.Order{{
-								Group: []builder.BuildpackRef{
-									{BuildpackInfo: builder.BuildpackInfo{ID: "buildpack-1-id"}}},
+							subject.SetOrder(dist.Order{{
+								Group: []dist.BuildpackRef{
+									{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack-1-id"}}},
 							}})
 
 							err := subject.Save(logger)
@@ -457,10 +440,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("buildpack stack id does not match", func() {
 					it("returns an error", func() {
 						subject.AddBuildpack(&fakeBuildpack{
-							descriptor: builder.BuildpackDescriptor{
+							descriptor: dist.BuildpackDescriptor{
 								API:    api.MustParse("0.2"),
 								Info:   bp1v1.Descriptor().Info,
-								Stacks: []builder.Stack{{ID: "other.stack.id"}},
+								Stacks: []dist.Stack{{ID: "other.stack.id"}},
 							}})
 
 						err := subject.Save(logger)
@@ -472,10 +455,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("buildpack is not compatible with lifecycle", func() {
 					it("returns an error", func() {
 						subject.AddBuildpack(&fakeBuildpack{
-							descriptor: builder.BuildpackDescriptor{
+							descriptor: dist.BuildpackDescriptor{
 								API:    api.MustParse("0.1"),
 								Info:   bp1v1.Descriptor().Info,
-								Stacks: []builder.Stack{{ID: "some.stack.id"}},
+								Stacks: []dist.Stack{{ID: "some.stack.id"}},
 							}})
 
 						err := subject.Save(logger)
@@ -716,7 +699,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					// keeps original metadata
 					h.AssertEq(t, metadata.Buildpacks[0].ID, "prev.id")
-					h.AssertEq(t, metadata.Groups[0].Buildpacks[0].ID, "prev.id")
 					h.AssertEq(t, metadata.Stack.RunImage.Image, "prev/run")
 					h.AssertEq(t, metadata.Stack.RunImage.Mirrors[0], "prev/mirror")
 					h.AssertEq(t, subject.GetLifecycleDescriptor().Info.Version.String(), "6.6.6")
@@ -734,10 +716,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					subject.AddBuildpack(bp1v1)
 					subject.AddBuildpack(bp2v1)
-					subject.SetOrder(builder.Order{
-						{Group: []builder.BuildpackRef{
+					subject.SetOrder(dist.Order{
+						{Group: []dist.BuildpackRef{
 							{
-								BuildpackInfo: builder.BuildpackInfo{
+								BuildpackInfo: dist.BuildpackInfo{
 									ID: bp1v1.Descriptor().Info.ID,
 									// Version excluded intentionally
 								},
@@ -769,29 +751,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 `))
 				})
 
-				it("adds the order to the metadata", func() {
-					label, err := baseImage.Label("io.buildpacks.builder.metadata")
-					h.AssertNil(t, err)
-
-					var metadata builder.Metadata
-					h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
-
-					h.AssertEq(t, len(metadata.Groups), 1)
-					h.AssertEq(t, len(metadata.Groups[0].Buildpacks), 2)
-
-					h.AssertEq(t, metadata.Groups[0].Buildpacks[0].ID, "buildpack-1-id")
-					h.AssertEq(t, metadata.Groups[0].Buildpacks[0].Version, "buildpack-1-version-1")
-
-					h.AssertEq(t, metadata.Groups[0].Buildpacks[1].ID, "buildpack-2-id")
-					h.AssertEq(t, metadata.Groups[0].Buildpacks[1].Version, "buildpack-2-version-1")
-					h.AssertEq(t, metadata.Groups[0].Buildpacks[1].Optional, true)
-				})
-
 				it("adds the order to the order label", func() {
 					label, err := baseImage.Label("io.buildpacks.buildpack.order")
 					h.AssertNil(t, err)
 
-					var order builder.Order
+					var order dist.Order
 					h.AssertNil(t, json.Unmarshal([]byte(label), &order))
 					h.AssertEq(t, len(order), 1)
 					h.AssertEq(t, len(order[0].Group), 2)
@@ -927,10 +891,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 }
 
 type fakeBuildpack struct {
-	descriptor builder.BuildpackDescriptor
+	descriptor dist.BuildpackDescriptor
 }
 
-func (f *fakeBuildpack) Descriptor() builder.BuildpackDescriptor {
+func (f *fakeBuildpack) Descriptor() dist.BuildpackDescriptor {
 	return f.descriptor
 }
 
@@ -938,7 +902,7 @@ func (f *fakeBuildpack) Open() (io.ReadCloser, error) {
 	return archive.ReadDirAsTar(filepath.Join("testdata", "buildpack"), ".", 0, 0, 0755), nil
 }
 
-func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp builder.Buildpack) {
+func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp dist.Buildpack) {
 	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().Info.ID, bp.Descriptor().Info.Version)
 	layerTar, err := image.FindLayerWithPath(dirPath)
 	h.AssertNil(t, err)

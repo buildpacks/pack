@@ -1,4 +1,4 @@
-package builder_test
+package dist_test
 
 import (
 	"io/ioutil"
@@ -6,13 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpack/pack/blob"
-
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/blob"
+	"github.com/buildpack/pack/dist"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -48,7 +47,7 @@ version = "1.2.3"
 id = "some.stack.id"
 `), os.ModePerm))
 
-			bp, err := builder.NewBuildpack(blob.NewBlob(tmpBpDir))
+			bp, err := dist.NewBuildpack(blob.NewBlob(tmpBpDir))
 			h.AssertNil(t, err)
 			h.AssertEq(t, bp.Descriptor().API.String(), "0.3")
 			h.AssertEq(t, bp.Descriptor().Info.ID, "bp.one")
@@ -58,7 +57,7 @@ id = "some.stack.id"
 
 		when("there is no descriptor file", func() {
 			it("returns error", func() {
-				_, err := builder.NewBuildpack(blob.NewBlob(tmpBpDir))
+				_, err := dist.NewBuildpack(blob.NewBlob(tmpBpDir))
 				h.AssertError(t, err, "could not find entry path 'buildpack.toml'")
 			})
 		})
@@ -74,7 +73,7 @@ version = "1.2.3"
 id = "some.stack.id"
 `), os.ModePerm))
 
-				bp, err := builder.NewBuildpack(blob.NewBlob(tmpBpDir))
+				bp, err := dist.NewBuildpack(blob.NewBlob(tmpBpDir))
 				h.AssertNil(t, err)
 				h.AssertEq(t, bp.Descriptor().API.String(), "0.1")
 			})
@@ -98,7 +97,7 @@ id = "some.stack.id"
 			})
 
 			it("returns error", func() {
-				_, err := builder.NewBuildpack(blob.NewBlob(tmpBpDir))
+				_, err := dist.NewBuildpack(blob.NewBlob(tmpBpDir))
 				h.AssertError(t, err, "cannot have both stacks and an order defined")
 			})
 		})
@@ -113,7 +112,7 @@ version = "1.2.3"
 			})
 
 			it("returns error", func() {
-				_, err := builder.NewBuildpack(blob.NewBlob(tmpBpDir))
+				_, err := dist.NewBuildpack(blob.NewBlob(tmpBpDir))
 				h.AssertError(t, err, "must have either stacks or an order defined")
 			})
 		})

@@ -11,13 +11,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/api"
+	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/internal/archive"
 )
 
 const (
-	AssumedLifecycleVersion    = "0.3.0"
-	AssumedBuildpackAPIVersion = "0.1"
-	AssumedPlatformAPIVersion  = "0.1"
+	AssumedLifecycleVersion   = "0.3.0"
+	AssumedPlatformAPIVersion = "0.1"
 
 	DefaultLifecycleVersion    = "0.4.0"
 	DefaultBuildpackAPIVersion = "0.2"
@@ -86,7 +86,7 @@ func NewLifecycle(blob Blob) (Lifecycle, error) {
 					Version: VersionMustParse(AssumedLifecycleVersion),
 				},
 				API: LifecycleAPI{
-					BuildpackVersion: api.MustParse(AssumedBuildpackAPIVersion),
+					BuildpackVersion: api.MustParse(dist.AssumedBuildpackAPIVersion),
 					PlatformVersion:  api.MustParse(AssumedPlatformAPIVersion),
 				},
 			},

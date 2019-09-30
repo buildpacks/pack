@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/api"
+	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/style"
 )
@@ -19,49 +20,10 @@ import (
 const (
 	compatBuildpacksDir = "/buildpacks"
 	compatLifecycleDir  = "/lifecycle"
-	compatOrderPath     = "/buildpacks/order.toml"
 	compatStackPath     = "/buildpacks/stack.toml"
 )
 
-type V1Order []V1Group
-
-type V1Group struct {
-	Buildpacks []BuildpackRef `toml:"buildpacks" json:"buildpacks"`
-}
-
-type v1OrderTOML struct {
-	Groups []V1Group `toml:"groups" json:"groups"`
-}
-
-func (o V1Order) ToOrder() Order {
-	var order Order
-	for _, gp := range o {
-		var buildpacks []BuildpackRef
-		buildpacks = append(buildpacks, gp.Buildpacks...)
-
-		order = append(order, OrderEntry{
-			Group: buildpacks,
-		})
-	}
-
-	return order
-}
-
-func (o Order) ToV1Order() V1Order {
-	var order V1Order //nolint:prealloc
-	for _, gp := range o {
-		var buildpacks []BuildpackRef
-		buildpacks = append(buildpacks, gp.Group...)
-
-		order = append(order, V1Group{
-			Buildpacks: buildpacks,
-		})
-	}
-
-	return order
-}
-
-func (b *Builder) compatLayer(order Order, dest string) (string, error) {
+func (b *Builder) compatLayer(order dist.Order, dest string) (string, error) {
 	compatTar := path.Join(dest, "compat.tar")
 	fh, err := os.Create(compatTar)
 	if err != nil {
@@ -82,12 +44,6 @@ func (b *Builder) compatLayer(order Order, dest string) (string, error) {
 		return "", err
 	}
 
-	if b.replaceOrder {
-		if err := b.compatOrder(tw, order); err != nil {
-			return "", errors.Wrapf(err, "failed to add %s to compat layer", style.Symbol(compatOrderPath))
-		}
-	}
-
 	if err := b.compatStack(tw); err != nil {
 		return "", errors.Wrapf(err, "failed to add %s to compat layer", style.Symbol(compatStackPath))
 	}
@@ -102,7 +58,7 @@ func compatLifecycle(tw *tar.Writer) error {
 func (b *Builder) compatBuildpacks(tw *tar.Writer) error {
 	now := time.Now()
 	if err := tw.WriteHeader(b.rootOwnedDir(compatBuildpacksDir, now)); err != nil {
-		return errors.Wrapf(err, "creating %s dir in layer", style.Symbol(buildpacksDir))
+		return errors.Wrapf(err, "creating %s dir in layer", style.Symbol(dist.BuildpacksDir))
 	}
 	for _, bp := range b.additionalBuildpacks {
 		descriptor := bp.Descriptor()
@@ -112,7 +68,7 @@ func (b *Builder) compatBuildpacks(tw *tar.Writer) error {
 			return errors.Wrapf(err, "creating %s dir in layer", style.Symbol(compatDir))
 		}
 		compatLink := path.Join(compatDir, descriptor.Info.Version)
-		bpDir := path.Join(buildpacksDir, descriptor.EscapedID(), descriptor.Info.Version)
+		bpDir := path.Join(dist.BuildpacksDir, descriptor.EscapedID(), descriptor.Info.Version)
 		if err := addSymlink(tw, compatLink, bpDir); err != nil {
 			return err
 		}
@@ -135,14 +91,6 @@ func (b *Builder) compatStack(tw *tar.Writer) error {
 	return archive.AddFileToTar(tw, compatStackPath, stackBuf.String())
 }
 
-func (b *Builder) compatOrder(tw *tar.Writer, order Order) error {
-	orderContents, err := orderFileContents(b.GetLifecycleDescriptor().API.BuildpackVersion, order)
-	if err != nil {
-		return err
-	}
-	return archive.AddFileToTar(tw, compatOrderPath, orderContents)
-}
-
 func addSymlink(tw *tar.Writer, name, linkName string) error {
 	if err := tw.WriteHeader(&tar.Header{
 		Name:     name,
@@ -157,7 +105,7 @@ func addSymlink(tw *tar.Writer, name, linkName string) error {
 
 // Deprecated: The 'latest' symlink is in place for backwards compatibility only. This should be removed as soon
 // as we no longer support older releases that rely on it.
-func symlinkLatest(tw *tar.Writer, baseTarDir string, bp BuildpackDescriptor, metadata Metadata) error {
+func symlinkLatest(tw *tar.Writer, baseTarDir string, bp dist.BuildpackDescriptor, metadata Metadata) error {
 	for _, b := range metadata.Buildpacks {
 		if b.ID == bp.Info.ID && b.Version == bp.Info.Version && b.Latest {
 			name := fmt.Sprintf("%s/%s/%s", compatBuildpacksDir, bp.EscapedID(), "latest")
