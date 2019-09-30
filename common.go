@@ -36,11 +36,13 @@ func (c *Client) resolveRunImage(runImage, targetRegistry string, stackInfo buil
 		stackInfo.RunImage.Mirrors,
 		additionalMirrors[stackInfo.RunImage.Image],
 	)
-	if runImageName == stackInfo.RunImage.Image {
+
+	switch {
+	case runImageName == stackInfo.RunImage.Image:
 		c.logger.Debugf("Selected run image %s", style.Symbol(runImageName))
-	} else if contains(stackInfo.RunImage.Mirrors, runImageName) {
+	case contains(stackInfo.RunImage.Mirrors, runImageName):
 		c.logger.Debugf("Selected run image mirror %s", style.Symbol(runImageName))
-	} else {
+	default:
 		c.logger.Debugf("Selected run image mirror %s from local config", style.Symbol(runImageName))
 	}
 	return runImageName

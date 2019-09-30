@@ -117,14 +117,14 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 		lifecycleVersion = metadata.Lifecycle.Version
 	}
 
-	buildpackApiVersion := api.MustParse(AssumedBuildpackAPIVersion)
+	buildpackAPIVersion := api.MustParse(AssumedBuildpackAPIVersion)
 	if metadata.Lifecycle.API.BuildpackVersion != nil {
-		buildpackApiVersion = metadata.Lifecycle.API.BuildpackVersion
+		buildpackAPIVersion = metadata.Lifecycle.API.BuildpackVersion
 	}
 
-	platformApiVersion := api.MustParse(AssumedPlatformAPIVersion)
+	platformAPIVersion := api.MustParse(AssumedPlatformAPIVersion)
 	if metadata.Lifecycle.API.PlatformVersion != nil {
-		platformApiVersion = metadata.Lifecycle.API.PlatformVersion
+		platformAPIVersion = metadata.Lifecycle.API.PlatformVersion
 	}
 
 	var order Order
@@ -146,8 +146,8 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 				Version: lifecycleVersion,
 			},
 			API: LifecycleAPI{
-				PlatformVersion:  platformApiVersion,
-				BuildpackVersion: buildpackApiVersion,
+				PlatformVersion:  platformAPIVersion,
+				BuildpackVersion: buildpackAPIVersion,
 			},
 		},
 		env: map[string]string{},
@@ -224,9 +224,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 	}
 
 	b.metadata.Groups = resolvedOrder.ToV1Order()
-	if err := processMetadata(&b.metadata); err != nil {
-		return errors.Wrap(err, "processing metadata")
-	}
+	processMetadata(&b.metadata)
 
 	tmpDir, err := ioutil.TempDir("", "create-builder-scratch")
 	if err != nil {

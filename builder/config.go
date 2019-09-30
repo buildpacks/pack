@@ -140,7 +140,7 @@ func transformRelativePath(uri, relativeTo string) (string, error) {
 	if parsed.Scheme == "" {
 		if !filepath.IsAbs(parsed.Path) {
 			absPath := filepath.Join(relativeTo, parsed.Path)
-			return paths.FilePathToUri(absPath)
+			return paths.FilePathToURI(absPath)
 		}
 	}
 

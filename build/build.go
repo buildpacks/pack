@@ -81,10 +81,8 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	l.logger.Info(style.Step("RESTORING"))
 	if opts.ClearCache {
 		l.logger.Info("Skipping 'restore' due to clearing cache")
-	} else {
-		if err := l.Restore(ctx, buildCache.Name()); err != nil {
-			return err
-		}
+	} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
+		return err
 	}
 
 	l.logger.Info(style.Step("ANALYZING"))

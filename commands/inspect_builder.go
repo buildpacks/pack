@@ -135,13 +135,7 @@ Detection Order:
 {{ end }}`,
 	))
 
-	var (
-		bps     = ""
-		order   = ""
-		runImgs = ""
-	)
-
-	bps, err = buildpacksOutput(info.Buildpacks)
+	bps, err := buildpacksOutput(info.Buildpacks)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +145,7 @@ Detection Order:
 		warnings = append(warnings, "Users must supply buildpacks from the host machine")
 	}
 
-	order, err = detectionOrderOutput(info.Groups)
+	order, err := detectionOrderOutput(info.Groups)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +155,7 @@ Detection Order:
 		warnings = append(warnings, "Users must build with explicitly specified buildpacks")
 	}
 
-	runImgs, err = runImagesOutput(info.RunImage, info.RunImageMirrors, cfg)
+	runImgs, err := runImagesOutput(info.RunImage, info.RunImageMirrors, cfg)
 	if err != nil {
 		return nil, err
 	}

@@ -343,7 +343,7 @@ func (v *tarVerifier) nextFile(name, expectedFileContents string, expectedFileMo
 		v.t.Fatalf(`expected %s to have gid %d but, got: %d`, header.Name, v.gid, header.Gid)
 	}
 
-	fileContents := make([]byte, header.Size, header.Size)
+	fileContents := make([]byte, header.Size)
 	v.tr.Read(fileContents)
 	if string(fileContents) != expectedFileContents {
 		v.t.Fatalf(`expected to some-file.txt to have %s got %s`, expectedFileContents, string(fileContents))

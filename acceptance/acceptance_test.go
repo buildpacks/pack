@@ -1202,7 +1202,7 @@ func waitForResponse(t *testing.T, port string, timeout time.Duration) string {
 	for {
 		select {
 		case <-ticker.C:
-			resp, err := h.HttpGetE("http://localhost:"+port, map[string]string{})
+			resp, err := h.HTTPGetE("http://localhost:"+port, map[string]string{})
 			if err != nil {
 				break
 			}

@@ -51,19 +51,19 @@ func RunRegistry(t *testing.T, seedRegistry bool) *TestRegistryConfig {
 	return registryConfig
 }
 
-func (r *TestRegistryConfig) AuthConfig() dockertypes.AuthConfig {
+func (rc *TestRegistryConfig) AuthConfig() dockertypes.AuthConfig {
 	return dockertypes.AuthConfig{
-		Username:      r.username,
-		Password:      r.password,
-		ServerAddress: fmt.Sprintf("localhost:%s", r.RunRegistryPort)}
+		Username:      rc.username,
+		Password:      rc.password,
+		ServerAddress: fmt.Sprintf("localhost:%s", rc.RunRegistryPort)}
 }
 
-func (r *TestRegistryConfig) Login(t *testing.T, username string, password string) {
+func (rc *TestRegistryConfig) Login(t *testing.T, username string, password string) {
 	Eventually(t, func() bool {
 		_, err := dockerCli(t).RegistryLogin(context.Background(), dockertypes.AuthConfig{
 			Username:      username,
 			Password:      password,
-			ServerAddress: fmt.Sprintf("localhost:%s", r.RunRegistryPort)})
+			ServerAddress: fmt.Sprintf("localhost:%s", rc.RunRegistryPort)})
 		return err == nil
 	}, 100*time.Millisecond, 10*time.Second)
 }
@@ -72,7 +72,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) str
 	AssertNil(t, PullImageWithAuth(dockerCli(t), registryContainerName, ""))
 	ctx := context.Background()
 
-	htpasswdTar := generateHtpasswd(t, ctx, username, password)
+	htpasswdTar := generateHtpasswd(ctx, t, username, password)
 
 	ctr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
 		Image:  registryContainerName,
@@ -106,7 +106,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) str
 	return runRegistryPort
 }
 
-func generateHtpasswd(t *testing.T, ctx context.Context, username string, password string) io.Reader {
+func generateHtpasswd(ctx context.Context, t *testing.T, username string, password string) io.Reader {
 	//https://docs.docker.com/registry/deploying/#restricting-access
 	htpasswdCtr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
 		Image:      registryContainerName,
@@ -118,6 +118,7 @@ func generateHtpasswd(t *testing.T, ctx context.Context, username string, passwo
 
 	var b bytes.Buffer
 	err = RunContainer(ctx, dockerCli(t), htpasswdCtr.ID, &b, &b)
+	AssertNil(t, err)
 	reader, err := archive.CreateSingleFileTarReader("/registry_test_htpasswd", b.String())
 	AssertNil(t, err)
 
@@ -162,7 +163,7 @@ func (rc *TestRegistryConfig) RegistryAuth() string {
 }
 
 func (rc *TestRegistryConfig) RegistryCatalog() (string, error) {
-	return HttpGetE(fmt.Sprintf("http://localhost:%s/v2/_catalog", rc.RunRegistryPort), map[string]string{
+	return HTTPGetE(fmt.Sprintf("http://localhost:%s/v2/_catalog", rc.RunRegistryPort), map[string]string{
 		"Authorization": "Basic " + encodedUserPass(rc.username, rc.password),
 	})
 }

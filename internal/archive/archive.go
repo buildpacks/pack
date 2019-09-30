@@ -295,7 +295,7 @@ func finalizeHeader(header *tar.Header, uid, gid int, mode int64) {
 	header.Gname = ""
 }
 
-func IsZip(file *os.File) (bool, error) {
+func IsZip(file io.Reader) (bool, error) {
 	b := make([]byte, 4)
 	_, err := file.Read(b)
 	if err != nil && err != io.EOF {

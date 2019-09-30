@@ -7,7 +7,7 @@ import (
 )
 
 // New creates a default logger for the pack library. Note that the pack CLI has it's own logger.
-func New(w io.Writer) *defaultLogger {
+func New(w io.Writer) Logger {
 	return &defaultLogger{
 		out: log.New(w, "", log.LstdFlags|log.Lmicroseconds),
 	}

@@ -37,9 +37,7 @@ func (o V1Order) ToOrder() Order {
 	var order Order
 	for _, gp := range o {
 		var buildpacks []BuildpackRef
-		for _, bp := range gp.Buildpacks {
-			buildpacks = append(buildpacks, bp)
-		}
+		buildpacks = append(buildpacks, gp.Buildpacks...)
 
 		order = append(order, OrderEntry{
 			Group: buildpacks,
@@ -50,12 +48,10 @@ func (o V1Order) ToOrder() Order {
 }
 
 func (o Order) ToV1Order() V1Order {
-	var order V1Order
+	var order V1Order //nolint:prealloc
 	for _, gp := range o {
 		var buildpacks []BuildpackRef
-		for _, bp := range gp.Group {
-			buildpacks = append(buildpacks, bp)
-		}
+		buildpacks = append(buildpacks, gp.Group...)
 
 		order = append(order, V1Group{
 			Buildpacks: buildpacks,

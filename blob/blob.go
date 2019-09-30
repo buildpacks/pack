@@ -62,7 +62,7 @@ func (b blob) Open() (r io.ReadCloser, err error) {
 	return rc, nil
 }
 
-func isGZip(file *os.File) (bool, error) {
+func isGZip(file io.ReadSeeker) (bool, error) {
 	b := make([]byte, 3)
 	if _, err := file.Seek(0, 0); err != nil {
 		return false, err
