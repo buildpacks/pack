@@ -76,7 +76,7 @@ func TestAcceptance(t *testing.T) {
 
 	packPath := os.Getenv(envPackPath)
 	if packPath == "" {
-		packPath = buildPack(t, "../cmd/pack")
+		packPath = buildPack(t)
 	}
 
 	previousPackPath := os.Getenv(envPreviousPackPath)
@@ -1006,18 +1006,25 @@ func buildpacksDir(bpAPIVersion api.Version) string {
 	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion.String())
 }
 
-func buildPack(t *testing.T, packCmdPath string) string {
+func buildPack(t *testing.T) string {
 	packTmpDir, err := ioutil.TempDir("", "pack.acceptance.binary.")
-	if err != nil {
-		t.Fatal(err)
-	}
+	h.AssertNil(t, err)
 
 	packPath := filepath.Join(packTmpDir, "pack")
 	if runtime.GOOS == "windows" {
 		packPath = packPath + ".exe"
 	}
 
-	if txt, err := exec.Command("go", "build", "-o", packPath, packCmdPath).CombinedOutput(); err != nil {
+	cwd, err := os.Getwd()
+	h.AssertNil(t, err)
+
+	cmd := exec.Command("go", "build", "-mod=vendor", "-o", packPath, "./cmd/pack")
+	if filepath.Base(cwd) == "acceptance" {
+		cmd.Dir = filepath.Dir(cwd)
+	}
+
+	t.Logf("building pack: [CWD=%s] %s", cmd.Dir, cmd.Args)
+	if txt, err := cmd.CombinedOutput(); err != nil {
 		t.Fatal("building pack cli:\n", string(txt), err)
 	}
 
