@@ -5,7 +5,7 @@ PACK_VERSION?=dev-$(shell date +%Y-%m-%d-%H:%M:%S)
 PACK_BIN?=pack
 PACKAGE_BASE=github.com/buildpack/pack
 PACKAGES:=$(shell $(GOCMD) list -mod=vendor ./... | grep -v /testdata/)
-SRC:=$(shell find . -type f -name '*.go' -not -path "./vendor/*")
+SRC:=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
 ARCHIVE_NAME=pack-$(PACK_VERSION)
 
 all: clean verify test build
@@ -30,21 +30,25 @@ format: install-goimports
 	@echo "> Formating code..."
 	@goimports -l -w -local ${PACKAGE_BASE} ${SRC}
 
-vet:
-	@echo "> Vetting code..."
-	@$(GOCMD) vet -mod=vendor ${PACKAGES}
+install-golangci-lint:
+	@echo "> Installing golangci-lint..."
+	cd tools; $(GOCMD) install -mod=vendor github.com/golangci/golangci-lint/cmd/golangci-lint
+
+lint: install-golangci-lint
+	@echo "> Linting code..."
+	@golangci-lint run -c golangci.yaml
 
 test: unit acceptance
 
-unit: format vet
+unit: format lint
 	@echo "> Running unit/integration tests..."
 	$(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 ./...
 
-acceptance: format vet
+acceptance: format lint
 	@echo "> Running acceptance tests..."
 	$(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 -tags=acceptance ./acceptance
 
-acceptance-all: format vet
+acceptance-all: format lint
 	@echo "> Running acceptance tests..."
 	ACCEPTANCE_SUITE_CONFIG=$$(cat ./acceptance/testconfig/all.json) $(GOCMD) test -mod=vendor -v -count=1 -parallel=1 -timeout=0 -tags=acceptance ./acceptance
 
@@ -52,7 +56,7 @@ clean:
 	@echo "> Cleaning workspace..."
 	rm -rf ./out
 
-verify: verify-format vet
+verify: verify-format lint
 
 generate: install-mockgen
 	@echo "> Generating mocks..."
@@ -66,4 +70,4 @@ verify-format: install-goimports
 	goimports -d -local ${PACKAGE_BASE} ${SRC} && exit $$_err;\
 	exit 0;
 
-.PHONY: clean build format imports vet test unit acceptance verify verify-format
+.PHONY: clean build format imports lint test unit acceptance verify verify-format
