@@ -24,7 +24,7 @@ func IsDir(path string) (bool, error) {
 	return fileInfo.IsDir(), nil
 }
 
-func FilePathToUri(path string) (string, error) {
+func FilePathToURI(path string) (string, error) {
 	var err error
 	if !filepath.IsAbs(path) {
 		path, err = filepath.Abs(path)
@@ -36,12 +36,10 @@ func FilePathToUri(path string) (string, error) {
 	if runtime.GOOS == "windows" {
 		if strings.HasPrefix(path, `\\`) {
 			return "file://" + filepath.ToSlash(strings.TrimPrefix(path, `\\`)), nil
-		} else {
-			return "file:///" + filepath.ToSlash(path), nil
 		}
-	} else {
-		return "file://" + path, nil
+		return "file:///" + filepath.ToSlash(path), nil
 	}
+	return "file://" + path, nil
 }
 
 // examples:
@@ -52,9 +50,9 @@ func FilePathToUri(path string) (string, error) {
 //
 // - windows share: file://laptop/My%20Documents/file.tgz
 //
-func UriToFilePath(uri string) (string, error) {
+func URIToFilePath(uri string) (string, error) {
 	var (
-		osPath = uri
+		osPath string
 		err    error
 	)
 
@@ -67,10 +65,8 @@ func UriToFilePath(uri string) (string, error) {
 	if runtime.GOOS == "windows" {
 		if strings.HasPrefix(osPath, `\`) {
 			return strings.TrimPrefix(osPath, `\`), nil
-		} else {
-			return `\\` + osPath, nil
 		}
-	} else {
-		return osPath, nil
+		return `\\` + osPath, nil
 	}
+	return osPath, nil
 }

@@ -13,7 +13,7 @@ type fakeLog struct {
 }
 
 // NewFakeLogger create a logger to capture output for testing purposes.
-func NewFakeLogger(w io.Writer) *fakeLog {
+func NewFakeLogger(w io.Writer) *fakeLog { //nolint:golint,gosimple
 	f := &fakeLog{
 		w: w,
 	}

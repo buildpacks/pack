@@ -29,51 +29,48 @@ type downloader struct {
 	baseCacheDir string
 }
 
-func NewDownloader(logger logging.Logger, baseCacheDir string) *downloader {
+func NewDownloader(logger logging.Logger, baseCacheDir string) *downloader { //nolint:golint,gosimple
 	return &downloader{
 		logger:       logger,
 		baseCacheDir: baseCacheDir,
 	}
 }
 
-func (d *downloader) Download(ctx context.Context, pathOrUri string) (Blob, error) {
-	if paths.IsURI(pathOrUri) {
-		parsedUrl, err := url.Parse(pathOrUri)
+func (d *downloader) Download(ctx context.Context, pathOrURI string) (Blob, error) {
+	if paths.IsURI(pathOrURI) {
+		parsedURL, err := url.Parse(pathOrURI)
 		if err != nil {
-			return nil, errors.Wrapf(err, "parsing path/uri %s", style.Symbol(pathOrUri))
+			return nil, errors.Wrapf(err, "parsing path/uri %s", style.Symbol(pathOrURI))
 		}
 
 		var path string
-		switch parsedUrl.Scheme {
+		switch parsedURL.Scheme {
 		case "file":
-			path, err = paths.UriToFilePath(pathOrUri)
+			path, err = paths.URIToFilePath(pathOrURI)
 		case "http", "https":
-			path, err = d.handleHTTP(ctx, pathOrUri)
+			path, err = d.handleHTTP(ctx, pathOrURI)
 		default:
-			err = fmt.Errorf("unsupported protocol %s in URI %s", style.Symbol(parsedUrl.Scheme), style.Symbol(pathOrUri))
+			err = fmt.Errorf("unsupported protocol %s in URI %s", style.Symbol(parsedURL.Scheme), style.Symbol(pathOrURI))
 		}
-		if err != nil {
-			return nil, err
-		}
-
-		return &blob{path: path}, nil
-	} else {
-		path, err := d.handleFile(pathOrUri)
 		if err != nil {
 			return nil, err
 		}
 
 		return &blob{path: path}, nil
 	}
+
+	path := d.handleFile(pathOrURI)
+
+	return &blob{path: path}, nil
 }
 
-func (d *downloader) handleFile(path string) (string, error) {
+func (d *downloader) handleFile(path string) string {
 	path, err := filepath.Abs(path)
 	if err != nil {
-		return "", nil
+		return ""
 	}
 
-	return path, nil
+	return path
 }
 
 func (d *downloader) handleHTTP(ctx context.Context, uri string) (string, error) {
@@ -137,7 +134,7 @@ func (d *downloader) downloadAsStream(ctx context.Context, uri string, etag stri
 		req.Header.Set("If-None-Match", etag)
 	}
 
-	resp, err := (&http.Client{}).Do(req)
+	resp, err := (&http.Client{}).Do(req) //nolint:bodyclose
 	if err != nil {
 		return nil, "", err
 	}

@@ -116,12 +116,10 @@ func (lw *logWithWriters) IsVerbose() bool {
 }
 
 // NewLogWithWriters creates a logger to be used with pack CLI.
-func NewLogWithWriters(stdout, stderr io.Writer) *logWithWriters {
+func NewLogWithWriters(stdout, stderr io.Writer) *logWithWriters { //nolint:golint,gosimple
 	hnd := &handler{
 		writer: stdout,
-		timer: func() time.Time {
-			return time.Now()
-		},
+		timer:  time.Now,
 	}
 	var lw logWithWriters
 	lw.handler = hnd

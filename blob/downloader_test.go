@@ -78,7 +78,7 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 					absPath, err := filepath.Abs(relPath)
 					h.AssertNil(t, err)
 
-					uri, err := paths.FilePathToUri(absPath)
+					uri, err := paths.FilePathToURI(absPath)
 					h.AssertNil(t, err)
 
 					b, err := subject.Download(context.TODO(), uri)

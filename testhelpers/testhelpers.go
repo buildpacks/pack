@@ -259,7 +259,7 @@ func PushImage(dockerCli *client.Client, ref string, registryConfig *TestRegistr
 	return rc.Close()
 }
 
-func HttpGetE(url string, headers map[string]string) (string, error) {
+func HTTPGetE(url string, headers map[string]string) (string, error) {
 	var client *http.Client
 	if os.Getenv("DOCKER_HOST") == "" {
 		client = http.DefaultClient

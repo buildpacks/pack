@@ -120,16 +120,17 @@ func (c *Client) fetchLifecycle(ctx context.Context, config builder.LifecycleCon
 	}
 
 	var uri string
-	if config.Version != "" {
+	switch {
+	case config.Version != "":
 		v, err := semver.NewVersion(config.Version)
 		if err != nil {
 			return nil, errors.Wrapf(err, "%s must be a valid semver", style.Symbol("lifecycle.version"))
 		}
 
 		uri = uriFromLifecycleVersion(*v)
-	} else if config.URI != "" {
+	case config.URI != "":
 		uri = config.URI
-	} else {
+	default:
 		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion))
 	}
 

@@ -43,7 +43,7 @@ type RunImageMetadata struct {
 	Mirrors []string `json:"mirrors" toml:"mirrors"`
 }
 
-func processMetadata(md *Metadata) error {
+func processMetadata(md *Metadata) {
 	for i, bp := range md.Buildpacks {
 		var matchingBps []BuildpackInfo
 		for _, bp2 := range md.Buildpacks {
@@ -56,6 +56,4 @@ func processMetadata(md *Metadata) error {
 			md.Buildpacks[i].Latest = true
 		}
 	}
-
-	return nil
 }

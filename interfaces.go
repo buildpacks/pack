@@ -17,5 +17,5 @@ type ImageFetcher interface {
 //go:generate mockgen -package testmocks -destination testmocks/mock_downloader.go github.com/buildpack/pack Downloader
 
 type Downloader interface {
-	Download(ctx context.Context, pathOrUri string) (blob.Blob, error)
+	Download(ctx context.Context, pathOrURI string) (blob.Blob, error)
 }

@@ -94,12 +94,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
 	descriptor := ephemeralBuilder.GetLifecycleDescriptor()
-	lifecycleVersion := descriptor.Info.Version
-	if lifecycleVersion == nil {
+	if descriptor.Info.Version == nil {
 		c.logger.Warnf("lifecycle version unknown, assuming %s", style.Symbol(builder.AssumedLifecycleVersion))
-		lifecycleVersion = builder.VersionMustParse(builder.AssumedLifecycleVersion)
 	} else {
-		c.logger.Debugf("Executing lifecycle version %s", style.Symbol(lifecycleVersion.String()))
+		c.logger.Debugf("Executing lifecycle version %s", style.Symbol(descriptor.Info.Version.String()))
 	}
 
 	lcPlatformAPIVersion := api.MustParse(builder.AssumedPlatformAPIVersion)
@@ -168,7 +166,7 @@ func (c *Client) validateRunImage(context context.Context, name string, noPull b
 
 func (c *Client) processAppPath(appPath string) (string, error) {
 	var (
-		resolvedAppPath = appPath
+		resolvedAppPath string
 		err             error
 	)
 
@@ -294,7 +292,7 @@ func ensureBPSupport(bpPath string) (err error) {
 		}
 
 		if u.Scheme == "file" {
-			p, err = paths.UriToFilePath(bpPath)
+			p, err = paths.URIToFilePath(bpPath)
 			if err != nil {
 				return err
 			}

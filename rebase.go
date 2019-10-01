@@ -72,6 +72,10 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	}
 
 	newLabel, err := json.Marshal(md)
+	if err != nil {
+		return err
+	}
+
 	if err := appImage.SetLabel(metadata.AppMetadataLabel, string(newLabel)); err != nil {
 		return err
 	}
