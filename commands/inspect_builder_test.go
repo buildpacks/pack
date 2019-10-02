@@ -58,7 +58,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController.Finish()
 	})
 
-	when("#GetBuilder", func() {
+	when("#Get", func() {
 		when("image cannot be found", func() {
 			it("logs 'Not present'", func() {
 				mockClient.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)

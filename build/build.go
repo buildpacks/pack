@@ -118,7 +118,7 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.httpProxy = opts.HTTPProxy
 	l.httpsProxy = opts.HTTPSProxy
 	l.noProxy = opts.NoProxy
-	l.version = opts.Builder.GetLifecycleDescriptor().Info.Version.String()
+	l.version = opts.Builder.LifecycleDescriptor().Info.Version.String()
 }
 
 func (l *Lifecycle) Cleanup() error {

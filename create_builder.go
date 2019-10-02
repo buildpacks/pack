@@ -36,18 +36,18 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
-	builderImage, err := builder.New(baseImage, opts.BuilderName)
+	bldr, err := builder.New(baseImage, opts.BuilderName)
 	if err != nil {
 		return errors.Wrap(err, "invalid build-image")
 	}
 
-	builderImage.SetDescription(opts.BuilderConfig.Description)
+	bldr.SetDescription(opts.BuilderConfig.Description)
 
-	if builderImage.StackID != opts.BuilderConfig.Stack.ID {
+	if bldr.StackID != opts.BuilderConfig.Stack.ID {
 		return fmt.Errorf(
 			"stack %s from builder config is incompatible with stack %s from build image",
 			style.Symbol(opts.BuilderConfig.Stack.ID),
-			style.Symbol(builderImage.StackID),
+			style.Symbol(bldr.StackID),
 		)
 	}
 
@@ -56,7 +56,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return errors.Wrap(err, "fetch lifecycle")
 	}
 
-	if err := builderImage.SetLifecycle(lifecycle); err != nil {
+	if err := bldr.SetLifecycle(lifecycle); err != nil {
 		return errors.Wrap(err, "setting lifecycle")
 	}
 
@@ -81,13 +81,13 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 			return errors.Wrap(err, "invalid buildpack")
 		}
 
-		builderImage.AddBuildpack(fetchedBp)
+		bldr.AddBuildpack(fetchedBp)
 	}
 
-	builderImage.SetOrder(opts.BuilderConfig.Order)
-	builderImage.SetStackInfo(opts.BuilderConfig.Stack)
+	bldr.SetOrder(opts.BuilderConfig.Order)
+	bldr.SetStack(opts.BuilderConfig.Stack)
 
-	return builderImage.Save(c.logger)
+	return bldr.Save(c.logger)
 }
 
 func validateBuildpack(bp dist.Buildpack, source, expectedID, expectedBPVersion string) error {

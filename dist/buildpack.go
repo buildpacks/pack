@@ -2,7 +2,6 @@ package dist
 
 import (
 	"io"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -27,13 +26,6 @@ func (b *buildpack) Descriptor() BuildpackDescriptor {
 	return b.descriptor
 }
 
-type BuildpackDescriptor struct {
-	API    *api.Version  `toml:"api"`
-	Info   BuildpackInfo `toml:"buildpack"`
-	Stacks []Stack       `toml:"stacks"`
-	Order  Order         `toml:"order"`
-}
-
 //go:generate mockgen -package testmocks -destination testmocks/buildpack.go github.com/buildpack/pack/dist Buildpack
 type Buildpack interface {
 	Blob
@@ -45,8 +37,16 @@ type BuildpackInfo struct {
 	Version string `toml:"version" json:"version,omitempty"`
 }
 
+func (b BuildpackInfo) FullName() string {
+	if b.Version != "" {
+		return b.ID + "@" + b.Version
+	}
+	return b.ID
+}
+
 type Stack struct {
-	ID string
+	ID     string
+	Mixins []string
 }
 
 func NewBuildpack(blob Blob) (Buildpack, error) {
@@ -88,7 +88,7 @@ func validateDescriptor(bpd BuildpackDescriptor) error {
 	if len(bpd.Order) == 0 && len(bpd.Stacks) == 0 {
 		return errors.Errorf(
 			"buildpack %s: must have either %s or an %s defined",
-			style.Symbol(bpd.Info.ID+"@"+bpd.Info.Version),
+			style.Symbol(bpd.Info.FullName()),
 			style.Symbol("stacks"),
 			style.Symbol("order"),
 		)
@@ -97,24 +97,11 @@ func validateDescriptor(bpd BuildpackDescriptor) error {
 	if len(bpd.Order) >= 1 && len(bpd.Stacks) >= 1 {
 		return errors.Errorf(
 			"buildpack %s: cannot have both %s and an %s defined",
-			style.Symbol(bpd.Info.ID+"@"+bpd.Info.Version),
+			style.Symbol(bpd.Info.FullName()),
 			style.Symbol("stacks"),
 			style.Symbol("order"),
 		)
 	}
 
 	return nil
-}
-
-func (b *BuildpackDescriptor) EscapedID() string {
-	return strings.Replace(b.Info.ID, "/", "_", -1)
-}
-
-func (b *BuildpackDescriptor) SupportsStack(stackID string) bool {
-	for _, stack := range b.Stacks {
-		if stack.ID == stackID {
-			return true
-		}
-	}
-	return false
 }

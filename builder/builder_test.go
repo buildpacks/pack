@@ -72,7 +72,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-1",
 			},
-			Stacks: []dist.Stack{{ID: "some.stack.id"}},
+			Stacks: []dist.Stack{{
+				ID:     "some.stack.id",
+				Mixins: []string{"mixinX", "mixinY"},
+			}},
 		}}
 		bp1v2 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
@@ -80,7 +83,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-2",
 			},
-			Stacks: []dist.Stack{{ID: "some.stack.id"}},
+			Stacks: []dist.Stack{{
+				ID:     "some.stack.id",
+				Mixins: []string{"mixinX", "mixinY"},
+			}},
 		}}
 		bp2v1 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
@@ -88,7 +94,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				ID:      "buildpack-2-id",
 				Version: "buildpack-2-version-1",
 			},
-			Stacks: []dist.Stack{{ID: "some.stack.id"}},
+			Stacks: []dist.Stack{{
+				ID:     "some.stack.id",
+				Mixins: []string{"build:mixinA", "run:mixinB"},
+			}},
 		}}
 		bpOrder = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
@@ -180,6 +189,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
 			h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
 			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "mixinY", "build:mixinA"]`))
 			subject, err = builder.New(baseImage, "some/builder")
 			h.AssertNil(t, err)
 
@@ -473,6 +483,24 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' (Buildpack API version 0.1) is incompatible with lifecycle '1.2.3' (Buildpack API version 0.2)")
 					})
 				})
+
+				when("buildpack mixins are not satisfied", func() {
+					it("returns an error", func() {
+						subject.AddBuildpack(&fakeBuildpack{
+							descriptor: dist.BuildpackDescriptor{
+								API:  api.MustParse("0.2"),
+								Info: bp1v1.Descriptor().Info,
+								Stacks: []dist.Stack{{
+									ID:     "some.stack.id",
+									Mixins: []string{"missing"},
+								}},
+							}})
+
+						err := subject.Save(logger)
+
+						h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' requires missing mixin(s): missing")
+					})
+				})
 			})
 		})
 
@@ -485,7 +513,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should set the lifecycle version successfully", func() {
-				h.AssertEq(t, subject.GetLifecycleDescriptor().Info.Version.String(), "1.2.3")
+				h.AssertEq(t, subject.LifecycleDescriptor().Info.Version.String(), "1.2.3")
 			})
 
 			it("should add the lifecycle binaries as an image layer", func() {
@@ -611,8 +639,20 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(layers["buildpack-2-id"]), 1)
 
 				h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-1"].Order), 0)
+				h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-1"].Stacks), 1)
+				h.AssertEq(t, layers["buildpack-1-id"]["buildpack-1-version-1"].Stacks[0].ID, "some.stack.id")
+				h.AssertSliceContains(t, layers["buildpack-1-id"]["buildpack-1-version-1"].Stacks[0].Mixins, "mixinX", "mixinY")
+
 				h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-2"].Order), 0)
+				h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-2"].Stacks), 1)
+				h.AssertEq(t, layers["buildpack-1-id"]["buildpack-1-version-2"].Stacks[0].ID, "some.stack.id")
+				h.AssertSliceContains(t, layers["buildpack-1-id"]["buildpack-1-version-2"].Stacks[0].Mixins, "mixinX", "mixinY")
+
 				h.AssertEq(t, len(layers["buildpack-2-id"]["buildpack-2-version-1"].Order), 0)
+				h.AssertEq(t, len(layers["buildpack-2-id"]["buildpack-2-version-1"].Stacks), 1)
+				h.AssertEq(t, layers["buildpack-2-id"]["buildpack-2-version-1"].Stacks[0].ID, "some.stack.id")
+				h.AssertSliceContains(t, layers["buildpack-2-id"]["buildpack-2-version-1"].Stacks[0].Mixins, "build:mixinA", "run:mixinB")
+
 				h.AssertEq(t, len(layers["order-buildpack-id"]["order-buildpack-version"].Order), 1)
 				h.AssertEq(t, len(layers["order-buildpack-id"]["order-buildpack-version"].Order[0].Group), 2)
 				h.AssertEq(t, layers["order-buildpack-id"]["order-buildpack-version"].Order[0].Group[0].ID, "buildpack-1-id")
@@ -721,7 +761,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, metadata.Buildpacks[0].ID, "prev.id")
 					h.AssertEq(t, metadata.Stack.RunImage.Image, "prev/run")
 					h.AssertEq(t, metadata.Stack.RunImage.Mirrors[0], "prev/mirror")
-					h.AssertEq(t, subject.GetLifecycleDescriptor().Info.Version.String(), "6.6.6")
+					h.AssertEq(t, subject.LifecycleDescriptor().Info.Version.String(), "6.6.6")
 
 					// adds new buildpack
 					h.AssertEq(t, metadata.Buildpacks[1].ID, "buildpack-1-id")
@@ -809,9 +849,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("#SetStackInfo", func() {
+		when("#SetStack", func() {
 			it.Before(func() {
-				subject.SetStackInfo(builder.StackConfig{
+				subject.SetStack(builder.StackConfig{
 					RunImage:        "some/run",
 					RunImageMirrors: []string{"some/mirror", "other/mirror"},
 				})
@@ -875,6 +915,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
 			h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
 			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "mixinY", "build:mixinA"]`))
 			h.AssertNil(t, baseImage.SetLabel(
 				"io.buildpacks.builder.metadata",
 				`{"buildpacks": [{"id": "buildpack-1-id"}, {"id": "buildpack-2-id"}], "groups": [{"buildpacks": [{"id": "buildpack-1-id", "version": "buildpack-1-version", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}], "stack": {"runImage": {"image": "prev/run", "mirrors": ["prev/mirror"]}}, "lifecycle": {"version": "6.6.6"}}`,
@@ -887,14 +928,20 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			builderImage = baseImage
 		})
 
-		when("#GetBuilder", func() {
-			it("gets builder from image", func() {
-				bldr, err := builder.GetBuilder(builderImage)
-				h.AssertNil(t, err)
-				h.AssertEq(t, bldr.GetBuildpacks()[0].ID, "buildpack-1-id")
-				h.AssertEq(t, bldr.GetBuildpacks()[1].ID, "buildpack-2-id")
+		when("#FromImage", func() {
+			var bldr *builder.Builder
 
-				order := bldr.GetOrder()
+			it.Before(func() {
+				var err error
+				bldr, err = builder.FromImage(builderImage)
+				h.AssertNil(t, err)
+			})
+
+			it("gets builder from image", func() {
+				h.AssertEq(t, bldr.Buildpacks()[0].ID, "buildpack-1-id")
+				h.AssertEq(t, bldr.Buildpacks()[1].ID, "buildpack-2-id")
+
+				order := bldr.Order()
 				h.AssertEq(t, len(order), 1)
 				h.AssertEq(t, len(order[0].Group), 2)
 				h.AssertEq(t, order[0].Group[0].ID, "buildpack-1-id")
@@ -903,6 +950,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, order[0].Group[1].ID, "buildpack-2-id")
 				h.AssertEq(t, order[0].Group[1].Version, "buildpack-2-version-1")
 				h.AssertEq(t, order[0].Group[1].Optional, true)
+			})
+
+			it("gets mixins from image", func() {
+				h.AssertSliceContains(t, bldr.Mixins(), "mixinX", "mixinY", "build:mixinA")
 			})
 
 			when("metadata is missing", func() {
@@ -914,7 +965,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("should error", func() {
-					_, err := builder.GetBuilder(builderImage)
+					_, err := builder.FromImage(builderImage)
 					h.AssertError(t, err, "missing label 'io.buildpacks.builder.metadata'")
 				})
 			})

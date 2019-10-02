@@ -22,6 +22,7 @@ import (
 	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/internal/paths"
+	"github.com/buildpack/pack/stack"
 	"github.com/buildpack/pack/style"
 )
 
@@ -77,29 +78,38 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
 	}
 
-	bldr, err := c.processBuilderImage(rawBuilderImage)
+	bldr, err := c.getBuilder(rawBuilderImage)
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
-	runImage := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), bldr.GetStackInfo(), opts.AdditionalMirrors)
-
-	if _, err := c.validateRunImage(ctx, runImage, opts.NoPull, opts.Publish, bldr.StackID); err != nil {
-		return errors.Wrapf(err, "invalid run-image '%s'", runImage)
-	}
-
-	fetchedBps, group, err := c.processBuildpacks(ctx, opts.Buildpacks)
+	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors)
+	runImage, err := c.validateRunImage(ctx, runImageName, opts.NoPull, opts.Publish, bldr.StackID)
 	if err != nil {
-		return errors.Wrap(err, "invalid buildpack")
+		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, opts.Env, group, fetchedBps)
+	var runMixins []string
+	if _, err := dist.GetLabel(runImage, stack.MixinsLabel, &runMixins); err != nil {
+		return err
+	}
+
+	fetchedBPs, group, err := c.processBuildpacks(ctx, opts.Buildpacks)
+	if err != nil {
+		return err
+	}
+
+	if err := c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil {
+		return errors.Wrap(err, "validating stack mixins")
+	}
+
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, opts.Env, group, fetchedBPs)
 	if err != nil {
 		return err
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
-	descriptor := ephemeralBuilder.GetLifecycleDescriptor()
+	descriptor := ephemeralBuilder.LifecycleDescriptor()
 	if descriptor.Info.Version == nil {
 		c.logger.Warnf("lifecycle version unknown, assuming %s", style.Symbol(builder.AssumedLifecycleVersion))
 	} else {
@@ -125,7 +135,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		AppPath:    appPath,
 		Image:      imageRef,
 		Builder:    ephemeralBuilder,
-		RunImage:   runImage,
+		RunImage:   runImageName,
 		ClearCache: opts.ClearCache,
 		Publish:    opts.Publish,
 		HTTPProxy:  proxyConfig.HTTPProxy,
@@ -142,12 +152,12 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 	return name.ParseReference(builderName, name.WeakValidation)
 }
 
-func (c *Client) processBuilderImage(img imgutil.Image) (*builder.Builder, error) {
-	bldr, err := builder.GetBuilder(img)
+func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
+	bldr, err := builder.FromImage(img)
 	if err != nil {
 		return nil, err
 	}
-	if bldr.GetStackInfo().RunImage.Image == "" {
+	if bldr.Stack().RunImage.Image == "" {
 		return nil, errors.New("builder metadata is missing runImage")
 	}
 	return bldr, nil
@@ -169,6 +179,92 @@ func (c *Client) validateRunImage(context context.Context, name string, noPull b
 		return nil, fmt.Errorf("run-image stack id '%s' does not match builder stack '%s'", stackID, expectedStack)
 	}
 	return img, nil
+}
+
+func (c *Client) validateMixins(additionalBuildpacks []dist.Buildpack, bldr *builder.Builder, runImageName string, runMixins []string) error {
+	if err := stack.ValidateMixins(bldr.Image().Name(), bldr.Mixins(), runImageName, runMixins); err != nil {
+		return err
+	}
+
+	bps, err := allBuildpacks(bldr.Image(), additionalBuildpacks)
+	if err != nil {
+		return err
+	}
+	mixins := assembleAvailableMixins(bldr.Mixins(), runMixins)
+
+	for _, bp := range bps {
+		if err := bp.EnsureStackSupport(bldr.StackID, mixins, true); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// assembleAvailableMixins returns the set of mixins that are common between the two provided sets, plus build-only mixins and run-only mixins.
+func assembleAvailableMixins(buildMixins, runMixins []string) []string {
+	// NOTE: We cannot simply union the two mixin sets, as this could introduce a mixin that is only present on one stack
+	// image but not the other. A buildpack that happens to require the mixin would fail to run properly, even though validation
+	// would pass.
+	//
+	// For example:
+	//
+	//  Incorrect:
+	//    Run image mixins:   [A, B]
+	//    Build image mixins: [A]
+	//    Merged: [A, B]
+	//    Buildpack requires: [A, B]
+	//    Match? Yes
+	//
+	//  Correct:
+	//    Run image mixins:   [A, B]
+	//    Build image mixins: [A]
+	//    Merged: [A]
+	//    Buildpack requires: [A, B]
+	//    Match? No
+
+	var common, buildOnly, runOnly []string
+	bMixins := map[string]interface{}{}
+
+	for _, m := range buildMixins {
+		if strings.HasPrefix(m, "build:") {
+			buildOnly = append(buildOnly, m)
+		}
+		bMixins[m] = nil
+	}
+	for _, m := range runMixins {
+		if strings.HasPrefix(m, "run:") {
+			runOnly = append(runOnly, m)
+		}
+		if _, ok := bMixins[m]; ok {
+			common = append(common, m)
+		}
+	}
+	return append(common, append(buildOnly, runOnly...)...)
+}
+
+func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []dist.Buildpack) ([]dist.BuildpackDescriptor, error) {
+	var all []dist.BuildpackDescriptor
+	var bpLayers builder.BuildpackLayers
+	if _, err := dist.GetLabel(builderImage, builder.BuildpackLayersLabel, &bpLayers); err != nil {
+		return nil, err
+	}
+	for id, bps := range bpLayers {
+		for ver, bp := range bps {
+			desc := dist.BuildpackDescriptor{
+				Info: dist.BuildpackInfo{
+					ID:      id,
+					Version: ver,
+				},
+				Stacks: bp.Stacks,
+				Order:  bp.Order,
+			}
+			all = append(all, desc)
+		}
+	}
+	for _, bp := range additionalBuildpacks {
+		all = append(all, bp.Descriptor())
+	}
+	return all, nil
 }
 
 func (c *Client) processAppPath(appPath string) (string, error) {
@@ -255,7 +351,7 @@ func (c *Client) processBuildpacks(ctx context.Context, buildpacks []string) ([]
 		} else {
 			err := ensureBPSupport(bp)
 			if err != nil {
-				return nil, dist.OrderEntry{}, err
+				return nil, dist.OrderEntry{}, errors.Wrapf(err, "checking buildpack path")
 			}
 
 			blob, err := c.downloader.Download(ctx, bp)
@@ -338,6 +434,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}
+
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {
 		bpInfo := bp.Descriptor().Info
@@ -348,6 +445,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 		c.logger.Debug("Setting custom order")
 		bldr.SetOrder([]dist.OrderEntry{group})
 	}
+
 	if err := bldr.Save(c.logger); err != nil {
 		return nil, err
 	}

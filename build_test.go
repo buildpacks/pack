@@ -101,20 +101,35 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			},
+			builder.BuildpackLayers{
+				"buildpack.id": {
+					"buildpack.version": {
+						Stacks: []dist.Stack{
+							{
+								ID:     defaultBuilderStackID,
+								Mixins: []string{"mixinX", "build:mixinY", "run:mixinZ"},
+							},
+						},
+					},
+				},
+			},
 		)
-
+		h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 		fakeImageFetcher.LocalImages[defaultBuilderImage.Name()] = defaultBuilderImage
 
 		fakeDefaultRunImage = fakes.NewImage("default/run", "", nil)
 		h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
+		h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "run:mixinC", "mixinX", "run:mixinZ"]`))
 		fakeImageFetcher.LocalImages[fakeDefaultRunImage.Name()] = fakeDefaultRunImage
 
 		fakeMirror1 = fakes.NewImage("registry1.example.com/run/mirror", "", nil)
 		h.AssertNil(t, fakeMirror1.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
+		h.AssertNil(t, fakeMirror1.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
 		fakeImageFetcher.LocalImages[fakeMirror1.Name()] = fakeMirror1
 
 		fakeMirror2 = fakes.NewImage("registry2.example.com/run/mirror", "", nil)
 		h.AssertNil(t, fakeMirror2.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
+		h.AssertNil(t, fakeMirror2.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
 		fakeImageFetcher.LocalImages[fakeMirror2.Name()] = fakeMirror2
 
 		docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
@@ -348,7 +363,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									PlatformVersion: api.MustParse(build.PlatformAPIVersion),
 								},
 							},
-						})
+						},
+						nil,
+					)
 
 					fakeImageFetcher.LocalImages[customBuilderImage.Name()] = customBuilderImage
 
@@ -379,6 +396,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				fakeRunImage = fakes.NewImage("custom/run", "", nil)
+				h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
+				h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
 				fakeImageFetcher.LocalImages[fakeRunImage.Name()] = fakeRunImage
 			})
 
@@ -387,10 +406,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("run image stack matches the builder stack", func() {
-				it.Before(func() {
-					h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
-				})
-
 				it("uses the provided image", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:    "some/app",
@@ -443,9 +458,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry2.example.com/run/mirror")
 					})
 				})
-			})
 
-			when("run image is not supplied", func() {
 				when("there are locally configured mirrors", func() {
 					var (
 						fakeLocalMirror  *fakes.Image
@@ -455,10 +468,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					it.Before(func() {
 						fakeLocalMirror = fakes.NewImage("local/mirror", "", nil)
 						h.AssertNil(t, fakeLocalMirror.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
+						h.AssertNil(t, fakeLocalMirror.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
+
 						fakeImageFetcher.LocalImages[fakeLocalMirror.Name()] = fakeLocalMirror
 
 						fakeLocalMirror1 = fakes.NewImage("registry1.example.com/local/mirror", "", nil)
 						h.AssertNil(t, fakeLocalMirror1.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
+						h.AssertNil(t, fakeLocalMirror1.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
+
 						fakeImageFetcher.LocalImages[fakeLocalMirror1.Name()] = fakeLocalMirror1
 					})
 
@@ -533,9 +550,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					Buildpacks: []string{"buildpack.id@buildpack.version"},
 				}))
 				h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-				bldr, err := builder.GetBuilder(defaultBuilderImage)
+				bldr, err := builder.FromImage(defaultBuilderImage)
 				h.AssertNil(t, err)
-				h.AssertEq(t, bldr.GetOrder(), dist.Order{
+				h.AssertEq(t, bldr.Order(), dist.Order{
 					{Group: []dist.BuildpackRef{{
 						BuildpackInfo: dist.BuildpackInfo{
 							ID:      "buildpack.id",
@@ -650,15 +667,15 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.GetBuilder(defaultBuilderImage)
+						bldr, err := builder.FromImage(defaultBuilderImage)
 						h.AssertNil(t, err)
-						h.AssertEq(t, bldr.GetOrder(), dist.Order{
+						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.BuildpackRef{
 								{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.id", Version: "buildpack.version"}},
 								{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
 							}},
 						})
-						h.AssertEq(t, bldr.GetBuildpacks(), []builder.BuildpackMetadata{
+						h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{
 							{
 								BuildpackInfo: dist.BuildpackInfo{
 									ID:      "buildpack.id",
@@ -696,19 +713,19 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.GetBuilder(defaultBuilderImage)
+						bldr, err := builder.FromImage(defaultBuilderImage)
 						h.AssertNil(t, err)
 						buildpackInfo := dist.BuildpackInfo{ID: "buildpack.id", Version: "buildpack.version"}
 						dirBuildpackInfo := dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}
 						tgzBuildpackInfo := dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}
-						h.AssertEq(t, bldr.GetOrder(), dist.Order{
+						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.BuildpackRef{
 								{BuildpackInfo: buildpackInfo},
 								{BuildpackInfo: dirBuildpackInfo},
 								{BuildpackInfo: tgzBuildpackInfo},
 							}},
 						})
-						h.AssertEq(t, bldr.GetBuildpacks(), []builder.BuildpackMetadata{
+						h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{
 							{BuildpackInfo: buildpackInfo, Latest: true},
 							{BuildpackInfo: dirBuildpackInfo, Latest: true},
 							{BuildpackInfo: tgzBuildpackInfo, Latest: true},
@@ -720,7 +737,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					var server *ghttp.Server
 
 					it.Before(func() {
-						h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
 						server = ghttp.NewServer()
 						server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
 							http.ServeFile(w, r, buildpackTgz)
@@ -738,27 +754,43 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							ClearCache: true,
 							Buildpacks: []string{
 								"buildpack.id@buildpack.version",
-								filepath.Join("testdata", "buildpack"),
 								server.URL(),
 							},
 						})
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.GetBuilder(defaultBuilderImage)
+						bldr, err := builder.FromImage(defaultBuilderImage)
 						h.AssertNil(t, err)
-						h.AssertEq(t, bldr.GetOrder(), dist.Order{
+						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.BuildpackRef{
 								{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.id", Version: "buildpack.version"}},
-								{BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}},
 								{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
 							}},
 						})
-						h.AssertEq(t, bldr.GetBuildpacks(), []builder.BuildpackMetadata{
+						h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{
 							{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.id", Version: "buildpack.version"}, Latest: true},
-							{BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}, Latest: true},
 							{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}, Latest: true},
 						})
+					})
+				})
+
+				when("added buildpack's mixins are not satisfied", func() {
+					it.Before(func() {
+						h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "build:mixinY"]`))
+						h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "run:mixinZ"]`))
+					})
+
+					it("returns an error", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: builderName,
+							Buildpacks: []string{
+								buildpackTgz, // requires mixinA, build:mixinB, run:mixinC
+							},
+						})
+
+						h.AssertError(t, err, "validating stack mixins: buildpack 'some-other-buildpack-id@some-other-buildpack-version' requires missing mixin(s): build:mixinB, mixinA, run:mixinC")
 					})
 				})
 			})
@@ -788,6 +820,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					remoteRunImage = fakes.NewImage("default/run", "", nil)
 					h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
+					h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
 					fakeImageFetcher.RemoteImages[remoteRunImage.Name()] = remoteRunImage
 				})
 
@@ -986,6 +1019,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									},
 								},
 							},
+							nil,
 						)
 
 						fakeImageFetcher.LocalImages[incompatibleBuilderImage.Name()] = incompatibleBuilderImage
@@ -1013,6 +1047,40 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								"0.9",
 							))
 					})
+				})
+			})
+		})
+
+		when("validating mixins", func() {
+			when("stack image mixins disagree", func() {
+				it.Before(func() {
+					h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA"]`))
+					h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinB"]`))
+				})
+
+				it("returns an error", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+					})
+
+					h.AssertError(t, err, "validating stack mixins: 'default/run' missing required mixin(s): mixinA")
+				})
+			})
+
+			when("builder buildpack mixins are not satisfied", func() {
+				it.Before(func() {
+					h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.stack.mixins", ""))
+					h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.mixins", ""))
+				})
+
+				it("returns an error", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+					})
+
+					h.AssertError(t, err, "validating stack mixins: buildpack 'buildpack.id@buildpack.version' requires missing mixin(s): build:mixinY, mixinX, run:mixinZ")
 				})
 			})
 		})
