@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"runtime"
 
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
@@ -33,10 +32,8 @@ func main() {
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if fs := cmd.Flags(); fs != nil {
-				if runtime.GOOS != "windows" {
-					if flag, err := fs.GetBool("no-color"); err == nil {
-						color.Disable(flag)
-					}
+				if flag, err := fs.GetBool("no-color"); err == nil {
+					color.Disable(flag)
 				}
 				if flag, err := fs.GetBool("quiet"); err == nil {
 					logger.WantQuiet(flag)
