@@ -113,6 +113,13 @@ func WithRegistryAccess(repos ...string) func(*Phase) (*Phase, error) {
 	}
 }
 
+func WithNetwork(networkMode string) func(*Phase) (*Phase, error) {
+	return func(phase *Phase) (*Phase, error) {
+		phase.hostConf.NetworkMode = dcontainer.NetworkMode(networkMode)
+		return phase, nil
+	}
+}
+
 func (p *Phase) Run(ctx context.Context) error {
 	var err error
 

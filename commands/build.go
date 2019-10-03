@@ -24,6 +24,7 @@ type BuildFlags struct {
 	NoPull     bool
 	ClearCache bool
 	Buildpacks []string
+	Network    string
 }
 
 func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
@@ -55,6 +56,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				NoPull:            flags.NoPull,
 				ClearCache:        flags.ClearCache,
 				Buildpacks:        flags.Buildpacks,
+				Network:           flags.Network,
 			}); err != nil {
 				return err
 			}
@@ -77,6 +79,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "Skip pulling builder and run images before use")
 	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
 	cmd.Flags().StringSliceVar(&buildFlags.Buildpacks, "buildpack", nil, "Buildpack reference in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows), or\n  path/URL to a buildpack .tar or .tgz file"+multiValueHelp("buildpack"))
+	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 }
 
 func parseEnv(envFiles []string, envVars []string) (map[string]string, error) {

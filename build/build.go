@@ -56,6 +56,7 @@ type LifecycleOptions struct {
 	HTTPProxy  string
 	HTTPSProxy string
 	NoProxy    string
+	Network    string
 }
 
 func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
@@ -74,7 +75,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	}
 
 	l.logger.Info(style.Step("DETECTING"))
-	if err := l.Detect(ctx); err != nil {
+	if err := l.Detect(ctx, opts.Network); err != nil {
 		return err
 	}
 
@@ -91,7 +92,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	}
 
 	l.logger.Info(style.Step("BUILDING"))
-	if err := l.Build(ctx); err != nil {
+	if err := l.Build(ctx, opts.Network); err != nil {
 		return err
 	}
 
