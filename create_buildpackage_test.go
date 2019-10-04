@@ -44,7 +44,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader = testmocks.NewMockDownloader(mockController)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
 
-		fakePackageImage = fakes.NewImage("some/package", "", "")
+		fakePackageImage = fakes.NewImage("some/package", "", nil)
 		mockImageFactory.EXPECT().NewImage("some/package", true).Return(fakePackageImage, nil).AnyTimes()
 
 		var err error
@@ -143,7 +143,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 				var fakeRemotePackageImage *fakes.Image
 
 				it.Before(func() {
-					fakeRemotePackageImage = fakes.NewImage("some/package", "", "")
+					fakeRemotePackageImage = fakes.NewImage("some/package", "", nil)
 					mockImageFactory.EXPECT().NewImage("some/package", false).Return(fakeRemotePackageImage, nil).AnyTimes()
 
 					opts.Publish = true

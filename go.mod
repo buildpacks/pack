@@ -3,9 +3,9 @@ module github.com/buildpack/pack
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/semver v1.4.2
-	github.com/apex/log v1.1.0
-	github.com/buildpack/imgutil v0.0.0-20190509214933-76de939dfb34
-	github.com/buildpack/lifecycle v0.1.1-0.20190510142604-8612386b1cea
+	github.com/apex/log v1.1.1
+	github.com/buildpack/imgutil v0.0.0-20191010153712-78959154ded1
+	github.com/buildpack/lifecycle v0.4.1-0.20191010154241-8fa26e4820cb
 	github.com/dgodd/dockerdial v1.0.1
 	github.com/docker/docker v0.7.3-0.20190307005417-54dddadc7d5d
 	github.com/docker/go-connections v0.4.0
@@ -20,6 +20,7 @@ require (
 	github.com/sclevine/spec v1.2.0
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3 // indirect
+	google.golang.org/appengine v1.4.0 // indirect
 )
 
 go 1.13

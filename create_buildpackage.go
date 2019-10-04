@@ -59,6 +59,5 @@ func (c *Client) CreatePackage(ctx context.Context, opts CreatePackageOptions) e
 		}
 	}
 
-	_, err = image.Save()
-	return err
+	return image.Save()
 }

@@ -8,6 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	lifecycle "github.com/buildpack/lifecycle"
 	gomock "github.com/golang/mock/gomock"
 
 	pack "github.com/buildpack/pack"
@@ -38,7 +39,6 @@ func (m *MockPackClient) EXPECT() *MockPackClientMockRecorder {
 
 // Build mocks base method
 func (m *MockPackClient) Build(arg0 context.Context, arg1 pack.BuildOptions) error {
-	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Build", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -46,13 +46,11 @@ func (m *MockPackClient) Build(arg0 context.Context, arg1 pack.BuildOptions) err
 
 // Build indicates an expected call of Build
 func (mr *MockPackClientMockRecorder) Build(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockPackClient)(nil).Build), arg0, arg1)
 }
 
 // CreateBuilder mocks base method
 func (m *MockPackClient) CreateBuilder(arg0 context.Context, arg1 pack.CreateBuilderOptions) error {
-	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateBuilder", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -60,7 +58,6 @@ func (m *MockPackClient) CreateBuilder(arg0 context.Context, arg1 pack.CreateBui
 
 // CreateBuilder indicates an expected call of CreateBuilder
 func (mr *MockPackClientMockRecorder) CreateBuilder(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBuilder", reflect.TypeOf((*MockPackClient)(nil).CreateBuilder), arg0, arg1)
 }
 
@@ -80,7 +77,6 @@ func (mr *MockPackClientMockRecorder) CreatePackage(arg0, arg1 interface{}) *gom
 
 // InspectBuilder mocks base method
 func (m *MockPackClient) InspectBuilder(arg0 string, arg1 bool) (*pack.BuilderInfo, error) {
-	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InspectBuilder", arg0, arg1)
 	ret0, _ := ret[0].(*pack.BuilderInfo)
 	ret1, _ := ret[1].(error)
@@ -89,20 +85,17 @@ func (m *MockPackClient) InspectBuilder(arg0 string, arg1 bool) (*pack.BuilderIn
 
 // InspectBuilder indicates an expected call of InspectBuilder
 func (mr *MockPackClientMockRecorder) InspectBuilder(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectBuilder", reflect.TypeOf((*MockPackClient)(nil).InspectBuilder), arg0, arg1)
 }
 
 // Rebase mocks base method
-func (m *MockPackClient) Rebase(arg0 context.Context, arg1 pack.RebaseOptions) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Rebase", arg0, arg1)
+func (m *MockPackClient) Rebase(arg0 context.Context, arg1 lifecycle.Rebaser, arg2 pack.RebaseOptions) error {
+	ret := m.ctrl.Call(m, "Rebase", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Rebase indicates an expected call of Rebase
-func (mr *MockPackClientMockRecorder) Rebase(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rebase", reflect.TypeOf((*MockPackClient)(nil).Rebase), arg0, arg1)
+func (mr *MockPackClientMockRecorder) Rebase(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rebase", reflect.TypeOf((*MockPackClient)(nil).Rebase), arg0, arg1, arg2)
 }

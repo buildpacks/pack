@@ -73,6 +73,10 @@ type logWithWriters struct {
 	handler *handler
 }
 
+func (lw *logWithWriters) WantLevel(level string) {
+	//do nothing
+}
+
 func (lw *logWithWriters) Writer() io.Writer {
 	return lw.out
 }

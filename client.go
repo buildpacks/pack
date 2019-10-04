@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/buildpack/imgutil"
+	imglocal "github.com/buildpack/imgutil/local"
+	"github.com/buildpack/imgutil/remote"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -121,8 +123,7 @@ type DefaultImageFactory struct {
 
 func (f *DefaultImageFactory) NewImage(repoName string, local bool) (imgutil.Image, error) {
 	if local {
-		return imgutil.EmptyLocalImage(repoName, f.dockerClient), nil
+		return imglocal.NewImage(repoName, f.dockerClient)
 	}
-
-	return imgutil.NewRemoteImage(repoName, f.keychain)
+	return remote.NewImage(repoName, f.keychain)
 }
