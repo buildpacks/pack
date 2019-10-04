@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 	"text/tabwriter"
+	"text/template"
 
 	"github.com/spf13/cobra"
 
@@ -37,6 +38,45 @@ var suggestedBuilders = [][]suggestedBuilder{
 	},
 	{
 		{"Heroku", "heroku/buildpacks:18"},
+	},
+}
+
+type suggestedStack struct {
+	ID          string
+	Description string
+	Maintainer  string
+	BuildImage  string
+	RunImage    string
+}
+
+var suggestedStacks = []suggestedStack{
+	{
+		ID:          "heroku-18",
+		Description: "The official Heroku stack based on Ubuntu 18.04",
+		Maintainer:  "Heroku",
+		BuildImage:  "heroku/pack:18-build",
+		RunImage:    "heroku/pack:18",
+	},
+	{
+		ID:          "io.buildpacks.stacks.bionic",
+		Description: "A minimal Cloud Foundry stack based on Ubuntu 18.04",
+		Maintainer:  "Cloud Foundry",
+		BuildImage:  "cloudfoundry/build:base-cnb",
+		RunImage:    "cloudfoundry/run:base-cnb",
+	},
+	{
+		ID:          "org.cloudfoundry.stacks.cflinuxfs3",
+		Description: "A large Cloud Foundry stack based on Ubuntu 18.04",
+		Maintainer:  "Cloud Foundry",
+		BuildImage:  "cloudfoundry/build:full-cnb",
+		RunImage:    "cloudfoundry/run:full-cnb",
+	},
+	{
+		ID:          "org.cloudfoundry.stacks.tiny",
+		Description: "A tiny Cloud Foundry stack based on Ubuntu 18.04, similar to distroless",
+		Maintainer:  "Cloud Foundry",
+		BuildImage:  "cloudfoundry/build:tiny-cnb",
+		RunImage:    "cloudfoundry/run:tiny-cnb",
 	},
 }
 
@@ -132,30 +172,16 @@ func getBuilderDescription(builderName string, client PackClient) string {
 }
 
 func suggestStacks(log logging.Logger) {
-	log.Info(`
+	tmpl := template.Must(template.New("").Parse(`
 Stacks maintained by the community:
+{{- range . }}
 
-    Stack ID: heroku-18
-    Description: The official Heroku stack based on Ubuntu 18.04
-    Maintainer: Heroku
-    Build Image: heroku/pack:18-build
-    Run Image: heroku/pack:18
-
-    Stack ID: io.buildpacks.stacks.bionic
-    Description: A minimal Cloud Foundry stack based on Ubuntu 18.04
-    Maintainer: Cloud Foundry
-    Build Image: cloudfoundry/build:base-cnb
-    Run Image: cloudfoundry/run:base-cnb
-
-    Stack ID: org.cloudfoundry.stacks.cflinuxfs3
-    Description: A large Cloud Foundry stack based on Ubuntu 18.04
-    Maintainer: Cloud Foundry
-    Build Image: cloudfoundry/build:full-cnb
-    Run Image: cloudfoundry/run:full-cnb
-
-    Stack ID: org.cloudfoundry.stacks.tiny
-    Description: A tiny Cloud Foundry stack based on Ubuntu 18.04, similar to distroless
-    Maintainer: Cloud Foundry
-    Build Image: cloudfoundry/build:tiny-cnb
-    Run Image: cloudfoundry/run:tiny-cnb`)
+    Stack ID: {{ .ID }}
+    Description: {{ .Description }}
+    Maintainer: {{ .Maintainer }}
+    Build Image: {{ .BuildImage }}
+    Run Image: {{ .RunImage }}
+{{- end }}
+`))
+	tmpl.Execute(log.Writer(), suggestedStacks)
 }
