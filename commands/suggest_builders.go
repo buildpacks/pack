@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"sync"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -58,9 +59,24 @@ func suggestSettingBuilder(logger logging.Logger, client PackClient) {
 
 func suggestBuilders(logger logging.Logger, client PackClient) {
 	logger.Info("Suggested builders:")
+
+	// Fetch descriptions concurrently.
+	descriptions := make([]string, len(suggestedBuilders))
+
+	var wg sync.WaitGroup
+	for i, builder := range suggestedBuilders {
+		wg.Add(1)
+
+		go func(i int, builder suggestedBuilder) {
+			descriptions[i] = getBuilderDescription(builder, client)
+			wg.Done()
+		}(i, builder)
+	}
+	wg.Wait()
+
 	tw := tabwriter.NewWriter(logger.Writer(), 10, 10, 5, ' ', tabwriter.TabIndent)
-	for _, builder := range suggestedBuilders {
-		fmt.Fprintf(tw, "\t%s:\t%s\t%s\t\n", builder.Name, style.Symbol(builder.Image), getBuilderDescription(builder, client))
+	for i, builder := range suggestedBuilders {
+		fmt.Fprintf(tw, "\t%s:\t%s\t%s\t\n", builder.Name, style.Symbol(builder.Image), descriptions[i])
 	}
 	fmt.Fprintln(tw)
 
