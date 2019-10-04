@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 	"text/tabwriter"
 
@@ -58,6 +59,8 @@ func suggestSettingBuilder(logger logging.Logger, client PackClient) {
 }
 
 func suggestBuilders(logger logging.Logger, client PackClient) {
+	sort.Slice(suggestedBuilders, func(i, j int) bool { return suggestedBuilders[i].Image < suggestedBuilders[j].Image })
+
 	logger.Info("Suggested builders:")
 
 	// Fetch descriptions concurrently.

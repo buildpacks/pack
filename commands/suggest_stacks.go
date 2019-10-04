@@ -2,6 +2,7 @@ package commands
 
 import (
 	"html/template"
+	"sort"
 
 	"github.com/spf13/cobra"
 
@@ -62,6 +63,8 @@ func SuggestStacks(logger logging.Logger) *cobra.Command {
 }
 
 func suggestStacks(log logging.Logger) {
+	sort.Slice(suggestedStacks, func(i, j int) bool { return suggestedStacks[i].ID < suggestedStacks[j].ID })
+
 	tmpl := template.Must(template.New("").Parse(`
 Stacks maintained by the community:
 {{- range . }}
