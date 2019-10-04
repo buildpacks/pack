@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
@@ -27,17 +26,26 @@ type PackClient interface {
 }
 
 type suggestedBuilder struct {
-	name  string
-	image string
+	Name               string
+	Image              string
+	DefaultDescription string
 }
 
-var suggestedBuilders = [][]suggestedBuilder{
+var suggestedBuilders = []suggestedBuilder{
 	{
-		{"Cloud Foundry", "cloudfoundry/cnb:bionic"},
-		{"Cloud Foundry", "cloudfoundry/cnb:cflinuxfs3"},
+		Name:               "Cloud Foundry",
+		Image:              "cloudfoundry/cnb:bionic",
+		DefaultDescription: "Small base image with Java & Node.js",
 	},
 	{
-		{"Heroku", "heroku/buildpacks:18"},
+		Name:               "Cloud Foundry",
+		Image:              "cloudfoundry/cnb:cflinuxfs3",
+		DefaultDescription: "Larger base image with Java, Node.js & Python",
+	},
+	{
+		Name:               "Heroku",
+		Image:              "heroku/buildpacks:18",
+		DefaultDescription: "heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP",
 	},
 }
 
@@ -135,40 +143,22 @@ func suggestSettingBuilder(logger logging.Logger, client PackClient) {
 func suggestBuilders(logger logging.Logger, client PackClient) {
 	logger.Info("Suggested builders:")
 	tw := tabwriter.NewWriter(logger.Writer(), 10, 10, 5, ' ', tabwriter.TabIndent)
-	for _, i := range rand.Perm(len(suggestedBuilders)) {
-		builders := suggestedBuilders[i]
-		for _, builder := range builders {
-			_, _ = tw.Write([]byte(fmt.Sprintf("\t%s:\t%s\t%s\t\n", builder.name, style.Symbol(builder.image), getBuilderDescription(builder.image, client))))
-		}
+	for _, builder := range suggestedBuilders {
+		fmt.Fprintf(tw, "\t%s:\t%s\t%s\t\n", builder.Name, style.Symbol(builder.Image), getBuilderDescription(builder, client))
 	}
-	_, _ = tw.Write([]byte("\n"))
-	_ = tw.Flush()
+	fmt.Fprintln(tw)
 
 	logging.Tip(logger, "Learn more about a specific builder with:\n")
 	logger.Info("\tpack inspect-builder [builder image]")
 }
 
-var defaultBuilderDescriptions = map[string]string{
-	"cloudfoundry/cnb:bionic":     "Small base image with Java & Node.js",
-	"cloudfoundry/cnb:cflinuxfs3": "Larger base image with Java, Node.js & Python",
-	"heroku/buildpacks:18":        "heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP",
-}
-
-func getBuilderDescription(builderName string, client PackClient) string {
-	desc := ""
-	info, err := client.InspectBuilder(builderName, false)
-	if err == nil {
-		desc = info.Description
+func getBuilderDescription(builder suggestedBuilder, client PackClient) string {
+	info, err := client.InspectBuilder(builder.Image, false)
+	if err == nil && info.Description != "" {
+		return info.Description
 	}
 
-	if desc == "" {
-		defaultDesc, ok := defaultBuilderDescriptions[builderName]
-		if ok {
-			desc = defaultDesc
-		}
-	}
-
-	return desc
+	return builder.DefaultDescription
 }
 
 func suggestStacks(log logging.Logger) {
