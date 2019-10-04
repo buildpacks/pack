@@ -39,10 +39,9 @@ func SuggestBuilders(logger logging.Logger, client PackClient) *cobra.Command {
 		Use:   "suggest-builders",
 		Short: "Display list of recommended builders",
 		Args:  cobra.NoArgs,
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		Run: func(*cobra.Command, []string) {
 			suggestBuilders(logger, client)
-			return nil
-		}),
+		},
 	}
 
 	AddHelpFlag(cmd, "suggest-builders")
