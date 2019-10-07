@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -56,15 +55,15 @@ func compatLifecycle(tw *tar.Writer) error {
 }
 
 func (b *Builder) compatBuildpacks(tw *tar.Writer) error {
-	now := time.Now()
-	if err := tw.WriteHeader(b.rootOwnedDir(compatBuildpacksDir, now)); err != nil {
+	ts := archive.NormalizedDateTime
+	if err := tw.WriteHeader(b.rootOwnedDir(compatBuildpacksDir, ts)); err != nil {
 		return errors.Wrapf(err, "creating %s dir in layer", style.Symbol(dist.BuildpacksDir))
 	}
 	for _, bp := range b.additionalBuildpacks {
 		descriptor := bp.Descriptor()
 
 		compatDir := path.Join(compatBuildpacksDir, descriptor.EscapedID())
-		if err := tw.WriteHeader(b.rootOwnedDir(compatDir, now)); err != nil {
+		if err := tw.WriteHeader(b.rootOwnedDir(compatDir, ts)); err != nil {
 			return errors.Wrapf(err, "creating %s dir in layer", style.Symbol(compatDir))
 		}
 		compatLink := path.Join(compatDir, descriptor.Info.Version)
@@ -97,6 +96,7 @@ func addSymlink(tw *tar.Writer, name, linkName string) error {
 		Linkname: linkName,
 		Typeflag: tar.TypeSymlink,
 		Mode:     0644,
+		ModTime:  archive.NormalizedDateTime,
 	}); err != nil {
 		return errors.Wrapf(err, "creating %s symlink", style.Symbol(name))
 	}

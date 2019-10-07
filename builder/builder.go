@@ -484,29 +484,29 @@ func (b *Builder) defaultDirsLayer(dest string) (string, error) {
 	tw := tar.NewWriter(fh)
 	defer tw.Close()
 
-	now := time.Now()
+	ts := archive.NormalizedDateTime
 
-	if err := tw.WriteHeader(b.packOwnedDir(workspaceDir, now)); err != nil {
+	if err := tw.WriteHeader(b.packOwnedDir(workspaceDir, ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(workspaceDir))
 	}
 
-	if err := tw.WriteHeader(b.packOwnedDir(layersDir, now)); err != nil {
+	if err := tw.WriteHeader(b.packOwnedDir(layersDir, ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(layersDir))
 	}
 
-	if err := tw.WriteHeader(b.rootOwnedDir(cnbDir, now)); err != nil {
+	if err := tw.WriteHeader(b.rootOwnedDir(cnbDir, ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(cnbDir))
 	}
 
-	if err := tw.WriteHeader(b.rootOwnedDir(dist.BuildpacksDir, now)); err != nil {
+	if err := tw.WriteHeader(b.rootOwnedDir(dist.BuildpacksDir, ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(dist.BuildpacksDir))
 	}
 
-	if err := tw.WriteHeader(b.rootOwnedDir(platformDir, now)); err != nil {
+	if err := tw.WriteHeader(b.rootOwnedDir(platformDir, ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(platformDir))
 	}
 
-	if err := tw.WriteHeader(b.rootOwnedDir(platformDir+"/env", now)); err != nil {
+	if err := tw.WriteHeader(b.rootOwnedDir(platformDir+"/env", ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(platformDir+"/env"))
 	}
 
@@ -627,14 +627,12 @@ func (b *Builder) envLayer(dest string, env map[string]string) (string, error) {
 	tw := tar.NewWriter(fh)
 	defer tw.Close()
 
-	now := time.Now()
-
 	for k, v := range env {
 		if err := tw.WriteHeader(&tar.Header{
 			Name:    path.Join(platformDir, "env", k),
 			Size:    int64(len(v)),
 			Mode:    0644,
-			ModTime: now,
+			ModTime: archive.NormalizedDateTime,
 		}); err != nil {
 			return "", err
 		}
@@ -656,13 +654,11 @@ func (b *Builder) lifecycleLayer(dest string) (string, error) {
 	tw := tar.NewWriter(fh)
 	defer tw.Close()
 
-	now := time.Now()
-
 	if err := tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     lifecycleDir,
 		Mode:     0755,
-		ModTime:  now,
+		ModTime:  archive.NormalizedDateTime,
 	}); err != nil {
 		return "", err
 	}

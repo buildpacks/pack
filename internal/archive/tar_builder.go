@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"io"
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -18,23 +19,26 @@ type fileEntry struct {
 	typeFlag byte
 	path     string
 	mode     int64
+	modTime  time.Time
 	contents []byte
 }
 
-func (t *TarBuilder) AddFile(path string, mode int64, contents []byte) {
+func (t *TarBuilder) AddFile(path string, mode int64, modTime time.Time, contents []byte) {
 	t.files = append(t.files, fileEntry{
 		typeFlag: tar.TypeReg,
 		path:     path,
 		mode:     mode,
+		modTime:  modTime,
 		contents: contents,
 	})
 }
 
-func (t *TarBuilder) AddDir(path string, mode int64) {
+func (t *TarBuilder) AddDir(path string, mode int64, modTime time.Time) {
 	t.files = append(t.files, fileEntry{
 		typeFlag: tar.TypeDir,
 		path:     path,
 		mode:     mode,
+		modTime:  modTime,
 	})
 }
 
@@ -73,6 +77,7 @@ func (t *TarBuilder) WriteTo(writer io.Writer) (int64, error) {
 			Name:     f.path,
 			Size:     int64(len(f.contents)),
 			Mode:     f.mode,
+			ModTime:  f.modTime,
 		}); err != nil {
 			return written, err
 		}

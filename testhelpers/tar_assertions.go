@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -91,6 +92,15 @@ func HasFileMode(expectedMode int64) TarEntryAssertion {
 		t.Helper()
 		if header.Mode != expectedMode {
 			t.Fatalf("expected '%s' to have mode '%o', but got '%o'", header.Name, expectedMode, header.Mode)
+		}
+	}
+}
+
+func HasModTime(expectedTime time.Time) TarEntryAssertion {
+	return func(t *testing.T, header *tar.Header, _ []byte) {
+		t.Helper()
+		if header.ModTime.UnixNano() != expectedTime.UnixNano() {
+			t.Fatalf("expected '%s' to have mod time '%s', but got '%s'", header.Name, expectedTime, header.ModTime)
 		}
 	}
 }
