@@ -20,11 +20,11 @@ package:
 
 install-mockgen:
 	@echo "> Installing mockgen..."
-	$(GOCMD) install -mod=vendor github.com/golang/mock/mockgen
+	cd tools; $(GOCMD) install -mod=vendor github.com/golang/mock/mockgen
 
 install-goimports:
 	@echo "> Installing goimports..."
-	$(GOCMD) install -mod=vendor golang.org/x/tools/cmd/goimports
+	cd tools; $(GOCMD) install -mod=vendor golang.org/x/tools/cmd/goimports
 
 format: install-goimports
 	@echo "> Formating code..."
