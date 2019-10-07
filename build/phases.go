@@ -175,7 +175,7 @@ func (l *Lifecycle) withLogLevel(args ...string) []string {
 	version := semver.MustParse(l.version)
 	if semver.MustParse("0.4.0").LessThan(version) {
 		if l.logger.IsVerbose() {
-			return append(args, "-log-level", "debug")
+			return append([]string{"-log-level", "debug"}, args...)
 		}
 	}
 	return args
