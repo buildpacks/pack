@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -220,6 +221,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.IsDirectory(),
 					h.HasFileMode(0755),
 					h.HasOwnerAndGroup(1234, 4321),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 			})
 
@@ -233,6 +235,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.IsDirectory(),
 					h.HasOwnerAndGroup(1234, 4321),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 			})
 
@@ -246,6 +249,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.IsDirectory(),
 					h.HasOwnerAndGroup(0, 0),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 			})
 
@@ -259,6 +263,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.IsDirectory(),
 					h.HasOwnerAndGroup(0, 0),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 			})
 
@@ -272,11 +277,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.IsDirectory(),
 					h.HasOwnerAndGroup(0, 0),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 				h.AssertOnTarEntry(t, layerTar, "/platform/env",
 					h.IsDirectory(),
 					h.HasOwnerAndGroup(0, 0),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 			})
 
@@ -487,41 +494,49 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle",
 					h.IsDirectory(),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/detector",
 					h.ContentEquals("detector"),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/restorer",
 					h.ContentEquals("restorer"),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/analyzer",
 					h.ContentEquals("analyzer"),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/builder",
 					h.ContentEquals("builder"),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/exporter",
 					h.ContentEquals("exporter"),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/cacher",
 					h.ContentEquals("cacher"),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 
 				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/launcher",
 					h.ContentEquals("launcher"),
 					h.HasFileMode(0755),
+					h.HasModTime(archive.NormalizedDateTime),
 				)
 			})
 
@@ -738,7 +753,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				it("adds the order.toml to the image", func() {
 					layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
 					h.AssertNil(t, err)
-					h.AssertOnTarEntry(t, layerTar, "/cnb/order.toml", h.ContentEquals(`[[order]]
+					h.AssertOnTarEntry(t, layerTar, "/cnb/order.toml",
+						h.ContentEquals(`[[order]]
 
   [[order.group]]
     id = "buildpack-1-id"
@@ -748,7 +764,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
     id = "buildpack-2-id"
     version = "buildpack-2-version-1"
     optional = true
-`))
+`),
+						h.HasModTime(archive.NormalizedDateTime),
+					)
 				})
 
 				it("adds the order to the order label", func() {
@@ -799,10 +817,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("adds the stack.toml to the image", func() {
 				layerTar, err := baseImage.FindLayerWithPath("/cnb/stack.toml")
 				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/cnb/stack.toml", h.ContentEquals(`[run-image]
+				h.AssertOnTarEntry(t, layerTar, "/cnb/stack.toml",
+					h.ContentEquals(`[run-image]
   image = "some/run"
   mirrors = ["some/mirror", "other/mirror"]
-`))
+`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
 			})
 
 			it("adds the stack to the metadata", func() {
@@ -830,8 +851,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("adds the env vars as files to the image", func() {
 				layerTar, err := baseImage.FindLayerWithPath("/platform/env/SOME_KEY")
 				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/platform/env/SOME_KEY", h.ContentEquals(`some-val`))
-				h.AssertOnTarEntry(t, layerTar, "/platform/env/OTHER_KEY", h.ContentEquals(`other-val`))
+				h.AssertOnTarEntry(t, layerTar, "/platform/env/SOME_KEY",
+					h.ContentEquals(`some-val`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
+				h.AssertOnTarEntry(t, layerTar, "/platform/env/OTHER_KEY",
+					h.ContentEquals(`other-val`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
 			})
 		})
 	})
@@ -909,6 +936,12 @@ func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp dist.Buildpack) 
 
 	h.AssertOnTarEntry(t, layerTar, dirPath,
 		h.IsDirectory(),
+		h.HasModTime(archive.NormalizedDateTime),
+	)
+
+	h.AssertOnTarEntry(t, layerTar, path.Dir(dirPath),
+		h.IsDirectory(),
+		h.HasModTime(archive.NormalizedDateTime),
 	)
 
 	h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/build",

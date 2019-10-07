@@ -142,15 +142,25 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 			layerTar, err = baseImage.FindLayerWithPath("/buildpacks/buildpack-1-id/buildpack-1-version-1")
 			h.AssertNil(t, err)
 
+			h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-1-id",
+				h.HasModTime(archive.NormalizedDateTime),
+			)
+
 			h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-1-id/buildpack-1-version-1",
 				h.SymlinksTo("/cnb/buildpacks/buildpack-1-id/buildpack-1-version-1"),
+				h.HasModTime(archive.NormalizedDateTime),
 			)
 
 			layerTar, err = baseImage.FindLayerWithPath("/buildpacks/buildpack-2-id/buildpack-2-version-1")
 			h.AssertNil(t, err)
 
+			h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-2-id",
+				h.HasModTime(archive.NormalizedDateTime),
+			)
+
 			h.AssertOnTarEntry(t, layerTar, "/buildpacks/buildpack-2-id/buildpack-2-version-1",
 				h.SymlinksTo("/cnb/buildpacks/buildpack-2-id/buildpack-2-version-1"),
+				h.HasModTime(archive.NormalizedDateTime),
 			)
 		})
 
@@ -176,6 +186,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 				h.IsDirectory(),
 				h.HasOwnerAndGroup(0, 0),
 				h.HasFileMode(0755),
+				h.HasModTime(archive.NormalizedDateTime),
 			)
 		})
 
@@ -192,10 +203,13 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 			it("adds a compat stack.toml to the image", func() {
 				layerTar, err := baseImage.FindLayerWithPath("/buildpacks/stack.toml")
 				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/stack.toml", h.ContentEquals(`[run-image]
+				h.AssertOnTarEntry(t, layerTar, "/buildpacks/stack.toml",
+					h.ContentEquals(`[run-image]
   image = "some/run"
   mirrors = ["some/mirror", "other/mirror"]
-`))
+`),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
 			})
 		})
 
@@ -308,7 +322,10 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 
 			layerTar, err := baseImage.FindLayerWithPath("/lifecycle")
 			h.AssertNil(t, err)
-			h.AssertOnTarEntry(t, layerTar, "/lifecycle", h.SymlinksTo("/cnb/lifecycle"))
+			h.AssertOnTarEntry(t, layerTar, "/lifecycle",
+				h.SymlinksTo("/cnb/lifecycle"),
+				h.HasModTime(archive.NormalizedDateTime),
+			)
 		})
 	})
 }

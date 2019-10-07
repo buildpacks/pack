@@ -3,6 +3,7 @@ package fakes
 import (
 	"bytes"
 	"io"
+	"time"
 
 	"github.com/BurntSushi/toml"
 
@@ -42,10 +43,10 @@ func (b *fakeBuildpackBlob) Open() (reader io.ReadCloser, err error) {
 	}
 
 	tarBuilder := archive.TarBuilder{}
-	tarBuilder.AddFile("buildpack.toml", b.chmod, buf.Bytes())
-	tarBuilder.AddDir("bin", b.chmod)
-	tarBuilder.AddFile("bin/build", b.chmod, []byte("build-contents"))
-	tarBuilder.AddFile("bin/detect", b.chmod, []byte("detect-contents"))
+	tarBuilder.AddFile("buildpack.toml", b.chmod, time.Now(), buf.Bytes())
+	tarBuilder.AddDir("bin", b.chmod, time.Now())
+	tarBuilder.AddFile("bin/build", b.chmod, time.Now(), []byte("build-contents"))
+	tarBuilder.AddFile("bin/detect", b.chmod, time.Now(), []byte("detect-contents"))
 
 	return tarBuilder.Reader(), err
 }

@@ -8,9 +8,10 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"time"
 
 	"github.com/pkg/errors"
+
+	"github.com/buildpack/pack/internal/archive"
 )
 
 const BuildpacksDir = "/cnb/buildpacks"
@@ -33,13 +34,13 @@ func BuildpackLayer(dest string, uid, gid int, bp Buildpack) (string, error) {
 	tw := tar.NewWriter(fh)
 	defer tw.Close()
 
-	now := time.Now()
+	ts := archive.NormalizedDateTime
 
 	if err := tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     path.Join(BuildpacksDir, bpd.EscapedID()),
 		Mode:     0755,
-		ModTime:  now,
+		ModTime:  ts,
 	}); err != nil {
 		return "", err
 	}
@@ -49,7 +50,7 @@ func BuildpackLayer(dest string, uid, gid int, bp Buildpack) (string, error) {
 		Typeflag: tar.TypeDir,
 		Name:     baseTarDir,
 		Mode:     0755,
-		ModTime:  now,
+		ModTime:  ts,
 	}); err != nil {
 		return "", err
 	}

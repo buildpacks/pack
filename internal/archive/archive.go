@@ -85,7 +85,7 @@ func aggregateError(base, addition error) error {
 func CreateSingleFileTarReader(path, txt string) (io.Reader, error) {
 	var buf bytes.Buffer
 	tarBuilder := TarBuilder{}
-	tarBuilder.AddFile(path, 0644, []byte(txt))
+	tarBuilder.AddFile(path, 0644, NormalizedDateTime, []byte(txt))
 	_, err := tarBuilder.WriteTo(&buf)
 	if err != nil {
 		return nil, err
@@ -96,15 +96,16 @@ func CreateSingleFileTarReader(path, txt string) (io.Reader, error) {
 
 func CreateSingleFileTar(tarFile, path, txt string) error {
 	tarBuilder := TarBuilder{}
-	tarBuilder.AddFile(path, 0644, []byte(txt))
+	tarBuilder.AddFile(path, 0644, NormalizedDateTime, []byte(txt))
 	return tarBuilder.WriteToPath(tarFile)
 }
 
 func AddFileToTar(tw *tar.Writer, path string, txt string) error {
 	if err := tw.WriteHeader(&tar.Header{
-		Name: path,
-		Size: int64(len(txt)),
-		Mode: 0644,
+		Name:    path,
+		Size:    int64(len(txt)),
+		Mode:    0644,
+		ModTime: NormalizedDateTime,
 	}); err != nil {
 		return err
 	}
