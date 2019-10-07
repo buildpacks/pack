@@ -3,28 +3,27 @@ package builder
 import (
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
-
-	"github.com/buildpack/pack/style"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/internal/paths"
+	"github.com/buildpack/pack/style"
 )
 
 type Config struct {
 	Description string            `toml:"description"`
 	Buildpacks  []BuildpackConfig `toml:"buildpacks"`
-	Order       Order             `toml:"order"`
+	Order       dist.Order        `toml:"order"`
 	Stack       StackConfig       `toml:"stack"`
 	Lifecycle   LifecycleConfig   `toml:"lifecycle"`
 }
 
 type BuildpackConfig struct {
-	BuildpackInfo
+	dist.BuildpackInfo
 	URI string `toml:"uri"`
 }
 
@@ -113,7 +112,7 @@ func parseConfig(reader io.Reader, relativeToDir string) (Config, error) {
 	}
 
 	for i, bp := range builderConfig.Buildpacks {
-		uri, err := transformRelativePath(bp.URI, relativeToDir)
+		uri, err := paths.ToAbsolute(bp.URI, relativeToDir)
 		if err != nil {
 			return Config{}, errors.Wrap(err, "transforming buildpack URI")
 		}
@@ -121,7 +120,7 @@ func parseConfig(reader io.Reader, relativeToDir string) (Config, error) {
 	}
 
 	if builderConfig.Lifecycle.URI != "" {
-		uri, err := transformRelativePath(builderConfig.Lifecycle.URI, relativeToDir)
+		uri, err := paths.ToAbsolute(builderConfig.Lifecycle.URI, relativeToDir)
 		if err != nil {
 			return Config{}, errors.Wrap(err, "transforming lifecycle URI")
 		}
@@ -129,20 +128,4 @@ func parseConfig(reader io.Reader, relativeToDir string) (Config, error) {
 	}
 
 	return builderConfig, nil
-}
-
-func transformRelativePath(uri, relativeTo string) (string, error) {
-	parsed, err := url.Parse(uri)
-	if err != nil {
-		return "", err
-	}
-
-	if parsed.Scheme == "" {
-		if !filepath.IsAbs(parsed.Path) {
-			absPath := filepath.Join(relativeTo, parsed.Path)
-			return paths.FilePathToURI(absPath)
-		}
-	}
-
-	return uri, nil
 }

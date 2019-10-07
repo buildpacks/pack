@@ -18,6 +18,7 @@ import (
 	"github.com/buildpack/pack/commands"
 	cmdmocks "github.com/buildpack/pack/commands/mocks"
 	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/dist"
 	ilogging "github.com/buildpack/pack/internal/logging"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
@@ -136,8 +137,8 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("is successful", func() {
 			var (
-				buildpack1Info = builder.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
-				buildpack2Info = builder.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0"}
+				buildpack1Info = dist.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
+				buildpack2Info = dist.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0"}
 				buildpacks     = []builder.BuildpackMetadata{
 					{BuildpackInfo: buildpack1Info, Latest: true},
 					{BuildpackInfo: buildpack2Info, Latest: false},
@@ -148,10 +149,10 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 					RunImage:        "some/run-image",
 					RunImageMirrors: []string{"first/default", "second/default"},
 					Buildpacks:      buildpacks,
-					Groups: builder.Order{
-						{Group: []builder.BuildpackRef{
+					Order: dist.Order{
+						{Group: []dist.BuildpackRef{
 							{BuildpackInfo: buildpack1Info, Optional: true},
-							{BuildpackInfo: builder.BuildpackInfo{ID: buildpack2Info.ID}},
+							{BuildpackInfo: dist.BuildpackInfo{ID: buildpack2Info.ID}},
 						}}},
 					Lifecycle: builder.LifecycleDescriptor{
 						Info: builder.LifecycleInfo{
@@ -175,9 +176,9 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 					RunImage:        "some/run-image",
 					RunImageMirrors: []string{"first/local-default", "second/local-default"},
 					Buildpacks:      buildpacks,
-					Groups: builder.Order{
-						{Group: []builder.BuildpackRef{{BuildpackInfo: buildpack1Info}}},
-						{Group: []builder.BuildpackRef{{BuildpackInfo: builder.BuildpackInfo{ID: buildpack2Info.ID}, Optional: true}}},
+					Order: dist.Order{
+						{Group: []dist.BuildpackRef{{BuildpackInfo: buildpack1Info}}},
+						{Group: []dist.BuildpackRef{{BuildpackInfo: dist.BuildpackInfo{ID: buildpack2Info.ID}, Optional: true}}},
 					},
 					Lifecycle: builder.LifecycleDescriptor{
 						Info: builder.LifecycleInfo{

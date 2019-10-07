@@ -1,0 +1,9 @@
+[default]
+id = "noop.buildpack"
+version = "0.0.1"
+
+[[blobs]]
+uri = "noop-buildpack.tgz"
+
+[[stacks]]
+id = "pack.test.stack"

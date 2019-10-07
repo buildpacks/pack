@@ -19,6 +19,7 @@ import (
 	"github.com/buildpack/pack/build"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/cmd"
+	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/internal/paths"
 	"github.com/buildpack/pack/style"
@@ -233,14 +234,14 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 	}
 }
 
-func (c *Client) processBuildpacks(ctx context.Context, buildpacks []string) ([]builder.Buildpack, builder.OrderEntry, error) {
-	group := builder.OrderEntry{Group: []builder.BuildpackRef{}}
-	var bps []builder.Buildpack
+func (c *Client) processBuildpacks(ctx context.Context, buildpacks []string) ([]dist.Buildpack, dist.OrderEntry, error) {
+	group := dist.OrderEntry{Group: []dist.BuildpackRef{}}
+	var bps []dist.Buildpack
 	for _, bp := range buildpacks {
 		if isBuildpackID(bp) {
 			id, version := c.parseBuildpack(bp)
-			group.Group = append(group.Group, builder.BuildpackRef{
-				BuildpackInfo: builder.BuildpackInfo{
+			group.Group = append(group.Group, dist.BuildpackRef{
+				BuildpackInfo: dist.BuildpackInfo{
 					ID:      id,
 					Version: version,
 				},
@@ -248,24 +249,24 @@ func (c *Client) processBuildpacks(ctx context.Context, buildpacks []string) ([]
 		} else {
 			err := ensureBPSupport(bp)
 			if err != nil {
-				return nil, builder.OrderEntry{}, err
+				return nil, dist.OrderEntry{}, err
 			}
 
 			c.logger.Debugf("fetching buildpack from %s", style.Symbol(bp))
 
 			blob, err := c.downloader.Download(ctx, bp)
 			if err != nil {
-				return nil, builder.OrderEntry{}, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
+				return nil, dist.OrderEntry{}, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
 			}
 
-			fetchedBP, err := builder.NewBuildpack(blob)
+			fetchedBP, err := dist.NewBuildpack(blob)
 			if err != nil {
-				return nil, builder.OrderEntry{}, errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bp))
+				return nil, dist.OrderEntry{}, errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bp))
 			}
 
 			bps = append(bps, fetchedBP)
 
-			group.Group = append(group.Group, builder.BuildpackRef{
+			group.Group = append(group.Group, dist.BuildpackRef{
 				BuildpackInfo: fetchedBP.Descriptor().Info,
 			})
 		}
@@ -327,7 +328,7 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 	return parts[0], ""
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, group builder.OrderEntry, buildpacks []builder.Buildpack) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, group dist.OrderEntry, buildpacks []dist.Buildpack) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {
@@ -341,7 +342,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 	}
 	if len(group.Group) > 0 {
 		c.logger.Debug("setting custom order")
-		bldr.SetOrder([]builder.OrderEntry{group})
+		bldr.SetOrder([]dist.OrderEntry{group})
 	}
 	if err := bldr.Save(c.logger); err != nil {
 		return nil, err

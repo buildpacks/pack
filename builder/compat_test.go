@@ -2,7 +2,6 @@ package builder_test
 
 import (
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,6 +16,7 @@ import (
 	"github.com/buildpack/pack/api"
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/builder/testmocks"
+	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
@@ -34,10 +34,10 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		subject        *builder.Builder
 		mockController *gomock.Controller
 		mockLifecycle  *testmocks.MockLifecycle
-		bp1v1          builder.Buildpack
-		bp1v2          builder.Buildpack
-		bp2v1          builder.Buildpack
-		bpOrder        builder.Buildpack
+		bp1v1          dist.Buildpack
+		bp1v2          dist.Buildpack
+		bp2v1          dist.Buildpack
+		bpOrder        dist.Buildpack
 		logger         logging.Logger
 	)
 
@@ -49,38 +49,38 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		mockLifecycle.EXPECT().Open().Return(archive.ReadDirAsTar(
 			filepath.Join("testdata", "lifecycle"), ".", 0, 0, -1), nil).AnyTimes()
 
-		bp1v1 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		bp1v1 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
-			Info: builder.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-1",
 			},
-			Stacks: []builder.Stack{{ID: "some.stack.id"}},
+			Stacks: []dist.Stack{{ID: "some.stack.id"}},
 		}}
-		bp1v2 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		bp1v2 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
-			Info: builder.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-2",
 			},
-			Stacks: []builder.Stack{{ID: "some.stack.id"}},
+			Stacks: []dist.Stack{{ID: "some.stack.id"}},
 		}}
-		bp2v1 = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		bp2v1 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
-			Info: builder.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "buildpack-2-id",
 				Version: "buildpack-2-version-1",
 			},
-			Stacks: []builder.Stack{{ID: "some.stack.id"}},
+			Stacks: []dist.Stack{{ID: "some.stack.id"}},
 		}}
-		bpOrder = &fakeBuildpack{descriptor: builder.BuildpackDescriptor{
+		bpOrder = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
-			Info: builder.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "order-buildpack-id",
 				Version: "order-buildpack-version",
 			},
-			Order: []builder.OrderEntry{{
-				Group: []builder.BuildpackRef{
+			Order: []dist.OrderEntry{{
+				Group: []dist.BuildpackRef{
 					{
 						BuildpackInfo: bp1v1.Descriptor().Info,
 						Optional:      false,
@@ -206,17 +206,17 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 				subject.AddBuildpack(bp2v1)
 				subject.AddBuildpack(bpOrder)
 
-				subject.SetOrder(builder.Order{
-					{Group: []builder.BuildpackRef{
+				subject.SetOrder(dist.Order{
+					{Group: []dist.BuildpackRef{
 						{
-							BuildpackInfo: builder.BuildpackInfo{
+							BuildpackInfo: dist.BuildpackInfo{
 								ID:      "buildpack-1-id",
 								Version: "buildpack-1-version-1",
 							},
 							Optional: false,
 						},
 						{
-							BuildpackInfo: builder.BuildpackInfo{
+							BuildpackInfo: dist.BuildpackInfo{
 								ID:      "buildpack-2-id",
 								Version: "buildpack-2-version-1",
 							},
@@ -227,23 +227,6 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertNil(t, subject.Save(logger))
 				h.AssertEq(t, baseImage.IsSaved(), true)
-			})
-
-			it("adds a compat order.toml to the image", func() {
-				layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")
-				h.AssertNil(t, err)
-
-				h.AssertOnTarEntry(t, layerTar, "/buildpacks/order.toml", h.ContentEquals(`[[groups]]
-
-  [[groups.buildpacks]]
-    id = "buildpack-1-id"
-    version = "buildpack-1-version-1"
-
-  [[groups.buildpacks]]
-    id = "buildpack-2-id"
-    version = "buildpack-2-version-1"
-    optional = true
-`))
 			})
 		})
 	})
@@ -267,17 +250,17 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 			subject.AddBuildpack(updateFakeAPIVersion(bp2v1, api.MustParse("0.2")))
 			subject.AddBuildpack(updateFakeAPIVersion(bpOrder, api.MustParse("0.2")))
 
-			subject.SetOrder(builder.Order{
-				{Group: []builder.BuildpackRef{
+			subject.SetOrder(dist.Order{
+				{Group: []dist.BuildpackRef{
 					{
-						BuildpackInfo: builder.BuildpackInfo{
+						BuildpackInfo: dist.BuildpackInfo{
 							ID:      "buildpack-1-id",
 							Version: "buildpack-1-version-1",
 						},
 						Optional: false,
 					},
 					{
-						BuildpackInfo: builder.BuildpackInfo{
+						BuildpackInfo: dist.BuildpackInfo{
 							ID:      "buildpack-2-id",
 							Version: "buildpack-2-version-1",
 						},
@@ -301,23 +284,6 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 					t.Fatalf("found an unexpected latest entry %s", header.Name)
 				}
 			}
-		})
-
-		it("adds a compat order.toml to the image", func() {
-			layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")
-			h.AssertNil(t, err)
-
-			h.AssertOnTarEntry(t, layerTar, "/buildpacks/order.toml", h.ContentEquals(`[[order]]
-
-  [[order.group]]
-    id = "buildpack-1-id"
-    version = "buildpack-1-version-1"
-
-  [[order.group]]
-    id = "buildpack-2-id"
-    version = "buildpack-2-version-1"
-    optional = true
-`))
 		})
 	})
 
@@ -344,34 +310,12 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			h.AssertOnTarEntry(t, layerTar, "/lifecycle", h.SymlinksTo("/cnb/lifecycle"))
 		})
-
-		it("does not overwrite the compat order when SetOrder has not been called", func() {
-			tmpDir, err := ioutil.TempDir("", "")
-			h.AssertNil(t, err)
-			defer os.RemoveAll(tmpDir)
-
-			layerFile := filepath.Join(tmpDir, "order.tar")
-
-			err = archive.CreateSingleFileTar(layerFile, "/buildpacks/order.toml", "some content")
-			h.AssertNil(t, err)
-
-			h.AssertNil(t, baseImage.AddLayer(layerFile))
-			_, err = baseImage.Save()
-			h.AssertNil(t, err)
-
-			h.AssertNil(t, subject.Save(logger))
-			h.AssertEq(t, baseImage.IsSaved(), true)
-
-			layerTar, err := baseImage.FindLayerWithPath("/buildpacks/order.toml")
-			h.AssertNil(t, err)
-			h.AssertOnTarEntry(t, layerTar, "/buildpacks/order.toml", h.ContentEquals("some content"))
-		})
 	})
 }
 
-func updateFakeAPIVersion(buildpack builder.Buildpack, version *api.Version) builder.Buildpack {
+func updateFakeAPIVersion(buildpack dist.Buildpack, version *api.Version) dist.Buildpack {
 	return &fakeBuildpack{
-		descriptor: builder.BuildpackDescriptor{
+		descriptor: dist.BuildpackDescriptor{
 			API:    version,
 			Info:   buildpack.Descriptor().Info,
 			Stacks: buildpack.Descriptor().Stacks,

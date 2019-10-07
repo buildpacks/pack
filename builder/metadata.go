@@ -1,19 +1,20 @@
 package builder
 
+import "github.com/buildpack/pack/dist"
+
 const OrderLabel = "io.buildpacks.buildpack.order"
 const BuildpackLayersLabel = "io.buildpacks.buildpack.layers"
 
 type BuildpackLayers map[string]map[string]BuildpackLayerInfo
 
 type BuildpackLayerInfo struct {
-	LayerDigest string `json:"layerDigest"`
-	Order       Order  `json:"order,omitempty"`
+	LayerDigest string     `json:"layerDigest"`
+	Order       dist.Order `json:"order,omitempty"`
 }
 
 type Metadata struct {
 	Description string              `json:"description"`
 	Buildpacks  []BuildpackMetadata `json:"buildpacks"`
-	Groups      V1Order             `json:"groups"` // deprecated
 	Stack       StackMetadata       `json:"stack"`
 	Lifecycle   LifecycleMetadata   `json:"lifecycle"`
 	CreatedBy   CreatorMetadata     `json:"createdBy"`
@@ -25,7 +26,7 @@ type CreatorMetadata struct {
 }
 
 type BuildpackMetadata struct {
-	BuildpackInfo
+	dist.BuildpackInfo
 	Latest bool `json:"latest"` // deprecated
 }
 
@@ -45,7 +46,7 @@ type RunImageMetadata struct {
 
 func processMetadata(md *Metadata) {
 	for i, bp := range md.Buildpacks {
-		var matchingBps []BuildpackInfo
+		var matchingBps []dist.BuildpackInfo
 		for _, bp2 := range md.Buildpacks {
 			if bp.ID == bp2.ID {
 				matchingBps = append(matchingBps, bp.BuildpackInfo)

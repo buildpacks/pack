@@ -4,7 +4,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/buildpack/imgutil"
 	dockerClient "github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/blob"
@@ -20,6 +22,7 @@ type Client struct {
 	downloader   Downloader
 	lifecycle    Lifecycle
 	docker       *dockerClient.Client
+	imageFactory ImageFactory
 }
 
 type ClientOption func(c *Client)
@@ -31,7 +34,30 @@ func WithLogger(l logging.Logger) ClientOption {
 	}
 }
 
-// WithLogger supply your own logger.
+// WithImageFactory supply your own image factory.
+func WithImageFactory(f ImageFactory) ClientOption {
+	return func(c *Client) {
+		c.imageFactory = f
+	}
+}
+
+// WithFetcher supply your own fetcher.
+func WithFetcher(f ImageFetcher) ClientOption {
+	return func(c *Client) {
+		c.imageFetcher = f
+	}
+}
+
+// WithDownloader supply your own downloader.
+func WithDownloader(d Downloader) ClientOption {
+	return func(c *Client) {
+		c.downloader = d
+	}
+}
+
+// WithCacheDir supply your own cache directory.
+//
+// Deprecated: use WithDownloader instead.
 func WithCacheDir(path string) ClientOption {
 	return func(c *Client) {
 		c.downloader = blob.NewDownloader(c.logger, path)
@@ -72,8 +98,31 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		client.downloader = blob.NewDownloader(client.logger, filepath.Join(packHome, "download-cache"))
 	}
 
-	client.imageFetcher = image.NewFetcher(client.logger, client.docker)
+	if client.imageFetcher == nil {
+		client.imageFetcher = image.NewFetcher(client.logger, client.docker)
+	}
+
+	if client.imageFactory == nil {
+		client.imageFactory = &DefaultImageFactory{
+			dockerClient: client.docker,
+			keychain:     authn.DefaultKeychain,
+		}
+	}
+
 	client.lifecycle = build.NewLifecycle(client.docker, client.logger)
 
 	return &client, nil
+}
+
+type DefaultImageFactory struct {
+	dockerClient *dockerClient.Client
+	keychain     authn.Keychain
+}
+
+func (f *DefaultImageFactory) NewImage(repoName string, local bool) (imgutil.Image, error) {
+	if local {
+		return imgutil.EmptyLocalImage(repoName, f.dockerClient), nil
+	}
+
+	return imgutil.NewRemoteImage(repoName, f.keychain)
 }

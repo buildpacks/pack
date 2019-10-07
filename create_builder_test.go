@@ -12,6 +12,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/buildpack/pack/dist"
+
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -85,13 +87,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Description: "Some description",
 					Buildpacks: []builder.BuildpackConfig{
 						{
-							BuildpackInfo: builder.BuildpackInfo{ID: "bp.one", Version: "1.2.3"},
+							BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"},
 							URI:           "https://example.fake/bp-one.tgz",
 						},
 					},
-					Order: []builder.OrderEntry{{
-						Group: []builder.BuildpackRef{
-							{BuildpackInfo: builder.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
+					Order: []dist.OrderEntry{{
+						Group: []dist.BuildpackRef{
+							{BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
 						}},
 					},
 					Stack: builder.StackConfig{
@@ -262,7 +264,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, builderImage.UID, 1234)
 			h.AssertEq(t, builderImage.GID, 4321)
 			h.AssertEq(t, builderImage.StackID, "some.stack.id")
-			bpInfo := builder.BuildpackInfo{
+			bpInfo := dist.BuildpackInfo{
 				ID:      "bp.one",
 				Version: "1.2.3",
 			}
@@ -270,8 +272,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				BuildpackInfo: bpInfo,
 				Latest:        true,
 			}})
-			h.AssertEq(t, builderImage.GetOrder(), builder.Order{{
-				Group: []builder.BuildpackRef{{
+			h.AssertEq(t, builderImage.GetOrder(), dist.Order{{
+				Group: []dist.BuildpackRef{{
 					BuildpackInfo: bpInfo,
 					Optional:      false,
 				}},

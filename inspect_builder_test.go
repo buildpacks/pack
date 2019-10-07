@@ -13,6 +13,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/image"
 	ifakes "github.com/buildpack/pack/internal/fakes"
 	h "github.com/buildpack/pack/testhelpers"
@@ -65,7 +66,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 
-				when("the builder image has a metadata label", func() {
+				when("the builder image has appropriate metadata labels", func() {
 					it.Before(func() {
 						h.AssertNil(t, builderImage.SetLabel("io.buildpacks.builder.metadata", `{
   "description": "Some description",
@@ -84,20 +85,14 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
       "latest": true
     }
   ],
-  "groups": [
-    {
-      "buildpacks": [
-        {
-          "id": "test.bp.one",
-          "version": "1.0.0",
-          "latest": true
-        }
-      ]
-    }
-  ],
   "lifecycle": {"version": "1.2.3"},
   "createdBy": {"name": "pack", "version": "1.2.3"}
 }`))
+
+						h.AssertNil(t, builderImage.SetLabel(
+							"io.buildpacks.buildpack.order",
+							`[{"group": [{"id": "buildpack-1-id", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}]`,
+						))
 					})
 
 					it("returns the builder with the given name", func() {
@@ -135,7 +130,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.Buildpacks[0], builder.BuildpackMetadata{
-							BuildpackInfo: builder.BuildpackInfo{
+							BuildpackInfo: dist.BuildpackInfo{
 								ID:      "test.bp.one",
 								Version: "1.0.0",
 							},
@@ -146,11 +141,19 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					it("sets the groups", func() {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.Groups[0].Group[0], builder.BuildpackRef{
-							BuildpackInfo: builder.BuildpackInfo{
-								ID:      "test.bp.one",
-								Version: "1.0.0",
+						h.AssertEq(t, builderInfo.Order[0].Group[0], dist.BuildpackRef{
+							BuildpackInfo: dist.BuildpackInfo{
+								ID:      "buildpack-1-id",
+								Version: "",
 							},
+							Optional: false,
+						})
+						h.AssertEq(t, builderInfo.Order[0].Group[1], dist.BuildpackRef{
+							BuildpackInfo: dist.BuildpackInfo{
+								ID:      "buildpack-2-id",
+								Version: "buildpack-2-version-1",
+							},
+							Optional: true,
 						})
 					})
 

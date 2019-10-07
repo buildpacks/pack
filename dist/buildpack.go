@@ -1,7 +1,8 @@
-package builder
+package dist
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -11,6 +12,12 @@ import (
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/style"
 )
+
+const AssumedBuildpackAPIVersion = "0.1"
+
+type Blob interface {
+	Open() (io.ReadCloser, error)
+}
 
 type buildpack struct {
 	descriptor BuildpackDescriptor
@@ -28,7 +35,7 @@ type BuildpackDescriptor struct {
 	Order  Order         `toml:"order"`
 }
 
-//go:generate mockgen -package testmocks -destination testmocks/buildpack.go github.com/buildpack/pack/builder Buildpack
+//go:generate mockgen -package testmocks -destination testmocks/buildpack.go github.com/buildpack/pack/dist Buildpack
 type Buildpack interface {
 	Blob
 	Descriptor() BuildpackDescriptor
