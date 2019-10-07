@@ -92,10 +92,15 @@ func AssertContains(t *testing.T, actual, expected string) {
 
 func AssertContainsMatch(t *testing.T, actual, exp string) {
 	t.Helper()
-	regex := regexp.MustCompile(exp)
-	matches := regex.FindAll([]byte(actual), -1)
-	if len(matches) < 1 {
+	if !hasMatches(actual, exp) {
 		t.Fatalf("Expected: '%s' to match expression '%s'", actual, exp)
+	}
+}
+
+func AssertNotContainsMatch(t *testing.T, actual, exp string) {
+	t.Helper()
+	if hasMatches(actual, exp) {
+		t.Fatalf("Expected: '%s' not to match expression '%s'", actual, exp)
 	}
 }
 
@@ -139,6 +144,12 @@ func AssertNotNil(t *testing.T, actual interface{}) {
 
 func isNil(value interface{}) bool {
 	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
+}
+
+func hasMatches(actual, exp string) bool {
+	regex := regexp.MustCompile(exp)
+	matches := regex.FindAll([]byte(actual), -1)
+	return len(matches) > 0
 }
 
 var dockerCliVal *client.Client

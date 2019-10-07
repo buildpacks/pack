@@ -934,7 +934,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
 						Builder: builderName,
-						Network: "some-network",
+						ContainerConfig: ContainerConfig{
+							Network: "some-network",
+						},
 					}))
 					h.AssertEq(t, fakeLifecycle.Opts.Network, "some-network")
 				})

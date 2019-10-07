@@ -148,7 +148,7 @@ func EqBuildOptionsWithNetwork(network string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Network=%s", network),
 		equals: func(o pack.BuildOptions) bool {
-			return o.Network == network
+			return o.ContainerConfig.Network == network
 		},
 	}
 }

@@ -341,6 +341,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				when("the network mode is not provided", func() {
 					it("reports that build and detect are online", func() {
 						cmd := packCmd(
+							packPath,
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
 							"--buildpack", buildpackTgz,
@@ -354,6 +355,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				when("the network mode is set to default", func() {
 					it("reports that build and detect are online", func() {
 						cmd := packCmd(
+							packPath,
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
 							"--buildpack", buildpackTgz,
@@ -368,6 +370,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				when("the network mode is set to none", func() {
 					it("reports that build and detect are offline", func() {
 						cmd := packCmd(
+							packPath,
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
 							"--buildpack", buildpackTgz,

@@ -56,7 +56,9 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				NoPull:            flags.NoPull,
 				ClearCache:        flags.ClearCache,
 				Buildpacks:        flags.Buildpacks,
-				Network:           flags.Network,
+				ContainerConfig: pack.ContainerConfig{
+					Network: flags.Network,
+				},
 			}); err != nil {
 				return err
 			}

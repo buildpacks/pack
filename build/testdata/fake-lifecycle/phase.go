@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -43,6 +45,9 @@ func main() {
 	}
 	if len(os.Args) > 1 && os.Args[1] == "binds" {
 		testBinds()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "network" {
+		testNetwork()
 	}
 }
 
@@ -142,6 +147,26 @@ func testProxy() {
 	fmt.Println("http_proxy=" + os.Getenv("http_proxy"))
 	fmt.Println("https_proxy=" + os.Getenv("https_proxy"))
 	fmt.Println("no_proxy=" + os.Getenv("no_proxy"))
+}
+
+func testNetwork() {
+	fmt.Println("testing network")
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		fmt.Print(fmt.Errorf("localAddresses: %+v\n", err.Error()))
+		return
+	}
+	fmt.Printf("iterating over %v interfaces\n", len(ifaces))
+	for _, i := range ifaces {
+		fmt.Printf("interface: %s\n", i.Name)
+	}
+
+	resp, err := http.Get("http://google.com")
+	if err != nil {
+		fmt.Printf("error connecting to internet: %s\n", err.Error())
+		return
+	}
+	fmt.Printf("response status %s\n", resp.Status)
 }
 
 func testBinds() {

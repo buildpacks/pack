@@ -15,7 +15,6 @@ import (
 
 	"github.com/buildpack/imgutil"
 	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/heroku/color"
@@ -263,17 +262,16 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("#WithNetwork", func() {
-				it("provides network for the container", func() {
+				it("specifies a network for the container", func() {
 					phase, err := subject.NewPhase(
 						"phase",
 						build.WithArgs("network"),
 						build.WithNetwork("none"),
 					)
 					h.AssertNil(t, err)
-					h.AssertEq(t, build.GetPhaseHostConfig(phase).NetworkMode, container.NetworkMode("none"))
-
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
-					h.AssertContains(t, outBuf.String(), "phase network")
+					h.AssertNotContainsMatch(t, outBuf.String(), `interface: eth\d+`)
+					h.AssertContains(t, outBuf.String(), `error connecting to internet:`)
 				})
 			})
 		})
