@@ -830,7 +830,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 			if err != nil {
 				t.Fatalf("suggest-stacks command failed: %s: %s", output, err)
 			}
-			h.AssertContains(t, string(output), "Stacks maintained by the Cloud Native Buildpacks project:")
 			h.AssertContains(t, string(output), "Stacks maintained by the community:")
 		})
 	})

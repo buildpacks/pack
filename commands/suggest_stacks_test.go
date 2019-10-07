@@ -32,14 +32,6 @@ func testSuggestStacksCommand(t *testing.T, when spec.G, it spec.S) {
 			command.SetArgs([]string{})
 			h.AssertNil(t, command.Execute())
 			h.AssertEq(t, outBuf.String(), `
-Stacks maintained by the Cloud Native Buildpacks project:
-
-    Stack ID: io.buildpacks.stacks.bionic
-    Description: Minimal Ubuntu 18.04 stack
-    Maintainer: Cloud Native Buildpacks
-    Build Image: cnbs/build:bionic
-    Run Image: cnbs/run:bionic
-
 Stacks maintained by the community:
 
     Stack ID: heroku-18
@@ -48,11 +40,23 @@ Stacks maintained by the community:
     Build Image: heroku/pack:18-build
     Run Image: heroku/pack:18
 
+    Stack ID: io.buildpacks.stacks.bionic
+    Description: A minimal Cloud Foundry stack based on Ubuntu 18.04
+    Maintainer: Cloud Foundry
+    Build Image: cloudfoundry/build:base-cnb
+    Run Image: cloudfoundry/run:base-cnb
+
     Stack ID: org.cloudfoundry.stacks.cflinuxfs3
-    Description: The official Cloud Foundry stack based on Ubuntu 18.04
+    Description: A large Cloud Foundry stack based on Ubuntu 18.04
     Maintainer: Cloud Foundry
     Build Image: cloudfoundry/build:full-cnb
     Run Image: cloudfoundry/run:full-cnb
+
+    Stack ID: org.cloudfoundry.stacks.tiny
+    Description: A tiny Cloud Foundry stack based on Ubuntu 18.04, similar to distroless
+    Maintainer: Cloud Foundry
+    Build Image: cloudfoundry/build:tiny-cnb
+    Run Image: cloudfoundry/run:tiny-cnb
 `)
 		})
 	})
