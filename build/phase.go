@@ -161,6 +161,15 @@ func (p *Phase) Run(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to copy files to '%s' container", p.name)
 	}
 
+	p.logger.Debugf("Running container: %v", p.ctr.ID)
+	if ctrConf := p.ctrConf; ctrConf != nil {
+		p.logger.Debugf("  Cmd: %v", ctrConf.Cmd)
+		p.logger.Debugf("  Env: %v", ctrConf.Env)
+		p.logger.Debugf("  User: %s", ctrConf.User)
+		p.logger.Debugf("  Image: %s", ctrConf.Image)
+		p.logger.Debugf("  Labels: %v", ctrConf.Labels)
+	}
+
 	return container.Run(
 		ctx,
 		p.docker,
