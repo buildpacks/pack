@@ -928,6 +928,19 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
+
+			when("Network option", func() {
+				it("passes the value through", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						ContainerConfig: ContainerConfig{
+							Network: "some-network",
+						},
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.Network, "some-network")
+				})
+			})
 		})
 
 		when("Lifecycle option", func() {

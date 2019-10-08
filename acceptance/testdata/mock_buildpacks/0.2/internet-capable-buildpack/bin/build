@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+echo "---> Internet capable buildpack"
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+
+if netcat -z -w 1 google.com 80; then
+  echo "RESULT: Connected to the internet"
+else
+  echo "RESULT: Disconnected from the internet"
+fi
+
+echo "---> Done"

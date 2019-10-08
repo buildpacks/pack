@@ -41,12 +41,17 @@ type BuildOptions struct {
 	ClearCache        bool
 	Buildpacks        []string
 	ProxyConfig       *ProxyConfig // defaults to  environment proxy vars
+	ContainerConfig   ContainerConfig
 }
 
 type ProxyConfig struct {
 	HTTPProxy  string
 	HTTPSProxy string
 	NoProxy    string
+}
+
+type ContainerConfig struct {
+	Network string
 }
 
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
@@ -126,6 +131,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		HTTPProxy:  proxyConfig.HTTPProxy,
 		HTTPSProxy: proxyConfig.HTTPSProxy,
 		NoProxy:    proxyConfig.NoProxy,
+		Network:    opts.ContainerConfig.Network,
 	})
 }
 

@@ -56,6 +56,17 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("a network is given", func() {
+			it("forwards the network onto the client", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithNetwork("my-network")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--network", "my-network"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
 		when("an env file is provided", func() {
 			var envPath string
 
@@ -129,6 +140,15 @@ func EqBuildOptionsWithImage(builder, image string) gomock.Matcher {
 		description: fmt.Sprintf("Builder=%s and Image=%s", builder, image),
 		equals: func(o pack.BuildOptions) bool {
 			return o.Builder == builder && o.Image == image
+		},
+	}
+}
+
+func EqBuildOptionsWithNetwork(network string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Network=%s", network),
+		equals: func(o pack.BuildOptions) bool {
+			return o.ContainerConfig.Network == network
 		},
 	}
 }

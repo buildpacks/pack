@@ -140,7 +140,7 @@ create builder:
  |__ pack path: %s
  |__ builder toml: %s
 
-lifecycle 
+lifecycle:
  |__ path: %s
  |__ version: %s
  |__ buildpack api: %s
@@ -325,6 +325,62 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 					t.Fatal("Could not determine image id for built image")
 				}
 				defer h.DockerRmi(dockerCli, imgId)
+			})
+
+			when("--network", func() {
+				var buildpackTgz string
+
+				it.Before(func() {
+					buildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "internet-capable-buildpack"), "./", 0766)
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.Remove(buildpackTgz))
+				})
+
+				when("the network mode is not provided", func() {
+					it("reports that build and detect are online", func() {
+						cmd := packCmd(
+							packPath,
+							"build", repoName,
+							"-p", filepath.Join("testdata", "mock_app"),
+							"--buildpack", buildpackTgz,
+						)
+						output := h.Run(t, cmd)
+						h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
+						h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
+					})
+				})
+
+				when("the network mode is set to default", func() {
+					it("reports that build and detect are online", func() {
+						cmd := packCmd(
+							packPath,
+							"build", repoName,
+							"-p", filepath.Join("testdata", "mock_app"),
+							"--buildpack", buildpackTgz,
+							"--network", "default",
+						)
+						output := h.Run(t, cmd)
+						h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
+						h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
+					})
+				})
+
+				when("the network mode is set to none", func() {
+					it("reports that build and detect are offline", func() {
+						cmd := packCmd(
+							packPath,
+							"build", repoName,
+							"-p", filepath.Join("testdata", "mock_app"),
+							"--buildpack", buildpackTgz,
+							"--network", "none",
+						)
+						output := h.Run(t, cmd)
+						h.AssertContains(t, output, "[detector] RESULT: Disconnected from the internet")
+						h.AssertContains(t, output, "[builder] RESULT: Disconnected from the internet")
+					})
+				})
 			})
 
 			when("--buildpack", func() {

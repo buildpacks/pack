@@ -18,4 +18,10 @@ echo "launch = true" > "$launch_dir/launch-layer.toml"
 ## adds a process
 echo 'processes = [{ type = "web", command = "./run"}]' > "$launch_dir/launch.toml"
 
+if [[ "$(curl -s -X HEAD -w '%{http_code}' https://www.google.com)" == "200" ]]; then
+  echo "Connected to the internet"
+else
+  echo "Disconnected from the internet"
+fi
+
 echo "---> Done"

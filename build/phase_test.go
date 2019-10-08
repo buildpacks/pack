@@ -260,6 +260,20 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					h.AssertContains(t, outBuf.String(), "[phase] registry test")
 				})
 			})
+
+			when("#WithNetwork", func() {
+				it("specifies a network for the container", func() {
+					phase, err := subject.NewPhase(
+						"phase",
+						build.WithArgs("network"),
+						build.WithNetwork("none"),
+					)
+					h.AssertNil(t, err)
+					assertRunSucceeds(t, phase, &outBuf, &errBuf)
+					h.AssertNotContainsMatch(t, outBuf.String(), `interface: eth\d+`)
+					h.AssertContains(t, outBuf.String(), `error connecting to internet:`)
+				})
+			})
 		})
 	})
 

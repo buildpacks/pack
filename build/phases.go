@@ -15,7 +15,7 @@ const (
 	platformDir    = "/platform"
 )
 
-func (l *Lifecycle) Detect(ctx context.Context) error {
+func (l *Lifecycle) Detect(ctx context.Context, networkMode string) error {
 	detect, err := l.NewPhase(
 		"detector",
 		WithArgs(
@@ -24,6 +24,7 @@ func (l *Lifecycle) Detect(ctx context.Context) error {
 				"-platform", platformDir,
 			)...,
 		),
+		WithNetwork(networkMode),
 	)
 	if err != nil {
 		return err
@@ -94,7 +95,7 @@ func prependArg(arg string, args []string) []string {
 	return append([]string{arg}, args...)
 }
 
-func (l *Lifecycle) Build(ctx context.Context) error {
+func (l *Lifecycle) Build(ctx context.Context, networkMode string) error {
 	build, err := l.NewPhase(
 		"builder",
 		WithArgs(
@@ -102,6 +103,7 @@ func (l *Lifecycle) Build(ctx context.Context) error {
 			"-app", appDir,
 			"-platform", platformDir,
 		),
+		WithNetwork(networkMode),
 	)
 	if err != nil {
 		return err
