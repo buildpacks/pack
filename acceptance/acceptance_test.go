@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -163,14 +162,14 @@ lifecycle:
 
 		combo := combo
 		suite(k, func(t *testing.T, when spec.G, it spec.S) {
-			testAcceptance(t, when, it, bldr, runImageMirror, combo.packFixturesDir, combo.packPath, combo.lifecycleDescriptor)
+			testAcceptance(t, when, it, bldr, runImageMirror, combo.packFixturesDir, combo.packPath, combo.packCreateBuilderPath, combo.lifecycleDescriptor)
 		}, spec.Report(report.Terminal{}))
 	}
 
 	suite.Run(t)
 }
 
-func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirror, packFixturesDir, packPath string, lifecycleDescriptor builder.LifecycleDescriptor) {
+func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirror, packFixturesDir, packPath, packCreateBuilderPath string, lifecycleDescriptor builder.LifecycleDescriptor) {
 
 	var bpDir = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
 
@@ -230,10 +229,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				)
 				output := h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-				imgId, err := imgIdFromOutput(output)
+				imgId, err := imgIDForRepoName(repoName)
 				if err != nil {
-					t.Log(output)
-					t.Fatal("Could not determine image id for built image")
+					t.Fatal(err)
 				}
 				defer h.DockerRmi(dockerCli, imgId)
 
@@ -271,13 +269,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				cmd = packCmd(packPath, "build", repoName, "-p", appPath)
 				output = h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-				imgId, err = imgIdFromOutput(output)
+
+				imgId, err = imgIDForRepoName(repoName)
 				if err != nil {
-					t.Log(output)
-					t.Fatal("Could not determine image id for built image")
+					t.Fatal(err)
 				}
 				defer h.DockerRmi(dockerCli, imgId)
-
+				
 				t.Log("local run-image mirror is selected")
 				h.AssertContains(t, output, fmt.Sprintf("Selected run image mirror '%s' from local config", localRunImageMirror))
 
@@ -319,10 +317,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				)
 				output := h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-				imgId, err := imgIdFromOutput(output)
+				
+				imgId, err := imgIDForRepoName(repoName)
 				if err != nil {
-					t.Log(output)
-					t.Fatal("Could not determine image id for built image")
+					t.Fatal(err)
 				}
 				defer h.DockerRmi(dockerCli, imgId)
 			})
@@ -611,11 +609,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 					}
 					output := runPackBuild()
 					h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-					imgDigest, err := imgDigestFromOutput(output)
-					if err != nil {
-						t.Log(output)
-						t.Fatal("Could not determine sha for built image")
-					}
 
 					t.Log("checking that registry has contents")
 					contents, err := registryConfig.RegistryCatalog()
@@ -624,11 +617,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 						t.Fatalf("Expected to see image %s in %s", repo, contents)
 					}
 
-					h.AssertNil(t, h.PullImageWithAuth(dockerCli, fmt.Sprintf("%s@%s", repoName, imgDigest), registryConfig.RegistryAuth()))
-					defer h.DockerRmi(dockerCli, fmt.Sprintf("%s@%s", repoName, imgDigest))
+					h.AssertNil(t, h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+					defer h.DockerRmi(dockerCli, repoName)
 
 					t.Log("app is runnable")
-					assertMockAppRunsWithOutput(t, fmt.Sprintf("%s@%s", repoName, imgDigest), "Launch Dep Contents", "Cached Dep Contents")
+					assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 				})
 			})
 
@@ -912,18 +905,28 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 			cmd = packCmd(packPath, "inspect-builder", builder)
 			output = h.Run(t, cmd)
 
-			packVersion, err := detectPackVersion(packPath)
+			// Get version of pack that had created the builder
+			createdByVersion, err := detectPackVersion(packCreateBuilderPath)
 			h.AssertNil(t, err)
 
-			expectedOutput := fillTemplate(t,
-				filepath.Join(packFixturesDir, "inspect_builder_output.txt"),
+			outputTemplate := filepath.Join(packFixturesDir, "inspect_builder_output.txt")
+			
+			// If a different version of pack had created the builder, we need a different (versioned) template for expected output
+			versionedTemplate := filepath.Join(packFixturesDir, fmt.Sprintf("inspect_%s_builder_output.txt", strings.TrimPrefix(strings.Split(createdByVersion, " ")[0], "v")))
+			if _, err := os.Stat(versionedTemplate); err == nil {
+				outputTemplate = versionedTemplate
+			} else if !os.IsNotExist(err){
+				t.Fatal(err.Error())
+			}
+			
+			expectedOutput := fillTemplate(t, outputTemplate,
 				map[string]interface{}{
 					"builder_name":          builder,
 					"lifecycle_version":     lifecycleDescriptor.Info.Version.String(),
 					"buildpack_api_version": lifecycleDescriptor.API.BuildpackVersion.String(),
 					"platform_api_version":  lifecycleDescriptor.API.PlatformVersion.String(),
 					"run_image_mirror":      runImageMirror,
-					"pack_version":          packVersion,
+					"pack_version":          createdByVersion,
 				},
 			)
 
@@ -1109,14 +1112,24 @@ func packCmd(packPath, name string, args ...string) *exec.Cmd {
 	cmdArgs := append([]string{
 		name,
 		"--no-color",
-		"--verbose",
 	}, args...)
+	if supportsVerboseFlag(packPath) {
+		cmdArgs = append([]string{"--verbose"}, cmdArgs...)
+	}
 	cmd := exec.Command(
 		packPath,
 		cmdArgs...,
 	)
 	cmd.Env = append(os.Environ(), "PACK_HOME="+packHome, "DOCKER_CONFIG="+registryConfig.DockerConfigDir)
 	return cmd
+}
+
+func supportsVerboseFlag(packPath string) bool {
+	output, err := h.RunE(exec.Command(packPath, "help"))
+	if err != nil {
+		panic(err.Error())
+	}
+	return strings.Contains(output, "--verbose")
 }
 
 func detectPackVersion(packPath string) (string, error) {
@@ -1301,20 +1314,12 @@ func fetchHostPort(t *testing.T, dockerID string) string {
 	return ""
 }
 
-func imgDigestFromOutput(txt string) (string, error) {
-	for _, m := range regexp.MustCompile(`\*\*\* Digest: (.+)`).FindAllStringSubmatch(txt, -1) {
-		return m[1], nil
+func imgIDForRepoName(repoName string) (string, error) {
+	inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not get image ID for image '%s'", repoName)
 	}
-
-	return "", errors.New("could not find digest in output")
-}
-
-func imgIdFromOutput(txt string) (string, error) {
-	for _, m := range regexp.MustCompile(`\*\*\* Image ID: (.+)`).FindAllStringSubmatch(txt, -1) {
-		return m[1], nil
-	}
-
-	return "", errors.New("could not find image ID in output")
+	return inspect.ID, nil
 }
 
 func runDockerImageExposePort(t *testing.T, containerName, repoName string) string {

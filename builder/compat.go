@@ -22,6 +22,39 @@ const (
 	compatStackPath     = "/buildpacks/stack.toml"
 )
 
+type V1Order []V1Group
+
+type V1Group struct {
+	Buildpacks []dist.BuildpackRef `toml:"buildpacks" json:"buildpacks"`
+}
+
+func (o V1Order) ToOrder() dist.Order {
+	var order dist.Order
+	for _, gp := range o {
+		var buildpacks []dist.BuildpackRef
+		buildpacks = append(buildpacks, gp.Buildpacks...)
+
+		order = append(order, dist.OrderEntry{
+			Group: buildpacks,
+		})
+	}
+	return order
+}
+
+func orderToV1Order(o dist.Order) V1Order {
+	var order V1Order //nolint:prealloc
+	for _, gp := range o {
+		var buildpacks []dist.BuildpackRef
+		buildpacks = append(buildpacks, gp.Group...)
+
+		order = append(order, V1Group{
+			Buildpacks: buildpacks,
+		})
+	}
+
+	return order
+}
+
 func (b *Builder) compatLayer(order dist.Order, dest string) (string, error) {
 	compatTar := path.Join(dest, "compat.tar")
 	fh, err := os.Create(compatTar)
