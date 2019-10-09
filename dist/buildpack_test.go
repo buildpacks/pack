@@ -63,7 +63,7 @@ id = "some.stack.id"
 		})
 
 		when("there is no api field", func() {
-			it("assumes a version", func() {
+			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpBpDir, "buildpack.toml"), []byte(`
 [buildpack]
 id = "bp.one"
@@ -72,10 +72,49 @@ version = "1.2.3"
 [[stacks]]
 id = "some.stack.id"
 `), os.ModePerm))
+			})
 
+			it("assumes an api version", func() {
 				bp, err := dist.NewBuildpack(blob.NewBlob(tmpBpDir))
 				h.AssertNil(t, err)
 				h.AssertEq(t, bp.Descriptor().API.String(), "0.1")
+			})
+		})
+
+		when("there is no id", func() {
+			it.Before(func() {
+				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpBpDir, "buildpack.toml"), []byte(`
+[buildpack]
+id = ""
+version = "1.2.3"
+
+[[stacks]]
+id = "some.stack.id"
+`), os.ModePerm))
+			})
+
+			it("returns error", func() {
+				_, err := dist.NewBuildpack(blob.NewBlob(tmpBpDir))
+				h.AssertError(t, err, "'buildpack.id' is required")
+			})
+		})
+
+		when("there is no version", func() {
+			it.Before(func() {
+				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpBpDir, "buildpack.toml"), []byte(`
+[buildpack]
+id = "bp.one"
+version = ""
+
+[[stacks]]
+id = "some.stack.id"
+`), os.ModePerm))
+			})
+
+			it("returns error", func() {
+				_, err := dist.NewBuildpack(blob.NewBlob(tmpBpDir))
+				h.AssertError(t, err, "'buildpack.version' is required")
+
 			})
 		})
 
@@ -98,7 +137,7 @@ id = "some.stack.id"
 
 			it("returns error", func() {
 				_, err := dist.NewBuildpack(blob.NewBlob(tmpBpDir))
-				h.AssertError(t, err, "cannot have both stacks and an order defined")
+				h.AssertError(t, err, "cannot have both 'stacks' and an 'order' defined")
 			})
 		})
 
@@ -113,7 +152,7 @@ version = "1.2.3"
 
 			it("returns error", func() {
 				_, err := dist.NewBuildpack(blob.NewBlob(tmpBpDir))
-				h.AssertError(t, err, "must have either stacks or an order defined")
+				h.AssertError(t, err, "must have either 'stacks' or an 'order' defined")
 			})
 		})
 	})

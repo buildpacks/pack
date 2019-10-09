@@ -1,7 +1,6 @@
 package dist
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -78,12 +77,30 @@ func NewBuildpack(blob Blob) (Buildpack, error) {
 }
 
 func validateDescriptor(bpd BuildpackDescriptor) error {
+	if bpd.Info.ID == "" {
+		return errors.Errorf("%s is required", style.Symbol("buildpack.id"))
+	}
+
+	if bpd.Info.Version == "" {
+		return errors.Errorf("%s is required", style.Symbol("buildpack.version"))
+	}
+
 	if len(bpd.Order) == 0 && len(bpd.Stacks) == 0 {
-		return fmt.Errorf("buildpack %s must have either stacks or an order defined", style.Symbol(bpd.Info.ID+"@"+bpd.Info.Version))
+		return errors.Errorf(
+			"buildpack %s: must have either %s or an %s defined",
+			style.Symbol(bpd.Info.ID+"@"+bpd.Info.Version),
+			style.Symbol("stacks"),
+			style.Symbol("order"),
+		)
 	}
 
 	if len(bpd.Order) >= 1 && len(bpd.Stacks) >= 1 {
-		return fmt.Errorf("buildpack %s cannot have both stacks and an order defined", style.Symbol(bpd.Info.ID+"@"+bpd.Info.Version))
+		return errors.Errorf(
+			"buildpack %s: cannot have both %s and an %s defined",
+			style.Symbol(bpd.Info.ID+"@"+bpd.Info.Version),
+			style.Symbol("stacks"),
+			style.Symbol("order"),
+		)
 	}
 
 	return nil

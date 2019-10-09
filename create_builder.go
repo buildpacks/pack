@@ -73,7 +73,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 
 		fetchedBp, err := dist.NewBuildpack(blob)
 		if err != nil {
-			return errors.Wrap(err, "creating buildpack")
+			return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
 		}
 
 		err = validateBuildpack(fetchedBp, b.URI, b.ID, b.Version)
