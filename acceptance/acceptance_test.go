@@ -275,7 +275,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 					t.Fatal(err)
 				}
 				defer h.DockerRmi(dockerCli, imgId)
-				
+
 				t.Log("local run-image mirror is selected")
 				h.AssertContains(t, output, fmt.Sprintf("Selected run image mirror '%s' from local config", localRunImageMirror))
 
@@ -317,7 +317,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				)
 				output := h.Run(t, cmd)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-				
+
 				imgId, err := imgIDForRepoName(repoName)
 				if err != nil {
 					t.Fatal(err)
@@ -329,11 +329,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				var buildpackTgz string
 
 				it.Before(func() {
+					h.SkipIf(t, !packSupports(packPath, "build --network"), "--network flag not supported for build")
+
 					buildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "internet-capable-buildpack"), "./", 0766)
 				})
 
 				it.After(func() {
 					h.AssertNil(t, os.Remove(buildpackTgz))
+					h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
 				})
 
 				when("the network mode is not provided", func() {
@@ -910,15 +913,15 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 			h.AssertNil(t, err)
 
 			outputTemplate := filepath.Join(packFixturesDir, "inspect_builder_output.txt")
-			
+
 			// If a different version of pack had created the builder, we need a different (versioned) template for expected output
 			versionedTemplate := filepath.Join(packFixturesDir, fmt.Sprintf("inspect_%s_builder_output.txt", strings.TrimPrefix(strings.Split(createdByVersion, " ")[0], "v")))
 			if _, err := os.Stat(versionedTemplate); err == nil {
 				outputTemplate = versionedTemplate
-			} else if !os.IsNotExist(err){
+			} else if !os.IsNotExist(err) {
 				t.Fatal(err.Error())
 			}
-			
+
 			expectedOutput := fillTemplate(t, outputTemplate,
 				map[string]interface{}{
 					"builder_name":          builder,
@@ -1113,7 +1116,7 @@ func packCmd(packPath, name string, args ...string) *exec.Cmd {
 		name,
 		"--no-color",
 	}, args...)
-	if supportsVerboseFlag(packPath) {
+	if packSupports(packPath, "--verbose") {
 		cmdArgs = append([]string{"--verbose"}, cmdArgs...)
 	}
 	cmd := exec.Command(
@@ -1122,14 +1125,6 @@ func packCmd(packPath, name string, args ...string) *exec.Cmd {
 	)
 	cmd.Env = append(os.Environ(), "PACK_HOME="+packHome, "DOCKER_CONFIG="+registryConfig.DockerConfigDir)
 	return cmd
-}
-
-func supportsVerboseFlag(packPath string) bool {
-	output, err := h.RunE(exec.Command(packPath, "help"))
-	if err != nil {
-		panic(err.Error())
-	}
-	return strings.Contains(output, "--verbose")
 }
 
 func detectPackVersion(packPath string) (string, error) {
@@ -1146,12 +1141,32 @@ func detectPackVersion(packPath string) (string, error) {
 	return string(bytes.TrimSpace(output)), nil
 }
 
+// packSupports returns whether or not the provided pack binary supports a
+// given command string. The command string can take one of three forms:
+//   - "<command>" (e.g. "create-builder")
+//   - "<flag>" (e.g. "--verbose")
+//   - "<command> <flag>" (e.g. "build --network")
+//
+// Any other form will return false.
 func packSupports(packPath, command string) bool {
-	output, err := h.RunE(packCmd(packPath, "help"))
+	parts := strings.Split(command, " ")
+	var cmd, search string
+	switch len(parts) {
+	case 1:
+		search = parts[0]
+		break
+	case 2:
+		cmd = parts[0]
+		search = parts[1]
+	default:
+		return false
+	}
+
+	output, err := h.RunE(exec.Command(packPath, "help", cmd))
 	if err != nil {
 		panic(err)
 	}
-	return strings.Contains(output, command)
+	return strings.Contains(output, search)
 }
 
 func buildpacksDir(bpAPIVersion api.Version) string {
