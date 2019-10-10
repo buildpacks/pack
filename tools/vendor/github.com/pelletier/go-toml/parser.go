@@ -313,7 +313,11 @@ func (p *tomlParser) parseRvalue() interface{} {
 		}
 		return val
 	case tokenDate:
-		val, err := time.ParseInLocation(time.RFC3339Nano, tok.val, time.UTC)
+		layout := time.RFC3339Nano
+		if !strings.Contains(tok.val, "T") {
+			layout = strings.Replace(layout, "T", " ", 1)
+		}
+		val, err := time.ParseInLocation(layout, tok.val, time.UTC)
 		if err != nil {
 			p.raiseError(tok, "%s", err)
 		}

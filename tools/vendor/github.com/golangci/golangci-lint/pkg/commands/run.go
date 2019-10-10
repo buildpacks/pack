@@ -10,9 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golangci/golangci-lint/pkg/packages"
-	"github.com/golangci/golangci-lint/pkg/result/processors"
-
 	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -23,8 +20,10 @@ import (
 	"github.com/golangci/golangci-lint/pkg/lint"
 	"github.com/golangci/golangci-lint/pkg/lint/lintersdb"
 	"github.com/golangci/golangci-lint/pkg/logutils"
+	"github.com/golangci/golangci-lint/pkg/packages"
 	"github.com/golangci/golangci-lint/pkg/printers"
 	"github.com/golangci/golangci-lint/pkg/result"
+	"github.com/golangci/golangci-lint/pkg/result/processors"
 )
 
 func getDefaultIssueExcludeHelp() string {
@@ -86,7 +85,10 @@ func initFlagSet(fs *pflag.FlagSet, cfg *config.Config, m *lintersdb.Manager, is
 	fs.IntVar(&rc.ExitCodeIfIssuesFound, "issues-exit-code",
 		exitcodes.IssuesFound, wh("Exit code when issues were found"))
 	fs.StringSliceVar(&rc.BuildTags, "build-tags", nil, wh("Build tags"))
-	fs.DurationVar(&rc.Deadline, "deadline", time.Minute, wh("Deadline for total work"))
+	fs.DurationVar(&rc.Timeout, "deadline", time.Minute, wh("Deadline for total work"))
+	hideFlag("deadline")
+	fs.DurationVar(&rc.Timeout, "timeout", time.Minute, wh("Timeout for total work"))
+
 	fs.BoolVar(&rc.AnalyzeTests, "tests", true, wh("Analyze tests (*_test.go)"))
 	fs.BoolVar(&rc.PrintResourcesUsage, "print-resources-usage", false,
 		wh("Print avg and max memory usage of golangci-lint and total time"))
@@ -265,7 +267,7 @@ func fixSlicesFlags(fs *pflag.FlagSet) {
 	})
 }
 
-func (e *Executor) runAnalysis(ctx context.Context, args []string) (<-chan result.Issue, error) {
+func (e *Executor) runAnalysis(ctx context.Context, args []string) ([]result.Issue, error) {
 	e.cfg.Run.Args = args
 
 	enabledLinters, err := e.EnabledLintersSet.Get(true)
@@ -290,15 +292,15 @@ func (e *Executor) runAnalysis(ctx context.Context, args []string) (<-chan resul
 	}
 	lintCtx.Log = e.log.Child("linters context")
 
-	runner, err := lint.NewRunner(lintCtx.ASTCache, e.cfg, e.log.Child("runner"),
-		e.goenv, e.lineCache, e.DBManager)
+	runner, err := lint.NewRunner(e.cfg, e.log.Child("runner"),
+		e.goenv, e.lineCache, e.DBManager, lintCtx.Packages)
 	if err != nil {
 		return nil, err
 	}
 
-	issuesCh := runner.Run(ctx, enabledLinters, lintCtx)
+	issues := runner.Run(ctx, enabledLinters, lintCtx)
 	fixer := processors.NewFixer(e.cfg, e.log, e.fileCache)
-	return fixer.Process(issuesCh), nil
+	return fixer.Process(issues), nil
 }
 
 func (e *Executor) setOutputToDevNull() (savedStdout, savedStderr *os.File) {
@@ -313,24 +315,10 @@ func (e *Executor) setOutputToDevNull() (savedStdout, savedStderr *os.File) {
 	return
 }
 
-func (e *Executor) setExitCodeIfIssuesFound(issues <-chan result.Issue) <-chan result.Issue {
-	resCh := make(chan result.Issue, 1024)
-
-	go func() {
-		issuesFound := false
-		for i := range issues {
-			issuesFound = true
-			resCh <- i
-		}
-
-		if issuesFound {
-			e.exitCode = e.cfg.Run.ExitCodeIfIssuesFound
-		}
-
-		close(resCh)
-	}()
-
-	return resCh
+func (e *Executor) setExitCodeIfIssuesFound(issues []result.Issue) {
+	if len(issues) != 0 {
+		e.exitCode = e.cfg.Run.ExitCodeIfIssuesFound
+	}
 }
 
 func (e *Executor) runAndPrint(ctx context.Context, args []string) error {
@@ -357,7 +345,7 @@ func (e *Executor) runAndPrint(ctx context.Context, args []string) error {
 		return err
 	}
 
-	issues = e.setExitCodeIfIssuesFound(issues)
+	e.setExitCodeIfIssuesFound(issues)
 
 	if err = p.Print(ctx, issues); err != nil {
 		return fmt.Errorf("can't print %d issues: %s", len(issues), err)
@@ -402,11 +390,11 @@ func (e *Executor) executeRun(_ *cobra.Command, args []string) {
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), e.cfg.Run.Deadline)
+	ctx, cancel := context.WithTimeout(context.Background(), e.cfg.Run.Timeout)
 	defer cancel()
 
 	if needTrackResources {
-		go watchResources(ctx, trackResourcesEndCh, e.log)
+		go watchResources(ctx, trackResourcesEndCh, e.log, e.debugf)
 	}
 
 	if err := e.runAndPrint(ctx, args); err != nil {
@@ -426,7 +414,7 @@ func (e *Executor) executeRun(_ *cobra.Command, args []string) {
 func (e *Executor) setupExitCode(ctx context.Context) {
 	if ctx.Err() != nil {
 		e.exitCode = exitcodes.Timeout
-		e.log.Errorf("Deadline exceeded: try increase it by passing --deadline option")
+		e.log.Errorf("Timeout exceeded: try increase it by passing --timeout option")
 		return
 	}
 
@@ -447,24 +435,34 @@ func (e *Executor) setupExitCode(ctx context.Context) {
 	}
 }
 
-func watchResources(ctx context.Context, done chan struct{}, logger logutils.Log) {
+func watchResources(ctx context.Context, done chan struct{}, logger logutils.Log, debugf logutils.DebugFunc) {
 	startedAt := time.Now()
+	debugf("Started tracking time")
 
-	var rssValues []uint64
+	var maxRSSMB, totalRSSMB float64
+	var iterationsCount int
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
 	logEveryRecord := os.Getenv("GL_MEM_LOG_EVERY") == "1"
+	const MB = 1024 * 1024
 
 	track := func() {
+		debugf("Starting memory tracing iteration ...")
 		var m runtime.MemStats
 		runtime.ReadMemStats(&m)
 
 		if logEveryRecord {
+			debugf("Stopping memory tracing iteration, printing ...")
 			printMemStats(&m, logger)
 		}
 
-		rssValues = append(rssValues, m.Sys)
+		rssMB := float64(m.Sys) / MB
+		if rssMB > maxRSSMB {
+			maxRSSMB = rssMB
+		}
+		totalRSSMB += rssMB
+		iterationsCount++
 	}
 
 	for {
@@ -474,7 +472,8 @@ func watchResources(ctx context.Context, done chan struct{}, logger logutils.Log
 		select {
 		case <-ctx.Done():
 			stop = true
-		case <-ticker.C: // track every second
+			debugf("Stopped resources tracking")
+		case <-ticker.C:
 		}
 
 		if stop {
@@ -483,19 +482,10 @@ func watchResources(ctx context.Context, done chan struct{}, logger logutils.Log
 	}
 	track()
 
-	var avg, max uint64
-	for _, v := range rssValues {
-		avg += v
-		if v > max {
-			max = v
-		}
-	}
-	avg /= uint64(len(rssValues))
+	avgRSSMB := totalRSSMB / float64(iterationsCount)
 
-	const MB = 1024 * 1024
-	maxMB := float64(max) / MB
 	logger.Infof("Memory: %d samples, avg is %.1fMB, max is %.1fMB",
-		len(rssValues), float64(avg)/MB, maxMB)
+		iterationsCount, avgRSSMB, maxRSSMB)
 	logger.Infof("Execution took %s", time.Since(startedAt))
 	close(done)
 }
