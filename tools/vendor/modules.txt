@@ -2,6 +2,10 @@
 github.com/BurntSushi/toml
 # github.com/OpenPeeDeeP/depguard v1.0.1
 github.com/OpenPeeDeeP/depguard
+# github.com/bombsimon/wsl v1.2.2
+github.com/bombsimon/wsl
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
 # github.com/fatih/color v1.7.0
 github.com/fatih/color
 # github.com/fsnotify/fsnotify v1.4.7
@@ -38,7 +42,6 @@ github.com/gobwas/glob/util/strings
 # github.com/gogo/protobuf v1.3.0
 github.com/gogo/protobuf/proto
 # github.com/golang/mock v1.3.1
-github.com/golang/mock/gomock
 github.com/golang/mock/mockgen
 github.com/golang/mock/mockgen/model
 # github.com/golangci/check v0.0.0-20180506172741-cfe4005ccda2
@@ -56,47 +59,29 @@ github.com/golangci/errcheck/golangci
 github.com/golangci/errcheck/internal/errcheck
 # github.com/golangci/go-misc v0.0.0-20180628070357-927a3d87b613
 github.com/golangci/go-misc/deadcode
-# github.com/golangci/go-tools v0.0.0-20190318055746-e32c54105b7c
-github.com/golangci/go-tools/arg
-github.com/golangci/go-tools/callgraph
-github.com/golangci/go-tools/callgraph/static
-github.com/golangci/go-tools/config
-github.com/golangci/go-tools/deprecated
-github.com/golangci/go-tools/functions
-github.com/golangci/go-tools/internal/sharedcheck
-github.com/golangci/go-tools/lint
-github.com/golangci/go-tools/lint/lintdsl
-github.com/golangci/go-tools/lint/lintutil
-github.com/golangci/go-tools/lint/lintutil/format
-github.com/golangci/go-tools/simple
-github.com/golangci/go-tools/ssa
-github.com/golangci/go-tools/ssa/ssautil
-github.com/golangci/go-tools/ssautil
-github.com/golangci/go-tools/staticcheck
-github.com/golangci/go-tools/staticcheck/vrp
-github.com/golangci/go-tools/stylecheck
-github.com/golangci/go-tools/unused
-github.com/golangci/go-tools/version
 # github.com/golangci/goconst v0.0.0-20180610141641-041c5f2b40f3
 github.com/golangci/goconst
 # github.com/golangci/gocyclo v0.0.0-20180528144436-0a533e8fa43d
 github.com/golangci/gocyclo/pkg/gocyclo
-# github.com/golangci/gofmt v0.0.0-20181222123516-0b8337e80d98
+# github.com/golangci/gofmt v0.0.0-20190930125516-244bba706f1a
 github.com/golangci/gofmt/gofmt
 github.com/golangci/gofmt/goimports
-# github.com/golangci/golangci-lint v1.18.0
+# github.com/golangci/golangci-lint v1.20.0
 github.com/golangci/golangci-lint/cmd/golangci-lint
+github.com/golangci/golangci-lint/internal/cache
+github.com/golangci/golangci-lint/internal/errorutil
+github.com/golangci/golangci-lint/internal/pkgcache
+github.com/golangci/golangci-lint/internal/renameio
+github.com/golangci/golangci-lint/internal/robustio
 github.com/golangci/golangci-lint/pkg/commands
 github.com/golangci/golangci-lint/pkg/config
 github.com/golangci/golangci-lint/pkg/exitcodes
 github.com/golangci/golangci-lint/pkg/fsutils
 github.com/golangci/golangci-lint/pkg/golinters
 github.com/golangci/golangci-lint/pkg/golinters/goanalysis
-github.com/golangci/golangci-lint/pkg/golinters/goanalysis/checker
-github.com/golangci/golangci-lint/pkg/golinters/goanalysis/passes/nilness
+github.com/golangci/golangci-lint/pkg/golinters/goanalysis/load
 github.com/golangci/golangci-lint/pkg/goutil
 github.com/golangci/golangci-lint/pkg/lint
-github.com/golangci/golangci-lint/pkg/lint/astcache
 github.com/golangci/golangci-lint/pkg/lint/linter
 github.com/golangci/golangci-lint/pkg/lint/lintersdb
 github.com/golangci/golangci-lint/pkg/logutils
@@ -106,12 +91,9 @@ github.com/golangci/golangci-lint/pkg/report
 github.com/golangci/golangci-lint/pkg/result
 github.com/golangci/golangci-lint/pkg/result/processors
 github.com/golangci/golangci-lint/pkg/timeutils
-# github.com/golangci/gosec v0.0.0-20190211064107-66fb7fc33547
-github.com/golangci/gosec
-github.com/golangci/gosec/rules
 # github.com/golangci/ineffassign v0.0.0-20190609212857-42439a7714cc
 github.com/golangci/ineffassign
-# github.com/golangci/lint-1 v0.0.0-20190420132249-ee948d087217
+# github.com/golangci/lint-1 v0.0.0-20190930103755-fad67e08aa89
 github.com/golangci/lint-1
 # github.com/golangci/maligned v0.0.0-20180506175553-b1d89398deca
 github.com/golangci/maligned
@@ -145,9 +127,11 @@ github.com/kisielk/gotool/internal/load
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/magiconair/properties v1.8.1
 github.com/magiconair/properties
-# github.com/mattn/go-colorable v0.1.2
+# github.com/matoous/godox v0.0.0-20190911065817-5d6d842e92eb
+github.com/matoous/godox
+# github.com/mattn/go-colorable v0.1.4
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.9
+# github.com/mattn/go-isatty v0.0.10
 github.com/mattn/go-isatty
 # github.com/mitchellh/go-homedir v1.1.0
 github.com/mitchellh/go-homedir
@@ -163,10 +147,15 @@ github.com/nbutton23/zxcvbn-go/match
 github.com/nbutton23/zxcvbn-go/matching
 github.com/nbutton23/zxcvbn-go/scoring
 github.com/nbutton23/zxcvbn-go/utils/math
-# github.com/pelletier/go-toml v1.4.0
+# github.com/pelletier/go-toml v1.5.0
 github.com/pelletier/go-toml
 # github.com/pkg/errors v0.8.1
 github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
+# github.com/securego/gosec v0.0.0-20191008095658-28c1128b7336
+github.com/securego/gosec
+github.com/securego/gosec/rules
 # github.com/sirupsen/logrus v1.4.2
 github.com/sirupsen/logrus
 # github.com/sourcegraph/go-diff v0.5.1
@@ -184,17 +173,26 @@ github.com/spf13/jwalterweatherman
 github.com/spf13/pflag
 # github.com/spf13/viper v1.4.0
 github.com/spf13/viper
-# github.com/timakin/bodyclose v0.0.0-20190926151346-866fdb772e33
+# github.com/stretchr/objx v0.2.0
+github.com/stretchr/objx
+# github.com/stretchr/testify v1.4.0
+github.com/stretchr/testify/assert
+github.com/stretchr/testify/mock
+# github.com/timakin/bodyclose v0.0.0-20190930140734-f7f2e9bca95e
 github.com/timakin/bodyclose/passes/bodyclose
 # github.com/ultraware/funlen v0.0.2
 github.com/ultraware/funlen
-# golang.org/x/sys v0.0.0-20190927073244-c990c680b611
+# github.com/ultraware/whitespace v0.0.4
+github.com/ultraware/whitespace
+# github.com/uudashr/gocognit v1.0.0
+github.com/uudashr/gocognit
+# golang.org/x/sys v0.0.0-20191009170203-06d7bd2c5f4f
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.2
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
 golang.org/x/text/width
-# golang.org/x/tools v0.0.0-20190929041059-e7abfedfabcf
+# golang.org/x/tools v0.0.0-20191009213438-b090f1f24028
 golang.org/x/tools/cmd/goimports
 golang.org/x/tools/go/analysis
 golang.org/x/tools/go/analysis/passes/asmdecl
@@ -208,15 +206,21 @@ golang.org/x/tools/go/analysis/passes/cgocall
 golang.org/x/tools/go/analysis/passes/composite
 golang.org/x/tools/go/analysis/passes/copylock
 golang.org/x/tools/go/analysis/passes/ctrlflow
+golang.org/x/tools/go/analysis/passes/deepequalerrors
+golang.org/x/tools/go/analysis/passes/errorsas
+golang.org/x/tools/go/analysis/passes/findcall
 golang.org/x/tools/go/analysis/passes/httpresponse
 golang.org/x/tools/go/analysis/passes/inspect
 golang.org/x/tools/go/analysis/passes/internal/analysisutil
 golang.org/x/tools/go/analysis/passes/loopclosure
 golang.org/x/tools/go/analysis/passes/lostcancel
 golang.org/x/tools/go/analysis/passes/nilfunc
+golang.org/x/tools/go/analysis/passes/nilness
+golang.org/x/tools/go/analysis/passes/pkgfact
 golang.org/x/tools/go/analysis/passes/printf
 golang.org/x/tools/go/analysis/passes/shadow
 golang.org/x/tools/go/analysis/passes/shift
+golang.org/x/tools/go/analysis/passes/sortslice
 golang.org/x/tools/go/analysis/passes/stdmethods
 golang.org/x/tools/go/analysis/passes/structtag
 golang.org/x/tools/go/analysis/passes/tests
@@ -236,6 +240,7 @@ golang.org/x/tools/go/loader
 golang.org/x/tools/go/packages
 golang.org/x/tools/go/ssa
 golang.org/x/tools/go/ssa/ssautil
+golang.org/x/tools/go/types/objectpath
 golang.org/x/tools/go/types/typeutil
 golang.org/x/tools/imports
 golang.org/x/tools/internal/fastwalk
@@ -243,8 +248,33 @@ golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/imports
 golang.org/x/tools/internal/module
 golang.org/x/tools/internal/semver
-# gopkg.in/yaml.v2 v2.2.2
+# gopkg.in/yaml.v2 v2.2.4
 gopkg.in/yaml.v2
+# honnef.co/go/tools v0.0.1-2019.2.3
+honnef.co/go/tools/arg
+honnef.co/go/tools/config
+honnef.co/go/tools/deprecated
+honnef.co/go/tools/facts
+honnef.co/go/tools/functions
+honnef.co/go/tools/go/types/typeutil
+honnef.co/go/tools/internal/cache
+honnef.co/go/tools/internal/passes/buildssa
+honnef.co/go/tools/internal/renameio
+honnef.co/go/tools/internal/sharedcheck
+honnef.co/go/tools/lint
+honnef.co/go/tools/lint/lintdsl
+honnef.co/go/tools/lint/lintutil
+honnef.co/go/tools/lint/lintutil/format
+honnef.co/go/tools/loader
+honnef.co/go/tools/printf
+honnef.co/go/tools/simple
+honnef.co/go/tools/ssa
+honnef.co/go/tools/ssautil
+honnef.co/go/tools/staticcheck
+honnef.co/go/tools/staticcheck/vrp
+honnef.co/go/tools/stylecheck
+honnef.co/go/tools/unused
+honnef.co/go/tools/version
 # mvdan.cc/interfacer v0.0.0-20180901003855-c20040233aed
 mvdan.cc/interfacer/check
 # mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b

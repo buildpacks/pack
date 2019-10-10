@@ -445,8 +445,11 @@ func (t *Tree) Unmarshal(v interface{}) error {
 // See Marshal() documentation for types mapping table.
 func (t *Tree) Marshal() ([]byte, error) {
 	var buf bytes.Buffer
-	err := NewEncoder(&buf).Encode(t)
-	return buf.Bytes(), err
+	_, err := t.WriteTo(&buf)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // Unmarshal parses the TOML-encoded data and stores the result in the value
@@ -526,7 +529,9 @@ func (d *Decoder) unmarshal(v interface{}) error {
 		return errors.New("only a pointer to struct or map can be unmarshaled from TOML")
 	}
 
-	sval, err := d.valueFromTree(elem, d.tval)
+	vv := reflect.ValueOf(v).Elem()
+
+	sval, err := d.valueFromTree(elem, d.tval, &vv)
 	if err != nil {
 		return err
 	}
@@ -534,15 +539,21 @@ func (d *Decoder) unmarshal(v interface{}) error {
 	return nil
 }
 
-// Convert toml tree to marshal struct or map, using marshal type
-func (d *Decoder) valueFromTree(mtype reflect.Type, tval *Tree) (reflect.Value, error) {
+// Convert toml tree to marshal struct or map, using marshal type. When mval1
+// is non-nil, merge fields into the given value instead of allocating a new one.
+func (d *Decoder) valueFromTree(mtype reflect.Type, tval *Tree, mval1 *reflect.Value) (reflect.Value, error) {
 	if mtype.Kind() == reflect.Ptr {
-		return d.unwrapPointer(mtype, tval)
+		return d.unwrapPointer(mtype, tval, mval1)
 	}
 	var mval reflect.Value
 	switch mtype.Kind() {
 	case reflect.Struct:
-		mval = reflect.New(mtype).Elem()
+		if mval1 != nil {
+			mval = *mval1
+		} else {
+			mval = reflect.New(mtype).Elem()
+		}
+
 		for i := 0; i < mtype.NumField(); i++ {
 			mtypef := mtype.Field(i)
 			an := annotation{tag: d.tagName}
@@ -563,7 +574,8 @@ func (d *Decoder) valueFromTree(mtype reflect.Type, tval *Tree) (reflect.Value, 
 						continue
 					}
 					val := tval.Get(key)
-					mvalf, err := d.valueFromToml(mtypef.Type, val)
+					fval := mval.Field(i)
+					mvalf, err := d.valueFromToml(mtypef.Type, val, &fval)
 					if err != nil {
 						return mval, formatError(err, tval.GetPosition(key))
 					}
@@ -604,6 +616,15 @@ func (d *Decoder) valueFromTree(mtype reflect.Type, tval *Tree) (reflect.Value, 
 					}
 					mval.Field(i).Set(reflect.ValueOf(val))
 				}
+
+				// save the old behavior above and try to check anonymous structs
+				if !found && opts.defaultValue == "" && mtypef.Anonymous && mtypef.Type.Kind() == reflect.Struct {
+					v, err := d.valueFromTree(mtypef.Type, tval, nil)
+					if err != nil {
+						return v, err
+					}
+					mval.Field(i).Set(v)
+				}
 			}
 		}
 	case reflect.Map:
@@ -611,7 +632,7 @@ func (d *Decoder) valueFromTree(mtype reflect.Type, tval *Tree) (reflect.Value, 
 		for _, key := range tval.Keys() {
 			// TODO: path splits key
 			val := tval.GetPath([]string{key})
-			mvalf, err := d.valueFromToml(mtype.Elem(), val)
+			mvalf, err := d.valueFromToml(mtype.Elem(), val, nil)
 			if err != nil {
 				return mval, formatError(err, tval.GetPosition(key))
 			}
@@ -625,7 +646,7 @@ func (d *Decoder) valueFromTree(mtype reflect.Type, tval *Tree) (reflect.Value, 
 func (d *Decoder) valueFromTreeSlice(mtype reflect.Type, tval []*Tree) (reflect.Value, error) {
 	mval := reflect.MakeSlice(mtype, len(tval), len(tval))
 	for i := 0; i < len(tval); i++ {
-		val, err := d.valueFromTree(mtype.Elem(), tval[i])
+		val, err := d.valueFromTree(mtype.Elem(), tval[i], nil)
 		if err != nil {
 			return mval, err
 		}
@@ -638,7 +659,7 @@ func (d *Decoder) valueFromTreeSlice(mtype reflect.Type, tval []*Tree) (reflect.
 func (d *Decoder) valueFromOtherSlice(mtype reflect.Type, tval []interface{}) (reflect.Value, error) {
 	mval := reflect.MakeSlice(mtype, len(tval), len(tval))
 	for i := 0; i < len(tval); i++ {
-		val, err := d.valueFromToml(mtype.Elem(), tval[i])
+		val, err := d.valueFromToml(mtype.Elem(), tval[i], nil)
 		if err != nil {
 			return mval, err
 		}
@@ -647,16 +668,22 @@ func (d *Decoder) valueFromOtherSlice(mtype reflect.Type, tval []interface{}) (r
 	return mval, nil
 }
 
-// Convert toml value to marshal value, using marshal type
-func (d *Decoder) valueFromToml(mtype reflect.Type, tval interface{}) (reflect.Value, error) {
+// Convert toml value to marshal value, using marshal type. When mval1 is non-nil
+// and the given type is a struct value, merge fields into it.
+func (d *Decoder) valueFromToml(mtype reflect.Type, tval interface{}, mval1 *reflect.Value) (reflect.Value, error) {
 	if mtype.Kind() == reflect.Ptr {
-		return d.unwrapPointer(mtype, tval)
+		return d.unwrapPointer(mtype, tval, mval1)
 	}
 
 	switch t := tval.(type) {
 	case *Tree:
+		var mval11 *reflect.Value
+		if mtype.Kind() == reflect.Struct {
+			mval11 = mval1
+		}
+
 		if isTree(mtype) {
-			return d.valueFromTree(mtype, t)
+			return d.valueFromTree(mtype, t, mval11)
 		}
 		return reflect.ValueOf(nil), fmt.Errorf("Can't convert %v(%T) to a tree", tval, tval)
 	case []*Tree:
@@ -734,8 +761,15 @@ func (d *Decoder) valueFromToml(mtype reflect.Type, tval interface{}) (reflect.V
 	}
 }
 
-func (d *Decoder) unwrapPointer(mtype reflect.Type, tval interface{}) (reflect.Value, error) {
-	val, err := d.valueFromToml(mtype.Elem(), tval)
+func (d *Decoder) unwrapPointer(mtype reflect.Type, tval interface{}, mval1 *reflect.Value) (reflect.Value, error) {
+	var melem *reflect.Value
+
+	if mval1 != nil && !mval1.IsNil() && mtype.Elem().Kind() == reflect.Struct {
+		elem := mval1.Elem()
+		melem = &elem
+	}
+
+	val, err := d.valueFromToml(mtype.Elem(), tval, melem)
 	if err != nil {
 		return reflect.ValueOf(nil), err
 	}
