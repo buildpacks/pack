@@ -9,6 +9,8 @@ import (
 	"path"
 	"path/filepath"
 
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/stream"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/internal/archive"
@@ -108,4 +110,35 @@ func embedBuildpackTar(tw *tar.Writer, uid, gid int, bp Buildpack, baseTarDir st
 	}
 
 	return nil
+}
+
+func LayerHashes(layerTarPath string) (diffID v1.Hash, digest v1.Hash, err error) {
+	fh, err := os.Open(layerTarPath)
+	if err != nil {
+		return v1.Hash{}, v1.Hash{}, errors.Wrap(err, "reading layer tar")
+	}
+	defer fh.Close()
+
+	layer := stream.NewLayer(fh)
+	r, err := layer.Compressed()
+	if err != nil {
+		return v1.Hash{}, v1.Hash{}, errors.Wrap(err, "compressing layer tar")
+	}
+
+	_, err = io.Copy(ioutil.Discard, r)
+	if err != nil {
+		return v1.Hash{}, v1.Hash{}, errors.Wrap(err, "streaming layer tar")
+	}
+
+	diffID, err = layer.DiffID()
+	if err != nil {
+		return v1.Hash{}, v1.Hash{}, errors.Wrap(err, "generating diff_id")
+	}
+
+	digest, err = layer.Digest()
+	if err != nil {
+		return v1.Hash{}, v1.Hash{}, errors.Wrap(err, "generating digest")
+	}
+
+	return diffID, digest, nil
 }

@@ -45,12 +45,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		bp1v2          dist.Buildpack
 		bp2v1          dist.Buildpack
 		bpOrder        dist.Buildpack
-		buf            bytes.Buffer
+		outBuf         bytes.Buffer
 		logger         logging.Logger
 	)
 
 	it.Before(func() {
-		logger = ifakes.NewFakeLogger(&buf)
+		logger = ifakes.NewFakeLogger(&outBuf)
 		baseImage = fakes.NewImage("base/image", "", nil)
 		mockController = gomock.NewController(t)
 		mockLifecycle = testmocks.NewMockLifecycle(mockController)
@@ -632,9 +632,26 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("base image already has buildpack layers label", func() {
 				it.Before(func() {
+					var mdJSON bytes.Buffer
+					h.AssertNil(t, json.Compact(
+						&mdJSON,
+						[]byte(`{
+  "buildpack-1-id": {
+    "buildpack-1-version-1": {
+      "layerDigest": "sha256:buildpack-1-version-1-digest",
+      "layerDiffID": "sha256:buildpack-1-version-1-diff-id"
+    },
+    "buildpack-1-version-2": {
+      "layerDigest": "sha256:buildpack-1-version-2-digest",
+      "layerDiffID": "sha256:buildpack-1-version-2-diff-id"
+    }
+  }
+}
+`)))
+					
 					h.AssertNil(t, baseImage.SetLabel(
 						"io.buildpacks.buildpack.layers",
-						`{ "buildpack-1-id": { "buildpack-1-version-1": { "layerDigest": "sha256:buildpack-1-version-1-sha" }, "buildpack-1-version-2": { "layerDigest": "sha256:buildpack-1-version-2-orig-sha" } } }`,
+						mdJSON.String(),
 					))
 
 					var err error
@@ -660,11 +677,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, len(layers["buildpack-1-id"]), 2)
 					h.AssertEq(t, len(layers["buildpack-2-id"]), 1)
 
-					h.AssertEq(t, layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDigest, "sha256:buildpack-1-version-1-sha")
+					h.AssertEq(t, layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDigest, "sha256:buildpack-1-version-1-digest")
+					h.AssertEq(t, layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDiffID, "sha256:buildpack-1-version-1-diff-id")
+					
 					h.AssertUnique(t,
 						layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDigest,
 						layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDigest,
 						layers["buildpack-2-id"]["buildpack-2-version-1"].LayerDigest,
+					)
+
+					h.AssertUnique(t,
+						layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDiffID,
+						layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDiffID,
+						layers["buildpack-2-id"]["buildpack-2-version-1"].LayerDiffID,
 					)
 
 					h.AssertMatch(t, layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDigest, "^sha256:.*")
@@ -683,8 +708,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					var layers builder.BuildpackLayers
 					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 
-					h.AssertContains(t, buf.String(), "Warning: buildpack 'buildpack-1-id@buildpack-1-version-2' already exists on builder and will be overridden")
-					h.AssertNotContains(t, layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDigest, "buildpack-1-version-2-orig-sha")
+					h.AssertContains(t, outBuf.String(), "Warning: buildpack 'buildpack-1-id@buildpack-1-version-2' already exists on builder and will be overridden")
+					h.AssertNotContains(t, layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDigest, "buildpack-1-version-2-digest")
 				})
 			})
 

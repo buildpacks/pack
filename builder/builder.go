@@ -257,12 +257,20 @@ func (b *Builder) Save(logger logging.Logger) error {
 		}
 
 		if err := b.image.AddLayer(bpLayerTar); err != nil {
-			return errors.Wrapf(err, "adding layer tar for buildpack %s:%s", style.Symbol(bp.Descriptor().Info.ID), style.Symbol(bp.Descriptor().Info.Version))
+			return errors.Wrapf(err,
+				"adding layer tar for buildpack %s:%s",
+				style.Symbol(bp.Descriptor().Info.ID),
+				style.Symbol(bp.Descriptor().Info.Version),
+			)
 		}
 
-		sha, err := sha256ForFile(bpLayerTar)
+		diffID, digest, err := dist.LayerHashes(bpLayerTar)
 		if err != nil {
-			return errors.Wrapf(err, "generating sha for %s", style.Symbol(bpLayerTar))
+			return errors.Wrapf(err,
+				"getting content hashes for buildpack %s:%s",
+				style.Symbol(bp.Descriptor().Info.ID),
+				style.Symbol(bp.Descriptor().Info.Version),
+			)
 		}
 
 		bpInfo := bp.Descriptor().Info
@@ -278,7 +286,8 @@ func (b *Builder) Save(logger logging.Logger) error {
 		}
 
 		bpLayers[bpInfo.ID][bpInfo.Version] = BuildpackLayerInfo{
-			LayerDigest: "sha256:" + sha,
+			LayerDiffID: diffID.String(),
+			LayerDigest: digest.String(),
 			Order:       bp.Descriptor().Order,
 		}
 	}
