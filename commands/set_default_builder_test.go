@@ -27,7 +27,6 @@ func TestSetDefaultBuilder(t *testing.T) {
 }
 
 func testSetDefaultBuilderCommand(t *testing.T, when spec.G, it spec.S) {
-
 	var (
 		command        *cobra.Command
 		logger         logging.Logger

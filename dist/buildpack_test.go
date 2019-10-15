@@ -114,7 +114,6 @@ id = "some.stack.id"
 			it("returns error", func() {
 				_, err := dist.NewBuildpack(blob.NewBlob(tmpBpDir))
 				h.AssertError(t, err, "'buildpack.version' is required")
-
 			})
 		})
 

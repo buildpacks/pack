@@ -90,7 +90,6 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, len(warns), 1)
 					h.AssertSliceContains(t, warns, "'latest' field on a buildpack is obsolete and will be ignored")
 				})
-
 			})
 
 			when("'groups' field is used", func() {

@@ -148,7 +148,6 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("is posix", func() {
-
 			it.Before(func() {
 				h.SkipIf(t, runtime.GOOS == "windows", "Skipping on windows")
 			})
