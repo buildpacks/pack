@@ -85,12 +85,12 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			ref, err := name.ParseReference("my/repo:latest", name.WeakValidation)
 			h.AssertNil(t, err)
 			subject := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
+
 			ref, err = name.ParseReference("my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
 			expected := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
-			if subject.Name() != expected.Name() {
-				t.Fatalf("The same repo name should result in the same volume")
-			}
+
+			h.AssertEq(t, subject.Name(), expected.Name())
 		})
 
 		it("resolves implied registry", func() {
@@ -100,9 +100,8 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			ref, err = name.ParseReference("my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
 			expected := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
-			if subject.Name() != expected.Name() {
-				t.Fatalf("The same repo name should result in the same volume")
-			}
+
+			h.AssertEq(t, subject.Name(), expected.Name())
 		})
 	})
 

@@ -3,8 +3,6 @@ package builder
 import (
 	"archive/tar"
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -257,12 +255,20 @@ func (b *Builder) Save(logger logging.Logger) error {
 		}
 
 		if err := b.image.AddLayer(bpLayerTar); err != nil {
-			return errors.Wrapf(err, "adding layer tar for buildpack %s:%s", style.Symbol(bp.Descriptor().Info.ID), style.Symbol(bp.Descriptor().Info.Version))
+			return errors.Wrapf(err,
+				"adding layer tar for buildpack %s:%s",
+				style.Symbol(bp.Descriptor().Info.ID),
+				style.Symbol(bp.Descriptor().Info.Version),
+			)
 		}
 
-		sha, err := sha256ForFile(bpLayerTar)
+		diffID, err := dist.LayerDiffID(bpLayerTar)
 		if err != nil {
-			return errors.Wrapf(err, "generating sha for %s", style.Symbol(bpLayerTar))
+			return errors.Wrapf(err,
+				"getting content hashes for buildpack %s:%s",
+				style.Symbol(bp.Descriptor().Info.ID),
+				style.Symbol(bp.Descriptor().Info.Version),
+			)
 		}
 
 		bpInfo := bp.Descriptor().Info
@@ -278,7 +284,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 		}
 
 		bpLayers[bpInfo.ID][bpInfo.Version] = BuildpackLayerInfo{
-			LayerDigest: "sha256:" + sha,
+			LayerDiffID: diffID.String(),
 			Order:       bp.Descriptor().Order,
 		}
 	}
@@ -340,19 +346,6 @@ func (b *Builder) Save(logger logging.Logger) error {
 	}
 
 	return b.image.Save()
-}
-
-func sha256ForFile(path string) (string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to open file")
-	}
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, file); err != nil {
-		return "", errors.Wrap(err, "failed to copy file to hasher")
-	}
-
-	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size()))), nil
 }
 
 func processOrder(buildpacks []BuildpackMetadata, order dist.Order) (dist.Order, error) {
