@@ -31,7 +31,6 @@ func TestInspectBuilderCommand(t *testing.T) {
 }
 
 func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
-
 	var (
 		command        *cobra.Command
 		logger         logging.Logger

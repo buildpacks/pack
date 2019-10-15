@@ -7,6 +7,7 @@ linters:
   enable:
     - bodyclose
     - deadcode
+    - dogsled
     - gocritic
     - goimports
     - golint
@@ -15,6 +16,8 @@ linters:
     - ineffassign
     - maligned
     - misspell
+    - nakedret
+    - scopelint
     - staticcheck
     - structcheck
     - stylecheck
@@ -22,4 +25,8 @@ linters:
     - unconvert
     - unused
     - varcheck
-    - scopelint
+    - whitespace
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/buildpack/pack
