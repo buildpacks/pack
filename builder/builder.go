@@ -3,8 +3,6 @@ package builder
 import (
 	"archive/tar"
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -349,19 +347,6 @@ func (b *Builder) Save(logger logging.Logger) error {
 	}
 
 	return b.image.Save()
-}
-
-func sha256ForFile(path string) (string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to open file")
-	}
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, file); err != nil {
-		return "", errors.Wrap(err, "failed to copy file to hasher")
-	}
-
-	return hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size()))), nil
 }
 
 func processOrder(buildpacks []BuildpackMetadata, order dist.Order) (dist.Order, error) {

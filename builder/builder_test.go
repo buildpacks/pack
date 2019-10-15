@@ -648,7 +648,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
   }
 }
 `)))
-					
+
 					h.AssertNil(t, baseImage.SetLabel(
 						"io.buildpacks.buildpack.layers",
 						mdJSON.String(),
@@ -679,7 +679,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertEq(t, layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDigest, "sha256:buildpack-1-version-1-digest")
 					h.AssertEq(t, layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDiffID, "sha256:buildpack-1-version-1-diff-id")
-					
+
 					h.AssertUnique(t,
 						layers["buildpack-1-id"]["buildpack-1-version-1"].LayerDigest,
 						layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDigest,
