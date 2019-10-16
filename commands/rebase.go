@@ -3,8 +3,6 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/lifecycle"
-
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/config"
 	"github.com/buildpack/pack/logging"
@@ -20,10 +18,9 @@ func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.
 		Args:  cobra.ExactArgs(1),
 		Short: "Rebase app image with latest run image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			rebaser := lifecycle.Rebaser{Logger: logger}
 			opts.RepoName = args[0]
 			opts.AdditionalMirrors = getMirrors(cfg)
-			if err := client.Rebase(ctx, rebaser, opts); err != nil {
+			if err := client.Rebase(ctx, opts); err != nil {
 				return err
 			}
 			logger.Infof("Successfully rebased image %s", style.Symbol(opts.RepoName))

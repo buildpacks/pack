@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/buildpack/lifecycle"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack"
@@ -18,7 +17,7 @@ import (
 //go:generate mockgen -package mocks -destination mocks/pack_client.go github.com/buildpack/pack/commands PackClient
 type PackClient interface {
 	InspectBuilder(string, bool) (*pack.BuilderInfo, error)
-	Rebase(context.Context, lifecycle.Rebaser, pack.RebaseOptions) error
+	Rebase(context.Context, pack.RebaseOptions) error
 	CreateBuilder(context.Context, pack.CreateBuilderOptions) error
 	CreatePackage(ctx context.Context, opts pack.CreatePackageOptions) error
 	Build(context.Context, pack.BuildOptions) error

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/buildpack/imgutil/fakes"
-	"github.com/buildpack/lifecycle"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -30,8 +29,8 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			fakeRunImage       *fakes.Image
 			fakeRunImageMirror *fakes.Image
 			out                bytes.Buffer
-			rebaser            lifecycle.Rebaser
 		)
+
 		it.Before(func() {
 			fakeImageFetcher = ifakes.NewFakeImageFetcher()
 
@@ -54,8 +53,6 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				logger:       fakeLogger,
 				imageFetcher: fakeImageFetcher,
 			}
-
-			rebaser = lifecycle.Rebaser{Logger: fakeLogger}
 		})
 
 		it.After(func() {
@@ -81,7 +78,6 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 					it("uses the run image provided by the user", func() {
 						h.AssertNil(t, subject.Rebase(context.TODO(),
-							rebaser,
 							RebaseOptions{
 								RunImage: "custom/run",
 								RepoName: "some/app",
@@ -96,7 +92,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			when("run image is NOT provided by the user", func() {
 				when("the image has a label with a run image specified", func() {
 					it("uses the run image provided in the App image label", func() {
-						h.AssertNil(t, subject.Rebase(context.TODO(), rebaser, RebaseOptions{
+						h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 							RepoName: "some/app",
 						}))
 						h.AssertEq(t, fakeAppImage.Base(), "some/run")
@@ -112,7 +108,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("chooses a matching mirror from the app image label", func() {
-							h.AssertNil(t, subject.Rebase(context.TODO(), rebaser, RebaseOptions{
+							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName: "example.com/some/app",
 							}))
 							h.AssertEq(t, fakeAppImage.Base(), "example.com/some/run")
@@ -137,7 +133,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("chooses a matching local mirror first", func() {
-							h.AssertNil(t, subject.Rebase(context.TODO(), rebaser, RebaseOptions{
+							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName: "example.com/some/app",
 								AdditionalMirrors: map[string][]string{
 									"some/run": {"example.com/some/local-run"},
@@ -153,7 +149,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				when("the image does not have a label with a run image specified", func() {
 					it("returns an error", func() {
 						h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.lifecycle.metadata", "{}"))
-						err := subject.Rebase(context.TODO(), rebaser, RebaseOptions{
+						err := subject.Rebase(context.TODO(), RebaseOptions{
 							RepoName: "some/app",
 						})
 						h.AssertError(t, err, "run image must be specified")
@@ -179,7 +175,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				when("is false", func() {
 					when("skip pull is false", func() {
 						it("updates the local image", func() {
-							h.AssertNil(t, subject.Rebase(context.TODO(), rebaser, RebaseOptions{
+							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName: "some/app",
 								SkipPull: false,
 							}))
@@ -191,7 +187,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 					when("skip pull is true", func() {
 						it("uses local image", func() {
-							h.AssertNil(t, subject.Rebase(context.TODO(), rebaser, RebaseOptions{
+							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName: "some/app",
 								SkipPull: true,
 							}))
@@ -209,7 +205,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 
 					when("skip pull is anything", func() {
 						it("uses remote image", func() {
-							h.AssertNil(t, subject.Rebase(context.TODO(), rebaser, RebaseOptions{
+							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName: "some/app",
 								Publish:  true,
 							}))

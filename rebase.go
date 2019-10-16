@@ -19,7 +19,7 @@ type RebaseOptions struct {
 	AdditionalMirrors map[string][]string
 }
 
-func (c *Client) Rebase(ctx context.Context, rebaser lifecycle.Rebaser, opts RebaseOptions) error {
+func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	imageRef, err := c.parseTagReference(opts.RepoName)
 	if err != nil {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.RepoName)
@@ -56,7 +56,8 @@ func (c *Client) Rebase(ctx context.Context, rebaser lifecycle.Rebaser, opts Reb
 	}
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
-	err = rebaser.Rebase(appImage, baseImage, []string{appImage.Name()})
+	rebaser := &lifecycle.Rebaser{Logger: c.logger}
+	err = rebaser.Rebase(appImage, baseImage, nil)
 	if err != nil {
 		return err
 	}
