@@ -140,8 +140,8 @@ func (d *downloader) downloadAsStream(ctx context.Context, uri string, etag stri
 	}
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		d.logger.Debugf("Downloading from %s", style.Symbol(uri))
-		return withProgress(resp.Body, resp.ContentLength), resp.Header.Get("Etag"), nil
+		d.logger.Infof("Downloading from %s", style.Symbol(uri))
+		return withProgress(logging.GetInfoWriter(d.logger), resp.Body, resp.ContentLength), resp.Header.Get("Etag"), nil
 	}
 
 	if resp.StatusCode == 304 {
@@ -155,13 +155,13 @@ func (d *downloader) downloadAsStream(ctx context.Context, uri string, etag stri
 	)
 }
 
-func withProgress(rc io.ReadCloser, length int64) io.ReadCloser {
+func withProgress(writer io.Writer, rc io.ReadCloser, length int64) io.ReadCloser {
 	return &progressReader{
 		Closer: rc,
 		Reader: &ioprogress.Reader{
 			Reader:   rc,
 			Size:     length,
-			DrawFunc: ioprogress.DrawTerminalf(os.Stdout, ioprogress.DrawTextFormatBytes),
+			DrawFunc: ioprogress.DrawTerminalf(writer, ioprogress.DrawTextFormatBytes),
 		},
 	}
 }
