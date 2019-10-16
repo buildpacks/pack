@@ -77,9 +77,8 @@ func (c *cachingImage) GetLayer(sha string) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("cache no layer with sha '%s'", sha)
 	} else if found {
 		return c.cache.RetrieveLayer(sha)
-	} else {
-		return c.Image.GetLayer(sha)
 	}
+	return c.Image.GetLayer(sha)
 }
 
 func (c *cachingImage) Save(additionalNames ...string) error {

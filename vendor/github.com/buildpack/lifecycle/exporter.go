@@ -11,7 +11,6 @@ import (
 
 	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/cmd"
-	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -19,7 +18,7 @@ type Exporter struct {
 	Buildpacks   []Buildpack
 	ArtifactsDir string
 	In           []byte
-	Logger       logging.Logger
+	Logger       Logger
 	UID, GID     int
 }
 
@@ -32,6 +31,7 @@ func (e *Exporter) Export(
 	layersDir,
 	appDir string,
 	workingImage imgutil.Image,
+	runImageRef string,
 	origMetadata metadata.LayersMetadata,
 	additionalNames []string,
 	launcherConfig LauncherConfig,
@@ -46,12 +46,7 @@ func (e *Exporter) Export(
 		return errors.Wrap(err, "get run image top layer SHA")
 	}
 
-	identifier, err := workingImage.Identifier()
-	if err != nil {
-		return errors.Wrap(err, "get run image id or digest")
-	}
-
-	meta.RunImage.Reference = identifier.String()
+	meta.RunImage.Reference = runImageRef
 	meta.Stack = stack
 
 	meta.App.SHA, err = e.addLayer(workingImage, &layer{path: appDir, identifier: "app"}, origMetadata.App.SHA)
@@ -76,7 +71,8 @@ func (e *Exporter) Export(
 		}
 		bpMD := metadata.BuildpackLayersMetadata{ID: bp.ID, Version: bp.Version, Layers: map[string]metadata.BuildpackLayerMetadata{}}
 
-		for _, layer := range bpDir.findLayers(launch) {
+		layers := bpDir.findLayers(launch)
+		for i, layer := range layers {
 			lmd, err := layer.read()
 			if err != nil {
 				return errors.Wrapf(err, "reading '%s' metadata", layer.Identifier())
@@ -84,7 +80,7 @@ func (e *Exporter) Export(
 
 			if layer.hasLocalContents() {
 				origLayerMetadata := origMetadata.MetadataForBuildpack(bp.ID).Layers[layer.name()]
-				lmd.SHA, err = e.addLayer(workingImage, &layer, origLayerMetadata.SHA)
+				lmd.SHA, err = e.addLayer(workingImage, &layers[i], origLayerMetadata.SHA)
 				if err != nil {
 					return err
 				}
@@ -128,7 +124,7 @@ func (e *Exporter) Export(
 	}
 
 	buildMD := &BuildMetadata{}
-	if _, err := toml.DecodeFile(metadata.MetadataFilePath(layersDir), buildMD); err != nil {
+	if _, err := toml.DecodeFile(metadata.FilePath(layersDir), buildMD); err != nil {
 		return errors.Wrap(err, "read build metadata")
 	}
 

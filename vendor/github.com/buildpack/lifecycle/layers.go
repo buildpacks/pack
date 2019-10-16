@@ -140,9 +140,8 @@ func (bp *bpLayer) read() (metadata.BuildpackLayerMetadata, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			return data, nil
-		} else {
-			return metadata.BuildpackLayerMetadata{}, err
 		}
+		return metadata.BuildpackLayerMetadata{}, err
 	}
 	data.SHA = string(sha)
 	return data, nil

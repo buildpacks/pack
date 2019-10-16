@@ -112,7 +112,7 @@ func GetRawMetadata(image imgutil.Image, metadataLabel string) (string, error) {
 	return contents, nil
 }
 
-func MetadataFilePath(layersDir string) string {
+func FilePath(layersDir string) string {
 	return path.Join(layersDir, "config", "metadata.toml")
 }
 

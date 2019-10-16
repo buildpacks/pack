@@ -17,10 +17,6 @@ type defaultLogger struct {
 	out *log.Logger
 }
 
-func (l *defaultLogger) WantLevel(level string) {
-	//do nothing
-}
-
 const (
 	debugPrefix = "DEBUG:"
 	infoPrefix  = "INFO:"

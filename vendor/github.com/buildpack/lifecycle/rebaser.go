@@ -7,12 +7,11 @@ import (
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
 type Rebaser struct {
-	Logger logging.Logger
+	Logger Logger
 }
 
 func (r *Rebaser) Rebase(
@@ -35,16 +34,16 @@ func (r *Rebaser) Rebase(
 		return errors.Wrap(err, "get new base image stack")
 	}
 
-	if workingImageStack.Id == "" {
+	if workingImageStack.ID == "" {
 		return errors.New("stack not defined on working image")
 	}
 
-	if newBaseImageStack.Id == "" {
+	if newBaseImageStack.ID == "" {
 		return errors.New("stack not defined on new base image")
 	}
 
-	if workingImageStack.Id != newBaseImageStack.Id {
-		return errors.New(fmt.Sprintf("incompatible stack: '%s' is not compatible with '%s'", newBaseImageStack.Id, workingImageStack.Id))
+	if workingImageStack.ID != newBaseImageStack.ID {
+		return errors.New(fmt.Sprintf("incompatible stack: '%s' is not compatible with '%s'", newBaseImageStack.ID, workingImageStack.ID))
 	}
 
 	err = workingImage.Rebase(origMetadata.RunImage.TopLayer, newBaseImage)

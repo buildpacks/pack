@@ -12,10 +12,6 @@ type fakeLog struct {
 	w io.Writer
 }
 
-func (f *fakeLog) WantLevel(level string) {
-	//do nothing
-}
-
 func NewFakeLogger(w io.Writer) *fakeLog { //nolint:golint,gosimple
 	f := &fakeLog{
 		w: w,

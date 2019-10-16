@@ -6,7 +6,6 @@ import (
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -16,7 +15,7 @@ type Analyzer struct {
 	Buildpacks   []Buildpack
 	GID, UID     int
 	LayersDir    string
-	Logger       logging.Logger
+	Logger       Logger
 	SkipLayers   bool
 }
 

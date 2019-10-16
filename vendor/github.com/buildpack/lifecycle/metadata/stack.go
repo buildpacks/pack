@@ -7,7 +7,7 @@ import (
 const StackMetadataLabel = "io.buildpacks.stack.id"
 
 type Stack struct {
-	Id string `json:",inline"`
+	ID string `json:"Id,inline"`
 }
 
 func GetStackMetadata(image imgutil.Image) (Stack, error) {
@@ -16,5 +16,5 @@ func GetStackMetadata(image imgutil.Image) (Stack, error) {
 		return Stack{}, err
 	}
 
-	return Stack{Id: contents}, nil
+	return Stack{ID: contents}, nil
 }

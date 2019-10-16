@@ -25,8 +25,6 @@ type Logger interface {
 	Writer() io.Writer
 
 	IsVerbose() bool
-
-	WantLevel(level string)
 }
 
 // WithInfoErrorWriter is an optional interface for loggers that want to support a separate writer for errors and standard logging.

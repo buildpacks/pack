@@ -5,13 +5,9 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
-
-	internallog "github.com/buildpack/lifecycle/internal/logging"
-	"github.com/buildpack/lifecycle/logging"
 )
 
 const (
@@ -26,7 +22,7 @@ const (
 	DefaultPlanPath      = "./plan.toml"
 	DefaultProcessType   = "web"
 	DefaultLauncherPath  = "/cnb/lifecycle/launcher"
-	DefaultLogLevel      = logging.InfoLevel
+	DefaultLogLevel      = "info"
 
 	EnvLayersDir         = "CNB_LAYERS_DIR"
 	EnvAppDir            = "CNB_APP_DIR"
@@ -49,6 +45,7 @@ const (
 	EnvSkipLayers        = "CNB_ANALYZE_SKIP_LAYERS" // defaults to false
 	EnvProcessType       = "CNB_PROCESS_TYPE"
 	EnvProcessTypeLegacy = "PACK_PROCESS_TYPE" // deprecated
+	EnvLogLevel          = "CNB_LOG_LEVEL"
 )
 
 func FlagAnalyzedPath(dir *string) {
@@ -132,21 +129,8 @@ func FlagVersion(version *bool) {
 }
 
 func FlagLogLevel(level *string) {
-	flag.StringVar(level, "log-level", DefaultLogLevel, "set the logging level")
+	flag.StringVar(level, "log-level", envOrDefault(EnvLogLevel, DefaultLogLevel), "logging level")
 }
-
-const (
-	CodeFailed = 1
-	// 2: reserved
-	CodeInvalidArgs = 3
-	// 4: CodeInvalidEnv
-	// 5: CodeNotFound
-	CodeFailedDetect = 6
-	CodeFailedBuild  = 7
-	CodeFailedLaunch = 8
-	// 9: CodeFailedUpdate
-	CodeFailedSave = 10
-)
 
 var (
 	// Version is the version of the lifecycle and all produced binaries. It is injected at compile time.
@@ -155,17 +139,7 @@ var (
 	SCMCommit = ""
 	// SCMRepository is the source repository. It is injected at compile time.
 	SCMRepository = ""
-
-	Logger = newLogger()
 )
-
-func newLogger() logging.Logger {
-	stdout := internallog.New(os.Stdout)
-	defer stdout.Close()
-	stderr := internallog.New(os.Stderr)
-	defer stderr.Close()
-	return internallog.NewLogWithWriters(stdout, stderr)
-}
 
 // buildVersion is a display format of the version and build metadata in compliance with semver.
 func buildVersion() string {
@@ -175,52 +149,6 @@ func buildVersion() string {
 	}
 
 	return fmt.Sprintf("%s+%s", Version, SCMCommit)
-}
-
-type ErrorFail struct {
-	Err    error
-	Code   int
-	Action []string
-}
-
-func (e *ErrorFail) Error() string {
-	message := "failed to " + strings.Join(e.Action, " ")
-	if e.Err == nil {
-		return message
-	}
-	return fmt.Sprintf("%s: %s", message, e.Err)
-}
-
-func FailCode(code int, action ...string) error {
-	return FailErrCode(nil, code, action...)
-}
-
-func FailErr(err error, action ...string) error {
-	code := CodeFailed
-	if err, ok := err.(*ErrorFail); ok {
-		code = err.Code
-	}
-	return FailErrCode(err, code, action...)
-}
-
-func FailErrCode(err error, code int, action ...string) error {
-	return &ErrorFail{Err: err, Code: code, Action: action}
-}
-
-func Exit(err error) {
-	if err == nil {
-		os.Exit(0)
-	}
-	Logger.Errorf("%s\n", err)
-	if err, ok := err.(*ErrorFail); ok {
-		os.Exit(err.Code)
-	}
-	os.Exit(CodeFailed)
-}
-
-func ExitWithVersion() {
-	Logger.Infof(buildVersion())
-	os.Exit(0)
 }
 
 func intEnv(k string) int {

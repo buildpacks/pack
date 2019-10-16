@@ -6,14 +6,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/archive"
-	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
 type Restorer struct {
 	LayersDir  string
 	Buildpacks []Buildpack
-	Logger     logging.Logger
+	Logger     Logger
 	UID        int
 	GID        int
 }

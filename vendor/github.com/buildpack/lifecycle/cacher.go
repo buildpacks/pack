@@ -9,7 +9,6 @@ import (
 
 	"github.com/buildpack/lifecycle/archive"
 	"github.com/buildpack/lifecycle/cache"
-	"github.com/buildpack/lifecycle/logging"
 	"github.com/buildpack/lifecycle/metadata"
 )
 
@@ -27,7 +26,7 @@ type Cache interface {
 type Cacher struct {
 	ArtifactsDir string
 	Buildpacks   []Buildpack
-	Logger       logging.Logger
+	Logger       Logger
 	UID, GID     int
 }
 
