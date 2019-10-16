@@ -258,8 +258,6 @@ func (c *Client) processBuildpacks(ctx context.Context, buildpacks []string) ([]
 				return nil, dist.OrderEntry{}, err
 			}
 
-			c.logger.Debugf("fetching buildpack from %s", style.Symbol(bp))
-
 			blob, err := c.downloader.Download(ctx, bp)
 			if err != nil {
 				return nil, dist.OrderEntry{}, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
@@ -343,11 +341,11 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {
 		bpInfo := bp.Descriptor().Info
-		c.logger.Debugf("adding buildpack %s version %s to builder", style.Symbol(bpInfo.ID), style.Symbol(bpInfo.Version))
+		c.logger.Debugf("Adding buildpack %s version %s to builder", style.Symbol(bpInfo.ID), style.Symbol(bpInfo.Version))
 		bldr.AddBuildpack(bp)
 	}
 	if len(group.Group) > 0 {
-		c.logger.Debug("setting custom order")
+		c.logger.Debug("Setting custom order")
 		bldr.SetOrder([]dist.OrderEntry{group})
 	}
 	if err := bldr.Save(c.logger); err != nil {
