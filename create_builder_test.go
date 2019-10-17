@@ -55,15 +55,15 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockController = gomock.NewController(t)
 			mockDownloader = testmocks.NewMockDownloader(mockController)
 
-			fakeBuildImage = fakes.NewImage("some/build-image", "", "")
+			fakeBuildImage = fakes.NewImage("some/build-image", "", nil)
 			h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 			h.AssertNil(t, fakeBuildImage.SetEnv("CNB_USER_ID", "1234"))
 			h.AssertNil(t, fakeBuildImage.SetEnv("CNB_GROUP_ID", "4321"))
 
-			fakeRunImage = fakes.NewImage("some/run-image", "", "")
+			fakeRunImage = fakes.NewImage("some/run-image", "", nil)
 			h.AssertNil(t, fakeRunImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 
-			fakeRunImageMirror = fakes.NewImage("localhost:5000/some-run-image", "", "")
+			fakeRunImageMirror = fakes.NewImage("localhost:5000/some-run-image", "", nil)
 			h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 
 			imageFetcher = ifakes.NewFakeImageFetcher()

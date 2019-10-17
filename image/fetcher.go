@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/buildpack/imgutil"
+	"github.com/buildpack/imgutil/local"
+	"github.com/buildpack/imgutil/remote"
 	"github.com/buildpack/lifecycle/image/auth"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -38,7 +40,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (im
 		return f.fetchDaemonImage(name)
 	}
 
-	image, err = imgutil.NewRemoteImage(name, authn.DefaultKeychain)
+	image, err = remote.NewImage(name, authn.DefaultKeychain, remote.FromBaseImage(name))
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +65,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (im
 }
 
 func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
-	image, err := imgutil.NewLocalImage(name, f.docker)
+	image, err := local.NewImage(name, f.docker, local.FromBaseImage(name))
 	if err != nil {
 		return nil, err
 	}

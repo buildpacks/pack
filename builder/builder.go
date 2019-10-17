@@ -339,8 +339,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 		return errors.Wrap(err, "failed to set working dir")
 	}
 
-	_, err = b.image.Save()
-	return err
+	return b.image.Save()
 }
 
 func sha256ForFile(path string) (string, error) {

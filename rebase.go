@@ -2,13 +2,12 @@ package pack
 
 import (
 	"context"
-	"encoding/json"
 
+	"github.com/buildpack/lifecycle"
 	"github.com/buildpack/lifecycle/metadata"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/builder"
-
 	"github.com/buildpack/pack/style"
 )
 
@@ -31,7 +30,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return err
 	}
 
-	md, err := metadata.GetAppMetadata(appImage)
+	md, err := metadata.GetLayersMetadata(appImage)
 	if err != nil {
 		return err
 	}
@@ -57,33 +56,17 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	}
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
-	if err := appImage.Rebase(md.RunImage.TopLayer, baseImage); err != nil {
-		return err
-	}
-
-	md.RunImage.SHA, err = baseImage.Digest()
+	rebaser := &lifecycle.Rebaser{Logger: c.logger}
+	err = rebaser.Rebase(appImage, baseImage, nil)
 	if err != nil {
 		return err
 	}
 
-	md.RunImage.TopLayer, err = baseImage.TopLayer()
+	appImageIdentifier, err := appImage.Identifier()
 	if err != nil {
 		return err
 	}
 
-	newLabel, err := json.Marshal(md)
-	if err != nil {
-		return err
-	}
-
-	if err := appImage.SetLabel(metadata.AppMetadataLabel, string(newLabel)); err != nil {
-		return err
-	}
-
-	sha, err := appImage.Save()
-	if err != nil {
-		return err
-	}
-	c.logger.Infof("New sha: %s", style.Symbol(sha))
+	c.logger.Infof("Rebased Image: %s", style.Symbol(appImageIdentifier.String()))
 	return nil
 }

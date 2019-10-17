@@ -12,7 +12,6 @@ type fakeLog struct {
 	w io.Writer
 }
 
-// NewFakeLogger create a fake_logger to capture output for testing purposes.
 func NewFakeLogger(w io.Writer) *fakeLog { //nolint:golint,gosimple
 	f := &fakeLog{
 		w: w,
