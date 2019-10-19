@@ -3,8 +3,6 @@ package dist
 import (
 	"archive/tar"
 	"compress/gzip"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,6 +11,7 @@ import (
 	"path/filepath"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/internal/archive"
@@ -114,43 +113,22 @@ func embedBuildpackTar(tw *tar.Writer, uid, gid int, bp Buildpack, baseTarDir st
 	return nil
 }
 
-func LayerHashes(layerTarPath string) (diffID v1.Hash, digest v1.Hash, err error) {
+func LayerDigest(layerTarPath string) (diffID v1.Hash, err error) {
 	fh, err := os.Open(layerTarPath)
 	if err != nil {
-		return v1.Hash{}, v1.Hash{}, errors.Wrap(err, "opening tar file")
+		return v1.Hash{}, errors.Wrap(err, "opening tar file")
 	}
 	defer fh.Close()
 
-	// h <----------------- +
-	//                      |
-	// zh <- zw (gunzip) <- + <-- fh
-
-	h := sha256.New()
-	zh := sha256.New()
-
-	zw, err := gzip.NewWriterLevel(zh, gzip.DefaultCompression)
+	layer, err := tarball.LayerFromFile(layerTarPath, tarball.WithCompressionLevel(gzip.DefaultCompression))
 	if err != nil {
-		return v1.Hash{}, v1.Hash{}, errors.Wrap(err, "compressing tar")
-	}
-	defer zw.Close()
-
-	if _, err := io.Copy(io.MultiWriter(h, zw), fh); err != nil {
-		return v1.Hash{}, v1.Hash{}, errors.Wrap(err, "compressing tar")
+		return v1.Hash{}, errors.Wrap(err, "reading layer tar")
 	}
 
-	if err := zw.Close(); err != nil {
-		return v1.Hash{}, v1.Hash{}, errors.Wrap(err, "closing tar")
-	}
-
-	diffID, err = v1.NewHash("sha256:" + hex.EncodeToString(h.Sum(nil)))
+	hash, err := layer.DiffID()
 	if err != nil {
-		return v1.Hash{}, v1.Hash{}, errors.Wrap(err, "generating diff_id")
+		return v1.Hash{}, errors.Wrap(err, "generating diff id")
 	}
-
-	digest, err = v1.NewHash("sha256:" + hex.EncodeToString(zh.Sum(nil)))
-	if err != nil {
-		return v1.Hash{}, v1.Hash{}, errors.Wrap(err, "generating digest")
-	}
-
-	return diffID, digest, nil
+	
+	return hash, nil
 }

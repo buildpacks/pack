@@ -59,6 +59,10 @@ func (r *remoteIndex) Digest() (v1.Hash, error) {
 	return partial.Digest(r)
 }
 
+func (r *remoteIndex) Size() (int64, error) {
+	return partial.Size(r)
+}
+
 func (r *remoteIndex) RawManifest() ([]byte, error) {
 	r.manifestLock.Lock()
 	defer r.manifestLock.Unlock()
@@ -119,7 +123,7 @@ func (r *remoteIndex) imageByPlatform(platform v1.Platform) (v1.Image, error) {
 	return desc.Image()
 }
 
-// This naively matches the first manifest with matching Architecture and OS.
+// This naively matches the first manifest with matching platform attributes.
 //
 // We should probably use this instead:
 //	 github.com/containerd/containerd/platforms
@@ -138,7 +142,7 @@ func (r *remoteIndex) childByPlatform(platform v1.Platform) (*Descriptor, error)
 			p = *childDesc.Platform
 		}
 
-		if platform.Architecture == p.Architecture && platform.OS == p.OS {
+		if matchesPlatform(p, platform) {
 			return r.childDescriptor(childDesc, platform)
 		}
 	}
@@ -158,16 +162,9 @@ func (r *remoteIndex) childByHash(h v1.Hash) (*Descriptor, error) {
 	return nil, fmt.Errorf("no child with digest %s in index %s", h, r.Ref)
 }
 
-func (r *remoteIndex) childRef(h v1.Hash) (name.Reference, error) {
-	return name.ParseReference(fmt.Sprintf("%s@%s", r.Ref.Context(), h), name.StrictValidation)
-}
-
 // Convert one of this index's child's v1.Descriptor into a remote.Descriptor, with the given platform option.
 func (r *remoteIndex) childDescriptor(child v1.Descriptor, platform v1.Platform) (*Descriptor, error) {
-	ref, err := r.childRef(child.Digest)
-	if err != nil {
-		return nil, err
-	}
+	ref := r.Ref.Context().Digest(child.Digest.String())
 	manifest, desc, err := r.fetchManifest(ref, []types.MediaType{child.MediaType})
 	if err != nil {
 		return nil, err
@@ -181,4 +178,50 @@ func (r *remoteIndex) childDescriptor(child v1.Descriptor, platform v1.Platform)
 		Descriptor: *desc,
 		platform:   platform,
 	}, nil
+}
+
+// matchesPlatform checks if the given platform matches the required platforms.
+// The given platform matches the required platform if
+// - architecture and OS are identical.
+// - OS version and variant are identical if provided.
+// - features and OS features of the required platform are subsets of those of the given platform.
+func matchesPlatform(given, required v1.Platform) bool {
+	// Required fields that must be identical.
+	if given.Architecture != required.Architecture || given.OS != required.OS {
+		return false
+	}
+
+	// Optional fields that may be empty, but must be identical if provided.
+	if required.OSVersion != "" && given.OSVersion != required.OSVersion {
+		return false
+	}
+	if required.Variant != "" && given.Variant != required.Variant {
+		return false
+	}
+
+	// Verify required platform's features are a subset of given platform's features.
+	if !isSubset(given.OSFeatures, required.OSFeatures) {
+		return false
+	}
+	if !isSubset(given.Features, required.Features) {
+		return false
+	}
+
+	return true
+}
+
+// isSubset checks if the required array of strings is a subset of the given lst.
+func isSubset(lst, required []string) bool {
+	set := make(map[string]bool)
+	for _, value := range lst {
+		set[value] = true
+	}
+
+	for _, value := range required {
+		if _, ok := set[value]; !ok {
+			return false
+		}
+	}
+
+	return true
 }

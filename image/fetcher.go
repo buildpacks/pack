@@ -3,7 +3,7 @@ package image
 import (
 	"context"
 	"encoding/base64"
-	"fmt"
+	"encoding/json"
 	"io"
 	"strings"
 
@@ -77,12 +77,12 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 }
 
 func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
-	auth, err := registryAuth(imageID)
+	regAuth, err := registryAuth(imageID)
 	if err != nil {
 		return err
 	}
 	rc, err := f.docker.ImagePull(ctx, imageID, types.ImagePullOptions{
-		RegistryAuth: auth,
+		RegistryAuth: regAuth,
 	})
 	if err != nil {
 		return err
@@ -106,28 +106,22 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
 }
 
 func registryAuth(ref string) (string, error) {
-	var regAuth string
 	_, a, err := auth.ReferenceForRepoName(authn.DefaultKeychain, ref)
 	if err != nil {
 		return "", errors.Wrapf(err, "resolve auth for ref %s", ref)
 	}
-	authHeader, err := a.Authorization()
+
+	authConfig, err := a.Authorization()
 	if err != nil {
 		return "", err
 	}
-	if strings.HasPrefix(authHeader, "Basic ") {
-		encoded := strings.TrimPrefix(authHeader, "Basic ")
-		decoded, _ := base64.StdEncoding.DecodeString(encoded)
-		parts := strings.SplitN(string(decoded), ":", 2)
-		regAuth = base64.StdEncoding.EncodeToString(
-			[]byte(fmt.Sprintf(
-				`{"username": "%s", "password": "%s"}`,
-				parts[0],
-				parts[1],
-			)),
-		)
+
+	configJSON, err := json.Marshal(authConfig)
+	if err != nil {
+		return "", errors.Wrap(err, "marshalling auth config")
 	}
-	return regAuth, nil
+
+	return base64.StdEncoding.EncodeToString(configJSON), nil
 }
 
 type colorizedWriter struct {

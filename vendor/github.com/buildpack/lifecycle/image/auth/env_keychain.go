@@ -1,49 +1,78 @@
 package auth
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/cmd"
 )
 
-type EnvKeychain struct{}
-
 func DefaultEnvKeychain() authn.Keychain {
-	return authn.NewMultiKeychain(&EnvKeychain{}, authn.DefaultKeychain)
+	return authn.NewMultiKeychain(&EnvKeychain{cmd.EnvRegistryAuth}, authn.DefaultKeychain)
 }
 
-func (EnvKeychain) Resolve(registry name.Registry) (authn.Authenticator, error) {
-	env := os.Getenv(cmd.EnvRegistryAuth)
-	if env == "" {
-		return authn.Anonymous, nil
-	}
-	authMap := map[string]string{}
-	err := json.Unmarshal([]byte(env), &authMap)
+type EnvKeychain struct {
+	EnvVar string
+}
+
+func (k *EnvKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
+	authHeaders, err := ReadAuthEnvVar(k.EnvVar)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse %s value", cmd.EnvRegistryAuth)
+		return nil, errors.Wrap(err, "reading auth env var")
 	}
-	auth, ok := authMap[registry.Name()]
+
+	header, ok := authHeaders[resource.RegistryStr()]
 	if ok {
-		return &providedAuth{auth: auth}, nil
+		authConfig, err := authHeaderToConfig(header)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing auth header '%s'", header)
+		}
+
+		return &providedAuth{config: authConfig}, nil
 	}
 
 	return authn.Anonymous, nil
 }
 
 type providedAuth struct {
-	auth string
+	config *authn.AuthConfig
 }
 
-func (p *providedAuth) Authorization() (string, error) {
-	return p.auth, nil
+func (p *providedAuth) Authorization() (*authn.AuthConfig, error) {
+	return p.config, nil
 }
 
-func BuildEnvVar(keychain authn.Keychain, images ...string) (string, error) {
+// ReadAuthEnvVar parses an environment variable to produce a map of 'registry url' to 'authorization header'
+//
+// Example Input:
+// 	{"gcr.io": "Bearer asdf=", "docker.io": "Basic qwerty="}
+//
+// Example Output:
+//  gcr.io -> Bearer asdf=
+//  docker.io -> Basic qwerty=
+func ReadAuthEnvVar(envVar string) (map[string]string, error) {
+	authMap := map[string]string{}
+
+	env := os.Getenv(envVar)
+	if env != "" {
+		err := json.Unmarshal([]byte(env), &authMap)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to parse %s value", envVar)
+		}
+	}
+
+	return authMap, nil
+}
+
+func BuildAuthEnvVar(keychain authn.Keychain, images ...string) (string, error) {
+	// gcr.io -> Bearer asdfaa=
+	// docker.io -> Basic asdfaa=
 	registryAuths := map[string]string{}
 
 	for _, image := range images {
@@ -55,14 +84,59 @@ func BuildEnvVar(keychain authn.Keychain, images ...string) (string, error) {
 			continue
 		}
 
-		registryAuths[reference.Context().Registry.Name()], err = authenticator.Authorization()
+		authConfig, err := authenticator.Authorization()
+		if err != nil {
+			return "", nil
+		}
+
+		registryAuths[reference.Context().Registry.Name()], err = authConfigToHeader(authConfig)
 		if err != nil {
 			return "", nil
 		}
 	}
+
 	authData, err := json.Marshal(registryAuths)
 	if err != nil {
 		return "", err
 	}
 	return string(authData), nil
+}
+
+func authConfigToHeader(config *authn.AuthConfig) (string, error) {
+	if config.Auth != "" {
+		return fmt.Sprintf("Basic %s", config.Auth), nil
+	}
+
+	if config.RegistryToken != "" {
+		return fmt.Sprintf("Bearer %s", config.RegistryToken), nil
+	}
+
+	if config.Username != "" && config.Password != "" {
+		delimited := fmt.Sprintf("%s:%s", config.Username, config.Password)
+		encoded := base64.StdEncoding.EncodeToString([]byte(delimited))
+		return fmt.Sprintf("Basic %s", encoded), nil
+	}
+
+	return "", nil
+}
+
+var (
+	basicAuthRegExp  = regexp.MustCompile("(?i)^basic (.*)$")
+	bearerAuthRegExp = regexp.MustCompile("(?i)^bearer (.*)$")
+)
+
+func authHeaderToConfig(header string) (*authn.AuthConfig, error) {
+	if matches := basicAuthRegExp.FindAllStringSubmatch(header, -1); len(matches) != 0 {
+		return &authn.AuthConfig{
+			Auth: matches[0][1],
+		}, nil
+	}
+
+	if matches := bearerAuthRegExp.FindAllStringSubmatch(header, -1); len(matches) != 0 {
+		return &authn.AuthConfig{
+			RegistryToken: matches[0][1],
+		}, nil
+	}
+
+	return nil, errors.Errorf("unknown auth type from header: %s", header)
 }
