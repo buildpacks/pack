@@ -25,7 +25,6 @@ type BuilderInfo struct {
 type BuildpackInfo struct {
 	ID      string
 	Version string
-	Latest  bool
 }
 
 func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) {

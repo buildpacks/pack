@@ -307,7 +307,31 @@ func ImageID(t *testing.T, repoName string) string {
 	t.Helper()
 	inspect, _, err := dockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
 	AssertNil(t, err)
-	return inspect.ID
+	return strings.TrimPrefix(inspect.ID, "sha256:")
+}
+
+func Digest(t *testing.T, repoName string) string {
+	t.Helper()
+	inspect, _, err := dockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
+	AssertNil(t, err)
+	if len(inspect.RepoDigests) < 1 {
+		t.Fatalf("image '%s' has no repo digests", repoName)
+	}
+	parts := strings.Split(inspect.RepoDigests[0], "@")
+	if len(parts) < 2 {
+		t.Fatalf("repo digest '%s' malformed", inspect.RepoDigests[0])
+	}
+	return parts[1]
+}
+
+func TopLayerDiffID(t *testing.T, repoName string) string {
+	t.Helper()
+	inspect, _, err := dockerCli(t).ImageInspectWithRaw(context.Background(), repoName)
+	AssertNil(t, err)
+	if len(inspect.RootFS.Layers) < 1 {
+		t.Fatalf("image '%s' has no layers", repoName)
+	}
+	return inspect.RootFS.Layers[len(inspect.RootFS.Layers)-1]
 }
 
 func Run(t *testing.T, cmd *exec.Cmd) string {

@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Masterminds/semver"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -306,6 +307,28 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 				t.Log("cacher adds layers")
 				h.AssertContainsMatch(t, output, `(?i)\[cacher] (Caching|adding) layer 'simple/layers:cached-launch-layer'`)
+
+				t.Log("inspect-image")
+				cmd = packCmd(packPath, "inspect-image", repoName)
+				output = h.Run(t, cmd)
+
+				if packSupports(packPath, "inspect-image") {
+					outputTemplate := filepath.Join(packFixturesDir, "inspect_image_local_output.txt")
+					if _, err := os.Stat(outputTemplate); err != nil {
+						t.Fatal(err.Error())
+					}
+					expectedOutput := fillTemplate(t, outputTemplate,
+						map[string]interface{}{
+							"image_name":             repoName,
+							"base_image_id":          h.ImageID(t, runImageMirror),
+							"base_image_top_layer":   h.TopLayerDiffID(t, runImageMirror),
+							"run_image_local_mirror": localRunImageMirror,
+							"run_image_mirror":       runImageMirror,
+							"show_reference":         !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.5.0")),
+						},
+					)
+					h.AssertEq(t, output, expectedOutput)
+				}
 			})
 
 			it("supports building app from a zip file", func() {
@@ -625,6 +648,26 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 
 					t.Log("app is runnable")
 					assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
+
+					t.Log("inspect-image")
+					output = h.Run(t, packCmd(packPath, "inspect-image", repoName))
+
+					if packSupports(packPath, "inspect-image") {
+						outputTemplate := filepath.Join(packFixturesDir, "inspect_image_published_output.txt")
+						if _, err := os.Stat(outputTemplate); err != nil {
+							t.Fatal(err.Error())
+						}
+						expectedOutput := fillTemplate(t, outputTemplate,
+							map[string]interface{}{
+								"image_name":           repoName,
+								"base_image_ref":       strings.Join([]string{runImageMirror, h.Digest(t, runImageMirror)}, "@"),
+								"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
+								"run_image_mirror":     runImageMirror,
+								"show_reference":       !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.5.0")),
+							},
+						)
+						h.AssertEq(t, output, expectedOutput)
+					}
 				})
 			})
 
