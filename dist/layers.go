@@ -129,6 +129,6 @@ func LayerDigest(layerTarPath string) (diffID v1.Hash, err error) {
 	if err != nil {
 		return v1.Hash{}, errors.Wrap(err, "generating diff id")
 	}
-	
+
 	return hash, nil
 }

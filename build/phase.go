@@ -103,7 +103,7 @@ func WithBinds(binds ...string) func(*Phase) (*Phase, error) {
 
 func WithRegistryAccess(repos ...string) func(*Phase) (*Phase, error) {
 	return func(phase *Phase) (*Phase, error) {
-		authHeader, err := auth.BuildAuthEnvVar(authn.DefaultKeychain, repos...)
+		authHeader, err := auth.BuildEnvVar(authn.DefaultKeychain, repos...)
 		if err != nil {
 			return nil, err
 		}
