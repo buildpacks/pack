@@ -93,6 +93,21 @@ func (mr *MockPackClientMockRecorder) InspectBuilder(arg0, arg1 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectBuilder", reflect.TypeOf((*MockPackClient)(nil).InspectBuilder), arg0, arg1)
 }
 
+// InspectImage mocks base method
+func (m *MockPackClient) InspectImage(arg0 string, arg1 bool) (*pack.ImageInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InspectImage", arg0, arg1)
+	ret0, _ := ret[0].(*pack.ImageInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InspectImage indicates an expected call of InspectImage
+func (mr *MockPackClientMockRecorder) InspectImage(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectImage", reflect.TypeOf((*MockPackClient)(nil).InspectImage), arg0, arg1)
+}
+
 // Rebase mocks base method
 func (m *MockPackClient) Rebase(arg0 context.Context, arg1 pack.RebaseOptions) error {
 	m.ctrl.T.Helper()
