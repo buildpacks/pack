@@ -53,13 +53,25 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 
 	when("#InspectImage", func() {
 		when("image cannot be found", func() {
-			it("logs 'Not present'", func() {
+			it.Before(func() {
 				mockClient.EXPECT().InspectImage("some/image", false).Return(nil, nil)
 				mockClient.EXPECT().InspectImage("some/image", true).Return(nil, nil)
+			})
 
+			it("logs 'Not present'", func() {
 				h.AssertNil(t, command.Execute())
 
 				h.AssertContains(t, outBuf.String(), "REMOTE:\n(not present)\n\nLOCAL:\n(not present)\n")
+			})
+
+			when("--bom", func() {
+				it("adds nulls for missing images", func() {
+					command.SetArgs([]string{"some/image", "--bom"})
+					h.AssertNil(t, command.Execute())
+					h.AssertEq(t,
+						outBuf.String(),
+						`{"remote":null,"local":null}`+"\n")
+				})
 			})
 		})
 
