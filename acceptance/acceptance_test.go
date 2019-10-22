@@ -308,11 +308,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 				t.Log("cacher adds layers")
 				h.AssertContainsMatch(t, output, `(?i)\[cacher] (Caching|adding) layer 'simple/layers:cached-launch-layer'`)
 
-				t.Log("inspect-image")
-				cmd = packCmd(packPath, "inspect-image", repoName)
-				output = h.Run(t, cmd)
-
 				if packSupports(packPath, "inspect-image") {
+					t.Log("inspect-image")
+					cmd = packCmd(packPath, "inspect-image", repoName)
+					output = h.Run(t, cmd)
+
 					outputTemplate := filepath.Join(packFixturesDir, "inspect_image_local_output.txt")
 					if _, err := os.Stat(outputTemplate); err != nil {
 						t.Fatal(err.Error())
@@ -649,10 +649,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, builder, runImageMirro
 					t.Log("app is runnable")
 					assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
-					t.Log("inspect-image")
-					output = h.Run(t, packCmd(packPath, "inspect-image", repoName))
-
 					if packSupports(packPath, "inspect-image") {
+						t.Log("inspect-image")
+						output = h.Run(t, packCmd(packPath, "inspect-image", repoName))
+
 						outputTemplate := filepath.Join(packFixturesDir, "inspect_image_published_output.txt")
 						if _, err := os.Stat(outputTemplate); err != nil {
 							t.Fatal(err.Error())
