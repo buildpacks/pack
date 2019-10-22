@@ -76,12 +76,12 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			ref, err := name.ParseReference("my/repo:latest", name.WeakValidation)
 			h.AssertNil(t, err)
 			subject := cache.NewImageCache(ref, dockerClient)
+
 			ref, err = name.ParseReference("my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
 			expected := cache.NewImageCache(ref, dockerClient)
-			if subject.Name() != expected.Name() {
-				t.Fatalf("The same repo name should result in the same image")
-			}
+
+			h.AssertEq(t, subject.Name(), expected.Name())
 		})
 
 		it("resolves implied registry", func() {

@@ -15,7 +15,7 @@ type VolumeCache struct {
 }
 
 func NewVolumeCache(imageRef name.Reference, suffix string, dockerClient *client.Client) *VolumeCache {
-	sum := sha256.Sum256([]byte(imageRef.String()))
+	sum := sha256.Sum256([]byte(imageRef.Name()))
 	return &VolumeCache{
 		volume: fmt.Sprintf("pack-cache-%x.%s", sum[:6], suffix),
 		docker: dockerClient,

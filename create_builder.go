@@ -32,7 +32,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 
 	baseImage, err := c.imageFetcher.Fetch(ctx, opts.BuilderConfig.Stack.BuildImage, !opts.Publish, !opts.NoPull)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "fetch build image")
 	}
 
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))

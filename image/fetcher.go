@@ -77,12 +77,12 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 }
 
 func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
-	auth, err := registryAuth(imageID)
+	regAuth, err := registryAuth(imageID)
 	if err != nil {
 		return err
 	}
 	rc, err := f.docker.ImagePull(ctx, imageID, types.ImagePullOptions{
-		RegistryAuth: auth,
+		RegistryAuth: regAuth,
 	})
 	if err != nil {
 		return err

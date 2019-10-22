@@ -9,6 +9,8 @@ import (
 	"path"
 	"path/filepath"
 
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/internal/archive"
@@ -108,4 +110,24 @@ func embedBuildpackTar(tw *tar.Writer, uid, gid int, bp Buildpack, baseTarDir st
 	}
 
 	return nil
+}
+
+func LayerDiffID(layerTarPath string) (v1.Hash, error) {
+	fh, err := os.Open(layerTarPath)
+	if err != nil {
+		return v1.Hash{}, errors.Wrap(err, "opening tar file")
+	}
+	defer fh.Close()
+
+	layer, err := tarball.LayerFromFile(layerTarPath)
+	if err != nil {
+		return v1.Hash{}, errors.Wrap(err, "reading layer tar")
+	}
+
+	hash, err := layer.DiffID()
+	if err != nil {
+		return v1.Hash{}, errors.Wrap(err, "generating diff id")
+	}
+
+	return hash, nil
 }
