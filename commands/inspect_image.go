@@ -55,9 +55,16 @@ type bom struct {
 }
 
 func logBOM(remote *pack.ImageInfo, local *pack.ImageInfo, logger logging.Logger) error {
+	var remoteBOM, localBOM interface{}
+	if remote != nil {
+		remoteBOM = remote.BOM
+	}
+	if local != nil {
+		localBOM = local.BOM
+	}
 	rawBOM, err := json.Marshal(bom{
-		Remote: remote.BOM,
-		Local:  local.BOM,
+		Remote: remoteBOM,
+		Local:  localBOM,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "writing bill of materials")
