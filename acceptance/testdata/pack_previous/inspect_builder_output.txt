@@ -1,7 +1,10 @@
 Inspecting builder: '{{.builder_name}}'
 
-Remote
-------
+REMOTE:
+
+Created By:
+  Name: Pack CLI
+  Version: {{.pack_version}}
 
 Stack: pack.test.stack
 
@@ -11,7 +14,7 @@ Lifecycle:
   Platform API: {{.platform_api_version}}
 
 Run Images:
-  some-registry.com/pack-test/run1 (user-configured)
+  some-registry.com/pack-test/run1    (user-configured)
   pack-test/run
   {{.run_image_mirror}}
 
@@ -23,11 +26,14 @@ Buildpacks:
 
 Detection Order:
   Group #1:
-    simple/layers@simple-layers-version    
-    read/env@read-env-version              (optional)
+    simple/layers                
+    read/env@read-env-version    (optional)
 
-Local
------
+LOCAL:
+
+Created By:
+  Name: Pack CLI
+  Version: {{.pack_version}}
 
 Stack: pack.test.stack
 
@@ -37,7 +43,7 @@ Lifecycle:
   Platform API: {{.platform_api_version}}
 
 Run Images:
-  some-registry.com/pack-test/run1 (user-configured)
+  some-registry.com/pack-test/run1    (user-configured)
   pack-test/run
   {{.run_image_mirror}}
 
@@ -49,5 +55,5 @@ Buildpacks:
 
 Detection Order:
   Group #1:
-    simple/layers@simple-layers-version    
-    read/env@read-env-version              (optional)
+    simple/layers                
+    read/env@read-env-version    (optional)
