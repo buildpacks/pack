@@ -70,6 +70,7 @@ func main() {
 
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
 	rootCmd.AddCommand(commands.Version(logger, cmd.Version))
+	rootCmd.AddCommand(commands.Report(logger))
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger))
 

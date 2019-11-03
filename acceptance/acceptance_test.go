@@ -52,7 +52,6 @@ const (
 )
 
 var (
-	packHome       string
 	dockerCli      *client.Client
 	registryConfig *h.TestRegistryConfig
 	suiteManager   *SuiteManager
@@ -123,7 +122,15 @@ func TestAcceptance(t *testing.T) {
 		h.AssertNil(t, err)
 	}
 
-	resolvedCombos, err := resolveRunCombinations(combos, packPath, previousPackPath, lifecyclePath, lifecycleDescriptor, previousLifecyclePath, previousLifecycleDescriptor)
+	resolvedCombos, err := resolveRunCombinations(
+		combos,
+		packPath,
+		previousPackPath,
+		lifecyclePath,
+		lifecycleDescriptor,
+		previousLifecyclePath,
+		previousLifecycleDescriptor,
+	)
 	h.AssertNil(t, err)
 
 	suiteManager = &SuiteManager{out: t.Logf}
@@ -168,7 +175,15 @@ lifecycle:
 
 func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packPath, packCreateBuilderPath, builderTomlPath, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) {
 
-	var bpDir = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
+	var (
+		bpDir    = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
+		packHome string
+	)
+
+	// subjectPack creates a pack `exec.Cmd` based on the current configuration
+	subjectPack := func(name string, args ...string) *exec.Cmd {
+		return packCmd(packHome, packPath, name, args...)
+	}
 
 	it.Before(func() {
 		var err error
@@ -176,16 +191,16 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		h.AssertNil(t, err)
 	})
 
+	it.After(func() {
+		h.AssertNil(t, os.RemoveAll(packHome))
+	})
+
 	when("invalid subcommand", func() {
 		it("prints usage", func() {
-			cmd := packCmd(packPath, "some-bad-command")
-			output, _ := cmd.CombinedOutput()
-			if !strings.Contains(string(output), `unknown command "some-bad-command" for "pack"`) {
-				t.Fatal("Failed to print usage", string(output))
-			}
-			if !strings.Contains(string(output), `Run 'pack --help' for usage.`) {
-				t.Fatal("Failed to print usage", string(output))
-			}
+			output, err := h.RunE(subjectPack("some-bad-command"))
+			h.AssertNotNil(t, err)
+			h.AssertContains(t, output, `unknown command "some-bad-command" for "pack"`)
+			h.AssertContains(t, output, `Run 'pack --help' for usage.`)
 		})
 	})
 
@@ -257,17 +272,12 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 				when("default builder is set", func() {
 					it.Before(func() {
-						h.Run(t, packCmd(packPath, "set-default-builder", builderName))
+						h.Run(t, subjectPack("set-default-builder", builderName))
 					})
 
 					it("creates a runnable, rebuildable image on daemon from app dir", func() {
 						appPath := filepath.Join("testdata", "mock_app")
-						cmd := packCmd(
-							packPath,
-							"build", repoName,
-							"-p", appPath,
-						)
-						output := h.Run(t, cmd)
+						output := h.Run(t, subjectPack("build", repoName, "-p", appPath))
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 						imgId, err := imgIDForRepoName(repoName)
 						if err != nil {
@@ -302,12 +312,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						localRunImageMirror := registryConfig.RepoName("pack-test/run-mirror")
 						h.AssertNil(t, dockerCli.ImageTag(context.TODO(), runImage, localRunImageMirror))
 						defer h.DockerRmi(dockerCli, localRunImageMirror)
-						cmd = packCmd(packPath, "set-run-image-mirrors", runImage, "-m", localRunImageMirror)
-						h.Run(t, cmd)
+						h.Run(t, subjectPack("set-run-image-mirrors", runImage, "-m", localRunImageMirror))
 
 						t.Log("rebuild")
-						cmd = packCmd(packPath, "build", repoName, "-p", appPath)
-						output = h.Run(t, cmd)
+						output = h.Run(t, subjectPack("build", repoName, "-p", appPath))
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 						imgId, err = imgIDForRepoName(repoName)
@@ -331,8 +339,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						h.AssertContainsMatch(t, output, `(?i)\[cacher] reusing layer 'simple/layers:cached-launch-layer'`)
 
 						t.Log("rebuild with --clear-cache")
-						cmd = packCmd(packPath, "build", repoName, "-p", appPath, "--clear-cache")
-						output = h.Run(t, cmd)
+						output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--clear-cache"))
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 						t.Log("skips restore")
@@ -349,8 +356,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 						if packSupports(packPath, "inspect-image") {
 							t.Log("inspect-image")
-							cmd = packCmd(packPath, "inspect-image", repoName)
-							output = h.Run(t, cmd)
+							output = h.Run(t, subjectPack("inspect-image", repoName))
 
 							outputTemplate := filepath.Join(packFixturesDir, "inspect_image_local_output.txt")
 							if _, err := os.Stat(outputTemplate); err != nil {
@@ -372,11 +378,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 					it("supports building app from a zip file", func() {
 						appPath := filepath.Join("testdata", "mock_app.zip")
-						cmd := packCmd(
-							packPath,
-							"build", repoName,
-							"-p", appPath,
-						)
+						cmd := subjectPack("build", repoName, "-p", appPath)
 						output := h.Run(t, cmd)
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
@@ -403,11 +405,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 						when("the network mode is not provided", func() {
 							it("reports that build and detect are online", func() {
-								cmd := packCmd(
-									packPath,
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", buildpackTgz,
+								cmd := subjectPack(
+									"build",
+									repoName,
+									"-p",
+									filepath.Join("testdata", "mock_app"),
+									"--buildpack",
+									buildpackTgz,
 								)
 								output := h.Run(t, cmd)
 								h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
@@ -417,12 +421,15 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 						when("the network mode is set to default", func() {
 							it("reports that build and detect are online", func() {
-								cmd := packCmd(
-									packPath,
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", buildpackTgz,
-									"--network", "default",
+								cmd := subjectPack(
+									"build",
+									repoName,
+									"-p",
+									filepath.Join("testdata", "mock_app"),
+									"--buildpack",
+									buildpackTgz,
+									"--network",
+									"default",
 								)
 								output := h.Run(t, cmd)
 								h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
@@ -432,12 +439,15 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 						when("the network mode is set to none", func() {
 							it("reports that build and detect are offline", func() {
-								cmd := packCmd(
-									packPath,
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", buildpackTgz,
-									"--network", "none",
+								cmd := subjectPack(
+									"build",
+									repoName,
+									"-p",
+									filepath.Join("testdata", "mock_app"),
+									"--buildpack",
+									buildpackTgz,
+									"--network",
+									"none",
 								)
 								output := h.Run(t, cmd)
 								h.AssertContains(t, output, "[detector] RESULT: Disconnected from the internet")
@@ -459,17 +469,22 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							})
 
 							it("adds the buildpacks to the builder if necessary and runs them", func() {
-								cmd := packCmd(
-									packPath,
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", notBuilderTgz, // tgz not in builder
-									"--buildpack", "simple/layers@simple-layers-version", // with version
-									"--buildpack", "noop.buildpack", // without version
-									"--buildpack", "read/env@latest", // latest (for backwards compatibility)
-									"--env", "DETECT_ENV_BUILDPACK=true",
-								)
-								output := h.Run(t, cmd)
+								output := h.Run(t, subjectPack(
+									"build",
+									repoName,
+									"-p",
+									filepath.Join("testdata", "mock_app"),
+									"--buildpack",
+									notBuilderTgz,
+									"--buildpack",
+									"simple/layers@simple-layers-version",
+									"--buildpack",
+									"noop.buildpack",
+									"--buildpack",
+									"read/env@latest",
+									"--env",
+									"DETECT_ENV_BUILDPACK=true",
+								))
 								h.AssertContains(t, output, "NOOP Buildpack")
 								h.AssertContains(t, output, "Read Env Buildpack")
 								h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
@@ -487,13 +502,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							it("adds the buildpacks to the builder if necessary and runs them", func() {
 								h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
 
-								cmd := packCmd(
-									packPath,
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", filepath.Join(bpDir, "not-in-builder-buildpack"),
-								)
-								output := h.Run(t, cmd)
+								output := h.Run(t, subjectPack(
+									"build",
+									repoName,
+									"-p",
+									filepath.Join("testdata", "mock_app"),
+									"--buildpack",
+									filepath.Join(bpDir, "not-in-builder-buildpack"),
+								))
 								h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 								t.Log("app is runnable")
 								assertMockAppRunsWithOutput(t, repoName, "Local Buildpack Dep Contents")
@@ -512,13 +528,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							})
 
 							it("errors", func() {
-								cmd := packCmd(
-									packPath,
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", otherStackBuilderTgz,
-								)
-								txt, err := h.RunE(cmd)
+								txt, err := h.RunE(subjectPack(
+									"build",
+									repoName,
+									"-p",
+									filepath.Join("testdata", "mock_app"),
+									"--buildpack",
+									otherStackBuilderTgz,
+								))
 								h.AssertNotNil(t, err)
 								h.AssertContains(t, txt, "other/stack/bp")
 								h.AssertContains(t, txt, "other-stack-version")
@@ -551,13 +568,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						})
 
 						it("provides the env vars to the build and detect steps", func() {
-							cmd := packCmd(
-								packPath,
-								"build", repoName,
-								"-p", filepath.Join("testdata", "mock_app"),
-								"--env-file", envPath,
-							)
-							output := h.Run(t, cmd)
+							output := h.Run(t, subjectPack(
+								"build",
+								repoName,
+								"-p",
+								filepath.Join("testdata", "mock_app"),
+								"--env-file",
+								envPath,
+							))
 							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 							assertMockAppRunsWithOutput(t,
 								repoName,
@@ -579,15 +597,18 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						})
 
 						it("provides the env vars to the build and detect steps", func() {
-							cmd := packCmd(
-								packPath,
-								"build", repoName,
-								"-p", filepath.Join("testdata", "mock_app"),
-								"--env", "DETECT_ENV_BUILDPACK=true",
-								"--env", `ENV1_CONTENTS="Env1 Layer Contents From Command Line"`,
-								"--env", "ENV2_CONTENTS",
-							)
-							output := h.Run(t, cmd)
+							output := h.Run(t, subjectPack(
+								"build",
+								repoName,
+								"-p",
+								filepath.Join("testdata", "mock_app"),
+								"--env",
+								"DETECT_ENV_BUILDPACK=true",
+								"--env",
+								`ENV1_CONTENTS="Env1 Layer Contents From Command Line"`,
+								"--env",
+								"ENV2_CONTENTS",
+							))
 							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 							assertMockAppRunsWithOutput(t, repoName, "Env2 Layer Contents From Environment", "Env1 Layer Contents From Command Line")
 						})
@@ -611,14 +632,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							})
 
 							it("uses the run image as the base image", func() {
-								cmd := packCmd(
-									packPath,
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--run-image", runImageName,
-								)
-
-								output := h.Run(t, cmd)
+								output := h.Run(t, subjectPack(
+									"build",
+									repoName,
+									"-p",
+									filepath.Join("testdata", "mock_app"),
+									"--run-image",
+									runImageName,
+								))
 								h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 								t.Log("app is runnable")
@@ -647,13 +668,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							})
 
 							it("fails with a message", func() {
-								cmd := packCmd(
-									packPath,
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--run-image", runImageName,
-								)
-								txt, err := h.RunE(cmd)
+								txt, err := h.RunE(subjectPack(
+									"build",
+									repoName,
+									"-p",
+									filepath.Join("testdata", "mock_app"),
+									"--run-image",
+									runImageName,
+								))
 								h.AssertNotNil(t, err)
 								h.AssertContains(t, txt, "run-image stack id 'other.stack.id' does not match builder stack 'pack.test.stack'")
 							})
@@ -662,17 +684,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 					when("--publish", func() {
 						it("creates image on the registry", func() {
-							runPackBuild := func() string {
-								t.Helper()
-								cmd := packCmd(
-									packPath,
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--publish",
-								)
-								return h.Run(t, cmd)
-							}
-							output := runPackBuild()
+							output := h.Run(t, subjectPack(
+								"build",
+								repoName,
+								"-p",
+								filepath.Join("testdata", "mock_app"),
+								"--publish",
+							))
 							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 							t.Log("checking that registry has contents")
@@ -690,7 +708,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 							if packSupports(packPath, "inspect-image") {
 								t.Log("inspect-image")
-								output = h.Run(t, packCmd(packPath, "inspect-image", repoName))
+								output = h.Run(t, subjectPack("inspect-image", repoName))
 
 								outputTemplate := filepath.Join(packFixturesDir, "inspect_image_published_output.txt")
 								if _, err := os.Stat(outputTemplate); err != nil {
@@ -713,7 +731,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 					when("ctrl+c", func() {
 						it("stops the execution", func() {
 							var buf bytes.Buffer
-							cmd := packCmd(packPath, "build", repoName, "-p", filepath.Join("testdata", "mock_app"))
+							cmd := subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
 							cmd.Stdout = &buf
 							cmd.Stderr = &buf
 
@@ -730,7 +748,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 				when("default builder is not set", func() {
 					it("informs the user", func() {
-						cmd := packCmd(packPath, "build", repoName, "-p", filepath.Join("testdata", "mock_app"))
+						cmd := subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
 						output, err := h.RunE(cmd)
 						h.AssertNotNil(t, err)
 						h.AssertContains(t, output, `Please select a default builder with:`)
@@ -744,15 +762,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			when("inspect-builder", func() {
 				it("displays configuration for a builder (local and remote)", func() {
 					configuredRunImage := "some-registry.com/pack-test/run1"
-					cmd := packCmd(packPath, "set-run-image-mirrors", "pack-test/run", "--mirror", configuredRunImage)
-					output := h.Run(t, cmd)
+					output := h.Run(t, subjectPack("set-run-image-mirrors", "pack-test/run", "--mirror", configuredRunImage))
 					h.AssertEq(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
-					cmd = packCmd(packPath, "inspect-builder", builderName)
-					output = h.Run(t, cmd)
+					output = h.Run(t, subjectPack("inspect-builder", builderName))
 
 					// Get version of pack that had created the builder
-					createdByVersion, err := detectPackVersion(packCreateBuilderPath)
+					createdByVersion, err := packVersion(packCreateBuilderPath)
 					h.AssertNil(t, err)
 
 					outputTemplate := filepath.Join(packFixturesDir, "inspect_builder_output.txt")
@@ -798,16 +814,18 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 												`, runImage, contents1, contents2))
 					}
 					buildRunImage(runBefore, "contents-before-1", "contents-before-2")
-
-					cmd := packCmd(
-						packPath,
-						"build", repoName,
-						"-p", filepath.Join("testdata", "mock_app"),
-						"--builder", builderName,
-						"--run-image", runBefore,
+					h.Run(t, subjectPack(
+						"build",
+						repoName,
+						"-p",
+						filepath.Join("testdata",
+							"mock_app"),
+						"--builder",
+						builderName,
+						"--run-image",
+						runBefore,
 						"--no-pull",
-					)
-					h.Run(t, cmd)
+					))
 					origID = h.ImageID(t, repoName)
 					assertMockAppRunsWithOutput(t, repoName, "contents-before-1", "contents-before-2")
 				})
@@ -836,7 +854,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						})
 
 						it("uses provided run image", func() {
-							cmd := packCmd(packPath, "rebase", repoName, "--no-pull", "--run-image", runAfter)
+							cmd := subjectPack("rebase", repoName, "--no-pull", "--run-image", runAfter)
 							output := h.Run(t, cmd)
 
 							h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
@@ -850,7 +868,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						it.Before(func() {
 							localRunImageMirror = registryConfig.RepoName("run-after/" + h.RandString(10))
 							buildRunImage(localRunImageMirror, "local-mirror-after-1", "local-mirror-after-2")
-							cmd := packCmd(packPath, "set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+							cmd := subjectPack("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
 							h.Run(t, cmd)
 						})
 
@@ -859,7 +877,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						})
 
 						it("prefers the local mirror", func() {
-							cmd := packCmd(packPath, "rebase", repoName, "--no-pull")
+							cmd := subjectPack("rebase", repoName, "--no-pull")
 							output := h.Run(t, cmd)
 
 							h.AssertContains(t, output, fmt.Sprintf("Selected run image mirror '%s' from local config", localRunImageMirror))
@@ -878,7 +896,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						})
 
 						it("selects the best mirror", func() {
-							cmd := packCmd(packPath, "rebase", repoName, "--no-pull")
+							cmd := subjectPack("rebase", repoName, "--no-pull")
 							output := h.Run(t, cmd)
 
 							h.AssertContains(t, output, fmt.Sprintf("Selected run image mirror '%s'", runImageMirror))
@@ -908,7 +926,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						})
 
 						it("uses provided run image", func() {
-							cmd := packCmd(packPath, "rebase", repoName, "--publish", "--run-image", runAfter)
+							cmd := subjectPack("rebase", repoName, "--publish", "--run-image", runAfter)
 							output := h.Run(t, cmd)
 
 							h.AssertContains(t, output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
@@ -953,12 +971,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 					it("starts an image", func() {
 						var buf bytes.Buffer
-						cmd := packCmd(
-							packPath,
+						cmd := subjectPack(
 							"run",
-							"--port", listeningPort+":8080",
-							"-p", filepath.Join("testdata", "mock_app"),
-							"--builder", builderName,
+							"--port",
+							listeningPort+":8080",
+							"-p",
+							filepath.Join("testdata", "mock_app"),
+							"--builder",
+							builderName,
 						)
 						cmd.Stdout = &buf
 						cmd.Stderr = &buf
@@ -973,7 +993,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 				when("default builder is not set", func() {
 					it("informs the user", func() {
-						cmd := packCmd(packPath, "run", "-p", filepath.Join("testdata", "mock_app"))
+						cmd := subjectPack("run", "-p", filepath.Join("testdata", "mock_app"))
 						output, err := h.RunE(cmd)
 						h.AssertNotNil(t, err)
 						h.AssertContains(t, output, `Please select a default builder with:`)
@@ -988,7 +1008,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 	when("suggest-builders", func() {
 		it("displays suggested builders", func() {
-			cmd := packCmd(packPath, "suggest-builders")
+			cmd := subjectPack("suggest-builders")
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("suggest-builders command failed: %s: %s", output, err)
@@ -1000,7 +1020,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 	when("suggest-stacks", func() {
 		it("displays suggested stacks", func() {
-			cmd := packCmd(packPath, "suggest-stacks")
+			cmd := subjectPack("suggest-stacks")
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("suggest-stacks command failed: %s: %s", output, err)
@@ -1011,13 +1031,8 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 	when("set-default-builder", func() {
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			cmd := packCmd(packPath, "set-default-builder", "cloudfoundry/cnb:bionic")
-			cmd.Env = append(os.Environ(), "PACK_HOME="+packHome)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("set-default-builder command failed: %s: %s", output, err)
-			}
-			h.AssertContains(t, string(output), "Builder 'cloudfoundry/cnb:bionic' is now the default builder")
+			output := h.Run(t, subjectPack("set-default-builder", "cloudfoundry/cnb:bionic"))
+			h.AssertContains(t, output, "Builder 'cloudfoundry/cnb:bionic' is now the default builder")
 		})
 	})
 
@@ -1046,12 +1061,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 		it("creates the package", func() {
 			packageName := "test/package-" + h.RandString(10)
-			output, err := h.RunE(packCmd(
-				packPath,
-				"create-package",
-				"-p", filepath.Join(tmpDir, "package.toml"),
-				packageName,
-			))
+			output, err := h.RunE(subjectPack("create-package", "-p", filepath.Join(tmpDir, "package.toml"), packageName))
 			h.AssertNil(t, err)
 			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
 
@@ -1063,23 +1073,46 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			it("publishes image to registry", func() {
 				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
-				output, err := h.RunE(packCmd(
-					packPath,
-					"create-package",
-					"-p", filepath.Join(tmpDir, "package.toml"),
-					"--publish",
-					packageName,
-				))
-				h.AssertNil(t, err)
+				output := h.Run(t, subjectPack("create-package", "-p", filepath.Join(tmpDir, "package.toml"), "--publish", packageName))
 				h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
 
-				_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+				_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
 				h.AssertError(t, err, "No such image")
 
 				h.AssertNil(t, h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
 
 				_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
 				h.AssertNil(t, err)
+			})
+		})
+	})
+
+	when("report", func() {
+		it.Before(func() {
+			h.SkipIf(t, !packSupports(packPath, "report"), "pack does not support 'report' command")
+		})
+
+		when("default builder is set", func() {
+			it.Before(func() {
+				h.Run(t, subjectPack("set-default-builder", "cloudfoundry/cnb:bionic"))
+			})
+
+			it("outputs information", func() {
+				version, err := packVersion(packPath)
+				h.AssertNil(t, err)
+
+				output := h.Run(t, subjectPack("report"))
+
+				outputTemplate := filepath.Join(packFixturesDir, "report_output.txt")
+				expectedOutput := fillTemplate(t, outputTemplate,
+					map[string]interface{}{
+						"DefaultBuilder": "cloudfoundry/cnb:bionic",
+						"Version":        version,
+						"OS":             runtime.GOOS,
+						"Arch":           runtime.GOARCH,
+					},
+				)
+				h.AssertEq(t, output, expectedOutput)
 			})
 		})
 	})
@@ -1195,25 +1228,28 @@ func extractLifecycleDescriptor(lcPath string) (builder.LifecycleDescriptor, err
 	return lifecycle.Descriptor(), nil
 }
 
-func packCmd(packPath, name string, args ...string) *exec.Cmd {
+func packCmd(packHome string, packPath string, name string, args ...string) *exec.Cmd {
 	cmdArgs := append([]string{name}, args...)
 	cmdArgs = append(cmdArgs, "--no-color")
 	if packSupports(packPath, "--verbose") {
 		cmdArgs = append(cmdArgs, "--verbose")
 	}
+
 	cmd := exec.Command(
 		packPath,
 		cmdArgs...,
 	)
-	cmd.Env = append(os.Environ(), "PACK_HOME="+packHome, "DOCKER_CONFIG="+registryConfig.DockerConfigDir)
+
+	cmd.Env = append(os.Environ(), "DOCKER_CONFIG="+registryConfig.DockerConfigDir)
+	if packHome != "" {
+		cmd.Env = append(cmd.Env, "PACK_HOME="+packHome)
+	}
+
 	return cmd
 }
 
-func detectPackVersion(packPath string) (string, error) {
-	cmd := packCmd(
-		packPath,
-		"version",
-	)
+func packVersion(packPath string) (string, error) {
+	cmd := packCmd("", packPath, "version")
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -1348,7 +1384,7 @@ func createBuilder(t *testing.T, runImageMirror, builderTOMLPath, packPath, life
 func createStack(t *testing.T, dockerCli *client.Client, runImageMirror string) error {
 	t.Log("creating stack images...")
 
-	if err := createStackImage(t, dockerCli, runImage, filepath.Join("testdata", "mock_stack")); err != nil {
+	if err := createStackImage(dockerCli, runImage, filepath.Join("testdata", "mock_stack")); err != nil {
 		return err
 	}
 
@@ -1367,7 +1403,7 @@ func createStack(t *testing.T, dockerCli *client.Client, runImageMirror string) 
 	return nil
 }
 
-func createStackImage(t *testing.T, dockerCli *client.Client, repoName string, dir string) error {
+func createStackImage(dockerCli *client.Client, repoName string, dir string) error {
 	ctx := context.Background()
 	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1)
 
