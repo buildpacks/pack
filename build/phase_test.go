@@ -343,7 +343,7 @@ func CreateFakeLifecycle(appDir string, docker *client.Client, logger logging.Lo
 		return nil, err
 	}
 
-	bldr, err := builder.GetBuilder(builderImage)
+	bldr, err := builder.FromImage(builderImage)
 	if err != nil {
 		return nil, err
 	}

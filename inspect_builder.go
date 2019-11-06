@@ -36,7 +36,7 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		return nil, err
 	}
 
-	bldr, err := builder.GetBuilder(img)
+	bldr, err := builder.FromImage(img)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(name))
 	}
@@ -44,11 +44,11 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 	return &BuilderInfo{
 		Description:     bldr.Description(),
 		Stack:           bldr.StackID,
-		RunImage:        bldr.GetStackInfo().RunImage.Image,
-		RunImageMirrors: bldr.GetStackInfo().RunImage.Mirrors,
-		Buildpacks:      bldr.GetBuildpacks(),
-		Order:           bldr.GetOrder(),
-		Lifecycle:       bldr.GetLifecycleDescriptor(),
-		CreatedBy:       bldr.GetCreatedBy(),
+		RunImage:        bldr.Stack().RunImage.Image,
+		RunImageMirrors: bldr.Stack().RunImage.Mirrors,
+		Buildpacks:      bldr.Buildpacks(),
+		Order:           bldr.Order(),
+		Lifecycle:       bldr.LifecycleDescriptor(),
+		CreatedBy:       bldr.CreatedBy(),
 	}, nil
 }

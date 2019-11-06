@@ -22,6 +22,7 @@ import (
 	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/logging"
+	"github.com/buildpack/pack/stack"
 	"github.com/buildpack/pack/style"
 )
 
@@ -45,11 +46,13 @@ const (
 )
 
 type Builder struct {
+	baseImageName        string
 	image                imgutil.Image
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
 	additionalBuildpacks []dist.Buildpack
 	metadata             Metadata
+	mixins               []string
 	env                  map[string]string
 	UID, GID             int
 	StackID              string
@@ -61,8 +64,8 @@ type orderTOML struct {
 	Order dist.Order `toml:"order"`
 }
 
-// GetBuilder constructs builder from builder image
-func GetBuilder(img imgutil.Image) (*Builder, error) {
+// FromImage constructs a builder from a builder image
+func FromImage(img imgutil.Image) (*Builder, error) {
 	var metadata Metadata
 	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
 		return nil, err
@@ -95,7 +98,13 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 		return nil, fmt.Errorf("image %s missing label %s", style.Symbol(img.Name()), style.Symbol(stackLabel))
 	}
 
-	if newName != "" && img.Name() != newName {
+	var mixins []string
+	if _, err := dist.GetLabel(img, stack.MixinsLabel, &mixins); err != nil {
+		return nil, err
+	}
+
+	baseName := img.Name()
+	if newName != "" && baseName != newName {
 		img.Rename(newName)
 	}
 
@@ -122,12 +131,14 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 	}
 
 	return &Builder{
-		image:    img,
-		metadata: metadata,
-		order:    order,
-		UID:      uid,
-		GID:      gid,
-		StackID:  stackID,
+		baseImageName: baseName,
+		image:         img,
+		metadata:      metadata,
+		mixins:        mixins,
+		order:         order,
+		UID:           uid,
+		GID:           gid,
+		StackID:       stackID,
 		lifecycleDescriptor: LifecycleDescriptor{
 			Info: LifecycleInfo{
 				Version: lifecycleVersion,
@@ -145,19 +156,19 @@ func (b *Builder) Description() string {
 	return b.metadata.Description
 }
 
-func (b *Builder) GetLifecycleDescriptor() LifecycleDescriptor {
+func (b *Builder) LifecycleDescriptor() LifecycleDescriptor {
 	return b.lifecycleDescriptor
 }
 
-func (b *Builder) GetBuildpacks() []BuildpackMetadata {
+func (b *Builder) Buildpacks() []BuildpackMetadata {
 	return b.metadata.Buildpacks
 }
 
-func (b *Builder) GetCreatedBy() CreatorMetadata {
+func (b *Builder) CreatedBy() CreatorMetadata {
 	return b.metadata.CreatedBy
 }
 
-func (b *Builder) GetOrder() dist.Order {
+func (b *Builder) Order() dist.Order {
 	return b.order
 }
 
@@ -165,8 +176,15 @@ func (b *Builder) Name() string {
 	return b.image.Name()
 }
 
-func (b *Builder) GetStackInfo() StackMetadata {
+func (b *Builder) Image() imgutil.Image {
+	return b.image
+}
+
+func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
+}
+func (b *Builder) Mixins() []string {
+	return b.mixins
 }
 
 func (b *Builder) AddBuildpack(bp dist.Buildpack) {
@@ -195,7 +213,7 @@ func (b *Builder) SetDescription(description string) {
 	b.metadata.Description = description
 }
 
-func (b *Builder) SetStackInfo(stackConfig StackConfig) {
+func (b *Builder) SetStack(stackConfig StackConfig) {
 	b.metadata.Stack = StackMetadata{
 		RunImage: RunImageMetadata{
 			Image:   stackConfig.RunImage,
@@ -239,7 +257,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 		}
 	}
 
-	if err := validateBuildpacks(b.StackID, b.GetLifecycleDescriptor(), b.additionalBuildpacks); err != nil {
+	if err := validateBuildpacks(b.StackID, b.Mixins(), b.LifecycleDescriptor(), b.additionalBuildpacks); err != nil {
 		return errors.Wrap(err, "validating buildpacks")
 	}
 
@@ -256,18 +274,16 @@ func (b *Builder) Save(logger logging.Logger) error {
 
 		if err := b.image.AddLayer(bpLayerTar); err != nil {
 			return errors.Wrapf(err,
-				"adding layer tar for buildpack %s:%s",
-				style.Symbol(bp.Descriptor().Info.ID),
-				style.Symbol(bp.Descriptor().Info.Version),
+				"adding layer tar for buildpack %s",
+				style.Symbol(bp.Descriptor().Info.FullName()),
 			)
 		}
 
 		diffID, err := dist.LayerDiffID(bpLayerTar)
 		if err != nil {
 			return errors.Wrapf(err,
-				"getting content hashes for buildpack %s:%s",
-				style.Symbol(bp.Descriptor().Info.ID),
-				style.Symbol(bp.Descriptor().Info.Version),
+				"getting content hashes for buildpack %s",
+				style.Symbol(bp.Descriptor().Info.FullName()),
 			)
 		}
 
@@ -279,13 +295,14 @@ func (b *Builder) Save(logger logging.Logger) error {
 		if _, ok := bpLayers[bpInfo.ID][bpInfo.Version]; ok {
 			logger.Warnf(
 				"buildpack %s already exists on builder and will be overridden",
-				style.Symbol(bpInfo.ID+"@"+bpInfo.Version),
+				style.Symbol(bpInfo.FullName()),
 			)
 		}
 
 		bpLayers[bpInfo.ID][bpInfo.Version] = BuildpackLayerInfo{
 			LayerDiffID: diffID.String(),
 			Order:       bp.Descriptor().Order,
+			Stacks:      bp.Descriptor().Stacks,
 		}
 	}
 
@@ -338,6 +355,10 @@ func (b *Builder) Save(logger logging.Logger) error {
 	}
 
 	if err := dist.SetLabel(b.image, metadataLabel, b.metadata); err != nil {
+		return err
+	}
+
+	if err := dist.SetLabel(b.image, stack.MixinsLabel, b.mixins); err != nil {
 		return err
 	}
 
@@ -394,12 +415,11 @@ func hasBuildpackWithVersion(bps []dist.BuildpackInfo, version string) bool {
 	return false
 }
 
-func validateBuildpacks(stackID string, lifecycleDescriptor LifecycleDescriptor, bps []dist.Buildpack) error {
+func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, bps []dist.Buildpack) error {
 	bpLookup := map[string]interface{}{}
 
 	for _, bp := range bps {
-		bpInfo := bp.Descriptor().Info
-		bpLookup[bpInfo.ID+"@"+bpInfo.Version] = nil
+		bpLookup[bp.Descriptor().Info.FullName()] = nil
 	}
 
 	for _, bp := range bps {
@@ -408,7 +428,7 @@ func validateBuildpacks(stackID string, lifecycleDescriptor LifecycleDescriptor,
 		if !bpd.API.SupportsVersion(lifecycleDescriptor.API.BuildpackVersion) {
 			return fmt.Errorf(
 				"buildpack %s (Buildpack API version %s) is incompatible with lifecycle %s (Buildpack API version %s)",
-				style.Symbol(bpd.Info.ID+"@"+bpd.Info.Version),
+				style.Symbol(bpd.Info.FullName()),
 				bpd.API.String(),
 				style.Symbol(lifecycleDescriptor.Info.Version.String()),
 				lifecycleDescriptor.API.BuildpackVersion.String(),
@@ -416,20 +436,16 @@ func validateBuildpacks(stackID string, lifecycleDescriptor LifecycleDescriptor,
 		}
 
 		if len(bpd.Stacks) >= 1 { // standard buildpack
-			if !bpd.SupportsStack(stackID) {
-				return fmt.Errorf(
-					"buildpack %s does not support stack %s",
-					style.Symbol(bpd.Info.ID+"@"+bpd.Info.Version),
-					style.Symbol(stackID),
-				)
+			if err := bpd.EnsureStackSupport(stackID, mixins, false); err != nil {
+				return err
 			}
 		} else { // order buildpack
 			for _, g := range bpd.Order {
 				for _, r := range g.Group {
-					if _, ok := bpLookup[r.ID+"@"+r.Version]; !ok {
+					if _, ok := bpLookup[r.FullName()]; !ok {
 						return fmt.Errorf(
 							"buildpack %s not found on the builder",
-							style.Symbol(r.ID+"@"+r.Version),
+							style.Symbol(r.FullName()),
 						)
 					}
 				}

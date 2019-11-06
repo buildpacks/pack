@@ -57,6 +57,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			fakeBuildImage = fakes.NewImage("some/build-image", "", nil)
 			h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+			h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "build:mixinY"]`))
 			h.AssertNil(t, fakeBuildImage.SetEnv("CNB_USER_ID", "1234"))
 			h.AssertNil(t, fakeBuildImage.SetEnv("CNB_GROUP_ID", "4321"))
 
@@ -251,43 +252,67 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		it("should create a new builder image", func() {
-			err := subject.CreateBuilder(context.TODO(), opts)
-			h.AssertNil(t, err)
+		when("buildpack mixins are not satisfied", func() {
+			it.Before(func() {
+				h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.mixins", ""))
+			})
 
-			builderImage, err := builder.GetBuilder(fakeBuildImage)
-			h.AssertNil(t, err)
+			it("should return an error", func() {
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "validating buildpacks: buildpack 'bp.one@1.2.3' requires missing mixin(s): build:mixinY, mixinX")
+			})
+		})
 
-			h.AssertEq(t, builderImage.Name(), "some/builder")
-			h.AssertEq(t, builderImage.Description(), "Some description")
-			h.AssertEq(t, builderImage.UID, 1234)
-			h.AssertEq(t, builderImage.GID, 4321)
-			h.AssertEq(t, builderImage.StackID, "some.stack.id")
-			bpInfo := dist.BuildpackInfo{
-				ID:      "bp.one",
-				Version: "1.2.3",
-			}
-			h.AssertEq(t, builderImage.GetBuildpacks(), []builder.BuildpackMetadata{{
-				BuildpackInfo: bpInfo,
-				Latest:        true,
-			}})
-			h.AssertEq(t, builderImage.GetOrder(), dist.Order{{
-				Group: []dist.BuildpackRef{{
+		when("creation succeeds", func() {
+			var bldr *builder.Builder
+
+			it.Before(func() {
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+				h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+
+				bldr, err = builder.FromImage(fakeBuildImage)
+				h.AssertNil(t, err)
+			})
+
+			it("should set basic metadata", func() {
+				h.AssertEq(t, bldr.Name(), "some/builder")
+				h.AssertEq(t, bldr.Description(), "Some description")
+				h.AssertEq(t, bldr.UID, 1234)
+				h.AssertEq(t, bldr.GID, 4321)
+				h.AssertEq(t, bldr.StackID, "some.stack.id")
+			})
+
+			it("should set buildpack and order metadata", func() {
+				bpInfo := dist.BuildpackInfo{
+					ID:      "bp.one",
+					Version: "1.2.3",
+				}
+				h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{{
 					BuildpackInfo: bpInfo,
-					Optional:      false,
-				}},
-			}})
-			h.AssertEq(t, builderImage.GetLifecycleDescriptor().Info.Version.String(), "3.4.5")
+					Latest:        true,
+				}})
+				h.AssertEq(t, bldr.Order(), dist.Order{{
+					Group: []dist.BuildpackRef{{
+						BuildpackInfo: bpInfo,
+						Optional:      false,
+					}},
+				}})
+			})
 
-			layerTar, err := fakeBuildImage.FindLayerWithPath("/cnb/lifecycle")
-			h.AssertNil(t, err)
-			assertTarHasFile(t, layerTar, "/cnb/lifecycle/detector")
-			assertTarHasFile(t, layerTar, "/cnb/lifecycle/restorer")
-			assertTarHasFile(t, layerTar, "/cnb/lifecycle/analyzer")
-			assertTarHasFile(t, layerTar, "/cnb/lifecycle/builder")
-			assertTarHasFile(t, layerTar, "/cnb/lifecycle/exporter")
-			assertTarHasFile(t, layerTar, "/cnb/lifecycle/cacher")
-			assertTarHasFile(t, layerTar, "/cnb/lifecycle/launcher")
+			it("should embed the lifecycle", func() {
+				h.AssertEq(t, bldr.LifecycleDescriptor().Info.Version.String(), "3.4.5")
+
+				layerTar, err := fakeBuildImage.FindLayerWithPath("/cnb/lifecycle")
+				h.AssertNil(t, err)
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/detector")
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/restorer")
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/analyzer")
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/builder")
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/exporter")
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/cacher")
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/launcher")
+			})
 		})
 
 		when("windows", func() {

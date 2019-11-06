@@ -111,14 +111,28 @@ func AssertNotContains(t *testing.T, actual, expected string) {
 	}
 }
 
-func AssertSliceContains(t *testing.T, slice []string, value string) {
+func AssertSliceContains(t *testing.T, slice []string, values ...string) {
 	t.Helper()
+	sLookup := map[string]interface{}{}
 	for _, s := range slice {
-		if value == s {
-			return
+		sLookup[s] = nil
+	}
+	remainingVals := map[string]interface{}{}
+	for _, v := range values {
+		remainingVals[v] = nil
+	}
+	for _, s := range slice {
+		if _, ok := sLookup[s]; ok {
+			delete(remainingVals, s)
 		}
 	}
-	t.Fatalf("Expected: '%s' to contain element '%s'", slice, value)
+	if len(remainingVals) > 0 {
+		var rem []string
+		for v := range remainingVals {
+			rem = append(rem, v)
+		}
+		t.Fatalf("Expected: '%s' to contain elements '%s'", slice, rem)
+	}
 }
 
 func AssertMatch(t *testing.T, actual string, expected string) {

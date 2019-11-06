@@ -190,9 +190,9 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 			)
 		})
 
-		when("#SetStackInfo", func() {
+		when("#SetStack", func() {
 			it.Before(func() {
-				subject.SetStackInfo(builder.StackConfig{
+				subject.SetStack(builder.StackConfig{
 					RunImage:        "some/run",
 					RunImageMirrors: []string{"some/mirror", "other/mirror"},
 				})
