@@ -74,7 +74,7 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 		}
 
 		if err := image.AddLayer(bpLayerTar); err != nil {
-			return nil, errors.Wrapf(err, "adding layer tar for buildpack %s", style.Symbol(bp.Descriptor().Info.ID+"@"+bp.Descriptor().Info.Version))
+			return nil, errors.Wrapf(err, "adding layer tar for buildpack %s", style.Symbol(bp.Descriptor().Info.FullName()))
 		}
 	}
 
@@ -92,7 +92,7 @@ func validateDefault(bps []dist.Buildpack, defBp dist.BuildpackInfo) error {
 
 	if !bpExists(bps, defBp) {
 		return errors.Errorf("selected default %s is not present",
-			style.Symbol(defBp.ID+"@"+defBp.Version),
+			style.Symbol(defBp.FullName()),
 		)
 	}
 
