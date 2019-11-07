@@ -12,6 +12,7 @@ import (
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/dist"
 	"github.com/buildpack/pack/internal/image"
+	"github.com/buildpack/pack/internal/stack"
 	"github.com/buildpack/pack/internal/style"
 )
 
@@ -31,13 +32,23 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return err
 	}
 
-	baseImage, err := c.imageFetcher.Fetch(ctx, opts.BuilderConfig.Stack.BuildImage, !opts.Publish, !opts.NoPull)
+	rawBuildImage, err := c.imageFetcher.Fetch(ctx, opts.BuilderConfig.Stack.BuildImage, !opts.Publish, !opts.NoPull)
 	if err != nil {
 		return errors.Wrap(err, "fetch build image")
 	}
+	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(rawBuildImage.Name()))
 
-	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
-	bldr, err := builder.New(baseImage, opts.BuilderName)
+	buildImage, err := stack.NewBuildImage(rawBuildImage)
+	if err != nil {
+		return err
+	}
+
+	builderImage, err := builder.NewBuilderImage(buildImage)
+	if err != nil {
+		return err
+	}
+
+	bldr, err := builder.FromBuilderImage(builderImage, builder.WithName(opts.BuilderName))
 	if err != nil {
 		return errors.Wrap(err, "invalid build-image")
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/dist"
 	"github.com/buildpack/pack/internal/image"
+	"github.com/buildpack/pack/internal/stack"
 	"github.com/buildpack/pack/internal/style"
 )
 
@@ -30,7 +31,7 @@ type BuildpackInfo struct {
 }
 
 func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) {
-	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, false)
+	rawBuilderImage, err := c.imageFetcher.Fetch(context.Background(), name, daemon, false)
 	if err != nil {
 		if errors.Cause(err) == image.ErrNotFound {
 			return nil, nil
@@ -38,7 +39,17 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		return nil, err
 	}
 
-	bldr, err := builder.FromImage(img)
+	buildImage, err := stack.NewBuildImage(rawBuilderImage)
+	if err != nil {
+		return nil, err
+	}
+
+	builderImage, err := builder.NewBuilderImage(buildImage)
+	if err != nil {
+		return nil, err
+	}
+
+	bldr, err := builder.FromBuilderImage(builderImage)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(name))
 	}

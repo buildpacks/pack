@@ -8,9 +8,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
-	"github.com/buildpack/imgutil"
 	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -23,8 +23,22 @@ import (
 	"github.com/buildpack/pack/internal/dist"
 	"github.com/buildpack/pack/internal/paths"
 	"github.com/buildpack/pack/internal/stack"
+	"github.com/buildpack/pack/internal/stringset"
 	"github.com/buildpack/pack/internal/style"
 )
+
+type builderImage interface {
+	CommonMixins() []string
+	BuildOnlyMixins() []string
+	StackID() string
+	BuildpackLayers() builder.BuildpackLayers
+}
+
+type runImage interface {
+	Name() string
+	CommonMixins() []string
+	RunOnlyMixins() []string
+}
 
 type Lifecycle interface {
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
@@ -78,7 +92,16 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
 	}
 
-	bldr, err := c.getBuilder(rawBuilderImage)
+	buildImg, err := stack.NewBuildImage(rawBuilderImage)
+	if err != nil {
+		return err
+	}
+
+	builderImg, err := builder.NewBuilderImage(buildImg)
+	if err != nil {
+		return err
+	}
+	bldr, err := c.getBuilder(builderImg)
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
@@ -89,21 +112,16 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
 	}
 
-	var runMixins []string
-	if _, err := dist.GetLabel(runImage, stack.MixinsLabel, &runMixins); err != nil {
-		return err
-	}
-
 	fetchedBPs, group, err := c.processBuildpacks(ctx, opts.Buildpacks)
 	if err != nil {
 		return err
 	}
 
-	if err := c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil {
+	if err := c.validateMixins(fetchedBPs, builderImg, runImage); err != nil {
 		return errors.Wrap(err, "validating stack mixins")
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, opts.Env, group, fetchedBPs)
+	ephemeralBuilder, err := c.createEphemeralBuilder(builderImg, opts.Env, group, fetchedBPs)
 	if err != nil {
 		return err
 	}
@@ -152,8 +170,8 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 	return name.ParseReference(builderName, name.WeakValidation)
 }
 
-func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
-	bldr, err := builder.FromImage(img)
+func (c *Client) getBuilder(img builder.Image) (*builder.Builder, error) {
+	bldr, err := builder.FromBuilderImage(img)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +181,7 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	return bldr, nil
 }
 
-func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (imgutil.Image, error) {
+func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (runImage, error) {
 	if name == "" {
 		return nil, errors.New("run image must be specified")
 	}
@@ -178,30 +196,52 @@ func (c *Client) validateRunImage(context context.Context, name string, noPull b
 	if stackID != expectedStack {
 		return nil, fmt.Errorf("run-image stack id '%s' does not match builder stack '%s'", stackID, expectedStack)
 	}
-	return img, nil
+
+	// TODO: Validate mixins here instead?
+	return stack.NewRunImage(img)
 }
 
-func (c *Client) validateMixins(additionalBuildpacks []dist.Buildpack, bldr *builder.Builder, runImageName string, runMixins []string) error {
-	if err := stack.ValidateMixins(bldr.Image().Name(), bldr.Mixins(), runImageName, runMixins); err != nil {
+func (c *Client) validateMixins(additionalBuildpacks []dist.Buildpack, builderImg builderImage, runImg runImage) error {
+	if err := c.validateCommonMixins(builderImg, runImg); err != nil {
 		return err
 	}
 
-	bps, err := allBuildpacks(bldr.Image(), additionalBuildpacks)
+	bps, err := allBuildpacks(builderImg, additionalBuildpacks)
 	if err != nil {
 		return err
 	}
-	mixins := assembleAvailableMixins(bldr.Mixins(), runMixins)
-
+	mixins := assembleAvailableMixins(builderImg, runImg)
 	for _, bp := range bps {
-		if err := bp.EnsureStackSupport(bldr.StackID, mixins, true); err != nil {
+		if err := bp.EnsureStackSupport(builderImg.StackID(), mixins, true); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// assembleAvailableMixins returns the set of mixins that are common between the two provided sets, plus build-only mixins and run-only mixins.
-func assembleAvailableMixins(buildMixins, runMixins []string) []string {
+func (c *Client) validateCommonMixins(builderImg builderImage, runImg runImage) error {
+	missing := findMissing(runImg.CommonMixins(), builderImg.CommonMixins())
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		return fmt.Errorf("%s missing required mixin(s): %s", style.Symbol(runImg.Name()), strings.Join(missing, ", "))
+	}
+	return nil
+
+}
+
+func findMissing(actual, required []string) []string {
+	actualSet := stringset.FromSlice(actual)
+	var missing []string
+	for _, m := range required {
+		if _, ok := actualSet[m]; !ok {
+			missing = append(missing, m)
+		}
+	}
+	return missing
+}
+
+// assembleAvailableMixins returns the set of mixins that are common between the two image mixin sets, plus build-only mixins and run-only mixins.
+func assembleAvailableMixins(builderImg builderImage, runImg runImage) []string {
 	// NOTE: We cannot simply union the two mixin sets, as this could introduce a mixin that is only present on one stack
 	// image but not the other. A buildpack that happens to require the mixin would fail to run properly, even though validation
 	// would pass.
@@ -222,32 +262,20 @@ func assembleAvailableMixins(buildMixins, runMixins []string) []string {
 	//    Buildpack requires: [A, B]
 	//    Match? No
 
-	var common, buildOnly, runOnly []string
-	bMixins := map[string]interface{}{}
-
-	for _, m := range buildMixins {
-		if strings.HasPrefix(m, "build:") {
-			buildOnly = append(buildOnly, m)
-		}
-		bMixins[m] = nil
-	}
-	for _, m := range runMixins {
-		if strings.HasPrefix(m, "run:") {
-			runOnly = append(runOnly, m)
-		}
+	var inBoth []string
+	bMixins := stringset.FromSlice(builderImg.CommonMixins())
+	for _, m := range runImg.CommonMixins() {
 		if _, ok := bMixins[m]; ok {
-			common = append(common, m)
+			inBoth = append(inBoth, m)
 		}
 	}
-	return append(common, append(buildOnly, runOnly...)...)
+	return append(inBoth, append(builderImg.BuildOnlyMixins(), runImg.RunOnlyMixins()...)...)
 }
 
-func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []dist.Buildpack) ([]dist.BuildpackDescriptor, error) {
+func allBuildpacks(builderImg builderImage, additionalBuildpacks []dist.Buildpack) ([]dist.BuildpackDescriptor, error) {
+	bpLayers := builderImg.BuildpackLayers()
+
 	var all []dist.BuildpackDescriptor
-	var bpLayers builder.BuildpackLayers
-	if _, err := dist.GetLabel(builderImage, builder.BuildpackLayersLabel, &bpLayers); err != nil {
-		return nil, err
-	}
 	for id, bps := range bpLayers {
 		for ver, bp := range bps {
 			desc := dist.BuildpackDescriptor{
@@ -428,12 +456,13 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 	return parts[0], ""
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, group dist.OrderEntry, buildpacks []dist.Buildpack) (*builder.Builder, error) {
-	origBuilderName := rawBuilderImage.Name()
-	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
+func (c *Client) createEphemeralBuilder(baseBuilderImage builder.Image, env map[string]string, group dist.OrderEntry, buildpacks []dist.Buildpack) (*builder.Builder, error) {
+	origBuilderName := baseBuilderImage.Name()
+	bldr, err := builder.FromBuilderImage(baseBuilderImage)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}
+	baseBuilderImage.Rename(fmt.Sprintf("pack.local/builder/%x:latest", randString(10))) // TODO: WithName(...) opt instead?
 
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {

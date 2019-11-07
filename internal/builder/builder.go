@@ -22,7 +22,6 @@ import (
 	"github.com/buildpack/pack/internal/api"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/internal/dist"
-	"github.com/buildpack/pack/internal/stack"
 	"github.com/buildpack/pack/internal/style"
 	"github.com/buildpack/pack/logging"
 )
@@ -39,16 +38,18 @@ const (
 	workspaceDir = "/workspace"
 	layersDir    = "/layers"
 
-	metadataLabel = "io.buildpacks.builder.metadata"
-	stackLabel    = "io.buildpacks.stack.id"
+	metadataLabel        = "io.buildpacks.builder.metadata"
+	orderLabel           = "io.buildpacks.buildpack.order"
+	buildpackLayersLabel = "io.buildpacks.buildpack.layers"
 
 	envUID = "CNB_USER_ID"
 	envGID = "CNB_GROUP_ID"
 )
 
+// TODO: Pare down getters/setters (use internal `image` instead?)
 type Builder struct {
-	baseImageName        string
-	image                imgutil.Image
+	// baseImageName        string // TODO: investigate
+	image                Image
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
 	additionalBuildpacks []dist.Buildpack
@@ -65,51 +66,29 @@ type orderTOML struct {
 	Order dist.Order `toml:"order"`
 }
 
-// FromImage constructs a builder from a builder image
-func FromImage(img imgutil.Image) (*Builder, error) {
-	var metadata Metadata
-	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
-		return nil, err
-	} else if !ok {
-		return nil, fmt.Errorf("builder %s missing label %s -- try recreating builder", style.Symbol(img.Name()), style.Symbol(metadataLabel))
+type Option func(builderImage Image)
+
+// WithName sets the name to the builder image
+func WithName(name string) Option {
+	return func(builderImage Image) {
+		builderImage.Rename(name)
 	}
-	return constructBuilder(img, "", metadata)
 }
 
-// New constructs a new builder from base image
-func New(baseImage imgutil.Image, name string) (*Builder, error) {
-	var metadata Metadata
-	if _, err := dist.GetLabel(baseImage, metadataLabel, &metadata); err != nil {
-		return nil, err
+// FromBuilderImage constructs a builder from an existing image
+func FromBuilderImage(builderImage Image, opts ...Option) (*Builder, error) {
+	for _, opt := range opts {
+		opt(builderImage)
 	}
-	return constructBuilder(baseImage, name, metadata)
-}
 
-func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Builder, error) {
-	uid, gid, err := userAndGroupIDs(img)
+	uid, gid, err := userAndGroupIDs(builderImage)
 	if err != nil {
 		return nil, err
-	}
-
-	stackID, err := img.Label(stackLabel)
-	if err != nil {
-		return nil, errors.Wrapf(err, "get label %s from image %s", style.Symbol(stackLabel), style.Symbol(img.Name()))
-	}
-	if stackID == "" {
-		return nil, fmt.Errorf("image %s missing label %s", style.Symbol(img.Name()), style.Symbol(stackLabel))
-	}
-
-	var mixins []string
-	if _, err := dist.GetLabel(img, stack.MixinsLabel, &mixins); err != nil {
-		return nil, err
-	}
-
-	baseName := img.Name()
-	if newName != "" && baseName != newName {
-		img.Rename(newName)
 	}
 
 	lifecycleVersion := VersionMustParse(AssumedLifecycleVersion)
+	metadata := builderImage.Metadata()
+
 	if metadata.Lifecycle.Version != nil {
 		lifecycleVersion = metadata.Lifecycle.Version
 	}
@@ -124,22 +103,15 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 		platformAPIVersion = metadata.Lifecycle.API.PlatformVersion
 	}
 
-	var order dist.Order
-	if ok, err := dist.GetLabel(img, OrderLabel, &order); err != nil {
-		return nil, err
-	} else if !ok {
-		order = metadata.Groups.ToOrder()
-	}
-
 	return &Builder{
-		baseImageName: baseName,
-		image:         img,
-		metadata:      metadata,
-		mixins:        mixins,
-		order:         order,
-		UID:           uid,
-		GID:           gid,
-		StackID:       stackID,
+		// baseImageName: baseName,  // TODO: investigate
+		image:    builderImage,
+		metadata: metadata,
+		mixins:   builderImage.CommonMixins(),
+		order:    builderImage.Order(),
+		UID:      uid,
+		GID:      gid,
+		StackID:  builderImage.StackID(),
 		lifecycleDescriptor: LifecycleDescriptor{
 			Info: LifecycleInfo{
 				Version: lifecycleVersion,
@@ -177,9 +149,10 @@ func (b *Builder) Name() string {
 	return b.image.Name()
 }
 
-func (b *Builder) Image() imgutil.Image {
-	return b.image
-}
+// TODO: is this needed?
+// func (b *Builder) Image() Image {
+//	return b.image
+// }
 
 func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
@@ -262,10 +235,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 		return errors.Wrap(err, "validating buildpacks")
 	}
 
-	bpLayers := BuildpackLayers{}
-	if _, err := dist.GetLabel(b.image, BuildpackLayersLabel, &bpLayers); err != nil {
-		return err
-	}
+	bpLayers := b.image.BuildpackLayers()
 
 	for _, bp := range b.additionalBuildpacks {
 		bpLayerTar, err := dist.BuildpackLayer(tmpDir, b.UID, b.GID, bp)
@@ -307,7 +277,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 		}
 	}
 
-	if err := dist.SetLabel(b.image, BuildpackLayersLabel, bpLayers); err != nil {
+	if err := b.image.SetBuildpackLayers(bpLayers); err != nil {
 		return err
 	}
 
@@ -320,7 +290,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 			return errors.Wrap(err, "adding order.tar layer")
 		}
 
-		if err := dist.SetLabel(b.image, OrderLabel, b.order); err != nil {
+		if err := b.image.SetOrder(b.order); err != nil {
 			return err
 		}
 	}
@@ -355,11 +325,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 		Version: cmd.Version,
 	}
 
-	if err := dist.SetLabel(b.image, metadataLabel, b.metadata); err != nil {
-		return err
-	}
-
-	if err := dist.SetLabel(b.image, stack.MixinsLabel, b.mixins); err != nil {
+	if err := b.image.SetMetadata(b.metadata); err != nil {
 		return err
 	}
 

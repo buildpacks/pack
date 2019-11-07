@@ -40,7 +40,7 @@ func (p *PackageBuilder) AddStack(stack dist.Stack) {
 	p.stacks = append(p.stacks, stack)
 }
 
-func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, error) {
+func (p *PackageBuilder) Save(repoName string, publish bool) (Image, error) {
 	if err := validateDefault(p.buildpacks, p.defaultBpInfo); err != nil {
 		return nil, err
 	}
@@ -49,12 +49,16 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 		return nil, err
 	}
 
-	image, err := p.imageFactory.NewImage(repoName, !publish)
+	rawImage, err := p.imageFactory.NewImage(repoName, !publish)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating image")
 	}
+	image, err := NewPackageImage(rawImage)
+	if err != nil {
+		return nil, err
+	}
 
-	if err := dist.SetLabel(image, MetadataLabel, &Metadata{
+	if err := image.SetMetadata(Metadata{
 		BuildpackInfo: p.defaultBpInfo,
 		Stacks:        p.stacks,
 	}); err != nil {

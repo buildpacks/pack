@@ -19,6 +19,7 @@ import (
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/builder/testmocks"
 	"github.com/buildpack/pack/internal/dist"
+	"github.com/buildpack/pack/internal/stack"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -100,8 +101,13 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 
 		logger = logging.New(ioutil.Discard)
 
-		var err error
-		subject, err = builder.New(baseImage, "some/builder")
+		buildImage, err := stack.NewBuildImage(baseImage)
+		h.AssertNil(t, err)
+
+		builderImage, err := builder.NewBuilderImage(buildImage)
+		h.AssertNil(t, err)
+
+		subject, err = builder.FromBuilderImage(builderImage, builder.WithName("some/builder"))
 		h.AssertNil(t, err)
 	})
 

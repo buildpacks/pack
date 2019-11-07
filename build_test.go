@@ -550,7 +550,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					Buildpacks: []string{"buildpack.id@buildpack.version"},
 				}))
 				h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-				bldr, err := builder.FromImage(defaultBuilderImage)
+				builderImg, err := builder.NewBuilderImage(defaultBuilderImage)
+				h.AssertNil(t, err)
+				bldr, err := builder.FromBuilderImage(builderImg)
 				h.AssertNil(t, err)
 				h.AssertEq(t, bldr.Order(), dist.Order{
 					{Group: []dist.BuildpackRef{{
@@ -667,7 +669,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage)
+						builderImg, err := builder.NewBuilderImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						bldr, err := builder.FromBuilderImage(builderImg)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.BuildpackRef{
@@ -713,7 +717,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage)
+						builderImg, err := builder.NewBuilderImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						bldr, err := builder.FromBuilderImage(builderImg)
 						h.AssertNil(t, err)
 						buildpackInfo := dist.BuildpackInfo{ID: "buildpack.id", Version: "buildpack.version"}
 						dirBuildpackInfo := dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}
@@ -760,7 +766,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertNil(t, err)
 						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage)
+						builderImg, err := builder.NewBuilderImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						bldr, err := builder.FromBuilderImage(builderImg)
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.BuildpackRef{
