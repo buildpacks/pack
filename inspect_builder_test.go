@@ -12,10 +12,10 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/dist"
-	"github.com/buildpack/pack/image"
+	"github.com/buildpack/pack/internal/builder"
+	"github.com/buildpack/pack/internal/dist"
 	ifakes "github.com/buildpack/pack/internal/fakes"
+	"github.com/buildpack/pack/internal/image"
 	h "github.com/buildpack/pack/testhelpers"
 	"github.com/buildpack/pack/testmocks"
 )

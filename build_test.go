@@ -23,15 +23,15 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/api"
-	"github.com/buildpack/pack/blob"
-	"github.com/buildpack/pack/build"
-	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/cmd"
-	"github.com/buildpack/pack/dist"
+	"github.com/buildpack/pack/internal/api"
+	"github.com/buildpack/pack/internal/blob"
+	"github.com/buildpack/pack/internal/build"
+	"github.com/buildpack/pack/internal/builder"
+	"github.com/buildpack/pack/internal/dist"
 	ifakes "github.com/buildpack/pack/internal/fakes"
+	"github.com/buildpack/pack/internal/style"
 	"github.com/buildpack/pack/logging"
-	"github.com/buildpack/pack/style"
 	h "github.com/buildpack/pack/testhelpers"
 )
 

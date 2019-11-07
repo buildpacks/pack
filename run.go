@@ -7,8 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/app"
-	"github.com/buildpack/pack/style"
+	"github.com/buildpack/pack/internal/app"
+	"github.com/buildpack/pack/internal/style"
 )
 
 type RunOptions struct {

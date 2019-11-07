@@ -8,7 +8,7 @@ import (
 	"github.com/buildpack/lifecycle/metadata"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/image"
+	"github.com/buildpack/pack/internal/image"
 )
 
 type ImageInfo struct {

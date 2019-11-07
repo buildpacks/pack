@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/style"
+	"github.com/buildpack/pack/internal/style"
 )
 
 type TarBuilder struct {

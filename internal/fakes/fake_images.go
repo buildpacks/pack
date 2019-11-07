@@ -6,7 +6,7 @@ import (
 
 	"github.com/buildpack/imgutil/fakes"
 
-	"github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/internal/builder"
 	h "github.com/buildpack/pack/testhelpers"
 )
 

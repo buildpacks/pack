@@ -6,7 +6,7 @@ import (
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/image"
+	"github.com/buildpack/pack/internal/image"
 )
 
 type FetchArgs struct {

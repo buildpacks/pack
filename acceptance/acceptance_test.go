@@ -31,12 +31,12 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/api"
-	"github.com/buildpack/pack/blob"
-	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/cache"
+	"github.com/buildpack/pack/internal/api"
 	"github.com/buildpack/pack/internal/archive"
-	"github.com/buildpack/pack/style"
+	"github.com/buildpack/pack/internal/blob"
+	"github.com/buildpack/pack/internal/builder"
+	"github.com/buildpack/pack/internal/cache"
+	"github.com/buildpack/pack/internal/style"
 	h "github.com/buildpack/pack/testhelpers"
 )
 

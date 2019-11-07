@@ -14,9 +14,9 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/api"
-	"github.com/buildpack/pack/buildpackage"
-	"github.com/buildpack/pack/dist"
+	"github.com/buildpack/pack/internal/api"
+	"github.com/buildpack/pack/internal/buildpackage"
+	"github.com/buildpack/pack/internal/dist"
 	ifakes "github.com/buildpack/pack/internal/fakes"
 	"github.com/buildpack/pack/internal/logging"
 	h "github.com/buildpack/pack/testhelpers"
