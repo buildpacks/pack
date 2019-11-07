@@ -53,8 +53,6 @@ func CreatePackage(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "create-package")
 
-	cmd.Hidden = true
-
 	return cmd
 }
 

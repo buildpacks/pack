@@ -1,6 +1,6 @@
 [default]
 id = "noop.buildpack"
-version = "0.0.1"
+version = "noop.buildpack.version"
 
 [[blobs]]
 uri = "noop-buildpack.tgz"
