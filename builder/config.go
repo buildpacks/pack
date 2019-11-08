@@ -9,9 +9,9 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/dist"
+	"github.com/buildpack/pack/internal/dist"
 	"github.com/buildpack/pack/internal/paths"
-	"github.com/buildpack/pack/style"
+	"github.com/buildpack/pack/internal/style"
 )
 
 type Config struct {

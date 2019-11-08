@@ -15,15 +15,15 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/api"
-	"github.com/buildpack/pack/build"
-	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/cmd"
-	"github.com/buildpack/pack/dist"
+	"github.com/buildpack/pack/internal/api"
 	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/internal/build"
+	"github.com/buildpack/pack/internal/builder"
+	"github.com/buildpack/pack/internal/dist"
 	"github.com/buildpack/pack/internal/paths"
-	"github.com/buildpack/pack/stack"
-	"github.com/buildpack/pack/style"
+	"github.com/buildpack/pack/internal/stack"
+	"github.com/buildpack/pack/internal/style"
 )
 
 type Lifecycle interface {

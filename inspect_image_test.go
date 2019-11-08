@@ -14,8 +14,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/image"
 	ifakes "github.com/buildpack/pack/internal/fakes"
+	"github.com/buildpack/pack/internal/image"
 	h "github.com/buildpack/pack/testhelpers"
 	"github.com/buildpack/pack/testmocks"
 )

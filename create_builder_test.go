@@ -12,16 +12,16 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/buildpack/pack/dist"
-
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/blob"
-	"github.com/buildpack/pack/builder"
+	pubbldr "github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/internal/blob"
+	"github.com/buildpack/pack/internal/builder"
+	"github.com/buildpack/pack/internal/dist"
 	ifakes "github.com/buildpack/pack/internal/fakes"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
@@ -84,9 +84,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			opts = CreateBuilderOptions{
 				BuilderName: "some/builder",
-				BuilderConfig: builder.Config{
+				BuilderConfig: pubbldr.Config{
 					Description: "Some description",
-					Buildpacks: []builder.BuildpackConfig{
+					Buildpacks: []pubbldr.BuildpackConfig{
 						{
 							BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"},
 							URI:           "https://example.fake/bp-one.tgz",
@@ -97,13 +97,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							{BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
 						}},
 					},
-					Stack: builder.StackConfig{
+					Stack: pubbldr.StackConfig{
 						ID:              "some.stack.id",
 						BuildImage:      "some/build-image",
 						RunImage:        "some/run-image",
 						RunImageMirrors: []string{"localhost:5000/some-run-image"},
 					},
-					Lifecycle: builder.LifecycleConfig{URI: "file:///some-lifecycle"},
+					Lifecycle: pubbldr.LifecycleConfig{URI: "file:///some-lifecycle"},
 				},
 				Publish: false,
 				NoPull:  false,

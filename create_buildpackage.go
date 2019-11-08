@@ -5,9 +5,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/buildpackage"
-	"github.com/buildpack/pack/dist"
-	"github.com/buildpack/pack/style"
+	"github.com/buildpack/pack/internal/buildpackage"
+	"github.com/buildpack/pack/internal/dist"
+	"github.com/buildpack/pack/internal/style"
 )
 
 type CreatePackageOptions struct {

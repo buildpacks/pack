@@ -6,8 +6,8 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 
-	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/style"
+	"github.com/buildpack/pack/internal/builder"
+	"github.com/buildpack/pack/internal/style"
 )
 
 func (c *Client) parseTagReference(imageName string) (name.Reference, error) {

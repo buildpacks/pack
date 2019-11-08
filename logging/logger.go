@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/buildpack/pack/style"
+	"github.com/buildpack/pack/internal/style"
 )
 
 // Logger defines behavior required by a logging package used by pack libraries

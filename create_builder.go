@@ -8,15 +8,16 @@ import (
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/dist"
-	"github.com/buildpack/pack/image"
-	"github.com/buildpack/pack/style"
+	pubbldr "github.com/buildpack/pack/builder"
+	"github.com/buildpack/pack/internal/builder"
+	"github.com/buildpack/pack/internal/dist"
+	"github.com/buildpack/pack/internal/image"
+	"github.com/buildpack/pack/internal/style"
 )
 
 type CreateBuilderOptions struct {
 	BuilderName   string
-	BuilderConfig builder.Config
+	BuilderConfig pubbldr.Config
 	Publish       bool
 	NoPull        bool
 }
@@ -112,7 +113,7 @@ func validateBuildpack(bp dist.Buildpack, source, expectedID, expectedBPVersion 
 	return nil
 }
 
-func (c *Client) fetchLifecycle(ctx context.Context, config builder.LifecycleConfig) (builder.Lifecycle, error) {
+func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig) (builder.Lifecycle, error) {
 	if config.Version != "" && config.URI != "" {
 		return nil, errors.Errorf(
 			"%s can only declare %s or %s, not both",
@@ -152,7 +153,7 @@ func uriFromLifecycleVersion(version semver.Version) string {
 	return fmt.Sprintf("https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", version.String(), version.String())
 }
 
-func validateBuilderConfig(conf builder.Config) error {
+func validateBuilderConfig(conf pubbldr.Config) error {
 	if conf.Stack.ID == "" {
 		return errors.New("stack.id is required")
 	}

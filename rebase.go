@@ -7,8 +7,8 @@ import (
 	"github.com/buildpack/lifecycle/metadata"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/style"
+	"github.com/buildpack/pack/internal/builder"
+	"github.com/buildpack/pack/internal/style"
 )
 
 type RebaseOptions struct {

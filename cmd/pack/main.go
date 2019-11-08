@@ -9,8 +9,8 @@ import (
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/cmd"
-	"github.com/buildpack/pack/commands"
-	"github.com/buildpack/pack/config"
+	"github.com/buildpack/pack/internal/commands"
+	"github.com/buildpack/pack/internal/config"
 	clilogger "github.com/buildpack/pack/internal/logging"
 	"github.com/buildpack/pack/logging"
 )

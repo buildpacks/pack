@@ -7,8 +7,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/buildpack/pack/dist"
 	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/internal/dist"
 )
 
 type fakeBuildpackBlob struct {
