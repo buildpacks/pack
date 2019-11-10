@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -14,14 +13,12 @@ import (
 	"time"
 
 	"github.com/buildpack/imgutil/local"
-	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/internal/build"
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/fakes"
@@ -46,11 +43,13 @@ func TestPhase(t *testing.T) {
 	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 
-	repoName = "phase.test." + h.RandString(10)
-	CreateFakeLifecycleImage(t, dockerCli, repoName)
+	repoName = "phase.test.lc-" + h.RandString(10)
+	wd, err := os.Getwd()
+	h.AssertNil(t, err)
+	h.CreateImageFromDir(t, dockerCli, repoName, filepath.Join(wd, "testdata", "fake-lifecycle"))
 	defer h.DockerRmi(dockerCli, repoName)
 
-	spec.Run(t, "phase", testPhase, spec.Report(report.Terminal{}), spec.Parallel())
+	spec.Run(t, "phase", testPhase, spec.Report(report.Terminal{}), spec.Sequential())
 }
 
 func testPhase(t *testing.T, when spec.G, it spec.S) {
@@ -242,18 +241,21 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				var registry *h.TestRegistryConfig
 
 				it.Before(func() {
-					registry = h.RunRegistry(t, true)
+					registry = h.RunRegistry(t)
+					h.AssertNil(t, os.Setenv("DOCKER_CONFIG", registry.DockerConfigDir))
 				})
 
 				it.After(func() {
 					registry.StopRegistry(t)
+					h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
 				})
 
 				it("provides auth for registry in the container", func() {
+					h.CreateImageOnRemote(t, dockerCli, registry, "packs/build:v3alpha2", "FROM busybox")
 					phase, err := subject.NewPhase(
 						"phase",
 						build.WithArgs("registry", registry.RepoName("packs/build:v3alpha2")),
-						build.WithRegistryAccess(),
+						build.WithRegistryAccess(registry.RepoName("packs/build:v3alpha2")),
 					)
 					h.AssertNil(t, err)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
@@ -316,24 +318,6 @@ func assertRunSucceeds(t *testing.T, phase *build.Phase, outBuf *bytes.Buffer, e
 		t.Fatalf("Failed to run phase '%s' \n stdout: '%s' \n stderr '%s'", err, outBuf.String(), errBuf.String())
 	}
 	phase.Cleanup()
-}
-
-func CreateFakeLifecycleImage(t *testing.T, dockerCli *client.Client, repoName string) {
-	ctx := context.Background()
-
-	wd, err := os.Getwd()
-	h.AssertNil(t, err)
-	buildContext := archive.ReadDirAsTar(filepath.Join(wd, "testdata", "fake-lifecycle"), "/", 0, 0, -1)
-
-	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
-		Tags:        []string{repoName},
-		Remove:      true,
-		ForceRemove: true,
-	})
-	h.AssertNil(t, err)
-
-	io.Copy(ioutil.Discard, res.Body)
-	res.Body.Close()
 }
 
 func CreateFakeLifecycle(appDir string, docker *client.Client, logger logging.Logger) (*build.Lifecycle, error) {

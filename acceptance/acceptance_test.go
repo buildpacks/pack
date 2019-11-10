@@ -66,7 +66,7 @@ func TestAcceptance(t *testing.T) {
 	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 
-	registryConfig = h.RunRegistry(t, false)
+	registryConfig = h.RunRegistry(t)
 	defer registryConfig.StopRegistry(t)
 
 	packPath := os.Getenv(envPackPath)
@@ -805,7 +805,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 					runBefore = registryConfig.RepoName("run-before/" + h.RandString(10))
 
 					buildRunImage = func(newRunImage, contents1, contents2 string) {
-						h.CreateImageOnLocal(t, dockerCli, newRunImage, fmt.Sprintf(`
+						h.CreateImage(t, dockerCli, newRunImage, fmt.Sprintf(`
 													FROM %s
 													USER root
 													RUN echo %s > /contents1.txt

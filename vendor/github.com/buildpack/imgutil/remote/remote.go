@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net/http"
@@ -163,12 +164,17 @@ func (i *Image) Found() bool {
 }
 
 func (i *Image) Identifier() (imgutil.Identifier, error) {
+	ref, err := name.ParseReference(i.repoName, name.WeakValidation)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse reference for image '%s': %s", i.repoName, err)
+	}
+
 	hash, err := i.image.Digest()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get digest for image '%s': %s", i.repoName, err)
 	}
 
-	digestRef, err := name.NewDigest(i.repoName+"@"+hash.String(), name.WeakValidation)
+	digestRef, err := name.NewDigest(fmt.Sprintf("%s@%s", ref.Context().Name(), hash.String()), name.WeakValidation)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating digest reference")
 	}
@@ -192,7 +198,7 @@ func (i *Image) Rebase(baseTopLayer string, newBase imgutil.Image) error {
 		return errors.New("expected new base to be a remote image")
 	}
 
-	newImage, err := mutate.Rebase(i.image, &subImage{img: i.image, topSHA: baseTopLayer}, newBaseRemote.image)
+	newImage, err := mutate.Rebase(i.image, &subImage{img: i.image, topDiffID: baseTopLayer}, newBaseRemote.image)
 	if err != nil {
 		return errors.Wrap(err, "rebase")
 	}
@@ -300,7 +306,7 @@ func (i *Image) GetLayer(sha string) (io.ReadCloser, error) {
 }
 
 func (i *Image) AddLayer(path string) error {
-	layer, err := tarball.LayerFromFile(path)
+	layer, err := tarball.LayerFromFile(path, tarball.WithCompressionLevel(gzip.DefaultCompression))
 	if err != nil {
 		return err
 	}
@@ -320,17 +326,17 @@ func (i *Image) ReuseLayer(sha string) error {
 	return err
 }
 
-func findLayerWithSha(layers []v1.Layer, sha string) (v1.Layer, error) {
+func findLayerWithSha(layers []v1.Layer, diffID string) (v1.Layer, error) {
 	for _, layer := range layers {
-		diffID, err := layer.DiffID()
+		dID, err := layer.DiffID()
 		if err != nil {
 			return nil, errors.Wrap(err, "get diff ID for previous image layer")
 		}
-		if sha == diffID.String() {
+		if diffID == dID.String() {
 			return layer, nil
 		}
 	}
-	return nil, fmt.Errorf(`previous image did not have layer with sha '%s'`, sha)
+	return nil, fmt.Errorf(`previous image did not have layer with diff id '%s'`, diffID)
 }
 
 func (i *Image) Save(additionalNames ...string) error {
@@ -393,8 +399,8 @@ func (i *Image) Delete() error {
 }
 
 type subImage struct {
-	img    v1.Image
-	topSHA string
+	img       v1.Image
+	topDiffID string
 }
 
 func (si *subImage) Layers() ([]v1.Layer, error) {
@@ -407,8 +413,8 @@ func (si *subImage) Layers() ([]v1.Layer, error) {
 		if err != nil {
 			return nil, err
 		}
-		if d.String() == si.topSHA {
-			return all[:i+1], nil
+		if d.String() == si.topDiffID {
+			return all[0 : i+1], nil
 		}
 	}
 	return nil, errors.New("could not find base layer in image")
@@ -423,3 +429,4 @@ func (si *subImage) Manifest() (*v1.Manifest, error)         { panic("Not Implem
 func (si *subImage) RawManifest() ([]byte, error)            { panic("Not Implemented") }
 func (si *subImage) LayerByDigest(v1.Hash) (v1.Layer, error) { panic("Not Implemented") }
 func (si *subImage) LayerByDiffID(v1.Hash) (v1.Layer, error) { panic("Not Implemented") }
+func (si *subImage) Size() (int64, error)                    { panic("Not Implemented") }

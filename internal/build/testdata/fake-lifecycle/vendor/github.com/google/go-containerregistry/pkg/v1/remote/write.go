@@ -19,54 +19,93 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
+	"time"
 
-	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/internal/retry"
+	"github.com/google/go-containerregistry/pkg/logs"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
-	"github.com/google/go-containerregistry/pkg/v1/stream"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"golang.org/x/sync/errgroup"
 )
 
+// Taggable is an interface that enables a manifest PUT (e.g. for tagging).
+type Taggable interface {
+	RawManifest() ([]byte, error)
+	MediaType() (types.MediaType, error)
+	Digest() (v1.Hash, error)
+}
+
 // Write pushes the provided img to the specified image reference.
-func Write(ref name.Reference, img v1.Image, auth authn.Authenticator, t http.RoundTripper) error {
+func Write(ref name.Reference, img v1.Image, options ...Option) error {
 	ls, err := img.Layers()
 	if err != nil {
 		return err
 	}
 
+	o, err := makeOptions(ref.Context(), options...)
+	if err != nil {
+		return err
+	}
+
 	scopes := scopesForUploadingImage(ref, ls)
-	tr, err := transport.New(ref.Context().Registry, auth, t, scopes)
+	tr, err := transport.New(ref.Context().Registry, o.auth, o.transport, scopes)
 	if err != nil {
 		return err
 	}
 	w := writer{
 		ref:    ref,
 		client: &http.Client{Transport: tr},
-		img:    img,
 	}
 
 	// Upload individual layers in goroutines and collect any errors.
+	// If we can dedupe by the layer digest, try to do so. If we can't determine
+	// the digest for whatever reason, we can't dedupe and might re-upload.
 	var g errgroup.Group
+	uploaded := map[v1.Hash]bool{}
 	for _, l := range ls {
 		l := l
+
+		// Handle foreign layers.
+		mt, err := l.MediaType()
+		if err != nil {
+			return err
+		}
+		if !mt.IsDistributable() {
+			// TODO(jonjohnsonjr): Add "allow-nondistributable-artifacts" option.
+			continue
+		}
+
+		// Streaming layers calculate their digests while uploading them. Assume
+		// an error here indicates we need to upload the layer.
+		h, err := l.Digest()
+		if err == nil {
+			// If we can determine the layer's digest ahead of
+			// time, use it to dedupe uploads.
+			if uploaded[h] {
+				continue // Already uploading.
+			}
+			uploaded[h] = true
+		}
+
 		g.Go(func() error {
 			return w.uploadOne(l)
 		})
 	}
 
-	if l, err := partial.ConfigLayer(img); err == stream.ErrNotComputed {
-		// We can't read the ConfigLayer, because of streaming layers, since the
-		// config hasn't been calculated yet.
+	if l, err := partial.ConfigLayer(img); err != nil {
+		// We can't read the ConfigLayer, possibly because of streaming layers,
+		// since the layer DiffIDs haven't been calculated yet. Attempt to wait
+		// for the other layers to be uploaded, then try the config again.
 		if err := g.Wait(); err != nil {
 			return err
 		}
 
-		// Now that all the layers are uploaded, upload the config file blob.
+		// Now that all the layers are uploaded, try to upload the config file blob.
 		l, err := partial.ConfigLayer(img)
 		if err != nil {
 			return err
@@ -74,9 +113,6 @@ func Write(ref name.Reference, img v1.Image, auth authn.Authenticator, t http.Ro
 		if err := w.uploadOne(l); err != nil {
 			return err
 		}
-	} else if err != nil {
-		// This is an actual error, not a streaming error, just return it.
-		return err
 	} else {
 		// We *can* read the ConfigLayer, so upload it concurrently with the layers.
 		g.Go(func() error {
@@ -91,14 +127,13 @@ func Write(ref name.Reference, img v1.Image, auth authn.Authenticator, t http.Ro
 
 	// With all of the constituent elements uploaded, upload the manifest
 	// to commit the image.
-	return w.commitImage()
+	return w.commitImage(img)
 }
 
 // writer writes the elements of an image to a remote image reference.
 type writer struct {
 	ref    name.Reference
 	client *http.Client
-	img    v1.Image
 }
 
 // url returns a url.Url for the specified path in the context of this remote image reference.
@@ -126,14 +161,38 @@ func (w *writer) nextLocation(resp *http.Response) (string, error) {
 	return resp.Request.URL.ResolveReference(u).String(), nil
 }
 
-// checkExisting checks if a blob exists already in the repository by making a
+// checkExistingBlob checks if a blob exists already in the repository by making a
 // HEAD request to the blob store API.  GCR performs an existence check on the
 // initiation if "mount" is specified, even if no "from" sources are specified.
 // However, this is not broadly applicable to all registries, e.g. ECR.
-func (w *writer) checkExisting(h v1.Hash) (bool, error) {
+func (w *writer) checkExistingBlob(h v1.Hash) (bool, error) {
 	u := w.url(fmt.Sprintf("/v2/%s/blobs/%s", w.ref.Context().RepositoryStr(), h.String()))
 
 	resp, err := w.client.Head(u.String())
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	if err := transport.CheckError(resp, http.StatusOK, http.StatusNotFound); err != nil {
+		return false, err
+	}
+
+	return resp.StatusCode == http.StatusOK, nil
+}
+
+// checkExistingManifest checks if a manifest exists already in the repository
+// by making a HEAD request to the manifest API.
+func (w *writer) checkExistingManifest(h v1.Hash, mt types.MediaType) (bool, error) {
+	u := w.url(fmt.Sprintf("/v2/%s/manifests/%s", w.ref.Context().RepositoryStr(), h.String()))
+
+	req, err := http.NewRequest(http.MethodHead, u.String(), nil)
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Accept", string(mt))
+
+	resp, err := w.client.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -155,10 +214,9 @@ func (w *writer) checkExisting(h v1.Hash) (bool, error) {
 func (w *writer) initiateUpload(from, mount string) (location string, mounted bool, err error) {
 	u := w.url(fmt.Sprintf("/v2/%s/blobs/uploads/", w.ref.Context().RepositoryStr()))
 	uv := url.Values{}
-	if mount != "" {
+	if mount != "" && from != "" {
+		// Quay will fail if we specify a "mount" without a "from".
 		uv["mount"] = []string{mount}
-	}
-	if from != "" {
 		uv["from"] = []string{from}
 	}
 	u.RawQuery = uv.Encode()
@@ -241,25 +299,16 @@ func (w *writer) commitBlob(location, digest string) error {
 
 // uploadOne performs a complete upload of a single layer.
 func (w *writer) uploadOne(l v1.Layer) error {
-	var from, mount, digest string
-	if _, ok := l.(*stream.Layer); !ok {
-		// Layer isn't streamable, we should take advantage of that to
-		// skip uploading if possible.
-		// By sending ?digest= in the request, we'll also check that
-		// our computed digest matches the one computed by the
-		// registry.
-		h, err := l.Digest()
-		if err != nil {
-			return err
-		}
-		digest = h.String()
-
-		existing, err := w.checkExisting(h)
+	var from, mount string
+	if h, err := l.Digest(); err == nil {
+		// If we know the digest, this isn't a streaming layer. Do an existence
+		// check so we can skip uploading the layer if possible.
+		existing, err := w.checkExistingBlob(h)
 		if err != nil {
 			return err
 		}
 		if existing {
-			log.Printf("existing blob: %v", h)
+			logs.Progress.Printf("existing blob: %v", h)
 			return nil
 		}
 
@@ -271,47 +320,59 @@ func (w *writer) uploadOne(l v1.Layer) error {
 		}
 	}
 
-	location, mounted, err := w.initiateUpload(from, mount)
-	if err != nil {
-		return err
-	} else if mounted {
+	tryUpload := func() error {
+		location, mounted, err := w.initiateUpload(from, mount)
+		if err != nil {
+			return err
+		} else if mounted {
+			h, err := l.Digest()
+			if err != nil {
+				return err
+			}
+			logs.Progress.Printf("mounted blob: %s", h.String())
+			return nil
+		}
+
+		blob, err := l.Compressed()
+		if err != nil {
+			return err
+		}
+		location, err = w.streamBlob(blob, location)
+		if err != nil {
+			return err
+		}
+
 		h, err := l.Digest()
 		if err != nil {
 			return err
 		}
-		log.Printf("mounted blob: %s", h.String())
+		digest := h.String()
+
+		if err := w.commitBlob(location, digest); err != nil {
+			return err
+		}
+		logs.Progress.Printf("pushed blob: %s", digest)
 		return nil
 	}
 
-	blob, err := l.Compressed()
-	if err != nil {
-		return err
-	}
-	location, err = w.streamBlob(blob, location)
-	if err != nil {
-		return err
+	// Try this three times, waiting 1s after first failure, 3s after second.
+	backoff := retry.Backoff{
+		Duration: 1.0 * time.Second,
+		Factor:   3.0,
+		Jitter:   0.1,
+		Steps:    3,
 	}
 
-	h, err := l.Digest()
-	if err != nil {
-		return err
-	}
-	digest = h.String()
-
-	if err := w.commitBlob(location, digest); err != nil {
-		return err
-	}
-	log.Printf("pushed blob: %s", digest)
-	return nil
+	return retry.Retry(tryUpload, retry.IsTemporary, backoff)
 }
 
 // commitImage does a PUT of the image's manifest.
-func (w *writer) commitImage() error {
-	raw, err := w.img.RawManifest()
+func (w *writer) commitImage(t Taggable) error {
+	raw, err := t.RawManifest()
 	if err != nil {
 		return err
 	}
-	mt, err := w.img.MediaType()
+	mt, err := t.MediaType()
 	if err != nil {
 		return err
 	}
@@ -335,13 +396,13 @@ func (w *writer) commitImage() error {
 		return err
 	}
 
-	digest, err := w.img.Digest()
+	digest, err := t.Digest()
 	if err != nil {
 		return err
 	}
 
 	// The image was successfully pushed!
-	log.Printf("%v: digest: %v size: %d", w.ref, digest, len(raw))
+	logs.Progress.Printf("%v: digest: %v size: %d", w.ref, digest, len(raw))
 	return nil
 }
 
@@ -369,4 +430,107 @@ func scopesForUploadingImage(ref name.Reference, layers []v1.Layer) []string {
 	return scopes
 }
 
-// TODO(mattmoor): WriteIndex
+// WriteIndex pushes the provided ImageIndex to the specified image reference.
+// WriteIndex will attempt to push all of the referenced manifests before
+// attempting to push the ImageIndex, to retain referential integrity.
+func WriteIndex(ref name.Reference, ii v1.ImageIndex, options ...Option) error {
+	index, err := ii.IndexManifest()
+	if err != nil {
+		return err
+	}
+
+	o, err := makeOptions(ref.Context(), options...)
+	if err != nil {
+		return err
+	}
+	scopes := []string{ref.Scope(transport.PushScope)}
+	tr, err := transport.New(ref.Context().Registry, o.auth, o.transport, scopes)
+	if err != nil {
+		return err
+	}
+	w := writer{
+		ref:    ref,
+		client: &http.Client{Transport: tr},
+	}
+
+	for _, desc := range index.Manifests {
+		ref := ref.Context().Digest(desc.Digest.String())
+		exists, err := w.checkExistingManifest(desc.Digest, desc.MediaType)
+		if err != nil {
+			return err
+		}
+		if exists {
+			logs.Progress.Printf("existing manifest: %v", desc.Digest)
+			continue
+		}
+
+		switch desc.MediaType {
+		case types.OCIImageIndex, types.DockerManifestList:
+			ii, err := ii.ImageIndex(desc.Digest)
+			if err != nil {
+				return err
+			}
+
+			if err := WriteIndex(ref, ii, WithAuth(o.auth), WithTransport(o.transport)); err != nil {
+				return err
+			}
+		case types.OCIManifestSchema1, types.DockerManifestSchema2:
+			img, err := ii.Image(desc.Digest)
+			if err != nil {
+				return err
+			}
+			if err := Write(ref, img, WithAuth(o.auth), WithTransport(o.transport)); err != nil {
+				return err
+			}
+		}
+	}
+
+	// With all of the constituent elements uploaded, upload the manifest
+	// to commit the image.
+	return w.commitImage(ii)
+}
+
+// WriteLayer uploads the provided Layer to the specified name.Digest.
+func WriteLayer(ref name.Digest, layer v1.Layer, options ...Option) error {
+	o, err := makeOptions(ref.Context(), options...)
+	if err != nil {
+		return err
+	}
+	scopes := scopesForUploadingImage(ref, []v1.Layer{layer})
+	tr, err := transport.New(ref.Context().Registry, o.auth, o.transport, scopes)
+	if err != nil {
+		return err
+	}
+	w := writer{
+		ref:    ref,
+		client: &http.Client{Transport: tr},
+	}
+
+	return w.uploadOne(layer)
+}
+
+// Tag adds a tag to the given Taggable.
+func Tag(tag name.Tag, t Taggable, options ...Option) error {
+	o, err := makeOptions(tag.Context(), options...)
+	if err != nil {
+		return err
+	}
+	scopes := []string{tag.Scope(transport.PushScope)}
+
+	// TODO: This *always* does a token exchange. For some registries,
+	// that's pretty slow. Some ideas;
+	// * Tag could take a list of tags.
+	// * Allow callers to pass in a transport.Transport, typecheck
+	//   it to allow them to reuse the transport across multiple calls.
+	// * WithTag option to do multiple manifest PUTs in commitImage.
+	tr, err := transport.New(tag.Context().Registry, o.auth, o.transport, scopes)
+	if err != nil {
+		return err
+	}
+	w := writer{
+		ref:    tag,
+		client: &http.Client{Transport: tr},
+	}
+
+	return w.commitImage(t)
+}

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/buildpack/imgutil/fakes"
-	"github.com/buildpack/lifecycle/metadata"
+	"github.com/buildpack/lifecycle"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -115,8 +115,8 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					info, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Stack,
-						metadata.StackMetadata{
-							RunImage: metadata.StackRunImageMetadata{
+						lifecycle.StackMetadata{
+							RunImage: lifecycle.StackRunImageMetadata{
 								Image: "some-run-image",
 								Mirrors: []string{
 									"some-mirror",
@@ -131,7 +131,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					info, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Base,
-						metadata.RunImageMetadata{
+						lifecycle.RunImageMetadata{
 							TopLayer:  "some-top-layer",
 							Reference: "some-run-image-reference",
 						},
@@ -144,7 +144,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 
 					rawBOM, err := json.Marshal(info.BOM)
 					h.AssertNil(t, err)
-					h.AssertEq(t, string(rawBOM), `[{"name":"some-bom-element"}]`)
+					h.AssertContains(t, string(rawBOM), `[{"name":"some-bom-element"`)
 				})
 
 				it("returns the buildpacks", func() {
@@ -204,13 +204,13 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 		it("returns an error when layers md cannot parse", func() {
 			h.AssertNil(t, badImage.SetLabel("io.buildpacks.lifecycle.metadata", "not   ----  json"))
 			_, err := subject.InspectImage("bad/image", true)
-			h.AssertError(t, err, "failed to parse label 'io.buildpacks.lifecycle.metadata'")
+			h.AssertError(t, err, "unmarshalling label 'io.buildpacks.lifecycle.metadata'")
 		})
 
 		it("returns an error when build md cannot parse", func() {
 			h.AssertNil(t, badImage.SetLabel("io.buildpacks.build.metadata", "not   ----  json"))
 			_, err := subject.InspectImage("bad/image", true)
-			h.AssertError(t, err, "failed to parse label 'io.buildpacks.build.metadata'")
+			h.AssertError(t, err, "unmarshalling label 'io.buildpacks.build.metadata'")
 		})
 	})
 
@@ -240,7 +240,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 			info, err := subject.InspectImage("old/image", true)
 			h.AssertNil(t, err)
 			h.AssertEq(t, info.Base,
-				metadata.RunImageMetadata{
+				lifecycle.RunImageMetadata{
 					TopLayer:  "some-top-layer",
 					Reference: "",
 				},

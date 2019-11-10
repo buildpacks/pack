@@ -19,6 +19,7 @@ import (
 )
 
 // ImageIndex defines the interface for interacting with an OCI image index.
+//go:generate counterfeiter -o fake/index.go . ImageIndex
 type ImageIndex interface {
 	// MediaType of this image's manifest.
 	MediaType() (types.MediaType, error)
@@ -26,9 +27,18 @@ type ImageIndex interface {
 	// Digest returns the sha256 of this index's manifest.
 	Digest() (Hash, error)
 
+	// Size returns the size of the manifest.
+	Size() (int64, error)
+
 	// IndexManifest returns this image index's manifest object.
 	IndexManifest() (*IndexManifest, error)
 
-	// RawIndexManifest returns the serialized bytes of IndexManifest().
-	RawIndexManifest() ([]byte, error)
+	// RawManifest returns the serialized bytes of IndexManifest().
+	RawManifest() ([]byte, error)
+
+	// Image returns a v1.Image that this ImageIndex references.
+	Image(Hash) (Image, error)
+
+	// ImageIndex returns a v1.ImageIndex that this ImageIndex references.
+	ImageIndex(Hash) (ImageIndex, error)
 }

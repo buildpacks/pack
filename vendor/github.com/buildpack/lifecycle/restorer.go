@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/lifecycle/archive"
-	"github.com/buildpack/lifecycle/metadata"
 )
 
 type Restorer struct {
@@ -56,7 +55,7 @@ func (r *Restorer) Restore(cache Cache) error {
 	return nil
 }
 
-func (r *Restorer) restoreLayer(name string, bpMD metadata.BuildpackLayersMetadata, layer metadata.BuildpackLayerMetadata, layersDir bpLayersDir, cache Cache) error {
+func (r *Restorer) restoreLayer(name string, bpMD BuildpackLayersMetadata, layer BuildpackLayerMetadata, layersDir bpLayersDir, cache Cache) error {
 	bpLayer := layersDir.newBPLayer(name)
 
 	r.Logger.Infof("Restoring cached layer '%s'", bpLayer.Identifier())

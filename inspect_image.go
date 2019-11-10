@@ -2,21 +2,21 @@ package pack
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/Masterminds/semver"
-	"github.com/buildpack/lifecycle/metadata"
+	"github.com/buildpack/lifecycle"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/internal/dist"
 	"github.com/buildpack/pack/internal/image"
 )
 
 type ImageInfo struct {
 	StackID    string
-	Buildpacks []metadata.BuildpackMetadata
-	Base       metadata.RunImageMetadata
-	BOM        interface{}
-	Stack      metadata.StackMetadata
+	Buildpacks []lifecycle.Buildpack
+	Base       lifecycle.RunImageMetadata
+	BOM        []lifecycle.BOMEntry
+	Stack      lifecycle.StackMetadata
 }
 
 func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
@@ -27,26 +27,15 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		}
 		return nil, err
 	}
-	rawLayersMd, err := metadata.GetRawMetadata(img, metadata.LayerMetadataLabel)
-	if err != nil {
+
+	var layersMd lifecycle.LayersMetadata
+	if _, err := dist.GetLabel(img, lifecycle.LayerMetadataLabel, &layersMd); err != nil {
 		return nil, err
-	}
-	var layersMd metadata.LayersMetadata
-	if rawLayersMd != "" {
-		if err := json.Unmarshal([]byte(rawLayersMd), &layersMd); err != nil {
-			return nil, errors.Wrapf(err, "failed to parse label '%s'", metadata.LayerMetadataLabel)
-		}
 	}
 
-	rawBuildMd, _ := metadata.GetRawMetadata(img, metadata.BuildMetadataLabel)
-	if err != nil {
+	var buildMD lifecycle.BuildMetadata
+	if _, err := dist.GetLabel(img, lifecycle.BuildMetadataLabel, &buildMD); err != nil {
 		return nil, err
-	}
-	var buildMD metadata.BuildMetadata
-	if rawBuildMd != "" {
-		if err := json.Unmarshal([]byte(rawBuildMd), &buildMD); err != nil {
-			return nil, errors.Wrapf(err, "failed to parse label '%s'", metadata.BuildMetadataLabel)
-		}
 	}
 
 	minimumBaseImageReferenceVersion := semver.MustParse("0.5.0")
@@ -56,7 +45,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		layersMd.RunImage.Reference = ""
 	}
 
-	stackID, err := metadata.GetRawMetadata(img, metadata.StackMetadataLabel)
+	stackID, err := img.Label(lifecycle.StackIDLabel)
 	if err != nil {
 		return nil, err
 	}

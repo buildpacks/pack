@@ -20,7 +20,7 @@ func WriteTarFile(sourceDir, dest string, uid, gid int) (string, error) {
 	defer f.Close()
 	w := io.MultiWriter(hasher, f)
 
-	if WriteTarArchive(w, sourceDir, uid, gid) != nil {
+	if err := WriteTarArchive(w, sourceDir, uid, gid); err != nil {
 		return "", err
 	}
 	sha := hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
@@ -145,6 +145,10 @@ func Untar(r io.Reader, dest string) error {
 				}
 			}
 			if err := writeFile(tr, path, hdr.FileInfo().Mode()); err != nil {
+				return err
+			}
+			// Update permissions in case umask was applied.
+			if err := os.Chmod(path, hdr.FileInfo().Mode()); err != nil {
 				return err
 			}
 		case tar.TypeSymlink:

@@ -247,15 +247,15 @@ func (i *Image) TopLayer() (string, error) {
 	return topLayer, nil
 }
 
-func (i *Image) GetLayer(sha string) (io.ReadCloser, error) {
+func (i *Image) GetLayer(diffID string) (io.ReadCloser, error) {
 	fsImage, err := i.downloadImageOnce(i.repoName)
 	if err != nil {
 		return nil, err
 	}
 
-	layerID, ok := fsImage.layersMap[sha]
+	layerID, ok := fsImage.layersMap[diffID]
 	if !ok {
-		return nil, fmt.Errorf("image '%s' does not contain layer with diff ID '%s'", i.repoName, sha)
+		return nil, fmt.Errorf("image '%s' does not contain layer with diff ID '%s'", i.repoName, diffID)
 	}
 	return os.Open(filepath.Join(fsImage.dir, layerID))
 }
@@ -279,9 +279,9 @@ func (i *Image) AddLayer(path string) error {
 	return nil
 }
 
-func (i *Image) ReuseLayer(sha string) error {
-	if len(i.easyAddLayers) > 0 && i.easyAddLayers[0] == sha {
-		i.inspect.RootFS.Layers = append(i.inspect.RootFS.Layers, sha)
+func (i *Image) ReuseLayer(diffID string) error {
+	if len(i.easyAddLayers) > 0 && i.easyAddLayers[0] == diffID {
+		i.inspect.RootFS.Layers = append(i.inspect.RootFS.Layers, diffID)
 		i.layerPaths = append(i.layerPaths, "")
 		i.easyAddLayers = i.easyAddLayers[1:]
 		return nil
@@ -296,9 +296,9 @@ func (i *Image) ReuseLayer(sha string) error {
 		return err
 	}
 
-	reuseLayer, ok := fsImage.layersMap[sha]
+	reuseLayer, ok := fsImage.layersMap[diffID]
 	if !ok {
-		return fmt.Errorf("SHA %s was not found in %s", sha, i.repoName)
+		return fmt.Errorf("SHA %s was not found in %s", diffID, i.repoName)
 	}
 
 	return i.AddLayer(filepath.Join(fsImage.dir, reuseLayer))
@@ -316,8 +316,8 @@ func (i *Image) Save(additionalNames ...string) error {
 	i.inspect = inspect
 
 	var errs []imgutil.SaveDiagnostic
-	for _, n := range additionalNames {
-		if err := i.docker.ImageTag(context.Background(), i.repoName, n); err != nil {
+	for _, n := range append([]string{i.Name()}, additionalNames...) {
+		if err := i.docker.ImageTag(context.Background(), i.inspect.ID, n); err != nil {
 			errs = append(errs, imgutil.SaveDiagnostic{ImageName: n, Cause: err})
 		}
 	}

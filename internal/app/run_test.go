@@ -59,7 +59,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is no exposed or provided ports", func() {
 			it.Before(func() {
-				h.CreateImageOnLocal(
+				h.CreateImage(
 					t,
 					docker,
 					repo,
@@ -80,7 +80,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				containerPort, err = h.GetFreePort()
 				h.AssertNil(t, err)
-				h.CreateImageOnLocal(
+				h.CreateImage(
 					t,
 					docker,
 					repo,
@@ -124,7 +124,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				containerPort, err = h.GetFreePort()
 				h.AssertNil(t, err)
-				h.CreateImageOnLocal(
+				h.CreateImage(
 					t,
 					docker,
 					repo,
