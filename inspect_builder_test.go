@@ -46,6 +46,10 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		builderImage = fakes.NewImage("some/builder", "", nil)
 		h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
+		h.AssertNil(t, builderImage.SetLabel(
+			"io.buildpacks.stack.mixins",
+			`["mixinOne", "build:mixinTwo", "mixinThree", "build:mixinFour"]`,
+		))
 		h.AssertNil(t, builderImage.SetEnv("CNB_USER_ID", "1234"))
 		h.AssertNil(t, builderImage.SetEnv("CNB_GROUP_ID", "4321"))
 	})
@@ -120,6 +124,14 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, builderInfo.Stack, "test.stack.id")
 					})
 
+					it("sets the stack mixins", func() {
+						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+						h.AssertEq(t,
+							builderInfo.Mixins, []string{"mixinOne", "mixinThree", "build:mixinTwo", "build:mixinFour"},
+						)
+					})
+
 					it("set the defaults run image mirrors", func() {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
@@ -161,6 +173,18 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
 						h.AssertEq(t, builderInfo.Lifecycle.Info.Version.String(), "1.2.3")
+					})
+
+					when("the image has no mixins", func() {
+						it.Before(func() {
+							h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.mixins", ""))
+						})
+
+						it("sets empty stack mixins", func() {
+							builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
+							h.AssertNil(t, err)
+							h.AssertEq(t, builderInfo.Mixins, []string{})
+						})
 					})
 				})
 			})

@@ -1384,11 +1384,10 @@ func createBuilder(t *testing.T, runImageMirror, builderTOMLPath, packPath, life
 func createStack(t *testing.T, dockerCli *client.Client, runImageMirror string) error {
 	t.Log("creating stack images...")
 
-	if err := createStackImage(dockerCli, runImage, filepath.Join("testdata", "mock_stack")); err != nil {
+	if err := createStackImage(dockerCli, runImage, filepath.Join("testdata", "mock_stack", "run")); err != nil {
 		return err
 	}
-
-	if err := dockerCli.ImageTag(context.Background(), runImage, buildImage); err != nil {
+	if err := createStackImage(dockerCli, buildImage, filepath.Join("testdata", "mock_stack", "build")); err != nil {
 		return err
 	}
 

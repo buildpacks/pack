@@ -7,3 +7,4 @@ api = "0.2"
 
 [[stacks]]
   id = "pack.test.stack"
+  mixins = ["netcat"]
