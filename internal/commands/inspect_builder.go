@@ -107,7 +107,14 @@ Created By:
 
 {{ end -}}
 
-Stack: {{ .Info.Stack }}
+Stack:
+  ID: {{ .Info.Stack }}
+{{- if ne (len .Info.Mixins) 0 }}
+  Mixins:
+{{- end }}
+{{- range $index, $mixin := .Info.Mixins }}
+    {{ $mixin }}
+{{- end }}
 
 Lifecycle:
   Version: {{ .Info.Lifecycle.Info.Version }}

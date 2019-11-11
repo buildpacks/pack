@@ -2,6 +2,7 @@ package pack
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -14,6 +15,7 @@ import (
 type BuilderInfo struct {
 	Description     string
 	Stack           string
+	Mixins          []string
 	RunImage        string
 	RunImageMirrors []string
 	Buildpacks      []builder.BuildpackMetadata
@@ -41,9 +43,20 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(name))
 	}
 
+	var commonMixins, buildMixins []string
+	commonMixins = []string{}
+	for _, mixin := range bldr.Mixins() {
+		if strings.HasPrefix(mixin, "build:") {
+			buildMixins = append(buildMixins, mixin)
+		} else {
+			commonMixins = append(commonMixins, mixin)
+		}
+	}
+
 	return &BuilderInfo{
 		Description:     bldr.Description(),
 		Stack:           bldr.StackID,
+		Mixins:          append(commonMixins, buildMixins...),
 		RunImage:        bldr.Stack().RunImage.Image,
 		RunImageMirrors: bldr.Stack().RunImage.Mirrors,
 		Buildpacks:      bldr.Buildpacks(),

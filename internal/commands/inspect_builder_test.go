@@ -107,6 +107,11 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNotContains(t, outBuf.String(), "Description:")
 			})
 
+			it("missing stack mixins are skipped", func() {
+				h.AssertNil(t, command.Execute())
+				h.AssertNotContains(t, outBuf.String(), "Mixins")
+			})
+
 			it("missing buildpacks logs a warning", func() {
 				h.AssertNil(t, command.Execute())
 				h.AssertContains(t, outBuf.String(), "Buildpacks:\n  (none)")
@@ -145,6 +150,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				remoteInfo = &pack.BuilderInfo{
 					Description:     "Some remote description",
 					Stack:           "test.stack.id",
+					Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
 					RunImage:        "some/run-image",
 					RunImageMirrors: []string{"first/default", "second/default"},
 					Buildpacks:      buildpacks,
@@ -172,6 +178,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				localInfo = &pack.BuilderInfo{
 					Description:     "Some local description",
 					Stack:           "test.stack.id",
+					Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
 					RunImage:        "some/run-image",
 					RunImageMirrors: []string{"first/local-default", "second/local-default"},
 					Buildpacks:      buildpacks,
@@ -217,7 +224,13 @@ Created By:
   Name: Pack CLI
   Version: 1.2.3
 
-Stack: test.stack.id
+Stack:
+  ID: test.stack.id
+  Mixins:
+    mixin1
+    mixin2
+    build:mixin3
+    build:mixin4
 
 Lifecycle:
   Version: 6.7.8
@@ -251,7 +264,13 @@ Created By:
   Name: Pack CLI
   Version: 4.5.6
 
-Stack: test.stack.id
+Stack:
+  ID: test.stack.id
+  Mixins:
+    mixin1
+    mixin2
+    build:mixin3
+    build:mixin4
 
 Lifecycle:
   Version: 4.5.6
@@ -298,7 +317,13 @@ Created By:
   Name: Pack CLI
   Version: 1.2.3
 
-Stack: test.stack.id
+Stack:
+  ID: test.stack.id
+  Mixins:
+    mixin1
+    mixin2
+    build:mixin3
+    build:mixin4
 
 Lifecycle:
   Version: 6.7.8
@@ -332,7 +357,13 @@ Created By:
   Name: Pack CLI
   Version: 4.5.6
 
-Stack: test.stack.id
+Stack:
+  ID: test.stack.id
+  Mixins:
+    mixin1
+    mixin2
+    build:mixin3
+    build:mixin4
 
 Lifecycle:
   Version: 4.5.6
