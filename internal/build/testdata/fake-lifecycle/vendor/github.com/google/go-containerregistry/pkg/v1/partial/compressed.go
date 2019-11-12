@@ -18,6 +18,7 @@ import (
 	"io"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/google/go-containerregistry/pkg/v1/v1util"
 )
 
@@ -32,6 +33,9 @@ type CompressedLayer interface {
 
 	// Size returns the compressed size of the Layer.
 	Size() (int64, error)
+
+	// Returns the mediaType for the compressed Layer
+	MediaType() (types.MediaType, error)
 }
 
 // compressedLayerExtender implements v1.Image using the compressed base properties.
@@ -91,11 +95,6 @@ type compressedImageExtender struct {
 // Assert that our extender type completes the v1.Image interface
 var _ v1.Image = (*compressedImageExtender)(nil)
 
-// BlobSet implements v1.Image
-func (i *compressedImageExtender) BlobSet() (map[v1.Hash]struct{}, error) {
-	return BlobSet(i)
-}
-
 // Digest implements v1.Image
 func (i *compressedImageExtender) Digest() (v1.Hash, error) {
 	return Digest(i)
@@ -149,6 +148,11 @@ func (i *compressedImageExtender) ConfigFile() (*v1.ConfigFile, error) {
 // Manifest implements v1.Image
 func (i *compressedImageExtender) Manifest() (*v1.Manifest, error) {
 	return Manifest(i)
+}
+
+// Size implements v1.Image
+func (i *compressedImageExtender) Size() (int64, error) {
+	return Size(i)
 }
 
 // CompressedToImage fills in the missing methods from a CompressedImageCore so that it implements v1.Image

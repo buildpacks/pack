@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/buildpack/lifecycle"
-	"github.com/buildpack/lifecycle/metadata"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/internal/builder"
+	"github.com/buildpack/pack/internal/dist"
 	"github.com/buildpack/pack/internal/style"
 )
 
@@ -30,9 +30,11 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return err
 	}
 
-	md, err := metadata.GetLayersMetadata(appImage)
-	if err != nil {
+	var md lifecycle.LayersMetadata
+	if ok, err := dist.GetLabel(appImage, lifecycle.LayerMetadataLabel, &md); err != nil {
 		return err
+	} else if !ok {
+		return errors.Errorf("could not find label %s on image", style.Symbol(lifecycle.LayerMetadataLabel))
 	}
 
 	runImageName := c.resolveRunImage(

@@ -29,7 +29,7 @@ type TestRegistryConfig struct {
 	password        string
 }
 
-func RunRegistry(t *testing.T, seedRegistry bool) *TestRegistryConfig {
+func RunRegistry(t *testing.T) *TestRegistryConfig {
 	t.Log("run registry")
 	t.Helper()
 

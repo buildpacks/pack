@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
-
-	"github.com/buildpack/lifecycle/metadata"
 )
 
 type bpLayersDir struct {
@@ -102,7 +100,7 @@ type bpLayer struct {
 	layer
 }
 
-func (bp *bpLayer) classifyCache(metadataLayers map[string]metadata.BuildpackLayerMetadata) cacheType {
+func (bp *bpLayer) classifyCache(metadataLayers map[string]BuildpackLayerMetadata) cacheType {
 	cachedLayer, err := bp.read()
 	if err != nil {
 		return cacheMalformed
@@ -123,25 +121,25 @@ func (bp *bpLayer) classifyCache(metadataLayers map[string]metadata.BuildpackLay
 	return cacheValid
 }
 
-func (bp *bpLayer) read() (metadata.BuildpackLayerMetadata, error) {
-	var data metadata.BuildpackLayerMetadata
+func (bp *bpLayer) read() (BuildpackLayerMetadata, error) {
+	var data BuildpackLayerMetadata
 	tomlPath := bp.path + ".toml"
 	fh, err := os.Open(tomlPath)
 	if os.IsNotExist(err) {
-		return metadata.BuildpackLayerMetadata{}, nil
+		return BuildpackLayerMetadata{}, nil
 	} else if err != nil {
-		return metadata.BuildpackLayerMetadata{}, err
+		return BuildpackLayerMetadata{}, err
 	}
 	defer fh.Close()
 	if _, err := toml.DecodeFile(tomlPath, &data); err != nil {
-		return metadata.BuildpackLayerMetadata{}, err
+		return BuildpackLayerMetadata{}, err
 	}
 	sha, err := ioutil.ReadFile(bp.path + ".sha")
 	if err != nil {
 		if os.IsNotExist(err) {
 			return data, nil
 		}
-		return metadata.BuildpackLayerMetadata{}, err
+		return BuildpackLayerMetadata{}, err
 	}
 	data.SHA = string(sha)
 	return data, nil
@@ -160,7 +158,7 @@ func (bp *bpLayer) remove() error {
 	return nil
 }
 
-func (bp *bpLayer) writeMetadata(metadataLayers map[string]metadata.BuildpackLayerMetadata) error {
+func (bp *bpLayer) writeMetadata(metadataLayers map[string]BuildpackLayerMetadata) error {
 	layerMetadata := metadataLayers[bp.name()]
 	path := filepath.Join(bp.path + ".toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {

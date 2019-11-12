@@ -3,10 +3,13 @@ package commands_test
 import (
 	"bytes"
 	"errors"
+	"io/ioutil"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
-	"github.com/buildpack/lifecycle/metadata"
+	"github.com/buildpack/lifecycle"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -92,65 +95,80 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 			var remoteInfo, localInfo *pack.ImageInfo
 
 			it.Before(func() {
+				type someData struct {
+					String string
+					Bool   bool
+					Int    int
+					Nested struct {
+						String string
+					}
+				}
+
 				remoteInfo = &pack.ImageInfo{
 					StackID: "test.stack.id.remote",
-					Buildpacks: []metadata.BuildpackMetadata{
+					Buildpacks: []lifecycle.Buildpack{
 						{ID: "test.bp.one.remote", Version: "1.0.0"},
 						{ID: "test.bp.two.remote", Version: "2.0.0"},
 					},
-					Base: metadata.RunImageMetadata{
+					Base: lifecycle.RunImageMetadata{
 						TopLayer:  "some-remote-top-layer",
 						Reference: "some-remote-run-image-reference",
 					},
-					Stack: metadata.StackMetadata{
-						RunImage: metadata.StackRunImageMetadata{
+					Stack: lifecycle.StackMetadata{
+						RunImage: lifecycle.StackRunImageMetadata{
 							Image:   "some-remote-run-image",
 							Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
 						},
 					},
-					BOM: struct {
-						Key1      string
-						NestedKey struct {
-							Key2 string
-						}
-					}{
-						Key1: "remoteval1",
-						NestedKey: struct {
-							Key2 string
-						}{
-							Key2: "remoteval2",
+					BOM: []lifecycle.BOMEntry{{
+						Require: lifecycle.Require{
+							Name:    "name-1",
+							Version: "version-1",
+							Metadata: map[string]interface{}{
+								"RemoteData": someData{
+									String: "aString",
+									Bool:   true,
+									Int:    123,
+									Nested: struct {
+										String string
+									}{
+										String: "anotherString",
+									},
+								},
+							},
 						},
-					},
+						Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					}},
 				}
 				localInfo = &pack.ImageInfo{
 					StackID: "test.stack.id.local",
-					Buildpacks: []metadata.BuildpackMetadata{
+					Buildpacks: []lifecycle.Buildpack{
 						{ID: "test.bp.one.local", Version: "1.0.0"},
 						{ID: "test.bp.two.local", Version: "2.0.0"},
 					},
-					Base: metadata.RunImageMetadata{
+					Base: lifecycle.RunImageMetadata{
 						TopLayer:  "some-local-top-layer",
 						Reference: "some-local-run-image-reference",
 					},
-					Stack: metadata.StackMetadata{
-						RunImage: metadata.StackRunImageMetadata{
+					Stack: lifecycle.StackMetadata{
+						RunImage: lifecycle.StackRunImageMetadata{
 							Image:   "some-local-run-image",
 							Mirrors: []string{"some-local-mirror", "other-local-mirror"},
 						},
 					},
-					BOM: struct {
-						Key1      string
-						NestedKey struct {
-							Key2 string
-						}
-					}{
-						Key1: "localval1",
-						NestedKey: struct {
-							Key2 string
-						}{
-							Key2: "localval2",
+					BOM: []lifecycle.BOMEntry{{
+						Require: lifecycle.Require{
+							Name:    "name-1",
+							Version: "version-1",
+							Metadata: map[string]interface{}{
+								"LocalData": someData{
+									Bool: false,
+									Int:  456,
+								},
+							},
 						},
-					},
+						Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					}},
 				}
 				mockClient.EXPECT().InspectImage("some/image", false).Return(remoteInfo, nil)
 				mockClient.EXPECT().InspectImage("some/image", true).Return(localInfo, nil)
@@ -201,9 +219,9 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 					it("prints the bom as JSON", func() {
 						command.SetArgs([]string{"some/image", "--bom"})
 						h.AssertNil(t, command.Execute())
-						h.AssertEq(t,
-							outBuf.String(),
-							`{"remote":{"Key1":"remoteval1","NestedKey":{"Key2":"remoteval2"}},"local":{"Key1":"localval1","NestedKey":{"Key2":"localval2"}}}`+"\n")
+						expectedOutput, err := ioutil.ReadFile(filepath.Join("testdata", "inspect_image_output.json"))
+						h.AssertNil(t, err)
+						h.AssertEq(t, strings.TrimSpace(outBuf.String()), string(expectedOutput))
 					})
 				})
 
@@ -251,8 +269,8 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 
 			when("run images are missing", func() {
 				it.Before(func() {
-					remoteInfo.Stack = metadata.StackMetadata{}
-					localInfo.Stack = metadata.StackMetadata{}
+					remoteInfo.Stack = lifecycle.StackMetadata{}
+					localInfo.Stack = lifecycle.StackMetadata{}
 				})
 
 				it("reports that the metadata is missing", func() {
@@ -267,8 +285,8 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 
 			when("base image metadata is missing", func() {
 				it.Before(func() {
-					remoteInfo.Base = metadata.RunImageMetadata{}
-					localInfo.Base = metadata.RunImageMetadata{}
+					remoteInfo.Base = lifecycle.RunImageMetadata{}
+					localInfo.Base = lifecycle.RunImageMetadata{}
 				})
 
 				it("doesn't display reference field", func() {

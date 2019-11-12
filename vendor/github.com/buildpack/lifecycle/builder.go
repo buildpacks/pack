@@ -30,10 +30,10 @@ type BuildEnv interface {
 }
 
 type Process struct {
-	Type    string   `toml:"type"`
-	Command string   `toml:"command"`
-	Args    []string `toml:"args"`
-	Direct  bool     `toml:"direct"`
+	Type    string   `toml:"type" json:"type"`
+	Command string   `toml:"command" json:"command"`
+	Args    []string `toml:"args" json:"args"`
+	Direct  bool     `toml:"direct" json:"direct"`
 }
 
 type LaunchTOML struct {
@@ -43,12 +43,6 @@ type LaunchTOML struct {
 type BOMEntry struct {
 	Require
 	Buildpack Buildpack `toml:"buildpack" json:"buildpack"`
-}
-
-type BuildMetadata struct {
-	Processes  []Process   `toml:"processes"`
-	Buildpacks []Buildpack `toml:"buildpacks"`
-	BOM        []BOMEntry  `toml:"bom"`
 }
 
 type buildpackPlan struct {

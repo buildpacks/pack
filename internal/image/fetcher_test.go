@@ -30,7 +30,7 @@ func TestFetcher(t *testing.T) {
 
 	h.RequireDocker(t)
 
-	registryConfig = h.RunRegistry(t, false)
+	registryConfig = h.RunRegistry(t)
 	defer registryConfig.StopRegistry(t)
 
 	//TODO: is there a better solution to the auth problem?
@@ -95,7 +95,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						// when there's a valid local image.
 						repoName = "invalidhost" + repoName
 
-						h.CreateImageOnLocal(
+						h.CreateImage(
 							t,
 							docker,
 							repoName,
@@ -154,7 +154,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				when("there is no remote image", func() {
 					when("there is a local image", func() {
 						it.Before(func() {
-							h.CreateImageOnLocal(
+							h.CreateImage(
 								t,
 								docker,
 								repoName,

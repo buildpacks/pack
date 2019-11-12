@@ -120,7 +120,7 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is a cache image", func() {
 			it.Before(func() {
-				h.CreateImageOnLocal(t, dockerClient, imageName, fmt.Sprintf(`
+				h.CreateImage(t, dockerClient, imageName, fmt.Sprintf(`
 FROM busybox
 LABEL repo_name_for_randomisation=%s
 `, imageName))

@@ -19,16 +19,17 @@ import (
 )
 
 // Image defines the interface for interacting with an OCI v1 image.
+//go:generate counterfeiter -o fake/image.go . Image
 type Image interface {
 	// Layers returns the ordered collection of filesystem layers that comprise this image.
 	// The order of the list is oldest/base layer first, and most-recent/top layer last.
 	Layers() ([]Layer, error)
 
-	// BlobSet returns an unordered collection of all the blobs in the image.
-	BlobSet() (map[Hash]struct{}, error)
-
 	// MediaType of this image's manifest.
 	MediaType() (types.MediaType, error)
+
+	// Size returns the size of the manifest.
+	Size() (int64, error)
 
 	// ConfigName returns the hash of the image's config file.
 	ConfigName() (Hash, error)

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/buildpack/lifecycle/image/auth"
+	"github.com/buildpack/lifecycle/auth"
 	"github.com/docker/docker/api/types"
 	dockercli "github.com/docker/docker/client"
 	v1remote "github.com/google/go-containerregistry/pkg/v1/remote"
@@ -82,12 +82,13 @@ func testDaemon() {
 
 func testRegistryAccess(repoName string) {
 	fmt.Println("registry test")
-	ref, auth, err := auth.ReferenceForRepoName(&auth.EnvKeychain{}, repoName)
+	ref, authenticator, err := auth.ReferenceForRepoName(auth.EnvKeychain("CNB_REGISTRY_AUTH"), repoName)
 	if err != nil {
 		fmt.Println("fail")
 		os.Exit(5)
 	}
-	_, err = v1remote.Image(ref, v1remote.WithAuth(auth))
+
+	_, err = v1remote.Image(ref, v1remote.WithAuth(authenticator))
 	if err != nil {
 		fmt.Println("failed to access image:", err)
 		os.Exit(6)

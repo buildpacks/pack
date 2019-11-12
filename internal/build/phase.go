@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/buildpack/lifecycle/image/auth"
+	"github.com/buildpack/lifecycle/auth"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -103,11 +103,11 @@ func WithBinds(binds ...string) func(*Phase) (*Phase, error) {
 
 func WithRegistryAccess(repos ...string) func(*Phase) (*Phase, error) {
 	return func(phase *Phase) (*Phase, error) {
-		authHeader, err := auth.BuildEnvVar(authn.DefaultKeychain, repos...)
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repos...)
 		if err != nil {
 			return nil, err
 		}
-		phase.ctrConf.Env = append(phase.ctrConf.Env, fmt.Sprintf(`CNB_REGISTRY_AUTH=%s`, authHeader))
+		phase.ctrConf.Env = append(phase.ctrConf.Env, fmt.Sprintf(`CNB_REGISTRY_AUTH=%s`, authConfig))
 		phase.hostConf.NetworkMode = "host"
 		return phase, nil
 	}

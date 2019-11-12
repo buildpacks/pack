@@ -2,8 +2,10 @@ package testhelpers
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -26,11 +28,13 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/internal/style"
 )
 
 func RandString(n int) string {
@@ -228,14 +232,13 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 	}
 }
 
-func CreateImageOnLocal(t *testing.T, dockerCli *client.Client, repoName, dockerFile string) {
+func CreateImage(t *testing.T, dockerCli *client.Client, repoName, dockerFile string) {
 	t.Helper()
-	ctx := context.Background()
 
 	buildContext, err := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
 	AssertNil(t, err)
 
-	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
+	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
 		Tags:           []string{repoName},
 		SuppressOutput: true,
 		Remove:         true,
@@ -243,8 +246,55 @@ func CreateImageOnLocal(t *testing.T, dockerCli *client.Client, repoName, docker
 	})
 	AssertNil(t, err)
 
-	io.Copy(ioutil.Discard, res.Body)
-	res.Body.Close()
+	err = checkResponse(resp)
+	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
+}
+
+func CreateImageFromDir(t *testing.T, dockerCli *client.Client, repoName string, dir string) {
+	t.Helper()
+
+	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1)
+	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
+		Tags:           []string{repoName},
+		Remove:         true,
+		ForceRemove:    true,
+		SuppressOutput: false,
+	})
+	AssertNil(t, err)
+
+	err = checkResponse(resp)
+	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
+}
+
+func checkResponse(response dockertypes.ImageBuildResponse) error {
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+
+	messages := strings.Builder{}
+	for _, line := range bytes.Split(body, []byte("\n")) {
+		if len(line) == 0 {
+			continue
+		}
+
+		var msg jsonmessage.JSONMessage
+		err := json.Unmarshal(line, &msg)
+		if err != nil {
+			return errors.Wrapf(err, "expected JSON: %s", string(line))
+		}
+
+		if msg.Stream != "" {
+			messages.WriteString(msg.Stream)
+		}
+
+		if msg.Error != nil {
+			return errors.WithMessage(msg.Error, messages.String())
+		}
+	}
+
+	return nil
 }
 
 func CreateImageOnRemote(t *testing.T, dockerCli *client.Client, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
@@ -252,7 +302,7 @@ func CreateImageOnRemote(t *testing.T, dockerCli *client.Client, registryConfig 
 	imageName := registryConfig.RepoName(repoName)
 
 	defer DockerRmi(dockerCli, imageName)
-	CreateImageOnLocal(t, dockerCli, imageName, dockerFile)
+	CreateImage(t, dockerCli, imageName, dockerFile)
 	AssertNil(t, PushImage(dockerCli, imageName, registryConfig))
 	return imageName
 }

@@ -1,11 +1,14 @@
 package lifecycle
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpack/imgutil"
+	"github.com/pkg/errors"
 )
 
 func WriteTOML(path string, data interface{}) error {
@@ -40,6 +43,23 @@ func TruncateSha(sha string) string {
 		return rawSha[0:12]
 	}
 	return rawSha
+}
+
+func DecodeLabel(image imgutil.Image, label string, v interface{}) error {
+	if !image.Found() {
+		return nil
+	}
+	contents, err := image.Label(label)
+	if err != nil {
+		return errors.Wrapf(err, "retrieving label '%s' for image '%s'", label, image.Name())
+	}
+	if contents == "" {
+		return nil
+	}
+	if err := json.Unmarshal([]byte(contents), v); err != nil {
+		return errors.Wrapf(err, "failed to unmarshal context of label '%s'", label)
+	}
+	return nil
 }
 
 func escapeID(id string) string {
