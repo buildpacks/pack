@@ -33,6 +33,12 @@ import (
 	"github.com/buildpack/pack/internal/archive"
 )
 
+func Must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 func RandString(n int) string {
 	b := make([]byte, n)
 	for i := range b {

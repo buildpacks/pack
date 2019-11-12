@@ -2,26 +2,19 @@ package stack
 
 import (
 	"strings"
-
-	"github.com/buildpack/imgutil"
 )
 
 // TODO: Test this
 type BuildImage struct {
-	StackImage
+	Image
 }
 
-func NewBuildImage(raw imgutil.Image) (*BuildImage, error) {
-	image, err := NewImage(raw)
-	if err != nil {
-		return nil, err
-	}
-
+func NewBuildImage(stackImage Image) (*BuildImage, error) {
 	build := &BuildImage{
-		StackImage: *image,
+		Image: stackImage,
 	}
 
-	if err := validateStageMixins(build, false); err != nil {
+	if err := build.validateStageMixins(); err != nil {
 		return nil, err
 	}
 
@@ -30,10 +23,14 @@ func NewBuildImage(raw imgutil.Image) (*BuildImage, error) {
 
 func (b *BuildImage) BuildOnlyMixins() []string {
 	var mixins []string
-	for _, m := range b.allMixins {
+	for _, m := range b.Mixins() {
 		if strings.HasPrefix(m, "build:") {
 			mixins = append(mixins)
 		}
 	}
 	return mixins
+}
+
+func (b *BuildImage) validateStageMixins() error {
+	return validateStageMixins(b, "run")
 }

@@ -2,38 +2,27 @@ package stack
 
 import (
 	"strings"
-
-	"github.com/buildpack/imgutil"
 )
 
 // TODO: Test this
-type runImage struct {
-	StackImage // TODO: should this be `*stackImage` instead?
+type RunImage struct {
+	Image
 }
 
-type runOnlyMixiner interface {
-	RunOnlyMixins() []string
-}
-
-func NewRunImage(raw imgutil.Image) (*runImage, error) {
-	image, err := NewImage(raw)
-	if err != nil {
-		return nil, err
+func NewRunImage(stackImage Image) (*RunImage, error) {
+	run := &RunImage{
+		Image: stackImage,
 	}
 
-	run := &runImage{
-		StackImage: *image,
-	}
-
-	if err := validateStageMixins(run, true); err != nil {
+	if err := run.validateStageMixins(); err != nil {
 		return nil, err
 	}
 	return run, nil
 }
 
-func (r *runImage) RunOnlyMixins() []string {
+func (r *RunImage) RunOnlyMixins() []string {
 	var mixins []string
-	for _, m := range r.allMixins {
+	for _, m := range r.Mixins() {
 		if strings.HasPrefix(m, "run:") {
 			mixins = append(mixins)
 		}
@@ -41,6 +30,6 @@ func (r *runImage) RunOnlyMixins() []string {
 	return mixins
 }
 
-func (r *runImage) Validate(img runOnlyMixiner) error {
-	return nil
+func (r *RunImage) validateStageMixins() error {
+	return validateStageMixins(r, "build")
 }
