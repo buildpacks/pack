@@ -679,17 +679,17 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-1"].Order), 0)
 				h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-1"].Stacks), 1)
 				h.AssertEq(t, layers["buildpack-1-id"]["buildpack-1-version-1"].Stacks[0].ID, "some.stack.id")
-				h.AssertSliceContains(t, layers["buildpack-1-id"]["buildpack-1-version-1"].Stacks[0].Mixins, "mixinX", "mixinY")
+				h.AssertSliceContainsOnly(t, layers["buildpack-1-id"]["buildpack-1-version-1"].Stacks[0].Mixins, "mixinX", "mixinY")
 
 				h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-2"].Order), 0)
 				h.AssertEq(t, len(layers["buildpack-1-id"]["buildpack-1-version-2"].Stacks), 1)
 				h.AssertEq(t, layers["buildpack-1-id"]["buildpack-1-version-2"].Stacks[0].ID, "some.stack.id")
-				h.AssertSliceContains(t, layers["buildpack-1-id"]["buildpack-1-version-2"].Stacks[0].Mixins, "mixinX", "mixinY")
+				h.AssertSliceContainsOnly(t, layers["buildpack-1-id"]["buildpack-1-version-2"].Stacks[0].Mixins, "mixinX", "mixinY")
 
 				h.AssertEq(t, len(layers["buildpack-2-id"]["buildpack-2-version-1"].Order), 0)
 				h.AssertEq(t, len(layers["buildpack-2-id"]["buildpack-2-version-1"].Stacks), 1)
 				h.AssertEq(t, layers["buildpack-2-id"]["buildpack-2-version-1"].Stacks[0].ID, "some.stack.id")
-				h.AssertSliceContains(t, layers["buildpack-2-id"]["buildpack-2-version-1"].Stacks[0].Mixins, "build:mixinA", "run:mixinB")
+				h.AssertSliceContainsOnly(t, layers["buildpack-2-id"]["buildpack-2-version-1"].Stacks[0].Mixins, "build:mixinA", "run:mixinB")
 
 				h.AssertEq(t, len(layers["order-buildpack-id"]["order-buildpack-version"].Order), 1)
 				h.AssertEq(t, len(layers["order-buildpack-id"]["order-buildpack-version"].Order[0].Group), 2)
@@ -958,7 +958,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("builder exists", func() {
-		var builderImage *builder.ConcreteImage
+		var builderImage *builder.builderImage
 
 		it.Before(func() {
 			h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
@@ -1006,7 +1006,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("gets mixins from image", func() {
-				h.AssertSliceContains(t, bldr.Mixins(), "mixinX", "mixinY", "build:mixinA")
+				h.AssertSliceContainsOnly(t, bldr.Mixins(), "mixinX", "mixinY", "build:mixinA")
 			})
 
 			when("metadata is missing", func() {

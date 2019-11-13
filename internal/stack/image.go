@@ -2,7 +2,6 @@ package stack
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/buildpack/imgutil"
@@ -25,14 +24,13 @@ type Image interface {
 	CommonMixins() []string
 }
 
-// TODO: Test this
-type StackImage struct {
+type stackImage struct {
 	imgutil.Image
 	stackID   string
 	allMixins []string
 }
 
-func NewImage(img imgutil.Image) (*StackImage, error) {
+func NewImage(img imgutil.Image) (Image, error) {
 	stackID, ok, err := image.ReadLabel(img, idLabel)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get label %s from image %s", style.Symbol(idLabel), style.Symbol(img.Name()))
@@ -46,22 +44,22 @@ func NewImage(img imgutil.Image) (*StackImage, error) {
 		return nil, err
 	}
 
-	return &StackImage{
+	return &stackImage{
 		Image:     img,
 		stackID:   stackID,
 		allMixins: mixins,
 	}, nil
 }
 
-func (s *StackImage) StackID() string {
+func (s *stackImage) StackID() string {
 	return s.stackID
 }
 
-func (s *StackImage) Mixins() []string {
+func (s *stackImage) Mixins() []string {
 	return s.allMixins
 }
 
-func (s *StackImage) CommonMixins() []string {
+func (s *stackImage) CommonMixins() []string {
 	var mixins []string
 	for _, m := range s.allMixins {
 		if !strings.HasPrefix(m, "build:") && !strings.HasPrefix(m, "run:") {
@@ -71,17 +69,4 @@ func (s *StackImage) CommonMixins() []string {
 	return mixins
 }
 
-func validateStageMixins(stackImage Image, invalidPrefix string) error {
-	var invalid []string
-	for _, m := range stackImage.Mixins() {
-		if strings.HasPrefix(m, invalidPrefix+":") {
-			invalid = append(invalid, m)
-		}
-	}
 
-	if len(invalid) > 0 {
-		sort.Strings(invalid)
-		return fmt.Errorf("%s contains %s-only mixin(s): %s", style.Symbol(stackImage.Name()), invalidPrefix, strings.Join(invalid, ", "))
-	}
-	return nil
-}

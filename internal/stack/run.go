@@ -4,7 +4,6 @@ import (
 	"strings"
 )
 
-// TODO: Test this
 type RunImage struct {
 	Image
 }
@@ -24,7 +23,7 @@ func (r *RunImage) RunOnlyMixins() []string {
 	var mixins []string
 	for _, m := range r.Mixins() {
 		if strings.HasPrefix(m, "run:") {
-			mixins = append(mixins)
+			mixins = append(mixins, m)
 		}
 	}
 	return mixins

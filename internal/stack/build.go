@@ -4,7 +4,6 @@ import (
 	"strings"
 )
 
-// TODO: Test this
 type BuildImage struct {
 	Image
 }
@@ -25,7 +24,7 @@ func (b *BuildImage) BuildOnlyMixins() []string {
 	var mixins []string
 	for _, m := range b.Mixins() {
 		if strings.HasPrefix(m, "build:") {
-			mixins = append(mixins)
+			mixins = append(mixins, m)
 		}
 	}
 	return mixins

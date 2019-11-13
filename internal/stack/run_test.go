@@ -22,10 +22,12 @@ func TestRunImage(t *testing.T) {
 func testRunImage(t *testing.T, when spec.G, it spec.S) {
 	var (
 		ctrl *gomock.Controller
+		image *testmocks.MockImage
 	)
 	
 	it.Before(func() {
 		ctrl = gomock.NewController(t)
+		image = testmocks.NewMockImage(ctrl)
 	})
 
 	it.After(func() {
@@ -34,7 +36,6 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 
 	when("#NewRunImage", func() {
 		it("returns an instance when mixins are only common or 'run:'-prefixed", func() {
-			image := testmocks.NewMockImage(ctrl)
 			image.EXPECT().Mixins().Return([]string{"mixinA", "run:mixinB"})
 
 			runImage, err := stack.NewRunImage(image)
@@ -44,7 +45,6 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("returns an error when any mixins are 'build:'-prefixed", func() {
-			image := testmocks.NewMockImage(ctrl)
 			image.EXPECT().Mixins().Return([]string{"mixinA", "build:mixinB", "build:mixinC"})
 			image.EXPECT().Name().Return("some/image")
 			
@@ -55,6 +55,14 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#RunOnlyMixins", func() {
-		// TODO
+		it("returns only mixins prefixed with 'run:'", func() {
+			image.EXPECT().Mixins().Return([]string{"mixinA", "run:mixinB", "run:mixinC"}).AnyTimes()
+			runImage, err := stack.NewRunImage(image)
+			h.AssertNil(t, err)
+
+			runOnlyMixins := runImage.RunOnlyMixins()
+
+			h.AssertSliceContainsOnly(t, runOnlyMixins, "run:mixinB", "run:mixinC")
+		})
 	})
 }
