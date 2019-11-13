@@ -101,10 +101,13 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 
 		logger = logging.New(ioutil.Discard)
 
-		buildImage, err := stack.NewBuildImage(baseImage)
+		stackImage, err := stack.NewImage(baseImage)
 		h.AssertNil(t, err)
 
-		builderImage, err := builder.NewBuilderImage(buildImage)
+		buildImage, err := stack.NewBuildImage(stackImage)
+		h.AssertNil(t, err)
+
+		builderImage, err := builder.NewImage(buildImage)
 		h.AssertNil(t, err)
 
 		subject, err = builder.FromBuilderImage(builderImage, builder.WithName("some/builder"))

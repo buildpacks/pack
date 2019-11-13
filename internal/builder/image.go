@@ -20,6 +20,7 @@ type Image interface {
 	BuildOnlyMixins() []string
 }
 
+//go:generate mockgen -package testmocks -destination testmocks/mock_build_image.go github.com/buildpack/pack/internal/builder BuildImage
 type BuildImage interface {
 	imgutil.Image
 	StackID() string
@@ -33,10 +34,9 @@ type builderImage struct {
 	metadata Metadata
 	order    dist.Order
 	bpLayers BuildpackLayers
-	stackID  string
 }
 
-func NewBuilderImage(img BuildImage) (Image, error) {
+func NewImage(img BuildImage) (Image, error) {
 	var metadata Metadata
 	if _, err := image.UnmarshalLabel(img, metadataLabel, &metadata); err != nil {
 		return nil, err
@@ -59,7 +59,6 @@ func NewBuilderImage(img BuildImage) (Image, error) {
 		metadata:   metadata,
 		order:      order,
 		bpLayers:   bpLayers,
-		stackID:    img.StackID(),
 	}, nil
 }
 

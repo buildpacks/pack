@@ -29,7 +29,7 @@ func testStackImage(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#NewImage", func() {
-		it("returns an instance when stack ID is present on image", func() {
+		it("returns an instance when image is valid", func() {
 			h.AssertNil(t, image.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 			stackImage, err := stack.NewImage(image)
 
@@ -54,7 +54,7 @@ func testStackImage(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#StackID", func() {
-		it("returns stack ID from image", func() {
+		it("returns stack ID from image label", func() {
 			h.AssertNil(t, image.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 			stackImage, err := stack.NewImage(image)
 			h.AssertNil(t, err)
@@ -66,7 +66,7 @@ func testStackImage(t *testing.T, when spec.G, it spec.S) {
 	})
 	
 	when("#Mixins", func() {
-		it("returns all mixins", func() {
+		it("returns all mixins from image label", func() {
 			h.AssertNil(t, image.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 			h.AssertNil(t, image.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "run:mixinC"]`))
 			stackImage, err := stack.NewImage(image)
@@ -79,7 +79,7 @@ func testStackImage(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#CommonMixins", func() {
-		it("returns only non-prefixed mixins", func() {
+		it("returns only non-prefixed mixins from image label", func() {
 			h.AssertNil(t, image.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 			h.AssertNil(t, image.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "run:mixinC"]`))
 			stackImage, err := stack.NewImage(image)

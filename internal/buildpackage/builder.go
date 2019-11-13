@@ -53,7 +53,7 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (Image, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating image")
 	}
-	image, err := NewPackageImage(rawImage)
+	image, err := NewImage(rawImage)
 	if err != nil {
 		return nil, err
 	}

@@ -222,10 +222,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
 			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "mixinY", "build:mixinA"]`))
-			buildImage, err := stack.NewBuildImage(baseImage)
+			stackImage, err := stack.NewImage(baseImage)
+			h.AssertNil(t, err)
+			
+			buildImage, err := stack.NewBuildImage(stackImage)
 			h.AssertNil(t, err)
 
-			builderImage, err := builder.NewBuilderImage(buildImage)
+			builderImage, err := builder.NewImage(buildImage)
 			h.AssertNil(t, err)
 
 			subject, err = builder.FromBuilderImage(builderImage, builder.WithName("some/builder"))
@@ -723,10 +726,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						mdJSON.String(),
 					))
 
-					buildImage, err := stack.NewBuildImage(baseImage)
+					stackImage, err := stack.NewImage(baseImage)
+					h.AssertNil(t, err)
+					
+					buildImage, err := stack.NewBuildImage(stackImage)
 					h.AssertNil(t, err)
 
-					builderImage, err := builder.NewBuilderImage(buildImage)
+					builderImage, err := builder.NewImage(buildImage)
 					h.AssertNil(t, err)
 
 					subject, err = builder.FromBuilderImage(builderImage, builder.WithName("some/builder"))
@@ -783,11 +789,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						`{"buildpacks": [{"id": "prev.id"}], "groups": [{"buildpacks": [{"id": "prev.id"}]}], "stack": {"runImage": {"image": "prev/run", "mirrors": ["prev/mirror"]}}, "lifecycle": {"version": "6.6.6", "api": {"buildpack": "0.2", "platform": "2.2"}}}`,
 					))
 
-
-					buildImage, err := stack.NewBuildImage(baseImage)
+					stackImage, err := stack.NewImage(baseImage)
 					h.AssertNil(t, err)
 
-					builderImage, err := builder.NewBuilderImage(buildImage)
+					buildImage, err := stack.NewBuildImage(stackImage)
+					h.AssertNil(t, err)
+
+					builderImage, err := builder.NewImage(buildImage)
 					h.AssertNil(t, err)
 
 					subject, err = builder.FromBuilderImage(builderImage, builder.WithName("some/builder"))
@@ -958,7 +966,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("builder exists", func() {
-		var builderImage *builder.builderImage
+		var builderImage builder.Image
 
 		it.Before(func() {
 			h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
@@ -974,10 +982,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				`[{"group": [{"id": "buildpack-1-id", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}]`,
 			))
 
-			buildImage, err := stack.NewBuildImage(baseImage)
+			stackImage, err := stack.NewImage(baseImage)
 			h.AssertNil(t, err)
 
-			builderImage, err = builder.NewBuilderImage(buildImage)
+			buildImage, err := stack.NewBuildImage(stackImage)
+			h.AssertNil(t, err)
+
+			builderImage, err = builder.NewImage(buildImage)
 			h.AssertNil(t, err)
 		})
 

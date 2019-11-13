@@ -35,7 +35,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#NewRunImage", func() {
-		it("returns an instance when mixins are only common or 'run:'-prefixed", func() {
+		it("returns an instance when image is valid", func() {
 			image.EXPECT().Mixins().Return([]string{"mixinA", "run:mixinB"})
 
 			runImage, err := stack.NewRunImage(image)
@@ -55,7 +55,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#RunOnlyMixins", func() {
-		it("returns only mixins prefixed with 'run:'", func() {
+		it("returns only mixins prefixed with 'run:' from image label", func() {
 			image.EXPECT().Mixins().Return([]string{"mixinA", "run:mixinB", "run:mixinC"}).AnyTimes()
 			runImage, err := stack.NewRunImage(image)
 			h.AssertNil(t, err)

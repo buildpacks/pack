@@ -35,7 +35,7 @@ func testBuildImage(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#NewBuildImage", func() {
-		it("returns an instance when mixins are only common or 'build:'-prefixed", func() {
+		it("returns an instance when image is valid", func() {
 			image.EXPECT().Mixins().Return([]string{"mixinA", "build:mixinB"})
 
 			buildImage, err := stack.NewBuildImage(image)
@@ -55,7 +55,7 @@ func testBuildImage(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#BuildOnlyMixins", func() {
-		it("returns only mixins prefixed with 'build:'", func() {
+		it("returns only mixins prefixed with 'build:' from image label", func() {
 			image.EXPECT().Mixins().Return([]string{"mixinA", "build:mixinB", "build:mixinC"}).AnyTimes()
 			buildImage, err := stack.NewBuildImage(image)
 			h.AssertNil(t, err)
