@@ -12,7 +12,6 @@ import (
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/dist"
 	"github.com/buildpack/pack/internal/image"
-	"github.com/buildpack/pack/internal/stack"
 	"github.com/buildpack/pack/internal/style"
 )
 
@@ -38,26 +37,12 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(rawBuildImage.Name()))
 
-	stackImage, err := stack.NewImage(rawBuildImage)
-	if err != nil {
-		return err
-	}
-
-	buildImage, err := stack.NewBuildImage(stackImage)
-	if err != nil {
-		return err
-	}
-
-	builderImage, err := builder.NewImage(buildImage)
-	if err != nil {
-		return err
-	}
-
-	bldr, err := builder.FromBuilderImage(builderImage)
+	bldr, err := builder.FromImage(rawBuildImage)
 	if err != nil {
 		return errors.Wrap(err, "invalid build-image")
 	}
 
+	bldr.SetName(opts.BuilderName)
 	bldr.SetDescription(opts.BuilderConfig.Description)
 
 	if bldr.StackID != opts.BuilderConfig.Stack.ID {
@@ -102,7 +87,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	bldr.SetOrder(opts.BuilderConfig.Order)
 	bldr.SetStack(opts.BuilderConfig.Stack)
 
-	_, err = bldr.Save(c.logger, rawBuildImage)
+	_, err = bldr.Save(c.logger)
 	return err
 }
 

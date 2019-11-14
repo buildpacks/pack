@@ -42,7 +42,7 @@ func testPackageImage(t *testing.T, when spec.G, it spec.S) {
 
 			_, err := buildpackage.NewImage(image)
 
-			h.AssertError(t, err, "unmarshalling label 'io.buildpacks.buildpackage.metadata' from image 'some/image'")
+			h.AssertError(t, err, "unmarshalling label 'io.buildpacks.buildpackage.metadata'")
 		})
 	})
 

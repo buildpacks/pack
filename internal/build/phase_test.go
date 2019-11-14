@@ -25,7 +25,6 @@ import (
 	"github.com/buildpack/pack/internal/build"
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/fakes"
-	"github.com/buildpack/pack/internal/stack"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -344,17 +343,12 @@ func CreateFakeLifecycle(appDir string, docker *client.Client, logger logging.Lo
 		return nil, err
 	}
 
-	stackImage, err := stack.NewImage(rawImage)
+	bldr, err := builder.FromImage(rawImage)
 	if err != nil {
 		return nil, err
 	}
-
-	buildImage, err := stack.NewBuildImage(stackImage)
-	if err != nil {
-		return nil, err
-	}
-
-	builderImage, err := builder.NewImage(buildImage)
+	
+	builderImage, err := bldr.Save(logger)
 	if err != nil {
 		return nil, err
 	}

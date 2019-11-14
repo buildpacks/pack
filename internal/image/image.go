@@ -9,23 +9,21 @@ import (
 )
 
 type Labeled interface {
-	Name() string
 	Label(string) (string, error)
 }
 
 type Labelable interface {
-	Name() string
 	SetLabel(string, string) error
 }
 
 func UnmarshalLabel(labelable Labeled, label string, obj interface{}) (ok bool, err error) {
 	labelData, err := labelable.Label(label)
 	if err != nil {
-		return false, labelRetrievalError(err, label, labelable.Name())
+		return false, labelRetrievalError(err, label)
 	}
 	if labelData != "" {
 		if err := json.Unmarshal([]byte(labelData), obj); err != nil {
-			return false, errors.Wrapf(err, "unmarshalling label %s from image %s", style.Symbol(label), style.Symbol(labelable.Name()))
+			return false, errors.Wrapf(err, "unmarshalling label %s", style.Symbol(label))
 		}
 		return true, nil
 	}
@@ -35,7 +33,7 @@ func UnmarshalLabel(labelable Labeled, label string, obj interface{}) (ok bool, 
 func ReadLabel(labelable Labeled, label string) (string, bool, error) {
 	value, err := labelable.Label(label)
 	if err != nil {
-		return "", false, labelRetrievalError(err, label, labelable.Name())
+		return "", false, labelRetrievalError(err, label)
 	}
 	return value, value != "", nil
 }
@@ -46,11 +44,11 @@ func MarshalToLabel(labelable Labelable, label string, data interface{}) error {
 		return errors.Wrapf(err, "marshalling data to JSON for label %s", style.Symbol(label))
 	}
 	if err := labelable.SetLabel(label, string(dataBytes)); err != nil {
-		return errors.Wrapf(err, "setting label %s on image %s", style.Symbol(label), style.Symbol(labelable.Name()))
+		return errors.Wrapf(err, "setting label %s", style.Symbol(label))
 	}
 	return nil
 }
 
-func labelRetrievalError(err error, label, imageName string) error {
-	return errors.Wrapf(err, "retrieving label %s from image %s", style.Symbol(label), style.Symbol(imageName))
+func labelRetrievalError(err error, label string) error {
+	return errors.Wrapf(err, "retrieving label %s", style.Symbol(label))
 }

@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/buildpack/imgutil"
 	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -97,27 +98,22 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	buildImg, err := stack.NewBuildImage(stackImage)
+	buildImage, err := stack.NewBuildImage(stackImage)
 	if err != nil {
 		return err
 	}
 
-	builderImg, err := builder.NewImage(buildImg)
+	builderImage, err := builder.NewImage(buildImage)
 	if err != nil {
 		return err
 	}
 
-	bldr, err := c.getBuilder(builderImg)
-	if err != nil {
-		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
-	}
-
-	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors)
+	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), builderImage.Metadata().Stack, opts.AdditionalMirrors)
 	if runImageName == "" {
 		return errors.New("run image must be specified")
 	}
 
-	runImage, err := c.validateRunImage(ctx, runImageName, opts.NoPull, opts.Publish, bldr.StackID)
+	runImage, err := c.validateRunImage(ctx, runImageName, opts.NoPull, opts.Publish, builderImage.StackID())
 	if err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
 	}
@@ -127,30 +123,30 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	if err := c.validateMixins(fetchedBPs, builderImg, runImage); err != nil {
+	if err := c.validateMixins(fetchedBPs, builderImage, runImage); err != nil {
 		return errors.Wrap(err, "validating stack mixins")
 	}
 
-	builderImage, err := c.createEphemeralBuilder(builderImg, opts.Env, group, fetchedBPs)
+	ephemeralBuilderImage, err := c.createEphemeralBuilder(rawBuilderImage, opts.Env, group, fetchedBPs)
 	if err != nil {
 		return err
 	}
-	defer c.docker.ImageRemove(context.Background(), builderImage.Name(), types.ImageRemoveOptions{Force: true})
+	defer c.docker.ImageRemove(context.Background(), ephemeralBuilderImage.Name(), types.ImageRemoveOptions{Force: true})
 
-	if !api.MustParse(build.PlatformAPIVersion).SupportsVersion(builderImage.PlatformAPIVersion()) {
+	if !api.MustParse(build.PlatformAPIVersion).SupportsVersion(ephemeralBuilderImage.PlatformAPIVersion()) {
 		return errors.Errorf(
 			"pack %s (Platform API version %s) is incompatible with builder %s (Platform API version %s)",
 			cmd.Version,
 			build.PlatformAPIVersion,
 			style.Symbol(opts.Builder),
-			builderImage.PlatformAPIVersion(),
+			ephemeralBuilderImage.PlatformAPIVersion(),
 		)
 	}
 
 	return c.lifecycle.Execute(ctx, build.LifecycleOptions{
 		AppPath:    appPath,
 		Image:      imageRef,
-		Builder:    builderImage,
+		Builder:    ephemeralBuilderImage,
 		RunImage:   runImageName,
 		ClearCache: opts.ClearCache,
 		Publish:    opts.Publish,
@@ -166,17 +162,6 @@ func (c *Client) processBuilderName(builderName string) (name.Reference, error) 
 		return nil, errors.New("builder is a required parameter if the client has no default builder")
 	}
 	return name.ParseReference(builderName, name.WeakValidation)
-}
-
-func (c *Client) getBuilder(img builder.Image) (*builder.Builder, error) {
-	bldr, err := builder.FromBuilderImage(img)
-	if err != nil {
-		return nil, err
-	}
-	if bldr.Stack().RunImage.Image == "" {
-		return nil, errors.New("builder metadata is missing runImage")
-	}
-	return bldr, nil
 }
 
 func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (runImage, error) {
@@ -455,9 +440,10 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 	return parts[0], ""
 }
 
-func (c *Client) createEphemeralBuilder(baseBuilderImage builder.Image, env map[string]string, group dist.OrderEntry, buildpacks []dist.Buildpack) (builder.Image, error) {
+func (c *Client) createEphemeralBuilder(baseBuilderImage imgutil.Image, env map[string]string, group dist.OrderEntry, buildpacks []dist.Buildpack) (builder.Image, error) {
 	origBuilderName := baseBuilderImage.Name()
-	bldr, err := builder.FromBuilderImage(baseBuilderImage)
+	baseBuilderImage.Rename(fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
+	bldr, err := builder.FromImage(baseBuilderImage)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}
@@ -467,17 +453,13 @@ func (c *Client) createEphemeralBuilder(baseBuilderImage builder.Image, env map[
 		c.logger.Debugf("Adding buildpack %s version %s to builder", style.Symbol(bpInfo.ID), style.Symbol(bpInfo.Version))
 		bldr.AddBuildpack(bp)
 	}
+
 	if len(group.Group) > 0 {
 		c.logger.Debug("Setting custom order")
 		bldr.SetOrder([]dist.OrderEntry{group})
 	}
 
-	image, err := c.imageFactory.NewImage(fmt.Sprintf("pack.local/builder/%x:latest", randString(10)), true)
-	if err != nil {
-		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
-	}
-
-	bldrImage, err := bldr.Save(c.logger, image)
+	bldrImage, err := bldr.Save(c.logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}

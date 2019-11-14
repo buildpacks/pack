@@ -23,7 +23,6 @@ import (
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/dist"
 	ifakes "github.com/buildpack/pack/internal/fakes"
-	"github.com/buildpack/pack/internal/stack"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 	"github.com/buildpack/pack/testmocks"
@@ -271,15 +270,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
 				h.AssertEq(t, fakeBuildImage.IsSaved(), true)
-
-				stackImage, err := stack.NewImage(fakeBuildImage)
-				h.AssertNil(t, err)
-				buildImage, err := stack.NewBuildImage(stackImage)
-				h.AssertNil(t, err)
-				builderImage, err := builder.NewImage(buildImage)
-				h.AssertNil(t, err)
-
-				bldr, err = builder.FromBuilderImage(builderImage)
+				bldr, err = builder.FromImage(fakeBuildImage)
 				h.AssertNil(t, err)
 			})
 

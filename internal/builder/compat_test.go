@@ -19,7 +19,6 @@ import (
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/builder/testmocks"
 	"github.com/buildpack/pack/internal/dist"
-	"github.com/buildpack/pack/internal/stack"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -98,19 +97,12 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
 		h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
 		h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
+		h.AssertNil(t, baseImage.SetLabel("io.buildpacks.builder.metadata", `{"stack": {"runImage": {"image": "run/image"}}}`))
 
 		logger = logging.New(ioutil.Discard)
 
-		stackImage, err := stack.NewImage(baseImage)
-		h.AssertNil(t, err)
-
-		buildImage, err := stack.NewBuildImage(stackImage)
-		h.AssertNil(t, err)
-
-		builderImage, err := builder.NewImage(buildImage)
-		h.AssertNil(t, err)
-
-		subject, err = builder.FromBuilderImage(builderImage)
+		var err error
+		subject, err = builder.FromImage(baseImage)
 		h.AssertNil(t, err)
 	})
 
@@ -146,7 +138,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 				err      error
 			)
 
-			_, err = subject.Save(logger, baseImage)
+			_, err = subject.Save(logger)
 			h.AssertNil(t, err)
 			h.AssertEq(t, baseImage.IsSaved(), true)
 
@@ -176,7 +168,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("adds latest buildpack symlinks", func() {
-			_, err := subject.Save(logger, baseImage)
+			_, err := subject.Save(logger)
 			h.AssertNil(t, err)
 			h.AssertEq(t, baseImage.IsSaved(), true)
 
@@ -189,7 +181,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("creates the compat buildpacks dir", func() {
-			_, err := subject.Save(logger, baseImage)
+			_, err := subject.Save(logger)
 			h.AssertNil(t, err)
 			h.AssertEq(t, baseImage.IsSaved(), true)
 
@@ -209,7 +201,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 					RunImage:        "some/run",
 					RunImageMirrors: []string{"some/mirror", "other/mirror"},
 				})
-				_, err := subject.Save(logger, baseImage)
+				_, err := subject.Save(logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, baseImage.IsSaved(), true)
 			})
@@ -253,7 +245,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 					}},
 				})
 
-				_, err := subject.Save(logger, baseImage)
+				_, err := subject.Save(logger)
 				h.AssertNil(t, err)
 				h.AssertEq(t, baseImage.IsSaved(), true)
 			})
@@ -298,7 +290,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 				}},
 			})
 
-			_, err := subject.Save(logger, baseImage)
+			_, err := subject.Save(logger)
 			h.AssertNil(t, err)
 			h.AssertEq(t, baseImage.IsSaved(), true)
 		})
@@ -333,7 +325,7 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should create a compat lifecycle symlink", func() {
-			_, err := subject.Save(logger, baseImage)
+			_, err := subject.Save(logger)
 			h.AssertNil(t, err)
 			h.AssertEq(t, baseImage.IsSaved(), true)
 

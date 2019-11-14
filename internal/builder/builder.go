@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/builder"
@@ -47,11 +46,8 @@ const (
 	envGID = "CNB_GROUP_ID"
 )
 
-type ImageFactory interface {
-	NewImage(repoName string, daemon bool) (imgutil.Image, error)
-}
-
 type Builder struct {
+	name                 string
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
 	buildpackLayers      BuildpackLayers
@@ -61,6 +57,7 @@ type Builder struct {
 	env                  map[string]string
 	UID, GID             int
 	StackID              string
+	store                WritableBuildImage
 	replaceOrder         bool
 	order                dist.Order
 }
@@ -69,42 +66,90 @@ type orderTOML struct {
 	Order dist.Order `toml:"order"`
 }
 
-type ImageStore interface {
+type WritableBuildImage interface {
+	StackID() string
+	CommonMixins() []string
+	BuildOnlyMixins() []string
+	MutableImage
+}
+
+type MutableImage interface {
 	Name() string
+	Label(name string) (value string, err error)
+	Env(string) (string, error)
 	Rename(name string)
-	Label(string) (string, error)
-	Env(name string) (value string, err error)
 	SetLabel(name string, value string) error
 	AddLayer(path string) error
 	SetWorkingDir(path string) error
 	Save(additionalNames ...string) error
 }
 
-// FromBuilderImage constructs a builder from an existing image
-func FromBuilderImage(builderImage Image) (*Builder, error) {
-	bldr := &Builder{
-		lifecycleDescriptor: LifecycleDescriptor{
-			Info: LifecycleInfo{
-				Version: builderImage.LifecycleVersion(),
-			},
-			API: LifecycleAPI{
-				BuildpackVersion: builderImage.BuildpackAPIVersion(),
-				PlatformVersion:  builderImage.PlatformAPIVersion(),
-			},
-		},
-		buildpackLayers:      builderImage.BuildpackLayers(),
-		additionalBuildpacks: nil,
-		// baseImageName: baseName,  // TODO: investigate
-		metadata: builderImage.Metadata(),
-		mixins:   stringset.Join(builderImage.CommonMixins(), builderImage.BuildOnlyMixins()),
-		env:      map[string]string{},
-		UID:      builderImage.UID(),
-		GID:      builderImage.GID(),
-		StackID:  builderImage.StackID(),
-		order:    builderImage.Order(),
+type store struct {
+	MutableImage
+	buildImage BuildImage
+}
+
+func (s *store) StackID() string {
+	return s.buildImage.StackID()
+}
+
+func (s *store) CommonMixins() []string {
+	return s.buildImage.CommonMixins()
+}
+
+func (s *store) BuildOnlyMixins() []string {
+	return s.buildImage.BuildOnlyMixins()
+}
+
+func FromImage(mutableImage MutableImage) (*Builder, error) {
+	stackImage, err := stack.NewImage(mutableImage)
+	if err != nil {
+		return nil, err
 	}
 
-	return bldr, nil
+	buildImage, err := stack.NewBuildImage(stackImage)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := extractBuilderInfo(buildImage, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Builder{
+		lifecycleDescriptor: LifecycleDescriptor{
+			Info: LifecycleInfo{
+				Version: info.metadata.Lifecycle.Version,
+			},
+			API: LifecycleAPI{
+				BuildpackVersion: info.metadata.Lifecycle.API.BuildpackVersion,
+				PlatformVersion:  info.metadata.Lifecycle.API.PlatformVersion,
+			},
+		},
+		buildpackLayers: *info.bpLayers,
+		// baseImageName: baseName,  // TODO: investigate
+		metadata: *info.metadata,
+		name:     mutableImage.Name(),
+		mixins:   stringset.Join(buildImage.CommonMixins(), buildImage.BuildOnlyMixins()),
+		env:      map[string]string{},
+		UID:      info.uid,
+		GID:      info.gid,
+		StackID:  buildImage.StackID(),
+		order:    *info.order,
+		store: &store{
+			MutableImage: mutableImage,
+			buildImage:   buildImage,
+		},
+	}, nil
+}
+
+func (b *Builder) SetName(name string) {
+	b.name = name
+}
+
+func (b *Builder) SetStore(store WritableBuildImage) {
+	b.store = store
 }
 
 func (b *Builder) Description() string {
@@ -122,10 +167,10 @@ func (b *Builder) Buildpacks() []BuildpackMetadata {
 func (b *Builder) CreatedBy() CreatorMetadata {
 	return b.metadata.CreatedBy
 }
-
 func (b *Builder) Order() dist.Order {
 	return b.order
 }
+
 func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
 }
@@ -168,7 +213,7 @@ func (b *Builder) SetStack(stackConfig builder.StackConfig) {
 	}
 }
 
-func (b *Builder) Save(logger logging.Logger, store ImageStore) (Image, error) {
+func (b *Builder) Save(logger logging.Logger) (Image, error) {
 	resolvedOrder, err := processOrder(b.metadata.Buildpacks, b.order)
 	if err != nil {
 		return nil, errors.Wrap(err, "processing order")
@@ -187,6 +232,9 @@ func (b *Builder) Save(logger logging.Logger, store ImageStore) (Image, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	store := b.store
+	store.Rename(b.name)
 
 	if err := store.AddLayer(dirsTar); err != nil {
 		return nil, errors.Wrap(err, "adding default dirs layer")
@@ -320,12 +368,7 @@ func (b *Builder) Save(logger logging.Logger, store ImageStore) (Image, error) {
 		return nil, err
 	}
 
-	return &builderImage{
-		img:      buildImage,
-		metadata: Metadata{},
-		order:    nil,
-		bpLayers: nil,
-	}, nil
+	return NewImage(buildImage)
 }
 
 func processOrder(buildpacks []BuildpackMetadata, order dist.Order) (dist.Order, error) {

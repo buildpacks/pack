@@ -16,4 +16,4 @@ ENV CNB_USER_ID 111
 ENV CNB_GROUP_ID 222
 
 LABEL io.buildpacks.stack.id="test.stack"
-LABEL io.buildpacks.builder.metadata="{\"buildpacks\":[{\"id\":\"just/buildpack.id\", \"version\":\"1.2.3\"}], \"groups\":[{\"buildpacks\":[{\"id\":\"orig.buildpack.id\", \"version\": \"orig.buildpack.version\"}]}]}"
+LABEL io.buildpacks.builder.metadata='{"buildpacks":[{"id":"orig.buildpack.id","version":"orig.buildpack.version"}],"groups":[{"buildpacks":[{"id":"orig.buildpack.id","version":"orig.buildpack.version"}]}],"stack":{"runImage":{"image":"run/image"}}}'

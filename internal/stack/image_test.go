@@ -49,7 +49,7 @@ func testStackImage(t *testing.T, when spec.G, it spec.S) {
 
 			_, err := stack.NewImage(image)
 
-			h.AssertError(t, err, "unmarshalling label 'io.buildpacks.stack.mixins' from image 'some/image'")
+			h.AssertError(t, err, "unmarshalling label 'io.buildpacks.stack.mixins'")
 		})
 	})
 
