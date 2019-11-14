@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/internal/dist"
+	"github.com/buildpack/pack/internal/image"
 	"github.com/buildpack/pack/internal/style"
 )
 
@@ -53,12 +54,8 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (Image, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating image")
 	}
-	image, err := NewImage(rawImage)
-	if err != nil {
-		return nil, err
-	}
 
-	if err := image.SetMetadata(Metadata{
+	if err := image.MarshalToLabel(rawImage, metadataLabel, Metadata{
 		BuildpackInfo: p.defaultBpInfo,
 		Stacks:        p.stacks,
 	}); err != nil {
@@ -77,16 +74,16 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (Image, error) {
 			return nil, err
 		}
 
-		if err := image.AddLayer(bpLayerTar); err != nil {
+		if err := rawImage.AddLayer(bpLayerTar); err != nil {
 			return nil, errors.Wrapf(err, "adding layer tar for buildpack %s", style.Symbol(bp.Descriptor().Info.FullName()))
 		}
 	}
 
-	if err := image.Save(); err != nil {
+	if err := rawImage.Save(); err != nil {
 		return nil, err
 	}
 
-	return image, nil
+	return NewImage(rawImage)
 }
 
 func validateDefault(bps []dist.Buildpack, defBp dist.BuildpackInfo) error {

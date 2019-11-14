@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -20,7 +21,7 @@ import (
 const PlatformAPIVersion = "0.1"
 
 type Lifecycle struct {
-	builder      *builder.Builder
+	builder      builder.Image
 	logger       logging.Logger
 	docker       *client.Client
 	appPath      string
@@ -28,7 +29,7 @@ type Lifecycle struct {
 	httpProxy    string
 	httpsProxy   string
 	noProxy      string
-	version      string
+	version      *semver.Version
 	LayersVolume string
 	AppVolume    string
 }
@@ -49,7 +50,7 @@ func NewLifecycle(docker *client.Client, logger logging.Logger) *Lifecycle {
 type LifecycleOptions struct {
 	AppPath    string
 	Image      name.Reference
-	Builder    *builder.Builder
+	Builder    builder.Image
 	RunImage   string
 	ClearCache bool
 	Publish    bool
@@ -118,7 +119,7 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.httpProxy = opts.HTTPProxy
 	l.httpsProxy = opts.HTTPSProxy
 	l.noProxy = opts.NoProxy
-	l.version = opts.Builder.LifecycleDescriptor().Info.Version.String()
+	l.version = &opts.Builder.LifecycleVersion().Version
 }
 
 func (l *Lifecycle) Cleanup() error {

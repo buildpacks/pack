@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/internal/image"
@@ -18,19 +17,26 @@ const (
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_stack_image.go github.com/buildpack/pack/internal/stack Image
 type Image interface {
-	imgutil.Image
+	ReadableImage
 	StackID() string
 	Mixins() []string
 	CommonMixins() []string
 }
 
-type stackImage struct {
-	imgutil.Image
-	stackID   string
-	allMixins []string
+type ReadableImage interface {
+	Name() string
+	Label(string) (string, error)
+	Env(string) (string, error)
 }
 
-func NewImage(img imgutil.Image) (Image, error) {
+type stackImage struct {
+	allMixins []string
+	image     ReadableImage // Deprecated: should store values in constructor
+	name      string
+	stackID   string
+}
+
+func NewImage(img ReadableImage) (Image, error) {
 	stackID, ok, err := image.ReadLabel(img, idLabel)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get label %s from image %s", style.Symbol(idLabel), style.Symbol(img.Name()))
@@ -45,10 +51,23 @@ func NewImage(img imgutil.Image) (Image, error) {
 	}
 
 	return &stackImage{
-		Image:     img,
+		image:     img,
+		name:      img.Name(),
 		stackID:   stackID,
 		allMixins: mixins,
 	}, nil
+}
+
+func (s *stackImage) Name() string {
+	return s.name
+}
+
+func (s *stackImage) Label(name string) (string, error) {
+	return s.image.Label(name)
+}
+
+func (s *stackImage) Env(name string) (string, error) {
+	return s.image.Env(name)
 }
 
 func (s *stackImage) StackID() string {
@@ -68,5 +87,3 @@ func (s *stackImage) CommonMixins() []string {
 	}
 	return mixins
 }
-
-

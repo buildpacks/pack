@@ -64,7 +64,7 @@ func testStackImage(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, stackID, "some.stack.id")
 		})
 	})
-	
+
 	when("#Mixins", func() {
 		it("returns all mixins from image label", func() {
 			h.AssertNil(t, image.SetLabel("io.buildpacks.stack.id", "some.stack.id"))

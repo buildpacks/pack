@@ -38,17 +38,22 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(rawBuildImage.Name()))
 
-	buildImage, err := stack.NewBuildImage(rawBuildImage)
+	stackImage, err := stack.NewImage(rawBuildImage)
 	if err != nil {
 		return err
 	}
 
-	builderImage, err := builder.NewBuilderImage(buildImage)
+	buildImage, err := stack.NewBuildImage(stackImage)
 	if err != nil {
 		return err
 	}
 
-	bldr, err := builder.FromBuilderImage(builderImage, builder.WithName(opts.BuilderName))
+	builderImage, err := builder.NewImage(buildImage)
+	if err != nil {
+		return err
+	}
+
+	bldr, err := builder.FromBuilderImage(builderImage)
 	if err != nil {
 		return errors.Wrap(err, "invalid build-image")
 	}
@@ -68,9 +73,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return errors.Wrap(err, "fetch lifecycle")
 	}
 
-	if err := bldr.SetLifecycle(lifecycle); err != nil {
-		return errors.Wrap(err, "setting lifecycle")
-	}
+	bldr.SetLifecycle(lifecycle)
 
 	for _, b := range opts.BuilderConfig.Buildpacks {
 		err := ensureBPSupport(b.URI)
@@ -99,7 +102,8 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	bldr.SetOrder(opts.BuilderConfig.Order)
 	bldr.SetStack(opts.BuilderConfig.Stack)
 
-	return bldr.Save(c.logger)
+	_, err = bldr.Save(c.logger, rawBuildImage)
+	return err
 }
 
 func validateBuildpack(bp dist.Buildpack, source, expectedID, expectedBPVersion string) error {

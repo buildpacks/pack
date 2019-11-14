@@ -10,7 +10,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -19,9 +18,11 @@ import (
 
 	"github.com/buildpack/pack/builder"
 	"github.com/buildpack/pack/cmd"
-	"github.com/buildpack/pack/internal/api"
 	"github.com/buildpack/pack/internal/archive"
 	"github.com/buildpack/pack/internal/dist"
+	"github.com/buildpack/pack/internal/image"
+	"github.com/buildpack/pack/internal/stack"
+	"github.com/buildpack/pack/internal/stringset"
 	"github.com/buildpack/pack/internal/style"
 	"github.com/buildpack/pack/logging"
 )
@@ -46,12 +47,14 @@ const (
 	envGID = "CNB_GROUP_ID"
 )
 
-// TODO: Pare down getters/setters (use internal `image` instead?)
+type ImageFactory interface {
+	NewImage(repoName string, daemon bool) (imgutil.Image, error)
+}
+
 type Builder struct {
-	// baseImageName        string // TODO: investigate
-	image                Image
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
+	buildpackLayers      BuildpackLayers
 	additionalBuildpacks []dist.Buildpack
 	metadata             Metadata
 	mixins               []string
@@ -66,63 +69,42 @@ type orderTOML struct {
 	Order dist.Order `toml:"order"`
 }
 
-type Option func(builderImage Image)
-
-// WithName sets the name to the builder image
-func WithName(name string) Option {
-	return func(builderImage Image) {
-		builderImage.Rename(name)
-	}
+type ImageStore interface {
+	Name() string
+	Rename(name string)
+	Label(string) (string, error)
+	Env(name string) (value string, err error)
+	SetLabel(name string, value string) error
+	AddLayer(path string) error
+	SetWorkingDir(path string) error
+	Save(additionalNames ...string) error
 }
 
 // FromBuilderImage constructs a builder from an existing image
-func FromBuilderImage(builderImage Image, opts ...Option) (*Builder, error) {
-	for _, opt := range opts {
-		opt(builderImage)
-	}
-
-	uid, gid, err := userAndGroupIDs(builderImage)
-	if err != nil {
-		return nil, err
-	}
-
-	lifecycleVersion := VersionMustParse(AssumedLifecycleVersion)
-	metadata := builderImage.Metadata()
-
-	if metadata.Lifecycle.Version != nil {
-		lifecycleVersion = metadata.Lifecycle.Version
-	}
-
-	buildpackAPIVersion := api.MustParse(dist.AssumedBuildpackAPIVersion)
-	if metadata.Lifecycle.API.BuildpackVersion != nil {
-		buildpackAPIVersion = metadata.Lifecycle.API.BuildpackVersion
-	}
-
-	platformAPIVersion := api.MustParse(AssumedPlatformAPIVersion)
-	if metadata.Lifecycle.API.PlatformVersion != nil {
-		platformAPIVersion = metadata.Lifecycle.API.PlatformVersion
-	}
-
-	return &Builder{
-		// baseImageName: baseName,  // TODO: investigate
-		image:    builderImage,
-		metadata: metadata,
-		mixins:   builderImage.CommonMixins(),
-		order:    builderImage.Order(),
-		UID:      uid,
-		GID:      gid,
-		StackID:  builderImage.StackID(),
+func FromBuilderImage(builderImage Image) (*Builder, error) {
+	bldr := &Builder{
 		lifecycleDescriptor: LifecycleDescriptor{
 			Info: LifecycleInfo{
-				Version: lifecycleVersion,
+				Version: builderImage.LifecycleVersion(),
 			},
 			API: LifecycleAPI{
-				PlatformVersion:  platformAPIVersion,
-				BuildpackVersion: buildpackAPIVersion,
+				BuildpackVersion: builderImage.BuildpackAPIVersion(),
+				PlatformVersion:  builderImage.PlatformAPIVersion(),
 			},
 		},
-		env: map[string]string{},
-	}, nil
+		buildpackLayers:      builderImage.BuildpackLayers(),
+		additionalBuildpacks: nil,
+		// baseImageName: baseName,  // TODO: investigate
+		metadata: builderImage.Metadata(),
+		mixins:   stringset.Join(builderImage.CommonMixins(), builderImage.BuildOnlyMixins()),
+		env:      map[string]string{},
+		UID:      builderImage.UID(),
+		GID:      builderImage.GID(),
+		StackID:  builderImage.StackID(),
+		order:    builderImage.Order(),
+	}
+
+	return bldr, nil
 }
 
 func (b *Builder) Description() string {
@@ -144,19 +126,10 @@ func (b *Builder) CreatedBy() CreatorMetadata {
 func (b *Builder) Order() dist.Order {
 	return b.order
 }
-
-func (b *Builder) Name() string {
-	return b.image.Name()
-}
-
-// TODO: is this needed?
-// func (b *Builder) Image() Image {
-//	return b.image
-// }
-
 func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
 }
+
 func (b *Builder) Mixins() []string {
 	return b.mixins
 }
@@ -168,10 +141,9 @@ func (b *Builder) AddBuildpack(bp dist.Buildpack) {
 	})
 }
 
-func (b *Builder) SetLifecycle(lifecycle Lifecycle) error {
+func (b *Builder) SetLifecycle(lifecycle Lifecycle) {
 	b.lifecycle = lifecycle
 	b.lifecycleDescriptor = lifecycle.Descriptor()
-	return nil
 }
 
 func (b *Builder) SetEnv(env map[string]string) {
@@ -196,10 +168,10 @@ func (b *Builder) SetStack(stackConfig builder.StackConfig) {
 	}
 }
 
-func (b *Builder) Save(logger logging.Logger) error {
+func (b *Builder) Save(logger logging.Logger, store ImageStore) (Image, error) {
 	resolvedOrder, err := processOrder(b.metadata.Buildpacks, b.order)
 	if err != nil {
-		return errors.Wrap(err, "processing order")
+		return nil, errors.Wrap(err, "processing order")
 	}
 
 	b.metadata.Groups = orderToV1Order(resolvedOrder)
@@ -207,16 +179,17 @@ func (b *Builder) Save(logger logging.Logger) error {
 
 	tmpDir, err := ioutil.TempDir("", "create-builder-scratch")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer os.RemoveAll(tmpDir)
 
 	dirsTar, err := b.defaultDirsLayer(tmpDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if err := b.image.AddLayer(dirsTar); err != nil {
-		return errors.Wrap(err, "adding default dirs layer")
+
+	if err := store.AddLayer(dirsTar); err != nil {
+		return nil, errors.Wrap(err, "adding default dirs layer")
 	}
 
 	if b.lifecycle != nil {
@@ -224,27 +197,27 @@ func (b *Builder) Save(logger logging.Logger) error {
 		b.metadata.Lifecycle.API = b.lifecycle.Descriptor().API
 		lifecycleTar, err := b.lifecycleLayer(tmpDir)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if err := b.image.AddLayer(lifecycleTar); err != nil {
-			return errors.Wrap(err, "adding lifecycle layer")
+		if err := store.AddLayer(lifecycleTar); err != nil {
+			return nil, errors.Wrap(err, "adding lifecycle layer")
 		}
 	}
 
 	if err := validateBuildpacks(b.StackID, b.Mixins(), b.LifecycleDescriptor(), b.additionalBuildpacks); err != nil {
-		return errors.Wrap(err, "validating buildpacks")
+		return nil, errors.Wrap(err, "validating buildpacks")
 	}
 
-	bpLayers := b.image.BuildpackLayers()
+	bpLayers := b.buildpackLayers
 
 	for _, bp := range b.additionalBuildpacks {
 		bpLayerTar, err := dist.BuildpackLayer(tmpDir, b.UID, b.GID, bp)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		if err := b.image.AddLayer(bpLayerTar); err != nil {
-			return errors.Wrapf(err,
+		if err := store.AddLayer(bpLayerTar); err != nil {
+			return nil, errors.Wrapf(err,
 				"adding layer tar for buildpack %s",
 				style.Symbol(bp.Descriptor().Info.FullName()),
 			)
@@ -252,7 +225,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 
 		diffID, err := dist.LayerDiffID(bpLayerTar)
 		if err != nil {
-			return errors.Wrapf(err,
+			return nil, errors.Wrapf(err,
 				"getting content hashes for buildpack %s",
 				style.Symbol(bp.Descriptor().Info.FullName()),
 			)
@@ -277,47 +250,47 @@ func (b *Builder) Save(logger logging.Logger) error {
 		}
 	}
 
-	if err := b.image.SetBuildpackLayers(bpLayers); err != nil {
-		return err
+	if err := image.MarshalToLabel(store, buildpackLayersLabel, bpLayers); err != nil {
+		return nil, err
 	}
 
 	if b.replaceOrder {
 		orderTar, err := b.orderLayer(resolvedOrder, tmpDir)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if err := b.image.AddLayer(orderTar); err != nil {
-			return errors.Wrap(err, "adding order.tar layer")
+		if err := store.AddLayer(orderTar); err != nil {
+			return nil, errors.Wrap(err, "adding order.tar layer")
 		}
 
-		if err := b.image.SetOrder(b.order); err != nil {
-			return err
+		if err := image.MarshalToLabel(store, orderLabel, b.order); err != nil {
+			return nil, err
 		}
 	}
 
 	stackTar, err := b.stackLayer(tmpDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if err := b.image.AddLayer(stackTar); err != nil {
-		return errors.Wrap(err, "adding stack.tar layer")
+	if err := store.AddLayer(stackTar); err != nil {
+		return nil, errors.Wrap(err, "adding stack.tar layer")
 	}
 
 	compatTar, err := b.compatLayer(resolvedOrder, tmpDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if err := b.image.AddLayer(compatTar); err != nil {
-		return errors.Wrap(err, "adding compat.tar layer")
+	if err := store.AddLayer(compatTar); err != nil {
+		return nil, errors.Wrap(err, "adding compat.tar layer")
 	}
 
 	envTar, err := b.envLayer(tmpDir, b.env)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if err := b.image.AddLayer(envTar); err != nil {
-		return errors.Wrap(err, "adding env layer")
+	if err := store.AddLayer(envTar); err != nil {
+		return nil, errors.Wrap(err, "adding env layer")
 	}
 
 	b.metadata.CreatedBy = CreatorMetadata{
@@ -325,15 +298,34 @@ func (b *Builder) Save(logger logging.Logger) error {
 		Version: cmd.Version,
 	}
 
-	if err := b.image.SetMetadata(b.metadata); err != nil {
-		return err
+	if err := image.MarshalToLabel(store, metadataLabel, b.metadata); err != nil {
+		return nil, err
 	}
 
-	if err := b.image.SetWorkingDir(layersDir); err != nil {
-		return errors.Wrap(err, "failed to set working dir")
+	if err := store.SetWorkingDir(layersDir); err != nil {
+		return nil, errors.Wrap(err, "failed to set working dir")
 	}
 
-	return b.image.Save()
+	if err = store.Save(); err != nil {
+		return nil, err
+	}
+
+	stackImage, err := stack.NewImage(store)
+	if err != nil {
+		return nil, err
+	}
+
+	buildImage, err := stack.NewBuildImage(stackImage)
+	if err != nil {
+		return nil, err
+	}
+
+	return &builderImage{
+		img:      buildImage,
+		metadata: Metadata{},
+		order:    nil,
+		bpLayers: nil,
+	}, nil
 }
 
 func processOrder(buildpacks []BuildpackMetadata, order dist.Order) (dist.Order, error) {
@@ -421,35 +413,6 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 	}
 
 	return nil
-}
-
-func userAndGroupIDs(img imgutil.Image) (int, int, error) {
-	sUID, err := img.Env(envUID)
-	if err != nil {
-		return 0, 0, errors.Wrap(err, "reading builder env variables")
-	} else if sUID == "" {
-		return 0, 0, fmt.Errorf("image %s missing required env var %s", style.Symbol(img.Name()), style.Symbol(envUID))
-	}
-
-	sGID, err := img.Env(envGID)
-	if err != nil {
-		return 0, 0, errors.Wrap(err, "reading builder env variables")
-	} else if sGID == "" {
-		return 0, 0, fmt.Errorf("image %s missing required env var %s", style.Symbol(img.Name()), style.Symbol(envGID))
-	}
-
-	var uid, gid int
-	uid, err = strconv.Atoi(sUID)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to parse %s, value %s should be an integer", style.Symbol(envUID), style.Symbol(sUID))
-	}
-
-	gid, err = strconv.Atoi(sGID)
-	if err != nil {
-		return 0, 0, fmt.Errorf("failed to parse %s, value %s should be an integer", style.Symbol(envGID), style.Symbol(sGID))
-	}
-
-	return uid, gid, nil
 }
 
 func (b *Builder) defaultDirsLayer(dest string) (string, error) {

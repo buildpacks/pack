@@ -92,21 +92,31 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
 	}
 
-	buildImg, err := stack.NewBuildImage(rawBuilderImage)
+	stackImage, err := stack.NewImage(rawBuilderImage)
 	if err != nil {
 		return err
 	}
 
-	builderImg, err := builder.NewBuilderImage(buildImg)
+	buildImg, err := stack.NewBuildImage(stackImage)
 	if err != nil {
 		return err
 	}
+
+	builderImg, err := builder.NewImage(buildImg)
+	if err != nil {
+		return err
+	}
+
 	bldr, err := c.getBuilder(builderImg)
 	if err != nil {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
 	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors)
+	if runImageName == "" {
+		return errors.New("run image must be specified")
+	}
+
 	runImage, err := c.validateRunImage(ctx, runImageName, opts.NoPull, opts.Publish, bldr.StackID)
 	if err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
@@ -121,38 +131,26 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrap(err, "validating stack mixins")
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(builderImg, opts.Env, group, fetchedBPs)
+	builderImage, err := c.createEphemeralBuilder(builderImg, opts.Env, group, fetchedBPs)
 	if err != nil {
 		return err
 	}
-	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
+	defer c.docker.ImageRemove(context.Background(), builderImage.Name(), types.ImageRemoveOptions{Force: true})
 
-	descriptor := ephemeralBuilder.LifecycleDescriptor()
-	if descriptor.Info.Version == nil {
-		c.logger.Warnf("lifecycle version unknown, assuming %s", style.Symbol(builder.AssumedLifecycleVersion))
-	} else {
-		c.logger.Debugf("Executing lifecycle version %s", style.Symbol(descriptor.Info.Version.String()))
-	}
-
-	lcPlatformAPIVersion := api.MustParse(builder.AssumedPlatformAPIVersion)
-	if descriptor.API.PlatformVersion != nil {
-		lcPlatformAPIVersion = descriptor.API.PlatformVersion
-	}
-
-	if !api.MustParse(build.PlatformAPIVersion).SupportsVersion(lcPlatformAPIVersion) {
+	if !api.MustParse(build.PlatformAPIVersion).SupportsVersion(builderImage.PlatformAPIVersion()) {
 		return errors.Errorf(
 			"pack %s (Platform API version %s) is incompatible with builder %s (Platform API version %s)",
 			cmd.Version,
 			build.PlatformAPIVersion,
 			style.Symbol(opts.Builder),
-			lcPlatformAPIVersion,
+			builderImage.PlatformAPIVersion(),
 		)
 	}
 
 	return c.lifecycle.Execute(ctx, build.LifecycleOptions{
 		AppPath:    appPath,
 		Image:      imageRef,
-		Builder:    ephemeralBuilder,
+		Builder:    builderImage,
 		RunImage:   runImageName,
 		ClearCache: opts.ClearCache,
 		Publish:    opts.Publish,
@@ -182,23 +180,25 @@ func (c *Client) getBuilder(img builder.Image) (*builder.Builder, error) {
 }
 
 func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (runImage, error) {
-	if name == "" {
-		return nil, errors.New("run image must be specified")
-	}
 	img, err := c.imageFetcher.Fetch(context, name, !publish, !noPull)
 	if err != nil {
 		return nil, err
 	}
-	stackID, err := img.Label("io.buildpacks.stack.id")
+
+	stackImage, err := stack.NewImage(img)
 	if err != nil {
 		return nil, err
 	}
-	if stackID != expectedStack {
-		return nil, fmt.Errorf("run-image stack id '%s' does not match builder stack '%s'", stackID, expectedStack)
+
+	if stackImage.StackID() != expectedStack {
+		return nil, fmt.Errorf(
+			"run-image stack id '%s' does not match builder stack '%s'",
+			stackImage.StackID(),
+			expectedStack,
+		)
 	}
 
-	// TODO: Validate mixins here instead?
-	return stack.NewRunImage(img)
+	return stack.NewRunImage(stackImage)
 }
 
 func (c *Client) validateMixins(additionalBuildpacks []dist.Buildpack, builderImg builderImage, runImg runImage) error {
@@ -226,7 +226,6 @@ func (c *Client) validateCommonMixins(builderImg builderImage, runImg runImage) 
 		return fmt.Errorf("%s missing required mixin(s): %s", style.Symbol(runImg.Name()), strings.Join(missing, ", "))
 	}
 	return nil
-
 }
 
 func findMissing(actual, required []string) []string {
@@ -456,14 +455,12 @@ func (c *Client) parseBuildpack(bp string) (string, string) {
 	return parts[0], ""
 }
 
-func (c *Client) createEphemeralBuilder(baseBuilderImage builder.Image, env map[string]string, group dist.OrderEntry, buildpacks []dist.Buildpack) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(baseBuilderImage builder.Image, env map[string]string, group dist.OrderEntry, buildpacks []dist.Buildpack) (builder.Image, error) {
 	origBuilderName := baseBuilderImage.Name()
 	bldr, err := builder.FromBuilderImage(baseBuilderImage)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}
-	baseBuilderImage.Rename(fmt.Sprintf("pack.local/builder/%x:latest", randString(10))) // TODO: WithName(...) opt instead?
-
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {
 		bpInfo := bp.Descriptor().Info
@@ -475,10 +472,17 @@ func (c *Client) createEphemeralBuilder(baseBuilderImage builder.Image, env map[
 		bldr.SetOrder([]dist.OrderEntry{group})
 	}
 
-	if err := bldr.Save(c.logger); err != nil {
-		return nil, err
+	image, err := c.imageFactory.NewImage(fmt.Sprintf("pack.local/builder/%x:latest", randString(10)), true)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}
-	return bldr, nil
+
+	bldrImage, err := bldr.Save(c.logger, image)
+	if err != nil {
+		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
+	}
+
+	return bldrImage, nil
 }
 
 func randString(n int) string {

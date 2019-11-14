@@ -50,8 +50,8 @@ func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (
 		name:     name,
 		docker:   l.docker,
 		logger:   l.logger,
-		uid:      l.builder.UID,
-		gid:      l.builder.GID,
+		uid:      l.builder.UID(),
+		gid:      l.builder.GID(),
 		appPath:  l.appPath,
 		appOnce:  l.appOnce,
 	}

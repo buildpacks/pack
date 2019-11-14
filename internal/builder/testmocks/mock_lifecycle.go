@@ -5,10 +5,12 @@
 package testmocks
 
 import (
-	builder "github.com/buildpack/pack/internal/builder"
-	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
+
+	builder "github.com/buildpack/pack/internal/builder"
 )
 
 // MockLifecycle is a mock of Lifecycle interface

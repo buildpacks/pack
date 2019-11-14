@@ -38,6 +38,8 @@ func testBuilderImage(t *testing.T, when spec.G, it spec.S) {
 	when("#NewImage", func() {
 		it("returns an instance when image is valid", func() {
 			image.EXPECT().Label(gomock.Any()).Return("", nil).AnyTimes()
+			image.EXPECT().Env("CNB_USER_ID").Return("123", nil).AnyTimes()
+			image.EXPECT().Env("CNB_GROUP_ID").Return("456", nil).AnyTimes()
 			builderImage, err := builder.NewImage(image)
 
 			h.AssertNil(t, err)
@@ -64,6 +66,8 @@ func testBuilderImage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("falls back to metadata groups when order label is not present on image", func() {
+			image.EXPECT().Env("CNB_USER_ID").Return("123", nil).AnyTimes()
+			image.EXPECT().Env("CNB_GROUP_ID").Return("456", nil).AnyTimes()
 			image.EXPECT().Label("io.buildpacks.builder.metadata").Return(`{"groups": [{"buildpacks": [{"id": "some.buildpack.id", "version": "some.buildpack.version"}]}]}`, nil)
 			image.EXPECT().Label("io.buildpacks.buildpack.order").Return("", nil)
 			image.EXPECT().Label("io.buildpacks.buildpack.layers").Return("", nil)

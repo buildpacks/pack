@@ -174,8 +174,7 @@ func (l *Lifecycle) Cache(ctx context.Context, cacheName string) error {
 }
 
 func (l *Lifecycle) withLogLevel(args ...string) []string {
-	version := semver.MustParse(l.version)
-	if semver.MustParse("0.4.0").LessThan(version) {
+	if semver.MustParse("0.4.0").LessThan(l.version) {
 		if l.logger.IsVerbose() {
 			return append([]string{"-log-level", "debug"}, args...)
 		}

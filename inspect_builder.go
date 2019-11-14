@@ -39,12 +39,17 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		return nil, err
 	}
 
-	buildImage, err := stack.NewBuildImage(rawBuilderImage)
+	stackImage, err := stack.NewImage(rawBuilderImage)
 	if err != nil {
 		return nil, err
 	}
 
-	builderImage, err := builder.NewBuilderImage(buildImage)
+	buildImage, err := stack.NewBuildImage(stackImage)
+	if err != nil {
+		return nil, err
+	}
+
+	builderImage, err := builder.NewImage(buildImage)
 	if err != nil {
 		return nil, err
 	}

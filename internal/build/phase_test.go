@@ -25,6 +25,7 @@ import (
 	"github.com/buildpack/pack/internal/build"
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/fakes"
+	"github.com/buildpack/pack/internal/stack"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -338,19 +339,29 @@ func CreateFakeLifecycleImage(t *testing.T, dockerCli *client.Client, repoName s
 
 func CreateFakeLifecycle(appDir string, docker *client.Client, logger logging.Logger) (*build.Lifecycle, error) {
 	subject := build.NewLifecycle(docker, logger)
-	builderImage, err := local.NewImage(repoName, docker, local.FromBaseImage(repoName))
+	rawImage, err := local.NewImage(repoName, docker, local.FromBaseImage(repoName))
 	if err != nil {
 		return nil, err
 	}
 
-	bldr, err := builder.FromBuilderImage(builderImage)
+	stackImage, err := stack.NewImage(rawImage)
+	if err != nil {
+		return nil, err
+	}
+
+	buildImage, err := stack.NewBuildImage(stackImage)
+	if err != nil {
+		return nil, err
+	}
+
+	builderImage, err := builder.NewImage(buildImage)
 	if err != nil {
 		return nil, err
 	}
 
 	subject.Setup(build.LifecycleOptions{
 		AppPath:    appDir,
-		Builder:    bldr,
+		Builder:    builderImage,
 		HTTPProxy:  "some-http-proxy",
 		HTTPSProxy: "some-https-proxy",
 		NoProxy:    "some-no-proxy",

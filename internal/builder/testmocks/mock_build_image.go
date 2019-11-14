@@ -5,11 +5,12 @@
 package testmocks
 
 import (
-	imgutil "github.com/buildpack/imgutil"
-	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"
 	time "time"
+
+	imgutil "github.com/buildpack/imgutil"
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockBuildImage is a mock of BuildImage interface

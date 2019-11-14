@@ -4,6 +4,8 @@ import (
 	"github.com/buildpack/pack/internal/dist"
 )
 
+const metadataLabel = "io.buildpacks.buildpackage.metadata"
+
 type Config struct {
 	Default dist.BuildpackInfo `toml:"default"`
 	Blobs   []dist.BlobConfig  `toml:"blobs"`

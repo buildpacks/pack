@@ -21,10 +21,10 @@ func TestRunImage(t *testing.T) {
 
 func testRunImage(t *testing.T, when spec.G, it spec.S) {
 	var (
-		ctrl *gomock.Controller
+		ctrl  *gomock.Controller
 		image *testmocks.MockImage
 	)
-	
+
 	it.Before(func() {
 		ctrl = gomock.NewController(t)
 		image = testmocks.NewMockImage(ctrl)
@@ -47,7 +47,7 @@ func testRunImage(t *testing.T, when spec.G, it spec.S) {
 		it("returns an error when any mixins are 'build:'-prefixed", func() {
 			image.EXPECT().Mixins().Return([]string{"mixinA", "build:mixinB", "build:mixinC"})
 			image.EXPECT().Name().Return("some/image")
-			
+
 			_, err := stack.NewRunImage(image)
 
 			h.AssertError(t, err, "'some/image' contains build-only mixin(s): build:mixinB, build:mixinC")

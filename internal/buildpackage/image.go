@@ -6,16 +6,13 @@ import (
 	"github.com/buildpack/pack/internal/image"
 )
 
-const metadataLabel = "io.buildpacks.buildpackage.metadata"
-
 type Image interface {
-	imgutil.Image
+	Name() string
 	Metadata() Metadata
-	SetMetadata(Metadata) error
 }
 
 type packageImage struct {
-	imgutil.Image
+	name     string
 	metadata Metadata
 }
 
@@ -26,19 +23,15 @@ func NewImage(img imgutil.Image) (Image, error) {
 	}
 
 	return &packageImage{
-		Image:    img,
-		// metadata: metadata,
+		name:     img.Name(),
+		metadata: metadata,
 	}, nil
 }
 
-func (i *packageImage) Metadata() Metadata {
-	// return i.metadata
+func (i *packageImage) Name() string {
+	return i.name
 }
 
-// func (i *packageImage) SetMetadata(metadata Metadata) error {
-// 	if err := image.MarshalToLabel(i, metadataLabel, metadata); err != nil {
-// 		return err
-// 	}
-// 	i.metadata = metadata
-// 	return nil
-// }
+func (i *packageImage) Metadata() Metadata {
+	return i.metadata
+}
