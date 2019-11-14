@@ -109,18 +109,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
-	descriptor := ephemeralBuilder.LifecycleDescriptor()
-	if descriptor.Info.Version == nil {
-		c.logger.Warnf("lifecycle version unknown, assuming %s", style.Symbol(builder.AssumedLifecycleVersion))
-	} else {
-		c.logger.Debugf("Executing lifecycle version %s", style.Symbol(descriptor.Info.Version.String()))
-	}
-
-	lcPlatformAPIVersion := api.MustParse(builder.AssumedPlatformAPIVersion)
-	if descriptor.API.PlatformVersion != nil {
-		lcPlatformAPIVersion = descriptor.API.PlatformVersion
-	}
-
+	lcPlatformAPIVersion := ephemeralBuilder.LifecycleDescriptor().API.PlatformVersion
 	if !api.MustParse(build.PlatformAPIVersion).SupportsVersion(lcPlatformAPIVersion) {
 		return errors.Errorf(
 			"pack %s (Platform API version %s) is incompatible with builder %s (Platform API version %s)",
