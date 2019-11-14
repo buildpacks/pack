@@ -75,6 +75,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "some/buildpack/dir").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil).AnyTimes()
+			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle-platform-0-1").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle-platform-0.1")), nil).AnyTimes()
 
 			subject = &Client{
 				logger:       logger,
@@ -302,6 +303,60 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			it("should embed the lifecycle", func() {
 				h.AssertEq(t, bldr.LifecycleDescriptor().Info.Version.String(), "3.4.5")
+				h.AssertEq(t, bldr.LifecycleDescriptor().API.PlatformVersion.String(), "0.2")
+
+				layerTar, err := fakeBuildImage.FindLayerWithPath("/cnb/lifecycle")
+				h.AssertNil(t, err)
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/detector")
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/restorer")
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/analyzer")
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/builder")
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/exporter")
+				assertTarHasFile(t, layerTar, "/cnb/lifecycle/launcher")
+			})
+		})
+
+		when("creation succeeds for platform API < 0.2", func() {
+			var bldr *builder.Builder
+
+			it.Before(func() {
+				opts.BuilderConfig.Lifecycle = pubbldr.LifecycleConfig{URI: "file:///some-lifecycle-platform-0-1"}
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertNil(t, err)
+				h.AssertEq(t, fakeBuildImage.IsSaved(), true)
+
+				bldr, err = builder.FromImage(fakeBuildImage)
+				h.AssertNil(t, err)
+			})
+
+			it("should set basic metadata", func() {
+				h.AssertEq(t, bldr.Name(), "some/builder")
+				h.AssertEq(t, bldr.Description(), "Some description")
+				h.AssertEq(t, bldr.UID, 1234)
+				h.AssertEq(t, bldr.GID, 4321)
+				h.AssertEq(t, bldr.StackID, "some.stack.id")
+			})
+
+			it("should set buildpack and order metadata", func() {
+				bpInfo := dist.BuildpackInfo{
+					ID:      "bp.one",
+					Version: "1.2.3",
+				}
+				h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{{
+					BuildpackInfo: bpInfo,
+					Latest:        true,
+				}})
+				h.AssertEq(t, bldr.Order(), dist.Order{{
+					Group: []dist.BuildpackRef{{
+						BuildpackInfo: bpInfo,
+						Optional:      false,
+					}},
+				}})
+			})
+
+			it("should embed the lifecycle", func() {
+				h.AssertEq(t, bldr.LifecycleDescriptor().Info.Version.String(), "3.4.5")
+				h.AssertEq(t, bldr.LifecycleDescriptor().API.PlatformVersion.String(), "0.1")
 
 				layerTar, err := fakeBuildImage.FindLayerWithPath("/cnb/lifecycle")
 				h.AssertNil(t, err)

@@ -10,27 +10,33 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
+	"github.com/buildpack/pack/internal/api"
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/cache"
 	"github.com/buildpack/pack/internal/style"
 	"github.com/buildpack/pack/logging"
 )
 
-// PlatformAPIVersion is the current Platform API Version supported by this version of pack.
-const PlatformAPIVersion = "0.1"
+const (
+	// MinPlatformAPIVersion is the minimum Platform API Version supported by this version of pack.
+	MinPlatformAPIVersion = "0.1"
+	// PlatformAPIVersion is the current Platform API Version supported by this version of pack.
+	PlatformAPIVersion = "0.2"
+)
 
 type Lifecycle struct {
-	builder      *builder.Builder
-	logger       logging.Logger
-	docker       *client.Client
-	appPath      string
-	appOnce      *sync.Once
-	httpProxy    string
-	httpsProxy   string
-	noProxy      string
-	version      string
-	LayersVolume string
-	AppVolume    string
+	builder            *builder.Builder
+	logger             logging.Logger
+	docker             *client.Client
+	appPath            string
+	appOnce            *sync.Once
+	httpProxy          string
+	httpsProxy         string
+	noProxy            string
+	version            string
+	platformAPIVersion string
+	LayersVolume       string
+	AppVolume          string
 }
 
 type Cache interface {
@@ -59,6 +65,11 @@ type LifecycleOptions struct {
 	Network    string
 }
 
+// CombinedExporterCacher returns true if the lifecycle contains combined exporter/cacher phases and reversed analyzer/restorer phases.
+func (l *Lifecycle) CombinedExporterCacher() bool {
+	return api.MustParse(l.platformAPIVersion).Compare(api.MustParse("0.2")) >= 0
+}
+
 func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	l.Setup(opts)
 	defer l.Cleanup()
@@ -79,16 +90,30 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		return err
 	}
 
-	l.logger.Info(style.Step("RESTORING"))
-	if opts.ClearCache {
-		l.logger.Info("Skipping 'restore' due to clearing cache")
-	} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
-		return err
-	}
+	if l.CombinedExporterCacher() {
+		l.logger.Info(style.Step("ANALYZING"))
+		if err := l.Analyze(ctx, opts.Image.Name(), opts.Publish, opts.ClearCache); err != nil {
+			return err
+		}
 
-	l.logger.Info(style.Step("ANALYZING"))
-	if err := l.Analyze(ctx, opts.Image.Name(), opts.Publish, opts.ClearCache); err != nil {
-		return err
+		l.logger.Info(style.Step("RESTORING"))
+		if opts.ClearCache {
+			l.logger.Info("Skipping 'restore' due to clearing cache")
+		} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
+			return err
+		}
+	} else {
+		l.logger.Info(style.Step("RESTORING"))
+		if opts.ClearCache {
+			l.logger.Info("Skipping 'restore' due to clearing cache")
+		} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
+			return err
+		}
+
+		l.logger.Info(style.Step("ANALYZING"))
+		if err := l.Analyze(ctx, opts.Image.Name(), opts.Publish, opts.ClearCache); err != nil {
+			return err
+		}
 	}
 
 	l.logger.Info(style.Step("BUILDING"))
@@ -97,15 +122,17 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	}
 
 	l.logger.Info(style.Step("EXPORTING"))
-	launchCacheName := launchCache.Name()
-	if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCacheName); err != nil {
+	if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name()); err != nil {
 		return err
 	}
 
-	l.logger.Info(style.Step("CACHING"))
-	if err := l.Cache(ctx, buildCache.Name()); err != nil {
-		return err
+	if !l.CombinedExporterCacher() {
+		l.logger.Info(style.Step("CACHING"))
+		if err := l.Cache(ctx, buildCache.Name()); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 
@@ -119,6 +146,7 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.httpsProxy = opts.HTTPSProxy
 	l.noProxy = opts.NoProxy
 	l.version = opts.Builder.LifecycleDescriptor().Info.Version.String()
+	l.platformAPIVersion = opts.Builder.LifecycleDescriptor().API.PlatformVersion.String()
 }
 
 func (l *Lifecycle) Cleanup() error {

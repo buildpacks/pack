@@ -24,18 +24,6 @@ const (
 	DefaultPlatformAPIVersion  = "0.1"
 )
 
-var (
-	lifecycleBinaries = []string{
-		"detector",
-		"restorer",
-		"analyzer",
-		"builder",
-		"exporter",
-		"cacher",
-		"launcher",
-	}
-)
-
 type Blob interface {
 	Open() (io.ReadCloser, error)
 }
@@ -112,6 +100,22 @@ func (l *lifecycle) Descriptor() LifecycleDescriptor {
 	return l.descriptor
 }
 
+// Binaries returns a list of all binaries contained in the lifecycle.
+func (l *lifecycle) binaries() []string {
+	binaries := []string{
+		"detector",
+		"restorer",
+		"analyzer",
+		"builder",
+		"exporter",
+		"launcher",
+	}
+	if l.Descriptor().API.PlatformVersion.Compare(api.MustParse("0.2")) < 0 {
+		binaries = append(binaries, "cacher")
+	}
+	return binaries
+}
+
 func (l *lifecycle) validateBinaries() error {
 	rc, err := l.Open()
 	if err != nil {
@@ -135,7 +139,7 @@ func (l *lifecycle) validateBinaries() error {
 			headers[pathMatches[1]] = true
 		}
 	}
-	for _, p := range lifecycleBinaries {
+	for _, p := range l.binaries() {
 		_, found := headers[p]
 		if !found {
 			return fmt.Errorf("did not find '%s' in tar", p)

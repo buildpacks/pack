@@ -121,10 +121,12 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		lcPlatformAPIVersion = descriptor.API.PlatformVersion
 	}
 
-	if !api.MustParse(build.PlatformAPIVersion).SupportsVersion(lcPlatformAPIVersion) {
+	if lcPlatformAPIVersion.Compare(api.MustParse(build.MinPlatformAPIVersion)) == -1 ||
+		lcPlatformAPIVersion.Compare(api.MustParse(build.PlatformAPIVersion)) == 1 {
 		return errors.Errorf(
-			"pack %s (Platform API version %s) is incompatible with builder %s (Platform API version %s)",
+			"pack %s (Platform API versions %s and %s) is incompatible with builder %s (Platform API version %s)",
 			cmd.Version,
+			build.MinPlatformAPIVersion,
 			build.PlatformAPIVersion,
 			style.Symbol(opts.Builder),
 			lcPlatformAPIVersion,

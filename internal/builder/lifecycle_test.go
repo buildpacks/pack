@@ -25,16 +25,28 @@ func TestLifecycle(t *testing.T) {
 
 func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 	when("#NewLifecycle", func() {
-		it("makes a lifecycle from a blob", func() {
-			lifecycle, err := builder.NewLifecycle(blob.NewBlob(filepath.Join("testdata", "lifecycle")))
-			h.AssertNil(t, err)
-			h.AssertEq(t, lifecycle.Descriptor().Info.Version.String(), "1.2.3")
-			h.AssertEq(t, lifecycle.Descriptor().API.PlatformVersion.String(), "0.2")
-			h.AssertEq(t, lifecycle.Descriptor().API.BuildpackVersion.String(), "0.3")
+		when("there is a descriptor file with platform version 0.1 with cacher", func() {
+			it("makes a lifecycle from a blob", func() {
+				lifecycle, err := builder.NewLifecycle(blob.NewBlob(filepath.Join("testdata", "lifecycle-platform-0.1")))
+				h.AssertNil(t, err)
+				h.AssertEq(t, lifecycle.Descriptor().Info.Version.String(), "1.2.3")
+				h.AssertEq(t, lifecycle.Descriptor().API.PlatformVersion.String(), "0.1")
+				h.AssertEq(t, lifecycle.Descriptor().API.BuildpackVersion.String(), "0.3")
+			})
+		})
+
+		when("there is a descriptor file with platform version 0.2", func() {
+			it("makes a lifecycle from a blob", func() {
+				lifecycle, err := builder.NewLifecycle(blob.NewBlob(filepath.Join("testdata", "lifecycle")))
+				h.AssertNil(t, err)
+				h.AssertEq(t, lifecycle.Descriptor().Info.Version.String(), "1.2.3")
+				h.AssertEq(t, lifecycle.Descriptor().API.PlatformVersion.String(), "0.2")
+				h.AssertEq(t, lifecycle.Descriptor().API.BuildpackVersion.String(), "0.3")
+			})
 		})
 
 		when("there is no descriptor file", func() {
-			it("assumes 0.1 API versions", func() {
+			it("assumes Platform API version 0.1", func() {
 				lifecycle, err := builder.NewLifecycle(&fakeEmptyBlob{})
 				h.AssertNil(t, err)
 				h.AssertEq(t, lifecycle.Descriptor().Info.Version.String(), "0.3.0")
@@ -64,6 +76,47 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "lifecycle", "analyzer"), []byte("content"), os.ModePerm))
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "lifecycle", "detector"), []byte("content"), os.ModePerm))
 				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "lifecycle", "builder"), []byte("content"), os.ModePerm))
+			})
+
+			it.After(func() {
+				h.AssertNil(t, os.RemoveAll(tmpDir))
+			})
+
+			it("returns an error", func() {
+				_, err := builder.NewLifecycle(blob.NewBlob(tmpDir))
+				h.AssertError(t, err, "validating binaries")
+			})
+		})
+
+		when("the lifecycle has platform version 0.1 and is missing cacher", func() {
+			var tmpDir string
+
+			it.Before(func() {
+				var err error
+				tmpDir, err = ioutil.TempDir("", "")
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "lifecycle.toml"), []byte(`
+[api]
+  platform = "0.1"
+  buildpack = "0.3"
+
+[lifecycle]
+  version = "1.2.3"
+`), os.ModePerm))
+
+				h.AssertNil(t, os.Mkdir(filepath.Join(tmpDir, "lifecycle"), os.ModePerm))
+
+				for _, f := range []string{
+					"detector",
+					"restorer",
+					"analyzer",
+					"builder",
+					"exporter",
+					"launcher",
+				} {
+					h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "lifecycle", f), []byte("content"), os.ModePerm))
+				}
 			})
 
 			it.After(func() {

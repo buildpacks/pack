@@ -1040,8 +1040,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertError(t,
 							err,
 							fmt.Sprintf(
-								"pack %s (Platform API version %s) is incompatible with builder %s (Platform API version %s)",
+								"pack %s (Platform API versions %s and %s) is incompatible with builder %s (Platform API version %s)",
 								cmd.Version,
+								build.MinPlatformAPIVersion,
 								build.PlatformAPIVersion,
 								style.Symbol(builderName),
 								"0.9",
