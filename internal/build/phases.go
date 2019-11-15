@@ -57,8 +57,8 @@ func (l *Lifecycle) Restore(ctx context.Context, cacheName string) error {
 	return restore.Run(ctx)
 }
 
-func (l *Lifecycle) Analyze(ctx context.Context, repoName string, publish, clearCache bool) error {
-	analyze, err := l.newAnalyze(repoName, publish, clearCache)
+func (l *Lifecycle) Analyze(ctx context.Context, repoName, cacheName string, publish, clearCache bool) error {
+	analyze, err := l.newAnalyze(repoName, cacheName, publish, clearCache)
 	if err != nil {
 		return err
 	}
@@ -66,13 +66,15 @@ func (l *Lifecycle) Analyze(ctx context.Context, repoName string, publish, clear
 	return analyze.Run(ctx)
 }
 
-func (l *Lifecycle) newAnalyze(repoName string, publish, clearCache bool) (*Phase, error) {
+func (l *Lifecycle) newAnalyze(repoName, cacheName string, publish, clearCache bool) (*Phase, error) {
 	args := []string{
 		"-layers", layersDir,
 		repoName,
 	}
 	if clearCache {
 		args = prependArg("-skip-layers", args)
+	} else if l.CombinedExporterCacher() {
+		args = append([]string{"-cache-dir", cacheDir}, args...)
 	}
 
 	if publish {
@@ -80,6 +82,7 @@ func (l *Lifecycle) newAnalyze(repoName string, publish, clearCache bool) (*Phas
 			"analyzer",
 			WithRegistryAccess(repoName),
 			WithArgs(args...),
+			WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 		)
 	}
 	return l.NewPhase(
@@ -93,6 +96,7 @@ func (l *Lifecycle) newAnalyze(repoName string, publish, clearCache bool) (*Phas
 				)...,
 			)...,
 		),
+		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 	)
 }
 
@@ -142,19 +146,17 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		)
 	}
 
-	args := []string{}
-	if l.CombinedExporterCacher() {
-		args = append(args, "-cache-dir", cacheDir)
-	}
-	args = append(
-		args,
+	args := []string{
 		"-image", runImage,
 		"-layers", layersDir,
 		"-app", appDir,
 		"-daemon",
 		"-launch-cache", launchCacheDir,
 		repoName,
-	)
+	}
+	if l.CombinedExporterCacher() {
+		args = append([]string{"-cache-dir", cacheDir}, args...)
+	}
 
 	return l.NewPhase(
 		"exporter",
@@ -167,6 +169,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 	)
 }
 
+// The cache phase is obsolete with Platform API 0.2 and will be removed in the future.
 func (l *Lifecycle) Cache(ctx context.Context, cacheName string) error {
 	cache, err := l.NewPhase(
 		"cacher",

@@ -92,7 +92,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 
 	if l.CombinedExporterCacher() {
 		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, opts.Image.Name(), opts.Publish, opts.ClearCache); err != nil {
+		if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Publish, opts.ClearCache); err != nil {
 			return err
 		}
 
@@ -111,7 +111,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		}
 
 		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, opts.Image.Name(), opts.Publish, opts.ClearCache); err != nil {
+		if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Publish, opts.ClearCache); err != nil {
 			return err
 		}
 	}
