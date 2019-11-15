@@ -32,7 +32,7 @@ import (
 
 func TestBuilder(t *testing.T) {
 	color.Disable(true)
-	defer func() { color.Disable(false) }()
+	defer color.Disable(false)
 	spec.Run(t, "Builder", testBuilder, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

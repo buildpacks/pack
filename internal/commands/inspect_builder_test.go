@@ -26,7 +26,7 @@ import (
 
 func TestInspectBuilderCommand(t *testing.T) {
 	color.Disable(true)
-	defer func() { color.Disable(false) }()
+	defer color.Disable(false)
 	spec.Run(t, "Commands", testInspectBuilderCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

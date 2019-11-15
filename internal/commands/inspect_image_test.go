@@ -27,7 +27,7 @@ import (
 
 func TestInspectImageCommand(t *testing.T) {
 	color.Disable(true)
-	defer func() { color.Disable(false) }()
+	defer color.Disable(false)
 	spec.Run(t, "Commands", testInspectImageCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
