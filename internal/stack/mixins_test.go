@@ -60,4 +60,14 @@ func testMixinValidation(t *testing.T, when spec.G, it spec.S) {
 			h.AssertError(t, err, "'some/run' contains build-only mixin(s): build:mixinA, build:mixinB")
 		})
 	})
+
+	when("#FindStageMixins", func() {
+		it("returns mixins with stage prefix", func() {
+			mixins := []string{"mixinA", "run:mixinB", "mixinC", "run:mixinD", "build:mixinE"}
+
+			runMixins := stack.FindStageMixins(mixins, "run")
+
+			h.AssertEq(t, runMixins, []string{"run:mixinB", "run:mixinD"})
+		})
+	})
 }

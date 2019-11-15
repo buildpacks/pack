@@ -150,8 +150,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, len(cfg.RunImages), 1)
 				h.AssertEq(t, cfg.RunImages[0].Image, "some/run-image")
-				h.AssertEq(t, len(cfg.RunImages[0].Mirrors), 1)
-				h.AssertSliceContains(t, cfg.RunImages[0].Mirrors, "some-other/run")
+				h.AssertSliceContainsOnly(t, cfg.RunImages[0].Mirrors, "some-other/run")
 			})
 		})
 
@@ -165,8 +164,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, len(cfg.RunImages), 1)
 				h.AssertEq(t, cfg.RunImages[0].Image, "some/run-image")
-				h.AssertEq(t, len(cfg.RunImages[0].Mirrors), 1)
-				h.AssertSliceContains(t, cfg.RunImages[0].Mirrors, "some-other/run")
+				h.AssertSliceContainsOnly(t, cfg.RunImages[0].Mirrors, "some-other/run")
 			})
 		})
 	})

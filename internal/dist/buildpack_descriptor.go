@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/buildpack/pack/internal/api"
+	"github.com/buildpack/pack/internal/stringset"
 	"github.com/buildpack/pack/internal/style"
 )
 
@@ -20,12 +21,7 @@ func (b *BuildpackDescriptor) EscapedID() string {
 	return strings.Replace(b.Info.ID, "/", "_", -1)
 }
 
-func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins []string, validateRunOnlyMixins bool) error {
-	avail := map[string]interface{}{}
-	for _, m := range providedMixins {
-		avail[m] = nil
-	}
-
+func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins []string, validateRunStageMixins bool) error {
 	if len(b.Stacks) == 0 {
 		return nil // Order buildpack, no validation required
 	}
@@ -35,15 +31,19 @@ func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins 
 		return err
 	}
 
-	var missing []string
-	for _, m := range bpMixins {
-		ignored := !validateRunOnlyMixins && strings.HasPrefix(m, "run:")
-		if _, ok := avail[m]; !ignored && !ok {
-			missing = append(missing, m)
+	if !validateRunStageMixins {
+		var filtered []string
+		for _, m := range bpMixins {
+			if !strings.HasPrefix(m, "run:") {
+				filtered = append(filtered, m)
+			}
 		}
+		bpMixins = filtered
 	}
-	sort.Strings(missing)
+
+	_, missing, _ := stringset.Compare(providedMixins, bpMixins)
 	if len(missing) > 0 {
+		sort.Strings(missing)
 		return fmt.Errorf("buildpack %s requires missing mixin(s): %s", style.Symbol(b.Info.FullName()), strings.Join(missing, ", "))
 	}
 	return nil

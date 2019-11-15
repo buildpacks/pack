@@ -87,8 +87,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 					_, warns, err := builder.ReadConfig(builderConfigPath)
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, len(warns), 1)
-					h.AssertSliceContains(t, warns, "'latest' field on a buildpack is obsolete and will be ignored")
+					h.AssertSliceContainsOnly(t, warns, "'latest' field on a buildpack is obsolete and will be ignored")
 				})
 			})
 
@@ -114,8 +113,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 					_, warns, err := builder.ReadConfig(builderConfigPath)
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, len(warns), 1)
-					h.AssertSliceContains(t, warns, "'groups' field is obsolete in favor of 'order'")
+					h.AssertSliceContainsOnly(t, warns, "'groups' field is obsolete in favor of 'order'")
 				})
 			})
 
@@ -132,8 +130,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 					_, warns, err := builder.ReadConfig(builderConfigPath)
 					h.AssertNil(t, err)
 
-					h.AssertEq(t, len(warns), 1)
-					h.AssertSliceContains(t, warns, "empty 'order' definition")
+					h.AssertSliceContainsOnly(t, warns, "empty 'order' definition")
 				})
 			})
 		})
