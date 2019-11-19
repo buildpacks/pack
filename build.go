@@ -121,16 +121,17 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		lcPlatformAPIVersion = descriptor.API.PlatformVersion
 	}
 
-	if lcPlatformAPIVersion.Compare(api.MustParse(build.MinPlatformAPIVersion)) == -1 ||
-		lcPlatformAPIVersion.Compare(api.MustParse(build.PlatformAPIVersion)) == 1 {
-		return errors.Errorf(
-			"pack %s (Platform API versions %s and %s) is incompatible with builder %s (Platform API version %s)",
-			cmd.Version,
-			build.MinPlatformAPIVersion,
-			build.PlatformAPIVersion,
-			style.Symbol(opts.Builder),
-			lcPlatformAPIVersion,
-		)
+	platformSupported := false
+	for _, v := range build.SupportedPlatformAPIVersions {
+		if api.MustParse(v).SupportsVersion(lcPlatformAPIVersion) {
+			platformSupported = true
+			break
+		}
+	}
+	if !platformSupported {
+		c.logger.Debugf("pack %s supports Platform API version(s): %s", cmd.Version, strings.Join(build.SupportedPlatformAPIVersions, ", "))
+		c.logger.Debugf("Builder %s has Platform API version: %s", style.Symbol(opts.Builder), lcPlatformAPIVersion)
+		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
 	}
 
 	return c.lifecycle.Execute(ctx, build.LifecycleOptions{

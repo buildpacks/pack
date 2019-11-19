@@ -23,10 +23,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/cmd"
 	"github.com/buildpack/pack/internal/api"
 	"github.com/buildpack/pack/internal/blob"
-	"github.com/buildpack/pack/internal/build"
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/dist"
 	ifakes "github.com/buildpack/pack/internal/fakes"
@@ -97,7 +95,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					},
 					API: builder.LifecycleAPI{
 						BuildpackVersion: api.MustParse("0.3"),
-						PlatformVersion:  api.MustParse(build.PlatformAPIVersion),
+						PlatformVersion:  api.MustParse("0.2"),
 					},
 				},
 			},
@@ -360,7 +358,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 							Lifecycle: builder.LifecycleMetadata{
 								API: builder.LifecycleAPI{
-									PlatformVersion: api.MustParse(build.PlatformAPIVersion),
+									PlatformVersion: api.MustParse("0.2"),
 								},
 							},
 						},
@@ -1037,16 +1035,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Builder: builderName,
 						})
 
-						h.AssertError(t,
-							err,
-							fmt.Sprintf(
-								"pack %s (Platform API versions %s and %s) is incompatible with builder %s (Platform API version %s)",
-								cmd.Version,
-								build.MinPlatformAPIVersion,
-								build.PlatformAPIVersion,
-								style.Symbol(builderName),
-								"0.9",
-							))
+						h.AssertError(t, err, fmt.Sprintf("Builder %s is incompatible with this version of pack", style.Symbol(builderName)))
 					})
 				})
 			})

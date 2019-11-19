@@ -17,11 +17,9 @@ import (
 	"github.com/buildpack/pack/logging"
 )
 
-const (
-	// MinPlatformAPIVersion is the minimum Platform API Version supported by this version of pack.
-	MinPlatformAPIVersion = "0.1"
-	// PlatformAPIVersion is the current Platform API Version supported by this version of pack.
-	PlatformAPIVersion = "0.2"
+var (
+	// SupportedPlatformAPIVersions lists the Platform API versions pack supports.
+	SupportedPlatformAPIVersions = []string{"0.1", "0.2"}
 )
 
 type Lifecycle struct {
