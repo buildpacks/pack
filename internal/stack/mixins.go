@@ -34,7 +34,6 @@ func ValidateMixins(buildImageName string, buildImageMixins []string, runImageNa
 	return nil
 }
 
-// TODO: test
 func FindStageMixins(mixins []string, stage string) []string {
 	var invalid []string
 	for _, m := range mixins {
