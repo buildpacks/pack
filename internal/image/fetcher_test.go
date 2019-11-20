@@ -14,8 +14,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/fakes"
 	"github.com/buildpack/pack/internal/image"
+	"github.com/buildpack/pack/internal/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -33,7 +33,7 @@ func TestFetcher(t *testing.T) {
 	registryConfig = h.RunRegistry(t)
 	defer registryConfig.StopRegistry(t)
 
-	//TODO: is there a better solution to the auth problem?
+	// TODO: is there a better solution to the auth problem?
 	os.Setenv("DOCKER_CONFIG", registryConfig.DockerConfigDir)
 
 	var err error
@@ -52,7 +52,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		repo = "some-org/" + h.RandString(10)
 		repoName = registryConfig.RepoName(repo)
-		fetcher = image.NewFetcher(fakes.NewFakeLogger(ioutil.Discard), docker)
+		fetcher = image.NewFetcher(logging.NewLogWithWriters(ioutil.Discard, ioutil.Discard), docker)
 	})
 
 	when("#Fetch", func() {

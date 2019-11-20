@@ -14,8 +14,8 @@ import (
 
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/dist"
-	ifakes "github.com/buildpack/pack/internal/fakes"
 	"github.com/buildpack/pack/internal/image"
+	"github.com/buildpack/pack/internal/logging"
 	h "github.com/buildpack/pack/testhelpers"
 	"github.com/buildpack/pack/testmocks"
 )
@@ -40,7 +40,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 
 		subject = &Client{
-			logger:       ifakes.NewFakeLogger(&out),
+			logger:       logging.NewLogWithWriters(&out, &out),
 			imageFetcher: mockImageFetcher,
 		}
 

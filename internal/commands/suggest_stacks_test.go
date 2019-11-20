@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpack/pack/internal/commands"
-	"github.com/buildpack/pack/internal/fakes"
+	"github.com/buildpack/pack/internal/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -24,7 +24,7 @@ func testSuggestStacksCommand(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		command = commands.SuggestStacks(fakes.NewFakeLogger(&outBuf))
+		command = commands.SuggestStacks(logging.NewLogWithWriters(&outBuf, &outBuf))
 	})
 
 	when("#SuggestStacks", func() {

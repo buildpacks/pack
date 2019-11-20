@@ -21,7 +21,7 @@ import (
 
 	"github.com/buildpack/pack/internal/build"
 	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/fakes"
+	ilogging "github.com/buildpack/pack/internal/logging"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
@@ -60,7 +60,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger := fakes.NewFakeLogger(&outBuf)
+		logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
 
 		var err error
 		docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
@@ -156,7 +156,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("returns an error", func() {
-						logger := fakes.NewFakeLogger(&outBuf)
+						logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
 						subject, err = CreateFakeLifecycle(tmpFakeAppDir, docker, logger)
 						h.AssertNil(t, err)
 

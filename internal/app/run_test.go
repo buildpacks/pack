@@ -17,7 +17,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpack/pack/internal/app"
-	"github.com/buildpack/pack/internal/fakes"
+	"github.com/buildpack/pack/internal/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -35,7 +35,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 			subject *app.Image
 			docker  *client.Client
 			err     error
-			errBuf  bytes.Buffer
+			outBuf  bytes.Buffer
 			repo    string
 		)
 
@@ -45,7 +45,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 
 			repo = "some-org/" + h.RandString(10)
 
-			logger := fakes.NewFakeLogger(&errBuf)
+			logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 
 			subject = &app.Image{
 				RepoName: repo,
@@ -68,8 +68,8 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("runs an image", func() {
-				assertOnRunningContainer(t, subject, nil, &errBuf, docker, func() bool {
-					return strings.Contains(errBuf.String(), "listening")
+				assertOnRunningContainer(t, subject, nil, &outBuf, docker, func() bool {
+					return strings.Contains(outBuf.String(), "listening")
 				})
 			})
 		})
@@ -93,7 +93,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("gets exposed ports from the image", func() {
-				assertOnRunningContainer(t, subject, nil, &errBuf, docker, func() bool {
+				assertOnRunningContainer(t, subject, nil, &outBuf, docker, func() bool {
 					resp, err := http.Get("http://localhost:" + containerPort)
 					if err != nil {
 						t.Log(err)
@@ -133,7 +133,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("binds simple ports from localhost to the container on the same port", func() {
-				assertOnRunningContainer(t, subject, []string{containerPort}, &errBuf, docker, func() bool {
+				assertOnRunningContainer(t, subject, []string{containerPort}, &outBuf, docker, func() bool {
 					resp, err := http.Get("http://localhost:" + containerPort)
 					if err != nil {
 						t.Log(err)
@@ -162,7 +162,7 @@ func testApp(t *testing.T, when spec.G, it spec.S) {
 					t,
 					subject,
 					[]string{fmt.Sprintf("127.0.0.1:%s:%s/tcp", hostPort, containerPort)},
-					&errBuf,
+					&outBuf,
 					docker,
 					func() bool {
 						resp, err := http.Get("http://localhost:" + hostPort)

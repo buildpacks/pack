@@ -11,6 +11,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	ifakes "github.com/buildpack/pack/internal/fakes"
+	"github.com/buildpack/pack/internal/logging"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
@@ -48,7 +49,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "io.buildpacks.stacks.bionic"))
 			fakeImageFetcher.LocalImages["example.com/some/run"] = fakeRunImageMirror
 
-			fakeLogger := ifakes.NewFakeLogger(&out)
+			fakeLogger := logging.NewLogWithWriters(&out, &out)
 			subject = &Client{
 				logger:       fakeLogger,
 				imageFetcher: fakeImageFetcher,
