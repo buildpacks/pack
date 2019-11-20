@@ -45,8 +45,8 @@ func (b BuildpackInfo) FullName() string {
 }
 
 type Stack struct {
-	ID     string
-	Mixins []string
+	ID     string   `json:"id"`
+	Mixins []string `json:"mixins,omitempty"`
 }
 
 func NewBuildpack(blob Blob) (Buildpack, error) {

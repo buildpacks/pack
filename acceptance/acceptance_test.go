@@ -1047,12 +1047,19 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			h.AssertNil(t, err)
 
 			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package.toml"))
+			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package_aggregate.toml"))
 
-			tgz := h.CreateTGZ(t, filepath.Join(bpDir, "noop-buildpack"), "./", 0755)
-			err = os.Rename(tgz, filepath.Join(tmpDir, "noop-buildpack.tgz"))
+			err = os.Rename(
+				h.CreateTGZ(t, filepath.Join(bpDir, "noop-buildpack"), "./", 0755),
+				filepath.Join(tmpDir, "noop-buildpack.tgz"),
+			)
 			h.AssertNil(t, err)
 
-			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package.toml"))
+			err = os.Rename(
+				h.CreateTGZ(t, filepath.Join(bpDir, "simple-layers-buildpack"), "./", 0755),
+				filepath.Join(tmpDir, "simple-layers-buildpack.tgz"),
+			)
+			h.AssertNil(t, err)
 		})
 
 		it.After(func() {
@@ -1060,13 +1067,32 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		})
 
 		it("creates the package", func() {
-			packageName := "test/package-" + h.RandString(10)
-			output, err := h.RunE(subjectPack("create-package", "-p", filepath.Join(tmpDir, "package.toml"), packageName))
-			h.AssertNil(t, err)
-			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
+			t.Log("package w/ only buildpacks")
+			createPackageAndValidate := func(absConfigPath string) string {
+				packageName := "test/package-" + h.RandString(10)
+				output, err := h.RunE(subjectPack("create-package", "-p", absConfigPath, packageName))
+				h.AssertNil(t, err)
+				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
+				_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+				h.AssertNil(t, err)
 
-			_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+				return packageName
+			}
+
+			packageName := createPackageAndValidate(filepath.Join(tmpDir, "package.toml"))
+
+			t.Log("package w/ buildpacks and packages")
+			packageTomlData := fillTemplate(t,
+				filepath.Join(packFixturesDir, "package_aggregate.toml"),
+				map[string]interface{}{"PackageName": packageName},
+			)
+			packageTomlFile, err := ioutil.TempFile(tmpDir, "package_aggregate-*.toml")
 			h.AssertNil(t, err)
+			_, err = io.WriteString(packageTomlFile, packageTomlData)
+			h.AssertNil(t, err)
+			h.AssertNil(t, packageTomlFile.Close())
+
+			createPackageAndValidate(packageTomlFile.Name())
 		})
 
 		when("--publish", func() {

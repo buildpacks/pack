@@ -3,17 +3,8 @@ package builder
 import "github.com/buildpack/pack/internal/dist"
 
 const (
-	OrderLabel           = "io.buildpacks.buildpack.order"
-	BuildpackLayersLabel = "io.buildpacks.buildpack.layers"
+	OrderLabel = "io.buildpacks.buildpack.order"
 )
-
-type BuildpackLayers map[string]map[string]BuildpackLayerInfo
-
-type BuildpackLayerInfo struct {
-	LayerDiffID string       `json:"layerDiffID"`
-	Order       dist.Order   `json:"order,omitempty"`
-	Stacks      []dist.Stack `json:"stacks,omitempty"`
-}
 
 type Metadata struct {
 	Description string              `json:"description"`

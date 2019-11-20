@@ -7,10 +7,11 @@ import (
 	"github.com/buildpack/imgutil/fakes"
 
 	"github.com/buildpack/pack/internal/builder"
+	"github.com/buildpack/pack/internal/dist"
 	h "github.com/buildpack/pack/testhelpers"
 )
 
-func NewFakeBuilderImage(t *testing.T, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers builder.BuildpackLayers) *fakes.Image {
+func NewFakeBuilderImage(t *testing.T, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.BuildpackLayers) *fakes.Image {
 	fakeBuilderImage := fakes.NewImage(name, "", nil)
 
 	h.AssertNil(t, fakeBuilderImage.SetLabel("io.buildpacks.stack.id", stackID))

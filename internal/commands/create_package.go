@@ -69,14 +69,14 @@ func ReadPackageConfig(path string) (buildpackage.Config, error) {
 		return config, errors.Wrapf(err, "reading config %s", path)
 	}
 
-	for i := range config.Blobs {
-		uri := config.Blobs[i].URI
+	for i := range config.Buildpacks {
+		uri := config.Buildpacks[i].URI
 		absPath, err := paths.ToAbsolute(uri, configDir)
 		if err != nil {
 			return config, errors.Wrapf(err, "getting absolute path for %s", style.Symbol(uri))
 		}
 
-		config.Blobs[i].URI = absPath
+		config.Buildpacks[i].URI = absPath
 	}
 
 	return config, nil

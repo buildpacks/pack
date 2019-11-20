@@ -224,8 +224,8 @@ func assembleAvailableMixins(buildMixins, runMixins []string) []string {
 
 func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []dist.Buildpack) ([]dist.BuildpackDescriptor, error) {
 	var all []dist.BuildpackDescriptor
-	var bpLayers builder.BuildpackLayers
-	if _, err := dist.GetLabel(builderImage, builder.BuildpackLayersLabel, &bpLayers); err != nil {
+	var bpLayers dist.BuildpackLayers
+	if _, err := dist.GetLabel(builderImage, dist.BuildpackLayersLabel, &bpLayers); err != nil {
 		return nil, err
 	}
 	for id, bps := range bpLayers {

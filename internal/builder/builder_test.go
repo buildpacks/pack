@@ -712,7 +712,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				label, err := baseImage.Label("io.buildpacks.buildpack.layers")
 				h.AssertNil(t, err)
 
-				var layers builder.BuildpackLayers
+				var layers dist.BuildpackLayers
 				h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 				h.AssertEq(t, len(layers), 3)
 				h.AssertEq(t, len(layers["buildpack-1-id"]), 2)
@@ -782,7 +782,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					label, err := baseImage.Label("io.buildpacks.buildpack.layers")
 					h.AssertNil(t, err)
 
-					var layers builder.BuildpackLayers
+					var layers dist.BuildpackLayers
 					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 					h.AssertEq(t, len(layers), 2)
 					h.AssertEq(t, len(layers["buildpack-1-id"]), 2)
@@ -805,7 +805,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					label, err := baseImage.Label("io.buildpacks.buildpack.layers")
 					h.AssertNil(t, err)
 
-					var layers builder.BuildpackLayers
+					var layers dist.BuildpackLayers
 					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 
 					h.AssertContains(t, outBuf.String(), "Warning: buildpack 'buildpack-1-id@buildpack-1-version-2' already exists on builder and will be overridden")

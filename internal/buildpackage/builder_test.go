@@ -1,6 +1,9 @@
 package buildpackage_test
 
 import (
+	bytes "bytes"
+	"io"
+	"io/ioutil"
 	"testing"
 
 	"github.com/buildpack/imgutil/fakes"
@@ -54,7 +57,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("default is missing from blobs", func() {
+			when("default is missing from buildpacks", func() {
 				it("returns error", func() {
 					subject.SetDefaultBuildpack(dist.BuildpackInfo{
 						ID:      "buildpack.1.id",
@@ -63,6 +66,35 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					_, err := subject.Save(fakePackageImage.Name(), false)
 					h.AssertError(t, err, "selected default 'buildpack.1.id@buildpack.1.version' is not present")
+				})
+			})
+
+			when("default is in another package", func() {
+				it("resolves the buildpack", func() {
+					subject.AddStack(dist.Stack{ID: "some.stack"})
+					subject.AddPackage(&fakePackage{
+						name: "other/package",
+						bpLayers: dist.BuildpackLayers{
+							"bp.one": map[string]dist.BuildpackLayerInfo{
+								"1.2.3": {
+									API: api.MustParse("0.2"),
+									Stacks: []dist.Stack{{
+										ID:     "some.stack",
+										Mixins: nil,
+									}},
+									LayerDiffID: "asdfg",
+								},
+							},
+						},
+					})
+
+					subject.SetDefaultBuildpack(dist.BuildpackInfo{
+						ID:      "bp.one",
+						Version: "1.2.3",
+					})
+
+					_, err := subject.Save("some/package", false)
+					h.AssertNil(t, err)
 				})
 			})
 		})
@@ -155,4 +187,21 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+}
+
+type fakePackage struct {
+	name     string
+	bpLayers dist.BuildpackLayers
+}
+
+func (f *fakePackage) Name() string {
+	return f.name
+}
+
+func (f *fakePackage) BuildpackLayers() dist.BuildpackLayers {
+	return f.bpLayers
+}
+
+func (f *fakePackage) GetLayer(diffID string) (io.ReadCloser, error) {
+	return ioutil.NopCloser(&bytes.Buffer{}), nil
 }

@@ -31,10 +31,11 @@ func TestCreatePackage(t *testing.T) {
 
 func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 	var (
-		client           *pack.Client
+		subject          *pack.Client
 		mockController   *gomock.Controller
 		mockDownloader   *testmocks.MockDownloader
 		mockImageFactory *testmocks.MockImageFactory
+		mockImageFetcher *testmocks.MockImageFetcher
 		fakePackageImage *fakes.Image
 		out              bytes.Buffer
 	)
@@ -43,15 +44,17 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockDownloader = testmocks.NewMockDownloader(mockController)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
+		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 
 		fakePackageImage = fakes.NewImage("some/package", "", nil)
 		mockImageFactory.EXPECT().NewImage("some/package", true).Return(fakePackageImage, nil).AnyTimes()
 
 		var err error
-		client, err = pack.NewClient(
+		subject, err = pack.NewClient(
 			pack.WithLogger(logging.NewLogWithWriters(&out, &out)),
 			pack.WithDownloader(mockDownloader),
 			pack.WithImageFactory(mockImageFactory),
+			pack.WithFetcher(mockImageFetcher),
 		)
 		h.AssertNil(t, err)
 	})
@@ -66,23 +69,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 			var opts pack.CreatePackageOptions
 
 			it.Before(func() {
-				opts = pack.CreatePackageOptions{
-					Name: fakePackageImage.Name(),
-					Config: buildpackage.Config{
-						Default: dist.BuildpackInfo{
-							ID:      "bp.one",
-							Version: "1.2.3",
-						},
-						Blobs: []dist.BlobConfig{
-							{URI: "https://example.com/bp.one.tgz"},
-						},
-						Stacks: []dist.Stack{
-							{ID: "some.stack.id"},
-						},
-					},
-				}
-
-				buildpack, err := ifakes.NewBuildpackFromDescriptor(dist.BuildpackDescriptor{
+				buildpack1, err := ifakes.NewBuildpackFromDescriptor(dist.BuildpackDescriptor{
 					API: api.MustParse("0.2"),
 					Info: dist.BuildpackInfo{
 						ID:      "bp.one",
@@ -93,14 +80,69 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 					},
 					Order: nil,
 				}, 0644)
+				h.AssertNil(t, err)
+				mockDownloader.EXPECT().Download(gomock.Any(), "https://example.com/bp.one.tgz").Return(buildpack1, nil).AnyTimes()
 
+				opts = pack.CreatePackageOptions{
+					Name: fakePackageImage.Name(),
+					Config: buildpackage.Config{
+						Default: dist.BuildpackInfo{
+							ID:      "bp.nested",
+							Version: "2.3.4",
+						},
+						Buildpacks: []dist.BuildpackURI{
+							{URI: "https://example.com/bp.one.tgz"},
+						},
+						Packages: []dist.ImageRef{
+							{Ref: "nested/package"},
+						},
+						Stacks: []dist.Stack{
+							{ID: "some.stack.id"},
+						},
+					},
+				}
+
+				buildpack2, err := ifakes.NewBuildpackFromDescriptor(dist.BuildpackDescriptor{
+					API: api.MustParse("0.2"),
+					Info: dist.BuildpackInfo{
+						ID:      "bp.nested",
+						Version: "2.3.4",
+					},
+					Stacks: []dist.Stack{
+						{ID: "some.stack.id"},
+					},
+					Order: nil,
+				}, 0644)
+				h.AssertNil(t, err)
+				mockDownloader.EXPECT().Download(gomock.Any(), "https://example.com/bp.nested.tgz").Return(buildpack2, nil).AnyTimes()
+
+				existingPackageImage := fakes.NewImage("nested/package", "", nil)
+				mockImageFactory.EXPECT().NewImage("nested/package", true).Return(existingPackageImage, nil).AnyTimes()
+
+				err = subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+					Name: "nested/package",
+					Config: buildpackage.Config{
+						Default: dist.BuildpackInfo{
+							ID:      "bp.nested",
+							Version: "2.3.4",
+						},
+						Buildpacks: []dist.BuildpackURI{
+							{URI: "https://example.com/bp.nested.tgz"},
+						},
+						Stacks: []dist.Stack{
+							{ID: "some.stack.id"},
+						},
+					},
+					Publish: false,
+				})
 				h.AssertNil(t, err)
 
-				mockDownloader.EXPECT().Download(gomock.Any(), "https://example.com/bp.one.tgz").Return(buildpack, nil).AnyTimes()
+				// TODO: daemon and pull cases (https://github.com/buildpack/pack/issues/392)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "nested/package", true, true).Return(existingPackageImage, nil).AnyTimes()
 			})
 
 			it("sets metadata", func() {
-				h.AssertNil(t, client.CreatePackage(context.TODO(), opts))
+				h.AssertNil(t, subject.CreatePackage(context.TODO(), opts))
 				h.AssertEq(t, fakePackageImage.IsSaved(), true)
 
 				labelData, err := fakePackageImage.Label("io.buildpacks.buildpackage.metadata")
@@ -108,35 +150,61 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 				var md buildpackage.Metadata
 				h.AssertNil(t, json.Unmarshal([]byte(labelData), &md))
 
-				h.AssertEq(t, md.ID, "bp.one")
-				h.AssertEq(t, md.Version, "1.2.3")
+				h.AssertEq(t, md.ID, "bp.nested")
+				h.AssertEq(t, md.Version, "2.3.4")
 				h.AssertEq(t, len(md.Stacks), 1)
 				h.AssertEq(t, md.Stacks[0].ID, "some.stack.id")
 			})
 
-			it("adds buildpack layers", func() {
-				h.AssertNil(t, client.CreatePackage(context.TODO(), opts))
+			it("sets buildpack layers label", func() {
+				h.AssertNil(t, subject.CreatePackage(context.TODO(), opts))
 				h.AssertEq(t, fakePackageImage.IsSaved(), true)
 
-				dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", "bp.one", "1.2.3")
-				layerTar, err := fakePackageImage.FindLayerWithPath(dirPath)
+				var bpLayers dist.BuildpackLayers
+				_, err := dist.GetLabel(fakePackageImage, "io.buildpacks.buildpack.layers", &bpLayers)
 				h.AssertNil(t, err)
 
-				h.AssertOnTarEntry(t, layerTar, dirPath,
-					h.IsDirectory(),
-				)
+				bp1Info, ok1 := bpLayers["bp.one"]["1.2.3"]
+				h.AssertEq(t, ok1, true)
+				h.AssertEq(t, bp1Info.Stacks, []dist.Stack{{
+					ID: "some.stack.id",
+				}})
 
-				h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/build",
-					h.ContentEquals("build-contents"),
-					h.HasOwnerAndGroup(0, 0),
-					h.HasFileMode(0644),
-				)
+				bp2Info, ok2 := bpLayers["bp.nested"]["2.3.4"]
+				h.AssertEq(t, ok2, true)
+				h.AssertEq(t, bp2Info.Stacks, []dist.Stack{{
+					ID: "some.stack.id",
+				}})
+			})
 
-				h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/detect",
-					h.ContentEquals("detect-contents"),
-					h.HasOwnerAndGroup(0, 0),
-					h.HasFileMode(0644),
-				)
+			it("adds buildpack layers", func() {
+				h.AssertNil(t, subject.CreatePackage(context.TODO(), opts))
+				h.AssertEq(t, fakePackageImage.IsSaved(), true)
+
+				buildpackExists := func(name, version string) {
+					dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", name, version)
+					layerTar, err := fakePackageImage.FindLayerWithPath(dirPath)
+					h.AssertNil(t, err)
+
+					h.AssertOnTarEntry(t, layerTar, dirPath,
+						h.IsDirectory(),
+					)
+
+					h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/build",
+						h.ContentEquals("build-contents"),
+						h.HasOwnerAndGroup(0, 0),
+						h.HasFileMode(0644),
+					)
+
+					h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/detect",
+						h.ContentEquals("detect-contents"),
+						h.HasOwnerAndGroup(0, 0),
+						h.HasFileMode(0644),
+					)
+				}
+
+				buildpackExists("bp.one", "1.2.3")
+				buildpackExists("bp.nested", "2.3.4")
 			})
 
 			when("when publish is true", func() {
@@ -154,7 +222,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("saves remote image", func() {
-					h.AssertNil(t, client.CreatePackage(context.TODO(), opts))
+					h.AssertNil(t, subject.CreatePackage(context.TODO(), opts))
 					h.AssertEq(t, fakeRemotePackageImage.IsSaved(), true)
 				})
 			})
