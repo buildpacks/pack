@@ -34,12 +34,17 @@ func (l *Lifecycle) Detect(ctx context.Context, networkMode string) error {
 }
 
 func (l *Lifecycle) Restore(ctx context.Context, cacheName string) error {
+	cacheFlag := "-path"
+	if l.CombinedExporterCacher() {
+		cacheFlag = "-cache-dir"
+	}
+
 	restore, err := l.NewPhase(
 		"restorer",
 		WithDaemonAccess(),
 		WithArgs(
 			l.withLogLevel(
-				"-path", cacheDir,
+				cacheFlag, cacheDir,
 				"-layers", layersDir,
 			)...,
 		),
@@ -52,8 +57,8 @@ func (l *Lifecycle) Restore(ctx context.Context, cacheName string) error {
 	return restore.Run(ctx)
 }
 
-func (l *Lifecycle) Analyze(ctx context.Context, repoName string, publish, clearCache bool) error {
-	analyze, err := l.newAnalyze(repoName, publish, clearCache)
+func (l *Lifecycle) Analyze(ctx context.Context, repoName, cacheName string, publish, clearCache bool) error {
+	analyze, err := l.newAnalyze(repoName, cacheName, publish, clearCache)
 	if err != nil {
 		return err
 	}
@@ -61,13 +66,15 @@ func (l *Lifecycle) Analyze(ctx context.Context, repoName string, publish, clear
 	return analyze.Run(ctx)
 }
 
-func (l *Lifecycle) newAnalyze(repoName string, publish, clearCache bool) (*Phase, error) {
+func (l *Lifecycle) newAnalyze(repoName, cacheName string, publish, clearCache bool) (*Phase, error) {
 	args := []string{
 		"-layers", layersDir,
 		repoName,
 	}
 	if clearCache {
 		args = prependArg("-skip-layers", args)
+	} else if l.CombinedExporterCacher() {
+		args = append([]string{"-cache-dir", cacheDir}, args...)
 	}
 
 	if publish {
@@ -75,6 +82,7 @@ func (l *Lifecycle) newAnalyze(repoName string, publish, clearCache bool) (*Phas
 			"analyzer",
 			WithRegistryAccess(repoName),
 			WithArgs(args...),
+			WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 		)
 	}
 	return l.NewPhase(
@@ -88,6 +96,7 @@ func (l *Lifecycle) newAnalyze(repoName string, publish, clearCache bool) (*Phas
 				)...,
 			)...,
 		),
+		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 	)
 }
 
@@ -112,8 +121,8 @@ func (l *Lifecycle) Build(ctx context.Context, networkMode string) error {
 	return build.Run(ctx)
 }
 
-func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string, publish bool, launchCacheName string) error {
-	export, err := l.newExport(repoName, runImage, publish, launchCacheName)
+func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string, publish bool, launchCacheName, cacheName string) error {
+	export, err := l.newExport(repoName, runImage, publish, launchCacheName, cacheName)
 	if err != nil {
 		return err
 	}
@@ -121,7 +130,7 @@ func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string
 	return export.Run(ctx)
 }
 
-func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCacheName string) (*Phase, error) {
+func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCacheName, cacheName string) (*Phase, error) {
 	if publish {
 		return l.NewPhase(
 			"exporter",
@@ -137,23 +146,30 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		)
 	}
 
+	args := []string{
+		"-image", runImage,
+		"-layers", layersDir,
+		"-app", appDir,
+		"-daemon",
+		"-launch-cache", launchCacheDir,
+		repoName,
+	}
+	if l.CombinedExporterCacher() {
+		args = append([]string{"-cache-dir", cacheDir}, args...)
+	}
+
 	return l.NewPhase(
 		"exporter",
 		WithDaemonAccess(),
 		WithArgs(
-			l.withLogLevel(
-				"-image", runImage,
-				"-layers", layersDir,
-				"-app", appDir,
-				"-daemon",
-				"-launch-cache", launchCacheDir,
-				repoName,
-			)...,
+			l.withLogLevel(args...)...,
 		),
 		WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
+		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 	)
 }
 
+// The cache phase is obsolete with Platform API 0.2 and will be removed in the future.
 func (l *Lifecycle) Cache(ctx context.Context, cacheName string) error {
 	cache, err := l.NewPhase(
 		"cacher",

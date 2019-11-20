@@ -110,14 +110,17 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
 	lcPlatformAPIVersion := ephemeralBuilder.LifecycleDescriptor().API.PlatformVersion
-	if !api.MustParse(build.PlatformAPIVersion).SupportsVersion(lcPlatformAPIVersion) {
-		return errors.Errorf(
-			"pack %s (Platform API version %s) is incompatible with builder %s (Platform API version %s)",
-			cmd.Version,
-			build.PlatformAPIVersion,
-			style.Symbol(opts.Builder),
-			lcPlatformAPIVersion,
-		)
+	supportsPlatform := false
+	for _, v := range build.SupportedPlatformAPIVersions {
+		if api.MustParse(v).SupportsVersion(lcPlatformAPIVersion) {
+			supportsPlatform = true
+			break
+		}
+	}
+	if !supportsPlatform {
+		c.logger.Debugf("pack %s supports Platform API version(s): %s", cmd.Version, strings.Join(build.SupportedPlatformAPIVersions, ", "))
+		c.logger.Debugf("Builder %s has Platform API version: %s", style.Symbol(opts.Builder), lcPlatformAPIVersion)
+		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
 	}
 
 	return c.lifecycle.Execute(ctx, build.LifecycleOptions{
