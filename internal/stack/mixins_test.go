@@ -13,7 +13,7 @@ import (
 
 func TestMixinValidation(t *testing.T) {
 	color.Disable(true)
-	defer func() { color.Disable(false) }()
+	defer color.Disable(false)
 	spec.Run(t, "testMixinValidation", testMixinValidation, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -58,6 +58,16 @@ func testMixinValidation(t *testing.T, when spec.G, it spec.S) {
 			err := stack.ValidateMixins("some/build", buildMixins, "some/run", runMixins)
 
 			h.AssertError(t, err, "'some/run' contains build-only mixin(s): build:mixinA, build:mixinB")
+		})
+	})
+
+	when("#FindStageMixins", func() {
+		it("returns mixins with stage prefix", func() {
+			mixins := []string{"mixinA", "run:mixinB", "mixinC", "run:mixinD", "build:mixinE"}
+
+			runMixins := stack.FindStageMixins(mixins, "run")
+
+			h.AssertEq(t, runMixins, []string{"run:mixinB", "run:mixinD"})
 		})
 	})
 }

@@ -26,7 +26,7 @@ func TestFetcher(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	color.Disable(true)
-	defer func() { color.Disable(false) }()
+	defer color.Disable(false)
 
 	h.RequireDocker(t)
 

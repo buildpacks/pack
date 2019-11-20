@@ -16,7 +16,7 @@ import (
 
 func TestRebase(t *testing.T) {
 	color.Disable(true)
-	defer func() { color.Disable(false) }()
+	defer color.Disable(false)
 	spec.Run(t, "rebase_factory", testRebase, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

@@ -23,6 +23,7 @@ import (
 	"github.com/buildpack/pack/internal/dist"
 	"github.com/buildpack/pack/internal/paths"
 	"github.com/buildpack/pack/internal/stack"
+	"github.com/buildpack/pack/internal/stringset"
 	"github.com/buildpack/pack/internal/style"
 )
 
@@ -214,23 +215,10 @@ func assembleAvailableMixins(buildMixins, runMixins []string) []string {
 	//    Buildpack requires: [A, B]
 	//    Match? No
 
-	var common, buildOnly, runOnly []string
-	bMixins := map[string]interface{}{}
+	buildOnly := stack.FindStageMixins(buildMixins, "build")
+	runOnly := stack.FindStageMixins(runMixins, "run")
+	_, _, common := stringset.Compare(buildMixins, runMixins)
 
-	for _, m := range buildMixins {
-		if strings.HasPrefix(m, "build:") {
-			buildOnly = append(buildOnly, m)
-		}
-		bMixins[m] = nil
-	}
-	for _, m := range runMixins {
-		if strings.HasPrefix(m, "run:") {
-			runOnly = append(runOnly, m)
-		}
-		if _, ok := bMixins[m]; ok {
-			common = append(common, m)
-		}
-	}
 	return append(common, append(buildOnly, runOnly...)...)
 }
 

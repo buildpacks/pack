@@ -34,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpack/pack/internal/stringset"
 	"github.com/buildpack/pack/internal/style"
 )
 
@@ -51,6 +52,14 @@ func AssertEq(t *testing.T, actual, expected interface{}) {
 	if diff := cmp.Diff(expected, actual); diff != "" {
 		t.Fatal(diff)
 	}
+}
+
+func AssertTrue(t *testing.T, actual interface{}) {
+	AssertEq(t, actual, true)
+}
+
+func AssertFalse(t *testing.T, actual interface{}) {
+	AssertEq(t, actual, false)
 }
 
 func AssertUnique(t *testing.T, items ...interface{}) {
@@ -86,7 +95,7 @@ func AssertContains(t *testing.T, actual, expected string) {
 	t.Helper()
 	if !strings.Contains(actual, expected) {
 		t.Fatalf(
-			"Expected: '%s' to contain '%s'\n\nDiff:%s",
+			"Expected '%s' to contain '%s'\n\nDiff:%s",
 			actual,
 			expected,
 			cmp.Diff(expected, actual),
@@ -97,52 +106,47 @@ func AssertContains(t *testing.T, actual, expected string) {
 func AssertContainsMatch(t *testing.T, actual, exp string) {
 	t.Helper()
 	if !hasMatches(actual, exp) {
-		t.Fatalf("Expected: '%s' to match expression '%s'", actual, exp)
+		t.Fatalf("Expected '%s' to match expression '%s'", actual, exp)
 	}
 }
 
 func AssertNotContainsMatch(t *testing.T, actual, exp string) {
 	t.Helper()
 	if hasMatches(actual, exp) {
-		t.Fatalf("Expected: '%s' not to match expression '%s'", actual, exp)
+		t.Fatalf("Expected '%s' not to match expression '%s'", actual, exp)
 	}
 }
 
 func AssertNotContains(t *testing.T, actual, expected string) {
 	t.Helper()
 	if strings.Contains(actual, expected) {
-		t.Fatalf("Expected: '%s' to not contain '%s'", actual, expected)
+		t.Fatalf("Expected '%s' to not contain '%s'", actual, expected)
 	}
 }
 
-func AssertSliceContains(t *testing.T, slice []string, values ...string) {
+func AssertSliceContains(t *testing.T, slice []string, expected ...string) {
 	t.Helper()
-	sLookup := map[string]interface{}{}
-	for _, s := range slice {
-		sLookup[s] = nil
+	_, missing, _ := stringset.Compare(slice, expected)
+	if len(missing) > 0 {
+		t.Fatalf("Expected %s to contain elements %s", slice, missing)
 	}
-	remainingVals := map[string]interface{}{}
-	for _, v := range values {
-		remainingVals[v] = nil
+}
+
+func AssertSliceContainsOnly(t *testing.T, slice []string, expected ...string) {
+	t.Helper()
+	extra, missing, _ := stringset.Compare(slice, expected)
+	if len(missing) > 0 {
+		t.Fatalf("Expected %s to contain elements %s", slice, missing)
 	}
-	for _, s := range slice {
-		if _, ok := sLookup[s]; ok {
-			delete(remainingVals, s)
-		}
-	}
-	if len(remainingVals) > 0 {
-		var rem []string
-		for v := range remainingVals {
-			rem = append(rem, v)
-		}
-		t.Fatalf("Expected: '%s' to contain elements '%s'", slice, rem)
+	if len(extra) > 0 {
+		t.Fatalf("Expected %s to not contain elements %s", slice, extra)
 	}
 }
 
 func AssertMatch(t *testing.T, actual string, expected string) {
 	t.Helper()
 	if !regexp.MustCompile(expected).MatchString(actual) {
-		t.Fatalf("Expected: '%s' to match regex '%s'", actual, expected)
+		t.Fatalf("Expected '%s' to match regex '%s'", actual, expected)
 	}
 }
 

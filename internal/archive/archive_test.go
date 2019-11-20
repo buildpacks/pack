@@ -22,7 +22,7 @@ import (
 
 func TestArchive(t *testing.T) {
 	color.Disable(true)
-	defer func() { color.Disable(false) }()
+	defer color.Disable(false)
 	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "Archive", testArchive, spec.Sequential(), spec.Report(report.Terminal{}))
 }

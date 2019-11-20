@@ -35,7 +35,7 @@ import (
 
 func TestBuild(t *testing.T) {
 	color.Disable(true)
-	defer func() { color.Disable(false) }()
+	defer color.Disable(false)
 	rand.Seed(time.Now().UTC().UnixNano())
 	spec.Run(t, "build", testBuild, spec.Report(report.Terminal{}))
 }
