@@ -1,9 +1,11 @@
 package buildpackage
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
@@ -119,23 +121,13 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 			)
 		}
 
-		bpInfo := bp.Descriptor().Info
-		if _, ok := bpLayers[bpInfo.ID]; !ok {
-			bpLayers[bpInfo.ID] = map[string]dist.BuildpackLayerInfo{}
-		}
-		bpLayers[bpInfo.ID][bpInfo.Version] = dist.BuildpackLayerInfo{
-			API:         bp.Descriptor().API,
-			Stacks:      bp.Descriptor().Stacks,
-			Order:       bp.Descriptor().Order,
-			LayerDiffID: diffID.String(),
-		}
+		dist.AddBuildpackToLayersMD(bpLayers, bp.Descriptor(), diffID.String())
 	}
 
-	// add bps from packages
 	for _, pkg := range p.packages {
 		for bpID, v := range pkg.BuildpackLayers() {
 			for bpVersion, bpInfo := range v {
-				if err := embedBuildpackToImage(pkg, bpInfo, tmpDir, image); err != nil {
+				if err := embedBuildpackToImage(pkg, bpID, bpVersion, bpInfo, tmpDir, image); err != nil {
 					return nil, errors.Wrapf(err, "embedding buildpack %s", style.Symbol(bpID+"@"+bpVersion))
 				}
 
@@ -159,14 +151,14 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 	return image, nil
 }
 
-func embedBuildpackToImage(pkg Package, bpInfo dist.BuildpackLayerInfo, tmpDir string, image imgutil.Image) error {
+func embedBuildpackToImage(pkg Package, bpID, bpVersion string, bpInfo dist.BuildpackLayerInfo, tmpDir string, image imgutil.Image) error {
 	readCloser, err := pkg.GetLayer(bpInfo.LayerDiffID)
 	if err != nil {
 		return errors.Wrap(err, "retrieve layer")
 	}
 	defer readCloser.Close()
 
-	file, err := ioutil.TempFile(tmpDir, "*.tar")
+	file, err := os.Create(filepath.Join(tmpDir, fmt.Sprintf("%s.%s.tar", bpID, bpVersion)))
 	if err != nil {
 		return errors.Wrap(err, "creating temp file")
 	}

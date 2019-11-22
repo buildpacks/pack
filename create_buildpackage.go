@@ -16,6 +16,7 @@ type CreatePackageOptions struct {
 	Name    string
 	Config  buildpackage.Config
 	Publish bool
+	NoPull  bool
 }
 
 func (c *Client) CreatePackage(ctx context.Context, opts CreatePackageOptions) error {
@@ -36,7 +37,7 @@ func (c *Client) CreatePackage(ctx context.Context, opts CreatePackageOptions) e
 	}
 
 	for _, ref := range opts.Config.Packages {
-		pkgImage, err := c.imageFetcher.Fetch(ctx, ref.Ref, true, true)
+		pkgImage, err := c.imageFetcher.Fetch(ctx, ref.Ref, !opts.Publish, !opts.NoPull)
 		if err != nil {
 			return errors.Wrapf(err, "fetching image %s", style.Symbol(ref.Ref))
 		}

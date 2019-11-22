@@ -31,3 +31,16 @@ type BuildpackLayerInfo struct {
 	Order       Order        `json:"order,omitempty"`
 	LayerDiffID string       `json:"layerDiffID"`
 }
+
+func AddBuildpackToLayersMD(layerMD BuildpackLayers, descriptor BuildpackDescriptor, diffID string) {
+	bpInfo := descriptor.Info
+	if _, ok := layerMD[bpInfo.ID]; !ok {
+		layerMD[bpInfo.ID] = map[string]BuildpackLayerInfo{}
+	}
+	layerMD[bpInfo.ID][bpInfo.Version] = BuildpackLayerInfo{
+		API:         descriptor.API,
+		Stacks:      descriptor.Stacks,
+		Order:       descriptor.Order,
+		LayerDiffID: diffID,
+	}
+}

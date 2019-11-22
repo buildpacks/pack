@@ -289,10 +289,6 @@ func (b *Builder) Save(logger logging.Logger) error {
 		}
 
 		bpInfo := bp.Descriptor().Info
-		if _, ok := bpLayers[bpInfo.ID]; !ok {
-			bpLayers[bpInfo.ID] = map[string]dist.BuildpackLayerInfo{}
-		}
-
 		if _, ok := bpLayers[bpInfo.ID][bpInfo.Version]; ok {
 			logger.Warnf(
 				"buildpack %s already exists on builder and will be overridden",
@@ -300,11 +296,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 			)
 		}
 
-		bpLayers[bpInfo.ID][bpInfo.Version] = dist.BuildpackLayerInfo{
-			LayerDiffID: diffID.String(),
-			Order:       bp.Descriptor().Order,
-			Stacks:      bp.Descriptor().Stacks,
-		}
+		dist.AddBuildpackToLayersMD(bpLayers, bp.Descriptor(), diffID.String())
 	}
 
 	if err := dist.SetLabel(b.image, dist.BuildpackLayersLabel, bpLayers); err != nil {

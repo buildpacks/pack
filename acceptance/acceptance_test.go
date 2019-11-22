@@ -1047,7 +1047,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			h.AssertNil(t, err)
 
 			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package.toml"))
-			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package_aggregate.toml"))
 
 			err = os.Rename(
 				h.CreateTGZ(t, filepath.Join(bpDir, "noop-buildpack"), "./", 0755),
@@ -1066,25 +1065,32 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
 
-		it("creates the package", func() {
-			t.Log("package w/ only buildpacks")
-			createPackageAndValidate := func(absConfigPath string) string {
-				packageName := "test/package-" + h.RandString(10)
-				output, err := h.RunE(subjectPack("create-package", "-p", absConfigPath, packageName))
-				h.AssertNil(t, err)
-				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
-				_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-				h.AssertNil(t, err)
+		createPackageLocally := func(absConfigPath string) string {
+			packageName := "test/package-" + h.RandString(10)
+			output, err := h.RunE(subjectPack("create-package", packageName, "-p", absConfigPath))
+			h.AssertNil(t, err)
+			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
+			return packageName
+		}
 
-				return packageName
-			}
+		createPackageRemotely := func(absConfigPath string) string {
+			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+			output, err := h.RunE(subjectPack("create-package", packageName, "-p", absConfigPath, "--publish"))
+			h.AssertNil(t, err)
+			h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
+			return packageName
+		}
 
-			packageName := createPackageAndValidate(filepath.Join(tmpDir, "package.toml"))
+		assertImageExistsLocally := func(name string) {
+			_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), name)
+			h.AssertNil(t, err)
 
-			t.Log("package w/ buildpacks and packages")
+		}
+
+		generateAggregatePackageToml := func(nestedPackageName string) string {
 			packageTomlData := fillTemplate(t,
 				filepath.Join(packFixturesDir, "package_aggregate.toml"),
-				map[string]interface{}{"PackageName": packageName},
+				map[string]interface{}{"PackageName": nestedPackageName},
 			)
 			packageTomlFile, err := ioutil.TempFile(tmpDir, "package_aggregate-*.toml")
 			h.AssertNil(t, err)
@@ -1092,14 +1098,28 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			h.AssertNil(t, err)
 			h.AssertNil(t, packageTomlFile.Close())
 
-			createPackageAndValidate(packageTomlFile.Name())
+			return packageTomlFile.Name()
+		}
+
+		it("creates the package", func() {
+			t.Log("package w/ only buildpacks")
+			nestedPackageName := createPackageLocally(filepath.Join(tmpDir, "package.toml"))
+
+			t.Log("package w/ buildpacks and packages")
+			assertImageExistsLocally(nestedPackageName)
+			aggregatePackageToml := generateAggregatePackageToml(nestedPackageName)
+
+			packageName := createPackageLocally(aggregatePackageToml)
+			assertImageExistsLocally(packageName)
 		})
 
 		when("--publish", func() {
 			it("publishes image to registry", func() {
-				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+				nestedPackageName := createPackageRemotely(filepath.Join(tmpDir, "package.toml"))
+				aggregatePackageToml := generateAggregatePackageToml(nestedPackageName)
 
-				output := h.Run(t, subjectPack("create-package", "-p", filepath.Join(tmpDir, "package.toml"), "--publish", packageName))
+				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+				output := h.Run(t, subjectPack("create-package", packageName, "-p", aggregatePackageToml, "--publish"))
 				h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
 
 				_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
@@ -1109,6 +1129,17 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 				_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
 				h.AssertNil(t, err)
+			})
+		})
+
+		when("--no-pull", func() {
+			it("should not pull image from registry", func() {
+				nestedPackage := createPackageRemotely(filepath.Join(tmpDir, "package.toml"))
+				aggregatePackageToml := generateAggregatePackageToml(nestedPackage)
+
+				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+				_, err := h.RunE(subjectPack("create-package", packageName, "-p", aggregatePackageToml, "--no-pull"))
+				h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", nestedPackage))
 			})
 		})
 	})

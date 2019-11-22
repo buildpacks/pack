@@ -17,6 +17,7 @@ import (
 type CreatePackageFlags struct {
 	PackageTomlPath string
 	Publish         bool
+	NoPull          bool
 }
 
 func CreatePackage(logger logging.Logger, client PackClient) *cobra.Command {
@@ -37,6 +38,7 @@ func CreatePackage(logger logging.Logger, client PackClient) *cobra.Command {
 				Name:    imageName,
 				Config:  config,
 				Publish: flags.Publish,
+				NoPull:  flags.NoPull,
 			}); err != nil {
 				return err
 			}
@@ -51,6 +53,7 @@ func CreatePackage(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd.Flags().StringVarP(&flags.PackageTomlPath, "package-config", "p", "", "Path to package TOML config (required)")
 	cmd.MarkFlagRequired("package-config")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
+	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling packages before use")
 	AddHelpFlag(cmd, "create-package")
 
 	return cmd

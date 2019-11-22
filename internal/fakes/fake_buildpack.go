@@ -11,7 +11,7 @@ import (
 	"github.com/buildpack/pack/internal/dist"
 )
 
-type fakeBuildpackBlob struct {
+type fakeBuildpack struct {
 	descriptor dist.BuildpackDescriptor
 	chmod      int64
 }
@@ -26,17 +26,17 @@ type fakeBuildpackBlob struct {
 //  	detect-contents
 //
 func NewBuildpackFromDescriptor(descriptor dist.BuildpackDescriptor, chmod int64) (dist.Buildpack, error) {
-	return &fakeBuildpackBlob{
+	return &fakeBuildpack{
 		descriptor: descriptor,
 		chmod:      chmod,
 	}, nil
 }
 
-func (b *fakeBuildpackBlob) Descriptor() dist.BuildpackDescriptor {
+func (b *fakeBuildpack) Descriptor() dist.BuildpackDescriptor {
 	return b.descriptor
 }
 
-func (b *fakeBuildpackBlob) Open() (reader io.ReadCloser, err error) {
+func (b *fakeBuildpack) Open() (reader io.ReadCloser, err error) {
 	buf := &bytes.Buffer{}
 	if err = toml.NewEncoder(buf).Encode(b.descriptor); err != nil {
 		return nil, err
