@@ -295,7 +295,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 
 		if _, ok := bpLayers[bpInfo.ID][bpInfo.Version]; ok {
 			logger.Warnf(
-				"buildpack %s already exists on builder and will be overridden",
+				"buildpack %s already exists on builder and will be overwritten",
 				style.Symbol(bpInfo.FullName()),
 			)
 		}
