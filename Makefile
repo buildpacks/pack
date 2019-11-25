@@ -1,6 +1,7 @@
 GOCMD?=go
 GOFLAGS?=-mod=vendor
-PACK_VERSION?=dev-$(shell date +%Y-%m-%d-%H:%M:%S)
+PACK_VERSION?=0.0.0
+PACK_GITSHA1?=$(shell git rev-parse --short=7 HEAD)
 PACK_BIN?=pack
 PACKAGE_BASE=github.com/buildpacks/pack
 SRC:=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
@@ -8,6 +9,13 @@ ARCHIVE_NAME=pack-$(PACK_VERSION)
 TEST_TIMEOUT?=900s
 UNIT_TIMEOUT?=$(TEST_TIMEOUT)
 ACCEPTANCE_TIMEOUT?=$(TEST_TIMEOUT)
+
+
+
+# append git sha to version, if not-empty
+ifneq ($(strip ${PACK_GITSHA1}),)
+PACK_VERSION:=${PACK_VERSION}+${PACK_GITSHA1}
+endif
 
 export GOFLAGS:=$(GOFLAGS)
 export CGO_ENABLED=0
