@@ -23,6 +23,7 @@ import (
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/dist"
 	ifakes "github.com/buildpack/pack/internal/fakes"
+	ilogging "github.com/buildpack/pack/internal/logging"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
 	"github.com/buildpack/pack/testmocks"
@@ -51,7 +52,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			logger = ifakes.NewFakeLogger(&out)
+			logger = ilogging.NewLogWithWriters(&out, &out)
 			mockController = gomock.NewController(t)
 			mockDownloader = testmocks.NewMockDownloader(mockController)
 

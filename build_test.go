@@ -28,6 +28,7 @@ import (
 	"github.com/buildpack/pack/internal/builder"
 	"github.com/buildpack/pack/internal/dist"
 	ifakes "github.com/buildpack/pack/internal/fakes"
+	ilogging "github.com/buildpack/pack/internal/logging"
 	"github.com/buildpack/pack/internal/style"
 	"github.com/buildpack/pack/logging"
 	h "github.com/buildpack/pack/testhelpers"
@@ -133,7 +134,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
 
-		logger = ifakes.NewFakeLogger(&outBuf)
+		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 
 		dlCacheDir, err := ioutil.TempDir(tmpDir, "dl-cache")
 		h.AssertNil(t, err)
