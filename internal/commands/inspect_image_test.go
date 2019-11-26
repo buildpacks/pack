@@ -139,6 +139,22 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 						},
 						Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 					}},
+					Processes: pack.ProcessDetails{
+						DefaultProcess: &lifecycle.Process{
+							Type:    "some-remote-type",
+							Command: "/some/remote command",
+							Args:    []string{"some", "remote", "args"},
+							Direct:  false,
+						},
+						OtherProcesses: []lifecycle.Process{
+							{
+								Type:    "other-remote-type",
+								Command: "/other/remote/command",
+								Args:    []string{"other", "remote", "args"},
+								Direct:  true,
+							},
+						},
+					},
 				}
 				localInfo = &pack.ImageInfo{
 					StackID: "test.stack.id.local",
@@ -169,6 +185,22 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 						},
 						Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 					}},
+					Processes: pack.ProcessDetails{
+						DefaultProcess: &lifecycle.Process{
+							Type:    "some-local-type",
+							Command: "/some/local command",
+							Args:    []string{"some", "local", "args"},
+							Direct:  false,
+						},
+						OtherProcesses: []lifecycle.Process{
+							{
+								Type:    "other-local-type",
+								Command: "/other/local/command",
+								Args:    []string{"other", "local", "args"},
+								Direct:  true,
+							},
+						},
+					},
 				}
 				mockClient.EXPECT().InspectImage("some/image", false).Return(remoteInfo, nil)
 				mockClient.EXPECT().InspectImage("some/image", true).Return(localInfo, nil)
@@ -213,6 +245,35 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
   ID\s+VERSION
   test.bp.one.local\s+1.0.0
   test.bp.two.local\s+2.0.0`)
+				})
+
+				it("displays process info for local and remote", func() {
+					h.AssertNil(t, command.Execute())
+					h.AssertContainsMatch(t, remoteOutput(outBuf), `Processes:
+  TYPE\s+SHELL\s+COMMAND\s+ARGS
+  some-remote-type \(default\)\s+bash\s+/some/remote command\s+some remote args
+  other-remote-type\s+/other/remote/command\s+other remote args`)
+					h.AssertContainsMatch(t, localOutput(outBuf), `Processes:
+  TYPE\s+SHELL\s+COMMAND\s+ARGS
+  some-local-type \(default\)\s+bash\s+/some/local command\s+some local args
+  other-local-type\s+/other/local/command\s+other local args`)
+				})
+
+				when("there are no default processes", func() {
+					it.Before(func() {
+						remoteInfo.Processes.DefaultProcess = nil
+						localInfo.Processes.DefaultProcess = nil
+					})
+
+					it("displays all local and remote processes with no default label", func() {
+						h.AssertNil(t, command.Execute())
+						h.AssertContainsMatch(t, remoteOutput(outBuf), `Processes:
+  TYPE\s+SHELL\s+COMMAND\s+ARGS
+  other-remote-type\s+/other/remote/command\s+other remote args`)
+						h.AssertContainsMatch(t, localOutput(outBuf), `Processes:
+  TYPE\s+SHELL\s+COMMAND\s+ARGS
+  other-local-type\s+/other/local/command\s+other local args`)
+					})
 				})
 
 				when("--bom", func() {

@@ -17,6 +17,12 @@ type ImageInfo struct {
 	Base       lifecycle.RunImageMetadata
 	BOM        []lifecycle.BOMEntry
 	Stack      lifecycle.StackMetadata
+	Processes  ProcessDetails
+}
+
+type ProcessDetails struct {
+	DefaultProcess *lifecycle.Process
+	OtherProcesses []lifecycle.Process
 }
 
 func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
@@ -50,11 +56,27 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		return nil, err
 	}
 
+	defaultProcessType, err := img.Env("CNB_PROCESS_TYPE")
+	if err != nil || defaultProcessType == "" {
+		defaultProcessType = "web"
+	}
+
+	var processDetails ProcessDetails
+	for _, proc := range buildMD.Processes {
+		proc := proc
+		if proc.Type == defaultProcessType {
+			processDetails.DefaultProcess = &proc
+			continue
+		}
+		processDetails.OtherProcesses = append(processDetails.OtherProcesses, proc)
+	}
+
 	return &ImageInfo{
 		StackID:    stackID,
 		Stack:      layersMd.Stack,
 		Base:       layersMd.RunImage,
 		BOM:        buildMD.BOM,
 		Buildpacks: buildMD.Buildpacks,
+		Processes:  processDetails,
 	}, nil
 }

@@ -3,11 +3,15 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"text/tabwriter"
 	"text/template"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	"github.com/buildpack/lifecycle"
 
 	"github.com/buildpack/pack"
 	"github.com/buildpack/pack/internal/config"
@@ -76,6 +80,7 @@ func logBOM(remote *pack.ImageInfo, local *pack.ImageInfo, logger logging.Logger
 func logDetails(remote *pack.ImageInfo, local *pack.ImageInfo, cfg config.Config, logger logging.Logger) {
 	imgTpl := template.Must(template.New("runImages").Parse(runImagesTemplate))
 	imgTpl = template.Must(imgTpl.New("buildpacks").Parse(buildpacksTemplate))
+	imgTpl = template.Must(imgTpl.New("processes").Parse(processesTemplate))
 	imgTpl = template.Must(imgTpl.New("image").Parse(imageTemplate))
 	remoteOutput, err := inspectImageOutput(remote, cfg, imgTpl)
 	if err != nil {
@@ -91,6 +96,13 @@ func logDetails(remote *pack.ImageInfo, local *pack.ImageInfo, cfg config.Config
 	}
 }
 
+type process struct {
+	PType   string
+	Shell   string
+	Command string
+	Args    string
+}
+
 func inspectImageOutput(
 	info *pack.ImageInfo,
 	cfg config.Config,
@@ -101,18 +113,54 @@ func inspectImageOutput(
 	}
 	var buf bytes.Buffer
 	localMirrors := getLocalMirrors(info.Stack.RunImage.Image, cfg)
+	processes := displayProcesses(info.Processes)
 	tw := tabwriter.NewWriter(&buf, 0, 0, 8, ' ', 0)
 	defer tw.Flush()
 	if err := tpl.Execute(tw, &struct {
 		Info         *pack.ImageInfo
 		LocalMirrors []string
+		Processes    []process
 	}{
 		info,
 		localMirrors,
+		processes,
 	}); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+func displayProcess(p lifecycle.Process, d bool) process {
+	shell := ""
+	if !p.Direct {
+		shell = "bash"
+	}
+
+	pType := p.Type
+	if d {
+		pType = fmt.Sprintf("%s (default)", pType)
+	}
+
+	return process{
+		PType:   pType,
+		Shell:   shell,
+		Command: p.Command,
+		Args:    strings.Join(p.Args, " "),
+	}
+}
+
+func displayProcesses(sourceProcesses pack.ProcessDetails) []process {
+	processes := []process{}
+
+	if sourceProcesses.DefaultProcess != nil {
+		processes = append(processes, displayProcess(*sourceProcesses.DefaultProcess, true))
+	}
+
+	for _, p := range sourceProcesses.OtherProcesses {
+		processes = append(processes, displayProcess(p, false))
+	}
+
+	return processes
 }
 
 var runImagesTemplate = `
@@ -138,8 +186,17 @@ Buildpacks:
 {{- end }}
 {{- else }}
   (buildpacks metadata not present)
+{{- end }}`
+
+var processesTemplate = `
+{{- if .Processes }}
+
+Processes:
+  TYPE	SHELL	COMMAND	ARGS
+{{- range $_, $p := .Processes }}
+  {{ $p.PType }}	{{ $p.Shell }}	{{ $p.Command }}	{{ $p.Args }}
 {{- end }}
-`
+{{- end }}`
 
 var imageTemplate = `
 Stack: {{ .Info.StackID }}
@@ -150,5 +207,6 @@ Base Image:
 {{- end}}
   Top Layer: {{ .Info.Base.TopLayer }}
 {{ template "runImages" . }}
-{{ template "buildpacks" . }}
+{{ template "buildpacks" . }}{{ template "processes" . }}
+
 `
