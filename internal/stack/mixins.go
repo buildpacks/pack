@@ -35,13 +35,13 @@ func ValidateMixins(buildImageName string, buildImageMixins []string, runImageNa
 }
 
 func FindStageMixins(mixins []string, stage string) []string {
-	var invalid []string
+	var found []string
 	for _, m := range mixins {
 		if strings.HasPrefix(m, stage+":") {
-			invalid = append(invalid, m)
+			found = append(found, m)
 		}
 	}
-	return invalid
+	return found
 }
 
 func removeStageMixins(mixins []string, stage string) []string {
