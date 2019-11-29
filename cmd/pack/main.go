@@ -73,6 +73,7 @@ func main() {
 	rootCmd.AddCommand(commands.Report(logger))
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger))
+	rootCmd.AddCommand(commands.GenCommand(logger))
 
 	if err := rootCmd.Execute(); err != nil {
 		if commands.IsSoftError(err) {
