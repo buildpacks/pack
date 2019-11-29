@@ -18,6 +18,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/sclevine/spec v1.2.0
 	github.com/spf13/cobra v0.0.5
+	google.golang.org/appengine v1.4.0 // indirect
 )
 
 go 1.13
