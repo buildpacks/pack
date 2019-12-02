@@ -1133,6 +1133,17 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		})
 
 		when("--no-pull", func() {
+			it("should use local image", func() {
+				nestedPackage := createPackageLocally(filepath.Join(tmpDir, "package.toml"))
+				aggregatePackageToml := generateAggregatePackageToml(nestedPackage)
+
+				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+				h.Run(t, subjectPack("create-package", packageName, "-p", aggregatePackageToml, "--no-pull"))
+
+				_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+				h.AssertNil(t, err)
+			})
+
 			it("should not pull image from registry", func() {
 				nestedPackage := createPackageRemotely(filepath.Join(tmpDir, "package.toml"))
 				aggregatePackageToml := generateAggregatePackageToml(nestedPackage)

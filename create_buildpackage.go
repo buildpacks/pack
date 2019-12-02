@@ -56,12 +56,10 @@ func (c *Client) CreatePackage(ctx context.Context, opts CreatePackageOptions) e
 			)
 		}
 
-		pkg := &imgUtilPackage{
+		packageBuilder.AddPackage(&packageImage{
 			img:      pkgImage,
 			bpLayers: bpLayers,
-		}
-
-		packageBuilder.AddPackage(pkg)
+		})
 	}
 
 	packageBuilder.SetDefaultBuildpack(opts.Config.Default)
@@ -78,23 +76,23 @@ func (c *Client) CreatePackage(ctx context.Context, opts CreatePackageOptions) e
 	return err
 }
 
-type imgUtilPackage struct {
+type packageImage struct {
 	img      imgutil.Image
 	bpLayers dist.BuildpackLayers
 }
 
-func (i *imgUtilPackage) Name() string {
+func (i *packageImage) Name() string {
 	return i.img.Name()
 }
 
-func (i *imgUtilPackage) BuildpackLayers() dist.BuildpackLayers {
+func (i *packageImage) BuildpackLayers() dist.BuildpackLayers {
 	return i.bpLayers
 }
 
-func (i *imgUtilPackage) GetLayer(diffID string) (io.ReadCloser, error) {
+func (i *packageImage) GetLayer(diffID string) (io.ReadCloser, error) {
 	return i.img.GetLayer(diffID)
 }
 
-func (i *imgUtilPackage) Label(name string) (value string, err error) {
+func (i *packageImage) Label(name string) (value string, err error) {
 	return i.img.Label(name)
 }
