@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/buildpack/imgutil"
 	"github.com/buildpack/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -67,24 +68,12 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 		return url
 	}
 
-	// newWiredLocalImage creates a new local image and wires the mock image factory
-	newWiredLocalImage := func(name string) *fakes.Image {
-		img := fakes.NewImage(name, "", nil)
-		mockImageFactory.EXPECT().NewImage(img.Name(), true).Return(img, nil).AnyTimes()
-		return img
-	}
-
-	newWiredRemoteImage := func(name string) *fakes.Image {
-		img := fakes.NewImage(name, "", nil)
-		mockImageFactory.EXPECT().NewImage(img.Name(), false).Return(img, nil).AnyTimes()
-		return img
-	}
-
 	when("nested package lives in registry", func() {
 		var nestedPackage *fakes.Image
 
 		it.Before(func() {
-			nestedPackage = newWiredRemoteImage("nested/package-" + h.RandString(12))
+			nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
+			mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
 
 			bpd := dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
@@ -103,87 +92,100 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 			}))
 		})
 
-		it("has publish=false and no-pull=false", func() {
-			// should call image fetcher with daemon=true, pull=true
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, true).Return(nestedPackage, nil)
+		shouldCallImageFetcherWith := func(demon, pull bool) {
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nestedPackage, nil)
+		}
 
-			// should push to daemon (by creating a local image)
-			packageImage := newWiredLocalImage("some/package" + h.RandString(12))
+		shouldNotFindImageWhenCallingImageFetcherWith := func(demon, pull bool) {
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nil, image.ErrNotFound)
+		}
 
-			// should succeed
-			h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
-				Name: packageImage.Name(),
-				Config: buildpackage.Config{
-					Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-					Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
-					Stacks:   []dist.Stack{{ID: "some.stack.id"}},
-				},
-				Publish: false,
-				NoPull:  false,
-			}))
+		shouldCreateLocalImage := func() imgutil.Image {
+			img := fakes.NewImage("some/package"+h.RandString(12), "", nil)
+			mockImageFactory.EXPECT().NewImage(img.Name(), true).Return(img, nil)
+			return img
+		}
+
+		shouldCreateRemoteImage := func() *fakes.Image {
+			img := fakes.NewImage("some/package"+h.RandString(12), "", nil)
+			mockImageFactory.EXPECT().NewImage(img.Name(), false).Return(img, nil)
+			return img
+		}
+
+		when("publish=false and no-pull=false", func() {
+			it("should pull and use local image", func() {
+				shouldCallImageFetcherWith(true, true)
+				localImage := shouldCreateLocalImage()
+				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+					Name: localImage.Name(),
+					Config: buildpackage.Config{
+						Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+						Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
+						Stacks:   []dist.Stack{{ID: "some.stack.id"}},
+					},
+					Publish: false,
+					NoPull:  false,
+				}))
+			})
 		})
 
-		it("has publish=true and no-pull=false", func() {
-			// should call image fetcher with daemon=false, pull=true
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), false, true).Return(nestedPackage, nil)
+		when("publish=true and no-pull=false", func() {
+			it("should use remote image", func() {
+				shouldCallImageFetcherWith(false, true)
+				packageImage := shouldCreateRemoteImage()
 
-			// should push to registry (by creating a remote image)
-			packageImage := newWiredRemoteImage("some/package" + h.RandString(12))
-
-			// should succeed
-			h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
-				Name: packageImage.Name(),
-				Config: buildpackage.Config{
-					Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-					Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
-					Stacks:   []dist.Stack{{ID: "some.stack.id"}},
-				},
-				Publish: true,
-				NoPull:  false,
-			}))
+				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+					Name: packageImage.Name(),
+					Config: buildpackage.Config{
+						Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+						Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
+						Stacks:   []dist.Stack{{ID: "some.stack.id"}},
+					},
+					Publish: true,
+					NoPull:  false,
+				}))
+			})
 		})
 
-		it("has publish=true and no-pull=true", func() {
-			// should call image fetcher with daemon=false, pull=false
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), false, false).Return(nestedPackage, nil)
+		when("publish=true and no-pull=true", func() {
+			it("should not pull image and push to registry", func() {
+				shouldCallImageFetcherWith(false, false)
+				packageImage := shouldCreateRemoteImage()
 
-			// should push to registry (by creating a remote image)
-			packageImage := newWiredRemoteImage("some/package" + h.RandString(12))
-
-			// should succeed
-			h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
-				Name: packageImage.Name(),
-				Config: buildpackage.Config{
-					Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-					Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
-					Stacks:   []dist.Stack{{ID: "some.stack.id"}},
-				},
-				Publish: true,
-				NoPull:  true,
-			}))
+				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+					Name: packageImage.Name(),
+					Config: buildpackage.Config{
+						Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+						Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
+						Stacks:   []dist.Stack{{ID: "some.stack.id"}},
+					},
+					Publish: true,
+					NoPull:  true,
+				}))
+			})
 		})
 
-		it("has publish=false and no-pull=true", func() {
-			// should call image fetcher with daemon=true, pull=false (not finding image)
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, false).Return(nil, image.ErrNotFound)
+		when("publish=false no-pull=true and there is no local image", func() {
+			it("should fail without trying to retrieve image from registry", func() {
+				shouldNotFindImageWhenCallingImageFetcherWith(true, false)
 
-			// should fail
-			h.AssertError(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
-				Name: "some/package",
-				Config: buildpackage.Config{
-					Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-					Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
-					Stacks:   []dist.Stack{{ID: "some.stack.id"}},
-				},
-				Publish: false,
-				NoPull:  true,
-			}), "not found")
+				h.AssertError(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+					Name: "some/package",
+					Config: buildpackage.Config{
+						Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+						Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
+						Stacks:   []dist.Stack{{ID: "some.stack.id"}},
+					},
+					Publish: false,
+					NoPull:  true,
+				}), "not found")
+			})
 		})
 	})
 
 	when("nested package is not a package", func() {
 		it("should error", func() {
-			notPackageImage := newWiredLocalImage("not/package")
+			notPackageImage := fakes.NewImage("not/package", "", nil)
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, true).Return(notPackageImage, nil)
 
 			h.AssertError(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{

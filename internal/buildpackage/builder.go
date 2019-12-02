@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/buildpack/imgutil"
 	"github.com/pkg/errors"
@@ -158,7 +157,7 @@ func embedBuildpackToImage(pkg Package, bpID, bpVersion string, bpInfo dist.Buil
 	}
 	defer readCloser.Close()
 
-	file, err := os.Create(filepath.Join(tmpDir, fmt.Sprintf("%s.%s.tar", bpID, bpVersion)))
+	file, err := ioutil.TempFile(tmpDir, fmt.Sprintf("%s.%s.tar", bpID, bpVersion))
 	if err != nil {
 		return errors.Wrap(err, "creating temp file")
 	}
