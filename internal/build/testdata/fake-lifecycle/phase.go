@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"syscall"
 
@@ -48,6 +49,9 @@ func main() {
 	}
 	if len(os.Args) > 1 && os.Args[1] == "network" {
 		testNetwork()
+	}
+	if len(os.Args) > 1 && os.Args[1] == "user" {
+		testUser()
 	}
 }
 
@@ -189,4 +193,15 @@ func readDir(dir string) {
 			readDir(absPath)
 		}
 	}
+}
+
+func testUser() {
+	fmt.Println("user test")
+	user, err := user.Current()
+	if err != nil {
+		fmt.Printf("failed to determine current user: %s\n", err)
+		return
+	}
+
+	fmt.Printf("current user is %s\n", user.Name)
 }

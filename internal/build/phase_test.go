@@ -214,6 +214,19 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("#WithRoot", func() {
+				it("sets the containers user to root", func() {
+					phase, err := subject.NewPhase(
+						"phase",
+						build.WithArgs("user"),
+						build.WithRoot(),
+					)
+					h.AssertNil(t, err)
+					assertRunSucceeds(t, phase, &outBuf, &errBuf)
+					h.AssertContains(t, outBuf.String(), "[phase] current user is root")
+				})
+			})
+
 			when("#WithBinds", func() {
 				it.After(func() {
 					docker.VolumeRemove(context.TODO(), "some-volume", true)
