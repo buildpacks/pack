@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
@@ -56,6 +58,7 @@ type ProxyConfig struct {
 
 type ContainerConfig struct {
 	Network string
+	Volumes []string
 }
 
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
@@ -126,6 +129,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
 	}
 
+	platformVolumes, err := buildPlatformVolumes(opts.ContainerConfig.Volumes)
+	if err != nil {
+		return err
+	}
+
 	return c.lifecycle.Execute(ctx, build.LifecycleOptions{
 		AppPath:    appPath,
 		Image:      imageRef,
@@ -137,6 +145,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		HTTPSProxy: proxyConfig.HTTPSProxy,
 		NoProxy:    proxyConfig.NoProxy,
 		Network:    opts.ContainerConfig.Network,
+		Volumes:    platformVolumes,
 	})
 }
 
@@ -521,4 +530,21 @@ func randString(n int) string {
 		b[i] = 'a' + byte(rand.Intn(26))
 	}
 	return string(b)
+}
+
+func buildPlatformVolumes(volumes []string) ([]string, error) {
+	platformVolumes := make([]string, len(volumes))
+	// Assume a linux container
+	parser := mounts.NewParser(mounts.OSLinux)
+	for i, v := range volumes {
+		volume, err := parser.ParseMountRaw(v, "")
+		if err != nil {
+			return nil, errors.Wrapf(err, "Platform volume %q has invalid format", v)
+		}
+
+		// Use path.Join instead of filepath.Join because we assume the container OS is linux but the host may be windows
+		volume.Destination = path.Join("/platform", volume.Destination)
+		platformVolumes[i] = fmt.Sprintf("%v:%v:%v", volume.Source, volume.Destination, volume.Mode)
+	}
+	return platformVolumes, nil
 }

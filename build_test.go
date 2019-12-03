@@ -12,8 +12,10 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -1502,6 +1504,67 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					h.AssertError(t, err, "validating stack mixins: buildpack 'buildpack.1.id@buildpack.1.version' requires missing mixin(s): build:mixinY, mixinX, run:mixinZ")
+				})
+			})
+		})
+
+		when("volumes are mounted from the host", func() {
+			when("not on windows", func() {
+				it.Before(func() {
+					h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
+				})
+
+				it("prepends /platform to the mount paths", func() {
+					subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						ContainerConfig: ContainerConfig{
+							Volumes: []string{"/a:/x", "/b:/some/path/y:ro"},
+						},
+					})
+					expected := []string{
+						fmt.Sprintf("/a:%v:", filepath.Join("/platform", "x")),
+						fmt.Sprintf("/b:%v:ro", filepath.Join("/platform", "some/path/y")),
+					}
+					h.AssertEq(t, fakeLifecycle.Opts.Volumes, expected)
+				})
+
+				when("volume specification is invalid", func() {
+					it("returns an error", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: builderName,
+							ContainerConfig: ContainerConfig{
+								Volumes: []string{"/a:/x", ":::"},
+							},
+						})
+						h.AssertError(t, err, `Platform volume ":::" has invalid format: invalid volume specification: ':::'`)
+					})
+				})
+			})
+
+			when("on windows", func() {
+				it.Before(func() {
+					h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
+				})
+
+				it("prepends /platform to the mount paths", func() {
+					dir, _ := ioutil.TempDir("", "pack-test-mount")
+					volume := fmt.Sprintf("%v:/x:ro", dir)
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						ContainerConfig: ContainerConfig{
+							Volumes: []string{volume},
+						},
+					})
+					expected := []string{
+						fmt.Sprintf("%v:%v:ro", strings.ToLower(dir), path.Join("/platform", "x")),
+					}
+					h.AssertNil(t, err)
+					t.Log(fakeLifecycle.Opts.Volumes)
+					t.Log(expected)
+					h.AssertEq(t, fakeLifecycle.Opts.Volumes, expected)
 				})
 			})
 		})

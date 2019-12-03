@@ -122,6 +122,12 @@ func (i *Image) AddLayer(path string) error {
 	return nil
 }
 
+func (i *Image) AddLayerWithDiffID(path string, diffID string) error {
+	i.layersMap[diffID] = path
+	i.layers = append(i.layers, path)
+	return nil
+}
+
 func shaForFile(path string) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {

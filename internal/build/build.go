@@ -35,6 +35,7 @@ type Lifecycle struct {
 	platformAPIVersion string
 	LayersVolume       string
 	AppVolume          string
+	Volumes            []string
 }
 
 type Cache interface {
@@ -61,6 +62,7 @@ type LifecycleOptions struct {
 	HTTPSProxy string
 	NoProxy    string
 	Network    string
+	Volumes    []string
 }
 
 // CombinedExporterCacher returns true if the lifecycle contains combined exporter/cacher phases and reversed analyzer/restorer phases.
@@ -115,7 +117,8 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	}
 
 	l.logger.Info(style.Step("BUILDING"))
-	if err := l.Build(ctx, opts.Network); err != nil {
+
+	if err := l.Build(ctx, opts.Network, opts.Volumes); err != nil {
 		return err
 	}
 

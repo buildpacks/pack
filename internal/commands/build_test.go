@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -71,6 +72,17 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					Return(nil)
 
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--network", "my-network"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("volume mounts are specified", func() {
+			it("mounts the volumes", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithVolumes([]string{"a:b", "c:d"})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--volume", "a:b", "--volume", "c:d"})
 				h.AssertNil(t, command.Execute())
 			})
 		})
@@ -273,6 +285,15 @@ func EqBuildOptionsWithNetwork(network string) gomock.Matcher {
 		description: fmt.Sprintf("Network=%s", network),
 		equals: func(o pack.BuildOptions) bool {
 			return o.ContainerConfig.Network == network
+		},
+	}
+}
+
+func EqBuildOptionsWithVolumes(volumes []string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Volumes=%s", volumes),
+		equals: func(o pack.BuildOptions) bool {
+			return reflect.DeepEqual(o.ContainerConfig.Volumes, volumes)
 		},
 	}
 }
