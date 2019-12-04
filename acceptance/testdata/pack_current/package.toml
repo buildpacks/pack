@@ -2,7 +2,7 @@
 id = "noop.buildpack"
 version = "noop.buildpack.version"
 
-[[blobs]]
+[[buildpacks]]
 uri = "noop-buildpack.tgz"
 
 [[stacks]]

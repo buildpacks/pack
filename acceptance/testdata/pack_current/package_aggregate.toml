@@ -1,0 +1,13 @@
+[default]
+id = "noop.buildpack"
+version = "noop.buildpack.version"
+
+[[buildpacks]]
+uri = "simple-layers-buildpack.tgz"
+
+[[packages]]
+ref = "{{ .PackageName }}"
+
+[[stacks]]
+id = "pack.test.stack"
+mixins = ["netcat"]
