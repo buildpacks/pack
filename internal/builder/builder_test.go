@@ -808,7 +808,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					var layers dist.BuildpackLayers
 					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 
-					h.AssertContains(t, outBuf.String(), "Warning: buildpack 'buildpack-1-id@buildpack-1-version-2' already exists on builder and will be overridden")
+					h.AssertContains(t, outBuf.String(), "Warning: buildpack 'buildpack-1-id@buildpack-1-version-2' already exists on builder and will be overwritten")
 					h.AssertNotContains(t, layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDiffID, "buildpack-1-version-2-diff-id")
 				})
 			})
