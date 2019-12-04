@@ -248,17 +248,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			})
 
 			when("build", func() {
-				var repo, repoName, containerName string
+				var repo, repoName string
 
 				it.Before(func() {
 					repo = "some-org/" + h.RandString(10)
 					repoName = registryConfig.RepoName(repo)
-					containerName = "test-" + h.RandString(10)
 				})
 
 				it.After(func() {
-					dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
-					dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
 					dockerCli.ImageRemove(context.TODO(), repoName, dockertypes.ImageRemoveOptions{Force: true, PruneChildren: true})
 					ref, err := name.ParseReference(repoName, name.WeakValidation)
 					h.AssertNil(t, err)
@@ -331,12 +328,23 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
 						t.Log("restores the cache")
-						h.AssertContainsMatch(t, output, `(?i)\[restorer] restoring cached layer 'simple/layers:cached-launch-layer'`)
-						h.AssertContainsMatch(t, output, `(?i)\[analyzer] using cached launch layer 'simple/layers:cached-launch-layer'`)
+						if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")) {
+							h.AssertContainsMatch(t, output, `(?i)\[restorer] restoring cached layer 'simple/layers:cached-launch-layer'`)
+							h.AssertContainsMatch(t, output, `(?i)\[analyzer] using cached launch layer 'simple/layers:cached-launch-layer'`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[restorer] Restoring data for "simple/layers:cached-launch-layer" from cache`)
+							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
+						}
 
-						t.Log("exporter and cacher reuse unchanged layers")
+						t.Log("exporter reuses unchanged layers")
 						h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
-						h.AssertContainsMatch(t, output, `(?i)\[cacher] reusing layer 'simple/layers:cached-launch-layer'`)
+
+						if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")) {
+							t.Log("cacher reuses unchanged layers")
+							h.AssertContainsMatch(t, output, `(?i)\[cacher] reusing layer 'simple/layers:cached-launch-layer'`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[exporter] Reusing cache layer 'simple/layers:cached-launch-layer'`)
+						}
 
 						t.Log("rebuild with --clear-cache")
 						output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--clear-cache"))
@@ -352,7 +360,11 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
 
 						t.Log("cacher adds layers")
-						h.AssertContainsMatch(t, output, `(?i)\[cacher] (Caching|adding) layer 'simple/layers:cached-launch-layer'`)
+						if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")) {
+							h.AssertContainsMatch(t, output, `(?i)\[cacher] (Caching|adding) layer 'simple/layers:cached-launch-layer'`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[exporter] Adding cache layer 'simple/layers:cached-launch-layer'`)
+						}
 
 						if packSupports(packPath, "inspect-image") {
 							t.Log("inspect-image")

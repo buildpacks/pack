@@ -81,6 +81,7 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName string, publish, clearCache b
 		return l.NewPhase(
 			"analyzer",
 			WithRegistryAccess(repoName),
+			WithRoot(),
 			WithArgs(args...),
 			WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 		)

@@ -94,6 +94,13 @@ func WithDaemonAccess() func(*Phase) (*Phase, error) {
 	}
 }
 
+func WithRoot() func(*Phase) (*Phase, error) {
+	return func(phase *Phase) (*Phase, error) {
+		phase.ctrConf.User = "root"
+		return phase, nil
+	}
+}
+
 func WithBinds(binds ...string) func(*Phase) (*Phase, error) {
 	return func(phase *Phase) (*Phase, error) {
 		phase.hostConf.Binds = append(phase.hostConf.Binds, binds...)
