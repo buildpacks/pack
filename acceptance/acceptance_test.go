@@ -374,6 +374,12 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							if _, err := os.Stat(outputTemplate); err != nil {
 								t.Fatal(err.Error())
 							}
+							type process struct {
+								shell       string
+								processType string
+								command     string
+								args        []string
+							}
 							expectedOutput := fillTemplate(t, outputTemplate,
 								map[string]interface{}{
 									"image_name":             repoName,
@@ -382,6 +388,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 									"run_image_local_mirror": localRunImageMirror,
 									"run_image_mirror":       runImageMirror,
 									"show_reference":         !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.5.0")),
+									"show_processes":         !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")),
 								},
 							)
 							h.AssertEq(t, output, expectedOutput)
@@ -733,6 +740,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 										"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
 										"run_image_mirror":     runImageMirror,
 										"show_reference":       !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.5.0")),
+										"show_processes":       !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")),
 									},
 								)
 								h.AssertEq(t, output, expectedOutput)

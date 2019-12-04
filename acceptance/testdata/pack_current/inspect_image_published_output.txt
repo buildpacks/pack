@@ -17,6 +17,13 @@ Run Images:
 Buildpacks:
   ID                   VERSION
   simple/layers        simple-layers-version
+{{- if .show_processes}}
+
+Processes:
+  TYPE                 SHELL        COMMAND        ARGS
+  web (default)        bash         ./run          8080
+  hello                             echo           hello world
+{{- end }}
 
 
 LOCAL:
@@ -36,4 +43,11 @@ Run Images:
 Buildpacks:
   ID                   VERSION
   simple/layers        simple-layers-version
+{{- if .show_processes}}
+
+Processes:
+  TYPE                 SHELL        COMMAND        ARGS
+  web (default)        bash         ./run          8080
+  hello                             echo           hello world
+{{- end }}
 

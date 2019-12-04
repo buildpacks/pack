@@ -29,6 +29,17 @@ else
 fi
 
 ## adds a process
-echo 'processes = [{ type = "web", command = "./run"}]' > "$launch_dir/launch.toml"
+cat <<EOF > "$launch_dir/launch.toml"
+[[processes]]
+  type = "web"
+  command = "./run"
+  args = ["8080"]
+
+[[processes]]
+  type = "hello"
+  command = "echo"
+  args = ["hello", "world"]
+  direct = true
+EOF
 
 echo "---> Done"

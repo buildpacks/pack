@@ -82,6 +82,20 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
       "version": "other-version"
     }
   ],
+  "processes": [
+    {
+      "type": "other-process",
+      "command": "/other/process",
+      "args": ["opt", "1"],
+      "direct": true
+    },
+    {
+      "type": "web",
+      "command": "/start/web-process",
+      "args": ["-p", "1234"],
+      "direct": false
+    }
+  ],
   "launcher": {
     "version": "0.5.0"
   }
@@ -156,6 +170,124 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, info.Buildpacks[0].Version, "some-version")
 					h.AssertEq(t, info.Buildpacks[1].ID, "other-buildpack")
 					h.AssertEq(t, info.Buildpacks[1].Version, "other-version")
+				})
+
+				it("returns the processes setting the web process as default", func() {
+					info, err := subject.InspectImage("some/image", useDaemon)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, info.Processes,
+						ProcessDetails{
+							DefaultProcess: &lifecycle.Process{
+								Type:    "web",
+								Command: "/start/web-process",
+								Args:    []string{"-p", "1234"},
+								Direct:  false,
+							},
+							OtherProcesses: []lifecycle.Process{
+								{
+									Type:    "other-process",
+									Command: "/other/process",
+									Args:    []string{"opt", "1"},
+									Direct:  true,
+								},
+							},
+						},
+					)
+				})
+
+				when("CNB_PROCESS_TYPE is set", func() {
+					it.Before(func() {
+						h.AssertNil(t, fakeImage.SetEnv("CNB_PROCESS_TYPE", "other-process"))
+					})
+
+					it("returns processes setting the correct default process", func() {
+						info, err := subject.InspectImage("some/image", useDaemon)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, info.Processes,
+							ProcessDetails{
+								DefaultProcess: &lifecycle.Process{
+									Type:    "other-process",
+									Command: "/other/process",
+									Args:    []string{"opt", "1"},
+									Direct:  true,
+								},
+								OtherProcesses: []lifecycle.Process{
+									{
+										Type:    "web",
+										Command: "/start/web-process",
+										Args:    []string{"-p", "1234"},
+										Direct:  false,
+									},
+								},
+							},
+						)
+					})
+				})
+
+				when("CNB_PROCESS_TYPE is set, but doesn't match an existing process", func() {
+					it.Before(func() {
+						h.AssertNil(t, fakeImage.SetEnv("CNB_PROCESS_TYPE", "missing-process"))
+					})
+
+					it("returns a nil default process", func() {
+						info, err := subject.InspectImage("some/image", useDaemon)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, info.Processes,
+							ProcessDetails{
+								DefaultProcess: nil,
+								OtherProcesses: []lifecycle.Process{
+									{
+										Type:    "other-process",
+										Command: "/other/process",
+										Args:    []string{"opt", "1"},
+										Direct:  true,
+									},
+									{
+										Type:    "web",
+										Command: "/start/web-process",
+										Args:    []string{"-p", "1234"},
+										Direct:  false,
+									},
+								},
+							},
+						)
+					})
+				})
+
+				it("returns a nil default process when CNB_PROCESS_TYPE is not set and there is no web process", func() {
+					h.AssertNil(t, fakeImage.SetLabel(
+						"io.buildpacks.build.metadata",
+						`{
+  "processes": [
+    {
+      "type": "other-process",
+      "command": "/other/process",
+      "args": ["opt", "1"],
+      "direct": true
+    }
+  ]
+}`,
+					))
+
+					info, err := subject.InspectImage("some/image", useDaemon)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, info.Processes,
+						ProcessDetails{
+							DefaultProcess: nil,
+							OtherProcesses: []lifecycle.Process{
+								{
+									Type:    "other-process",
+									Command: "/other/process",
+									Args:    []string{"opt", "1"},
+									Direct:  true,
+								},
+							},
+						},
+					)
 				})
 			})
 		}
