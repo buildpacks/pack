@@ -54,6 +54,8 @@ func main() {
 	rootCmd.PersistentFlags().Bool("timestamps", false, "Enable timestamps in output")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Show less output")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Show more output")
+	rootCmd.Flags().Bool("version", false, "Show current 'pack' version")
+
 	commands.AddHelpFlag(rootCmd, "pack")
 
 	rootCmd.AddCommand(commands.Build(logger, cfg, &packClient))
@@ -73,6 +75,9 @@ func main() {
 	rootCmd.AddCommand(commands.Report(logger))
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger))
+
+	rootCmd.Version = cmd.Version
+	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)
 
 	if err := rootCmd.Execute(); err != nil {
 		if commands.IsSoftError(err) {
