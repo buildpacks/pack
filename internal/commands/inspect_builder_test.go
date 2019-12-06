@@ -38,8 +38,147 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController *gomock.Controller
 		mockClient     *testmocks.MockPackClient
 		cfg            config.Config
-	)
+		buildpack1Info = dist.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
+		buildpack2Info = dist.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0"}
+		buildpacks     = []builder.BuildpackMetadata{
+			{BuildpackInfo: buildpack1Info, Latest: true},
+			{BuildpackInfo: buildpack2Info, Latest: false},
+		}
+		remoteInfo = &pack.BuilderInfo{
+			Description:     "Some remote description",
+			Stack:           "test.stack.id",
+			Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
+			RunImage:        "some/run-image",
+			RunImageMirrors: []string{"first/default", "second/default"},
+			Buildpacks:      buildpacks,
+			Order: dist.Order{
+				{Group: []dist.BuildpackRef{
+					{BuildpackInfo: buildpack1Info, Optional: true},
+					{BuildpackInfo: dist.BuildpackInfo{ID: buildpack2Info.ID}},
+				}}},
+			Lifecycle: builder.LifecycleDescriptor{
+				Info: builder.LifecycleInfo{
+					Version: &builder.Version{
+						Version: *semver.MustParse("6.7.8"),
+					},
+				},
+				API: builder.LifecycleAPI{
+					BuildpackVersion: api.MustParse("5.6"),
+					PlatformVersion:  api.MustParse("7.8"),
+				},
+			},
+			CreatedBy: builder.CreatorMetadata{
+				Name:    "Pack CLI",
+				Version: "1.2.3",
+			},
+		}
+		localInfo = &pack.BuilderInfo{
+			Description:     "Some local description",
+			Stack:           "test.stack.id",
+			Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
+			RunImage:        "some/run-image",
+			RunImageMirrors: []string{"first/local-default", "second/local-default"},
+			Buildpacks:      buildpacks,
+			Order: dist.Order{
+				{Group: []dist.BuildpackRef{{BuildpackInfo: buildpack1Info}}},
+				{Group: []dist.BuildpackRef{{BuildpackInfo: dist.BuildpackInfo{ID: buildpack2Info.ID}, Optional: true}}},
+			},
+			Lifecycle: builder.LifecycleDescriptor{
+				Info: builder.LifecycleInfo{
+					Version: &builder.Version{
+						Version: *semver.MustParse("4.5.6"),
+					},
+				},
+				API: builder.LifecycleAPI{
+					BuildpackVersion: api.MustParse("1.2"),
+					PlatformVersion:  api.MustParse("3.4"),
+				},
+			},
+			CreatedBy: builder.CreatorMetadata{
+				Name:    "Pack CLI",
+				Version: "4.5.6",
+			},
+		}
+		remoteOutput = `
+REMOTE:
 
+Description: Some remote description
+
+Created By:
+  Name: Pack CLI
+  Version: 1.2.3
+
+Stack:
+  ID: test.stack.id
+  Mixins:
+    mixin1
+    mixin2
+    build:mixin3
+    build:mixin4
+
+Lifecycle:
+  Version: 6.7.8
+  Buildpack API: 5.6
+  Platform API: 7.8
+
+Run Images:
+  first/local     (user-configured)
+  second/local    (user-configured)
+  some/run-image
+  first/default
+  second/default
+
+Buildpacks:
+  ID                 VERSION
+  test.bp.one        1.0.0
+  test.bp.two        2.0.0
+
+Detection Order:
+  Group #1:
+    test.bp.one@1.0.0    (optional)
+    test.bp.two          
+`
+		localOutput = `
+LOCAL:
+
+Description: Some local description
+
+Created By:
+  Name: Pack CLI
+  Version: 4.5.6
+
+Stack:
+  ID: test.stack.id
+  Mixins:
+    mixin1
+    mixin2
+    build:mixin3
+    build:mixin4
+
+Lifecycle:
+  Version: 4.5.6
+  Buildpack API: 1.2
+  Platform API: 3.4
+
+Run Images:
+  first/local     (user-configured)
+  second/local    (user-configured)
+  some/run-image
+  first/local-default
+  second/local-default
+
+Buildpacks:
+  ID                 VERSION
+  test.bp.one        1.0.0
+  test.bp.two        2.0.0
+
+Detection Order:
+  Group #1:
+    test.bp.one@1.0.0    
+  Group #2:
+    test.bp.two    (optional)
+`
+	)
 	it.Before(func() {
 		cfg = config.Config{
 			DefaultBuilder: "default/builder",
@@ -59,15 +198,38 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Get", func() {
-		when("image cannot be found", func() {
-			it("logs 'Not present'", func() {
+		when("remote builder image cannot be found", func() {
+			it("warns 'remote image not present'", func() {
 				mockClient.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
+				mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
+				command.SetArgs([]string{"some/image"})
+				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), `Inspecting builder: 'some/image'`)
+				h.AssertContains(t, outBuf.String(), "REMOTE:\n(not present)\n\n")
+				h.AssertContains(t, outBuf.String(), localOutput)
+			})
+		})
+
+		when("local builder image cannot be found", func() {
+			it("warns 'local image not present'", func() {
+				mockClient.EXPECT().InspectBuilder("some/image", false).Return(remoteInfo, nil)
 				mockClient.EXPECT().InspectBuilder("some/image", true).Return(nil, nil)
 
 				command.SetArgs([]string{"some/image"})
 				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), `Inspecting builder: 'some/image'`)
+				h.AssertContains(t, outBuf.String(), "LOCAL:\n(not present)\n")
+				h.AssertContains(t, outBuf.String(), remoteOutput)
+			})
+		})
 
-				h.AssertContains(t, outBuf.String(), "REMOTE:\n(not present)\n\nLOCAL:\n(not present)\n")
+		when("image cannot be found", func() {
+			it("logs 'errors when no image is found'", func() {
+				mockClient.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
+				mockClient.EXPECT().InspectBuilder("some/image", true).Return(nil, nil)
+
+				command.SetArgs([]string{"some/image"})
+				h.AssertError(t, command.Execute(), `Unable to find builder 'some/image' locally or remotely.`)
 			})
 		})
 
@@ -140,70 +302,6 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("is successful", func() {
-			var (
-				buildpack1Info = dist.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
-				buildpack2Info = dist.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0"}
-				buildpacks     = []builder.BuildpackMetadata{
-					{BuildpackInfo: buildpack1Info, Latest: true},
-					{BuildpackInfo: buildpack2Info, Latest: false},
-				}
-				remoteInfo = &pack.BuilderInfo{
-					Description:     "Some remote description",
-					Stack:           "test.stack.id",
-					Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
-					RunImage:        "some/run-image",
-					RunImageMirrors: []string{"first/default", "second/default"},
-					Buildpacks:      buildpacks,
-					Order: dist.Order{
-						{Group: []dist.BuildpackRef{
-							{BuildpackInfo: buildpack1Info, Optional: true},
-							{BuildpackInfo: dist.BuildpackInfo{ID: buildpack2Info.ID}},
-						}}},
-					Lifecycle: builder.LifecycleDescriptor{
-						Info: builder.LifecycleInfo{
-							Version: &builder.Version{
-								Version: *semver.MustParse("6.7.8"),
-							},
-						},
-						API: builder.LifecycleAPI{
-							BuildpackVersion: api.MustParse("5.6"),
-							PlatformVersion:  api.MustParse("7.8"),
-						},
-					},
-					CreatedBy: builder.CreatorMetadata{
-						Name:    "Pack CLI",
-						Version: "1.2.3",
-					},
-				}
-				localInfo = &pack.BuilderInfo{
-					Description:     "Some local description",
-					Stack:           "test.stack.id",
-					Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
-					RunImage:        "some/run-image",
-					RunImageMirrors: []string{"first/local-default", "second/local-default"},
-					Buildpacks:      buildpacks,
-					Order: dist.Order{
-						{Group: []dist.BuildpackRef{{BuildpackInfo: buildpack1Info}}},
-						{Group: []dist.BuildpackRef{{BuildpackInfo: dist.BuildpackInfo{ID: buildpack2Info.ID}, Optional: true}}},
-					},
-					Lifecycle: builder.LifecycleDescriptor{
-						Info: builder.LifecycleInfo{
-							Version: &builder.Version{
-								Version: *semver.MustParse("4.5.6"),
-							},
-						},
-						API: builder.LifecycleAPI{
-							BuildpackVersion: api.MustParse("1.2"),
-							PlatformVersion:  api.MustParse("3.4"),
-						},
-					},
-					CreatedBy: builder.CreatorMetadata{
-						Name:    "Pack CLI",
-						Version: "4.5.6",
-					},
-				}
-			)
-
 			when("using the default builder", func() {
 				it.Before(func() {
 					cfg.DefaultBuilder = "some/image"
@@ -215,86 +313,8 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				it("inspects the default builder", func() {
 					h.AssertNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), "Inspecting default builder: 'default/builder'")
-					h.AssertContains(t, outBuf.String(), `
-REMOTE:
-
-Description: Some remote description
-
-Created By:
-  Name: Pack CLI
-  Version: 1.2.3
-
-Stack:
-  ID: test.stack.id
-  Mixins:
-    mixin1
-    mixin2
-    build:mixin3
-    build:mixin4
-
-Lifecycle:
-  Version: 6.7.8
-  Buildpack API: 5.6
-  Platform API: 7.8
-
-Run Images:
-  first/local     (user-configured)
-  second/local    (user-configured)
-  some/run-image
-  first/default
-  second/default
-
-Buildpacks:
-  ID                 VERSION
-  test.bp.one        1.0.0
-  test.bp.two        2.0.0
-
-Detection Order:
-  Group #1:
-    test.bp.one@1.0.0    (optional)
-    test.bp.two          
-`)
-
-					h.AssertContains(t, outBuf.String(), `
-LOCAL:
-
-Description: Some local description
-
-Created By:
-  Name: Pack CLI
-  Version: 4.5.6
-
-Stack:
-  ID: test.stack.id
-  Mixins:
-    mixin1
-    mixin2
-    build:mixin3
-    build:mixin4
-
-Lifecycle:
-  Version: 4.5.6
-  Buildpack API: 1.2
-  Platform API: 3.4
-
-Run Images:
-  first/local     (user-configured)
-  second/local    (user-configured)
-  some/run-image
-  first/local-default
-  second/local-default
-
-Buildpacks:
-  ID                 VERSION
-  test.bp.one        1.0.0
-  test.bp.two        2.0.0
-
-Detection Order:
-  Group #1:
-    test.bp.one@1.0.0    
-  Group #2:
-    test.bp.two    (optional)
-`)
+					h.AssertContains(t, outBuf.String(), remoteOutput)
+					h.AssertContains(t, outBuf.String(), localOutput)
 				})
 			})
 
@@ -308,86 +328,8 @@ Detection Order:
 				it("displays builder information for local and remote", func() {
 					h.AssertNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), "Inspecting builder: 'some/image'")
-					h.AssertContains(t, outBuf.String(), `
-REMOTE:
-
-Description: Some remote description
-
-Created By:
-  Name: Pack CLI
-  Version: 1.2.3
-
-Stack:
-  ID: test.stack.id
-  Mixins:
-    mixin1
-    mixin2
-    build:mixin3
-    build:mixin4
-
-Lifecycle:
-  Version: 6.7.8
-  Buildpack API: 5.6
-  Platform API: 7.8
-
-Run Images:
-  first/local     (user-configured)
-  second/local    (user-configured)
-  some/run-image
-  first/default
-  second/default
-
-Buildpacks:
-  ID                 VERSION
-  test.bp.one        1.0.0
-  test.bp.two        2.0.0
-
-Detection Order:
-  Group #1:
-    test.bp.one@1.0.0    (optional)
-    test.bp.two          
-`)
-
-					h.AssertContains(t, outBuf.String(), `
-LOCAL:
-
-Description: Some local description
-
-Created By:
-  Name: Pack CLI
-  Version: 4.5.6
-
-Stack:
-  ID: test.stack.id
-  Mixins:
-    mixin1
-    mixin2
-    build:mixin3
-    build:mixin4
-
-Lifecycle:
-  Version: 4.5.6
-  Buildpack API: 1.2
-  Platform API: 3.4
-
-Run Images:
-  first/local     (user-configured)
-  second/local    (user-configured)
-  some/run-image
-  first/local-default
-  second/local-default
-
-Buildpacks:
-  ID                 VERSION
-  test.bp.one        1.0.0
-  test.bp.two        2.0.0
-
-Detection Order:
-  Group #1:
-    test.bp.one@1.0.0    
-  Group #2:
-    test.bp.two    (optional)
-`)
+					h.AssertContains(t, outBuf.String(), remoteOutput)
+					h.AssertContains(t, outBuf.String(), localOutput)
 				})
 			})
 		})
