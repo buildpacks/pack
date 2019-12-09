@@ -36,28 +36,33 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 				imageName = args[0]
 			}
 
+			presentRemote, remoteOutput, remoteWarnings, remoteErr := inspectBuilderOutput(client, cfg, imageName, false)
+			presentLocal, localOutput, localWarnings, localErr := inspectBuilderOutput(client, cfg, imageName, true)
+
+			if !presentRemote && !presentLocal {
+				return errors.New(fmt.Sprintf("Unable to find builder '%s' locally or remotely.\n", imageName))
+			}
+
 			if imageName == cfg.DefaultBuilder {
 				logger.Infof("Inspecting default builder: %s\n", style.Symbol(imageName))
 			} else {
 				logger.Infof("Inspecting builder: %s\n", style.Symbol(imageName))
 			}
 
-			remoteOutput, warnings, err := inspectBuilderOutput(client, cfg, imageName, false)
-			if err != nil {
-				logger.Error(err.Error())
+			if remoteErr != nil {
+				logger.Error(remoteErr.Error())
 			} else {
 				logger.Infof("\nREMOTE:\n%s\n", remoteOutput)
-				for _, w := range warnings {
+				for _, w := range remoteWarnings {
 					logger.Warn(w)
 				}
 			}
 
-			localOutput, warnings, err := inspectBuilderOutput(client, cfg, imageName, true)
-			if err != nil {
-				logger.Error(err.Error())
+			if localErr != nil {
+				logger.Error(localErr.Error())
 			} else {
 				logger.Infof("\nLOCAL:\n%s\n", localOutput)
-				for _, w := range warnings {
+				for _, w := range localWarnings {
 					logger.Warn(w)
 				}
 			}
@@ -69,7 +74,7 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 	return cmd
 }
 
-func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string, local bool) (output string, warning []string, err error) {
+func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string, local bool) (present bool, output string, warning []string, err error) {
 	source := "remote"
 	if local {
 		source = "local"
@@ -77,20 +82,20 @@ func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string
 
 	info, err := client.InspectBuilder(imageName, local)
 	if err != nil {
-		return "", nil, errors.Wrapf(err, "inspecting %s image '%s'", source, imageName)
+		return true, "", nil, errors.Wrapf(err, "inspecting %s image '%s'", source, imageName)
 	}
 
 	if info == nil {
-		return "(not present)", nil, nil
+		return false, "(not present)", nil, nil
 	}
 
 	var buf bytes.Buffer
 	warnings, err := generateBuilderOutput(&buf, imageName, cfg, *info)
 	if err != nil {
-		return "", nil, errors.Wrapf(err, "writing output for %s image '%s'", source, imageName)
+		return true, "", nil, errors.Wrapf(err, "writing output for %s image '%s'", source, imageName)
 	}
 
-	return buf.String(), warnings, nil
+	return true, buf.String(), warnings, nil
 }
 
 func generateBuilderOutput(writer io.Writer, imageName string, cfg config.Config, info pack.BuilderInfo) (warnings []string, err error) {
