@@ -5,19 +5,19 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/buildpack/imgutil"
+	"github.com/buildpacks/imgutil"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/blob"
-	"github.com/buildpack/pack/internal/build"
-	"github.com/buildpack/pack/internal/config"
-	"github.com/buildpack/pack/internal/image"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/build"
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/logging"
 )
 
-//go:generate mockgen -package testmocks -destination testmocks/mock_image_fetcher.go github.com/buildpack/pack ImageFetcher
+//go:generate mockgen -package testmocks -destination testmocks/mock_image_fetcher.go github.com/buildpacks/pack ImageFetcher
 type ImageFetcher interface {
 	// Fetch fetches an image by resolving it both remotely and locally depending on provided parameters.
 	// If daemon is true, it will look return a `local.Image`. Pull, applicable only when daemon is true, will
@@ -25,12 +25,12 @@ type ImageFetcher interface {
 	Fetch(ctx context.Context, name string, daemon, pull bool) (imgutil.Image, error)
 }
 
-//go:generate mockgen -package testmocks -destination testmocks/mock_downloader.go github.com/buildpack/pack Downloader
+//go:generate mockgen -package testmocks -destination testmocks/mock_downloader.go github.com/buildpacks/pack Downloader
 type Downloader interface {
 	Download(ctx context.Context, pathOrURI string) (blob.Blob, error)
 }
 
-//go:generate mockgen -package testmocks -destination testmocks/mock_image_factory.go github.com/buildpack/pack ImageFactory
+//go:generate mockgen -package testmocks -destination testmocks/mock_image_factory.go github.com/buildpacks/pack ImageFactory
 type ImageFactory interface {
 	NewImage(repoName string, local bool) (imgutil.Image, error)
 }

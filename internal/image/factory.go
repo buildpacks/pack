@@ -1,9 +1,9 @@
 package image
 
 import (
-	"github.com/buildpack/imgutil"
-	"github.com/buildpack/imgutil/local"
-	"github.com/buildpack/imgutil/remote"
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 )

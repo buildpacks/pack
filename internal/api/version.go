@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/style"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 var regex = regexp.MustCompile(`^v?(\d+)\.(\d*)$`)

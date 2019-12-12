@@ -6,18 +6,18 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/buildpack/imgutil/fakes"
+	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/buildpackage"
-	"github.com/buildpack/pack/internal/dist"
-	ifakes "github.com/buildpack/pack/internal/fakes"
-	h "github.com/buildpack/pack/testhelpers"
-	"github.com/buildpack/pack/testmocks"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/buildpackage"
+	"github.com/buildpacks/pack/internal/dist"
+	ifakes "github.com/buildpacks/pack/internal/fakes"
+	h "github.com/buildpacks/pack/testhelpers"
+	"github.com/buildpacks/pack/testmocks"
 )
 
 func TestPackageBuilder(t *testing.T) {

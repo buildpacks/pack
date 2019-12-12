@@ -5,14 +5,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/buildpack/imgutil/fakes"
+	"github.com/buildpacks/imgutil/fakes"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	ifakes "github.com/buildpack/pack/internal/fakes"
-	"github.com/buildpack/pack/internal/logging"
-	h "github.com/buildpack/pack/testhelpers"
+	ifakes "github.com/buildpacks/pack/internal/fakes"
+	"github.com/buildpacks/pack/internal/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestRebase(t *testing.T) {

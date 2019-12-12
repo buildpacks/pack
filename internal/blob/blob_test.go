@@ -8,8 +8,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/blob"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/internal/blob"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestBlob(t *testing.T) {

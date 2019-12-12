@@ -3,9 +3,9 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/internal/config"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/logging"
 )
 
 func Run(logger logging.Logger, cfg config.Config, packClient *pack.Client) *cobra.Command {

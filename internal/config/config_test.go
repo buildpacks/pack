@@ -11,8 +11,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/config"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/internal/config"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestConfig(t *testing.T) {

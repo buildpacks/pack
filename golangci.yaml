@@ -29,4 +29,4 @@ linters:
 
 linters-settings:
   goimports:
-    local-prefixes: github.com/buildpack/pack
+    local-prefixes: github.com/buildpacks/pack

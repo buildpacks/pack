@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/buildpack/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/docker/docker/api/types"
 	dockercli "github.com/docker/docker/client"
 	v1remote "github.com/google/go-containerregistry/pkg/v1/remote"

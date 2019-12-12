@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/archive"
+	"github.com/buildpacks/lifecycle/archive"
 )
 
 type Restorer struct {

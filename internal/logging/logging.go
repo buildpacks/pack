@@ -10,7 +10,7 @@ import (
 
 	"github.com/apex/log"
 
-	"github.com/buildpack/pack/internal/style"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 const (

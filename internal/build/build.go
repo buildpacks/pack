@@ -10,11 +10,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/cache"
-	"github.com/buildpack/pack/internal/style"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/cache"
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/logging"
 )
 
 var (

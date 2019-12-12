@@ -7,18 +7,18 @@ import (
 	"io"
 	"strings"
 
-	"github.com/buildpack/imgutil"
-	"github.com/buildpack/imgutil/local"
-	"github.com/buildpack/imgutil/remote"
-	"github.com/buildpack/lifecycle/auth"
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/style"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/logging"
 )
 
 type Fetcher struct {

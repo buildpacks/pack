@@ -14,9 +14,9 @@ import (
 	"github.com/mitchellh/ioprogress"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/paths"
-	"github.com/buildpack/pack/internal/style"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/logging"
 )
 
 const (

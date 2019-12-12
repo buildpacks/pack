@@ -2,7 +2,7 @@ module step
 
 require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
-	github.com/buildpack/lifecycle v0.5.1-0.20191106182405-75d940fa966b
+	github.com/buildpacks/lifecycle v0.5.1-0.20191106182405-75d940fa966b
 	github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
 	github.com/envoyproxy/go-control-plane v0.6.9 // indirect
 	github.com/gogo/googleapis v1.1.0 // indirect

@@ -10,8 +10,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/builder"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/builder"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestConfig(t *testing.T) {

@@ -11,10 +11,10 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack/internal/commands"
-	ilogging "github.com/buildpack/pack/internal/logging"
-	"github.com/buildpack/pack/logging"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/internal/commands"
+	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestCompletionCommand(t *testing.T) {

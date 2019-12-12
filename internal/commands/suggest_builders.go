@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack/internal/style"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/logging"
 )
 
 type suggestedBuilder struct {

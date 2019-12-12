@@ -4,12 +4,12 @@ import (
 	"context"
 	"io"
 
-	"github.com/buildpack/imgutil"
+	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/buildpackage"
-	"github.com/buildpack/pack/internal/dist"
-	"github.com/buildpack/pack/internal/style"
+	"github.com/buildpacks/pack/internal/buildpackage"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type CreatePackageOptions struct {

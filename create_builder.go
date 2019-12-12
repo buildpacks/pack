@@ -5,14 +5,14 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver"
-	"github.com/buildpack/imgutil"
+	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
-	pubbldr "github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/dist"
-	"github.com/buildpack/pack/internal/image"
-	"github.com/buildpack/pack/internal/style"
+	pubbldr "github.com/buildpacks/pack/builder"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type CreateBuilderOptions struct {
@@ -150,7 +150,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 }
 
 func uriFromLifecycleVersion(version semver.Version) string {
-	return fmt.Sprintf("https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", version.String(), version.String())
+	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", version.String(), version.String())
 }
 
 func validateBuilderConfig(conf pubbldr.Config) error {

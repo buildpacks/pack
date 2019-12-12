@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/buildpack/imgutil/fakes"
+	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/dist"
-	"github.com/buildpack/pack/internal/image"
-	"github.com/buildpack/pack/internal/logging"
-	h "github.com/buildpack/pack/testhelpers"
-	"github.com/buildpack/pack/testmocks"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/internal/logging"
+	h "github.com/buildpacks/pack/testhelpers"
+	"github.com/buildpacks/pack/testmocks"
 )
 
 func TestInspectBuilder(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/stack"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/internal/stack"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestMixinValidation(t *testing.T) {

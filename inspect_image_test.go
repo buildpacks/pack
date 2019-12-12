@@ -7,17 +7,17 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/buildpack/imgutil/fakes"
-	"github.com/buildpack/lifecycle"
+	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/image"
-	"github.com/buildpack/pack/internal/logging"
-	h "github.com/buildpack/pack/testhelpers"
-	"github.com/buildpack/pack/testmocks"
+	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/internal/logging"
+	h "github.com/buildpacks/pack/testhelpers"
+	"github.com/buildpacks/pack/testmocks"
 )
 
 func TestInspectImage(t *testing.T) {

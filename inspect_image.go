@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/Masterminds/semver"
-	"github.com/buildpack/lifecycle"
+	"github.com/buildpacks/lifecycle"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/dist"
-	"github.com/buildpack/pack/internal/image"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/image"
 )
 
 type ImageInfo struct {

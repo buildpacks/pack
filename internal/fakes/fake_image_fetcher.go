@@ -3,10 +3,10 @@ package fakes
 import (
 	"context"
 
-	"github.com/buildpack/imgutil"
+	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/image"
+	"github.com/buildpacks/pack/internal/image"
 )
 
 type FetchArgs struct {

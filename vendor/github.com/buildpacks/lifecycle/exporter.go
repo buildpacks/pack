@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/buildpack/imgutil"
+	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/archive"
-	"github.com/buildpack/lifecycle/cmd"
+	"github.com/buildpacks/lifecycle/archive"
+	"github.com/buildpacks/lifecycle/cmd"
 )
 
 type Exporter struct {

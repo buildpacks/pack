@@ -6,7 +6,7 @@ import (
 
 	"github.com/sclevine/spec"
 
-	h "github.com/buildpack/pack/testhelpers"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 const (

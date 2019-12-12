@@ -12,8 +12,8 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/container"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack/internal/container"
+	"github.com/buildpacks/pack/logging"
 )
 
 func (i *Image) Run(ctx context.Context, docker *client.Client, ports []string) error {

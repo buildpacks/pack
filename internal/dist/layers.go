@@ -13,7 +13,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/archive"
 )
 
 const BuildpacksDir = "/cnb/buildpacks"

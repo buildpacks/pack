@@ -9,12 +9,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/internal/config"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/logging"
 )
 
-//go:generate mockgen -package testmocks -destination testmocks/mock_pack_client.go github.com/buildpack/pack/internal/commands PackClient
+//go:generate mockgen -package testmocks -destination testmocks/mock_pack_client.go github.com/buildpacks/pack/internal/commands PackClient
 type PackClient interface {
 	InspectBuilder(string, bool) (*pack.BuilderInfo, error)
 	InspectImage(string, bool) (*pack.ImageInfo, error)

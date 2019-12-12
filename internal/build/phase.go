@@ -8,16 +8,16 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/buildpack/lifecycle/auth"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/archive"
-	"github.com/buildpack/pack/internal/container"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/container"
+	"github.com/buildpacks/pack/logging"
 )
 
 type Phase struct {

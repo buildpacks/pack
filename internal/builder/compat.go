@@ -10,10 +10,10 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/archive"
-	"github.com/buildpack/pack/internal/dist"
-	"github.com/buildpack/pack/internal/style"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 const (

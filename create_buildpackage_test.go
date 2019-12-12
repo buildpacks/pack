@@ -6,22 +6,22 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/buildpack/imgutil"
-	"github.com/buildpack/imgutil/fakes"
+	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/buildpackage"
-	"github.com/buildpack/pack/internal/dist"
-	ifakes "github.com/buildpack/pack/internal/fakes"
-	"github.com/buildpack/pack/internal/image"
-	"github.com/buildpack/pack/internal/logging"
-	h "github.com/buildpack/pack/testhelpers"
-	"github.com/buildpack/pack/testmocks"
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/buildpackage"
+	"github.com/buildpacks/pack/internal/dist"
+	ifakes "github.com/buildpacks/pack/internal/fakes"
+	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/internal/logging"
+	h "github.com/buildpacks/pack/testhelpers"
+	"github.com/buildpacks/pack/testmocks"
 )
 
 func TestCreatePackage(t *testing.T) {

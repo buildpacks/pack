@@ -7,10 +7,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/lifecycle/archive"
+	"github.com/buildpacks/lifecycle/archive"
 )
 
-//go:generate mockgen -package testmock -destination testmock/cache.go github.com/buildpack/lifecycle Cache
+//go:generate mockgen -package testmock -destination testmock/cache.go github.com/buildpacks/lifecycle Cache
 type Cache interface {
 	Name() string
 	SetMetadata(metadata CacheMetadata) error

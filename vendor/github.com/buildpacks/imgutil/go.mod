@@ -1,4 +1,4 @@
-module github.com/buildpack/imgutil
+module github.com/buildpacks/imgutil
 
 require (
 	github.com/docker/distribution v2.7.1+incompatible // indirect

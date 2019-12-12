@@ -33,9 +33,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/archive"
-	"github.com/buildpack/pack/internal/stringset"
-	"github.com/buildpack/pack/internal/style"
+	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/stringset"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 func RandString(n int) string {

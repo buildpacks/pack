@@ -1,4 +1,4 @@
-module github.com/buildpack/pack/tools
+module github.com/buildpacks/pack/tools
 
 go 1.13
 

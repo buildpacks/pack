@@ -12,9 +12,9 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/blob"
-	"github.com/buildpack/pack/internal/builder"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/builder"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestLifecycle(t *testing.T) {

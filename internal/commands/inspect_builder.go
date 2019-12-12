@@ -11,13 +11,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/config"
-	"github.com/buildpack/pack/internal/dist"
-	"github.com/buildpack/pack/internal/style"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/logging"
 )
 
 func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
@@ -130,14 +130,14 @@ Run Images:
 {{- if ne .RunImages "" }}
 {{ .RunImages }}
 {{- else }}
-  (none) 
+  (none)
 {{- end }}
 
 Buildpacks:
 {{- if .Info.Buildpacks }}
 {{ .Buildpacks }}
 {{- else }}
-  (none) 
+  (none)
 {{- end }}
 
 Detection Order:
@@ -204,7 +204,7 @@ Detection Order:
 	})
 }
 
-// TODO: present buildpack order (inc. nested) [https://github.com/buildpack/pack/issues/253].
+// TODO: present buildpack order (inc. nested) [https://github.com/buildpacks/pack/issues/253].
 func buildpacksOutput(bps []builder.BuildpackMetadata) (string, error) {
 	buf := &bytes.Buffer{}
 	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 8, ' ', 0)

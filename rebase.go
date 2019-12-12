@@ -3,12 +3,12 @@ package pack
 import (
 	"context"
 
-	"github.com/buildpack/lifecycle"
+	"github.com/buildpacks/lifecycle"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/dist"
-	"github.com/buildpack/pack/internal/style"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type RebaseOptions struct {

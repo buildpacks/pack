@@ -12,7 +12,7 @@ import (
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 
-	h "github.com/buildpack/pack/testhelpers"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 const testTime = "2019/05/15 01:01:01.000000"

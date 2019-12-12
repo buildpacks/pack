@@ -1,14 +1,14 @@
-We're glad you are interested in contributing to this project. We hope that this 
-document helps you get started. 
+We're glad you are interested in contributing to this project. We hope that this
+document helps you get started.
 
-If something is missing, incorrect, or made irrelevant please feel free to make 
-a PR to keep it up-to-date. 
+If something is missing, incorrect, or made irrelevant please feel free to make
+a PR to keep it up-to-date.
 
 ## Prerequisites
 
 - [Go](https://golang.org/dl/)
     - including [Git](https://git-scm.com/)
-- [Docker](https://www.docker.com/)   
+- [Docker](https://www.docker.com/)
 
 ## Development
 
@@ -68,35 +68,35 @@ make verify
 
 ## Pull Requests
 
-1. **[Fork]((https://help.github.com/en/articles/fork-a-repo)) the repo**    
+1. **[Fork]((https://help.github.com/en/articles/fork-a-repo)) the repo**
 2. **Code, Test, Commit...**
-    
+
     _Don't forget utilize the convenient make functions above._
 
 3. **Preparing a Branch**
 
     We prefer to have PRs that are encompassed in a single commit. This might
     require that you execute some of these commands:
-    
+
     If you are no up-to-date with master:
     ```bash
     # rebase from master (applies your changes on top of master)
     git pull -r origin master
     ```
-    
+
     If you made more than one commit:
     ```bash
     # squash multiple commits, if applicable
     # set the top most commit to `pick` and all subsequent to `squash`
     git rebase -i origin/master
     ```
-    
+
     Another requirement is that you sign your work. See [DCO](https://probot.github.io/apps/dco/) for more details.
     ```bash
     git commit --amend --signoff
     ```
-    
+
 4. **Submit a Pull Request**
-    
-    Submitting the pull request is done in [GitHub](https://github.com/buildpack/pack/compare/) by selecting
+
+    Submitting the pull request is done in [GitHub](https://github.com/buildpacks/pack/compare/) by selecting
     your branch as the `compare` branch.
