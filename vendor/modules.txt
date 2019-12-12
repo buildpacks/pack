@@ -10,12 +10,12 @@ github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/guid
 # github.com/apex/log v1.1.2-0.20190827100214-baa5455d1012
 github.com/apex/log
-# github.com/buildpacks/imgutil v0.0.0-20191021214009-9ad9206a7b17
+# github.com/buildpacks/imgutil v0.0.0-20191212154113-dc184e0d403b
 github.com/buildpacks/imgutil
 github.com/buildpacks/imgutil/fakes
 github.com/buildpacks/imgutil/local
 github.com/buildpacks/imgutil/remote
-# github.com/buildpacks/lifecycle v0.5.1-0.20191106182405-75d940fa966b
+# github.com/buildpacks/lifecycle v0.5.1-0.20191212164213-3b2b120be460
 github.com/buildpacks/lifecycle
 github.com/buildpacks/lifecycle/archive
 github.com/buildpacks/lifecycle/auth
@@ -138,7 +138,7 @@ github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
 # github.com/pkg/errors v0.8.1
 github.com/pkg/errors
-# github.com/sclevine/spec v1.2.0
+# github.com/sclevine/spec v1.3.0
 github.com/sclevine/spec
 github.com/sclevine/spec/report
 # github.com/sirupsen/logrus v1.4.2

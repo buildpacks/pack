@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/buildpacks/imgutil"
@@ -17,93 +18,119 @@ type Analyzer struct {
 	SkipLayers   bool
 }
 
-func (a *Analyzer) Analyze(image imgutil.Image) (AnalyzedMetadata, error) {
+// Analyze restores metadata for launch and cache layers into the layers directory.
+// If a usable cache is not provided, Analyze will not restore any cache=true layer metadata.
+func (a *Analyzer) Analyze(image imgutil.Image, cache Cache) (*AnalyzedMetadata, error) {
 	imageID, err := a.getImageIdentifier(image)
 	if err != nil {
-		return AnalyzedMetadata{}, errors.Wrap(err, "retrieve image identifier")
+		return nil, errors.Wrap(err, "retrieving image identifier")
 	}
 
-	var data LayersMetadata
+	var appMeta LayersMetadata
 	// continue even if the label cannot be decoded
-	if err := DecodeLabel(image, LayerMetadataLabel, &data); err != nil {
-		data = LayersMetadata{}
+	if err := DecodeLabel(image, LayerMetadataLabel, &appMeta); err != nil {
+		appMeta = LayersMetadata{}
 	}
 
-	if !a.SkipLayers {
-		for _, buildpack := range a.Buildpacks {
-			bpLayersDir, err := readBuildpackLayersDir(a.LayersDir, buildpack)
-			if err != nil {
-				return AnalyzedMetadata{}, err
-			}
+	if a.SkipLayers {
+		a.Logger.Infof("Skipping buildpack layer analysis")
+		return &AnalyzedMetadata{
+			Image:    imageID,
+			Metadata: appMeta,
+		}, nil
+	}
 
-			metadataLayers := data.MetadataForBuildpack(buildpack.ID).Layers
-			for _, cachedLayer := range bpLayersDir.layers {
-				cacheType := cachedLayer.classifyCache(metadataLayers)
-				switch cacheType {
-				case cacheStaleNoMetadata:
-					a.Logger.Infof("Removing stale cached launch layer '%s', not in metadata \n", cachedLayer.Identifier())
-					if err := cachedLayer.remove(); err != nil {
-						return AnalyzedMetadata{}, err
-					}
-				case cacheStaleWrongSHA:
-					a.Logger.Infof("Removing stale cached launch layer '%s'", cachedLayer.Identifier())
-					if err := cachedLayer.remove(); err != nil {
-						return AnalyzedMetadata{}, err
-					}
-				case cacheMalformed:
-					a.Logger.Infof("Removing malformed cached layer '%s'", cachedLayer.Identifier())
-					if err := cachedLayer.remove(); err != nil {
-						return AnalyzedMetadata{}, err
-					}
-				case cacheNotForLaunch:
-					a.Logger.Infof("Using cached layer '%s'", cachedLayer.Identifier())
-				case cacheValid:
-					a.Logger.Infof("Using cached launch layer '%s'", cachedLayer.Identifier())
-					a.Logger.Infof("Rewriting metadata for layer '%s'", cachedLayer.Identifier())
-					if err := cachedLayer.writeMetadata(metadataLayers); err != nil {
-						return AnalyzedMetadata{}, err
-					}
-				}
-			}
-
-			for lmd, data := range metadataLayers {
-				if !data.Build && !data.Cache {
-					layer := bpLayersDir.newBPLayer(lmd)
-					a.Logger.Infof("Writing metadata for uncached layer '%s'", layer.Identifier())
-					if err := layer.writeMetadata(metadataLayers); err != nil {
-						return AnalyzedMetadata{}, err
-					}
-				}
-			}
+	// Create empty cache metadata in case a usable cache is not provided.
+	var cacheMeta CacheMetadata
+	if cache != nil {
+		var err error
+		cacheMeta, err = cache.RetrieveMetadata()
+		if err != nil {
+			return nil, errors.Wrap(err, "retrieving cache metadata")
 		}
 	} else {
-		a.Logger.Infof("Skipping buildpack layer analysis")
+		a.Logger.Debug("Usable cache not provided, using empty cache metadata.")
+	}
+
+	for _, buildpack := range a.Buildpacks {
+		buildpackDir, err := readBuildpackLayersDir(a.LayersDir, buildpack)
+		if err != nil {
+			return nil, errors.Wrap(err, "reading buildpack layer directory")
+		}
+
+		// Restore metadata for launch=true layers.
+		// The restorer step will restore the layer data for cache=true layers if possible or delete the layer.
+		appLayers := appMeta.MetadataForBuildpack(buildpack.ID).Layers
+		for name, layer := range appLayers {
+			identifier := fmt.Sprintf("%s:%s", buildpack.ID, name)
+			if !layer.Launch {
+				a.Logger.Debugf("Not restoring metadata for %q, marked as launch=false", identifier)
+				continue
+			}
+			if layer.Build && !layer.Cache {
+				a.Logger.Debugf("Not restoring metadata for %q, marked as build=true, cache=false", identifier)
+				continue
+			}
+			a.Logger.Infof("Restoring metadata for %q from app image", identifier)
+			if err := a.writeLayerMetadata(buildpackDir, name, layer); err != nil {
+				return nil, err
+			}
+		}
+
+		// Restore metadata for cache=true layers.
+		// The restorer step will restore the layer data if possible or delete the layer.
+		cachedLayers := cacheMeta.MetadataForBuildpack(buildpack.ID).Layers
+		for name, layer := range cachedLayers {
+			identifier := fmt.Sprintf("%s:%s", buildpack.ID, name)
+			if !layer.Cache {
+				a.Logger.Debugf("Not restoring %q from cache, marked as cache=false", identifier)
+				continue
+			}
+			// If launch=true, the metadata was restored from the app image or the layer is stale.
+			if layer.Launch {
+				a.Logger.Debugf("Not restoring %q from cache, marked as launch=true", identifier)
+				continue
+			}
+			a.Logger.Infof("Restoring metadata for %q from cache", identifier)
+			if err := a.writeLayerMetadata(buildpackDir, name, layer); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	// if analyzer is running as root it needs to fix the ownership of the layers dir
 	if current := os.Getuid(); current == 0 {
 		if err := recursiveChown(a.LayersDir, a.UID, a.GID); err != nil {
-			return AnalyzedMetadata{}, errors.Wrapf(err, "chowning layers dir to '%d/%d'", a.UID, a.GID)
+			return nil, errors.Wrapf(err, "chowning layers dir to '%d/%d'", a.UID, a.GID)
 		}
 	}
 
-	return AnalyzedMetadata{
+	return &AnalyzedMetadata{
 		Image:    imageID,
-		Metadata: data,
+		Metadata: appMeta,
 	}, nil
 }
 
 func (a *Analyzer) getImageIdentifier(image imgutil.Image) (*ImageIdentifier, error) {
 	if !image.Found() {
-		a.Logger.Warnf("Image '%s' not found", image.Name())
+		a.Logger.Warnf("Image %q not found", image.Name())
 		return nil, nil
 	}
 	identifier, err := image.Identifier()
 	if err != nil {
 		return nil, err
 	}
-	a.Logger.Debugf("Analyzing image '%s'", identifier.String())
+	a.Logger.Debugf("Analyzing image %q", identifier.String())
 	return &ImageIdentifier{
 		Reference: identifier.String(),
 	}, nil
+}
+
+func (a *Analyzer) writeLayerMetadata(buildpackDir bpLayersDir, name string, metadata BuildpackLayerMetadata) error {
+	layer := buildpackDir.newBPLayer(name)
+	a.Logger.Debugf("Writing layer metadata for %q", layer.Identifier())
+	if err := layer.writeMetadata(metadata); err != nil {
+		return err
+	}
+	return layer.writeSha(metadata.SHA)
 }
