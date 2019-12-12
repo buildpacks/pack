@@ -1,7 +1,7 @@
 # github.com/Microsoft/go-winio v0.4.14
 github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/guid
-# github.com/buildpacks/lifecycle v0.5.1-0.20191106182405-75d940fa966b
+# github.com/buildpacks/lifecycle v0.5.1-0.20191212164213-3b2b120be460
 github.com/buildpacks/lifecycle/auth
 # github.com/containerd/containerd v1.3.0
 github.com/containerd/containerd/errdefs
