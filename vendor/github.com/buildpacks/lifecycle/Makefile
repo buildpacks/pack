@@ -1,9 +1,9 @@
 GOCMD?=go
 GOENV=GOARCH=amd64 CGO_ENABLED=0
-GOBUILD=$(GOCMD) build -mod=vendor -ldflags "-s -w -X 'github.com/buildpack/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)' -X 'github.com/buildpack/lifecycle/cmd.SCMRepository=$(SCM_REPO)' -X 'github.com/buildpack/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'"
+GOBUILD=$(GOCMD) build -mod=vendor -ldflags "-s -w -X 'github.com/buildpacks/lifecycle/cmd.Version=$(LIFECYCLE_VERSION)' -X 'github.com/buildpacks/lifecycle/cmd.SCMRepository=$(SCM_REPO)' -X 'github.com/buildpacks/lifecycle/cmd.SCMCommit=$(SCM_COMMIT)'"
 GOTEST=$(GOCMD) test -mod=vendor
 LIFECYCLE_VERSION?=0.0.0
-PLATFORM_API=0.1
+PLATFORM_API=0.2
 BUILDPACK_API=0.2
 SCM_REPO?=
 SCM_COMMIT=$$(git rev-parse --short HEAD)
@@ -69,7 +69,7 @@ generate: install-mockgen
 
 format: install-goimports
 	@echo "> Formating code..."
-	test -z $$(goimports -l -w -local github.com/buildpack/lifecycle $$(find . -type f -name '*.go' -not -path "*/vendor/*"))
+	test -z $$(goimports -l -w -local github.com/buildpacks/lifecycle $$(find . -type f -name '*.go' -not -path "*/vendor/*"))
 
 test: unit acceptance
 

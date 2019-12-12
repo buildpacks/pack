@@ -3,7 +3,7 @@ package fakes
 import (
 	"context"
 
-	"github.com/buildpack/pack/internal/build"
+	"github.com/buildpacks/pack/internal/build"
 )
 
 type FakeLifecycle struct {

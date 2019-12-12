@@ -8,9 +8,9 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack/internal/commands"
-	"github.com/buildpack/pack/internal/logging"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/internal/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestSuggestStacks(t *testing.T) {

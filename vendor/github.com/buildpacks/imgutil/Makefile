@@ -1,7 +1,7 @@
 # Go parameters
 GOCMD?=go
 GOTEST=$(GOCMD) test -mod=vendor
-PACKAGE_BASE=github.com/buildpack/imgutil
+PACKAGE_BASE=github.com/buildpacks/imgutil
 PACKAGES:=$(shell $(GOCMD) list -mod=vendor ./... | grep -v /testdata/)
 SRC:=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
 

@@ -3,7 +3,7 @@ GOENV=CGO_ENABLED=0
 GOFLAGS?=-mod=vendor
 PACK_VERSION?=dev-$(shell date +%Y-%m-%d-%H:%M:%S)
 PACK_BIN?=pack
-PACKAGE_BASE=github.com/buildpack/pack
+PACKAGE_BASE=github.com/buildpacks/pack
 PACKAGES:=$(shell $(GOCMD) list ./... | grep -v /testdata/)
 SRC:=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
 ARCHIVE_NAME=pack-$(PACK_VERSION)
@@ -15,7 +15,7 @@ all: clean verify test build
 build:
 	@echo "> Building..."
 	mkdir -p ./out
-	$(GOENV) $(GOCMD) build -ldflags "-X 'github.com/buildpack/pack/cmd.Version=${PACK_VERSION}'" -o ./out/$(PACK_BIN) -a ./cmd/pack
+	$(GOENV) $(GOCMD) build -ldflags "-X 'github.com/buildpacks/pack/cmd.Version=${PACK_VERSION}'" -o ./out/$(PACK_BIN) -a ./cmd/pack
 
 package:
 	tar czf ./out/$(ARCHIVE_NAME).tgz -C out/ pack

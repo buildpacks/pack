@@ -12,18 +12,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpack/imgutil/local"
+	"github.com/buildpacks/imgutil/local"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/build"
-	"github.com/buildpack/pack/internal/builder"
-	ilogging "github.com/buildpack/pack/internal/logging"
-	"github.com/buildpack/pack/logging"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/internal/build"
+	"github.com/buildpacks/pack/internal/builder"
+	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 var (

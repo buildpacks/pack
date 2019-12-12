@@ -11,7 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/archive"
 )
 
 type TarEntryAssertion func(*testing.T, *tar.Header, []byte)

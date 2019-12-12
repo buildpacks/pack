@@ -21,7 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/buildpack/imgutil"
+	"github.com/buildpacks/imgutil"
 )
 
 type Image struct {

@@ -61,11 +61,11 @@ func FlagBuildpacksDir(dir *string) {
 }
 
 func FlagCacheDir(dir *string) {
-	flag.StringVar(dir, "path", os.Getenv(EnvCacheDir), "path to cache directory")
+	flag.StringVar(dir, "cache-dir", os.Getenv(EnvCacheDir), "path to cache directory")
 }
 
 func FlagCacheImage(image *string) {
-	flag.StringVar(image, "image", os.Getenv(EnvCacheImage), "cache image tag name")
+	flag.StringVar(image, "cache-image", os.Getenv(EnvCacheImage), "cache image tag name")
 }
 
 func FlagGID(gid *int) {

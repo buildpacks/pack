@@ -13,12 +13,12 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/internal/archive"
-	"github.com/buildpack/pack/internal/blob"
-	"github.com/buildpack/pack/internal/paths"
-	"github.com/buildpack/pack/logging"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestDownloader(t *testing.T) {

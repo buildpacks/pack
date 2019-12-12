@@ -7,7 +7,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	h "github.com/buildpack/pack/testhelpers"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestBuildpackDescriptor(t *testing.T) {

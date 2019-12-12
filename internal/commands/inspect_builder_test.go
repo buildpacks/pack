@@ -12,16 +12,16 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/commands"
-	"github.com/buildpack/pack/internal/commands/testmocks"
-	"github.com/buildpack/pack/internal/config"
-	"github.com/buildpack/pack/internal/dist"
-	ilogging "github.com/buildpack/pack/internal/logging"
-	"github.com/buildpack/pack/logging"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/internal/commands/testmocks"
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/dist"
+	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestInspectBuilderCommand(t *testing.T) {

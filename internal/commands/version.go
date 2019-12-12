@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack/logging"
 )
 
 func Version(logger logging.Logger, version string) *cobra.Command {

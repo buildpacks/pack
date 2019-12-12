@@ -10,16 +10,16 @@ github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/guid
 # github.com/apex/log v1.1.2-0.20190827100214-baa5455d1012
 github.com/apex/log
-# github.com/buildpack/imgutil v0.0.0-20191021214009-9ad9206a7b17
-github.com/buildpack/imgutil
-github.com/buildpack/imgutil/fakes
-github.com/buildpack/imgutil/local
-github.com/buildpack/imgutil/remote
-# github.com/buildpack/lifecycle v0.5.1-0.20191106182405-75d940fa966b
-github.com/buildpack/lifecycle
-github.com/buildpack/lifecycle/archive
-github.com/buildpack/lifecycle/auth
-github.com/buildpack/lifecycle/cmd
+# github.com/buildpacks/imgutil v0.0.0-20191212154113-dc184e0d403b
+github.com/buildpacks/imgutil
+github.com/buildpacks/imgutil/fakes
+github.com/buildpacks/imgutil/local
+github.com/buildpacks/imgutil/remote
+# github.com/buildpacks/lifecycle v0.5.1-0.20191212164213-3b2b120be460
+github.com/buildpacks/lifecycle
+github.com/buildpacks/lifecycle/archive
+github.com/buildpacks/lifecycle/auth
+github.com/buildpacks/lifecycle/cmd
 # github.com/containerd/containerd v1.3.0
 github.com/containerd/containerd/errdefs
 # github.com/dgodd/dockerdial v1.0.1

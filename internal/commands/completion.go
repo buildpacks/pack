@@ -6,8 +6,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack/internal/config"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/logging"
 )
 
 func CompletionCommand(logger logging.Logger) *cobra.Command {

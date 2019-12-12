@@ -10,21 +10,21 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/buildpack/imgutil"
+	"github.com/buildpacks/imgutil"
 	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/cmd"
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/archive"
-	"github.com/buildpack/pack/internal/build"
-	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/dist"
-	"github.com/buildpack/pack/internal/paths"
-	"github.com/buildpack/pack/internal/stack"
-	"github.com/buildpack/pack/internal/stringset"
-	"github.com/buildpack/pack/internal/style"
+	"github.com/buildpacks/pack/cmd"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/build"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/internal/stack"
+	"github.com/buildpacks/pack/internal/stringset"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type Lifecycle interface {

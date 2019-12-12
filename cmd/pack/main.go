@@ -7,12 +7,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/cmd"
-	"github.com/buildpack/pack/internal/commands"
-	"github.com/buildpack/pack/internal/config"
-	clilogger "github.com/buildpack/pack/internal/logging"
-	"github.com/buildpack/pack/logging"
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/cmd"
+	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/internal/config"
+	clilogger "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/logging"
 )
 
 var packClient pack.Client

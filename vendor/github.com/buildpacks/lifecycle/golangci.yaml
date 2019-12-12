@@ -30,4 +30,4 @@ linters:
 
 linters-settings:
   goimports:
-    local-prefixes: github.com/buildpack/lifecycle
+    local-prefixes: github.com/buildpacks/lifecycle

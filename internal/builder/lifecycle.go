@@ -10,9 +10,9 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/archive"
-	"github.com/buildpack/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/dist"
 )
 
 const (
@@ -28,7 +28,7 @@ type Blob interface {
 	Open() (io.ReadCloser, error)
 }
 
-//go:generate mockgen -package testmocks -destination testmocks/mock_lifecycle.go github.com/buildpack/pack/internal/builder Lifecycle
+//go:generate mockgen -package testmocks -destination testmocks/mock_lifecycle.go github.com/buildpacks/pack/internal/builder Lifecycle
 type Lifecycle interface {
 	Blob
 	Descriptor() LifecycleDescriptor
@@ -65,7 +65,7 @@ func NewLifecycle(blob Blob) (Lifecycle, error) {
 	var descriptor LifecycleDescriptor
 	_, buf, err := archive.ReadTarEntry(br, "lifecycle.toml")
 
-	//TODO: make lifecycle descriptor required after v0.4.0 release [https://github.com/buildpack/pack/issues/267]
+	//TODO: make lifecycle descriptor required after v0.4.0 release [https://github.com/buildpacks/pack/issues/267]
 	if err != nil && errors.Cause(err) == archive.ErrEntryNotExist {
 		return &lifecycle{
 			Blob: blob,

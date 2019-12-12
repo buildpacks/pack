@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/stringset"
-	"github.com/buildpack/pack/internal/style"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/stringset"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type BuildpackDescriptor struct {

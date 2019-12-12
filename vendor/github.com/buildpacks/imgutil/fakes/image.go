@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/imgutil"
+	"github.com/buildpacks/imgutil"
 )
 
 func NewImage(name, topLayerSha string, identifier imgutil.Identifier) *Image {

@@ -16,22 +16,22 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/buildpack/imgutil/fakes"
+	"github.com/buildpacks/imgutil/fakes"
 	"github.com/docker/docker/client"
 	"github.com/heroku/color"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/blob"
-	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/dist"
-	ifakes "github.com/buildpack/pack/internal/fakes"
-	ilogging "github.com/buildpack/pack/internal/logging"
-	"github.com/buildpack/pack/internal/style"
-	"github.com/buildpack/pack/logging"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/dist"
+	ifakes "github.com/buildpacks/pack/internal/fakes"
+	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestBuild(t *testing.T) {

@@ -6,9 +6,9 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/archive"
-	"github.com/buildpack/pack/internal/style"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 const AssumedBuildpackAPIVersion = "0.1"
@@ -26,7 +26,7 @@ func (b *buildpack) Descriptor() BuildpackDescriptor {
 	return b.descriptor
 }
 
-//go:generate mockgen -package testmocks -destination testmocks/mock_buildpack.go github.com/buildpack/pack/internal/dist Buildpack
+//go:generate mockgen -package testmocks -destination testmocks/mock_buildpack.go github.com/buildpacks/pack/internal/dist Buildpack
 type Buildpack interface {
 	Blob
 	Descriptor() BuildpackDescriptor

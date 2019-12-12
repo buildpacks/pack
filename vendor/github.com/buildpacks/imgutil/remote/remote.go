@@ -19,7 +19,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/pkg/errors"
 
-	"github.com/buildpack/imgutil"
+	"github.com/buildpacks/imgutil"
 )
 
 type Image struct {

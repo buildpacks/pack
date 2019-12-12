@@ -11,12 +11,12 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpack/pack"
-	"github.com/buildpack/pack/internal/commands"
-	"github.com/buildpack/pack/internal/commands/testmocks"
-	ilogging "github.com/buildpack/pack/internal/logging"
-	"github.com/buildpack/pack/logging"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/internal/commands/testmocks"
+	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestSuggestBuilders(t *testing.T) {

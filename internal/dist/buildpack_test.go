@@ -10,9 +10,9 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/blob"
-	"github.com/buildpack/pack/internal/dist"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/dist"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestBuildpack(t *testing.T) {

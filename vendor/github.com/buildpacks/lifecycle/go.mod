@@ -1,9 +1,9 @@
-module github.com/buildpack/lifecycle
+module github.com/buildpacks/lifecycle
 
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/apex/log v1.1.2-0.20190827100214-baa5455d1012
-	github.com/buildpack/imgutil v0.0.0-20191021214009-9ad9206a7b17
+	github.com/buildpacks/imgutil v0.0.0-20191212154113-dc184e0d403b
 	github.com/docker/docker v1.4.2-0.20190924003213-a8608b5b67c7
 	github.com/docker/go-connections v0.4.0
 	github.com/golang/mock v1.3.1
@@ -15,6 +15,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/sclevine/spec v1.2.0
 	golang.org/x/net v0.0.0-20190724013045-ca1201d0de80 // indirect
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/genproto v0.0.0-20190508193815-b515fa19cec8 // indirect
 )
 

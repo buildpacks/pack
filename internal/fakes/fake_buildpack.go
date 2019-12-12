@@ -7,8 +7,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/buildpack/pack/internal/archive"
-	"github.com/buildpack/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/dist"
 )
 
 type fakeBuildpack struct {

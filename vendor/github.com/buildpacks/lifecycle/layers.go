@@ -86,39 +86,8 @@ func (bd *bpLayersDir) newBPLayer(name string) *bpLayer {
 	}
 }
 
-type cacheType int
-
-const (
-	cacheStaleNoMetadata cacheType = iota
-	cacheStaleWrongSHA
-	cacheNotForLaunch // we can't determine whether the cache is stale for launch=false layers
-	cacheValid
-	cacheMalformed
-)
-
 type bpLayer struct {
 	layer
-}
-
-func (bp *bpLayer) classifyCache(metadataLayers map[string]BuildpackLayerMetadata) cacheType {
-	cachedLayer, err := bp.read()
-	if err != nil {
-		return cacheMalformed
-	}
-	if !cachedLayer.Launch {
-		return cacheNotForLaunch
-	}
-	if metadataLayers == nil {
-		return cacheStaleNoMetadata
-	}
-	layerMetadata, ok := metadataLayers[bp.name()]
-	if !ok {
-		return cacheStaleNoMetadata
-	}
-	if layerMetadata.SHA != cachedLayer.SHA {
-		return cacheStaleWrongSHA
-	}
-	return cacheValid
 }
 
 func (bp *bpLayer) read() (BuildpackLayerMetadata, error) {
@@ -158,8 +127,7 @@ func (bp *bpLayer) remove() error {
 	return nil
 }
 
-func (bp *bpLayer) writeMetadata(metadataLayers map[string]BuildpackLayerMetadata) error {
-	layerMetadata := metadataLayers[bp.name()]
+func (bp *bpLayer) writeMetadata(metadata BuildpackLayerMetadata) error {
 	path := filepath.Join(bp.path + ".toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
@@ -169,7 +137,7 @@ func (bp *bpLayer) writeMetadata(metadataLayers map[string]BuildpackLayerMetadat
 		return err
 	}
 	defer fh.Close()
-	return toml.NewEncoder(fh).Encode(layerMetadata.BuildpackLayerMetadataFile)
+	return toml.NewEncoder(fh).Encode(metadata.BuildpackLayerMetadataFile)
 }
 
 func (bp *bpLayer) hasLocalContents() bool {

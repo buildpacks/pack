@@ -16,8 +16,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpack/pack/internal/archive"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/internal/archive"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestArchive(t *testing.T) {

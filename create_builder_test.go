@@ -12,21 +12,21 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/buildpack/imgutil/fakes"
+	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	pubbldr "github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/internal/blob"
-	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/dist"
-	ifakes "github.com/buildpack/pack/internal/fakes"
-	ilogging "github.com/buildpack/pack/internal/logging"
-	"github.com/buildpack/pack/logging"
-	h "github.com/buildpack/pack/testhelpers"
-	"github.com/buildpack/pack/testmocks"
+	pubbldr "github.com/buildpacks/pack/builder"
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/dist"
+	ifakes "github.com/buildpacks/pack/internal/fakes"
+	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/logging"
+	h "github.com/buildpacks/pack/testhelpers"
+	"github.com/buildpacks/pack/testmocks"
 )
 
 func TestCreateBuilder(t *testing.T) {
@@ -221,7 +221,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should download from predetermined uri", func() {
 				mockDownloader.EXPECT().Download(
 					gomock.Any(),
-					"https://github.com/buildpack/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+linux.x86-64.tgz",
+					"https://github.com/buildpacks/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+linux.x86-64.tgz",
 				).Return(
 					blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil,
 				).MinTimes(1)
@@ -241,7 +241,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				mockDownloader.EXPECT().Download(
 					gomock.Any(),
 					fmt.Sprintf(
-						"https://github.com/buildpack/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz",
+						"https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz",
 						builder.DefaultLifecycleVersion,
 						builder.DefaultLifecycleVersion,
 					),

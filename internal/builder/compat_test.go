@@ -7,20 +7,20 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
-	"github.com/buildpack/imgutil/fakes"
+	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	pubbldr "github.com/buildpack/pack/builder"
-	"github.com/buildpack/pack/internal/api"
-	"github.com/buildpack/pack/internal/archive"
-	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/builder/testmocks"
-	"github.com/buildpack/pack/internal/dist"
-	"github.com/buildpack/pack/logging"
-	h "github.com/buildpack/pack/testhelpers"
+	pubbldr "github.com/buildpacks/pack/builder"
+	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/builder/testmocks"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestCompat(t *testing.T) {

@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/buildpack/imgutil/fakes"
+	"github.com/buildpacks/imgutil/fakes"
 
-	"github.com/buildpack/pack/internal/builder"
-	"github.com/buildpack/pack/internal/dist"
-	h "github.com/buildpack/pack/testhelpers"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/dist"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func NewFakeBuilderImage(t *testing.T, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.BuildpackLayers) *fakes.Image {
