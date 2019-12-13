@@ -7,10 +7,8 @@ import (
 const MetadataLabel = "io.buildpacks.buildpackage.metadata"
 
 type Config struct {
-	Default    dist.BuildpackInfo  `toml:"default"`
-	Buildpacks []dist.BuildpackURI `toml:"buildpacks"`
-	Packages   []dist.ImageRef     `toml:"packages"`
-	Stacks     []dist.Stack        `toml:"stacks"`
+	Buildpack    dist.BuildpackURI `toml:"buildpack"`
+	Dependencies []dist.ImageOrURI `toml:"dependencies"`
 }
 
 type Metadata struct {

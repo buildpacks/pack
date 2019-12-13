@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/style"
 )
 
@@ -16,10 +17,9 @@ type ImageFactory interface {
 }
 
 type PackageBuilder struct {
-	defaultBpInfo dist.BuildpackInfo
-	buildpacks    []dist.Buildpack
-	stacks        []dist.Stack
-	imageFactory  ImageFactory
+	buildpack    dist.Buildpack
+	dependencies []dist.Buildpack
+	imageFactory ImageFactory
 }
 
 func NewBuilder(imageFactory ImageFactory) *PackageBuilder {
@@ -28,30 +28,37 @@ func NewBuilder(imageFactory ImageFactory) *PackageBuilder {
 	}
 }
 
-func (p *PackageBuilder) SetDefaultBuildpack(bpInfo dist.BuildpackInfo) {
-	p.defaultBpInfo = bpInfo
+func (p *PackageBuilder) SetBuildpack(buildpack dist.Buildpack) {
+	p.buildpack = buildpack
 }
 
-func (p *PackageBuilder) AddBuildpack(buildpack dist.Buildpack) {
-	p.buildpacks = append(p.buildpacks, buildpack)
-}
-
-func (p *PackageBuilder) AddStack(stack dist.Stack) {
-	p.stacks = append(p.stacks, stack)
+func (p *PackageBuilder) AddDependency(buildpack dist.Buildpack) {
+	p.dependencies = append(p.dependencies, buildpack)
 }
 
 func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, error) {
-	var bpds []dist.BuildpackDescriptor
-	for _, bp := range p.buildpacks {
-		bpds = append(bpds, bp.Descriptor())
+	if p.buildpack == nil {
+		return nil, errors.New("buildpack must be set")
 	}
 
-	if err := validateDefault(bpds, p.defaultBpInfo); err != nil {
-		return nil, err
+	stacks := p.buildpack.Descriptor().Stacks
+	if len(stacks) == 0 {
+		return nil, errors.Errorf(
+			"buildpack %s must at least support one stack",
+			style.Symbol(p.buildpack.Descriptor().Info.FullName()),
+		)
 	}
 
-	if err := validateStacks(bpds, p.stacks); err != nil {
-		return nil, err
+	for _, bp := range p.dependencies {
+		bpd := bp.Descriptor()
+		stacks = stack.Aggregate(stacks, bpd.Stacks)
+		if len(stacks) == 0 {
+			return nil, errors.Errorf(
+				"buildpack %s does not support any stacks from %s",
+				style.Symbol(p.buildpack.Descriptor().Info.FullName()),
+				style.Symbol(bpd.Info.FullName()),
+			)
+		}
 	}
 
 	image, err := p.imageFactory.NewImage(repoName, !publish)
@@ -60,8 +67,8 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 	}
 
 	if err := dist.SetLabel(image, MetadataLabel, &Metadata{
-		BuildpackInfo: p.defaultBpInfo,
-		Stacks:        p.stacks,
+		BuildpackInfo: p.buildpack.Descriptor().Info,
+		Stacks:        stacks,
 	}); err != nil {
 		return nil, err
 	}
@@ -73,7 +80,7 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 	defer os.RemoveAll(tmpDir)
 
 	bpLayers := dist.BuildpackLayers{}
-	for _, bp := range p.buildpacks {
+	for _, bp := range append(p.dependencies, p.buildpack) {
 		bpLayerTar, err := dist.BuildpackToLayerTar(tmpDir, bp)
 		if err != nil {
 			return nil, err
@@ -103,51 +110,4 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 	}
 
 	return image, nil
-}
-
-func validateDefault(bps []dist.BuildpackDescriptor, defBp dist.BuildpackInfo) error {
-	if defBp.ID == "" || defBp.Version == "" {
-		return errors.New("a default buildpack must be set")
-	}
-
-	if !bpExists(bps, defBp) {
-		return errors.Errorf("selected default %s is not present",
-			style.Symbol(defBp.FullName()),
-		)
-	}
-
-	return nil
-}
-
-func validateStacks(bps []dist.BuildpackDescriptor, stacks []dist.Stack) error {
-	if len(stacks) == 0 {
-		return errors.New("must specify at least one supported stack")
-	}
-
-	declaredStacks := map[string]interface{}{}
-	for _, s := range stacks {
-		if _, ok := declaredStacks[s.ID]; ok {
-			return errors.Errorf("stack %s was specified more than once", style.Symbol(s.ID))
-		}
-
-		declaredStacks[s.ID] = nil
-
-		for _, bpd := range bps {
-			if err := bpd.EnsureStackSupport(s.ID, s.Mixins, false); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func bpExists(bps []dist.BuildpackDescriptor, search dist.BuildpackInfo) bool {
-	for _, bpd := range bps {
-		if bpd.Info.ID == search.ID && bpd.Info.Version == search.Version {
-			return true
-		}
-	}
-
-	return false
 }

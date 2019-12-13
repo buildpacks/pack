@@ -75,18 +75,14 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 			nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
 			mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
 
-			bpd := dist.BuildpackDescriptor{
-				API:    api.MustParse("0.2"),
-				Info:   dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-				Stacks: []dist.Stack{{ID: "some.stack.id"}},
-			}
-
 			h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
 				Name: nestedPackage.Name(),
 				Config: buildpackage.Config{
-					Default:    bpd.Info,
-					Buildpacks: []dist.BuildpackURI{{URI: createBuildpack(bpd)}},
-					Stacks:     bpd.Stacks,
+					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+						API:    api.MustParse("0.2"),
+						Info:   dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+						Stacks: []dist.Stack{{ID: "some.stack.id"}},
+					})},
 				},
 				Publish: true,
 			}))
@@ -120,9 +116,12 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
 					Name: packageImage.Name(),
 					Config: buildpackage.Config{
-						Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-						Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
-						Stacks:   []dist.Stack{{ID: "some.stack.id"}},
+						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+							API:    api.MustParse("0.2"),
+							Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+							Stacks: []dist.Stack{{ID: "some.stack.id"}},
+						})},
+						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 					},
 					Publish: false,
 					NoPull:  false,
@@ -138,9 +137,12 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
 					Name: packageImage.Name(),
 					Config: buildpackage.Config{
-						Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-						Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
-						Stacks:   []dist.Stack{{ID: "some.stack.id"}},
+						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+							API:    api.MustParse("0.2"),
+							Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+							Stacks: []dist.Stack{{ID: "some.stack.id"}},
+						})},
+						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 					},
 					Publish: true,
 					NoPull:  false,
@@ -156,9 +158,12 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
 					Name: packageImage.Name(),
 					Config: buildpackage.Config{
-						Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-						Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
-						Stacks:   []dist.Stack{{ID: "some.stack.id"}},
+						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+							API:    api.MustParse("0.2"),
+							Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+							Stacks: []dist.Stack{{ID: "some.stack.id"}},
+						})},
+						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 					},
 					Publish: true,
 					NoPull:  true,
@@ -173,9 +178,12 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
 					Name: "some/package",
 					Config: buildpackage.Config{
-						Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-						Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
-						Stacks:   []dist.Stack{{ID: "some.stack.id"}},
+						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+							API:    api.MustParse("0.2"),
+							Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+							Stacks: []dist.Stack{{ID: "some.stack.id"}},
+						})},
+						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 					},
 					Publish: false,
 					NoPull:  true,
@@ -192,9 +200,12 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 			h.AssertError(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
 				Name: "",
 				Config: buildpackage.Config{
-					Default:  dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
-					Packages: []dist.ImageRef{{Ref: notPackageImage.Name()}},
-					Stacks:   []dist.Stack{{ID: "stack.1.id"}},
+					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+						API:    api.MustParse("0.2"),
+						Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+						Stacks: []dist.Stack{{ID: "some.stack.id"}},
+					})},
+					Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: notPackageImage.Name()}}},
 				},
 				Publish: false,
 				NoPull:  false,

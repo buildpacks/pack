@@ -20,33 +20,49 @@ type CreatePackageOptions struct {
 func (c *Client) CreatePackage(ctx context.Context, opts CreatePackageOptions) error {
 	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
 
-	for _, bc := range opts.Config.Buildpacks {
-		blob, err := c.downloader.Download(ctx, bc.URI)
-		if err != nil {
-			return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bc.URI))
-		}
-
-		bp, err := dist.BuildpackFromRootBlob(blob)
-		if err != nil {
-			return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bc.URI))
-		}
-
-		packageBuilder.AddBuildpack(bp)
+	bpURI := opts.Config.Buildpack.URI
+	if bpURI == "" {
+		return errors.New("buildpack URI must be provided")
 	}
 
-	for _, pkg := range opts.Config.Packages {
-		if err := addPackageBuildpacks(ctx, pkg.Ref, packageBuilder, c.imageFetcher, opts.Publish, opts.NoPull); err != nil {
-			return err
+	blob, err := c.downloader.Download(ctx, bpURI)
+	if err != nil {
+		return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bpURI))
+	}
+
+	bp, err := dist.BuildpackFromRootBlob(blob)
+	if err != nil {
+		return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bpURI))
+	}
+
+	packageBuilder.SetBuildpack(bp)
+
+	for _, dep := range opts.Config.Dependencies {
+		if dep.URI != "" {
+			blob, err := c.downloader.Download(ctx, dep.URI)
+			if err != nil {
+				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(dep.URI))
+			}
+
+			depBP, err := dist.BuildpackFromRootBlob(blob)
+			if err != nil {
+				return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
+			}
+
+			packageBuilder.AddDependency(depBP)
+		} else if dep.ImageName != "" {
+			bps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+			if err != nil {
+				return err
+			}
+
+			for _, depBP := range bps {
+				packageBuilder.AddDependency(depBP)
+			}
 		}
 	}
 
-	packageBuilder.SetDefaultBuildpack(opts.Config.Default)
-
-	for _, s := range opts.Config.Stacks {
-		packageBuilder.AddStack(s)
-	}
-
-	_, err := packageBuilder.Save(opts.Name, opts.Publish)
+	_, err = packageBuilder.Save(opts.Name, opts.Publish)
 	if err != nil {
 		return errors.Wrapf(err, "saving image")
 	}

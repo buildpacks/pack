@@ -9,7 +9,12 @@ type BuildpackURI struct {
 }
 
 type ImageRef struct {
-	Ref string `toml:"ref"`
+	ImageName string `toml:"image"`
+}
+
+type ImageOrURI struct {
+	BuildpackURI
+	ImageRef
 }
 
 type Order []OrderEntry

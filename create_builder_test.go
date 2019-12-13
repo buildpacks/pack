@@ -509,9 +509,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
 						Name: packageImage.Name(),
 						Config: buildpackage.Config{
-							Default:    bpd.Info,
-							Buildpacks: []dist.BuildpackURI{{URI: createBuildpack(bpd)}},
-							Stacks:     bpd.Stacks,
+							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
 						},
 						Publish: true,
 					}))

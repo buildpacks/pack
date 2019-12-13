@@ -52,107 +52,109 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("default not set", func() {
 				it("returns error", func() {
 					_, err := subject.Save(fakePackageImage.Name(), false)
-					h.AssertError(t, err, "a default buildpack must be set")
-				})
-			})
-
-			when("default is missing from buildpacks", func() {
-				it("returns error", func() {
-					subject.SetDefaultBuildpack(dist.BuildpackInfo{
-						ID:      "bp.1.id",
-						Version: "bp.1.version",
-					})
-
-					_, err := subject.Save(fakePackageImage.Name(), false)
-					h.AssertError(t, err, "selected default 'bp.1.id@bp.1.version' is not present")
+					h.AssertError(t, err, "buildpack must be set")
 				})
 			})
 		})
 
 		when("validate stacks", func() {
-			it.Before(func() {
-				buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-					API: api.MustParse("0.2"),
-					Info: dist.BuildpackInfo{
-						ID:      "bp.1.id",
-						Version: "bp.1.version",
-					},
-					Stacks: []dist.Stack{
-						{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
-					},
-					Order: nil,
-				}, 0644)
-				h.AssertNil(t, err)
-
-				subject.SetDefaultBuildpack(dist.BuildpackInfo{
-					ID:      buildpack.Descriptor().Info.ID,
-					Version: buildpack.Descriptor().Info.Version,
-				})
-
-				subject.AddBuildpack(buildpack)
-			})
-
-			when("no stacks are set", func() {
-				it("returns error", func() {
-					_, err := subject.Save(fakePackageImage.Name(), false)
-					h.AssertError(t, err, "must specify at least one supported stack")
-				})
-			})
-
-			when("stack is added more than once", func() {
+			when("buildpack doesn't have a declared stack", func() {
 				it("should error", func() {
-					subject.AddStack(dist.Stack{ID: "stack.id.1", Mixins: []string{"Mixin-A"}})
-					subject.AddStack(dist.Stack{ID: "stack.id.1", Mixins: []string{"Mixin-A"}})
-
-					_, err := subject.Save(fakePackageImage.Name(), false)
-					h.AssertError(t, err, "stack 'stack.id.1' was specified more than once")
-				})
-			})
-
-			when("stack is not listed in bp", func() {
-				it("should error", func() {
-					subject.AddStack(dist.Stack{ID: "stack.id.1", Mixins: []string{"Mixin-A"}})
-					subject.AddStack(dist.Stack{ID: "stack.id.not-supported-by-bps"})
-
-					_, err := subject.Save(fakePackageImage.Name(), false)
-					h.AssertError(t, err,
-						"buildpack 'bp.1.id@bp.1.version' does not support stack 'stack.id.not-supported-by-bps'",
-					)
-				})
-			})
-
-			when("stack mixins do not satisfy bp", func() {
-				it("should error", func() {
-					subject.AddStack(dist.Stack{ID: "stack.id.1", Mixins: []string{"Mixin-B"}})
-
-					_, err := subject.Save(fakePackageImage.Name(), false)
-					h.AssertError(t, err,
-						"buildpack 'bp.1.id@bp.1.version' requires missing mixin(s): Mixin-A",
-					)
-				})
-			})
-
-			when("bp has more supported stacks than package supports", func() {
-				it("should be successful", func() {
-					buildpack2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 						API: api.MustParse("0.2"),
 						Info: dist.BuildpackInfo{
-							ID:      "buildpack.2.id",
-							Version: "buildpack.2.version",
+							ID:      "bp.1.id",
+							Version: "bp.1.version",
+						},
+						Stacks: nil,
+						Order:  nil,
+					}, 0644)
+					h.AssertNil(t, err)
+
+					subject.SetBuildpack(buildpack)
+					_, err = subject.Save("some/package", false)
+					h.AssertError(t, err, "buildpack 'bp.1.id@bp.1.version' must at least support one stack")
+				})
+			})
+
+			when("dependency does not have any matching stack", func() {
+				it("should error", func() {
+					buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API: api.MustParse("0.2"),
+						Info: dist.BuildpackInfo{
+							ID:      "bp.1.id",
+							Version: "bp.1.version",
 						},
 						Stacks: []dist.Stack{
-							{ID: "stack.id.1"},
-							{ID: "stack.id.2"},
+							{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
 						},
 						Order: nil,
 					}, 0644)
 					h.AssertNil(t, err)
 
-					subject.AddBuildpack(buildpack2)
-					subject.AddStack(dist.Stack{ID: "stack.id.1", Mixins: []string{"Mixin-A"}})
+					subject.SetBuildpack(buildpack)
 
-					_, err = subject.Save(fakePackageImage.Name(), false)
+					dependency, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API: api.MustParse("0.2"),
+						Info: dist.BuildpackInfo{
+							ID:      "bp.2.id",
+							Version: "bp.2.version",
+						},
+						Stacks: []dist.Stack{
+							{ID: "stack.id.2", Mixins: []string{"Mixin-A"}},
+						},
+						Order: nil,
+					}, 0644)
 					h.AssertNil(t, err)
+
+					subject.AddDependency(dependency)
+
+					_, err = subject.Save("some/package", false)
+					h.AssertError(t, err, "buildpack 'bp.1.id@bp.1.version' does not support any stacks from 'bp.2.id@bp.2.version'")
+				})
+			})
+
+			when("dependency has stacks that aren't supported by buildpack", func() {
+				it("should only support common stacks", func() {
+					buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API: api.MustParse("0.2"),
+						Info: dist.BuildpackInfo{
+							ID:      "bp.1.id",
+							Version: "bp.1.version",
+						},
+						Stacks: []dist.Stack{
+							{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
+						},
+						Order: nil,
+					}, 0644)
+					h.AssertNil(t, err)
+
+					subject.SetBuildpack(buildpack)
+
+					dependency, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API: api.MustParse("0.2"),
+						Info: dist.BuildpackInfo{
+							ID:      "bp.2.id",
+							Version: "bp.2.version",
+						},
+						Stacks: []dist.Stack{
+							{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
+							{ID: "stack.id.2", Mixins: []string{"Mixin-A"}},
+						},
+						Order: nil,
+					}, 0644)
+					h.AssertNil(t, err)
+
+					subject.AddDependency(dependency)
+
+					img, err := subject.Save("some/package", false)
+					h.AssertNil(t, err)
+
+					metadata := buildpackage.Metadata{}
+					_, err = dist.GetLabel(img, "io.buildpacks.buildpackage.metadata", &metadata)
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, metadata.Stacks, []dist.Stack{{ID: "stack.id.1", Mixins: []string{"Mixin-A"}}})
 				})
 			})
 		})
@@ -172,12 +174,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}, 0644)
 			h.AssertNil(t, err)
 
-			subject.AddBuildpack(buildpack1)
-			subject.AddStack(dist.Stack{ID: "stack.id.1", Mixins: []string{"Mixin-A"}})
-			subject.SetDefaultBuildpack(dist.BuildpackInfo{
-				ID:      "bp.1.id",
-				Version: "bp.1.version",
-			})
+			subject.SetBuildpack(buildpack1)
 
 			packageImage, err := subject.Save(fakePackageImage.Name(), false)
 			h.AssertNil(t, err)
@@ -189,8 +186,9 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertEq(t, md.ID, "bp.1.id")
 			h.AssertEq(t, md.Version, "bp.1.version")
-			h.AssertEq(t, len(md.Stacks), 1)
+			h.AssertEq(t, len(md.Stacks), 2)
 			h.AssertEq(t, md.Stacks[0].ID, "stack.id.1")
+			h.AssertEq(t, md.Stacks[1].ID, "stack.id.2")
 		})
 
 		it("sets buildpack layers label", func() {
@@ -201,10 +199,8 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Order:  nil,
 			}, 0644)
 			h.AssertNil(t, err)
-			subject.AddBuildpack(buildpack1)
-			subject.SetDefaultBuildpack(dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"})
+			subject.SetBuildpack(buildpack1)
 
-			subject.AddStack(dist.Stack{ID: "stack.id.1", Mixins: []string{"Mixin-A"}})
 			_, err = subject.Save(fakePackageImage.Name(), false)
 			h.AssertNil(t, err)
 
@@ -225,10 +221,8 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Order:  nil,
 			}, 0644)
 			h.AssertNil(t, err)
-			subject.AddBuildpack(buildpack1)
-			subject.SetDefaultBuildpack(dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"})
+			subject.SetBuildpack(buildpack1)
 
-			subject.AddStack(dist.Stack{ID: "stack.id.1", Mixins: []string{"Mixin-A"}})
 			_, err = subject.Save(fakePackageImage.Name(), false)
 			h.AssertNil(t, err)
 
