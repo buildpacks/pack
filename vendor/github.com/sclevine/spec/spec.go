@@ -214,11 +214,9 @@ func Run(t *testing.T, text string, f func(*testing.T, G, S), opts ...Option) bo
 		case n.order == orderParallel:
 			t.Parallel()
 		}
-		var (
-			spec, group   func()
-			before, after []func()
-			afterIdx      int
-		)
+
+		var spec, group func()
+		hooks := newHooks()
 		group = func() {}
 
 		f(t, func(_ string, f func(), _ ...Option) {
@@ -228,7 +226,7 @@ func Run(t *testing.T, text string, f func(*testing.T, G, S), opts ...Option) bo
 			case n.loc[0] == 0:
 				group = func() {
 					n.loc = n.loc[1:]
-					afterIdx = 0
+					hooks.next()
 					group = func() {}
 					f()
 					group()
@@ -241,10 +239,9 @@ func Run(t *testing.T, text string, f func(*testing.T, G, S), opts ...Option) bo
 			case cfg.out != nil:
 				cfg.out(buffer)
 			case cfg.before:
-				before = append(before, f)
+				hooks.before(f)
 			case cfg.after:
-				after = insert(after, f, afterIdx)
-				afterIdx++
+				hooks.after(f)
 			case spec != nil:
 			case len(n.loc) > 1, n.loc[0] > 0:
 				n.loc[0]--
@@ -257,10 +254,44 @@ func Run(t *testing.T, text string, f func(*testing.T, G, S), opts ...Option) bo
 		if spec == nil {
 			t.Fatal("Failed to locate spec.")
 		}
-		run(t, before...)
-		defer run(t, after...)
-		run(t, spec)
+		hooks.run(t, spec)
 	})
+}
+
+type specHooks struct {
+	first, last *specHook
+}
+
+type specHook struct {
+	before, after []func()
+	next          *specHook
+}
+
+func newHooks() specHooks {
+	h := &specHook{}
+	return specHooks{first: h, last: h}
+}
+
+func (s specHooks) run(t *testing.T, spec func()) {
+	t.Helper()
+	for h := s.first; h != nil; h = h.next {
+		defer run(t, h.after...)
+		run(t, h.before...)
+	}
+	run(t, spec)
+}
+
+func (s specHooks) before(f func()) {
+	s.last.before = append(s.last.before, f)
+}
+
+func (s specHooks) after(f func()) {
+	s.last.after = append(s.last.after, f)
+}
+
+func (s *specHooks) next() {
+	s.last.next = &specHook{}
+	s.last = s.last.next
 }
 
 func run(t *testing.T, fs ...func()) {
@@ -268,13 +299,6 @@ func run(t *testing.T, fs ...func()) {
 	for _, f := range fs {
 		f()
 	}
-}
-
-func insert(fs []func(), f func(), i int) []func() {
-	fs = append(fs, nil)
-	copy(fs[i+1:], fs[i:])
-	fs[i] = f
-	return fs
 }
 
 // Pend skips all specs in the top-level group.

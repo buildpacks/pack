@@ -16,7 +16,7 @@ require (
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
 	github.com/onsi/gomega v1.7.0
 	github.com/pkg/errors v0.8.1
-	github.com/sclevine/spec v1.2.0
+	github.com/sclevine/spec v1.4.0
 	github.com/spf13/cobra v0.0.5
 )
 

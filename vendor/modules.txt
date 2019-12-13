@@ -138,7 +138,7 @@ github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
 # github.com/pkg/errors v0.8.1
 github.com/pkg/errors
-# github.com/sclevine/spec v1.2.0
+# github.com/sclevine/spec v1.4.0
 github.com/sclevine/spec
 github.com/sclevine/spec/report
 # github.com/sirupsen/logrus v1.4.2
