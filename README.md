@@ -1,9 +1,9 @@
 # pack - Buildpack CLI
 
-[![Travis Build Status](https://travis-ci.org/buildpack/pack.svg?branch=master)](https://travis-ci.org/buildpack/pack)
+[![Travis Build Status](https://travis-ci.org/buildpacks/pack.svg?branch=master)](https://travis-ci.org/buildpacks/pack/branches)
 [![Go Report Card](https://goreportcard.com/badge/github.com/buildpacks/pack)](https://goreportcard.com/report/github.com/buildpacks/pack)
 [![GoDoc](https://godoc.org/github.com/buildpacks/pack?status.svg)](https://godoc.org/github.com/buildpacks/pack)
-[![GitHub license](https://img.shields.io/github/license/buildpack/pack)](https://github.com/buildpacks/pack/blob/master/LICENSE)
+[![GitHub license](https://img.shields.io/github/license/buildpacks/pack)](https://github.com/buildpacks/pack/blob/master/LICENSE)
 [![Slack](https://slack.buildpacks.io/badge.svg)](https://slack.buildpacks.io/)
 
 `pack` makes it easy for...
