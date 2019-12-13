@@ -25,6 +25,12 @@ type ProcessDetails struct {
 	OtherProcesses []lifecycle.Process
 }
 
+// Deserialize just the subset of fields we need to avoid breaking changes
+type layersMetadata struct {
+	RunImage lifecycle.RunImageMetadata `json:"runImage" toml:"run-image"`
+	Stack    lifecycle.StackMetadata    `json:"stack" toml:"stack"`
+}
+
 func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, false)
 	if err != nil {
@@ -34,7 +40,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		return nil, err
 	}
 
-	var layersMd lifecycle.LayersMetadata
+	var layersMd layersMetadata
 	if _, err := dist.GetLabel(img, lifecycle.LayerMetadataLabel, &layersMd); err != nil {
 		return nil, err
 	}
