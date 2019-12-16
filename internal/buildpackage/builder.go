@@ -1,8 +1,6 @@
 package buildpackage
 
 import (
-	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 
@@ -20,15 +18,8 @@ type ImageFactory interface {
 type PackageBuilder struct {
 	defaultBpInfo dist.BuildpackInfo
 	buildpacks    []dist.Buildpack
-	packages      []Package
 	stacks        []dist.Stack
 	imageFactory  ImageFactory
-}
-
-type Package interface {
-	Name() string
-	BuildpackLayers() dist.BuildpackLayers
-	GetLayer(diffID string) (io.ReadCloser, error)
 }
 
 func NewBuilder(imageFactory ImageFactory) *PackageBuilder {
@@ -45,10 +36,6 @@ func (p *PackageBuilder) AddBuildpack(buildpack dist.Buildpack) {
 	p.buildpacks = append(p.buildpacks, buildpack)
 }
 
-func (p *PackageBuilder) AddPackage(pkg Package) {
-	p.packages = append(p.packages, pkg)
-}
-
 func (p *PackageBuilder) AddStack(stack dist.Stack) {
 	p.stacks = append(p.stacks, stack)
 }
@@ -57,22 +44,6 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 	var bpds []dist.BuildpackDescriptor
 	for _, bp := range p.buildpacks {
 		bpds = append(bpds, bp.Descriptor())
-	}
-
-	for _, pkgImage := range p.packages {
-		for bpID, v := range pkgImage.BuildpackLayers() {
-			for bpVersion, bpInfo := range v {
-				bpds = append(bpds, dist.BuildpackDescriptor{
-					API: bpInfo.API,
-					Info: dist.BuildpackInfo{
-						ID:      bpID,
-						Version: bpVersion,
-					},
-					Stacks: bpInfo.Stacks,
-					Order:  bpInfo.Order,
-				})
-			}
-		}
 	}
 
 	if err := validateDefault(bpds, p.defaultBpInfo); err != nil {
@@ -103,7 +74,7 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 
 	bpLayers := dist.BuildpackLayers{}
 	for _, bp := range p.buildpacks {
-		bpLayerTar, err := dist.BuildpackLayer(tmpDir, 0, 0, bp)
+		bpLayerTar, err := dist.BuildpackToLayerTar(tmpDir, bp)
 		if err != nil {
 			return nil, err
 		}
@@ -123,22 +94,6 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 		dist.AddBuildpackToLayersMD(bpLayers, bp.Descriptor(), diffID.String())
 	}
 
-	for _, pkg := range p.packages {
-		for bpID, v := range pkg.BuildpackLayers() {
-			for bpVersion, bpInfo := range v {
-				if err := embedBuildpackToImage(pkg, bpID, bpVersion, bpInfo, tmpDir, image); err != nil {
-					return nil, errors.Wrapf(err, "embedding buildpack %s", style.Symbol(bpID+"@"+bpVersion))
-				}
-
-				if _, ok := bpLayers[bpID]; !ok {
-					bpLayers[bpID] = map[string]dist.BuildpackLayerInfo{}
-				}
-
-				bpLayers[bpID][bpVersion] = bpInfo
-			}
-		}
-	}
-
 	if err := dist.SetLabel(image, dist.BuildpackLayersLabel, bpLayers); err != nil {
 		return nil, err
 	}
@@ -148,27 +103,6 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 	}
 
 	return image, nil
-}
-
-func embedBuildpackToImage(pkg Package, bpID, bpVersion string, bpInfo dist.BuildpackLayerInfo, tmpDir string, image imgutil.Image) error {
-	readCloser, err := pkg.GetLayer(bpInfo.LayerDiffID)
-	if err != nil {
-		return errors.Wrap(err, "retrieve layer")
-	}
-	defer readCloser.Close()
-
-	file, err := ioutil.TempFile(tmpDir, fmt.Sprintf("%s.%s.*.tar", bpID, bpVersion))
-	if err != nil {
-		return errors.Wrap(err, "creating temp file")
-	}
-	if _, err = io.Copy(file, readCloser); err != nil {
-		return errors.Wrap(err, "copy layer contents")
-	}
-
-	if err = image.AddLayer(file.Name()); err != nil {
-		return errors.Wrap(err, "adding layer")
-	}
-	return nil
 }
 
 func validateDefault(bps []dist.BuildpackDescriptor, defBp dist.BuildpackInfo) error {

@@ -16,14 +16,14 @@ import (
 )
 
 type CreateBuilderOptions struct {
-	BuilderName   string
-	BuilderConfig pubbldr.Config
-	Publish       bool
-	NoPull        bool
+	BuilderName string
+	Config      pubbldr.Config
+	Publish     bool
+	NoPull      bool
 }
 
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
-	if err := validateBuilderConfig(opts.BuilderConfig); err != nil {
+	if err := validateBuilderConfig(opts.Config); err != nil {
 		return errors.Wrap(err, "invalid builder config")
 	}
 
@@ -31,7 +31,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return err
 	}
 
-	baseImage, err := c.imageFetcher.Fetch(ctx, opts.BuilderConfig.Stack.BuildImage, !opts.Publish, !opts.NoPull)
+	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Stack.BuildImage, !opts.Publish, !opts.NoPull)
 	if err != nil {
 		return errors.Wrap(err, "fetch build image")
 	}
@@ -42,17 +42,17 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return errors.Wrap(err, "invalid build-image")
 	}
 
-	bldr.SetDescription(opts.BuilderConfig.Description)
+	bldr.SetDescription(opts.Config.Description)
 
-	if bldr.StackID != opts.BuilderConfig.Stack.ID {
+	if bldr.StackID != opts.Config.Stack.ID {
 		return fmt.Errorf(
 			"stack %s from builder config is incompatible with stack %s from build image",
-			style.Symbol(opts.BuilderConfig.Stack.ID),
+			style.Symbol(opts.Config.Stack.ID),
 			style.Symbol(bldr.StackID),
 		)
 	}
 
-	lifecycle, err := c.fetchLifecycle(ctx, opts.BuilderConfig.Lifecycle)
+	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle)
 	if err != nil {
 		return errors.Wrap(err, "fetch lifecycle")
 	}
@@ -61,7 +61,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return errors.Wrap(err, "setting lifecycle")
 	}
 
-	for _, b := range opts.BuilderConfig.Buildpacks {
+	for _, b := range opts.Config.Buildpacks {
 		err := ensureBPSupport(b.URI)
 		if err != nil {
 			return err
@@ -72,7 +72,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 			return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))
 		}
 
-		fetchedBp, err := dist.NewBuildpack(blob)
+		fetchedBp, err := dist.BuildpackFromRootBlob(blob)
 		if err != nil {
 			return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
 		}
@@ -85,8 +85,14 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		bldr.AddBuildpack(fetchedBp)
 	}
 
-	bldr.SetOrder(opts.BuilderConfig.Order)
-	bldr.SetStack(opts.BuilderConfig.Stack)
+	for _, pkg := range opts.Config.Packages {
+		if err := addPackageBuildpacks(ctx, pkg.Ref, bldr, c.imageFetcher, opts.Publish, opts.NoPull); err != nil {
+			return err
+		}
+	}
+
+	bldr.SetOrder(opts.Config.Order)
+	bldr.SetStack(opts.Config.Stack)
 
 	return bldr.Save(c.logger)
 }
@@ -171,7 +177,7 @@ func validateBuilderConfig(conf pubbldr.Config) error {
 
 func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions) error {
 	var runImages []imgutil.Image
-	for _, i := range append([]string{opts.BuilderConfig.Stack.RunImage}, opts.BuilderConfig.Stack.RunImageMirrors...) {
+	for _, i := range append([]string{opts.Config.Stack.RunImage}, opts.Config.Stack.RunImageMirrors...) {
 		if !opts.Publish {
 			img, err := c.imageFetcher.Fetch(ctx, i, true, false)
 			if err != nil {
@@ -201,10 +207,10 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 			return err
 		}
 
-		if stackID != opts.BuilderConfig.Stack.ID {
+		if stackID != opts.Config.Stack.ID {
 			return fmt.Errorf(
 				"stack %s from builder config is incompatible with stack %s from run image %s",
-				style.Symbol(opts.BuilderConfig.Stack.ID),
+				style.Symbol(opts.Config.Stack.ID),
 				style.Symbol(stackID),
 				style.Symbol(img.Name()),
 			)

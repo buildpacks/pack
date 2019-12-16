@@ -155,7 +155,7 @@ lifecycle:
 			combo.packPath,
 			combo.packFixturesDir,
 			combo.packCreateBuilderPath,
-			combo.builderTomlPath,
+			combo.packCreateBuilderFixturesDir,
 			combo.lifecyclePath,
 			combo.lifecycleDescriptor.Info.Version,
 			combo.lifecycleDescriptor.API.BuildpackVersion,
@@ -164,7 +164,7 @@ lifecycle:
 
 		combo := combo
 		suite(k, func(t *testing.T, when spec.G, it spec.S) {
-			testAcceptance(t, when, it, combo.packFixturesDir, combo.packPath, combo.packCreateBuilderPath, combo.builderTomlPath, combo.lifecyclePath, combo.lifecycleDescriptor)
+			testAcceptance(t, when, it, combo.packFixturesDir, combo.packPath, combo.packCreateBuilderPath, combo.packCreateBuilderFixturesDir, combo.lifecyclePath, combo.lifecycleDescriptor)
 		}, spec.Report(report.Terminal{}))
 	}
 
@@ -173,7 +173,7 @@ lifecycle:
 	h.AssertNil(t, suiteManager.CleanUp())
 }
 
-func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packPath, packCreateBuilderPath, builderTomlPath, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) {
+func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packPath, packCreateBuilderPath, configDir, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) {
 
 	var (
 		bpDir    = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
@@ -235,9 +235,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			)
 
 			it.Before(func() {
-				key := taskKey("create-builder", runImageMirror, builderTomlPath, packCreateBuilderPath, lifecyclePath)
+				key := taskKey("create-builder", runImageMirror, configDir, packCreateBuilderPath, lifecyclePath)
 				value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
-					return createBuilder(t, runImageMirror, builderTomlPath, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor), nil
+					return createBuilder(t, runImageMirror, configDir, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor), nil
 				})
 				h.AssertNil(t, err)
 				suiteManager.RegisterCleanUp("clean-"+key, func() error {
@@ -414,7 +414,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						it.Before(func() {
 							h.SkipIf(t, !packSupports(packPath, "build --network"), "--network flag not supported for build")
 
-							buildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "internet-capable-buildpack"), "./", 0766)
+							buildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "internet-capable-buildpack"), "./", 0755)
 						})
 
 						it.After(func() {
@@ -480,7 +480,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							var notBuilderTgz string
 
 							it.Before(func() {
-								notBuilderTgz = h.CreateTGZ(t, filepath.Join(bpDir, "not-in-builder-buildpack"), "./", 0766)
+								notBuilderTgz = h.CreateTGZ(t, filepath.Join(bpDir, "not-in-builder-buildpack"), "./", 0755)
 							})
 
 							it.After(func() {
@@ -539,7 +539,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							var otherStackBuilderTgz string
 
 							it.Before(func() {
-								otherStackBuilderTgz = h.CreateTGZ(t, filepath.Join(bpDir, "other-stack-buildpack"), "./", 0766)
+								otherStackBuilderTgz = h.CreateTGZ(t, filepath.Join(bpDir, "other-stack-buildpack"), "./", 0755)
 							})
 
 							it.After(func() {
@@ -1087,6 +1087,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		})
 
 		createPackageLocally := func(absConfigPath string) string {
+			t.Helper()
 			packageName := "test/package-" + h.RandString(10)
 			output, err := h.RunE(subjectPack("create-package", packageName, "-p", absConfigPath))
 			h.AssertNil(t, err)
@@ -1095,6 +1096,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		}
 
 		createPackageRemotely := func(absConfigPath string) string {
+			t.Helper()
 			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 			output, err := h.RunE(subjectPack("create-package", packageName, "-p", absConfigPath, "--publish"))
 			h.AssertNil(t, err)
@@ -1103,12 +1105,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		}
 
 		assertImageExistsLocally := func(name string) {
+			t.Helper()
 			_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), name)
 			h.AssertNil(t, err)
 
 		}
 
 		generateAggregatePackageToml := func(nestedPackageName string) string {
+			t.Helper()
 			packageTomlData := fillTemplate(t,
 				filepath.Join(packFixturesDir, "package_aggregate.toml"),
 				map[string]interface{}{"PackageName": nestedPackageName},
@@ -1222,12 +1226,12 @@ type runCombo struct {
 }
 
 type resolvedRunCombo struct {
-	builderTomlPath       string
-	packFixturesDir       string
-	packPath              string
-	packCreateBuilderPath string
-	lifecyclePath         string
-	lifecycleDescriptor   builder.LifecycleDescriptor
+	packCreateBuilderFixturesDir string
+	packFixturesDir              string
+	packPath                     string
+	packCreateBuilderPath        string
+	lifecyclePath                string
+	lifecycleDescriptor          builder.LifecycleDescriptor
 }
 
 func resolveRunCombinations(
@@ -1243,12 +1247,12 @@ func resolveRunCombinations(
 	for _, c := range combos {
 		key := fmt.Sprintf("p_%s cb_%s lc_%s", c.Pack, c.PackCreateBuilder, c.Lifecycle)
 		rc := resolvedRunCombo{
-			builderTomlPath:       filepath.Join("testdata", "pack_current", "builder.toml"),
-			packFixturesDir:       filepath.Join("testdata", "pack_current"),
-			packPath:              packPath,
-			packCreateBuilderPath: packPath,
-			lifecyclePath:         lifecyclePath,
-			lifecycleDescriptor:   lifecycleDescriptor,
+			packFixturesDir:              filepath.Join("testdata", "pack_current"),
+			packCreateBuilderFixturesDir: filepath.Join("testdata", "pack_current"),
+			packPath:                     packPath,
+			packCreateBuilderPath:        packPath,
+			lifecyclePath:                lifecyclePath,
+			lifecycleDescriptor:          lifecycleDescriptor,
 		}
 
 		if c.Pack == "previous" {
@@ -1266,7 +1270,7 @@ func resolveRunCombinations(
 			}
 
 			rc.packCreateBuilderPath = previousPackPath
-			rc.builderTomlPath = filepath.Join("testdata", "pack_previous", "builder.toml")
+			rc.packCreateBuilderFixturesDir = filepath.Join("testdata", "pack_previous")
 		}
 
 		if c.Lifecycle == "previous" {
@@ -1413,7 +1417,7 @@ func buildPack(t *testing.T) string {
 	return packPath
 }
 
-func createBuilder(t *testing.T, runImageMirror, builderTOMLPath, packPath, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) string {
+func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) string {
 	t.Log("creating builder image...")
 
 	// CREATE TEMP WORKING DIR
@@ -1426,9 +1430,32 @@ func createBuilder(t *testing.T, runImageMirror, builderTOMLPath, packPath, life
 	t.Log("using buildpacks from: ", buildpacksDir)
 	h.RecursiveCopy(t, buildpacksDir, tmpDir)
 
-	// AMEND builder.toml
-	h.CopyFile(t, builderTOMLPath, filepath.Join(tmpDir, "builder.toml"))
-	builderConfigFile, err := os.OpenFile(filepath.Join(tmpDir, "builder.toml"), os.O_RDWR|os.O_APPEND, 0666)
+	// ARCHIVE BUILDPACKS
+	buildpacks := []string{
+		"noop-buildpack",
+		"not-in-builder-buildpack",
+		"other-stack-buildpack",
+		"read-env-buildpack",
+		"simple-layers-buildpack", // from package
+	}
+
+	for _, v := range buildpacks {
+		tgz := h.CreateTGZ(t, filepath.Join(buildpacksDir, v), "./", 0755)
+		err := os.Rename(tgz, filepath.Join(tmpDir, v+".tgz"))
+		h.AssertNil(t, err)
+	}
+
+	// CREATE PACKAGE
+	packageImageName := createPackage(t, configDir, tmpDir, packPath)
+
+	// RENDER builder.toml
+	cfgData := fillTemplate(t, filepath.Join(configDir, "builder.toml"), map[string]interface{}{
+		"package_name": packageImageName,
+	})
+	err = ioutil.WriteFile(filepath.Join(tmpDir, "builder.toml"), []byte(cfgData), os.ModePerm)
+	h.AssertNil(t, err)
+
+	builderConfigFile, err := os.OpenFile(filepath.Join(tmpDir, "builder.toml"), os.O_RDWR|os.O_APPEND, os.ModePerm)
 	h.AssertNil(t, err)
 
 	// ADD run-image-mirrors
@@ -1451,23 +1478,8 @@ func createBuilder(t *testing.T, runImageMirror, builderTOMLPath, packPath, life
 
 	builderConfigFile.Close()
 
-	// PACKAGE BUILDPACKS
-	buildpacks := []string{
-		"noop-buildpack",
-		"not-in-builder-buildpack",
-		"other-stack-buildpack",
-		"read-env-buildpack",
-		"simple-layers-buildpack",
-	}
-
-	for _, v := range buildpacks {
-		tgz := h.CreateTGZ(t, filepath.Join(buildpacksDir, v), "./", 0755)
-		err := os.Rename(tgz, filepath.Join(tmpDir, v+".tgz"))
-		h.AssertNil(t, err)
-	}
-
 	// NAME BUILDER
-	bldr := registryConfig.RepoName("some-org/" + h.RandString(10))
+	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
 
 	// CREATE BUILDER
 	cmd := exec.Command(packPath, "create-builder", "--no-color", bldr, "-b", filepath.Join(tmpDir, "builder.toml"))
@@ -1478,7 +1490,25 @@ func createBuilder(t *testing.T, runImageMirror, builderTOMLPath, packPath, life
 	return bldr
 }
 
+func createPackage(t *testing.T, configDir, tmpDir, packPath string) string {
+	t.Helper()
+	t.Log("creating package image...")
+	// COPY package.toml
+	h.CopyFile(t, filepath.Join(configDir, "package.toml"), filepath.Join(tmpDir, "package.toml"))
+
+	// NAME PACKAGE
+	packageImageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+
+	// CREATE PACKAGE
+	cmd := exec.Command(packPath, "create-package", "--no-color", packageImageName, "-p", filepath.Join(tmpDir, "package.toml"))
+	output := h.Run(t, cmd)
+	h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageImageName))
+	h.AssertNil(t, h.PushImage(dockerCli, packageImageName, registryConfig))
+	return packageImageName
+}
+
 func createStack(t *testing.T, dockerCli *client.Client, runImageMirror string) error {
+	t.Helper()
 	t.Log("creating stack images...")
 
 	if err := createStackImage(dockerCli, runImage, filepath.Join("testdata", "mock_stack", "run")); err != nil {
@@ -1539,6 +1569,7 @@ func assertMockAppResponseContains(t *testing.T, launchPort string, timeout time
 }
 
 func assertHasBase(t *testing.T, image, base string) {
+	t.Helper()
 	imageInspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), image)
 	h.AssertNil(t, err)
 	baseInspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), base)
@@ -1594,6 +1625,7 @@ func runDockerImageExposePort(t *testing.T, containerName, repoName string) stri
 }
 
 func waitForResponse(t *testing.T, port string, timeout time.Duration) string {
+	t.Helper()
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	timer := time.NewTimer(timeout)
@@ -1667,6 +1699,7 @@ func imageLabel(t *testing.T, dockerCli *client.Client, repoName, labelName stri
 }
 
 func fillTemplate(t *testing.T, templatePath string, data map[string]interface{}) string {
+	t.Helper()
 	outputTemplate, err := ioutil.ReadFile(templatePath)
 	h.AssertNil(t, err)
 

@@ -22,51 +22,56 @@ func init() {
 }
 
 func ReadDirAsTar(srcDir, basePath string, uid, gid int, mode int64) io.ReadCloser {
-	return readAsTar(srcDir, basePath, uid, gid, mode, WriteDirToTar)
+	return GenerateTar(func(tw *tar.Writer) error {
+		return WriteDirToTar(tw, srcDir, basePath, uid, gid, mode)
+	})
 }
 
 func ReadZipAsTar(srcPath, basePath string, uid, gid int, mode int64) io.ReadCloser {
-	return readAsTar(srcPath, basePath, uid, gid, mode, WriteZipToTar)
+	return GenerateTar(func(tw *tar.Writer) error {
+		return WriteZipToTar(tw, srcPath, basePath, uid, gid, mode)
+	})
 }
 
-func readAsTar(src, basePath string, uid, gid int, mode int64, writeFn func(tw *tar.Writer, srcDir, basePath string, uid, gid int, mode int64) error) io.ReadCloser {
-	var (
-		errChan = make(chan error)
-		r, w    = io.Pipe()
-	)
+// GenerateTar returns a reader to a tar from a generator function. Note that the
+// generator will not fully execute until the reader is fully read from. Any errors
+// returned by the generator will be returned when reading the reader.
+func GenerateTar(gen func(*tar.Writer) error) io.ReadCloser {
+	errChan := make(chan error)
+	pr, pw := io.Pipe()
 
 	go func() {
-		tw := tar.NewWriter(w)
+		tw := tar.NewWriter(pw)
 		defer func() {
 			if r := recover(); r != nil {
 				tw.Close()
-				w.CloseWithError(errors.Errorf("panic: %v", r))
+				pw.CloseWithError(errors.Errorf("panic: %v", r))
 			}
 		}()
 
-		err := writeFn(tw, src, basePath, uid, gid, mode)
+		err := gen(tw)
 
 		closeErr := tw.Close()
-		closeErr = aggregateError(closeErr, w.CloseWithError(err))
+		closeErr = aggregateError(closeErr, pw.CloseWithError(err))
 
 		errChan <- closeErr
 	}()
 
-	return ioutils.NewReadCloserWrapper(r, func() error {
-		var compErr error
+	return ioutils.NewReadCloserWrapper(pr, func() error {
+		var completeErr error
 
 		// closing the reader ensures that if anything attempts
 		// further reading it doesn't block waiting for content
-		if err := r.Close(); err != nil {
-			compErr = aggregateError(compErr, err)
+		if err := pr.Close(); err != nil {
+			completeErr = aggregateError(completeErr, err)
 		}
 
-		// wait until everything closes properly specially contents inside `writeFn`
+		// wait until everything closes properly
 		if err := <-errChan; err != nil {
-			compErr = aggregateError(compErr, err)
+			completeErr = aggregateError(completeErr, err)
 		}
 
-		return compErr
+		return completeErr
 	})
 }
 
@@ -269,12 +274,26 @@ func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode i
 }
 
 func finalizeHeader(header *tar.Header, uid, gid int, mode int64) {
+	NormalizeHeader(header)
 	if mode != -1 {
 		header.Mode = mode
 	}
-	header.ModTime = NormalizedDateTime
 	header.Uid = uid
 	header.Gid = gid
+}
+
+// NormalizeHeader normalizes a tar.Header
+//
+// Normalizes the following:
+// 	- ModTime
+// 	- GID
+// 	- UID
+// 	- User Name
+// 	- Group Name
+func NormalizeHeader(header *tar.Header) {
+	header.ModTime = NormalizedDateTime
+	header.Uid = 0
+	header.Gid = 0
 	header.Uname = ""
 	header.Gname = ""
 }

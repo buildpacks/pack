@@ -36,10 +36,10 @@ func CreateBuilder(logger logging.Logger, client PackClient) *cobra.Command {
 
 			imageName := args[0]
 			if err := client.CreateBuilder(ctx, pack.CreateBuilderOptions{
-				BuilderName:   imageName,
-				BuilderConfig: builderConfig,
-				Publish:       flags.Publish,
-				NoPull:        flags.NoPull,
+				BuilderName: imageName,
+				Config:      builderConfig,
+				Publish:     flags.Publish,
+				NoPull:      flags.NoPull,
 			}); err != nil {
 				return err
 			}

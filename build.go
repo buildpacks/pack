@@ -339,7 +339,7 @@ func (c *Client) processBuildpacks(ctx context.Context, buildpacks []string) ([]
 				return nil, dist.OrderEntry{}, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
 			}
 
-			fetchedBP, err := dist.NewBuildpack(blob)
+			fetchedBP, err := dist.BuildpackFromRootBlob(blob)
 			if err != nil {
 				return nil, dist.OrderEntry{}, errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bp))
 			}

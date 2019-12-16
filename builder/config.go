@@ -17,6 +17,7 @@ import (
 type Config struct {
 	Description string            `toml:"description"`
 	Buildpacks  []BuildpackConfig `toml:"buildpacks"`
+	Packages    []PackageConfig   `toml:"packages"`
 	Order       dist.Order        `toml:"order"`
 	Stack       StackConfig       `toml:"stack"`
 	Lifecycle   LifecycleConfig   `toml:"lifecycle"`
@@ -25,6 +26,10 @@ type Config struct {
 type BuildpackConfig struct {
 	dist.BuildpackInfo
 	URI string `toml:"uri"`
+}
+
+type PackageConfig struct {
+	Ref string `toml:"ref"`
 }
 
 type StackConfig struct {

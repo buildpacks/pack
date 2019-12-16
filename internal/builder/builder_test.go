@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -25,6 +24,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/builder/testmocks"
 	"github.com/buildpacks/pack/internal/dist"
+	ifakes "github.com/buildpacks/pack/internal/fakes"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -81,7 +81,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			},
 		}).AnyTimes()
 
-		bp1v1 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
+		var err error
+		bp1v1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
 			Info: dist.BuildpackInfo{
 				ID:      "buildpack-1-id",
@@ -91,8 +92,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				ID:     "some.stack.id",
 				Mixins: []string{"mixinX", "mixinY"},
 			}},
-		}}
-		bp1v2 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
+		}, 0644)
+		h.AssertNil(t, err)
+
+		bp1v2, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
 			Info: dist.BuildpackInfo{
 				ID:      "buildpack-1-id",
@@ -102,8 +105,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				ID:     "some.stack.id",
 				Mixins: []string{"mixinX", "mixinY"},
 			}},
-		}}
-		bp2v1 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
+		}, 0644)
+		h.AssertNil(t, err)
+
+		bp2v1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
 			Info: dist.BuildpackInfo{
 				ID:      "buildpack-2-id",
@@ -113,8 +118,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				ID:     "some.stack.id",
 				Mixins: []string{"build:mixinA", "run:mixinB"},
 			}},
-		}}
-		bpOrder = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
+		}, 0644)
+		h.AssertNil(t, err)
+
+		bpOrder, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
 			Info: dist.BuildpackInfo{
 				ID:      "order-buildpack-id",
@@ -132,7 +139,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			}},
-		}}
+		}, 0644)
+		h.AssertNil(t, err)
 	})
 
 	it.After(func() {
@@ -471,14 +479,15 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("buildpack stack id does not match", func() {
 					it("returns an error", func() {
-						subject.AddBuildpack(&fakeBuildpack{
-							descriptor: dist.BuildpackDescriptor{
-								API:    api.MustParse("0.2"),
-								Info:   bp1v1.Descriptor().Info,
-								Stacks: []dist.Stack{{ID: "other.stack.id"}},
-							}})
+						bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+							API:    api.MustParse("0.2"),
+							Info:   bp1v1.Descriptor().Info,
+							Stacks: []dist.Stack{{ID: "other.stack.id"}},
+						}, 0644)
+						h.AssertNil(t, err)
 
-						err := subject.Save(logger)
+						subject.AddBuildpack(bp)
+						err = subject.Save(logger)
 
 						h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' does not support stack 'some.stack.id'")
 					})
@@ -486,14 +495,15 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("buildpack is not compatible with lifecycle", func() {
 					it("returns an error", func() {
-						subject.AddBuildpack(&fakeBuildpack{
-							descriptor: dist.BuildpackDescriptor{
-								API:    api.MustParse("0.1"),
-								Info:   bp1v1.Descriptor().Info,
-								Stacks: []dist.Stack{{ID: "some.stack.id"}},
-							}})
+						bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+							API:    api.MustParse("0.1"),
+							Info:   bp1v1.Descriptor().Info,
+							Stacks: []dist.Stack{{ID: "some.stack.id"}},
+						}, 0644)
+						h.AssertNil(t, err)
 
-						err := subject.Save(logger)
+						subject.AddBuildpack(bp)
+						err = subject.Save(logger)
 
 						h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' (Buildpack API version 0.1) is incompatible with lifecycle '1.2.3' (Buildpack API version 0.2)")
 					})
@@ -501,17 +511,18 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("buildpack mixins are not satisfied", func() {
 					it("returns an error", func() {
-						subject.AddBuildpack(&fakeBuildpack{
-							descriptor: dist.BuildpackDescriptor{
-								API:  api.MustParse("0.2"),
-								Info: bp1v1.Descriptor().Info,
-								Stacks: []dist.Stack{{
-									ID:     "some.stack.id",
-									Mixins: []string{"missing"},
-								}},
-							}})
+						bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+							API:  api.MustParse("0.2"),
+							Info: bp1v1.Descriptor().Info,
+							Stacks: []dist.Stack{{
+								ID:     "some.stack.id",
+								Mixins: []string{"missing"},
+							}},
+						}, 0644)
+						h.AssertNil(t, err)
 
-						err := subject.Save(logger)
+						subject.AddBuildpack(bp)
+						err = subject.Save(logger)
 
 						h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' requires missing mixin(s): missing")
 					})
@@ -1053,42 +1064,26 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-type fakeBuildpack struct {
-	descriptor dist.BuildpackDescriptor
-}
-
-func (f *fakeBuildpack) Descriptor() dist.BuildpackDescriptor {
-	return f.descriptor
-}
-
-func (f *fakeBuildpack) Open() (io.ReadCloser, error) {
-	return archive.ReadDirAsTar(filepath.Join("testdata", "buildpack"), ".", 0, 0, 0755), nil
-}
-
 func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp dist.Buildpack) {
+	t.Helper()
+
 	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().Info.ID, bp.Descriptor().Info.Version)
 	layerTar, err := image.FindLayerWithPath(dirPath)
 	h.AssertNil(t, err)
 
 	h.AssertOnTarEntry(t, layerTar, dirPath,
 		h.IsDirectory(),
-		h.HasModTime(archive.NormalizedDateTime),
 	)
 
 	h.AssertOnTarEntry(t, layerTar, path.Dir(dirPath),
 		h.IsDirectory(),
-		h.HasModTime(archive.NormalizedDateTime),
 	)
 
 	h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/build",
 		h.ContentEquals("build-contents"),
-		h.HasOwnerAndGroup(1234, 4321),
-		h.HasFileMode(0755),
 	)
 
 	h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/detect",
 		h.ContentEquals("detect-contents"),
-		h.HasOwnerAndGroup(1234, 4321),
-		h.HasFileMode(0755),
 	)
 }

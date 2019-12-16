@@ -268,7 +268,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 	}
 
 	for _, bp := range b.additionalBuildpacks {
-		bpLayerTar, err := dist.BuildpackLayer(tmpDir, b.UID, b.GID, bp)
+		bpLayerTar, err := dist.BuildpackToLayerTar(tmpDir, bp)
 		if err != nil {
 			return err
 		}

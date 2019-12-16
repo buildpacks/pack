@@ -19,6 +19,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/builder/testmocks"
 	"github.com/buildpacks/pack/internal/dist"
+	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -50,31 +51,38 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 		mockLifecycle.EXPECT().Open().Return(archive.ReadDirAsTar(
 			filepath.Join("testdata", "lifecycle"), ".", 0, 0, -1), nil).AnyTimes()
 
-		bp1v1 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
+		var err error
+		bp1v1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
 			Info: dist.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-1",
 			},
 			Stacks: []dist.Stack{{ID: "some.stack.id"}},
-		}}
-		bp1v2 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
+		}, 0644)
+		h.AssertNil(t, err)
+
+		bp1v2, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
 			Info: dist.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-2",
 			},
 			Stacks: []dist.Stack{{ID: "some.stack.id"}},
-		}}
-		bp2v1 = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
+		}, 0644)
+		h.AssertNil(t, err)
+
+		bp2v1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
 			Info: dist.BuildpackInfo{
 				ID:      "buildpack-2-id",
 				Version: "buildpack-2-version-1",
 			},
 			Stacks: []dist.Stack{{ID: "some.stack.id"}},
-		}}
-		bpOrder = &fakeBuildpack{descriptor: dist.BuildpackDescriptor{
+		}, 0644)
+		h.AssertNil(t, err)
+
+		bpOrder, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.1"),
 			Info: dist.BuildpackInfo{
 				ID:      "order-buildpack-id",
@@ -92,7 +100,8 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			}},
-		}}
+		}, 0644)
+		h.AssertNil(t, err)
 
 		h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
 		h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
@@ -100,7 +109,6 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 
 		logger = logging.New(ioutil.Discard)
 
-		var err error
 		subject, err = builder.New(baseImage, "some/builder")
 		h.AssertNil(t, err)
 	})
@@ -260,10 +268,11 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertNil(t, subject.SetLifecycle(mockLifecycle))
 
-			subject.AddBuildpack(updateFakeAPIVersion(bp1v1, api.MustParse("0.2")))
-			subject.AddBuildpack(updateFakeAPIVersion(bp1v2, api.MustParse("0.2")))
-			subject.AddBuildpack(updateFakeAPIVersion(bp2v1, api.MustParse("0.2")))
-			subject.AddBuildpack(updateFakeAPIVersion(bpOrder, api.MustParse("0.2")))
+			for _, bp := range []dist.Buildpack{bp1v1, bp1v2, bp2v1, bpOrder} {
+				updated, err := updateFakeAPIVersion(bp, api.MustParse("0.2"))
+				h.AssertNil(t, err)
+				subject.AddBuildpack(updated)
+			}
 
 			subject.SetOrder(dist.Order{
 				{Group: []dist.BuildpackRef{
@@ -331,13 +340,11 @@ func testCompat(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func updateFakeAPIVersion(buildpack dist.Buildpack, version *api.Version) dist.Buildpack {
-	return &fakeBuildpack{
-		descriptor: dist.BuildpackDescriptor{
-			API:    version,
-			Info:   buildpack.Descriptor().Info,
-			Stacks: buildpack.Descriptor().Stacks,
-			Order:  buildpack.Descriptor().Order,
-		},
-	}
+func updateFakeAPIVersion(buildpack dist.Buildpack, version *api.Version) (dist.Buildpack, error) {
+	return ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+		API:    version,
+		Info:   buildpack.Descriptor().Info,
+		Stacks: buildpack.Descriptor().Stacks,
+		Order:  buildpack.Descriptor().Order,
+	}, 0644)
 }

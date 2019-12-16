@@ -1,9 +1,9 @@
 [default]
-id = "noop.buildpack"
-version = "noop.buildpack.version"
+id = "simple/layers"
+version = "simple-layers-version"
 
 [[buildpacks]]
-uri = "noop-buildpack.tgz"
+uri = "simple-layers-buildpack.tgz"
 
 [[stacks]]
 id = "pack.test.stack"

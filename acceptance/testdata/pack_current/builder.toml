@@ -1,9 +1,4 @@
 [[buildpacks]]
-  id = "simple/layers"
-  version = "simple-layers-version"
-  uri = "simple-layers-buildpack.tgz"
-
-[[buildpacks]]
   id = "read/env"
   version = "read-env-version"
   uri = "read-env-buildpack.tgz"
@@ -11,6 +6,9 @@
 [[buildpacks]]
   # intentionally missing id/version as they are optional
   uri = "noop-buildpack.tgz"
+
+[[packages]]
+  ref = "{{ .package_name }}"
 
 [[order]]
 [[order.group]]
