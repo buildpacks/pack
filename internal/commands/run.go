@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/jkutner/libproject"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
@@ -22,7 +23,7 @@ func Run(logger logging.Logger, cfg config.Config, packClient *pack.Client) *cob
 				suggestSettingBuilder(logger, packClient)
 				return MakeSoftError()
 			}
-			env, err := parseEnv(flags.EnvFiles, flags.Env)
+			env, err := parseEnv(libproject.ProjectDescriptor{}, flags.EnvFiles, flags.Env)
 			if err != nil {
 				return err
 			}

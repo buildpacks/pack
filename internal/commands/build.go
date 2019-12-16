@@ -1,10 +1,13 @@
 package commands
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/jkutner/libproject"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -41,10 +44,32 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				suggestSettingBuilder(logger, packClient)
 				return MakeSoftError()
 			}
-			env, err := parseEnv(flags.EnvFiles, flags.Env)
+
+			// read project.toml
+			descriptor, err := parseProjectToml()
 			if err != nil {
 				return err
 			}
+
+			env, err := parseEnv(descriptor, flags.EnvFiles, flags.Env)
+			if err != nil {
+				return err
+			}
+
+			buildpacks := flags.Buildpacks
+			if len(buildpacks) == 0 {
+				buildpacks = []string{}
+				for _, bp := range descriptor.Build.Buildpacks {
+					if len(bp.Uri) != 0 {
+						// there are several places through out the pack code where the "id@version" format is used.
+						// we should probably central this, but it's not clear where it belongs
+						buildpacks = append(buildpacks, fmt.Sprintf("%s@%s", bp.Id, bp.Version))
+					} else {
+						buildpacks = append(buildpacks, bp.Uri)
+					}
+				}
+			}
+
 			if err := packClient.Build(ctx, pack.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           flags.Builder,
@@ -55,7 +80,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Publish:           flags.Publish,
 				NoPull:            flags.NoPull,
 				ClearCache:        flags.ClearCache,
-				Buildpacks:        flags.Buildpacks,
+				Buildpacks:        buildpacks,
 				ContainerConfig: pack.ContainerConfig{
 					Network: flags.Network,
 				},
@@ -84,9 +109,12 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 }
 
-func parseEnv(envFiles []string, envVars []string) (map[string]string, error) {
+func parseEnv(project libproject.ProjectDescriptor, envFiles []string, envVars []string) (map[string]string, error) {
 	env := map[string]string{}
 
+	for _, envVar := range project.Build.Env {
+		env[envVar.Name] = env[envVar.Value]
+	}
 	for _, envFile := range envFiles {
 		envFileVars, err := parseEnvFile(envFile)
 		if err != nil {
@@ -127,4 +155,18 @@ func addEnvVar(env map[string]string, item string) map[string]string {
 		env[arr[0]] = os.Getenv(arr[0])
 	}
 	return env
+}
+
+func parseProjectToml() (libproject.ProjectDescriptor, error) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return libproject.ProjectDescriptor{}, err
+	}
+
+	projectToml := filepath.Join(workingDir)
+
+	if _, err := os.Stat(projectToml); !os.IsNotExist(err) {
+		return libproject.ReadProjectDescriptor(projectToml)
+	}
+	return libproject.ProjectDescriptor{}, nil
 }
