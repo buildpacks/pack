@@ -107,6 +107,8 @@ github.com/hashicorp/yamux
 github.com/heroku/color
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
+# github.com/jkutner/libproject v0.0.0-20191214231549-2c8be795b68c
+github.com/jkutner/libproject
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/mattn/go-colorable v0.1.4

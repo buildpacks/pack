@@ -1,0 +1,8 @@
+out/
+
+# Jetbrains Goland
+.idea/
+
+# Build outputs
+artifacts/
+.DS_Store
