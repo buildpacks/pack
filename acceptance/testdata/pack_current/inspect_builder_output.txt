@@ -26,9 +26,9 @@ Run Images:
 
 Buildpacks:
   ID                    VERSION
-  simple/layers         simple-layers-version
   read/env              read-env-version
   noop.buildpack        noop.buildpack.version
+  simple/layers         simple-layers-version
 
 Detection Order:
   Group #1:
@@ -61,9 +61,9 @@ Run Images:
 
 Buildpacks:
   ID                    VERSION
-  simple/layers         simple-layers-version
   read/env              read-env-version
   noop.buildpack        noop.buildpack.version
+  simple/layers         simple-layers-version
 
 Detection Order:
   Group #1:

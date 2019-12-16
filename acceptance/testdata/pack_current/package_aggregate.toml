@@ -1,9 +1,9 @@
 [default]
-id = "noop.buildpack"
-version = "noop.buildpack.version"
+id = "simple/layers"
+version = "simple-layers-version"
 
 [[buildpacks]]
-uri = "simple-layers-buildpack.tgz"
+uri = "noop-buildpack.tgz"
 
 [[packages]]
 ref = "{{ .PackageName }}"

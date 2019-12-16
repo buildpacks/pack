@@ -3,7 +3,6 @@ package buildpackage_test
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
@@ -32,7 +31,6 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockController   *gomock.Controller
 		mockImageFactory *testmocks.MockImageFactory
 		subject          *buildpackage.PackageBuilder
-		tmpDir           string
 	)
 
 	it.Before(func() {
@@ -43,10 +41,6 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockImageFactory.EXPECT().NewImage("some/package", true).Return(fakePackageImage, nil).AnyTimes()
 
 		subject = buildpackage.NewBuilder(mockImageFactory)
-
-		dir, err := ioutil.TempDir("", "package-builder-test")
-		h.AssertNil(t, err)
-		tmpDir = dir
 	})
 
 	it.After(func() {
@@ -73,34 +67,11 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertError(t, err, "selected default 'bp.1.id@bp.1.version' is not present")
 				})
 			})
-
-			when("default is in another package", func() {
-				it("resolves the buildpack", func() {
-					buildpack1, err := ifakes.NewBuildpackFromDescriptor(dist.BuildpackDescriptor{
-						API:    api.MustParse("0.2"),
-						Info:   dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"},
-						Stacks: []dist.Stack{{ID: "some.stack", Mixins: nil}},
-					}, 0644)
-					h.AssertNil(t, err)
-
-					nestedPackage, err := ifakes.NewPackage(tmpDir, "nested/package", []dist.Buildpack{buildpack1})
-					h.AssertNil(t, err)
-					subject.AddPackage(nestedPackage)
-					subject.AddStack(dist.Stack{ID: "some.stack"})
-					subject.SetDefaultBuildpack(dist.BuildpackInfo{
-						ID:      "bp.one",
-						Version: "1.2.3",
-					})
-
-					_, err = subject.Save("some/package", false)
-					h.AssertNil(t, err)
-				})
-			})
 		})
 
 		when("validate stacks", func() {
 			it.Before(func() {
-				buildpack, err := ifakes.NewBuildpackFromDescriptor(dist.BuildpackDescriptor{
+				buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 					API: api.MustParse("0.2"),
 					Info: dist.BuildpackInfo{
 						ID:      "bp.1.id",
@@ -163,7 +134,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("bp has more supported stacks than package supports", func() {
 				it("should be successful", func() {
-					buildpack2, err := ifakes.NewBuildpackFromDescriptor(dist.BuildpackDescriptor{
+					buildpack2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 						API: api.MustParse("0.2"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.2.id",
@@ -187,7 +158,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("sets metadata", func() {
-			buildpack1, err := ifakes.NewBuildpackFromDescriptor(dist.BuildpackDescriptor{
+			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API: api.MustParse("0.2"),
 				Info: dist.BuildpackInfo{
 					ID:      "bp.1.id",
@@ -223,7 +194,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("sets buildpack layers label", func() {
-			buildpack1, err := ifakes.NewBuildpackFromDescriptor(dist.BuildpackDescriptor{
+			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
 				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
@@ -232,17 +203,6 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			subject.AddBuildpack(buildpack1)
 			subject.SetDefaultBuildpack(dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"})
-
-			nestedBp, err := ifakes.NewBuildpackFromDescriptor(dist.BuildpackDescriptor{
-				API:    api.MustParse("0.2"),
-				Info:   dist.BuildpackInfo{ID: "bp.nested.id", Version: "bp.nested.version"},
-				Stacks: []dist.Stack{{ID: "stack.id.1"}},
-				Order:  nil,
-			}, 0644)
-			h.AssertNil(t, err)
-			nestedPackage, err := ifakes.NewPackage(tmpDir, "nested/package", []dist.Buildpack{nestedBp})
-			h.AssertNil(t, err)
-			subject.AddPackage(nestedPackage)
 
 			subject.AddStack(dist.Stack{ID: "stack.id.1", Mixins: []string{"Mixin-A"}})
 			_, err = subject.Save(fakePackageImage.Name(), false)
@@ -255,14 +215,10 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			bp1Info, ok1 := bpLayers["bp.1.id"]["bp.1.version"]
 			h.AssertEq(t, ok1, true)
 			h.AssertEq(t, bp1Info.Stacks, []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}})
-
-			bp2Info, ok2 := bpLayers["bp.nested.id"]["bp.nested.version"]
-			h.AssertEq(t, ok2, true)
-			h.AssertEq(t, bp2Info.Stacks, []dist.Stack{{ID: "stack.id.1"}})
 		})
 
 		it("adds buildpack layers", func() {
-			buildpack1, err := ifakes.NewBuildpackFromDescriptor(dist.BuildpackDescriptor{
+			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
 				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
@@ -271,17 +227,6 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			subject.AddBuildpack(buildpack1)
 			subject.SetDefaultBuildpack(dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"})
-
-			nestedBp, err := ifakes.NewBuildpackFromDescriptor(dist.BuildpackDescriptor{
-				API:    api.MustParse("0.2"),
-				Info:   dist.BuildpackInfo{ID: "bp.nested.id", Version: "bp.nested.version"},
-				Stacks: []dist.Stack{{ID: "stack.id.1"}},
-				Order:  nil,
-			}, 0644)
-			h.AssertNil(t, err)
-			nestedPackage, err := ifakes.NewPackage(tmpDir, "nested/package", []dist.Buildpack{nestedBp})
-			h.AssertNil(t, err)
-			subject.AddPackage(nestedPackage)
 
 			subject.AddStack(dist.Stack{ID: "stack.id.1", Mixins: []string{"Mixin-A"}})
 			_, err = subject.Save(fakePackageImage.Name(), false)
@@ -310,7 +255,6 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			buildpackExists("bp.1.id", "bp.1.version")
-			buildpackExists("bp.nested.id", "bp.nested.version")
 		})
 	})
 }

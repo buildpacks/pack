@@ -61,7 +61,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	createBuildpack := func(descriptor dist.BuildpackDescriptor) string {
-		bp, err := ifakes.NewBuildpackFromDescriptor(descriptor, 0644)
+		bp, err := ifakes.NewFakeBuildpackBlob(descriptor, 0644)
 		h.AssertNil(t, err)
 		url := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
 		mockDownloader.EXPECT().Download(gomock.Any(), url).Return(bp, nil).AnyTimes()
@@ -92,32 +92,33 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 			}))
 		})
 
-		shouldCallImageFetcherWith := func(demon, pull bool) {
+		shouldFetchNestedPackage := func(demon, pull bool) {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nestedPackage, nil)
 		}
 
-		shouldNotFindImageWhenCallingImageFetcherWith := func(demon, pull bool) {
+		shouldNotFindNestedPackageWhenCallingImageFetcherWith := func(demon, pull bool) {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nil, image.ErrNotFound)
 		}
 
-		shouldCreateLocalImage := func() imgutil.Image {
-			img := fakes.NewImage("some/package"+h.RandString(12), "", nil)
+		shouldCreateLocalPackage := func() imgutil.Image {
+			img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
 			mockImageFactory.EXPECT().NewImage(img.Name(), true).Return(img, nil)
 			return img
 		}
 
-		shouldCreateRemoteImage := func() *fakes.Image {
-			img := fakes.NewImage("some/package"+h.RandString(12), "", nil)
+		shouldCreateRemotePackage := func() *fakes.Image {
+			img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
 			mockImageFactory.EXPECT().NewImage(img.Name(), false).Return(img, nil)
 			return img
 		}
 
 		when("publish=false and no-pull=false", func() {
-			it("should pull and use local image", func() {
-				shouldCallImageFetcherWith(true, true)
-				localImage := shouldCreateLocalImage()
+			it("should pull and use local nested package image", func() {
+				shouldFetchNestedPackage(true, true)
+				packageImage := shouldCreateLocalPackage()
+
 				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
-					Name: localImage.Name(),
+					Name: packageImage.Name(),
 					Config: buildpackage.Config{
 						Default:  dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
 						Packages: []dist.ImageRef{{Ref: nestedPackage.Name()}},
@@ -130,9 +131,9 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("publish=true and no-pull=false", func() {
-			it("should use remote image", func() {
-				shouldCallImageFetcherWith(false, true)
-				packageImage := shouldCreateRemoteImage()
+			it("should use remote nested package image", func() {
+				shouldFetchNestedPackage(false, true)
+				packageImage := shouldCreateRemotePackage()
 
 				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
 					Name: packageImage.Name(),
@@ -148,9 +149,9 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("publish=true and no-pull=true", func() {
-			it("should not pull image and push to registry", func() {
-				shouldCallImageFetcherWith(false, false)
-				packageImage := shouldCreateRemoteImage()
+			it("should push to registry and not pull nested package image", func() {
+				shouldFetchNestedPackage(false, false)
+				packageImage := shouldCreateRemotePackage()
 
 				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
 					Name: packageImage.Name(),
@@ -166,8 +167,8 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("publish=false no-pull=true and there is no local image", func() {
-			it("should fail without trying to retrieve image from registry", func() {
-				shouldNotFindImageWhenCallingImageFetcherWith(true, false)
+			it("should fail without trying to retrieve nested image from registry", func() {
+				shouldNotFindNestedPackageWhenCallingImageFetcherWith(true, false)
 
 				h.AssertError(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
 					Name: "some/package",
@@ -183,7 +184,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("nested package is not a package", func() {
+	when("nested package is not a valid package", func() {
 		it("should error", func() {
 			notPackageImage := fakes.NewImage("not/package", "", nil)
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, true).Return(notPackageImage, nil)
