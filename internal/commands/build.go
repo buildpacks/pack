@@ -18,16 +18,17 @@ import (
 )
 
 type BuildFlags struct {
-	AppPath    string
-	Builder    string
-	RunImage   string
-	Env        []string
-	EnvFiles   []string
-	Publish    bool
-	NoPull     bool
-	ClearCache bool
-	Buildpacks []string
-	Network    string
+	AppPath        string
+	Builder        string
+	RunImage       string
+	Env            []string
+	EnvFiles       []string
+	Publish        bool
+	NoPull         bool
+	ClearCache     bool
+	Buildpacks     []string
+	Network        string
+	DescriptorPath string
 }
 
 func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
@@ -45,8 +46,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				return MakeSoftError()
 			}
 
-			// read project.toml
-			descriptor, err := parseProjectToml()
+			descriptor, err := parseProjectToml(flags.AppPath, flags.DescriptorPath)
 			if err != nil {
 				return err
 			}
@@ -60,7 +60,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if len(buildpacks) == 0 {
 				buildpacks = []string{}
 				for _, bp := range descriptor.Build.Buildpacks {
-					if len(bp.Uri) != 0 {
+					if len(bp.Uri) == 0 {
 						// there are several places through out the pack code where the "id@version" format is used.
 						// we should probably central this, but it's not clear where it belongs
 						buildpacks = append(buildpacks, fmt.Sprintf("%s@%s", bp.Id, bp.Version))
@@ -107,13 +107,14 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
 	cmd.Flags().StringSliceVar(&buildFlags.Buildpacks, "buildpack", nil, "Buildpack reference in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows), or\n  path/URL to a buildpack .tar or .tgz file"+multiValueHelp("buildpack"))
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
+	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 }
 
 func parseEnv(project libproject.ProjectDescriptor, envFiles []string, envVars []string) (map[string]string, error) {
 	env := map[string]string{}
 
 	for _, envVar := range project.Build.Env {
-		env[envVar.Name] = env[envVar.Value]
+		env[envVar.Name] = envVar.Value
 	}
 	for _, envFile := range envFiles {
 		envFileVars, err := parseEnvFile(envFile)
@@ -157,16 +158,25 @@ func addEnvVar(env map[string]string, item string) map[string]string {
 	return env
 }
 
-func parseProjectToml() (libproject.ProjectDescriptor, error) {
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return libproject.ProjectDescriptor{}, err
+func readProjectDescriptor(appPath string, descriptorPath string) (libproject.ProjectDescriptor, error) {
+	var fullDescriptorPath string
+	if len(appPath) != 0 {
+		fullDescriptorPath = filepath.Join(appPath, descriptorPath)
+	} else {
+		fullDescriptorPath = descriptorPath
 	}
 
-	projectToml := filepath.Join(workingDir)
+	if _, err := os.Stat(fullDescriptorPath); !os.IsNotExist(err) {
+		return libproject.ReadProjectDescriptor(fullDescriptorPath)
 
-	if _, err := os.Stat(projectToml); !os.IsNotExist(err) {
-		return libproject.ReadProjectDescriptor(projectToml)
 	}
 	return libproject.ProjectDescriptor{}, nil
+}
+
+func parseProjectToml(appPath string, descriptorPath string) (libproject.ProjectDescriptor, error) {
+	if len(descriptorPath) != 0 {
+		return readProjectDescriptor(appPath, descriptorPath)
+	} else {
+		return readProjectDescriptor(appPath, "project.toml")
+	}
 }

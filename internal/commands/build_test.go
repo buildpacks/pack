@@ -132,6 +132,111 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, command.Execute())
 			})
 		})
+
+		when("repo has a project.toml", func() {
+
+			when("that is invalid", func() {
+				var projectTomlPath string
+
+				it.Before(func() {
+					projectToml, err := ioutil.TempFile("", "project.toml")
+					h.AssertNil(t, err)
+					defer projectToml.Close()
+
+					projectToml.WriteString("project]")
+					projectTomlPath = projectToml.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(projectTomlPath))
+				})
+
+				it("fails to build", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "--descriptor", projectTomlPath, "image"})
+					h.AssertNotNil(t, command.Execute())
+				})
+			})
+
+			when("that is not in the root dir", func() {
+				var projectTomlPath string
+
+				it.Before(func() {
+					projectToml, err := ioutil.TempFile("", "project.toml")
+					h.AssertNil(t, err)
+					defer projectToml.Close()
+
+					projectToml.WriteString(`
+[project]
+name = "Sample"
+
+[[build.buildpacks]]
+id = "example/lua"
+version = "1.0"
+
+[[build.env]]
+name = "KEY1"
+value = "VALUE1"
+
+[[build.env]]
+name = "KEY2"
+value = "VALUE2"
+`)
+					projectTomlPath = projectToml.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(projectTomlPath))
+				})
+
+				it("builds an image with the env variables", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
+							"KEY1": "VALUE1",
+							"KEY2": "VALUE2",
+						})).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "--descriptor", projectTomlPath, "image"})
+					h.AssertNil(t, command.Execute())
+				})
+
+				it("builds an image with the buildpacks", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithBuildpacks([]string{
+							"example/lua@1.0",
+						})).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "--descriptor", projectTomlPath, "image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("that is in the root dir", func() {
+				it.Before(func() {
+					h.AssertNil(t, os.Chdir("testdata"))
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.Chdir(".."))
+				})
+
+				it("builds an image with the env variables", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
+							"KEY1": "VALUE1",
+						})).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+		})
 	})
 }
 
@@ -172,6 +277,25 @@ func EqBuildOptionsWithEnv(env map[string]string) gomock.Matcher {
 	}
 }
 
+func EqBuildOptionsWithBuildpacks(buildpacks []string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Buildpacks=%+v", buildpacks),
+		equals: func(o pack.BuildOptions) bool {
+			for _, bp := range o.Buildpacks {
+				if !contains(buildpacks, bp) {
+					return false
+				}
+			}
+			for _, bp := range buildpacks {
+				if !contains(o.Buildpacks, bp) {
+					return false
+				}
+			}
+			return true
+		},
+	}
+}
+
 type buildOptionsMatcher struct {
 	equals      func(pack.BuildOptions) bool
 	description string
@@ -186,4 +310,13 @@ func (m buildOptionsMatcher) Matches(x interface{}) bool {
 
 func (m buildOptionsMatcher) String() string {
 	return "is a BuildOptions with " + m.description
+}
+
+func contains(arr []string, str string) bool {
+	for _, a := range arr {
+		if a == str {
+			return true
+		}
+	}
+	return false
 }
