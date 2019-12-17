@@ -1,0 +1,6 @@
+[project]
+name = "Sample"
+
+[[build.env]]
+name = "KEY1"
+value = "VALUE1"
