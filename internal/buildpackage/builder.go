@@ -44,14 +44,14 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 	stacks := p.buildpack.Descriptor().Stacks
 	if len(stacks) == 0 {
 		return nil, errors.Errorf(
-			"buildpack %s must at least support one stack",
+			"buildpack %s must support at least one stack",
 			style.Symbol(p.buildpack.Descriptor().Info.FullName()),
 		)
 	}
 
 	for _, bp := range p.dependencies {
 		bpd := bp.Descriptor()
-		stacks = stack.Aggregate(stacks, bpd.Stacks)
+		stacks = stack.MergeCompatible(stacks, bpd.Stacks)
 		if len(stacks) == 0 {
 			return nil, errors.Errorf(
 				"buildpack %s does not support any stacks from %s",

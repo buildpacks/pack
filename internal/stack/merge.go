@@ -7,7 +7,14 @@ import (
 	"github.com/buildpacks/pack/internal/stringset"
 )
 
-// Aggregate aggregates two set of stacks into a merged set of stacks where compatibility exists.
+// MergeCompatible determines the allowable set of stacks that a combination of buildpacks may run on, given each
+// buildpack's set of stacks. Compatibility between the two sets of buildpack stacks is defined by the following rules:
+//
+//   1. The stack must be supported by both buildpacks. That is, any resulting stack ID must appear in both input sets.
+//   2. For each supported stack ID, all required mixins for all buildpacks must be provided by the result. That is,
+// 		mixins for the stack ID in both input sets are unioned.
+//
+// ---
 //
 // Examples:
 //
@@ -27,7 +34,7 @@ import (
 // 	stacksB = [{ID: "stack2", mixins: ["mixinA", "run:mixinB"]}}]
 // 	result = []
 //
-func Aggregate(stacksA []dist.Stack, stacksB []dist.Stack) []dist.Stack {
+func MergeCompatible(stacksA []dist.Stack, stacksB []dist.Stack) []dist.Stack {
 	set := map[string][]string{}
 
 	for _, s := range stacksA {

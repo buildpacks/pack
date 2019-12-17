@@ -73,7 +73,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					subject.SetBuildpack(buildpack)
 					_, err = subject.Save("some/package", false)
-					h.AssertError(t, err, "buildpack 'bp.1.id@bp.1.version' must at least support one stack")
+					h.AssertError(t, err, "buildpack 'bp.1.id@bp.1.version' must support at least one stack")
 				})
 			})
 
