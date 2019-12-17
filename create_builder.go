@@ -86,8 +86,13 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 
 	for _, pkg := range opts.Config.Packages {
-		if err := addPackageBuildpacks(ctx, pkg.Ref, bldr, c.imageFetcher, opts.Publish, opts.NoPull); err != nil {
+		bps, err := extractPackagedBuildpacks(ctx, pkg.Ref, c.imageFetcher, opts.Publish, opts.NoPull)
+		if err != nil {
 			return err
+		}
+
+		for _, bp := range bps {
+			bldr.AddBuildpack(bp)
 		}
 	}
 

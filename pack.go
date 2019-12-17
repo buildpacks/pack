@@ -4,57 +4,32 @@ import (
 	"context"
 	"io"
 
-	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
 )
 
-type buildpackAdder interface {
-	AddBuildpack(buildpack dist.Buildpack)
-}
-
-func addPackageBuildpacks(ctx context.Context, pkgImageRef string, adder buildpackAdder, fetcher ImageFetcher, publish, noPull bool) error {
+func extractPackagedBuildpacks(ctx context.Context, pkgImageRef string, fetcher ImageFetcher, publish, noPull bool) ([]dist.Buildpack, error) {
 	pkgImage, err := fetcher.Fetch(ctx, pkgImageRef, !publish, !noPull)
 	if err != nil {
-		return errors.Wrapf(err, "fetching image %s", style.Symbol(pkgImageRef))
+		return nil, errors.Wrapf(err, "fetching image %s", style.Symbol(pkgImageRef))
 	}
 
 	bpLayers := dist.BuildpackLayers{}
 	ok, err := dist.GetLabel(pkgImage, dist.BuildpackLayersLabel, &bpLayers)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !ok {
-		return errors.Errorf(
+		return nil, errors.Errorf(
 			"label %s not present on package %s",
 			style.Symbol(dist.BuildpackLayersLabel),
 			style.Symbol(pkgImageRef),
 		)
 	}
 
-	bps, err := extractBuildpacks(pkgImage, bpLayers)
-	if err != nil {
-		return errors.Wrap(err, "extracting package buildpacks")
-	}
-
-	for _, bp := range bps {
-		adder.AddBuildpack(bp)
-	}
-	return nil
-}
-
-type openerBlob struct {
-	opener func() (io.ReadCloser, error)
-}
-
-func (b *openerBlob) Open() (io.ReadCloser, error) {
-	return b.opener()
-}
-
-func extractBuildpacks(pkgImage imgutil.Image, bpLayers dist.BuildpackLayers) ([]dist.Buildpack, error) {
 	var bps []dist.Buildpack
 	for bpID, v := range bpLayers {
 		for bpVersion, bpInfo := range v {
@@ -88,4 +63,12 @@ func extractBuildpacks(pkgImage imgutil.Image, bpLayers dist.BuildpackLayers) ([
 		}
 	}
 	return bps, nil
+}
+
+type openerBlob struct {
+	opener func() (io.ReadCloser, error)
+}
+
+func (b *openerBlob) Open() (io.ReadCloser, error) {
+	return b.opener()
 }

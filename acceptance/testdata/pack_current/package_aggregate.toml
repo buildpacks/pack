@@ -1,13 +1,5 @@
-[default]
-id = "simple/layers"
-version = "simple-layers-version"
-
-[[buildpacks]]
+[buildpack]
 uri = "noop-buildpack.tgz"
 
-[[packages]]
-ref = "{{ .PackageName }}"
-
-[[stacks]]
-id = "pack.test.stack"
-mixins = ["netcat"]
+[[dependencies]]
+image = "{{ .PackageName }}"

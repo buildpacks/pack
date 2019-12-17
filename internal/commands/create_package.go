@@ -72,14 +72,22 @@ func ReadPackageConfig(path string) (buildpackage.Config, error) {
 		return config, errors.Wrapf(err, "reading config %s", path)
 	}
 
-	for i := range config.Buildpacks {
-		uri := config.Buildpacks[i].URI
-		absPath, err := paths.ToAbsolute(uri, configDir)
-		if err != nil {
-			return config, errors.Wrapf(err, "getting absolute path for %s", style.Symbol(uri))
-		}
+	absPath, err := paths.ToAbsolute(config.Buildpack.URI, configDir)
+	if err != nil {
+		return config, errors.Wrapf(err, "getting absolute path for %s", style.Symbol(config.Buildpack.URI))
+	}
+	config.Buildpack.URI = absPath
 
-		config.Buildpacks[i].URI = absPath
+	for i := range config.Dependencies {
+		uri := config.Dependencies[i].URI
+		if uri != "" {
+			absPath, err := paths.ToAbsolute(uri, configDir)
+			if err != nil {
+				return config, errors.Wrapf(err, "getting absolute path for %s", style.Symbol(uri))
+			}
+
+			config.Dependencies[i].URI = absPath
+		}
 	}
 
 	return config, nil
