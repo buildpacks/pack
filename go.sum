@@ -21,8 +21,8 @@ github.com/aws/aws-sdk-go v1.20.6/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN
 github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59/go.mod h1:q/89r3U2H7sSsE2t6Kca0lfwTK8JdoNGS/yzM/4iH5I=
 github.com/buildpacks/imgutil v0.0.0-20191212154113-dc184e0d403b h1:SDsB0hJtURA+5i5vIjLntzRNPEqdoz6q+0MShCWdctw=
 github.com/buildpacks/imgutil v0.0.0-20191212154113-dc184e0d403b/go.mod h1:E3lXJcNXcRefJQAHW5rqboonet+jtOml4qImbJhYGAo=
-github.com/buildpacks/lifecycle v0.5.1-0.20191212164213-3b2b120be460 h1:wwnys/9oBN1XX86SuePWXeOIyh07O4gTFZuD3o+iL/g=
-github.com/buildpacks/lifecycle v0.5.1-0.20191212164213-3b2b120be460/go.mod h1:1517xYIXEWiehR7ndWdGCkIlD0KJDLvtVuzZGp7K6Ok=
+github.com/buildpacks/lifecycle v0.5.1-0.20191217221752-3b74c943b7b3 h1:15zYyFmNbrtx5MmyVEKVgY2/eearqEqGJXLCjmvUo58=
+github.com/buildpacks/lifecycle v0.5.1-0.20191217221752-3b74c943b7b3/go.mod h1:ZIuIs9B6tjAW4dthhltKVyEUlhRfFWWix9eqoInMGX4=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/containerd/containerd v1.3.0 h1:xjvXQWABwS2uiv3TWgQt5Uth60Gu86LTGZXMJkjc7rY=
 github.com/containerd/containerd v1.3.0/go.mod h1:bC6axHOhabU15QhwfG7w5PipXdVtMXFTttgp+kVtyUA=
@@ -148,8 +148,6 @@ github.com/rogpeppe/fastuuid v1.1.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6L
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/russross/blackfriday v1.5.2/go.mod h1:JO/DiYxRf+HjHt06OyowR9PTA263kcR/rfWxYHBV53g=
 github.com/sclevine/spec v1.0.0/go.mod h1:W4J29eT/Kzv7/b9IWLB055Z+qvVC9vt0Arko24q7p+U=
-github.com/sclevine/spec v1.2.0 h1:1Jwdf9jSfDl9NVmt8ndHqbTZ7XCCPbh1jI3hkDBHVYA=
-github.com/sclevine/spec v1.2.0/go.mod h1:W4J29eT/Kzv7/b9IWLB055Z+qvVC9vt0Arko24q7p+U=
 github.com/sclevine/spec v1.4.0 h1:z/Q9idDcay5m5irkZ28M7PtQM4aOISzOpj4bUPkDee8=
 github.com/sclevine/spec v1.4.0/go.mod h1:LvpgJaFyvQzRvc1kaDs0bulYwzC70PbiYjC4QnFHkOM=
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=

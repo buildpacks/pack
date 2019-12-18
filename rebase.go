@@ -30,7 +30,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return err
 	}
 
-	var md lifecycle.LayersMetadata
+	var md lifecycle.LayersMetadataCompat
 	if ok, err := dist.GetLabel(appImage, lifecycle.LayerMetadataLabel, &md); err != nil {
 		return err
 	} else if !ok {

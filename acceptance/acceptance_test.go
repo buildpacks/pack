@@ -1447,6 +1447,10 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 
 	// CREATE PACKAGE
 	packageImageName := createPackage(t, configDir, tmpDir, packPath)
+	key := taskKey("create-package", runImageMirror, configDir, packPath, lifecyclePath)
+	suiteManager.RegisterCleanUp("clean-"+key, func() error {
+		return h.DockerRmi(dockerCli, packageImageName)
+	})
 
 	// RENDER builder.toml
 	cfgData := fillTemplate(t, filepath.Join(configDir, "builder.toml"), map[string]interface{}{
