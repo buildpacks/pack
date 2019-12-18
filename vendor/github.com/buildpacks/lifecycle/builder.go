@@ -36,8 +36,13 @@ type Process struct {
 	Direct  bool     `toml:"direct" json:"direct"`
 }
 
+type Slice struct {
+	Paths []string `tom:"paths"`
+}
+
 type LaunchTOML struct {
 	Processes []Process `toml:"processes"`
+	Slices    []Slice   `toml:"slices"`
 }
 
 type BOMEntry struct {
@@ -71,6 +76,8 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 	procMap := processMap{}
 	plan := b.Plan
 	var bom []BOMEntry
+	var slices []Slice
+
 	for _, bp := range b.Group.Group {
 		bpInfo, err := bp.lookup(b.BuildpacksDir)
 		if err != nil {
@@ -124,12 +131,14 @@ func (b *Builder) Build() (*BuildMetadata, error) {
 			return nil, err
 		}
 		procMap.add(launch.Processes)
+		slices = append(slices, launch.Slices...)
 	}
 
 	return &BuildMetadata{
 		Processes:  procMap.list(),
 		Buildpacks: b.Group.Group,
 		BOM:        bom,
+		Slices:     slices,
 	}, nil
 }
 

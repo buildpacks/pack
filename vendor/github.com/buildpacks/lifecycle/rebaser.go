@@ -17,7 +17,7 @@ func (r *Rebaser) Rebase(
 	newBaseImage imgutil.Image,
 	additionalNames []string,
 ) error {
-	var origMetadata LayersMetadata
+	var origMetadata LayersMetadataCompat
 	if err := DecodeLabel(workingImage, LayerMetadataLabel, &origMetadata); err != nil {
 		return errors.Wrap(err, "get image metadata")
 	}

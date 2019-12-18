@@ -15,7 +15,7 @@ github.com/buildpacks/imgutil
 github.com/buildpacks/imgutil/fakes
 github.com/buildpacks/imgutil/local
 github.com/buildpacks/imgutil/remote
-# github.com/buildpacks/lifecycle v0.5.1-0.20191212164213-3b2b120be460
+# github.com/buildpacks/lifecycle v0.5.1-0.20191217221752-3b74c943b7b3
 github.com/buildpacks/lifecycle
 github.com/buildpacks/lifecycle/archive
 github.com/buildpacks/lifecycle/auth

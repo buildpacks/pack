@@ -1,6 +1,6 @@
 # Lifecycle
 
-[![Build Status](https://travis-ci.org/buildpack/lifecycle.svg?branch=master)](https://travis-ci.org/buildpack/lifecycle)
+[![Build Status](https://travis-ci.org/buildpacks/lifecycle.svg?branch=master)](https://travis-ci.org/buildpack/lifecycle)
 [![GoDoc](https://godoc.org/github.com/buildpacks/lifecycle?status.svg)](https://godoc.org/github.com/buildpacks/lifecycle)
 
 A reference implementation of [Buildpack API v3](https://github.com/buildpacks/spec).
