@@ -42,22 +42,20 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 	}
 
 	stacks := p.buildpack.Descriptor().Stacks
-	if len(stacks) == 0 {
-		return nil, errors.Errorf(
-			"buildpack %s must support at least one stack",
-			style.Symbol(p.buildpack.Descriptor().Info.FullName()),
-		)
-	}
-
 	for _, bp := range p.dependencies {
 		bpd := bp.Descriptor()
-		stacks = stack.MergeCompatible(stacks, bpd.Stacks)
+
 		if len(stacks) == 0 {
-			return nil, errors.Errorf(
-				"buildpack %s does not support any stacks from %s",
-				style.Symbol(p.buildpack.Descriptor().Info.FullName()),
-				style.Symbol(bpd.Info.FullName()),
-			)
+			stacks = bpd.Stacks
+		} else if len(bpd.Stacks) > 0 { // skip over "meta-buildpacks"
+			stacks = stack.MergeCompatible(stacks, bpd.Stacks)
+			if len(stacks) == 0 {
+				return nil, errors.Errorf(
+					"buildpack %s does not support any stacks from %s",
+					style.Symbol(p.buildpack.Descriptor().Info.FullName()),
+					style.Symbol(bpd.Info.FullName()),
+				)
+			}
 		}
 	}
 
