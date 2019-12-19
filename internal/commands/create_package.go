@@ -56,6 +56,8 @@ func CreatePackage(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling packages before use")
 	AddHelpFlag(cmd, "create-package")
 
+	cmd.Hidden = true
+
 	return cmd
 }
 
