@@ -8,7 +8,7 @@
   uri = "noop-buildpack.tgz"
 
 [[packages]]
-  ref = "{{ .package_name }}"
+  image = "{{ .package_name }}"
 
 [[order]]
 [[order.group]]

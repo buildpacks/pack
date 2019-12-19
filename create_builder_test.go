@@ -531,7 +531,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = false
 						opts.NoPull = false
-						opts.Config.Packages = []pubbldr.PackageConfig{{Ref: packageImage.Name()}}
+						opts.Config.Packages = []pubbldr.PackageConfig{{Image: packageImage.Name()}}
 
 						shouldFetchPackageImageWith(true, true)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
@@ -546,7 +546,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = true
 						opts.NoPull = false
-						opts.Config.Packages = []pubbldr.PackageConfig{{Ref: packageImage.Name()}}
+						opts.Config.Packages = []pubbldr.PackageConfig{{Image: packageImage.Name()}}
 
 						shouldFetchPackageImageWith(false, true)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
@@ -561,7 +561,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = true
 						opts.NoPull = true
-						opts.Config.Packages = []pubbldr.PackageConfig{{Ref: packageImage.Name()}}
+						opts.Config.Packages = []pubbldr.PackageConfig{{Image: packageImage.Name()}}
 
 						shouldFetchPackageImageWith(false, false)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
@@ -576,7 +576,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = false
 						opts.NoPull = true
-						opts.Config.Packages = []pubbldr.PackageConfig{{Ref: packageImage.Name()}}
+						opts.Config.Packages = []pubbldr.PackageConfig{{Image: packageImage.Name()}}
 						prepareFetcherWithMissingPackageImage()
 
 						h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "not found")
@@ -591,7 +591,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					opts.BuilderName = "some/builder"
 
 					notPackageImage := fakes.NewImage("not/package", "", nil)
-					opts.Config.Packages = []pubbldr.PackageConfig{{Ref: notPackageImage.Name()}}
+					opts.Config.Packages = []pubbldr.PackageConfig{{Image: notPackageImage.Name()}}
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), gomock.Any(), gomock.Any()).Return(notPackageImage, nil)
 					h.AssertNil(t, notPackageImage.SetLabel("io.buildpacks.buildpack.layers", ""))
 

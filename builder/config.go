@@ -29,7 +29,7 @@ type BuildpackConfig struct {
 }
 
 type PackageConfig struct {
-	Ref string `toml:"ref"`
+	Image string `toml:"image"`
 }
 
 type StackConfig struct {
