@@ -59,6 +59,10 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 		}
 	}
 
+	if len(stacks) == 0 {
+		return nil, errors.Errorf("no compatible stacks among provided buildpacks")
+	}
+
 	image, err := p.imageFactory.NewImage(repoName, !publish)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating image")
