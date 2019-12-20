@@ -134,7 +134,6 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("repo has a project.toml", func() {
-
 			when("that is invalid", func() {
 				var projectTomlPath string
 

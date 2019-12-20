@@ -168,7 +168,6 @@ func readProjectDescriptor(appPath string, descriptorPath string) (libproject.Pr
 
 	if _, err := os.Stat(fullDescriptorPath); !os.IsNotExist(err) {
 		return libproject.ReadProjectDescriptor(fullDescriptorPath)
-
 	}
 	return libproject.ProjectDescriptor{}, nil
 }
@@ -176,7 +175,6 @@ func readProjectDescriptor(appPath string, descriptorPath string) (libproject.Pr
 func parseProjectToml(appPath string, descriptorPath string) (libproject.ProjectDescriptor, error) {
 	if len(descriptorPath) != 0 {
 		return readProjectDescriptor(appPath, descriptorPath)
-	} else {
-		return readProjectDescriptor(appPath, "project.toml")
 	}
+	return readProjectDescriptor(appPath, "project.toml")
 }

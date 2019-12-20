@@ -93,7 +93,6 @@ github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/inconshreveable/mousetrap v1.0.0 h1:Z8tu5sraLXCXIcARxBp/8cbvlwVa7Z1NHg9XEKhtSvM=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
-github.com/jkutner/libproject v0.0.0-20191214203925-c329ccd54bdb/go.mod h1:nfcE0PaI8nqtX+/BQMw4CfEUf/KB3NT0P6wKkkUTyfk=
 github.com/jkutner/libproject v0.0.0-20191214231549-2c8be795b68c h1:xeMQE7o0MtV3xU+JssEe1aVFMTdTNqAhPppwq15hark=
 github.com/jkutner/libproject v0.0.0-20191214231549-2c8be795b68c/go.mod h1:nfcE0PaI8nqtX+/BQMw4CfEUf/KB3NT0P6wKkkUTyfk=
 github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
