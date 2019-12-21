@@ -46,12 +46,9 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("there is no descriptor file", func() {
-			it("assumes Platform API version 0.1", func() {
-				lifecycle, err := builder.NewLifecycle(&fakeEmptyBlob{})
-				h.AssertNil(t, err)
-				h.AssertEq(t, lifecycle.Descriptor().Info.Version.String(), "0.3.0")
-				h.AssertEq(t, lifecycle.Descriptor().API.PlatformVersion.String(), "0.1")
-				h.AssertEq(t, lifecycle.Descriptor().API.BuildpackVersion.String(), "0.1")
+			it("throws an error ", func() {
+				_, err := builder.NewLifecycle(&fakeEmptyBlob{})
+				h.AssertError(t, err, "could not find entry path 'lifecycle.toml': not exist")
 			})
 		})
 

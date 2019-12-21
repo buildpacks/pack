@@ -109,17 +109,17 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 		img.Rename(newName)
 	}
 
-	lifecycleVersion := VersionMustParse(AssumedLifecycleVersion)
+	var lifecycleVersion *Version
 	if metadata.Lifecycle.Version != nil {
 		lifecycleVersion = metadata.Lifecycle.Version
 	}
 
-	buildpackAPIVersion := api.MustParse(dist.AssumedBuildpackAPIVersion)
+	var buildpackAPIVersion *api.Version
 	if metadata.Lifecycle.API.BuildpackVersion != nil {
 		buildpackAPIVersion = metadata.Lifecycle.API.BuildpackVersion
 	}
 
-	platformAPIVersion := api.MustParse(AssumedPlatformAPIVersion)
+	var platformAPIVersion *api.Version
 	if metadata.Lifecycle.API.PlatformVersion != nil {
 		platformAPIVersion = metadata.Lifecycle.API.PlatformVersion
 	}

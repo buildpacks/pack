@@ -153,6 +153,15 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	if bldr.Stack().RunImage.Image == "" {
 		return nil, errors.New("builder metadata is missing runImage")
 	}
+	if bldr.LifecycleDescriptor().Info.Version == nil {
+		return nil, errors.New("lifecycle version must be specified in builder")
+	}
+	if bldr.LifecycleDescriptor().API.BuildpackVersion == nil {
+		return nil, errors.New("lifecycle buildpack api version must be specified in builder")
+	}
+	if bldr.LifecycleDescriptor().API.PlatformVersion == nil {
+		return nil, errors.New("lifecycle platform api version must be specified in builder")
+	}
 	return bldr, nil
 }
 

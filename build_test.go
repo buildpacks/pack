@@ -358,8 +358,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 							Lifecycle: builder.LifecycleMetadata{
+								LifecycleInfo: builder.LifecycleInfo{
+									Version: &builder.Version{
+										Version: *semver.MustParse("0.3.0"),
+									},
+								},
 								API: builder.LifecycleAPI{
-									PlatformVersion: api.MustParse("0.2"),
+									BuildpackVersion: api.MustParse("0.3"),
+									PlatformVersion:  api.MustParse("0.2"),
 								},
 							},
 						},

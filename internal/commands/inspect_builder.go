@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
@@ -122,9 +121,9 @@ Stack:
 {{- end }}
 
 Lifecycle:
-  Version: {{ .Info.Lifecycle.Info.Version }}
-  Buildpack API: {{ .Info.Lifecycle.API.BuildpackVersion }}
-  Platform API: {{ .Info.Lifecycle.API.PlatformVersion }}
+  Version: {{- if .Info.Lifecycle.Info.Version }} {{ .Info.Lifecycle.Info.Version }}{{- else }} (none){{- end }}
+  Buildpack API: {{- if .Info.Lifecycle.API.BuildpackVersion }} {{ .Info.Lifecycle.API.BuildpackVersion }}{{- else }} (none){{- end }}
+  Platform API: {{- if .Info.Lifecycle.API.PlatformVersion }} {{ .Info.Lifecycle.API.PlatformVersion }}{{- else }} (none){{- end }}
 
 Run Images:
 {{- if ne .RunImages "" }}
@@ -180,15 +179,15 @@ Detection Order:
 
 	lcDescriptor := &info.Lifecycle
 	if lcDescriptor.Info.Version == nil {
-		lcDescriptor.Info.Version = builder.VersionMustParse(builder.AssumedLifecycleVersion)
+		warnings = append(warnings, fmt.Sprintf("%s does not specify lifecycle version", style.Symbol(imageName)))
 	}
 
 	if lcDescriptor.API.BuildpackVersion == nil {
-		lcDescriptor.API.BuildpackVersion = api.MustParse(dist.AssumedBuildpackAPIVersion)
+		warnings = append(warnings, fmt.Sprintf("%s does not specify lifecycle buildpack api version", style.Symbol(imageName)))
 	}
 
 	if lcDescriptor.API.PlatformVersion == nil {
-		lcDescriptor.API.PlatformVersion = api.MustParse(builder.AssumedPlatformAPIVersion)
+		warnings = append(warnings, fmt.Sprintf("%s does not specify lifecycle platform api version", style.Symbol(imageName)))
 	}
 
 	return warnings, tpl.Execute(writer, &struct {
