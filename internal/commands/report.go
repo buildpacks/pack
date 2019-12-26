@@ -52,7 +52,7 @@ Config:
 	if path, err := config.DefaultConfigPath(); err != nil {
 		configData = fmt.Sprintf("(error: %s)", err.Error())
 	} else if data, err := ioutil.ReadFile(path); err != nil {
-		configData = fmt.Sprintf("(error: %s)", err.Error())
+		configData = fmt.Sprintf("(no config file found at %s)", path)
 	} else {
 		var padded strings.Builder
 		for _, line := range strings.Split(string(data), "\n") {
