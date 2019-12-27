@@ -295,9 +295,11 @@ Detection Order:
 				h.AssertContains(t, outBuf.String(), "Users must build with an explicitly specified run image")
 			})
 
-			it("missing lifecycle version prints assumed", func() {
+			it("missing lifecycle version logs a warning", func() {
 				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Lifecycle:\n  Version: 0.3.0")
+				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify lifecycle version")
+				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify lifecycle buildpack api version")
+				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify lifecycle platform api version")
 			})
 		})
 
