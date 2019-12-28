@@ -54,6 +54,14 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{"--builder", "my-builder", "image"})
 				h.AssertNil(t, command.Execute())
 			})
+			it("builds an image with a builder short command arg", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
+					Return(nil)
+
+				command.SetArgs([]string{"-B", "my-builder", "image"})
+				h.AssertNil(t, command.Execute())
+			})
 		})
 
 		when("a network is given", func() {
