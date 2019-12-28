@@ -17,17 +17,109 @@ const (
 	errorLevelText = "ERROR: "
 	warnLevelText  = "Warning: "
 	lineFeed       = '\n'
-
+	// log level to use when quiet is true
+	quietLevel = log.WarnLevel
+	// log level to use when debug is true
+	verboseLevel = log.DebugLevel
 	// time format the out logging uses
 	timeFmt = "2006/01/02 15:04:05.000000"
 )
 
-// handler implementation.
-type handler struct {
+type LogWithWriters struct {
 	sync.Mutex
-	writer   io.Writer
+	log.Logger
 	wantTime bool
-	timer    func() time.Time
+	clock    func() time.Time
+	out      io.Writer
+	errOut   io.Writer
+}
+
+func WithClock(clock func() time.Time) func(writers *LogWithWriters) {
+	return func(logger *LogWithWriters) {
+		logger.clock = clock
+	}
+}
+
+// NewLogWithWriters creates a logger to be used with pack CLI.
+func NewLogWithWriters(stdout, stderr io.Writer, opts ...func(*LogWithWriters)) *LogWithWriters {
+	lw := &LogWithWriters{
+		Logger: log.Logger{
+			Level: log.InfoLevel,
+		},
+		wantTime: false,
+		clock:    time.Now,
+		out:      stdout,
+		errOut:   stderr,
+	}
+	lw.Logger.Handler = lw
+
+	for _, opt := range opts {
+		opt(lw)
+	}
+
+	return lw
+}
+
+func (lw *LogWithWriters) HandleLog(e *log.Entry) error {
+	lw.Lock()
+	defer lw.Unlock()
+
+	if lw.Level > e.Level {
+		return nil
+	}
+
+	writer := lw.out
+	if e.Level == log.ErrorLevel {
+		writer = lw.errOut
+	}
+
+	if lw.wantTime {
+		ts := lw.clock().Format(timeFmt)
+		_, _ = fmt.Fprint(writer, appendMissingLineFeed(fmt.Sprintf("%s %s%s", ts, formatLevel(e.Level), e.Message)))
+		return nil
+	}
+
+	_, _ = fmt.Fprint(writer, appendMissingLineFeed(fmt.Sprintf("%s%s", formatLevel(e.Level), e.Message)))
+
+	return nil
+}
+
+func (lw *LogWithWriters) Writer() io.Writer {
+	return lw.out
+}
+
+// ErrorWriter returns the writer for error messages.
+func (lw *LogWithWriters) ErrorWriter() io.Writer {
+	return lw.errOut
+}
+
+// OutWriter returns the writer for standard messages.
+func (lw *LogWithWriters) OutWriter() io.Writer {
+	if lw.Level >= quietLevel {
+		return ioutil.Discard
+	}
+
+	return lw.out
+}
+
+func (lw *LogWithWriters) WantTime(f bool) {
+	lw.wantTime = f
+}
+
+func (lw *LogWithWriters) WantQuiet(f bool) {
+	if f {
+		lw.Level = quietLevel
+	}
+}
+
+func (lw *LogWithWriters) WantVerbose(f bool) {
+	if f {
+		lw.Level = verboseLevel
+	}
+}
+
+func (lw *LogWithWriters) IsVerbose() bool {
+	return lw.Level == log.DebugLevel
 }
 
 func formatLevel(ll log.Level) string {
@@ -48,84 +140,4 @@ func appendMissingLineFeed(msg string) string {
 		buff = append(buff, lineFeed)
 	}
 	return string(buff)
-}
-
-// HandleLog supports behavior that is unique to Pack CLI, namely toggling colors and timestamps.
-func (h *handler) HandleLog(e *log.Entry) error {
-	h.Lock()
-	defer h.Unlock()
-
-	if h.wantTime {
-		ts := h.timer().Format(timeFmt)
-		_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf("%s %s%s", ts, formatLevel(e.Level), e.Message)))
-		return nil
-	}
-
-	_, _ = fmt.Fprint(h.writer, appendMissingLineFeed(fmt.Sprintf("%s%s", formatLevel(e.Level), e.Message)))
-
-	return nil
-}
-
-type logWithWriters struct {
-	log.Logger
-	out     io.Writer
-	errOut  io.Writer
-	handler *handler
-}
-
-func (lw *logWithWriters) Writer() io.Writer {
-	return lw.out
-}
-
-// DebugInfoWriter - returns stderr if log level is not set to quiet.
-func (lw *logWithWriters) InfoErrorWriter() io.Writer {
-	if lw.Level == log.InfoLevel ||
-		lw.Level == log.DebugLevel {
-		return lw.errOut
-	}
-	return ioutil.Discard
-}
-
-// InfoWriter returns stdout if logging is not set to quiet.
-func (lw *logWithWriters) InfoWriter() io.Writer {
-	if lw.Level == log.InfoLevel ||
-		lw.Level == log.DebugLevel {
-		return lw.out
-	}
-	return ioutil.Discard
-}
-
-func (lw *logWithWriters) WantTime(f bool) {
-	lw.handler.wantTime = f
-}
-
-func (lw *logWithWriters) WantQuiet(f bool) {
-	if f {
-		lw.Level = log.WarnLevel
-	}
-}
-
-func (lw *logWithWriters) WantVerbose(f bool) {
-	if f {
-		lw.Level = log.DebugLevel
-	}
-}
-
-func (lw *logWithWriters) IsVerbose() bool {
-	return lw.Level == log.DebugLevel
-}
-
-// NewLogWithWriters creates a logger to be used with pack CLI.
-func NewLogWithWriters(stdout, stderr io.Writer) *logWithWriters { //nolint:golint,gosimple
-	hnd := &handler{
-		writer: stdout,
-		timer:  time.Now,
-	}
-	var lw logWithWriters
-	lw.handler = hnd
-	lw.out = hnd.writer
-	lw.errOut = stderr
-	lw.Logger.Handler = hnd
-	lw.Logger.Level = log.InfoLevel
-	return &lw
 }
