@@ -172,8 +172,8 @@ func (p *Phase) Run(ctx context.Context) error {
 		ctx,
 		p.docker,
 		p.ctr.ID,
-		logging.NewPrefixWriter(logging.GetOutWriter(p.logger), p.name),
-		logging.NewPrefixWriter(logging.GetErrorWriter(p.logger), p.name),
+		logging.NewPrefixWriter(logging.GetWriterForLevel(p.logger, logging.InfoLevel), p.name),
+		logging.NewPrefixWriter(logging.GetWriterForLevel(p.logger, logging.ErrorLevel), p.name),
 	)
 }
 

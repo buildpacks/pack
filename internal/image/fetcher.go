@@ -87,7 +87,7 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
 	if err != nil {
 		return err
 	}
-	writer := logging.GetOutWriter(f.logger)
+	writer := logging.GetWriterForLevel(f.logger, logging.InfoLevel)
 	type descriptor interface {
 		Fd() uintptr
 	}

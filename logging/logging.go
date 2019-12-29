@@ -8,6 +8,15 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
+type Level int
+
+const (
+	DebugLevel Level = iota
+	InfoLevel
+	WarnLevel
+	ErrorLevel
+)
+
 // Logger defines behavior required by a logging package used by pack libraries
 type Logger interface {
 	Debug(msg string)
@@ -27,32 +36,20 @@ type Logger interface {
 	IsVerbose() bool
 }
 
-// WithErrorWriter is an optional interface for loggers that want to support a separate writer for errors and standard logging.
-type WithErrorWriter interface {
-	ErrorWriter() io.Writer
+// WithSelectableWriter is an optional interface for loggers that want to support a separate writer per log level.
+type WithSelectableWriter interface {
+	WriterForLevel(level Level) io.Writer
 }
 
-// WithOutWriter is an optional interface what will return a writer that will write raw output if quiet is false.
-type WithOutWriter interface {
-	OutWriter() io.Writer
-}
-
-// GetErrorWriter will return an ErrorWriter, typically stderr if one exists, otherwise the standard logger writer
-// will be returned.
-func GetErrorWriter(l Logger) io.Writer {
-	if er, ok := l.(WithErrorWriter); ok {
-		return er.ErrorWriter()
+// GetWriterForLevel retrieves the appropriate Writer for the log level provided.
+//
+// See WithSelectableWriter
+func GetWriterForLevel(logger Logger, level Level) io.Writer {
+	if er, ok := logger.(WithSelectableWriter); ok {
+		return er.WriterForLevel(level)
 	}
-	return l.Writer()
-}
 
-// GetOutWriter returns a writer
-// See WithOutWriter
-func GetOutWriter(l Logger) io.Writer {
-	if ew, ok := l.(WithOutWriter); ok {
-		return ew.OutWriter()
-	}
-	return l.Writer()
+	return logger.Writer()
 }
 
 // PrefixWriter will prefix writes

@@ -11,6 +11,7 @@ import (
 	"github.com/apex/log"
 
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/logging"
 )
 
 const (
@@ -60,19 +61,23 @@ func NewLogWithWriters(stdout, stderr io.Writer, opts ...func(*LogWithWriters)) 
 	return lw
 }
 
+func (lw *LogWithWriters) WriterForLevel(level logging.Level) io.Writer {
+	if lw.Level > log.Level(level) {
+		return ioutil.Discard
+	}
+
+	if level == logging.ErrorLevel {
+		return lw.errOut
+	}
+
+	return lw.out
+}
+
 func (lw *LogWithWriters) HandleLog(e *log.Entry) error {
 	lw.Lock()
 	defer lw.Unlock()
 
-	if lw.Level > e.Level {
-		return nil
-	}
-
-	writer := lw.out
-	if e.Level == log.ErrorLevel {
-		writer = lw.errOut
-	}
-
+	writer := lw.WriterForLevel(logging.Level(e.Level))
 	if lw.wantTime {
 		ts := lw.clock().Format(timeFmt)
 		_, _ = fmt.Fprint(writer, appendMissingLineFeed(fmt.Sprintf("%s %s%s", ts, formatLevel(e.Level), e.Message)))
@@ -85,20 +90,6 @@ func (lw *LogWithWriters) HandleLog(e *log.Entry) error {
 }
 
 func (lw *LogWithWriters) Writer() io.Writer {
-	return lw.out
-}
-
-// ErrorWriter returns the writer for error messages.
-func (lw *LogWithWriters) ErrorWriter() io.Writer {
-	return lw.errOut
-}
-
-// OutWriter returns the writer for standard messages.
-func (lw *LogWithWriters) OutWriter() io.Writer {
-	if lw.Level >= quietLevel {
-		return ioutil.Discard
-	}
-
 	return lw.out
 }
 

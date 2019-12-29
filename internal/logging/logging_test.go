@@ -12,6 +12,7 @@ import (
 	"github.com/sclevine/spec"
 
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -32,8 +33,8 @@ func mockStd() (*color.Console, func() string) {
 	}
 }
 
-func TestPackCLILogger(t *testing.T) {
-	spec.Run(t, "PackCLILogger", func(t *testing.T, when spec.G, it spec.S) {
+func TestLogWithWriters(t *testing.T) {
+	spec.Run(t, "LogWithWriters", func(t *testing.T, when spec.G, it spec.S) {
 		var (
 			logger           *ilogging.LogWithWriters
 			outCons, errCons *color.Console
@@ -55,16 +56,43 @@ func TestPackCLILogger(t *testing.T) {
 				h.AssertEq(t, fOut(), "\x1b[94mtest\x1b[0m\n")
 			})
 
-			it("logs error to error writer", func() {
-				logger.Error("oh no")
+			it("will not log debug messages", func() {
+				logger.Debug("debug_")
+				logger.Debugf("debugf")
 
-				h.AssertContains(t, fErr(), "oh no\n")
+				output := fOut()
+				h.AssertNotContains(t, output, "debug_\n")
+				h.AssertNotContains(t, output, "debugf\n")
+			})
+
+			it("logs info and warning messages to standard writer", func() {
+				logger.Info("info_")
+				logger.Infof("infof")
+				logger.Warn("warn_")
+				logger.Warnf("warnf")
+
+				output := fOut()
+				h.AssertContains(t, output, "info_\n")
+				h.AssertContains(t, output, "infof\n")
+				h.AssertContains(t, output, "warn_\n")
+				h.AssertContains(t, output, "warnf\n")
+			})
+
+			it("logs error to error writer", func() {
+				logger.Error("error_")
+				logger.Errorf("errorf")
+
+				output := fErr()
+				h.AssertContains(t, output, "error_\n")
+				h.AssertContains(t, output, "errorf\n")
 			})
 
 			it("will return correct writers", func() {
 				h.AssertSameInstance(t, logger.Writer(), outCons)
-				h.AssertSameInstance(t, logger.OutWriter(), outCons)
-				h.AssertSameInstance(t, logger.ErrorWriter(), errCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), ioutil.Discard)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.InfoLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.WarnLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
 			})
 		})
 
@@ -89,30 +117,83 @@ func TestPackCLILogger(t *testing.T) {
 				logger.WantQuiet(true)
 			})
 
-			it("will not show debug or info messages", func() {
-				logger.Debug("hello")
-				logger.Debugf("there")
-				logger.Info("test")
+			it("will not log debug or info messages", func() {
+				logger.Debug("debug_")
+				logger.Debugf("debugf")
+				logger.Info("info_")
+				logger.Infof("infof")
 
-				h.AssertContains(t, fOut(), "")
+				output := fOut()
+				h.AssertNotContains(t, output, "debug_\n")
+				h.AssertNotContains(t, output, "debugf\n")
+				h.AssertNotContains(t, output, "info_\n")
+				h.AssertNotContains(t, output, "infof\n")
 			})
 
 			it("logs warnings to standard writer", func() {
-				logger.Warn("oh no")
+				logger.Warn("warn_")
+				logger.Warnf("warnf")
 
-				h.AssertContains(t, fOut(), "oh no\n")
+				output := fOut()
+				h.AssertContains(t, output, "warn_\n")
+				h.AssertContains(t, output, "warnf\n")
 			})
 
 			it("logs error to error writer", func() {
-				logger.Error("oh no")
+				logger.Error("error_")
+				logger.Errorf("errorf")
 
-				h.AssertContains(t, fErr(), "oh no\n")
+				output := fErr()
+				h.AssertContains(t, output, "error_\n")
+				h.AssertContains(t, output, "errorf\n")
 			})
 
 			it("will return correct writers", func() {
 				h.AssertSameInstance(t, logger.Writer(), outCons)
-				h.AssertSameInstance(t, logger.OutWriter(), ioutil.Discard)
-				h.AssertSameInstance(t, logger.ErrorWriter(), errCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), ioutil.Discard)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.InfoLevel), ioutil.Discard)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.WarnLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
+			})
+		})
+
+		when("verbose is set to true", func() {
+			it.Before(func() {
+				logger.WantVerbose(true)
+			})
+
+			it("all messages are logged", func() {
+				logger.Debug("debug_")
+				logger.Debugf("debugf")
+				logger.Info("info_")
+				logger.Infof("infof")
+				logger.Warn("warn_")
+				logger.Warnf("warnf")
+
+				output := fOut()
+				h.AssertContains(t, output, "debug_")
+				h.AssertContains(t, output, "debugf")
+				h.AssertContains(t, output, "info_")
+				h.AssertContains(t, output, "infof")
+				h.AssertContains(t, output, "warn_")
+				h.AssertContains(t, output, "warnf")
+			})
+
+			it("logs error to error writer", func() {
+				logger.Error("error_")
+				logger.Errorf("errorf")
+
+				output := fErr()
+				h.AssertContains(t, output, "error_\n")
+				h.AssertContains(t, output, "errorf\n")
+			})
+
+			it("will return correct writers", func() {
+				h.AssertSameInstance(t, logger.Writer(), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.InfoLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.WarnLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
 			})
 		})
 
