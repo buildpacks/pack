@@ -1,4 +1,4 @@
-package logging
+package logging_test
 
 import (
 	"bytes"
@@ -8,31 +8,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/apex/log"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 
+	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-const testTime = "2019/05/15 01:01:01.000000"
-
-func newTestLogger(stdout, stderr io.Writer) *logWithWriters {
-	hnd := &handler{
-		writer: stdout,
-		timer: func() time.Time {
-			tm, _ := time.Parse(timeFmt, testTime)
-			return tm
-		},
-	}
-	var lw logWithWriters
-	lw.handler = hnd
-	lw.out = hnd.writer
-	lw.errOut = stderr
-	lw.Logger.Handler = hnd
-	lw.Logger.Level = log.InfoLevel
-	return &lw
-}
+const (
+	timeFmt  = "2006/01/02 15:04:05.000000"
+	testTime = "2019/05/15 01:01:01.000000"
+)
 
 func mockStd() (*color.Console, func() string) {
 	r, w, _ := os.Pipe()
@@ -46,68 +33,168 @@ func mockStd() (*color.Console, func() string) {
 	}
 }
 
-func TestPackCLILogger(t *testing.T) {
-	spec.Run(t, "PackCLILogger", func(t *testing.T, when spec.G, it spec.S) {
-		var logger *logWithWriters
-		var outCons, errCons *color.Console
-		var fOut func() string
+func TestLogWithWriters(t *testing.T) {
+	spec.Run(t, "LogWithWriters", func(t *testing.T, when spec.G, it spec.S) {
+		var (
+			logger           *ilogging.LogWithWriters
+			outCons, errCons *color.Console
+			fOut, fErr       func() string
+		)
 
 		it.Before(func() {
 			outCons, fOut = mockStd()
-			errCons, _ = mockStd()
-			logger = newTestLogger(outCons, errCons)
+			errCons, fErr = mockStd()
+			logger = ilogging.NewLogWithWriters(outCons, errCons, ilogging.WithClock(func() time.Time {
+				clock, _ := time.Parse(timeFmt, testTime)
+				return clock
+			}))
 		})
 
-		it.After(func() {
+		when("default", func() {
+			it("has no time and color", func() {
+				logger.Info(color.HiBlueString("test"))
+				h.AssertEq(t, fOut(), "\x1b[94mtest\x1b[0m\n")
+			})
+
+			it("will not log debug messages", func() {
+				logger.Debug("debug_")
+				logger.Debugf("debugf")
+
+				output := fOut()
+				h.AssertNotContains(t, output, "debug_\n")
+				h.AssertNotContains(t, output, "debugf\n")
+			})
+
+			it("logs info and warning messages to standard writer", func() {
+				logger.Info("info_")
+				logger.Infof("infof")
+				logger.Warn("warn_")
+				logger.Warnf("warnf")
+
+				output := fOut()
+				h.AssertContains(t, output, "info_\n")
+				h.AssertContains(t, output, "infof\n")
+				h.AssertContains(t, output, "warn_\n")
+				h.AssertContains(t, output, "warnf\n")
+			})
+
+			it("logs error to error writer", func() {
+				logger.Error("error_")
+				logger.Errorf("errorf")
+
+				output := fErr()
+				h.AssertContains(t, output, "error_\n")
+				h.AssertContains(t, output, "errorf\n")
+			})
+
+			it("will return correct writers", func() {
+				h.AssertSameInstance(t, logger.Writer(), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), ioutil.Discard)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.InfoLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.WarnLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
+			})
 		})
 
-		it("can enable time in logs", func() {
-			logger.WantTime(true)
-			logger.Error("test")
-			expected := "2019/05/15 01:01:01.000000 \x1b[31;1mERROR: \x1b[0mtest\n"
-			h.AssertEq(t, fOut(), expected)
+		when("time is set to true", func() {
+			it("time is logged", func() {
+				logger.WantTime(true)
+				logger.Info("test")
+				h.AssertEq(t, fOut(), "2019/05/15 01:01:01.000000 test\n")
+			})
 		})
 
-		it("it has no time and color by default", func() {
-			logger.Error("test")
-			expected := "\x1b[31;1mERROR: \x1b[0mtest\n"
-			h.AssertEq(t, fOut(), expected)
+		when("colors are disabled", func() {
+			it("don't display colors", func() {
+				outCons.DisableColors(true)
+				logger.Info(color.HiBlueString("test"))
+				h.AssertEq(t, fOut(), "test\n")
+			})
 		})
 
-		it("can disable color logs", func() {
-			outCons.DisableColors(true)
-			logger.Error("test")
-			expected := "ERROR: test\n"
-			h.AssertEq(t, fOut(), expected)
+		when("quiet is set to true", func() {
+			it.Before(func() {
+				logger.WantQuiet(true)
+			})
+
+			it("will not log debug or info messages", func() {
+				logger.Debug("debug_")
+				logger.Debugf("debugf")
+				logger.Info("info_")
+				logger.Infof("infof")
+
+				output := fOut()
+				h.AssertNotContains(t, output, "debug_\n")
+				h.AssertNotContains(t, output, "debugf\n")
+				h.AssertNotContains(t, output, "info_\n")
+				h.AssertNotContains(t, output, "infof\n")
+			})
+
+			it("logs warnings to standard writer", func() {
+				logger.Warn("warn_")
+				logger.Warnf("warnf")
+
+				output := fOut()
+				h.AssertContains(t, output, "warn_\n")
+				h.AssertContains(t, output, "warnf\n")
+			})
+
+			it("logs error to error writer", func() {
+				logger.Error("error_")
+				logger.Errorf("errorf")
+
+				output := fErr()
+				h.AssertContains(t, output, "error_\n")
+				h.AssertContains(t, output, "errorf\n")
+			})
+
+			it("will return correct writers", func() {
+				h.AssertSameInstance(t, logger.Writer(), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), ioutil.Discard)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.InfoLevel), ioutil.Discard)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.WarnLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
+			})
 		})
 
-		it("non-error levels not shown", func() {
-			logger.Info("test")
-			expected := "test\n"
-			h.AssertEq(t, fOut(), expected)
-		})
+		when("verbose is set to true", func() {
+			it.Before(func() {
+				logger.WantVerbose(true)
+			})
 
-		it("will not show verbose messages if quiet", func() {
-			logger.WantQuiet(true)
-			logger.Debug("hello")
-			logger.Debugf("there")
-			logger.Info("test")
-			logger.Warn("oh no")
-			expected := "oh no\n"
-			h.AssertContains(t, fOut(), expected)
+			it("all messages are logged", func() {
+				logger.Debug("debug_")
+				logger.Debugf("debugf")
+				logger.Info("info_")
+				logger.Infof("infof")
+				logger.Warn("warn_")
+				logger.Warnf("warnf")
 
-			testOut := logger.Writer()
-			h.AssertSameInstance(t, testOut, outCons)
+				output := fOut()
+				h.AssertContains(t, output, "debug_")
+				h.AssertContains(t, output, "debugf")
+				h.AssertContains(t, output, "info_")
+				h.AssertContains(t, output, "infof")
+				h.AssertContains(t, output, "warn_")
+				h.AssertContains(t, output, "warnf")
+			})
 
-			testOut = logger.InfoErrorWriter()
-			h.AssertSameInstance(t, testOut, ioutil.Discard)
-		})
+			it("logs error to error writer", func() {
+				logger.Error("error_")
+				logger.Errorf("errorf")
 
-		it("will return correct writers", func() {
-			testOut := logger.Writer()
-			h.AssertSameInstance(t, testOut, outCons)
-			testOut = logger.InfoErrorWriter()
-			h.AssertSameInstance(t, testOut, errCons)
+				output := fErr()
+				h.AssertContains(t, output, "error_\n")
+				h.AssertContains(t, output, "errorf\n")
+			})
+
+			it("will return correct writers", func() {
+				h.AssertSameInstance(t, logger.Writer(), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.InfoLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.WarnLevel), outCons)
+				h.AssertSameInstance(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
+			})
 		})
 
 		it("will convert an empty string to a line feed", func() {

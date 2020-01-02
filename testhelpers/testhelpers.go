@@ -77,7 +77,7 @@ func AssertUnique(t *testing.T, items ...interface{}) {
 func AssertSameInstance(t *testing.T, actual, expected interface{}) {
 	t.Helper()
 	if actual != expected {
-		t.Fatalf("Expected %s and %s to be pointers to the variable", actual, expected)
+		t.Fatalf("Expected %s and %s to be the same instance", actual, expected)
 	}
 }
 
