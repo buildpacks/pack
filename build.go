@@ -1,8 +1,10 @@
 package pack
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/url"
 	"os"
@@ -10,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
 	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -95,7 +98,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedBPs, group, err := c.processBuildpacks(ctx, opts.Buildpacks)
+	fetchedBPs, group, err := c.processBuildpacks(ctx, bldr.Order(), opts.Buildpacks)
 	if err != nil {
 		return err
 	}
@@ -325,42 +328,121 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 	}
 }
 
-func (c *Client) processBuildpacks(ctx context.Context, buildpacks []string) ([]dist.Buildpack, dist.OrderEntry, error) {
-	group := dist.OrderEntry{Group: []dist.BuildpackRef{}}
-	var bps []dist.Buildpack
-	for _, bp := range buildpacks {
-		if isBuildpackID(bp) {
+// processBuildpacks computes an order group based on the existing builder order and declared buildpacks. Additionally,
+// it returns buildpacks that should be added to the builder.
+//
+// Visual examples:
+//
+// 	BUILDER ORDER
+// 	----------
+//  - group:
+//		- A
+//		- B
+//  - group:
+//		- A
+//
+//	WITH DECLARED: "from-builder=all", X
+// 	----------
+// 	- group:
+// 		- (io.buildpacks.builder-buildpacks@embedded)
+//  		- group:
+//				- A
+//				- B
+// 			 - group:
+//				- A
+//		- X
+//
+//	WITH DECLARED: X
+// 	----------
+//	- group:
+//		- X
+//
+//	WITH DECLARED: A
+// 	----------
+// 	- group:
+//		- A
+func (c *Client) processBuildpacks(ctx context.Context, builderOrder dist.Order, declaredBPs []string) (fetchedBPs []dist.Buildpack, group dist.OrderEntry, err error) {
+	for _, bp := range declaredBPs {
+		switch {
+		case bp == "from-builder=all":
+			builderBuildpack := createEphemeralBuilderBuildpack(builderOrder)
+			fetchedBPs = append(fetchedBPs, builderBuildpack)
+			group = appendBuildpackToOrder(group, builderBuildpack.Descriptor().Info)
+		case isBuildpackID(bp):
 			id, version := c.parseBuildpack(bp)
-			group.Group = append(group.Group, dist.BuildpackRef{
-				BuildpackInfo: dist.BuildpackInfo{
-					ID:      id,
-					Version: version,
-				},
+			group = appendBuildpackToOrder(group, dist.BuildpackInfo{
+				ID:      id,
+				Version: version,
 			})
-		} else {
+		default:
 			err := ensureBPSupport(bp)
 			if err != nil {
-				return nil, dist.OrderEntry{}, errors.Wrapf(err, "checking buildpack path")
+				return fetchedBPs, group, errors.Wrapf(err, "checking support")
 			}
 
 			blob, err := c.downloader.Download(ctx, bp)
 			if err != nil {
-				return nil, dist.OrderEntry{}, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
+				return fetchedBPs, group, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
 			}
 
 			fetchedBP, err := dist.BuildpackFromRootBlob(blob)
 			if err != nil {
-				return nil, dist.OrderEntry{}, errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bp))
+				return fetchedBPs, group, errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bp))
 			}
 
-			bps = append(bps, fetchedBP)
+			fetchedBPs = append(fetchedBPs, fetchedBP)
 
-			group.Group = append(group.Group, dist.BuildpackRef{
-				BuildpackInfo: fetchedBP.Descriptor().Info,
-			})
+			group = appendBuildpackToOrder(group, fetchedBP.Descriptor().Info)
 		}
 	}
-	return bps, group, nil
+
+	return fetchedBPs, group, nil
+}
+
+func createEphemeralBuilderBuildpack(builderOrder dist.Order) dist.Buildpack {
+	return &ephemeralBuilderBuildpack{
+		descriptor: dist.BuildpackDescriptor{
+			API: api.MustParse("0.2"),
+			Info: dist.BuildpackInfo{
+				ID:      "io.buildpacks.builder-buildpacks",
+				Version: "embedded",
+			},
+			Order: builderOrder,
+		},
+	}
+}
+
+type ephemeralBuilderBuildpack struct {
+	descriptor dist.BuildpackDescriptor
+}
+
+func (b *ephemeralBuilderBuildpack) Descriptor() dist.BuildpackDescriptor {
+	return b.descriptor
+}
+
+func (b *ephemeralBuilderBuildpack) Open() (io.ReadCloser, error) {
+	buf := &bytes.Buffer{}
+	if err := toml.NewEncoder(buf).Encode(b.descriptor); err != nil {
+		return nil, err
+	}
+
+	tarBuilder := archive.TarBuilder{}
+	ts := archive.NormalizedDateTime
+	tarBuilder.AddDir(fmt.Sprintf("/cnb/buildpacks/%s", b.descriptor.EscapedID()), 0777, ts)
+	bpDir := fmt.Sprintf("/cnb/buildpacks/%s/%s", b.descriptor.EscapedID(), b.descriptor.Info.Version)
+	tarBuilder.AddDir(bpDir, 0777, ts)
+	tarBuilder.AddFile(bpDir+"/buildpack.toml", 0777, ts, buf.Bytes())
+
+	return tarBuilder.Reader(), nil
+}
+
+func appendBuildpackToOrder(group dist.OrderEntry, bpInfo dist.BuildpackInfo) dist.OrderEntry {
+	group.Group = append(group.Group, dist.BuildpackRef{
+		BuildpackInfo: bpInfo,
+		Optional:      false,
+	})
+
+	return group
 }
 
 func isBuildpackID(bp string) bool {

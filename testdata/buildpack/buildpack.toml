@@ -1,4 +1,4 @@
-api = "0.3"
+api = "0.2"
 
 [buildpack]
 id = "bp.one"

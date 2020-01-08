@@ -68,6 +68,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		builderName = "example.com/default/builder:tag"
 		defaultBuilderStackID = "some.stack.id"
 		defaultBuilderImage = ifakes.NewFakeBuilderImage(t,
+			tmpDir,
 			builderName,
 			defaultBuilderStackID,
 			"1234",
@@ -95,7 +96,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 					API: builder.LifecycleAPI{
-						BuildpackVersion: api.MustParse("0.3"),
+						BuildpackVersion: api.MustParse("0.2"),
 						PlatformVersion:  api.MustParse("0.2"),
 					},
 				},
@@ -103,6 +104,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			dist.BuildpackLayers{
 				"buildpack.id": {
 					"buildpack.version": {
+						API: api.MustParse("0.2"),
 						Stacks: []dist.Stack{
 							{
 								ID:     defaultBuilderStackID,
@@ -347,6 +349,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 				it.Before(func() {
 					customBuilderImage = ifakes.NewFakeBuilderImage(t,
+						tmpDir,
 						builderName,
 						"some.stack.id",
 						"1234",
@@ -547,23 +550,135 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("Buildpacks option", func() {
+			var (
+				additionalBuildpackPath string
+				additionalBuildpackInfo dist.BuildpackInfo
+			)
+
+			it.Before(func() {
+				additionalBuildpackInfo = dist.BuildpackInfo{
+					ID:      "buildpack.add.1.id",
+					Version: "buildpack.add.1.version",
+				}
+
+				buildpack, err := ifakes.NewFakeBuildpackBlob(dist.BuildpackDescriptor{
+					API:    api.MustParse("0.2"),
+					Info:   additionalBuildpackInfo,
+					Stacks: []dist.Stack{{ID: defaultBuilderStackID}},
+					Order:  nil,
+				}, 0777)
+				h.AssertNil(t, err)
+
+				tempFile, err := ioutil.TempFile(tmpDir, "additional-bp-*.tar")
+				h.AssertNil(t, err)
+				defer tempFile.Close()
+
+				reader, err := buildpack.Open()
+				h.AssertNil(t, err)
+
+				_, err = io.Copy(tempFile, reader)
+				h.AssertNil(t, err)
+
+				additionalBuildpackPath = tempFile.Name()
+			})
+
 			it("builder order is overwritten", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 					Image:      "some/app",
 					Builder:    builderName,
 					ClearCache: true,
-					Buildpacks: []string{"buildpack.id@buildpack.version"},
+					Buildpacks: []string{additionalBuildpackPath},
 				}))
 				h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
 				bldr, err := builder.FromImage(defaultBuilderImage)
 				h.AssertNil(t, err)
 				h.AssertEq(t, bldr.Order(), dist.Order{
-					{Group: []dist.BuildpackRef{{
-						BuildpackInfo: dist.BuildpackInfo{
+					{Group: []dist.BuildpackRef{
+						{BuildpackInfo: additionalBuildpackInfo},
+					}},
+				})
+			})
+
+			when("buildpack `from-builder=all` is set first", func() {
+				it("builder order is prepended", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    builderName,
+						ClearCache: true,
+						Buildpacks: []string{
+							"from-builder=all",
+							additionalBuildpackPath,
+						},
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+					bldr, err := builder.FromImage(defaultBuilderImage)
+					h.AssertNil(t, err)
+					h.AssertEq(t, bldr.Order(), dist.Order{{Group: []dist.BuildpackRef{
+						{
+							BuildpackInfo: dist.BuildpackInfo{
+								ID:      "io.buildpacks.builder-buildpacks",
+								Version: "embedded",
+							},
+							Optional: false,
+						},
+						{
+							BuildpackInfo: additionalBuildpackInfo,
+							Optional:      false,
+						},
+					}}})
+
+					h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{
+						{BuildpackInfo: dist.BuildpackInfo{
 							ID:      "buildpack.id",
 							Version: "buildpack.version",
-						}},
-					}},
+						}, Latest: true},
+						{BuildpackInfo: dist.BuildpackInfo{
+							ID:      "io.buildpacks.builder-buildpacks",
+							Version: "embedded",
+						}, Latest: true},
+						{BuildpackInfo: additionalBuildpackInfo, Latest: true},
+					})
+				})
+			})
+
+			when("buildpack `from-builder=all` is set last", func() {
+				it("builder order is appended", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    builderName,
+						ClearCache: true,
+						Buildpacks: []string{
+							additionalBuildpackPath,
+							"from-builder=all",
+						},
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+					bldr, err := builder.FromImage(defaultBuilderImage)
+					h.AssertNil(t, err)
+					h.AssertEq(t, bldr.Order(), dist.Order{{Group: []dist.BuildpackRef{
+						{
+							BuildpackInfo: additionalBuildpackInfo,
+							Optional:      false,
+						}, {
+							BuildpackInfo: dist.BuildpackInfo{
+								ID:      "io.buildpacks.builder-buildpacks",
+								Version: "embedded",
+							},
+							Optional: false,
+						},
+					}}})
+
+					h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{
+						{BuildpackInfo: dist.BuildpackInfo{
+							ID:      "buildpack.id",
+							Version: "buildpack.version",
+						}, Latest: true},
+						{BuildpackInfo: additionalBuildpackInfo, Latest: true},
+						{BuildpackInfo: dist.BuildpackInfo{
+							ID:      "io.buildpacks.builder-buildpacks",
+							Version: "embedded",
+						}, Latest: true},
+					})
 				})
 			})
 
@@ -998,6 +1113,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					var incompatibleBuilderImage *fakes.Image
 					it.Before(func() {
 						incompatibleBuilderImage = ifakes.NewFakeBuilderImage(t,
+							tmpDir,
 							"incompatible-"+builderName,
 							defaultBuilderStackID,
 							"1234",
@@ -1019,7 +1135,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 										},
 									},
 									API: builder.LifecycleAPI{
-										BuildpackVersion: api.MustParse("0.3"),
+										BuildpackVersion: api.MustParse("0.2"),
 										PlatformVersion:  api.MustParse("0.9"),
 									},
 								},

@@ -501,7 +501,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
 
 					bpd := dist.BuildpackDescriptor{
-						API:    api.MustParse("0.3"),
+						API:    api.MustParse("0.2"),
 						Info:   dist.BuildpackInfo{ID: "some.pkg.bp", Version: "2.3.4"},
 						Stacks: []dist.Stack{{ID: "some.stack.id"}},
 					}
