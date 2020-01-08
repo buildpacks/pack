@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest a new feture or an improvement to existing functionality
+about: Suggest a new feature or an improvement to existing functionality
 title: ''
 labels: type/enhancement, status/triage
 assignees: ''
