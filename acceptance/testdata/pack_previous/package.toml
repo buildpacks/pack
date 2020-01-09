@@ -1,9 +1,0 @@
-[default]
-id = "simple/layers"
-version = "simple-layers-version"
-
-[[blobs]]
-uri = "simple-layers-buildpack.tgz"
-
-[[stacks]]
-id = "pack.test.stack"
