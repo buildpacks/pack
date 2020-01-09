@@ -13,7 +13,6 @@ require (
 	github.com/google/go-cmp v0.3.0
 	github.com/google/go-containerregistry v0.0.0-20191018211754-b77a90c667af
 	github.com/heroku/color v0.0.6
-	github.com/jkutner/libproject v0.0.0-20191214231549-2c8be795b68c
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
 	github.com/onsi/gomega v1.7.0
 	github.com/pkg/errors v0.8.1

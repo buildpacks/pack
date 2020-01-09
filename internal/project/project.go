@@ -1,0 +1,73 @@
+package project
+
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+
+	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
+)
+
+type Buildpack struct {
+	ID      string `toml:"id"`
+	Version string `toml:"version"`
+	URI     string `toml:"uri"`
+}
+
+type EnvVar struct {
+	Name  string `toml:"name"`
+	Value string `toml:"value"`
+}
+
+type Build struct {
+	Include    []string    `toml:"include"`
+	Exclude    []string    `toml:"exclude"`
+	Buildpacks []Buildpack `toml:"buildpacks"`
+	Env        []EnvVar    `toml:"env"`
+}
+
+type Project struct {
+	Name string `toml:"name"`
+}
+
+type Descriptor struct {
+	Project  Project                `toml:"project"`
+	Build    Build                  `toml:"build"`
+	Metadata map[string]interface{} `toml:"metadata"`
+}
+
+func ReadProjectDescriptor(pathToFile string) (Descriptor, error) {
+	if _, err := os.Stat(pathToFile); os.IsNotExist(err) {
+		return Descriptor{}, err
+	}
+	projectTomlContents, err := ioutil.ReadFile(pathToFile)
+	if err != nil {
+		fmt.Print(err)
+	}
+
+	var descriptor Descriptor
+	_, err = toml.Decode(string(projectTomlContents), &descriptor)
+	if err != nil {
+		return Descriptor{}, err
+	}
+
+	return descriptor, descriptor.validate()
+}
+
+func (p Descriptor) validate() error {
+	if p.Build.Exclude != nil && p.Build.Include != nil {
+		return errors.New("project.toml cannot have both include and exclude defined")
+	}
+
+	for _, bp := range p.Build.Buildpacks {
+		if bp.ID == "" && bp.URI == "" {
+			return errors.New("buildpacks must have an id or url defined")
+		}
+		if bp.URI != "" && bp.Version != "" {
+			return errors.New("buildpacks cannot have both uri and version defined")
+		}
+	}
+
+	return nil
+}
