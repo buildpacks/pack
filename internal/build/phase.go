@@ -130,6 +130,18 @@ func WithNetwork(networkMode string) func(*Phase) (*Phase, error) {
 func (p *Phase) Run(ctx context.Context) error {
 	var err error
 
+	//originalCmd := p.ctrConf.Cmd
+
+	p.ctrConf = &dcontainer.Config{
+		Image:        p.ctrConf.Image,
+		Cmd:          []string{"/bin/sh"},
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+		OpenStdin:    true,
+	}
+
 	p.ctr, err = p.docker.ContainerCreate(ctx, p.ctrConf, p.hostConf, nil, "")
 	if err != nil {
 		return errors.Wrapf(err, "failed to create '%s' container", p.name)
@@ -168,13 +180,26 @@ func (p *Phase) Run(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to copy files to '%s' container", p.name)
 	}
 
-	return container.Run(
-		ctx,
-		p.docker,
-		p.ctr.ID,
-		logging.NewPrefixWriter(logging.GetWriterForLevel(p.logger, logging.InfoLevel), p.name),
-		logging.NewPrefixWriter(logging.GetWriterForLevel(p.logger, logging.ErrorLevel), p.name),
-	)
+	bodyChan, errChan := p.docker.ContainerWait(ctx, p.ctr.ID, dcontainer.WaitConditionNextExit)
+
+	err = container.Start(ctx, p.docker, p.ctr.ID, types.ContainerStartOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "start container")
+	}
+
+	select {
+	case body := <-bodyChan:
+		if body.StatusCode != 0 {
+			return fmt.Errorf("failed with status code: %d", body.StatusCode)
+		}
+	case err := <-errChan:
+		return err
+	}
+
+	//execCreate, err := p.docker.ContainerExecCreate(ctx, p.ctr.ID, types.ExecConfig{Cmd: originalCmd})
+	//
+	//container.StartExec()
+	return nil
 }
 
 func (p *Phase) Cleanup() error {

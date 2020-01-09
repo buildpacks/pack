@@ -1,24 +1,30 @@
 package container
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/docker/docker/pkg/term"
 	"github.com/pkg/errors"
 )
 
-func Run(ctx context.Context, docker *client.Client, ctrID string, out, errOut io.Writer) error {
-	bodyChan, errChan := docker.ContainerWait(ctx, ctrID, dcontainer.WaitConditionNextExit)
+func Run(ctx context.Context, docker *client.Client, containerID string, out, errOut io.Writer) error {
+	bodyChan, errChan := docker.ContainerWait(ctx, containerID, dcontainer.WaitConditionNextExit)
 
-	if err := docker.ContainerStart(ctx, ctrID, types.ContainerStartOptions{}); err != nil {
+	if err := docker.ContainerStart(ctx, containerID, types.ContainerStartOptions{}); err != nil {
 		return errors.Wrap(err, "container start")
 	}
-	logs, err := docker.ContainerLogs(ctx, ctrID, types.ContainerLogsOptions{
+	logs, err := docker.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
@@ -42,4 +48,189 @@ func Run(ctx context.Context, docker *client.Client, ctrID string, out, errOut i
 		return err
 	}
 	return <-copyErr
+}
+
+func Start(ctx context.Context, client *client.Client, containerID string, hostConfig types.ContainerStartOptions) (err error) {
+	var (
+		terminalFd uintptr
+		oldState   *term.State
+		out        io.Writer = os.Stdout
+	)
+
+	if file, ok := out.(*os.File); ok {
+		terminalFd = file.Fd()
+	} else {
+		return errors.New("Not a terminal!")
+	}
+
+	// Set up the pseudo terminal
+	oldState, err = term.SetRawTerminal(terminalFd)
+	if err != nil {
+		return
+	}
+
+	// Clean up after the container has exited
+	defer term.RestoreTerminal(terminalFd, oldState)
+
+	// Attach to the container on a separate thread
+	attachChan := make(chan error)
+	go attachToContainer(ctx, client, containerID, attachChan)
+
+	// Start it
+	err = client.ContainerStart(ctx, containerID, hostConfig)
+	if err != nil {
+		return
+	}
+
+	// Make sure terminal resizes are passed on to the container
+	monitorTty(ctx, client, containerID, terminalFd)
+
+	return <-attachChan
+}
+
+func StartExec(ctx context.Context, client *client.Client, execID string) (err error) {
+	var (
+		terminalFd uintptr
+		oldState   *term.State
+		out        io.Writer = os.Stdout
+	)
+
+	if file, ok := out.(*os.File); ok {
+		terminalFd = file.Fd()
+	} else {
+		return errors.New("Not a terminal!")
+	}
+
+	// Set up the pseudo terminal
+	oldState, err = term.SetRawTerminal(terminalFd)
+	if err != nil {
+		return
+	}
+
+	// Clean up after the exec command has exited
+	defer term.RestoreTerminal(terminalFd, oldState)
+
+	// Start it
+	errorChan := make(chan error)
+	go startExec(ctx, client, execID, errorChan)
+
+	// Make sure terminal resizes are passed on to the exec Tty
+	monitorExecTty(ctx, client, execID, terminalFd)
+
+	return <-errorChan
+}
+
+func attachToContainer(ctx context.Context, client *client.Client, containerID string, errChan chan error) {
+	attached, err := client.ContainerAttach(ctx, containerID, types.ContainerAttachOptions{
+		Stderr: true,
+		Stdout: true,
+		Stdin:  true,
+		Stream: true,
+	})
+
+	if err != nil {
+		errChan <- err
+		return
+	}
+
+	go io.Copy(os.Stdout, attached.Reader)
+	go io.Copy(os.Stderr, attached.Reader)
+
+	inout := make(chan []byte)
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			inout <- []byte(scanner.Text())
+		}
+	}()
+
+	// Write to docker container
+	go func(w io.WriteCloser) {
+		for {
+			data, ok := <-inout
+			//log.Println("Received to send to docker", string(data))
+			if !ok {
+				fmt.Println("!ok")
+				w.Close()
+				return
+			}
+
+			w.Write(append(data, '\n'))
+		}
+	}(attached.Conn)
+
+	errChan <- nil
+}
+
+func startExec(ctx context.Context, client *client.Client, execID string, errorChan chan error) {
+	err := client.ContainerExecStart(ctx, execID, types.ExecStartCheck{
+		Detach: false,
+		Tty:    true,
+	})
+
+	errorChan <- err
+}
+
+// From https://github.com/docker/docker/blob/0d70706b4b6bf9d5a5daf46dd147ca71270d0ab7/api/client/utils.go#L222-L233
+func monitorTty(ctx context.Context, client *client.Client, containerID string, terminalFd uintptr) {
+	resizeTty(ctx, client, containerID, terminalFd)
+
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, syscall.SIGWINCH)
+	go func() {
+		for _ = range sigchan {
+			resizeTty(ctx, client, containerID, terminalFd)
+		}
+	}()
+}
+
+// From https://github.com/docker/docker/blob/0d70706b4b6bf9d5a5daf46dd147ca71270d0ab7/api/client/utils.go#L222-L233
+func monitorExecTty(ctx context.Context, client *client.Client, execID string, terminalFd uintptr) {
+	// HACK: For some weird reason on Docker 1.4.1 this resize is being triggered
+	//       before the Exec instance is running resulting in an error on the
+	//       Docker server. So we wait a little bit before triggering this first
+	//       resize
+	time.Sleep(50 * time.Millisecond)
+	resizeExecTty(ctx, client, execID, terminalFd)
+
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, syscall.SIGWINCH)
+	go func() {
+		for _ = range sigchan {
+			resizeExecTty(ctx, client, execID, terminalFd)
+		}
+	}()
+}
+
+func resizeTty(ctx context.Context, client *client.Client, containerID string, terminalFd uintptr) error {
+	height, width := getTtySize(terminalFd)
+	if height == 0 && width == 0 {
+		return nil
+	}
+
+	return client.ContainerResize(ctx, containerID, types.ResizeOptions{
+		Height: height,
+		Width:  width,
+	})
+}
+
+func resizeExecTty(ctx context.Context, client *client.Client, containerID string, terminalFd uintptr) error {
+	height, width := getTtySize(terminalFd)
+	if height == 0 && width == 0 {
+		return nil
+	}
+	return client.ContainerExecResize(ctx, containerID, types.ResizeOptions{
+		Height: height,
+		Width:  width,
+	})
+}
+
+// From https://github.com/docker/docker/blob/0d70706b4b6bf9d5a5daf46dd147ca71270d0ab7/api/client/utils.go#L235-L247
+func getTtySize(terminalFd uintptr) (uint, uint) {
+	ws, err := term.GetWinsize(terminalFd)
+	if err != nil {
+		return 0, 0
+	}
+
+	return uint(ws.Height), uint(ws.Width)
 }

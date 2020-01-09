@@ -73,7 +73,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	defer l.Cleanup()
 
 	buildCache := cache.NewVolumeCache(opts.Image, "build", l.docker)
-	launchCache := cache.NewVolumeCache(opts.Image, "launch", l.docker)
+	//launchCache := cache.NewVolumeCache(opts.Image, "launch", l.docker)
 	l.logger.Debugf("Using build cache volume %s", style.Symbol(buildCache.Name()))
 
 	if opts.ClearCache {
@@ -87,49 +87,49 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	if err := l.Detect(ctx, opts.Network); err != nil {
 		return err
 	}
-
-	if l.CombinedExporterCacher() {
-		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Publish, opts.ClearCache); err != nil {
-			return err
-		}
-
-		l.logger.Info(style.Step("RESTORING"))
-		if opts.ClearCache {
-			l.logger.Info("Skipping 'restore' due to clearing cache")
-		} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
-			return err
-		}
-	} else {
-		l.logger.Info(style.Step("RESTORING"))
-		if opts.ClearCache {
-			l.logger.Info("Skipping 'restore' due to clearing cache")
-		} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
-			return err
-		}
-
-		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Publish, opts.ClearCache); err != nil {
-			return err
-		}
-	}
-
-	l.logger.Info(style.Step("BUILDING"))
-	if err := l.Build(ctx, opts.Network); err != nil {
-		return err
-	}
-
-	l.logger.Info(style.Step("EXPORTING"))
-	if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name()); err != nil {
-		return err
-	}
-
-	if !l.CombinedExporterCacher() {
-		l.logger.Info(style.Step("CACHING"))
-		if err := l.Cache(ctx, buildCache.Name()); err != nil {
-			return err
-		}
-	}
+	//
+	//if l.CombinedExporterCacher() {
+	//	l.logger.Info(style.Step("ANALYZING"))
+	//	if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Publish, opts.ClearCache); err != nil {
+	//		return err
+	//	}
+	//
+	//	l.logger.Info(style.Step("RESTORING"))
+	//	if opts.ClearCache {
+	//		l.logger.Info("Skipping 'restore' due to clearing cache")
+	//	} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
+	//		return err
+	//	}
+	//} else {
+	//	l.logger.Info(style.Step("RESTORING"))
+	//	if opts.ClearCache {
+	//		l.logger.Info("Skipping 'restore' due to clearing cache")
+	//	} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
+	//		return err
+	//	}
+	//
+	//	l.logger.Info(style.Step("ANALYZING"))
+	//	if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Publish, opts.ClearCache); err != nil {
+	//		return err
+	//	}
+	//}
+	//
+	//l.logger.Info(style.Step("BUILDING"))
+	//if err := l.Build(ctx, opts.Network); err != nil {
+	//	return err
+	//}
+	//
+	//l.logger.Info(style.Step("EXPORTING"))
+	//if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name()); err != nil {
+	//	return err
+	//}
+	//
+	//if !l.CombinedExporterCacher() {
+	//	l.logger.Info(style.Step("CACHING"))
+	//	if err := l.Cache(ctx, buildCache.Name()); err != nil {
+	//		return err
+	//	}
+	//}
 
 	return nil
 }
