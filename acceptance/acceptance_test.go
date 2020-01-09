@@ -41,11 +41,12 @@ import (
 )
 
 const (
-	envPackPath              = "PACK_PATH"
-	envPreviousPackPath      = "PREVIOUS_PACK_PATH"
-	envLifecyclePath         = "LIFECYCLE_PATH"
-	envPreviousLifecyclePath = "PREVIOUS_LIFECYCLE_PATH"
-	envAcceptanceSuiteConfig = "ACCEPTANCE_SUITE_CONFIG"
+	envPackPath                 = "PACK_PATH"
+	envPreviousPackPath         = "PREVIOUS_PACK_PATH"
+	envPreviousPackFixturesPath = "PREVIOUS_PACK_FIXTURES_PATH"
+	envLifecyclePath            = "LIFECYCLE_PATH"
+	envPreviousLifecyclePath    = "PREVIOUS_LIFECYCLE_PATH"
+	envAcceptanceSuiteConfig    = "ACCEPTANCE_SUITE_CONFIG"
 
 	runImage   = "pack-test/run"
 	buildImage = "pack-test/build"
@@ -75,6 +76,20 @@ func TestAcceptance(t *testing.T) {
 	}
 
 	previousPackPath := os.Getenv(envPreviousPackPath)
+	if previousPackPath != "" {
+		previousPackPath, err = filepath.Abs(previousPackPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	previousPackFixturesPath := os.Getenv(envPreviousPackFixturesPath)
+	if previousPackFixturesPath != "" {
+		previousPackFixturesPath, err = filepath.Abs(previousPackFixturesPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	lifecycleDescriptor := builder.LifecycleDescriptor{
 		Info: builder.LifecycleInfo{
@@ -126,6 +141,7 @@ func TestAcceptance(t *testing.T) {
 		combos,
 		packPath,
 		previousPackPath,
+		previousPackFixturesPath,
 		lifecyclePath,
 		lifecycleDescriptor,
 		previousLifecyclePath,
@@ -1238,6 +1254,7 @@ func resolveRunCombinations(
 	combos []runCombo,
 	packPath string,
 	previousPackPath string,
+	previousPackFixturesPath string,
 	lifecyclePath string,
 	lifecycleDescriptor builder.LifecycleDescriptor,
 	previousLifecyclePath string,
@@ -1247,8 +1264,8 @@ func resolveRunCombinations(
 	for _, c := range combos {
 		key := fmt.Sprintf("p_%s cb_%s lc_%s", c.Pack, c.PackCreateBuilder, c.Lifecycle)
 		rc := resolvedRunCombo{
-			packFixturesDir:              filepath.Join("testdata", "pack_current"),
-			packCreateBuilderFixturesDir: filepath.Join("testdata", "pack_current"),
+			packFixturesDir:              filepath.Join("testdata", "pack_fixtures"),
+			packCreateBuilderFixturesDir: filepath.Join("testdata", "pack_fixtures"),
 			packPath:                     packPath,
 			packCreateBuilderPath:        packPath,
 			lifecyclePath:                lifecyclePath,
@@ -1261,7 +1278,7 @@ func resolveRunCombinations(
 			}
 
 			rc.packPath = previousPackPath
-			rc.packFixturesDir = filepath.Join("testdata", "pack_previous")
+			rc.packFixturesDir = previousPackFixturesPath
 		}
 
 		if c.PackCreateBuilder == "previous" {
@@ -1270,7 +1287,7 @@ func resolveRunCombinations(
 			}
 
 			rc.packCreateBuilderPath = previousPackPath
-			rc.packCreateBuilderFixturesDir = filepath.Join("testdata", "pack_previous")
+			rc.packCreateBuilderFixturesDir = previousPackFixturesPath
 		}
 
 		if c.Lifecycle == "previous" {
