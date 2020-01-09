@@ -1,43 +1,42 @@
 package fakes
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil/fakes"
 
+	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.BuildpackLayers) *fakes.Image {
+func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.BuildpackLayers, order dist.Order) *fakes.Image {
 	fakeBuilderImage := fakes.NewImage(name, "", nil)
 
 	h.AssertNil(t, fakeBuilderImage.SetLabel("io.buildpacks.stack.id", stackID))
 	h.AssertNil(t, fakeBuilderImage.SetEnv("CNB_USER_ID", uid))
 	h.AssertNil(t, fakeBuilderImage.SetEnv("CNB_GROUP_ID", gid))
 
-	label, err := json.Marshal(&metadata)
-	h.AssertNil(t, err)
-	h.AssertNil(t, fakeBuilderImage.SetLabel("io.buildpacks.builder.metadata", string(label)))
-
-	label, err = json.Marshal(&bpLayers)
-	h.AssertNil(t, err)
-	h.AssertNil(t, fakeBuilderImage.SetLabel("io.buildpacks.buildpack.layers", string(label)))
+	h.AssertNil(t, dist.SetLabel(fakeBuilderImage, "io.buildpacks.builder.metadata", metadata))
+	h.AssertNil(t, dist.SetLabel(fakeBuilderImage, "io.buildpacks.buildpack.layers", bpLayers))
 
 	for bpID, v := range bpLayers {
 		for bpVersion, bpLayerInfo := range v {
+			bpInfo := dist.BuildpackInfo{
+				ID:      bpID,
+				Version: bpVersion,
+			}
+
 			buildpack, err := NewFakeBuildpack(dist.BuildpackDescriptor{
-				API: bpLayerInfo.API,
-				Info: dist.BuildpackInfo{
-					ID:      bpID,
-					Version: bpVersion,
-				},
+				API:    bpLayerInfo.API,
+				Info:   bpInfo,
 				Stacks: bpLayerInfo.Stacks,
 				Order:  bpLayerInfo.Order,
 			}, 0755)
@@ -49,7 +48,22 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 		}
 	}
 
+	h.AssertNil(t, dist.SetLabel(fakeBuilderImage, "io.buildpacks.buildpack.order", order))
+
+	tarBuilder := archive.TarBuilder{}
+	orderTomlBytes := &bytes.Buffer{}
+	h.AssertNil(t, toml.NewEncoder(orderTomlBytes).Encode(orderTOML{Order: order}))
+	tarBuilder.AddFile("/cnb/order.toml", 0777, archive.NormalizedDateTime, orderTomlBytes.Bytes())
+
+	orderTar := filepath.Join(tmpDir, fmt.Sprintf("order.%s.toml", h.RandString(8)))
+	h.AssertNil(t, tarBuilder.WriteToPath(orderTar))
+	h.AssertNil(t, fakeBuilderImage.AddLayer(orderTar))
+
 	return fakeBuilderImage
+}
+
+type orderTOML struct {
+	Order dist.Order `toml:"order"`
 }
 
 func createBuildpackTar(t *testing.T, tmpDir string, buildpack dist.Buildpack) string {
