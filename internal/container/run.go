@@ -50,42 +50,80 @@ func Run(ctx context.Context, docker *client.Client, containerID string, out, er
 	return <-copyErr
 }
 
-func Start(ctx context.Context, client *client.Client, containerID string, hostConfig types.ContainerStartOptions) (err error) {
+func RunExec(ctx context.Context, docker *client.Client, containerID, execID string, out, errOut io.Writer) error {
+	bodyChan, errChan := docker.ContainerWait(ctx, containerID, dcontainer.WaitConditionNextExit)
+
+	if err := docker.ContainerExecStart(ctx, execID, types.ExecStartCheck{}); err != nil {
+		return errors.Wrap(err, "container start")
+	}
+
+	logs, err := docker.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	})
+	if err != nil {
+		return errors.Wrap(err, "container logs stdout")
+	}
+
+	copyErr := make(chan error)
+	go func() {
+		_, err := stdcopy.StdCopy(out, errOut, logs)
+		copyErr <- err
+	}()
+
+	select {
+	case body := <-bodyChan:
+		if body.StatusCode != 0 {
+			return fmt.Errorf("failed with status code: %d", body.StatusCode)
+		}
+	case err := <-errChan:
+		return err
+	}
+	return <-copyErr
+}
+
+func Start(ctx context.Context, client *client.Client, containerID string, hostConfig types.ContainerStartOptions) error {
 	var (
-		terminalFd uintptr
-		oldState   *term.State
-		out        io.Writer = os.Stdout
+		out io.Writer = os.Stdout
+		err error
 	)
 
-	if file, ok := out.(*os.File); ok {
-		terminalFd = file.Fd()
-	} else {
-		return errors.New("Not a terminal!")
-	}
+	bodyChan, errChan := client.ContainerWait(ctx, containerID, dcontainer.WaitConditionNextExit)
 
-	// Set up the pseudo terminal
-	oldState, err = term.SetRawTerminal(terminalFd)
-	if err != nil {
-		return
+	if _, ok := out.(*os.File); !ok {
+		return errors.New("not a terminal")
 	}
-
-	// Clean up after the container has exited
-	defer term.RestoreTerminal(terminalFd, oldState)
 
 	// Attach to the container on a separate thread
-	attachChan := make(chan error)
-	go attachToContainer(ctx, client, containerID, attachChan)
+	attachCtx, cancelFn := context.WithCancel(ctx)
+	attachErrorChan := attachToContainer(attachCtx, client, containerID)
+	defer cancelFn()
 
 	// Start it
 	err = client.ContainerStart(ctx, containerID, hostConfig)
 	if err != nil {
-		return
+		return err
 	}
 
 	// Make sure terminal resizes are passed on to the container
-	monitorTty(ctx, client, containerID, terminalFd)
+	//monitorTty(ctx, client, containerID, terminalFd)
 
-	return <-attachChan
+	select {
+	case err := <-attachErrorChan:
+		fmt.Println("attach:err=", err)
+		return err
+	case body := <-bodyChan:
+		fmt.Println("await:status=", body.StatusCode)
+		if body.StatusCode != 0 {
+			return fmt.Errorf("failed with status code: %d", body.StatusCode)
+		}
+	case err := <-errChan:
+		fmt.Println("await:err=", err)
+		return err
+	}
+
+	return nil
 }
 
 func StartExec(ctx context.Context, client *client.Client, execID string) (err error) {
@@ -120,7 +158,9 @@ func StartExec(ctx context.Context, client *client.Client, execID string) (err e
 	return <-errorChan
 }
 
-func attachToContainer(ctx context.Context, client *client.Client, containerID string, errChan chan error) {
+func attachToContainer(ctx context.Context, client *client.Client, containerID string) chan error {
+	errChan := make(chan error)
+
 	attached, err := client.ContainerAttach(ctx, containerID, types.ContainerAttachOptions{
 		Stderr: true,
 		Stdout: true,
@@ -130,36 +170,37 @@ func attachToContainer(ctx context.Context, client *client.Client, containerID s
 
 	if err != nil {
 		errChan <- err
-		return
+		return errChan
 	}
 
 	go io.Copy(os.Stdout, attached.Reader)
 	go io.Copy(os.Stderr, attached.Reader)
 
-	inout := make(chan []byte)
+	input := make(chan []byte)
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			inout <- []byte(scanner.Text())
+		for ctx.Err() == nil && scanner.Scan() {
+			input <- []byte(scanner.Text())
 		}
 	}()
 
 	// Write to docker container
 	go func(w io.WriteCloser) {
-		for {
-			data, ok := <-inout
-			//log.Println("Received to send to docker", string(data))
+		for ctx.Err() == nil {
+			data, ok := <-input
 			if !ok {
-				fmt.Println("!ok")
-				w.Close()
+				errChan <- errors.New("failed to get input")
 				return
 			}
 
-			w.Write(append(data, '\n'))
+			_, err := w.Write(append(data, '\n'))
+			if err != nil {
+				errChan <- err
+			}
 		}
 	}(attached.Conn)
 
-	errChan <- nil
+	return errChan
 }
 
 func startExec(ctx context.Context, client *client.Client, execID string, errorChan chan error) {

@@ -130,7 +130,7 @@ func WithNetwork(networkMode string) func(*Phase) (*Phase, error) {
 func (p *Phase) Run(ctx context.Context) error {
 	var err error
 
-	//originalCmd := p.ctrConf.Cmd
+	originalConf := *p.ctrConf
 
 	p.ctrConf = &dcontainer.Config{
 		Image:        p.ctrConf.Image,
@@ -180,25 +180,43 @@ func (p *Phase) Run(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to copy files to '%s' container", p.name)
 	}
 
-	bodyChan, errChan := p.docker.ContainerWait(ctx, p.ctr.ID, dcontainer.WaitConditionNextExit)
+	err = container.Start(ctx, p.docker, p.ctr.ID, types.ContainerStartOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "start container: pre-exec")
+	}
+	//
+	//execCreate, err := p.docker.ContainerExecCreate(ctx, p.ctr.ID, types.ExecConfig{
+	//	User:         originalConf.User,
+	//	Privileged:   false,
+	//	Tty:          originalConf.Tty,
+	//	AttachStdin:  originalConf.AttachStdin,
+	//	AttachStderr: originalConf.AttachStderr,
+	//	AttachStdout: originalConf.AttachStdout,
+	//	Env:          originalConf.Env,
+	//	WorkingDir:   originalConf.WorkingDir,
+	//	Cmd:          originalConf.Cmd,
+	//})
+	//if err != nil {
+	//	return errors.Wrapf(err, "creating exec")
+	//}
+	//
+	//err = container.RunExec(
+	//	ctx,
+	//	p.docker,
+	//	p.ctr.ID,
+	//	execCreate.ID,
+	//	logging.GetWriterForLevel(p.logger, logging.InfoLevel),
+	//	logging.GetWriterForLevel(p.logger, logging.ErrorLevel),
+	//)
+	//if err != nil {
+	//	return errors.Wrapf(err, "start container: exec")
+	//}
 
 	err = container.Start(ctx, p.docker, p.ctr.ID, types.ContainerStartOptions{})
 	if err != nil {
-		return errors.Wrapf(err, "start container")
+		return errors.Wrapf(err, "start container: post-exec")
 	}
 
-	select {
-	case body := <-bodyChan:
-		if body.StatusCode != 0 {
-			return fmt.Errorf("failed with status code: %d", body.StatusCode)
-		}
-	case err := <-errChan:
-		return err
-	}
-
-	//execCreate, err := p.docker.ContainerExecCreate(ctx, p.ctr.ID, types.ExecConfig{Cmd: originalCmd})
-	//
-	//container.StartExec()
 	return nil
 }
 
