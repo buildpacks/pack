@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jkutner/libproject"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/project"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -60,12 +60,12 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if len(buildpacks) == 0 {
 				buildpacks = []string{}
 				for _, bp := range descriptor.Build.Buildpacks {
-					if len(bp.Uri) == 0 {
+					if len(bp.URI) == 0 {
 						// there are several places through out the pack code where the "id@version" format is used.
 						// we should probably central this, but it's not clear where it belongs
-						buildpacks = append(buildpacks, fmt.Sprintf("%s@%s", bp.Id, bp.Version))
+						buildpacks = append(buildpacks, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
 					} else {
-						buildpacks = append(buildpacks, bp.Uri)
+						buildpacks = append(buildpacks, bp.URI)
 					}
 				}
 			}
@@ -110,7 +110,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 }
 
-func parseEnv(project libproject.ProjectDescriptor, envFiles []string, envVars []string) (map[string]string, error) {
+func parseEnv(project project.Descriptor, envFiles []string, envVars []string) (map[string]string, error) {
 	env := map[string]string{}
 
 	for _, envVar := range project.Build.Env {
@@ -158,7 +158,7 @@ func addEnvVar(env map[string]string, item string) map[string]string {
 	return env
 }
 
-func readProjectDescriptor(appPath string, descriptorPath string) (libproject.ProjectDescriptor, error) {
+func readProjectDescriptor(appPath string, descriptorPath string) (project.Descriptor, error) {
 	var fullDescriptorPath string
 	if len(appPath) != 0 {
 		fullDescriptorPath = filepath.Join(appPath, descriptorPath)
@@ -167,12 +167,12 @@ func readProjectDescriptor(appPath string, descriptorPath string) (libproject.Pr
 	}
 
 	if _, err := os.Stat(fullDescriptorPath); !os.IsNotExist(err) {
-		return libproject.ReadProjectDescriptor(fullDescriptorPath)
+		return project.ReadProjectDescriptor(fullDescriptorPath)
 	}
-	return libproject.ProjectDescriptor{}, nil
+	return project.Descriptor{}, nil
 }
 
-func parseProjectToml(appPath string, descriptorPath string) (libproject.ProjectDescriptor, error) {
+func parseProjectToml(appPath string, descriptorPath string) (project.Descriptor, error) {
 	if len(descriptorPath) != 0 {
 		return readProjectDescriptor(appPath, descriptorPath)
 	}
