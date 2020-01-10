@@ -50,13 +50,20 @@ func Run(ctx context.Context, docker *client.Client, containerID string, out, er
 	return <-copyErr
 }
 
-func RunExec(ctx context.Context, docker *client.Client, containerID, execID string, out, errOut io.Writer) error {
-	bodyChan, errChan := docker.ContainerWait(ctx, containerID, dcontainer.WaitConditionNextExit)
-
-	if err := docker.ContainerExecStart(ctx, execID, types.ExecStartCheck{}); err != nil {
+func Run2(ctx context.Context, docker *client.Client, containerID string) error {
+	fmt.Println("STARTING...")
+	if err := docker.ContainerStart(ctx, containerID, types.ContainerStartOptions{}); err != nil {
 		return errors.Wrap(err, "container start")
 	}
+	fmt.Println("STARTED:", containerID)
 
+	return nil
+}
+
+func RunExec(ctx context.Context, docker *client.Client, containerID, execID string, out, errOut io.Writer) error {
+	//bodyChan, errChan := docker.ContainerWait(ctx, containerID, dcontainer.WaitConditionNextExit)
+
+	fmt.Println("STARTING:LOGS")
 	logs, err := docker.ContainerLogs(ctx, containerID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
@@ -72,14 +79,22 @@ func RunExec(ctx context.Context, docker *client.Client, containerID, execID str
 		copyErr <- err
 	}()
 
-	select {
-	case body := <-bodyChan:
-		if body.StatusCode != 0 {
-			return fmt.Errorf("failed with status code: %d", body.StatusCode)
-		}
-	case err := <-errChan:
-		return err
+	fmt.Println("STARTING:EXEC")
+	if err := docker.ContainerExecStart(ctx, execID, types.ExecStartCheck{}); err != nil {
+		return errors.Wrap(err, "container start")
 	}
+
+	// TODO: inspect exec for exit
+	//inspect, err := docker.ContainerExecInspect(ctx, execID)
+
+	//select {
+	//case body := <-bodyChan:
+	//	if body.StatusCode != 0 {
+	//		return fmt.Errorf("failed with status code: %d", body.StatusCode)
+	//	}
+	//case err := <-errChan:
+	//	return err
+	//}
 	return <-copyErr
 }
 
