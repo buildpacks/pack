@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/buildpacks/imgutil"
@@ -233,6 +234,8 @@ func assembleAvailableMixins(buildMixins, runMixins []string) []string {
 	return append(common, append(buildOnly, runOnly...)...)
 }
 
+// allBuildpacks aggregates all buildpacks declared on the image with additional buildpacks passed in. They are sorted
+// by ID then Version.
 func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []dist.Buildpack) ([]dist.BuildpackDescriptor, error) {
 	var all []dist.BuildpackDescriptor
 	var bpLayers dist.BuildpackLayers
@@ -255,6 +258,14 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []dist.Build
 	for _, bp := range additionalBuildpacks {
 		all = append(all, bp.Descriptor())
 	}
+
+	sort.Slice(all, func(i, j int) bool {
+		if all[i].Info.ID != all[j].Info.ID {
+			return all[i].Info.ID < all[j].Info.ID
+		}
+		return all[i].Info.Version < all[j].Info.Version
+	})
+
 	return all, nil
 }
 
