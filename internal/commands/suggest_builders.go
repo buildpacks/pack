@@ -30,6 +30,11 @@ var suggestedBuilders = []suggestedBuilder{
 		DefaultDescription: "Larger base image with Java, Node.js & Python",
 	},
 	{
+		Name:               "Cloud Foundry",
+		Image:              "cloudfoundry/cnb:tiny",
+		DefaultDescription: "Tiny base image (bionic build image, distroless run image) with buildpacks for Golang",
+	},
+	{
 		Name:               "Heroku",
 		Image:              "heroku/buildpacks:18",
 		DefaultDescription: "heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP",
