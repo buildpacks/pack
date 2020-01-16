@@ -1,0 +1,9 @@
+api = "0.2"
+
+[buildpack]
+  id = "noop.buildpack"
+  version = "noop.buildpack.later-version"
+  name = "NOOP Buildpack"
+
+[[stacks]]
+  id = "pack.test.stack"

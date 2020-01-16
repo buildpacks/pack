@@ -125,10 +125,8 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 	}
 
 	var order dist.Order
-	if ok, err := dist.GetLabel(img, OrderLabel, &order); err != nil {
+	if _, err := dist.GetLabel(img, OrderLabel, &order); err != nil {
 		return nil, err
-	} else if !ok {
-		order = metadata.Groups.ToOrder()
 	}
 
 	return &Builder{
@@ -229,7 +227,6 @@ func (b *Builder) Save(logger logging.Logger) error {
 		return errors.Wrap(err, "processing order")
 	}
 
-	b.metadata.Groups = orderToV1Order(resolvedOrder)
 	processMetadata(&b.metadata)
 
 	tmpDir, err := ioutil.TempDir("", "create-builder-scratch")

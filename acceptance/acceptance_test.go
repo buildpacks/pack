@@ -42,6 +42,7 @@ import (
 
 const (
 	envPackPath                 = "PACK_PATH"
+	envCompilePackWithVersion   = "COMPILE_PACK_WITH_VERSION"
 	envPreviousPackPath         = "PREVIOUS_PACK_PATH"
 	envPreviousPackFixturesPath = "PREVIOUS_PACK_FIXTURES_PATH"
 	envLifecyclePath            = "LIFECYCLE_PATH"
@@ -72,7 +73,11 @@ func TestAcceptance(t *testing.T) {
 
 	packPath := os.Getenv(envPackPath)
 	if packPath == "" {
-		packPath = buildPack(t)
+		compileVersion := os.Getenv(envCompilePackWithVersion)
+		if compileVersion == "" {
+			t.Fatalf("%s must be set if %s is empty", envCompilePackWithVersion, envPackPath)
+		}
+		packPath = buildPack(t, compileVersion)
 	}
 
 	previousPackPath := os.Getenv(envPreviousPackPath)
@@ -137,11 +142,18 @@ func TestAcceptance(t *testing.T) {
 		h.AssertNil(t, err)
 	}
 
+	tmpPreviousPackFixturesPath, err := ioutil.TempDir("", "previous-pack-fixtures")
+	h.AssertNil(t, err)
+	defer os.RemoveAll(tmpPreviousPackFixturesPath)
+
+	h.RecursiveCopy(t, previousPackFixturesPath, tmpPreviousPackFixturesPath)
+	h.RecursiveCopy(t, filepath.Join("testdata", "pack_previous_fixtures_overrides"), tmpPreviousPackFixturesPath)
+
 	resolvedCombos, err := resolveRunCombinations(
 		combos,
 		packPath,
 		previousPackPath,
-		previousPackFixturesPath,
+		tmpPreviousPackFixturesPath,
 		lifecyclePath,
 		lifecycleDescriptor,
 		previousLifecyclePath,
@@ -514,7 +526,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 									"--buildpack",
 									"simple/layers@simple-layers-version",
 									"--buildpack",
-									"noop.buildpack",
+									"noop.buildpack@noop.buildpack.version",
 									"--buildpack",
 									"read/env@latest",
 									"--env",
@@ -1342,7 +1354,7 @@ func buildpacksDir(bpAPIVersion api.Version) string {
 	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion.String())
 }
 
-func buildPack(t *testing.T) string {
+func buildPack(t *testing.T, compileVersion string) string {
 	packTmpDir, err := ioutil.TempDir("", "pack.acceptance.binary.")
 	h.AssertNil(t, err)
 
@@ -1354,7 +1366,12 @@ func buildPack(t *testing.T) string {
 	cwd, err := os.Getwd()
 	h.AssertNil(t, err)
 
-	cmd := exec.Command("go", "build", "-mod=vendor", "-o", packPath, "./cmd/pack")
+	cmd := exec.Command("go", "build",
+		"-ldflags", fmt.Sprintf("-X 'github.com/buildpacks/pack/cmd.Version=%s'", compileVersion),
+		"-mod=vendor",
+		"-o", packPath,
+		"./cmd/pack",
+	)
 	if filepath.Base(cwd) == "acceptance" {
 		cmd.Dir = filepath.Dir(cwd)
 	}
@@ -1383,7 +1400,7 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 	// ARCHIVE BUILDPACKS
 	buildpacks := []string{
 		"noop-buildpack",
-		"not-in-builder-buildpack",
+		"noop-buildpack-2",
 		"other-stack-buildpack",
 		"read-env-buildpack",
 		"simple-layers-buildpack", // from package
