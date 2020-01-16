@@ -3,145 +3,135 @@ package project
 import (
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/heroku/color"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestDecodeSimple(t *testing.T) {
-	projectToml := `
+func TestProject(t *testing.T) {
+	h.RequireDocker(t)
+	color.Disable(true)
+	defer color.Disable(false)
+	rand.Seed(time.Now().UTC().UnixNano())
+
+	spec.Run(t, "Provider", testProject, spec.Parallel(), spec.Report(report.Terminal{}))
+}
+
+func testProject(t *testing.T, when spec.G, it spec.S) {
+	when("#ReadProjectDescriptor", func() {
+		it("should parse a valid project.toml file", func() {
+			projectToml := `
 [project]
 name = "gallant"
-
 [build]
 exclude = [ "*.jar" ]
-
 [[build.buildpacks]]
 id = "example/lua"
 version = "1.0"
-
 [[build.buildpacks]]
 uri = "https://example.com/buildpack"
-
 [[build.env]]
 name = "JAVA_OPTS"
 value = "-Xmx300m"
 `
-	var projectDescriptor Descriptor
-	_, err := toml.Decode(projectToml, &projectDescriptor)
-	if err != nil {
-		t.Fatal(err)
-	}
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	var expected string
+			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	expected = "gallant"
-	if projectDescriptor.Project.Name != expected {
-		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-			expected, projectDescriptor.Project.Name)
-	}
+			var expected string
 
-	expected = "example/lua"
-	if projectDescriptor.Build.Buildpacks[0].ID != expected {
-		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-			expected, projectDescriptor.Build.Buildpacks[0].ID)
-	}
+			expected = "gallant"
+			if projectDescriptor.Project.Name != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Project.Name)
+			}
 
-	expected = "1.0"
-	if projectDescriptor.Build.Buildpacks[0].Version != expected {
-		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-			expected, projectDescriptor.Build.Buildpacks[0].Version)
-	}
+			expected = "example/lua"
+			if projectDescriptor.Build.Buildpacks[0].ID != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Buildpacks[0].ID)
+			}
 
-	expected = "https://example.com/buildpack"
-	if projectDescriptor.Build.Buildpacks[1].URI != expected {
-		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-			expected, projectDescriptor.Build.Buildpacks[1].URI)
-	}
+			expected = "1.0"
+			if projectDescriptor.Build.Buildpacks[0].Version != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Buildpacks[0].Version)
+			}
 
-	expected = "JAVA_OPTS"
-	if projectDescriptor.Build.Env[0].Name != expected {
-		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-			expected, projectDescriptor.Build.Env[0].Name)
-	}
+			expected = "https://example.com/buildpack"
+			if projectDescriptor.Build.Buildpacks[1].URI != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Buildpacks[1].URI)
+			}
 
-	expected = "-Xmx300m"
-	if projectDescriptor.Build.Env[0].Value != expected {
-		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-			expected, projectDescriptor.Build.Env[0].Value)
-	}
-}
+			expected = "JAVA_OPTS"
+			if projectDescriptor.Build.Env[0].Name != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Env[0].Name)
+			}
 
-func TestFileDoesNotExist(t *testing.T) {
-	_, err := ReadProjectDescriptor("/path/that/does/not/exist/project.toml")
+			expected = "-Xmx300m"
+			if projectDescriptor.Build.Env[0].Value != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Env[0].Value)
+			}
+		})
 
-	if !os.IsNotExist(err) {
-		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-			"project.toml does not exist error", "no error")
-	}
-}
-
-func TestReadFile(t *testing.T) {
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "project-")
-	if err != nil {
-		log.Fatal("Cannot create temporary file", err)
-	}
-
-	defer os.Remove(tmpFile.Name())
-
-	projectToml := `
+		it("should create empty build ENV", func() {
+			projectToml := `
 [project]
 name = "gallant"
 `
 
-	if _, err = tmpFile.Write([]byte(projectToml)); err != nil {
-		log.Fatal("Failed to write to temporary file", err)
-	}
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	// Close the file
-	if err := tmpFile.Close(); err != nil {
-		log.Fatal(err)
-	}
+			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	val, err := ReadProjectDescriptor(tmpFile.Name())
+			expected := 0
+			if len(projectDescriptor.Build.Env) != 0 {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, string(len(projectDescriptor.Build.Env)))
+			}
 
-	if err != nil {
-		t.Fatal(err)
-	}
+			for _, envVar := range projectDescriptor.Build.Env {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					"[]", envVar)
+			}
+		})
 
-	var expected = "gallant"
-	if val.Project.Name != expected {
-		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-			expected, val.Project.Name)
-	}
-}
+		it("should fail for an invalid project.toml path", func() {
+			_, err := ReadProjectDescriptor("/path/that/does/not/exist/project.toml")
 
-func TestEmtpyEnv(t *testing.T) {
-	projectToml := `
-[project]
-name = "gallant"
-`
-	var val Descriptor
-	_, err := toml.Decode(projectToml, &val)
-	if err != nil {
-		t.Fatal(err)
-	}
+			if !os.IsNotExist(err) {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					"project.toml does not exist error", "no error")
+			}
+		})
+	})
 
-	expected := 0
-	if len(val.Build.Env) != 0 {
-		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-			expected, string(len(val.Build.Env)))
-	}
-
-	for _, envVar := range val.Build.Env {
-		t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-			"[]", envVar)
-	}
-}
-
-func TestValidateIncludeExclude(t *testing.T) {
-	projectToml := `
+	when("#validate", func() {
+		it("should enforce mutual exclusivity between exclude and include", func() {
+			projectToml := `
 [project]
 name = "bad excludes and includes"
 
@@ -149,41 +139,41 @@ name = "bad excludes and includes"
 exclude = [ "*.jar" ]
 include = [ "*.jpg" ]
 `
-	var projectDescriptor Descriptor
-	_, err := toml.Decode(projectToml, &projectDescriptor)
-	if err != nil {
-		t.Fatal(err)
-	}
+			var projectDescriptor Descriptor
+			_, err := toml.Decode(projectToml, &projectDescriptor)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	err = projectDescriptor.validate()
-	if err == nil {
-		t.Fatalf(
-			"Expected error for having both exclude and include defined")
-	}
-}
+			err = projectDescriptor.validate()
+			if err == nil {
+				t.Fatalf(
+					"Expected error for having both exclude and include defined")
+			}
+		})
 
-func TestValidateBuildpacksMissingIdUri(t *testing.T) {
-	projectToml := `
+		it("should have an id or uri defined for buildpacks", func() {
+			projectToml := `
 [project]
 name = "missing buildpacks id and uri"
 
 [[build.buildpacks]]
 version = "1.2.3"
 `
-	var projectDescriptor Descriptor
-	_, err := toml.Decode(projectToml, &projectDescriptor)
-	if err != nil {
-		t.Fatal(err)
-	}
+			var projectDescriptor Descriptor
+			_, err := toml.Decode(projectToml, &projectDescriptor)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	err = projectDescriptor.validate()
-	if err == nil {
-		t.Fatalf("Expected error for NOT having id or uri defined for buildpacks")
-	}
-}
+			err = projectDescriptor.validate()
+			if err == nil {
+				t.Fatalf("Expected error for NOT having id or uri defined for buildpacks")
+			}
+		})
 
-func TestValidateBuildpacksUriVersion(t *testing.T) {
-	projectToml := `
+		it("should not allow both uri and version", func() {
+			projectToml := `
 [project]
 name = "cannot have both uri and version defined"
 
@@ -191,14 +181,28 @@ name = "cannot have both uri and version defined"
 uri = "https://example.com/buildpack"
 version = "1.2.3"
 `
-	var projectDescriptor Descriptor
-	_, err := toml.Decode(projectToml, &projectDescriptor)
+			var projectDescriptor Descriptor
+			_, err := toml.Decode(projectToml, &projectDescriptor)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = projectDescriptor.validate()
+			if err == nil {
+				t.Fatal("Expected error for having both uri and version defined for a buildpack(s)")
+			}
+		})
+	})
+}
+
+func createTmpProjectTomlFile(projectToml string) (*os.File, error) {
+	tmpProjectToml, err := ioutil.TempFile(os.TempDir(), "project-")
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal("Failed to create temporary project toml file", err)
 	}
 
-	err = projectDescriptor.validate()
-	if err == nil {
-		t.Fatal("Expected error for having both uri and version defined for a buildpack(s)")
+	if _, err := tmpProjectToml.Write([]byte(projectToml)); err != nil {
+		log.Fatal("Failed to write to temporary file", err)
 	}
+	return tmpProjectToml, err
 }
