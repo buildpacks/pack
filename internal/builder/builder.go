@@ -327,8 +327,10 @@ func (b *Builder) Save(logger logging.Logger) error {
 		return err
 	}
 
-	if err := b.image.AddLayer(compatTar); err != nil {
-		return errors.Wrap(err, "adding compat.tar layer")
+	if compatTar != "" {
+		if err := b.image.AddLayer(compatTar); err != nil {
+			return errors.Wrap(err, "adding compat.tar layer")
+		}
 	}
 
 	envTar, err := b.envLayer(tmpDir, b.env)

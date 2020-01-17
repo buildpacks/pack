@@ -17,6 +17,10 @@ const (
 )
 
 func (b *Builder) compatLayer(order dist.Order, dest string) (string, error) {
+	if b.lifecycle == nil {
+		return "", nil
+	}
+
 	compatTar := path.Join(dest, "compat.tar")
 	fh, err := os.Create(compatTar)
 	if err != nil {
@@ -27,10 +31,8 @@ func (b *Builder) compatLayer(order dist.Order, dest string) (string, error) {
 	tw := tar.NewWriter(fh)
 	defer tw.Close()
 
-	if b.lifecycle != nil {
-		if err := compatLifecycle(tw); err != nil {
-			return "", err
-		}
+	if err := compatLifecycle(tw); err != nil {
+		return "", err
 	}
 
 	return compatTar, nil

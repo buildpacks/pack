@@ -89,11 +89,19 @@ func TestAcceptance(t *testing.T) {
 	}
 
 	previousPackFixturesPath := os.Getenv(envPreviousPackFixturesPath)
+	var tmpPreviousPackFixturesPath string
 	if previousPackFixturesPath != "" {
 		previousPackFixturesPath, err = filepath.Abs(previousPackFixturesPath)
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		tmpPreviousPackFixturesPath, err := ioutil.TempDir("", "previous-pack-fixtures")
+		h.AssertNil(t, err)
+		defer os.RemoveAll(tmpPreviousPackFixturesPath)
+
+		h.RecursiveCopy(t, previousPackFixturesPath, tmpPreviousPackFixturesPath)
+		h.RecursiveCopy(t, filepath.Join("testdata", "pack_previous_fixtures_overrides"), tmpPreviousPackFixturesPath)
 	}
 
 	lifecycleDescriptor := builder.LifecycleDescriptor{
@@ -141,13 +149,6 @@ func TestAcceptance(t *testing.T) {
 		combos, err = parseSuiteConfig(suiteConfig)
 		h.AssertNil(t, err)
 	}
-
-	tmpPreviousPackFixturesPath, err := ioutil.TempDir("", "previous-pack-fixtures")
-	h.AssertNil(t, err)
-	defer os.RemoveAll(tmpPreviousPackFixturesPath)
-
-	h.RecursiveCopy(t, previousPackFixturesPath, tmpPreviousPackFixturesPath)
-	h.RecursiveCopy(t, filepath.Join("testdata", "pack_previous_fixtures_overrides"), tmpPreviousPackFixturesPath)
 
 	resolvedCombos, err := resolveRunCombinations(
 		combos,
