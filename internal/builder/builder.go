@@ -32,12 +32,13 @@ const (
 
 	cnbDir = "/cnb"
 
-	orderPath    = "/cnb/order.toml"
-	stackPath    = "/cnb/stack.toml"
-	platformDir  = "/platform"
-	lifecycleDir = "/cnb/lifecycle"
-	workspaceDir = "/workspace"
-	layersDir    = "/layers"
+	orderPath          = "/cnb/order.toml"
+	stackPath          = "/cnb/stack.toml"
+	platformDir        = "/platform"
+	lifecycleDir       = "/cnb/lifecycle"
+	compatLifecycleDir = "/lifecycle"
+	workspaceDir       = "/workspace"
+	layersDir          = "/layers"
 
 	metadataLabel = "io.buildpacks.builder.metadata"
 	stackLabel    = "io.buildpacks.stack.id"
@@ -320,17 +321,6 @@ func (b *Builder) Save(logger logging.Logger) error {
 	}
 	if err := b.image.AddLayer(stackTar); err != nil {
 		return errors.Wrap(err, "adding stack.tar layer")
-	}
-
-	compatTar, err := b.compatLayer(resolvedOrder, tmpDir)
-	if err != nil {
-		return err
-	}
-
-	if compatTar != "" {
-		if err := b.image.AddLayer(compatTar); err != nil {
-			return errors.Wrap(err, "adding compat.tar layer")
-		}
 	}
 
 	envTar, err := b.envLayer(tmpDir, b.env)
@@ -669,6 +659,16 @@ func (b *Builder) lifecycleLayer(dest string) (string, error) {
 	err = b.embedLifecycleTar(tw)
 	if err != nil {
 		return "", errors.Wrap(err, "embedding lifecycle tar")
+	}
+
+	if err := tw.WriteHeader(&tar.Header{
+		Name:     compatLifecycleDir,
+		Linkname: lifecycleDir,
+		Typeflag: tar.TypeSymlink,
+		Mode:     0644,
+		ModTime:  archive.NormalizedDateTime,
+	}); err != nil {
+		return "", errors.Wrapf(err, "creating %s symlink", style.Symbol(compatLifecycleDir))
 	}
 
 	return fh.Name(), nil
