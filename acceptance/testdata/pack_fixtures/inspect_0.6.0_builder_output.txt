@@ -28,7 +28,6 @@ Buildpacks:
   ID                    VERSION
   read/env              read-env-version
   noop.buildpack        noop.buildpack.version
-  noop.buildpack        noop.buildpack.later-version
   simple/layers         simple-layers-version
 
 Detection Order:
@@ -64,7 +63,6 @@ Buildpacks:
   ID                    VERSION
   read/env              read-env-version
   noop.buildpack        noop.buildpack.version
-  noop.buildpack        noop.buildpack.later-version
   simple/layers         simple-layers-version
 
 Detection Order:

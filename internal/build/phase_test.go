@@ -197,7 +197,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					phase, err := subject.NewPhase("phase", build.WithArgs("some", "args"))
 					h.AssertNil(t, err)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
-					h.AssertContains(t, outBuf.String(), `received args [/lifecycle/phase some args]`)
+					h.AssertContains(t, outBuf.String(), `received args [/cnb/lifecycle/phase some args]`)
 				})
 			})
 

@@ -7,6 +7,10 @@
   # intentionally missing id/version as they are optional
   uri = "noop-buildpack.tgz"
 
+[[buildpacks]]
+  # noop-buildpack-2 has the same id but a different version compared to noop-buildpack
+  uri = "noop-buildpack-2.tgz"
+
 [[packages]]
   image = "{{ .package_name }}"
 
