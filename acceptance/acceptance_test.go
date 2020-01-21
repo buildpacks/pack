@@ -96,7 +96,7 @@ func TestAcceptance(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		tmpPreviousPackFixturesPath, err := ioutil.TempDir("", "previous-pack-fixtures")
+		tmpPreviousPackFixturesPath, err = ioutil.TempDir("", "previous-pack-fixtures")
 		h.AssertNil(t, err)
 		defer os.RemoveAll(tmpPreviousPackFixturesPath)
 
@@ -172,7 +172,7 @@ pack:
 
 create builder:
  |__ pack path: %s
- |__ builder toml: %s
+ |__ pack fixtures: %s
 
 lifecycle:
  |__ path: %s
