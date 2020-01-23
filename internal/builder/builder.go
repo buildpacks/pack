@@ -256,7 +256,7 @@ func (b *Builder) Save(logger logging.Logger) error {
 		}
 	}
 
-	if err := validateBuildpacks(b.StackID, b.Mixins(), b.LifecycleDescriptor(), b.additionalBuildpacks); err != nil {
+	if err := validateBuildpacks(b.StackID, b.Mixins(), b.LifecycleDescriptor(), b.Buildpacks(), b.additionalBuildpacks); err != nil {
 		return errors.Wrap(err, "validating buildpacks")
 	}
 
@@ -397,14 +397,14 @@ func hasBuildpackWithVersion(bps []dist.BuildpackInfo, version string) bool {
 	return false
 }
 
-func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, bps []dist.Buildpack) error {
+func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []BuildpackMetadata, bpsToValidate []dist.Buildpack) error {
 	bpLookup := map[string]interface{}{}
 
-	for _, bp := range bps {
-		bpLookup[bp.Descriptor().Info.FullName()] = nil
+	for _, bp := range allBuildpacks {
+		bpLookup[bp.FullName()] = nil
 	}
 
-	for _, bp := range bps {
+	for _, bp := range bpsToValidate {
 		bpd := bp.Descriptor()
 
 		if !bpd.API.SupportsVersion(lifecycleDescriptor.API.BuildpackVersion) {

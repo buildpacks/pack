@@ -378,6 +378,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			buildpackExists := func(name, version string) {
+				t.Helper()
 				dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", name, version)
 				layerTar, err := fakePackageImage.FindLayerWithPath(dirPath)
 				h.AssertNil(t, err)
