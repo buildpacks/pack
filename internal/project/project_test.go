@@ -31,6 +31,8 @@ func testProject(t *testing.T, when spec.G, it spec.S) {
 			projectToml := `
 [project]
 name = "gallant"
+[project.licenses]
+type = "MIT"
 [build]
 exclude = [ "*.jar" ]
 [[build.buildpacks]]
@@ -41,6 +43,8 @@ uri = "https://example.com/buildpack"
 [[build.env]]
 name = "JAVA_OPTS"
 value = "-Xmx300m"
+[metadata]
+pipeline = "Lucerne"
 `
 			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
 			if err != nil {
@@ -89,12 +93,26 @@ value = "-Xmx300m"
 				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
 					expected, projectDescriptor.Build.Env[0].Value)
 			}
+
+			expected = "MIT"
+			if projectDescriptor.Project.Licenses.Type != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Project.Licenses.Type)
+			}
+
+			expected = "Lucerne"
+			if projectDescriptor.Metadata["pipeline"] != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Metadata["pipeline"])
+			}
 		})
 
 		it("should create empty build ENV", func() {
 			projectToml := `
 [project]
 name = "gallant"
+[project.licenses]
+type = "MIT"
 `
 
 			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
@@ -190,6 +208,25 @@ version = "1.2.3"
 			err = projectDescriptor.validate()
 			if err == nil {
 				t.Fatal("Expected error for having both uri and version defined for a buildpack(s)")
+			}
+		})
+
+		it("should require either a type or uri for licenses", func() {
+			projectToml := `
+[project]
+name = "licenses should have either a type or uri defined"
+
+[project.licenses]
+`
+			var projectDescriptor Descriptor
+			_, err := toml.Decode(projectToml, &projectDescriptor)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			err = projectDescriptor.validate()
+			if err == nil {
+				t.Fatal("Expected error for having neither type or uri defined for licenses")
 			}
 		})
 	})
