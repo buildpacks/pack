@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/BurntSushi/toml"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -31,7 +30,7 @@ func testProject(t *testing.T, when spec.G, it spec.S) {
 			projectToml := `
 [project]
 name = "gallant"
-[project.licenses]
+[[project.licenses]]
 type = "MIT"
 [build]
 exclude = [ "*.jar" ]
@@ -95,9 +94,9 @@ pipeline = "Lucerne"
 			}
 
 			expected = "MIT"
-			if projectDescriptor.Project.Licenses.Type != expected {
+			if projectDescriptor.Project.Licenses[0].Type != expected {
 				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-					expected, projectDescriptor.Project.Licenses.Type)
+					expected, projectDescriptor.Project.Licenses[0].Type)
 			}
 
 			expected = "Lucerne"
@@ -111,10 +110,7 @@ pipeline = "Lucerne"
 			projectToml := `
 [project]
 name = "gallant"
-[project.licenses]
-type = "MIT"
 `
-
 			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
 			if err != nil {
 				t.Fatal(err)
@@ -147,9 +143,8 @@ type = "MIT"
 		})
 	})
 
-	when("#validate", func() {
-		it("should enforce mutual exclusivity between exclude and include", func() {
-			projectToml := `
+	it("should enforce mutual exclusivity between exclude and include", func() {
+		projectToml := `
 [project]
 name = "bad excludes and includes"
 
@@ -157,41 +152,38 @@ name = "bad excludes and includes"
 exclude = [ "*.jar" ]
 include = [ "*.jpg" ]
 `
-			var projectDescriptor Descriptor
-			_, err := toml.Decode(projectToml, &projectDescriptor)
-			if err != nil {
-				t.Fatal(err)
-			}
+		tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+		if err == nil {
+			t.Fatalf(
+				"Expected error for having both exclude and include defined")
+		}
+	})
 
-			err = projectDescriptor.validate()
-			if err == nil {
-				t.Fatalf(
-					"Expected error for having both exclude and include defined")
-			}
-		})
-
-		it("should have an id or uri defined for buildpacks", func() {
-			projectToml := `
+	it("should have an id or uri defined for buildpacks", func() {
+		projectToml := `
 [project]
 name = "missing buildpacks id and uri"
 
 [[build.buildpacks]]
 version = "1.2.3"
 `
-			var projectDescriptor Descriptor
-			_, err := toml.Decode(projectToml, &projectDescriptor)
-			if err != nil {
-				t.Fatal(err)
-			}
+		tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			err = projectDescriptor.validate()
-			if err == nil {
-				t.Fatalf("Expected error for NOT having id or uri defined for buildpacks")
-			}
-		})
+		_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+		if err == nil {
+			t.Fatalf("Expected error for NOT having id or uri defined for buildpacks")
+		}
+	})
 
-		it("should not allow both uri and version", func() {
-			projectToml := `
+	it("should not allow both uri and version", func() {
+		projectToml := `
 [project]
 name = "cannot have both uri and version defined"
 
@@ -199,36 +191,33 @@ name = "cannot have both uri and version defined"
 uri = "https://example.com/buildpack"
 version = "1.2.3"
 `
-			var projectDescriptor Descriptor
-			_, err := toml.Decode(projectToml, &projectDescriptor)
-			if err != nil {
-				t.Fatal(err)
-			}
+		tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			err = projectDescriptor.validate()
-			if err == nil {
-				t.Fatal("Expected error for having both uri and version defined for a buildpack(s)")
-			}
-		})
+		_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+		if err == nil {
+			t.Fatal("Expected error for having both uri and version defined for a buildpack(s)")
+		}
+	})
 
-		it("should require either a type or uri for licenses", func() {
-			projectToml := `
+	it("should require either a type or uri for licenses", func() {
+		projectToml := `
 [project]
 name = "licenses should have either a type or uri defined"
 
-[project.licenses]
+[[project.licenses]]
 `
-			var projectDescriptor Descriptor
-			_, err := toml.Decode(projectToml, &projectDescriptor)
-			if err != nil {
-				t.Fatal(err)
-			}
+		tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			err = projectDescriptor.validate()
-			if err == nil {
-				t.Fatal("Expected error for having neither type or uri defined for licenses")
-			}
-		})
+		_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+		if err == nil {
+			t.Fatal("Expected error for having neither type or uri defined for licenses")
+		}
 	})
 }
 

@@ -27,14 +27,14 @@ type Build struct {
 	Env        []EnvVar    `toml:"env"`
 }
 
-type Licenses struct {
+type License struct {
 	Type string `toml:"type"`
 	URI  string `toml:"uri"`
 }
 
 type Project struct {
-	Name     string   `toml:"name"`
-	Licenses Licenses `toml:"licenses"`
+	Name     string    `toml:"name"`
+	Licenses []License `toml:"licenses"`
 }
 
 type Descriptor struct {
@@ -65,8 +65,12 @@ func (p Descriptor) validate() error {
 	if p.Build.Exclude != nil && p.Build.Include != nil {
 		return errors.New("project.toml cannot have both include and exclude defined")
 	}
-	if &p.Project.Licenses != nil && p.Project.Licenses.Type == "" && p.Project.Licenses.URI == "" {
-		return errors.New("project.toml must have a type or uri defined for licenses")
+	if len(p.Project.Licenses) > 0 {
+		for _, license := range p.Project.Licenses {
+			if license.Type == "" && license.URI == "" {
+				return errors.New("project.toml must have a type or uri defined for licenses")
+			}
+		}
 	}
 
 	for _, bp := range p.Build.Buildpacks {
