@@ -51,6 +51,8 @@ const (
 
 	runImage   = "pack-test/run"
 	buildImage = "pack-test/build"
+
+	defaultPlatformAPIVersion = "0.2"
 )
 
 var (
@@ -110,7 +112,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		API: builder.LifecycleAPI{
 			BuildpackVersion: api.MustParse(builder.DefaultBuildpackAPIVersion),
-			PlatformVersion:  api.MustParse(builder.DefaultPlatformAPIVersion),
+			PlatformVersion:  api.MustParse(defaultPlatformAPIVersion),
 		},
 	}
 	lifecyclePath := os.Getenv(envLifecyclePath)
