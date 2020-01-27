@@ -15,9 +15,8 @@ import (
 )
 
 const (
-	DefaultLifecycleVersion    = "0.5.0"
+	DefaultLifecycleVersion    = "0.6.0"
 	DefaultBuildpackAPIVersion = "0.2"
-	DefaultPlatformAPIVersion  = "0.1"
 )
 
 type Blob interface {
