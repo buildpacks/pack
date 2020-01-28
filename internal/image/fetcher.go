@@ -22,11 +22,11 @@ import (
 )
 
 type Fetcher struct {
-	docker *client.Client
+	docker client.CommonAPIClient
 	logger logging.Logger
 }
 
-func NewFetcher(logger logging.Logger, docker *client.Client) *Fetcher {
+func NewFetcher(logger logging.Logger, docker client.CommonAPIClient) *Fetcher {
 	return &Fetcher{
 		logger: logger,
 		docker: docker,

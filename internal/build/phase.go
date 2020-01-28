@@ -23,7 +23,7 @@ import (
 type Phase struct {
 	name     string
 	logger   logging.Logger
-	docker   *client.Client
+	docker   client.CommonAPIClient
 	ctrConf  *dcontainer.Config
 	hostConf *dcontainer.HostConfig
 	ctr      dcontainer.ContainerCreateCreatedBody

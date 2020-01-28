@@ -56,7 +56,7 @@ const (
 )
 
 var (
-	dockerCli      *client.Client
+	dockerCli      client.CommonAPIClient
 	registryConfig *h.TestRegistryConfig
 	suiteManager   *SuiteManager
 )
@@ -1481,7 +1481,7 @@ func createPackage(t *testing.T, configDir, tmpDir, packPath string) string {
 	return packageImageName
 }
 
-func createStack(t *testing.T, dockerCli *client.Client, runImageMirror string) error {
+func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror string) error {
 	t.Helper()
 	t.Log("creating stack images...")
 
@@ -1503,7 +1503,7 @@ func createStack(t *testing.T, dockerCli *client.Client, runImageMirror string) 
 	return nil
 }
 
-func createStackImage(dockerCli *client.Client, repoName string, dir string) error {
+func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir string) error {
 	ctx := context.Background()
 	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1)
 
@@ -1661,7 +1661,7 @@ func terminateAtStep(t *testing.T, cmd *exec.Cmd, buf *bytes.Buffer, pattern str
 	}
 }
 
-func imageLabel(t *testing.T, dockerCli *client.Client, repoName, labelName string) string {
+func imageLabel(t *testing.T, dockerCli client.CommonAPIClient, repoName, labelName string) string {
 	t.Helper()
 	inspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), repoName)
 	h.AssertNil(t, err)
