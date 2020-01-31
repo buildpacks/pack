@@ -19,7 +19,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-var docker *client.Client
+var docker client.CommonAPIClient
 var registryConfig *h.TestRegistryConfig
 
 func TestFetcher(t *testing.T) {

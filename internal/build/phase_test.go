@@ -28,7 +28,7 @@ import (
 
 var (
 	repoName  string
-	dockerCli *client.Client
+	dockerCli client.CommonAPIClient
 )
 
 func TestPhase(t *testing.T) {
@@ -56,7 +56,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject        *build.Lifecycle
 		outBuf, errBuf bytes.Buffer
-		docker         *client.Client
+		docker         client.CommonAPIClient
 	)
 
 	it.Before(func() {
@@ -197,7 +197,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					phase, err := subject.NewPhase("phase", build.WithArgs("some", "args"))
 					h.AssertNil(t, err)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
-					h.AssertContains(t, outBuf.String(), `received args [/lifecycle/phase some args]`)
+					h.AssertContains(t, outBuf.String(), `received args [/cnb/lifecycle/phase some args]`)
 				})
 			})
 
@@ -333,7 +333,7 @@ func assertRunSucceeds(t *testing.T, phase *build.Phase, outBuf *bytes.Buffer, e
 	phase.Cleanup()
 }
 
-func CreateFakeLifecycle(appDir string, docker *client.Client, logger logging.Logger) (*build.Lifecycle, error) {
+func CreateFakeLifecycle(appDir string, docker client.CommonAPIClient, logger logging.Logger) (*build.Lifecycle, error) {
 	subject := build.NewLifecycle(docker, logger)
 	builderImage, err := local.NewImage(repoName, docker, local.FromBaseImage(repoName))
 	if err != nil {

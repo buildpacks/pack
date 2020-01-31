@@ -41,18 +41,22 @@ import (
 )
 
 const (
-	envPackPath              = "PACK_PATH"
-	envPreviousPackPath      = "PREVIOUS_PACK_PATH"
-	envLifecyclePath         = "LIFECYCLE_PATH"
-	envPreviousLifecyclePath = "PREVIOUS_LIFECYCLE_PATH"
-	envAcceptanceSuiteConfig = "ACCEPTANCE_SUITE_CONFIG"
+	envPackPath                 = "PACK_PATH"
+	envCompilePackWithVersion   = "COMPILE_PACK_WITH_VERSION"
+	envPreviousPackPath         = "PREVIOUS_PACK_PATH"
+	envPreviousPackFixturesPath = "PREVIOUS_PACK_FIXTURES_PATH"
+	envLifecyclePath            = "LIFECYCLE_PATH"
+	envPreviousLifecyclePath    = "PREVIOUS_LIFECYCLE_PATH"
+	envAcceptanceSuiteConfig    = "ACCEPTANCE_SUITE_CONFIG"
 
 	runImage   = "pack-test/run"
 	buildImage = "pack-test/build"
+
+	defaultPlatformAPIVersion = "0.2"
 )
 
 var (
-	dockerCli      *client.Client
+	dockerCli      client.CommonAPIClient
 	registryConfig *h.TestRegistryConfig
 	suiteManager   *SuiteManager
 )
@@ -71,10 +75,36 @@ func TestAcceptance(t *testing.T) {
 
 	packPath := os.Getenv(envPackPath)
 	if packPath == "" {
-		packPath = buildPack(t)
+		compileVersion := os.Getenv(envCompilePackWithVersion)
+		if compileVersion == "" {
+			t.Fatalf("%s must be set if %s is empty", envCompilePackWithVersion, envPackPath)
+		}
+		packPath = buildPack(t, compileVersion)
 	}
 
 	previousPackPath := os.Getenv(envPreviousPackPath)
+	if previousPackPath != "" {
+		previousPackPath, err = filepath.Abs(previousPackPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	previousPackFixturesPath := os.Getenv(envPreviousPackFixturesPath)
+	var tmpPreviousPackFixturesPath string
+	if previousPackFixturesPath != "" {
+		previousPackFixturesPath, err = filepath.Abs(previousPackFixturesPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		tmpPreviousPackFixturesPath, err = ioutil.TempDir("", "previous-pack-fixtures")
+		h.AssertNil(t, err)
+		defer os.RemoveAll(tmpPreviousPackFixturesPath)
+
+		h.RecursiveCopy(t, previousPackFixturesPath, tmpPreviousPackFixturesPath)
+		h.RecursiveCopy(t, filepath.Join("testdata", "pack_previous_fixtures_overrides"), tmpPreviousPackFixturesPath)
+	}
 
 	lifecycleDescriptor := builder.LifecycleDescriptor{
 		Info: builder.LifecycleInfo{
@@ -82,7 +112,7 @@ func TestAcceptance(t *testing.T) {
 		},
 		API: builder.LifecycleAPI{
 			BuildpackVersion: api.MustParse(builder.DefaultBuildpackAPIVersion),
-			PlatformVersion:  api.MustParse(builder.DefaultPlatformAPIVersion),
+			PlatformVersion:  api.MustParse(defaultPlatformAPIVersion),
 		},
 	}
 	lifecyclePath := os.Getenv(envLifecyclePath)
@@ -126,6 +156,7 @@ func TestAcceptance(t *testing.T) {
 		combos,
 		packPath,
 		previousPackPath,
+		tmpPreviousPackFixturesPath,
 		lifecyclePath,
 		lifecycleDescriptor,
 		previousLifecyclePath,
@@ -143,7 +174,7 @@ pack:
 
 create builder:
  |__ pack path: %s
- |__ builder toml: %s
+ |__ pack fixtures: %s
 
 lifecycle:
  |__ path: %s
@@ -498,7 +529,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 									"--buildpack",
 									"simple/layers@simple-layers-version",
 									"--buildpack",
-									"noop.buildpack",
+									"noop.buildpack@noop.buildpack.version",
 									"--buildpack",
 									"read/env@latest",
 									"--env",
@@ -956,73 +987,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 					})
 				})
 			})
-
-			when("run", func() {
-				it.Before(func() {
-					h.SkipIf(t, runtime.GOOS == "windows", "Skipping because windows fails to clean up properly")
-				})
-
-				when("there is a builder", func() {
-					var (
-						listeningPort string
-						err           error
-					)
-
-					it.Before(func() {
-						listeningPort, err = h.GetFreePort()
-						h.AssertNil(t, err)
-					})
-
-					it.After(func() {
-						absPath, err := filepath.Abs(filepath.Join("testdata", "mock_app"))
-						h.AssertNil(t, err)
-
-						sum := sha256.Sum256([]byte(absPath))
-						repoName := fmt.Sprintf("pack.local/run/%x", sum[:8])
-						ref, err := name.ParseReference(repoName, name.WeakValidation)
-						h.AssertNil(t, err)
-
-						h.DockerRmi(dockerCli, repoName)
-
-						cache.NewImageCache(ref, dockerCli).Clear(context.TODO())
-						cache.NewVolumeCache(ref, "build", dockerCli).Clear(context.TODO())
-						cache.NewVolumeCache(ref, "launch", dockerCli).Clear(context.TODO())
-					})
-
-					it("starts an image", func() {
-						var buf bytes.Buffer
-						cmd := subjectPack(
-							"run",
-							"--port",
-							listeningPort+":8080",
-							"-p",
-							filepath.Join("testdata", "mock_app"),
-							"--builder",
-							builderName,
-						)
-						cmd.Stdout = &buf
-						cmd.Stderr = &buf
-						h.AssertNil(t, cmd.Start())
-
-						defer ctrlCProc(cmd)
-
-						h.AssertEq(t, isCommandRunning(cmd), true)
-						assertMockAppResponseContains(t, listeningPort, 30*time.Second, "Launch Dep Contents", "Cached Dep Contents")
-					})
-				})
-
-				when("default builder is not set", func() {
-					it("informs the user", func() {
-						cmd := subjectPack("run", "-p", filepath.Join("testdata", "mock_app"))
-						output, err := h.RunE(cmd)
-						h.AssertNotNil(t, err)
-						h.AssertContains(t, output, `Please select a default builder with:`)
-						h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
-						h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
-						h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks:18'`)
-					})
-				})
-			})
 		})
 	})
 
@@ -1238,6 +1202,7 @@ func resolveRunCombinations(
 	combos []runCombo,
 	packPath string,
 	previousPackPath string,
+	previousPackFixturesPath string,
 	lifecyclePath string,
 	lifecycleDescriptor builder.LifecycleDescriptor,
 	previousLifecyclePath string,
@@ -1247,8 +1212,8 @@ func resolveRunCombinations(
 	for _, c := range combos {
 		key := fmt.Sprintf("p_%s cb_%s lc_%s", c.Pack, c.PackCreateBuilder, c.Lifecycle)
 		rc := resolvedRunCombo{
-			packFixturesDir:              filepath.Join("testdata", "pack_current"),
-			packCreateBuilderFixturesDir: filepath.Join("testdata", "pack_current"),
+			packFixturesDir:              filepath.Join("testdata", "pack_fixtures"),
+			packCreateBuilderFixturesDir: filepath.Join("testdata", "pack_fixtures"),
 			packPath:                     packPath,
 			packCreateBuilderPath:        packPath,
 			lifecyclePath:                lifecyclePath,
@@ -1261,7 +1226,7 @@ func resolveRunCombinations(
 			}
 
 			rc.packPath = previousPackPath
-			rc.packFixturesDir = filepath.Join("testdata", "pack_previous")
+			rc.packFixturesDir = previousPackFixturesPath
 		}
 
 		if c.PackCreateBuilder == "previous" {
@@ -1270,7 +1235,7 @@ func resolveRunCombinations(
 			}
 
 			rc.packCreateBuilderPath = previousPackPath
-			rc.packCreateBuilderFixturesDir = filepath.Join("testdata", "pack_previous")
+			rc.packCreateBuilderFixturesDir = previousPackFixturesPath
 		}
 
 		if c.Lifecycle == "previous" {
@@ -1392,7 +1357,7 @@ func buildpacksDir(bpAPIVersion api.Version) string {
 	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion.String())
 }
 
-func buildPack(t *testing.T) string {
+func buildPack(t *testing.T, compileVersion string) string {
 	packTmpDir, err := ioutil.TempDir("", "pack.acceptance.binary.")
 	h.AssertNil(t, err)
 
@@ -1404,7 +1369,12 @@ func buildPack(t *testing.T) string {
 	cwd, err := os.Getwd()
 	h.AssertNil(t, err)
 
-	cmd := exec.Command("go", "build", "-mod=vendor", "-o", packPath, "./cmd/pack")
+	cmd := exec.Command("go", "build",
+		"-ldflags", fmt.Sprintf("-X 'github.com/buildpacks/pack/cmd.Version=%s'", compileVersion),
+		"-mod=vendor",
+		"-o", packPath,
+		"./cmd/pack",
+	)
 	if filepath.Base(cwd) == "acceptance" {
 		cmd.Dir = filepath.Dir(cwd)
 	}
@@ -1433,7 +1403,7 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 	// ARCHIVE BUILDPACKS
 	buildpacks := []string{
 		"noop-buildpack",
-		"not-in-builder-buildpack",
+		"noop-buildpack-2",
 		"other-stack-buildpack",
 		"read-env-buildpack",
 		"simple-layers-buildpack", // from package
@@ -1511,7 +1481,7 @@ func createPackage(t *testing.T, configDir, tmpDir, packPath string) string {
 	return packageImageName
 }
 
-func createStack(t *testing.T, dockerCli *client.Client, runImageMirror string) error {
+func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror string) error {
 	t.Helper()
 	t.Log("creating stack images...")
 
@@ -1533,7 +1503,7 @@ func createStack(t *testing.T, dockerCli *client.Client, runImageMirror string) 
 	return nil
 }
 
-func createStackImage(dockerCli *client.Client, repoName string, dir string) error {
+func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir string) error {
 	ctx := context.Background()
 	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1)
 
@@ -1691,7 +1661,7 @@ func terminateAtStep(t *testing.T, cmd *exec.Cmd, buf *bytes.Buffer, pattern str
 	}
 }
 
-func imageLabel(t *testing.T, dockerCli *client.Client, repoName, labelName string) string {
+func imageLabel(t *testing.T, dockerCli client.CommonAPIClient, repoName, labelName string) string {
 	t.Helper()
 	inspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), repoName)
 	h.AssertNil(t, err)

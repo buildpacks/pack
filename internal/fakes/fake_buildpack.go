@@ -49,9 +49,12 @@ func (b *fakeBuildpack) Open() (io.ReadCloser, error) {
 	bpDir := fmt.Sprintf("/cnb/buildpacks/%s/%s", b.descriptor.EscapedID(), b.descriptor.Info.Version)
 	tarBuilder.AddDir(bpDir, b.chmod, ts)
 	tarBuilder.AddFile(bpDir+"/buildpack.toml", b.chmod, ts, buf.Bytes())
-	tarBuilder.AddDir(bpDir+"/bin", b.chmod, ts)
-	tarBuilder.AddFile(bpDir+"/bin/build", b.chmod, ts, []byte("build-contents"))
-	tarBuilder.AddFile(bpDir+"/bin/detect", b.chmod, ts, []byte("detect-contents"))
+
+	if len(b.descriptor.Order) == 0 {
+		tarBuilder.AddDir(bpDir+"/bin", b.chmod, ts)
+		tarBuilder.AddFile(bpDir+"/bin/build", b.chmod, ts, []byte("build-contents"))
+		tarBuilder.AddFile(bpDir+"/bin/detect", b.chmod, ts, []byte("detect-contents"))
+	}
 
 	return tarBuilder.Reader(), nil
 }

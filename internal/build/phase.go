@@ -23,7 +23,7 @@ import (
 type Phase struct {
 	name     string
 	logger   logging.Logger
-	docker   *client.Client
+	docker   client.CommonAPIClient
 	ctrConf  *dcontainer.Config
 	hostConf *dcontainer.HostConfig
 	ctr      dcontainer.ContainerCreateCreatedBody
@@ -43,7 +43,7 @@ func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (
 			fmt.Sprintf("%s:%s", l.AppVolume, appDir),
 		},
 	}
-	ctrConf.Cmd = []string{"/lifecycle/" + name}
+	ctrConf.Cmd = []string{"/cnb/lifecycle/" + name}
 	phase := &Phase{
 		ctrConf:  ctrConf,
 		hostConf: hostConf,

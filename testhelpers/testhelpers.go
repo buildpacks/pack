@@ -174,11 +174,11 @@ func hasMatches(actual, exp string) bool {
 	return len(matches) > 0
 }
 
-var dockerCliVal *client.Client
+var dockerCliVal client.CommonAPIClient
 var dockerCliOnce sync.Once
 var dockerCliErr error
 
-func dockerCli(t *testing.T) *client.Client {
+func dockerCli(t *testing.T) client.CommonAPIClient {
 	dockerCliOnce.Do(func() {
 		dockerCliVal, dockerCliErr = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	})
@@ -236,7 +236,7 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 	}
 }
 
-func CreateImage(t *testing.T, dockerCli *client.Client, repoName, dockerFile string) {
+func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, dockerFile string) {
 	t.Helper()
 
 	buildContext, err := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
@@ -254,7 +254,7 @@ func CreateImage(t *testing.T, dockerCli *client.Client, repoName, dockerFile st
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
-func CreateImageFromDir(t *testing.T, dockerCli *client.Client, repoName string, dir string) {
+func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName string, dir string) {
 	t.Helper()
 
 	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1)
@@ -301,7 +301,7 @@ func checkResponse(response dockertypes.ImageBuildResponse) error {
 	return nil
 }
 
-func CreateImageOnRemote(t *testing.T, dockerCli *client.Client, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
+func CreateImageOnRemote(t *testing.T, dockerCli client.CommonAPIClient, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
 	t.Helper()
 	imageName := registryConfig.RepoName(repoName)
 
@@ -311,7 +311,7 @@ func CreateImageOnRemote(t *testing.T, dockerCli *client.Client, registryConfig 
 	return imageName
 }
 
-func DockerRmi(dockerCli *client.Client, repoNames ...string) error {
+func DockerRmi(dockerCli client.CommonAPIClient, repoNames ...string) error {
 	var err error
 	ctx := context.Background()
 	for _, name := range repoNames {
@@ -327,7 +327,7 @@ func DockerRmi(dockerCli *client.Client, repoNames ...string) error {
 	return err
 }
 
-func PushImage(dockerCli *client.Client, ref string, registryConfig *TestRegistryConfig) error {
+func PushImage(dockerCli client.CommonAPIClient, ref string, registryConfig *TestRegistryConfig) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: registryConfig.RegistryAuth()})
 	if err != nil {
 		return err
@@ -418,7 +418,7 @@ func RunE(cmd *exec.Cmd) (string, error) {
 	return string(output), nil
 }
 
-func PullImageWithAuth(dockerCli *client.Client, ref, registryAuth string) error {
+func PullImageWithAuth(dockerCli client.CommonAPIClient, ref, registryAuth string) error {
 	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{RegistryAuth: registryAuth})
 	if err != nil {
 		return nil
@@ -482,7 +482,7 @@ func SkipIf(t *testing.T, expression bool, reason string) {
 	}
 }
 
-func RunContainer(ctx context.Context, dockerCli *client.Client, id string, stdout io.Writer, stderr io.Writer) error {
+func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id string, stdout io.Writer, stderr io.Writer) error {
 	bodyChan, errChan := dockerCli.ContainerWait(ctx, id, container.WaitConditionNextExit)
 
 	if err := dockerCli.ContainerStart(ctx, id, dockertypes.ContainerStartOptions{}); err != nil {

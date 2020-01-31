@@ -586,6 +586,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.HasFileMode(0755),
 					h.HasModTime(archive.NormalizedDateTime),
 				)
+
+				it("should add lifecycle symlink", func() {
+					h.AssertOnTarEntry(t, layerTar, "/lifecycle",
+						h.SymlinksTo("/cnb/lifecycle"),
+						h.HasFileMode(0644),
+						h.HasModTime(archive.NormalizedDateTime),
+					)
+				})
 			})
 
 			it("sets the lifecycle version on the metadata", func() {
@@ -685,7 +693,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				assertImageHasBPLayer(t, baseImage, bp1v1)
 				assertImageHasBPLayer(t, baseImage, bp1v2)
 				assertImageHasBPLayer(t, baseImage, bp2v1)
-				assertImageHasBPLayer(t, baseImage, bpOrder)
+				assertImageHasOrderBpLayer(t, baseImage, bpOrder)
 			})
 
 			it("adds the buildpack metadata", func() {
@@ -1085,5 +1093,21 @@ func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp dist.Buildpack) 
 
 	h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/detect",
 		h.ContentEquals("detect-contents"),
+	)
+}
+
+func assertImageHasOrderBpLayer(t *testing.T, image *fakes.Image, bp dist.Buildpack) {
+	t.Helper()
+
+	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().Info.ID, bp.Descriptor().Info.Version)
+	layerTar, err := image.FindLayerWithPath(dirPath)
+	h.AssertNil(t, err)
+
+	h.AssertOnTarEntry(t, layerTar, dirPath,
+		h.IsDirectory(),
+	)
+
+	h.AssertOnTarEntry(t, layerTar, path.Dir(dirPath),
+		h.IsDirectory(),
 	)
 }

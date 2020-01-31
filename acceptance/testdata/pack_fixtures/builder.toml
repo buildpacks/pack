@@ -8,9 +8,11 @@
   uri = "noop-buildpack.tgz"
 
 [[buildpacks]]
-  id = "simple/layers"
-  version = "simple-layers-version"
-  uri = "simple-layers-buildpack.tgz"
+  # noop-buildpack-2 has the same id but a different version compared to noop-buildpack
+  uri = "noop-buildpack-2.tgz"
+
+[[packages]]
+  image = "{{ .package_name }}"
 
 [[order]]
 [[order.group]]
