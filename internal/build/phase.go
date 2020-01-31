@@ -134,12 +134,12 @@ func (p *Phase) Run(ctx context.Context) error {
 
 	p.ctrConf = &dcontainer.Config{
 		Image:        p.ctrConf.Image,
-		Cmd:          []string{"/bin/bash", "-c", "while [[ true ]]; do sleep 1; echo '.'; done;"},
-		AttachStdin:  false,
-		AttachStdout: false,
-		AttachStderr: false,
-		Tty:          false,
-		OpenStdin:    false,
+		Cmd:          []string{"/bin/sh"},
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+		OpenStdin:    true,
 	}
 
 	p.ctr, err = p.docker.ContainerCreate(ctx, p.ctrConf, p.hostConf, nil, "")
@@ -180,50 +180,42 @@ func (p *Phase) Run(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to copy files to '%s' container", p.name)
 	}
 
-	err = container.Run2(ctx, p.docker, p.ctr.ID)
+	err = container.Start(ctx, p.docker, p.ctr.ID, types.ContainerStartOptions{})
 	if err != nil {
-		return errors.Wrapf(err, "start container: init")
+		return errors.Wrapf(err, "start container: pre-exec")
 	}
-
-	cmd := append(originalConf.Cmd, ">/proc/1/fd/1", "2>/proc/1/fd/2")
-	fmt.Println("CREATE:EXEC=", cmd)
-	execCreate, err := p.docker.ContainerExecCreate(ctx, p.ctr.ID, types.ExecConfig{
-		User:         originalConf.User,
-		Privileged:   false,
-		Tty:          true,
-		AttachStdin:  true,
-		AttachStderr: true,
-		AttachStdout: true,
-		Detach:       false,
-		Env:          originalConf.Env,
-		WorkingDir:   originalConf.WorkingDir,
-		// Need to redirect stdout and stderr to initial proc output
-		// See: https://github.com/moby/moby/issues/8662#issuecomment-277396232
-		Cmd:          cmd,
-	})
-
-	if err != nil {
-		return errors.Wrapf(err, "creating exec")
-	}
-
-	fmt.Println("STARTING:RUNEXEC")
-	err = container.RunExec(
-		ctx,
-		p.docker,
-		p.ctr.ID,
-		execCreate.ID,
-		logging.GetWriterForLevel(p.logger, logging.InfoLevel),
-		logging.GetWriterForLevel(p.logger, logging.ErrorLevel),
-	)
-	if err != nil {
-		return errors.Wrapf(err, "start container: exec")
-	}
-	fmt.Println("ENDED:RUNEXEC")
-
-	//err = container.Start(ctx, p.docker, p.ctr.ID, types.ContainerStartOptions{})
+	//
+	//execCreate, err := p.docker.ContainerExecCreate(ctx, p.ctr.ID, types.ExecConfig{
+	//	User:         originalConf.User,
+	//	Privileged:   false,
+	//	Tty:          originalConf.Tty,
+	//	AttachStdin:  originalConf.AttachStdin,
+	//	AttachStderr: originalConf.AttachStderr,
+	//	AttachStdout: originalConf.AttachStdout,
+	//	Env:          originalConf.Env,
+	//	WorkingDir:   originalConf.WorkingDir,
+	//	Cmd:          originalConf.Cmd,
+	//})
 	//if err != nil {
-	//	return errors.Wrapf(err, "start container: post-exec")
+	//	return errors.Wrapf(err, "creating exec")
 	//}
+	//
+	//err = container.RunExec(
+	//	ctx,
+	//	p.docker,
+	//	p.ctr.ID,
+	//	execCreate.ID,
+	//	logging.GetWriterForLevel(p.logger, logging.InfoLevel),
+	//	logging.GetWriterForLevel(p.logger, logging.ErrorLevel),
+	//)
+	//if err != nil {
+	//	return errors.Wrapf(err, "start container: exec")
+	//}
+
+	err = container.Start(ctx, p.docker, p.ctr.ID, types.ContainerStartOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "start container: post-exec")
+	}
 
 	return nil
 }
