@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/buildpacks/lifecycle/auth"
@@ -128,18 +129,20 @@ func WithNetwork(networkMode string) func(*Phase) (*Phase, error) {
 }
 
 func (p *Phase) Run(ctx context.Context) error {
-	var err error
+	var (
+		err         error
+		// TODO: Pass this as a flag via cmd
+		intercept   = true
+		originalCmd = p.ctrConf.Cmd
+	)
 
-	originalConf := *p.ctrConf
-
-	p.ctrConf = &dcontainer.Config{
-		Image:        p.ctrConf.Image,
-		Cmd:          []string{"/bin/sh"},
-		AttachStdin:  true,
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          true,
-		OpenStdin:    true,
+	if intercept {
+		p.ctrConf.Cmd = []string{"/bin/sh"}
+		p.ctrConf.AttachStdin = true
+		p.ctrConf.AttachStdout = true
+		p.ctrConf.AttachStderr = true
+		p.ctrConf.Tty = true
+		p.ctrConf.OpenStdin = true
 	}
 
 	p.ctr, err = p.docker.ContainerCreate(ctx, p.ctrConf, p.hostConf, nil, "")
@@ -180,41 +183,30 @@ func (p *Phase) Run(ctx context.Context) error {
 		return errors.Wrapf(err, "failed to copy files to '%s' container", p.name)
 	}
 
-	err = container.Start(ctx, p.docker, p.ctr.ID, types.ContainerStartOptions{})
-	if err != nil {
-		return errors.Wrapf(err, "start container: pre-exec")
-	}
-	//
-	//execCreate, err := p.docker.ContainerExecCreate(ctx, p.ctr.ID, types.ExecConfig{
-	//	User:         originalConf.User,
-	//	Privileged:   false,
-	//	Tty:          originalConf.Tty,
-	//	AttachStdin:  originalConf.AttachStdin,
-	//	AttachStderr: originalConf.AttachStderr,
-	//	AttachStdout: originalConf.AttachStdout,
-	//	Env:          originalConf.Env,
-	//	WorkingDir:   originalConf.WorkingDir,
-	//	Cmd:          originalConf.Cmd,
-	//})
-	//if err != nil {
-	//	return errors.Wrapf(err, "creating exec")
-	//}
-	//
-	//err = container.RunExec(
-	//	ctx,
-	//	p.docker,
-	//	p.ctr.ID,
-	//	execCreate.ID,
-	//	logging.GetWriterForLevel(p.logger, logging.InfoLevel),
-	//	logging.GetWriterForLevel(p.logger, logging.ErrorLevel),
-	//)
-	//if err != nil {
-	//	return errors.Wrapf(err, "start container: exec")
-	//}
+	if intercept {
+		p.logger.Info("Intercepting...")
+		p.logger.Infof(`-----------
+To continue to the next phase type: exit
+To manually run the phase type:
+%s
+-----------
+`, strings.Join(originalCmd, " "))
 
-	err = container.Start(ctx, p.docker, p.ctr.ID, types.ContainerStartOptions{})
-	if err != nil {
-		return errors.Wrapf(err, "start container: post-exec")
+		err = container.Start(ctx, p.docker, p.ctr.ID, types.ContainerStartOptions{})
+		if err != nil {
+			return errors.Wrapf(err, "start container")
+		}
+	} else {
+		err = container.Run(
+			ctx,
+			p.docker,
+			p.ctr.ID,
+			logging.GetWriterForLevel(p.logger, logging.InfoLevel),
+			logging.GetWriterForLevel(p.logger, logging.ErrorLevel),
+		)
+		if err != nil {
+			return errors.Wrapf(err, "start container")
+		}
 	}
 
 	return nil
