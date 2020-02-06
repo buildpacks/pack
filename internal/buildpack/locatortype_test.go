@@ -10,6 +10,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/buildpack"
+	"github.com/buildpacks/pack/internal/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -22,7 +23,7 @@ func TestGetLocatorType(t *testing.T) {
 func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 	type testCase struct {
 		locator      string
-		builderIDs   []string
+		builderBPs   []dist.BuildpackInfo
 		expectedType buildpack.LocatorType
 		expectedErr  string
 		localPath    string
@@ -39,27 +40,27 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		},
 		{
 			locator:      "from=builder:some-bp",
-			builderIDs:   []string{"some-bp@some-version"},
+			builderBPs:   []dist.BuildpackInfo{{ID: "some-bp", Version: "some-version"}},
 			expectedType: buildpack.IDLocator,
 		},
 		{
 			locator:     "from=builder:some-bp",
-			builderIDs:  nil,
+			builderBPs:  nil,
 			expectedErr: "'from=builder:some-bp' is not a valid identifier",
 		},
 		{
 			locator:     "from=builder:some-bp@some-other-version",
-			builderIDs:  []string{"some-bp@some-version"},
+			builderBPs:  []dist.BuildpackInfo{{ID: "some-bp", Version: "some-version"}},
 			expectedErr: "'from=builder:some-bp@some-other-version' is not a valid identifier",
 		},
 		{
 			locator:      "some-bp",
-			builderIDs:   []string{"some-bp"},
+			builderBPs:   []dist.BuildpackInfo{{ID: "some-bp", Version: "any-version"}},
 			expectedType: buildpack.IDLocator,
 		},
 		{
 			locator:      localPath("some-bp"),
-			builderIDs:   []string{localPath("some-bp") + "@some-version"},
+			builderBPs:   []dist.BuildpackInfo{{ID: localPath("some-bp"), Version: "some-version"}},
 			localPath:    localPath("some-bp"),
 			expectedType: buildpack.URILocator,
 		},
@@ -69,7 +70,7 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		},
 		{
 			locator:      "cnbs/some-bp",
-			builderIDs:   nil,
+			builderBPs:   nil,
 			localPath:    "",
 			expectedType: buildpack.PackageLocator,
 		},
@@ -105,8 +106,12 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		tc := tc
 
 		desc := fmt.Sprintf("locator is %s", tc.locator)
-		if len(tc.builderIDs) > 0 {
-			desc += fmt.Sprintf(" and builder has IDs %s", tc.builderIDs)
+		if len(tc.builderBPs) > 0 {
+			var names []string
+			for _, bp := range tc.builderBPs {
+				names = append(names, bp.FullName())
+			}
+			desc += fmt.Sprintf(" and builder has buildpacks %s", names)
 		}
 		if tc.localPath != "" {
 			desc += fmt.Sprintf(" and a local path exists at '%s'", tc.localPath)
@@ -114,7 +119,7 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 
 		when(desc, func() {
 			it(fmt.Sprintf("should return '%s'", tc.expectedType), func() {
-				actualType, actualErr := buildpack.GetLocatorType(tc.locator, tc.builderIDs)
+				actualType, actualErr := buildpack.GetLocatorType(tc.locator, tc.builderBPs)
 
 				if tc.expectedErr == "" {
 					h.AssertNil(t, actualErr)

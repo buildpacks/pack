@@ -74,13 +74,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			"1234",
 			"5678",
 			builder.Metadata{
-				Buildpacks: []builder.BuildpackMetadata{
-					{
-						BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"},
-					},
-					{
-						BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"},
-					},
+				Buildpacks: []dist.BuildpackInfo{
+					{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+					{ID: "buildpack.2.id", Version: "buildpack.2.version"},
 				},
 				Stack: builder.StackMetadata{
 					RunImage: builder.RunImageMetadata{
@@ -892,7 +888,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					ClearCache: true,
 					Buildpacks: []string{"missing.bp@version"},
 				}),
-					"no versions of buildpack 'missing.bp' were found on the builder",
+					"invalid buildpack string 'missing.bp@version'",
 				)
 			})
 
@@ -947,24 +943,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
 							}},
 						})
-						h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{
+						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
 							{
-								BuildpackInfo: dist.BuildpackInfo{
-									ID:      "buildpack.1.id",
-									Version: "buildpack.1.version",
-								},
+								ID:      "buildpack.1.id",
+								Version: "buildpack.1.version",
 							},
 							{
-								BuildpackInfo: dist.BuildpackInfo{
-									ID:      "buildpack.2.id",
-									Version: "buildpack.2.version",
-								},
+								ID:      "buildpack.2.id",
+								Version: "buildpack.2.version",
 							},
 							{
-								BuildpackInfo: dist.BuildpackInfo{
-									ID:      "some-other-buildpack-id",
-									Version: "some-other-buildpack-version",
-								},
+								ID:      "some-other-buildpack-id",
+								Version: "some-other-buildpack-version",
 							},
 						})
 					})
@@ -1004,11 +994,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								{BuildpackInfo: tgzBuildpackInfo},
 							}},
 						})
-						h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{
-							{BuildpackInfo: buildpack1Info},
-							{BuildpackInfo: buildpack2Info},
-							{BuildpackInfo: dirBuildpackInfo},
-							{BuildpackInfo: tgzBuildpackInfo},
+						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+							buildpack1Info,
+							buildpack2Info,
+							dirBuildpackInfo,
+							tgzBuildpackInfo,
 						})
 					})
 				})
@@ -1050,10 +1040,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
 							}},
 						})
-						h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{
-							{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}},
-							{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
-							{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
+						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
 						})
 					})
 				})

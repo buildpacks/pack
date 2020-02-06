@@ -7,20 +7,16 @@ const (
 )
 
 type Metadata struct {
-	Description string              `json:"description"`
-	Buildpacks  []BuildpackMetadata `json:"buildpacks"`
-	Stack       StackMetadata       `json:"stack"`
-	Lifecycle   LifecycleMetadata   `json:"lifecycle"`
-	CreatedBy   CreatorMetadata     `json:"createdBy"`
+	Description string               `json:"description"`
+	Buildpacks  []dist.BuildpackInfo `json:"buildpacks"`
+	Stack       StackMetadata        `json:"stack"`
+	Lifecycle   LifecycleMetadata    `json:"lifecycle"`
+	CreatedBy   CreatorMetadata      `json:"createdBy"`
 }
 
 type CreatorMetadata struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
-}
-
-type BuildpackMetadata struct {
-	dist.BuildpackInfo
 }
 
 type LifecycleMetadata struct {

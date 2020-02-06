@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 
+	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 )
@@ -35,13 +36,13 @@ func (l LocatorType) String() string {
 // GetLocatorType determines which type of locator is designated by the given input.
 // If a type cannot be determined, `INVALID_LOCATOR` will be returned. If an error
 // is encountered, it will be returned.
-func GetLocatorType(locator string, idsFromBuilder []string) (LocatorType, error) {
+func GetLocatorType(locator string, buildpacksFromBuilder []dist.BuildpackInfo) (LocatorType, error) {
 	if locator == fromBuilderPrefix {
 		return FromBuilderLocator, nil
 	}
 
 	if strings.HasPrefix(locator, fromBuilderPrefix+":") {
-		if !builderMatchFound(locator, idsFromBuilder) {
+		if !builderMatchFound(locator, buildpacksFromBuilder) {
 			return InvalidLocator, fmt.Errorf("%s is not a valid identifier", style.Symbol(locator))
 		}
 		return IDLocator, nil
@@ -59,7 +60,7 @@ func GetLocatorType(locator string, idsFromBuilder []string) (LocatorType, error
 		return URILocator, nil
 	}
 
-	if builderMatchFound(locator, idsFromBuilder) {
+	if builderMatchFound(locator, buildpacksFromBuilder) {
 		return IDLocator, nil
 	}
 
@@ -70,11 +71,10 @@ func GetLocatorType(locator string, idsFromBuilder []string) (LocatorType, error
 	return InvalidLocator, nil
 }
 
-func builderMatchFound(locator string, candidates []string) bool {
+func builderMatchFound(locator string, candidates []dist.BuildpackInfo) bool {
 	id, version := ParseIDLocator(locator)
 	for _, c := range candidates {
-		candID, candVer := ParseIDLocator(c)
-		if id == candID && (version == "" || version == candVer) {
+		if id == c.ID && (version == "" || version == c.Version) {
 			return true
 		}
 	}

@@ -58,8 +58,6 @@ type ContainerConfig struct {
 	Network string
 }
 
-const fromBuilderPrefix = "from=builder"
-
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	imageRef, err := c.parseTagReference(opts.Image)
 	if err != nil {
@@ -99,7 +97,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Order(), opts.Buildpacks)
+	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), opts.Buildpacks)
 	if err != nil {
 		return err
 	}
@@ -383,11 +381,16 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderOrder dist.Order, declaredBPs []string) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
 	order = dist.Order{{Group: []dist.BuildpackRef{}}}
 	for _, bp := range declaredBPs {
-		switch {
-		case bp == fromBuilderPrefix:
+		locatorType, err := buildpack.GetLocatorType(bp, builderBPs)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		switch locatorType {
+		case buildpack.FromBuilderLocator:
 			switch {
 			case len(order) == 0 || len(order[0].Group) == 0:
 				order = builderOrder
@@ -404,13 +407,13 @@ func (c *Client) processBuildpacks(ctx context.Context, builderOrder dist.Order,
 
 				order = newOrder
 			}
-		case isBuildpackID(bp):
+		case buildpack.IDLocator:
 			id, version := buildpack.ParseIDLocator(bp)
 			order = appendBuildpackToOrder(order, dist.BuildpackInfo{
 				ID:      id,
 				Version: version,
 			})
-		default:
+		case buildpack.URILocator:
 			err := ensureBPSupport(bp)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "checking support")
@@ -428,6 +431,8 @@ func (c *Client) processBuildpacks(ctx context.Context, builderOrder dist.Order,
 
 			fetchedBPs = append(fetchedBPs, fetchedBP)
 			order = appendBuildpackToOrder(order, fetchedBP.Descriptor().Info)
+		default:
+			return nil, nil, fmt.Errorf("invalid buildpack string %s", style.Symbol(bp))
 		}
 	}
 
@@ -445,19 +450,6 @@ func appendBuildpackToOrder(order dist.Order, bpInfo dist.BuildpackInfo) (newOrd
 	}
 
 	return newOrder
-}
-
-func isBuildpackID(bp string) bool {
-	if strings.HasPrefix(bp, fromBuilderPrefix+":") {
-		return true
-	}
-
-	if !paths.IsURI(bp) {
-		if _, err := os.Stat(bp); err != nil {
-			return true
-		}
-	}
-	return false
 }
 
 func ensureBPSupport(bpPath string) (err error) {
