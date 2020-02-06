@@ -228,8 +228,6 @@ func (b *Builder) Save(logger logging.Logger) error {
 		return errors.Wrap(err, "processing order")
 	}
 
-	processMetadata(&b.metadata)
-
 	tmpDir, err := ioutil.TempDir("", "create-builder-scratch")
 	if err != nil {
 		return err

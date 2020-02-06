@@ -21,6 +21,7 @@ import (
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/stack"
@@ -404,7 +405,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderOrder dist.Order,
 				order = newOrder
 			}
 		case isBuildpackID(bp):
-			id, version := c.parseBuildpack(bp)
+			id, version := buildpack.ParseIDLocator(bp)
 			order = appendBuildpackToOrder(order, dist.BuildpackInfo{
 				ID:      id,
 				Version: version,
@@ -488,20 +489,6 @@ func ensureBPSupport(bpPath string) (err error) {
 	}
 
 	return nil
-}
-
-func (c *Client) parseBuildpack(bp string) (string, string) {
-	parts := strings.Split(strings.TrimPrefix(bp, fromBuilderPrefix+":"), "@")
-	if len(parts) == 2 {
-		if parts[1] == "latest" {
-			c.logger.Warn("@latest syntax is deprecated, will not work in future releases")
-			return parts[0], ""
-		}
-
-		return parts[0], parts[1]
-	}
-
-	return parts[0], ""
 }
 
 func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []dist.Buildpack) (*builder.Builder, error) {

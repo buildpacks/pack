@@ -41,8 +41,8 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		buildpack1Info = dist.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
 		buildpack2Info = dist.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0"}
 		buildpacks     = []builder.BuildpackMetadata{
-			{BuildpackInfo: buildpack1Info, Latest: true},
-			{BuildpackInfo: buildpack2Info, Latest: false},
+			{BuildpackInfo: buildpack1Info},
+			{BuildpackInfo: buildpack2Info},
 		}
 		remoteInfo = &pack.BuilderInfo{
 			Description:     "Some remote description",

@@ -85,8 +85,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
   "buildpacks": [
     {
       "id": "test.bp.one",
-      "version": "1.0.0",
-      "latest": true
+      "version": "1.0.0"
     }
   ],
   "lifecycle": {"version": "1.2.3"},
@@ -146,7 +145,6 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 								ID:      "test.bp.one",
 								Version: "1.0.0",
 							},
-							Latest: true,
 						})
 					})
 

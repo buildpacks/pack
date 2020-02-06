@@ -362,7 +362,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 				h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{{
 					BuildpackInfo: bpInfo,
-					Latest:        true,
 				}})
 				h.AssertEq(t, bldr.Order(), dist.Order{{
 					Group: []dist.BuildpackRef{{
@@ -420,7 +419,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				}
 				h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{{
 					BuildpackInfo: bpInfo,
-					Latest:        true,
 				}})
 				h.AssertEq(t, bldr.Order(), dist.Order{{
 					Group: []dist.BuildpackRef{{

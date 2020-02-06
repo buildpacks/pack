@@ -77,11 +77,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				Buildpacks: []builder.BuildpackMetadata{
 					{
 						BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"},
-						Latest:        true,
 					},
 					{
 						BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"},
-						Latest:        true,
 					},
 				},
 				Stack: builder.StackMetadata{
@@ -635,26 +633,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("id@latest", func() {
-				it("resolves version and prints a warning", func() {
-					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-						Image:      "some/app",
-						Builder:    builderName,
-						ClearCache: true,
-						Buildpacks: []string{"buildpack.1.id@latest"},
-					}))
-					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-					h.AssertContains(t, outBuf.String(), "Warning: @latest syntax is deprecated, will not work in future releases")
-
-					assertOrderEquals(`[[order]]
-
-  [[order.group]]
-    id = "buildpack.1.id"
-    version = "buildpack.1.version"
-`)
-				})
-			})
-
 			when("from=builder:id@version", func() {
 				it("builder order is prepended", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
@@ -975,21 +953,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									ID:      "buildpack.1.id",
 									Version: "buildpack.1.version",
 								},
-								Latest: true,
 							},
 							{
 								BuildpackInfo: dist.BuildpackInfo{
 									ID:      "buildpack.2.id",
 									Version: "buildpack.2.version",
 								},
-								Latest: true,
 							},
 							{
 								BuildpackInfo: dist.BuildpackInfo{
 									ID:      "some-other-buildpack-id",
 									Version: "some-other-buildpack-version",
 								},
-								Latest: true,
 							},
 						})
 					})
@@ -1030,10 +1005,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							}},
 						})
 						h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{
-							{BuildpackInfo: buildpack1Info, Latest: true},
-							{BuildpackInfo: buildpack2Info, Latest: true},
-							{BuildpackInfo: dirBuildpackInfo, Latest: true},
-							{BuildpackInfo: tgzBuildpackInfo, Latest: true},
+							{BuildpackInfo: buildpack1Info},
+							{BuildpackInfo: buildpack2Info},
+							{BuildpackInfo: dirBuildpackInfo},
+							{BuildpackInfo: tgzBuildpackInfo},
 						})
 					})
 				})
@@ -1076,9 +1051,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							}},
 						})
 						h.AssertEq(t, bldr.Buildpacks(), []builder.BuildpackMetadata{
-							{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}, Latest: true},
-							{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}, Latest: true},
-							{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}, Latest: true},
+							{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}},
+							{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}},
+							{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
 						})
 					})
 				})

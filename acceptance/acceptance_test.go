@@ -531,7 +531,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 									"--buildpack",
 									"noop.buildpack@noop.buildpack.version",
 									"--buildpack",
-									"read/env@latest",
+									"read/env",
 									"--env",
 									"DETECT_ENV_BUILDPACK=true",
 								))
