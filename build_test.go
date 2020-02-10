@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -26,6 +28,7 @@ import (
 	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	ilogging "github.com/buildpacks/pack/internal/logging"
@@ -881,6 +884,157 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("buildpackage image is used", func() {
+				var fakePackage *fakes.Image
+
+				it.Before(func() {
+					metaBuildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+						API: api.MustParse("0.3"),
+						Info: dist.BuildpackInfo{
+							ID:      "meta.buildpack.id",
+							Version: "meta.buildpack.version",
+						},
+						Stacks: nil,
+						Order: dist.Order{{
+							Group: []dist.BuildpackRef{{
+								BuildpackInfo: dist.BuildpackInfo{
+									ID:      "child.buildpack.id",
+									Version: "child.buildpack.version",
+								},
+								Optional: false,
+							}},
+						}},
+					})
+
+					childBuildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+						API: api.MustParse("0.3"),
+						Info: dist.BuildpackInfo{
+							ID:      "child.buildpack.id",
+							Version: "child.buildpack.version",
+						},
+						Stacks: []dist.Stack{
+							{ID: defaultBuilderStackID},
+						},
+					})
+
+					bpLayers := dist.BuildpackLayers{
+						"meta.buildpack.id": {
+							"meta.buildpack.version": {
+								API: api.MustParse("0.3"),
+								Order: dist.Order{{
+									Group: []dist.BuildpackRef{{
+										BuildpackInfo: dist.BuildpackInfo{
+											ID:      "child.buildpack.id",
+											Version: "child.buildpack.version",
+										},
+										Optional: false,
+									}},
+								}},
+								LayerDiffID: diffIDForFile(t, metaBuildpackTar),
+							},
+						},
+						"child.buildpack.id": {
+							"child.buildpack.version": {
+								API: api.MustParse("0.3"),
+								Stacks: []dist.Stack{
+									{ID: defaultBuilderStackID},
+								},
+								LayerDiffID: diffIDForFile(t, childBuildpackTar),
+							},
+						},
+					}
+
+					md := buildpackage.Metadata{
+						BuildpackInfo: dist.BuildpackInfo{
+							ID:      "meta.buildpack.id",
+							Version: "meta.buildpack.version",
+						},
+						Stacks: []dist.Stack{
+							{ID: defaultBuilderStackID},
+						},
+					}
+
+					fakePackage = fakes.NewImage("example.com/some/package", "", nil)
+					h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpack.layers", bpLayers))
+					h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpackage.metadata", md))
+
+					h.AssertNil(t, fakePackage.AddLayer(metaBuildpackTar))
+					h.AssertNil(t, fakePackage.AddLayer(childBuildpackTar))
+
+					fakeImageFetcher.LocalImages[fakePackage.Name()] = fakePackage
+				})
+
+				it("all buildpacks are added to ephemeral builder", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    builderName,
+						ClearCache: true,
+						Buildpacks: []string{
+							"example.com/some/package",
+						},
+					})
+
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+					bldr, err := builder.FromImage(defaultBuilderImage)
+					h.AssertNil(t, err)
+					h.AssertEq(t, bldr.Order(), dist.Order{
+						{Group: []dist.BuildpackRef{
+							{BuildpackInfo: dist.BuildpackInfo{ID: "meta.buildpack.id", Version: "meta.buildpack.version"}},
+						}},
+						// Child buildpacks should not be added to order
+					})
+					h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+						{
+							ID:      "buildpack.1.id",
+							Version: "buildpack.1.version",
+						},
+						{
+							ID:      "buildpack.2.id",
+							Version: "buildpack.2.version",
+						},
+						{
+							ID:      "meta.buildpack.id",
+							Version: "meta.buildpack.version",
+						},
+						{
+							ID:      "child.buildpack.id",
+							Version: "child.buildpack.version",
+						},
+					})
+				})
+
+				it("fails when no metadata label on package", func() {
+					h.AssertNil(t, fakePackage.SetLabel("io.buildpacks.buildpackage.metadata", ""))
+
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    builderName,
+						ClearCache: true,
+						Buildpacks: []string{
+							"example.com/some/package",
+						},
+					})
+
+					h.AssertError(t, err, "could not find label 'io.buildpacks.buildpackage.metadata' on image 'example.com/some/package'")
+				})
+
+				it("fails when no bp layers label is on package", func() {
+					h.AssertNil(t, fakePackage.SetLabel("io.buildpacks.buildpack.layers", ""))
+
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    builderName,
+						ClearCache: true,
+						Buildpacks: []string{
+							"example.com/some/package",
+						},
+					})
+
+					h.AssertError(t, err, "could not find label 'io.buildpacks.buildpack.layers' on image 'example.com/some/package'")
+				})
+			})
+
 			it("ensures buildpacks exist on builder", func() {
 				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
 					Image:      "some/app",
@@ -1401,4 +1555,15 @@ func createBuildpackTar(t *testing.T, tmpDir string, descriptor dist.BuildpackDe
 	h.AssertNil(t, err)
 
 	return tempFile.Name()
+}
+
+func diffIDForFile(t *testing.T, path string) string {
+	file, err := os.Open(path)
+	h.AssertNil(t, err)
+
+	hasher := sha256.New()
+	_, err = io.Copy(hasher, file)
+	h.AssertNil(t, err)
+
+	return "sha256:" + hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 }
