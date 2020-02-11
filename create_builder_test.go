@@ -589,7 +589,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), gomock.Any(), gomock.Any()).Return(notPackageImage, nil)
 					h.AssertNil(t, notPackageImage.SetLabel("io.buildpacks.buildpack.layers", ""))
 
-					h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "label 'io.buildpacks.buildpack.layers' not present on package 'not/package'")
+					h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "could not find label 'io.buildpacks.buildpackage.metadata' on image 'not/package'")
 				})
 			})
 		})

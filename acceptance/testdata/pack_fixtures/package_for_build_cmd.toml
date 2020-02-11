@@ -1,0 +1,5 @@
+[buildpack]
+uri = "packaged-buildpack"
+
+[[dependencies]]
+uri = "packaged-child-buildpack"
