@@ -1,8 +1,10 @@
 package commands
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -10,21 +12,24 @@ import (
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/internal/project"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
 type BuildFlags struct {
-	AppPath    string
-	Builder    string
-	RunImage   string
-	Env        []string
-	EnvFiles   []string
-	Publish    bool
-	NoPull     bool
-	ClearCache bool
-	Buildpacks []string
-	Network    string
+	AppPath        string
+	Builder        string
+	RunImage       string
+	Env            []string
+	EnvFiles       []string
+	Publish        bool
+	NoPull         bool
+	ClearCache     bool
+	Buildpacks     []string
+	Network        string
+	DescriptorPath string
 }
 
 func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
@@ -41,10 +46,39 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				suggestSettingBuilder(logger, packClient)
 				return MakeSoftError()
 			}
-			env, err := parseEnv(flags.EnvFiles, flags.Env)
+
+			descriptor, actualDescriptorPath, err := parseProjectToml(flags.AppPath, flags.DescriptorPath)
 			if err != nil {
 				return err
 			}
+			if actualDescriptorPath != "" {
+				logger.Debugf("Using project descriptor located at '%s'", actualDescriptorPath)
+			}
+
+			env, err := parseEnv(descriptor, flags.EnvFiles, flags.Env)
+			if err != nil {
+				return err
+			}
+
+			buildpacks := flags.Buildpacks
+			if len(buildpacks) == 0 {
+				buildpacks = []string{}
+				projectDescriptorDir := filepath.Dir(actualDescriptorPath)
+				for _, bp := range descriptor.Build.Buildpacks {
+					if len(bp.URI) == 0 {
+						// there are several places through out the pack code where the "id@version" format is used.
+						// we should probably central this, but it's not clear where it belongs
+						buildpacks = append(buildpacks, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
+					} else {
+						uri, err := paths.ToAbsolute(bp.URI, projectDescriptorDir)
+						if err != nil {
+							return err
+						}
+						buildpacks = append(buildpacks, uri)
+					}
+				}
+			}
+
 			if err := packClient.Build(ctx, pack.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           flags.Builder,
@@ -55,7 +89,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Publish:           flags.Publish,
 				NoPull:            flags.NoPull,
 				ClearCache:        flags.ClearCache,
-				Buildpacks:        flags.Buildpacks,
+				Buildpacks:        buildpacks,
 				ContainerConfig: pack.ContainerConfig{
 					Network: flags.Network,
 				},
@@ -82,11 +116,15 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
 	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack reference in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows), or\n  path/URL to a buildpack .tar or .tgz file"+multiValueHelp("buildpack"))
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
+	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 }
 
-func parseEnv(envFiles []string, envVars []string) (map[string]string, error) {
+func parseEnv(project project.Descriptor, envFiles []string, envVars []string) (map[string]string, error) {
 	env := map[string]string{}
 
+	for _, envVar := range project.Build.Env {
+		env[envVar.Name] = envVar.Value
+	}
 	for _, envFile := range envFiles {
 		envFileVars, err := parseEnvFile(envFile)
 		if err != nil {
@@ -127,4 +165,21 @@ func addEnvVar(env map[string]string, item string) map[string]string {
 		env[arr[0]] = os.Getenv(arr[0])
 	}
 	return env
+}
+
+func parseProjectToml(appPath, descriptorPath string) (project.Descriptor, string, error) {
+	actualDescriptorPath := descriptorPath
+	if descriptorPath == "" {
+		actualDescriptorPath = filepath.Join(appPath, "project.toml")
+	}
+
+	if _, err := os.Stat(actualDescriptorPath); descriptorPath == "" && os.IsNotExist(err) {
+		return project.Descriptor{}, "", nil
+	}
+	if _, err := os.Stat(actualDescriptorPath); descriptorPath != "" && os.IsNotExist(err) {
+		return project.Descriptor{}, "", errors.New(fmt.Sprintf("project descriptor '%s' does not exist", actualDescriptorPath))
+	}
+
+	descriptor, err := project.ReadProjectDescriptor(actualDescriptorPath)
+	return descriptor, actualDescriptorPath, err
 }
