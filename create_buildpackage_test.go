@@ -117,9 +117,14 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 					Name: packageImage.Name(),
 					Config: buildpackage.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
-							API:    api.MustParse("0.2"),
-							Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
-							Stacks: []dist.Stack{{ID: "some.stack.id"}},
+							API:  api.MustParse("0.2"),
+							Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+							Order: dist.Order{{
+								Group: []dist.BuildpackRef{{
+									BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+									Optional:      false,
+								}},
+							}},
 						})},
 						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 					},
@@ -138,9 +143,14 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 					Name: packageImage.Name(),
 					Config: buildpackage.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
-							API:    api.MustParse("0.2"),
-							Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
-							Stacks: []dist.Stack{{ID: "some.stack.id"}},
+							API:  api.MustParse("0.2"),
+							Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+							Order: dist.Order{{
+								Group: []dist.BuildpackRef{{
+									BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+									Optional:      false,
+								}},
+							}},
 						})},
 						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 					},
@@ -159,9 +169,14 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 					Name: packageImage.Name(),
 					Config: buildpackage.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
-							API:    api.MustParse("0.2"),
-							Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
-							Stacks: []dist.Stack{{ID: "some.stack.id"}},
+							API:  api.MustParse("0.2"),
+							Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+							Order: dist.Order{{
+								Group: []dist.BuildpackRef{{
+									BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+									Optional:      false,
+								}},
+							}},
 						})},
 						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 					},
