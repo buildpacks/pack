@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-echo "---> Internet capable buildpack"
+echo "---> Build: Internet Capable Buildpack"
 
 set -o errexit
 set -o nounset

@@ -1,0 +1,9 @@
+api = "0.2"
+
+[buildpack]
+  id = "packaged-child.buildpack.id"
+  version = "packaged-child.buildpack.version"
+  name = "Packaged Child Buildpack"
+
+[[stacks]]
+  id = "pack.test.stack"

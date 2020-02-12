@@ -8,8 +8,7 @@ uri = "some-path-2"
 
 [[buildpacks]]
 id = "some/bp2"
-uri = "some-latest-path-2"
-latest = true
+uri = "some-path-3"
 
 [[order]]
 [[order.group]]

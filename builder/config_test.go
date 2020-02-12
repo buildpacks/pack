@@ -66,31 +66,6 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("detecting warnings", func() {
-			when("'latest' field is used on buildpack", func() {
-				it.Before(func() {
-					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
-[[buildpacks]]
-  id = "some.buildpack"
-  latest = true
-
-[[buildpacks]]
-  id = "other.buildpack"
-  latest = true
-
-[[order]]
-[[order.group]]
-  id = "some.buildpack"
-`), 0666))
-				})
-
-				it("returns a warning", func() {
-					_, warns, err := builder.ReadConfig(builderConfigPath)
-					h.AssertNil(t, err)
-
-					h.AssertSliceContainsOnly(t, warns, "'latest' field on a buildpack is obsolete and will be ignored")
-				})
-			})
-
 			when("'groups' field is used", func() {
 				it.Before(func() {
 					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`

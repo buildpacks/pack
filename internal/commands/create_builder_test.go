@@ -58,7 +58,6 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
 [[buildpacks]]
   id = "some.buildpack"
-  latest = true
 `), 0666))
 			})
 
@@ -71,7 +70,6 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 				h.AssertNil(t, command.Execute())
 
-				h.AssertContains(t, outBuf.String(), "Warning: builder configuration: 'latest' field on a buildpack is obsolete and will be ignored")
 				h.AssertContains(t, outBuf.String(), "Warning: builder configuration: empty 'order' definition")
 			})
 		})

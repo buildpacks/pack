@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
@@ -204,7 +203,7 @@ Detection Order:
 }
 
 // TODO: present buildpack order (inc. nested) [https://github.com/buildpacks/pack/issues/253].
-func buildpacksOutput(bps []builder.BuildpackMetadata) (string, error) {
+func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 	buf := &bytes.Buffer{}
 	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 8, ' ', 0)
 	if _, err := fmt.Fprint(tabWriter, "  ID\tVERSION\n"); err != nil {

@@ -224,7 +224,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 				},
 				Publish: false,
 				NoPull:  false,
-			}), "label 'io.buildpacks.buildpack.layers' not present on package 'not/package'")
+			}), "could not find label 'io.buildpacks.buildpackage.metadata' on image 'not/package'")
 		})
 	})
 }

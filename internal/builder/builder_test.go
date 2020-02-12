@@ -709,19 +709,15 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack-1-id")
 				h.AssertEq(t, metadata.Buildpacks[0].Version, "buildpack-1-version-1")
-				h.AssertEq(t, metadata.Buildpacks[0].Latest, false)
 
 				h.AssertEq(t, metadata.Buildpacks[1].ID, "buildpack-1-id")
 				h.AssertEq(t, metadata.Buildpacks[1].Version, "buildpack-1-version-2")
-				h.AssertEq(t, metadata.Buildpacks[1].Latest, false)
 
 				h.AssertEq(t, metadata.Buildpacks[2].ID, "buildpack-2-id")
 				h.AssertEq(t, metadata.Buildpacks[2].Version, "buildpack-2-version-1")
-				h.AssertEq(t, metadata.Buildpacks[2].Latest, true)
 
 				h.AssertEq(t, metadata.Buildpacks[3].ID, "order-buildpack-id")
 				h.AssertEq(t, metadata.Buildpacks[3].Version, "order-buildpack-version")
-				h.AssertEq(t, metadata.Buildpacks[3].Latest, true)
 			})
 
 			it("adds the buildpack layers label", func() {
@@ -865,7 +861,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					// adds new buildpack
 					h.AssertEq(t, metadata.Buildpacks[1].ID, "buildpack-1-id")
 					h.AssertEq(t, metadata.Buildpacks[1].Version, "buildpack-1-version-1")
-					h.AssertEq(t, metadata.Buildpacks[1].Latest, true)
 				})
 			})
 		})
