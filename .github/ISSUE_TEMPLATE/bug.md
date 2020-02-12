@@ -21,8 +21,13 @@ assignees: ''
 2.
 3.
 
-##### Expected
-<!--- What did you expect to happen -->
+
+##### Current behavior
+<!--- What actually happened? -->
+
+
+##### Expected behavior
+<!--- What did you expect to happen? -->
 
 
 ---
