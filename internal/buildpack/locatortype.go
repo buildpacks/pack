@@ -2,6 +2,7 @@ package buildpack
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -52,11 +53,7 @@ func GetLocatorType(locator string, buildpacksFromBuilder []dist.BuildpackInfo) 
 		return URILocator, nil
 	}
 
-	exists, err := paths.Exists(locator)
-	if err != nil {
-		return InvalidLocator, err
-	}
-	if exists {
+	if _, err := os.Stat(locator); err == nil {
 		return URILocator, nil
 	}
 

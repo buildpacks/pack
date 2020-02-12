@@ -1068,7 +1068,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Builder:    builderName,
 							ClearCache: true,
 							Buildpacks: []string{
-								"buildid@buildpack.1.version",
+								"buildpack.1.id@buildpack.1.version",
 								filepath.Join("testdata", "buildpack"),
 							},
 						})

@@ -24,16 +24,6 @@ func IsDir(path string) (bool, error) {
 	return fileInfo.IsDir(), nil
 }
 
-func Exists(path string) (bool, error) {
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
-			return false, nil // does not exist
-		}
-		return false, err // some other error
-	}
-	return true, nil
-}
-
 func FilePathToURI(path string) (string, error) {
 	var err error
 	if !filepath.IsAbs(path) {
