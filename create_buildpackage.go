@@ -51,12 +51,12 @@ func (c *Client) CreatePackage(ctx context.Context, opts CreatePackageOptions) e
 
 			packageBuilder.AddDependency(depBP)
 		} else if dep.ImageName != "" {
-			bps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
 			if err != nil {
 				return err
 			}
 
-			for _, depBP := range bps {
+			for _, depBP := range append([]dist.Buildpack{mainBP}, depBPs...) {
 				packageBuilder.AddDependency(depBP)
 			}
 		}

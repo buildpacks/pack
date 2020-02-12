@@ -82,24 +82,11 @@ func getWarningsForObsoleteFields(reader io.Reader) ([]string, error) {
 	var warnings []string
 
 	var obsoleteConfig = struct {
-		Buildpacks []struct {
-			Latest bool
-		}
 		Groups []interface{}
 	}{}
 
 	if _, err := toml.DecodeReader(reader, &obsoleteConfig); err != nil {
 		return nil, err
-	}
-
-	latestUsed := false
-
-	for _, bp := range obsoleteConfig.Buildpacks {
-		latestUsed = bp.Latest
-	}
-
-	if latestUsed {
-		warnings = append(warnings, fmt.Sprintf("%s field on a buildpack is obsolete and will be ignored", style.Symbol("latest")))
 	}
 
 	if len(obsoleteConfig.Groups) > 0 {

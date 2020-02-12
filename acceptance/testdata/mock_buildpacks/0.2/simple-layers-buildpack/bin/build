@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-echo "---> Simple mock buildpack"
+echo "---> Build: Simple Layers Buildpack"
 
 set -o errexit
 set -o nounset
