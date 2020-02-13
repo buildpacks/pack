@@ -58,6 +58,7 @@ api = "0.3"
 [buildpack]
 id = "bp.one"
 version = "1.2.3"
+homepage = "http://geocities.com/cool-bp"
 
 [[stacks]]
 id = "some.stack.id"
@@ -70,6 +71,7 @@ id = "some.stack.id"
 			h.AssertEq(t, bp.Descriptor().API.String(), "0.3")
 			h.AssertEq(t, bp.Descriptor().Info.ID, "bp.one")
 			h.AssertEq(t, bp.Descriptor().Info.Version, "1.2.3")
+			h.AssertEq(t, bp.Descriptor().Info.Homepage, "http://geocities.com/cool-bp")
 			h.AssertEq(t, bp.Descriptor().Stacks[0].ID, "some.stack.id")
 		})
 
