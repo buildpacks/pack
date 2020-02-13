@@ -55,6 +55,99 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertError(t, err, "buildpack must be set")
 				})
 			})
+
+			when("there is a buildpack not referenced", func() {
+				it("should error", func() {
+					bp1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API: api.MustParse("0.2"),
+						Info: dist.BuildpackInfo{
+							ID:      "bp.1.id",
+							Version: "bp.1.version",
+						},
+						Stacks: []dist.Stack{{ID: "some.stack"}},
+					}, 0644)
+					h.AssertNil(t, err)
+					subject.SetBuildpack(bp1)
+
+					bp2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API:    api.MustParse("0.2"),
+						Info:   dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
+						Stacks: []dist.Stack{{ID: "some.stack"}},
+						Order:  nil,
+					}, 0644)
+					h.AssertNil(t, err)
+					subject.AddDependency(bp2)
+
+					_, err = subject.Save(fakePackageImage.Name(), false)
+					h.AssertError(t, err, "buildpack 'bp.2.id@bp.2.version' is not used by buildpack 'bp.1.id@bp.1.version'")
+				})
+			})
+
+			when("there is a referenced buildpack from main buildpack that is not present", func() {
+				it("should error", func() {
+					mainBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API: api.MustParse("0.2"),
+						Info: dist.BuildpackInfo{
+							ID:      "bp.1.id",
+							Version: "bp.1.version",
+						},
+						Order: dist.Order{{
+							Group: []dist.BuildpackRef{
+								{BuildpackInfo: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"}},
+								{BuildpackInfo: dist.BuildpackInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
+							},
+						}},
+					}, 0644)
+					h.AssertNil(t, err)
+					subject.SetBuildpack(mainBP)
+
+					presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API:    api.MustParse("0.2"),
+						Info:   dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"},
+						Stacks: []dist.Stack{{ID: "some.stack"}},
+						Order:  nil,
+					}, 0644)
+					h.AssertNil(t, err)
+					subject.AddDependency(presentBP)
+
+					_, err = subject.Save(fakePackageImage.Name(), false)
+					h.AssertError(t, err, "buildpack 'bp.1.id@bp.1.version' references buildpack 'bp.missing.id@bp.missing.version' which is not present")
+				})
+			})
+
+			when("there is a referenced buildpack from dependency buildpack that is not present", func() {
+				it("should error", func() {
+					mainBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API: api.MustParse("0.2"),
+						Info: dist.BuildpackInfo{
+							ID:      "bp.1.id",
+							Version: "bp.1.version",
+						},
+						Order: dist.Order{{
+							Group: []dist.BuildpackRef{
+								{BuildpackInfo: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"}},
+							},
+						}},
+					}, 0644)
+					h.AssertNil(t, err)
+					subject.SetBuildpack(mainBP)
+
+					presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API:  api.MustParse("0.2"),
+						Info: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"},
+						Order: dist.Order{{
+							Group: []dist.BuildpackRef{
+								{BuildpackInfo: dist.BuildpackInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
+							},
+						}},
+					}, 0644)
+					h.AssertNil(t, err)
+					subject.AddDependency(presentBP)
+
+					_, err = subject.Save(fakePackageImage.Name(), false)
+					h.AssertError(t, err, "buildpack 'bp.present.id@bp.present.version' references buildpack 'bp.missing.id@bp.missing.version' which is not present")
+				})
+			})
 		})
 
 		when("validate stacks", func() {
@@ -92,36 +185,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					subject.AddDependency(dependency)
 
-					_, err = subject.Save("some/package", false)
+					_, err = subject.Save(fakePackageImage.Name(), false)
 					h.AssertNil(t, err)
 				})
 			})
 
-			when("buildpack is meta-buildpack and its dependency is missing", func() {
-				it("should return an error", func() {
-					buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-						API: api.MustParse("0.2"),
-						Info: dist.BuildpackInfo{
-							ID:      "bp.1.id",
-							Version: "bp.1.version",
-						},
-						Stacks: nil,
-						Order: dist.Order{{
-							Group: []dist.BuildpackRef{
-								{BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
-							},
-						}},
-					}, 0644)
-					h.AssertNil(t, err)
-
-					subject.SetBuildpack(buildpack)
-
-					_, err = subject.Save("some/package", false)
-					h.AssertError(t, err, "no compatible stacks among provided buildpacks")
-				})
-			})
-
-			when("dependency does not have any matching stack", func() {
+			when("dependencies don't have a common stack", func() {
 				it("should error", func() {
 					buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 						API: api.MustParse("0.2"),
@@ -129,32 +198,50 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							ID:      "bp.1.id",
 							Version: "bp.1.version",
 						},
-						Stacks: []dist.Stack{
-							{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
-						},
-						Order: nil,
+						Order: dist.Order{{
+							Group: []dist.BuildpackRef{{
+								BuildpackInfo: dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
+								Optional:      false,
+							}, {
+								BuildpackInfo: dist.BuildpackInfo{ID: "bp.3.id", Version: "bp.3.version"},
+								Optional:      false,
+							}},
+						}},
 					}, 0644)
 					h.AssertNil(t, err)
-
 					subject.SetBuildpack(buildpack)
 
-					dependency, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 						API: api.MustParse("0.2"),
 						Info: dist.BuildpackInfo{
 							ID:      "bp.2.id",
 							Version: "bp.2.version",
 						},
 						Stacks: []dist.Stack{
+							{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
 							{ID: "stack.id.2", Mixins: []string{"Mixin-A"}},
 						},
 						Order: nil,
 					}, 0644)
 					h.AssertNil(t, err)
+					subject.AddDependency(dependency1)
 
-					subject.AddDependency(dependency)
+					dependency2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API: api.MustParse("0.2"),
+						Info: dist.BuildpackInfo{
+							ID:      "bp.3.id",
+							Version: "bp.3.version",
+						},
+						Stacks: []dist.Stack{
+							{ID: "stack.id.3", Mixins: []string{"Mixin-A"}},
+						},
+						Order: nil,
+					}, 0644)
+					h.AssertNil(t, err)
+					subject.AddDependency(dependency2)
 
 					_, err = subject.Save("some/package", false)
-					h.AssertError(t, err, "buildpack 'bp.1.id@bp.1.version' does not support any stacks from 'bp.2.id@bp.2.version'")
+					h.AssertError(t, err, "no compatible stacks among provided buildpacks")
 				})
 			})
 
@@ -166,16 +253,20 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							ID:      "bp.1.id",
 							Version: "bp.1.version",
 						},
-						Stacks: []dist.Stack{
-							{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
-						},
-						Order: nil,
+						Order: dist.Order{{
+							Group: []dist.BuildpackRef{{
+								BuildpackInfo: dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
+								Optional:      false,
+							}, {
+								BuildpackInfo: dist.BuildpackInfo{ID: "bp.3.id", Version: "bp.3.version"},
+								Optional:      false,
+							}},
+						}},
 					}, 0644)
 					h.AssertNil(t, err)
-
 					subject.SetBuildpack(buildpack)
 
-					dependency, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 						API: api.MustParse("0.2"),
 						Info: dist.BuildpackInfo{
 							ID:      "bp.2.id",
@@ -188,8 +279,21 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 						Order: nil,
 					}, 0644)
 					h.AssertNil(t, err)
+					subject.AddDependency(dependency1)
 
-					subject.AddDependency(dependency)
+					dependency2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+						API: api.MustParse("0.2"),
+						Info: dist.BuildpackInfo{
+							ID:      "bp.3.id",
+							Version: "bp.3.version",
+						},
+						Stacks: []dist.Stack{
+							{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
+						},
+						Order: nil,
+					}, 0644)
+					h.AssertNil(t, err)
+					subject.AddDependency(dependency2)
 
 					img, err := subject.Save("some/package", false)
 					h.AssertNil(t, err)
@@ -263,49 +367,6 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, metadata.Stacks, []dist.Stack{{ID: "stack.id.1", Mixins: []string{"Mixin-A"}}})
-				})
-			})
-
-			when("dependency is meta-buildpack and its dependency is missing", func() {
-				it("should return an error", func() {
-					buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-						API: api.MustParse("0.2"),
-						Info: dist.BuildpackInfo{
-							ID:      "bp.1.id",
-							Version: "bp.1.version",
-						},
-						Stacks: nil,
-						Order: dist.Order{{
-							Group: []dist.BuildpackRef{
-								{BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
-							},
-						}},
-					}, 0644)
-					h.AssertNil(t, err)
-
-					subject.SetBuildpack(buildpack)
-
-					dependencyOrder, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-						API: api.MustParse("0.2"),
-						Info: dist.BuildpackInfo{
-							ID:      "bp.nested.id",
-							Version: "bp.nested.version",
-						},
-						Order: dist.Order{{
-							Group: []dist.BuildpackRef{
-								{BuildpackInfo: dist.BuildpackInfo{
-									ID:      "bp.nested.nested.id",
-									Version: "bp.nested.nested.version",
-								}},
-							},
-						}},
-					}, 0644)
-					h.AssertNil(t, err)
-
-					subject.AddDependency(dependencyOrder)
-
-					_, err = subject.Save("some/package", false)
-					h.AssertError(t, err, "no compatible stacks among provided buildpacks")
 				})
 			})
 		})
