@@ -39,8 +39,9 @@ type Buildpack interface {
 }
 
 type BuildpackInfo struct {
-	ID      string `toml:"id" json:"id"`
-	Version string `toml:"version" json:"version,omitempty"`
+	ID       string `toml:"id" json:"id"`
+	Version  string `toml:"version" json:"version,omitempty"`
+	Homepage string `toml:"homepage,omitempty" json:"homepage,omitempty"`
 }
 
 func (b BuildpackInfo) FullName() string {
