@@ -1,5 +1,5 @@
 [buildpack]
-uri = "packaged-buildpack"
+uri = "simple-layers-parent-buildpack"
 
 [[dependencies]]
-uri = "packaged-child-buildpack"
+uri = "simple-layers-buildpack"

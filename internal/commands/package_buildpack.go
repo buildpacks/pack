@@ -26,7 +26,7 @@ func PackageBuildpack(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "package-buildpack <image-name> --package-config <package-config-path>",
 		Args:  cobra.ExactArgs(1),
-		Short: "Create package",
+		Short: "Package buildpack",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			config, err := ReadPackageConfig(flags.PackageTomlPath)
 			if err != nil {
