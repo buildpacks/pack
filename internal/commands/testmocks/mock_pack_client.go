@@ -64,20 +64,6 @@ func (mr *MockPackClientMockRecorder) CreateBuilder(arg0, arg1 interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBuilder", reflect.TypeOf((*MockPackClient)(nil).CreateBuilder), arg0, arg1)
 }
 
-// CreatePackage mocks base method
-func (m *MockPackClient) CreatePackage(arg0 context.Context, arg1 pack.CreatePackageOptions) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreatePackage", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// CreatePackage indicates an expected call of CreatePackage
-func (mr *MockPackClientMockRecorder) CreatePackage(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePackage", reflect.TypeOf((*MockPackClient)(nil).CreatePackage), arg0, arg1)
-}
-
 // InspectBuilder mocks base method
 func (m *MockPackClient) InspectBuilder(arg0 string, arg1 bool) (*pack.BuilderInfo, error) {
 	m.ctrl.T.Helper()
@@ -106,6 +92,20 @@ func (m *MockPackClient) InspectImage(arg0 string, arg1 bool) (*pack.ImageInfo, 
 func (mr *MockPackClientMockRecorder) InspectImage(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectImage", reflect.TypeOf((*MockPackClient)(nil).InspectImage), arg0, arg1)
+}
+
+// PackageBuildpack mocks base method
+func (m *MockPackClient) PackageBuildpack(arg0 context.Context, arg1 pack.PackageBuildpackOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PackageBuildpack", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PackageBuildpack indicates an expected call of PackageBuildpack
+func (mr *MockPackClientMockRecorder) PackageBuildpack(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackageBuildpack", reflect.TypeOf((*MockPackClient)(nil).PackageBuildpack), arg0, arg1)
 }
 
 // Rebase mocks base method

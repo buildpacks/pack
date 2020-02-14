@@ -10,14 +10,14 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-type CreatePackageOptions struct {
+type PackageBuildpackOptions struct {
 	Name    string
 	Config  buildpackage.Config
 	Publish bool
 	NoPull  bool
 }
 
-func (c *Client) CreatePackage(ctx context.Context, opts CreatePackageOptions) error {
+func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
 	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
 
 	bpURI := opts.Config.Buildpack.URI

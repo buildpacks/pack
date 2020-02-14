@@ -500,7 +500,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						Stacks: []dist.Stack{{ID: "some.stack.id"}},
 					}
 
-					h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packageImage.Name(),
 						Config: buildpackage.Config{
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},

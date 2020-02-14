@@ -24,13 +24,13 @@ import (
 	"github.com/buildpacks/pack/testmocks"
 )
 
-func TestCreatePackage(t *testing.T) {
+func TestPackageBuildpack(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "CreatePackage", testCreatePackage, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "PackageBuildpack", testPackageBuildpack, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
+func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject          *pack.Client
 		mockController   *gomock.Controller
@@ -75,7 +75,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 			nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
 			mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
 
-			h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+			h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 				Name: nestedPackage.Name(),
 				Config: buildpackage.Config{
 					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
@@ -113,7 +113,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 				shouldFetchNestedPackage(true, true)
 				packageImage := shouldCreateLocalPackage()
 
-				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: packageImage.Name(),
 					Config: buildpackage.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
@@ -139,7 +139,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 				shouldFetchNestedPackage(false, true)
 				packageImage := shouldCreateRemotePackage()
 
-				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: packageImage.Name(),
 					Config: buildpackage.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
@@ -165,7 +165,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 				shouldFetchNestedPackage(false, false)
 				packageImage := shouldCreateRemotePackage()
 
-				h.AssertNil(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: packageImage.Name(),
 					Config: buildpackage.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
@@ -190,7 +190,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 			it("should fail without trying to retrieve nested image from registry", func() {
 				shouldNotFindNestedPackageWhenCallingImageFetcherWith(true, false)
 
-				h.AssertError(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+				h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: "some/package",
 					Config: buildpackage.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
@@ -212,7 +212,7 @@ func testCreatePackage(t *testing.T, when spec.G, it spec.S) {
 			notPackageImage := fakes.NewImage("not/package", "", nil)
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, true).Return(notPackageImage, nil)
 
-			h.AssertError(t, subject.CreatePackage(context.TODO(), pack.CreatePackageOptions{
+			h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 				Name: "",
 				Config: buildpackage.Config{
 					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{

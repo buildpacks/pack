@@ -72,7 +72,7 @@ func (p *PackageBuilder) Save(repoName string, publish bool) (imgutil.Image, err
 		return nil, err
 	}
 
-	tmpDir, err := ioutil.TempDir("", "create-package")
+	tmpDir, err := ioutil.TempDir("", "package-buildpack")
 	if err != nil {
 		return nil, err
 	}

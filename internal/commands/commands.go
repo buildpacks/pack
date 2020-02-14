@@ -20,7 +20,7 @@ type PackClient interface {
 	InspectImage(string, bool) (*pack.ImageInfo, error)
 	Rebase(context.Context, pack.RebaseOptions) error
 	CreateBuilder(context.Context, pack.CreateBuilderOptions) error
-	CreatePackage(ctx context.Context, opts pack.CreatePackageOptions) error
+	PackageBuildpack(ctx context.Context, opts pack.PackageBuildpackOptions) error
 	Build(context.Context, pack.BuildOptions) error
 }
 
