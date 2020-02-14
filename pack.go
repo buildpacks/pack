@@ -47,8 +47,9 @@ func extractPackagedBuildpacks(ctx context.Context, pkgImageRef string, fetcher 
 			desc := dist.BuildpackDescriptor{
 				API: bpInfo.API,
 				Info: dist.BuildpackInfo{
-					ID:      bpID,
-					Version: bpVersion,
+					ID:       bpID,
+					Version:  bpVersion,
+					Homepage: bpInfo.Info.Homepage,
 				},
 				Stacks: bpInfo.Stacks,
 				Order:  bpInfo.Order,
@@ -70,7 +71,7 @@ func extractPackagedBuildpacks(ctx context.Context, pkgImageRef string, fetcher 
 				},
 			}
 
-			if desc.Info == md.BuildpackInfo {
+			if desc.Info.Match(md.BuildpackInfo) { // This is the order buildpack of the package
 				mainBP = dist.BuildpackFromTarBlob(desc, b)
 			} else {
 				depBPs = append(depBPs, dist.BuildpackFromTarBlob(desc, b))
@@ -78,6 +79,13 @@ func extractPackagedBuildpacks(ctx context.Context, pkgImageRef string, fetcher 
 		}
 	}
 
+	if mainBP == nil {
+		return nil, nil, errors.Errorf(
+			"could not find main buildpack %s on image %s",
+			style.Symbol(md.FullName()),
+			style.Symbol(pkgImageRef),
+		)
+	}
 	return mainBP, depBPs, nil
 }
 

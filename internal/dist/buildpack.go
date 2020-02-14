@@ -51,6 +51,14 @@ func (b BuildpackInfo) FullName() string {
 	return b.ID
 }
 
+// Satisfy stringer
+func (b BuildpackInfo) String() string { return b.FullName() }
+
+// Match compares two buildpacks by ID and Version
+func (b BuildpackInfo) Match(o BuildpackInfo) bool {
+	return b.ID == o.ID && b.Version == o.Version
+}
+
 type Stack struct {
 	ID     string   `json:"id"`
 	Mixins []string `json:"mixins,omitempty"`

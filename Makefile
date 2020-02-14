@@ -8,6 +8,7 @@ PACKAGES:=$(shell $(GOCMD) list ./... | grep -v /testdata/)
 SRC:=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
 ARCHIVE_NAME=pack-$(PACK_VERSION)
 
+
 export GOFLAGS:=$(GOFLAGS)
 
 all: clean verify test build

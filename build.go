@@ -254,9 +254,8 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []dist.Build
 		for ver, bp := range bps {
 			desc := dist.BuildpackDescriptor{
 				Info: dist.BuildpackInfo{
-					ID:       id,
-					Version:  ver,
-					Homepage: "something",
+					ID:      id,
+					Version: ver,
 				},
 				Stacks: bp.Stacks,
 				Order:  bp.Order,

@@ -386,6 +386,30 @@ version = "1.2.3"
 			})
 		})
 	})
+
+	when("#Match", func() {
+		it("compares, using only the id and version", func() {
+			other := dist.BuildpackInfo{
+				ID:       "same",
+				Version:  "1.2.3",
+				Homepage: "something else",
+			}
+
+			self := dist.BuildpackInfo{
+				ID:      "same",
+				Version: "1.2.3",
+			}
+
+			match := self.Match(other)
+
+			h.AssertEq(t, match, true)
+
+			self.ID = "different"
+			match = self.Match(other)
+
+			h.AssertEq(t, match, false)
+		})
+	})
 }
 
 type errorBlob struct {
