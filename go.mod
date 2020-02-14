@@ -11,7 +11,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/golang/mock v1.3.1
 	github.com/golangci/golangci-lint v1.23.6 // indirect
-	github.com/google/go-cmp v0.3.0
+	github.com/google/go-cmp v0.4.0
 	github.com/google/go-containerregistry v0.0.0-20191018211754-b77a90c667af
 	github.com/heroku/color v0.0.6
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e

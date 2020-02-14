@@ -12,11 +12,13 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/buildpacks/pack/testmocks"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestInspectBuilder(t *testing.T) {
@@ -84,7 +86,8 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
   "buildpacks": [
     {
       "id": "test.bp.one",
-      "version": "1.0.0"
+	  "version": "1.0.0",
+	  "homepage": "http://geocities.com/cool-bp"
     }
   ],
   "lifecycle": {"version": "1.2.3"},
@@ -95,79 +98,55 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 							"io.buildpacks.buildpack.order",
 							`[{"group": [{"id": "buildpack-1-id", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}]`,
 						))
+
 					})
 
-					it("returns the builder with the given name", func() {
+					it("returns the builder with the given name with information from the label", func() {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
 						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.RunImage, "some/run-image")
-					})
 
-					it("set the creator info", func() {
-						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.CreatedBy.Name, "pack")
-						h.AssertEq(t, builderInfo.CreatedBy.Version, "1.2.3")
-					})
-
-					it("set the description", func() {
-						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.Description, "Some description")
-					})
-
-					it("set the stack ID", func() {
-						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.Stack, "test.stack.id")
-					})
-
-					it("sets the stack mixins", func() {
-						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-						h.AssertNil(t, err)
-						h.AssertEq(t,
-							builderInfo.Mixins, []string{"mixinOne", "mixinThree", "build:mixinTwo", "build:mixinFour"},
-						)
-					})
-
-					it("set the defaults run image mirrors", func() {
-						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.RunImageMirrors, []string{"gcr.io/some/default"})
-					})
-
-					it("sets the buildpacks", func() {
-						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.Buildpacks[0], dist.BuildpackInfo{
-							ID:      "test.bp.one",
-							Version: "1.0.0",
-						})
-					})
-
-					it("sets the groups", func() {
-						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.Order[0].Group[0], dist.BuildpackRef{
-							BuildpackInfo: dist.BuildpackInfo{
-								ID:      "buildpack-1-id",
-								Version: "",
+						want := BuilderInfo{
+							Description:     "Some description",
+							Stack:           "test.stack.id",
+							Mixins:          []string{"mixinOne", "mixinThree", "build:mixinTwo", "build:mixinFour"},
+							RunImage:        "some/run-image",
+							RunImageMirrors: []string{"gcr.io/some/default"},
+							Buildpacks: []dist.BuildpackInfo{
+								dist.BuildpackInfo{
+									ID:       "test.bp.one",
+									Version:  "1.0.0",
+									Homepage: "http://geocities.com/cool-bp",
+								},
 							},
-							Optional: false,
-						})
-						h.AssertEq(t, builderInfo.Order[0].Group[1], dist.BuildpackRef{
-							BuildpackInfo: dist.BuildpackInfo{
-								ID:      "buildpack-2-id",
-								Version: "buildpack-2-version-1",
+							Order: dist.Order{
+								{
+									Group: []dist.BuildpackRef{
+										{
+											BuildpackInfo: dist.BuildpackInfo{ID: "buildpack-1-id"},
+											Optional:      false,
+										},
+										{
+											BuildpackInfo: dist.BuildpackInfo{ID: "buildpack-2-id", Version: "buildpack-2-version-1"},
+											Optional:      true,
+										},
+									},
+								},
 							},
-							Optional: true,
-						})
-					})
+							Lifecycle: builder.LifecycleDescriptor{
+								Info: builder.LifecycleInfo{
+									Version: builder.VersionMustParse("1.2.3"),
+								},
+							},
+							CreatedBy: builder.CreatorMetadata{
+								Name:    "pack",
+								Version: "1.2.3",
+							},
+						}
 
-					it("sets the lifecycle version", func() {
-						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-						h.AssertNil(t, err)
-						h.AssertEq(t, builderInfo.Lifecycle.Info.Version.String(), "1.2.3")
+						if diff := cmp.Diff(*builderInfo, want); diff != "" {
+							t.Errorf("InspectBuilder() mismatch (-want +got):\n%s", diff)
+						}
+
 					})
 
 					when("the image has no mixins", func() {
