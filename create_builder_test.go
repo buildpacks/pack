@@ -21,10 +21,10 @@ import (
 
 	"github.com/buildpacks/pack"
 	pubbldr "github.com/buildpacks/pack/builder"
+	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/image"
@@ -502,7 +502,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packageImage.Name(),
-						Config: buildpackage.Config{
+						Config: pubbldpkg.Config{
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
 						},
 						Publish: true,

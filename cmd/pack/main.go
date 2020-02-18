@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/cmd"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
@@ -63,7 +64,7 @@ func main() {
 	rootCmd.AddCommand(commands.InspectImage(logger, &cfg, &packClient))
 
 	rootCmd.AddCommand(commands.CreateBuilder(logger, &packClient))
-	rootCmd.AddCommand(commands.PackageBuildpack(logger, &packClient))
+	rootCmd.AddCommand(commands.PackageBuildpack(logger, &packClient, buildpackage.NewConfigReader()))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
 	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
