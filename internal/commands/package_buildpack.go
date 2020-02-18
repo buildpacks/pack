@@ -14,19 +14,19 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-type CreatePackageFlags struct {
+type PackageBuildpackFlags struct {
 	PackageTomlPath string
 	Publish         bool
 	NoPull          bool
 }
 
-func CreatePackage(logger logging.Logger, client PackClient) *cobra.Command {
-	var flags CreatePackageFlags
+func PackageBuildpack(logger logging.Logger, client PackClient) *cobra.Command {
+	var flags PackageBuildpackFlags
 	ctx := createCancellableContext()
 	cmd := &cobra.Command{
-		Use:   "create-package <image-name> --package-config <package-config-path>",
+		Use:   "package-buildpack <image-name> --package-config <package-config-path>",
 		Args:  cobra.ExactArgs(1),
-		Short: "Create package",
+		Short: "Package buildpack",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			config, err := ReadPackageConfig(flags.PackageTomlPath)
 			if err != nil {
@@ -34,7 +34,7 @@ func CreatePackage(logger logging.Logger, client PackClient) *cobra.Command {
 			}
 
 			imageName := args[0]
-			if err := client.CreatePackage(ctx, pack.CreatePackageOptions{
+			if err := client.PackageBuildpack(ctx, pack.PackageBuildpackOptions{
 				Name:    imageName,
 				Config:  config,
 				Publish: flags.Publish,
@@ -54,9 +54,7 @@ func CreatePackage(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd.MarkFlagRequired("package-config")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling packages before use")
-	AddHelpFlag(cmd, "create-package")
-
-	cmd.Hidden = true
+	AddHelpFlag(cmd, "package-buildpack")
 
 	return cmd
 }
