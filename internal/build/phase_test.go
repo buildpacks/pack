@@ -8,9 +8,13 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/buildpacks/pack/internal/archive"
 
 	"github.com/buildpacks/imgutil/local"
 	"github.com/docker/docker/api/types/filters"
@@ -57,10 +61,11 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 		subject        *build.Lifecycle
 		outBuf, errBuf bytes.Buffer
 		docker         client.CommonAPIClient
+		logger         logging.Logger
 	)
 
 	it.Before(func() {
-		logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 
 		var err error
 		docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
@@ -105,6 +110,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				assertRunSucceeds(t, writePhase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "[phase] write test")
+
 				readPhase, err := subject.NewPhase("phase", build.WithArgs("read", "/workspace/test.txt"))
 				h.AssertNil(t, err)
 				assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
@@ -116,17 +122,35 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "[phase] file contents: fake-app-contents")
-				h.AssertContains(t, outBuf.String(), "[phase] file uid/gid 111/222")
+				h.AssertContains(t, outBuf.String(), "[phase] file uid/gid: 111/222")
+
 				deletePhase, err := subject.NewPhase("phase", build.WithArgs("delete", "/workspace/fake-app-file"))
 				h.AssertNil(t, err)
 				assertRunSucceeds(t, deletePhase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "[phase] delete test")
+
 				readPhase2, err := subject.NewPhase("phase", build.WithArgs("read", "/workspace/fake-app-file"))
 				h.AssertNil(t, err)
 				err = readPhase2.Run(context.TODO())
 				readPhase2.Cleanup()
 				h.AssertNotNil(t, err)
 				h.AssertContains(t, outBuf.String(), "failed to read file")
+			})
+
+			when("app is a dir", func() {
+				it("preserves original mod times", func() {
+					assertAppModTimePreserved(t, subject, &outBuf, &errBuf)
+				})
+			})
+
+			when("app is a zip", func() {
+				it("preserves original mod times", func() {
+					var err error
+					subject, err = CreateFakeLifecycle(filepath.Join("testdata", "fake-app.zip"), docker, logger)
+					h.AssertNil(t, err)
+
+					assertAppModTimePreserved(t, subject, &outBuf, &errBuf)
+				})
 			})
 
 			when("is posix", func() {
@@ -322,6 +346,16 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, len(body.Volumes), 0)
 		})
 	})
+}
+
+func assertAppModTimePreserved(t *testing.T, subject *build.Lifecycle, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
+	readPhase, err := subject.NewPhase("phase", build.WithArgs("read", "/workspace/fake-app-file"))
+	h.AssertNil(t, err)
+	assertRunSucceeds(t, readPhase, outBuf, errBuf)
+
+	matches := regexp.MustCompile(regexp.QuoteMeta("[phase] file mod time (unix): ") + "(.*)").FindStringSubmatch(outBuf.String())
+	h.AssertEq(t, len(matches), 2)
+	h.AssertFalse(t, matches[1] == strconv.FormatInt(archive.NormalizedDateTime.Unix(), 10))
 }
 
 func assertRunSucceeds(t *testing.T, phase *build.Phase, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {

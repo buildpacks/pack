@@ -100,7 +100,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777)
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -127,7 +127,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1)
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -144,6 +144,44 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				if runtime.GOOS != "windows" {
 					verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 				}
+			})
+		})
+
+		when("normalize mod time is false", func() {
+			it("does not normalize mod times", func() {
+				tarFile := filepath.Join(tmpDir, "some.tar")
+				fh, err := os.Create(tarFile)
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteDirToTar(tw, src, "/foo", 1234, 2345, 0777, false)
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				h.AssertOnTarEntry(t, tarFile, "/foo/some-file.txt",
+					h.DoesNotHaveModTime(archive.NormalizedDateTime),
+				)
+			})
+		})
+
+		when("normalize mod time is true", func() {
+			it("normalizes mod times", func() {
+				tarFile := filepath.Join(tmpDir, "some.tar")
+				fh, err := os.Create(tarFile)
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteDirToTar(tw, src, "/foo", 1234, 2345, 0777, true)
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				h.AssertOnTarEntry(t, tarFile, "/foo/some-file.txt",
+					h.HasModTime(archive.NormalizedDateTime),
+				)
 			})
 		})
 
@@ -183,7 +221,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 					tw := tar.NewWriter(fh)
 
-					err = archive.WriteDirToTar(tw, tmpSrcDir, "/nested/dir/dir-in-archive", 1234, 2345, 0777)
+					err = archive.WriteDirToTar(tw, tmpSrcDir, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true)
 					h.AssertNil(t, err)
 					h.AssertNil(t, tw.Close())
 					h.AssertNil(t, fh.Close())
@@ -219,7 +257,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777)
+				err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -246,7 +284,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1)
+				err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -263,6 +301,44 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				if runtime.GOOS != "windows" {
 					verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 				}
+			})
+		})
+
+		when("normalize mod time is false", func() {
+			it("does not normalize mod times", func() {
+				tarFile := filepath.Join(tmpDir, "some.tar")
+				fh, err := os.Create(tarFile)
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteZipToTar(tw, src, "/foo", 1234, 2345, 0777, false)
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				h.AssertOnTarEntry(t, tarFile, "/foo/some-file.txt",
+					h.DoesNotHaveModTime(archive.NormalizedDateTime),
+				)
+			})
+		})
+
+		when("normalize mod time is true", func() {
+			it("normalizes mod times", func() {
+				tarFile := filepath.Join(tmpDir, "some.tar")
+				fh, err := os.Create(tarFile)
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteZipToTar(tw, src, "/foo", 1234, 2345, 0777, true)
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				h.AssertOnTarEntry(t, tarFile, "/foo/some-file.txt",
+					h.HasModTime(archive.NormalizedDateTime),
+				)
 			})
 		})
 	})

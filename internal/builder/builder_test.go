@@ -56,8 +56,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		baseImage = fakes.NewImage("base/image", "", nil)
 		mockController = gomock.NewController(t)
 		mockLifecycle = testmocks.NewMockLifecycle(mockController)
-		mockLifecycle.EXPECT().Open().Return(archive.ReadDirAsTar(
-			filepath.Join("testdata", "lifecycle"), ".", 0, 0, 0755), nil).AnyTimes()
+		mockLifecycle.EXPECT().Open().Return(archive.ReadDirAsTar(filepath.Join("testdata", "lifecycle"), ".", 0, 0, 0755, true), nil).AnyTimes()
 		mockLifecycle.EXPECT().Descriptor().Return(builder.LifecycleDescriptor{
 			Info: builder.LifecycleInfo{
 				Version: &builder.Version{Version: *semver.MustParse("1.2.3")},
@@ -69,8 +68,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		}).AnyTimes()
 
 		mockLifecyclePlatform01 = testmocks.NewMockLifecycle(mockController)
-		mockLifecyclePlatform01.EXPECT().Open().Return(archive.ReadDirAsTar(
-			filepath.Join("testdata", "lifecycle-platform-0.1"), ".", 0, 0, 0755), nil).AnyTimes()
+		mockLifecyclePlatform01.EXPECT().Open().Return(archive.ReadDirAsTar(filepath.Join("testdata", "lifecycle-platform-0.1"), ".", 0, 0, 0755, true), nil).AnyTimes()
 		mockLifecyclePlatform01.EXPECT().Descriptor().Return(builder.LifecycleDescriptor{
 			Info: builder.LifecycleInfo{
 				Version: &builder.Version{Version: *semver.MustParse("1.2.3")},

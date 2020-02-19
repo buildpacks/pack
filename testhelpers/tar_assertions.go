@@ -105,6 +105,15 @@ func HasModTime(expectedTime time.Time) TarEntryAssertion {
 	}
 }
 
+func DoesNotHaveModTime(expectedTime time.Time) TarEntryAssertion {
+	return func(t *testing.T, header *tar.Header, _ []byte) {
+		t.Helper()
+		if header.ModTime.UnixNano() == expectedTime.UnixNano() {
+			t.Fatalf("expected '%s' to not have mod time '%s'", header.Name, expectedTime)
+		}
+	}
+}
+
 func IsDirectory() TarEntryAssertion {
 	return func(t *testing.T, header *tar.Header, _ []byte) {
 		t.Helper()

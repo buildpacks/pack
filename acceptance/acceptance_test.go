@@ -1555,7 +1555,7 @@ func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror 
 
 func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir string) error {
 	ctx := context.Background()
-	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1)
+	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
 		Tags:        []string{repoName},
