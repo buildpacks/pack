@@ -569,7 +569,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							var packageImageName string
 
 							it.Before(func() {
-								packageImageName = createPackage(t,
+								packageImageName = packageBuildpack(t,
 									filepath.Join(configDir, "package_for_build_cmd.toml"),
 									packPath,
 									lifecycleDescriptor,
@@ -1063,7 +1063,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
 
-		createPackageLocally := func(absConfigPath string) string {
+		packageBuildpackLocally := func(absConfigPath string) string {
 			t.Helper()
 			packageName := "test/package-" + h.RandString(10)
 			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath))
@@ -1072,7 +1072,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			return packageName
 		}
 
-		createPackageRemotely := func(absConfigPath string) string {
+		packageBuildpackRemotely := func(absConfigPath string) string {
 			t.Helper()
 			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath, "--publish"))
@@ -1108,20 +1108,20 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 		it("creates the package", func() {
 			t.Log("package w/ only buildpacks")
-			nestedPackageName := createPackageLocally(filepath.Join(tmpDir, "package.toml"))
+			nestedPackageName := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
 			defer h.DockerRmi(dockerCli, nestedPackageName)
 			assertImageExistsLocally(nestedPackageName)
 
 			t.Log("package w/ buildpacks and packages")
 			aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
-			packageName := createPackageLocally(aggregatePackageToml)
+			packageName := packageBuildpackLocally(aggregatePackageToml)
 			defer h.DockerRmi(dockerCli, packageName)
 			assertImageExistsLocally(packageName)
 		})
 
 		when("--publish", func() {
 			it("publishes image to registry", func() {
-				nestedPackageName := createPackageRemotely(filepath.Join(tmpDir, "package.toml"))
+				nestedPackageName := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
 				defer h.DockerRmi(dockerCli, nestedPackageName)
 				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
 
@@ -1142,7 +1142,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 		when("--no-pull", func() {
 			it("should use local image", func() {
-				nestedPackage := createPackageLocally(filepath.Join(tmpDir, "package.toml"))
+				nestedPackage := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
 				defer h.DockerRmi(dockerCli, nestedPackage)
 				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
 
@@ -1156,7 +1156,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			})
 
 			it("should not pull image from registry", func() {
-				nestedPackage := createPackageRemotely(filepath.Join(tmpDir, "package.toml"))
+				nestedPackage := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
 				defer h.DockerRmi(dockerCli, nestedPackage)
 				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
 
@@ -1164,6 +1164,15 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 				defer h.DockerRmi(dockerCli, packageName)
 				_, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
 				h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", nestedPackage))
+			})
+		})
+
+		when("package.toml is invalid", func() {
+			it("displays an error", func() {
+				h.CopyFile(t, filepath.Join(packFixturesDir, "invalid_package.toml"), filepath.Join(tmpDir, "invalid_package.toml"))
+
+				_, err := h.RunE(subjectPack("package-buildpack", "some-package", "-p", filepath.Join(tmpDir, "invalid_package.toml")))
+				h.AssertError(t, err, "reading config:")
 			})
 		})
 	})
@@ -1431,7 +1440,7 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 	}
 
 	// CREATE PACKAGE
-	packageImageName := createPackage(t,
+	packageImageName := packageBuildpack(t,
 		filepath.Join(configDir, "package.toml"),
 		packPath,
 		lifecycleDescriptor,
@@ -1481,7 +1490,7 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 	return bldr
 }
 
-func createPackage(t *testing.T, configPath, packPath string, lifecycleDescriptor builder.LifecycleDescriptor, repoName string, buildpacks []string) string {
+func packageBuildpack(t *testing.T, configPath, packPath string, lifecycleDescriptor builder.LifecycleDescriptor, repoName string, buildpacks []string) string {
 	t.Helper()
 	t.Log("creating package image...")
 

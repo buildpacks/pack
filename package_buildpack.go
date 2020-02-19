@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
@@ -12,7 +13,7 @@ import (
 
 type PackageBuildpackOptions struct {
 	Name    string
-	Config  buildpackage.Config
+	Config  pubbldpkg.Config
 	Publish bool
 	NoPull  bool
 }

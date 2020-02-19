@@ -1,15 +1,13 @@
 package commands
 
 import (
-	"path/filepath"
+	"context"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/buildpackage"
-	"github.com/buildpacks/pack/internal/paths"
+	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -20,7 +18,15 @@ type PackageBuildpackFlags struct {
 	NoPull          bool
 }
 
-func PackageBuildpack(logger logging.Logger, client PackClient) *cobra.Command {
+type PackageConfigReader interface {
+	Read(path string) (pubbldpkg.Config, error)
+}
+
+type BuildpackPackager interface {
+	PackageBuildpack(ctx context.Context, options pack.PackageBuildpackOptions) error
+}
+
+func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
 	var flags PackageBuildpackFlags
 	ctx := createCancellableContext()
 	cmd := &cobra.Command{
@@ -28,7 +34,7 @@ func PackageBuildpack(logger logging.Logger, client PackClient) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Short: "Package buildpack",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			config, err := ReadPackageConfig(flags.PackageTomlPath)
+			config, err := packageConfigReader.Read(flags.PackageTomlPath)
 			if err != nil {
 				return errors.Wrap(err, "reading config")
 			}
@@ -57,38 +63,4 @@ func PackageBuildpack(logger logging.Logger, client PackClient) *cobra.Command {
 	AddHelpFlag(cmd, "package-buildpack")
 
 	return cmd
-}
-
-func ReadPackageConfig(path string) (buildpackage.Config, error) {
-	config := buildpackage.Config{}
-
-	configDir, err := filepath.Abs(filepath.Dir(path))
-	if err != nil {
-		return config, err
-	}
-
-	_, err = toml.DecodeFile(path, &config)
-	if err != nil {
-		return config, errors.Wrapf(err, "reading config %s", path)
-	}
-
-	absPath, err := paths.ToAbsolute(config.Buildpack.URI, configDir)
-	if err != nil {
-		return config, errors.Wrapf(err, "getting absolute path for %s", style.Symbol(config.Buildpack.URI))
-	}
-	config.Buildpack.URI = absPath
-
-	for i := range config.Dependencies {
-		uri := config.Dependencies[i].URI
-		if uri != "" {
-			absPath, err := paths.ToAbsolute(uri, configDir)
-			if err != nil {
-				return config, errors.Wrapf(err, "getting absolute path for %s", style.Symbol(uri))
-			}
-
-			config.Dependencies[i].URI = absPath
-		}
-	}
-
-	return config, nil
 }
