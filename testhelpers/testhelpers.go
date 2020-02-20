@@ -257,7 +257,7 @@ func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, docke
 func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName string, dir string) {
 	t.Helper()
 
-	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1)
+	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true)
 	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
 		Tags:           []string{repoName},
 		Remove:         true,
@@ -561,12 +561,7 @@ func writeTAR(t *testing.T, srcDir, tarDir string, mode int64, w io.Writer) {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
 
-	err := archive.WriteDirToTar(
-		tw,
-		srcDir,
-		tarDir,
-		0, 0, mode,
-	)
+	err := archive.WriteDirToTar(tw, srcDir, tarDir, 0, 0, mode, true)
 	AssertNil(t, err)
 }
 

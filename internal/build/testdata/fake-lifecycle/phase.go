@@ -66,7 +66,7 @@ func testWrite(filename, contents string) {
 	_, err = file.Write([]byte(contents))
 	if err != nil {
 		fmt.Printf("failed to write to %s: %s\n", filename, err)
-		os.Exit(2)
+		os.Exit(1)
 	}
 }
 
@@ -75,12 +75,12 @@ func testDaemon() {
 	cli, err := dockercli.NewClientWithOpts(dockercli.FromEnv, dockercli.WithVersion("1.38"))
 	if err != nil {
 		fmt.Printf("failed to create new docker client: %s\n", err)
-		os.Exit(3)
+		os.Exit(1)
 	}
 	_, err = cli.ContainerList(context.TODO(), types.ContainerListOptions{})
 	if err != nil {
 		fmt.Printf("failed to access docker daemon: %s\n", err)
-		os.Exit(4)
+		os.Exit(1)
 	}
 }
 
@@ -89,13 +89,13 @@ func testRegistryAccess(repoName string) {
 	ref, authenticator, err := auth.ReferenceForRepoName(auth.EnvKeychain("CNB_REGISTRY_AUTH"), repoName)
 	if err != nil {
 		fmt.Println("fail")
-		os.Exit(5)
+		os.Exit(1)
 	}
 
 	_, err = v1remote.Image(ref, v1remote.WithAuth(authenticator))
 	if err != nil {
 		fmt.Println("failed to access image:", err)
-		os.Exit(6)
+		os.Exit(1)
 	}
 }
 
@@ -104,12 +104,17 @@ func testRead(filename string) {
 	contents, err := ioutil.ReadFile(filename)
 	if err != nil {
 		fmt.Printf("failed to read file '%s'\n", filename)
-		os.Exit(7)
+		os.Exit(1)
 	}
 	fmt.Println("file contents:", string(contents))
 	info, err := os.Stat(filename)
+	if err != nil {
+		fmt.Printf("failed to stat file '%s'\n", filename)
+		os.Exit(1)
+	}
 	stat := info.Sys().(*syscall.Stat_t)
-	fmt.Printf("file uid/gid %d/%d\n", stat.Uid, stat.Gid)
+	fmt.Printf("file uid/gid: %d/%d\n", stat.Uid, stat.Gid)
+	fmt.Printf("file mod time (unix): %d\n", info.ModTime().Unix())
 }
 
 func testEnv() {
@@ -117,13 +122,13 @@ func testEnv() {
 	fis, err := ioutil.ReadDir("/platform/env")
 	if err != nil {
 		fmt.Printf("failed to read /plaform/env dir: %s\n", err)
-		os.Exit(8)
+		os.Exit(1)
 	}
 	for _, fi := range fis {
 		contents, err := ioutil.ReadFile(filepath.Join("/", "platform", "env", fi.Name()))
 		if err != nil {
 			fmt.Printf("failed to read file /plaform/env/%s: %s\n", fi.Name(), err)
-			os.Exit(9)
+			os.Exit(1)
 		}
 		fmt.Printf("%s=%s\n", fi.Name(), string(contents))
 	}
@@ -183,7 +188,7 @@ func readDir(dir string) {
 	fis, err := ioutil.ReadDir(dir)
 	if err != nil {
 		fmt.Printf("failed to read %s dir: %s\n", dir, err)
-		os.Exit(9)
+		os.Exit(1)
 	}
 	for _, fi := range fis {
 		absPath := filepath.Join(dir, fi.Name())
