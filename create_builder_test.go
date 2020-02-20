@@ -96,7 +96,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Description: "Some description",
 					Buildpacks: []pubbldr.BuildpackConfig{
 						{
-							BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"}
+							BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"},
 							ImageOrURI: dist.ImageOrURI{
 								BuildpackURI: dist.BuildpackURI{
 									URI: "https://example.fake/bp-one.tgz",

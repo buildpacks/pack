@@ -99,7 +99,6 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 							"io.buildpacks.buildpack.order",
 							`[{"group": [{"id": "buildpack-1-id", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}]`,
 						))
-
 					})
 
 					it("returns the builder with the given name with information from the label", func() {
@@ -147,7 +146,6 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						if diff := cmp.Diff(*builderInfo, want); diff != "" {
 							t.Errorf("InspectBuilder() mismatch (-want +got):\n%s", diff)
 						}
-
 					})
 
 					when("the image has no mixins", func() {
