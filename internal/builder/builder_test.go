@@ -38,17 +38,16 @@ func TestBuilder(t *testing.T) {
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		baseImage               *fakes.Image
-		subject                 *builder.Builder
-		mockController          *gomock.Controller
-		mockLifecycle           *testmocks.MockLifecycle
-		mockLifecyclePlatform01 *testmocks.MockLifecycle
-		bp1v1                   dist.Buildpack
-		bp1v2                   dist.Buildpack
-		bp2v1                   dist.Buildpack
-		bpOrder                 dist.Buildpack
-		outBuf                  bytes.Buffer
-		logger                  logging.Logger
+		baseImage      *fakes.Image
+		subject        *builder.Builder
+		mockController *gomock.Controller
+		mockLifecycle  *testmocks.MockLifecycle
+		bp1v1          dist.Buildpack
+		bp1v2          dist.Buildpack
+		bp2v1          dist.Buildpack
+		bpOrder        dist.Buildpack
+		outBuf         bytes.Buffer
+		logger         logging.Logger
 	)
 
 	it.Before(func() {
@@ -63,18 +62,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			},
 			API: builder.LifecycleAPI{
 				PlatformVersion:  api.MustParse("0.2"),
-				BuildpackVersion: api.MustParse("0.2"),
-			},
-		}).AnyTimes()
-
-		mockLifecyclePlatform01 = testmocks.NewMockLifecycle(mockController)
-		mockLifecyclePlatform01.EXPECT().Open().Return(archive.ReadDirAsTar(filepath.Join("testdata", "lifecycle-platform-0.1"), ".", 0, 0, 0755, true), nil).AnyTimes()
-		mockLifecyclePlatform01.EXPECT().Descriptor().Return(builder.LifecycleDescriptor{
-			Info: builder.LifecycleInfo{
-				Version: &builder.Version{Version: *semver.MustParse("1.2.3")},
-			},
-			API: builder.LifecycleAPI{
-				PlatformVersion:  api.MustParse("0.1"),
 				BuildpackVersion: api.MustParse("0.2"),
 			},
 		}).AnyTimes()
@@ -602,77 +589,6 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
 				h.AssertEq(t, metadata.Lifecycle.Version.String(), "1.2.3")
 				h.AssertEq(t, metadata.Lifecycle.API.PlatformVersion.String(), "0.2")
-				h.AssertEq(t, metadata.Lifecycle.API.BuildpackVersion.String(), "0.2")
-			})
-		})
-
-		when("#SetLifecycle with Platform API version 0.1", func() {
-			it.Before(func() {
-				h.AssertNil(t, subject.SetLifecycle(mockLifecyclePlatform01))
-
-				h.AssertNil(t, subject.Save(logger))
-				h.AssertEq(t, baseImage.IsSaved(), true)
-			})
-
-			it("should add the lifecycle binaries including cacher as an image layer", func() {
-				layerTar, err := baseImage.FindLayerWithPath("/cnb/lifecycle")
-				h.AssertNil(t, err)
-				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle",
-					h.IsDirectory(),
-					h.HasFileMode(0755),
-					h.HasModTime(archive.NormalizedDateTime),
-				)
-
-				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/detector",
-					h.ContentEquals("detector"),
-					h.HasFileMode(0755),
-					h.HasModTime(archive.NormalizedDateTime),
-				)
-
-				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/restorer",
-					h.ContentEquals("restorer"),
-					h.HasFileMode(0755),
-					h.HasModTime(archive.NormalizedDateTime),
-				)
-
-				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/analyzer",
-					h.ContentEquals("analyzer"),
-					h.HasFileMode(0755),
-					h.HasModTime(archive.NormalizedDateTime),
-				)
-
-				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/builder",
-					h.ContentEquals("builder"),
-					h.HasFileMode(0755),
-					h.HasModTime(archive.NormalizedDateTime),
-				)
-
-				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/exporter",
-					h.ContentEquals("exporter"),
-					h.HasFileMode(0755),
-					h.HasModTime(archive.NormalizedDateTime),
-				)
-
-				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/cacher",
-					h.ContentEquals("cacher"),
-					h.HasFileMode(0755),
-					h.HasModTime(archive.NormalizedDateTime),
-				)
-				h.AssertOnTarEntry(t, layerTar, "/cnb/lifecycle/launcher",
-					h.ContentEquals("launcher"),
-					h.HasFileMode(0755),
-					h.HasModTime(archive.NormalizedDateTime),
-				)
-			})
-
-			it("sets the lifecycle version on the metadata", func() {
-				label, err := baseImage.Label("io.buildpacks.builder.metadata")
-				h.AssertNil(t, err)
-
-				var metadata builder.Metadata
-				h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
-				h.AssertEq(t, metadata.Lifecycle.Version.String(), "1.2.3")
-				h.AssertEq(t, metadata.Lifecycle.API.PlatformVersion.String(), "0.1")
 				h.AssertEq(t, metadata.Lifecycle.API.BuildpackVersion.String(), "0.2")
 			})
 		})
