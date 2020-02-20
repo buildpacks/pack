@@ -103,14 +103,6 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 }
 
 func validateBuildpack(bp dist.Buildpack, source, expectedID, expectedBPVersion string) error {
-	if bp == nil {
-		return fmt.Errorf(
-			"buildpack not set from %s. should have ID %s",
-			style.Symbol(source),
-			style.Symbol(expectedID),
-		)
-	}
-
 	if expectedID != "" && bp.Descriptor().Info.ID != expectedID {
 		return fmt.Errorf(
 			"buildpack from URI %s has ID %s which does not match ID %s from builder config",

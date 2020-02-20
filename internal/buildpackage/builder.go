@@ -232,11 +232,9 @@ func validateBuildpacks(mainBP dist.Buildpack, depBPs []dist.Buildpack) error {
 			for _, groupEntry := range orderEntry.Group {
 				if _, ok := depsWithRefs[groupEntry.BuildpackInfo.FullName()]; !ok {
 					return errors.Errorf(
-						"buildpack %s references buildpack %s which is not present\nmap: %+v\nlooking-for: %+v\n",
+						"buildpack %s references buildpack %s which is not present",
 						style.Symbol(bpd.Info.FullName()),
 						style.Symbol(groupEntry.FullName()),
-						depsWithRefs,
-						groupEntry,
 					)
 				}
 
