@@ -1405,16 +1405,59 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 		when("Lifecycle option", func() {
 			when("Platform API", func() {
-				when("lifecycle platform API is compatible", func() {
-					it("should succeed", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: builderName,
+				for _, supportedPlatformAPI := range []string{"0.2", "0.3"} {
+					var (
+						supportedPlatformAPI = supportedPlatformAPI
+						compatibleBuilder    *fakes.Image
+					)
+
+					when(fmt.Sprintf("lifecycle platform API is compatible (%s)", supportedPlatformAPI), func() {
+						it.Before(func() {
+							compatibleBuilder = ifakes.NewFakeBuilderImage(t,
+								tmpDir,
+								"compatible-"+builderName,
+								defaultBuilderStackID,
+								"1234",
+								"5678",
+								builder.Metadata{
+									Stack: builder.StackMetadata{
+										RunImage: builder.RunImageMetadata{
+											Image: "default/run",
+											Mirrors: []string{
+												"registry1.example.com/run/mirror",
+												"registry2.example.com/run/mirror",
+											},
+										},
+									},
+									Lifecycle: builder.LifecycleMetadata{
+										LifecycleInfo: builder.LifecycleInfo{
+											Version: &builder.Version{
+												Version: *semver.MustParse("0.3.0"),
+											},
+										},
+										API: builder.LifecycleAPI{
+											BuildpackVersion: api.MustParse("0.3"),
+											PlatformVersion:  api.MustParse(supportedPlatformAPI),
+										},
+									},
+								},
+								nil,
+								nil,
+							)
+
+							fakeImageFetcher.LocalImages[compatibleBuilder.Name()] = compatibleBuilder
 						})
 
-						h.AssertNil(t, err)
+						it("should succeed", func() {
+							err := subject.Build(context.TODO(), BuildOptions{
+								Image:   "some/app",
+								Builder: compatibleBuilder.Name(),
+							})
+
+							h.AssertNil(t, err)
+						})
 					})
-				})
+				}
 
 				when("lifecycle platform API is not compatible", func() {
 					var incompatibleBuilderImage *fakes.Image
@@ -1443,7 +1486,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									},
 									API: builder.LifecycleAPI{
 										BuildpackVersion: api.MustParse("0.3"),
-										PlatformVersion:  api.MustParse("0.9"),
+										PlatformVersion:  api.MustParse("0.1"),
 									},
 								},
 							},

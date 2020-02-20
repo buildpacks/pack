@@ -19,7 +19,7 @@ import (
 
 var (
 	// SupportedPlatformAPIVersions lists the Platform API versions pack supports.
-	SupportedPlatformAPIVersions = []string{"0.1", "0.2"}
+	SupportedPlatformAPIVersions = []string{"0.2", "0.3"}
 )
 
 type Lifecycle struct {
