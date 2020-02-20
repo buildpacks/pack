@@ -14,22 +14,39 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
+type BuildpackCollection []BuildpackConfig
+
+func (c BuildpackCollection) Packages() []BuildpackConfig {
+	var bps []BuildpackConfig
+	for _, bp := range c {
+		if bp.ImageName != "" && bp.URI == "" {
+			bps = append(bps, bp)
+		}
+	}
+	return bps
+}
+
+func (c BuildpackCollection) Buildpacks() []BuildpackConfig {
+	var bps []BuildpackConfig
+	for _, bp := range c {
+		if bp.URI != "" && bp.ImageName == "" {
+			bps = append(bps, bp)
+		}
+	}
+	return bps
+}
+
 type Config struct {
-	Description string            `toml:"description"`
-	Buildpacks  []BuildpackConfig `toml:"buildpacks"`
-	Packages    []PackageConfig   `toml:"packages"`
-	Order       dist.Order        `toml:"order"`
-	Stack       StackConfig       `toml:"stack"`
-	Lifecycle   LifecycleConfig   `toml:"lifecycle"`
+	Description string              `toml:"description"`
+	Buildpacks  BuildpackCollection `toml:"buildpacks"`
+	Order       dist.Order          `toml:"order"`
+	Stack       StackConfig         `toml:"stack"`
+	Lifecycle   LifecycleConfig     `toml:"lifecycle"`
 }
 
 type BuildpackConfig struct {
 	dist.BuildpackInfo
-	URI string `toml:"uri"`
-}
-
-type PackageConfig struct {
-	Image string `toml:"image"`
+	dist.ImageOrURI
 }
 
 type StackConfig struct {
@@ -103,7 +120,7 @@ func parseConfig(reader io.Reader, relativeToDir string) (Config, error) {
 		return Config{}, errors.Wrap(err, "decoding toml contents")
 	}
 
-	for i, bp := range builderConfig.Buildpacks {
+	for i, bp := range builderConfig.Buildpacks.Buildpacks() {
 		uri, err := paths.ToAbsolute(bp.URI, relativeToDir)
 		if err != nil {
 			return Config{}, errors.Wrap(err, "transforming buildpack URI")

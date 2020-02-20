@@ -97,7 +97,11 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Buildpacks: []pubbldr.BuildpackConfig{
 						{
 							BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"},
-							URI:           "https://example.fake/bp-one.tgz",
+							ImageOrURI: dist.ImageOrURI{
+								BuildpackURI: dist.BuildpackURI{
+									URI: "https://example.fake/bp-one.tgz",
+								},
+							},
 						},
 					},
 					Order: []dist.OrderEntry{{
@@ -525,7 +529,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = false
 						opts.NoPull = false
-						opts.Config.Packages = []pubbldr.PackageConfig{{Image: packageImage.Name()}}
+						opts.Config.Buildpacks = append(
+							opts.Config.Buildpacks,
+							pubbldr.BuildpackConfig{
+								ImageOrURI: dist.ImageOrURI{
+									ImageRef: dist.ImageRef{ImageName: packageImage.Name()},
+								},
+							},
+						)
 
 						shouldFetchPackageImageWith(true, true)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
@@ -540,7 +551,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = true
 						opts.NoPull = false
-						opts.Config.Packages = []pubbldr.PackageConfig{{Image: packageImage.Name()}}
+						opts.Config.Buildpacks = append(
+							opts.Config.Buildpacks,
+							pubbldr.BuildpackConfig{
+								ImageOrURI: dist.ImageOrURI{
+									ImageRef: dist.ImageRef{ImageName: packageImage.Name()},
+								},
+							},
+						)
 
 						shouldFetchPackageImageWith(false, true)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
@@ -555,7 +573,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = true
 						opts.NoPull = true
-						opts.Config.Packages = []pubbldr.PackageConfig{{Image: packageImage.Name()}}
+						opts.Config.Buildpacks = append(
+							opts.Config.Buildpacks,
+							pubbldr.BuildpackConfig{
+								ImageOrURI: dist.ImageOrURI{
+									ImageRef: dist.ImageRef{ImageName: packageImage.Name()},
+								},
+							},
+						)
 
 						shouldFetchPackageImageWith(false, false)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
@@ -570,7 +595,15 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = false
 						opts.NoPull = true
-						opts.Config.Packages = []pubbldr.PackageConfig{{Image: packageImage.Name()}}
+						opts.Config.Buildpacks = append(
+							opts.Config.Buildpacks,
+							pubbldr.BuildpackConfig{
+								ImageOrURI: dist.ImageOrURI{
+									ImageRef: dist.ImageRef{ImageName: packageImage.Name()},
+								},
+							},
+						)
+
 						prepareFetcherWithMissingPackageImage()
 
 						h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "not found")
@@ -585,7 +618,15 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					opts.BuilderName = "some/builder"
 
 					notPackageImage := fakes.NewImage("not/package", "", nil)
-					opts.Config.Packages = []pubbldr.PackageConfig{{Image: notPackageImage.Name()}}
+					opts.Config.Buildpacks = append(
+						opts.Config.Buildpacks,
+						pubbldr.BuildpackConfig{
+							ImageOrURI: dist.ImageOrURI{
+								ImageRef: dist.ImageRef{ImageName: notPackageImage.Name()},
+							},
+						},
+					)
+
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), gomock.Any(), gomock.Any()).Return(notPackageImage, nil)
 					h.AssertNil(t, notPackageImage.SetLabel("io.buildpacks.buildpack.layers", ""))
 

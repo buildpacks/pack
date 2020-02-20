@@ -11,7 +11,7 @@
   # noop-buildpack-2 has the same id but a different version compared to noop-buildpack
   uri = "noop-buildpack-2.tgz"
 
-[[packages]]
+[[buildpacks]]
   image = "{{ .package_name }}"
 
 [[order]]
