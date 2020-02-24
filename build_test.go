@@ -1519,11 +1519,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Image:   "some/app",
 						Builder: builderName,
 						ContainerConfig: ContainerConfig{
-							Volumes: []string{"/a:/x", "/b:/some/path/y:ro"},
+							Volumes: []string{"/a:/x", "/b:/some/path/y"},
 						},
 					})
 					expected := []string{
-						fmt.Sprintf("/a:%v:", filepath.Join("/platform", "x")),
+						fmt.Sprintf("/a:%v:ro", filepath.Join("/platform", "x")),
 						fmt.Sprintf("/b:%v:ro", filepath.Join("/platform", "some/path/y")),
 					}
 					h.AssertEq(t, fakeLifecycle.Opts.Volumes, expected)
@@ -1550,7 +1550,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 				it("prepends /platform to the mount paths", func() {
 					dir, _ := ioutil.TempDir("", "pack-test-mount")
-					volume := fmt.Sprintf("%v:/x:ro", dir)
+					volume := fmt.Sprintf("%v:/x", dir)
 					err := subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
 						Builder: builderName,
