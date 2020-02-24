@@ -543,8 +543,8 @@ func buildPlatformVolumes(volumes []string) ([]string, error) {
 		}
 
 		// Use path.Join instead of filepath.Join because we assume the container OS is linux but the host may be windows
-		volume.Destination = path.Join("/platform", volume.Destination)
-		platformVolumes[i] = fmt.Sprintf("%v:%v:ro", volume.Source, volume.Destination)
+		dest := path.Join("/platform", volume.Destination)
+		platformVolumes[i] = fmt.Sprintf("%v:%v:ro", volume.Spec.Source, dest)
 	}
 	return platformVolumes, nil
 }
