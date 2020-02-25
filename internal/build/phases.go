@@ -100,7 +100,7 @@ func prependArg(arg string, args []string) []string {
 	return append([]string{arg}, args...)
 }
 
-func (l *Lifecycle) Build(ctx context.Context, networkMode string) error {
+func (l *Lifecycle) Build(ctx context.Context, networkMode string, volumes []string) error {
 	build, err := l.NewPhase(
 		"builder",
 		WithArgs(
@@ -109,6 +109,7 @@ func (l *Lifecycle) Build(ctx context.Context, networkMode string) error {
 			"-platform", platformDir,
 		),
 		WithNetwork(networkMode),
+		WithBinds(volumes...),
 	)
 	if err != nil {
 		return err

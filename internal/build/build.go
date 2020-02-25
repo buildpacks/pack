@@ -34,6 +34,7 @@ type Lifecycle struct {
 	platformAPIVersion string
 	LayersVolume       string
 	AppVolume          string
+	Volumes            []string
 }
 
 type Cache interface {
@@ -60,6 +61,7 @@ type LifecycleOptions struct {
 	HTTPSProxy string
 	NoProxy    string
 	Network    string
+	Volumes    []string
 }
 
 func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
@@ -95,7 +97,8 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	}
 
 	l.logger.Info(style.Step("BUILDING"))
-	if err := l.Build(ctx, opts.Network); err != nil {
+
+	if err := l.Build(ctx, opts.Network, opts.Volumes); err != nil {
 		return err
 	}
 
