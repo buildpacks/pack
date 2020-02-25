@@ -25,16 +25,6 @@ func TestLifecycle(t *testing.T) {
 
 func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 	when("#NewLifecycle", func() {
-		when("there is a descriptor file with platform version 0.1 with cacher", func() {
-			it("makes a lifecycle from a blob", func() {
-				lifecycle, err := builder.NewLifecycle(blob.NewBlob(filepath.Join("testdata", "lifecycle-platform-0.1")))
-				h.AssertNil(t, err)
-				h.AssertEq(t, lifecycle.Descriptor().Info.Version.String(), "1.2.3")
-				h.AssertEq(t, lifecycle.Descriptor().API.PlatformVersion.String(), "0.1")
-				h.AssertEq(t, lifecycle.Descriptor().API.BuildpackVersion.String(), "0.3")
-			})
-		})
-
 		when("there is a descriptor file with platform version 0.2", func() {
 			it("makes a lifecycle from a blob", func() {
 				lifecycle, err := builder.NewLifecycle(blob.NewBlob(filepath.Join("testdata", "lifecycle")))

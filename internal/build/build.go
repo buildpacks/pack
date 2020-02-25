@@ -10,7 +10,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/style"
@@ -19,7 +18,7 @@ import (
 
 var (
 	// SupportedPlatformAPIVersions lists the Platform API versions pack supports.
-	SupportedPlatformAPIVersions = []string{"0.1", "0.2"}
+	SupportedPlatformAPIVersions = []string{"0.2", "0.3"}
 )
 
 type Lifecycle struct {
@@ -65,11 +64,6 @@ type LifecycleOptions struct {
 	Volumes    []string
 }
 
-// CombinedExporterCacher returns true if the lifecycle contains combined exporter/cacher phases and reversed analyzer/restorer phases.
-func (l *Lifecycle) CombinedExporterCacher() bool {
-	return api.MustParse(l.platformAPIVersion).Compare(api.MustParse("0.2")) >= 0
-}
-
 func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	l.Setup(opts)
 	defer l.Cleanup()
@@ -90,30 +84,16 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		return err
 	}
 
-	if l.CombinedExporterCacher() {
-		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Publish, opts.ClearCache); err != nil {
-			return err
-		}
+	l.logger.Info(style.Step("ANALYZING"))
+	if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Publish, opts.ClearCache); err != nil {
+		return err
+	}
 
-		l.logger.Info(style.Step("RESTORING"))
-		if opts.ClearCache {
-			l.logger.Info("Skipping 'restore' due to clearing cache")
-		} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
-			return err
-		}
-	} else {
-		l.logger.Info(style.Step("RESTORING"))
-		if opts.ClearCache {
-			l.logger.Info("Skipping 'restore' due to clearing cache")
-		} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
-			return err
-		}
-
-		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Publish, opts.ClearCache); err != nil {
-			return err
-		}
+	l.logger.Info(style.Step("RESTORING"))
+	if opts.ClearCache {
+		l.logger.Info("Skipping 'restore' due to clearing cache")
+	} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
+		return err
 	}
 
 	l.logger.Info(style.Step("BUILDING"))
@@ -125,13 +105,6 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	l.logger.Info(style.Step("EXPORTING"))
 	if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name()); err != nil {
 		return err
-	}
-
-	if !l.CombinedExporterCacher() {
-		l.logger.Info(style.Step("CACHING"))
-		if err := l.Cache(ctx, buildCache.Name()); err != nil {
-			return err
-		}
 	}
 
 	return nil
