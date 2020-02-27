@@ -49,6 +49,7 @@ type BuildOptions struct {
 	ProxyConfig        *ProxyConfig // defaults to  environment proxy vars
 	ContainerConfig    ContainerConfig
 	DefaultProcessType string
+	FileFilter         func(string) bool
 }
 
 type ProxyConfig struct {
@@ -148,6 +149,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Network:            opts.ContainerConfig.Network,
 		Volumes:            platformVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
+		FileFilter:         opts.FileFilter,
 	})
 }
 
