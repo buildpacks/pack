@@ -87,13 +87,6 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, outBuf.String(), "running some-lifecycle-phase")
 			})
 
-			it("prefixes the output with the phase name", func() {
-				phase, err := subject.NewPhase("phase")
-				h.AssertNil(t, err)
-				assertRunSucceeds(t, phase, &outBuf, &errBuf)
-				h.AssertContains(t, outBuf.String(), "[phase] running some-lifecycle-phase")
-			})
-
 			it("attaches the same layers volume to each phase", func() {
 				writePhase, err := subject.NewPhase("phase", build.WithArgs("write", "/layers/test.txt", "test-layers"))
 				h.AssertNil(t, err)

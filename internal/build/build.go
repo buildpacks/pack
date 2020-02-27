@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/style"
@@ -35,6 +36,7 @@ type Lifecycle struct {
 	LayersVolume       string
 	AppVolume          string
 	Volumes            []string
+	TTY                bool
 }
 
 type Cache interface {
@@ -62,6 +64,12 @@ type LifecycleOptions struct {
 	NoProxy    string
 	Network    string
 	Volumes    []string
+	TTY        bool
+}
+
+// CombinedExporterCacher returns true if the lifecycle contains combined exporter/cacher phases and reversed analyzer/restorer phases.
+func (l *Lifecycle) CombinedExporterCacher() bool {
+	return api.MustParse(l.platformAPIVersion).Compare(api.MustParse("0.2")) >= 0
 }
 
 func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
@@ -121,6 +129,7 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.noProxy = opts.NoProxy
 	l.version = opts.Builder.LifecycleDescriptor().Info.Version.String()
 	l.platformAPIVersion = opts.Builder.LifecycleDescriptor().API.PlatformVersion.String()
+	l.TTY = opts.TTY
 }
 
 func (l *Lifecycle) Cleanup() error {

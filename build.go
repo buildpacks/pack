@@ -59,6 +59,7 @@ type ProxyConfig struct {
 type ContainerConfig struct {
 	Network string
 	Volumes []string
+	UseTTY  bool
 }
 
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
@@ -146,6 +147,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		NoProxy:    proxyConfig.NoProxy,
 		Network:    opts.ContainerConfig.Network,
 		Volumes:    platformVolumes,
+		TTY:        opts.ContainerConfig.UseTTY,
 	})
 }
 

@@ -37,6 +37,14 @@ func (l *Lifecycle) NewPhase(name string, ops ...func(*Phase) (*Phase, error)) (
 		Image:  l.builder.Name(),
 		Labels: map[string]string{"author": "pack"},
 	}
+
+	if l.TTY {
+		ctrConf.Tty = true
+		ctrConf.AttachStdout = true
+		ctrConf.AttachStdin = true
+		ctrConf.AttachStderr = true
+	}
+
 	hostConf := &dcontainer.HostConfig{
 		Binds: []string{
 			fmt.Sprintf("%s:%s", l.LayersVolume, layersDir),
@@ -172,8 +180,9 @@ func (p *Phase) Run(ctx context.Context) error {
 		ctx,
 		p.docker,
 		p.ctr.ID,
-		logging.NewPrefixWriter(logging.GetWriterForLevel(p.logger, logging.InfoLevel), p.name),
-		logging.NewPrefixWriter(logging.GetWriterForLevel(p.logger, logging.ErrorLevel), p.name),
+		logging.GetWriterForLevel(p.logger, logging.InfoLevel),
+		logging.GetWriterForLevel(p.logger, logging.ErrorLevel),
+		p.ctrConf.Tty,
 	)
 }
 

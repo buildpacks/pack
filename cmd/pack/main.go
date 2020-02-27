@@ -50,7 +50,6 @@ func main() {
 			packClient = initClient(logger)
 		},
 	}
-
 	rootCmd.PersistentFlags().Bool("no-color", false, "Disable color output")
 	rootCmd.PersistentFlags().Bool("timestamps", false, "Enable timestamps in output")
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Show less output")

@@ -94,6 +94,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				ContainerConfig: pack.ContainerConfig{
 					Network: flags.Network,
 					Volumes: flags.Volumes,
+					UseTTY:  shouldTTY(cmd, logger),
 				},
 			}); err != nil {
 				return err
@@ -106,6 +107,22 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "build")
 	return cmd
+}
+
+func shouldTTY(cmd *cobra.Command, l logging.Logger) bool {
+	writer := logging.GetWriterForLevel(l, logging.InfoLevel)
+	_, isTerm := logging.IsTerminal(writer)
+	if isTerm {
+		if fs := cmd.Flags(); fs != nil {
+			// we've got the flagset
+			if noColor, err := fs.GetBool("no-color"); err == nil {
+				// retrieved no-color flag, only mirrorTTY if isTerm && !noColor
+				return !noColor
+			}
+		}
+	}
+
+	return false
 }
 
 func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Config) {

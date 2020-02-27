@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"golang.org/x/crypto/ssh/terminal"
+
 	"github.com/buildpacks/pack/internal/style"
 )
 
@@ -75,4 +77,18 @@ func (w *PrefixWriter) Write(buf []byte) (int, error) {
 // Tip logs a tip.
 func Tip(l Logger, format string, v ...interface{}) {
 	l.Infof(style.Tip("Tip: ")+format, v...)
+}
+
+func IsTerminal(w io.Writer) (uintptr, bool) {
+	type descriptor interface {
+		Fd() uintptr
+	}
+
+	if f, ok := w.(descriptor); ok {
+		termFd := f.Fd()
+		isTerm := terminal.IsTerminal(int(termFd))
+		return termFd, isTerm
+	}
+
+	return 0, false
 }
