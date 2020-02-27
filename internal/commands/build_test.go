@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -165,8 +166,43 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("repo has a project.toml", func() {
-			when("that is invalid", func() {
+		when("parsing project descriptor", func() {
+			when("file is valid", func() {
+				var projectTomlPath string
+
+				it.Before(func() {
+					projectToml, err := ioutil.TempFile("", "project.toml")
+					h.AssertNil(t, err)
+					defer projectToml.Close()
+
+					projectToml.WriteString(`
+[project]
+name = "Sample"
+
+[[build.buildpacks]]
+id = "example/lua"
+version = "1.0"
+`)
+					projectTomlPath = projectToml.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(projectTomlPath))
+				})
+
+				it("should build an image with configuration in descriptor", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithBuildpacks([]string{
+							"example/lua@1.0",
+						})).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "--descriptor", projectTomlPath, "image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("file is invalid", func() {
 				var projectTomlPath string
 
 				it.Before(func() {
@@ -182,7 +218,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, os.RemoveAll(projectTomlPath))
 				})
 
-				it("fails to build", func() {
+				it("should fail to build", func() {
 					mockClient.EXPECT().
 						Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
 						Return(nil)
@@ -192,79 +228,64 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("that is not in the root dir", func() {
-				var projectTomlPath string
+			when("descriptor path is NOT specified", func() {
+				when("project.toml exists in source repo", func() {
+					it.Before(func() {
+						h.AssertNil(t, os.Chdir("testdata"))
+					})
 
-				it.Before(func() {
-					projectToml, err := ioutil.TempFile("", "project.toml")
-					h.AssertNil(t, err)
-					defer projectToml.Close()
+					it.After(func() {
+						h.AssertNil(t, os.Chdir(".."))
+					})
 
-					projectToml.WriteString(`
-[project]
-name = "Sample"
+					it("should use project.toml in source repo", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
+								"KEY1": "VALUE1",
+							})).
+							Return(nil)
 
-[[build.buildpacks]]
-id = "example/lua"
-version = "1.0"
-
-[[build.env]]
-name = "KEY1"
-value = "VALUE1"
-
-[[build.env]]
-name = "KEY2"
-value = "VALUE2"
-`)
-					projectTomlPath = projectToml.Name()
+						command.SetArgs([]string{"--builder", "my-builder", "image"})
+						h.AssertNil(t, command.Execute())
+					})
 				})
 
-				it.After(func() {
-					h.AssertNil(t, os.RemoveAll(projectTomlPath))
-				})
+				when("project.toml does NOT exist in source repo", func() {
+					it("should use empty descriptor", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{})).
+							Return(nil)
 
-				it("builds an image with the env variables", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
-							"KEY1": "VALUE1",
-							"KEY2": "VALUE2",
-						})).
-						Return(nil)
-
-					command.SetArgs([]string{"--builder", "my-builder", "--descriptor", projectTomlPath, "image"})
-					h.AssertNil(t, command.Execute())
-				})
-
-				it("builds an image with the buildpacks", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithBuildpacks([]string{
-							"example/lua@1.0",
-						})).
-						Return(nil)
-
-					command.SetArgs([]string{"--builder", "my-builder", "--descriptor", projectTomlPath, "image"})
-					h.AssertNil(t, command.Execute())
+						command.SetArgs([]string{"--builder", "my-builder", "image"})
+						h.AssertNil(t, command.Execute())
+					})
 				})
 			})
 
-			when("that is in the root dir", func() {
-				it.Before(func() {
-					h.AssertNil(t, os.Chdir("testdata"))
+			when("descriptor path is specified", func() {
+				when("descriptor file exists", func() {
+					var projectTomlPath string
+					it.Before(func() {
+						projectTomlPath = filepath.Join("testdata", "project.toml")
+					})
+
+					it("should use specified descriptor", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
+								"KEY1": "VALUE1",
+							})).
+							Return(nil)
+
+						command.SetArgs([]string{"--builder", "my-builder", "--descriptor", projectTomlPath, "image"})
+						h.AssertNil(t, command.Execute())
+					})
 				})
 
-				it.After(func() {
-					h.AssertNil(t, os.Chdir(".."))
-				})
-
-				it("builds an image with the env variables", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
-							"KEY1": "VALUE1",
-						})).
-						Return(nil)
-
-					command.SetArgs([]string{"--builder", "my-builder", "image"})
-					h.AssertNil(t, command.Execute())
+				when("descriptor file does NOT exist in source repo", func() {
+					it("should fail with an error message", func() {
+						command.SetArgs([]string{"--builder", "my-builder", "--descriptor", "non-existent-path", "image"})
+						h.AssertError(t, command.Execute(), "stat project descriptor")
+					})
 				})
 			})
 		})

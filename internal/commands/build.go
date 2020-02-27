@@ -53,7 +53,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				return err
 			}
 			if actualDescriptorPath != "" {
-				logger.Debugf("Using project descriptor located at '%s'", actualDescriptorPath)
+				logger.Debugf("Using project descriptor located at %s", style.Symbol(actualDescriptorPath))
 			}
 
 			env, err := parseEnv(descriptor, flags.EnvFiles, flags.Env)
@@ -171,18 +171,20 @@ func addEnvVar(env map[string]string, item string) map[string]string {
 }
 
 func parseProjectToml(appPath, descriptorPath string) (project.Descriptor, string, error) {
-	actualDescriptorPath := descriptorPath
-	if descriptorPath == "" {
-		actualDescriptorPath = filepath.Join(appPath, "project.toml")
+	actualPath := descriptorPath
+	computePath := descriptorPath == ""
+
+	if computePath {
+		actualPath = filepath.Join(appPath, "project.toml")
 	}
 
-	if _, err := os.Stat(actualDescriptorPath); descriptorPath == "" && os.IsNotExist(err) {
-		return project.Descriptor{}, "", nil
-	}
-	if _, err := os.Stat(actualDescriptorPath); descriptorPath != "" && os.IsNotExist(err) {
-		return project.Descriptor{}, "", errors.New(fmt.Sprintf("project descriptor '%s' does not exist", actualDescriptorPath))
+	if _, err := os.Stat(actualPath); err != nil {
+		if computePath {
+			return project.Descriptor{}, "", nil
+		}
+		return project.Descriptor{}, "", errors.Wrap(err, "stat project descriptor")
 	}
 
-	descriptor, err := project.ReadProjectDescriptor(actualDescriptorPath)
-	return descriptor, actualDescriptorPath, err
+	descriptor, err := project.ReadProjectDescriptor(actualPath)
+	return descriptor, actualPath, err
 }
