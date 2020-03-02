@@ -569,8 +569,13 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							var packageImageName string
 
 							it.Before(func() {
+								h.SkipIf(t,
+									!packSupports(packPath, "package-buildpack"),
+									"--buildpack does not accept buildpackage unless package-buildpack is supported",
+								)
+
 								packageImageName = packageBuildpack(t,
-									filepath.Join(configDir, "package_for_build_cmd.toml"),
+									filepath.Join(packFixturesDir, "package_for_build_cmd.toml"),
 									packPath,
 									lifecycleDescriptor,
 									"simple/package",
@@ -1033,14 +1038,17 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		})
 	})
 
-	when("package-buildpack", func() {
+	when("create-package", func() {
 		var tmpDir string
 
 		it.Before(func() {
-			h.SkipIf(t, !packSupports(packPath, "package-buildpack"), "pack does not support 'package-buildpack'")
+			h.SkipIf(t,
+				!packSupportsOneOf(packPath, "create-package", "package-buildpack"),
+				"pack does not support 'create-package' or 'package-buildpack'",
+			)
 
 			var err error
-			tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
+			tmpDir, err = ioutil.TempDir("", "create-package-tests")
 			h.AssertNil(t, err)
 
 			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package.toml"))
@@ -1066,7 +1074,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		packageBuildpackLocally := func(absConfigPath string) string {
 			t.Helper()
 			packageName := "test/package-" + h.RandString(10)
-			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath))
+			output, err := h.RunE(subjectPack("create-package", packageName, "-p", absConfigPath))
 			h.AssertNil(t, err)
 			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
 			return packageName
@@ -1075,7 +1083,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		packageBuildpackRemotely := func(absConfigPath string) string {
 			t.Helper()
 			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath, "--publish"))
+			output, err := h.RunE(subjectPack("create-package", packageName, "-p", absConfigPath, "--publish"))
 			h.AssertNil(t, err)
 			h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
 			return packageName
@@ -1127,7 +1135,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 				defer h.DockerRmi(dockerCli, packageName)
-				output := h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--publish"))
+				output := h.Run(t, subjectPack("create-package", packageName, "-p", aggregatePackageToml, "--publish"))
 				h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
 
 				_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
@@ -1148,7 +1156,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 				defer h.DockerRmi(dockerCli, packageName)
-				h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
+				h.Run(t, subjectPack("create-package", packageName, "-p", aggregatePackageToml, "--no-pull"))
 
 				_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
 				h.AssertNil(t, err)
@@ -1162,7 +1170,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 				defer h.DockerRmi(dockerCli, packageName)
-				_, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
+				_, err := h.RunE(subjectPack("create-package", packageName, "-p", aggregatePackageToml, "--no-pull"))
 				h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", nestedPackage))
 			})
 		})
@@ -1171,7 +1179,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			it("displays an error", func() {
 				h.CopyFile(t, filepath.Join(packFixturesDir, "invalid_package.toml"), filepath.Join(tmpDir, "invalid_package.toml"))
 
-				_, err := h.RunE(subjectPack("package-buildpack", "some-package", "-p", filepath.Join(tmpDir, "invalid_package.toml")))
+				_, err := h.RunE(subjectPack("create-package", "some-package", "-p", filepath.Join(tmpDir, "invalid_package.toml")))
 				h.AssertError(t, err, "reading config:")
 			})
 		})
@@ -1378,6 +1386,16 @@ func packSupports(packPath, command string) bool {
 	return strings.Contains(output, search)
 }
 
+func packSupportsOneOf(packPath string, commands ...string) bool {
+	for _, cmd := range commands {
+		if packSupports(packPath, cmd) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func buildpacksDir(bpAPIVersion api.Version) string {
 	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion.String())
 }
@@ -1518,13 +1536,13 @@ func packageBuildpack(t *testing.T, configPath, packPath string, lifecycleDescri
 	packageImageName := registryConfig.RepoName(repoName + "-" + h.RandString(10))
 
 	// CREATE PACKAGE
-	cmd := exec.Command(packPath, "package-buildpack", "--no-color", packageImageName, "-p", filepath.Join(tmpDir, "package.toml"))
+	cmd := exec.Command(packPath, "create-package", "--no-color", packageImageName, "-p", filepath.Join(tmpDir, "package.toml"))
 	output := h.Run(t, cmd)
 	h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageImageName))
 	h.AssertNil(t, h.PushImage(dockerCli, packageImageName, registryConfig))
 
 	// REGISTER CLEANUP
-	key := taskKey("package-buildpack", packageImageName)
+	key := taskKey("create-package", packageImageName)
 	suiteManager.RegisterCleanUp("clean-"+key, func() error {
 		return h.DockerRmi(dockerCli, packageImageName)
 	})
