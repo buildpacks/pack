@@ -1,9 +1,7 @@
 package project
 
 import (
-	"fmt"
 	"io/ioutil"
-	"os"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -44,12 +42,9 @@ type Descriptor struct {
 }
 
 func ReadProjectDescriptor(pathToFile string) (Descriptor, error) {
-	if _, err := os.Stat(pathToFile); os.IsNotExist(err) {
-		return Descriptor{}, err
-	}
 	projectTomlContents, err := ioutil.ReadFile(pathToFile)
 	if err != nil {
-		fmt.Print(err)
+		return Descriptor{}, err
 	}
 
 	var descriptor Descriptor
