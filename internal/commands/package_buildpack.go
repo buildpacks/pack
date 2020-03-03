@@ -30,10 +30,9 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 	var flags PackageBuildpackFlags
 	ctx := createCancellableContext()
 	cmd := &cobra.Command{
-		Use:     "package-buildpack <image-name> --package-config <package-config-path>",
-		Args:    cobra.ExactArgs(1),
-		Short:   "Package buildpack",
-		Aliases: []string{"create-package"},
+		Use:   "package-buildpack <image-name> --package-config <package-config-path>",
+		Args:  cobra.ExactArgs(1),
+		Short: "Package buildpack",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			config, err := packageConfigReader.Read(flags.PackageTomlPath)
 			if err != nil {
