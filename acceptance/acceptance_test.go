@@ -498,6 +498,52 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						})
 					})
 
+					when("--volume", func() {
+						var buildpackTgz, tempVolume string
+
+						it.Before(func() {
+							buildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "volume-buildpack"), "./", 0755)
+
+							var err error
+							tempVolume, err = ioutil.TempDir("", "my-volume-mount-source")
+							h.AssertNil(t, err)
+							h.AssertNil(t, os.Chmod(tempVolume, 0755)) // Override umask
+
+							// Some OSes (like macOS) use symlinks for the standard temp dir.
+							// Resolve it so it can be properly mounted by the Docker daemon.
+							tempVolume, err = filepath.EvalSymlinks(tempVolume)
+							h.AssertNil(t, err)
+
+							err = ioutil.WriteFile(filepath.Join(tempVolume, "some-file"), []byte("some-string\n"), 0755)
+							h.AssertNil(t, err)
+						})
+
+						it.After(func() {
+							h.AssertNil(t, os.Remove(buildpackTgz))
+							h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+
+							h.AssertNil(t, os.RemoveAll(tempVolume))
+						})
+
+						it("mounts the provided volume in the detect and build phases", func() {
+							output := h.Run(t, subjectPack(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--buildpack", buildpackTgz,
+								"--volume", fmt.Sprintf("%s:%s", tempVolume, "/my-volume-mount-target"),
+							))
+
+							packVer, err := packVersion(packPath)
+							h.AssertNil(t, err)
+							packSemver := semver.MustParse(strings.TrimPrefix(strings.Split(packVer, " ")[0], "v"))
+
+							if packSemver.GreaterThan(semver.MustParse("0.9.0")) || packSemver.Equal(semver.MustParse("0.0.0")) {
+								h.AssertContains(t, output, "Detect: Reading file '/platform/my-volume-mount-target/some-file': some-string")
+							}
+							h.AssertContains(t, output, "Build: Reading file '/platform/my-volume-mount-target/some-file': some-string")
+						})
+					})
+
 					when("--buildpack", func() {
 						when("the argument is an ID", func() {
 							it("adds the buildpacks to the builder if necessary and runs them", func() {

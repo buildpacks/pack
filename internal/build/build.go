@@ -80,7 +80,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	}
 
 	l.logger.Info(style.Step("DETECTING"))
-	if err := l.Detect(ctx, opts.Network); err != nil {
+	if err := l.Detect(ctx, opts.Network, opts.Volumes); err != nil {
 		return err
 	}
 
