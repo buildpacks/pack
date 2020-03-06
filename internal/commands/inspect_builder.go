@@ -211,7 +211,7 @@ func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 	}
 
 	for _, bp := range bps {
-		if _, err := fmt.Fprint(tabWriter, fmt.Sprintf("  %s\t%s\n", bp.ID, bp.Version)); err != nil {
+		if _, err := fmt.Fprintf(tabWriter, "  %s\t%s\n", bp.ID, bp.Version); err != nil {
 			return "", err
 		}
 	}

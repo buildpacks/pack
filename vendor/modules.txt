@@ -3,14 +3,14 @@ github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
 # github.com/BurntSushi/toml v0.3.1
 github.com/BurntSushi/toml
-# github.com/Masterminds/semver v1.4.2
+# github.com/Masterminds/semver v1.5.0
 github.com/Masterminds/semver
 # github.com/Microsoft/go-winio v0.4.15-0.20190919025122-fc70bd9a86b5
 github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/guid
 # github.com/Microsoft/hcsshim v0.8.7
 github.com/Microsoft/hcsshim/osversion
-# github.com/apex/log v1.1.2-0.20190827100214-baa5455d1012
+# github.com/apex/log v1.1.2
 github.com/apex/log
 # github.com/buildpacks/imgutil v0.0.0-20200203165119-4b0611f06e49
 github.com/buildpacks/imgutil
@@ -23,11 +23,11 @@ github.com/buildpacks/lifecycle/api
 github.com/buildpacks/lifecycle/archive
 github.com/buildpacks/lifecycle/auth
 github.com/buildpacks/lifecycle/cmd
-# github.com/containerd/containerd v1.3.0
+# github.com/containerd/containerd v1.3.3
 github.com/containerd/containerd/errdefs
 # github.com/dgodd/dockerdial v1.0.1
 github.com/dgodd/dockerdial
-# github.com/docker/cli v0.0.0-20191017083524-a8ff7f821017
+# github.com/docker/cli v0.0.0-20200303162255-7d407207c304
 github.com/docker/cli/cli/config
 github.com/docker/cli/cli/config/configfile
 github.com/docker/cli/cli/config/credentials
@@ -77,11 +77,11 @@ github.com/docker/go-connections/sockets
 github.com/docker/go-connections/tlsconfig
 # github.com/docker/go-units v0.4.0
 github.com/docker/go-units
-# github.com/gogo/protobuf v1.2.2-0.20190723190241-65acae22fc9d
+# github.com/gogo/protobuf v1.3.1
 github.com/gogo/protobuf/proto
 # github.com/golang/mock v1.3.1
 github.com/golang/mock/gomock
-# github.com/golang/protobuf v1.3.2
+# github.com/golang/protobuf v1.3.4
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
@@ -93,7 +93,7 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/go-containerregistry v0.0.0-20200220215334-221517453cf9
+# github.com/google/go-containerregistry v0.0.0-20200227193449-ba53fa10e72c
 github.com/google/go-containerregistry/pkg/authn
 github.com/google/go-containerregistry/pkg/internal/retry
 github.com/google/go-containerregistry/pkg/internal/retry/wait
@@ -117,9 +117,9 @@ github.com/heroku/color
 github.com/inconshreveable/mousetrap
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/mattn/go-colorable v0.1.4
+# github.com/mattn/go-colorable v0.1.6
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.10
+# github.com/mattn/go-isatty v0.0.12
 github.com/mattn/go-isatty
 # github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
 github.com/mitchellh/ioprogress
@@ -146,10 +146,10 @@ github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
 # github.com/opencontainers/runc v0.1.1
 github.com/opencontainers/runc/libcontainer/user
-# github.com/opencontainers/selinux v1.3.0
+# github.com/opencontainers/selinux v1.3.3
 github.com/opencontainers/selinux/go-selinux
 github.com/opencontainers/selinux/go-selinux/label
-# github.com/pkg/errors v0.8.1
+# github.com/pkg/errors v0.9.1
 github.com/pkg/errors
 # github.com/sclevine/spec v1.4.0
 github.com/sclevine/spec
@@ -160,18 +160,18 @@ github.com/sirupsen/logrus
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
+# golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/net v0.0.0-20191004110552-13f9640d40b9
+# golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sync v0.0.0-20190423024810-112230192c58
+# golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 golang.org/x/sync/errgroup
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20191010194322-b09406accb47
+# golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # golang.org/x/text v0.3.2
@@ -195,9 +195,9 @@ golang.org/x/text/transform
 # golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
-# google.golang.org/genproto v0.0.0-20190508193815-b515fa19cec8
+# google.golang.org/genproto v0.0.0-20200303153909-beee998c1893
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.24.0
+# google.golang.org/grpc v1.27.1
 google.golang.org/grpc/codes
 google.golang.org/grpc/connectivity
 google.golang.org/grpc/grpclog
