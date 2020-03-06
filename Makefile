@@ -15,7 +15,7 @@ all: clean verify test build
 build:
 	@echo "> Building..."
 	mkdir -p ./out
-	$(GOENV) $(GOCMD) build -ldflags "-X 'github.com/buildpacks/pack/cmd.Version=${PACK_VERSION}'" -o ./out/$(PACK_BIN) -a ./cmd/pack
+	$(GOENV) $(GOCMD) build -ldflags "-s -w -X 'github.com/buildpacks/pack/cmd.Version=${PACK_VERSION}'" -o ./out/$(PACK_BIN) -a ./cmd/pack
 
 package:
 	tar czf ./out/$(ARCHIVE_NAME).tgz -C out/ pack
