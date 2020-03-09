@@ -15,7 +15,7 @@ const (
 	platformDir    = "/platform"
 )
 
-func (l *Lifecycle) Detect(ctx context.Context, networkMode string) error {
+func (l *Lifecycle) Detect(ctx context.Context, networkMode string, volumes []string) error {
 	detect, err := l.NewPhase(
 		"detector",
 		WithArgs(
@@ -25,6 +25,7 @@ func (l *Lifecycle) Detect(ctx context.Context, networkMode string) error {
 			)...,
 		),
 		WithNetwork(networkMode),
+		WithBinds(volumes...),
 	)
 	if err != nil {
 		return err
