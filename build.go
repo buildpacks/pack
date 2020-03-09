@@ -26,6 +26,7 @@ import (
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/paths"
+	"github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
@@ -444,6 +445,19 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Buildp
 			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, bp, c.imageFetcher, publish, noPull)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(bp))
+			}
+
+			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
+			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
+		case buildpack.RegistryLocator:
+			registryBp, err := registry.LocateBuildpackInRegistry(bp)
+			if err != nil {
+				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
+			}
+
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, publish, noPull)
+			if err != nil {
+				return fetchedBPs, order, errors.Wrapf(err, "extracting from registry %s", style.Symbol(bp))
 			}
 
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
