@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"gopkg.in/src-d/go-git.v4"
 	"os"
 	"path/filepath"
 
@@ -25,8 +26,8 @@ type Entry struct {
 }
 
 type RegistryCache struct {
-	url  string
-	path string
+	URL  string
+	Path string
 }
 
 func NewRegistryCache() (RegistryCache, error) {
@@ -36,18 +37,20 @@ func NewRegistryCache() (RegistryCache, error) {
 	}
 
 	r := RegistryCache{
-		url:  defaultRegistryURL,
-		path: filepath.Join(home, defaultRegistyDir),
+		URL:  defaultRegistryURL,
+		Path: filepath.Join(home, defaultRegistyDir),
 	}
-	return r, r.initialize()
+	return r, r.Initialize()
 }
 
-func (r *RegistryCache) initialize() error {
-	_, err := os.Stat(r.path)
+func (r *RegistryCache) Initialize() error {
+	_, err := os.Stat(r.Path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// git clone
-			return nil
+			_, err = git.PlainClone(r.Path, false, &git.CloneOptions{
+				URL:               r.URL,
+			})
+			return err
 		}
 	}
 	return err

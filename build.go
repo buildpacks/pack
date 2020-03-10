@@ -450,7 +450,9 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Buildp
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.RegistryLocator:
-			registryBp, err := registry.LocateBuildpackInRegistry(bp)
+			r, err := registry.NewRegistryCache()
+
+			registryBp, err := r.LocateBuildpack(bp)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
 			}
