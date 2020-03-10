@@ -1680,35 +1680,30 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 		[]string{"simple-layers-buildpack"},
 	)
 
-	// RENDER builder.toml
-	cfgData := fillTemplate(t, filepath.Join(configDir, "builder.toml"), map[string]interface{}{
-		"package_name": packageImageName,
-	})
-	err = ioutil.WriteFile(filepath.Join(tmpDir, "builder.toml"), []byte(cfgData), os.ModePerm)
-	h.AssertNil(t, err)
-
-	builderConfigFile, err := os.OpenFile(filepath.Join(tmpDir, "builder.toml"), os.O_RDWR|os.O_APPEND, os.ModePerm)
-	h.AssertNil(t, err)
-
-	// ADD run-image-mirrors
-	_, err = builderConfigFile.Write([]byte(fmt.Sprintf("run-image-mirrors = [\"%s\"]\n", runImageMirror)))
-	h.AssertNil(t, err)
+	packageId := "simple/layers"
 
 	// ADD lifecycle
-	_, err = builderConfigFile.Write([]byte("[lifecycle]\n"))
-	h.AssertNil(t, err)
-
+	var lifecycleURI string
+	var lifecycleVersion string
 	if lifecyclePath != "" {
 		t.Logf("adding lifecycle path '%s' to builder config", lifecyclePath)
-		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("uri = \"%s\"\n", strings.ReplaceAll(lifecyclePath, `\`, `\\`))))
-		h.AssertNil(t, err)
+		lifecycleURI = strings.ReplaceAll(lifecyclePath, `\`, `\\`)
 	} else {
 		t.Logf("adding lifecycle version '%s' to builder config", lifecycleDescriptor.Info.Version.String())
-		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("version = \"%s\"\n", lifecycleDescriptor.Info.Version.String())))
-		h.AssertNil(t, err)
+		lifecycleVersion = lifecycleDescriptor.Info.Version.String()
 	}
 
-	builderConfigFile.Close()
+	// RENDER builder.toml
+	cfgData := fillTemplate(t, filepath.Join(configDir, "builder.toml"), map[string]interface{}{
+		"package_image_name": packageImageName,
+		"package_id": packageId,
+		"run_image_mirror": runImageMirror,
+		"lifecycle_uri": lifecycleURI,
+		"lifecycle_version": lifecycleVersion,
+	})
+
+	err = ioutil.WriteFile(filepath.Join(tmpDir, "builder.toml"), []byte(cfgData), os.ModePerm)
+	h.AssertNil(t, err)
 
 	// NAME BUILDER
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))

@@ -11,13 +11,17 @@
   # noop-buildpack-2 has the same id but a different version compared to noop-buildpack
   uri = "noop-buildpack-2.tgz"
 
+{{- if .package_image_name}}
 [[buildpacks]]
-  image = "{{ .package_name }}"
+  image = "{{.package_image_name}}"
+{{- end}}
 
 [[order]]
+{{- if .package_id}}
 [[order.group]]
-  id = "simple/layers"
+  id = "{{.package_id}}"
   # intentionlly missing version to test support
+{{- end}}
 
 [[order.group]]
   id = "read/env"
@@ -28,5 +32,12 @@
   id = "pack.test.stack"
   build-image = "pack-test/build"
   run-image = "pack-test/run"
+  run-image-mirrors = ["{{.run_image_mirror}}"]
 
-# run-image-mirror and lifecycle are appended by acceptance tests
+[lifecycle]
+{{- if .lifecycle_uri}}
+  uri = "{{.lifecycle_uri}}"
+{{- end}}
+{{- if .lifecycle_version}}
+  version = "{{.lifecycle_version}}"
+{{- end}}
