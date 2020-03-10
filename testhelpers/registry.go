@@ -1,7 +1,6 @@
 package testhelpers
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -17,6 +16,7 @@ import (
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var registryContainerName = "registry:2"
@@ -89,7 +89,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) str
 	AssertNil(t, PullImageWithAuth(dockerCli(t), registryContainerName, ""))
 	ctx := context.Background()
 
-	htpasswdTar := generateHtpasswd(ctx, t, username, password)
+	htpasswdTar := generateHtpasswd(t, username, password)
 
 	ctr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
 		Image:  registryContainerName,
@@ -123,20 +123,12 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) str
 	return runRegistryPort
 }
 
-func generateHtpasswd(ctx context.Context, t *testing.T, username string, password string) io.Reader {
+func generateHtpasswd(t *testing.T, username string, password string) io.Reader {
 	// https://docs.docker.com/registry/deploying/#restricting-access
-	htpasswdCtr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
-		Image:      registryContainerName,
-		Entrypoint: []string{"htpasswd", "-Bbn", username, password},
-	}, &dockercontainer.HostConfig{
-		AutoRemove: true,
-	}, nil, "")
-	AssertNil(t, err)
+	// HTPASSWD format: https://github.com/foomo/htpasswd/blob/e3a90e78da9cff06a83a78861847aa9092cbebdd/hashing.go#L23
+	passwordBytes, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 
-	var b bytes.Buffer
-	err = RunContainer(ctx, dockerCli(t), htpasswdCtr.ID, &b, &b)
-	AssertNil(t, err)
-	reader, err := archive.CreateSingleFileTarReader("/registry_test_htpasswd", b.String())
+	reader, err := archive.CreateSingleFileTarReader("/registry_test_htpasswd", username+":"+string(passwordBytes))
 	AssertNil(t, err)
 
 	return reader
