@@ -61,6 +61,14 @@ func (i *Image) Label(key string) (string, error) {
 	return i.labels[key], nil
 }
 
+func (i *Image) OS() (string, error) {
+	return "linux", nil
+}
+
+func (i *Image) Architecture() (string, error) {
+	return "amd64", nil
+}
+
 func (i *Image) Rename(name string) {
 	i.name = name
 }
