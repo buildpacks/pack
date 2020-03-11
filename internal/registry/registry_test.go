@@ -5,6 +5,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -15,25 +16,20 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func NewMockRegistryCache(source string) (registry.RegistryCache, error) {
-	home, err := ioutil.TempDir("", "registry")
-	if err != nil {
-		return registry.RegistryCache{}, err
-	}
-
+func NewMockRegistryCache(source, tmpDir string) (registry.RegistryCache, error) {
 	r := registry.RegistryCache{
 		URL:  source,
-		Path: home,
+		Root: filepath.Join(tmpDir, "registryCache"),
 	}
+
 	return r, r.Initialize()
 }
 
-func createRegistryFixture(t *testing.T) (string) {
+func createRegistryFixture(t *testing.T, tmpDir string) (string) {
 	// copy fixture to temp dir
-	registryFixtureCopy, err := ioutil.TempDir("", "registry")
-	h.AssertNil(t, err)
+	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
 
-	err = archive.CopyResource(filepath.Join("..", "..", "testdata", "registry"), registryFixtureCopy, false)
+	err := archive.CopyResource(filepath.Join("..", "..", "testdata", "registry"), registryFixtureCopy, false)
 	h.AssertNil(t, err)
 
 	// git init that dir
@@ -62,28 +58,81 @@ func createRegistryFixture(t *testing.T) (string) {
 	return registryFixtureCopy
 }
 
+func assertGitHeadEq(t *testing.T, path1, path2 string) {
+	r1, err := git.PlainOpen(path1)
+	h.AssertNil(t, err)
+
+	r2, err := git.PlainOpen(path2)
+	h.AssertNil(t, err)
+
+	h1, err := r1.Head()
+	h.AssertNil(t, err)
+
+	h2, err := r2.Head()
+	h.AssertNil(t, err)
+
+	h.AssertEq(t, h1.Hash().String(), h2.Hash().String())
+}
+
 func TestRegistryCache(t *testing.T) {
 	spec.Run(t, "RegistryCache", func(t *testing.T, when spec.G, it spec.S) {
 		var (
-			registryCache registry.RegistryCache
+			tmpDir          string
+			registryFixture string
+			registryCache   registry.RegistryCache
 		)
 
 		it.Before(func() {
-			registryFixture := createRegistryFixture(t)
-
-			registryCache, err := NewMockRegistryCache(registryFixture)
+			tmpDir, err := ioutil.TempDir("", "registry")
 			h.AssertNil(t, err)
-			h.AssertNotNil(t, registryCache)
+
+			registryFixture = createRegistryFixture(t, tmpDir)
+
+			registryCache, err = NewMockRegistryCache(registryFixture, tmpDir)
+			h.AssertNil(t, err)
 		})
 
 		it.After(func() {
-			// delete registry
+			err := os.RemoveAll(tmpDir)
+			h.AssertNil(t, err)
 		})
 
 		it("locates a buildpack", func() {
 			bp, err := registryCache.LocateBuildpack("example/foo")
 			h.AssertNil(t, err)
 			h.AssertNotNil(t, bp)
+
+			h.AssertEq(t, bp.Namespace, "example")
+			h.AssertEq(t, bp.Name, "foo")
 		})
+
+		when("registry has new commits", func() {
+			it.Before(func() {
+				assertGitHeadEq(t, registryFixture, registryCache.Root)
+
+				r, err := git.PlainOpen(registryFixture)
+				h.AssertNil(t, err)
+
+				w, err := r.Worktree()
+				h.AssertNil(t, err)
+
+				commit, err := w.Commit("second", &git.CommitOptions{
+					Author: &object.Signature{
+						Name:  "John Doe",
+						Email: "john@doe.org",
+						When:  time.Now(),
+					},
+				})
+
+				_, err = r.CommitObject(commit)
+				h.AssertNil(t, err)
+			})
+
+			it("pulls the latest index", func() {
+				h.AssertNil(t, registryCache.Refresh())
+				assertGitHeadEq(t, registryFixture, registryCache.Root)
+			})
+		})
+
 	})
 }
