@@ -106,6 +106,11 @@ func TestRegistryCache(t *testing.T) {
 			h.AssertEq(t, bp.Name, "foo")
 		})
 
+		it("does not locate a buildpack", func() {
+			_, err := registryCache.LocateBuildpack("example/quack")
+			h.AssertNotNil(t, err)
+		})
+
 		when("registry has new commits", func() {
 			it.Before(func() {
 				assertGitHeadEq(t, registryFixture, registryCache.Root)
