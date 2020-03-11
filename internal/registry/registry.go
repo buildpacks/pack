@@ -4,14 +4,14 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/buildpacks/pack/internal/buildpack"
-	"github.com/pkg/errors"
-	"gopkg.in/src-d/go-git.v4"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/config"
+
+	"gopkg.in/src-d/go-git.v4"
 )
 
 const defaultRegistryURL = "https://github.com/jkutner/buildpack-registry"
@@ -96,12 +96,12 @@ func (r *RegistryCache) readEntry(ns, name, version string) (Entry, error) {
 	index := filepath.Join(r.Root, ns[:2], ns[2:4], fmt.Sprintf("%s_%s", ns, name))
 
 	if _, err := os.Stat(index); err != nil {
-		return Entry{}, errors.Errorf("could not find buildpack: %s/%s", ns, name)
+		return Entry{}, fmt.Errorf("could not find buildpack: %s/%s", ns, name)
 	}
 
 	file, err := os.Open(index)
 	if err != nil {
-		return Entry{}, errors.Errorf("could not open index for buildpack: %s/%s", ns, name)
+		return Entry{}, fmt.Errorf("could not open index for buildpack: %s/%s", ns, name)
 	}
 	defer file.Close()
 
@@ -111,14 +111,14 @@ func (r *RegistryCache) readEntry(ns, name, version string) (Entry, error) {
 		var bp Buildpack
 		err = json.Unmarshal([]byte(scanner.Text()), &bp)
 		if err != nil {
-			return Entry{}, errors.Errorf("could not parse index for buildpack: %s/%s", ns, name)
+			return Entry{}, fmt.Errorf("could not parse index for buildpack: %s/%s", ns, name)
 		}
 
 		entry.Buildpacks = append(entry.Buildpacks, bp)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return entry, errors.Errorf("could not read index for buildpack: %s/%s", ns, name)
+		return entry, fmt.Errorf("could not read index for buildpack: %s/%s", ns, name)
 	}
 
 	return entry, nil
@@ -151,8 +151,8 @@ func (r *RegistryCache) LocateBuildpack(bp string) (Buildpack, error) {
 				return bpIndex, nil
 			}
 		}
-		return Buildpack{}, errors.Errorf("could not find version for buildpack: %s", bp)
+		return Buildpack{}, fmt.Errorf("could not find version for buildpack: %s", bp)
 	}
 
-	return Buildpack{}, errors.Errorf("no entries for buildpack: %s", bp)
+	return Buildpack{}, fmt.Errorf("no entries for buildpack: %s", bp)
 }

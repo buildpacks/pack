@@ -1,7 +1,7 @@
 package buildpack
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 	"strings"
 )
 
@@ -22,5 +22,5 @@ func ParseRegistryID(registryID string) (namespace string, name string, version 
 	if len(parts) == 2 {
 		return parts[0], parts[1], version, nil
 	}
-	return parts[0], "", version, errors.Errorf("invalid registry ID: %s", registryID)
+	return parts[0], "", version, fmt.Errorf("invalid registry ID: %s", registryID)
 }
