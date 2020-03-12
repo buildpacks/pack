@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 
 	"gopkg.in/src-d/go-git.v4"
+	"github.com/pkg/errors"
 )
 
 const defaultRegistryURL = "https://github.com/jkutner/buildpack-registry"
@@ -36,17 +37,21 @@ type RegistryCache struct {
 	Root string
 }
 
-func NewRegistryCache() (RegistryCache, error) {
+func NewRegistryCache(registryURL string) (RegistryCache, error) {
 	home, err := config.PackHome()
 	if err != nil {
 		return RegistryCache{}, err
 	}
 
 	r := RegistryCache{
-		URL:  defaultRegistryURL,
+		URL:  registryURL,
 		Root: filepath.Join(home, defaultRegistyDir),
 	}
 	return r, r.Initialize()
+}
+
+func NewDefaultRegistryCache() (RegistryCache, error) {
+	return NewRegistryCache(defaultRegistryURL)
 }
 
 func (r *RegistryCache) Initialize() error {
@@ -96,12 +101,12 @@ func (r *RegistryCache) readEntry(ns, name, version string) (Entry, error) {
 	index := filepath.Join(r.Root, ns[:2], ns[2:4], fmt.Sprintf("%s_%s", ns, name))
 
 	if _, err := os.Stat(index); err != nil {
-		return Entry{}, fmt.Errorf("could not find buildpack: %s/%s", ns, name)
+		return Entry{}, errors.Wrapf(err, "could not find buildpack: %s/%s", ns, name)
 	}
 
 	file, err := os.Open(index)
 	if err != nil {
-		return Entry{}, fmt.Errorf("could not open index for buildpack: %s/%s", ns, name)
+		return Entry{}, errors.Wrapf(err, "could not open index for buildpack: %s/%s", ns, name)
 	}
 	defer file.Close()
 
@@ -111,14 +116,14 @@ func (r *RegistryCache) readEntry(ns, name, version string) (Entry, error) {
 		var bp Buildpack
 		err = json.Unmarshal([]byte(scanner.Text()), &bp)
 		if err != nil {
-			return Entry{}, fmt.Errorf("could not parse index for buildpack: %s/%s", ns, name)
+			return Entry{}, errors.Wrapf(err, "could not parse index for buildpack: %s/%s", ns, name)
 		}
 
 		entry.Buildpacks = append(entry.Buildpacks, bp)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return entry, fmt.Errorf("could not read index for buildpack: %s/%s", ns, name)
+		return entry, errors.Wrapf(err, "could not read index for buildpack: %s/%s", ns, name)
 	}
 
 	return entry, nil
