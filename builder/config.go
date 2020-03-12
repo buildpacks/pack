@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -83,7 +84,7 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 		return Config{}, nil, errors.Wrap(err, "reset config file pointer")
 	}
 
-	config, err = parseConfig(file, builderDir)
+	config, err = parseConfig(file, builderDir, path)
 	if err != nil {
 		return Config{}, nil, errors.Wrapf(err, "parse contents of '%s'", path)
 	}
@@ -114,13 +115,49 @@ func getWarningsForObsoleteFields(reader io.Reader) ([]string, error) {
 }
 
 // parseConfig reads a builder configuration from reader and resolves relative buildpack paths using `relativeToDir`
-func parseConfig(reader io.Reader, relativeToDir string) (Config, error) {
+func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 	var builderConfig Config
-	if _, err := toml.DecodeReader(reader, &builderConfig); err != nil {
+	tomlMetadata, err := toml.DecodeReader(reader, &builderConfig)
+	if err != nil {
 		return Config{}, errors.Wrap(err, "decoding toml contents")
 	}
 
+	undecodedKeys := tomlMetadata.Undecoded()
+	if len(undecodedKeys) > 0 {
+		unusedKeys := map[string]interface{}{}
+		for _, key := range undecodedKeys {
+			keyName := key.String()
+
+			parent := strings.Split(keyName, ".")[0]
+
+			if _, ok := unusedKeys[parent]; !ok {
+				unusedKeys[keyName] = nil
+			}
+		}
+
+		var errorKeys []string
+		for errorKey := range unusedKeys {
+			errorKeys = append(errorKeys, style.Symbol(errorKey))
+		}
+
+		pluralizedElement := "element"
+		if len(errorKeys) > 1 {
+			pluralizedElement += "s"
+		}
+
+		return Config{}, errors.Errorf("unknown configuration %s %s in %s",
+			pluralizedElement,
+			strings.Join(errorKeys, ", "),
+			style.Symbol(path),
+		)
+	}
+
+	fmt.Println(builderConfig.Buildpacks.Buildpacks())
 	for i, bp := range builderConfig.Buildpacks.Buildpacks() {
+		if bp.URI == "" {
+			return Config{}, errors.Errorf("missing %s configuration", style.Symbol("buildpack.uri"))
+		}
+
 		uri, err := paths.ToAbsolute(bp.URI, relativeToDir)
 		if err != nil {
 			return Config{}, errors.Wrap(err, "transforming buildpack URI")

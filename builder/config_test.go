@@ -108,6 +108,21 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 					h.AssertSliceContainsOnly(t, warns, "empty 'order' definition")
 				})
 			})
+
+			when("'uri' is misspelled as url", func() {
+				it.Before(func() {
+					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+[buildpack]
+url = "noop-buildpack.tgz"
+`), 0666))
+				})
+
+				it("returns errors", func() {
+					_, warns, err := builder.ReadConfig(builderConfigPath)
+					h.AssertNil(t, warns)
+					h.AssertError(t, err, "failed to execute command:")
+				})
+			})
 		})
 	})
 }
