@@ -2,57 +2,93 @@ package testhelpers
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/v1/v1util"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/archive"
 )
 
-type TarEntryAssertion func(*testing.T, *tar.Header, []byte)
+var gzipMagicHeader = []byte{'\x1f', '\x8b'}
 
-func AssertOnTarEntry(t *testing.T, tarFile, entryPath string, assertFns ...TarEntryAssertion) {
+type TarEntryAssertion func(t *testing.T, header *tar.Header, data []byte)
+
+func AssertOnTarEntry(t *testing.T, tarPath, entryPath string, assertFns ...TarEntryAssertion) {
 	t.Helper()
 
-	header, bytes, err := readTarFileEntry(tarFile, entryPath)
+	tarFile, err := os.Open(tarPath)
+	AssertNil(t, err)
+	defer tarFile.Close()
+
+	header, data, err := readTarFileEntry(tarFile, entryPath)
 	AssertNil(t, err)
 
 	for _, fn := range assertFns {
-		fn(t, header, bytes)
+		fn(t, header, data)
 	}
 }
 
-func readTarFileEntry(tarPath string, entryPath string) (*tar.Header, []byte, error) {
+func AssertOnNestedTar(nestedEntryPath string, assertions ...TarEntryAssertion) TarEntryAssertion {
+	return func(t *testing.T, header *tar.Header, data []byte) {
+		t.Helper()
+
+		header, data, err := readTarFileEntry(bytes.NewReader(data), nestedEntryPath)
+		AssertNil(t, err)
+
+		for _, assertion := range assertions {
+			assertion(t, header, data)
+		}
+	}
+}
+
+func readTarFileEntry(reader io.Reader, entryPath string) (*tar.Header, []byte, error) {
 	var (
-		tarFile    *os.File
 		gzipReader *gzip.Reader
-		fhFinal    io.Reader
 		err        error
 	)
-
-	tarFile, err = os.Open(tarPath)
-	fhFinal = tarFile
+	
+	headerBytes, isGzipped, err := isGzipped(reader)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to open tar '%s'", tarPath)
+		return nil, nil, errors.Wrap(err, "checking if reader")
 	}
-	defer tarFile.Close()
-
-	if filepath.Ext(tarPath) == ".tgz" {
-		gzipReader, err = gzip.NewReader(tarFile)
-		fhFinal = gzipReader
+	reader = io.MultiReader(bytes.NewReader(headerBytes), reader)
+	
+	if isGzipped {
+		gzipReader, err = gzip.NewReader(reader)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "failed to create gzip reader")
 		}
-
+		reader = gzipReader
 		defer gzipReader.Close()
 	}
 
-	return archive.ReadTarEntry(fhFinal, entryPath)
+	return archive.ReadTarEntry(reader, entryPath)
+}
+
+func isGzipped(reader io.Reader) (headerBytes []byte, isGzipped bool, err error) {
+	magicHeader := make([]byte, 2)
+	n, err := reader.Read(magicHeader)
+	if n == 0 && err == io.EOF {
+		return magicHeader, false, nil
+	}
+	if err != nil {
+		return magicHeader, false, err
+	}
+	return magicHeader, bytes.Equal(magicHeader, gzipMagicHeader), nil
+}
+
+func ContentContains(expected string) TarEntryAssertion {
+	return func(t *testing.T, header *tar.Header, contents []byte) {
+		t.Helper()
+		AssertContains(t, string(contents), expected)
+	}
 }
 
 func ContentEquals(expected string) TarEntryAssertion {
@@ -83,6 +119,24 @@ func HasOwnerAndGroup(expectedUID int, expectedGID int) TarEntryAssertion {
 		}
 		if header.Gid != expectedGID {
 			t.Fatalf("expected '%s' to have gid '%d', but got '%d'", header.Name, expectedGID, header.Gid)
+		}
+	}
+}
+
+func IsJSON() TarEntryAssertion {
+	return func(t *testing.T, header *tar.Header, data []byte) {
+		if !json.Valid(data) {
+			t.Fatal("not valid JSON")
+		}
+	}
+}
+
+func IsGzipped() TarEntryAssertion {
+	return func(t *testing.T, header *tar.Header, data []byte) {
+		isGzipped, err := v1util.IsGzipped(bytes.NewReader(data))
+		AssertNil(t, err)
+		if !isGzipped {
+			t.Fatal("is not gzipped")
 		}
 	}
 }

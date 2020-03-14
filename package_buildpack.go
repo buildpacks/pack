@@ -63,7 +63,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		}
 	}
 
-	_, err = packageBuilder.Save(opts.Name, opts.Publish)
+	_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish)
 	if err != nil {
 		return errors.Wrapf(err, "saving image")
 	}
