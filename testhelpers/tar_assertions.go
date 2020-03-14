@@ -36,7 +36,7 @@ func AssertOnTarEntry(t *testing.T, tarPath, entryPath string, assertFns ...TarE
 }
 
 func AssertOnNestedTar(nestedEntryPath string, assertions ...TarEntryAssertion) TarEntryAssertion {
-	return func(t *testing.T, header *tar.Header, data []byte) {
+	return func(t *testing.T, _ *tar.Header, data []byte) {
 		t.Helper()
 
 		header, data, err := readTarFileEntry(bytes.NewReader(data), nestedEntryPath)
@@ -53,13 +53,13 @@ func readTarFileEntry(reader io.Reader, entryPath string) (*tar.Header, []byte, 
 		gzipReader *gzip.Reader
 		err        error
 	)
-	
+
 	headerBytes, isGzipped, err := isGzipped(reader)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "checking if reader")
 	}
 	reader = io.MultiReader(bytes.NewReader(headerBytes), reader)
-	
+
 	if isGzipped {
 		gzipReader, err = gzip.NewReader(reader)
 		if err != nil {

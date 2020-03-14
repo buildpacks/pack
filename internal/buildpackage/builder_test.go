@@ -69,11 +69,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				return subject.SaveAsFile(path.Join(tmpDir, "package.cnb"))
 			}},
 		} {
+			testFn := test.fn
 			when(test.name, func() {
 				when("validate buildpack", func() {
 					when("buildpack not set", func() {
 						it("returns error", func() {
-							err := test.fn()
+							err := testFn()
 							h.AssertError(t, err, "buildpack must be set")
 						})
 					})
@@ -100,7 +101,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							subject.AddDependency(bp2)
 
-							err = test.fn()
+							err = testFn()
 							h.AssertError(t, err, "buildpack 'bp.2.id@bp.2.version' is not used by buildpack 'bp.1.id@bp.1.version'")
 						})
 					})
@@ -132,7 +133,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							subject.AddDependency(presentBP)
 
-							err = test.fn()
+							err = testFn()
 							h.AssertError(t, err, "buildpack 'bp.1.id@bp.1.version' references buildpack 'bp.missing.id@bp.missing.version' which is not present")
 						})
 					})
@@ -166,7 +167,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							subject.AddDependency(presentBP)
 
-							err = test.fn()
+							err = testFn()
 							h.AssertError(t, err, "buildpack 'bp.present.id@bp.present.version' references buildpack 'bp.missing.id@bp.missing.version' which is not present")
 						})
 					})
@@ -207,7 +208,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 							subject.AddDependency(dependency)
 
-							err = test.fn()
+							err = testFn()
 							h.AssertNil(t, err)
 						})
 					})

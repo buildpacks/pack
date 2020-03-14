@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -140,13 +141,13 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 						Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 					}},
 					Processes: pack.ProcessDetails{
-						DefaultProcess: &lifecycle.Process{
+						DefaultProcess: &launch.Process{
 							Type:    "some-remote-type",
 							Command: "/some/remote command",
 							Args:    []string{"some", "remote", "args"},
 							Direct:  false,
 						},
-						OtherProcesses: []lifecycle.Process{
+						OtherProcesses: []launch.Process{
 							{
 								Type:    "other-remote-type",
 								Command: "/other/remote/command",
@@ -186,13 +187,13 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 						Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 					}},
 					Processes: pack.ProcessDetails{
-						DefaultProcess: &lifecycle.Process{
+						DefaultProcess: &launch.Process{
 							Type:    "some-local-type",
 							Command: "/some/local command",
 							Args:    []string{"some", "local", "args"},
 							Direct:  false,
 						},
-						OtherProcesses: []lifecycle.Process{
+						OtherProcesses: []launch.Process{
 							{
 								Type:    "other-local-type",
 								Command: "/other/local/command",
