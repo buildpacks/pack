@@ -8,11 +8,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/buildpacks/pack/internal/buildpack"
-	"github.com/buildpacks/pack/internal/config"
-
-	"gopkg.in/src-d/go-git.v4"
 	"github.com/pkg/errors"
+	"gopkg.in/src-d/go-git.v4"
+
+	"github.com/buildpacks/pack/internal/buildpack"
 )
 
 const defaultRegistryURL = "https://github.com/jkutner/buildpack-registry"
@@ -37,12 +36,7 @@ type RegistryCache struct {
 	Root string
 }
 
-func NewRegistryCache(registryURL string) (RegistryCache, error) {
-	home, err := config.PackHome()
-	if err != nil {
-		return RegistryCache{}, err
-	}
-
+func NewRegistryCache(home, registryURL string) (RegistryCache, error) {
 	r := RegistryCache{
 		URL:  registryURL,
 		Root: filepath.Join(home, defaultRegistyDir),
@@ -50,8 +44,8 @@ func NewRegistryCache(registryURL string) (RegistryCache, error) {
 	return r, r.Initialize()
 }
 
-func NewDefaultRegistryCache() (RegistryCache, error) {
-	return NewRegistryCache(defaultRegistryURL)
+func NewDefaultRegistryCache(home string) (RegistryCache, error) {
+	return NewRegistryCache(home, defaultRegistryURL)
 }
 
 func (r *RegistryCache) Initialize() error {
@@ -75,6 +69,8 @@ func (r *RegistryCache) Initialize() error {
 			return os.Rename(w.Filesystem.Root(), r.Root)
 		}
 	}
+	// TODO validate the existing registry
+	// TODO if the remote origin is != URL, reset the repo
 	return err
 }
 
@@ -132,7 +128,7 @@ func (r *RegistryCache) readEntry(ns, name, version string) (Entry, error) {
 func (r *RegistryCache) LocateBuildpack(bp string) (Buildpack, error) {
 	err := r.Refresh()
 	if err != nil {
-		return Buildpack{}, err
+		return Buildpack{}, errors.Wrap(err, "refreshing cache")
 	}
 
 	ns, name, version, err := buildpack.ParseRegistryID(bp)
@@ -142,7 +138,7 @@ func (r *RegistryCache) LocateBuildpack(bp string) (Buildpack, error) {
 
 	entry, err := r.readEntry(ns, name, version)
 	if err != nil {
-		return Buildpack{}, err
+		return Buildpack{}, errors.Wrap(err, "reading entry")
 	}
 
 	if len(entry.Buildpacks) > 0 {

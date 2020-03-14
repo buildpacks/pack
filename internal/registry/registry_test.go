@@ -1,29 +1,20 @@
 package registry_test
 
 import (
-	"github.com/docker/docker/pkg/archive"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/docker/docker/pkg/archive"
 	"github.com/sclevine/spec"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/buildpacks/pack/internal/registry"
 	h "github.com/buildpacks/pack/testhelpers"
 )
-
-func NewMockRegistryCache(source, tmpDir string) (registry.RegistryCache, error) {
-	r := registry.RegistryCache{
-		URL:  source,
-		Root: filepath.Join(tmpDir, "registryCache"),
-	}
-
-	return r, r.Initialize()
-}
 
 func createRegistryFixture(t *testing.T, tmpDir string) (string) {
 	// copy fixture to temp dir
@@ -88,7 +79,7 @@ func TestRegistryCache(t *testing.T) {
 
 			registryFixture = createRegistryFixture(t, tmpDir)
 
-			registryCache, err = NewMockRegistryCache(registryFixture, tmpDir)
+			registryCache, err = registry.NewRegistryCache(tmpDir, registryFixture)
 			h.AssertNil(t, err)
 		})
 

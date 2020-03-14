@@ -24,6 +24,7 @@ import (
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpack"
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/registry"
@@ -49,6 +50,7 @@ type BuildOptions struct {
 	Buildpacks        []string
 	ProxyConfig       *ProxyConfig // defaults to  environment proxy vars
 	ContainerConfig   ContainerConfig
+	Registry          string
 }
 
 type ProxyConfig struct {
@@ -101,7 +103,12 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), opts.Buildpacks, opts.NoPull, opts.Publish)
+	registryCache, err := c.getRegistry(opts.Registry)
+	if err != nil {
+		return errors.Wrapf(err, "invalid registry '%s'", opts.Registry)
+	}
+
+	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), opts.Buildpacks, opts.NoPull, opts.Publish, registryCache)
 	if err != nil {
 		return err
 	}
@@ -175,6 +182,19 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 		return nil, errors.New("lifecycle platform api version must be specified in builder")
 	}
 	return bldr, nil
+}
+
+func (c *Client) getRegistry(registryURL string) (registry.RegistryCache, error) {
+	home, err := config.PackHome()
+	if err != nil {
+		return registry.RegistryCache{}, err
+	}
+
+	if registryURL == "" {
+		return registry.NewDefaultRegistryCache(home)
+	} else {
+		return registry.NewRegistryCache(home, registryURL)
+	}
 }
 
 func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (imgutil.Image, error) {
@@ -391,7 +411,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string, noPull bool, publish bool) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string, noPull bool, publish bool, registryCache registry.RegistryCache) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
 	order = dist.Order{{Group: []dist.BuildpackRef{}}}
 	for _, bp := range declaredBPs {
 		locatorType, err := buildpack.GetLocatorType(bp, builderBPs)
@@ -450,9 +470,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Buildp
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.RegistryLocator:
-			r, err := registry.NewRegistryCache()
-
-			registryBp, err := r.LocateBuildpack(bp)
+			registryBp, err := registryCache.LocateBuildpack(bp)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
 			}

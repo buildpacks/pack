@@ -24,7 +24,7 @@ const (
 )
 
 const fromBuilderPrefix = "from=builder"
-const fromRegistryPrefix = "from=registry"
+const fromRegistryPrefix = "urn:cnb:registry"
 
 func (l LocatorType) String() string {
 	return []string{

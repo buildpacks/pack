@@ -103,7 +103,7 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			expectedType: buildpack.PackageLocator,
 		},
 		{
-			locator:      "from=registry:example/foo:1.0.0",
+			locator:      "urn:cnb:registry:example/foo:1.0.0",
 			expectedType: buildpack.RegistryLocator,
 		},
 	} {
