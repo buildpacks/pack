@@ -5,11 +5,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
@@ -76,7 +76,7 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	}
 	defer file.Close()
 
-	warnings, err = getWarningsForObsoleteFields(file)
+	warnings, obsoleteConfigs, err := getWarningsForObsoleteFields(file)
 	if err != nil {
 		return Config{}, nil, errors.Wrapf(err, "check warnings for file '%s'", path)
 	}
@@ -84,7 +84,7 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 		return Config{}, nil, errors.Wrap(err, "reset config file pointer")
 	}
 
-	config, err = parseConfig(file, builderDir, path)
+	config, err = parseConfig(file, builderDir, path, obsoleteConfigs)
 	if err != nil {
 		return Config{}, nil, errors.Wrapf(err, "parse contents of '%s'", path)
 	}
@@ -96,7 +96,7 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	return config, warnings, nil
 }
 
-func getWarningsForObsoleteFields(reader io.Reader) ([]string, error) {
+func getWarningsForObsoleteFields(reader io.Reader) ([]string, int, error) {
 	var warnings []string
 
 	var obsoleteConfig = struct {
@@ -104,19 +104,20 @@ func getWarningsForObsoleteFields(reader io.Reader) ([]string, error) {
 	}{}
 
 	if _, err := toml.DecodeReader(reader, &obsoleteConfig); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	if len(obsoleteConfig.Groups) > 0 {
 		warnings = append(warnings, fmt.Sprintf("%s field is obsolete in favor of %s", style.Symbol("groups"), style.Symbol("order")))
 	}
 
-	return warnings, nil
+	return warnings, len(obsoleteConfig.Groups), nil
 }
 
 // parseConfig reads a builder configuration from reader and resolves relative buildpack paths using `relativeToDir`
-func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
-	var builderConfig Config
+func parseConfig(reader io.Reader, relativeToDir, path string, obsoleteConfigs int) (Config, error) {
+	builderConfig := Config{}
+	fmt.Println(obsoleteConfigs)
 	tomlMetadata, err := toml.DecodeReader(reader, &builderConfig)
 	if err != nil {
 		return Config{}, errors.Wrap(err, "decoding toml contents")
@@ -124,40 +125,25 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 
 	undecodedKeys := tomlMetadata.Undecoded()
 	if len(undecodedKeys) > 0 {
-		unusedKeys := map[string]interface{}{}
-		for _, key := range undecodedKeys {
-			keyName := key.String()
-
-			parent := strings.Split(keyName, ".")[0]
-
-			if _, ok := unusedKeys[parent]; !ok {
-				unusedKeys[keyName] = nil
-			}
-		}
-
-		var errorKeys []string
-		for errorKey := range unusedKeys {
-			errorKeys = append(errorKeys, style.Symbol(errorKey))
-		}
+		errorKeys := config.ParseUndecodedKeys(undecodedKeys)
 
 		pluralizedElement := "element"
 		if len(errorKeys) > 1 {
 			pluralizedElement += "s"
 		}
 
+		if obsoleteConfigs > 0 {
+			return builderConfig, nil
+		}
+
 		return Config{}, errors.Errorf("unknown configuration %s %s in %s",
 			pluralizedElement,
-			strings.Join(errorKeys, ", "),
+			errorKeys,
 			style.Symbol(path),
 		)
 	}
 
-	fmt.Println(builderConfig.Buildpacks.Buildpacks())
 	for i, bp := range builderConfig.Buildpacks.Buildpacks() {
-		if bp.URI == "" {
-			return Config{}, errors.Errorf("missing %s configuration", style.Symbol("buildpack.uri"))
-		}
-
 		uri, err := paths.ToAbsolute(bp.URI, relativeToDir)
 		if err != nil {
 			return Config{}, errors.Wrap(err, "transforming buildpack URI")

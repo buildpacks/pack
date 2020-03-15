@@ -86,6 +86,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 
 				it("returns warnings", func() {
 					_, warns, err := builder.ReadConfig(builderConfigPath)
+					// h.AssertError(t, err, "parse contents of")
 					h.AssertNil(t, err)
 
 					h.AssertSliceContainsOnly(t, warns, "'groups' field is obsolete in favor of 'order'")
@@ -118,9 +119,21 @@ url = "noop-buildpack.tgz"
 				})
 
 				it("returns errors", func() {
-					_, warns, err := builder.ReadConfig(builderConfigPath)
-					h.AssertNil(t, warns)
-					h.AssertError(t, err, "failed to execute command:")
+					_, _, err := builder.ReadConfig(builderConfigPath)
+					h.AssertError(t, err, "parse contents of")
+				})
+			})
+			when("'buildpack' is misspelled", func() {
+				it.Before(func() {
+					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+[buidlpack]
+uri = "noop-buildpack.tgz"
+`), 0666))
+				})
+
+				it("returns errors", func() {
+					_, _, err := builder.ReadConfig(builderConfigPath)
+					h.AssertError(t, err, "parse contents of")
 				})
 			})
 		})
