@@ -47,11 +47,10 @@ func NewRegistryCache(home, registryURL string) (RegistryCache, error) {
 	key.Write([]byte(registryURL))
 	cacheDir := fmt.Sprintf("%s-%s", defaultRegistryDir, hex.EncodeToString(key.Sum(nil)))
 
-	r := RegistryCache{
+	return RegistryCache{
 		URL:  registryURL,
 		Root: filepath.Join(home, cacheDir),
-	}
-	return r, r.Initialize()
+	}, nil
 }
 
 func NewDefaultRegistryCache(home string) (RegistryCache, error) {
@@ -121,6 +120,10 @@ func (r *RegistryCache) Initialize() error {
 }
 
 func (r *RegistryCache) Refresh() error {
+	if err := r.Initialize(); err != nil {
+		return err
+	}
+
 	repository, err := git.PlainOpen(r.Root)
 	if err != nil {
 		return errors.Wrapf(err, "could not open (%s)", r.Root)

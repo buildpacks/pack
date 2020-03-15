@@ -104,6 +104,9 @@ func TestRegistryCache(t *testing.T) {
 
 		when("registry has new commits", func() {
 			it.Before(func() {
+				err := registryCache.Refresh()
+				h.AssertNil(t, err)
+
 				assertGitHeadEq(t, registryFixture, registryCache.Root)
 
 				r, err := git.PlainOpen(registryFixture)
