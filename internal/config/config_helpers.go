@@ -4,11 +4,11 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+
 	"github.com/buildpacks/pack/internal/style"
 )
 
 func ParseUndecodedKeys(undecodedKeys []toml.Key) string {
-
 	unusedKeys := map[string]interface{}{}
 	for _, key := range undecodedKeys {
 		keyName := key.String()
