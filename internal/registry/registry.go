@@ -2,6 +2,8 @@ package registry
 
 import (
 	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,9 +16,9 @@ import (
 	"github.com/buildpacks/pack/internal/buildpack"
 )
 
-const defaultRegistryURL = "https://github.com/jkutner/buildpack-registry"
+const defaultRegistryURL = "https://github.com/buildpacks/registry-index"
 
-const defaultRegistyDir = "registry"
+const defaultRegistryDir = "registry"
 
 type Buildpack struct {
 	Namespace string `json:"ns"`
@@ -37,9 +39,17 @@ type RegistryCache struct {
 }
 
 func NewRegistryCache(home, registryURL string) (RegistryCache, error) {
+	if _, err := os.Stat(home); err != nil {
+		return RegistryCache{}, err
+	}
+
+	key := sha256.New()
+	key.Write([]byte(registryURL))
+	cacheDir := fmt.Sprintf("%s-%s", defaultRegistryDir, hex.EncodeToString(key.Sum(nil)))
+
 	r := RegistryCache{
 		URL:  registryURL,
-		Root: filepath.Join(home, defaultRegistyDir),
+		Root: filepath.Join(home, cacheDir),
 	}
 	return r, r.Initialize()
 }
@@ -48,41 +58,77 @@ func NewDefaultRegistryCache(home string) (RegistryCache, error) {
 	return NewRegistryCache(home, defaultRegistryURL)
 }
 
+func (r *RegistryCache) createCache() error {
+	root, err := ioutil.TempDir("", "registry")
+	if err != nil {
+		return err
+	}
+
+	repository, err := git.PlainClone(root, false, &git.CloneOptions{
+		URL: r.URL,
+	})
+
+	w, err := repository.Worktree()
+	if err != nil {
+		return err
+	}
+
+	return os.Rename(w.Filesystem.Root(), r.Root)
+}
+
+func (r *RegistryCache) validateCache() error {
+	repository, err := git.PlainOpen(r.Root)
+	if err != nil {
+		return errors.Wrap(err, "could not open registry cache")
+	}
+
+	remotes, err := repository.Remotes()
+	if err != nil {
+		return errors.Wrap(err, "could not access registry cache")
+	}
+
+	if len(remotes) != 1 || len(remotes[0].Config().URLs) != 1 {
+		return errors.New("invalid registry cache remotes")
+	} else if remotes[0].Config().URLs[0] != r.URL {
+		return errors.New("invalid registry cache origin")
+	}
+	return nil
+}
+
 func (r *RegistryCache) Initialize() error {
 	_, err := os.Stat(r.Root)
 	if err != nil {
 		if os.IsNotExist(err) {
-			root, err := ioutil.TempDir("", "registry")
+			err = r.createCache()
 			if err != nil {
-				return err
+				return errors.Wrap(err, "could not create registry cache")
 			}
-
-			repository, err := git.PlainClone(root, false, &git.CloneOptions{
-				URL: r.URL,
-			})
-
-			w, err := repository.Worktree()
-			if err != nil {
-				return err
-			}
-
-			return os.Rename(w.Filesystem.Root(), r.Root)
 		}
 	}
-	// TODO validate the existing registry
-	// TODO if the remote origin is != URL, reset the repo
-	return err
+
+	if err := r.validateCache(); err != nil {
+		err = os.RemoveAll(r.Root)
+		if err != nil {
+			return errors.Wrap(err, "could not reset registry cache")
+		}
+		err = r.createCache()
+		if err != nil {
+			return errors.Wrap(err, "could not create registry cache")
+		}
+	}
+
+	return nil
 }
 
 func (r *RegistryCache) Refresh() error {
 	repository, err := git.PlainOpen(r.Root)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not open (%s)", r.Root)
 	}
 
 	w, err := repository.Worktree()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not read (%s)", r.Root)
 	}
 
 	err = w.Pull(&git.PullOptions{RemoteName: "origin"})
