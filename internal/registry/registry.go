@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"gopkg.in/src-d/go-git.v4"
 
@@ -25,7 +26,6 @@ type Buildpack struct {
 	Name      string `json:"name"`
 	Version   string `json:"version"`
 	Yanked    bool   `json:"yanked"`
-	Digest    string `json:"digest"`
 	Address   string `json:"addr"`
 }
 
@@ -172,6 +172,21 @@ func (r *RegistryCache) readEntry(ns, name, version string) (Entry, error) {
 	}
 
 	return entry, nil
+}
+
+func (b *Buildpack) Validate() error {
+	if b.Address == "" {
+		return errors.New("address is a required field")
+	}
+	if _, err := name.ParseReference(b.Address, name.WeakValidation); err != nil {
+		return err
+	}
+	_, err := name.NewDigest(b.Address)
+	if err != nil {
+		return fmt.Errorf("'%s' is not a digest reference", b.Address)
+	}
+
+	return nil
 }
 
 func (r *RegistryCache) LocateBuildpack(bp string) (Buildpack, error) {

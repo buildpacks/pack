@@ -1280,7 +1280,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 						}
 
-						fakePackage = fakes.NewImage("example.com/some/package:1.0.0", "", nil)
+						fakePackage = fakes.NewImage("example.com/some/package@sha256:8c27fe111c11b722081701dfed3bd55e039b9ce92865473cf4cdfa918071c566", "", nil)
 						h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpack.layers", bpLayers))
 						h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpackage.metadata", md))
 

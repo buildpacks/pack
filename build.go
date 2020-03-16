@@ -475,6 +475,10 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Buildp
 				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
 			}
 
+			if err := registryBp.Validate(); err != nil {
+				return nil, nil, errors.Wrapf(err, "invalid registry entry (%s)", bp)
+			}
+
 			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, publish, noPull)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "extracting from registry %s", style.Symbol(bp))
