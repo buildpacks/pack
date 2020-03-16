@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/pkg/errors"
 
 	pubbldr "github.com/buildpacks/pack/builder"
@@ -20,6 +21,7 @@ type CreateBuilderOptions struct {
 	Config      pubbldr.Config
 	Publish     bool
 	NoPull      bool
+	Registry    string
 }
 
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
@@ -85,14 +87,47 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		bldr.AddBuildpack(fetchedBp)
 	}
 
+	registryCache, err := c.getRegistry(opts.Registry)
+	if err != nil {
+		return errors.Wrapf(err, "invalid registry '%s'", opts.Registry)
+	}
+
 	for _, pkg := range opts.Config.Buildpacks.Packages() {
-		mainBP, depBPs, err := extractPackagedBuildpacks(ctx, pkg.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+		locatorType, err := buildpack.GetLocatorType(pkg.ImageName, []dist.BuildpackInfo{})
 		if err != nil {
 			return err
 		}
 
-		for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
-			bldr.AddBuildpack(bp)
+		switch locatorType {
+		case buildpack.PackageLocator:
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, pkg.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+			if err != nil {
+				return err
+			}
+
+			for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
+				bldr.AddBuildpack(bp)
+			}
+		case buildpack.RegistryLocator:
+			registryBp, err := registryCache.LocateBuildpack(pkg.ImageName)
+			if err != nil {
+				return errors.Wrapf(err, "locating in registry %s", style.Symbol(pkg.ImageName))
+			}
+
+			if err := registryBp.Validate(); err != nil {
+				return errors.Wrapf(err, "invalid registry entry (%s)", pkg.ImageName)
+			}
+
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, opts.Publish, opts.NoPull)
+			if err != nil {
+				return errors.Wrapf(err, "extracting from registry %s", style.Symbol(pkg.ImageName))
+			}
+
+			for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
+				bldr.AddBuildpack(bp)
+			}
+		default:
+			return fmt.Errorf("invalid image format: %s", pkg.ImageName)
 		}
 	}
 

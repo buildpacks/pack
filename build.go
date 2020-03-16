@@ -24,7 +24,6 @@ import (
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpack"
-	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/registry"
@@ -182,19 +181,6 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 		return nil, errors.New("lifecycle platform api version must be specified in builder")
 	}
 	return bldr, nil
-}
-
-func (c *Client) getRegistry(registryURL string) (registry.RegistryCache, error) {
-	home, err := config.PackHome()
-	if err != nil {
-		return registry.RegistryCache{}, err
-	}
-
-	if registryURL == "" {
-		return registry.NewDefaultRegistryCache(home)
-	} else {
-		return registry.NewRegistryCache(home, registryURL)
-	}
 }
 
 func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (imgutil.Image, error) {

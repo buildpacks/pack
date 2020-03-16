@@ -1245,7 +1245,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						os.Setenv("PACK_HOME", packHome)
 
-						registryFixture = createRegistryFixture(t, tmpDir)
+						registryFixture = CreateRegistryFixture(t, tmpDir)
 
 						childBuildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 							API: api.MustParse("0.3"),
@@ -1762,7 +1762,7 @@ func diffIDForFile(t *testing.T, path string) string {
 	return "sha256:" + hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 }
 
-func createRegistryFixture(t *testing.T, tmpDir string) (string) {
+func CreateRegistryFixture(t *testing.T, tmpDir string) (string) {
 	// copy fixture to temp dir
 	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
 

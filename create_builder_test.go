@@ -483,6 +483,10 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("packages", func() {
+			var (
+				packageImage    *fakes.Image
+			)
+
 			createBuildpack := func(descriptor dist.BuildpackDescriptor) string {
 				bp, err := ifakes.NewFakeBuildpackBlob(descriptor, 0644)
 				h.AssertNil(t, err)
@@ -491,9 +495,78 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				return url
 			}
 
-			when("package image lives in registry", func() {
-				var packageImage *fakes.Image
+			shouldFetchPackageImageWith := func(demon, pull bool) {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), demon, pull).Return(packageImage, nil)
+			}
 
+			when("package image lives in cnb registry", func() {
+				var (
+					tmpDir          string
+					registryFixture string
+					packHome        string
+				)
+
+				it.Before(func() {
+					var err error
+					tmpDir, err = ioutil.TempDir("", "registry")
+					h.AssertNil(t, err)
+
+					packHome = filepath.Join(tmpDir, ".pack")
+					err = os.MkdirAll(packHome, 0755)
+					h.AssertNil(t, err)
+					os.Setenv("PACK_HOME", packHome)
+
+					registryFixture = pack.CreateRegistryFixture(t, tmpDir)
+
+					packageImage = fakes.NewImage("example.com/some/package@sha256:8c27fe111c11b722081701dfed3bd55e039b9ce92865473cf4cdfa918071c566", "", nil)
+					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
+
+					bpd := dist.BuildpackDescriptor{
+						API:    api.MustParse("0.3"),
+						Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.0.0"},
+						Stacks: []dist.Stack{{ID: "some.stack.id"}},
+					}
+
+					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+						Name: packageImage.Name(),
+						Config: pubbldpkg.Config{
+							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
+						},
+						Publish: true,
+					}))
+				})
+
+				it.After(func() {
+					os.Unsetenv("PACK_HOME")
+					err := os.RemoveAll(tmpDir)
+					h.AssertNil(t, err)
+				})
+
+				when("publish=false and no-pull=false", func() {
+					it("should pull and use local package image", func() {
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+						opts.BuilderName = "some/builder"
+
+						opts.Publish = false
+						opts.NoPull = false
+						opts.Registry = registryFixture
+						opts.Config.Buildpacks = append(
+							opts.Config.Buildpacks,
+							pubbldr.BuildpackConfig{
+								ImageOrURI: dist.ImageOrURI{
+									ImageRef: dist.ImageRef{ImageName: "urn:cnb:registry:example/foo"},
+								},
+							},
+						)
+
+						shouldFetchPackageImageWith(true, true)
+						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+					})
+				})
+			})
+
+			when("package image lives in docker registry", func() {
 				it.Before(func() {
 					packageImage = fakes.NewImage("some/package-"+h.RandString(12), "", nil)
 					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
@@ -512,10 +585,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						Publish: true,
 					}))
 				})
-
-				shouldFetchPackageImageWith := func(demon, pull bool) {
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), demon, pull).Return(packageImage, nil)
-				}
 
 				prepareFetcherWithMissingPackageImage := func() {
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), gomock.Any(), gomock.Any()).Return(nil, image.ErrNotFound)

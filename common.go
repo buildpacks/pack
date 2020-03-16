@@ -3,6 +3,8 @@ package pack
 import (
 	"errors"
 	"fmt"
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/registry"
 
 	"github.com/google/go-containerregistry/pkg/name"
 
@@ -48,6 +50,19 @@ func (c *Client) resolveRunImage(runImage, targetRegistry string, stackInfo buil
 	return runImageName
 }
 
+func (c *Client) getRegistry(registryURL string) (registry.RegistryCache, error) {
+	home, err := config.PackHome()
+	if err != nil {
+		return registry.RegistryCache{}, err
+	}
+
+	if registryURL == "" {
+		return registry.NewDefaultRegistryCache(home)
+	} else {
+		return registry.NewRegistryCache(home, registryURL)
+	}
+}
+
 func contains(slc []string, v string) bool {
 	for _, s := range slc {
 		if s == v {
@@ -75,3 +90,4 @@ func getBestRunMirror(registry string, runImage string, mirrors []string, prefer
 
 	return runImage
 }
+
