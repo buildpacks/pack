@@ -79,8 +79,8 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 	}
 	cmd.Flags().StringVarP(&flags.PackageTomlPath, "package-config", "p", "", "Path to package TOML config (required)")
 	cmd.MarkFlagRequired("package-config")
-	cmd.Flags().StringVarP(&flags.ImageName, "image", "i", "", "Save package as image (OCI format)")
-	cmd.Flags().StringVarP(&flags.OutputFile, "file", "f", "", "Save package as file ('.cnb' format)")
+	cmd.Flags().StringVarP(&flags.ImageName, "image", "i", "", "Save package as image")
+	cmd.Flags().StringVarP(&flags.OutputFile, "file", "f", "", "Save package as file")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--image" only)`)
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling packages before use")
 	AddHelpFlag(cmd, "package-buildpack")
