@@ -76,7 +76,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
 
 			h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-				Name: nestedPackage.Name(),
+				ImageName: nestedPackage.Name(),
 				Config: pubbldpkg.Config{
 					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 						API:    api.MustParse("0.2"),
@@ -114,7 +114,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				packageImage := shouldCreateLocalPackage()
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-					Name: packageImage.Name(),
+					ImageName: packageImage.Name(),
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 							API:  api.MustParse("0.2"),
@@ -140,7 +140,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				packageImage := shouldCreateRemotePackage()
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-					Name: packageImage.Name(),
+					ImageName: packageImage.Name(),
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 							API:  api.MustParse("0.2"),
@@ -166,7 +166,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				packageImage := shouldCreateRemotePackage()
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-					Name: packageImage.Name(),
+					ImageName: packageImage.Name(),
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 							API:  api.MustParse("0.2"),
@@ -191,7 +191,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				shouldNotFindNestedPackageWhenCallingImageFetcherWith(true, false)
 
 				h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-					Name: "some/package",
+					ImageName: "some/package",
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 							API:    api.MustParse("0.2"),
@@ -213,7 +213,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, true).Return(notPackageImage, nil)
 
 			h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-				Name: "",
+				ImageName: "some/package",
 				Config: pubbldpkg.Config{
 					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 						API:    api.MustParse("0.2"),

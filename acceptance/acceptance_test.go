@@ -52,6 +52,7 @@ const (
 	runImage   = "pack-test/run"
 	buildImage = "pack-test/build"
 
+	defaultCompilePackVersion = "0.0.0"
 	defaultPlatformAPIVersion = "0.2"
 )
 
@@ -77,7 +78,7 @@ func TestAcceptance(t *testing.T) {
 	if packPath == "" {
 		compileVersion := os.Getenv(envCompilePackWithVersion)
 		if compileVersion == "" {
-			t.Fatalf("%s must be set if %s is empty", envCompilePackWithVersion, envPackPath)
+			compileVersion = defaultCompilePackVersion
 		}
 		packPath = buildPack(t, compileVersion)
 	}
@@ -1120,7 +1121,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		packageBuildpackLocally := func(absConfigPath string) string {
 			t.Helper()
 			packageName := "test/package-" + h.RandString(10)
-			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath))
+			output, err := h.RunE(subjectPack("package-buildpack", "--image", packageName, "-p", absConfigPath))
 			h.AssertNil(t, err)
 			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
 			return packageName
@@ -1129,7 +1130,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		packageBuildpackRemotely := func(absConfigPath string) string {
 			t.Helper()
 			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath, "--publish"))
+			output, err := h.RunE(subjectPack("package-buildpack", "--image", packageName, "-p", absConfigPath, "--publish"))
 			h.AssertNil(t, err)
 			h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
 			return packageName
@@ -1160,64 +1161,93 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			return packageTomlFile.Name()
 		}
 
-		it("creates the package", func() {
-			t.Log("package w/ only buildpacks")
-			nestedPackageName := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
-			defer h.DockerRmi(dockerCli, nestedPackageName)
-			assertImageExistsLocally(nestedPackageName)
+		// TODO: Deprecated - remove on next release
+		when("image name is provided as argument 0", func() {
+			it("creates the package", func() {
+				packageName := "test/package-" + h.RandString(10)
+				output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", filepath.Join(tmpDir, "package.toml")))
+				h.AssertNil(t, err)
+				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
+				h.AssertContains(t, output, `positional argument for image name is deprecated, use "--image" instead`)
+				defer h.DockerRmi(dockerCli, packageName)
 
-			t.Log("package w/ buildpacks and packages")
-			aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
-			packageName := packageBuildpackLocally(aggregatePackageToml)
-			defer h.DockerRmi(dockerCli, packageName)
-			assertImageExistsLocally(packageName)
+				assertImageExistsLocally(packageName)
+			})
 		})
 
-		when("--publish", func() {
-			it("publishes image to registry", func() {
-				nestedPackageName := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
+		when("--image", func() {
+			it("creates the package", func() {
+				t.Log("package w/ only buildpacks")
+				nestedPackageName := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
 				defer h.DockerRmi(dockerCli, nestedPackageName)
+				assertImageExistsLocally(nestedPackageName)
+
+				t.Log("package w/ buildpacks and packages")
 				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
-
-				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+				packageName := packageBuildpackLocally(aggregatePackageToml)
 				defer h.DockerRmi(dockerCli, packageName)
-				output := h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--publish"))
-				h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
+				assertImageExistsLocally(packageName)
+			})
 
-				_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-				h.AssertError(t, err, "No such image")
+			when("--publish", func() {
+				it("publishes image to registry", func() {
+					nestedPackageName := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
+					defer h.DockerRmi(dockerCli, nestedPackageName)
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
 
-				h.AssertNil(t, h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
+					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					defer h.DockerRmi(dockerCli, packageName)
+					output := h.Run(t, subjectPack("package-buildpack", "--image", packageName, "-p", aggregatePackageToml, "--publish"))
+					h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
 
-				_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-				h.AssertNil(t, err)
+					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+					h.AssertError(t, err, "No such image")
+
+					h.AssertNil(t, h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
+
+					_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+					h.AssertNil(t, err)
+				})
+			})
+
+			when("--no-pull", func() {
+				it("should use local image", func() {
+					nestedPackage := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
+					defer h.DockerRmi(dockerCli, nestedPackage)
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
+
+					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					defer h.DockerRmi(dockerCli, packageName)
+					h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
+
+					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+					h.AssertNil(t, err)
+
+				})
+
+				it("should not pull image from registry", func() {
+					nestedPackage := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
+					defer h.DockerRmi(dockerCli, nestedPackage)
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
+
+					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					defer h.DockerRmi(dockerCli, packageName)
+					_, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
+					h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", nestedPackage))
+				})
 			})
 		})
 
-		when("--no-pull", func() {
-			it("should use local image", func() {
-				nestedPackage := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
-				defer h.DockerRmi(dockerCli, nestedPackage)
-				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
-
-				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-				defer h.DockerRmi(dockerCli, packageName)
-				h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
-
-				_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+		when("--file", func() {
+			it("creates the package", func() {
+				outputFile := filepath.Join(tmpDir, "package.cnb")
+				output, err := h.RunE(subjectPack("package-buildpack", "--file", outputFile, "-p", filepath.Join(tmpDir, "package.toml")))
 				h.AssertNil(t, err)
+				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputFile))
 
-			})
-
-			it("should not pull image from registry", func() {
-				nestedPackage := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
-				defer h.DockerRmi(dockerCli, nestedPackage)
-				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
-
-				packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-				defer h.DockerRmi(dockerCli, packageName)
-				_, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
-				h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", nestedPackage))
+				fileInfo, err := os.Stat(outputFile)
+				h.AssertNil(t, err)
+				h.AssertFalse(t, fileInfo.IsDir())
 			})
 		})
 

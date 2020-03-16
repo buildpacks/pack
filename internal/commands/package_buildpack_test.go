@@ -72,7 +72,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 			receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
 
-			h.AssertEq(t, receivedOptions.Name, "my-specific-image")
+			h.AssertEq(t, receivedOptions.ImageName, "my-specific-image")
 		})
 
 		it("creates package with config returned by the reader", func() {

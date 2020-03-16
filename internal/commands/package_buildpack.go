@@ -14,6 +14,8 @@ import (
 
 type PackageBuildpackFlags struct {
 	PackageTomlPath string
+	ImageName       string
+	OutputFile      string
 	Publish         bool
 	NoPull          bool
 }
@@ -30,35 +32,56 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 	var flags PackageBuildpackFlags
 	ctx := createCancellableContext()
 	cmd := &cobra.Command{
-		Use:   "package-buildpack <image-name> --package-config <package-config-path>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Package buildpack",
+		Use:   `package-buildpack (--image <image-name> | --file <output-file>) --package-config <package-config-path>`,
+		Short: "Package buildpack in OCI format.",
+		Args:  cobra.MaximumNArgs(1),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 && args[0] != "" {
+				logger.Warn(`positional argument for image name is deprecated, use "--image" instead.`)
+				flags.ImageName = args[0]
+			}
+
+			if flags.ImageName == "" && flags.OutputFile == "" {
+				return errors.Errorf(`must provide either "--image" or "--file" flag`)
+			}
+
+			return nil
+		},
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			config, err := packageConfigReader.Read(flags.PackageTomlPath)
 			if err != nil {
 				return errors.Wrap(err, "reading config")
 			}
 
-			imageName := args[0]
 			if err := client.PackageBuildpack(ctx, pack.PackageBuildpackOptions{
-				Name:    imageName,
-				Config:  config,
-				Publish: flags.Publish,
-				NoPull:  flags.NoPull,
+				ImageName:  flags.ImageName,
+				OutputFile: flags.OutputFile,
+				Config:     config,
+				Publish:    flags.Publish,
+				NoPull:     flags.NoPull,
 			}); err != nil {
 				return err
 			}
+
 			action := "created"
 			if flags.Publish {
 				action = "published"
 			}
-			logger.Infof("Successfully %s package %s", action, style.Symbol(imageName))
+
+			output := flags.ImageName
+			if flags.OutputFile != "" {
+				output = flags.OutputFile
+			}
+
+			logger.Infof("Successfully %s package %s", action, style.Symbol(output))
 			return nil
 		}),
 	}
 	cmd.Flags().StringVarP(&flags.PackageTomlPath, "package-config", "p", "", "Path to package TOML config (required)")
 	cmd.MarkFlagRequired("package-config")
-	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
+	cmd.Flags().StringVarP(&flags.ImageName, "image", "i", "", "Save package as image (OCI format)")
+	cmd.Flags().StringVarP(&flags.OutputFile, "file", "f", "", "Save package as file ('.cnb' format)")
+	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--image" only)`)
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling packages before use")
 	AddHelpFlag(cmd, "package-buildpack")
 

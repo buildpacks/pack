@@ -12,14 +12,19 @@ import (
 )
 
 type PackageBuildpackOptions struct {
-	Name    string
-	Config  pubbldpkg.Config
-	Publish bool
-	NoPull  bool
+	ImageName  string
+	OutputFile string
+	Config     pubbldpkg.Config
+	Publish    bool
+	NoPull     bool
 }
 
 func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
 	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
+
+	if opts.ImageName == "" && opts.OutputFile == "" {
+		return errors.New("must provide image name or output file")
+	}
 
 	bpURI := opts.Config.Buildpack.URI
 	if bpURI == "" {
@@ -63,7 +68,11 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		}
 	}
 
-	_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish)
+	if opts.OutputFile != "" {
+		return packageBuilder.SaveAsFile(opts.OutputFile)
+	}
+
+	_, err = packageBuilder.SaveAsImage(opts.ImageName, opts.Publish)
 	if err != nil {
 		return errors.Wrapf(err, "saving image")
 	}
