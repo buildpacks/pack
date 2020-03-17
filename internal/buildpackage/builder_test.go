@@ -1,8 +1,10 @@
 package buildpackage_test
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
+	"github.com/google/go-containerregistry/pkg/v1/stream"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -576,9 +579,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				"/blobs/sha256/12664caac120282c7b806ab1c269b11f050a3f635e844c18ea83240a82628eb4",
 				h.HasOwnerAndGroup(0, 0),
 				h.IsJSON())
+
 			// layer: application/vnd.docker.image.rootfs.diff.tar.gzip
+			buildpackLayerSHA, err := computeBuildpackLayerSHA(buildpack1)
+			h.AssertNil(t, err)
 			h.AssertOnTarEntry(t, tempFile.Name(),
-				"/blobs/sha256/c330e831330b719a7e33376915d7255dd58e27c6e0976189cfefb804ef35c6ec",
+				"/blobs/sha256/"+buildpackLayerSHA,
 				h.HasOwnerAndGroup(0, 0),
 				h.IsGzipped(),
 				h.AssertOnNestedTar("/cnb/buildpacks/bp.1.id",
@@ -595,4 +601,30 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.HasFileMode(0644)))
 		})
 	})
+}
+
+func computeBuildpackLayerSHA(buildpack dist.Buildpack) (string, error) {
+	reader, err := buildpack.Open()
+	if err != nil {
+		return "", err
+	}
+	defer reader.Close()
+
+	layer := stream.NewLayer(reader, stream.WithCompressionLevel(gzip.DefaultCompression))
+	compressed, err := layer.Compressed()
+	if err != nil {
+		return "", err
+	}
+	defer compressed.Close()
+
+	if _, err := io.Copy(ioutil.Discard, compressed); err != nil {
+		return "", err
+	}
+
+	digest, err := layer.Digest()
+	if err != nil {
+		return "", err
+	}
+
+	return digest.Hex, nil
 }
