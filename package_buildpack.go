@@ -20,11 +20,15 @@ type PackageBuildpackOptions struct {
 }
 
 func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
-	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
-
 	if opts.ImageName == "" && opts.OutputFile == "" {
 		return errors.New("must provide image name or output file")
 	}
+
+	if opts.ImageName != "" && opts.OutputFile != "" {
+		return errors.New("must only provide one, image name or output file")
+	}
+
+	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
 
 	bpURI := opts.Config.Buildpack.URI
 	if bpURI == "" {

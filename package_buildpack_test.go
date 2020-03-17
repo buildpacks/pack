@@ -227,4 +227,30 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			}), "could not find label 'io.buildpacks.buildpackage.metadata' on image 'not/package'")
 		})
 	})
+
+	when("both image name and output file are provided", func() {
+		it("should error", func() {
+			err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+				ImageName:  "some/image",
+				OutputFile: "some-file.cnb",
+				Config:     pubbldpkg.Config{},
+				Publish:    false,
+				NoPull:     false,
+			})
+			h.AssertError(t, err, "must only provide one, image name or output file")
+		})
+	})
+
+	when("no image name or output file is provided", func() {
+		it("should error", func() {
+			err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+				ImageName:  "",
+				OutputFile: "",
+				Config:     pubbldpkg.Config{},
+				Publish:    false,
+				NoPull:     false,
+			})
+			h.AssertError(t, err, "must provide image name or output file")
+		})
+	})
 }
