@@ -1245,9 +1245,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 				h.AssertNil(t, err)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputFile))
 
-				fileInfo, err := os.Stat(outputFile)
-				h.AssertNil(t, err)
-				h.AssertFalse(t, fileInfo.IsDir())
+				h.AssertTarball(t, outputFile)
 			})
 		})
 
