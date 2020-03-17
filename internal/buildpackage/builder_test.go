@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
@@ -513,12 +514,11 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			subject.SetBuildpack(buildpack1)
 
-			tempFile, err := ioutil.TempFile(tmpDir, "package-*.cnb")
-			h.AssertNil(t, err)
-			h.AssertNil(t, subject.SaveAsFile(tempFile.Name()))
+			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
+			h.AssertNil(t, subject.SaveAsFile(outputFile))
 
 			// config: application/vnd.docker.container.image.v1+json
-			h.AssertOnTarEntry(t, tempFile.Name(),
+			h.AssertOnTarEntry(t, outputFile,
 				"/blobs/sha256/12664caac120282c7b806ab1c269b11f050a3f635e844c18ea83240a82628eb4",
 				h.HasOwnerAndGroup(0, 0),
 				h.IsJSON(),
@@ -535,12 +535,11 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			subject.SetBuildpack(buildpack1)
 
-			tempFile, err := ioutil.TempFile(tmpDir, "package-*.cnb")
-			h.AssertNil(t, err)
-			h.AssertNil(t, subject.SaveAsFile(tempFile.Name()))
+			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
+			h.AssertNil(t, subject.SaveAsFile(outputFile))
 
 			// config: application/vnd.docker.container.image.v1+json
-			h.AssertOnTarEntry(t, tempFile.Name(),
+			h.AssertOnTarEntry(t, outputFile,
 				"/blobs/sha256/12664caac120282c7b806ab1c269b11f050a3f635e844c18ea83240a82628eb4",
 				h.HasOwnerAndGroup(0, 0),
 				h.IsJSON(),
@@ -557,25 +556,24 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			subject.SetBuildpack(buildpack1)
 
-			tempFile, err := ioutil.TempFile(tmpDir, "package-*.cnb")
-			h.AssertNil(t, err)
-			h.AssertNil(t, subject.SaveAsFile(tempFile.Name()))
+			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
+			h.AssertNil(t, subject.SaveAsFile(outputFile))
 
-			h.AssertOnTarEntry(t, tempFile.Name(), "/index.json",
+			h.AssertOnTarEntry(t, outputFile, "/index.json",
 				h.HasOwnerAndGroup(0, 0))
-			h.AssertOnTarEntry(t, tempFile.Name(), "/blobs",
+			h.AssertOnTarEntry(t, outputFile, "/blobs",
 				h.IsDirectory(),
 				h.HasOwnerAndGroup(0, 0))
-			h.AssertOnTarEntry(t, tempFile.Name(), "/blobs/sha256",
+			h.AssertOnTarEntry(t, outputFile, "/blobs/sha256",
 				h.IsDirectory(),
 				h.HasOwnerAndGroup(0, 0))
 			// manifest: application/vnd.docker.distribution.manifest.v2+json
-			h.AssertOnTarEntry(t, tempFile.Name(),
+			h.AssertOnTarEntry(t, outputFile,
 				"/blobs/sha256/97910ef639813d29fdf6dab99d11f6d06ffdf735297fffe997dad3f89116f327",
 				h.HasOwnerAndGroup(0, 0),
 				h.IsJSON())
 			// config: application/vnd.docker.container.image.v1+json
-			h.AssertOnTarEntry(t, tempFile.Name(),
+			h.AssertOnTarEntry(t, outputFile,
 				"/blobs/sha256/12664caac120282c7b806ab1c269b11f050a3f635e844c18ea83240a82628eb4",
 				h.HasOwnerAndGroup(0, 0),
 				h.IsJSON())
@@ -583,7 +581,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			// layer: application/vnd.docker.image.rootfs.diff.tar.gzip
 			buildpackLayerSHA, err := computeBuildpackLayerSHA(buildpack1)
 			h.AssertNil(t, err)
-			h.AssertOnTarEntry(t, tempFile.Name(),
+			h.AssertOnTarEntry(t, outputFile,
 				"/blobs/sha256/"+buildpackLayerSHA,
 				h.HasOwnerAndGroup(0, 0),
 				h.IsGzipped(),
