@@ -505,7 +505,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-						ImageName: packageImage.Name(),
+						Name: packageImage.Name(),
 						Config: pubbldpkg.Config{
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
 						},

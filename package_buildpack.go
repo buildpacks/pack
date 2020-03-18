@@ -11,24 +11,25 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
+const (
+	FormatImage = "image"
+	FormatCNB   = "cnb"
+)
+
 type PackageBuildpackOptions struct {
-	ImageName  string
-	OutputFile string
-	Config     pubbldpkg.Config
-	Publish    bool
-	NoPull     bool
+	Name    string
+	Format  string
+	Config  pubbldpkg.Config
+	Publish bool
+	NoPull  bool
 }
 
 func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
-	if opts.ImageName == "" && opts.OutputFile == "" {
-		return errors.New("must provide image name or output file")
-	}
-
-	if opts.ImageName != "" && opts.OutputFile != "" {
-		return errors.New("must only provide one, image name or output file")
-	}
-
 	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
+
+	if opts.Format == "" {
+		opts.Format = FormatImage
+	}
 
 	bpURI := opts.Config.Buildpack.URI
 	if bpURI == "" {
@@ -72,14 +73,13 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		}
 	}
 
-	if opts.OutputFile != "" {
-		return packageBuilder.SaveAsFile(opts.OutputFile)
-	}
-
-	_, err = packageBuilder.SaveAsImage(opts.ImageName, opts.Publish)
-	if err != nil {
+	switch opts.Format {
+	case FormatCNB:
+		return packageBuilder.SaveAsFile(opts.Name)
+	case FormatImage:
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish)
 		return errors.Wrapf(err, "saving image")
+	default:
+		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
 	}
-
-	return err
 }

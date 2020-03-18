@@ -1121,7 +1121,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		packageBuildpackLocally := func(absConfigPath string) string {
 			t.Helper()
 			packageName := "test/package-" + h.RandString(10)
-			output, err := h.RunE(subjectPack("package-buildpack", "--image", packageName, "-p", absConfigPath))
+			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath))
 			h.AssertNil(t, err)
 			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
 			return packageName
@@ -1130,7 +1130,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		packageBuildpackRemotely := func(absConfigPath string) string {
 			t.Helper()
 			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-			output, err := h.RunE(subjectPack("package-buildpack", "--image", packageName, "-p", absConfigPath, "--publish"))
+			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath, "--publish"))
 			h.AssertNil(t, err)
 			h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
 			return packageName
@@ -1161,21 +1161,19 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			return packageTomlFile.Name()
 		}
 
-		// TODO: Deprecated - remove on next release
-		when("image name is provided as argument 0", func() {
-			it("creates the package", func() {
+		when("no --format is provided", func() {
+			it("creates the package as image", func() {
 				packageName := "test/package-" + h.RandString(10)
 				output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", filepath.Join(tmpDir, "package.toml")))
 				h.AssertNil(t, err)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
-				h.AssertContains(t, output, `positional argument for image name is deprecated, use "--image" instead`)
 				defer h.DockerRmi(dockerCli, packageName)
 
 				assertImageExistsLocally(packageName)
 			})
 		})
 
-		when("--image", func() {
+		when("--format image", func() {
 			it("creates the package", func() {
 				t.Log("package w/ only buildpacks")
 				nestedPackageName := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
@@ -1197,7 +1195,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
-					output := h.Run(t, subjectPack("package-buildpack", "--image", packageName, "-p", aggregatePackageToml, "--publish"))
+					output := h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--publish"))
 					h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
 
 					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
@@ -1238,13 +1236,16 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			})
 		})
 
-		when("--file", func() {
+		when("--format cnb", func() {
+			it.Before(func() {
+				h.SkipIf(t, !packSupports(packPath, "package-buildpack --format"), "format not supported")
+			})
+
 			it("creates the package", func() {
 				outputFile := filepath.Join(tmpDir, "package.cnb")
-				output, err := h.RunE(subjectPack("package-buildpack", "--file", outputFile, "-p", filepath.Join(tmpDir, "package.toml")))
+				output, err := h.RunE(subjectPack("package-buildpack", outputFile, "--format", "cnb", "-p", filepath.Join(tmpDir, "package.toml")))
 				h.AssertNil(t, err)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputFile))
-
 				h.AssertTarball(t, outputFile)
 			})
 		})
@@ -1333,7 +1334,9 @@ func resolveRunCombinations(
 			}
 
 			rc.packPath = previousPackPath
-			rc.packFixturesDir = previousPackFixturesPath
+			if previousPackFixturesPath != "" {
+				rc.packFixturesDir = previousPackFixturesPath
+			}
 		}
 
 		if c.PackCreateBuilder == "previous" {

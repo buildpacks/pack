@@ -76,7 +76,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
 
 			h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-				ImageName: nestedPackage.Name(),
+				Name: nestedPackage.Name(),
 				Config: pubbldpkg.Config{
 					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 						API:    api.MustParse("0.2"),
@@ -114,7 +114,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				packageImage := shouldCreateLocalPackage()
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-					ImageName: packageImage.Name(),
+					Name: packageImage.Name(),
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 							API:  api.MustParse("0.2"),
@@ -140,7 +140,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				packageImage := shouldCreateRemotePackage()
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-					ImageName: packageImage.Name(),
+					Name: packageImage.Name(),
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 							API:  api.MustParse("0.2"),
@@ -166,7 +166,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				packageImage := shouldCreateRemotePackage()
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-					ImageName: packageImage.Name(),
+					Name: packageImage.Name(),
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 							API:  api.MustParse("0.2"),
@@ -191,7 +191,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				shouldNotFindNestedPackageWhenCallingImageFetcherWith(true, false)
 
 				h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-					ImageName: "some/package",
+					Name: "some/package",
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 							API:    api.MustParse("0.2"),
@@ -213,7 +213,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, true).Return(notPackageImage, nil)
 
 			h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-				ImageName: "some/package",
+				Name: "some/package",
 				Config: pubbldpkg.Config{
 					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 						API:    api.MustParse("0.2"),
@@ -228,29 +228,22 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("both image name and output file are provided", func() {
+	when("unknown format is provided", func() {
 		it("should error", func() {
 			err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-				ImageName:  "some/image",
-				OutputFile: "some-file.cnb",
-				Config:     pubbldpkg.Config{},
-				Publish:    false,
-				NoPull:     false,
+				Name:   "some-buildpack",
+				Format: "invalid-format",
+				Config: pubbldpkg.Config{
+					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+						API:    api.MustParse("0.2"),
+						Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+						Stacks: []dist.Stack{{ID: "some.stack.id"}},
+					})},
+				},
+				Publish: false,
+				NoPull:  false,
 			})
-			h.AssertError(t, err, "must only provide one, image name or output file")
-		})
-	})
-
-	when("no image name or output file is provided", func() {
-		it("should error", func() {
-			err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-				ImageName:  "",
-				OutputFile: "",
-				Config:     pubbldpkg.Config{},
-				Publish:    false,
-				NoPull:     false,
-			})
-			h.AssertError(t, err, "must provide image name or output file")
+			h.AssertError(t, err, "unknown format: 'invalid-format'")
 		})
 	})
 }
