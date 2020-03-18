@@ -1,6 +1,7 @@
 package buildpackage_test
 
 import (
+	"archive/tar"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-containerregistry/pkg/v1/stream"
 	"github.com/heroku/color"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -499,34 +501,6 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#SaveAsFile", func() {
 		it("sets metadata", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-				API: api.MustParse("0.2"),
-				Info: dist.BuildpackInfo{
-					ID:      "bp.1.id",
-					Version: "bp.1.version",
-				},
-				Stacks: []dist.Stack{
-					{ID: "stack.id.1"},
-					{ID: "stack.id.2"},
-				},
-				Order: nil,
-			}, 0644)
-			h.AssertNil(t, err)
-
-			subject.SetBuildpack(buildpack1)
-
-			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
-			h.AssertNil(t, subject.SaveAsFile(outputFile))
-
-			// config: application/vnd.docker.container.image.v1+json
-			h.AssertOnTarEntry(t, outputFile,
-				"/blobs/sha256/12664caac120282c7b806ab1c269b11f050a3f635e844c18ea83240a82628eb4",
-				h.HasOwnerAndGroup(0, 0),
-				h.IsJSON(),
-				h.ContentContains(`"io.buildpacks.buildpackage.metadata":"{\"id\":\"bp.1.id\",\"version\":\"bp.1.version\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}]}"`))
-		})
-
-		it("sets buildpack layers label", func() {
-			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
 				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
@@ -538,12 +512,42 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
 			h.AssertNil(t, subject.SaveAsFile(outputFile))
 
-			// config: application/vnd.docker.container.image.v1+json
-			h.AssertOnTarEntry(t, outputFile,
-				"/blobs/sha256/12664caac120282c7b806ab1c269b11f050a3f635e844c18ea83240a82628eb4",
+			withContents := func(fn func(data []byte)) h.TarEntryAssertion {
+				return func(t *testing.T, header *tar.Header, data []byte) {
+					fn(data)
+				}
+			}
+
+			h.AssertOnTarEntry(t, outputFile, "/index.json",
 				h.HasOwnerAndGroup(0, 0),
-				h.IsJSON(),
-				h.ContentContains(`"io.buildpacks.buildpack.layers":"{\"bp.1.id\":{\"bp.1.version\":{\"api\":\"0.2\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}],\"layerDiffID\":\"sha256:a10862daec7a8a62fd04cc5d4520fdb80d4d5c07a3c146fb604a9c23c22fd5b0\"}}}"`))
+				withContents(func(data []byte) {
+					index := v1.Index{}
+					err := json.Unmarshal(data, &index)
+					h.AssertNil(t, err)
+					h.AssertEq(t, len(index.Manifests), 1)
+
+					// manifest: application/vnd.docker.distribution.manifest.v2+json
+					h.AssertOnTarEntry(t, outputFile,
+						"/blobs/sha256/"+index.Manifests[0].Digest.Hex(),
+						h.HasOwnerAndGroup(0, 0),
+						h.IsJSON(),
+						withContents(func(data []byte) {
+							manifest := v1.Manifest{}
+							err := json.Unmarshal(data, &manifest)
+							h.AssertNil(t, err)
+
+							// config: application/vnd.docker.container.image.v1+json
+							h.AssertOnTarEntry(t, outputFile,
+								"/blobs/sha256/"+manifest.Config.Digest.Hex(),
+								h.HasOwnerAndGroup(0, 0),
+								h.IsJSON(),
+								// buildpackage metadata
+								h.ContentContains(`"io.buildpacks.buildpackage.metadata":"{\"id\":\"bp.1.id\",\"version\":\"bp.1.version\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}]}"`),
+								// buildpack layers metadata
+								h.ContentContains(`"io.buildpacks.buildpack.layers":"{\"bp.1.id\":{\"bp.1.version\":{\"api\":\"0.2\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}],\"layerDiffID\":\"sha256:a10862daec7a8a62fd04cc5d4520fdb80d4d5c07a3c146fb604a9c23c22fd5b0\"}}}"`),
+							)
+						}))
+				}))
 		})
 
 		it("adds buildpack layers", func() {
@@ -559,24 +563,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
 			h.AssertNil(t, subject.SaveAsFile(outputFile))
 
-			h.AssertOnTarEntry(t, outputFile, "/index.json",
-				h.HasOwnerAndGroup(0, 0))
 			h.AssertOnTarEntry(t, outputFile, "/blobs",
 				h.IsDirectory(),
 				h.HasOwnerAndGroup(0, 0))
 			h.AssertOnTarEntry(t, outputFile, "/blobs/sha256",
 				h.IsDirectory(),
 				h.HasOwnerAndGroup(0, 0))
-			// manifest: application/vnd.docker.distribution.manifest.v2+json
-			h.AssertOnTarEntry(t, outputFile,
-				"/blobs/sha256/97910ef639813d29fdf6dab99d11f6d06ffdf735297fffe997dad3f89116f327",
-				h.HasOwnerAndGroup(0, 0),
-				h.IsJSON())
-			// config: application/vnd.docker.container.image.v1+json
-			h.AssertOnTarEntry(t, outputFile,
-				"/blobs/sha256/12664caac120282c7b806ab1c269b11f050a3f635e844c18ea83240a82628eb4",
-				h.HasOwnerAndGroup(0, 0),
-				h.IsJSON())
 
 			// layer: application/vnd.docker.image.rootfs.diff.tar.gzip
 			buildpackLayerSHA, err := computeBuildpackLayerSHA(buildpack1)
