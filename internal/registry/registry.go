@@ -10,9 +10,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/go-containerregistry/pkg/name"
+	ggcrname "github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"gopkg.in/src-d/go-git.v4"
+	"golang.org/x/mod/semver"
 
 	"github.com/buildpacks/pack/internal/buildpack"
 )
@@ -178,10 +179,10 @@ func (b *Buildpack) Validate() error {
 	if b.Address == "" {
 		return errors.New("address is a required field")
 	}
-	if _, err := name.ParseReference(b.Address, name.WeakValidation); err != nil {
+	if _, err := ggcrname.ParseReference(b.Address, ggcrname.WeakValidation); err != nil {
 		return err
 	}
-	_, err := name.NewDigest(b.Address)
+	_, err := ggcrname.NewDigest(b.Address)
 	if err != nil {
 		return fmt.Errorf("'%s' is not a digest reference", b.Address)
 	}
@@ -207,8 +208,15 @@ func (r *RegistryCache) LocateBuildpack(bp string) (Buildpack, error) {
 
 	if len(entry.Buildpacks) > 0 {
 		if version == "" {
-			// TODO check highest version?
-			return entry.Buildpacks[0], nil
+			highestVersion := entry.Buildpacks[0]
+			if len(entry.Buildpacks) > 1 {
+				for _, bp := range entry.Buildpacks[1:] {
+					if semver.Compare(fmt.Sprintf("v%s", bp.Version), fmt.Sprintf("v%s", highestVersion.Version)) > 0 {
+						highestVersion = bp
+					}
+				}
+			}
+			return highestVersion, nil
 		}
 
 		for _, bpIndex := range entry.Buildpacks {
