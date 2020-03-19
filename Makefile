@@ -7,6 +7,10 @@ PACKAGE_BASE=github.com/buildpacks/pack
 PACKAGES:=$(shell $(GOCMD) list ./... | grep -v /testdata/)
 SRC:=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
 ARCHIVE_NAME=pack-$(PACK_VERSION)
+TEST_TIMEOUT?=0
+UNIT_TIMEOUT?=$(TEST_TIMEOUT)
+ACCEPTANCE_TIMEOUT?=$(TEST_TIMEOUT)
+
 
 export GOFLAGS:=$(GOFLAGS)
 
@@ -54,15 +58,15 @@ test: unit acceptance
 
 unit:
 	@echo "> Running unit/integration tests..."
-	$(GOCMD) test -v -count=1 -parallel=1 -timeout=0 ./...
+	$(GOCMD) test -v -count=1 -parallel=1 -timeout=$(UNIT_TIMEOUT) ./...
 
 acceptance:
 	@echo "> Running acceptance tests..."
-	COMPILE_PACK_WITH_VERSION=$(or ${COMPILE_PACK_WITH_VERSION}, 0.0.0) $(GOCMD) test -v -count=1 -parallel=1 -timeout=0 -tags=acceptance ./acceptance
+	COMPILE_PACK_WITH_VERSION=$(or ${COMPILE_PACK_WITH_VERSION}, 0.0.0) $(GOCMD) test -v -count=1 -parallel=1 -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance
 
 acceptance-all:
 	@echo "> Running acceptance tests..."
-	ACCEPTANCE_SUITE_CONFIG=$$(cat ./acceptance/testconfig/all.json) $(GOCMD) test -v -count=1 -parallel=1 -timeout=0 -tags=acceptance ./acceptance
+	ACCEPTANCE_SUITE_CONFIG=$$(cat ./acceptance/testconfig/all.json) $(GOCMD) test -v -count=1 -parallel=1 -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance
 
 clean:
 	@echo "> Cleaning workspace..."

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/buildpacks/imgutil"
 	dockerClient "github.com/docker/docker/client"
@@ -103,7 +104,11 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 
 	if client.docker == nil {
 		var err error
-		client.docker, err = dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithVersion("1.38"))
+		client.docker, err = dockerClient.NewClientWithOpts(
+			dockerClient.FromEnv,
+			dockerClient.WithVersion("1.38"),
+			dockerClient.WithTimeout(10*time.Second),
+		)
 		if err != nil {
 			return nil, err
 		}

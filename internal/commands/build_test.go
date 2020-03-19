@@ -94,7 +94,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					Build(gomock.Any(), EqBuildOptionsDefaultProcess("my-proc")).
 					Return(nil)
 
-				command.SetArgs([]string{"image", "--default-process", "my-proc"})
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--default-process", "my-proc"})
 				h.AssertNil(t, command.Execute())
 			})
 		})
