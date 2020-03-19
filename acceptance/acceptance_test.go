@@ -1799,28 +1799,6 @@ func waitForResponse(t *testing.T, port string, timeout time.Duration) string {
 	}
 }
 
-func ctrlCProc(cmd *exec.Cmd) error {
-	if cmd == nil || cmd.Process == nil || cmd.Process.Pid <= 0 {
-		return fmt.Errorf("invalid pid: %#v", cmd)
-	}
-	if runtime.GOOS == "windows" {
-		return exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprint(cmd.Process.Pid)).Run()
-	}
-	if err := cmd.Process.Signal(os.Interrupt); err != nil {
-		return err
-	}
-	_, err := cmd.Process.Wait()
-	return err
-}
-
-func isCommandRunning(cmd *exec.Cmd) bool {
-	_, err := os.FindProcess(cmd.Process.Pid)
-	if err != nil {
-		return false
-	}
-	return true
-}
-
 // FIXME : buf needs a mutex
 func terminateAtStep(t *testing.T, cmd *exec.Cmd, buf *bytes.Buffer, pattern string) {
 	t.Helper()
