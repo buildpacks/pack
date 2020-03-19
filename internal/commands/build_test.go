@@ -88,6 +88,17 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("a default process is specified", func() {
+			it.Focus("sets that process", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsDefaultProcess("my-proc")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--default-process", "my-proc"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
 		when("an env file is provided", func() {
 			var envPath string
 
@@ -297,6 +308,15 @@ func EqBuildOptionsWithImage(builder, image string) gomock.Matcher {
 		description: fmt.Sprintf("Builder=%s and Image=%s", builder, image),
 		equals: func(o pack.BuildOptions) bool {
 			return o.Builder == builder && o.Image == image
+		},
+	}
+}
+
+func EqBuildOptionsDefaultProcess(defaultProc string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Default Process Type=%s", defaultProc),
+		equals: func(o pack.BuildOptions) bool {
+			return o.DefaultProcessType == defaultProc
 		},
 	}
 }

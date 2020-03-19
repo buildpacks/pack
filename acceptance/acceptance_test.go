@@ -545,6 +545,23 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						})
 					})
 
+					when("--default-process", func() {
+						it.Focus("sets the default process from those in the process list", func() {
+							if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.0")) {
+								t.Skip("skipping default process. Lifecycle does not support it")
+							} else {
+								h.Run(t, subjectPack(
+									"build", repoName,
+									"--default-process", "hello",
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--buildpack", filepath.Join("testdata", "mock_buildpacks", "0.2", "simple-layers-buildpack"),
+								))
+
+								assertMockAppLogs(t, repoName, "hello world")
+							}
+						})
+					})
+
 					when("--buildpack", func() {
 						when("the argument is an ID", func() {
 							it("adds the buildpacks to the builder if necessary and runs them", func() {
@@ -1677,6 +1694,24 @@ func assertMockAppRunsWithOutput(t *testing.T, repoName string, expectedOutputs 
 	defer dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
 	launchPort := fetchHostPort(t, containerName)
 	assertMockAppResponseContains(t, launchPort, 10*time.Second, expectedOutputs...)
+}
+
+// TODO this can probably be abstracted along with `assertMockAppRunsWithOutput` to a more generic function
+func assertMockAppLogs(t *testing.T, repoName string, expectedOutputs ...string) {
+	t.Helper()
+	containerName := "test-" + h.RandString(10)
+	ctr, err := dockerCli.ContainerCreate(context.Background(), &container.Config{
+		Image: repoName,
+	}, nil, nil, containerName)
+	h.AssertNil(t, err)
+
+	var b bytes.Buffer
+	err = h.RunContainer(context.Background(), dockerCli, ctr.ID, &b, &b)
+	h.AssertNil(t, err)
+
+	for _, expectedOutput := range expectedOutputs {
+		h.AssertContains(t, b.String(), expectedOutput)
+	}
 }
 
 func assertMockAppResponseContains(t *testing.T, launchPort string, timeout time.Duration, expectedOutputs ...string) {

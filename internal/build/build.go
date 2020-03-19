@@ -35,6 +35,7 @@ type Lifecycle struct {
 	LayersVolume       string
 	AppVolume          string
 	Volumes            []string
+	DefaultProcessType string
 }
 
 type Cache interface {
@@ -64,6 +65,8 @@ type LifecycleOptions struct {
 	NoProxy    string
 	Network    string
 	Volumes    []string
+	DefaultProcessType string
+
 }
 
 func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
@@ -125,6 +128,7 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.noProxy = opts.NoProxy
 	l.version = opts.Builder.LifecycleDescriptor().Info.Version.String()
 	l.platformAPIVersion = opts.Builder.LifecycleDescriptor().API.PlatformVersion.String()
+	l.DefaultProcessType = opts.DefaultProcessType
 }
 
 func (l *Lifecycle) Cleanup() error {

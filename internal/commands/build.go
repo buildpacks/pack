@@ -31,6 +31,7 @@ type BuildFlags struct {
 	Network        string
 	DescriptorPath string
 	Volumes        []string
+	DefaultProcessType string
 }
 
 func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
@@ -94,6 +95,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 					Network: flags.Network,
 					Volumes: flags.Volumes,
 				},
+				DefaultProcessType: flags.DefaultProcessType,
 			}); err != nil {
 				return err
 			}
@@ -119,6 +121,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>'. Target path will be prefixed with '/platform/'"+multiValueHelp("volume"))
+	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", "set the ")
 }
 
 func parseEnv(project project.Descriptor, envFiles []string, envVars []string) (map[string]string, error) {

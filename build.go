@@ -48,6 +48,7 @@ type BuildOptions struct {
 	Buildpacks        []string
 	ProxyConfig       *ProxyConfig // defaults to  environment proxy vars
 	ContainerConfig   ContainerConfig
+	DefaultProcessType string
 }
 
 type ProxyConfig struct {
@@ -146,6 +147,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		NoProxy:    proxyConfig.NoProxy,
 		Network:    opts.ContainerConfig.Network,
 		Volumes:    platformVolumes,
+		DefaultProcessType: opts.DefaultProcessType,
 	})
 }
 
