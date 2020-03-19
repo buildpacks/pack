@@ -89,7 +89,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("a default process is specified", func() {
-			it.Focus("sets that process", func() {
+			it("sets that process", func() {
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsDefaultProcess("my-proc")).
 					Return(nil)

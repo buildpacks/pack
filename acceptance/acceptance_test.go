@@ -546,7 +546,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 					})
 
 					when("--default-process", func() {
-						it.Focus("sets the default process from those in the process list", func() {
+						it("sets the default process from those in the process list", func() {
 							if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.0")) {
 								t.Skip("skipping default process. Lifecycle does not support it")
 							} else {
