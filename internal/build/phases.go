@@ -7,15 +7,16 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/google/go-containerregistry/pkg/authn"
+
 	"github.com/buildpacks/pack/internal/api"
 )
 
 const (
-	layersDir      = "/layers"
-	appDir         = "/workspace"
-	cacheDir       = "/cache"
-	launchCacheDir = "/launch-cache"
-	platformDir    = "/platform"
+	layersDir                 = "/layers"
+	appDir                    = "/workspace"
+	cacheDir                  = "/cache"
+	launchCacheDir            = "/launch-cache"
+	platformDir               = "/platform"
 	defaultProcessPlatformAPI = "0.3"
 )
 

@@ -19,18 +19,18 @@ import (
 )
 
 type BuildFlags struct {
-	AppPath        string
-	Builder        string
-	RunImage       string
-	Env            []string
-	EnvFiles       []string
-	Publish        bool
-	NoPull         bool
-	ClearCache     bool
-	Buildpacks     []string
-	Network        string
-	DescriptorPath string
-	Volumes        []string
+	AppPath            string
+	Builder            string
+	RunImage           string
+	Env                []string
+	EnvFiles           []string
+	Publish            bool
+	NoPull             bool
+	ClearCache         bool
+	Buildpacks         []string
+	Network            string
+	DescriptorPath     string
+	Volumes            []string
 	DefaultProcessType string
 }
 

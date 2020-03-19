@@ -54,19 +54,18 @@ func NewLifecycle(docker client.CommonAPIClient, logger logging.Logger) *Lifecyc
 }
 
 type LifecycleOptions struct {
-	AppPath    string
-	Image      name.Reference
-	Builder    *builder.Builder
-	RunImage   string
-	ClearCache bool
-	Publish    bool
-	HTTPProxy  string
-	HTTPSProxy string
-	NoProxy    string
-	Network    string
-	Volumes    []string
+	AppPath            string
+	Image              name.Reference
+	Builder            *builder.Builder
+	RunImage           string
+	ClearCache         bool
+	Publish            bool
+	HTTPProxy          string
+	HTTPSProxy         string
+	NoProxy            string
+	Network            string
+	Volumes            []string
 	DefaultProcessType string
-
 }
 
 func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {

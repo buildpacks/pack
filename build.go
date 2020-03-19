@@ -36,18 +36,18 @@ type Lifecycle interface {
 }
 
 type BuildOptions struct {
-	Image             string              // required
-	Builder           string              // required
-	AppPath           string              // defaults to current working directory
-	RunImage          string              // defaults to the best mirror from the builder metadata or AdditionalMirrors
-	AdditionalMirrors map[string][]string // only considered if RunImage is not provided
-	Env               map[string]string
-	Publish           bool
-	NoPull            bool
-	ClearCache        bool
-	Buildpacks        []string
-	ProxyConfig       *ProxyConfig // defaults to  environment proxy vars
-	ContainerConfig   ContainerConfig
+	Image              string              // required
+	Builder            string              // required
+	AppPath            string              // defaults to current working directory
+	RunImage           string              // defaults to the best mirror from the builder metadata or AdditionalMirrors
+	AdditionalMirrors  map[string][]string // only considered if RunImage is not provided
+	Env                map[string]string
+	Publish            bool
+	NoPull             bool
+	ClearCache         bool
+	Buildpacks         []string
+	ProxyConfig        *ProxyConfig // defaults to  environment proxy vars
+	ContainerConfig    ContainerConfig
 	DefaultProcessType string
 }
 
@@ -136,17 +136,17 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	return c.lifecycle.Execute(ctx, build.LifecycleOptions{
-		AppPath:    appPath,
-		Image:      imageRef,
-		Builder:    ephemeralBuilder,
-		RunImage:   runImageName,
-		ClearCache: opts.ClearCache,
-		Publish:    opts.Publish,
-		HTTPProxy:  proxyConfig.HTTPProxy,
-		HTTPSProxy: proxyConfig.HTTPSProxy,
-		NoProxy:    proxyConfig.NoProxy,
-		Network:    opts.ContainerConfig.Network,
-		Volumes:    platformVolumes,
+		AppPath:            appPath,
+		Image:              imageRef,
+		Builder:            ephemeralBuilder,
+		RunImage:           runImageName,
+		ClearCache:         opts.ClearCache,
+		Publish:            opts.Publish,
+		HTTPProxy:          proxyConfig.HTTPProxy,
+		HTTPSProxy:         proxyConfig.HTTPSProxy,
+		NoProxy:            proxyConfig.NoProxy,
+		Network:            opts.ContainerConfig.Network,
+		Volumes:            platformVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
 	})
 }
