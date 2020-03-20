@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
@@ -79,7 +80,7 @@ func main() {
 	rootCmd.Version = cmd.Version
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)
 
-	ctx := commands.CreateCancellableContext()
+	ctx := commands.CreateTimeoutContext(10 * time.Second)
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		if commands.IsSoftError(err) {
 			os.Exit(2)
