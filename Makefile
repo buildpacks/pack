@@ -7,7 +7,7 @@ PACKAGE_BASE=github.com/buildpacks/pack
 PACKAGES:=$(shell $(GOCMD) list ./... | grep -v /testdata/)
 SRC:=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
 ARCHIVE_NAME=pack-$(PACK_VERSION)
-TEST_TIMEOUT?=60s
+TEST_TIMEOUT?=600s
 UNIT_TIMEOUT?=$(TEST_TIMEOUT)
 ACCEPTANCE_TIMEOUT?=$(TEST_TIMEOUT)
 

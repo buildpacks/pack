@@ -47,6 +47,8 @@ type Client struct {
 
 type ClientOption func(c *Client)
 
+var ClientTimeout = 1 * time.Minute
+
 // WithLogger supply your own logger.
 func WithLogger(l logging.Logger) ClientOption {
 	return func(c *Client) {
@@ -107,7 +109,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		client.docker, err = dockerClient.NewClientWithOpts(
 			dockerClient.FromEnv,
 			dockerClient.WithVersion("1.38"),
-			dockerClient.WithTimeout(10*time.Second),
+			dockerClient.WithTimeout(ClientTimeout),
 		)
 		if err != nil {
 			return nil, err

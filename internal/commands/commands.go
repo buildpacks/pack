@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -29,10 +28,10 @@ func AddHelpFlag(cmd *cobra.Command, commandName string) {
 	cmd.Flags().BoolP("help", "h", false, fmt.Sprintf("Help for '%s'", commandName))
 }
 
-func CreateTimeoutContext(timeout time.Duration) context.Context {
+func CreateCancellableContext() context.Context {
 	signals := make(chan os.Signal)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
 		<-signals
