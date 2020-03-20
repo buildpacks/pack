@@ -208,8 +208,10 @@ lifecycle:
 func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packPath, packCreateBuilderPath, configDir, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) {
 
 	var (
-		bpDir    = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
-		packHome string
+		bpDir      = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
+		packHome   string
+		packVer    string
+		packSemver *semver.Version
 	)
 
 	// subjectPack creates a pack `exec.Cmd` based on the current configuration
@@ -221,6 +223,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		var err error
 		packHome, err = ioutil.TempDir("", "buildpack.pack.home.")
 		h.AssertNil(t, err)
+		packVer, err = packVersion(packPath)
+		h.AssertNil(t, err)
+		packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(packVer, " ")[0], "v"))
 	})
 
 	it.After(func() {
@@ -534,10 +539,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 								"--volume", fmt.Sprintf("%s:%s", tempVolume, "/my-volume-mount-target"),
 							))
 
-							packVer, err := packVersion(packPath)
-							h.AssertNil(t, err)
-							packSemver := semver.MustParse(strings.TrimPrefix(strings.Split(packVer, " ")[0], "v"))
-
 							if packSemver.GreaterThan(semver.MustParse("0.9.0")) || packSemver.Equal(semver.MustParse("0.0.0")) {
 								h.AssertContains(t, output, "Detect: Reading file '/platform/my-volume-mount-target/some-file': some-string")
 							}
@@ -547,18 +548,25 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 					when("--default-process", func() {
 						it("sets the default process from those in the process list", func() {
-							if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.0")) {
-								t.Skip("skipping default process. Lifecycle does not support it")
-							} else {
-								h.Run(t, subjectPack(
-									"build", repoName,
-									"--default-process", "hello",
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", filepath.Join("testdata", "mock_buildpacks", "0.2", "simple-layers-buildpack"),
-								))
+							h.SkipIf(t,
+								!packSemver.GreaterThan(semver.MustParse("0.9.0")) || packSemver.Equal(semver.MustParse("0.0.0")),
+								"only pack > 0.9.0 supports setting the default process",
+							)
 
-								assertMockAppLogs(t, repoName, "hello world")
-							}
+							h.SkipIf(t,
+								lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.0")),
+								"skipping default process. Lifecycle does not support it",
+							)
+
+							h.Run(t, subjectPack(
+								"build", repoName,
+								"--default-process", "hello",
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--buildpack", filepath.Join("testdata", "mock_buildpacks", "0.2", "simple-layers-buildpack"),
+							))
+
+							assertMockAppLogs(t, repoName, "hello world")
+
 						})
 					})
 
