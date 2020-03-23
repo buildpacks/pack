@@ -1236,14 +1236,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			})
 		})
 
-		when("--format cnb", func() {
+		when("--format file", func() {
 			it.Before(func() {
 				h.SkipIf(t, !packSupports(packPath, "package-buildpack --format"), "format not supported")
 			})
 
 			it("creates the package", func() {
 				outputFile := filepath.Join(tmpDir, "package.cnb")
-				output, err := h.RunE(subjectPack("package-buildpack", outputFile, "--format", "cnb", "-p", filepath.Join(tmpDir, "package.toml")))
+				output, err := h.RunE(subjectPack("package-buildpack", outputFile, "--format", "file", "-p", filepath.Join(tmpDir, "package.toml")))
 				h.AssertNil(t, err)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputFile))
 				h.AssertTarball(t, outputFile)

@@ -13,7 +13,7 @@ import (
 
 const (
 	FormatImage = "image"
-	FormatCNB   = "cnb"
+	FormatFile  = "file"
 )
 
 type PackageBuildpackOptions struct {
@@ -74,7 +74,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	}
 
 	switch opts.Format {
-	case FormatCNB:
+	case FormatFile:
 		return packageBuilder.SaveAsFile(opts.Name)
 	case FormatImage:
 		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish)
