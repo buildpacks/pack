@@ -79,7 +79,8 @@ func main() {
 	rootCmd.Version = cmd.Version
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)
 
-	if err := rootCmd.Execute(); err != nil {
+	ctx := commands.CreateCancellableContext()
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		if commands.IsSoftError(err) {
 			os.Exit(2)
 		}

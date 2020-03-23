@@ -46,7 +46,7 @@ func SuggestBuilders(logger logging.Logger, client PackClient) *cobra.Command {
 		Use:   "suggest-builders",
 		Short: "Display list of recommended builders",
 		Args:  cobra.NoArgs,
-		Run: func(*cobra.Command, []string) {
+		Run: func(cmd *cobra.Command, s []string) {
 			suggestBuilders(logger, client)
 		},
 	}
