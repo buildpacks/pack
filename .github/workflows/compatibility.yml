@@ -59,7 +59,9 @@ jobs:
       - name: Install previous pack binary
         if: matrix.pack_kind == 'previous' || matrix.create_builder_kind == 'previous'
         run: |
-          curl -s -L -o previous-pack.tgz ${{ steps.pack-download-url.outputs.result }}
+          curl -sL -w 'RESP_CODE:%{response_code}\n' \
+            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -o previous-pack.tgz ${{ steps.pack-download-url.outputs.result }}
           mkdir previous-pack
           tar -xvf previous-pack.tgz -C previous-pack
           echo "::set-env name=PREVIOUS_PACK_PATH::$PWD/previous-pack/pack"
@@ -81,7 +83,9 @@ jobs:
       - name: Downlad and untar previous pack tarball
         if: matrix.pack_kind == 'previous' || matrix.create_builder_kind == 'previous'
         run: |
-          curl -s -L -o previous-pack-tarball.tgz ${{ steps.pack-tarball-url.outputs.result }}
+          curl -sL -w 'RESP_CODE:%{response_code}\n' \
+            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -o previous-pack-tarball.tgz ${{ steps.pack-tarball-url.outputs.result }}
           mkdir previous-pack-repo
           tar -xvf previous-pack-tarball.tgz -C previous-pack-repo
           pack_repo_dirname=$(ls previous-pack-repo)
@@ -150,8 +154,8 @@ jobs:
       - name: Download and extract latest lifecycle
         if: matrix.lifecycle_kind == 'current'
         run: |
-          curl -s -L \
-            --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+          curl -sL -w 'RESP_CODE:%{response_code}\n' \
+            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
             -o latest-lifecycle.zip \
             ${{ steps.latest-lifecycle-url.outputs.result }}
           mkdir latest-lifecycle
@@ -179,7 +183,9 @@ jobs:
         if: matrix.lifecycle_kind == 'previous'
         run: |
           mkdir previous-lifecycle
-          curl -s -L -o previous-lifecycle/previous-lifecycle.tgz ${{ steps.previous-lifecycle-download-url.outputs.result }}
+          curl -sL -w 'RESP_CODE:%{response_code}\n' \
+            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            -o previous-lifecycle/previous-lifecycle.tgz ${{ steps.previous-lifecycle-download-url.outputs.result }}
           echo "::set-env name=PREVIOUS_LIFECYCLE_PATH::$PWD/previous-lifecycle/previous-lifecycle.tgz"
       - name: Acceptance
         env:
