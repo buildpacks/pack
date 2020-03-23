@@ -337,8 +337,6 @@ func checkResponse(response dockertypes.ImageBuildResponse) error {
 func CreateImageOnRemote(t *testing.T, dockerCli client.CommonAPIClient, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
 	t.Helper()
 	imageName := registryConfig.RepoName(repoName)
-
-	defer DockerRmi(dockerCli, imageName)
 	CreateImage(t, dockerCli, imageName, dockerFile)
 	AssertNil(t, PushImage(dockerCli, imageName, registryConfig))
 	return imageName

@@ -3,6 +3,7 @@ package build_test
 import (
 	"bytes"
 	"context"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -50,6 +51,24 @@ func TestPhases(t *testing.T) {
 }
 
 func testPhases(t *testing.T, when spec.G, it spec.S) {
+	var tmpDir string
+
+	it.Before(func() {
+		var err error
+		tmpDir, err = ioutil.TempDir("", "phases-test")
+		h.AssertNil(t, err)
+
+		dockerConfigDir, err := ioutil.TempDir("", "empty-docker-config-dir")
+		h.AssertNil(t, err)
+
+		h.AssertNil(t, os.Setenv("DOCKER_CONFIG", dockerConfigDir))
+	})
+
+	it.After(func() {
+		h.AssertNil(t, os.RemoveAll(tmpDir))
+		h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
+	})
+
 	when("#Detect", func() {
 		it("creates a phase and then runs it", func() {
 			lifecycle := fakeLifecycle(t, phasesRepoName, false)
