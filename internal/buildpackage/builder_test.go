@@ -520,6 +520,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertOnTarEntry(t, outputFile, "/index.json",
 				h.HasOwnerAndGroup(0, 0),
+				h.HasFileMode(0755),
 				withContents(func(data []byte) {
 					index := v1.Index{}
 					err := json.Unmarshal(data, &index)
@@ -565,10 +566,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertOnTarEntry(t, outputFile, "/blobs",
 				h.IsDirectory(),
-				h.HasOwnerAndGroup(0, 0))
+				h.HasOwnerAndGroup(0, 0),
+				h.HasFileMode(0755))
 			h.AssertOnTarEntry(t, outputFile, "/blobs/sha256",
 				h.IsDirectory(),
-				h.HasOwnerAndGroup(0, 0))
+				h.HasOwnerAndGroup(0, 0),
+				h.HasFileMode(0755))
 
 			// layer: application/vnd.docker.image.rootfs.diff.tar.gzip
 			buildpackLayerSHA, err := computeBuildpackLayerSHA(buildpack1)
@@ -576,6 +579,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertOnTarEntry(t, outputFile,
 				"/blobs/sha256/"+buildpackLayerSHA,
 				h.HasOwnerAndGroup(0, 0),
+				h.HasFileMode(0755),
 				h.IsGzipped(),
 				h.AssertOnNestedTar("/cnb/buildpacks/bp.1.id",
 					h.IsDirectory(),
