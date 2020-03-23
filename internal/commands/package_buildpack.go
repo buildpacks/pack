@@ -28,7 +28,6 @@ type BuildpackPackager interface {
 
 func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
 	var flags PackageBuildpackFlags
-	ctx := createCancellableContext()
 	cmd := &cobra.Command{
 		Use:   "package-buildpack <image-name> --package-config <package-config-path>",
 		Args:  cobra.ExactArgs(1),
@@ -40,7 +39,7 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 			}
 
 			imageName := args[0]
-			if err := client.PackageBuildpack(ctx, pack.PackageBuildpackOptions{
+			if err := client.PackageBuildpack(cmd.Context(), pack.PackageBuildpackOptions{
 				Name:    imageName,
 				Config:  config,
 				Publish: flags.Publish,

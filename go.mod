@@ -27,7 +27,7 @@ require (
 	github.com/opencontainers/selinux v1.3.3 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sclevine/spec v1.4.0
-	github.com/spf13/cobra v0.0.5
+	github.com/spf13/cobra v0.0.6
 	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e // indirect
