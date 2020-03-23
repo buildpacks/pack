@@ -132,6 +132,29 @@ func AssertSliceContains(t *testing.T, slice []string, expected ...string) {
 	}
 }
 
+func AssertSliceContainsMatch(t *testing.T, slice []string, expected ...string) {
+	t.Helper()
+
+	var missing []string
+
+	for _, expectedStr := range expected {
+		var found bool
+		for _, actualStr := range slice {
+			if regexp.MustCompile(expectedStr).MatchString(actualStr) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			missing = append(missing, expectedStr)
+		}
+	}
+
+	if len(missing) > 0 {
+		t.Fatalf("Expected %s to contain elements %s", slice, missing)
+	}
+}
+
 func AssertSliceContainsOnly(t *testing.T, slice []string, expected ...string) {
 	t.Helper()
 	extra, missing, _ := stringset.Compare(slice, expected)
