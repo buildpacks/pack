@@ -29,7 +29,6 @@ type BuildpackPackager interface {
 
 func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
 	var flags PackageBuildpackFlags
-	ctx := createCancellableContext()
 	cmd := &cobra.Command{
 		Use:   `package-buildpack <name> --package-config <package-config-path>`,
 		Short: "Package buildpack in OCI format.",
@@ -41,7 +40,7 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 			}
 
 			name := args[0]
-			if err := client.PackageBuildpack(ctx, pack.PackageBuildpackOptions{
+			if err := client.PackageBuildpack(cmd.Context(), pack.PackageBuildpackOptions{
 				Name:    name,
 				Format:  flags.Format,
 				Config:  config,

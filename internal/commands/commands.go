@@ -28,6 +28,19 @@ func AddHelpFlag(cmd *cobra.Command, commandName string) {
 	cmd.Flags().BoolP("help", "h", false, fmt.Sprintf("Help for '%s'", commandName))
 }
 
+func CreateCancellableContext() context.Context {
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		<-signals
+		cancel()
+	}()
+
+	return ctx
+}
+
 func logError(logger logging.Logger, f func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
@@ -45,19 +58,6 @@ func logError(logger logging.Logger, f func(cmd *cobra.Command, args []string) e
 
 func multiValueHelp(name string) string {
 	return fmt.Sprintf("\nRepeat for each %s in order,\n  or supply once by comma-separated list", name)
-}
-
-func createCancellableContext() context.Context {
-	signals := make(chan os.Signal)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	ctx, cancel := context.WithCancel(context.Background())
-
-	go func() {
-		<-signals
-		cancel()
-	}()
-
-	return ctx
 }
 
 func getMirrors(config config.Config) map[string][]string {

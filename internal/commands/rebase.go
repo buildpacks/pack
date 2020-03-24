@@ -11,7 +11,6 @@ import (
 
 func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	var opts pack.RebaseOptions
-	ctx := createCancellableContext()
 
 	cmd := &cobra.Command{
 		Use:   "rebase <image-name>",
@@ -20,7 +19,7 @@ func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			opts.RepoName = args[0]
 			opts.AdditionalMirrors = getMirrors(cfg)
-			if err := client.Rebase(ctx, opts); err != nil {
+			if err := client.Rebase(cmd.Context(), opts); err != nil {
 				return err
 			}
 			logger.Infof("Successfully rebased image %s", style.Symbol(opts.RepoName))

@@ -35,7 +35,6 @@ type BuildFlags struct {
 
 func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
 	var flags BuildFlags
-	ctx := createCancellableContext()
 
 	cmd := &cobra.Command{
 		Use:   "build <image-name>",
@@ -80,7 +79,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				}
 			}
 
-			if err := packClient.Build(ctx, pack.BuildOptions{
+			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           flags.Builder,
 				AdditionalMirrors: getMirrors(cfg),
