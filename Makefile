@@ -12,6 +12,16 @@ export GOFLAGS:=$(GOFLAGS)
 
 all: clean verify test build
 
+mod-tidy:
+	$(GOCMD) mod tidy
+	cd tools; $(GOCMD) mod tidy
+	
+mod-vendor:
+	$(GOCMD) mod vendor
+	cd tools; $(GOCMD) mod vendor
+	
+tidy: mod-tidy mod-vendor format
+
 build:
 	@echo "> Building..."
 	mkdir -p ./out
@@ -66,10 +76,23 @@ generate: install-mockgen
 
 verify-format: install-goimports
 	@echo "> Verifying format..."
-	@test -z "$(shell goimports -l -local ${PACKAGE_BASE} ${SRC})";\
-	_err=$$?;\
-	[ $$_err -ne 0 ] && echo "ERROR: Format verification failed!\n" &&\
-	goimports -d -local ${PACKAGE_BASE} ${SRC} && exit $$_err;\
+	@test -z "$(shell goimports -l -local ${PACKAGE_BASE} ${SRC})"; _err=$$?;\
+	[ $$_err -ne 0 ] &&\
+	echo "ERROR: Format verification failed!\n" &&\
+	goimports -d -local ${PACKAGE_BASE} ${SRC} &&\
+	exit $$_err;\
+	exit 0;
+
+prepare-for-pr: tidy verify test
+	@git diff-index --quiet HEAD --; _err=$$?;\
+	[ $$_err -ne 0 ] &&\
+	echo "-----------------" &&\
+	echo "NOTICE: There are some files that have not been committed." &&\
+	echo "-----------------\n" &&\
+	git status &&\
+	echo "\n-----------------" &&\
+	echo "NOTICE: There are some files that have not been committed." &&\
+	echo "-----------------\n"  &&\
 	exit 0;
 
 .PHONY: clean build format imports lint test unit acceptance verify verify-format

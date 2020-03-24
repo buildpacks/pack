@@ -3,7 +3,6 @@ module github.com/buildpacks/pack/tools
 go 1.13
 
 require (
-	github.com/bombsimon/wsl v1.2.8 // indirect
 	github.com/bombsimon/wsl/v2 v2.1.0 // indirect
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/gogo/protobuf v1.3.1 // indirect
