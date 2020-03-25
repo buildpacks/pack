@@ -86,9 +86,10 @@ func testDaemon() {
 
 func testRegistryAccess(repoName string) {
 	fmt.Println("registry test")
+	fmt.Printf("CNB_REGISTRY_AUTH=%+v\n", os.Getenv("CNB_REGISTRY_AUTH"))
 	ref, authenticator, err := auth.ReferenceForRepoName(auth.EnvKeychain("CNB_REGISTRY_AUTH"), repoName)
 	if err != nil {
-		fmt.Println("fail")
+		fmt.Println("fail:", err)
 		os.Exit(1)
 	}
 

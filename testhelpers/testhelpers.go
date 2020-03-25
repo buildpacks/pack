@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -187,6 +186,17 @@ func AssertNotNil(t *testing.T, actual interface{}) {
 	}
 }
 
+func AssertTarball(t *testing.T, path string) {
+	t.Helper()
+	f, err := os.Open(path)
+	AssertNil(t, err)
+	defer f.Close()
+
+	reader := tar.NewReader(f)
+	_, err = reader.Next()
+	AssertNil(t, err)
+}
+
 func isNil(value interface{}) bool {
 	return value == nil || (reflect.TypeOf(value).Kind() == reflect.Ptr && reflect.ValueOf(value).IsNil())
 }
@@ -327,8 +337,6 @@ func checkResponse(response dockertypes.ImageBuildResponse) error {
 func CreateImageOnRemote(t *testing.T, dockerCli client.CommonAPIClient, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
 	t.Helper()
 	imageName := registryConfig.RepoName(repoName)
-
-	defer DockerRmi(dockerCli, imageName)
 	CreateImage(t, dockerCli, imageName, dockerFile)
 	AssertNil(t, PushImage(dockerCli, imageName, registryConfig))
 	return imageName
@@ -537,21 +545,6 @@ func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id stri
 	return <-copyErr
 }
 
-func GetFreePort() (string, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	if err != nil {
-		return "", err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return "", err
-	}
-	defer l.Close()
-
-	return strconv.Itoa(l.Addr().(*net.TCPAddr).Port), nil
-}
-
 func CreateTGZ(t *testing.T, srcDir, tarDir string, mode int64) string {
 	t.Helper()
 
@@ -586,47 +579,4 @@ func writeTAR(t *testing.T, srcDir, tarDir string, mode int64, w io.Writer) {
 
 	err := archive.WriteDirToTar(tw, srcDir, tarDir, 0, 0, mode, true)
 	AssertNil(t, err)
-}
-
-func ListTarContents(tarPath string) ([]tar.Header, error) {
-	var (
-		tarFile    *os.File
-		gzipReader *gzip.Reader
-		fhFinal    io.Reader
-		err        error
-	)
-
-	tarFile, err = os.Open(tarPath)
-	fhFinal = tarFile
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to open tar '%s'", tarPath)
-	}
-
-	defer tarFile.Close()
-
-	if filepath.Ext(tarPath) == ".tgz" {
-		gzipReader, err = gzip.NewReader(tarFile)
-		fhFinal = gzipReader
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create gzip reader")
-		}
-
-		defer gzipReader.Close()
-	}
-
-	var headers []tar.Header
-	tr := tar.NewReader(fhFinal)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get next tar entry")
-		}
-
-		headers = append(headers, *header)
-	}
-
-	return headers, nil
 }
