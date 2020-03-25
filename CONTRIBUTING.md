@@ -3,7 +3,7 @@ document helps you get started.
 
 ## Project Policies
 
-This repository adhere's to the following project policies:
+This repository adheres to the following project policies:
 
 - [Code of Conduct](https://github.com/buildpacks/.github/blob/master/CODE_OF_CONDUCT.md)
 - [Security](https://github.com/buildpacks/.github/blob/master/SECURITY.md)
