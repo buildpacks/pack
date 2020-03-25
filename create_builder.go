@@ -88,11 +88,6 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		bldr.AddBuildpack(fetchedBp)
 	}
 
-	registryCache, err := c.getRegistry(opts.Registry)
-	if err != nil {
-		return errors.Wrapf(err, "invalid registry '%s'", opts.Registry)
-	}
-
 	for _, pkg := range opts.Config.Buildpacks.Packages() {
 		locatorType, err := buildpack.GetLocatorType(pkg.ImageName, []dist.BuildpackInfo{})
 		if err != nil {
@@ -110,6 +105,11 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 				bldr.AddBuildpack(bp)
 			}
 		case buildpack.RegistryLocator:
+			registryCache, err := c.getRegistry(opts.Registry)
+			if err != nil {
+				return errors.Wrapf(err, "invalid registry '%s'", opts.Registry)
+			}
+
 			registryBp, err := registryCache.LocateBuildpack(pkg.ImageName)
 			if err != nil {
 				return errors.Wrapf(err, "locating in registry %s", style.Symbol(pkg.ImageName))
