@@ -484,7 +484,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("packages", func() {
 			var (
-				packageImage    *fakes.Image
+				packageImage *fakes.Image
 			)
 
 			createBuildpack := func(descriptor dist.BuildpackDescriptor) string {

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/buildpacks/pack/internal/config"
 
 	"github.com/pkg/errors"

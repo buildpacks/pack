@@ -1762,7 +1762,7 @@ func diffIDForFile(t *testing.T, path string) string {
 	return "sha256:" + hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 }
 
-func CreateRegistryFixture(t *testing.T, tmpDir string) (string) {
+func CreateRegistryFixture(t *testing.T, tmpDir string) string {
 	// copy fixture to temp dir
 	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
 

@@ -12,8 +12,8 @@ import (
 
 	ggcrname "github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
-	"gopkg.in/src-d/go-git.v4"
 	"golang.org/x/mod/semver"
+	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/buildpacks/pack/internal/buildpack"
 )

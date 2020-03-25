@@ -16,7 +16,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func createRegistryFixture(t *testing.T, tmpDir string) (string) {
+func createRegistryFixture(t *testing.T, tmpDir string) string {
 	// copy fixture to temp dir
 	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
 

@@ -6,8 +6,9 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/buildpack"
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
