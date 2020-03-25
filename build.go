@@ -26,7 +26,6 @@ import (
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/paths"
-	"github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
@@ -102,12 +101,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	registryCache, err := c.getRegistry(opts.Registry)
-	if err != nil {
-		return errors.Wrapf(err, "invalid registry '%s'", opts.Registry)
-	}
-
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), opts.Buildpacks, opts.NoPull, opts.Publish, registryCache)
+	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), opts.Buildpacks, opts.NoPull, opts.Publish, opts.Registry)
 	if err != nil {
 		return err
 	}
@@ -397,7 +391,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string, noPull bool, publish bool, registryCache registry.Cache) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string, noPull bool, publish bool, registry string) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
 	order = dist.Order{{Group: []dist.BuildpackRef{}}}
 	for _, bp := range declaredBPs {
 		locatorType, err := buildpack.GetLocatorType(bp, builderBPs)
@@ -456,6 +450,11 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Buildp
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.RegistryLocator:
+			registryCache, err := c.getRegistry(registry)
+			if err != nil {
+				return fetchedBPs, order, errors.Wrapf(err, "invalid registry '%s'", registry)
+			}
+
 			registryBp, err := registryCache.LocateBuildpack(bp)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
