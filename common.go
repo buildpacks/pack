@@ -3,6 +3,7 @@ package pack
 import (
 	"errors"
 	"fmt"
+
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/registry"
 
@@ -90,4 +91,3 @@ func getBestRunMirror(registry string, runImage string, mirrors []string, prefer
 
 	return runImage
 }
-
