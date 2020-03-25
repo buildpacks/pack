@@ -9,6 +9,7 @@ import (
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -178,13 +179,13 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertEq(t, info.Processes,
 						ProcessDetails{
-							DefaultProcess: &lifecycle.Process{
+							DefaultProcess: &launch.Process{
 								Type:    "web",
 								Command: "/start/web-process",
 								Args:    []string{"-p", "1234"},
 								Direct:  false,
 							},
-							OtherProcesses: []lifecycle.Process{
+							OtherProcesses: []launch.Process{
 								{
 									Type:    "other-process",
 									Command: "/other/process",
@@ -207,13 +208,13 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertEq(t, info.Processes,
 							ProcessDetails{
-								DefaultProcess: &lifecycle.Process{
+								DefaultProcess: &launch.Process{
 									Type:    "other-process",
 									Command: "/other/process",
 									Args:    []string{"opt", "1"},
 									Direct:  true,
 								},
-								OtherProcesses: []lifecycle.Process{
+								OtherProcesses: []launch.Process{
 									{
 										Type:    "web",
 										Command: "/start/web-process",
@@ -238,7 +239,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, info.Processes,
 							ProcessDetails{
 								DefaultProcess: nil,
-								OtherProcesses: []lifecycle.Process{
+								OtherProcesses: []launch.Process{
 									{
 										Type:    "other-process",
 										Command: "/other/process",
@@ -278,7 +279,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, info.Processes,
 						ProcessDetails{
 							DefaultProcess: nil,
-							OtherProcesses: []lifecycle.Process{
+							OtherProcesses: []launch.Process{
 								{
 									Type:    "other-process",
 									Command: "/other/process",

@@ -213,7 +213,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, true).Return(notPackageImage, nil)
 
 			h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-				Name: "",
+				Name: "some/package",
 				Config: pubbldpkg.Config{
 					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 						API:    api.MustParse("0.2"),
@@ -225,6 +225,25 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				Publish: false,
 				NoPull:  false,
 			}), "could not find label 'io.buildpacks.buildpackage.metadata' on image 'not/package'")
+		})
+	})
+
+	when("unknown format is provided", func() {
+		it("should error", func() {
+			err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+				Name:   "some-buildpack",
+				Format: "invalid-format",
+				Config: pubbldpkg.Config{
+					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+						API:    api.MustParse("0.2"),
+						Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+						Stacks: []dist.Stack{{ID: "some.stack.id"}},
+					})},
+				},
+				Publish: false,
+				NoPull:  false,
+			})
+			h.AssertError(t, err, "unknown format: 'invalid-format'")
 		})
 	})
 }

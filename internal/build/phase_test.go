@@ -15,8 +15,10 @@ import (
 	"time"
 
 	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/lifecycle/auth"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -278,12 +280,16 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("provides auth for registry in the container", func() { // TODO: fix this flake [https://github.com/buildpacks/pack/issues/533].
-					h.CreateImageOnRemote(t, dockerCli, registry, "packs/build:v3alpha2", "FROM busybox")
+					repoName := h.CreateImageOnRemote(t, dockerCli, registry, "packs/build:v3alpha2", "FROM busybox")
+
+					authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
+					h.AssertNil(t, err)
+
 					configProvider := build.NewPhaseConfigProvider(
 						phaseName,
 						lifecycle,
-						build.WithArgs("registry", registry.RepoName("packs/build:v3alpha2")),
-						build.WithRegistryAccess(registry.RepoName("packs/build:v3alpha2")),
+						build.WithArgs("registry", repoName),
+						build.WithRegistryAccess(authConfig),
 					)
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
@@ -349,7 +355,7 @@ func assertRunSucceeds(t *testing.T, phase build.RunnerCleaner, outBuf *bytes.Bu
 	t.Helper()
 	if err := phase.Run(context.TODO()); err != nil {
 		phase.Cleanup()
-		t.Fatalf("Failed to run phase '%s' \n stdout: '%s' \n stderr '%s'", err, outBuf.String(), errBuf.String())
+		t.Fatalf("Failed to run phase: %s\nstdout:\n%s\nstderr:\n%s\n", err, outBuf.String(), errBuf.String())
 	}
 	phase.Cleanup()
 }
