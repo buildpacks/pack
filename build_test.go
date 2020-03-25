@@ -1301,7 +1301,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Builder:    builderName,
 							ClearCache: true,
 							Buildpacks: []string{
-								"urn:cnb:registry:example/foo",
+								"urn:cnb:registry:example/foo@1.0.0",
 							},
 							Registry: registryFixture,
 						})
