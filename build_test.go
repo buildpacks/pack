@@ -1235,7 +1235,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					)
 
 					it.Before(func() {
-
 						var err error
 						tmpDir, err = ioutil.TempDir("", "registry")
 						h.AssertNil(t, err)
@@ -1788,6 +1787,7 @@ func CreateRegistryFixture(t *testing.T, tmpDir string) string {
 			When:  time.Now(),
 		},
 	})
+	h.AssertNil(t, err)
 
 	_, err = repository.CommitObject(commit)
 	h.AssertNil(t, err)

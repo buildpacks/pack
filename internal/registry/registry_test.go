@@ -42,6 +42,7 @@ func createRegistryFixture(t *testing.T, tmpDir string) string {
 			When:  time.Now(),
 		},
 	})
+	h.AssertNil(t, err)
 
 	_, err = repository.CommitObject(commit)
 	h.AssertNil(t, err)
@@ -133,6 +134,7 @@ func TestRegistryCache(t *testing.T) {
 						When:  time.Now(),
 					},
 				})
+				h.AssertNil(t, err)
 
 				_, err = r.CommitObject(commit)
 				h.AssertNil(t, err)
@@ -143,7 +145,6 @@ func TestRegistryCache(t *testing.T) {
 				assertGitHeadEq(t, registryFixture, registryCache.Root)
 			})
 		})
-
 	})
 
 	spec.Run(t, "Buildpack", func(t *testing.T, when spec.G, it spec.S) {

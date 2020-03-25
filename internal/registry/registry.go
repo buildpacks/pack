@@ -67,6 +67,9 @@ func (r *RegistryCache) createCache() error {
 	repository, err := git.PlainClone(root, false, &git.CloneOptions{
 		URL: r.URL,
 	})
+	if err != nil {
+		return err
+	}
 
 	w, err := repository.Worktree()
 	if err != nil {
@@ -138,20 +141,21 @@ func (r *RegistryCache) Refresh() error {
 	err = w.Pull(&git.PullOptions{RemoteName: "origin"})
 	if err == git.NoErrAlreadyUpToDate {
 		return nil
-	} else {
-		return err
 	}
+	return err
 }
 
 func (r *RegistryCache) readEntry(ns, name, version string) (Entry, error) {
 	var indexDir string
-	if len(name) < 3 {
+	switch {
+	case len(name) < 3:
 		indexDir = name
-	} else if len(name) < 4 {
+	case len(name) < 4:
 		indexDir = filepath.Join(name[:2], name[2:])
-	} else {
+	default:
 		indexDir = filepath.Join(name[:2], name[2:4])
 	}
+
 	index := filepath.Join(r.Root, indexDir, fmt.Sprintf("%s_%s", ns, name))
 
 	if _, err := os.Stat(index); err != nil {

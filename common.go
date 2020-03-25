@@ -59,9 +59,9 @@ func (c *Client) getRegistry(registryURL string) (registry.RegistryCache, error)
 
 	if registryURL == "" {
 		return registry.NewDefaultRegistryCache(home)
-	} else {
-		return registry.NewRegistryCache(home, registryURL)
 	}
+
+	return registry.NewRegistryCache(home, registryURL)
 }
 
 func contains(slc []string, v string) bool {
