@@ -144,7 +144,15 @@ func (r *RegistryCache) Refresh() error {
 }
 
 func (r *RegistryCache) readEntry(ns, name, version string) (Entry, error) {
-	index := filepath.Join(r.Root, ns[:2], ns[2:4], fmt.Sprintf("%s_%s", ns, name))
+	var indexDir string
+	if len(name) < 3 {
+		indexDir = name
+	} else if len(name) < 4 {
+		indexDir = filepath.Join(name[:2], name[2:])
+	} else {
+		indexDir = filepath.Join(name[:2], name[2:4])
+	}
+	index := filepath.Join(r.Root, indexDir, fmt.Sprintf("%s_%s", ns, name))
 
 	if _, err := os.Stat(index); err != nil {
 		return Entry{}, errors.Wrapf(err, "could not find buildpack: %s/%s", ns, name)
