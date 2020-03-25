@@ -51,10 +51,10 @@ func (c *Client) resolveRunImage(runImage, targetRegistry string, stackInfo buil
 	return runImageName
 }
 
-func (c *Client) getRegistry(registryURL string) (registry.RegistryCache, error) {
+func (c *Client) getRegistry(registryURL string) (registry.Cache, error) {
 	home, err := config.PackHome()
 	if err != nil {
-		return registry.RegistryCache{}, err
+		return registry.Cache{}, err
 	}
 
 	if registryURL == "" {

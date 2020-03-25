@@ -67,11 +67,11 @@ func assertGitHeadEq(t *testing.T, path1, path2 string) {
 }
 
 func TestRegistryCache(t *testing.T) {
-	spec.Run(t, "RegistryCache", func(t *testing.T, when spec.G, it spec.S) {
+	spec.Run(t, "Cache", func(t *testing.T, when spec.G, it spec.S) {
 		var (
 			tmpDir          string
 			registryFixture string
-			registryCache   registry.RegistryCache
+			registryCache   registry.Cache
 		)
 
 		it.Before(func() {

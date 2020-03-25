@@ -34,31 +34,31 @@ type Entry struct {
 	Buildpacks []Buildpack `json:"buildpacks"`
 }
 
-type RegistryCache struct {
+type Cache struct {
 	URL  string
 	Root string
 }
 
-func NewRegistryCache(home, registryURL string) (RegistryCache, error) {
+func NewRegistryCache(home, registryURL string) (Cache, error) {
 	if _, err := os.Stat(home); err != nil {
-		return RegistryCache{}, err
+		return Cache{}, err
 	}
 
 	key := sha256.New()
 	key.Write([]byte(registryURL))
 	cacheDir := fmt.Sprintf("%s-%s", defaultRegistryDir, hex.EncodeToString(key.Sum(nil)))
 
-	return RegistryCache{
+	return Cache{
 		URL:  registryURL,
 		Root: filepath.Join(home, cacheDir),
 	}, nil
 }
 
-func NewDefaultRegistryCache(home string) (RegistryCache, error) {
+func NewDefaultRegistryCache(home string) (Cache, error) {
 	return NewRegistryCache(home, defaultRegistryURL)
 }
 
-func (r *RegistryCache) createCache() error {
+func (r *Cache) createCache() error {
 	root, err := ioutil.TempDir("", "registry")
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func (r *RegistryCache) createCache() error {
 	return os.Rename(w.Filesystem.Root(), r.Root)
 }
 
-func (r *RegistryCache) validateCache() error {
+func (r *Cache) validateCache() error {
 	repository, err := git.PlainOpen(r.Root)
 	if err != nil {
 		return errors.Wrap(err, "could not open registry cache")
@@ -98,7 +98,7 @@ func (r *RegistryCache) validateCache() error {
 	return nil
 }
 
-func (r *RegistryCache) Initialize() error {
+func (r *Cache) Initialize() error {
 	_, err := os.Stat(r.Root)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -123,7 +123,7 @@ func (r *RegistryCache) Initialize() error {
 	return nil
 }
 
-func (r *RegistryCache) Refresh() error {
+func (r *Cache) Refresh() error {
 	if err := r.Initialize(); err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (r *RegistryCache) Refresh() error {
 	return err
 }
 
-func (r *RegistryCache) readEntry(ns, name, version string) (Entry, error) {
+func (r *Cache) readEntry(ns, name, version string) (Entry, error) {
 	var indexDir string
 	switch {
 	case len(name) < 3:
@@ -202,7 +202,7 @@ func (b *Buildpack) Validate() error {
 	return nil
 }
 
-func (r *RegistryCache) LocateBuildpack(bp string) (Buildpack, error) {
+func (r *Cache) LocateBuildpack(bp string) (Buildpack, error) {
 	err := r.Refresh()
 	if err != nil {
 		return Buildpack{}, errors.Wrap(err, "refreshing cache")
