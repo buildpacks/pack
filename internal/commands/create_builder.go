@@ -20,7 +20,6 @@ type CreateBuilderFlags struct {
 
 func CreateBuilder(logger logging.Logger, client PackClient) *cobra.Command {
 	var flags CreateBuilderFlags
-	ctx := createCancellableContext()
 	cmd := &cobra.Command{
 		Use:   "create-builder <image-name> --builder-config <builder-config-path>",
 		Args:  cobra.ExactArgs(1),
@@ -35,7 +34,7 @@ func CreateBuilder(logger logging.Logger, client PackClient) *cobra.Command {
 			}
 
 			imageName := args[0]
-			if err := client.CreateBuilder(ctx, pack.CreateBuilderOptions{
+			if err := client.CreateBuilder(cmd.Context(), pack.CreateBuilderOptions{
 				BuilderName: imageName,
 				Config:      builderConfig,
 				Publish:     flags.Publish,

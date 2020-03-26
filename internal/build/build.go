@@ -47,7 +47,9 @@ func init() {
 }
 
 func NewLifecycle(docker client.CommonAPIClient, logger logging.Logger) *Lifecycle {
-	return &Lifecycle{logger: logger, docker: docker}
+	l := &Lifecycle{logger: logger, docker: docker}
+
+	return l
 }
 
 type LifecycleOptions struct {
@@ -79,31 +81,33 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		l.logger.Debugf("Build cache %s cleared", style.Symbol(buildCache.Name()))
 	}
 
+	phaseFactory := NewDefaultPhaseFactory(l)
+
 	l.logger.Info(style.Step("DETECTING"))
-	if err := l.Detect(ctx, opts.Network, opts.Volumes); err != nil {
+	if err := l.Detect(ctx, opts.Network, opts.Volumes, phaseFactory); err != nil {
 		return err
 	}
 
 	l.logger.Info(style.Step("ANALYZING"))
-	if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Publish, opts.ClearCache); err != nil {
+	if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Publish, opts.ClearCache, phaseFactory); err != nil {
 		return err
 	}
 
 	l.logger.Info(style.Step("RESTORING"))
 	if opts.ClearCache {
 		l.logger.Info("Skipping 'restore' due to clearing cache")
-	} else if err := l.Restore(ctx, buildCache.Name()); err != nil {
+	} else if err := l.Restore(ctx, buildCache.Name(), phaseFactory); err != nil {
 		return err
 	}
 
 	l.logger.Info(style.Step("BUILDING"))
 
-	if err := l.Build(ctx, opts.Network, opts.Volumes); err != nil {
+	if err := l.Build(ctx, opts.Network, opts.Volumes, phaseFactory); err != nil {
 		return err
 	}
 
 	l.logger.Info(style.Step("EXPORTING"))
-	if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name()); err != nil {
+	if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name(), phaseFactory); err != nil {
 		return err
 	}
 
