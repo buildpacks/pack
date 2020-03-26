@@ -76,7 +76,7 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	}
 	defer file.Close()
 
-	warnings, obsoleteConfigs, err := getWarningsForObsoleteFields(file)
+	warnings, err := getWarningsForObsoleteFields(file)
 	if err != nil {
 		return Config{}, nil, errors.Wrapf(err, "check warnings for file '%s'", path)
 	}
@@ -84,7 +84,7 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 		return Config{}, nil, errors.Wrap(err, "reset config file pointer")
 	}
 
-	config, err = parseConfig(file, builderDir, path, obsoleteConfigs)
+	config, err = parseConfig(file, builderDir, path)
 	if err != nil {
 		return Config{}, nil, errors.Wrapf(err, "parse contents of '%s'", path)
 	}
@@ -96,7 +96,7 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	return config, warnings, nil
 }
 
-func getWarningsForObsoleteFields(reader io.Reader) ([]string, int, error) {
+func getWarningsForObsoleteFields(reader io.Reader) ([]string, error) {
 	var warnings []string
 
 	var obsoleteConfig = struct {
@@ -104,20 +104,19 @@ func getWarningsForObsoleteFields(reader io.Reader) ([]string, int, error) {
 	}{}
 
 	if _, err := toml.DecodeReader(reader, &obsoleteConfig); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	if len(obsoleteConfig.Groups) > 0 {
 		warnings = append(warnings, fmt.Sprintf("%s field is obsolete in favor of %s", style.Symbol("groups"), style.Symbol("order")))
 	}
 
-	return warnings, len(obsoleteConfig.Groups), nil
+	return warnings, nil
 }
 
 // parseConfig reads a builder configuration from reader and resolves relative buildpack paths using `relativeToDir`
-func parseConfig(reader io.Reader, relativeToDir, path string, obsoleteConfigs int) (Config, error) {
+func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 	builderConfig := Config{}
-	fmt.Println(obsoleteConfigs)
 	tomlMetadata, err := toml.DecodeReader(reader, &builderConfig)
 	if err != nil {
 		return Config{}, errors.Wrap(err, "decoding toml contents")
@@ -130,10 +129,6 @@ func parseConfig(reader io.Reader, relativeToDir, path string, obsoleteConfigs i
 		pluralizedElement := "element"
 		if len(errorKeys) > 1 {
 			pluralizedElement += "s"
-		}
-
-		if obsoleteConfigs > 0 {
-			return builderConfig, nil
 		}
 
 		return Config{}, errors.Errorf("unknown configuration %s %s in %s",

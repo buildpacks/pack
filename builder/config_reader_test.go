@@ -84,12 +84,10 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 `), 0666))
 				})
 
-				it("returns warnings", func() {
+				it("returns error", func() {
 					_, warns, err := builder.ReadConfig(builderConfigPath)
-					// h.AssertError(t, err, "parse contents of")
-					h.AssertNil(t, err)
-
-					h.AssertSliceContainsOnly(t, warns, "'groups' field is obsolete in favor of 'order'")
+					h.AssertError(t, err, "parse contents of")
+					h.AssertEq(t, len(warns), 0)
 				})
 			})
 
