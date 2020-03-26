@@ -84,7 +84,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 `), 0666))
 				})
 
-				it("returns error", func() {
+				it("returns error when obsolete 'groups' field is used", func() {
 					_, warns, err := builder.ReadConfig(builderConfigPath)
 					h.AssertError(t, err, "parse contents of")
 					h.AssertEq(t, len(warns), 0)
@@ -116,7 +116,7 @@ url = "noop-buildpack.tgz"
 `), 0666))
 				})
 
-				it("returns errors", func() {
+				it("returns errors when 'uri' is misspelled as 'url'", func() {
 					_, _, err := builder.ReadConfig(builderConfigPath)
 					h.AssertError(t, err, "parse contents of")
 				})
@@ -129,7 +129,7 @@ uri = "noop-buildpack.tgz"
 `), 0666))
 				})
 
-				it("returns errors", func() {
+				it("returns errors when 'buildpack' is misspelled as 'buidlpack'", func() {
 					_, _, err := builder.ReadConfig(builderConfigPath)
 					h.AssertError(t, err, "parse contents of")
 				})

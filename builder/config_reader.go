@@ -76,7 +76,7 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	}
 	defer file.Close()
 
-	warnings, err := getWarningsForObsoleteFields(file)
+	warnings, err = getWarningsForObsoleteFields(file)
 	if err != nil {
 		return Config{}, nil, errors.Wrapf(err, "check warnings for file '%s'", path)
 	}
