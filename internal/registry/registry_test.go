@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/pkg/archive"
 	"github.com/sclevine/spec"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
@@ -20,8 +19,7 @@ func createRegistryFixture(t *testing.T, tmpDir string) string {
 	// copy fixture to temp dir
 	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
 
-	err := archive.CopyResource(filepath.Join("..", "..", "testdata", "registry"), registryFixtureCopy, false)
-	h.AssertNil(t, err)
+	h.RecursiveCopyNow(t, filepath.Join("..", "..", "testdata", "registry"), registryFixtureCopy)
 
 	// git init that dir
 	repository, err := git.PlainInit(registryFixtureCopy, false)

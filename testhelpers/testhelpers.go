@@ -580,3 +580,37 @@ func writeTAR(t *testing.T, srcDir, tarDir string, mode int64, w io.Writer) {
 	err := archive.WriteDirToTar(tw, srcDir, tarDir, 0, 0, mode, true)
 	AssertNil(t, err)
 }
+
+func RecursiveCopyNow(t *testing.T, src, dst string) {
+	t.Helper()
+	err := os.MkdirAll(dst, 0755)
+	AssertNil(t, err)
+
+	fis, err := ioutil.ReadDir(src)
+	AssertNil(t, err)
+	for _, fi := range fis {
+		if fi.Mode().IsRegular() {
+			srcFile, err := os.Open(filepath.Join(src, fi.Name()))
+			AssertNil(t, err)
+			dstFile, err := os.Create(filepath.Join(dst, fi.Name()))
+			AssertNil(t, err)
+			_, err = io.Copy(dstFile, srcFile)
+			AssertNil(t, err)
+			modifiedTime := time.Now().Local()
+			err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedTime, modifiedTime)
+			AssertNil(t, err)
+			err = os.Chmod(filepath.Join(dst, fi.Name()), 0664)
+			AssertNil(t, err)
+		}
+		if fi.IsDir() {
+			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
+			AssertNil(t, err)
+			RecursiveCopyNow(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+		}
+	}
+	modifiedTime := time.Now().Local()
+	err = os.Chtimes(dst, modifiedTime, modifiedTime)
+	AssertNil(t, err)
+	err = os.Chmod(dst, 0775)
+	AssertNil(t, err)
+}

@@ -22,7 +22,6 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
 	"github.com/heroku/color"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/sclevine/spec"
@@ -1765,8 +1764,7 @@ func CreateRegistryFixture(t *testing.T, tmpDir string) string {
 	// copy fixture to temp dir
 	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
 
-	err := archive.CopyResource(filepath.Join("testdata", "registry"), registryFixtureCopy, false)
-	h.AssertNil(t, err)
+	h.RecursiveCopyNow(t, filepath.Join("testdata", "registry"), registryFixtureCopy)
 
 	// git init that dir
 	repository, err := git.PlainInit(registryFixtureCopy, false)
