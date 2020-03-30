@@ -1704,7 +1704,6 @@ func assertMockAppRunsWithOutput(t *testing.T, repoName string, expectedOutputs 
 	assertMockAppResponseContains(t, launchPort, 10*time.Second, expectedOutputs...)
 }
 
-// TODO this can probably be abstracted along with `assertMockAppRunsWithOutput` to a more generic function
 func assertMockAppLogs(t *testing.T, repoName string, expectedOutputs ...string) {
 	t.Helper()
 	containerName := "test-" + h.RandString(10)
