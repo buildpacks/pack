@@ -548,10 +548,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 					when("--default-process", func() {
 						it("sets the default process from those in the process list", func() {
-							h.SkipIf(t,
-								!packSemver.GreaterThan(semver.MustParse("0.9.0")) || packSemver.Equal(semver.MustParse("0.0.0")),
-								"only pack > 0.9.0 supports setting the default process",
-							)
+							h.SkipIf(t, !packSupports(packPath, "build --default-process"), "--default-process flag is not supported")
 
 							h.SkipIf(t,
 								lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.0")),
