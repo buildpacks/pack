@@ -121,7 +121,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>'. Target path will be prefixed with '/platform/'"+multiValueHelp("volume"))
-	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", "set the ")
+	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", "Set the default process type")
 }
 
 func parseEnv(project project.Descriptor, envFiles []string, envVars []string) (map[string]string, error) {
