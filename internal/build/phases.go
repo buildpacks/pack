@@ -188,7 +188,6 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 	args = append([]string{"-daemon", "-launch-cache", launchCacheDir}, args...)
 	binds = append(binds, fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir))
 
-
 	if l.DefaultProcessType != "" {
 		supportsDefaultProcess := api.MustParse(l.platformAPIVersion).SupportsVersion(api.MustParse(defaultProcessPlatformAPI))
 		if supportsDefaultProcess {
@@ -197,7 +196,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 			l.logger.Warn("You specified a default process type but that is not supported by this version of the lifecycle")
 		}
 	}
-	
+
 	configProvider := NewPhaseConfigProvider(
 		"exporter",
 		l,
