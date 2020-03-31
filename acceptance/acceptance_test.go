@@ -208,8 +208,10 @@ lifecycle:
 func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packPath, packCreateBuilderPath, configDir, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) {
 
 	var (
-		bpDir    = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
-		packHome string
+		bpDir      = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
+		packHome   string
+		packVer    string
+		packSemver *semver.Version
 	)
 
 	// subjectPack creates a pack `exec.Cmd` based on the current configuration
@@ -221,6 +223,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		var err error
 		packHome, err = ioutil.TempDir("", "buildpack.pack.home.")
 		h.AssertNil(t, err)
+		packVer, err = packVersion(packPath)
+		h.AssertNil(t, err)
+		packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(packVer, " ")[0], "v"))
 	})
 
 	it.After(func() {
@@ -534,14 +539,31 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 								"--volume", fmt.Sprintf("%s:%s", tempVolume, "/my-volume-mount-target"),
 							))
 
-							packVer, err := packVersion(packPath)
-							h.AssertNil(t, err)
-							packSemver := semver.MustParse(strings.TrimPrefix(strings.Split(packVer, " ")[0], "v"))
-
 							if packSemver.GreaterThan(semver.MustParse("0.9.0")) || packSemver.Equal(semver.MustParse("0.0.0")) {
 								h.AssertContains(t, output, "Detect: Reading file '/platform/my-volume-mount-target/some-file': some-string")
 							}
 							h.AssertContains(t, output, "Build: Reading file '/platform/my-volume-mount-target/some-file': some-string")
+						})
+					})
+
+					when("--default-process", func() {
+						it("sets the default process from those in the process list", func() {
+							h.SkipIf(t, !packSupports(packPath, "build --default-process"), "--default-process flag is not supported")
+
+							h.SkipIf(t,
+								lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.0")),
+								"skipping default process. Lifecycle does not support it",
+							)
+
+							h.Run(t, subjectPack(
+								"build", repoName,
+								"--default-process", "hello",
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--buildpack", filepath.Join("testdata", "mock_buildpacks", "0.2", "simple-layers-buildpack"),
+							))
+
+							assertMockAppLogs(t, repoName, "hello world")
+
 						})
 					})
 
@@ -1679,6 +1701,23 @@ func assertMockAppRunsWithOutput(t *testing.T, repoName string, expectedOutputs 
 	assertMockAppResponseContains(t, launchPort, 10*time.Second, expectedOutputs...)
 }
 
+func assertMockAppLogs(t *testing.T, repoName string, expectedOutputs ...string) {
+	t.Helper()
+	containerName := "test-" + h.RandString(10)
+	ctr, err := dockerCli.ContainerCreate(context.Background(), &container.Config{
+		Image: repoName,
+	}, nil, nil, containerName)
+	h.AssertNil(t, err)
+
+	var b bytes.Buffer
+	err = h.RunContainer(context.Background(), dockerCli, ctr.ID, &b, &b)
+	h.AssertNil(t, err)
+
+	for _, expectedOutput := range expectedOutputs {
+		h.AssertContains(t, b.String(), expectedOutput)
+	}
+}
+
 func assertMockAppResponseContains(t *testing.T, launchPort string, timeout time.Duration, expectedOutputs ...string) {
 	t.Helper()
 	resp := waitForResponse(t, launchPort, timeout)
@@ -1762,28 +1801,6 @@ func waitForResponse(t *testing.T, port string, timeout time.Duration) string {
 			t.Fatalf("timeout waiting for response: %v", timeout)
 		}
 	}
-}
-
-func ctrlCProc(cmd *exec.Cmd) error {
-	if cmd == nil || cmd.Process == nil || cmd.Process.Pid <= 0 {
-		return fmt.Errorf("invalid pid: %#v", cmd)
-	}
-	if runtime.GOOS == "windows" {
-		return exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprint(cmd.Process.Pid)).Run()
-	}
-	if err := cmd.Process.Signal(os.Interrupt); err != nil {
-		return err
-	}
-	_, err := cmd.Process.Wait()
-	return err
-}
-
-func isCommandRunning(cmd *exec.Cmd) bool {
-	_, err := os.FindProcess(cmd.Process.Pid)
-	if err != nil {
-		return false
-	}
-	return true
 }
 
 // FIXME : buf needs a mutex
