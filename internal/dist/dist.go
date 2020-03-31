@@ -48,6 +48,6 @@ func AddBuildpackToLayersMD(layerMD BuildpackLayers, descriptor BuildpackDescrip
 		Stacks:      descriptor.Stacks,
 		Order:       descriptor.Order,
 		LayerDiffID: diffID,
-		Info:        bpInfo,
+		Info:        BuildpackInfo{Homepage: bpInfo.Homepage},
 	}
 }
