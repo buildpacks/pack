@@ -118,7 +118,7 @@ url = "noop-buildpack.tgz"
 
 				it("returns errors when 'uri' is misspelled as 'url'", func() {
 					_, _, err := builder.ReadConfig(builderConfigPath)
-					h.AssertError(t, err, "parse contents of")
+					h.AssertError(t, err, "unknown configuration elements 'buildpack'")
 				})
 			})
 			when("'buildpack' is misspelled", func() {
@@ -131,7 +131,7 @@ uri = "noop-buildpack.tgz"
 
 				it("returns errors when 'buildpack' is misspelled as 'buidlpack'", func() {
 					_, _, err := builder.ReadConfig(builderConfigPath)
-					h.AssertError(t, err, "parse contents of")
+					h.AssertError(t, err, "unknown configuration elements 'buidlpack'")
 				})
 			})
 		})
