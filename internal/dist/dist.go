@@ -31,11 +31,11 @@ type BuildpackRef struct {
 type BuildpackLayers map[string]map[string]BuildpackLayerInfo
 
 type BuildpackLayerInfo struct {
-	API         *api.Version  `json:"api"`
-	Stacks      []Stack       `json:"stacks,omitempty"`
-	Order       Order         `json:"order,omitempty"`
-	LayerDiffID string        `json:"layerDiffID"`
-	Info        BuildpackInfo `json:"info,omitempty"`
+	API         *api.Version `json:"api"`
+	Stacks      []Stack      `json:"stacks,omitempty"`
+	Order       Order        `json:"order,omitempty"`
+	LayerDiffID string       `json:"layerDiffID"`
+	Homepage    string       `json:"homepage,omitempty"`
 }
 
 func AddBuildpackToLayersMD(layerMD BuildpackLayers, descriptor BuildpackDescriptor, diffID string) {
@@ -48,6 +48,6 @@ func AddBuildpackToLayersMD(layerMD BuildpackLayers, descriptor BuildpackDescrip
 		Stacks:      descriptor.Stacks,
 		Order:       descriptor.Order,
 		LayerDiffID: diffID,
-		Info:        BuildpackInfo{Homepage: bpInfo.Homepage},
+		Homepage:    bpInfo.Homepage,
 	}
 }

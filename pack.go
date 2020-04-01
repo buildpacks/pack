@@ -49,7 +49,7 @@ func extractPackagedBuildpacks(ctx context.Context, pkgImageRef string, fetcher 
 				Info: dist.BuildpackInfo{
 					ID:       bpID,
 					Version:  bpVersion,
-					Homepage: bpInfo.Info.Homepage,
+					Homepage: bpInfo.Homepage,
 				},
 				Stacks: bpInfo.Stacks,
 				Order:  bpInfo.Order,
