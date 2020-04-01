@@ -80,7 +80,7 @@ github.com/docker/go-connections/tlsconfig
 github.com/docker/go-units
 # github.com/gogo/protobuf v1.3.1
 github.com/gogo/protobuf/proto
-# github.com/golang/mock v1.3.1
+# github.com/golang/mock v1.4.1
 github.com/golang/mock/gomock
 # github.com/golang/protobuf v1.3.5
 github.com/golang/protobuf/proto
@@ -111,6 +111,10 @@ github.com/google/go-containerregistry/pkg/v1/stream
 github.com/google/go-containerregistry/pkg/v1/tarball
 github.com/google/go-containerregistry/pkg/v1/types
 github.com/google/go-containerregistry/pkg/v1/v1util
+# github.com/google/go-github/v30 v30.1.0
+github.com/google/go-github/v30/github
+# github.com/google/go-querystring v1.0.0
+github.com/google/go-querystring/query
 # github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d
 github.com/hashicorp/yamux
 # github.com/heroku/color v0.0.6
@@ -166,6 +170,13 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
 # golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
+golang.org/x/crypto/cast5
+golang.org/x/crypto/openpgp
+golang.org/x/crypto/openpgp/armor
+golang.org/x/crypto/openpgp/elgamal
+golang.org/x/crypto/openpgp/errors
+golang.org/x/crypto/openpgp/packet
+golang.org/x/crypto/openpgp/s2k
 golang.org/x/crypto/ssh/terminal
 # golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 golang.org/x/net/html
