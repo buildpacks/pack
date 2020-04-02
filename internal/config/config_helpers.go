@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -8,7 +9,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-func ParseUndecodedKeys(undecodedKeys []toml.Key) string {
+func FormatUndecodedKeys(undecodedKeys []toml.Key) string {
 	unusedKeys := map[string]interface{}{}
 	for _, key := range undecodedKeys {
 		keyName := key.String()
@@ -24,5 +25,12 @@ func ParseUndecodedKeys(undecodedKeys []toml.Key) string {
 	for errorKey := range unusedKeys {
 		errorKeys = append(errorKeys, style.Symbol(errorKey))
 	}
-	return strings.Join(errorKeys, ", ")
+
+	pluralizedElement := "element"
+	if len(errorKeys) > 1 {
+		pluralizedElement += "s"
+	}
+	elements := strings.Join(errorKeys, ", ")
+
+	return fmt.Sprintf("unknown configuration %s %s", pluralizedElement, elements)
 }
