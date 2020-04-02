@@ -108,30 +108,31 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("'uri' is misspelled as url", func() {
+			when("unknown buildpack key is present", func() {
 				it.Before(func() {
 					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
-[buildpack]
+[[buildpacks]]
 url = "noop-buildpack.tgz"
 `), 0666))
 				})
 
-				it("returns errors when 'uri' is misspelled as 'url'", func() {
+				it("returns an error", func() {
 					_, _, err := builder.ReadConfig(builderConfigPath)
-					h.AssertError(t, err, "unknown configuration elements 'buildpack'")
+					h.AssertError(t, err, "unknown configuration element 'buildpacks.url'")
 				})
 			})
-			when("'buildpack' is misspelled", func() {
+
+			when("unknown array table is present", func() {
 				it.Before(func() {
 					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
-[buidlpack]
+[[buidlpack]]
 uri = "noop-buildpack.tgz"
 `), 0666))
 				})
 
-				it("returns errors when 'buildpack' is misspelled as 'buidlpack'", func() {
+				it("returns an error", func() {
 					_, _, err := builder.ReadConfig(builderConfigPath)
-					h.AssertError(t, err, "unknown configuration elements 'buidlpack'")
+					h.AssertError(t, err, "unknown configuration element 'buidlpack'")
 				})
 			})
 		})

@@ -124,16 +124,10 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 
 	undecodedKeys := tomlMetadata.Undecoded()
 	if len(undecodedKeys) > 0 {
-		errorKeys := config.ParseUndecodedKeys(undecodedKeys)
+		unknownElementsMsg := config.FormatUndecodedKeys(undecodedKeys)
 
-		pluralizedElement := "element"
-		if len(errorKeys) > 1 {
-			pluralizedElement += "s"
-		}
-
-		return Config{}, errors.Errorf("unknown configuration %s %s in %s",
-			pluralizedElement,
-			errorKeys,
+		return Config{}, errors.Errorf("%s in %s",
+			unknownElementsMsg,
 			style.Symbol(path),
 		)
 	}

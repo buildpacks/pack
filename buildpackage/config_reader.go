@@ -39,16 +39,10 @@ func (r *ConfigReader) Read(path string) (Config, error) {
 
 	undecodedKeys := tomlMetadata.Undecoded()
 	if len(undecodedKeys) > 0 {
-		errorKeys := config.ParseUndecodedKeys(undecodedKeys)
+		unknownElementsMsg := config.FormatUndecodedKeys(undecodedKeys)
 
-		pluralizedElement := "element"
-		if len(errorKeys) > 1 {
-			pluralizedElement += "s"
-		}
-
-		return packageConfig, errors.Errorf("unknown configuration %s %s in %s",
-			pluralizedElement,
-			errorKeys,
+		return packageConfig, errors.Errorf("%s in %s",
+			unknownElementsMsg,
 			style.Symbol(path),
 		)
 	}
