@@ -44,13 +44,13 @@ func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 	when("#SuggestBuilders", func() {
 		when("description metadata exists", func() {
 			it.Before(func() {
-				mockClient.EXPECT().InspectBuilder("cloudfoundry/cnb:tiny", false).Return(&pack.BuilderInfo{
+				mockClient.EXPECT().InspectBuilder("gcr.io/paketo-buildpacks/builder:tiny", false).Return(&pack.BuilderInfo{
 					Description: "Tiny description",
 				}, nil)
-				mockClient.EXPECT().InspectBuilder("cloudfoundry/cnb:bionic", false).Return(&pack.BuilderInfo{
+				mockClient.EXPECT().InspectBuilder("gcr.io/paketo-buildpacks/builder:bionic", false).Return(&pack.BuilderInfo{
 					Description: "Bionic description",
 				}, nil)
-				mockClient.EXPECT().InspectBuilder("cloudfoundry/cnb:cflinuxfs3", false).Return(&pack.BuilderInfo{
+				mockClient.EXPECT().InspectBuilder("gcr.io/paketo-buildpacks/builder:cflinuxfs3", false).Return(&pack.BuilderInfo{
 					Description: "CFLinuxFS3 description",
 				}, nil)
 				mockClient.EXPECT().InspectBuilder("heroku/buildpacks:18", false).Return(&pack.BuilderInfo{
@@ -62,9 +62,9 @@ func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{})
 				h.AssertNil(t, command.Execute())
 				h.AssertContains(t, outBuf.String(), "Suggested builders:")
-				h.AssertContainsMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'\s+Bionic description`)
-				h.AssertContainsMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'\s+CFLinuxFS3 description`)
-				h.AssertContainsMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:tiny'\s+Tiny description`)
+				h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:bionic'\s+Bionic description`)
+				h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:cflinuxfs3'\s+CFLinuxFS3 description`)
+				h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:tiny'\s+Tiny description`)
 				h.AssertContainsMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks:18'\s+Heroku description`)
 			})
 		})
@@ -100,8 +100,8 @@ func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 }
 
 func assertDefaultDescriptions(t *testing.T, outBuf bytes.Buffer) {
-	h.AssertContainsMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'\s+Small base image with Java & Node.js`)
-	h.AssertContainsMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'\s+Larger base image with Java, Node.js & Python`)
-	h.AssertContainsMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:tiny'\s+Tiny base image \(bionic build image, distroless run image\) with buildpacks for Golang`)
+	h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:bionic'\s+Small base image with buildpacks for Java, Node.js, Golang, & .NET Core`)
+	h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:cflinuxfs3'\s+Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, & PHP`)
+	h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:tiny'\s+Tiny base image \(bionic build image, distroless run image\) with buildpacks for Golang`)
 	h.AssertContainsMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks:18'\s+heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP`)
 }
