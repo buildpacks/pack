@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
@@ -56,6 +57,11 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				logger.Debugf("Using project descriptor located at %s", style.Symbol(actualDescriptorPath))
 			}
 
+			fileFilter, err := getFileFilter(descriptor)
+			if err != nil {
+				return err
+			}
+
 			env, err := parseEnv(descriptor, flags.EnvFiles, flags.Env)
 			if err != nil {
 				return err
@@ -96,6 +102,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 					Volumes: flags.Volumes,
 				},
 				DefaultProcessType: flags.DefaultProcessType,
+				FileFilter:         fileFilter,
 			}); err != nil {
 				return err
 			}
@@ -189,4 +196,25 @@ func parseProjectToml(appPath, descriptorPath string) (project.Descriptor, strin
 
 	descriptor, err := project.ReadProjectDescriptor(actualPath)
 	return descriptor, actualPath, err
+}
+
+func getFileFilter(descriptor project.Descriptor) (func(string) bool, error) {
+	if len(descriptor.Build.Exclude) > 0 {
+		excludes, err := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
+		if err != nil {
+			return nil, err
+		}
+		return func(fileName string) bool {
+			return !excludes.MatchesPath(fileName)
+		}, nil
+	}
+	if len(descriptor.Build.Include) > 0 {
+		includes, err := ignore.CompileIgnoreLines(descriptor.Build.Include...)
+		if err != nil {
+			return nil, err
+		}
+		return includes.MatchesPath, nil
+	}
+
+	return nil, nil
 }

@@ -882,6 +882,119 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							h.AssertNotContains(t, buf.String(), "Successfully built image")
 						})
 					})
+
+					when("--descriptor", func() {
+
+						when("exclude and include", func() {
+							var buildpackTgz, tempAppDir string
+
+							it.Before(func() {
+								var err error
+
+								packVer, err := packVersion(packPath)
+								h.AssertNil(t, err)
+								packSemver := semver.MustParse(strings.TrimPrefix(strings.Split(packVer, " ")[0], "v"))
+								supported := packSemver.GreaterThan(semver.MustParse("0.9.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+								h.SkipIf(t, !supported, "pack --descriptor does NOT support 'exclude' and 'include' feature")
+
+								buildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "descriptor-buildpack"), "./", 0755)
+
+								tempAppDir, err = ioutil.TempDir("", "descriptor-app")
+								h.AssertNil(t, err)
+
+								// Create test directories and files:
+								//
+								// ├── cookie.jar
+								// ├── secrets
+								// │   ├── api_keys.json
+								// |   |── user_token
+								// ├── media
+								// │   ├── mountain.jpg
+								// │   └── person.png
+								// └── test.sh
+								err = os.Mkdir(filepath.Join(tempAppDir, "secrets"), 0755)
+								h.AssertNil(t, err)
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "secrets", "api_keys.json"), []byte("{}"), 0755)
+								h.AssertNil(t, err)
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "secrets", "user_token"), []byte("token"), 0755)
+								h.AssertNil(t, err)
+
+								err = os.Mkdir(filepath.Join(tempAppDir, "media"), 0755)
+								h.AssertNil(t, err)
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "media", "mountain.jpg"), []byte("fake image bytes"), 0755)
+								h.AssertNil(t, err)
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "media", "person.png"), []byte("fake image bytes"), 0755)
+								h.AssertNil(t, err)
+
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "cookie.jar"), []byte("chocolate chip"), 0755)
+								h.AssertNil(t, err)
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "test.sh"), []byte("echo test"), 0755)
+								h.AssertNil(t, err)
+							})
+
+							it.After(func() {
+								h.AssertNil(t, os.RemoveAll(tempAppDir))
+							})
+
+							it("should exclude ALL specified files and directories", func() {
+								projectToml := `
+[project]
+name = "exclude test"
+[[project.licenses]]
+type = "MIT"
+[build]
+exclude = [ "*.sh", "secrets/", "media/metadata" ]
+`
+								excludeDescriptorPath := filepath.Join(tempAppDir, "exclude.toml")
+								err := ioutil.WriteFile(excludeDescriptorPath, []byte(projectToml), 0755)
+								h.AssertNil(t, err)
+
+								output := h.Run(t, subjectPack(
+									"build",
+									repoName,
+									"-p", tempAppDir,
+									"--buildpack", buildpackTgz,
+									"--descriptor", excludeDescriptorPath,
+								))
+								h.AssertNotContains(t, output, "api_keys.json")
+								h.AssertNotContains(t, output, "user_token")
+								h.AssertNotContains(t, output, "test.sh")
+
+								h.AssertContains(t, output, "cookie.jar")
+								h.AssertContains(t, output, "mountain.jpg")
+								h.AssertContains(t, output, "person.png")
+							})
+
+							it("should ONLY include specified files and directories", func() {
+								projectToml := `
+[project]
+name = "include test"
+[[project.licenses]]
+type = "MIT"
+[build]
+include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
+`
+								includeDescriptorPath := filepath.Join(tempAppDir, "include.toml")
+								err := ioutil.WriteFile(includeDescriptorPath, []byte(projectToml), 0755)
+								h.AssertNil(t, err)
+
+								output := h.Run(t, subjectPack(
+									"build",
+									repoName,
+									"-p", tempAppDir,
+									"--buildpack", buildpackTgz,
+									"--descriptor", includeDescriptorPath,
+								))
+								h.AssertNotContains(t, output, "api_keys.json")
+								h.AssertNotContains(t, output, "user_token")
+								h.AssertNotContains(t, output, "test.sh")
+
+								h.AssertContains(t, output, "cookie.jar")
+								h.AssertContains(t, output, "mountain.jpg")
+								h.AssertContains(t, output, "person.png")
+							})
+						})
+					})
 				})
 
 				when("default builder is not set", func() {
@@ -1671,8 +1784,10 @@ func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror 
 }
 
 func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir string) error {
+	defaultFilterFunc := func(file string) bool { return true }
+
 	ctx := context.Background()
-	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true)
+	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, defaultFilterFunc)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
 		Tags:        []string{repoName},

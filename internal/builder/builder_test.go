@@ -55,7 +55,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		baseImage = fakes.NewImage("base/image", "", nil)
 		mockController = gomock.NewController(t)
 		mockLifecycle = testmocks.NewMockLifecycle(mockController)
-		mockLifecycle.EXPECT().Open().Return(archive.ReadDirAsTar(filepath.Join("testdata", "lifecycle"), ".", 0, 0, 0755, true), nil).AnyTimes()
+		mockLifecycle.EXPECT().Open().Return(archive.ReadDirAsTar(filepath.Join("testdata", "lifecycle"), ".", 0, 0, 0755, true, nil), nil).AnyTimes()
 		mockLifecycle.EXPECT().Descriptor().Return(builder.LifecycleDescriptor{
 			Info: builder.LifecycleInfo{
 				Version: &builder.Version{Version: *semver.MustParse("1.2.3")},
