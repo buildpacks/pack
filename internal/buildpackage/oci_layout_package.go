@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"io"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/docker/docker/pkg/ioutils"
@@ -65,7 +64,7 @@ func newOCILayoutPackage(blob dist.Blob) (*ociLayoutPackage, error) {
 	var manifestDescriptor *v1.Descriptor
 	for _, m := range index.Manifests {
 		if m.MediaType == "application/vnd.docker.distribution.manifest.v2+json" {
-			manifestDescriptor = &m //nolint:scopelint
+			manifestDescriptor = &m // nolint:scopelint
 			break
 		}
 	}
@@ -163,7 +162,7 @@ func (o *ociLayoutPackage) GetLayer(diffID string) (io.ReadCloser, error) {
 }
 
 func pathFromDescriptor(descriptor v1.Descriptor) string {
-	return filepath.Join("/blobs", descriptor.Digest.Algorithm().String(), descriptor.Digest.Encoded())
+	return path.Join("/blobs", descriptor.Digest.Algorithm().String(), descriptor.Digest.Encoded())
 }
 
 func unmarshalJSONFromBlob(blob dist.Blob, path string, obj interface{}) error {
