@@ -53,7 +53,7 @@ const (
 	buildImage = "pack-test/build"
 
 	defaultCompilePackVersion = "0.0.0"
-	defaultPlatformAPIVersion = "0.2"
+	defaultPlatformAPIVersion = "0.3"
 )
 
 var (
