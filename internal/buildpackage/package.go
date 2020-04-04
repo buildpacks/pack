@@ -14,9 +14,9 @@ type Package interface {
 	GetLayer(diffID string) (io.ReadCloser, error)
 }
 
-func ExtractBuildpacks(pkgImage Package) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
+func ExtractBuildpacks(pkg Package) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
 	md := &Metadata{}
-	if found, err := dist.GetLabel(pkgImage, MetadataLabel, md); err != nil {
+	if found, err := dist.GetLabel(pkg, MetadataLabel, md); err != nil {
 		return nil, nil, err
 	} else if !found {
 		return nil, nil, errors.Errorf(
@@ -26,7 +26,7 @@ func ExtractBuildpacks(pkgImage Package) (mainBP dist.Buildpack, depBPs []dist.B
 	}
 
 	bpLayers := dist.BuildpackLayers{}
-	ok, err := dist.GetLabel(pkgImage, dist.BuildpackLayersLabel, &bpLayers)
+	ok, err := dist.GetLabel(pkg, dist.BuildpackLayersLabel, &bpLayers)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -53,7 +53,7 @@ func ExtractBuildpacks(pkgImage Package) (mainBP dist.Buildpack, depBPs []dist.B
 			diffID := bpInfo.LayerDiffID // Allow use in closure
 			b := &openerBlob{
 				opener: func() (io.ReadCloser, error) {
-					rc, err := pkgImage.GetLayer(diffID)
+					rc, err := pkg.GetLayer(diffID)
 					if err != nil {
 						return nil, errors.Wrapf(err,
 							"extracting buildpack %s layer (diffID %s)",

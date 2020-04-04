@@ -411,12 +411,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							if _, err := os.Stat(outputTemplate); err != nil {
 								t.Fatal(err.Error())
 							}
-							type process struct {
-								shell       string
-								processType string
-								command     string
-								args        []string
-							}
 							expectedOutput := fillTemplate(t, outputTemplate,
 								map[string]interface{}{
 									"image_name":             repoName,
@@ -644,10 +638,9 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 								)
 
 								packageImageName = packageBuildpackAsImage(t,
-									filepath.Join(packFixturesDir, "package_for_build_cmd.toml"),
 									packPath,
+									filepath.Join(packFixturesDir, "package_for_build_cmd.toml"),
 									lifecycleDescriptor,
-									"simple/package",
 									[]string{
 										"simple-layers-parent-buildpack",
 										"simple-layers-buildpack",
@@ -687,8 +680,8 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 								packageFile = packageBuildpackAsFile(t,
 									tmpDir,
-									filepath.Join(packFixturesDir, "package_for_build_cmd.toml"),
 									packPath,
+									filepath.Join(packFixturesDir, "package_for_build_cmd.toml"),
 									lifecycleDescriptor,
 									[]string{
 										"simple-layers-parent-buildpack",
@@ -1707,10 +1700,9 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 
 	// CREATE PACKAGE
 	packageImageName := packageBuildpackAsImage(t,
-		filepath.Join(configDir, "package.toml"),
 		packPath,
+		filepath.Join(configDir, "package.toml"),
 		lifecycleDescriptor,
-		"test/package",
 		[]string{"simple-layers-buildpack"},
 	)
 
@@ -1756,48 +1748,26 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 	return bldr
 }
 
-func packageBuildpackAsImage(t *testing.T, configPath, packPath string, lifecycleDescriptor builder.LifecycleDescriptor, repoName string, buildpacks []string) string {
-	t.Helper()
-	t.Log("creating package image...")
-
-	// CREATE TEMP WORKING DIR
-	tmpDir, err := ioutil.TempDir("", "create-test-builder")
+func packageBuildpackAsImage(t *testing.T, packPath, configPath string, lifecycleDescriptor builder.LifecycleDescriptor, buildpacks []string) string {
+	tmpDir, err := ioutil.TempDir("", "package-image")
 	h.AssertNil(t, err)
-	defer os.RemoveAll(tmpDir)
 
-	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
-	t.Log("using buildpacks from: ", buildpacksDir)
-	h.RecursiveCopy(t, buildpacksDir, tmpDir)
-
-	// ARCHIVE BUILDPACKS
-	for _, v := range buildpacks {
-		tgz := h.CreateTGZ(t, filepath.Join(buildpacksDir, v), "./", 0755)
-		err := os.Rename(tgz, filepath.Join(tmpDir, v+".tgz"))
-		h.AssertNil(t, err)
-	}
-
-	// COPY config to temp package.toml
-	h.CopyFile(t, configPath, filepath.Join(tmpDir, "package.toml"))
-
-	// NAME PACKAGE
-	packageImageName := registryConfig.RepoName(repoName + "-" + h.RandString(10))
-
-	// CREATE PACKAGE
-	cmd := exec.Command(packPath, "package-buildpack", packageImageName, "--no-color", "-p", filepath.Join(tmpDir, "package.toml"))
-	output := h.Run(t, cmd)
-	h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageImageName))
-	h.AssertNil(t, h.PushImage(dockerCli, packageImageName, registryConfig))
+	outputImage := packageBuildpack(t, tmpDir, packPath, configPath, "image", lifecycleDescriptor, buildpacks)
 
 	// REGISTER CLEANUP
-	key := taskKey("package-buildpack", packageImageName)
+	key := taskKey("package-buildpack", outputImage)
 	suiteManager.RegisterCleanUp("clean-"+key, func() error {
-		return h.DockerRmi(dockerCli, packageImageName)
+		return h.DockerRmi(dockerCli, outputImage)
 	})
-	return packageImageName
+
+	return outputImage
 }
 
-func packageBuildpackAsFile(t *testing.T, tmpDir, configPath, packPath string, lifecycleDescriptor builder.LifecycleDescriptor, buildpacks []string) string {
+func packageBuildpackAsFile(t *testing.T, tmpDir, packPath, configPath string, lifecycleDescriptor builder.LifecycleDescriptor, buildpacks []string) string {
+	return packageBuildpack(t, tmpDir, packPath, configPath, "file", lifecycleDescriptor, buildpacks)
+}
+
+func packageBuildpack(t *testing.T, tmpDir, packPath, configPath, outputFormat string, lifecycleDescriptor builder.LifecycleDescriptor, buildpacks []string) string {
 	t.Helper()
 	t.Log("creating package image...")
 
@@ -1821,14 +1791,28 @@ func packageBuildpackAsFile(t *testing.T, tmpDir, configPath, packPath string, l
 	h.CopyFile(t, configPath, filepath.Join(tmpDir, "package.toml"))
 
 	// CREATE PACKAGE
-	outputFile := filepath.Join(tmpDir, "buildpack-"+h.RandString(8)+".cnb")
+	outputName := "buildpack-" + h.RandString(8)
+	var additionalArgs []string
+	switch outputFormat {
+	case "file":
+		outputName = filepath.Join(tmpDir, outputName+".cnb")
+		additionalArgs = []string{"--format", outputFormat}
+	case "image":
+		outputName = registryConfig.RepoName(outputName)
+	default:
+		t.Fatalf("unknown format: %s", outputFormat)
+	}
 
-	cmd := exec.Command(packPath, "package-buildpack", outputFile, "--no-color", "--format", "file", "-p", filepath.Join(tmpDir, "package.toml"))
+	cmd := exec.Command(packPath, append([]string{
+		"package-buildpack", outputName,
+		"--no-color",
+		"-p", filepath.Join(tmpDir, "package.toml"),
+	}, additionalArgs...)...)
 	cmd.Dir = tmpDir
 	output := h.Run(t, cmd)
-	h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputFile))
+	h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputName))
 
-	return outputFile
+	return outputName
 }
 
 func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror string) error {
