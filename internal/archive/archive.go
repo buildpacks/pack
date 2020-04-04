@@ -122,6 +122,10 @@ func AddFileToTar(tw *tar.Writer, path string, txt string) error {
 
 var ErrEntryNotExist = errors.New("not exist")
 
+func IsEntryNotExist(err error) bool {
+	return err == ErrEntryNotExist || errors.Cause(err) == ErrEntryNotExist
+}
+
 func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 	tr := tar.NewReader(rc)
 	for {

@@ -224,7 +224,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				},
 				Publish: false,
 				NoPull:  false,
-			}), "could not find label 'io.buildpacks.buildpackage.metadata' on image 'not/package'")
+			}), "extracting buildpacks from 'not/package': could not find label 'io.buildpacks.buildpackage.metadata'")
 		})
 	})
 
