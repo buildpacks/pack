@@ -269,9 +269,14 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 		when("builder is created", func() {
 			var (
 				builderName string
+				tmpDir      string
 			)
 
 			it.Before(func() {
+				var err error
+				tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
+				h.AssertNil(t, err)
+
 				key := taskKey("create-builder", runImageMirror, configDir, packCreateBuilderPath, lifecyclePath)
 				value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
 					return createBuilder(t, runImageMirror, configDir, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor), nil
@@ -282,6 +287,28 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 				})
 
 				builderName = value
+			})
+
+			it.After(func() {
+				h.AssertNil(t, os.RemoveAll(tmpDir))
+			})
+
+			when("builder.toml is invalid", func() {
+				it("displays an error", func() {
+					packVer, err := packVersion(packPath)
+					h.AssertNil(t, err)
+					packSemver := semver.MustParse(strings.TrimPrefix(strings.Split(packVer, " ")[0], "v"))
+
+					h.SkipIf(
+						t,
+						packSemver.Compare(semver.MustParse("0.9.0")) <= 0 && !packSemver.Equal(semver.MustParse("0.0.0")),
+						"builder.toml validation not supported",
+					)
+					h.CopyFile(t, filepath.Join(packFixturesDir, "invalid_builder.toml"), filepath.Join(tmpDir, "invalid_builder.toml"))
+
+					_, err = h.RunE(subjectPack("create-builder", "some-builder:build", "--builder-config", filepath.Join(tmpDir, "invalid_builder.toml")))
+					h.AssertError(t, err, "invalid builder toml")
+				})
 			})
 
 			when("build", func() {
