@@ -84,11 +84,10 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 `), 0666))
 				})
 
-				it("returns warnings", func() {
+				it("returns error when obsolete 'groups' field is used", func() {
 					_, warns, err := builder.ReadConfig(builderConfigPath)
-					h.AssertNil(t, err)
-
-					h.AssertSliceContainsOnly(t, warns, "'groups' field is obsolete in favor of 'order'")
+					h.AssertError(t, err, "parse contents of")
+					h.AssertEq(t, len(warns), 0)
 				})
 			})
 
@@ -106,6 +105,34 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					h.AssertSliceContainsOnly(t, warns, "empty 'order' definition")
+				})
+			})
+
+			when("unknown buildpack key is present", func() {
+				it.Before(func() {
+					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+[[buildpacks]]
+url = "noop-buildpack.tgz"
+`), 0666))
+				})
+
+				it("returns an error", func() {
+					_, _, err := builder.ReadConfig(builderConfigPath)
+					h.AssertError(t, err, "unknown configuration element 'buildpacks.url'")
+				})
+			})
+
+			when("unknown array table is present", func() {
+				it.Before(func() {
+					h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+[[buidlpack]]
+uri = "noop-buildpack.tgz"
+`), 0666))
+				})
+
+				it("returns an error", func() {
+					_, _, err := builder.ReadConfig(builderConfigPath)
+					h.AssertError(t, err, "unknown configuration element 'buidlpack'")
 				})
 			})
 		})

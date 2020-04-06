@@ -100,7 +100,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true)
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -127,7 +127,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true)
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -155,7 +155,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/foo", 1234, 2345, 0777, false)
+				err = archive.WriteDirToTar(tw, src, "/foo", 1234, 2345, 0777, false, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -174,7 +174,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/foo", 1234, 2345, 0777, true)
+				err = archive.WriteDirToTar(tw, src, "/foo", 1234, 2345, 0777, true, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -221,7 +221,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 					tw := tar.NewWriter(fh)
 
-					err = archive.WriteDirToTar(tw, tmpSrcDir, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true)
+					err = archive.WriteDirToTar(tw, tmpSrcDir, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, nil)
 					h.AssertNil(t, err)
 					h.AssertNil(t, tw.Close())
 					h.AssertNil(t, fh.Close())
@@ -257,7 +257,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true)
+				err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -284,7 +284,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true)
+				err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -312,7 +312,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteZipToTar(tw, src, "/foo", 1234, 2345, 0777, false)
+				err = archive.WriteZipToTar(tw, src, "/foo", 1234, 2345, 0777, false, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -331,7 +331,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteZipToTar(tw, src, "/foo", 1234, 2345, 0777, true)
+				err = archive.WriteZipToTar(tw, src, "/foo", 1234, 2345, 0777, true, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())

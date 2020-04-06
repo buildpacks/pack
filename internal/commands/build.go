@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
@@ -19,18 +20,19 @@ import (
 )
 
 type BuildFlags struct {
-	AppPath        string
-	Builder        string
-	RunImage       string
-	Env            []string
-	EnvFiles       []string
-	Publish        bool
-	NoPull         bool
-	ClearCache     bool
-	Buildpacks     []string
-	Network        string
-	DescriptorPath string
-	Volumes        []string
+	AppPath            string
+	Builder            string
+	RunImage           string
+	Env                []string
+	EnvFiles           []string
+	Publish            bool
+	NoPull             bool
+	ClearCache         bool
+	Buildpacks         []string
+	Network            string
+	DescriptorPath     string
+	Volumes            []string
+	DefaultProcessType string
 }
 
 func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
@@ -53,6 +55,11 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			}
 			if actualDescriptorPath != "" {
 				logger.Debugf("Using project descriptor located at %s", style.Symbol(actualDescriptorPath))
+			}
+
+			fileFilter, err := getFileFilter(descriptor)
+			if err != nil {
+				return err
 			}
 
 			env, err := parseEnv(descriptor, flags.EnvFiles, flags.Env)
@@ -94,6 +101,8 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 					Network: flags.Network,
 					Volumes: flags.Volumes,
 				},
+				DefaultProcessType: flags.DefaultProcessType,
+				FileFilter:         fileFilter,
 			}); err != nil {
 				return err
 			}
@@ -119,6 +128,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>'. Target path will be prefixed with '/platform/'"+multiValueHelp("volume"))
+	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", "Set the default process type")
 }
 
 func parseEnv(project project.Descriptor, envFiles []string, envVars []string) (map[string]string, error) {
@@ -186,4 +196,25 @@ func parseProjectToml(appPath, descriptorPath string) (project.Descriptor, strin
 
 	descriptor, err := project.ReadProjectDescriptor(actualPath)
 	return descriptor, actualPath, err
+}
+
+func getFileFilter(descriptor project.Descriptor) (func(string) bool, error) {
+	if len(descriptor.Build.Exclude) > 0 {
+		excludes, err := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
+		if err != nil {
+			return nil, err
+		}
+		return func(fileName string) bool {
+			return !excludes.MatchesPath(fileName)
+		}, nil
+	}
+	if len(descriptor.Build.Include) > 0 {
+		includes, err := ignore.CompileIgnoreLines(descriptor.Build.Include...)
+		if err != nil {
+			return nil, err
+		}
+		return includes.MatchesPath, nil
+	}
+
+	return nil, nil
 }

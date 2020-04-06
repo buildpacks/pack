@@ -1020,7 +1020,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					})
 
-					h.AssertError(t, err, "could not find label 'io.buildpacks.buildpackage.metadata' on image 'example.com/some/package'")
+					h.AssertError(t, err, "extracting buildpacks from 'example.com/some/package': could not find label 'io.buildpacks.buildpackage.metadata'")
 				})
 
 				it("fails when no bp layers label is on package", func() {
@@ -1035,7 +1035,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					})
 
-					h.AssertError(t, err, "could not find label 'io.buildpacks.buildpack.layers' on image 'example.com/some/package'")
+					h.AssertError(t, err, "extracting buildpacks from 'example.com/some/package': could not find label 'io.buildpacks.buildpack.layers'")
 				})
 			})
 

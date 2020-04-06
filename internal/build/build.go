@@ -35,6 +35,8 @@ type Lifecycle struct {
 	LayersVolume       string
 	AppVolume          string
 	Volumes            []string
+	DefaultProcessType string
+	fileFilter         func(string) bool
 }
 
 type Cache interface {
@@ -53,17 +55,19 @@ func NewLifecycle(docker client.CommonAPIClient, logger logging.Logger) *Lifecyc
 }
 
 type LifecycleOptions struct {
-	AppPath    string
-	Image      name.Reference
-	Builder    *builder.Builder
-	RunImage   string
-	ClearCache bool
-	Publish    bool
-	HTTPProxy  string
-	HTTPSProxy string
-	NoProxy    string
-	Network    string
-	Volumes    []string
+	AppPath            string
+	Image              name.Reference
+	Builder            *builder.Builder
+	RunImage           string
+	ClearCache         bool
+	Publish            bool
+	HTTPProxy          string
+	HTTPSProxy         string
+	NoProxy            string
+	Network            string
+	Volumes            []string
+	DefaultProcessType string
+	FileFilter         func(string) bool
 }
 
 func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
@@ -125,6 +129,8 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.noProxy = opts.NoProxy
 	l.version = opts.Builder.LifecycleDescriptor().Info.Version.String()
 	l.platformAPIVersion = opts.Builder.LifecycleDescriptor().API.PlatformVersion.String()
+	l.DefaultProcessType = opts.DefaultProcessType
+	l.fileFilter = opts.FileFilter
 }
 
 func (l *Lifecycle) Cleanup() error {

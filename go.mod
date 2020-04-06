@@ -27,6 +27,7 @@ require (
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/opencontainers/selinux v1.4.0 // indirect
 	github.com/pkg/errors v0.9.1
+	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
 	github.com/sclevine/spec v1.4.0
 	github.com/spf13/cobra v0.0.6
 	golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
