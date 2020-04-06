@@ -2,7 +2,9 @@ package build_test
 
 import (
 	"context"
+	ioutil "io/ioutil"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -28,6 +30,23 @@ func TestPhases(t *testing.T) {
 }
 
 func testPhases(t *testing.T, when spec.G, it spec.S) {
+	// Avoid contaminating tests with existing docker configuration.
+	// GGCR resolves the default keychain by inspecting DOCKER_CONFIG - this is used by the Analyze step
+	// when constructing the auth config (see `auth.BuildEnvVar` in phases.go).
+	var dockerConfigDir string
+	it.Before(func() {
+		var err error
+		dockerConfigDir, err = ioutil.TempDir("", "empty-docker-config-dir")
+		h.AssertNil(t, err)
+
+		h.AssertNil(t, os.Setenv("DOCKER_CONFIG", dockerConfigDir))
+	})
+
+	it.After(func() {
+		h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
+		h.AssertNil(t, os.RemoveAll(dockerConfigDir))
+	})
+
 	when("#Detect", func() {
 		it("creates a phase and then runs it", func() {
 			lifecycle := fakeLifecycle(t, false)
