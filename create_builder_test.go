@@ -349,8 +349,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, bldr.Name(), "some/builder")
 				h.AssertEq(t, bldr.Description(), "Some description")
-				h.AssertEq(t, bldr.UID, 1234)
-				h.AssertEq(t, bldr.GID, 4321)
+				h.AssertEq(t, bldr.UID(), 1234)
+				h.AssertEq(t, bldr.GID(), 4321)
 				h.AssertEq(t, bldr.StackID, "some.stack.id")
 			})
 
@@ -403,8 +403,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, bldr.Name(), "some/builder")
 				h.AssertEq(t, bldr.Description(), "Some description")
-				h.AssertEq(t, bldr.UID, 1234)
-				h.AssertEq(t, bldr.GID, 4321)
+				h.AssertEq(t, bldr.UID(), 1234)
+				h.AssertEq(t, bldr.GID(), 4321)
 				h.AssertEq(t, bldr.StackID, "some.stack.id")
 			})
 

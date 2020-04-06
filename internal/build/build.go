@@ -21,8 +21,15 @@ var (
 	SupportedPlatformAPIVersions = []string{"0.2", "0.3"}
 )
 
+type Builder interface {
+	Name() string
+	UID() int
+	GID() int
+	LifecycleDescriptor() builder.LifecycleDescriptor
+}
+
 type Lifecycle struct {
-	builder            *builder.Builder
+	builder            Builder
 	logger             logging.Logger
 	docker             client.CommonAPIClient
 	appPath            string
@@ -57,7 +64,7 @@ func NewLifecycle(docker client.CommonAPIClient, logger logging.Logger) *Lifecyc
 type LifecycleOptions struct {
 	AppPath            string
 	Image              name.Reference
-	Builder            *builder.Builder
+	Builder            Builder
 	RunImage           string
 	ClearCache         bool
 	Publish            bool

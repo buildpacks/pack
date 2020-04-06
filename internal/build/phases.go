@@ -155,13 +155,13 @@ func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string
 }
 
 func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCacheName, cacheName string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
-	args := []string{
-		"-image", runImage,
+	args := l.exportImageArgs(runImage)
+	args = append(args, []string{
 		"-cache-dir", cacheDir,
 		"-layers", layersDir,
 		"-app", appDir,
 		repoName,
-	}
+	}...)
 
 	binds := []string{fmt.Sprintf("%s:%s", cacheName, cacheDir)}
 
@@ -218,4 +218,12 @@ func (l *Lifecycle) withLogLevel(args ...string) []string {
 		}
 	}
 	return args
+}
+
+func (l *Lifecycle) exportImageArgs(runImage string) []string {
+	platformAPIVersion := semver.MustParse(l.platformAPIVersion)
+	if semver.MustParse("0.2").LessThan(platformAPIVersion) {
+		return []string{"-run-image", runImage}
+	}
+	return []string{"-image", runImage}
 }
