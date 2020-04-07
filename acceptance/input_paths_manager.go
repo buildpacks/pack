@@ -1,12 +1,13 @@
 package acceptance
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
+
+	"github.com/buildpacks/pack/logging"
 
 	"github.com/pkg/errors"
 
@@ -27,9 +28,10 @@ type InputPathsManager struct {
 	previousPackFixturesPath string
 	lifecyclePath            string
 	previousLifecyclePath    string
+	logger                   logging.Logger
 }
 
-func NewInputPathsManager() (*InputPathsManager, error) {
+func NewInputPathsManager(logger logging.Logger) (*InputPathsManager, error) {
 	packPath := os.Getenv(envPackPath)
 	previousPackPath := os.Getenv(envPreviousPackPath)
 	previousPackFixturesPath := os.Getenv(envPreviousPackFixturesPath)
@@ -61,17 +63,18 @@ func NewInputPathsManager() (*InputPathsManager, error) {
 		previousPackFixturesPath: inputPaths[2],
 		lifecyclePath:            inputPaths[3],
 		previousLifecyclePath:    inputPaths[4],
+		logger:                   logger,
 	}, nil
 }
 
 func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
-	githubAssetFetcher, err := NewGithubAssetFetcher()
+	githubAssetFetcher, err := NewGithubAssetFetcher(m.logger)
 	if err != nil {
 		return errors.Wrap(err, "initializing GitHub asset fetcher")
 	}
 
 	if (c.Pack == "previous" || c.PackCreateBuilder == "previous") && m.previousPackPath == "" {
-		fmt.Printf("run combination %+v requires %s to be set\n", c, style.Symbol(envPreviousPackPath))
+		m.logger.Infof("run combination %+v requires %s to be set\n", c, style.Symbol(envPreviousPackPath))
 
 		version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "pack", 0)
 		if err != nil {
@@ -90,11 +93,11 @@ func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
 		}
 		assetPath := filepath.Join(assetDir, packBinaryName())
 
-		fmt.Printf("using %s for previous pack path\n", assetPath)
+		m.logger.Infof("using %s for previous pack path\n", assetPath)
 		m.previousPackPath = assetPath
 	}
 	if (c.Pack == "previous" || c.PackCreateBuilder == "previous") && m.previousPackFixturesPath == "" {
-		fmt.Printf("run combination %+v requires %s to be set\n", c, style.Symbol(envPreviousPackFixturesPath))
+		m.logger.Infof("run combination %+v requires %s to be set\n", c, style.Symbol(envPreviousPackFixturesPath))
 
 		version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "pack", 0)
 		if err != nil {
@@ -110,14 +113,15 @@ func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
 		if err != nil {
 			return errors.Wrapf(err, "reading directory %s", sourceDir)
 		}
+		// GitHub source tarballs have a top-level directory whose name includes the current commit sha.
 		innerDir := fis[0].Name()
 		fixturesDir := filepath.Join(sourceDir, innerDir, "acceptance", "testdata", "pack_fixtures")
 
-		fmt.Printf("using %s for previous pack fixtures path\n", fixturesDir)
+		m.logger.Infof("using %s for previous pack fixtures path\n", fixturesDir)
 		m.previousPackFixturesPath = fixturesDir
 	}
 	if c.Lifecycle == "current" && m.lifecyclePath == "" {
-		fmt.Printf("run combination %+v requires %s to be set\n", c, style.Symbol(envLifecyclePath))
+		m.logger.Infof("run combination %+v requires %s to be set\n", c, style.Symbol(envLifecyclePath))
 
 		version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "lifecycle", 0)
 		if err != nil {
@@ -135,11 +139,11 @@ func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
 			return errors.Wrap(err, "fetching release asset")
 		}
 
-		fmt.Printf("using %s for lifecycle path\n", assetPath)
+		m.logger.Infof("using %s for lifecycle path\n", assetPath)
 		m.lifecyclePath = assetPath
 	}
 	if c.Lifecycle == "previous" && m.previousLifecyclePath == "" {
-		fmt.Printf("run combination %+v requires %s to be set\n", c, style.Symbol(envPreviousLifecyclePath))
+		m.logger.Infof("run combination %+v requires %s to be set\n", c, style.Symbol(envPreviousLifecyclePath))
 
 		version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "lifecycle", -1)
 		if err != nil {
@@ -157,7 +161,7 @@ func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
 			return errors.Wrap(err, "fetching release asset")
 		}
 
-		fmt.Printf("using %s for previous lifecycle path\n", assetPath)
+		m.logger.Infof("using %s for previous lifecycle path\n", assetPath)
 		m.previousLifecyclePath = assetPath
 	}
 	return nil

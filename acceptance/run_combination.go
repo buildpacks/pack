@@ -20,6 +20,9 @@ type runCombo struct {
 	Lifecycle         string `json:"lifecycle"`
 }
 
+//nolint:unused // TODO: nolint directives in this file shouldn't be necessary, as
+// all of the code is used. However lint errors are returned without these directives.
+// Possibly related to https://github.com/golangci/golangci-lint/issues/791.
 type resolvedRunCombo struct {
 	packCreateBuilderFixturesDir string
 	packFixturesDir              string
@@ -33,6 +36,7 @@ func (c *runCombo) String() string {
 	return fmt.Sprintf("p_%s cb_%s lc_%s", c.Pack, c.PackCreateBuilder, c.Lifecycle)
 }
 
+//nolint
 func getRunCombinations() ([]runCombo, error) {
 	combos := []runCombo{
 		{Pack: "current", PackCreateBuilder: "current", Lifecycle: "default"}, // TODO: the current behavior for
@@ -48,6 +52,7 @@ func getRunCombinations() ([]runCombo, error) {
 	return parseSuiteConfig(suiteConfig)
 }
 
+//nolint:unused
 func parseSuiteConfig(config string) ([]runCombo, error) {
 	var cfgs []runCombo
 	if err := json.Unmarshal([]byte(config), &cfgs); err != nil {
@@ -80,6 +85,7 @@ func parseSuiteConfig(config string) ([]runCombo, error) {
 	return cfgs, nil
 }
 
+//nolint
 func resolveRunCombinations(
 	combos []runCombo,
 	packPath string,

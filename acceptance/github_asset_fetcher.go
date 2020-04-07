@@ -17,24 +17,25 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buildpacks/pack/logging"
+
 	"github.com/Masterminds/semver"
 
 	"github.com/google/go-github/v30/github"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/internal/config"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 )
 
 const (
-	assetCacheDir      = "test-assets-cache"
-	assetCacheManifest = "github.json"
+	assetCacheDir         = "test-assets-cache"
+	assetCacheManifest    = "github.json"
+	cacheManifestLifetime = 1 * time.Hour
 )
 
 type GithubAssetFetcher struct {
 	ctx          context.Context
-	logger       *ilogging.LogWithWriters
+	logger       logging.Logger
 	githubClient *github.Client
 	cacheDir     string
 }
@@ -49,27 +50,31 @@ type cachedAssets map[string][]string
 type cachedSources map[string]string
 type cachedVersions map[string]string
 
-func NewGithubAssetFetcher() (*GithubAssetFetcher, error) {
-	packHome, err := config.PackHome()
+func NewGithubAssetFetcher(logger logging.Logger) (*GithubAssetFetcher, error) {
+	relativeCacheDir := filepath.Join("..", "out", "tests", assetCacheDir)
+	cacheDir, err := filepath.Abs(relativeCacheDir)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting pack home")
+		return nil, errors.Wrapf(err, "getting absolute path for %s", relativeCacheDir)
 	}
-	cacheDir := filepath.Join(packHome, assetCacheDir)
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
 		return nil, errors.Wrapf(err, "creating directory %s", cacheDir)
 	}
 
 	return &GithubAssetFetcher{
 		ctx:          context.TODO(),
-		logger:       ilogging.NewLogWithWriters(os.Stdout, os.Stderr), // TODO: not sure if this is what we really want
+		logger:       logger,
 		githubClient: github.NewClient(nil),
 		cacheDir:     cacheDir,
 	}, nil
 }
 
+// Fetch a GitHub release asset for the given repo that matches the regular expression.
+// The expression is something like 'pack-v\d+.\d+.\d+-macos'.
+// The asset may be found in the local cache or downloaded from GitHub.
+// The return value is the location of the asset on disk, or any error encountered.
 func (f *GithubAssetFetcher) FetchReleaseAsset(owner, repo, version string, expr *regexp.Regexp, extract bool) (string, error) {
 	if destPath, _ := f.cachedAsset(owner, repo, version, expr); destPath != "" {
-		fmt.Printf("found %s in cache for %s/%s %s\n", destPath, owner, repo, version)
+		f.logger.Infof("found %s in cache for %s/%s %s\n", destPath, owner, repo, version)
 		return destPath, nil
 	}
 
@@ -144,7 +149,7 @@ func extractType(extract bool, assetName string) string {
 
 func (f *GithubAssetFetcher) FetchReleaseSource(owner, repo, version string) (string, error) {
 	if destDir, _ := f.cachedSource(owner, repo, version); destDir != "" {
-		fmt.Printf("found %s in cache for %s/%s %s\n", destDir, owner, repo, version)
+		f.logger.Infof("found %s in cache for %s/%s %s\n", destDir, owner, repo, version)
 		return destDir, nil
 	}
 
@@ -171,9 +176,12 @@ func (f *GithubAssetFetcher) FetchReleaseSource(owner, repo, version string) (st
 	return destDir, nil
 }
 
+// Fetch a GitHub release version that is n minor versions older than the latest.
+// Ex: when n is 0, the latest release version is returned.
+// Ex: when n is -1, the latest patch of the previous minor version is returned.
 func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (string, error) {
 	if version, _ := f.cachedVersion(owner, repo, n); version != "" {
-		fmt.Printf("found %s in cache for %s/%s %d\n", version, owner, repo, n)
+		f.logger.Infof("found %s in cache for %s/%s %d\n", version, owner, repo, n)
 		return version, nil
 	}
 
@@ -181,6 +189,9 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 	releases, _, err := f.githubClient.Repositories.ListReleases(f.ctx, owner, repo, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "listing releases")
+	}
+	if len(releases) == 0 {
+		return "", fmt.Errorf("no releases found for %s/%s", owner, repo)
 	}
 
 	// sort all release versions
@@ -274,7 +285,7 @@ func (f *GithubAssetFetcher) loadCacheManifest() (assetCache, error) {
 	}
 
 	// invalidate cache manifest that is too old
-	if time.Since(cacheManifest.ModTime()) > 1*time.Hour {
+	if time.Since(cacheManifest.ModTime()) > cacheManifestLifetime {
 		return assetCache{}, nil
 	}
 
@@ -316,7 +327,6 @@ func (f *GithubAssetFetcher) writeCacheManifest(owner, repo string, op func(cach
 	if err != nil {
 		return errors.Wrap(err, "marshaling cache manifest content")
 	}
-	content = append(content, "\n"...)
 
 	return ioutil.WriteFile(filepath.Join(f.cacheDir, assetCacheManifest), content, 0644)
 }

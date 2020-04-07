@@ -35,6 +35,7 @@ import (
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
+	"github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/style"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -55,6 +56,15 @@ var (
 	suiteManager   *SuiteManager
 )
 
+type testWriter struct {
+	t *testing.T
+}
+
+func (w *testWriter) Write(p []byte) (n int, err error) {
+	w.t.Log(string(p))
+	return len(p), nil
+}
+
 func TestAcceptance(t *testing.T) {
 	var err error
 
@@ -67,7 +77,8 @@ func TestAcceptance(t *testing.T) {
 	registryConfig = h.RunRegistry(t)
 	defer registryConfig.StopRegistry(t)
 
-	inputPathsManager, err := NewInputPathsManager()
+	testWriter := testWriter{t}
+	inputPathsManager, err := NewInputPathsManager(logging.NewLogWithWriters(&testWriter, &testWriter))
 	h.AssertNil(t, err)
 
 	combos, err := getRunCombinations()
