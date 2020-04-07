@@ -96,7 +96,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Description: "Some description",
 					Buildpacks: []pubbldr.BuildpackConfig{
 						{
-							BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"},
+							BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"},
 							ImageOrURI: dist.ImageOrURI{
 								BuildpackURI: dist.BuildpackURI{
 									URI: "https://example.fake/bp-one.tgz",
@@ -361,10 +361,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				bldr := successfullyCreateBuilder()
 
 				bpInfo := dist.BuildpackInfo{
-					ID:      "bp.one",
-					Version: "1.2.3",
+					ID:       "bp.one",
+					Version:  "1.2.3",
+					Homepage: "http://one.buildpack",
 				}
 				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
+				bpInfo.Homepage = ""
 				h.AssertEq(t, bldr.Order(), dist.Order{{
 					Group: []dist.BuildpackRef{{
 						BuildpackInfo: bpInfo,
@@ -419,13 +421,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					ID:      "bp.one",
 					Version: "1.2.3",
 				}
-				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
 				h.AssertEq(t, bldr.Order(), dist.Order{{
 					Group: []dist.BuildpackRef{{
 						BuildpackInfo: bpInfo,
 						Optional:      false,
 					}},
 				}})
+				bpInfo.Homepage = "http://one.buildpack"
+				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
 			})
 
 			it("should embed the lifecycle", func() {
@@ -500,7 +503,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					bpd := dist.BuildpackDescriptor{
 						API:    api.MustParse("0.3"),
-						Info:   dist.BuildpackInfo{ID: "some.pkg.bp", Version: "2.3.4"},
+						Info:   dist.BuildpackInfo{ID: "some.pkg.bp", Version: "2.3.4", Homepage: "http://meta.buildpack"},
 						Stacks: []dist.Stack{{ID: "some.stack.id"}},
 					}
 

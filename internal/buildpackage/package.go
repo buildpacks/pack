@@ -43,8 +43,9 @@ func ExtractBuildpacks(pkg Package) (mainBP dist.Buildpack, depBPs []dist.Buildp
 			desc := dist.BuildpackDescriptor{
 				API: bpInfo.API,
 				Info: dist.BuildpackInfo{
-					ID:      bpID,
-					Version: bpVersion,
+					ID:       bpID,
+					Version:  bpVersion,
+					Homepage: bpInfo.Homepage,
 				},
 				Stacks: bpInfo.Stacks,
 				Order:  bpInfo.Order,
@@ -65,7 +66,7 @@ func ExtractBuildpacks(pkg Package) (mainBP dist.Buildpack, depBPs []dist.Buildp
 				},
 			}
 
-			if desc.Info == md.BuildpackInfo {
+			if desc.Info.Match(md.BuildpackInfo) { // This is the order buildpack of the package
 				mainBP = dist.BuildpackFromBlob(desc, b)
 			} else {
 				depBPs = append(depBPs, dist.BuildpackFromBlob(desc, b))

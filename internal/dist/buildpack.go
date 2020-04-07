@@ -40,8 +40,9 @@ type Buildpack interface {
 }
 
 type BuildpackInfo struct {
-	ID      string `toml:"id" json:"id"`
-	Version string `toml:"version" json:"version,omitempty"`
+	ID       string `toml:"id" json:"id,omitempty"`
+	Version  string `toml:"version" json:"version,omitempty"`
+	Homepage string `toml:"homepage,omitempty" json:"homepage,omitempty"`
 }
 
 func (b BuildpackInfo) FullName() string {
@@ -49,6 +50,14 @@ func (b BuildpackInfo) FullName() string {
 		return b.ID + "@" + b.Version
 	}
 	return b.ID
+}
+
+// Satisfy stringer
+func (b BuildpackInfo) String() string { return b.FullName() }
+
+// Match compares two buildpacks by ID and Version
+func (b BuildpackInfo) Match(o BuildpackInfo) bool {
+	return b.ID == o.ID && b.Version == o.Version
 }
 
 type Stack struct {

@@ -58,6 +58,7 @@ api = "0.3"
 [buildpack]
 id = "bp.one"
 version = "1.2.3"
+homepage = "http://geocities.com/cool-bp"
 
 [[stacks]]
 id = "some.stack.id"
@@ -70,6 +71,7 @@ id = "some.stack.id"
 			h.AssertEq(t, bp.Descriptor().API.String(), "0.3")
 			h.AssertEq(t, bp.Descriptor().Info.ID, "bp.one")
 			h.AssertEq(t, bp.Descriptor().Info.Version, "1.2.3")
+			h.AssertEq(t, bp.Descriptor().Info.Homepage, "http://geocities.com/cool-bp")
 			h.AssertEq(t, bp.Descriptor().Stacks[0].ID, "some.stack.id")
 		})
 
@@ -382,6 +384,30 @@ version = "1.2.3"
 				})
 				h.AssertError(t, err, "must have either 'stacks' or an 'order' defined")
 			})
+		})
+	})
+
+	when("#Match", func() {
+		it("compares, using only the id and version", func() {
+			other := dist.BuildpackInfo{
+				ID:       "same",
+				Version:  "1.2.3",
+				Homepage: "something else",
+			}
+
+			self := dist.BuildpackInfo{
+				ID:      "same",
+				Version: "1.2.3",
+			}
+
+			match := self.Match(other)
+
+			h.AssertEq(t, match, true)
+
+			self.ID = "different"
+			match = self.Match(other)
+
+			h.AssertEq(t, match, false)
 		})
 	})
 }

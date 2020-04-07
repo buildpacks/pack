@@ -893,8 +893,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					metaBuildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
-							ID:      "meta.buildpack.id",
-							Version: "meta.buildpack.version",
+							ID:       "meta.buildpack.id",
+							Version:  "meta.buildpack.version",
+							Homepage: "http://meta.buildpack",
 						},
 						Stacks: nil,
 						Order: dist.Order{{
@@ -911,8 +912,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					childBuildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
-							ID:      "child.buildpack.id",
-							Version: "child.buildpack.version",
+							ID:       "child.buildpack.id",
+							Version:  "child.buildpack.version",
+							Homepage: "http://child.buildpack",
 						},
 						Stacks: []dist.Stack{
 							{ID: defaultBuilderStackID},
@@ -1140,7 +1142,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						buildpack1Info := dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}
 						buildpack2Info := dist.BuildpackInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}
-						dirBuildpackInfo := dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}
+						dirBuildpackInfo := dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"}
 						tgzBuildpackInfo := dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.BuildpackRef{
