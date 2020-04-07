@@ -74,7 +74,7 @@ func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
 	}
 
 	if (c.Pack == "previous" || c.PackCreateBuilder == "previous") && m.previousPackPath == "" {
-		m.logger.Infof("run combination %+v requires %s to be set\n", c, style.Symbol(envPreviousPackPath))
+		m.logger.Infof("run combination %+v requires %s to be set", c, style.Symbol(envPreviousPackPath))
 
 		version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "pack", 0)
 		if err != nil {
@@ -93,11 +93,11 @@ func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
 		}
 		assetPath := filepath.Join(assetDir, packBinaryName())
 
-		m.logger.Infof("using %s for previous pack path\n", assetPath)
+		m.logger.Infof("using %s for previous pack path", assetPath)
 		m.previousPackPath = assetPath
 	}
 	if (c.Pack == "previous" || c.PackCreateBuilder == "previous") && m.previousPackFixturesPath == "" {
-		m.logger.Infof("run combination %+v requires %s to be set\n", c, style.Symbol(envPreviousPackFixturesPath))
+		m.logger.Infof("run combination %+v requires %s to be set", c, style.Symbol(envPreviousPackFixturesPath))
 
 		version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "pack", 0)
 		if err != nil {
@@ -117,11 +117,11 @@ func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
 		innerDir := fis[0].Name()
 		fixturesDir := filepath.Join(sourceDir, innerDir, "acceptance", "testdata", "pack_fixtures")
 
-		m.logger.Infof("using %s for previous pack fixtures path\n", fixturesDir)
+		m.logger.Infof("using %s for previous pack fixtures path", fixturesDir)
 		m.previousPackFixturesPath = fixturesDir
 	}
 	if c.Lifecycle == "current" && m.lifecyclePath == "" {
-		m.logger.Infof("run combination %+v requires %s to be set\n", c, style.Symbol(envLifecyclePath))
+		m.logger.Infof("run combination %+v requires %s to be set", c, style.Symbol(envLifecyclePath))
 
 		version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "lifecycle", 0)
 		if err != nil {
@@ -139,11 +139,11 @@ func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
 			return errors.Wrap(err, "fetching release asset")
 		}
 
-		m.logger.Infof("using %s for lifecycle path\n", assetPath)
+		m.logger.Infof("using %s for lifecycle path", assetPath)
 		m.lifecyclePath = assetPath
 	}
 	if c.Lifecycle == "previous" && m.previousLifecyclePath == "" {
-		m.logger.Infof("run combination %+v requires %s to be set\n", c, style.Symbol(envPreviousLifecyclePath))
+		m.logger.Infof("run combination %+v requires %s to be set", c, style.Symbol(envPreviousLifecyclePath))
 
 		version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "lifecycle", -1)
 		if err != nil {
@@ -161,7 +161,7 @@ func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
 			return errors.Wrap(err, "fetching release asset")
 		}
 
-		m.logger.Infof("using %s for previous lifecycle path\n", assetPath)
+		m.logger.Infof("using %s for previous lifecycle path", assetPath)
 		m.previousLifecyclePath = assetPath
 	}
 	return nil
