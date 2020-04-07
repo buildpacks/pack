@@ -502,8 +502,8 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 }
 
 func RequireDocker(t *testing.T) {
-	_, isSet := os.LookupEnv("NO_DOCKER")
-	SkipIf(t, isSet, "Skipping because docker daemon unavailable")
+	noDocker := os.Getenv("NO_DOCKER")
+	SkipIf(t, strings.ToLower(noDocker) == "true" || noDocker == "1", "Skipping because docker daemon unavailable")
 }
 
 func SkipIf(t *testing.T, expression bool, reason string) {
