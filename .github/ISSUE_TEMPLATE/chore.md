@@ -1,6 +1,6 @@
 ---
 name: Chore
-about: Suggest a chore that will help contributors and/or developers
+about: Suggest a chore that will help contributors and doesn't affect end users.
 title: ''
 labels: type/enhancement, status/triage
 assignees: ''
