@@ -1,6 +1,7 @@
 package builder_test
 
 import (
+	"archive/tar"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -322,7 +323,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				defer f.Close()
 
-				err = archive.CreateSingleFileTar(f.Name(), "/cnb/order.toml", "some content")
+				tw := tar.NewWriter(f)
+				defer tw.Close()
+				err = archive.CreateSingleFileTar(tw, "/cnb/order.toml", "some content")
 				h.AssertNil(t, err)
 
 				h.AssertNil(t, baseImage.AddLayer(layerFile))

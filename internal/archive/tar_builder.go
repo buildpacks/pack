@@ -3,12 +3,7 @@ package archive
 import (
 	"archive/tar"
 	"io"
-	"os"
 	"time"
-
-	"github.com/pkg/errors"
-
-	"github.com/buildpacks/pack/internal/style"
 )
 
 type TarBuilder struct {
@@ -55,21 +50,24 @@ func (t *TarBuilder) Reader() io.ReadCloser {
 	return pr
 }
 
-func (t *TarBuilder) WriteToPath(path string) error {
-	fh, err := os.Create(path)
-	if err != nil {
-		return errors.Wrapf(err, "create file for tar: %s", style.Symbol(path))
-	}
-	defer fh.Close()
+// func (t *TarBuilder) WriteToPath(path string) error {
+// 	fh, err := os.Create(path)
+// 	if err != nil {
+// 		return errors.Wrapf(err, "create file for tar: %s", style.Symbol(path))
+// 	}
+// 	defer fh.Close()
+//
+// 	_, err = t.WriteTo(fh)
+// 	return err
+// }
 
-	_, err = t.WriteTo(fh)
-	return err
+func (t *TarBuilder) WriteTo(w io.Writer) (int64, error) {
+	tw := tar.NewWriter(w)
+	defer tw.Close()
+	return t.WriteToTarWriter(tw)
 }
 
-func (t *TarBuilder) WriteTo(writer io.Writer) (int64, error) {
-	tw := tar.NewWriter(writer)
-	defer tw.Close()
-
+func (t *TarBuilder) WriteToTarWriter(tw TarWriter) (int64, error) {
 	var written int64
 	for _, f := range t.files {
 		if err := tw.WriteHeader(&tar.Header{

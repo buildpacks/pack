@@ -62,11 +62,15 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 		when("tgz has the path", func() {
 			it.Before(func() {
-				err = archive.CreateSingleFileTar(tarFile.Name(), "file1", "file-1 content")
+				tw := tar.NewWriter(tarFile)
+				defer tw.Close()
+				err = archive.CreateSingleFileTar(tw, "file1", "file-1 content")
 				h.AssertNil(t, err)
 			})
 
 			it("returns the file contents", func() {
+				_, err = tarFile.Seek(0, 0)
+				h.AssertNil(t, err)
 				_, contents, err := archive.ReadTarEntry(tarFile, "file1")
 				h.AssertNil(t, err)
 				h.AssertEq(t, string(contents), "file-1 content")
@@ -75,11 +79,15 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 		when("tgz has ./path", func() {
 			it.Before(func() {
-				err = archive.CreateSingleFileTar(tarFile.Name(), "./file1", "file-1 content")
+				tw := tar.NewWriter(tarFile)
+				defer tw.Close()
+				err = archive.CreateSingleFileTar(tw, "./file1", "file-1 content")
 				h.AssertNil(t, err)
 			})
 
 			it("returns the file contents", func() {
+				_, err = tarFile.Seek(0, 0)
+				h.AssertNil(t, err)
 				_, contents, err := archive.ReadTarEntry(tarFile, "file1")
 				h.AssertNil(t, err)
 				h.AssertEq(t, string(contents), "file-1 content")

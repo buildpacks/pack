@@ -5,6 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/internal/archive"
+
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
@@ -41,7 +43,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bpURI))
 	}
 
-	bp, err := dist.BuildpackFromRootBlob(blob)
+	bp, err := dist.BuildpackFromRootBlob(blob, archive.DefaultTarWriterFactory)
 	if err != nil {
 		return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bpURI))
 	}
@@ -55,7 +57,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(dep.URI))
 			}
 
-			depBP, err := dist.BuildpackFromRootBlob(blob)
+			depBP, err := dist.BuildpackFromRootBlob(blob, archive.DefaultTarWriterFactory)
 			if err != nil {
 				return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
 			}

@@ -22,26 +22,30 @@ func init() {
 }
 
 func ReadDirAsTar(srcDir, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) io.ReadCloser {
-	return GenerateTar(func(tw *tar.Writer) error {
+	return GenerateTar(func(tw TarWriter) error {
 		return WriteDirToTar(tw, srcDir, basePath, uid, gid, mode, normalizeModTime, fileFilter)
 	})
 }
 
 func ReadZipAsTar(srcPath, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) io.ReadCloser {
-	return GenerateTar(func(tw *tar.Writer) error {
+	return GenerateTar(func(tw TarWriter) error {
 		return WriteZipToTar(tw, srcPath, basePath, uid, gid, mode, normalizeModTime, fileFilter)
 	})
 }
 
-// GenerateTar returns a reader to a tar from a generator function. Note that the
+func GenerateTar(genFn func(TarWriter) error) io.ReadCloser {
+	return GenerateTarWithWriter(genFn, DefaultTarWriterFactory)
+}
+
+// GenerateTar returns a reader to a tar from a generator function using a factory writer. Note that the
 // generator will not fully execute until the reader is fully read from. Any errors
 // returned by the generator will be returned when reading the reader.
-func GenerateTar(gen func(*tar.Writer) error) io.ReadCloser {
+func GenerateTarWithWriter(genFn func(TarWriter) error, tarWriterFactory TarWriterFactory) io.ReadCloser {
 	errChan := make(chan error)
 	pr, pw := io.Pipe()
 
 	go func() {
-		tw := tar.NewWriter(pw)
+		tw := tarWriterFactory.NewTarWriter(pw)
 		defer func() {
 			if r := recover(); r != nil {
 				tw.Close()
@@ -49,7 +53,7 @@ func GenerateTar(gen func(*tar.Writer) error) io.ReadCloser {
 			}
 		}()
 
-		err := gen(tw)
+		err := genFn(tw)
 
 		closeErr := tw.Close()
 		closeErr = aggregateError(closeErr, pw.CloseWithError(err))
@@ -99,25 +103,11 @@ func CreateSingleFileTarReader(path, txt string) (io.Reader, error) {
 	return bytes.NewReader(buf.Bytes()), nil
 }
 
-func CreateSingleFileTar(tarFile, path, txt string) error {
+func CreateSingleFileTar(tw TarWriter, path, txt string) error {
 	tarBuilder := TarBuilder{}
 	tarBuilder.AddFile(path, 0644, NormalizedDateTime, []byte(txt))
-	return tarBuilder.WriteToPath(tarFile)
-}
-
-func AddFileToTar(tw *tar.Writer, path string, txt string) error {
-	if err := tw.WriteHeader(&tar.Header{
-		Name:    path,
-		Size:    int64(len(txt)),
-		Mode:    0644,
-		ModTime: NormalizedDateTime,
-	}); err != nil {
-		return err
-	}
-	if _, err := tw.Write([]byte(txt)); err != nil {
-		return err
-	}
-	return nil
+	_, err := tarBuilder.WriteToTarWriter(tw)
+	return err
 }
 
 // ErrEntryNotExist is an error returned if an entry path doesn't exist
@@ -155,7 +145,7 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 
 // WriteDirToTar writes the contents of a directory to a tar writer. `basePath` is the "location" in the tar the
 // contents will be placed.
-func WriteDirToTar(tw *tar.Writer, srcDir, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) error {
+func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) error {
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		if fileFilter != nil && !fileFilter(file) {
 			return nil
@@ -217,7 +207,7 @@ func WriteDirToTar(tw *tar.Writer, srcDir, basePath string, uid, gid int, mode i
 }
 
 // WriteZipToTar writes the contents of a zip file to a tar writer.
-func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) error {
+func WriteZipToTar(tw TarWriter, srcZip, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) error {
 	zipReader, err := zip.OpenReader(srcZip)
 	if err != nil {
 		return err

@@ -22,6 +22,7 @@ import (
 	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
@@ -50,6 +51,7 @@ const (
 type Builder struct {
 	baseImageName        string
 	image                imgutil.Image
+	layerWriterFactory   archive.TarWriterFactory
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
 	additionalBuildpacks []dist.Buildpack
@@ -87,6 +89,11 @@ func New(baseImage imgutil.Image, name string) (*Builder, error) {
 }
 
 func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Builder, error) {
+	layerWriterFactory, err := layer.NewTarWriterFactory(img)
+	if err != nil {
+		return nil, err
+	}
+
 	uid, gid, err := userAndGroupIDs(img)
 	if err != nil {
 		return nil, err
@@ -131,14 +138,15 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 	}
 
 	return &Builder{
-		baseImageName: baseName,
-		image:         img,
-		metadata:      metadata,
-		mixins:        mixins,
-		order:         order,
-		uid:           uid,
-		gid:           gid,
-		StackID:       stackID,
+		baseImageName:      baseName,
+		image:              img,
+		layerWriterFactory: layerWriterFactory,
+		metadata:           metadata,
+		mixins:             mixins,
+		order:              order,
+		uid:                uid,
+		gid:                gid,
+		StackID:            stackID,
 		lifecycleDescriptor: LifecycleDescriptor{
 			Info: LifecycleInfo{
 				Version: lifecycleVersion,
@@ -485,7 +493,7 @@ func (b *Builder) defaultDirsLayer(dest string) (string, error) {
 	}
 	defer fh.Close()
 
-	tw := tar.NewWriter(fh)
+	tw := b.layerWriterFactory.NewTarWriter(fh)
 	defer tw.Close()
 
 	ts := archive.NormalizedDateTime
@@ -544,7 +552,17 @@ func (b *Builder) orderLayer(order dist.Order, dest string) (string, error) {
 	}
 
 	layerTar := filepath.Join(dest, "order.tar")
-	err = archive.CreateSingleFileTar(layerTar, orderPath, contents)
+
+	fh, err := os.Create(layerTar)
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+
+	tw := b.layerWriterFactory.NewTarWriter(fh)
+	defer tw.Close()
+
+	err = archive.CreateSingleFileTar(tw, orderPath, contents)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create order.toml layer tar")
 	}
@@ -570,7 +588,17 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	}
 
 	layerTar := filepath.Join(dest, "stack.tar")
-	err = archive.CreateSingleFileTar(layerTar, stackPath, buf.String())
+
+	fh, err := os.Create(layerTar)
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+
+	tw := b.layerWriterFactory.NewTarWriter(fh)
+	defer tw.Close()
+
+	err = archive.CreateSingleFileTar(tw, stackPath, buf.String())
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create stack.toml layer tar")
 	}
@@ -578,7 +606,7 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	return layerTar, nil
 }
 
-func (b *Builder) embedLifecycleTar(tw *tar.Writer) error {
+func (b *Builder) embedLifecycleTar(tw archive.TarWriter) error {
 	var regex = regexp.MustCompile(`^[^/]+/([^/]+)$`)
 
 	lr, err := b.lifecycle.Open()
@@ -628,7 +656,7 @@ func (b *Builder) envLayer(dest string, env map[string]string) (string, error) {
 	}
 	defer fh.Close()
 
-	tw := tar.NewWriter(fh)
+	tw := b.layerWriterFactory.NewTarWriter(fh)
 	defer tw.Close()
 
 	for k, v := range env {
@@ -655,7 +683,7 @@ func (b *Builder) lifecycleLayer(dest string) (string, error) {
 	}
 	defer fh.Close()
 
-	tw := tar.NewWriter(fh)
+	tw := b.layerWriterFactory.NewTarWriter(fh)
 	defer tw.Close()
 
 	if err := tw.WriteHeader(&tar.Header{
