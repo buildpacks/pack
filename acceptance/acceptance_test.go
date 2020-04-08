@@ -580,7 +580,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 								"build", repoName,
 								"--default-process", "hello",
 								"-p", filepath.Join("testdata", "mock_app"),
-								"--buildpack", filepath.Join("testdata", "mock_buildpacks", "0.2", "simple-layers-buildpack"),
 							))
 
 							assertMockAppLogs(t, repoName, "hello world")
