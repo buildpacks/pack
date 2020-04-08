@@ -805,7 +805,6 @@ func testAcceptance(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--buildpack", buildpackTgz,
-									"--network", "default",
 								))
 
 								h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
@@ -830,6 +829,75 @@ func testAcceptance(
 								h.AssertContains(t, output, "[builder] RESULT: Disconnected from the internet")
 							})
 						})
+					})
+
+					when("--trust-builder", func() {
+						when("platform API version is up to 0.2", func() {
+							it.Before(func() {
+								h.SkipIf(t,
+									semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).GreaterThan(semver.MustParse("0.2")),
+									"skipping trust-builder (and the creator). Lifecycle does not support it",
+								)
+							})
+
+							it("calls the 5 phases", func() {
+								output := h.Run(t, subjectPack(
+									"build",
+									repoName,
+									"-p",
+									filepath.Join("testdata", "mock_app"),
+								))
+								h.AssertNotContains(t, output, "CREATING")
+								h.AssertContains(t, output, "DETECTING")
+								h.AssertContains(t, output, "ANALYZING")
+								h.AssertContains(t, output, "RESTORING")
+								h.AssertContains(t, output, "BUILDING")
+								h.AssertContains(t, output, "EXPORTING")
+							})
+						})
+
+						when("platform API version is 0.3+", func() {
+							it.Before(func() {
+								h.SkipIf(t,
+									semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")),
+									"ignore trust-builder (and the creator). Lifecycle does not support it",
+								)
+								h.SkipIf(t,
+									!packSupports(packPath, "build --trust-builder"), "trust-builder not supported",
+								)
+							})
+
+							when("the builder is trusted", func() {
+								it("calls the creator", func() {
+									output := h.Run(t, subjectPack(
+										"build",
+										repoName,
+										"-p",
+										filepath.Join("testdata", "mock_app"),
+										"--trust-builder",
+									))
+									h.AssertContains(t, output, "CREATING")
+								})
+							})
+
+							when("the builder is not trusted", func() {
+								it("calls the 5 phases", func() {
+									output := h.Run(t, subjectPack(
+										"build",
+										repoName,
+										"-p",
+										filepath.Join("testdata", "mock_app"),
+									))
+									h.AssertNotContains(t, output, "CREATING")
+									h.AssertContains(t, output, "DETECTING")
+									h.AssertContains(t, output, "ANALYZING")
+									h.AssertContains(t, output, "RESTORING")
+									h.AssertContains(t, output, "BUILDING")
+									h.AssertContains(t, output, "EXPORTING")
+								})
+							})
+						})
+
 					})
 
 					when("--volume", func() {
@@ -1199,6 +1267,7 @@ func testAcceptance(
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
 								"--publish",
+								"--network", "host",
 							))
 							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 

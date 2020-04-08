@@ -135,7 +135,6 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					phaseConfigProvider.ContainerConfig().Env,
 					"CNB_REGISTRY_AUTH="+authConfig,
 				)
-				h.AssertEq(t, phaseConfigProvider.HostConfig().NetworkMode, container.NetworkMode("host"))
 			})
 		})
 

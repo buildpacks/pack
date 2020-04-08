@@ -581,6 +581,25 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("TrustBuilder option", func() {
+			it("defaults to false", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:   "some/app",
+					Builder: builderName,
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.TrustBuilder, false)
+			})
+
+			it("passes it through to lifecycle", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:        "some/app",
+					Builder:      builderName,
+					TrustBuilder: true,
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.TrustBuilder, true)
+			})
+		})
+
 		when("Buildpacks option", func() {
 			assertOrderEquals := func(content string) {
 				t.Helper()
