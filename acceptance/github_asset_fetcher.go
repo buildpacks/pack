@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -17,14 +18,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buildpacks/pack/logging"
-
 	"github.com/Masterminds/semver"
-
 	"github.com/google/go-github/v30/github"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 
 	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/logging"
 )
 
 const (
@@ -50,7 +50,7 @@ type cachedAssets map[string][]string
 type cachedSources map[string]string
 type cachedVersions map[string]string
 
-func NewGithubAssetFetcher(logger logging.Logger) (*GithubAssetFetcher, error) {
+func NewGithubAssetFetcher(githubToken string, logger logging.Logger) (*GithubAssetFetcher, error) {
 	relativeCacheDir := filepath.Join("..", "out", "tests", assetCacheDir)
 	cacheDir, err := filepath.Abs(relativeCacheDir)
 	if err != nil {
@@ -60,10 +60,20 @@ func NewGithubAssetFetcher(logger logging.Logger) (*GithubAssetFetcher, error) {
 		return nil, errors.Wrapf(err, "creating directory %s", cacheDir)
 	}
 
+	ctx := context.TODO()
+	httpClient := new(http.Client)
+	if githubToken != "" {
+		logger.Info("using provided github token")
+		tokenSource := oauth2.StaticTokenSource(&oauth2.Token{
+			AccessToken: githubToken,
+		})
+		httpClient = oauth2.NewClient(ctx, tokenSource)
+	}
+
 	return &GithubAssetFetcher{
-		ctx:          context.TODO(),
+		ctx:          ctx,
 		logger:       logger,
-		githubClient: github.NewClient(nil),
+		githubClient: github.NewClient(httpClient),
 		cacheDir:     cacheDir,
 	}, nil
 }

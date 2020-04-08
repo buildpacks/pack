@@ -7,11 +7,10 @@ import (
 	"regexp"
 	"runtime"
 
-	"github.com/buildpacks/pack/logging"
-
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/logging"
 )
 
 const (
@@ -20,6 +19,7 @@ const (
 	envPreviousPackFixturesPath = "PREVIOUS_PACK_FIXTURES_PATH"
 	envLifecyclePath            = "LIFECYCLE_PATH"
 	envPreviousLifecyclePath    = "PREVIOUS_LIFECYCLE_PATH"
+	envGitHubToken              = "GITHUB_TOKEN"
 )
 
 type InputPathsManager struct {
@@ -68,7 +68,7 @@ func NewInputPathsManager(logger logging.Logger) (*InputPathsManager, error) {
 }
 
 func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
-	githubAssetFetcher, err := NewGithubAssetFetcher(m.logger)
+	githubAssetFetcher, err := NewGithubAssetFetcher(os.Getenv(envGitHubToken), m.logger)
 	if err != nil {
 		return errors.Wrap(err, "initializing GitHub asset fetcher")
 	}
