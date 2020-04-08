@@ -168,12 +168,7 @@ func (m *InputPathsManager) FillInRequiredPaths(c runCombo) error {
 }
 
 func lifecycleTgzExp() *regexp.Regexp {
-	switch runtime.GOOS {
-	case "darwin", "linux":
-		return regexp.MustCompile(`lifecycle-v\d+.\d+.\d+\+linux.x86-64.tgz`)
-	default:
-		return nil
-	}
+	return regexp.MustCompile(`lifecycle-v\d+.\d+.\d+\+linux.x86-64.tgz`)
 }
 
 func packBinaryExp() *regexp.Regexp {
