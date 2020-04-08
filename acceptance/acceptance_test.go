@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -36,18 +35,13 @@ import (
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
+	"github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/style"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
 const (
-	envPackPath                 = "PACK_PATH"
-	envCompilePackWithVersion   = "COMPILE_PACK_WITH_VERSION"
-	envPreviousPackPath         = "PREVIOUS_PACK_PATH"
-	envPreviousPackFixturesPath = "PREVIOUS_PACK_FIXTURES_PATH"
-	envLifecyclePath            = "LIFECYCLE_PATH"
-	envPreviousLifecyclePath    = "PREVIOUS_LIFECYCLE_PATH"
-	envAcceptanceSuiteConfig    = "ACCEPTANCE_SUITE_CONFIG"
+	envCompilePackWithVersion = "COMPILE_PACK_WITH_VERSION"
 
 	runImage   = "pack-test/run"
 	buildImage = "pack-test/build"
@@ -62,6 +56,15 @@ var (
 	suiteManager   *SuiteManager
 )
 
+type testWriter struct {
+	t *testing.T
+}
+
+func (w *testWriter) Write(p []byte) (n int, err error) {
+	w.t.Log(string(p))
+	return len(p), nil
+}
+
 func TestAcceptance(t *testing.T) {
 	var err error
 
@@ -74,7 +77,22 @@ func TestAcceptance(t *testing.T) {
 	registryConfig = h.RunRegistry(t)
 	defer registryConfig.StopRegistry(t)
 
-	packPath := os.Getenv(envPackPath)
+	testWriter := testWriter{t}
+	inputPathsManager, err := NewInputPathsManager(logging.NewLogWithWriters(&testWriter, &testWriter))
+	h.AssertNil(t, err)
+
+	combos, err := getRunCombinations()
+	h.AssertNil(t, err)
+
+	// Check that the provided inputs are valid for each combo
+	// If required inputs are missing, attempt to fill them in by downloading from GitHub
+	for _, c := range combos {
+		err := inputPathsManager.FillInRequiredPaths(c)
+		h.AssertNil(t, err)
+	}
+
+	// If pack path not provided, compile pack with the version provided (or use default version)
+	packPath := inputPathsManager.packPath
 	if packPath == "" {
 		compileVersion := os.Getenv(envCompilePackWithVersion)
 		if compileVersion == "" {
@@ -83,22 +101,13 @@ func TestAcceptance(t *testing.T) {
 		packPath = buildPack(t, compileVersion)
 	}
 
-	previousPackPath := os.Getenv(envPreviousPackPath)
-	if previousPackPath != "" {
-		previousPackPath, err = filepath.Abs(previousPackPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
+	previousPackPath := inputPathsManager.previousPackPath
 
-	previousPackFixturesPath := os.Getenv(envPreviousPackFixturesPath)
+	// Copy previous pack fixtures directory into a temp directory
+	// Copy the contents of "pack_previous_fixtures_overrides" into the temp directory
+	previousPackFixturesPath := inputPathsManager.previousPackFixturesPath
 	var tmpPreviousPackFixturesPath string
 	if previousPackFixturesPath != "" {
-		previousPackFixturesPath, err = filepath.Abs(previousPackFixturesPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		tmpPreviousPackFixturesPath, err = ioutil.TempDir("", "previous-pack-fixtures")
 		h.AssertNil(t, err)
 		defer os.RemoveAll(tmpPreviousPackFixturesPath)
@@ -107,6 +116,7 @@ func TestAcceptance(t *testing.T) {
 		h.RecursiveCopy(t, filepath.Join("testdata", "pack_previous_fixtures_overrides"), tmpPreviousPackFixturesPath)
 	}
 
+	lifecyclePath := inputPathsManager.lifecyclePath
 	lifecycleDescriptor := builder.LifecycleDescriptor{
 		Info: builder.LifecycleInfo{
 			Version: builder.VersionMustParse(builder.DefaultLifecycleVersion),
@@ -116,41 +126,20 @@ func TestAcceptance(t *testing.T) {
 			PlatformVersion:  api.MustParse(defaultPlatformAPIVersion),
 		},
 	}
-	lifecyclePath := os.Getenv(envLifecyclePath)
 	if lifecyclePath != "" {
-		lifecyclePath, err = filepath.Abs(lifecyclePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		lifecycleDescriptor, err = extractLifecycleDescriptor(lifecyclePath)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	previousLifecycleDescriptor := lifecycleDescriptor
-	previousLifecyclePath := os.Getenv(envPreviousLifecyclePath)
+	previousLifecyclePath := inputPathsManager.previousLifecyclePath
+	var previousLifecycleDescriptor builder.LifecycleDescriptor
 	if previousLifecyclePath != "" {
-		previousLifecyclePath, err = filepath.Abs(previousLifecyclePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		previousLifecycleDescriptor, err = extractLifecycleDescriptor(previousLifecyclePath)
 		if err != nil {
 			t.Fatal(err)
 		}
-	}
-
-	combos := []runCombo{
-		{Pack: "current", PackCreateBuilder: "current", Lifecycle: "current"},
-	}
-
-	suiteConfig := os.Getenv(envAcceptanceSuiteConfig)
-	if suiteConfig != "" {
-		combos, err = parseSuiteConfig(suiteConfig)
-		h.AssertNil(t, err)
 	}
 
 	resolvedCombos, err := resolveRunCombinations(
@@ -1491,110 +1480,6 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 	})
 }
 
-type runCombo struct {
-	Pack              string `json:"pack"`
-	PackCreateBuilder string `json:"pack_create_builder"`
-	Lifecycle         string `json:"lifecycle"`
-}
-
-type resolvedRunCombo struct {
-	packCreateBuilderFixturesDir string
-	packFixturesDir              string
-	packPath                     string
-	packCreateBuilderPath        string
-	lifecyclePath                string
-	lifecycleDescriptor          builder.LifecycleDescriptor
-}
-
-func resolveRunCombinations(
-	combos []runCombo,
-	packPath string,
-	previousPackPath string,
-	previousPackFixturesPath string,
-	lifecyclePath string,
-	lifecycleDescriptor builder.LifecycleDescriptor,
-	previousLifecyclePath string,
-	previousLifecycleDescriptor builder.LifecycleDescriptor,
-) (map[string]resolvedRunCombo, error) {
-	resolved := map[string]resolvedRunCombo{}
-	for _, c := range combos {
-		key := fmt.Sprintf("p_%s cb_%s lc_%s", c.Pack, c.PackCreateBuilder, c.Lifecycle)
-		rc := resolvedRunCombo{
-			packFixturesDir:              filepath.Join("testdata", "pack_fixtures"),
-			packCreateBuilderFixturesDir: filepath.Join("testdata", "pack_fixtures"),
-			packPath:                     packPath,
-			packCreateBuilderPath:        packPath,
-			lifecyclePath:                lifecyclePath,
-			lifecycleDescriptor:          lifecycleDescriptor,
-		}
-
-		if c.Pack == "previous" {
-			if previousPackPath == "" {
-				return resolved, errors.Errorf("must provide %s in order to run combination %s", style.Symbol(envPreviousPackPath), style.Symbol(key))
-			}
-
-			rc.packPath = previousPackPath
-			if previousPackFixturesPath != "" {
-				rc.packFixturesDir = previousPackFixturesPath
-			}
-		}
-
-		if c.PackCreateBuilder == "previous" {
-			if previousPackPath == "" {
-				return resolved, errors.Errorf("must provide %s in order to run combination %s", style.Symbol(envPreviousPackPath), style.Symbol(key))
-			}
-
-			rc.packCreateBuilderPath = previousPackPath
-			rc.packCreateBuilderFixturesDir = previousPackFixturesPath
-		}
-
-		if c.Lifecycle == "previous" {
-			if previousLifecyclePath == "" {
-				return resolved, errors.Errorf("must provide %s in order to run combination %s", style.Symbol(envPreviousLifecyclePath), style.Symbol(key))
-			}
-
-			rc.lifecyclePath = previousLifecyclePath
-			rc.lifecycleDescriptor = previousLifecycleDescriptor
-		}
-
-		resolved[key] = rc
-	}
-
-	return resolved, nil
-}
-
-func parseSuiteConfig(config string) ([]runCombo, error) {
-	var cfgs []runCombo
-	if err := json.Unmarshal([]byte(config), &cfgs); err != nil {
-		return nil, errors.Wrap(err, "parse config")
-	}
-
-	validate := func(jsonKey, value string) error {
-		switch value {
-		case "current", "previous":
-			return nil
-		default:
-			return fmt.Errorf("invalid config: %s not valid value for %s", style.Symbol(value), style.Symbol(jsonKey))
-		}
-	}
-
-	for _, c := range cfgs {
-		if err := validate("pack", c.Pack); err != nil {
-			return nil, err
-		}
-
-		if err := validate("pack_create_builder", c.PackCreateBuilder); err != nil {
-			return nil, err
-		}
-
-		if err := validate("lifecycle", c.Lifecycle); err != nil {
-			return nil, err
-		}
-	}
-
-	return cfgs, nil
-}
-
 func extractLifecycleDescriptor(lcPath string) (builder.LifecycleDescriptor, error) {
 	lifecycle, err := builder.NewLifecycle(blob.NewBlob(lcPath))
 	if err != nil {
@@ -2050,61 +1935,4 @@ func taskKey(prefix string, args ...string) string {
 		hash.Write([]byte(v))
 	}
 	return fmt.Sprintf("%s-%s", prefix, hex.EncodeToString(hash.Sum(nil)))
-}
-
-type SuiteManager struct {
-	out          func(format string, args ...interface{})
-	results      map[string]interface{}
-	cleanUpTasks map[string]func() error
-}
-
-func (s *SuiteManager) RunTaskOnceString(key string, run func() (string, error)) (string, error) {
-	v, err := s.runTaskOnce(key, func() (interface{}, error) {
-		return run()
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return v.(string), nil
-}
-
-func (s *SuiteManager) runTaskOnce(key string, run func() (interface{}, error)) (interface{}, error) {
-	if s.results == nil {
-		s.results = map[string]interface{}{}
-	}
-
-	value, found := s.results[key]
-	if !found {
-		s.out("Running task '%s'\n", key)
-		v, err := run()
-		if err != nil {
-			return nil, err
-		}
-
-		s.results[key] = v
-
-		return v, nil
-	}
-
-	return value, nil
-}
-
-func (s *SuiteManager) RegisterCleanUp(key string, cleanUp func() error) {
-	if s.cleanUpTasks == nil {
-		s.cleanUpTasks = map[string]func() error{}
-	}
-
-	s.cleanUpTasks[key] = cleanUp
-}
-
-func (s *SuiteManager) CleanUp() error {
-	for key, cleanUp := range s.cleanUpTasks {
-		s.out("Running cleanup task '%s'\n", key)
-		if err := cleanUp(); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
