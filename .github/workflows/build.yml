@@ -52,7 +52,7 @@ jobs:
       - name: Build
         run: make build
         env:
-          - PACK_BUILD: ${{ GITHUB_RUN_NUMBER }}
+          PACK_BUILD: ${{ github.run_number }}
       - uses: actions/upload-artifact@v1
         with:
           name: pack-${{ matrix.os }}
