@@ -49,6 +49,11 @@ jobs:
         run: make verify
       - name: Test
         run: make test
+      - name: Derive pack version from branch name
+        run: |
+          [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
+          echo "::set-env name=PACK_VERSION::$version"
+        shell: bash
       - name: Build
         run: make build
         env:
