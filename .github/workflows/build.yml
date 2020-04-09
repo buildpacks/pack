@@ -51,6 +51,8 @@ jobs:
         run: make test
       - name: Build
         run: make build
+        env:
+          - PACK_BUILD: ${{ GITHUB_RUN_NUMBER }}
       - uses: actions/upload-artifact@v1
         with:
           name: pack-${{ matrix.os }}
