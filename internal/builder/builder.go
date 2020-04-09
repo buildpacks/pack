@@ -552,17 +552,7 @@ func (b *Builder) orderLayer(order dist.Order, dest string) (string, error) {
 	}
 
 	layerTar := filepath.Join(dest, "order.tar")
-
-	fh, err := os.Create(layerTar)
-	if err != nil {
-		return "", err
-	}
-	defer fh.Close()
-
-	tw := b.layerWriterFactory.NewTarWriter(fh)
-	defer tw.Close()
-
-	err = archive.CreateSingleFileTar(tw, orderPath, contents)
+	err = layer.CreateSingleFileTar(layerTar, orderPath, contents, b.layerWriterFactory)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create order.toml layer tar")
 	}
@@ -588,17 +578,7 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	}
 
 	layerTar := filepath.Join(dest, "stack.tar")
-
-	fh, err := os.Create(layerTar)
-	if err != nil {
-		return "", err
-	}
-	defer fh.Close()
-
-	tw := b.layerWriterFactory.NewTarWriter(fh)
-	defer tw.Close()
-
-	err = archive.CreateSingleFileTar(tw, stackPath, buf.String())
+	err = layer.CreateSingleFileTar(layerTar, stackPath, buf.String(), b.layerWriterFactory)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create stack.toml layer tar")
 	}

@@ -56,5 +56,5 @@ func (b *fakeBuildpack) Open() (io.ReadCloser, error) {
 		tarBuilder.AddFile(bpDir+"/bin/detect", b.chmod, ts, []byte("detect-contents"))
 	}
 
-	return tarBuilder.Reader(), nil
+	return tarBuilder.Reader(archive.DefaultTarWriterFactory), nil
 }

@@ -44,5 +44,5 @@ func (b *fakeBuildpackBlob) Open() (reader io.ReadCloser, err error) {
 	tarBuilder.AddFile("bin/build", b.chmod, time.Now(), []byte("build-contents"))
 	tarBuilder.AddFile("bin/detect", b.chmod, time.Now(), []byte("detect-contents"))
 
-	return tarBuilder.Reader(), err
+	return tarBuilder.Reader(archive.DefaultTarWriterFactory), err
 }

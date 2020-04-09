@@ -13,7 +13,6 @@ type tarWriterFactory struct {
 	os string
 }
 
-// TODO: Move to method on `imgutil.Image`
 func NewTarWriterFactory(image imgutil.Image) (archive.TarWriterFactory, error) {
 	os, err := image.OS()
 	if err != nil {
@@ -31,12 +30,3 @@ func (f tarWriterFactory) NewTarWriter(fileWriter io.Writer) archive.TarWriter {
 	// Linux images use tar.Writer
 	return tar.NewWriter(fileWriter)
 }
-
-/*
-imgutil      lifecycle
-    ^          ^
-     \        /
-        pack
-
-
-*/

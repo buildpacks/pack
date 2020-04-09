@@ -56,11 +56,7 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 	tarBuilder.AddFile("/cnb/order.toml", 0777, archive.NormalizedDateTime, orderTomlBytes.Bytes())
 
 	orderTar := filepath.Join(tmpDir, fmt.Sprintf("order.%s.toml", h.RandString(8)))
-	fh, err := os.Create(orderTar)
-	h.AssertNil(t, err)
-	defer fh.Close()
-	_, err = tarBuilder.WriteTo(fh)
-	h.AssertNil(t, err)
+	h.AssertNil(t, tarBuilder.WriteToPath(orderTar, archive.DefaultTarWriterFactory))
 	h.AssertNil(t, fakeBuilderImage.AddLayer(orderTar))
 
 	return fakeBuilderImage

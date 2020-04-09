@@ -124,23 +124,6 @@ func (b *distBlob) Open() (io.ReadCloser, error) {
 	return b.openFn(), nil
 }
 
-/*
- * Two formats for BP blob:
-   - Root format:
-	/
-	/buildpack.toml
-	/bin/
-	/bin/build
-	/bin/detect
-
-   - Dist format:
-	Hives/
-	Files/cnb/buildpacks/<bp ID>/<bp ver>
-	Files/cnb/buildpacks/<bp ID>/<bp ver>/bin/
-	...
-	File/cnb/buildpacks/<bp ID>/<bp ver>/buildpack.toml
-*/
-
 func toDistTar(tw archive.TarWriter, bpd BuildpackDescriptor, blob Blob) error {
 	ts := archive.NormalizedDateTime
 

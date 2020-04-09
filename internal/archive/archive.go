@@ -37,15 +37,15 @@ func GenerateTar(genFn func(TarWriter) error) io.ReadCloser {
 	return GenerateTarWithWriter(genFn, DefaultTarWriterFactory)
 }
 
-// GenerateTar returns a reader to a tar from a generator function using a factory writer. Note that the
-// generator will not fully execute until the reader is fully read from. Any errors
-// returned by the generator will be returned when reading the reader.
-func GenerateTarWithWriter(genFn func(TarWriter) error, tarWriterFactory TarWriterFactory) io.ReadCloser {
+// GenerateTarWithTar returns a reader to a tar from a generator function using a writer from the provided factory.
+// Note that the generator will not fully execute until the reader is fully read from. Any errors returned by the
+// generator will be returned when reading the reader.
+func GenerateTarWithWriter(genFn func(TarWriter) error, twf TarWriterFactory) io.ReadCloser {
 	errChan := make(chan error)
 	pr, pw := io.Pipe()
 
 	go func() {
-		tw := tarWriterFactory.NewTarWriter(pw)
+		tw := twf.NewTarWriter(pw)
 		defer func() {
 			if r := recover(); r != nil {
 				tw.Close()
@@ -91,23 +91,16 @@ func aggregateError(base, addition error) error {
 	return errors.Wrap(addition, base.Error())
 }
 
-func CreateSingleFileTarReader(path, txt string) (io.Reader, error) {
-	var buf bytes.Buffer
+func CreateSingleFileTarReader(path, txt string) io.ReadCloser {
 	tarBuilder := TarBuilder{}
 	tarBuilder.AddFile(path, 0644, NormalizedDateTime, []byte(txt))
-	_, err := tarBuilder.WriteTo(&buf)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes.NewReader(buf.Bytes()), nil
+	return tarBuilder.Reader(DefaultTarWriterFactory)
 }
 
-func CreateSingleFileTar(tw TarWriter, path, txt string) error {
+func CreateSingleFileTar(tarFile, path, txt string) error {
 	tarBuilder := TarBuilder{}
 	tarBuilder.AddFile(path, 0644, NormalizedDateTime, []byte(txt))
-	_, err := tarBuilder.WriteToTarWriter(tw)
-	return err
+	return tarBuilder.WriteToPath(tarFile, DefaultTarWriterFactory)
 }
 
 // ErrEntryNotExist is an error returned if an entry path doesn't exist

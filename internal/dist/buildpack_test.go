@@ -64,7 +64,7 @@ homepage = "http://geocities.com/cool-bp"
 [[stacks]]
 id = "some.stack.id"
 `))
-						return tarBuilder.Reader()
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 					},
 				},
 				archive.DefaultTarWriterFactory,
@@ -97,7 +97,7 @@ id = "some.stack.id"
 						tarBuilder.AddDir("bin", 0700, time.Now())
 						tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
 						tarBuilder.AddFile("bin/build", 0700, time.Now(), []byte("build-contents"))
-						return tarBuilder.Reader()
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 					},
 				},
 				archive.DefaultTarWriterFactory,
@@ -157,7 +157,7 @@ version = "1.2.3"
 [[stacks]]
 id = "some.stack.id"
 `))
-					return tarBuilder.Reader()
+					return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 				},
 			}
 
@@ -196,7 +196,7 @@ id = "some.stack.id"
 								tarBuilder := archive.TarBuilder{}
 								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
 								tarBuilder.AddDir("some-dir", 0600, time.Now())
-								return tarBuilder.Reader()
+								return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 							},
 						},
 						archive.DefaultTarWriterFactory,
@@ -222,7 +222,7 @@ id = "some.stack.id"
 								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
 								tarBuilder.AddFile("bin/detect", 0600, time.Now(), []byte("detect-contents"))
 								tarBuilder.AddFile("bin/build", 0600, time.Now(), []byte("build-contents"))
-								return tarBuilder.Reader()
+								return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 							},
 						},
 						archive.DefaultTarWriterFactory,
@@ -252,7 +252,7 @@ id = "some.stack.id"
 								tarBuilder := archive.TarBuilder{}
 								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
 								tarBuilder.AddFile("some-file", 0700, time.Now(), []byte("some-data"))
-								return tarBuilder.Reader()
+								return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 							},
 						},
 						archive.DefaultTarWriterFactory,
@@ -277,7 +277,7 @@ id = "some.stack.id"
 								tarBuilder := archive.TarBuilder{}
 								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
 								tarBuilder.AddFile("some-file", 0600, time.Now(), []byte("some-data"))
-								return tarBuilder.Reader()
+								return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 							},
 						},
 						archive.DefaultTarWriterFactory,
@@ -301,7 +301,7 @@ id = "some.stack.id"
 					&readerBlob{
 						openFn: func() io.ReadCloser {
 							tarBuilder := archive.TarBuilder{}
-							return tarBuilder.Reader()
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 						},
 					},
 					archive.DefaultTarWriterFactory,
@@ -323,7 +323,7 @@ version = "1.2.3"
 
 [[stacks]]
 id = "some.stack.id"`))
-							return tarBuilder.Reader()
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 						},
 					},
 					archive.DefaultTarWriterFactory,
@@ -346,7 +346,7 @@ version = "1.2.3"
 
 [[stacks]]
 id = "some.stack.id"`))
-							return tarBuilder.Reader()
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 						},
 					},
 					archive.DefaultTarWriterFactory,
@@ -368,7 +368,7 @@ version = ""
 
 [[stacks]]
 id = "some.stack.id"`))
-							return tarBuilder.Reader()
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 						},
 					},
 					archive.DefaultTarWriterFactory,
@@ -396,7 +396,7 @@ id = "some.stack.id"
   id = "bp.nested"
   version = "bp.nested.version"
 `))
-							return tarBuilder.Reader()
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 						},
 					},
 					archive.DefaultTarWriterFactory,
@@ -416,7 +416,7 @@ id = "some.stack.id"
 id = "bp.one"
 version = "1.2.3"
 `))
-							return tarBuilder.Reader()
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory)
 						},
 					},
 					archive.DefaultTarWriterFactory,

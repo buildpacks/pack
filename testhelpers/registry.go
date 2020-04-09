@@ -90,6 +90,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) str
 	ctx := context.Background()
 
 	htpasswdTar := generateHtpasswd(t, username, password)
+	defer htpasswdTar.Close()
 
 	ctr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
 		Image:  registryContainerName,
@@ -123,14 +124,11 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) str
 	return runRegistryPort
 }
 
-func generateHtpasswd(t *testing.T, username string, password string) io.Reader {
+func generateHtpasswd(t *testing.T, username string, password string) io.ReadCloser {
 	// https://docs.docker.com/registry/deploying/#restricting-access
 	// HTPASSWD format: https://github.com/foomo/htpasswd/blob/e3a90e78da9cff06a83a78861847aa9092cbebdd/hashing.go#L23
 	passwordBytes, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-
-	reader, err := archive.CreateSingleFileTarReader("/registry_test_htpasswd", username+":"+string(passwordBytes))
-	AssertNil(t, err)
-
+	reader := archive.CreateSingleFileTarReader("/registry_test_htpasswd", username+":"+string(passwordBytes))
 	return reader
 }
 
