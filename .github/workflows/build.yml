@@ -4,12 +4,16 @@ on:
   push:
     branches:
       - master
+      - 'release/**'
   pull_request:
     branches:
       - master
+      - 'release/**'
+
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         os: [darwin, linux, windows]
         include:
@@ -22,9 +26,8 @@ jobs:
             no_docker: "false"
             pack_bin: pack
           - os: windows
-            runner: windows-latest
-            # disabled because not non-applicable tests are gated
-            no_docker: "true"
+            runner: [self-hosted, windows]
+            no_docker: "false"
             pack_bin: pack.exe
     runs-on: ${{ matrix.runner }}
     env:
@@ -40,9 +43,8 @@ jobs:
         run: |
           echo "::set-env name=GOPATH::$(go env GOPATH)"
           echo "::add-path::$(go env GOPATH)/bin"
-        shell: bash
       - name: Verify
-        # disabled for windows due verification failing
+        # disabled for windows due to format verification failing
         if: matrix.os != 'windows'
         run: make verify
       - name: Test
