@@ -6,7 +6,7 @@ PACKAGE_BASE=github.com/buildpacks/pack
 PACK_BIN?=pack
 PACK_GITSHA1=$(shell git rev-parse --short=7 HEAD)
 PACK_VERSION?=0.0.0
-SRC:=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
+SRC=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
 TEST_TIMEOUT?=900s
 UNIT_TIMEOUT?=$(TEST_TIMEOUT)
 
@@ -37,12 +37,11 @@ mod-vendor:
 	
 tidy: mod-tidy mod-vendor format
 
-build:
+build: out
 	@echo "> Building..."
-	mkdir out
 	$(GOCMD) build -ldflags "-s -w -X 'github.com/buildpacks/pack/cmd.Version=${PACK_VERSION}'" -o ./out/$(PACK_BIN) -a ./cmd/pack
 
-package:
+package: out
 	tar czf ./out/$(ARCHIVE_NAME).tgz -C out/ pack
 
 install-mockgen:
@@ -109,5 +108,8 @@ prepare-for-pr: tidy verify test
 	echo "NOTICE: There are some files that have not been committed." &&\
 	echo "-----------------\n"  &&\
 	exit 0;
+
+out:
+	mkdir out
 
 .PHONY: clean build format imports lint test unit acceptance verify verify-format
