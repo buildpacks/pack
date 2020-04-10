@@ -1,13 +1,26 @@
+ACCEPTANCE_TIMEOUT?=$(TEST_TIMEOUT)
+ARCHIVE_NAME=pack-$(PACK_VERSION)
 GOCMD?=go
 GOFLAGS?=-mod=vendor
-PACK_VERSION?=dev-$(shell date +%Y-%m-%d-%H:%M:%S)
-PACK_BIN?=pack
 PACKAGE_BASE=github.com/buildpacks/pack
-SRC:=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
-ARCHIVE_NAME=pack-$(PACK_VERSION)
+PACK_BIN?=pack
+PACK_GITSHA1=$(shell git rev-parse --short=7 HEAD)
+PACK_VERSION?=0.0.0
+SRC=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
 TEST_TIMEOUT?=900s
 UNIT_TIMEOUT?=$(TEST_TIMEOUT)
-ACCEPTANCE_TIMEOUT?=$(TEST_TIMEOUT)
+
+clean_build := $(strip ${PACK_BUILD})
+clean_sha := $(strip ${PACK_GITSHA1})
+
+# append build number and git sha to version, if not-empty
+ifneq ($(and $(clean_build),$(clean_sha)),)
+PACK_VERSION:=${PACK_VERSION}+git-${clean_sha}.build-${clean_build}
+else ifneq ($(clean_build),)
+PACK_VERSION:=${PACK_VERSION}+build-${clean_build}
+else ifneq ($(clean_sha),)
+PACK_VERSION:=${PACK_VERSION}+git-${clean_sha}
+endif
 
 export GOFLAGS:=$(GOFLAGS)
 export CGO_ENABLED=0
@@ -24,12 +37,11 @@ mod-vendor:
 	
 tidy: mod-tidy mod-vendor format
 
-build:
+build: out
 	@echo "> Building..."
-	mkdir out
 	$(GOCMD) build -ldflags "-s -w -X 'github.com/buildpacks/pack/cmd.Version=${PACK_VERSION}'" -o ./out/$(PACK_BIN) -a ./cmd/pack
 
-package:
+package: out
 	tar czf ./out/$(ARCHIVE_NAME).tgz -C out/ pack
 
 install-mockgen:
@@ -96,5 +108,8 @@ prepare-for-pr: tidy verify test
 	echo "NOTICE: There are some files that have not been committed." &&\
 	echo "-----------------\n"  &&\
 	exit 0;
+
+out:
+	mkdir out
 
 .PHONY: clean build format imports lint test unit acceptance verify verify-format
