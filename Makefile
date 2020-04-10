@@ -15,11 +15,11 @@ clean_sha := $(strip ${PACK_GITSHA1})
 
 # append build number and git sha to version, if not-empty
 ifneq ($(and $(clean_build),$(clean_sha)),)
-PACK_VERSION:=${PACK_VERSION}+b-${clean_build}.g-${clean_sha}
+PACK_VERSION:=${PACK_VERSION}+git-${clean_sha}.build-${clean_build}
 else ifneq ($(clean_build),)
-PACK_VERSION:=${PACK_VERSION}+b-${clean_build}
+PACK_VERSION:=${PACK_VERSION}+build-${clean_build}
 else ifneq ($(clean_sha),)
-PACK_VERSION:=${PACK_VERSION}+g-${clean_sha}
+PACK_VERSION:=${PACK_VERSION}+git-${clean_sha}
 endif
 
 export GOFLAGS:=$(GOFLAGS)
