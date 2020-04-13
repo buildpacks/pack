@@ -35,8 +35,8 @@ type Entry struct {
 }
 
 type Cache struct {
-	URL  string
-	Root string
+	url  string
+	root string
 }
 
 func NewRegistryCache(home, registryURL string) (Cache, error) {
@@ -49,8 +49,8 @@ func NewRegistryCache(home, registryURL string) (Cache, error) {
 	cacheDir := fmt.Sprintf("%s-%s", defaultRegistryDir, hex.EncodeToString(key.Sum(nil)))
 
 	return Cache{
-		URL:  registryURL,
-		Root: filepath.Join(home, cacheDir),
+		url:  registryURL,
+		root: filepath.Join(home, cacheDir),
 	}, nil
 }
 
@@ -65,7 +65,7 @@ func (r *Cache) createCache() error {
 	}
 
 	repository, err := git.PlainClone(root, false, &git.CloneOptions{
-		URL: r.URL,
+		URL: r.url,
 	})
 	if err != nil {
 		return err
@@ -76,11 +76,11 @@ func (r *Cache) createCache() error {
 		return err
 	}
 
-	return os.Rename(w.Filesystem.Root(), r.Root)
+	return os.Rename(w.Filesystem.Root(), r.root)
 }
 
 func (r *Cache) validateCache() error {
-	repository, err := git.PlainOpen(r.Root)
+	repository, err := git.PlainOpen(r.root)
 	if err != nil {
 		return errors.Wrap(err, "could not open registry cache")
 	}
@@ -92,14 +92,14 @@ func (r *Cache) validateCache() error {
 
 	if len(remotes) != 1 || len(remotes[0].Config().URLs) != 1 {
 		return errors.New("invalid registry cache remotes")
-	} else if remotes[0].Config().URLs[0] != r.URL {
+	} else if remotes[0].Config().URLs[0] != r.url {
 		return errors.New("invalid registry cache origin")
 	}
 	return nil
 }
 
 func (r *Cache) Initialize() error {
-	_, err := os.Stat(r.Root)
+	_, err := os.Stat(r.root)
 	if err != nil {
 		if os.IsNotExist(err) {
 			err = r.createCache()
@@ -110,7 +110,7 @@ func (r *Cache) Initialize() error {
 	}
 
 	if err := r.validateCache(); err != nil {
-		err = os.RemoveAll(r.Root)
+		err = os.RemoveAll(r.root)
 		if err != nil {
 			return errors.Wrap(err, "could not reset registry cache")
 		}
@@ -128,14 +128,14 @@ func (r *Cache) Refresh() error {
 		return err
 	}
 
-	repository, err := git.PlainOpen(r.Root)
+	repository, err := git.PlainOpen(r.root)
 	if err != nil {
-		return errors.Wrapf(err, "could not open (%s)", r.Root)
+		return errors.Wrapf(err, "could not open (%s)", r.root)
 	}
 
 	w, err := repository.Worktree()
 	if err != nil {
-		return errors.Wrapf(err, "could not read (%s)", r.Root)
+		return errors.Wrapf(err, "could not read (%s)", r.root)
 	}
 
 	err = w.Pull(&git.PullOptions{RemoteName: "origin"})
@@ -156,7 +156,7 @@ func (r *Cache) readEntry(ns, name, version string) (Entry, error) {
 		indexDir = filepath.Join(name[:2], name[2:4])
 	}
 
-	index := filepath.Join(r.Root, indexDir, fmt.Sprintf("%s_%s", ns, name))
+	index := filepath.Join(r.root, indexDir, fmt.Sprintf("%s_%s", ns, name))
 
 	if _, err := os.Stat(index); err != nil {
 		return Entry{}, errors.Wrapf(err, "could not find buildpack: %s/%s", ns, name)
