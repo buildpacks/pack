@@ -52,9 +52,6 @@ func GetLocatorType(locator string, buildpacksFromBuilder []dist.BuildpackInfo) 
 	}
 
 	if strings.HasPrefix(locator, fromRegistryPrefix+":") {
-		// if !registryMatchFound(locator, buildpacksFromBuilder) {
-		// 	return InvalidLocator, fmt.Errorf("%s is not a valid identifier", style.Symbol(locator))
-		// }
 		return RegistryLocator, nil
 	}
 
