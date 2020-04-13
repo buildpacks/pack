@@ -456,7 +456,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			} else {
 				layerWriterFactory, err := ilayer.NewTarWriterFactory(builderImage)
 				if err != nil {
-					return fetchedBPs, order, errors.Wrapf(err, "buildpack layer writer for image %s", style.Symbol(builderImage.Name()))
+					return fetchedBPs, order, errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(builderImage.Name()))
 				}
 				mainBP, err = dist.BuildpackFromRootBlob(blob, layerWriterFactory)
 				if err != nil {

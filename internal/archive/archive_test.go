@@ -67,7 +67,6 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns the file contents", func() {
-				h.AssertNil(t, err)
 				_, contents, err := archive.ReadTarEntry(tarFile, "file1")
 				h.AssertNil(t, err)
 				h.AssertEq(t, string(contents), "file-1 content")

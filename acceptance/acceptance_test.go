@@ -1812,11 +1812,7 @@ func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror 
 	t.Helper()
 	t.Log("creating stack images...")
 
-	daemonInfo, err := dockerCli.Info(context.TODO())
-	h.AssertNil(t, err)
-
-	os := daemonInfo.OSType
-	stackBaseDir := filepath.Join("testdata", "mock_stack", os)
+	stackBaseDir := filepath.Join("testdata", "mock_stack", dockerHostOS())
 
 	if err := createStackImage(dockerCli, runImage, filepath.Join(stackBaseDir, "run")); err != nil {
 		return err

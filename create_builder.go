@@ -104,7 +104,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 
 			layerWriterFactory, err := ilayer.NewTarWriterFactory(bldr.Image())
 			if err != nil {
-				return errors.Wrapf(err, "buildpack layer writer for image %s", style.Symbol(bldr.Name()))
+				return errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(bldr.Name()))
 			}
 			fetchedBp, err := dist.BuildpackFromRootBlob(blob, layerWriterFactory)
 			if err != nil {
