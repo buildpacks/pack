@@ -6,6 +6,7 @@ import (
 	"path"
 
 	"github.com/BurntSushi/toml"
+	iarchive "github.com/buildpacks/imgutil/archive"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/api"
@@ -77,7 +78,7 @@ func BuildpackFromBlob(bpd BuildpackDescriptor, blob Blob) Buildpack {
 // BuildpackFromRootBlob constructs a buildpack from a blob. It is assumed that the buildpack contents reside at the
 // root of the blob. The constructed buildpack contents will be structured as per the distribution spec (currently
 // a tar with contents under '/cnbs/buildpacks/{ID}/{version}/*').
-func BuildpackFromRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (Buildpack, error) {
+func BuildpackFromRootBlob(blob Blob, layerWriterFactory iarchive.TarWriterFactory) (Buildpack, error) {
 	bpd := BuildpackDescriptor{}
 	rc, err := blob.Open()
 	if err != nil {
@@ -106,7 +107,7 @@ func BuildpackFromRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 		Blob: &distBlob{
 			openFn: func() io.ReadCloser {
 				return archive.GenerateTarWithWriter(
-					func(tw archive.TarWriter) error {
+					func(tw iarchive.TarWriter) error {
 						return toDistTar(tw, bpd, blob)
 					},
 					layerWriterFactory,
@@ -124,7 +125,7 @@ func (b *distBlob) Open() (io.ReadCloser, error) {
 	return b.openFn(), nil
 }
 
-func toDistTar(tw archive.TarWriter, bpd BuildpackDescriptor, blob Blob) error {
+func toDistTar(tw iarchive.TarWriter, bpd BuildpackDescriptor, blob Blob) error {
 	ts := archive.NormalizedDateTime
 
 	if err := tw.WriteHeader(&tar.Header{

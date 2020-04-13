@@ -5,14 +5,14 @@ import (
 	"io"
 )
 
-type TarWriterFactory interface {
-	NewTarWriter(io.Writer) TarWriter
-}
-
 type TarWriter interface {
 	WriteHeader(hdr *tar.Header) error
 	Write(b []byte) (int, error)
 	Close() error
+}
+
+type TarWriterFactory interface {
+	NewTarWriter(io.Writer) TarWriter
 }
 
 var DefaultTarWriterFactory = defaultTarWriterFactory{}

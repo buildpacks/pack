@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/BurntSushi/toml"
+	iarchive "github.com/buildpacks/imgutil/archive"
 
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/dist"
@@ -56,5 +57,5 @@ func (b *fakeBuildpack) Open() (io.ReadCloser, error) {
 		tarBuilder.AddFile(bpDir+"/bin/detect", b.chmod, ts, []byte("detect-contents"))
 	}
 
-	return tarBuilder.Reader(archive.DefaultTarWriterFactory), nil
+	return tarBuilder.Reader(iarchive.DefaultTarWriterFactory), nil
 }

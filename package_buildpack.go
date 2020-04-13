@@ -3,9 +3,8 @@ package pack
 import (
 	"context"
 
+	iarchive "github.com/buildpacks/imgutil/archive"
 	"github.com/pkg/errors"
-
-	"github.com/buildpacks/pack/internal/archive"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/buildpackage"
@@ -43,7 +42,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bpURI))
 	}
 
-	bp, err := dist.BuildpackFromRootBlob(blob, archive.DefaultTarWriterFactory)
+	bp, err := dist.BuildpackFromRootBlob(blob, iarchive.DefaultTarWriterFactory)
 	if err != nil {
 		return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bpURI))
 	}
@@ -57,7 +56,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(dep.URI))
 			}
 
-			depBP, err := dist.BuildpackFromRootBlob(blob, archive.DefaultTarWriterFactory)
+			depBP, err := dist.BuildpackFromRootBlob(blob, iarchive.DefaultTarWriterFactory)
 			if err != nil {
 				return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
 			}

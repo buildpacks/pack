@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
+	ilayer "github.com/buildpacks/imgutil/layer"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/buildpack"
@@ -14,7 +15,6 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
-	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/style"
 )
 
@@ -102,7 +102,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))
 			}
 
-			layerWriterFactory, err := layer.NewTarWriterFactory(bldr.Image())
+			layerWriterFactory, err := ilayer.NewTarWriterFactory(bldr.Image())
 			if err != nil {
 				return errors.Wrapf(err, "buildpack layer writer for image %s", style.Symbol(bldr.Name()))
 			}

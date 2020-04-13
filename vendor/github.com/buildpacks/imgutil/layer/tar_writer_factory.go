@@ -4,9 +4,8 @@ import (
 	"archive/tar"
 	"io"
 
-	"github.com/buildpacks/pack/internal/archive"
-
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/archive"
 )
 
 type tarWriterFactory struct {

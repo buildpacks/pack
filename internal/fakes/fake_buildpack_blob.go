@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	iarchive "github.com/buildpacks/imgutil/archive"
 
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/dist"
@@ -44,5 +45,5 @@ func (b *fakeBuildpackBlob) Open() (reader io.ReadCloser, err error) {
 	tarBuilder.AddFile("bin/build", b.chmod, time.Now(), []byte("build-contents"))
 	tarBuilder.AddFile("bin/detect", b.chmod, time.Now(), []byte("detect-contents"))
 
-	return tarBuilder.Reader(archive.DefaultTarWriterFactory), err
+	return tarBuilder.Reader(iarchive.DefaultTarWriterFactory), err
 }

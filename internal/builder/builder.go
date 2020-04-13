@@ -15,6 +15,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
+	iarchive "github.com/buildpacks/imgutil/archive"
+	ilayer "github.com/buildpacks/imgutil/layer"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/builder"
@@ -51,7 +53,7 @@ const (
 type Builder struct {
 	baseImageName        string
 	image                imgutil.Image
-	layerWriterFactory   archive.TarWriterFactory
+	layerWriterFactory   iarchive.TarWriterFactory
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
 	additionalBuildpacks []dist.Buildpack
@@ -89,7 +91,7 @@ func New(baseImage imgutil.Image, name string) (*Builder, error) {
 }
 
 func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Builder, error) {
-	layerWriterFactory, err := layer.NewTarWriterFactory(img)
+	layerWriterFactory, err := ilayer.NewTarWriterFactory(img)
 	if err != nil {
 		return nil, err
 	}
@@ -586,7 +588,7 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	return layerTar, nil
 }
 
-func (b *Builder) embedLifecycleTar(tw archive.TarWriter) error {
+func (b *Builder) embedLifecycleTar(tw iarchive.TarWriter) error {
 	var regex = regexp.MustCompile(`^[^/]+/([^/]+)$`)
 
 	lr, err := b.lifecycle.Open()
