@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -44,8 +45,13 @@ func NewRegistryCache(home, registryURL string) (Cache, error) {
 		return Cache{}, err
 	}
 
+	normalizedURL, err := url.Parse(registryURL)
+	if err != nil {
+		return Cache{}, err
+	}
+
 	key := sha256.New()
-	key.Write([]byte(registryURL))
+	key.Write([]byte(normalizedURL.String()))
 	cacheDir := fmt.Sprintf("%s-%s", defaultRegistryDir, hex.EncodeToString(key.Sum(nil)))
 
 	return Cache{
