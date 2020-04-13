@@ -151,7 +151,7 @@ func (r *Cache) Refresh() error {
 	return err
 }
 
-func (r *Cache) readEntry(ns, name, version string) (Entry, error) {
+func (r *Cache) readEntry(ns, name string) (Entry, error) {
 	var indexDir string
 	switch {
 	case len(name) < 3:
@@ -219,7 +219,7 @@ func (r *Cache) LocateBuildpack(bp string) (Buildpack, error) {
 		return Buildpack{}, err
 	}
 
-	entry, err := r.readEntry(ns, name, version)
+	entry, err := r.readEntry(ns, name)
 	if err != nil {
 		return Buildpack{}, errors.Wrap(err, "reading entry")
 	}
