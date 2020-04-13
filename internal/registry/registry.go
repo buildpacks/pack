@@ -36,7 +36,7 @@ type Entry struct {
 
 type Cache struct {
 	url  string
-	root string
+	Root string
 }
 
 func NewRegistryCache(home, registryURL string) (Cache, error) {
@@ -50,7 +50,7 @@ func NewRegistryCache(home, registryURL string) (Cache, error) {
 
 	return Cache{
 		url:  registryURL,
-		root: filepath.Join(home, cacheDir),
+		Root: filepath.Join(home, cacheDir),
 	}, nil
 }
 
@@ -76,11 +76,11 @@ func (r *Cache) createCache() error {
 		return err
 	}
 
-	return os.Rename(w.Filesystem.Root(), r.root)
+	return os.Rename(w.Filesystem.Root(), r.Root)
 }
 
 func (r *Cache) validateCache() error {
-	repository, err := git.PlainOpen(r.root)
+	repository, err := git.PlainOpen(r.Root)
 	if err != nil {
 		return errors.Wrap(err, "could not open registry cache")
 	}
@@ -99,7 +99,7 @@ func (r *Cache) validateCache() error {
 }
 
 func (r *Cache) Initialize() error {
-	_, err := os.Stat(r.root)
+	_, err := os.Stat(r.Root)
 	if err != nil {
 		if os.IsNotExist(err) {
 			err = r.createCache()
@@ -110,7 +110,7 @@ func (r *Cache) Initialize() error {
 	}
 
 	if err := r.validateCache(); err != nil {
-		err = os.RemoveAll(r.root)
+		err = os.RemoveAll(r.Root)
 		if err != nil {
 			return errors.Wrap(err, "could not reset registry cache")
 		}
@@ -128,14 +128,14 @@ func (r *Cache) Refresh() error {
 		return err
 	}
 
-	repository, err := git.PlainOpen(r.root)
+	repository, err := git.PlainOpen(r.Root)
 	if err != nil {
-		return errors.Wrapf(err, "could not open (%s)", r.root)
+		return errors.Wrapf(err, "could not open (%s)", r.Root)
 	}
 
 	w, err := repository.Worktree()
 	if err != nil {
-		return errors.Wrapf(err, "could not read (%s)", r.root)
+		return errors.Wrapf(err, "could not read (%s)", r.Root)
 	}
 
 	err = w.Pull(&git.PullOptions{RemoteName: "origin"})
@@ -156,7 +156,7 @@ func (r *Cache) readEntry(ns, name, version string) (Entry, error) {
 		indexDir = filepath.Join(name[:2], name[2:4])
 	}
 
-	index := filepath.Join(r.root, indexDir, fmt.Sprintf("%s_%s", ns, name))
+	index := filepath.Join(r.Root, indexDir, fmt.Sprintf("%s_%s", ns, name))
 
 	if _, err := os.Stat(index); err != nil {
 		return Entry{}, errors.Wrapf(err, "could not find buildpack: %s/%s", ns, name)

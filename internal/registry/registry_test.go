@@ -117,7 +117,7 @@ func TestRegistryCache(t *testing.T) {
 				err := registryCache.Refresh()
 				h.AssertNil(t, err)
 
-				assertGitHeadEq(t, registryFixture, registryCache.root)
+				assertGitHeadEq(t, registryFixture, registryCache.Root)
 
 				r, err := git.PlainOpen(registryFixture)
 				h.AssertNil(t, err)
@@ -140,7 +140,7 @@ func TestRegistryCache(t *testing.T) {
 
 			it("pulls the latest index", func() {
 				h.AssertNil(t, registryCache.Refresh())
-				assertGitHeadEq(t, registryFixture, registryCache.root)
+				assertGitHeadEq(t, registryFixture, registryCache.Root)
 			})
 		})
 	})
