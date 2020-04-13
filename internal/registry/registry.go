@@ -193,21 +193,6 @@ func (r *Cache) readEntry(ns, name string) (Entry, error) {
 	return entry, nil
 }
 
-func (b *Buildpack) Validate() error {
-	if b.Address == "" {
-		return errors.New("address is a required field")
-	}
-	if _, err := ggcrname.ParseReference(b.Address, ggcrname.WeakValidation); err != nil {
-		return err
-	}
-	_, err := ggcrname.NewDigest(b.Address)
-	if err != nil {
-		return fmt.Errorf("'%s' is not a digest reference", b.Address)
-	}
-
-	return nil
-}
-
 func (r *Cache) LocateBuildpack(bp string) (Buildpack, error) {
 	err := r.Refresh()
 	if err != nil {
@@ -234,16 +219,31 @@ func (r *Cache) LocateBuildpack(bp string) (Buildpack, error) {
 					}
 				}
 			}
-			return highestVersion, nil
+			return highestVersion, highestVersion.Validate()
 		}
 
 		for _, bpIndex := range entry.Buildpacks {
 			if bpIndex.Version == version {
-				return bpIndex, nil
+				return bpIndex, bpIndex.Validate()
 			}
 		}
 		return Buildpack{}, fmt.Errorf("could not find version for buildpack: %s", bp)
 	}
 
 	return Buildpack{}, fmt.Errorf("no entries for buildpack: %s", bp)
+}
+
+func (b *Buildpack) Validate() error {
+	if b.Address == "" {
+		return errors.New("invalid entry: address is a required field")
+	}
+	if _, err := ggcrname.ParseReference(b.Address, ggcrname.WeakValidation); err != nil {
+		return err
+	}
+	_, err := ggcrname.NewDigest(b.Address)
+	if err != nil {
+		return fmt.Errorf("invalid entry: '%s' is not a digest reference", b.Address)
+	}
+
+	return nil
 }

@@ -115,10 +115,6 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 				return errors.Wrapf(err, "locating in registry %s", style.Symbol(pkg.ImageName))
 			}
 
-			if err := registryBp.Validate(); err != nil {
-				return errors.Wrapf(err, "invalid registry entry (%s)", pkg.ImageName)
-			}
-
 			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, opts.Publish, opts.NoPull)
 			if err != nil {
 				return errors.Wrapf(err, "extracting from registry %s", style.Symbol(pkg.ImageName))
