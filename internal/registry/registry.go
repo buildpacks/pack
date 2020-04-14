@@ -241,9 +241,6 @@ func (b *Buildpack) Validate() error {
 	if b.Address == "" {
 		return errors.New("invalid entry: address is a required field")
 	}
-	if _, err := ggcrname.ParseReference(b.Address, ggcrname.WeakValidation); err != nil {
-		return err
-	}
 	_, err := ggcrname.NewDigest(b.Address)
 	if err != nil {
 		return fmt.Errorf("invalid entry: '%s' is not a digest reference", b.Address)
