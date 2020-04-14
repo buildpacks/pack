@@ -101,6 +101,8 @@ jobs:
           echo "::set-output name=version::$LIFECYCLE_VERSION"
       - name: Extract pack help
         id: pack_help
+        # Replacements have to do with multiline output. 
+        # See https://github.community/t5/GitHub-Actions/set-output-Truncates-Multiline-Strings/m-p/38372/highlight/true#M3322
         run: |
           PACK_HELP=$(./pack-linux/pack --help)
           PACK_HELP="${PACK_HELP//'%'/'%25'}"
@@ -183,5 +185,5 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./pack-windows.zip
-          asset_name: pack-${{ env.PACK_VERSION }}-windows.tgz
+          asset_name: pack-v${{ env.PACK_VERSION }}-windows.tgz
           asset_content_type: application/zip
