@@ -93,7 +93,7 @@ jobs:
           chmod +x pack-linux/pack
           tar -C pack-linux -vzcf pack-linux.tgz pack
       - name: Package artifacts - windows
-        run: zip -j pack-windows.zip pack-windows/pack
+        run: zip -j pack-windows.zip pack-windows/pack.exe
       - name: Extract lifecycle version
         id: lifecycle_version
         run: |
