@@ -88,6 +88,16 @@ func TestRegistryCache(t *testing.T) {
 		})
 
 		it("locates a buildpack without version", func() {
+			bp, err := registryCache.LocateBuildpack("example/java")
+			h.AssertNil(t, err)
+			h.AssertNotNil(t, bp)
+
+			h.AssertEq(t, bp.Namespace, "example")
+			h.AssertEq(t, bp.Name, "java")
+			h.AssertEq(t, bp.Version, "1.0.0")
+		})
+
+		it("locates a buildpack without version", func() {
 			bp, err := registryCache.LocateBuildpack("example/foo")
 			h.AssertNil(t, err)
 			h.AssertNotNil(t, bp)
