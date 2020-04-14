@@ -154,10 +154,14 @@ func (r *Cache) Refresh() error {
 func (r *Cache) readEntry(ns, name string) (Entry, error) {
 	var indexDir string
 	switch {
-	case len(name) < 3:
-		indexDir = name
-	case len(name) < 4:
-		indexDir = filepath.Join(name[:2], name[2:])
+	case len(name) == 0:
+		return Entry{}, errors.New("empty buildpack name")
+	case len(name) == 1:
+		indexDir = "1"
+	case len(name) == 2:
+		indexDir = "2"
+	case len(name) == 3:
+		indexDir = "3"
 	default:
 		indexDir = filepath.Join(name[:2], name[2:4])
 	}

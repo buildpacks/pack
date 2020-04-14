@@ -7,14 +7,17 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/google/go-containerregistry/pkg/authn"
+
+	"github.com/buildpacks/pack/internal/api"
 )
 
 const (
-	layersDir      = "/layers"
-	appDir         = "/workspace"
-	cacheDir       = "/cache"
-	launchCacheDir = "/launch-cache"
-	platformDir    = "/platform"
+	layersDir                 = "/layers"
+	appDir                    = "/workspace"
+	cacheDir                  = "/cache"
+	launchCacheDir            = "/launch-cache"
+	platformDir               = "/platform"
+	defaultProcessPlatformAPI = "0.3"
 )
 
 type RunnerCleaner interface {
@@ -152,13 +155,13 @@ func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string
 }
 
 func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCacheName, cacheName string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
-	args := []string{
-		"-image", runImage,
+	args := l.exportImageArgs(runImage)
+	args = append(args, []string{
 		"-cache-dir", cacheDir,
 		"-layers", layersDir,
 		"-app", appDir,
 		repoName,
-	}
+	}...)
 
 	binds := []string{fmt.Sprintf("%s:%s", cacheName, cacheDir)}
 
@@ -185,6 +188,15 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 	args = append([]string{"-daemon", "-launch-cache", launchCacheDir}, args...)
 	binds = append(binds, fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir))
 
+	if l.DefaultProcessType != "" {
+		supportsDefaultProcess := api.MustParse(l.platformAPIVersion).SupportsVersion(api.MustParse(defaultProcessPlatformAPI))
+		if supportsDefaultProcess {
+			args = append([]string{"-process-type", l.DefaultProcessType}, args...)
+		} else {
+			l.logger.Warn("You specified a default process type but that is not supported by this version of the lifecycle")
+		}
+	}
+
 	configProvider := NewPhaseConfigProvider(
 		"exporter",
 		l,
@@ -206,4 +218,12 @@ func (l *Lifecycle) withLogLevel(args ...string) []string {
 		}
 	}
 	return args
+}
+
+func (l *Lifecycle) exportImageArgs(runImage string) []string {
+	platformAPIVersion := semver.MustParse(l.platformAPIVersion)
+	if semver.MustParse("0.2").LessThan(platformAPIVersion) {
+		return []string{"-run-image", runImage}
+	}
+	return []string{"-image", runImage}
 }

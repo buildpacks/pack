@@ -1,6 +1,7 @@
 [buildpack]
   id = "bp.one"
   version = "bp.one.version"
+  homepage = "http://one.buildpack"
 
 # technically, this is invalid as a buildpack cannot have both an order and stacks
 # however, we're just testing that all the correct fields are parsed
