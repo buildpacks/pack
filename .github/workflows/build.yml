@@ -35,6 +35,11 @@ jobs:
       NO_DOCKER: ${{ matrix.no_docker }}
     steps:
       - uses: actions/checkout@v2
+      - name: Derive pack version from branch name
+        run: |
+          [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
+          echo "::set-env name=PACK_VERSION::$version"
+        shell: bash
       - name: Set up go
         uses: actions/setup-go@v2-beta
         with:
@@ -49,11 +54,6 @@ jobs:
         run: make verify
       - name: Test
         run: make test
-      - name: Derive pack version from branch name
-        run: |
-          [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
-          echo "::set-env name=PACK_VERSION::$version"
-        shell: bash
       - name: Build
         run: make build
         env:
@@ -62,3 +62,126 @@ jobs:
         with:
           name: pack-${{ matrix.os }}
           path: out/${{ env.PACK_BIN }}
+  release:
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Derive pack version from branch name
+        run: |
+          [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]}
+          echo "::set-env name=PACK_VERSION::$version"
+        shell: bash
+      - name: Download artifacts - darwin
+        uses: actions/download-artifact@v1
+        with:
+          name: pack-darwin
+      - name: Download artifacts - linux
+        uses: actions/download-artifact@v1
+        with:
+          name: pack-linux
+      - name: Download artifacts - windows
+        uses: actions/download-artifact@v1
+        with:
+          name: pack-windows
+      - name: Package artifacts - darwin
+        run: |
+          chmod +x pack-darwin/pack
+          tar -C pack-darwin -vzcf pack-darwin.tgz pack
+      - name: Package artifacts - linux
+        run: |
+          chmod +x pack-linux/pack
+          tar -C pack-linux -vzcf pack-linux.tgz pack
+      - name: Package artifacts - windows
+        run: zip -j pack-windows.zip pack-windows/pack
+      - name: Extract lifecycle version
+        id: lifecycle_version
+        run: |
+          LIFECYCLE_VERSION=$(./pack-linux/pack report | grep 'Default Lifecycle Version:' | grep -o '[^ ]*$')
+          echo "::set-output name=version::$LIFECYCLE_VERSION"
+      - name: Extract pack help
+        id: pack_help
+        run: |
+          PACK_HELP=$(./pack-linux/pack --help)
+          PACK_HELP="${PACK_HELP//'%'/'%25'}"
+          PACK_HELP="${PACK_HELP//$'\n'/'%0A'}"
+          PACK_HELP="${PACK_HELP//$'\r'/'%0D'}"
+          echo "::set-output name=help::$PACK_HELP"
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.PACK_VERSION }}
+          release_name: pack v${{ env.PACK_VERSION }}
+          draft: true
+          prerelease: false
+          body: |
+            # pack v${{ env.PACK_VERSION }}
+            > This is a **beta** release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice. Note that pack is intended for local image builds, and thus requires a Docker daemon. The [lifecycle](https://github.com/buildpack/lifecycle) should be used directly when building on cloud platforms.
+
+            ## Prerequisites
+
+            - The [Docker daemon](https://www.docker.com/get-started) must be installed on your workstation or accessible over the network.
+
+            ## Install
+
+            If you're on macOS, you can use Homebrew:
+
+            ```bash
+            $ brew install buildpacks/tap/pack
+            ```
+
+            Otherwise:
+
+            1. Download the `.tgz` or `.zip` file for your platform
+            2. Extract the `pack` binary
+            3. (Optional) Add the directory containing `pack` to `PATH`, or copy `pack` to a directory like `/usr/local/bin`
+
+            ## Run
+
+            Run the command `pack`.
+
+            You should see the following output
+
+            ```text
+            ${{ steps.pack_help.outputs.help }}
+            ```
+
+            ## Info
+
+            Builders created with this release of the pack CLI continue to contain [lifecycle v${{ steps.lifecycle_version.outputs.version }}](https://github.com/buildpack/lifecycle/releases/tag/v${{ steps.lifecycle_version.outputs.version }}) by default.
+
+            ## Features
+
+            ## Fixes
+
+            ## Breaking Changes
+      - name: Upload Release Asset - darwin
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./pack-darwin.tgz
+          asset_name: pack-v${{ env.PACK_VERSION }}-darwin.tgz
+          asset_content_type: application/gzip
+      - name: Upload Release Asset - linux
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./pack-linux.tgz
+          asset_name: pack-v${{ env.PACK_VERSION }}-linux.tgz
+          asset_content_type: application/gzip
+      - name: Upload Release Asset - windows
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./pack-windows.zip
+          asset_name: pack-${{ env.PACK_VERSION }}-windows.tgz
+          asset_content_type: application/zip
