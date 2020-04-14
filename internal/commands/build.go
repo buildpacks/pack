@@ -2,11 +2,12 @@ package commands
 
 import (
 	"fmt"
-	"github.com/sabhiram/go-gitignore"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	ignore "github.com/sabhiram/go-gitignore"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
