@@ -1307,7 +1307,19 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						h.AssertNil(t, err)
-						// TODO validate image? make sure it was built with example/foo?
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.FromImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.Order(), dist.Order{
+							{Group: []dist.BuildpackRef{
+								{BuildpackInfo: dist.BuildpackInfo{ID: "example/foo", Version: "1.0.0"}},
+							}},
+						})
+						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+							{ID: "example/foo", Version: "1.0.0"},
+						})
 					})
 				})
 			})
