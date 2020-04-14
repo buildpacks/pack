@@ -167,7 +167,7 @@ jobs:
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./pack-darwin.tgz
-          asset_name: pack-v${{ env.PACK_VERSION }}-darwin.tgz
+          asset_name: pack-v${{ env.PACK_VERSION }}-macos.tgz
           asset_content_type: application/gzip
       - name: Upload Release Asset - linux
         uses: actions/upload-release-asset@v1
