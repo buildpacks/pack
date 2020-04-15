@@ -1464,7 +1464,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 				h.AssertNil(t, err)
 
 				output := h.Run(t, subjectPack("report"))
-				
+
 				outputTemplate := filepath.Join(packFixturesDir, "report_output.txt")
 				expectedOutput := fillTemplate(t, outputTemplate,
 					map[string]interface{}{
