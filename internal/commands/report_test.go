@@ -24,12 +24,12 @@ func TestReportCommand(t *testing.T) {
 
 func testReportCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command         *cobra.Command
-		logger          logging.Logger
-		outBuf          bytes.Buffer
-		packHome        string
-		packConfigPath  string
-		packMissingHome string
+		command           *cobra.Command
+		logger            logging.Logger
+		outBuf            bytes.Buffer
+		tempPackHome      string
+		packConfigPath    string
+		tempPackEmptyHome string
 	)
 
 	it.Before(func() {
@@ -37,26 +37,28 @@ func testReportCommand(t *testing.T, when spec.G, it spec.S) {
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 		command = commands.Report(logger)
 
-		packHome, err = ioutil.TempDir("", "")
+		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
-		packConfigPath = filepath.Join(packHome, "config.toml")
+
+		packConfigPath = filepath.Join(tempPackHome, "config.toml")
 		h.AssertNil(t, ioutil.WriteFile(packConfigPath, []byte(`
 default-builder-image = "some/image"
 experimental = true
 `), 0666))
-		packMissingHome, err = ioutil.TempDir("", "")
+
+		tempPackEmptyHome, err = ioutil.TempDir("", "")
 		h.AssertNil(t, err)
 	})
 
 	it.After(func() {
-		os.RemoveAll(packHome)
-		os.RemoveAll(packMissingHome)
+		h.AssertNil(t, os.RemoveAll(tempPackHome))
+		h.AssertNil(t, os.RemoveAll(tempPackEmptyHome))
 	})
 
 	when("#ReportCommand", func() {
 		when("config.toml is present", func() {
 			it.Before(func() {
-				os.Setenv("PACK_HOME", packHome)
+				os.Setenv("PACK_HOME", tempPackHome)
 			})
 
 			it.After(func() {
@@ -71,14 +73,14 @@ experimental = true
 		})
 		when("config.toml is not present", func() {
 			it.Before(func() {
-				os.Setenv("PACK_HOME", packMissingHome)
+				os.Setenv("PACK_HOME", tempPackEmptyHome)
 			})
 			it.After(func() {
 				os.Unsetenv("PACK_HOME")
 			})
 			it("logs a message", func() {
 				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), fmt.Sprintf("(no config file found at %s)", filepath.Join(packMissingHome, "config.toml")))
+				h.AssertContains(t, outBuf.String(), fmt.Sprintf("(no config file found at %s)", filepath.Join(tempPackEmptyHome, "config.toml")))
 			})
 		})
 	})
