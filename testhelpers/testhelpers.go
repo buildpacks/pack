@@ -283,7 +283,8 @@ func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, docke
 	})
 	AssertNil(t, err)
 
-	err = checkResponse(resp)
+	defer resp.Body.Close()
+	err = checkResponse(resp.Body)
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
@@ -299,15 +300,15 @@ func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName
 	})
 	AssertNil(t, err)
 
-	err = checkResponse(resp)
+	defer resp.Body.Close()
+	err = checkResponse(resp.Body)
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
-func checkResponse(response dockertypes.ImageBuildResponse) error {
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+func checkResponse(responseBody io.Reader) error {
+	body, err := ioutil.ReadAll(responseBody)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "reading body")
 	}
 
 	messages := strings.Builder{}
@@ -361,12 +362,16 @@ func DockerRmi(dockerCli client.CommonAPIClient, repoNames ...string) error {
 func PushImage(dockerCli client.CommonAPIClient, ref string, registryConfig *TestRegistryConfig) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: registryConfig.RegistryAuth()})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "pushing image")
 	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
-		return err
+
+	defer rc.Close()
+	err = checkResponse(rc)
+	if err != nil {
+		return errors.Wrap(err, "push response")
 	}
-	return rc.Close()
+
+	return nil
 }
 
 func HTTPGetE(url string, headers map[string]string) (string, error) {
