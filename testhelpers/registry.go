@@ -48,6 +48,23 @@ func RunRegistry(t *testing.T) *TestRegistryConfig {
 		password:        password,
 	}
 
+	// ensure registry is ready
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for {
+		_, err := registryConfig.RegistryCatalog()
+		if err == nil {
+			break
+		}
+
+		err = ctx.Err()
+		if err != nil {
+			t.Fatal("registry not ready:", err.Error())
+		}
+
+		time.Sleep(500 * time.Microsecond)
+	}
+
 	return registryConfig
 }
 
@@ -107,7 +124,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) str
 }
 
 func generateHtpasswd(ctx context.Context, t *testing.T, username string, password string) io.Reader {
-	//https://docs.docker.com/registry/deploying/#restricting-access
+	// https://docs.docker.com/registry/deploying/#restricting-access
 	htpasswdCtr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
 		Image:      registryContainerName,
 		Entrypoint: []string{"htpasswd", "-Bbn", username, password},

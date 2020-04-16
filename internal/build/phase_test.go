@@ -275,7 +275,9 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					registry.StopRegistry(t)
+					if registry != nil {
+						registry.StopRegistry(t)
+					}
 					h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
 				})
 
