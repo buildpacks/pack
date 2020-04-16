@@ -443,6 +443,9 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Buildp
 			fetchedBPs = append(fetchedBPs, fetchedBP)
 			order = appendBuildpackToOrder(order, fetchedBP.Descriptor().Info)
 		case buildpack.PackageLocator:
+			// TODO: dynamic assignment of registry to the registry URI
+			registryURI := "hub.docker.com"
+			c.logger.Infof("Using %s found at %s/%s", bp, registryURI, bp)
 			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, bp, c.imageFetcher, publish, noPull)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(bp))

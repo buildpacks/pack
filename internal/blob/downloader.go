@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/mitchellh/ioprogress"
 	"github.com/pkg/errors"
@@ -37,6 +38,9 @@ func NewDownloader(logger logging.Logger, baseCacheDir string) *downloader { //n
 }
 
 func (d *downloader) Download(ctx context.Context, pathOrURI string) (Blob, error) {
+	pathComponents := strings.Split(pathOrURI, "/")
+	buildpackRef := fmt.Sprintf("%s/%s", pathComponents[len(pathComponents)-2], pathComponents[len(pathComponents)-1])
+
 	if paths.IsURI(pathOrURI) {
 		parsedURL, err := url.Parse(pathOrURI)
 		if err != nil {
@@ -46,8 +50,10 @@ func (d *downloader) Download(ctx context.Context, pathOrURI string) (Blob, erro
 		var path string
 		switch parsedURL.Scheme {
 		case "file":
+			d.logger.Infof("Using %s found at %s", buildpackRef, pathOrURI)
 			path, err = paths.URIToFilePath(pathOrURI)
 		case "http", "https":
+			d.logger.Infof("Using %s found at %s", buildpackRef, pathOrURI)
 			path, err = d.handleHTTP(ctx, pathOrURI)
 		default:
 			err = fmt.Errorf("unsupported protocol %s in URI %s", style.Symbol(parsedURL.Scheme), style.Symbol(pathOrURI))
@@ -60,6 +66,8 @@ func (d *downloader) Download(ctx context.Context, pathOrURI string) (Blob, erro
 	}
 
 	path := d.handleFile(pathOrURI)
+
+	d.logger.Infof("Using %s found at %s", buildpackRef, path)
 
 	return &blob{path: path}, nil
 }
