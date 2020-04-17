@@ -14,6 +14,8 @@ import (
 
 const envAcceptanceSuiteConfig = "ACCEPTANCE_SUITE_CONFIG"
 
+var currentPackFixturesDir = filepath.Join("testdata", "pack_fixtures")
+
 type runCombo struct {
 	Pack              string `json:"pack"`
 	PackCreateBuilder string `json:"pack_create_builder"`
@@ -39,9 +41,7 @@ func (c *runCombo) String() string {
 //nolint
 func getRunCombinations() ([]runCombo, error) {
 	combos := []runCombo{
-		{Pack: "current", PackCreateBuilder: "current", Lifecycle: "default"}, // TODO: the current behavior for
-		// `make acceptance` is to test current-current-current which is actually current-current-default when no
-		// lifecycle path is provided. Confirm if we should keep this behavior going forward.
+		{Pack: "current", PackCreateBuilder: "current", Lifecycle: "default"},
 	}
 
 	suiteConfig := os.Getenv(envAcceptanceSuiteConfig)
@@ -99,8 +99,8 @@ func resolveRunCombinations(
 	resolved := map[string]resolvedRunCombo{}
 	for _, c := range combos {
 		rc := resolvedRunCombo{
-			packFixturesDir:              filepath.Join("testdata", "pack_fixtures"),
-			packCreateBuilderFixturesDir: filepath.Join("testdata", "pack_fixtures"),
+			packFixturesDir:              currentPackFixturesDir,
+			packCreateBuilderFixturesDir: currentPackFixturesDir,
 			packPath:                     packPath,
 			packCreateBuilderPath:        packPath,
 			lifecyclePath:                lifecyclePath,

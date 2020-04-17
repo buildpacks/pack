@@ -142,6 +142,20 @@ func TestAcceptance(t *testing.T) {
 		}
 	}
 
+	suiteManager = &SuiteManager{out: t.Logf}
+	suite := spec.New("acceptance suite", spec.Report(report.Terminal{}))
+
+	suite("p_current", func(t *testing.T, when spec.G, it spec.S) {
+		testWithoutSpecificBuilderRequirement(
+			t,
+			when,
+			it,
+			currentPackFixturesDir,
+			packPath,
+			api.MustParse(builder.DefaultBuildpackAPIVersion),
+		)
+	}, spec.Report(report.Terminal{}))
+
 	resolvedCombos, err := resolveRunCombinations(
 		combos,
 		packPath,
@@ -154,8 +168,6 @@ func TestAcceptance(t *testing.T) {
 	)
 	h.AssertNil(t, err)
 
-	suiteManager = &SuiteManager{out: t.Logf}
-	suite := spec.New("acceptance suite", spec.Report(report.Terminal{}))
 	for k, combo := range resolvedCombos {
 		t.Logf(`setting up run combination %s:
 pack:
@@ -184,8 +196,19 @@ lifecycle:
 		)
 
 		combo := combo
+
 		suite(k, func(t *testing.T, when spec.G, it spec.S) {
-			testAcceptance(t, when, it, combo.packFixturesDir, combo.packPath, combo.packCreateBuilderPath, combo.packCreateBuilderFixturesDir, combo.lifecyclePath, combo.lifecycleDescriptor)
+			testAcceptance(
+				t,
+				when,
+				it,
+				combo.packFixturesDir,
+				combo.packPath,
+				combo.packCreateBuilderPath,
+				combo.packCreateBuilderFixturesDir,
+				combo.lifecyclePath,
+				combo.lifecycleDescriptor,
+			)
 		}, spec.Report(report.Terminal{}))
 	}
 
@@ -194,8 +217,287 @@ lifecycle:
 	h.AssertNil(t, suiteManager.CleanUp())
 }
 
-func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packPath, packCreateBuilderPath, configDir, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) {
+// These tests either (a) do not require a builder or (b) do not require a specific builder to be provided
+// in order to test compatibility.
+// They should only be run against the "current" (i.e., master) version of pack.
+func testWithoutSpecificBuilderRequirement(
+	t *testing.T,
+	when spec.G,
+	it spec.S,
+	packFixturesDir, packPath string,
+	bpVersion *api.Version,
+) {
+	var (
+		bpDir      = buildpacksDir(*bpVersion)
+		packHome   string
+	)
 
+	// subjectPack creates a pack `exec.Cmd` based on the current configuration
+	subjectPack := func(name string, args ...string) *exec.Cmd {
+		return packCmd(packHome, packPath, name, args...)
+	}
+
+	it.Before(func() {
+		var err error
+		packHome, err = ioutil.TempDir("", "buildpack.pack.home.")
+		h.AssertNil(t, err)
+	})
+
+	it.After(func() {
+		h.AssertNil(t, os.RemoveAll(packHome))
+	})
+
+	when("invalid subcommand", func() {
+		it("prints usage", func() {
+			output, err := h.RunE(subjectPack("some-bad-command"))
+			h.AssertNotNil(t, err)
+			h.AssertContains(t, output, `unknown command "some-bad-command" for "pack"`)
+			h.AssertContains(t, output, `Run 'pack --help' for usage.`)
+		})
+	})
+
+	when("suggest-builders", func() {
+		it("displays suggested builders", func() {
+			cmd := subjectPack("suggest-builders")
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("suggest-builders command failed: %s: %s", output, err)
+			}
+			h.AssertContains(t, string(output), "Suggested builders:")
+			h.AssertContains(t, string(output), "cloudfoundry/cnb:bionic")
+		})
+	})
+
+	when("suggest-stacks", func() {
+		it("displays suggested stacks", func() {
+			cmd := subjectPack("suggest-stacks")
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("suggest-stacks command failed: %s: %s", output, err)
+			}
+			h.AssertContains(t, string(output), "Stacks maintained by the community:")
+		})
+	})
+
+	when("set-default-builder", func() {
+		it("sets the default-stack-id in ~/.pack/config.toml", func() {
+			output := h.Run(t, subjectPack("set-default-builder", "cloudfoundry/cnb:bionic"))
+			h.AssertContains(t, output, "Builder 'cloudfoundry/cnb:bionic' is now the default builder")
+		})
+	})
+
+	when("package-buildpack", func() {
+		var tmpDir string
+
+		it.Before(func() {
+			h.SkipIf(t,
+				!packSupports(packPath, "package-buildpack"),
+				"pack does not support 'package-buildpack'",
+			)
+
+			var err error
+			tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
+			h.AssertNil(t, err)
+
+			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package.toml"))
+
+			err = os.Rename(
+				h.CreateTGZ(t, filepath.Join(bpDir, "simple-layers-parent-buildpack"), "./", 0755),
+				filepath.Join(tmpDir, "simple-layers-parent-buildpack.tgz"),
+			)
+			h.AssertNil(t, err)
+
+			err = os.Rename(
+				h.CreateTGZ(t, filepath.Join(bpDir, "simple-layers-buildpack"), "./", 0755),
+				filepath.Join(tmpDir, "simple-layers-buildpack.tgz"),
+			)
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			h.AssertNil(t, os.RemoveAll(tmpDir))
+		})
+
+		packageBuildpackLocally := func(absConfigPath string) string {
+			t.Helper()
+			packageName := "test/package-" + h.RandString(10)
+			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath))
+			h.AssertNil(t, err)
+			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
+			return packageName
+		}
+
+		packageBuildpackRemotely := func(absConfigPath string) string {
+			t.Helper()
+			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath, "--publish"))
+			h.AssertNil(t, err)
+			h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
+			return packageName
+		}
+
+		assertImageExistsLocally := func(name string) {
+			t.Helper()
+			_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), name)
+			h.AssertNil(t, err)
+
+		}
+
+		generateAggregatePackageToml := func(buildpackURI, nestedPackageName string) string {
+			t.Helper()
+			packageTomlData := fillTemplate(t,
+				filepath.Join(packFixturesDir, "package_aggregate.toml"),
+				map[string]interface{}{
+					"BuildpackURI": buildpackURI,
+					"PackageName":  nestedPackageName,
+				},
+			)
+			packageTomlFile, err := ioutil.TempFile(tmpDir, "package_aggregate-*.toml")
+			h.AssertNil(t, err)
+			_, err = io.WriteString(packageTomlFile, packageTomlData)
+			h.AssertNil(t, err)
+			h.AssertNil(t, packageTomlFile.Close())
+
+			return packageTomlFile.Name()
+		}
+
+		when("no --format is provided", func() {
+			it("creates the package as image", func() {
+				packageName := "test/package-" + h.RandString(10)
+				output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", filepath.Join(tmpDir, "package.toml")))
+				h.AssertNil(t, err)
+				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
+				defer h.DockerRmi(dockerCli, packageName)
+
+				assertImageExistsLocally(packageName)
+			})
+		})
+
+		when("--format image", func() {
+			it("creates the package", func() {
+				t.Log("package w/ only buildpacks")
+				nestedPackageName := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
+				defer h.DockerRmi(dockerCli, nestedPackageName)
+				assertImageExistsLocally(nestedPackageName)
+
+				t.Log("package w/ buildpacks and packages")
+				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
+				packageName := packageBuildpackLocally(aggregatePackageToml)
+				defer h.DockerRmi(dockerCli, packageName)
+				assertImageExistsLocally(packageName)
+			})
+
+			when("--publish", func() {
+				it("publishes image to registry", func() {
+					nestedPackageName := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
+					defer h.DockerRmi(dockerCli, nestedPackageName)
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
+
+					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					defer h.DockerRmi(dockerCli, packageName)
+					output := h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--publish"))
+					h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
+
+					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+					h.AssertError(t, err, "No such image")
+
+					h.AssertNil(t, h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
+
+					_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+					h.AssertNil(t, err)
+				})
+			})
+
+			when("--no-pull", func() {
+				it("should use local image", func() {
+					nestedPackage := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
+					defer h.DockerRmi(dockerCli, nestedPackage)
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
+
+					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					defer h.DockerRmi(dockerCli, packageName)
+					h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
+
+					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+					h.AssertNil(t, err)
+
+				})
+
+				it("should not pull image from registry", func() {
+					nestedPackage := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
+					defer h.DockerRmi(dockerCli, nestedPackage)
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
+
+					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					defer h.DockerRmi(dockerCli, packageName)
+					_, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
+					h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", nestedPackage))
+				})
+			})
+		})
+
+		when("--format file", func() {
+			it.Before(func() {
+				h.SkipIf(t, !packSupports(packPath, "package-buildpack --format"), "format not supported")
+			})
+
+			it("creates the package", func() {
+				outputFile := filepath.Join(tmpDir, "package.cnb")
+				output, err := h.RunE(subjectPack("package-buildpack", outputFile, "--format", "file", "-p", filepath.Join(tmpDir, "package.toml")))
+				h.AssertNil(t, err)
+				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputFile))
+				h.AssertTarball(t, outputFile)
+			})
+		})
+
+		when("package.toml is invalid", func() {
+			it("displays an error", func() {
+				h.CopyFile(t, filepath.Join(packFixturesDir, "invalid_package.toml"), filepath.Join(tmpDir, "invalid_package.toml"))
+
+				_, err := h.RunE(subjectPack("package-buildpack", "some-package", "-p", filepath.Join(tmpDir, "invalid_package.toml")))
+				h.AssertError(t, err, "reading config:")
+			})
+		})
+	})
+
+	when("report", func() {
+		it.Before(func() {
+			h.SkipIf(t, !packSupports(packPath, "report"), "pack does not support 'report' command")
+		})
+
+		when("default builder is set", func() {
+			it.Before(func() {
+				h.Run(t, subjectPack("set-default-builder", "cloudfoundry/cnb:bionic"))
+			})
+
+			it("outputs information", func() {
+				version, err := packVersion(packPath)
+				h.AssertNil(t, err)
+
+				output := h.Run(t, subjectPack("report"))
+
+				outputTemplate := filepath.Join(packFixturesDir, "report_output.txt")
+				expectedOutput := fillTemplate(t, outputTemplate,
+					map[string]interface{}{
+						"DefaultBuilder": "cloudfoundry/cnb:bionic",
+						"Version":        version,
+						"OS":             runtime.GOOS,
+						"Arch":           runtime.GOARCH,
+					},
+				)
+				h.AssertEq(t, output, expectedOutput)
+			})
+		})
+	})
+}
+
+func testAcceptance(
+	t *testing.T,
+	when spec.G,
+	it spec.S,
+	packFixturesDir, packPath, packCreateBuilderPath, configDir, lifecyclePath string,
+	lifecycleDescriptor builder.LifecycleDescriptor,
+) {
 	var (
 		bpDir      = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
 		packHome   string
@@ -219,15 +521,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 	it.After(func() {
 		h.AssertNil(t, os.RemoveAll(packHome))
-	})
-
-	when("invalid subcommand", func() {
-		it("prints usage", func() {
-			output, err := h.RunE(subjectPack("some-bad-command"))
-			h.AssertNotNil(t, err)
-			h.AssertContains(t, output, `unknown command "some-bad-command" for "pack"`)
-			h.AssertContains(t, output, `Run 'pack --help' for usage.`)
-		})
 	})
 
 	when("stack is created", func() {
@@ -1240,241 +1533,6 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 					})
 				})
-			})
-		})
-	})
-
-	when("suggest-builders", func() {
-		it("displays suggested builders", func() {
-			cmd := subjectPack("suggest-builders")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("suggest-builders command failed: %s: %s", output, err)
-			}
-			h.AssertContains(t, string(output), "Suggested builders:")
-			h.AssertContains(t, string(output), "cloudfoundry/cnb:bionic")
-		})
-	})
-
-	when("suggest-stacks", func() {
-		it("displays suggested stacks", func() {
-			cmd := subjectPack("suggest-stacks")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("suggest-stacks command failed: %s: %s", output, err)
-			}
-			h.AssertContains(t, string(output), "Stacks maintained by the community:")
-		})
-	})
-
-	when("set-default-builder", func() {
-		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			output := h.Run(t, subjectPack("set-default-builder", "cloudfoundry/cnb:bionic"))
-			h.AssertContains(t, output, "Builder 'cloudfoundry/cnb:bionic' is now the default builder")
-		})
-	})
-
-	when("package-buildpack", func() {
-		var tmpDir string
-
-		it.Before(func() {
-			h.SkipIf(t,
-				!packSupports(packPath, "package-buildpack"),
-				"pack does not support 'package-buildpack'",
-			)
-
-			var err error
-			tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
-			h.AssertNil(t, err)
-
-			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package.toml"))
-
-			err = os.Rename(
-				h.CreateTGZ(t, filepath.Join(bpDir, "simple-layers-parent-buildpack"), "./", 0755),
-				filepath.Join(tmpDir, "simple-layers-parent-buildpack.tgz"),
-			)
-			h.AssertNil(t, err)
-
-			err = os.Rename(
-				h.CreateTGZ(t, filepath.Join(bpDir, "simple-layers-buildpack"), "./", 0755),
-				filepath.Join(tmpDir, "simple-layers-buildpack.tgz"),
-			)
-			h.AssertNil(t, err)
-
-		})
-
-		it.After(func() {
-			h.AssertNil(t, os.RemoveAll(tmpDir))
-		})
-
-		packageBuildpackLocally := func(absConfigPath string) string {
-			t.Helper()
-			packageName := "test/package-" + h.RandString(10)
-			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath))
-			h.AssertNil(t, err)
-			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
-			return packageName
-		}
-
-		packageBuildpackRemotely := func(absConfigPath string) string {
-			t.Helper()
-			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath, "--publish"))
-			h.AssertNil(t, err)
-			h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
-			return packageName
-		}
-
-		assertImageExistsLocally := func(name string) {
-			t.Helper()
-			_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), name)
-			h.AssertNil(t, err)
-
-		}
-
-		generateAggregatePackageToml := func(buildpackURI, nestedPackageName string) string {
-			t.Helper()
-			packageTomlData := fillTemplate(t,
-				filepath.Join(packFixturesDir, "package_aggregate.toml"),
-				map[string]interface{}{
-					"BuildpackURI": buildpackURI,
-					"PackageName":  nestedPackageName,
-				},
-			)
-			packageTomlFile, err := ioutil.TempFile(tmpDir, "package_aggregate-*.toml")
-			h.AssertNil(t, err)
-			_, err = io.WriteString(packageTomlFile, packageTomlData)
-			h.AssertNil(t, err)
-			h.AssertNil(t, packageTomlFile.Close())
-
-			return packageTomlFile.Name()
-		}
-
-		when("no --format is provided", func() {
-			it("creates the package as image", func() {
-				packageName := "test/package-" + h.RandString(10)
-				output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", filepath.Join(tmpDir, "package.toml")))
-				h.AssertNil(t, err)
-				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
-				defer h.DockerRmi(dockerCli, packageName)
-
-				assertImageExistsLocally(packageName)
-			})
-		})
-
-		when("--format image", func() {
-			it("creates the package", func() {
-				t.Log("package w/ only buildpacks")
-				nestedPackageName := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
-				defer h.DockerRmi(dockerCli, nestedPackageName)
-				assertImageExistsLocally(nestedPackageName)
-
-				t.Log("package w/ buildpacks and packages")
-				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
-				packageName := packageBuildpackLocally(aggregatePackageToml)
-				defer h.DockerRmi(dockerCli, packageName)
-				assertImageExistsLocally(packageName)
-			})
-
-			when("--publish", func() {
-				it("publishes image to registry", func() {
-					nestedPackageName := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
-					defer h.DockerRmi(dockerCli, nestedPackageName)
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
-
-					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-					defer h.DockerRmi(dockerCli, packageName)
-					output := h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--publish"))
-					h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
-
-					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-					h.AssertError(t, err, "No such image")
-
-					h.AssertNil(t, h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
-
-					_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-					h.AssertNil(t, err)
-				})
-			})
-
-			when("--no-pull", func() {
-				it("should use local image", func() {
-					nestedPackage := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
-					defer h.DockerRmi(dockerCli, nestedPackage)
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
-
-					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-					defer h.DockerRmi(dockerCli, packageName)
-					h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
-
-					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-					h.AssertNil(t, err)
-
-				})
-
-				it("should not pull image from registry", func() {
-					nestedPackage := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
-					defer h.DockerRmi(dockerCli, nestedPackage)
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
-
-					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-					defer h.DockerRmi(dockerCli, packageName)
-					_, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
-					h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", nestedPackage))
-				})
-			})
-		})
-
-		when("--format file", func() {
-			it.Before(func() {
-				h.SkipIf(t, !packSupports(packPath, "package-buildpack --format"), "format not supported")
-			})
-
-			it("creates the package", func() {
-				outputFile := filepath.Join(tmpDir, "package.cnb")
-				output, err := h.RunE(subjectPack("package-buildpack", outputFile, "--format", "file", "-p", filepath.Join(tmpDir, "package.toml")))
-				h.AssertNil(t, err)
-				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputFile))
-				h.AssertTarball(t, outputFile)
-			})
-		})
-
-		when("package.toml is invalid", func() {
-			it("displays an error", func() {
-				h.CopyFile(t, filepath.Join(packFixturesDir, "invalid_package.toml"), filepath.Join(tmpDir, "invalid_package.toml"))
-
-				_, err := h.RunE(subjectPack("package-buildpack", "some-package", "-p", filepath.Join(tmpDir, "invalid_package.toml")))
-				h.AssertError(t, err, "reading config:")
-			})
-		})
-	})
-
-	when("report", func() {
-		it.Before(func() {
-			h.SkipIf(t, !packSupports(packPath, "report"), "pack does not support 'report' command")
-		})
-
-		when("default builder is set", func() {
-			it.Before(func() {
-				h.Run(t, subjectPack("set-default-builder", "cloudfoundry/cnb:bionic"))
-			})
-
-			it("outputs information", func() {
-				version, err := packVersion(packPath)
-				h.AssertNil(t, err)
-
-				output := h.Run(t, subjectPack("report"))
-
-				outputTemplate := filepath.Join(packFixturesDir, "report_output.txt")
-				expectedOutput := fillTemplate(t, outputTemplate,
-					map[string]interface{}{
-						"DefaultBuilder": "cloudfoundry/cnb:bionic",
-						"Version":        version,
-						"OS":             runtime.GOOS,
-						"Arch":           runtime.GOARCH,
-					},
-				)
-				h.AssertEq(t, output, expectedOutput)
 			})
 		})
 	})
