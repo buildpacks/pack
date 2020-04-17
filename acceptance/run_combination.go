@@ -14,6 +14,9 @@ import (
 
 const envAcceptanceSuiteConfig = "ACCEPTANCE_SUITE_CONFIG"
 
+//nolint:unused // TODO: nolint directives in this file shouldn't be necessary, as
+// all of the code is used. However lint errors are returned without these directives.
+// Possibly related to https://github.com/golangci/golangci-lint/issues/791.
 var currentPackFixturesDir = filepath.Join("testdata", "pack_fixtures")
 
 type runCombo struct {
@@ -22,9 +25,7 @@ type runCombo struct {
 	Lifecycle         string `json:"lifecycle"`
 }
 
-//nolint:unused // TODO: nolint directives in this file shouldn't be necessary, as
-// all of the code is used. However lint errors are returned without these directives.
-// Possibly related to https://github.com/golangci/golangci-lint/issues/791.
+//nolint:unused
 type resolvedRunCombo struct {
 	packCreateBuilderFixturesDir string
 	packFixturesDir              string

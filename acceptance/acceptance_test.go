@@ -228,8 +228,8 @@ func testWithoutSpecificBuilderRequirement(
 	bpVersion *api.Version,
 ) {
 	var (
-		bpDir      = buildpacksDir(*bpVersion)
-		packHome   string
+		bpDir    = buildpacksDir(*bpVersion)
+		packHome string
 	)
 
 	// subjectPack creates a pack `exec.Cmd` based on the current configuration
