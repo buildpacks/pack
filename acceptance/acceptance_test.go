@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"html/template"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -18,6 +17,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/Masterminds/semver"

@@ -3,10 +3,10 @@ package commands
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"io"
 	"strings"
 	"text/tabwriter"
+	"text/template"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
