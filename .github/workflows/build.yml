@@ -53,7 +53,15 @@ jobs:
         if: matrix.os != 'windows'
         run: make verify
       - name: Test
+        env:
+          TEST_COVERAGE: 1
         run: make test
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          file: ./out/tests/coverage-unit.txt
+          flags: unit
+          fail_ci_if_error: true
       - name: Build
         run: make build
         env:
