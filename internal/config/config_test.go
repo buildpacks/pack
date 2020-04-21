@@ -46,6 +46,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				h.AssertEq(t, subject.DefaultBuilder, "")
 				h.AssertEq(t, len(subject.RunImages), 0)
+				h.AssertEq(t, subject.Experimental, false)
 			})
 		})
 	})
