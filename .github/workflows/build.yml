@@ -140,6 +140,12 @@ jobs:
             1. Download the `.tgz` or `.zip` file for your platform
             2. Extract the `pack` binary
             3. (Optional) Add the directory containing `pack` to `PATH`, or copy `pack` to a directory like `/usr/local/bin`
+            
+            On Linux you can use the following command:
+            
+            ```bash
+            (export GH=buildpacks/pack; export LATEST=$(curl -s https://api.github.com/repos/$GH/releases/latest | grep -o -E "https://.+?-linux.tgz"); echo "$LATEST"; curl -sSL "$LATEST" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv $(basename $GH))
+            ```
 
             ## Run
 
