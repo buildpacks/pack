@@ -43,6 +43,7 @@ type Config struct {
 	Order       dist.Order          `toml:"order"`
 	Stack       StackConfig         `toml:"stack"`
 	Lifecycle   LifecycleConfig     `toml:"lifecycle"`
+	groups      []interface{}
 }
 
 type BuildpackConfig struct {
@@ -76,15 +77,7 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	}
 	defer file.Close()
 
-	warnings, err = getWarningsForObsoleteFields(file)
-	if err != nil {
-		return Config{}, nil, errors.Wrapf(err, "check warnings for file '%s'", path)
-	}
-	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		return Config{}, nil, errors.Wrap(err, "reset config file pointer")
-	}
-
-	config, err = parseConfig(file, builderDir, path)
+	config, warnings, err = parseConfig(file, builderDir, path)
 	if err != nil {
 		return Config{}, nil, errors.Wrapf(err, "parse contents of '%s'", path)
 	}
@@ -96,37 +89,21 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	return config, warnings, nil
 }
 
-func getWarningsForObsoleteFields(reader io.Reader) ([]string, error) {
-	var warnings []string
-
-	var obsoleteConfig = struct {
-		Groups []interface{}
-	}{}
-
-	if _, err := toml.DecodeReader(reader, &obsoleteConfig); err != nil {
-		return nil, err
-	}
-
-	if len(obsoleteConfig.Groups) > 0 {
-		warnings = append(warnings, fmt.Sprintf("%s field is obsolete in favor of %s", style.Symbol("groups"), style.Symbol("order")))
-	}
-
-	return warnings, nil
-}
-
 // parseConfig reads a builder configuration from reader and resolves relative buildpack paths using `relativeToDir`
-func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
+func parseConfig(reader io.Reader, relativeToDir, path string) (Config, []string, error) {
+	var warnings []string
 	builderConfig := Config{}
+
 	tomlMetadata, err := toml.DecodeReader(reader, &builderConfig)
 	if err != nil {
-		return Config{}, errors.Wrap(err, "decoding toml contents")
+		return Config{}, warnings, errors.Wrap(err, "decoding toml contents")
 	}
 
 	undecodedKeys := tomlMetadata.Undecoded()
 	if len(undecodedKeys) > 0 {
 		unknownElementsMsg := config.FormatUndecodedKeys(undecodedKeys)
 
-		return Config{}, errors.Errorf("%s in %s",
+		return Config{}, warnings, errors.Errorf("%s in %s",
 			unknownElementsMsg,
 			style.Symbol(path),
 		)
@@ -135,7 +112,7 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 	for i, bp := range builderConfig.Buildpacks.Buildpacks() {
 		uri, err := paths.ToAbsolute(bp.URI, relativeToDir)
 		if err != nil {
-			return Config{}, errors.Wrap(err, "transforming buildpack URI")
+			return Config{}, warnings, errors.Wrap(err, "transforming buildpack URI")
 		}
 		builderConfig.Buildpacks[i].URI = uri
 	}
@@ -143,10 +120,14 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 	if builderConfig.Lifecycle.URI != "" {
 		uri, err := paths.ToAbsolute(builderConfig.Lifecycle.URI, relativeToDir)
 		if err != nil {
-			return Config{}, errors.Wrap(err, "transforming lifecycle URI")
+			return Config{}, warnings, errors.Wrap(err, "transforming lifecycle URI")
 		}
 		builderConfig.Lifecycle.URI = uri
 	}
 
-	return builderConfig, nil
+	if len(builderConfig.groups) > 0 {
+		warnings = append(warnings, fmt.Sprintf("%s field is obsolete in favor of %s", style.Symbol("groups"), style.Symbol("order")))
+	}
+
+	return builderConfig, warnings, nil
 }
