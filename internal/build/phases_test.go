@@ -263,7 +263,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, fakePhase.RunCallCount, 1)
 		})
 
-		it("configures the phase with daemon access", func() {
+		it("configures the phase with root access", func() {
 			lifecycle := fakeLifecycle(t, false)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 
@@ -272,7 +272,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 			configProvider := fakePhaseFactory.NewCalledWithProvider
 			h.AssertEq(t, configProvider.ContainerConfig().User, "root")
-			h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
 		})
 
 		it("configures the phase with the expected arguments", func() {

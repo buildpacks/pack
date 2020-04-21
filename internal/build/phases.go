@@ -52,7 +52,7 @@ func (l *Lifecycle) Restore(ctx context.Context, cacheName string, phaseFactory 
 	configProvider := NewPhaseConfigProvider(
 		"restorer",
 		l,
-		WithDaemonAccess(),
+		WithRoot(), // remove after platform API 0.2 is no longer supported
 		WithArgs(
 			l.withLogLevel(
 				"-cache-dir", cacheDir,
