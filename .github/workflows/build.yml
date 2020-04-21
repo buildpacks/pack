@@ -15,9 +15,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [darwin, linux, windows]
+        os: [macos, linux, windows]
         include:
-          - os: darwin
+          - os: macos
             runner: macos-latest
             no_docker: "true"
             pack_bin: pack
@@ -80,10 +80,10 @@ jobs:
           [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]}
           echo "::set-env name=PACK_VERSION::$version"
         shell: bash
-      - name: Download artifacts - darwin
+      - name: Download artifacts - macos
         uses: actions/download-artifact@v1
         with:
-          name: pack-darwin
+          name: pack-macos
       - name: Download artifacts - linux
         uses: actions/download-artifact@v1
         with:
@@ -92,10 +92,10 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: pack-windows
-      - name: Package artifacts - darwin
+      - name: Package artifacts - macos
         run: |
-          chmod +x pack-darwin/pack
-          tar -C pack-darwin -vzcf pack-darwin.tgz pack
+          chmod +x pack-macos/pack
+          tar -C pack-macos -vzcf pack-macos.tgz pack
       - name: Package artifacts - linux
         run: |
           chmod +x pack-linux/pack
@@ -174,13 +174,13 @@ jobs:
             ## Fixes
 
             ## Breaking Changes
-      - name: Upload Release Asset - darwin
+      - name: Upload Release Asset - macos
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./pack-darwin.tgz
+          asset_path: ./pack-macos.tgz
           asset_name: pack-v${{ env.PACK_VERSION }}-macos.tgz
           asset_content_type: application/gzip
       - name: Upload Release Asset - linux
