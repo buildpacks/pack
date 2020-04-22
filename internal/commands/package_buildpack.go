@@ -19,6 +19,13 @@ type PackageBuildpackFlags struct {
 	NoPull          bool
 }
 
+func (p PackageBuildpackFlags) validate() error {
+	if p.Publish && p.NoPull {
+		return errors.Errorf("The --publish and --no-pull flags cannot be used together. There is nothing to pull if you are publishing.")
+	}
+	return nil
+}
+
 type PackageConfigReader interface {
 	Read(path string) (pubbldpkg.Config, error)
 }
@@ -34,6 +41,10 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 		Short: "Package buildpack in OCI format.",
 		Args:  cobra.ExactValidArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			if err := flags.validate(); err != nil {
+				return err
+			}
+
 			config, err := packageConfigReader.Read(flags.PackageTomlPath)
 			if err != nil {
 				return errors.Wrap(err, "reading config")

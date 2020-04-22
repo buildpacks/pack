@@ -27,6 +27,26 @@ func TestPackageBuildpackCommand(t *testing.T) {
 
 func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 	when("PackageBuildpack#Execute", func() {
+		when("both --publish and --no-pull flags are specified", func() {
+			it("errors with a descriptive message", func() {
+				logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
+				configReader := fakes.NewFakePackageConfigReader()
+				buildpackPackager := &fakes.FakeBuildpackPackager{}
+
+				command := commands.PackageBuildpack(logger, buildpackPackager, configReader)
+				command.SetArgs([]string{
+					"some-image-name",
+					"--package-config", "/path/to/some/file",
+					"--publish",
+					"--no-pull",
+				})
+
+				err := command.Execute()
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "The --publish and --no-pull flags cannot be used together. There is nothing to pull if you are publishing.")
+			})
+		})
+
 		it("reads package config from the configured path", func() {
 			fakePackageConfigReader := fakes.NewFakePackageConfigReader()
 			expectedConfigPath := "/path/to/some/file"
