@@ -11,6 +11,7 @@ import (
 type Config struct {
 	RunImages      []RunImage `toml:"run-images"`
 	DefaultBuilder string     `toml:"default-builder-image,omitempty"`
+	Experimental   bool       `toml:"experimental,omitempty"`
 }
 
 type RunImage struct {
