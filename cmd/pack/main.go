@@ -28,7 +28,6 @@ func main() {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
-
 	rootCmd := &cobra.Command{
 		Use: "pack",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {

@@ -40,7 +40,10 @@ func testReportCommand(t *testing.T, when spec.G, it spec.S) {
 		packHome, err = ioutil.TempDir("", "")
 		h.AssertNil(t, err)
 		packConfigPath = filepath.Join(packHome, "config.toml")
-		h.AssertNil(t, ioutil.WriteFile(packConfigPath, []byte(`default-builder-image = "some/image"`), 0666))
+		h.AssertNil(t, ioutil.WriteFile(packConfigPath, []byte(`
+default-builder-image = "some/image"
+experimental = true
+`), 0666))
 		packMissingHome, err = ioutil.TempDir("", "")
 		h.AssertNil(t, err)
 	})
@@ -63,6 +66,7 @@ func testReportCommand(t *testing.T, when spec.G, it spec.S) {
 			it("presents output", func() {
 				h.AssertNil(t, command.Execute())
 				h.AssertContains(t, outBuf.String(), `default-builder-image = "some/image"`)
+				h.AssertContains(t, outBuf.String(), `experimental = true`)
 			})
 		})
 		when("config.toml is not present", func() {
