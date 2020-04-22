@@ -57,6 +57,10 @@ func (c *Client) getRegistry(registryURL string) (registry.Cache, error) {
 		return registry.Cache{}, err
 	}
 
+	if err := config.MkdirAll(home); err != nil {
+		return registry.Cache{}, err
+	}
+
 	if registryURL == "" {
 		return registry.NewDefaultRegistryCache(home)
 	}
