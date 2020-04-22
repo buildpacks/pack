@@ -119,6 +119,10 @@ func (i *Image) OS() (string, error) {
 	return i.inspect.Os, nil
 }
 
+func (i *Image) OSVersion() (string, error) {
+	return i.inspect.OsVersion, nil
+}
+
 func (i *Image) Architecture() (string, error) {
 	return i.inspect.Architecture, nil
 }
@@ -620,7 +624,7 @@ func inspectOptionalImage(docker client.CommonAPIClient, imageName string) (type
 
 	if inspect, _, err = docker.ImageInspectWithRaw(context.Background(), imageName); err != nil {
 		if client.IsErrNotFound(err) {
-			return types.ImageInspect{}, nil
+			return defaultInspect(docker)
 		}
 
 		return types.ImageInspect{}, errors.Wrapf(err, "verifying image '%s'", imageName)

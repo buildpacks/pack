@@ -31,7 +31,8 @@ func NewImage(name, topLayerSha string, identifier imgutil.Identifier) *Image {
 		createdAt:     time.Now(),
 		savedNames:    map[string]bool{},
 		os:            "linux",
-		arch:          "amd64",
+		osVersion:     "",
+		architecture:  "amd64",
 	}
 }
 
@@ -44,6 +45,9 @@ type Image struct {
 	labels        map[string]string
 	env           map[string]string
 	topLayerSha   string
+	os            string
+	osVersion     string
+	architecture  string
 	identifier    imgutil.Identifier
 	name          string
 	entryPoint    []string
@@ -53,8 +57,6 @@ type Image struct {
 	layerDir      string
 	workingDir    string
 	savedNames    map[string]bool
-	os            string
-	arch          string
 }
 
 func (i *Image) CreatedAt() (time.Time, error) {
@@ -69,8 +71,12 @@ func (i *Image) OS() (string, error) {
 	return i.os, nil
 }
 
+func (i *Image) OSVersion() (string, error) {
+	return i.os, nil
+}
+
 func (i *Image) Architecture() (string, error) {
-	return i.arch, nil
+	return i.architecture, nil
 }
 
 func (i *Image) Rename(name string) {
@@ -93,14 +99,6 @@ func (i *Image) Rebase(baseTopLayer string, newBase imgutil.Image) error {
 func (i *Image) SetLabel(k string, v string) error {
 	i.labels[k] = v
 	return nil
-}
-
-func (i *Image) SetOS(os string) {
-	i.os = os
-}
-
-func (i *Image) SetArchitecture(arch string) {
-	i.arch = arch
 }
 
 func (i *Image) SetEnv(k string, v string) error {
@@ -251,6 +249,12 @@ func (i *Image) Found() bool {
 
 func (i *Image) SetIdentifier(identifier imgutil.Identifier) {
 	i.identifier = identifier
+}
+
+func (i *Image) SetPlatform(os, osVersion, architecture string) {
+	i.os = os
+	i.osVersion = osVersion
+	i.architecture = architecture
 }
 
 func (i *Image) Cleanup() error {

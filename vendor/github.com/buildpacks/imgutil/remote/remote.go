@@ -35,12 +35,7 @@ func WithPreviousImage(imageName string) ImageOption {
 	return func(r *Image) (*Image, error) {
 		var err error
 
-		currentImagePlatform, err := imagePlatform(r.image)
-		if err != nil {
-			return nil, err
-		}
-
-		prevImage, err := newV1Image(r.keychain, imageName, currentImagePlatform)
+		prevImage, err := newV1Image(r.keychain, imageName)
 		if err != nil {
 			return nil, err
 		}
@@ -59,33 +54,7 @@ func FromBaseImage(imageName string) ImageOption {
 	return func(r *Image) (*Image, error) {
 		var err error
 
-		currentImagePlatform, err := imagePlatform(r.image)
-		if err != nil {
-			return nil, err
-		}
-
-		r.image, err = newV1Image(r.keychain, imageName, currentImagePlatform)
-		if err != nil {
-			return nil, err
-		}
-		return r, nil
-	}
-}
-
-func WithDefaultPlatform(p v1.Platform) ImageOption {
-	return func(r *Image) (*Image, error) {
-		var err error
-		cfg := &v1.ConfigFile{}
-		if p.OS != "" {
-			cfg.OS = p.OS
-		}
-		if p.Architecture != "" {
-			cfg.Architecture = p.Architecture
-		}
-		if p.OSVersion != "" {
-			cfg.OSVersion = p.OSVersion
-		}
-		r.image, err = mutate.ConfigFile(r.image, cfg)
+		r.image, err = newV1Image(r.keychain, imageName)
 		if err != nil {
 			return nil, err
 		}
@@ -115,12 +84,13 @@ func NewImage(repoName string, keychain authn.Keychain, ops ...ImageOption) (img
 	return ri, nil
 }
 
-func newV1Image(keychain authn.Keychain, repoName string, fallbackPlatform v1.Platform) (v1.Image, error) {
+func newV1Image(keychain authn.Keychain, repoName string) (v1.Image, error) {
 	ref, auth, err := referenceForRepoName(keychain, repoName)
 	if err != nil {
 		return nil, err
 	}
-	descriptor, err := remote.Get(ref, remote.WithAuth(auth), remote.WithTransport(http.DefaultTransport))
+
+	image, err := remote.Image(ref, remote.WithAuth(auth), remote.WithTransport(http.DefaultTransport))
 	if err != nil {
 		if transportErr, ok := err.(*transport.Error); ok && len(transportErr.Errors) > 0 {
 			switch transportErr.Errors[0].Code {
@@ -131,36 +101,7 @@ func newV1Image(keychain authn.Keychain, repoName string, fallbackPlatform v1.Pl
 		return nil, fmt.Errorf("connect to repo store '%s': %s", repoName, err.Error())
 	}
 
-	var image v1.Image
-	switch descriptor.MediaType {
-	case types.OCIManifestSchema1, types.DockerManifestSchema2:
-		image, err = descriptor.Image()
-		if err != nil {
-			return nil, err
-		}
-	case types.OCIImageIndex, types.DockerManifestList:
-		image, err = remote.Image(ref, remote.WithPlatform(fallbackPlatform), remote.WithAuth(auth), remote.WithTransport(http.DefaultTransport))
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("unknown descriptor response type for ref: %s => %s", repoName, descriptor.MediaType)
-	}
-
 	return image, nil
-}
-
-func imagePlatform(image v1.Image) (v1.Platform, error) {
-	configFile, err := image.ConfigFile()
-	if err != nil {
-		return v1.Platform{}, err
-	}
-
-	return v1.Platform{
-		Architecture: configFile.Architecture,
-		OS:           configFile.OS,
-		OSVersion:    configFile.OSVersion,
-	}, nil
 }
 
 func emptyImage() (v1.Image, error) {
@@ -218,6 +159,14 @@ func (i *Image) OS() (string, error) {
 		return "", fmt.Errorf("failed to get OS from config file for image '%s'", i.repoName)
 	}
 	return cfg.OS, nil
+}
+
+func (i *Image) OSVersion() (string, error) {
+	cfg, err := i.image.ConfigFile()
+	if err != nil || cfg == nil {
+		return "", fmt.Errorf("failed to get OSVersion from config file for image '%s'", i.repoName)
+	}
+	return cfg.OSVersion, nil
 }
 
 func (i *Image) Architecture() (string, error) {

@@ -52,6 +52,7 @@ type Image interface {
 	CreatedAt() (time.Time, error)
 	Identifier() (Identifier, error)
 	OS() (string, error)
+	OSVersion() (string, error)
 	Architecture() (string, error)
 }
 
