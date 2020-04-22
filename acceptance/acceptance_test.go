@@ -145,16 +145,21 @@ func TestAcceptance(t *testing.T) {
 	suiteManager = &SuiteManager{out: t.Logf}
 	suite := spec.New("acceptance suite", spec.Report(report.Terminal{}))
 
-	suite("p_current", func(t *testing.T, when spec.G, it spec.S) {
-		testWithoutSpecificBuilderRequirement(
-			t,
-			when,
-			it,
-			currentPackFixturesDir,
-			packPath,
-			api.MustParse(builder.DefaultBuildpackAPIVersion),
-		)
-	}, spec.Report(report.Terminal{}))
+	for _, combo := range combos {
+		if combo.Pack == "current" {
+			suite("p_current", func(t *testing.T, when spec.G, it spec.S) {
+				testWithoutSpecificBuilderRequirement(
+					t,
+					when,
+					it,
+					currentPackFixturesDir,
+					packPath,
+					api.MustParse(builder.DefaultBuildpackAPIVersion),
+				)
+			}, spec.Report(report.Terminal{}))
+			break
+		}
+	}
 
 	resolvedCombos, err := resolveRunCombinations(
 		combos,
