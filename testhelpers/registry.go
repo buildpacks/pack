@@ -19,7 +19,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var registryContainerName = "micahyoung/registry:2"
+var registryContainerName = "cnbs/registry:2"
 
 type TestRegistryConfig struct {
 	runRegistryName string
