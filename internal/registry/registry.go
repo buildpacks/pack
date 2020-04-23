@@ -96,12 +96,12 @@ func (r *Cache) validateCache() error {
 		return errors.Wrap(err, "could not access registry cache")
 	}
 
-	if len(remotes) != 1 || len(remotes[0].Config().URLs) != 1 {
-		return errors.New("invalid registry cache remotes")
-	} else if remotes[0].Config().URLs[0] != r.url {
-		return errors.New("invalid registry cache origin")
+	for _, remote := range remotes {
+		if remote.Config().Name == "origin" && remotes[0].Config().URLs[0] != r.url {
+			return nil
+		}
 	}
-	return nil
+	return errors.New("invalid registry cache remote")
 }
 
 func (r *Cache) Initialize() error {
