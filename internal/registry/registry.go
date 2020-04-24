@@ -74,7 +74,7 @@ func (r *Cache) createCache() error {
 		URL: r.url,
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not clone remote registry")
 	}
 
 	w, err := repository.Worktree()
@@ -122,7 +122,7 @@ func (r *Cache) Initialize() error {
 		}
 		err = r.createCache()
 		if err != nil {
-			return errors.Wrap(err, "could not create registry cache")
+			return errors.Wrap(err, "could not rebuild registry cache")
 		}
 	}
 
