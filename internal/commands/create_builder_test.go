@@ -63,7 +63,7 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 				err := command.Execute()
 				h.AssertNotNil(t, err)
-				h.AssertError(t, err, "The --publish and --no-pull flags cannot be used together. There is nothing to pull if you are publishing.")
+				h.AssertError(t, err, "The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
 			})
 		})
 

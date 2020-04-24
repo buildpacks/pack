@@ -20,7 +20,7 @@ type CreateBuilderFlags struct {
 
 func (c CreateBuilderFlags) validate() error {
 	if c.Publish && c.NoPull {
-		return errors.Errorf("The --publish and --no-pull flags cannot be used together. There is nothing to pull if you are publishing.")
+		return errors.Errorf("The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
 	}
 	return nil
 }
