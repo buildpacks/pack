@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/buildpacks/imgutil"
-	ilayer "github.com/buildpacks/imgutil/layer"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -27,6 +26,7 @@ import (
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/stringset"
@@ -454,7 +454,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 					return fetchedBPs, order, errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(bp))
 				}
 			} else {
-				layerWriterFactory, err := ilayer.NewTarWriterFactory(builderImage)
+				layerWriterFactory, err := layer.NewWriterFactory(builderImage)
 				if err != nil {
 					return fetchedBPs, order, errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(builderImage.Name()))
 				}

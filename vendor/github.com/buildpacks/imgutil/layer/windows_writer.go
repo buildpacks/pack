@@ -41,15 +41,22 @@ func (w *WindowsWriter) WriteHeader(header *tar.Header) error {
 	return w.tarWriter.WriteHeader(header)
 }
 
-func (w *WindowsWriter) Close() error {
-	if err := w.initializeLayer(); err != nil {
-		return err
-	}
-	return w.tarWriter.Close()
+func (w *WindowsWriter) Close() (err error) {
+	defer func() {
+		closeErr := w.tarWriter.Close()
+		if err == nil {
+			err = closeErr
+		}
+	}()
+	return w.initializeLayer()
+}
+
+func (w *WindowsWriter) Flush() error {
+	return w.tarWriter.Flush()
 }
 
 func (w *WindowsWriter) writeParentPaths(childPath string) error {
-	parentDir := ""
+	var parentDir string
 	for _, pathPart := range strings.Split(path.Dir(childPath), "/") {
 		parentDir = path.Join(parentDir, pathPart)
 

@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	iarchive "github.com/buildpacks/imgutil/archive"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/style"
@@ -43,7 +42,7 @@ func (t *TarBuilder) AddDir(path string, mode int64, modTime time.Time) {
 	})
 }
 
-func (t *TarBuilder) Reader(twf iarchive.TarWriterFactory) io.ReadCloser {
+func (t *TarBuilder) Reader(twf TarWriterFactory) io.ReadCloser {
 	pr, pw := io.Pipe()
 	go func() {
 		var err error
@@ -56,7 +55,7 @@ func (t *TarBuilder) Reader(twf iarchive.TarWriterFactory) io.ReadCloser {
 	return pr
 }
 
-func (t *TarBuilder) WriteToPath(path string, twf iarchive.TarWriterFactory) error {
+func (t *TarBuilder) WriteToPath(path string, twf TarWriterFactory) error {
 	fh, err := os.Create(path)
 	if err != nil {
 		return errors.Wrapf(err, "create file for tar: %s", style.Symbol(path))
@@ -67,9 +66,9 @@ func (t *TarBuilder) WriteToPath(path string, twf iarchive.TarWriterFactory) err
 	return err
 }
 
-func (t *TarBuilder) WriteTo(w io.Writer, twf iarchive.TarWriterFactory) (int64, error) {
+func (t *TarBuilder) WriteTo(w io.Writer, twf TarWriterFactory) (int64, error) {
 	var written int64
-	tw := twf.NewTarWriter(w)
+	tw := twf.NewWriter(w)
 	defer tw.Close()
 
 	for _, f := range t.files {

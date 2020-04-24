@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
-	iarchive "github.com/buildpacks/imgutil/archive"
 	"github.com/buildpacks/imgutil/fakes"
 
 	"github.com/buildpacks/pack/internal/archive"
@@ -57,7 +56,7 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 	tarBuilder.AddFile("/cnb/order.toml", 0777, archive.NormalizedDateTime, orderTomlBytes.Bytes())
 
 	orderTar := filepath.Join(tmpDir, fmt.Sprintf("order.%s.toml", h.RandString(8)))
-	h.AssertNil(t, tarBuilder.WriteToPath(orderTar, iarchive.DefaultTarWriterFactory))
+	h.AssertNil(t, tarBuilder.WriteToPath(orderTar, archive.DefaultTarWriterFactory()))
 	h.AssertNil(t, fakeBuilderImage.AddLayer(orderTar))
 
 	return fakeBuilderImage

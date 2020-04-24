@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	iarchive "github.com/buildpacks/imgutil/archive"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -65,10 +64,10 @@ homepage = "http://geocities.com/cool-bp"
 [[stacks]]
 id = "some.stack.id"
 `))
-						return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 					},
 				},
-				iarchive.DefaultTarWriterFactory,
+				archive.DefaultTarWriterFactory(),
 			)
 			h.AssertNil(t, err)
 
@@ -98,10 +97,10 @@ id = "some.stack.id"
 						tarBuilder.AddDir("bin", 0700, time.Now())
 						tarBuilder.AddFile("bin/detect", 0700, time.Now(), []byte("detect-contents"))
 						tarBuilder.AddFile("bin/build", 0700, time.Now(), []byte("build-contents"))
-						return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+						return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 					},
 				},
-				iarchive.DefaultTarWriterFactory,
+				archive.DefaultTarWriterFactory(),
 			)
 			h.AssertNil(t, err)
 
@@ -158,7 +157,7 @@ version = "1.2.3"
 [[stacks]]
 id = "some.stack.id"
 `))
-					return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+					return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 				},
 			}
 
@@ -166,7 +165,7 @@ id = "some.stack.id"
 				&errorBlob{
 					realBlob: realBlob,
 				},
-				iarchive.DefaultTarWriterFactory,
+				archive.DefaultTarWriterFactory(),
 			)
 			h.AssertNil(t, err)
 
@@ -197,10 +196,10 @@ id = "some.stack.id"
 								tarBuilder := archive.TarBuilder{}
 								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
 								tarBuilder.AddDir("some-dir", 0600, time.Now())
-								return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 							},
 						},
-						iarchive.DefaultTarWriterFactory,
+						archive.DefaultTarWriterFactory(),
 					)
 					h.AssertNil(t, err)
 
@@ -223,10 +222,10 @@ id = "some.stack.id"
 								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
 								tarBuilder.AddFile("bin/detect", 0600, time.Now(), []byte("detect-contents"))
 								tarBuilder.AddFile("bin/build", 0600, time.Now(), []byte("build-contents"))
-								return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 							},
 						},
-						iarchive.DefaultTarWriterFactory,
+						archive.DefaultTarWriterFactory(),
 					)
 					h.AssertNil(t, err)
 
@@ -253,10 +252,10 @@ id = "some.stack.id"
 								tarBuilder := archive.TarBuilder{}
 								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
 								tarBuilder.AddFile("some-file", 0700, time.Now(), []byte("some-data"))
-								return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 							},
 						},
-						iarchive.DefaultTarWriterFactory,
+						archive.DefaultTarWriterFactory(),
 					)
 					h.AssertNil(t, err)
 
@@ -278,10 +277,10 @@ id = "some.stack.id"
 								tarBuilder := archive.TarBuilder{}
 								tarBuilder.AddFile("buildpack.toml", 0700, time.Now(), []byte(bpTOMLData))
 								tarBuilder.AddFile("some-file", 0600, time.Now(), []byte("some-data"))
-								return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+								return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 							},
 						},
-						iarchive.DefaultTarWriterFactory,
+						archive.DefaultTarWriterFactory(),
 					)
 					h.AssertNil(t, err)
 
@@ -302,10 +301,10 @@ id = "some.stack.id"
 					&readerBlob{
 						openFn: func() io.ReadCloser {
 							tarBuilder := archive.TarBuilder{}
-							return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
 					},
-					iarchive.DefaultTarWriterFactory,
+					archive.DefaultTarWriterFactory(),
 				)
 				h.AssertError(t, err, "could not find entry path 'buildpack.toml'")
 			})
@@ -324,10 +323,10 @@ version = "1.2.3"
 
 [[stacks]]
 id = "some.stack.id"`))
-							return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
 					},
-					iarchive.DefaultTarWriterFactory,
+					archive.DefaultTarWriterFactory(),
 				)
 				h.AssertNil(t, err)
 				h.AssertEq(t, bp.Descriptor().API.String(), "0.1")
@@ -347,10 +346,10 @@ version = "1.2.3"
 
 [[stacks]]
 id = "some.stack.id"`))
-							return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
 					},
-					iarchive.DefaultTarWriterFactory,
+					archive.DefaultTarWriterFactory(),
 				)
 				h.AssertError(t, err, "'buildpack.id' is required")
 			})
@@ -369,10 +368,10 @@ version = ""
 
 [[stacks]]
 id = "some.stack.id"`))
-							return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
 					},
-					iarchive.DefaultTarWriterFactory,
+					archive.DefaultTarWriterFactory(),
 				)
 				h.AssertError(t, err, "'buildpack.version' is required")
 			})
@@ -397,10 +396,10 @@ id = "some.stack.id"
   id = "bp.nested"
   version = "bp.nested.version"
 `))
-							return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
 					},
-					iarchive.DefaultTarWriterFactory,
+					archive.DefaultTarWriterFactory(),
 				)
 				h.AssertError(t, err, "cannot have both 'stacks' and an 'order' defined")
 			})
@@ -417,10 +416,10 @@ id = "some.stack.id"
 id = "bp.one"
 version = "1.2.3"
 `))
-							return tarBuilder.Reader(iarchive.DefaultTarWriterFactory)
+							return tarBuilder.Reader(archive.DefaultTarWriterFactory())
 						},
 					},
-					iarchive.DefaultTarWriterFactory,
+					archive.DefaultTarWriterFactory(),
 				)
 				h.AssertError(t, err, "must have either 'stacks' or an 'order' defined")
 			})
