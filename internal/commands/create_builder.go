@@ -21,6 +21,13 @@ type CreateBuilderFlags struct {
 	Registry        string
 }
 
+func (c CreateBuilderFlags) validate() error {
+	if c.Publish && c.NoPull {
+		return errors.Errorf("The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
+	}
+	return nil
+}
+
 func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	var flags CreateBuilderFlags
 	cmd := &cobra.Command{
@@ -28,6 +35,10 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 		Args:  cobra.ExactArgs(1),
 		Short: "Create builder image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			if err := flags.validate(); err != nil {
+				return err
+			}
+
 			builderConfig, warns, err := builder.ReadConfig(flags.BuilderTomlPath)
 			if err != nil {
 				return errors.Wrap(err, "invalid builder toml")
