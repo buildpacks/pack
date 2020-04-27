@@ -558,7 +558,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							opts.Config.Buildpacks,
 							pubbldr.BuildpackConfig{
 								ImageOrURI: dist.ImageOrURI{
-									ImageRef: dist.ImageRef{ImageName: "urn:cnb:registry:example/foo@1.1.0"},
+									BuildpackURI: dist.BuildpackURI{
+										URI: "urn:cnb:registry:example/foo@1.1.0",
+									},
 								},
 							},
 						)
