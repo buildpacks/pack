@@ -43,7 +43,6 @@ type Config struct {
 	Order       dist.Order          `toml:"order"`
 	Stack       StackConfig         `toml:"stack"`
 	Lifecycle   LifecycleConfig     `toml:"lifecycle"`
-	groups      []interface{}
 }
 
 type BuildpackConfig struct {
@@ -123,10 +122,6 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, []string
 			return Config{}, warnings, errors.Wrap(err, "transforming lifecycle URI")
 		}
 		builderConfig.Lifecycle.URI = uri
-	}
-
-	if len(builderConfig.groups) > 0 {
-		warnings = append(warnings, fmt.Sprintf("%s field is obsolete in favor of %s", style.Symbol("groups"), style.Symbol("order")))
 	}
 
 	return builderConfig, warnings, nil
