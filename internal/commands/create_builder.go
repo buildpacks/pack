@@ -64,7 +64,7 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 	}
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling build image before use")
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "builder-config", "b", "", "Path to builder TOML file (required)")
-	cmd.Flags().StringVarP(&flags.Registry, "buildpack-registry", "r", cfg.DefaultRegistry, "Buildpack Registry URL")
+	cmd.Flags().StringVarP(&flags.Registry, "buildpack-registry", "R", cfg.DefaultRegistry, "Buildpack Registry URL")
 	cmd.MarkFlagRequired("builder-config")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "create-builder")
