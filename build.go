@@ -470,7 +470,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Buildp
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.RegistryLocator:
-			registryCache, err := c.getRegistry(registry)
+			registryCache, err := c.getRegistry(c.logger, registry)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "invalid registry '%s'", registry)
 			}

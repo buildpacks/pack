@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/buildpacks/pack/logging"
+
 	ggcrname "github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
@@ -36,11 +38,12 @@ type Entry struct {
 }
 
 type Cache struct {
-	url  string
-	Root string
+	logger logging.Logger
+	url    *url.URL
+	Root   string
 }
 
-func NewRegistryCache(home, registryURL string) (Cache, error) {
+func NewRegistryCache(logger logging.Logger, home, registryURL string) (Cache, error) {
 	if _, err := os.Stat(home); err != nil {
 		return Cache{}, err
 	}
@@ -55,23 +58,26 @@ func NewRegistryCache(home, registryURL string) (Cache, error) {
 	cacheDir := fmt.Sprintf("%s-%s", defaultRegistryDir, hex.EncodeToString(key.Sum(nil)))
 
 	return Cache{
-		url:  registryURL,
-		Root: filepath.Join(home, cacheDir),
+		url:    normalizedURL,
+		logger: logger,
+		Root:   filepath.Join(home, cacheDir),
 	}, nil
 }
 
-func NewDefaultRegistryCache(home string) (Cache, error) {
-	return NewRegistryCache(home, defaultRegistryURL)
+func NewDefaultRegistryCache(logger logging.Logger, home string) (Cache, error) {
+	return NewRegistryCache(logger, home, defaultRegistryURL)
 }
 
 func (r *Cache) createCache() error {
+	r.logger.Debugf("Creating registry cache for %s/%s", r.url.Host, r.url.Path)
+
 	root, err := ioutil.TempDir("", "registry")
 	if err != nil {
 		return err
 	}
 
 	repository, err := git.PlainClone(root, false, &git.CloneOptions{
-		URL: r.url,
+		URL: r.url.String(),
 	})
 	if err != nil {
 		return errors.Wrap(err, "could not clone remote registry")
@@ -86,6 +92,8 @@ func (r *Cache) createCache() error {
 }
 
 func (r *Cache) validateCache() error {
+	r.logger.Debugf("Validating registry cache for %s/%s", r.url.Host, r.url.Path)
+
 	repository, err := git.PlainOpen(r.Root)
 	if err != nil {
 		return errors.Wrap(err, "could not open registry cache")
@@ -97,7 +105,7 @@ func (r *Cache) validateCache() error {
 	}
 
 	for _, remote := range remotes {
-		if remote.Config().Name == "origin" && remotes[0].Config().URLs[0] != r.url {
+		if remote.Config().Name == "origin" && remotes[0].Config().URLs[0] != r.url.String() {
 			return nil
 		}
 	}
@@ -130,6 +138,8 @@ func (r *Cache) Initialize() error {
 }
 
 func (r *Cache) Refresh() error {
+	r.logger.Debugf("Refreshing registry cache for %s/%s", r.url.Host, r.url.Path)
+
 	if err := r.Initialize(); err != nil {
 		return err
 	}

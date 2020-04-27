@@ -1,16 +1,20 @@
 package registry_test
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/buildpacks/pack/logging"
+
 	"github.com/sclevine/spec"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
+	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/registry"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -70,15 +74,19 @@ func TestRegistryCache(t *testing.T) {
 			tmpDir          string
 			registryFixture string
 			registryCache   registry.Cache
+			outBuf          bytes.Buffer
+			logger          logging.Logger
 		)
 
 		it.Before(func() {
+			logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+
 			tmpDir, err := ioutil.TempDir("", "registry")
 			h.AssertNil(t, err)
 
 			registryFixture = createRegistryFixture(t, tmpDir)
 
-			registryCache, err = registry.NewRegistryCache(tmpDir, registryFixture)
+			registryCache, err = registry.NewRegistryCache(logger, tmpDir, registryFixture)
 			h.AssertNil(t, err)
 		})
 

@@ -105,7 +105,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 				bldr.AddBuildpack(bp)
 			}
 		case buildpack.RegistryLocator:
-			registryCache, err := c.getRegistry(opts.Registry)
+			registryCache, err := c.getRegistry(c.logger, opts.Registry)
 			if err != nil {
 				return errors.Wrapf(err, "invalid registry '%s'", opts.Registry)
 			}

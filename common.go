@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/buildpacks/pack/logging"
+
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/registry"
 
@@ -51,7 +53,7 @@ func (c *Client) resolveRunImage(runImage, targetRegistry string, stackInfo buil
 	return runImageName
 }
 
-func (c *Client) getRegistry(registryURL string) (registry.Cache, error) {
+func (c *Client) getRegistry(logger logging.Logger, registryURL string) (registry.Cache, error) {
 	home, err := config.PackHome()
 	if err != nil {
 		return registry.Cache{}, err
@@ -62,10 +64,10 @@ func (c *Client) getRegistry(registryURL string) (registry.Cache, error) {
 	}
 
 	if registryURL == "" {
-		return registry.NewDefaultRegistryCache(home)
+		return registry.NewDefaultRegistryCache(logger, home)
 	}
 
-	return registry.NewRegistryCache(home, registryURL)
+	return registry.NewRegistryCache(logger, home, registryURL)
 }
 
 func contains(slc []string, v string) bool {
