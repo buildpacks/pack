@@ -76,14 +76,6 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	}
 	defer file.Close()
 
-	warnings, err = getWarningsForObsoleteFields(file)
-	if err != nil {
-		return Config{}, nil, errors.Wrapf(err, "check warnings for file '%s'", path)
-	}
-	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		return Config{}, nil, errors.Wrap(err, "reset config file pointer")
-	}
-
 	config, err = parseConfig(file, builderDir, path)
 	if err != nil {
 		return Config{}, nil, errors.Wrapf(err, "parse contents of '%s'", path)
@@ -94,24 +86,6 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	}
 
 	return config, warnings, nil
-}
-
-func getWarningsForObsoleteFields(reader io.Reader) ([]string, error) {
-	var warnings []string
-
-	var obsoleteConfig = struct {
-		Groups []interface{}
-	}{}
-
-	if _, err := toml.DecodeReader(reader, &obsoleteConfig); err != nil {
-		return nil, err
-	}
-
-	if len(obsoleteConfig.Groups) > 0 {
-		warnings = append(warnings, fmt.Sprintf("%s field is obsolete in favor of %s", style.Symbol("groups"), style.Symbol("order")))
-	}
-
-	return warnings, nil
 }
 
 // parseConfig reads a builder configuration from reader and resolves relative buildpack paths using `relativeToDir`
