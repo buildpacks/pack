@@ -37,8 +37,9 @@ type Lifecycle interface {
 }
 
 type BuildOptions struct {
-	Image              string              // required
-	Builder            string              // required
+	Image              string // required
+	Builder            string // required
+	Registry           string
 	AppPath            string              // defaults to current working directory
 	RunImage           string              // defaults to the best mirror from the builder metadata or AdditionalMirrors
 	AdditionalMirrors  map[string][]string // only considered if RunImage is not provided
@@ -103,7 +104,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), opts.Buildpacks, opts.NoPull, opts.Publish)
+	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Buildpacks(), bldr.Order(), opts.Buildpacks, opts.NoPull, opts.Publish, opts.Registry)
 	if err != nil {
 		return err
 	}
@@ -395,7 +396,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string, noPull bool, publish bool) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string, noPull bool, publish bool, registry string) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
 	order = dist.Order{{Group: []dist.BuildpackRef{}}}
 	for _, bp := range declaredBPs {
 		locatorType, err := buildpack.GetLocatorType(bp, builderBPs)
@@ -463,7 +464,25 @@ func (c *Client) processBuildpacks(ctx context.Context, builderBPs []dist.Buildp
 		case buildpack.PackageLocator:
 			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, bp, c.imageFetcher, publish, noPull)
 			if err != nil {
-				return fetchedBPs, order, err
+				return fetchedBPs, order, errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(bp))
+			}
+
+			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
+			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
+		case buildpack.RegistryLocator:
+			registryCache, err := c.getRegistry(c.logger, registry)
+			if err != nil {
+				return fetchedBPs, order, errors.Wrapf(err, "invalid registry '%s'", registry)
+			}
+
+			registryBp, err := registryCache.LocateBuildpack(bp)
+			if err != nil {
+				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
+			}
+
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, publish, noPull)
+			if err != nil {
+				return fetchedBPs, order, errors.Wrapf(err, "extracting from registry %s", style.Symbol(bp))
 			}
 
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)

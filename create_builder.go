@@ -8,6 +8,8 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/internal/buildpack"
+
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
@@ -20,6 +22,7 @@ type CreateBuilderOptions struct {
 	Config      pubbldr.Config
 	Publish     bool
 	NoPull      bool
+	Registry    string
 }
 
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
@@ -62,37 +65,74 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 
 	for _, b := range opts.Config.Buildpacks.Buildpacks() {
-		err := ensureBPSupport(b.URI)
+		locatorType, err := buildpack.GetLocatorType(b.URI, []dist.BuildpackInfo{})
 		if err != nil {
 			return err
 		}
 
-		blob, err := c.downloader.Download(ctx, b.URI)
-		if err != nil {
-			return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))
-		}
+		switch locatorType {
+		case buildpack.RegistryLocator:
+			registryCache, err := c.getRegistry(c.logger, opts.Registry)
+			if err != nil {
+				return errors.Wrapf(err, "invalid registry '%s'", opts.Registry)
+			}
 
-		fetchedBp, err := dist.BuildpackFromRootBlob(blob)
-		if err != nil {
-			return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
-		}
+			registryBp, err := registryCache.LocateBuildpack(b.URI)
+			if err != nil {
+				return errors.Wrapf(err, "locating in registry %s", style.Symbol(b.URI))
+			}
 
-		err = validateBuildpack(fetchedBp, b.URI, b.ID, b.Version)
-		if err != nil {
-			return errors.Wrap(err, "invalid buildpack")
-		}
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, opts.Publish, opts.NoPull)
+			if err != nil {
+				return errors.Wrapf(err, "extracting from registry %s", style.Symbol(b.URI))
+			}
 
-		bldr.AddBuildpack(fetchedBp)
+			for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
+				bldr.AddBuildpack(bp)
+			}
+		default:
+			err := ensureBPSupport(b.URI)
+			if err != nil {
+				return err
+			}
+
+			blob, err := c.downloader.Download(ctx, b.URI)
+			if err != nil {
+				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))
+			}
+
+			fetchedBp, err := dist.BuildpackFromRootBlob(blob)
+			if err != nil {
+				return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
+			}
+
+			err = validateBuildpack(fetchedBp, b.URI, b.ID, b.Version)
+			if err != nil {
+				return errors.Wrap(err, "invalid buildpack")
+			}
+
+			bldr.AddBuildpack(fetchedBp)
+		}
 	}
 
 	for _, pkg := range opts.Config.Buildpacks.Packages() {
-		mainBP, depBPs, err := extractPackagedBuildpacks(ctx, pkg.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+		locatorType, err := buildpack.GetLocatorType(pkg.ImageName, []dist.BuildpackInfo{})
 		if err != nil {
 			return err
 		}
 
-		for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
-			bldr.AddBuildpack(bp)
+		switch locatorType {
+		case buildpack.PackageLocator:
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, pkg.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+			if err != nil {
+				return err
+			}
+
+			for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
+				bldr.AddBuildpack(bp)
+			}
+		default:
+			return fmt.Errorf("invalid image format: %s", pkg.ImageName)
 		}
 	}
 

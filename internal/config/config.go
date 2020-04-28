@@ -9,9 +9,10 @@ import (
 )
 
 type Config struct {
-	RunImages      []RunImage `toml:"run-images"`
-	DefaultBuilder string     `toml:"default-builder-image,omitempty"`
-	Experimental   bool       `toml:"experimental,omitempty"`
+	RunImages       []RunImage `toml:"run-images"`
+	DefaultBuilder  string     `toml:"default-builder-image,omitempty"`
+	DefaultRegistry string     `toml:"default-registry-url,omitempty"`
+	Experimental    bool       `toml:"experimental,omitempty"`
 }
 
 type RunImage struct {

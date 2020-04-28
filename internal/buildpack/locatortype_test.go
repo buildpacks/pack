@@ -102,6 +102,10 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			locator:      "registry.com/cnbs/some-bp:some-tag@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			expectedType: buildpack.PackageLocator,
 		},
+		{
+			locator:      "urn:cnb:registry:example/foo:1.0.0",
+			expectedType: buildpack.RegistryLocator,
+		},
 	} {
 		tc := tc
 
