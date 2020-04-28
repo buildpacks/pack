@@ -76,7 +76,7 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	}
 	defer file.Close()
 
-	config, warnings, err = parseConfig(file, builderDir, path)
+	config, err = parseConfig(file, builderDir, path)
 	if err != nil {
 		return Config{}, nil, errors.Wrapf(err, "parse contents of '%s'", path)
 	}
@@ -89,20 +89,18 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 }
 
 // parseConfig reads a builder configuration from reader and resolves relative buildpack paths using `relativeToDir`
-func parseConfig(reader io.Reader, relativeToDir, path string) (Config, []string, error) {
-	var warnings []string
+func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 	builderConfig := Config{}
-
 	tomlMetadata, err := toml.DecodeReader(reader, &builderConfig)
 	if err != nil {
-		return Config{}, warnings, errors.Wrap(err, "decoding toml contents")
+		return Config{}, errors.Wrap(err, "decoding toml contents")
 	}
 
 	undecodedKeys := tomlMetadata.Undecoded()
 	if len(undecodedKeys) > 0 {
 		unknownElementsMsg := config.FormatUndecodedKeys(undecodedKeys)
 
-		return Config{}, warnings, errors.Errorf("%s in %s",
+		return Config{}, errors.Errorf("%s in %s",
 			unknownElementsMsg,
 			style.Symbol(path),
 		)
@@ -111,7 +109,7 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, []string
 	for i, bp := range builderConfig.Buildpacks.Buildpacks() {
 		uri, err := paths.ToAbsolute(bp.URI, relativeToDir)
 		if err != nil {
-			return Config{}, warnings, errors.Wrap(err, "transforming buildpack URI")
+			return Config{}, errors.Wrap(err, "transforming buildpack URI")
 		}
 		builderConfig.Buildpacks[i].URI = uri
 	}
@@ -119,10 +117,10 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, []string
 	if builderConfig.Lifecycle.URI != "" {
 		uri, err := paths.ToAbsolute(builderConfig.Lifecycle.URI, relativeToDir)
 		if err != nil {
-			return Config{}, warnings, errors.Wrap(err, "transforming lifecycle URI")
+			return Config{}, errors.Wrap(err, "transforming lifecycle URI")
 		}
 		builderConfig.Lifecycle.URI = uri
 	}
 
-	return builderConfig, warnings, nil
+	return builderConfig, nil
 }
