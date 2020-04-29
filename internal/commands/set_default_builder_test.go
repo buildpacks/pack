@@ -48,8 +48,7 @@ func testSetDefaultBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
-		err = os.Setenv("PACK_HOME", tempPackHome)
-		h.AssertNil(t, err)
+		h.AssertNil(t, os.Setenv("PACK_HOME", tempPackHome))
 	})
 
 	it.After(func() {

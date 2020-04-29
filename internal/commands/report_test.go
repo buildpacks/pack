@@ -58,11 +58,11 @@ experimental = true
 	when("#ReportCommand", func() {
 		when("config.toml is present", func() {
 			it.Before(func() {
-				os.Setenv("PACK_HOME", tempPackHome)
+				h.AssertNil(t, os.Setenv("PACK_HOME", tempPackHome))
 			})
 
 			it.After(func() {
-				os.Unsetenv("PACK_HOME")
+				h.AssertNil(t, os.Unsetenv("PACK_HOME"))
 			})
 
 			it("presents output", func() {
@@ -73,10 +73,10 @@ experimental = true
 		})
 		when("config.toml is not present", func() {
 			it.Before(func() {
-				os.Setenv("PACK_HOME", tempPackEmptyHome)
+				h.AssertNil(t, os.Setenv("PACK_HOME", tempPackEmptyHome))
 			})
 			it.After(func() {
-				os.Unsetenv("PACK_HOME")
+				h.AssertNil(t, os.Unsetenv("PACK_HOME"))
 			})
 			it("logs a message", func() {
 				h.AssertNil(t, command.Execute())
