@@ -50,6 +50,10 @@ func TestPhase(t *testing.T) {
 	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 
+	info, err := dockerCli.Info(context.TODO())
+	h.AssertNil(t, err)
+	h.SkipIf(t, info.OSType == "windows", "These tests are not yet compatible with Windows-based containers")
+
 	repoName = "phase.test.lc-" + h.RandString(10)
 	wd, err := os.Getwd()
 	h.AssertNil(t, err)

@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos, linux, windows]
+        os: [macos, linux, windows-lcow, windows-wcow]
         include:
           - os: macos
             runner: macos-latest
@@ -25,8 +25,12 @@ jobs:
             runner: ubuntu-latest
             no_docker: "false"
             pack_bin: pack
-          - os: windows
+          - os: windows-lcow
             runner: [self-hosted, windows]
+            no_docker: "false"
+            pack_bin: pack.exe
+          - os: windows-wcow
+            runner: windows-latest
             no_docker: "false"
             pack_bin: pack.exe
     runs-on: ${{ matrix.runner }}
@@ -50,7 +54,7 @@ jobs:
           echo "::add-path::$(go env GOPATH)/bin"
       - name: Verify
         # disabled for windows due to format verification failing
-        if: matrix.os != 'windows'
+        if: ${{ !contains(matrix.os, 'windows') }}
         run: make verify
       - name: Test
         env:
@@ -91,7 +95,8 @@ jobs:
       - name: Download artifacts - windows
         uses: actions/download-artifact@v1
         with:
-          name: pack-windows
+          name: pack-windows-lcow
+          path: pack-windows
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack
