@@ -836,7 +836,7 @@ func testAcceptance(
 							it.Before(func() {
 								h.SkipIf(t,
 									semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).GreaterThan(semver.MustParse("0.2")),
-									"skipping trust-builder (and the creator). Lifecycle does not support it",
+									"Lifecycle supports the creator",
 								)
 							})
 

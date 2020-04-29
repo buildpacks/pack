@@ -96,6 +96,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	}
 
 	phaseFactory := NewDefaultPhaseFactory(l)
+
 	if !opts.TrustBuilder || semver.MustParse(l.platformAPIVersion).LessThan(semver.MustParse("0.3")) {
 		l.logger.Info(style.Step("DETECTING"))
 		if err := l.Detect(ctx, opts.Network, opts.Volumes, phaseFactory); err != nil {
@@ -121,16 +122,11 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
-		if err := l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name(), opts.Network, phaseFactory); err != nil {
-			return err
-		}
-	} else {
-		l.logger.Info(style.Step("CREATING"))
-		if err := l.Create(ctx, opts.Publish, opts.ClearCache, opts.RunImage, launchCache.Name(), buildCache.Name(), opts.Image.Name(), opts.Network, phaseFactory); err != nil {
-			return err
-		}
+		return l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name(), opts.Network, phaseFactory)
 	}
-	return nil
+
+	l.logger.Info(style.Step("CREATING"))
+	return l.Create(ctx, opts.Publish, opts.ClearCache, opts.RunImage, launchCache.Name(), buildCache.Name(), opts.Image.Name(), opts.Network, phaseFactory)
 }
 
 func (l *Lifecycle) Setup(opts LifecycleOptions) {

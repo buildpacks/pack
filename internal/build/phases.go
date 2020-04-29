@@ -29,18 +29,18 @@ type PhaseFactory interface {
 
 func (l *Lifecycle) Create(ctx context.Context, publish, clearCache bool, runImage, launchCacheName, cacheName, repoName, networkMode string, phaseFactory PhaseFactory) error {
 	var configProvider *PhaseConfigProvider
-	var binds []string
 
 	args := []string{
 		"-run-image", runImage,
 		repoName,
 	}
 
+	binds := []string{fmt.Sprintf("%s:%s", cacheName, cacheDir)}
+
 	if clearCache {
 		args = append([]string{"-skip-restore"}, args...)
 	} else {
 		args = append([]string{"-cache-dir", cacheDir}, args...)
-		binds = append([]string{fmt.Sprintf("%s:%s", cacheName, cacheDir)}, binds...)
 	}
 
 	if !publish {

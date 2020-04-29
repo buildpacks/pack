@@ -116,6 +116,18 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				configProvider := fakePhaseFactory.NewCalledWithProvider
 				h.AssertEq(t, configProvider.HostConfig().NetworkMode, container.NetworkMode(expectedNetworkMode))
 			})
+
+			it("configures the phase with binds", func() {
+				lifecycle := fakeLifecycle(t, false)
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+				expectedBinds := []string{"some-cache:/cache"}
+
+				err := lifecycle.Create(context.Background(), false, false, "test", "test", "some-cache", "test", "test", fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
+			})
 		})
 
 		when("publish is false and clear cache is false", func() {
