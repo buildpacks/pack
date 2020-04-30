@@ -224,6 +224,11 @@ func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode i
 		if fileFilter != nil && !fileFilter(f.Name) {
 			continue
 		}
+
+		if isFatFile(f.FileHeader) {
+			mode = 0777
+		}
+
 		var header *tar.Header
 		if f.Mode()&os.ModeSymlink != 0 {
 			target, err := func() (string, error) {
@@ -257,10 +262,6 @@ func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode i
 			}
 		}
 
-		if overwritePermissions(f.FileHeader) {
-			mode = 0777
-		}
-
 		header.Name = filepath.ToSlash(filepath.Join(basePath, f.Name))
 		finalizeHeader(header, uid, gid, mode, normalizeModTime)
 
@@ -289,7 +290,7 @@ func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode i
 	return nil
 }
 
-func overwritePermissions(header zip.FileHeader) bool {
+func isFatFile(header zip.FileHeader) bool {
 	var (
 		creatorFAT  uint16 = 0
 		creatorVFAT uint16 = 14
