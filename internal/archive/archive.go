@@ -295,6 +295,7 @@ func overwritePermissions(header zip.FileHeader) bool {
 		creatorVFAT uint16 = 14
 	)
 
+	// This identifies FAT files, based on the `zip` source: https://golang.org/src/archive/zip/struct.go
 	firstByte := header.CreatorVersion >> 8
 	return firstByte == creatorFAT || firstByte == creatorVFAT
 }
