@@ -60,7 +60,7 @@ jobs:
         uses: codecov/codecov-action@v1
         with:
           file: ./out/tests/coverage-unit.txt
-          flags: unit,os/${{ matrix.os }}
+          flags: unit,os_${{ matrix.os }}
           fail_ci_if_error: true
       - name: Build
         run: make build
