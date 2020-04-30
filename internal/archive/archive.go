@@ -257,6 +257,10 @@ func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode i
 			}
 		}
 
+		if overwritePermissions(f.FileHeader) {
+			mode = 0777
+		}
+
 		header.Name = filepath.ToSlash(filepath.Join(basePath, f.Name))
 		finalizeHeader(header, uid, gid, mode, normalizeModTime)
 
@@ -283,6 +287,16 @@ func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode i
 	}
 
 	return nil
+}
+
+func overwritePermissions(header zip.FileHeader) bool {
+	var (
+		creatorFAT  uint16 = 0
+		creatorVFAT uint16 = 14
+	)
+
+	firstByte := header.CreatorVersion >> 8
+	return firstByte == creatorFAT || firstByte == creatorVFAT
 }
 
 func finalizeHeader(header *tar.Header, uid, gid int, mode int64, normalizeModTime bool) {

@@ -302,6 +302,38 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 					verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 				}
 			})
+
+			when.Focus("files are compressed in fat (MSDOS) format", func() {
+				it.Before(func() {
+					src = filepath.Join("testdata", "fat-zip-to-tar.zip")
+				})
+
+				it("writes a tar to the dest dir with 0777", func() {
+					fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+					h.AssertNil(t, err)
+
+					tw := tar.NewWriter(fh)
+
+					err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true, nil)
+					h.AssertNil(t, err)
+					h.AssertNil(t, tw.Close())
+					h.AssertNil(t, fh.Close())
+
+					file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+					h.AssertNil(t, err)
+					defer file.Close()
+
+					tr := tar.NewReader(file)
+
+					verify := tarVerifier{t, tr, 1234, 2345}
+					// FAT stores names in uppercase: https://superuser.com/a/1297675
+					verify.nextFile("/nested/dir/dir-in-archive/SOME-FIL.TXT", "some-content", 0777)
+					verify.nextDirectory("/nested/dir/dir-in-archive/SUB-DIR", 0777)
+					// FAT doesn't support links: https://unix.stackexchange.com/q/492698
+					verify.nextFile("/nested/dir/dir-in-archive/SUB-DIR/LINK-FIL", "some-content", 0777)
+					verify.noMoreFilesExist()
+				})
+			})
 		})
 
 		when("normalize mod time is false", func() {
