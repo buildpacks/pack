@@ -327,8 +327,6 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 					verify := tarVerifier{t, tr, 1234, 2345}
 					verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
-					// FAT doesn't support links: https://unix.stackexchange.com/q/492698
-					verify.nextFile("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt", 0777)
 					verify.noMoreFilesExist()
 				})
 			})
