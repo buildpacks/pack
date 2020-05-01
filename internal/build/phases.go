@@ -7,8 +7,6 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/google/go-containerregistry/pkg/authn"
-
-	"github.com/buildpacks/pack/internal/api"
 )
 
 const (
@@ -165,6 +163,12 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 
 	binds := []string{fmt.Sprintf("%s:%s", cacheName, cacheDir)}
 
+	if l.DefaultProcessType != "" && l.supportsDefaultProcess() {
+		args = append([]string{"-process-type", l.DefaultProcessType}, args...)
+	} else {
+		l.logger.Warn("You specified a default process type but that is not supported by this version of the lifecycle")
+	}
+
 	if publish {
 		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName, runImage)
 		if err != nil {
@@ -187,15 +191,6 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 
 	args = append([]string{"-daemon", "-launch-cache", launchCacheDir}, args...)
 	binds = append(binds, fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir))
-
-	if l.DefaultProcessType != "" {
-		supportsDefaultProcess := api.MustParse(l.platformAPIVersion).SupportsVersion(api.MustParse(defaultProcessPlatformAPI))
-		if supportsDefaultProcess {
-			args = append([]string{"-process-type", l.DefaultProcessType}, args...)
-		} else {
-			l.logger.Warn("You specified a default process type but that is not supported by this version of the lifecycle")
-		}
-	}
 
 	configProvider := NewPhaseConfigProvider(
 		"exporter",
@@ -226,4 +221,10 @@ func (l *Lifecycle) exportImageArgs(runImage string) []string {
 		return []string{"-run-image", runImage}
 	}
 	return []string{"-image", runImage}
+}
+
+func (l *Lifecycle) supportsDefaultProcess() bool {
+	apiVersion := semver.MustParse(l.platformAPIVersion)
+	defaultProcVersion := semver.MustParse(defaultProcessPlatformAPI)
+	return apiVersion.GreaterThan(defaultProcVersion) || apiVersion.Equal(defaultProcVersion)
 }

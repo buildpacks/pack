@@ -500,11 +500,19 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("platform api 0.3+", func() {
-			it("uses -run-image instead of deprecated -image", func() {
+			var (
+				fakeBuilder *fakes.FakeBuilder
+				err         error
+			)
+
+			it.Before(func() {
 				platformAPIVersion, err := api.NewVersion("0.3")
 				h.AssertNil(t, err)
-				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithPlatformVersion(platformAPIVersion))
+				fakeBuilder, err = fakes.NewFakeBuilder(fakes.WithPlatformVersion(platformAPIVersion))
 				h.AssertNil(t, err)
+			})
+
+			it("uses -run-image instead of deprecated -image", func() {
 				lifecycle := fakeLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRunImage := "some-run-image"
@@ -519,6 +527,20 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 					[]string{"-run-image", expectedRunImage},
 				)
 			})
+
+			it("configures the phase with default arguments", func() {
+				lifecycle := fakeLifecycle(t, true, fakes.WithBuilder(fakeBuilder), func(options *build.LifecycleOptions) {
+					options.DefaultProcessType = "test-process"
+				})
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+				expectedDefaultProc := []string{"-process-type", "test-process"}
+
+				err := lifecycle.Export(context.Background(), "test", "test", false, "test", "test", fakePhaseFactory)
+				h.AssertNil(t, err)
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertIncludeAllExpectedPatterns(t, configProvider.ContainerConfig().Cmd, expectedDefaultProc)
+			})
+
 		})
 	})
 }
