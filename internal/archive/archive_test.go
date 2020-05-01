@@ -303,7 +303,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			when.Focus("files are compressed in fat (MSDOS) format", func() {
+			when("files are compressed in fat (MSDOS) format", func() {
 				it.Before(func() {
 					src = filepath.Join("testdata", "fat-zip-to-tar.zip")
 				})
@@ -326,11 +326,9 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 					tr := tar.NewReader(file)
 
 					verify := tarVerifier{t, tr, 1234, 2345}
-					// FAT stores names in uppercase: https://superuser.com/a/1297675
-					verify.nextFile("/nested/dir/dir-in-archive/SOME-FIL.TXT", "some-content", 0777)
-					verify.nextDirectory("/nested/dir/dir-in-archive/SUB-DIR", 0777)
+					verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
 					// FAT doesn't support links: https://unix.stackexchange.com/q/492698
-					verify.nextFile("/nested/dir/dir-in-archive/SUB-DIR/LINK-FIL", "some-content", 0777)
+					verify.nextFile("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt", 0777)
 					verify.noMoreFilesExist()
 				})
 			})
