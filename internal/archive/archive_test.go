@@ -373,17 +373,31 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("file is not a zip file", func() {
-			it("returns false", func() {
-				file, err := ioutil.TempFile(tmpDir, "file.txt")
-				h.AssertNil(t, err)
-				defer file.Close()
+			when("file has some content", func() {
+				it("returns false", func() {
+					file, err := ioutil.TempFile(tmpDir, "file.txt")
+					h.AssertNil(t, err)
+					defer file.Close()
 
-				err = ioutil.WriteFile(file.Name(), []byte("content"), os.ModePerm)
-				h.AssertNil(t, err)
+					err = ioutil.WriteFile(file.Name(), []byte("content"), os.ModePerm)
+					h.AssertNil(t, err)
 
-				isZip, err := archive.IsZip(file)
-				h.AssertNil(t, err)
-				h.AssertFalse(t, isZip)
+					isZip, err := archive.IsZip(file)
+					h.AssertNil(t, err)
+					h.AssertFalse(t, isZip)
+				})
+			})
+
+			when("file doesn't have content", func() {
+				it("returns false", func() {
+					file, err := ioutil.TempFile(tmpDir, "file.txt")
+					h.AssertNil(t, err)
+					defer file.Close()
+
+					isZip, err := archive.IsZip(file)
+					h.AssertNil(t, err)
+					h.AssertFalse(t, isZip)
+				})
 			})
 		})
 
