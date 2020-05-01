@@ -120,12 +120,15 @@ func AddFileToTar(tw *tar.Writer, path string, txt string) error {
 	return nil
 }
 
+// ErrEntryNotExist is an error returned if an entry path doesn't exist
 var ErrEntryNotExist = errors.New("not exist")
 
+// IsEntryNotExist detects whether a given error is of type ErrEntryNotExist
 func IsEntryNotExist(err error) bool {
 	return err == ErrEntryNotExist || errors.Cause(err) == ErrEntryNotExist
 }
 
+// ReadTarEntry reads and returns a tar file
 func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 	tr := tar.NewReader(rc)
 	for {
@@ -151,7 +154,7 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 }
 
 // WriteDirToTar writes the contents of a directory to a tar writer. `basePath` is the "location" in the tar the
-// contents will be places.
+// contents will be placed.
 func WriteDirToTar(tw *tar.Writer, srcDir, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) error {
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		if fileFilter != nil && !fileFilter(file) {
@@ -213,6 +216,7 @@ func WriteDirToTar(tw *tar.Writer, srcDir, basePath string, uid, gid int, mode i
 	})
 }
 
+// WriteZipToTar writes the contents of a zip file to a tar writer.
 func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) error {
 	zipReader, err := zip.OpenReader(srcZip)
 	if err != nil {
@@ -328,6 +332,7 @@ func NormalizeHeader(header *tar.Header, normalizeModTime bool) {
 	header.Gname = ""
 }
 
+// IsZip detects whether or not a File is a zip directory
 func IsZip(file io.Reader) (bool, error) {
 	b := make([]byte, 4)
 	_, err := file.Read(b)
