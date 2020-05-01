@@ -61,32 +61,90 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, fakePhase.RunCallCount, 1)
 		})
 
-		when("publish and clear cache", func() {
+		it("configures the phase with the expected arguments", func() {
+			verboseLifecycle := fakeLifecycle(t, true)
+			fakePhaseFactory := fakes.NewFakePhaseFactory()
+			expectedRepoName := "some-repo-name"
+			expectedRunImage := "some-run-image"
+
+			err := verboseLifecycle.Create(context.Background(), false, false, expectedRunImage, "test", "test", expectedRepoName, "test", fakePhaseFactory)
+			h.AssertNil(t, err)
+
+			configProvider := fakePhaseFactory.NewCalledWithProvider
+			h.AssertEq(t, configProvider.Name(), "creator")
+			h.AssertIncludeAllExpectedPatterns(t,
+				configProvider.ContainerConfig().Cmd,
+				[]string{"-log-level", "debug"},
+				[]string{"-run-image", expectedRunImage},
+				[]string{expectedRepoName},
+			)
+		})
+
+		it("configures the phase with the expected network mode", func() {
+			lifecycle := fakeLifecycle(t, false)
+			fakePhaseFactory := fakes.NewFakePhaseFactory()
+			expectedNetworkMode := "some-network-mode"
+
+			err := lifecycle.Create(context.Background(), false, false, "test", "test", "test", "test", expectedNetworkMode, fakePhaseFactory)
+			h.AssertNil(t, err)
+
+			configProvider := fakePhaseFactory.NewCalledWithProvider
+			h.AssertEq(t, configProvider.HostConfig().NetworkMode, container.NetworkMode(expectedNetworkMode))
+		})
+
+		when("clear cache", func() {
 			it("configures the phase with the expected arguments", func() {
 				verboseLifecycle := fakeLifecycle(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
-				expectedRepoName := "some-repo-name"
-				expectedRunImage := "some-run-image"
 
-				err := verboseLifecycle.Create(context.Background(), true, true, expectedRunImage, "test", "test", expectedRepoName, "test", fakePhaseFactory)
+				err := verboseLifecycle.Create(context.Background(), false, true, "test", "test", "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
 				h.AssertEq(t, configProvider.Name(), "creator")
 				h.AssertIncludeAllExpectedPatterns(t,
 					configProvider.ContainerConfig().Cmd,
-					[]string{"-log-level", "debug"},
-					[]string{"-run-image", expectedRunImage},
-					[]string{expectedRepoName},
 					[]string{"-skip-restore"},
 				)
+			})
+		})
+
+		when("clear cache is false", func() {
+			it("configures the phase with the expected arguments", func() {
+				verboseLifecycle := fakeLifecycle(t, true)
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+				err := verboseLifecycle.Create(context.Background(), false, false, "test", "test", "test", "test", "test", fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertEq(t, configProvider.Name(), "creator")
+				h.AssertIncludeAllExpectedPatterns(t,
+					configProvider.ContainerConfig().Cmd,
+					[]string{"-cache-dir", "/cache"},
+				)
+				h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
+			})
+		})
+
+		when("publish", func() {
+			it("configures the phase with binds", func() {
+				lifecycle := fakeLifecycle(t, false)
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+				expectedBinds := []string{"some-cache:/cache"}
+
+				err := lifecycle.Create(context.Background(), true, false, "test", "test", "some-cache", "test", "test", fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 			})
 
 			it("configures the phase with root", func() {
 				lifecycle := fakeLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err := lifecycle.Create(context.Background(), true, true, "test", "test", "test", "test", "test", fakePhaseFactory)
+				err := lifecycle.Create(context.Background(), true, false, "test", "test", "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
@@ -98,72 +156,42 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRepos := "some-repo-name"
 
-				err := lifecycle.Create(context.Background(), true, true, "test", "test", "test", expectedRepos, "test", fakePhaseFactory)
+				err := lifecycle.Create(context.Background(), true, false, "test", "test", "test", expectedRepos, "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
 				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_REGISTRY_AUTH={}")
 			})
-
-			it("configures the phase with the expected network mode", func() {
-				lifecycle := fakeLifecycle(t, false)
-				fakePhaseFactory := fakes.NewFakePhaseFactory()
-				expectedNetworkMode := "some-network-mode"
-
-				err := lifecycle.Create(context.Background(), true, true, "test", "test", "test", "test", expectedNetworkMode, fakePhaseFactory)
-				h.AssertNil(t, err)
-
-				configProvider := fakePhaseFactory.NewCalledWithProvider
-				h.AssertEq(t, configProvider.HostConfig().NetworkMode, container.NetworkMode(expectedNetworkMode))
-			})
-
-			it("configures the phase with binds", func() {
-				lifecycle := fakeLifecycle(t, false)
-				fakePhaseFactory := fakes.NewFakePhaseFactory()
-				expectedBinds := []string{"some-cache:/cache"}
-
-				err := lifecycle.Create(context.Background(), false, false, "test", "test", "some-cache", "test", "test", fakePhaseFactory)
-				h.AssertNil(t, err)
-
-				configProvider := fakePhaseFactory.NewCalledWithProvider
-				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
-			})
 		})
 
-		when("publish is false and clear cache is false", func() {
+		when("publish is false", func() {
 			it("configures the phase with the expected arguments", func() {
 				verboseLifecycle := fakeLifecycle(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
-				expectedRepoName := "some-repo-name"
-				expectedRunImage := "some-run-image"
 
-				err := verboseLifecycle.Create(context.Background(), false, false, expectedRunImage, "test", "test", expectedRepoName, "test", fakePhaseFactory)
+				err := verboseLifecycle.Create(context.Background(), false, false, "test", "test", "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
 				h.AssertEq(t, configProvider.Name(), "creator")
 				h.AssertIncludeAllExpectedPatterns(t,
 					configProvider.ContainerConfig().Cmd,
-					[]string{"-log-level", "debug"},
-					[]string{"-run-image", expectedRunImage},
-					[]string{expectedRepoName},
-					[]string{"-cache-dir", "/cache"},
 					[]string{"-daemon"},
 					[]string{"-launch-cache", "/launch-cache"},
 				)
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
 			})
 
-			it("configures the phase with the expected network mode", func() {
+			it("configures the phase with daemon access", func() {
 				lifecycle := fakeLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
-				expectedNetworkMode := "some-network-mode"
 
-				err := lifecycle.Create(context.Background(), false, false, "test", "test", "test", "test", expectedNetworkMode, fakePhaseFactory)
+				err := lifecycle.Create(context.Background(), false, false, "test", "some-launch-cache", "some-cache", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
-				h.AssertEq(t, configProvider.HostConfig().NetworkMode, container.NetworkMode(expectedNetworkMode))
+				h.AssertEq(t, configProvider.ContainerConfig().User, "root")
+				h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
 			})
 
 			it("configures the phase with binds", func() {
