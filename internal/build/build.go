@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Masterminds/semver"
-
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -70,7 +68,6 @@ type LifecycleOptions struct {
 	RunImage           string
 	ClearCache         bool
 	Publish            bool
-	TrustBuilder       bool
 	HTTPProxy          string
 	HTTPSProxy         string
 	NoProxy            string
@@ -96,34 +93,6 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	}
 
 	phaseFactory := NewDefaultPhaseFactory(l)
-
-	if !opts.TrustBuilder || semver.MustParse(l.platformAPIVersion).LessThan(semver.MustParse("0.3")) {
-		l.logger.Info(style.Step("DETECTING"))
-		if err := l.Detect(ctx, opts.Network, opts.Volumes, phaseFactory); err != nil {
-			return err
-		}
-
-		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Network, opts.Publish, opts.ClearCache, phaseFactory); err != nil {
-			return err
-		}
-
-		l.logger.Info(style.Step("RESTORING"))
-		if opts.ClearCache {
-			l.logger.Info("Skipping 'restore' due to clearing cache")
-		} else if err := l.Restore(ctx, buildCache.Name(), opts.Network, phaseFactory); err != nil {
-			return err
-		}
-
-		l.logger.Info(style.Step("BUILDING"))
-
-		if err := l.Build(ctx, opts.Network, opts.Volumes, phaseFactory); err != nil {
-			return err
-		}
-
-		l.logger.Info(style.Step("EXPORTING"))
-		return l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name(), opts.Network, phaseFactory)
-	}
 
 	l.logger.Info(style.Step("CREATING"))
 	return l.Create(ctx, opts.Publish, opts.ClearCache, opts.RunImage, launchCache.Name(), buildCache.Name(), opts.Image.Name(), opts.Network, phaseFactory)

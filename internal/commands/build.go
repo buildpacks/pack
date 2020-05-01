@@ -30,7 +30,6 @@ type BuildFlags struct {
 	Publish            bool
 	NoPull             bool
 	ClearCache         bool
-	TrustBuilder       bool
 	Buildpacks         []string
 	Network            string
 	DescriptorPath     string
@@ -107,7 +106,6 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				},
 				DefaultProcessType: flags.DefaultProcessType,
 				FileFilter:         fileFilter,
-				TrustBuilder:       flags.TrustBuilder,
 			}); err != nil {
 				return err
 			}
@@ -130,7 +128,6 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed")
 	cmd.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "Skip pulling builder and run images before use")
 	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
-	cmd.Flags().BoolVar(&buildFlags.TrustBuilder, "trust-builder", false, "Trust the provided builder so all lifecycle phases will run in a single container")
 	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack reference in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  the name of a packaged buildpack image"+multiValueHelp("buildpack"))
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")

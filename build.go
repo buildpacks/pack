@@ -48,7 +48,6 @@ type BuildOptions struct {
 	Publish            bool
 	NoPull             bool
 	ClearCache         bool
-	TrustBuilder       bool
 	Buildpacks         []string
 	ProxyConfig        *ProxyConfig // defaults to  environment proxy vars
 	ContainerConfig    ContainerConfig
@@ -147,7 +146,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		RunImage:           runImageName,
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
-		TrustBuilder:       opts.TrustBuilder,
 		HTTPProxy:          proxyConfig.HTTPProxy,
 		HTTPSProxy:         proxyConfig.HTTPSProxy,
 		NoProxy:            proxyConfig.NoProxy,
