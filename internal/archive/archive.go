@@ -224,13 +224,15 @@ func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode i
 	}
 	defer zipReader.Close()
 
+	var fileMode int64
 	for _, f := range zipReader.File {
 		if fileFilter != nil && !fileFilter(f.Name) {
 			continue
 		}
 
+		fileMode = mode
 		if isFatFile(f.FileHeader) {
-			mode = 0777
+			fileMode = 0777
 		}
 
 		var header *tar.Header
@@ -267,7 +269,7 @@ func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode i
 		}
 
 		header.Name = filepath.ToSlash(filepath.Join(basePath, f.Name))
-		finalizeHeader(header, uid, gid, mode, normalizeModTime)
+		finalizeHeader(header, uid, gid, fileMode, normalizeModTime)
 
 		if err := tw.WriteHeader(header); err != nil {
 			return err
