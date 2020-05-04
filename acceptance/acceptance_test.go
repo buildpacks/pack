@@ -719,15 +719,12 @@ func testAcceptance(
 							h.AssertContainsMatch(t, output, `(?i)\[creator] reusing layer 'simple/layers:cached-launch-layer'`)
 						}
 
-						// TODO: check if we need the following test - no cacher exists
-						/*
-							if semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")) || !packSupport {
-								t.Log("cacher reuses unchanged layers")
-								h.AssertContainsMatch(t, output, `(?i)\[cacher] reusing layer 'simple/layers:cached-launch-layer'`)
-							} else {
-								h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing cache layer 'simple/layers:cached-launch-layer'`)
-							}
-						*/
+						t.Log("cacher reuses unchanged layers")
+						if semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")) || !packSupport {
+							h.AssertContainsMatch(t, output, `(?i)\[exporter] Reusing cache layer 'simple/layers:cached-launch-layer'`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing cache layer 'simple/layers:cached-launch-layer'`)
+						}
 
 						// TODO: uncomment after bumping LIFECYCLE_VERSION to 0.7.4 - see https://github.com/buildpacks/lifecycle/pull/288
 						/*
@@ -935,7 +932,8 @@ func testAcceptance(
 								assertMockAppLogs(t, repoName, "hello world")
 
 							})
-						})*/
+						})
+					*/
 
 					when("--buildpack", func() {
 						when("the argument is an ID", func() {
