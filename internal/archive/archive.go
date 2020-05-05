@@ -120,12 +120,15 @@ func AddFileToTar(tw *tar.Writer, path string, txt string) error {
 	return nil
 }
 
+// ErrEntryNotExist is an error returned if an entry path doesn't exist
 var ErrEntryNotExist = errors.New("not exist")
 
+// IsEntryNotExist detects whether a given error is of type ErrEntryNotExist
 func IsEntryNotExist(err error) bool {
 	return err == ErrEntryNotExist || errors.Cause(err) == ErrEntryNotExist
 }
 
+// ReadTarEntry reads and returns a tar file
 func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 	tr := tar.NewReader(rc)
 	for {
@@ -151,7 +154,7 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 }
 
 // WriteDirToTar writes the contents of a directory to a tar writer. `basePath` is the "location" in the tar the
-// contents will be places.
+// contents will be placed.
 func WriteDirToTar(tw *tar.Writer, srcDir, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) error {
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		if fileFilter != nil && !fileFilter(file) {
@@ -213,6 +216,7 @@ func WriteDirToTar(tw *tar.Writer, srcDir, basePath string, uid, gid int, mode i
 	})
 }
 
+// WriteZipToTar writes the contents of a zip file to a tar writer.
 func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) error {
 	zipReader, err := zip.OpenReader(srcZip)
 	if err != nil {
@@ -220,10 +224,17 @@ func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode i
 	}
 	defer zipReader.Close()
 
+	var fileMode int64
 	for _, f := range zipReader.File {
 		if fileFilter != nil && !fileFilter(f.Name) {
 			continue
 		}
+
+		fileMode = mode
+		if isFatFile(f.FileHeader) {
+			fileMode = 0777
+		}
+
 		var header *tar.Header
 		if f.Mode()&os.ModeSymlink != 0 {
 			target, err := func() (string, error) {
@@ -258,7 +269,7 @@ func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode i
 		}
 
 		header.Name = filepath.ToSlash(filepath.Join(basePath, f.Name))
-		finalizeHeader(header, uid, gid, mode, normalizeModTime)
+		finalizeHeader(header, uid, gid, fileMode, normalizeModTime)
 
 		if err := tw.WriteHeader(header); err != nil {
 			return err
@@ -283,6 +294,17 @@ func WriteZipToTar(tw *tar.Writer, srcZip, basePath string, uid, gid int, mode i
 	}
 
 	return nil
+}
+
+func isFatFile(header zip.FileHeader) bool {
+	var (
+		creatorFAT  uint16 = 0
+		creatorVFAT uint16 = 14
+	)
+
+	// This identifies FAT files, based on the `zip` source: https://golang.org/src/archive/zip/struct.go
+	firstByte := header.CreatorVersion >> 8
+	return firstByte == creatorFAT || firstByte == creatorVFAT
 }
 
 func finalizeHeader(header *tar.Header, uid, gid int, mode int64, normalizeModTime bool) {
@@ -312,6 +334,7 @@ func NormalizeHeader(header *tar.Header, normalizeModTime bool) {
 	header.Gname = ""
 }
 
+// IsZip detects whether or not a File is a zip directory
 func IsZip(file io.Reader) (bool, error) {
 	b := make([]byte, 4)
 	_, err := file.Read(b)
