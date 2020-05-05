@@ -921,28 +921,24 @@ func testAcceptance(
 						})
 					})
 
-					// TODO: uncomment after figuring out when to skip this test
+					when("--default-process", func() {
+						it("sets the default process from those in the process list", func() {
+							h.SkipIf(t, !packSupports(packPath, "build --default-process"), "--default-process flag is not supported")
+							h.SkipIf(t,
+								lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.0")),
+								"skipping default process. Lifecycle does not support it",
+							)
 
-						when("--default-process", func() {
-							it("sets the default process from those in the process list", func() {
-								h.SkipIf(t, !packSupports(packPath, "build --default-process"), "--default-process flag is not supported")
+							h.Run(t, subjectPack(
+								"build", repoName,
+								"--default-process", "hello",
+								"-p", filepath.Join("testdata", "mock_app"),
+							))
 
-								h.SkipIf(t,
-									semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).GreaterThan(semver.MustParse("0.2")),
-									"skipping default process. Lifecycle does not support it",
-								)
+							assertMockAppLogs(t, repoName, "hello world")
 
-								h.Run(t, subjectPack(
-									"build", repoName,
-									"--default-process", "hello",
-									"-p", filepath.Join("testdata", "mock_app"),
-								))
-
-								assertMockAppLogs(t, repoName, "hello world")
-
-							})
 						})
-
+					})
 
 					when("--buildpack", func() {
 						when("the argument is an ID", func() {

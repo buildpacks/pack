@@ -43,6 +43,12 @@ func (l *Lifecycle) Create(ctx context.Context, publish, clearCache bool, runIma
 		args = append([]string{"-cache-dir", cacheDir}, args...)
 	}
 
+	if l.DefaultProcessType != "" && l.supportsDefaultProcess() {
+		args = append([]string{"-process-type", l.DefaultProcessType}, args...)
+	} else {
+		l.logger.Warn("You specified a default process type but that is not supported by this version of the lifecycle")
+	}
+
 	if !publish {
 		args = append([]string{"-daemon", "-launch-cache", launchCacheDir}, args...)
 		binds = append([]string{fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)}, binds...)
