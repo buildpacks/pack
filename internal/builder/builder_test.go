@@ -318,11 +318,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				defer os.RemoveAll(tmpDir)
 
 				layerFile := filepath.Join(tmpDir, "order.tar")
-				f, err := os.Create(layerFile)
-				h.AssertNil(t, err)
-				defer f.Close()
-
-				err = archive.CreateSingleFileTar(f.Name(), "/cnb/order.toml", "some content")
+				err = archive.CreateSingleFileTar(layerFile, "/cnb/order.toml", "some content")
 				h.AssertNil(t, err)
 
 				h.AssertNil(t, baseImage.AddLayer(layerFile))

@@ -5,8 +5,8 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Microsoft/hcsshim v0.8.7 // indirect
 	github.com/apex/log v1.1.2
-	github.com/buildpacks/imgutil v0.0.0-20200313170640-a02052f47d62
-	github.com/buildpacks/lifecycle v0.7.1
+	github.com/buildpacks/imgutil v0.0.0-20200424215026-dfdc82949704
+	github.com/buildpacks/lifecycle v0.7.2
 	github.com/containerd/containerd v1.3.3 // indirect
 	github.com/containerd/continuity v0.0.0-20200107194136-26c1120b8d41 // indirect
 	github.com/dgodd/dockerdial v1.0.1

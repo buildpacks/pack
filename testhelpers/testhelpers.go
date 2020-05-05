@@ -272,8 +272,8 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, dockerFile string) {
 	t.Helper()
 
-	buildContext, err := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
-	AssertNil(t, err)
+	buildContext := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
+	defer buildContext.Close()
 
 	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
 		Tags:           []string{repoName},

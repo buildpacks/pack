@@ -300,6 +300,8 @@ func testWithoutSpecificBuilderRequirement(
 				"pack does not support 'package-buildpack'",
 			)
 
+			h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+
 			var err error
 			tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
 			h.AssertNil(t, err)
@@ -553,6 +555,22 @@ func testAcceptance(
 			runImageMirror = value
 		})
 
+		when("creating a windows builder", func() {
+			it.Before(func() {
+				h.SkipIf(t, dockerHostOS() != "windows", "The current Docker daemon does not support Windows-based containers")
+			})
+
+			it("succeeds", func() {
+				builderName := createBuilder(t, runImageMirror, configDir, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor)
+				defer h.DockerRmi(dockerCli, builderName)
+
+				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), builderName)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, inspect.Os, "windows")
+			})
+		})
+
 		when("builder is created", func() {
 			var (
 				builderName string
@@ -560,6 +578,8 @@ func testAcceptance(
 			)
 
 			it.Before(func() {
+				h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+
 				var err error
 				tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
 				h.AssertNil(t, err)
@@ -1672,43 +1692,42 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 		h.AssertNil(t, err)
 	}
 
-	// CREATE PACKAGE
-	packageImageName := packageBuildpackAsImage(t,
-		packPath,
-		filepath.Join(configDir, "package.toml"),
-		lifecycleDescriptor,
-		[]string{"simple-layers-buildpack"},
-	)
+	var packageImageName string
+	var packageId string
+	if dockerHostOS() != "windows" {
+		// CREATE PACKAGE
+		packageImageName = packageBuildpackAsImage(t,
+			packPath,
+			filepath.Join(configDir, "package.toml"),
+			lifecycleDescriptor,
+			[]string{"simple-layers-buildpack"},
+		)
+
+		packageId = "simple/layers"
+	}
+
+	// ADD lifecycle
+	var lifecycleURI string
+	var lifecycleVersion string
+	if lifecyclePath != "" {
+		t.Logf("adding lifecycle path '%s' to builder config", lifecyclePath)
+		lifecycleURI = strings.ReplaceAll(lifecyclePath, `\`, `\\`)
+	} else {
+		t.Logf("adding lifecycle version '%s' to builder config", lifecycleDescriptor.Info.Version.String())
+		lifecycleVersion = lifecycleDescriptor.Info.Version.String()
+	}
 
 	// RENDER builder.toml
 	cfgData := fillTemplate(t, filepath.Join(configDir, "builder.toml"), map[string]interface{}{
-		"package_name": packageImageName,
+		"package_image_name": packageImageName,
+		"package_id":         packageId,
+		"run_image_mirror":   runImageMirror,
+		"lifecycle_uri":      lifecycleURI,
+		"lifecycle_version":  lifecycleVersion,
 	})
+
 	err = ioutil.WriteFile(filepath.Join(tmpDir, "builder.toml"), []byte(cfgData), os.ModePerm)
 	h.AssertNil(t, err)
-
-	builderConfigFile, err := os.OpenFile(filepath.Join(tmpDir, "builder.toml"), os.O_RDWR|os.O_APPEND, os.ModePerm)
-	h.AssertNil(t, err)
-
-	// ADD run-image-mirrors
-	_, err = builderConfigFile.Write([]byte(fmt.Sprintf("run-image-mirrors = [\"%s\"]\n", runImageMirror)))
-	h.AssertNil(t, err)
-
-	// ADD lifecycle
-	_, err = builderConfigFile.Write([]byte("[lifecycle]\n"))
-	h.AssertNil(t, err)
-
-	if lifecyclePath != "" {
-		t.Logf("adding lifecycle path '%s' to builder config", lifecyclePath)
-		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("uri = \"%s\"\n", strings.ReplaceAll(lifecyclePath, `\`, `\\`))))
-		h.AssertNil(t, err)
-	} else {
-		t.Logf("adding lifecycle version '%s' to builder config", lifecycleDescriptor.Info.Version.String())
-		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("version = \"%s\"\n", lifecycleDescriptor.Info.Version.String())))
-		h.AssertNil(t, err)
-	}
-
-	builderConfigFile.Close()
 
 	// NAME BUILDER
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
@@ -1793,10 +1812,12 @@ func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror 
 	t.Helper()
 	t.Log("creating stack images...")
 
-	if err := createStackImage(dockerCli, runImage, filepath.Join("testdata", "mock_stack", "run")); err != nil {
+	stackBaseDir := filepath.Join("testdata", "mock_stack", dockerHostOS())
+
+	if err := createStackImage(dockerCli, runImage, filepath.Join(stackBaseDir, "run")); err != nil {
 		return err
 	}
-	if err := createStackImage(dockerCli, buildImage, filepath.Join("testdata", "mock_stack", "build")); err != nil {
+	if err := createStackImage(dockerCli, buildImage, filepath.Join(stackBaseDir, "build")); err != nil {
 		return err
 	}
 
@@ -1989,6 +2010,14 @@ func fillTemplate(t *testing.T, templatePath string, data map[string]interface{}
 	h.AssertNil(t, err)
 
 	return expectedOutput.String()
+}
+
+func dockerHostOS() string {
+	daemonInfo, err := dockerCli.Info(context.TODO())
+	if err != nil {
+		panic(err.Error())
+	}
+	return daemonInfo.OSType
 }
 
 // taskKey creates a key from the prefix and all arguments to be unique
