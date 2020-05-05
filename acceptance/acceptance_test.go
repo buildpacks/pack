@@ -701,29 +701,32 @@ func testAcceptance(
 						version, err := packVersion(packPath)
 						h.AssertNil(t, err)
 						packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
-						packSupport := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+
+						lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+						// TODO: flip the if/else in all cases
 
 						t.Log("restores the cache")
-						if semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")) || !packSupport {
-							h.AssertContainsMatch(t, output, `(?i)\[restorer] Restoring data for "simple/layers:cached-launch-layer" from cache`)
-							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
-						} else {
+						if lifecycleSupportsCreator && packSupportsCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring data for "simple/layers:cached-launch-layer" from cache`)
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[restorer] Restoring data for "simple/layers:cached-launch-layer" from cache`)
+							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
 						}
 
 						t.Log("exporter reuses unchanged layers")
-						if semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")) || !packSupport {
-							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
-						} else {
+						if lifecycleSupportsCreator && packSupportsCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] reusing layer 'simple/layers:cached-launch-layer'`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
 						}
 
 						t.Log("cacher reuses unchanged layers")
-						if semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")) || !packSupport {
-							h.AssertContainsMatch(t, output, `(?i)\[exporter] Reusing cache layer 'simple/layers:cached-launch-layer'`)
-						} else {
+						if lifecycleSupportsCreator && packSupportsCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing cache layer 'simple/layers:cached-launch-layer'`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[exporter] Reusing cache layer 'simple/layers:cached-launch-layer'`)
 						}
 
 						// TODO: uncomment after bumping LIFECYCLE_VERSION to 0.7.4 - see https://github.com/buildpacks/lifecycle/pull/288
@@ -809,13 +812,15 @@ func testAcceptance(
 								version, err := packVersion(packPath)
 								h.AssertNil(t, err)
 								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
-								packSupport := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 
-								if semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")) || !packSupport {
+								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+								if lifecycleSupportsCreator && packSupportsCreator {
+									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
+								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
 									h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
-								} else {
-									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
 								}
 							})
 						})
@@ -831,13 +836,15 @@ func testAcceptance(
 								version, err := packVersion(packPath)
 								h.AssertNil(t, err)
 								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
-								packSupport := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 
-								if semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")) || !packSupport {
+								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+								if lifecycleSupportsCreator && packSupportsCreator {
+									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
+								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
 									h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
-								} else {
-									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
 								}
 							})
 						})
@@ -858,13 +865,15 @@ func testAcceptance(
 								version, err := packVersion(packPath)
 								h.AssertNil(t, err)
 								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
-								packSupport := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 
-								if semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")) || !packSupport {
+								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+								if lifecycleSupportsCreator && packSupportsCreator {
+									h.AssertContains(t, output, "[creator] RESULT: Disconnected from the internet")
+								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Disconnected from the internet")
 									h.AssertContains(t, output, "[builder] RESULT: Disconnected from the internet")
-								} else {
-									h.AssertContains(t, output, "[creator] RESULT: Disconnected from the internet")
 								}
 							})
 						})
@@ -1292,12 +1301,14 @@ func testAcceptance(
 							version, err := packVersion(packPath)
 							h.AssertNil(t, err)
 							packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
-							packSupport := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+							packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 
-							if semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")) || !packSupport {
-								go terminateAtStep(t, cmd, &buf, "[detector]")
-							} else {
+							lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+							if lifecycleSupportsCreator && packSupportsCreator {
 								go terminateAtStep(t, cmd, &buf, "[creator]")
+							} else {
+								go terminateAtStep(t, cmd, &buf, "[detector]")
 							}
 
 							err = cmd.Wait()
