@@ -704,7 +704,6 @@ func testAcceptance(
 						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 
 						lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
-						// TODO: flip the if/else in all cases
 
 						t.Log("restores the cache")
 						if lifecycleSupportsCreator && packSupportsCreator {
