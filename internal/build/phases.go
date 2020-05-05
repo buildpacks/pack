@@ -187,22 +187,22 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		)
 
 		return phaseFactory.New(configProvider), nil
-	} else {
-		args = append([]string{"-daemon", "-launch-cache", launchCacheDir}, args...)
-		binds = append(binds, fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir))
-
-		configProvider := NewPhaseConfigProvider(
-			"exporter",
-			l,
-			WithDaemonAccess(),
-			WithArgs(
-				l.withLogLevel(args...)...,
-			),
-			WithBinds(binds...),
-		)
-
-		return phaseFactory.New(configProvider), nil
 	}
+
+	args = append([]string{"-daemon", "-launch-cache", launchCacheDir}, args...)
+	binds = append(binds, fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir))
+
+	configProvider := NewPhaseConfigProvider(
+		"exporter",
+		l,
+		WithDaemonAccess(),
+		WithArgs(
+			l.withLogLevel(args...)...,
+		),
+		WithBinds(binds...),
+	)
+
+	return phaseFactory.New(configProvider), nil
 }
 
 func (l *Lifecycle) withLogLevel(args ...string) []string {
