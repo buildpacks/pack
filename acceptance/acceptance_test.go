@@ -728,8 +728,6 @@ func testAcceptance(
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Reusing cache layer 'simple/layers:cached-launch-layer'`)
 						}
 
-						// TODO: uncomment after bumping LIFECYCLE_VERSION to 0.7.4 - see https://github.com/buildpacks/lifecycle/pull/288
-
 						t.Log("rebuild with --clear-cache")
 						output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--clear-cache"))
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
