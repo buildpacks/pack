@@ -39,9 +39,9 @@ func (l *Lifecycle) Create(ctx context.Context, publish, clearCache bool, runIma
 
 	if clearCache {
 		args = append([]string{"-skip-restore"}, args...)
-	} else {
-		args = append([]string{"-cache-dir", cacheDir}, args...)
 	}
+
+	args = append([]string{"-cache-dir", cacheDir}, args...)
 
 	if l.DefaultProcessType != "" && l.supportsDefaultProcess() {
 		args = append([]string{"-process-type", l.DefaultProcessType}, args...)

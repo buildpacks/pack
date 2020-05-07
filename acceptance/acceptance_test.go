@@ -753,8 +753,7 @@ func testAcceptance(
 
 						t.Log("cacher adds layers")
 						if lifecycleSupportsCreator && packSupportsCreator {
-							// TODO: figure out why it's failing
-							//h.AssertContainsMatch(t, output, `(?i)\[creator] Adding cache layer 'simple/layers:cached-launch-layer'`)
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Adding cache layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Adding cache layer 'simple/layers:cached-launch-layer'`)
 						}
