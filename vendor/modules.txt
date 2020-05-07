@@ -12,14 +12,13 @@ github.com/Microsoft/go-winio/pkg/guid
 github.com/Microsoft/hcsshim/osversion
 # github.com/apex/log v1.1.2
 github.com/apex/log
-# github.com/buildpacks/imgutil v0.0.0-20200313170640-a02052f47d62
+# github.com/buildpacks/imgutil v0.0.0-20200424215026-dfdc82949704
 github.com/buildpacks/imgutil
-github.com/buildpacks/imgutil/archive
 github.com/buildpacks/imgutil/fakes
 github.com/buildpacks/imgutil/layer
 github.com/buildpacks/imgutil/local
 github.com/buildpacks/imgutil/remote
-# github.com/buildpacks/lifecycle v0.7.1
+# github.com/buildpacks/lifecycle v0.7.2
 github.com/buildpacks/lifecycle
 github.com/buildpacks/lifecycle/api
 github.com/buildpacks/lifecycle/archive
@@ -194,6 +193,7 @@ github.com/src-d/gcfg/types
 # github.com/xanzy/ssh-agent v0.2.1
 github.com/xanzy/ssh-agent
 # golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
+golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/cast5
 golang.org/x/crypto/chacha20
