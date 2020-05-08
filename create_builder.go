@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
+// CreateBuilderOptions are options passed into CreateBuilder
 type CreateBuilderOptions struct {
 	BuilderName string
 	Config      pubbldr.Config
@@ -26,6 +27,7 @@ type CreateBuilderOptions struct {
 	Registry    string
 }
 
+// CreateBuilder allows users to create a builder
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
 	if err := validateBuilderConfig(opts.Config); err != nil {
 		return errors.Wrap(err, "invalid builder config")
@@ -147,6 +149,67 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	return bldr.Save(c.logger)
 }
 
+func validateBuilderConfig(conf pubbldr.Config) error {
+	if conf.Stack.ID == "" {
+		return errors.New("stack.id is required")
+	}
+
+	if conf.Stack.BuildImage == "" {
+		return errors.New("stack.build-image is required")
+	}
+
+	if conf.Stack.RunImage == "" {
+		return errors.New("stack.run-image is required")
+	}
+
+	return nil
+}
+
+func (c Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions) error {
+	var runImages []imgutil.Image
+	for _, i := range append([]string{opts.Config.Stack.RunImage}, opts.Config.Stack.RunImageMirrors...) {
+		if !opts.Publish {
+			img, err := c.imageFetcher.Fetch(ctx, i, true, false)
+			if err != nil {
+				if errors.Cause(err) != image.ErrNotFound {
+					return err
+				}
+			} else {
+				runImages = append(runImages, img)
+				continue
+			}
+		}
+
+		img, err := c.imageFetcher.Fetch(ctx, i, false, false)
+		if err != nil {
+			if errors.Cause(err) != image.ErrNotFound {
+				return err
+			}
+			c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
+		} else {
+			runImages = append(runImages, img)
+		}
+	}
+
+	for _, img := range runImages {
+		stackID, err := img.Label("io.buildpacks.stack.id")
+		if err != nil {
+			return err
+		}
+
+		if stackID != opts.Config.Stack.ID {
+			return fmt.Errorf(
+				"stack %s from builder config is incompatible with stack %s from run image %s",
+				style.Symbol(opts.Config.Stack.ID),
+				style.Symbol(stackID),
+				style.Symbol(img.Name()),
+			)
+		}
+	}
+
+	return nil
+}
+
 func validateBuildpack(bp dist.Buildpack, source, expectedID, expectedBPVersion string) error {
 	if expectedID != "" && bp.Descriptor().Info.ID != expectedID {
 		return fmt.Errorf(
@@ -207,65 +270,4 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 
 func uriFromLifecycleVersion(version semver.Version) string {
 	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", version.String(), version.String())
-}
-
-func validateBuilderConfig(conf pubbldr.Config) error {
-	if conf.Stack.ID == "" {
-		return errors.New("stack.id is required")
-	}
-
-	if conf.Stack.BuildImage == "" {
-		return errors.New("stack.build-image is required")
-	}
-
-	if conf.Stack.RunImage == "" {
-		return errors.New("stack.run-image is required")
-	}
-
-	return nil
-}
-
-func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions) error {
-	var runImages []imgutil.Image
-	for _, i := range append([]string{opts.Config.Stack.RunImage}, opts.Config.Stack.RunImageMirrors...) {
-		if !opts.Publish {
-			img, err := c.imageFetcher.Fetch(ctx, i, true, false)
-			if err != nil {
-				if errors.Cause(err) != image.ErrNotFound {
-					return err
-				}
-			} else {
-				runImages = append(runImages, img)
-				continue
-			}
-		}
-
-		img, err := c.imageFetcher.Fetch(ctx, i, false, false)
-		if err != nil {
-			if errors.Cause(err) != image.ErrNotFound {
-				return err
-			}
-			c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
-		} else {
-			runImages = append(runImages, img)
-		}
-	}
-
-	for _, img := range runImages {
-		stackID, err := img.Label("io.buildpacks.stack.id")
-		if err != nil {
-			return err
-		}
-
-		if stackID != opts.Config.Stack.ID {
-			return fmt.Errorf(
-				"stack %s from builder config is incompatible with stack %s from run image %s",
-				style.Symbol(opts.Config.Stack.ID),
-				style.Symbol(stackID),
-				style.Symbol(img.Name()),
-			)
-		}
-	}
-
-	return nil
 }
