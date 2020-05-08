@@ -63,7 +63,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 			packageBuilder.AddDependency(depBP)
 		} else if dep.ImageName != "" {
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+			mainBP, depBPs, err := extractPackagedBuildpacksFromImage(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
 			if err != nil {
 				return err
 			}
