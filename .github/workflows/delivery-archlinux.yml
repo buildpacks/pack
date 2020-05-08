@@ -9,9 +9,6 @@ on:
     branches:
       - master
       - 'release/**'
-  release:
-    types:
-      - published
 
 jobs:
   test-pack-cli:

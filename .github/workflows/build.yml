@@ -159,7 +159,7 @@ jobs:
             - [pack-cli](https://aur.archlinux.org/packages/pack-cli/)
             - [pack-cli-bin](https://aur.archlinux.org/packages/pack-cli-bin/)
             
-            ##### Download 
+            ##### Command
             
             ```bash
             (export GH=buildpacks/pack; export LATEST=$(curl -s https://api.github.com/repos/$GH/releases/latest | grep -o -E "https://.+?-linux.tgz"); echo "$LATEST"; curl -sSL "$LATEST" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv $(basename $GH))
