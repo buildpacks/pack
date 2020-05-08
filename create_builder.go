@@ -220,7 +220,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 			}
 
 			var fetchedBp dist.Buildpack
-			buildpacks := []dist.Buildpack{}
+			var buildpacks []dist.Buildpack
 			if isOCILayout {
 				fetchedBp, buildpacks, err = buildpackage.BuildpacksFromOCILayoutBlob(blob)
 				if err != nil {
