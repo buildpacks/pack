@@ -698,21 +698,32 @@ func testAcceptance(
 						t.Log("app is runnable")
 						assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
+						version, err := packVersion(packPath)
+						h.AssertNil(t, err)
+						packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
+						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+
+						lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
 						t.Log("restores the cache")
-						if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")) {
-							h.AssertContainsMatch(t, output, `(?i)\[restorer] restoring cached layer 'simple/layers:cached-launch-layer'`)
-							h.AssertContainsMatch(t, output, `(?i)\[analyzer] using cached launch layer 'simple/layers:cached-launch-layer'`)
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring data for "simple/layers:cached-launch-layer" from cache`)
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[restorer] Restoring data for "simple/layers:cached-launch-layer" from cache`)
 							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
 						}
 
 						t.Log("exporter reuses unchanged layers")
-						h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] reusing layer 'simple/layers:cached-launch-layer'`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+						}
 
-						if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")) {
-							t.Log("cacher reuses unchanged layers")
-							h.AssertContainsMatch(t, output, `(?i)\[cacher] reusing layer 'simple/layers:cached-launch-layer'`)
+						t.Log("cacher reuses unchanged layers")
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing cache layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Reusing cache layer 'simple/layers:cached-launch-layer'`)
 						}
@@ -722,17 +733,27 @@ func testAcceptance(
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 						t.Log("skips restore")
-						h.AssertContains(t, output, "Skipping 'restore' due to clearing cache")
+						if !lifecycleSupportsCreator || !packSupportsCreator {
+							h.AssertContains(t, output, "Skipping 'restore' due to clearing cache")
+						}
 
 						t.Log("skips buildpack layer analysis")
-						h.AssertContainsMatch(t, output, `(?i)\[analyzer] Skipping buildpack layer analysis`)
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Skipping buildpack layer analysis`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Skipping buildpack layer analysis`)
+						}
 
 						t.Log("exporter reuses unchanged layers")
-						h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing layer 'simple/layers:cached-launch-layer'`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+						}
 
 						t.Log("cacher adds layers")
-						if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")) {
-							h.AssertContainsMatch(t, output, `(?i)\[cacher] (Caching|adding) layer 'simple/layers:cached-launch-layer'`)
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Adding cache layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Adding cache layer 'simple/layers:cached-launch-layer'`)
 						}
@@ -794,8 +815,19 @@ func testAcceptance(
 									"--buildpack", buildpackTgz,
 								))
 
-								h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
-								h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
+								version, err := packVersion(packPath)
+								h.AssertNil(t, err)
+								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
+								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+
+								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+								if lifecycleSupportsCreator && packSupportsCreator {
+									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
+								} else {
+									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
+									h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
+								}
 							})
 						})
 
@@ -805,11 +837,21 @@ func testAcceptance(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--buildpack", buildpackTgz,
-									"--network", "default",
 								))
 
-								h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
-								h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
+								version, err := packVersion(packPath)
+								h.AssertNil(t, err)
+								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
+								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+
+								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+								if lifecycleSupportsCreator && packSupportsCreator {
+									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
+								} else {
+									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
+									h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
+								}
 							})
 						})
 
@@ -826,8 +868,19 @@ func testAcceptance(
 									"none",
 								))
 
-								h.AssertContains(t, output, "[detector] RESULT: Disconnected from the internet")
-								h.AssertContains(t, output, "[builder] RESULT: Disconnected from the internet")
+								version, err := packVersion(packPath)
+								h.AssertNil(t, err)
+								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
+								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+
+								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+								if lifecycleSupportsCreator && packSupportsCreator {
+									h.AssertContains(t, output, "[creator] RESULT: Disconnected from the internet")
+								} else {
+									h.AssertContains(t, output, "[detector] RESULT: Disconnected from the internet")
+									h.AssertContains(t, output, "[builder] RESULT: Disconnected from the internet")
+								}
 							})
 						})
 					})
@@ -868,16 +921,15 @@ func testAcceptance(
 							))
 
 							if packSemver.GreaterThan(semver.MustParse("0.9.0")) || packSemver.Equal(semver.MustParse("0.0.0")) {
-								h.AssertContains(t, output, "Detect: Reading file '/platform/my-volume-mount-target/some-file': some-string")
+								h.AssertContains(t, output, "Detect: Reading file '/platform/my-volume-mount-target/some-file':")
 							}
-							h.AssertContains(t, output, "Build: Reading file '/platform/my-volume-mount-target/some-file': some-string")
+							h.AssertContains(t, output, "Build: Reading file '/platform/my-volume-mount-target/some-file':")
 						})
 					})
 
 					when("--default-process", func() {
 						it("sets the default process from those in the process list", func() {
 							h.SkipIf(t, !packSupports(packPath, "build --default-process"), "--default-process flag is not supported")
-
 							h.SkipIf(t,
 								lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.0")),
 								"skipping default process. Lifecycle does not support it",
@@ -1199,6 +1251,7 @@ func testAcceptance(
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
 								"--publish",
+								"--network", "host",
 							))
 							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
@@ -1247,9 +1300,20 @@ func testAcceptance(
 
 							h.AssertNil(t, cmd.Start())
 
-							go terminateAtStep(t, cmd, &buf, "[detector]")
+							version, err := packVersion(packPath)
+							h.AssertNil(t, err)
+							packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
+							packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 
-							err := cmd.Wait()
+							lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+							if lifecycleSupportsCreator && packSupportsCreator {
+								go terminateAtStep(t, cmd, &buf, "[creator]")
+							} else {
+								go terminateAtStep(t, cmd, &buf, "[detector]")
+							}
+
+							err = cmd.Wait()
 							h.AssertNotNil(t, err)
 							h.AssertNotContains(t, buf.String(), "Successfully built image")
 						})
