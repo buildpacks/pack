@@ -740,7 +740,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedDefaultProc := []string{"-process-type", "test-process"}
 
-				err := lifecycle.Export(context.Background(), "test", "test", false, "test", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 				configProvider := fakePhaseFactory.NewCalledWithProvider
 				h.AssertIncludeAllExpectedPatterns(t, configProvider.ContainerConfig().Cmd, expectedDefaultProc)
