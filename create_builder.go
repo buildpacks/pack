@@ -282,7 +282,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 
 			bps = append([]dist.Buildpack{mainBP}, depBPs...)
 		default:
-			return fmt.Errorf("invalid image format: %s %s", pkg.ImageName, locatorType)
+			return fmt.Errorf("invalid locator: %s", locatorType)
 		}
 
 		for _, bp := range bps {
