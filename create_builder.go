@@ -49,28 +49,12 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 }
 
 func (c Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {
-	if err := validateBuilderConfig(opts.Config); err != nil {
+	if err := opts.Config.Validate(); err != nil {
 		return errors.Wrap(err, "invalid builder config")
 	}
 
 	if err := c.validateRunImageConfig(ctx, opts); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func validateBuilderConfig(conf pubbldr.Config) error {
-	if conf.Stack.ID == "" {
-		return errors.New("stack.id is required")
-	}
-
-	if conf.Stack.BuildImage == "" {
-		return errors.New("stack.build-image is required")
-	}
-
-	if conf.Stack.RunImage == "" {
-		return errors.New("stack.run-image is required")
 	}
 
 	return nil

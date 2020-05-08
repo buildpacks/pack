@@ -88,6 +88,29 @@ func ReadConfig(path string) (config Config, warnings []string, err error) {
 	return config, warnings, nil
 }
 
+// Validate a Config
+func (c Config) Validate() error {
+	return c.Stack.Validate()
+}
+
+// Validate a StackConfig
+func (s StackConfig) Validate() error {
+	if s.ID == "" {
+		return errors.New("stack.id is required")
+	}
+
+	if s.BuildImage == "" {
+		return errors.New("stack.build-image is required")
+	}
+
+	if s.RunImage == "" {
+		return errors.New("stack.run-image is required")
+	}
+
+	return nil
+
+}
+
 // parseConfig reads a builder configuration from reader and resolves relative buildpack paths using `relativeToDir`
 func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 	builderConfig := Config{}
