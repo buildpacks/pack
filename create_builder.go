@@ -42,16 +42,94 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return errors.Wrap(err, "fetch build image")
 	}
 
+	builder, err := c.createBaseBuilder(ctx, opts, baseImage)
+	if err != nil {
+		return errors.Wrap(err, "failed to create builder")
+	}
+
+	err = c.addBuildpacksToBuilder(ctx, opts, builder)
+	if err != nil {
+		return errors.Wrap(err, "failed to add buildpacks to builder")
+	}
+
+	builder.SetOrder(opts.Config.Order)
+	builder.SetStack(opts.Config.Stack)
+
+	return builder.Save(c.logger)
+}
+
+func validateBuilderConfig(conf pubbldr.Config) error {
+	if conf.Stack.ID == "" {
+		return errors.New("stack.id is required")
+	}
+
+	if conf.Stack.BuildImage == "" {
+		return errors.New("stack.build-image is required")
+	}
+
+	if conf.Stack.RunImage == "" {
+		return errors.New("stack.run-image is required")
+	}
+
+	return nil
+}
+
+func (c Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions) error {
+	var runImages []imgutil.Image
+	for _, i := range append([]string{opts.Config.Stack.RunImage}, opts.Config.Stack.RunImageMirrors...) {
+		if !opts.Publish {
+			img, err := c.imageFetcher.Fetch(ctx, i, true, false)
+			if err != nil {
+				if errors.Cause(err) != image.ErrNotFound {
+					return err
+				}
+			} else {
+				runImages = append(runImages, img)
+				continue
+			}
+		}
+
+		img, err := c.imageFetcher.Fetch(ctx, i, false, false)
+		if err != nil {
+			if errors.Cause(err) != image.ErrNotFound {
+				return err
+			}
+			c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
+		} else {
+			runImages = append(runImages, img)
+		}
+	}
+
+	for _, img := range runImages {
+		stackID, err := img.Label("io.buildpacks.stack.id")
+		if err != nil {
+			return err
+		}
+
+		if stackID != opts.Config.Stack.ID {
+			return fmt.Errorf(
+				"stack %s from builder config is incompatible with stack %s from run image %s",
+				style.Symbol(opts.Config.Stack.ID),
+				style.Symbol(stackID),
+				style.Symbol(img.Name()),
+			)
+		}
+	}
+
+	return nil
+}
+
+func (c Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions, baseImage imgutil.Image) (*builder.Builder, error) {
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
 	bldr, err := builder.New(baseImage, opts.BuilderName)
 	if err != nil {
-		return errors.Wrap(err, "invalid build-image")
+		return nil, errors.Wrap(err, "invalid build-image")
 	}
 
 	bldr.SetDescription(opts.Config.Description)
 
 	if bldr.StackID != opts.Config.Stack.ID {
-		return fmt.Errorf(
+		return nil, fmt.Errorf(
 			"stack %s from builder config is incompatible with stack %s from build image",
 			style.Symbol(opts.Config.Stack.ID),
 			style.Symbol(bldr.StackID),
@@ -60,13 +138,17 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 
 	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle)
 	if err != nil {
-		return errors.Wrap(err, "fetch lifecycle")
+		return nil, errors.Wrap(err, "fetch lifecycle")
 	}
 
 	if err := bldr.SetLifecycle(lifecycle); err != nil {
-		return errors.Wrap(err, "setting lifecycle")
+		return nil, errors.Wrap(err, "setting lifecycle")
 	}
 
+	return bldr, nil
+}
+
+func (c Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	for _, b := range opts.Config.Buildpacks.Buildpacks() {
 		locatorType, err := buildpack.GetLocatorType(b.URI, []dist.BuildpackInfo{})
 		if err != nil {
@@ -140,70 +222,6 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 			}
 		default:
 			return fmt.Errorf("invalid image format: %s", pkg.ImageName)
-		}
-	}
-
-	bldr.SetOrder(opts.Config.Order)
-	bldr.SetStack(opts.Config.Stack)
-
-	return bldr.Save(c.logger)
-}
-
-func validateBuilderConfig(conf pubbldr.Config) error {
-	if conf.Stack.ID == "" {
-		return errors.New("stack.id is required")
-	}
-
-	if conf.Stack.BuildImage == "" {
-		return errors.New("stack.build-image is required")
-	}
-
-	if conf.Stack.RunImage == "" {
-		return errors.New("stack.run-image is required")
-	}
-
-	return nil
-}
-
-func (c Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions) error {
-	var runImages []imgutil.Image
-	for _, i := range append([]string{opts.Config.Stack.RunImage}, opts.Config.Stack.RunImageMirrors...) {
-		if !opts.Publish {
-			img, err := c.imageFetcher.Fetch(ctx, i, true, false)
-			if err != nil {
-				if errors.Cause(err) != image.ErrNotFound {
-					return err
-				}
-			} else {
-				runImages = append(runImages, img)
-				continue
-			}
-		}
-
-		img, err := c.imageFetcher.Fetch(ctx, i, false, false)
-		if err != nil {
-			if errors.Cause(err) != image.ErrNotFound {
-				return err
-			}
-			c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
-		} else {
-			runImages = append(runImages, img)
-		}
-	}
-
-	for _, img := range runImages {
-		stackID, err := img.Label("io.buildpacks.stack.id")
-		if err != nil {
-			return err
-		}
-
-		if stackID != opts.Config.Stack.ID {
-			return fmt.Errorf(
-				"stack %s from builder config is incompatible with stack %s from run image %s",
-				style.Symbol(opts.Config.Stack.ID),
-				style.Symbol(stackID),
-				style.Symbol(img.Name()),
-			)
 		}
 	}
 
