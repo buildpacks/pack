@@ -296,6 +296,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 						lifecycle,
 						build.WithArgs("registry", repoName),
 						build.WithRegistryAccess(authConfig),
+						build.WithNetwork("host"),
 					)
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
