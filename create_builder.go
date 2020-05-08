@@ -177,7 +177,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 }
 
 func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
-	for _, b := range opts.Config.Buildpacks.Buildpacks() {
+	for i, b := range opts.Config.Buildpacks.Buildpacks() {
 		locatorType, err := buildpack.GetLocatorType(b.URI, []dist.BuildpackInfo{})
 		if err != nil {
 			return err
@@ -219,27 +219,20 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrap(err, "inspecting buildpack blob")
 			}
 
-			var fetchedBp dist.Buildpack
-			var buildpacks []dist.Buildpack
 			if isOCILayout {
-				fetchedBp, buildpacks, err = buildpackage.BuildpacksFromOCILayoutBlob(blob)
-				if err != nil {
-					return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(b.ID))
-				}
+				// The buildpack is a Package, and should be added in the next section
+				opts.Config.Buildpacks[i].IsPackage = true
+				continue
+			}
 
-				buildpacks = append([]dist.Buildpack{fetchedBp}, buildpacks...)
-			} else {
-				layerWriterFactory, err := layer.NewWriterFactory(bldr.Image())
-				if err != nil {
-					return errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(bldr.Name()))
-				}
+			layerWriterFactory, err := layer.NewWriterFactory(bldr.Image())
+			if err != nil {
+				return errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(bldr.Name()))
+			}
 
-				fetchedBp, err := dist.BuildpackFromRootBlob(blob, layerWriterFactory)
-				if err != nil {
-					return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
-				}
-
-				buildpacks = []dist.Buildpack{fetchedBp}
+			fetchedBp, err := dist.BuildpackFromRootBlob(blob, layerWriterFactory)
+			if err != nil {
+				return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
 			}
 
 			err = validateBuildpack(fetchedBp, b.URI, b.ID, b.Version)
@@ -247,18 +240,22 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrap(err, "invalid buildpack")
 			}
 
-			for _, buildpack := range buildpacks {
-				bldr.AddBuildpack(buildpack)
-			}
+			bldr.AddBuildpack(fetchedBp)
 		}
 	}
 
 	for _, pkg := range opts.Config.Buildpacks.Packages() {
-		locatorType, err := buildpack.GetLocatorType(pkg.ImageName, []dist.BuildpackInfo{})
+		locater := pkg.ImageName
+		if locater == "" && pkg.URI != "" {
+			locater = pkg.URI
+		}
+
+		locatorType, err := buildpack.GetLocatorType(locater, []dist.BuildpackInfo{})
 		if err != nil {
 			return err
 		}
 
+		var bps []dist.Buildpack
 		switch locatorType {
 		case buildpack.PackageLocator:
 			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, pkg.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
@@ -266,11 +263,30 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return err
 			}
 
-			for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
-				bldr.AddBuildpack(bp)
+			bps = append([]dist.Buildpack{mainBP}, depBPs...)
+		case buildpack.URILocator:
+			err := ensureBPSupport(pkg.URI)
+			if err != nil {
+				return err
 			}
+
+			blob, err := c.downloader.Download(ctx, pkg.URI)
+			if err != nil {
+				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(pkg.URI))
+			}
+
+			mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(blob)
+			if err != nil {
+				return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(pkg.ID))
+			}
+
+			bps = append([]dist.Buildpack{mainBP}, depBPs...)
 		default:
-			return fmt.Errorf("invalid image format: %s", pkg.ImageName)
+			return fmt.Errorf("invalid image format: %s %s", pkg.ImageName, locatorType)
+		}
+
+		for _, bp := range bps {
+			bldr.AddBuildpack(bp)
 		}
 	}
 

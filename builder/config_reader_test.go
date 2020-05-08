@@ -11,6 +11,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/builder"
+	"github.com/buildpacks/pack/internal/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -167,6 +168,49 @@ uri = "noop-buildpack.tgz"
 				BuildImage: testBuildImage,
 			}
 			h.AssertError(t, config.Validate(), "stack.run-image is required")
+		})
+	})
+
+	when("Buildpacks", func() {
+		var bpCollection builder.BuildpackCollection
+		var bp1, bp2, bp3, imageBP builder.BuildpackConfig
+
+		it.Before(func() {
+			bp1 = builder.BuildpackConfig{ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: "test1"}}}
+			bp2 = builder.BuildpackConfig{ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: "test2"}}}
+
+			bp3 = builder.BuildpackConfig{IsPackage: true, ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: "test2"}}}
+			imageBP = builder.BuildpackConfig{ImageOrURI: dist.ImageOrURI{ImageRef: dist.ImageRef{ImageName: "testref"}}}
+
+			bpCollection = builder.BuildpackCollection{bp1, bp2, bp3, imageBP}
+		})
+
+		it("returns Buildpacks", func() {
+			buildpacks := bpCollection.Buildpacks()
+			h.AssertEq(t, buildpacks[0].URI, bp1.URI)
+			h.AssertEq(t, buildpacks[1].URI, bp2.URI)
+			h.AssertEq(t, len(buildpacks), 2)
+		})
+	})
+
+	when("#Packages", func() {
+		var bpCollection builder.BuildpackCollection
+		var bp1, bp2, imageBP builder.BuildpackConfig
+
+		it.Before(func() {
+			bp1 = builder.BuildpackConfig{ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: "test1"}}}
+
+			bp2 = builder.BuildpackConfig{IsPackage: true, ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: "test2"}}}
+			imageBP = builder.BuildpackConfig{ImageOrURI: dist.ImageOrURI{ImageRef: dist.ImageRef{ImageName: "testref"}}}
+
+			bpCollection = builder.BuildpackCollection{bp1, bp2, imageBP}
+		})
+
+		it("returns Packages", func() {
+			buildpacks := bpCollection.Packages()
+			h.AssertEq(t, buildpacks[0].URI, bp2.URI)
+			h.AssertEq(t, buildpacks[1].ImageName, imageBP.ImageName)
+			h.AssertEq(t, len(buildpacks), 2)
 		})
 	})
 }
