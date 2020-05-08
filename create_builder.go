@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/buildpack"
+	"github.com/buildpacks/pack/internal/buildpackage"
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
@@ -18,7 +19,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-// CreateBuilderOptions are options passed into CreateBuilder
+// CreateBuilderOptions are options passed to CreateBuilder
 type CreateBuilderOptions struct {
 	BuilderName string
 	Config      pubbldr.Config
@@ -27,7 +28,7 @@ type CreateBuilderOptions struct {
 	Registry    string
 }
 
-// CreateBuilder allows users to create a builder
+// CreateBuilder creates a builder
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
 	if err := c.validateConfig(ctx, opts); err != nil {
 		return err
@@ -213,13 +214,32 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))
 			}
 
-			layerWriterFactory, err := layer.NewWriterFactory(bldr.Image())
+			isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
 			if err != nil {
-				return errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(bldr.Name()))
+				return errors.Wrap(err, "inspecting buildpack blob")
 			}
-			fetchedBp, err := dist.BuildpackFromRootBlob(blob, layerWriterFactory)
-			if err != nil {
-				return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
+
+			var fetchedBp dist.Buildpack
+			buildpacks := []dist.Buildpack{}
+			if isOCILayout {
+				fetchedBp, buildpacks, err = buildpackage.BuildpacksFromOCILayoutBlob(blob)
+				if err != nil {
+					return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(b.ID))
+				}
+
+				buildpacks = append([]dist.Buildpack{fetchedBp}, buildpacks...)
+			} else {
+				layerWriterFactory, err := layer.NewWriterFactory(bldr.Image())
+				if err != nil {
+					return errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(bldr.Name()))
+				}
+
+				fetchedBp, err := dist.BuildpackFromRootBlob(blob, layerWriterFactory)
+				if err != nil {
+					return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
+				}
+
+				buildpacks = []dist.Buildpack{fetchedBp}
 			}
 
 			err = validateBuildpack(fetchedBp, b.URI, b.ID, b.Version)
@@ -227,7 +247,9 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrap(err, "invalid buildpack")
 			}
 
-			bldr.AddBuildpack(fetchedBp)
+			for _, buildpack := range buildpacks {
+				bldr.AddBuildpack(buildpack)
+			}
 		}
 	}
 

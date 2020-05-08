@@ -558,6 +558,21 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("package file", func() {
+			it("package file is valid", func() {
+				cnbFile := filepath.Join("testdata", "bp_one.cnb")
+
+				mockDownloader.EXPECT().Download(gomock.Any(), cnbFile).Return(blob.NewBlob(cnbFile), nil).AnyTimes()
+				opts.Config.Buildpacks = []pubbldr.BuildpackConfig{{
+					ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: cnbFile}},
+				}}
+
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+			})
+		})
+
 		when("packages", func() {
 			var (
 				packageImage *fakes.Image
