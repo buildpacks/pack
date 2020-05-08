@@ -29,6 +29,26 @@ type CreateBuilderOptions struct {
 
 // CreateBuilder allows users to create a builder
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
+	if err := c.validateConfig(ctx, opts); err != nil {
+		return err
+	}
+
+	builder, err := c.createBaseBuilder(ctx, opts)
+	if err != nil {
+		return errors.Wrap(err, "failed to create builder")
+	}
+
+	if c.addBuildpacksToBuilder(ctx, opts, builder); err != nil {
+		return errors.Wrap(err, "failed to add buildpacks to builder")
+	}
+
+	builder.SetOrder(opts.Config.Order)
+	builder.SetStack(opts.Config.Stack)
+
+	return builder.Save(c.logger)
+}
+
+func (c Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {
 	if err := validateBuilderConfig(opts.Config); err != nil {
 		return errors.Wrap(err, "invalid builder config")
 	}
@@ -37,25 +57,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return err
 	}
 
-	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Stack.BuildImage, !opts.Publish, !opts.NoPull)
-	if err != nil {
-		return errors.Wrap(err, "fetch build image")
-	}
-
-	builder, err := c.createBaseBuilder(ctx, opts, baseImage)
-	if err != nil {
-		return errors.Wrap(err, "failed to create builder")
-	}
-
-	err = c.addBuildpacksToBuilder(ctx, opts, builder)
-	if err != nil {
-		return errors.Wrap(err, "failed to add buildpacks to builder")
-	}
-
-	builder.SetOrder(opts.Config.Order)
-	builder.SetStack(opts.Config.Stack)
-
-	return builder.Save(c.logger)
+	return nil
 }
 
 func validateBuilderConfig(conf pubbldr.Config) error {
@@ -119,7 +121,12 @@ func (c Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOp
 	return nil
 }
 
-func (c Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions, baseImage imgutil.Image) (*builder.Builder, error) {
+func (c Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions) (*builder.Builder, error) {
+	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Stack.BuildImage, !opts.Publish, !opts.NoPull)
+	if err != nil {
+		return nil, errors.Wrap(err, "fetch build image")
+	}
+
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
 	bldr, err := builder.New(baseImage, opts.BuilderName)
 	if err != nil {
