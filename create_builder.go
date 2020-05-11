@@ -177,12 +177,18 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 }
 
 func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
-	for i, b := range opts.Config.Buildpacks.Buildpacks() {
-		locatorType, err := buildpack.GetLocatorType(b.URI, []dist.BuildpackInfo{})
+	for _, b := range opts.Config.Buildpacks {
+		locator := b.URI
+		if locator == "" && b.ImageName != "" {
+			locator = b.ImageName
+		}
+
+		locatorType, err := buildpack.GetLocatorType(locator, []dist.BuildpackInfo{})
 		if err != nil {
 			return err
 		}
 
+		var bps []dist.Buildpack
 		switch locatorType {
 		case buildpack.RegistryLocator:
 			registryCache, err := c.getRegistry(c.logger, opts.Registry)
@@ -200,10 +206,15 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrapf(err, "extracting from registry %s", style.Symbol(b.URI))
 			}
 
-			for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
-				bldr.AddBuildpack(bp)
+			bps = append([]dist.Buildpack{mainBP}, depBPs...)
+		case buildpack.PackageLocator:
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, b.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+			if err != nil {
+				return err
 			}
-		default:
+
+			bps = append([]dist.Buildpack{mainBP}, depBPs...)
+		case buildpack.URILocator:
 			err := ensureBPSupport(b.URI)
 			if err != nil {
 				return err
@@ -221,66 +232,31 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 
 			if isOCILayout {
 				// The buildpack is a Package, and should be added in the next section
-				opts.Config.Buildpacks[i].IsPackage = true
-				continue
+				// opts.Config.Buildpacks[i].IsPackage = true
+				mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(blob)
+				if err != nil {
+					return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(b.ID))
+				}
+
+				bps = append([]dist.Buildpack{mainBP}, depBPs...)
+			} else {
+				layerWriterFactory, err := layer.NewWriterFactory(bldr.Image())
+				if err != nil {
+					return errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(bldr.Name()))
+				}
+
+				fetchedBp, err := dist.BuildpackFromRootBlob(blob, layerWriterFactory)
+				if err != nil {
+					return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
+				}
+
+				err = validateBuildpack(fetchedBp, b.URI, b.ID, b.Version)
+				if err != nil {
+					return errors.Wrap(err, "invalid buildpack")
+				}
+
+				bps = []dist.Buildpack{fetchedBp}
 			}
-
-			layerWriterFactory, err := layer.NewWriterFactory(bldr.Image())
-			if err != nil {
-				return errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(bldr.Name()))
-			}
-
-			fetchedBp, err := dist.BuildpackFromRootBlob(blob, layerWriterFactory)
-			if err != nil {
-				return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
-			}
-
-			err = validateBuildpack(fetchedBp, b.URI, b.ID, b.Version)
-			if err != nil {
-				return errors.Wrap(err, "invalid buildpack")
-			}
-
-			bldr.AddBuildpack(fetchedBp)
-		}
-	}
-
-	for _, pkg := range opts.Config.Buildpacks.Packages() {
-		locater := pkg.ImageName
-		if locater == "" && pkg.URI != "" {
-			locater = pkg.URI
-		}
-
-		locatorType, err := buildpack.GetLocatorType(locater, []dist.BuildpackInfo{})
-		if err != nil {
-			return err
-		}
-
-		var bps []dist.Buildpack
-		switch locatorType {
-		case buildpack.PackageLocator:
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, pkg.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
-			if err != nil {
-				return err
-			}
-
-			bps = append([]dist.Buildpack{mainBP}, depBPs...)
-		case buildpack.URILocator:
-			err := ensureBPSupport(pkg.URI)
-			if err != nil {
-				return err
-			}
-
-			blob, err := c.downloader.Download(ctx, pkg.URI)
-			if err != nil {
-				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(pkg.URI))
-			}
-
-			mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(blob)
-			if err != nil {
-				return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(pkg.ID))
-			}
-
-			bps = append([]dist.Buildpack{mainBP}, depBPs...)
 		default:
 			return fmt.Errorf("invalid locator: %s", locatorType)
 		}

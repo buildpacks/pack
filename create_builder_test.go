@@ -551,10 +551,36 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("supports directory buildpacks", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
-				opts.Config.Buildpacks[0].URI = "some/buildpack/dir"
+				directoryPath := "testdata/buildpack"
+				opts.Config.Buildpacks[0].URI = directoryPath
+				mockDownloader.EXPECT().Download(gomock.Any(), directoryPath).Return(blob.NewBlob(directoryPath), nil).AnyTimes()
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
+			})
+		})
+
+		when("buildpack URI is from=builder", func() {
+			it("errors", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Buildpacks[0].URI = "from=builder"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err,
+					"invalid locator: FromBuilderLocator")
+			})
+		})
+
+		when("buildpack URI is an invalid locator", func() {
+			it("errors", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Buildpacks[0].URI = "nonsense string here"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err,
+					"invalid locator: InvalidLocator")
 			})
 		})
 

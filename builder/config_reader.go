@@ -31,7 +31,6 @@ type BuildpackCollection []BuildpackConfig
 type BuildpackConfig struct {
 	dist.BuildpackInfo
 	dist.ImageOrURI
-	IsPackage bool
 }
 
 // StackConfig details the configuration of a Stack
@@ -137,7 +136,7 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 func (c BuildpackCollection) Packages() []BuildpackConfig {
 	var bps []BuildpackConfig
 	for _, bp := range c {
-		if bp.onlyHasImageName() || bp.IsPackage {
+		if bp.onlyHasImageName() {
 			bps = append(bps, bp)
 		}
 	}
@@ -148,7 +147,7 @@ func (c BuildpackCollection) Packages() []BuildpackConfig {
 func (c BuildpackCollection) Buildpacks() []BuildpackConfig {
 	var bps []BuildpackConfig
 	for _, bp := range c {
-		if bp.onlyHasURI() && !bp.IsPackage {
+		if bp.onlyHasURI() {
 			bps = append(bps, bp)
 		}
 	}

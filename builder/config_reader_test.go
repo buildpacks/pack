@@ -173,16 +173,15 @@ uri = "noop-buildpack.tgz"
 
 	when("Buildpacks", func() {
 		var bpCollection builder.BuildpackCollection
-		var bp1, bp2, bp3, imageBP builder.BuildpackConfig
+		var bp1, bp2, imageBP builder.BuildpackConfig
 
 		it.Before(func() {
 			bp1 = builder.BuildpackConfig{ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: "test1"}}}
 			bp2 = builder.BuildpackConfig{ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: "test2"}}}
 
-			bp3 = builder.BuildpackConfig{IsPackage: true, ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: "test2"}}}
 			imageBP = builder.BuildpackConfig{ImageOrURI: dist.ImageOrURI{ImageRef: dist.ImageRef{ImageName: "testref"}}}
 
-			bpCollection = builder.BuildpackCollection{bp1, bp2, bp3, imageBP}
+			bpCollection = builder.BuildpackCollection{bp1, bp2, imageBP}
 		})
 
 		it("returns Buildpacks", func() {
@@ -195,22 +194,20 @@ uri = "noop-buildpack.tgz"
 
 	when("#Packages", func() {
 		var bpCollection builder.BuildpackCollection
-		var bp1, bp2, imageBP builder.BuildpackConfig
+		var bp1, imageBP builder.BuildpackConfig
 
 		it.Before(func() {
 			bp1 = builder.BuildpackConfig{ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: "test1"}}}
 
-			bp2 = builder.BuildpackConfig{IsPackage: true, ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: "test2"}}}
 			imageBP = builder.BuildpackConfig{ImageOrURI: dist.ImageOrURI{ImageRef: dist.ImageRef{ImageName: "testref"}}}
 
-			bpCollection = builder.BuildpackCollection{bp1, bp2, imageBP}
+			bpCollection = builder.BuildpackCollection{bp1, imageBP}
 		})
 
 		it("returns Packages", func() {
 			buildpacks := bpCollection.Packages()
-			h.AssertEq(t, buildpacks[0].URI, bp2.URI)
-			h.AssertEq(t, buildpacks[1].ImageName, imageBP.ImageName)
-			h.AssertEq(t, len(buildpacks), 2)
+			h.AssertEq(t, buildpacks[0].ImageName, imageBP.ImageName)
+			h.AssertEq(t, len(buildpacks), 1)
 		})
 	})
 }
