@@ -114,6 +114,10 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 	}
 
 	for i, bp := range builderConfig.Buildpacks {
+		if bp.URI == "" {
+			continue
+		}
+
 		uri, err := paths.ToAbsolute(bp.URI, relativeToDir)
 		if err != nil {
 			return Config{}, errors.Wrap(err, "transforming buildpack URI")

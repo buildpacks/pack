@@ -231,8 +231,6 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 			}
 
 			if isOCILayout {
-				// The buildpack is a Package, and should be added in the next section
-				// opts.Config.Buildpacks[i].IsPackage = true
 				mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(blob)
 				if err != nil {
 					return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(b.ID))
