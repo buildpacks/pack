@@ -21,10 +21,15 @@ type CreateBuilderFlags struct {
 	Registry        string
 }
 
-func (c CreateBuilderFlags) validate() error {
-	if c.Publish && c.NoPull {
+func validateCreateBuilderFlags(flags CreateBuilderFlags, cfg config.Config) error {
+	if flags.Publish && flags.NoPull {
 		return errors.Errorf("The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
 	}
+
+	if flags.Registry != "" && !cfg.Experimental {
+		return errors.Errorf("Support for using buildpackages in a CNB Registry is currently experimental.")
+	}
+
 	return nil
 }
 
@@ -35,7 +40,7 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 		Args:  cobra.ExactArgs(1),
 		Short: "Create builder image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := flags.validate(); err != nil {
+			if err := validateCreateBuilderFlags(flags, cfg); err != nil {
 				return err
 			}
 

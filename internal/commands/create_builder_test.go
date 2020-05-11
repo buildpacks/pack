@@ -70,6 +70,19 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("--buildpack-registry flag is specified but experimental isn't set in the config", func() {
+			it("errors with a descriptive message", func() {
+				command.SetArgs([]string{
+					"some/builder",
+					"--builder-config", "some-config-path",
+					"--buildpack-registry", "some-registry",
+				})
+				err := command.Execute()
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "Support for using buildpackages in a CNB Registry is currently experimental.")
+			})
+		})
+
 		when("warnings encountered in builder.toml", func() {
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`

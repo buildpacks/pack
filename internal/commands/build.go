@@ -37,6 +37,19 @@ type BuildFlags struct {
 	DefaultProcessType string
 }
 
+func validateBuildFlags(flags BuildFlags, logger logging.Logger, cfg config.Config, packClient PackClient) error {
+	if flags.Builder == "" {
+		suggestSettingBuilder(logger, packClient)
+		return MakeSoftError()
+	}
+
+	if flags.Registry != "" && !cfg.Experimental {
+		return errors.Errorf("Support for using buildpackages in a CNB Registry is currently experimental.")
+	}
+
+	return nil
+}
+
 func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
 	var flags BuildFlags
 
@@ -45,11 +58,11 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 		Args:  cobra.ExactArgs(1),
 		Short: "Generate app image from source code",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			imageName := args[0]
-			if flags.Builder == "" {
-				suggestSettingBuilder(logger, packClient)
-				return MakeSoftError()
+			if err := validateBuildFlags(flags, logger, cfg, packClient); err != nil {
+				return err
 			}
+
+			imageName := args[0]
 
 			descriptor, actualDescriptorPath, err := parseProjectToml(flags.AppPath, flags.DescriptorPath)
 			if err != nil {
