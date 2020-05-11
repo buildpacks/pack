@@ -585,14 +585,25 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("package file", func() {
-			it("package file is valid", func() {
-				cnbFile := filepath.Join("testdata", "bp_one.cnb")
+			it.Before(func() {
+				cnbFile := filepath.Join(tmpDir, "bp_one1.cnb")
+				buildpackPath := filepath.Join("testdata", "buildpack")
+				mockDownloader.EXPECT().Download(gomock.Any(), buildpackPath).Return(blob.NewBlob(buildpackPath), nil)
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: cnbFile,
+					Config: pubbldpkg.Config{
+						Buildpack: dist.BuildpackURI{URI: buildpackPath},
+					},
+					Format: "file",
+				}))
 
 				mockDownloader.EXPECT().Download(gomock.Any(), cnbFile).Return(blob.NewBlob(cnbFile), nil).AnyTimes()
 				opts.Config.Buildpacks = []pubbldr.BuildpackConfig{{
 					ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: cnbFile}},
 				}}
+			})
 
+			it("package file is valid", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
 				h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))

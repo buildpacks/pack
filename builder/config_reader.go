@@ -113,7 +113,7 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 		)
 	}
 
-	for i, bp := range builderConfig.Buildpacks.Buildpacks() {
+	for i, bp := range builderConfig.Buildpacks {
 		uri, err := paths.ToAbsolute(bp.URI, relativeToDir)
 		if err != nil {
 			return Config{}, errors.Wrap(err, "transforming buildpack URI")
@@ -130,34 +130,4 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 	}
 
 	return builderConfig, nil
-}
-
-// Packages returns the Buildpackages stores in the BuildpackCollection
-func (c BuildpackCollection) Packages() []BuildpackConfig {
-	var bps []BuildpackConfig
-	for _, bp := range c {
-		if bp.onlyHasImageName() {
-			bps = append(bps, bp)
-		}
-	}
-	return bps
-}
-
-// Buildpacks returns the Buildpacks stores in the BuildpackCollection
-func (c BuildpackCollection) Buildpacks() []BuildpackConfig {
-	var bps []BuildpackConfig
-	for _, bp := range c {
-		if bp.onlyHasURI() {
-			bps = append(bps, bp)
-		}
-	}
-	return bps
-}
-
-func (bp BuildpackConfig) onlyHasURI() bool {
-	return bp.URI != "" && bp.ImageName == ""
-}
-
-func (bp BuildpackConfig) onlyHasImageName() bool {
-	return bp.ImageName != "" && bp.URI == ""
 }

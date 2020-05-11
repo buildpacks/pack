@@ -258,7 +258,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				bps = []dist.Buildpack{fetchedBp}
 			}
 		default:
-			return fmt.Errorf("invalid locator: %s", locatorType)
+			return fmt.Errorf("error reading %s: invalid locator: %s", locator, locatorType)
 		}
 
 		for _, bp := range bps {
