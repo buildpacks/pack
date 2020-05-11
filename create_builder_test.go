@@ -606,7 +606,21 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("package file is valid", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
-				h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+				bldr := successfullyCreateBuilder()
+
+				bpInfo := dist.BuildpackInfo{
+					ID:       "bp.one",
+					Version:  "1.2.3",
+					Homepage: "http://one.buildpack",
+				}
+				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
+				bpInfo.Homepage = ""
+				h.AssertEq(t, bldr.Order(), dist.Order{{
+					Group: []dist.BuildpackRef{{
+						BuildpackInfo: bpInfo,
+						Optional:      false,
+					}},
+				}})
 			})
 		})
 
