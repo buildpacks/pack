@@ -256,11 +256,11 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should warn when the run image cannot be found", func() {
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, true).Return(fakeBuildImage, nil)
 
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
 
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
@@ -269,18 +269,18 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should fail when not publish and the run image cannot be fetched", func() {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, false).Return(nil, errors.New("yikes!"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, false).Return(nil, errors.New("yikes"))
 
 				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err, "failed to fetch image: yikes!")
+				h.AssertError(t, err, "failed to fetch image: yikes")
 			})
 
 			it("should fail when publish and the run image cannot be fetched", func() {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, false).Return(nil, errors.New("yikes!"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, false).Return(nil, errors.New("yikes"))
 
 				opts.Publish = true
 				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err, "failed to fetch image: yikes!")
+				h.AssertError(t, err, "failed to fetch image: yikes")
 			})
 
 			it("should fail when the run image isn't a valid image", func() {

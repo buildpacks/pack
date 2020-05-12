@@ -108,7 +108,6 @@ func (s StackConfig) Validate() error {
 	}
 
 	return nil
-
 }
 
 // parseConfig reads a builder configuration from reader and resolves relative buildpack paths using `relativeToDir`

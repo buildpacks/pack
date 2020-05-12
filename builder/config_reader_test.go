@@ -159,7 +159,6 @@ uri = "noop-buildpack.tgz"
 				RunImage: testRunImage,
 			}
 			h.AssertError(t, config.Validate(), "stack.build-image is required")
-
 		})
 
 		it("returns error if no run image", func() {
