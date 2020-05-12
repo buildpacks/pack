@@ -70,6 +70,7 @@ type LifecycleOptions struct {
 	RunImage           string
 	ClearCache         bool
 	Publish            bool
+	TrustBuilder       bool
 	HTTPProxy          string
 	HTTPSProxy         string
 	NoProxy            string
@@ -96,7 +97,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 
 	phaseFactory := NewDefaultPhaseFactory(l)
 
-	if semver.MustParse(l.platformAPIVersion).LessThan(semver.MustParse("0.3")) {
+	if semver.MustParse(l.platformAPIVersion).LessThan(semver.MustParse("0.3")) || !opts.TrustBuilder {
 		l.logger.Info(style.Step("DETECTING"))
 		if err := l.Detect(ctx, opts.Network, opts.Volumes, phaseFactory); err != nil {
 			return err

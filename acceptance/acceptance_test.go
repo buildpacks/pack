@@ -639,13 +639,27 @@ func testAcceptance(
 				})
 
 				when("default builder is set", func() {
+					var usingCreator, trustBuilder bool
+
 					it.Before(func() {
 						h.Run(t, subjectPack("set-default-builder", builderName))
+
+						lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+						_, trustBuilder = os.LookupEnv("TEST_TRUST_BUILDER")
+						usingCreator = lifecycleSupportsCreator && packSupportsCreator && trustBuilder
 					})
 
 					it("creates a runnable, rebuildable image on daemon from app dir", func() {
 						appPath := filepath.Join("testdata", "mock_app")
-						output := h.Run(t, subjectPack("build", repoName, "-p", appPath))
+
+						var output string
+						if trustBuilder {
+							output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--trust-builder")) // TODO: when https://github.com/buildpacks/pack/issues/566 is completed we can run trust-builder in the test setup to avoid passing the flag each time.
+						} else {
+							output = h.Run(t, subjectPack("build", repoName, "-p", appPath))
+						}
+
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 						imgId, err := imgIDForRepoName(repoName)
 						if err != nil {
@@ -683,7 +697,11 @@ func testAcceptance(
 						h.Run(t, subjectPack("set-run-image-mirrors", runImage, "-m", localRunImageMirror))
 
 						t.Log("rebuild")
-						output = h.Run(t, subjectPack("build", repoName, "-p", appPath))
+						if trustBuilder {
+							output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--trust-builder"))
+						} else {
+							output = h.Run(t, subjectPack("build", repoName, "-p", appPath))
+						}
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 						imgId, err = imgIDForRepoName(repoName)
@@ -698,15 +716,8 @@ func testAcceptance(
 						t.Log("app is runnable")
 						assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
-						version, err := packVersion(packPath)
-						h.AssertNil(t, err)
-						packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
-						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
-
-						lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
-
 						t.Log("restores the cache")
-						if lifecycleSupportsCreator && packSupportsCreator {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring data for "simple/layers:cached-launch-layer" from cache`)
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
 						} else {
@@ -715,44 +726,48 @@ func testAcceptance(
 						}
 
 						t.Log("exporter reuses unchanged layers")
-						if lifecycleSupportsCreator && packSupportsCreator {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] reusing layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
 						}
 
 						t.Log("cacher reuses unchanged layers")
-						if lifecycleSupportsCreator && packSupportsCreator {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing cache layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Reusing cache layer 'simple/layers:cached-launch-layer'`)
 						}
 
 						t.Log("rebuild with --clear-cache")
-						output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--clear-cache"))
+						if trustBuilder {
+							output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--clear-cache", "--trust-builder"))
+						} else {
+							output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--clear-cache"))
+						}
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 						t.Log("skips restore")
-						if !lifecycleSupportsCreator || !packSupportsCreator {
+						if !usingCreator {
 							h.AssertContains(t, output, "Skipping 'restore' due to clearing cache")
 						}
 
 						t.Log("skips buildpack layer analysis")
-						if lifecycleSupportsCreator && packSupportsCreator {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Skipping buildpack layer analysis`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Skipping buildpack layer analysis`)
 						}
 
 						t.Log("exporter reuses unchanged layers")
-						if lifecycleSupportsCreator && packSupportsCreator {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
 						}
 
 						t.Log("cacher adds layers")
-						if lifecycleSupportsCreator && packSupportsCreator {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Adding cache layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Adding cache layer 'simple/layers:cached-launch-layer'`)
@@ -809,20 +824,23 @@ func testAcceptance(
 
 						when("the network mode is not provided", func() {
 							it("reports that build and detect are online", func() {
-								output := h.Run(t, subjectPack(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", buildpackTgz,
-								))
+								var output string
+								if trustBuilder {
+									output = h.Run(t, subjectPack(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--buildpack", buildpackTgz,
+										"--trust-builder",
+									))
+								} else {
+									output = h.Run(t, subjectPack(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--buildpack", buildpackTgz,
+									))
+								}
 
-								version, err := packVersion(packPath)
-								h.AssertNil(t, err)
-								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
-								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
-
-								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
-
-								if lifecycleSupportsCreator && packSupportsCreator {
+								if usingCreator {
 									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
 								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
@@ -833,20 +851,23 @@ func testAcceptance(
 
 						when("the network mode is set to default", func() {
 							it("reports that build and detect are online", func() {
-								output := h.Run(t, subjectPack(
-									"build", repoName,
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", buildpackTgz,
-								))
+								var output string
+								if trustBuilder {
+									output = h.Run(t, subjectPack(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--buildpack", buildpackTgz,
+										"--trust-builder",
+									))
+								} else {
+									output = h.Run(t, subjectPack(
+										"build", repoName,
+										"-p", filepath.Join("testdata", "mock_app"),
+										"--buildpack", buildpackTgz,
+									))
+								}
 
-								version, err := packVersion(packPath)
-								h.AssertNil(t, err)
-								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
-								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
-
-								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
-
-								if lifecycleSupportsCreator && packSupportsCreator {
+								if usingCreator {
 									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
 								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
@@ -857,25 +878,33 @@ func testAcceptance(
 
 						when("the network mode is set to none", func() {
 							it("reports that build and detect are offline", func() {
-								output := h.Run(t, subjectPack(
-									"build",
-									repoName,
-									"-p",
-									filepath.Join("testdata", "mock_app"),
-									"--buildpack",
-									buildpackTgz,
-									"--network",
-									"none",
-								))
+								var output string
+								if trustBuilder {
+									output = h.Run(t, subjectPack(
+										"build",
+										repoName,
+										"-p",
+										filepath.Join("testdata", "mock_app"),
+										"--buildpack",
+										buildpackTgz,
+										"--network",
+										"none",
+										"--trust-builder",
+									))
+								} else {
+									output = h.Run(t, subjectPack(
+										"build",
+										repoName,
+										"-p",
+										filepath.Join("testdata", "mock_app"),
+										"--buildpack",
+										buildpackTgz,
+										"--network",
+										"none",
+									))
+								}
 
-								version, err := packVersion(packPath)
-								h.AssertNil(t, err)
-								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
-								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
-
-								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
-
-								if lifecycleSupportsCreator && packSupportsCreator {
+								if usingCreator {
 									h.AssertContains(t, output, "[creator] RESULT: Disconnected from the internet")
 								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Disconnected from the internet")
@@ -942,7 +971,6 @@ func testAcceptance(
 							))
 
 							assertMockAppLogs(t, repoName, "hello world")
-
 						})
 					})
 
@@ -1294,26 +1322,25 @@ func testAcceptance(
 					when("ctrl+c", func() {
 						it("stops the execution", func() {
 							var buf bytes.Buffer
-							cmd := subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
+							var cmd *exec.Cmd
+							if trustBuilder {
+								cmd = subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"), "--trust-builder")
+							} else {
+								cmd = subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
+							}
+
 							cmd.Stdout = &buf
 							cmd.Stderr = &buf
 
 							h.AssertNil(t, cmd.Start())
 
-							version, err := packVersion(packPath)
-							h.AssertNil(t, err)
-							packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
-							packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
-
-							lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
-
-							if lifecycleSupportsCreator && packSupportsCreator {
+							if usingCreator {
 								go terminateAtStep(t, cmd, &buf, "[creator]")
 							} else {
 								go terminateAtStep(t, cmd, &buf, "[detector]")
 							}
 
-							err = cmd.Wait()
+							err := cmd.Wait()
 							h.AssertNotNil(t, err)
 							h.AssertNotContains(t, buf.String(), "Successfully built image")
 						})
