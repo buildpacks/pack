@@ -67,7 +67,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 			img, err := c.imageFetcher.Fetch(ctx, i, true, false)
 			if err != nil {
 				if errors.Cause(err) != image.ErrNotFound {
-					return err
+					return errors.Wrap(err, "failed to fetch image")
 				}
 			} else {
 				runImages = append(runImages, img)
@@ -78,7 +78,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 		img, err := c.imageFetcher.Fetch(ctx, i, false, false)
 		if err != nil {
 			if errors.Cause(err) != image.ErrNotFound {
-				return err
+				return errors.Wrap(err, "failed to fetch image")
 			}
 			c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
 		} else {
@@ -89,7 +89,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 	for _, img := range runImages {
 		stackID, err := img.Label("io.buildpacks.stack.id")
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to label image")
 		}
 
 		if stackID != opts.Config.Stack.ID {

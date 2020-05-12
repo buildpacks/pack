@@ -268,6 +268,31 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, out.String(), "Warning: run image 'some/run-image' is not accessible")
 			})
 
+			it("should fail when not publish and the run image cannot be fetched", func() {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, false).Return(nil, errors.New("yikes!"))
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "failed to fetch image: yikes!")
+			})
+
+			it("should fail when publish and the run image cannot be fetched", func() {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, false).Return(nil, errors.New("yikes!"))
+
+				opts.Publish = true
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "failed to fetch image: yikes!")
+			})
+
+			it("should fail when the run image isn't a valid image", func() {
+				fakeImage := fakeBadImageStruct{}
+
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", gomock.Any(), gomock.Any()).Return(fakeImage, nil).AnyTimes()
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", gomock.Any(), gomock.Any()).Return(fakeImage, nil).AnyTimes()
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "failed to label image")
+			})
+
 			when("publish is true", func() {
 				it("should only try to validate the remote run image", func() {
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, gomock.Any()).Times(0)
@@ -741,4 +766,12 @@ func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
 	}
 
 	return false
+}
+
+type fakeBadImageStruct struct {
+	*fakes.Image
+}
+
+func (i fakeBadImageStruct) Label(str string) (string, error) {
+	return "", errors.New("error here")
 }
