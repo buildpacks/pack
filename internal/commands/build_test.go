@@ -67,7 +67,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("--buildpack-registry flag is specified but experimental isn't set in the config", func() {
-			it.Focus("errors with a descriptive message", func() {
+			it("errors with a descriptive message", func() {
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--buildpack-registry", "some-registry"})
 				err := command.Execute()
 				h.AssertNotNil(t, err)
