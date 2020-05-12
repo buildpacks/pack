@@ -467,7 +467,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			fetchedBPs = append(append(fetchedBPs, mainBP), dependencyBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.PackageLocator:
-			mainBP, depBPs, err := extractPackagedBuildpacksFromImage(ctx, bp, c.imageFetcher, publish, noPull)
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, bp, c.imageFetcher, publish, noPull)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(bp))
 			}
@@ -485,7 +485,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
 			}
 
-			mainBP, depBPs, err := extractPackagedBuildpacksFromImage(ctx, registryBp.Address, c.imageFetcher, publish, noPull)
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, publish, noPull)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "extracting from registry %s", style.Symbol(bp))
 			}

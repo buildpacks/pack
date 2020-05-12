@@ -10,7 +10,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-func extractPackagedBuildpacksFromImage(ctx context.Context, pkgImageRef string, fetcher ImageFetcher, publish, noPull bool) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
+func extractPackagedBuildpacks(ctx context.Context, pkgImageRef string, fetcher ImageFetcher, publish, noPull bool) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
 	pkgImage, err := fetcher.Fetch(ctx, pkgImageRef, !publish, !noPull)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching image")
