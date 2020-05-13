@@ -311,6 +311,54 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("creating the base builder", func() {
+			when("build image not found", func() {
+				it("should fail", func() {
+					prepareFetcherWithRunImages()
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, true).Return(nil, image.ErrNotFound)
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "fetch build image: not found")
+				})
+			})
+
+			when("build image isn't a valid image", func() {
+				it("should fail", func() {
+					fakeImage := fakeBadImageStruct{}
+
+					prepareFetcherWithRunImages()
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, true).Return(fakeImage, nil)
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "failed to create builder: invalid build-image")
+				})
+			})
+
+			when("error downloading lifecycle", func() {
+				it("should fail", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = "fake"
+					mockDownloader.EXPECT().Download(gomock.Any(), "fake").Return(nil, errors.New("error here")).AnyTimes()
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "downloading lifecycle")
+				})
+			})
+
+			when("lifecycle isn't a valid lifecycle", func() {
+				it("should fail", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = "fake"
+					mockDownloader.EXPECT().Download(gomock.Any(), "fake").Return(blob.NewBlob(filepath.Join("testdata", "empty-file")), nil).AnyTimes()
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "invalid lifecycle")
+				})
+			})
+		})
+
 		when("only lifecycle version is provided", func() {
 			it("should download from predetermined uri", func() {
 				prepareFetcherWithBuildImage()
@@ -770,6 +818,10 @@ func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
 
 type fakeBadImageStruct struct {
 	*fakes.Image
+}
+
+func (i fakeBadImageStruct) Name() string {
+	return "fake image"
 }
 
 func (i fakeBadImageStruct) Label(str string) (string, error) {
