@@ -44,7 +44,7 @@ func validateBuildFlags(flags BuildFlags, logger logging.Logger, cfg config.Conf
 	}
 
 	if flags.Registry != "" && !cfg.Experimental {
-		return errors.Errorf("Support for using buildpackages in a CNB Registry is currently experimental.")
+		return MakeExperimentError("Support for buildpack registries is currently experimental.")
 	}
 
 	return nil

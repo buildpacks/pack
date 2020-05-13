@@ -79,7 +79,7 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 				err := command.Execute()
 				h.AssertNotNil(t, err)
-				h.AssertError(t, err, "Support for using buildpackages in a CNB Registry is currently experimental.")
+				h.AssertError(t, err, "Support for buildpack registries is currently experimental.\nTip: To enable experimental features, add `experimental = true` to {{CONFIG_PATH}}.")
 			})
 		})
 
