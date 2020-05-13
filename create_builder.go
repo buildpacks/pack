@@ -133,9 +133,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 		return nil, errors.Wrap(err, "fetch lifecycle")
 	}
 
-	if err := bldr.SetLifecycle(lifecycle); err != nil {
-		return nil, errors.Wrap(err, "setting lifecycle")
-	}
+	bldr.SetLifecycle(lifecycle)
 
 	return bldr, nil
 }
