@@ -1,12 +1,21 @@
 package build
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle/auth"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/google/go-containerregistry/pkg/authn"
+
+	"github.com/buildpacks/pack/internal/builder"
 )
 
 const (
@@ -118,6 +127,8 @@ func (l *Lifecycle) Restore(ctx context.Context, cacheName, networkMode string, 
 	configProvider := NewPhaseConfigProvider(
 		"restorer",
 		l,
+		WithImage(l.lifecycleImage),
+		WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
 		WithRoot(), // remove after platform API 0.2 is no longer supported
 		WithArgs(
 			l.withLogLevel(
@@ -163,6 +174,8 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish,
 		configProvider := NewPhaseConfigProvider(
 			"analyzer",
 			l,
+			WithImage(l.lifecycleImage),
+			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
 			WithRegistryAccess(authConfig),
 			WithRoot(),
 			WithArgs(args...),
@@ -173,6 +186,7 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish,
 		return phaseFactory.New(configProvider), nil
 	}
 
+	// TODO: see if we can delete this code since when publish is false we will use the creator
 	configProvider := NewPhaseConfigProvider(
 		"analyzer",
 		l,
@@ -215,7 +229,18 @@ func (l *Lifecycle) Build(ctx context.Context, networkMode string, volumes []str
 }
 
 func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) error {
-	export, err := l.newExport(repoName, runImage, publish, launchCacheName, cacheName, networkMode, phaseFactory)
+	var stackMount mount.Mount
+	if publish {
+		stackPath, err := l.writeStackToml()
+		if err != nil {
+			return errors.Wrap(err, "writing stack toml")
+		}
+		defer os.Remove(stackPath)
+
+		stackMount = mount.Mount{Type: "bind", Source: stackPath, Target: builder.StackPath, ReadOnly: true}
+	}
+
+	export, err := l.newExport(repoName, runImage, publish, launchCacheName, cacheName, networkMode, []mount.Mount{stackMount}, phaseFactory)
 	if err != nil {
 		return err
 	}
@@ -223,7 +248,7 @@ func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string
 	return export.Run(ctx)
 }
 
-func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
+func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCacheName, cacheName, networkMode string, mounts []mount.Mount, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	args := l.exportImageArgs(runImage)
 	args = append(args, []string{
 		"-cache-dir", cacheDir,
@@ -251,6 +276,8 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		configProvider := NewPhaseConfigProvider(
 			"exporter",
 			l,
+			WithImage(l.lifecycleImage),
+			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
 			WithRegistryAccess(authConfig),
 			WithArgs(
 				l.withLogLevel(args...)...,
@@ -258,6 +285,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 			WithRoot(),
 			WithNetwork(networkMode),
 			WithBinds(binds...),
+			WithMounts(mounts...),
 		)
 
 		return phaseFactory.New(configProvider), nil
@@ -278,6 +306,27 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 	)
 
 	return phaseFactory.New(configProvider), nil
+}
+
+func (l *Lifecycle) writeStackToml() (string, error) {
+	buf := &bytes.Buffer{}
+	err := toml.NewEncoder(buf).Encode(l.builder.Stack())
+	if err != nil {
+		return "", errors.Wrap(err, "marshaling stack metadata")
+	}
+
+	var stackFile *os.File
+	if stackFile, err = ioutil.TempFile("", "stack.toml"); err != nil {
+		return "", errors.Wrap(err, "opening stack.toml tempfile")
+	}
+
+	if _, err = stackFile.Write(buf.Bytes()); err != nil {
+		return "", errors.Wrapf(err, "writing stack.toml tempfile: %s", stackFile.Name())
+	}
+
+	// Some OSes (like macOS) use symlinks for the standard temp dir.
+	// Resolve it so it can be properly mounted by the Docker daemon.
+	return filepath.EvalSymlinks(stackFile.Name())
 }
 
 func (l *Lifecycle) withLogLevel(args ...string) []string {
