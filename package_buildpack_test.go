@@ -72,6 +72,54 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		return url
 	}
 
+	when("buildpack has issues", func() {
+		when("buildpack has no URI", func() {
+			it("should fail", func() {
+				err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: "Fake-Name",
+					Config: pubbldpkg.Config{
+						Buildpack: dist.BuildpackURI{URI: ""},
+					},
+					Publish: true,
+				})
+				h.AssertError(t, err, "buildpack URI must be provided")
+			})
+		})
+
+		when("can't download buildpack", func() {
+			it("should fail", func() {
+				bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
+				mockDownloader.EXPECT().Download(gomock.Any(), bpURL).Return(nil, image.ErrNotFound).AnyTimes()
+
+				err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: "Fake-Name",
+					Config: pubbldpkg.Config{
+						Buildpack: dist.BuildpackURI{URI: bpURL},
+					},
+					Publish: true,
+				})
+				h.AssertError(t, err, "downloading buildpack")
+			})
+		})
+
+		when("buildpack isn't a valid buildpack", func() {
+			it("should fail", func() {
+				fakeBlob := blob.NewBlob(filepath.Join("testdata", "empty-file"))
+				bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
+				mockDownloader.EXPECT().Download(gomock.Any(), bpURL).Return(fakeBlob, nil).AnyTimes()
+
+				err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: "Fake-Name",
+					Config: pubbldpkg.Config{
+						Buildpack: dist.BuildpackURI{URI: bpURL},
+					},
+					Publish: true,
+				})
+				h.AssertError(t, err, "creating buildpack")
+			})
+		})
+	})
+
 	when("FormatImage", func() {
 		when("nested package lives in registry", func() {
 			var nestedPackage *fakes.Image
@@ -329,6 +377,55 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				}))
 
 				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, childDescriptor)
+			})
+
+			when("dependency download fails", func() {
+				it("should error", func() {
+					bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
+					mockDownloader.EXPECT().Download(gomock.Any(), bpURL).Return(nil, image.ErrNotFound).AnyTimes()
+
+					tmpDir, err := ioutil.TempDir("", "package-buildpack")
+					h.AssertNil(t, err)
+
+					packagePath := filepath.Join(tmpDir, "test.cnb")
+
+					err = subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+						Name: packagePath,
+						Config: pubbldpkg.Config{
+							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
+							Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: bpURL}}},
+						},
+						Publish: false,
+						NoPull:  false,
+						Format:  pack.FormatFile,
+					})
+					h.AssertError(t, err, "downloading buildpack")
+				})
+			})
+
+			when("dependency isn't a valid buildpack", func() {
+				it("should error", func() {
+					fakeBlob := blob.NewBlob(filepath.Join("testdata", "empty-file"))
+					bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
+					mockDownloader.EXPECT().Download(gomock.Any(), bpURL).Return(fakeBlob, nil).AnyTimes()
+
+					tmpDir, err := ioutil.TempDir("", "package-buildpack")
+					h.AssertNil(t, err)
+
+					packagePath := filepath.Join(tmpDir, "test.cnb")
+
+					err = subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+						Name: packagePath,
+						Config: pubbldpkg.Config{
+							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
+							Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: bpURL}}},
+						},
+						Publish: false,
+						NoPull:  false,
+						Format:  pack.FormatFile,
+					})
+					h.AssertError(t, err, "creating buildpack")
+				})
 			})
 		})
 	})
