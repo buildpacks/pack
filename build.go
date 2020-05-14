@@ -33,6 +33,8 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
+const lifecycleImageName = "cnbs/lifecycle-image"
+
 type Lifecycle interface {
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
 }
@@ -142,7 +144,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	lifecycleImage, err := c.imageFetcher.Fetch(
 		ctx,
-		fmt.Sprintf("cnbs/lifecycle-image:%s", ephemeralBuilder.LifecycleDescriptor().Info.Version.String()),
+		fmt.Sprintf("%s:%s", lifecycleImageName, ephemeralBuilder.LifecycleDescriptor().Info.Version.String()),
 		true,
 		true,
 	)

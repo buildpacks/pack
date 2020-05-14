@@ -6,15 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Masterminds/semver"
-
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/cache"
-	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -32,6 +28,7 @@ type Builder interface {
 }
 
 type Lifecycle struct {
+	executor           *Executor
 	builder            Builder
 	lifecycleImage     string
 	logger             logging.Logger
@@ -60,7 +57,7 @@ func init() {
 }
 
 func NewLifecycle(docker client.CommonAPIClient, logger logging.Logger) *Lifecycle {
-	l := &Lifecycle{logger: logger, docker: docker}
+	l := &Lifecycle{logger: logger, docker: docker, executor: &Executor{}}
 
 	return l
 }
@@ -87,49 +84,9 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	l.Setup(opts)
 	defer l.Cleanup()
 
-	buildCache := cache.NewVolumeCache(opts.Image, "build", l.docker)
-	launchCache := cache.NewVolumeCache(opts.Image, "launch", l.docker)
-	l.logger.Debugf("Using build cache volume %s", style.Symbol(buildCache.Name()))
-
-	if opts.ClearCache {
-		if err := buildCache.Clear(ctx); err != nil {
-			return errors.Wrap(err, "clearing build cache")
-		}
-		l.logger.Debugf("Build cache %s cleared", style.Symbol(buildCache.Name()))
-	}
-
 	phaseFactory := NewDefaultPhaseFactory(l)
 
-	if semver.MustParse(l.platformAPIVersion).LessThan(semver.MustParse("0.3")) || !opts.TrustBuilder {
-		l.logger.Info(style.Step("DETECTING"))
-		if err := l.Detect(ctx, opts.Network, opts.Volumes, phaseFactory); err != nil {
-			return err
-		}
-
-		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, opts.Image.Name(), buildCache.Name(), opts.Network, opts.Publish, opts.ClearCache, phaseFactory); err != nil {
-			return err
-		}
-
-		l.logger.Info(style.Step("RESTORING"))
-		if opts.ClearCache {
-			l.logger.Info("Skipping 'restore' due to clearing cache")
-		} else if err := l.Restore(ctx, buildCache.Name(), opts.Network, phaseFactory); err != nil {
-			return err
-		}
-
-		l.logger.Info(style.Step("BUILDING"))
-
-		if err := l.Build(ctx, opts.Network, opts.Volumes, phaseFactory); err != nil {
-			return err
-		}
-
-		l.logger.Info(style.Step("EXPORTING"))
-		return l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name(), opts.Network, phaseFactory)
-	}
-
-	l.logger.Info(style.Step("CREATING"))
-	return l.Create(ctx, opts.Publish, opts.ClearCache, opts.RunImage, launchCache.Name(), buildCache.Name(), opts.Image.Name(), opts.Network, phaseFactory)
+	return l.executor.Execute(ctx, opts, l, l.platformAPIVersion, phaseFactory, l.docker, l.logger)
 }
 
 func (l *Lifecycle) Setup(opts LifecycleOptions) {
