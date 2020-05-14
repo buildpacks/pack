@@ -28,10 +28,12 @@ type Builder interface {
 	UID() int
 	GID() int
 	LifecycleDescriptor() builder.LifecycleDescriptor
+	Stack() builder.StackMetadata
 }
 
 type Lifecycle struct {
 	builder            Builder
+	lifecycleImage     string
 	logger             logging.Logger
 	docker             client.CommonAPIClient
 	appPath            string
@@ -67,6 +69,7 @@ type LifecycleOptions struct {
 	AppPath            string
 	Image              name.Reference
 	Builder            Builder
+	LifecycleImage     string
 	RunImage           string
 	ClearCache         bool
 	Publish            bool
@@ -135,6 +138,7 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.appPath = opts.AppPath
 	l.appOnce = &sync.Once{}
 	l.builder = opts.Builder
+	l.lifecycleImage = opts.LifecycleImage
 	l.httpProxy = opts.HTTPProxy
 	l.httpsProxy = opts.HTTPSProxy
 	l.noProxy = opts.NoProxy

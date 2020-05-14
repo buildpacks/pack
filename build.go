@@ -140,10 +140,21 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
+	lifecycleImage, err := c.imageFetcher.Fetch(
+		ctx,
+		fmt.Sprintf("cnbs/lifecycle-image:%s", ephemeralBuilder.LifecycleDescriptor().Info.Version.String()),
+		true,
+		true,
+	)
+	if err != nil {
+		return err // TODO: what if the lifecycle is earlier than 0.7.5 and the provided builder is untrusted? We should probably warn the user and default to the (old) untrusted workflow.
+	}
+
 	return c.lifecycle.Execute(ctx, build.LifecycleOptions{
 		AppPath:            appPath,
 		Image:              imageRef,
 		Builder:            ephemeralBuilder,
+		LifecycleImage:     lifecycleImage.Name(),
 		RunImage:           runImageName,
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
