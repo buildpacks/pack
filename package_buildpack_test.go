@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 
 	"github.com/buildpacks/imgutil"
@@ -16,6 +18,8 @@ import (
 	"github.com/buildpacks/pack"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/image"
@@ -68,127 +72,150 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		return url
 	}
 
-	when("nested package lives in registry", func() {
-		var nestedPackage *fakes.Image
+	when("FormatImage", func() {
+		when("nested package lives in registry", func() {
+			var nestedPackage *fakes.Image
 
-		it.Before(func() {
-			nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-			mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
-
-			h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-				Name: nestedPackage.Name(),
-				Config: pubbldpkg.Config{
-					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
-						API:    api.MustParse("0.2"),
-						Info:   dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-						Stacks: []dist.Stack{{ID: "some.stack.id"}},
-					})},
-				},
-				Publish: true,
-			}))
-		})
-
-		shouldFetchNestedPackage := func(demon, pull bool) {
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nestedPackage, nil)
-		}
-
-		shouldNotFindNestedPackageWhenCallingImageFetcherWith := func(demon, pull bool) {
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nil, image.ErrNotFound)
-		}
-
-		shouldCreateLocalPackage := func() imgutil.Image {
-			img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
-			mockImageFactory.EXPECT().NewImage(img.Name(), true).Return(img, nil)
-			return img
-		}
-
-		shouldCreateRemotePackage := func() *fakes.Image {
-			img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
-			mockImageFactory.EXPECT().NewImage(img.Name(), false).Return(img, nil)
-			return img
-		}
-
-		when("publish=false and no-pull=false", func() {
-			it("should pull and use local nested package image", func() {
-				shouldFetchNestedPackage(true, true)
-				packageImage := shouldCreateLocalPackage()
+			it.Before(func() {
+				nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
+				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-					Name: packageImage.Name(),
+					Name: nestedPackage.Name(),
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
-							API:  api.MustParse("0.2"),
-							Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
-							Order: dist.Order{{
-								Group: []dist.BuildpackRef{{
-									BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-									Optional:      false,
-								}},
-							}},
+							API:    api.MustParse("0.2"),
+							Info:   dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+							Stacks: []dist.Stack{{ID: "some.stack.id"}},
 						})},
-						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
-					},
-					Publish: false,
-					NoPull:  false,
-				}))
-			})
-		})
-
-		when("publish=true and no-pull=false", func() {
-			it("should use remote nested package image", func() {
-				shouldFetchNestedPackage(false, true)
-				packageImage := shouldCreateRemotePackage()
-
-				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-					Name: packageImage.Name(),
-					Config: pubbldpkg.Config{
-						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
-							API:  api.MustParse("0.2"),
-							Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
-							Order: dist.Order{{
-								Group: []dist.BuildpackRef{{
-									BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-									Optional:      false,
-								}},
-							}},
-						})},
-						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 					},
 					Publish: true,
-					NoPull:  false,
 				}))
 			})
-		})
 
-		when("publish=true and no-pull=true", func() {
-			it("should push to registry and not pull nested package image", func() {
-				shouldFetchNestedPackage(false, false)
-				packageImage := shouldCreateRemotePackage()
+			shouldFetchNestedPackage := func(demon, pull bool) {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nestedPackage, nil)
+			}
 
-				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-					Name: packageImage.Name(),
-					Config: pubbldpkg.Config{
-						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
-							API:  api.MustParse("0.2"),
-							Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
-							Order: dist.Order{{
-								Group: []dist.BuildpackRef{{
-									BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
-									Optional:      false,
+			shouldNotFindNestedPackageWhenCallingImageFetcherWith := func(demon, pull bool) {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nil, image.ErrNotFound)
+			}
+
+			shouldCreateLocalPackage := func() imgutil.Image {
+				img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
+				mockImageFactory.EXPECT().NewImage(img.Name(), true).Return(img, nil)
+				return img
+			}
+
+			shouldCreateRemotePackage := func() *fakes.Image {
+				img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
+				mockImageFactory.EXPECT().NewImage(img.Name(), false).Return(img, nil)
+				return img
+			}
+
+			when("publish=false and no-pull=false", func() {
+				it("should pull and use local nested package image", func() {
+					shouldFetchNestedPackage(true, true)
+					packageImage := shouldCreateLocalPackage()
+
+					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+						Name: packageImage.Name(),
+						Config: pubbldpkg.Config{
+							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+								API:  api.MustParse("0.2"),
+								Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+								Order: dist.Order{{
+									Group: []dist.BuildpackRef{{
+										BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+										Optional:      false,
+									}},
 								}},
-							}},
-						})},
-						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
-					},
-					Publish: true,
-					NoPull:  true,
-				}))
+							})},
+							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
+						},
+						Publish: false,
+						NoPull:  false,
+					}))
+				})
+			})
+
+			when("publish=true and no-pull=false", func() {
+				it("should use remote nested package image", func() {
+					shouldFetchNestedPackage(false, true)
+					packageImage := shouldCreateRemotePackage()
+
+					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+						Name: packageImage.Name(),
+						Config: pubbldpkg.Config{
+							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+								API:  api.MustParse("0.2"),
+								Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+								Order: dist.Order{{
+									Group: []dist.BuildpackRef{{
+										BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+										Optional:      false,
+									}},
+								}},
+							})},
+							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
+						},
+						Publish: true,
+						NoPull:  false,
+					}))
+				})
+			})
+
+			when("publish=true and no-pull=true", func() {
+				it("should push to registry and not pull nested package image", func() {
+					shouldFetchNestedPackage(false, false)
+					packageImage := shouldCreateRemotePackage()
+
+					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+						Name: packageImage.Name(),
+						Config: pubbldpkg.Config{
+							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+								API:  api.MustParse("0.2"),
+								Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+								Order: dist.Order{{
+									Group: []dist.BuildpackRef{{
+										BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+										Optional:      false,
+									}},
+								}},
+							})},
+							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
+						},
+						Publish: true,
+						NoPull:  true,
+					}))
+				})
+			})
+
+			when("publish=false no-pull=true and there is no local image", func() {
+				it("should fail without trying to retrieve nested image from registry", func() {
+					shouldNotFindNestedPackageWhenCallingImageFetcherWith(true, false)
+
+					h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+						Name: "some/package",
+						Config: pubbldpkg.Config{
+							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+								API:    api.MustParse("0.2"),
+								Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+								Stacks: []dist.Stack{{ID: "some.stack.id"}},
+							})},
+							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
+						},
+						Publish: false,
+						NoPull:  true,
+					}), "not found")
+				})
 			})
 		})
 
-		when("publish=false no-pull=true and there is no local image", func() {
-			it("should fail without trying to retrieve nested image from registry", func() {
-				shouldNotFindNestedPackageWhenCallingImageFetcherWith(true, false)
+		when("nested package is not a valid package", func() {
+			it("should error", func() {
+				notPackageImage := fakes.NewImage("not/package", "", nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, true).Return(notPackageImage, nil)
 
 				h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: "some/package",
@@ -198,33 +225,111 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
 							Stacks: []dist.Stack{{ID: "some.stack.id"}},
 						})},
-						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
+						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: notPackageImage.Name()}}},
 					},
 					Publish: false,
-					NoPull:  true,
-				}), "not found")
+					NoPull:  false,
+				}), "extracting buildpacks from 'not/package': could not find label 'io.buildpacks.buildpackage.metadata'")
 			})
 		})
 	})
 
-	when("nested package is not a valid package", func() {
-		it("should error", func() {
-			notPackageImage := fakes.NewImage("not/package", "", nil)
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, true).Return(notPackageImage, nil)
+	when("FormatFile", func() {
+		var (
+			nestedPackage     *fakes.Image
+			childDescriptor   dist.BuildpackDescriptor
+			packageDescriptor dist.BuildpackDescriptor
+		)
 
-			h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-				Name: "some/package",
-				Config: pubbldpkg.Config{
-					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
-						API:    api.MustParse("0.2"),
-						Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
-						Stacks: []dist.Stack{{ID: "some.stack.id"}},
-					})},
-					Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: notPackageImage.Name()}}},
-				},
-				Publish: false,
-				NoPull:  false,
-			}), "extracting buildpacks from 'not/package': could not find label 'io.buildpacks.buildpackage.metadata'")
+		it.Before(func() {
+			childDescriptor = dist.BuildpackDescriptor{
+				API:    api.MustParse("0.2"),
+				Info:   dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+				Stacks: []dist.Stack{{ID: "some.stack.id"}},
+			}
+
+			packageDescriptor = dist.BuildpackDescriptor{
+				API:  api.MustParse("0.2"),
+				Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+				Order: dist.Order{{
+					Group: []dist.BuildpackRef{{
+						BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+						Optional:      false,
+					}},
+				}},
+			}
+		})
+
+		assertPackageBPFileHasBuildpacks := func(path string, parentBP dist.BuildpackDescriptor, childBP dist.BuildpackDescriptor) {
+			h.AssertTarball(t, path)
+			packageBlob := blob.NewBlob(path)
+			isPackageBP, err := buildpackage.IsOCILayoutBlob(packageBlob)
+			h.AssertNil(t, err)
+			h.AssertTrue(t, isPackageBP)
+
+			mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(packageBlob)
+			h.AssertNil(t, err)
+			h.AssertEq(t, mainBP.Descriptor(), parentBP)
+			h.AssertEq(t, depBPs[0].Descriptor(), childBP)
+		}
+
+		when("dependencies are packaged buildpack image", func() {
+			it.Before(func() {
+				nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
+				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
+
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: nestedPackage.Name(),
+					Config: pubbldpkg.Config{
+						Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
+					},
+					Publish: true,
+				}))
+
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, true).Return(nestedPackage, nil)
+			})
+
+			it("should pull and use local nested package image", func() {
+				tmpDir, err := ioutil.TempDir("", "package-buildpack")
+				h.AssertNil(t, err)
+
+				packagePath := filepath.Join(tmpDir, "test.cnb")
+
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: packagePath,
+					Config: pubbldpkg.Config{
+						Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
+						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
+					},
+					Publish: false,
+					NoPull:  false,
+					Format:  pack.FormatFile,
+				}))
+
+				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, childDescriptor)
+			})
+		})
+
+		when("dependencies are unpackaged buildpack", func() {
+			it("should work", func() {
+				tmpDir, err := ioutil.TempDir("", "package-buildpack")
+				h.AssertNil(t, err)
+
+				packagePath := filepath.Join(tmpDir, "test.cnb")
+
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: packagePath,
+					Config: pubbldpkg.Config{
+						Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
+						Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: createBuildpack(childDescriptor)}}},
+					},
+					Publish: false,
+					NoPull:  false,
+					Format:  pack.FormatFile,
+				}))
+
+				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, childDescriptor)
+			})
 		})
 	})
 
