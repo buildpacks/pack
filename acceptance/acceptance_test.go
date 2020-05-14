@@ -639,7 +639,7 @@ func testAcceptance(
 				})
 
 				when("default builder is set", func() {
-					var usingCreator, trustBuilder bool
+					var creatorSupported, trustBuilder bool
 
 					it.Before(func() {
 						h.Run(t, subjectPack("set-default-builder", builderName))
@@ -647,7 +647,7 @@ func testAcceptance(
 						lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
 						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 						_, trustBuilder = os.LookupEnv("TEST_TRUST_BUILDER")
-						usingCreator = lifecycleSupportsCreator && packSupportsCreator && trustBuilder
+						creatorSupported = lifecycleSupportsCreator && packSupportsCreator
 					})
 
 					it("creates a runnable, rebuildable image on daemon from app dir", func() {
@@ -717,7 +717,7 @@ func testAcceptance(
 						assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
 						t.Log("restores the cache")
-						if usingCreator {
+						if creatorSupported {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring data for "simple/layers:cached-launch-layer" from cache`)
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
 						} else {
@@ -726,14 +726,14 @@ func testAcceptance(
 						}
 
 						t.Log("exporter reuses unchanged layers")
-						if usingCreator {
+						if creatorSupported {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] reusing layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
 						}
 
 						t.Log("cacher reuses unchanged layers")
-						if usingCreator {
+						if creatorSupported {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing cache layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Reusing cache layer 'simple/layers:cached-launch-layer'`)
@@ -748,26 +748,26 @@ func testAcceptance(
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 						t.Log("skips restore")
-						if !usingCreator {
+						if !creatorSupported {
 							h.AssertContains(t, output, "Skipping 'restore' due to clearing cache")
 						}
 
 						t.Log("skips buildpack layer analysis")
-						if usingCreator {
+						if creatorSupported {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Skipping buildpack layer analysis`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Skipping buildpack layer analysis`)
 						}
 
 						t.Log("exporter reuses unchanged layers")
-						if usingCreator {
+						if creatorSupported {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
 						}
 
 						t.Log("cacher adds layers")
-						if usingCreator {
+						if creatorSupported {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Adding cache layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Adding cache layer 'simple/layers:cached-launch-layer'`)
@@ -840,7 +840,7 @@ func testAcceptance(
 									))
 								}
 
-								if usingCreator {
+								if creatorSupported {
 									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
 								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
@@ -867,7 +867,7 @@ func testAcceptance(
 									))
 								}
 
-								if usingCreator {
+								if creatorSupported {
 									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
 								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
@@ -904,7 +904,7 @@ func testAcceptance(
 									))
 								}
 
-								if usingCreator {
+								if creatorSupported {
 									h.AssertContains(t, output, "[creator] RESULT: Disconnected from the internet")
 								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Disconnected from the internet")
@@ -1334,7 +1334,7 @@ func testAcceptance(
 
 							h.AssertNil(t, cmd.Start())
 
-							if usingCreator {
+							if creatorSupported {
 								go terminateAtStep(t, cmd, &buf, "[creator]")
 							} else {
 								go terminateAtStep(t, cmd, &buf, "[detector]")
