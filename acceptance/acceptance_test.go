@@ -639,14 +639,13 @@ func testAcceptance(
 				})
 
 				when("default builder is set", func() {
-					var creatorSupported, trustBuilder bool
+					var creatorSupported bool
 
 					it.Before(func() {
 						h.Run(t, subjectPack("set-default-builder", builderName))
 
 						lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
 						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
-						_, trustBuilder = os.LookupEnv("TEST_TRUST_BUILDER")
 						creatorSupported = lifecycleSupportsCreator && packSupportsCreator
 					})
 
@@ -654,11 +653,7 @@ func testAcceptance(
 						appPath := filepath.Join("testdata", "mock_app")
 
 						var output string
-						if trustBuilder {
-							output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--trust-builder")) // TODO: when https://github.com/buildpacks/pack/issues/566 is completed we can run trust-builder in the test setup to avoid passing the flag each time.
-						} else {
-							output = h.Run(t, subjectPack("build", repoName, "-p", appPath))
-						}
+						output = h.Run(t, subjectPack("build", repoName, "-p", appPath))
 
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 						imgId, err := imgIDForRepoName(repoName)
@@ -697,11 +692,7 @@ func testAcceptance(
 						h.Run(t, subjectPack("set-run-image-mirrors", runImage, "-m", localRunImageMirror))
 
 						t.Log("rebuild")
-						if trustBuilder {
-							output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--trust-builder"))
-						} else {
-							output = h.Run(t, subjectPack("build", repoName, "-p", appPath))
-						}
+						output = h.Run(t, subjectPack("build", repoName, "-p", appPath))
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 						imgId, err = imgIDForRepoName(repoName)
@@ -740,11 +731,7 @@ func testAcceptance(
 						}
 
 						t.Log("rebuild with --clear-cache")
-						if trustBuilder {
-							output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--clear-cache", "--trust-builder"))
-						} else {
-							output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--clear-cache"))
-						}
+						output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--clear-cache"))
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 						t.Log("skips restore")
@@ -825,20 +812,11 @@ func testAcceptance(
 						when("the network mode is not provided", func() {
 							it("reports that build and detect are online", func() {
 								var output string
-								if trustBuilder {
-									output = h.Run(t, subjectPack(
-										"build", repoName,
-										"-p", filepath.Join("testdata", "mock_app"),
-										"--buildpack", buildpackTgz,
-										"--trust-builder",
-									))
-								} else {
-									output = h.Run(t, subjectPack(
-										"build", repoName,
-										"-p", filepath.Join("testdata", "mock_app"),
-										"--buildpack", buildpackTgz,
-									))
-								}
+								output = h.Run(t, subjectPack(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--buildpack", buildpackTgz,
+								))
 
 								if creatorSupported {
 									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
@@ -852,20 +830,11 @@ func testAcceptance(
 						when("the network mode is set to default", func() {
 							it("reports that build and detect are online", func() {
 								var output string
-								if trustBuilder {
-									output = h.Run(t, subjectPack(
-										"build", repoName,
-										"-p", filepath.Join("testdata", "mock_app"),
-										"--buildpack", buildpackTgz,
-										"--trust-builder",
-									))
-								} else {
-									output = h.Run(t, subjectPack(
-										"build", repoName,
-										"-p", filepath.Join("testdata", "mock_app"),
-										"--buildpack", buildpackTgz,
-									))
-								}
+								output = h.Run(t, subjectPack(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--buildpack", buildpackTgz,
+								))
 
 								if creatorSupported {
 									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
@@ -879,30 +848,16 @@ func testAcceptance(
 						when("the network mode is set to none", func() {
 							it("reports that build and detect are offline", func() {
 								var output string
-								if trustBuilder {
-									output = h.Run(t, subjectPack(
-										"build",
-										repoName,
-										"-p",
-										filepath.Join("testdata", "mock_app"),
-										"--buildpack",
-										buildpackTgz,
-										"--network",
-										"none",
-										"--trust-builder",
-									))
-								} else {
-									output = h.Run(t, subjectPack(
-										"build",
-										repoName,
-										"-p",
-										filepath.Join("testdata", "mock_app"),
-										"--buildpack",
-										buildpackTgz,
-										"--network",
-										"none",
-									))
-								}
+								output = h.Run(t, subjectPack(
+									"build",
+									repoName,
+									"-p",
+									filepath.Join("testdata", "mock_app"),
+									"--buildpack",
+									buildpackTgz,
+									"--network",
+									"none",
+								))
 
 								if creatorSupported {
 									h.AssertContains(t, output, "[creator] RESULT: Disconnected from the internet")
@@ -1323,11 +1278,7 @@ func testAcceptance(
 						it("stops the execution", func() {
 							var buf bytes.Buffer
 							var cmd *exec.Cmd
-							if trustBuilder {
-								cmd = subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"), "--trust-builder")
-							} else {
-								cmd = subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
-							}
+							cmd = subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
 
 							cmd.Stdout = &buf
 							cmd.Stderr = &buf
