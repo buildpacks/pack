@@ -7,12 +7,13 @@ import (
 	"os"
 	"testing"
 
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
-	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func mockStd() (*color.Console, func() string) {
@@ -84,7 +85,6 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 			logger := logging.New(&w)
 			logging.Tip(logger, "test")
 			h.AssertContains(t, w.String(), "Tip: "+"test")
-
 		})
 	})
 }
