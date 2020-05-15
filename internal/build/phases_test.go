@@ -123,7 +123,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 					configProvider.ContainerConfig().Cmd,
 					[]string{"-cache-dir", "/cache"},
 				)
-				h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
 			})
 		})
 
@@ -179,7 +178,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 					[]string{"-daemon"},
 					[]string{"-launch-cache", "/launch-cache"},
 				)
-				h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
 			})
 
 			it("configures the phase with daemon access", func() {
