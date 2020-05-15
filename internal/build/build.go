@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Masterminds/semver"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -73,6 +72,7 @@ type LifecycleOptions struct {
 	ClearCache         bool
 	Publish            bool
 	TrustBuilder       bool
+	UseCreator         bool
 	HTTPProxy          string
 	HTTPSProxy         string
 	NoProxy            string
@@ -101,7 +101,7 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 
 	// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 	// have bugs that make using the creator problematic.
-	if l.builder.LifecycleDescriptor().Info.Version.LessThan(semver.MustParse("0.7.5")) || (opts.Publish && !opts.TrustBuilder) {
+	if !opts.UseCreator {
 		l.logger.Info(style.Step("DETECTING"))
 		if err := l.Detect(ctx, opts.Network, opts.Volumes, phaseFactory); err != nil {
 			return err

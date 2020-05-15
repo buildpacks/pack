@@ -166,6 +166,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	if creatorSupported && (!opts.Publish || opts.TrustBuilder) {
 		// no need to fetch a lifecycle image, it won't be used
+		lifecycleOpts.UseCreator = true
 		return c.lifecycle.Execute(ctx, lifecycleOpts)
 	}
 

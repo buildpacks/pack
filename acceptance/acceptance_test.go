@@ -639,7 +639,7 @@ func testAcceptance(
 				})
 
 				when("default builder is set", func() {
-					var packSupportsCreator, creatorSupported, lifecycleImageAvailable bool
+					var packSupportsCreator, creatorSupported bool
 
 					it.Before(func() {
 						h.Run(t, subjectPack("set-default-builder", builderName))
@@ -649,8 +649,6 @@ func testAcceptance(
 						lifecycleSupportsCreator := !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.5"))
 						packSupportsCreator = packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 						creatorSupported = lifecycleSupportsCreator && packSupportsCreator
-
-						lifecycleImageAvailable = !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.5"))
 					})
 
 					it("creates a runnable, rebuildable image on daemon from app dir", func() {
@@ -1294,10 +1292,6 @@ func testAcceptance(
 								h.AssertNotNil(t, err)
 
 								h.AssertContains(t, buf.String(), "[detector]")
-
-								if packSupportsCreator && !lifecycleImageAvailable {
-									h.AssertContains(t, buf.String(), "Lifecycle does not have an associated lifecycle image")
-								}
 							})
 						})
 
