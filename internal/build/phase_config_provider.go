@@ -74,9 +74,7 @@ func WithDaemonAccess() PhaseConfigProviderOperation {
 
 func WithEnv(envs ...string) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
-		for _, env := range envs {
-			provider.ctrConf.Env = append(provider.ctrConf.Env, env)
-		}
+		provider.ctrConf.Env = append(provider.ctrConf.Env, envs...)
 	}
 }
 
@@ -107,9 +105,7 @@ func WithLifecycleProxy(lifecycle *Lifecycle) PhaseConfigProviderOperation {
 
 func WithMounts(mounts ...mount.Mount) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
-		for _, mount := range mounts {
-			provider.hostConf.Mounts = append(provider.hostConf.Mounts, mount)
-		}
+		provider.hostConf.Mounts = append(provider.hostConf.Mounts, mounts...)
 	}
 }
 

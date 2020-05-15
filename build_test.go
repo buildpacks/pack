@@ -164,6 +164,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, fakeMirror2.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
 		fakeImageFetcher.LocalImages[fakeMirror2.Name()] = fakeMirror2
 
+		fakeLifecycleImage := fakes.NewImage(fmt.Sprintf("%s:%s", lifecycleImageName, "0.3.0"), "", nil)
+		fakeImageFetcher.LocalImages[fakeLifecycleImage.Name()] = fakeLifecycleImage
+
 		docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
 
