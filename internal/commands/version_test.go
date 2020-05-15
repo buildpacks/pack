@@ -32,7 +32,7 @@ func testVersionCommand(t *testing.T, when spec.G, it spec.S) {
 		it("returns version", func() {
 			command.SetArgs([]string{})
 			h.AssertNil(t, command.Execute())
-			h.AssertEq(t, outBuf.String(), cmd.Version)
+			h.AssertEq(t, outBuf.String(), cmd.Version+"\n")
 		})
 	})
 }
