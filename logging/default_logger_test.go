@@ -12,6 +12,7 @@ import (
 const (
 	debugMatcher = `^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}\.\d{6} DEBUG:  \w*\n$`
 	infoMatcher  = `^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}\.\d{6} INFO:   \w*\n$`
+	warnMatcher  = `^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}\.\d{6} WARN:   \w*\n$`
 	errorMatcher = `^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}\.\d{6} ERROR:  \w*\n$`
 )
 
@@ -56,6 +57,20 @@ func TestDefaultLogger(t *testing.T) {
 		it("should format error messages properly", func() {
 			logger.Errorf("test%s", "foo")
 			h.AssertMatch(t, w.String(), errorMatcher)
+		})
+
+		it("should print warn messages properly", func() {
+			logger.Warn("test")
+			h.AssertMatch(t, w.String(), warnMatcher)
+		})
+
+		it("should format warb messages properly", func() {
+			logger.Warnf("test%s", "foo")
+			h.AssertMatch(t, w.String(), warnMatcher)
+		})
+
+		it("shouldn't be verbose by default", func() {
+			h.AssertFalse(t, logger.IsVerbose())
 		})
 
 		it("should not format writer messages", func() {
