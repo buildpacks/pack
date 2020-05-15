@@ -639,7 +639,7 @@ func testAcceptance(
 				})
 
 				when("default builder is set", func() {
-					var packSupportsCreator, creatorSupported bool
+					var creatorSupported bool
 
 					it.Before(func() {
 						h.Run(t, subjectPack("set-default-builder", builderName))
@@ -647,7 +647,7 @@ func testAcceptance(
 						// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 						// have bugs that make using the creator problematic.
 						lifecycleSupportsCreator := !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.5"))
-						packSupportsCreator = packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 						creatorSupported = lifecycleSupportsCreator && packSupportsCreator
 					})
 
