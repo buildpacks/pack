@@ -5,13 +5,14 @@ import (
 	"os"
 	"testing"
 
-	"github.com/buildpacks/pack/logging"
-	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/buildpacks/pack/testmocks"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/logging"
+	h "github.com/buildpacks/pack/testhelpers"
+	"github.com/buildpacks/pack/testmocks"
 )
 
 func TestClient(t *testing.T) {
