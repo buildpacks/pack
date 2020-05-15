@@ -302,6 +302,34 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 					verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 				}
 			})
+
+			when("files are compressed in fat (MSDOS) format", func() {
+				it.Before(func() {
+					src = filepath.Join("testdata", "fat-zip-to-tar.zip")
+				})
+
+				it("writes a tar to the dest dir with 0777", func() {
+					fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+					h.AssertNil(t, err)
+
+					tw := tar.NewWriter(fh)
+
+					err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true, nil)
+					h.AssertNil(t, err)
+					h.AssertNil(t, tw.Close())
+					h.AssertNil(t, fh.Close())
+
+					file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+					h.AssertNil(t, err)
+					defer file.Close()
+
+					tr := tar.NewReader(file)
+
+					verify := tarVerifier{t, tr, 1234, 2345}
+					verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
+					verify.noMoreFilesExist()
+				})
+			})
 		})
 
 		when("normalize mod time is false", func() {
@@ -339,6 +367,78 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				h.AssertOnTarEntry(t, tarFile, "/foo/some-file.txt",
 					h.HasModTime(archive.NormalizedDateTime),
 				)
+			})
+		})
+	})
+
+	when("#IsZip", func() {
+		when("file is a zip file", func() {
+			it("returns true", func() {
+				path := filepath.Join("testdata", "zip-to-tar.zip")
+
+				file, err := os.Open(path)
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				isZip, err := archive.IsZip(file)
+				h.AssertNil(t, err)
+				h.AssertTrue(t, isZip)
+			})
+		})
+
+		when("file is a jar file", func() {
+			it("returns true", func() {
+				path := filepath.Join("testdata", "jar-file.jar")
+
+				file, err := os.Open(path)
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				isZip, err := archive.IsZip(file)
+				h.AssertNil(t, err)
+				h.AssertTrue(t, isZip)
+			})
+		})
+
+		when("file is not a zip file", func() {
+			when("file has some content", func() {
+				it("returns false", func() {
+					file, err := ioutil.TempFile(tmpDir, "file.txt")
+					h.AssertNil(t, err)
+					defer file.Close()
+
+					err = ioutil.WriteFile(file.Name(), []byte("content"), os.ModePerm)
+					h.AssertNil(t, err)
+
+					isZip, err := archive.IsZip(file)
+					h.AssertNil(t, err)
+					h.AssertFalse(t, isZip)
+				})
+			})
+
+			when("file doesn't have content", func() {
+				it("returns false", func() {
+					file, err := ioutil.TempFile(tmpDir, "file.txt")
+					h.AssertNil(t, err)
+					defer file.Close()
+
+					isZip, err := archive.IsZip(file)
+					h.AssertNil(t, err)
+					h.AssertFalse(t, isZip)
+				})
+			})
+		})
+
+		when("reader is closed", func() {
+			it("returns error", func() {
+				file, err := ioutil.TempFile(tmpDir, "file.txt")
+				h.AssertNil(t, err)
+				err = file.Close()
+				h.AssertNil(t, err)
+
+				isZip, err := archive.IsZip(file)
+				h.AssertError(t, err, os.ErrClosed.Error())
+				h.AssertFalse(t, isZip)
 			})
 		})
 	})

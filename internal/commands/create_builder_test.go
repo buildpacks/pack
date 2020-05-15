@@ -14,6 +14,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
+	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -34,6 +35,7 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		mockClient        *testmocks.MockPackClient
 		tmpDir            string
 		builderConfigPath string
+		cfg               config.Config
 	)
 
 	it.Before(func() {
@@ -41,11 +43,12 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		tmpDir, err = ioutil.TempDir("", "create-builder-test")
 		h.AssertNil(t, err)
 		builderConfigPath = filepath.Join(tmpDir, "builder.toml")
+		cfg = config.Config{}
 
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.CreateBuilder(logger, mockClient)
+		command = commands.CreateBuilder(logger, cfg, mockClient)
 	})
 
 	it.After(func() {
@@ -53,6 +56,20 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#CreateBuilder", func() {
+		when("both --publish and --no-pull flags are specified", func() {
+			it("errors with a descriptive message", func() {
+				command.SetArgs([]string{
+					"some/builder",
+					"--builder-config", "some-config-path",
+					"--publish",
+					"--no-pull",
+				})
+				err := command.Execute()
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
+			})
+		})
+
 		when("warnings encountered in builder.toml", func() {
 			it.Before(func() {
 				h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`

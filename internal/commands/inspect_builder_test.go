@@ -39,7 +39,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		mockClient     *testmocks.MockPackClient
 		cfg            config.Config
 		buildpack1Info = dist.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
-		buildpack2Info = dist.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0"}
+		buildpack2Info = dist.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0", Homepage: "http://geocities.com/cool-bp"}
 		buildpacks     = []dist.BuildpackInfo{
 			buildpack1Info,
 			buildpack2Info,
@@ -129,9 +129,9 @@ Run Images:
   second/default
 
 Buildpacks:
-  ID                 VERSION
-  test.bp.one        1.0.0
-  test.bp.two        2.0.0
+  ID                 VERSION        HOMEPAGE
+  test.bp.one        1.0.0          
+  test.bp.two        2.0.0          http://geocities.com/cool-bp
 
 Detection Order:
   Group #1:
@@ -168,9 +168,9 @@ Run Images:
   second/local-default
 
 Buildpacks:
-  ID                 VERSION
-  test.bp.one        1.0.0
-  test.bp.two        2.0.0
+  ID                 VERSION        HOMEPAGE
+  test.bp.one        1.0.0          
+  test.bp.two        2.0.0          http://geocities.com/cool-bp
 
 Detection Order:
   Group #1:

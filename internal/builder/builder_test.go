@@ -201,7 +201,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			subject, err = builder.New(baseImage, "some/builder")
 			h.AssertNil(t, err)
 
-			h.AssertNil(t, subject.SetLifecycle(mockLifecycle))
+			subject.SetLifecycle(mockLifecycle)
 		})
 
 		it.After(func() {
@@ -318,11 +318,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				defer os.RemoveAll(tmpDir)
 
 				layerFile := filepath.Join(tmpDir, "order.tar")
-				f, err := os.Create(layerFile)
-				h.AssertNil(t, err)
-				defer f.Close()
-
-				err = archive.CreateSingleFileTar(f.Name(), "/cnb/order.toml", "some content")
+				err = archive.CreateSingleFileTar(layerFile, "/cnb/order.toml", "some content")
 				h.AssertNil(t, err)
 
 				h.AssertNil(t, baseImage.AddLayer(layerFile))
@@ -338,7 +334,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("validating order", func() {
 				it.Before(func() {
-					h.AssertNil(t, subject.SetLifecycle(mockLifecycle))
+					subject.SetLifecycle(mockLifecycle)
 				})
 
 				when("has single buildpack", func() {
@@ -517,7 +513,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("#SetLifecycle", func() {
 			it.Before(func() {
-				h.AssertNil(t, subject.SetLifecycle(mockLifecycle))
+				subject.SetLifecycle(mockLifecycle)
 
 				h.AssertNil(t, subject.Save(logger))
 				h.AssertEq(t, baseImage.IsSaved(), true)
@@ -701,7 +697,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					subject.AddBuildpack(bp1v2)
 					subject.AddBuildpack(bp2v1)
 
-					h.AssertNil(t, subject.SetLifecycle(mockLifecycle))
+					subject.SetLifecycle(mockLifecycle)
 
 					h.AssertNil(t, subject.Save(logger))
 					h.AssertEq(t, baseImage.IsSaved(), true)

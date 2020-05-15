@@ -22,6 +22,7 @@ import (
 	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
@@ -47,16 +48,18 @@ const (
 	envGID = "CNB_GROUP_ID"
 )
 
+// Builder represents a pack builder, used to build images
 type Builder struct {
 	baseImageName        string
 	image                imgutil.Image
+	layerWriterFactory   archive.TarWriterFactory
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
 	additionalBuildpacks []dist.Buildpack
 	metadata             Metadata
 	mixins               []string
 	env                  map[string]string
-	UID, GID             int
+	uid, gid             int
 	StackID              string
 	replaceOrder         bool
 	order                dist.Order
@@ -77,7 +80,7 @@ func FromImage(img imgutil.Image) (*Builder, error) {
 	return constructBuilder(img, "", metadata)
 }
 
-// New constructs a new builder from base image
+// New constructs a new builder from a base image
 func New(baseImage imgutil.Image, name string) (*Builder, error) {
 	var metadata Metadata
 	if _, err := dist.GetLabel(baseImage, metadataLabel, &metadata); err != nil {
@@ -87,6 +90,11 @@ func New(baseImage imgutil.Image, name string) (*Builder, error) {
 }
 
 func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Builder, error) {
+	layerWriterFactory, err := layer.NewWriterFactory(img)
+	if err != nil {
+		return nil, err
+	}
+
 	uid, gid, err := userAndGroupIDs(img)
 	if err != nil {
 		return nil, err
@@ -131,14 +139,15 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 	}
 
 	return &Builder{
-		baseImageName: baseName,
-		image:         img,
-		metadata:      metadata,
-		mixins:        mixins,
-		order:         order,
-		UID:           uid,
-		GID:           gid,
-		StackID:       stackID,
+		baseImageName:      baseName,
+		image:              img,
+		layerWriterFactory: layerWriterFactory,
+		metadata:           metadata,
+		mixins:             mixins,
+		order:              order,
+		uid:                uid,
+		gid:                gid,
+		StackID:            stackID,
 		lifecycleDescriptor: LifecycleDescriptor{
 			Info: LifecycleInfo{
 				Version: lifecycleVersion,
@@ -152,65 +161,94 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 	}, nil
 }
 
+// Getters
+
+// Description returns the builder description
 func (b *Builder) Description() string {
 	return b.metadata.Description
 }
 
+// LifecycleDescriptor returns the LifecycleDescriptor
 func (b *Builder) LifecycleDescriptor() LifecycleDescriptor {
 	return b.lifecycleDescriptor
 }
 
+// Buildpacks returns the buildpack list
 func (b *Builder) Buildpacks() []dist.BuildpackInfo {
 	return b.metadata.Buildpacks
 }
 
+// CreatedBy returns metadata around the creation of the builder
 func (b *Builder) CreatedBy() CreatorMetadata {
 	return b.metadata.CreatedBy
 }
 
+// Order returns the order
 func (b *Builder) Order() dist.Order {
 	return b.order
 }
 
+// Name returns the name of the builder
 func (b *Builder) Name() string {
 	return b.image.Name()
 }
 
+// Image returns the base image
 func (b *Builder) Image() imgutil.Image {
 	return b.image
 }
 
+// Stack returns the stack metadata
 func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
 }
+
+// Mixins returns the mixins of the builder
 func (b *Builder) Mixins() []string {
 	return b.mixins
 }
 
+// UID returns the UID of the builder
+func (b *Builder) UID() int {
+	return b.uid
+}
+
+// GID returns the GID of the builder
+func (b *Builder) GID() int {
+	return b.gid
+}
+
+// Setters
+
+// AddBuildpack adds a buildpack to the builder
 func (b *Builder) AddBuildpack(bp dist.Buildpack) {
 	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
 	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().Info)
 }
 
-func (b *Builder) SetLifecycle(lifecycle Lifecycle) error {
+// SetLifecycle sets the lifecycle of the builder
+func (b *Builder) SetLifecycle(lifecycle Lifecycle) {
 	b.lifecycle = lifecycle
 	b.lifecycleDescriptor = lifecycle.Descriptor()
-	return nil
 }
 
+// SetEnv sets an environment variable to a value
 func (b *Builder) SetEnv(env map[string]string) {
 	b.env = env
 }
 
+// SetOrder sets the order of the builder
 func (b *Builder) SetOrder(order dist.Order) {
 	b.order = order
 	b.replaceOrder = true
 }
 
+// SetDescription sets the description of the builder
 func (b *Builder) SetDescription(description string) {
 	b.metadata.Description = description
 }
 
+// SetStack sets the stack of the builder
 func (b *Builder) SetStack(stackConfig builder.StackConfig) {
 	b.metadata.Stack = StackMetadata{
 		RunImage: RunImageMetadata{
@@ -220,6 +258,7 @@ func (b *Builder) SetStack(stackConfig builder.StackConfig) {
 	}
 }
 
+// Save saves the builder
 func (b *Builder) Save(logger logging.Logger) error {
 	resolvedOrder, err := processOrder(b.metadata.Buildpacks, b.order)
 	if err != nil {
@@ -347,6 +386,8 @@ func (b *Builder) Save(logger logging.Logger) error {
 	return b.image.Save()
 }
 
+// Helpers
+
 func processOrder(buildpacks []dist.BuildpackInfo, order dist.Order) (dist.Order, error) {
 	resolvedOrder := dist.Order{}
 
@@ -470,32 +511,32 @@ func (b *Builder) defaultDirsLayer(dest string) (string, error) {
 	}
 	defer fh.Close()
 
-	tw := tar.NewWriter(fh)
-	defer tw.Close()
+	lw := b.layerWriterFactory.NewWriter(fh)
+	defer lw.Close()
 
 	ts := archive.NormalizedDateTime
 
-	if err := tw.WriteHeader(b.packOwnedDir(workspaceDir, ts)); err != nil {
+	if err := lw.WriteHeader(b.packOwnedDir(workspaceDir, ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(workspaceDir))
 	}
 
-	if err := tw.WriteHeader(b.packOwnedDir(layersDir, ts)); err != nil {
+	if err := lw.WriteHeader(b.packOwnedDir(layersDir, ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(layersDir))
 	}
 
-	if err := tw.WriteHeader(b.rootOwnedDir(cnbDir, ts)); err != nil {
+	if err := lw.WriteHeader(b.rootOwnedDir(cnbDir, ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(cnbDir))
 	}
 
-	if err := tw.WriteHeader(b.rootOwnedDir(dist.BuildpacksDir, ts)); err != nil {
+	if err := lw.WriteHeader(b.rootOwnedDir(dist.BuildpacksDir, ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(dist.BuildpacksDir))
 	}
 
-	if err := tw.WriteHeader(b.rootOwnedDir(platformDir, ts)); err != nil {
+	if err := lw.WriteHeader(b.rootOwnedDir(platformDir, ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(platformDir))
 	}
 
-	if err := tw.WriteHeader(b.rootOwnedDir(platformDir+"/env", ts)); err != nil {
+	if err := lw.WriteHeader(b.rootOwnedDir(platformDir+"/env", ts)); err != nil {
 		return "", errors.Wrapf(err, "creating %s dir in layer", style.Symbol(platformDir+"/env"))
 	}
 
@@ -508,8 +549,8 @@ func (b *Builder) packOwnedDir(path string, time time.Time) *tar.Header {
 		Name:     path,
 		Mode:     0755,
 		ModTime:  time,
-		Uid:      b.UID,
-		Gid:      b.GID,
+		Uid:      b.uid,
+		Gid:      b.gid,
 	}
 }
 
@@ -529,7 +570,7 @@ func (b *Builder) orderLayer(order dist.Order, dest string) (string, error) {
 	}
 
 	layerTar := filepath.Join(dest, "order.tar")
-	err = archive.CreateSingleFileTar(layerTar, orderPath, contents)
+	err = layer.CreateSingleFileTar(layerTar, orderPath, contents, b.layerWriterFactory)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create order.toml layer tar")
 	}
@@ -555,7 +596,7 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	}
 
 	layerTar := filepath.Join(dest, "stack.tar")
-	err = archive.CreateSingleFileTar(layerTar, stackPath, buf.String())
+	err = layer.CreateSingleFileTar(layerTar, stackPath, buf.String(), b.layerWriterFactory)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create stack.toml layer tar")
 	}
@@ -563,7 +604,7 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	return layerTar, nil
 }
 
-func (b *Builder) embedLifecycleTar(tw *tar.Writer) error {
+func (b *Builder) embedLifecycleTar(tw archive.TarWriter) error {
 	var regex = regexp.MustCompile(`^[^/]+/([^/]+)$`)
 
 	lr, err := b.lifecycle.Open()
@@ -613,11 +654,11 @@ func (b *Builder) envLayer(dest string, env map[string]string) (string, error) {
 	}
 	defer fh.Close()
 
-	tw := tar.NewWriter(fh)
-	defer tw.Close()
+	lw := b.layerWriterFactory.NewWriter(fh)
+	defer lw.Close()
 
 	for k, v := range env {
-		if err := tw.WriteHeader(&tar.Header{
+		if err := lw.WriteHeader(&tar.Header{
 			Name:    path.Join(platformDir, "env", k),
 			Size:    int64(len(v)),
 			Mode:    0644,
@@ -625,7 +666,7 @@ func (b *Builder) envLayer(dest string, env map[string]string) (string, error) {
 		}); err != nil {
 			return "", err
 		}
-		if _, err := tw.Write([]byte(v)); err != nil {
+		if _, err := lw.Write([]byte(v)); err != nil {
 			return "", err
 		}
 	}
@@ -640,10 +681,10 @@ func (b *Builder) lifecycleLayer(dest string) (string, error) {
 	}
 	defer fh.Close()
 
-	tw := tar.NewWriter(fh)
-	defer tw.Close()
+	lw := b.layerWriterFactory.NewWriter(fh)
+	defer lw.Close()
 
-	if err := tw.WriteHeader(&tar.Header{
+	if err := lw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     lifecycleDir,
 		Mode:     0755,
@@ -652,12 +693,12 @@ func (b *Builder) lifecycleLayer(dest string) (string, error) {
 		return "", err
 	}
 
-	err = b.embedLifecycleTar(tw)
+	err = b.embedLifecycleTar(lw)
 	if err != nil {
 		return "", errors.Wrap(err, "embedding lifecycle tar")
 	}
 
-	if err := tw.WriteHeader(&tar.Header{
+	if err := lw.WriteHeader(&tar.Header{
 		Name:     compatLifecycleDir,
 		Linkname: lifecycleDir,
 		Typeflag: tar.TypeSymlink,

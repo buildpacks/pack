@@ -3,10 +3,10 @@ package commands
 import (
 	"bytes"
 	"fmt"
-	"html/template"
 	"io"
 	"strings"
 	"text/tabwriter"
+	"text/template"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -206,12 +206,12 @@ Detection Order:
 func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 	buf := &bytes.Buffer{}
 	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 8, ' ', 0)
-	if _, err := fmt.Fprint(tabWriter, "  ID\tVERSION\n"); err != nil {
+	if _, err := fmt.Fprint(tabWriter, "  ID\tVERSION\tHOMEPAGE\n"); err != nil {
 		return "", err
 	}
 
 	for _, bp := range bps {
-		if _, err := fmt.Fprintf(tabWriter, "  %s\t%s\n", bp.ID, bp.Version); err != nil {
+		if _, err := fmt.Fprintf(tabWriter, "  %s\t%s\t%s\n", bp.ID, bp.Version, bp.Homepage); err != nil {
 			return "", err
 		}
 	}

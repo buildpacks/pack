@@ -220,17 +220,17 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool) (imgutil.Ima
 }
 
 func validateBuildpacks(mainBP dist.Buildpack, depBPs []dist.Buildpack) error {
-	depsWithRefs := map[dist.BuildpackInfo][]dist.BuildpackInfo{}
+	depsWithRefs := map[string][]dist.BuildpackInfo{}
 
 	for _, bp := range depBPs {
-		depsWithRefs[bp.Descriptor().Info] = nil
+		depsWithRefs[bp.Descriptor().Info.FullName()] = nil
 	}
 
-	for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
+	for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) { // List of everything
 		bpd := bp.Descriptor()
 		for _, orderEntry := range bpd.Order {
 			for _, groupEntry := range orderEntry.Group {
-				if _, ok := depsWithRefs[groupEntry.BuildpackInfo]; !ok {
+				if _, ok := depsWithRefs[groupEntry.BuildpackInfo.FullName()]; !ok {
 					return errors.Errorf(
 						"buildpack %s references buildpack %s which is not present",
 						style.Symbol(bpd.Info.FullName()),
@@ -238,7 +238,7 @@ func validateBuildpacks(mainBP dist.Buildpack, depBPs []dist.Buildpack) error {
 					)
 				}
 
-				depsWithRefs[groupEntry.BuildpackInfo] = append(depsWithRefs[groupEntry.BuildpackInfo], bpd.Info)
+				depsWithRefs[groupEntry.BuildpackInfo.FullName()] = append(depsWithRefs[groupEntry.BuildpackInfo.FullName()], bpd.Info)
 			}
 		}
 	}
@@ -247,7 +247,7 @@ func validateBuildpacks(mainBP dist.Buildpack, depBPs []dist.Buildpack) error {
 		if len(refs) == 0 {
 			return errors.Errorf(
 				"buildpack %s is not used by buildpack %s",
-				style.Symbol(bp.FullName()),
+				style.Symbol(bp),
 				style.Symbol(mainBP.Descriptor().Info.FullName()),
 			)
 		}

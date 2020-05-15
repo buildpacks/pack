@@ -140,7 +140,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 
 			_, err = packageConfigReader.Read(configFile)
 			h.AssertNotNil(t, err)
-			h.AssertError(t, err, "unknown configuration element")
+			h.AssertError(t, err, "unknown configuration element ")
 			h.AssertError(t, err, "buildpack.url")
 			h.AssertError(t, err, configFile)
 		})

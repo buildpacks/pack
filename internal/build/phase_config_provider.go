@@ -99,7 +99,6 @@ func WithNetwork(networkMode string) PhaseConfigProviderOperation {
 func WithRegistryAccess(authConfig string) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
 		provider.ctrConf.Env = append(provider.ctrConf.Env, fmt.Sprintf(`CNB_REGISTRY_AUTH=%s`, authConfig))
-		provider.hostConf.NetworkMode = container.NetworkMode("host")
 	}
 }
 

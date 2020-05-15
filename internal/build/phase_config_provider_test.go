@@ -2,14 +2,13 @@ package build_test
 
 import (
 	"math/rand"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/buildpacks/pack/internal/build/fakes"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/strslice"
-	"github.com/docker/docker/client"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -18,29 +17,11 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-var (
-	phaseConfigProviderRepoName string
-)
-
 func TestPhaseConfigProvider(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	color.Disable(true)
 	defer color.Disable(false)
-
-	h.RequireDocker(t)
-
-	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
-	h.AssertNil(t, err)
-
-	phaseConfigProviderRepoName = "phase_config_provider.test.lc-" + h.RandString(10)
-
-	wd, err := os.Getwd()
-	h.AssertNil(t, err)
-
-	// Create fake builder
-	h.CreateImageFromDir(t, dockerCli, phaseConfigProviderRepoName, filepath.Join(wd, "testdata", "fake-lifecycle"))
-	defer h.DockerRmi(dockerCli, phaseConfigProviderRepoName)
 
 	spec.Run(t, "phase_config_provider", testPhaseConfigProvider, spec.Report(report.Terminal{}), spec.Sequential())
 }
@@ -48,15 +29,18 @@ func TestPhaseConfigProvider(t *testing.T) {
 func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 	when("#NewPhaseConfigProvider", func() {
 		it("returns a phase config provider with defaults", func() {
-			lifecycle := fakeLifecycle(t, phaseConfigProviderRepoName, false)
-			expectedName := "some-name"
-			expectedCmd := strslice.StrSlice{"/cnb/lifecycle/" + expectedName}
+			expectedBuilderName := "some-builder-name"
+			fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithName(expectedBuilderName))
+			h.AssertNil(t, err)
+			lifecycle := fakeLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
+			expectedPhaseName := "some-name"
+			expectedCmd := strslice.StrSlice{"/cnb/lifecycle/" + expectedPhaseName}
 
-			phaseConfigProvider := build.NewPhaseConfigProvider(expectedName, lifecycle)
+			phaseConfigProvider := build.NewPhaseConfigProvider(expectedPhaseName, lifecycle)
 
-			h.AssertEq(t, phaseConfigProvider.Name(), expectedName)
+			h.AssertEq(t, phaseConfigProvider.Name(), expectedPhaseName)
 			h.AssertEq(t, phaseConfigProvider.ContainerConfig().Cmd, expectedCmd)
-			h.AssertEq(t, phaseConfigProvider.ContainerConfig().Image, phaseConfigProviderRepoName)
+			h.AssertEq(t, phaseConfigProvider.ContainerConfig().Image, expectedBuilderName)
 			h.AssertEq(t, phaseConfigProvider.ContainerConfig().Labels, map[string]string{"author": "pack"})
 
 			// CreateFakeLifecycle sets the following:
@@ -73,7 +57,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithArgs", func() {
 			it("sets args on the config", func() {
-				lifecycle := fakeLifecycle(t, phaseConfigProviderRepoName, false)
+				lifecycle := fakeLifecycle(t, false)
 				expectedArgs := strslice.StrSlice{"some-arg-1", "some-arg-2"}
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -88,7 +72,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithBinds", func() {
 			it("sets binds on the config", func() {
-				lifecycle := fakeLifecycle(t, phaseConfigProviderRepoName, false)
+				lifecycle := fakeLifecycle(t, false)
 				expectedBinds := []string{"some-bind-1", "some-bind-2"}
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -103,7 +87,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithDaemonAccess", func() {
 			it("sets daemon access on the config", func() {
-				lifecycle := fakeLifecycle(t, phaseConfigProviderRepoName, false)
+				lifecycle := fakeLifecycle(t, false)
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",
@@ -118,7 +102,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithNetwork", func() {
 			it("sets the network mode on the config", func() {
-				lifecycle := fakeLifecycle(t, phaseConfigProviderRepoName, false)
+				lifecycle := fakeLifecycle(t, false)
 				expectedNetworkMode := "some-network-mode"
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -137,7 +121,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithRegistryAccess", func() {
 			it("sets registry access on the config", func() {
-				lifecycle := fakeLifecycle(t, phaseConfigProviderRepoName, false)
+				lifecycle := fakeLifecycle(t, false)
 				authConfig := "some-auth-config"
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -151,13 +135,12 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					phaseConfigProvider.ContainerConfig().Env,
 					"CNB_REGISTRY_AUTH="+authConfig,
 				)
-				h.AssertEq(t, phaseConfigProvider.HostConfig().NetworkMode, container.NetworkMode("host"))
 			})
 		})
 
 		when("called with WithRoot", func() {
 			it("sets root user on the config", func() {
-				lifecycle := fakeLifecycle(t, phaseConfigProviderRepoName, false)
+				lifecycle := fakeLifecycle(t, false)
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",

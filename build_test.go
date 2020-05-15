@@ -26,6 +26,8 @@ import (
 	"github.com/onsi/gomega/ghttp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
@@ -893,8 +895,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					metaBuildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
-							ID:      "meta.buildpack.id",
-							Version: "meta.buildpack.version",
+							ID:       "meta.buildpack.id",
+							Version:  "meta.buildpack.version",
+							Homepage: "http://meta.buildpack",
 						},
 						Stacks: nil,
 						Order: dist.Order{{
@@ -911,8 +914,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					childBuildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
-							ID:      "child.buildpack.id",
-							Version: "child.buildpack.version",
+							ID:       "child.buildpack.id",
+							Version:  "child.buildpack.version",
+							Homepage: "http://child.buildpack",
 						},
 						Stacks: []dist.Stack{
 							{ID: defaultBuilderStackID},
@@ -1018,7 +1022,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					})
 
-					h.AssertError(t, err, "could not find label 'io.buildpacks.buildpackage.metadata' on image 'example.com/some/package'")
+					h.AssertError(t, err, "extracting buildpacks from 'example.com/some/package': could not find label 'io.buildpacks.buildpackage.metadata'")
 				})
 
 				it("fails when no bp layers label is on package", func() {
@@ -1033,7 +1037,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					})
 
-					h.AssertError(t, err, "could not find label 'io.buildpacks.buildpack.layers' on image 'example.com/some/package'")
+					h.AssertError(t, err, "extracting buildpacks from 'example.com/some/package': could not find label 'io.buildpacks.buildpack.layers'")
 				})
 			})
 
@@ -1140,7 +1144,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						buildpack1Info := dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}
 						buildpack2Info := dist.BuildpackInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}
-						dirBuildpackInfo := dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}
+						dirBuildpackInfo := dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"}
 						tgzBuildpackInfo := dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.BuildpackRef{
@@ -1220,6 +1224,102 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						h.AssertError(t, err, "validating stack mixins: buildpack 'some-other-buildpack-id@some-other-buildpack-version' requires missing mixin(s): build:mixinB, mixinA, run:mixinC")
+					})
+				})
+
+				when("buildpack is from a registry", func() {
+					var (
+						fakePackage     *fakes.Image
+						tmpDir          string
+						registryFixture string
+						packHome        string
+					)
+
+					it.Before(func() {
+						var err error
+						tmpDir, err = ioutil.TempDir("", "registry")
+						h.AssertNil(t, err)
+
+						packHome = filepath.Join(tmpDir, ".pack")
+						err = os.MkdirAll(packHome, 0755)
+						h.AssertNil(t, err)
+						os.Setenv("PACK_HOME", packHome)
+
+						registryFixture = CreateRegistryFixture(t, tmpDir)
+
+						childBuildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+							API: api.MustParse("0.3"),
+							Info: dist.BuildpackInfo{
+								ID:      "example/foo",
+								Version: "1.0.0",
+							},
+							Stacks: []dist.Stack{
+								{ID: defaultBuilderStackID},
+							},
+						})
+
+						bpLayers := dist.BuildpackLayers{
+							"example/foo": {
+								"1.0.0": {
+									API: api.MustParse("0.3"),
+									Stacks: []dist.Stack{
+										{ID: defaultBuilderStackID},
+									},
+									LayerDiffID: diffIDForFile(t, childBuildpackTar),
+								},
+							},
+						}
+
+						md := buildpackage.Metadata{
+							BuildpackInfo: dist.BuildpackInfo{
+								ID:      "example/foo",
+								Version: "1.0.0",
+							},
+							Stacks: []dist.Stack{
+								{ID: defaultBuilderStackID},
+							},
+						}
+
+						fakePackage = fakes.NewImage("example.com/some/package@sha256:8c27fe111c11b722081701dfed3bd55e039b9ce92865473cf4cdfa918071c566", "", nil)
+						h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpack.layers", bpLayers))
+						h.AssertNil(t, dist.SetLabel(fakePackage, "io.buildpacks.buildpackage.metadata", md))
+
+						h.AssertNil(t, fakePackage.AddLayer(childBuildpackTar))
+
+						fakeImageFetcher.LocalImages[fakePackage.Name()] = fakePackage
+					})
+
+					it.After(func() {
+						os.Unsetenv("PACK_HOME")
+						err := os.RemoveAll(tmpDir)
+						h.AssertNil(t, err)
+					})
+
+					it("all buildpacks are added to ephemeral builder", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    builderName,
+							ClearCache: true,
+							Buildpacks: []string{
+								"urn:cnb:registry:example/foo@1.0.0",
+							},
+							Registry: registryFixture,
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.FromImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.Order(), dist.Order{
+							{Group: []dist.BuildpackRef{
+								{BuildpackInfo: dist.BuildpackInfo{ID: "example/foo", Version: "1.0.0"}},
+							}},
+						})
+						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+							{ID: "example/foo", Version: "1.0.0"},
+						})
 					})
 				})
 			})
@@ -1672,4 +1772,37 @@ func diffIDForFile(t *testing.T, path string) string {
 	h.AssertNil(t, err)
 
 	return "sha256:" + hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
+}
+
+func CreateRegistryFixture(t *testing.T, tmpDir string) string {
+	// copy fixture to temp dir
+	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
+
+	h.RecursiveCopyNow(t, filepath.Join("testdata", "registry"), registryFixtureCopy)
+
+	// git init that dir
+	repository, err := git.PlainInit(registryFixtureCopy, false)
+	h.AssertNil(t, err)
+
+	// git add . that dir
+	worktree, err := repository.Worktree()
+	h.AssertNil(t, err)
+
+	_, err = worktree.Add(".")
+	h.AssertNil(t, err)
+
+	// git commit that dir
+	commit, err := worktree.Commit("first", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "John Doe",
+			Email: "john@doe.org",
+			When:  time.Now(),
+		},
+	})
+	h.AssertNil(t, err)
+
+	_, err = repository.CommitObject(commit)
+	h.AssertNil(t, err)
+
+	return registryFixtureCopy
 }

@@ -50,6 +50,10 @@ func TestPhase(t *testing.T) {
 	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 
+	info, err := dockerCli.Info(context.TODO())
+	h.AssertNil(t, err)
+	h.SkipIf(t, info.OSType == "windows", "These tests are not yet compatible with Windows-based containers")
+
 	repoName = "phase.test.lc-" + h.RandString(10)
 	wd, err := os.Getwd()
 	h.AssertNil(t, err)
@@ -275,7 +279,9 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					registry.StopRegistry(t)
+					if registry != nil {
+						registry.StopRegistry(t)
+					}
 					h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
 				})
 
@@ -290,6 +296,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 						lifecycle,
 						build.WithArgs("registry", repoName),
 						build.WithRegistryAccess(authConfig),
+						build.WithNetwork("host"),
 					)
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)

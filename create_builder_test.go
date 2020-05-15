@@ -96,7 +96,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Description: "Some description",
 					Buildpacks: []pubbldr.BuildpackConfig{
 						{
-							BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"},
+							BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"},
 							ImageOrURI: dist.ImageOrURI{
 								BuildpackURI: dist.BuildpackURI{
 									URI: "https://example.fake/bp-one.tgz",
@@ -256,16 +256,41 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should warn when the run image cannot be found", func() {
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, true).Return(fakeBuildImage, nil)
 
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
 
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
 
 				h.AssertContains(t, out.String(), "Warning: run image 'some/run-image' is not accessible")
+			})
+
+			it("should fail when not publish and the run image cannot be fetched", func() {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, false).Return(nil, errors.New("yikes"))
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "failed to fetch image: yikes")
+			})
+
+			it("should fail when publish and the run image cannot be fetched", func() {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, false).Return(nil, errors.New("yikes"))
+
+				opts.Publish = true
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "failed to fetch image: yikes")
+			})
+
+			it("should fail when the run image isn't a valid image", func() {
+				fakeImage := fakeBadImageStruct{}
+
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", gomock.Any(), gomock.Any()).Return(fakeImage, nil).AnyTimes()
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", gomock.Any(), gomock.Any()).Return(fakeImage, nil).AnyTimes()
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "failed to label image")
 			})
 
 			when("publish is true", func() {
@@ -282,6 +307,54 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					err := subject.CreateBuilder(context.TODO(), opts)
 					h.AssertNil(t, err)
+				})
+			})
+		})
+
+		when("creating the base builder", func() {
+			when("build image not found", func() {
+				it("should fail", func() {
+					prepareFetcherWithRunImages()
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, true).Return(nil, image.ErrNotFound)
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "fetch build image: not found")
+				})
+			})
+
+			when("build image isn't a valid image", func() {
+				it("should fail", func() {
+					fakeImage := fakeBadImageStruct{}
+
+					prepareFetcherWithRunImages()
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, true).Return(fakeImage, nil)
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "failed to create builder: invalid build-image")
+				})
+			})
+
+			when("error downloading lifecycle", func() {
+				it("should fail", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = "fake"
+					mockDownloader.EXPECT().Download(gomock.Any(), "fake").Return(nil, errors.New("error here")).AnyTimes()
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "downloading lifecycle")
+				})
+			})
+
+			when("lifecycle isn't a valid lifecycle", func() {
+				it("should fail", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = "fake"
+					mockDownloader.EXPECT().Download(gomock.Any(), "fake").Return(blob.NewBlob(filepath.Join("testdata", "empty-file")), nil).AnyTimes()
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "invalid lifecycle")
 				})
 			})
 		})
@@ -349,8 +422,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, bldr.Name(), "some/builder")
 				h.AssertEq(t, bldr.Description(), "Some description")
-				h.AssertEq(t, bldr.UID, 1234)
-				h.AssertEq(t, bldr.GID, 4321)
+				h.AssertEq(t, bldr.UID(), 1234)
+				h.AssertEq(t, bldr.GID(), 4321)
 				h.AssertEq(t, bldr.StackID, "some.stack.id")
 			})
 
@@ -361,10 +434,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				bldr := successfullyCreateBuilder()
 
 				bpInfo := dist.BuildpackInfo{
-					ID:      "bp.one",
-					Version: "1.2.3",
+					ID:       "bp.one",
+					Version:  "1.2.3",
+					Homepage: "http://one.buildpack",
 				}
 				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
+				bpInfo.Homepage = ""
 				h.AssertEq(t, bldr.Order(), dist.Order{{
 					Group: []dist.BuildpackRef{{
 						BuildpackInfo: bpInfo,
@@ -403,8 +478,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, bldr.Name(), "some/builder")
 				h.AssertEq(t, bldr.Description(), "Some description")
-				h.AssertEq(t, bldr.UID, 1234)
-				h.AssertEq(t, bldr.GID, 4321)
+				h.AssertEq(t, bldr.UID(), 1234)
+				h.AssertEq(t, bldr.GID(), 4321)
 				h.AssertEq(t, bldr.StackID, "some.stack.id")
 			})
 
@@ -419,13 +494,14 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					ID:      "bp.one",
 					Version: "1.2.3",
 				}
-				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
 				h.AssertEq(t, bldr.Order(), dist.Order{{
 					Group: []dist.BuildpackRef{{
 						BuildpackInfo: bpInfo,
 						Optional:      false,
 					}},
 				}})
+				bpInfo.Homepage = "http://one.buildpack"
+				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
 			})
 
 			it("should embed the lifecycle", func() {
@@ -475,14 +551,84 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("supports directory buildpacks", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
-				opts.Config.Buildpacks[0].URI = "some/buildpack/dir"
+				directoryPath := "testdata/buildpack"
+				opts.Config.Buildpacks[0].URI = directoryPath
+				mockDownloader.EXPECT().Download(gomock.Any(), directoryPath).Return(blob.NewBlob(directoryPath), nil).AnyTimes()
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
 			})
 		})
 
+		when("buildpack URI is from=builder", func() {
+			it("errors", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Buildpacks[0].URI = "from=builder"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err,
+					"invalid locator: FromBuilderLocator")
+			})
+		})
+
+		when("buildpack URI is an invalid locator", func() {
+			it("errors", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Buildpacks[0].URI = "nonsense string here"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err,
+					"invalid locator: InvalidLocator")
+			})
+		})
+
+		when("package file", func() {
+			it.Before(func() {
+				cnbFile := filepath.Join(tmpDir, "bp_one1.cnb")
+				buildpackPath := filepath.Join("testdata", "buildpack")
+				mockDownloader.EXPECT().Download(gomock.Any(), buildpackPath).Return(blob.NewBlob(buildpackPath), nil)
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: cnbFile,
+					Config: pubbldpkg.Config{
+						Buildpack: dist.BuildpackURI{URI: buildpackPath},
+					},
+					Format: "file",
+				}))
+
+				mockDownloader.EXPECT().Download(gomock.Any(), cnbFile).Return(blob.NewBlob(cnbFile), nil).AnyTimes()
+				opts.Config.Buildpacks = []pubbldr.BuildpackConfig{{
+					ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: cnbFile}},
+				}}
+			})
+
+			it("package file is valid", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				bldr := successfullyCreateBuilder()
+
+				bpInfo := dist.BuildpackInfo{
+					ID:       "bp.one",
+					Version:  "1.2.3",
+					Homepage: "http://one.buildpack",
+				}
+				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
+				bpInfo.Homepage = ""
+				h.AssertEq(t, bldr.Order(), dist.Order{{
+					Group: []dist.BuildpackRef{{
+						BuildpackInfo: bpInfo,
+						Optional:      false,
+					}},
+				}})
+			})
+		})
+
 		when("packages", func() {
+			var (
+				packageImage *fakes.Image
+			)
+
 			createBuildpack := func(descriptor dist.BuildpackDescriptor) string {
 				bp, err := ifakes.NewFakeBuildpackBlob(descriptor, 0644)
 				h.AssertNil(t, err)
@@ -491,16 +637,35 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				return url
 			}
 
-			when("package image lives in registry", func() {
-				var packageImage *fakes.Image
+			shouldFetchPackageImageWith := func(demon, pull bool) {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), demon, pull).Return(packageImage, nil)
+			}
+
+			when("package image lives in cnb registry", func() {
+				var (
+					tmpDir          string
+					registryFixture string
+					packHome        string
+				)
 
 				it.Before(func() {
-					packageImage = fakes.NewImage("some/package-"+h.RandString(12), "", nil)
+					var err error
+					tmpDir, err = ioutil.TempDir("", "registry")
+					h.AssertNil(t, err)
+
+					packHome = filepath.Join(tmpDir, ".pack")
+					err = os.MkdirAll(packHome, 0755)
+					h.AssertNil(t, err)
+					os.Setenv("PACK_HOME", packHome)
+
+					registryFixture = pack.CreateRegistryFixture(t, tmpDir)
+
+					packageImage = fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
 					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
 
 					bpd := dist.BuildpackDescriptor{
 						API:    api.MustParse("0.3"),
-						Info:   dist.BuildpackInfo{ID: "some.pkg.bp", Version: "2.3.4"},
+						Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
 						Stacks: []dist.Stack{{ID: "some.stack.id"}},
 					}
 
@@ -513,9 +678,57 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					}))
 				})
 
-				shouldFetchPackageImageWith := func(demon, pull bool) {
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), demon, pull).Return(packageImage, nil)
-				}
+				it.After(func() {
+					os.Unsetenv("PACK_HOME")
+					err := os.RemoveAll(tmpDir)
+					h.AssertNil(t, err)
+				})
+
+				when("publish=false and no-pull=false", func() {
+					it("should pull and use local package image", func() {
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+						opts.BuilderName = "some/builder"
+
+						opts.Publish = false
+						opts.NoPull = false
+						opts.Registry = registryFixture
+						opts.Config.Buildpacks = append(
+							opts.Config.Buildpacks,
+							pubbldr.BuildpackConfig{
+								ImageOrURI: dist.ImageOrURI{
+									BuildpackURI: dist.BuildpackURI{
+										URI: "urn:cnb:registry:example/foo@1.1.0",
+									},
+								},
+							},
+						)
+
+						shouldFetchPackageImageWith(true, true)
+						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+					})
+				})
+			})
+
+			when("package image lives in docker registry", func() {
+				it.Before(func() {
+					packageImage = fakes.NewImage("some/package-"+h.RandString(12), "", nil)
+					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
+
+					bpd := dist.BuildpackDescriptor{
+						API:    api.MustParse("0.3"),
+						Info:   dist.BuildpackInfo{ID: "some.pkg.bp", Version: "2.3.4", Homepage: "http://meta.buildpack"},
+						Stacks: []dist.Stack{{ID: "some.stack.id"}},
+					}
+
+					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+						Name: packageImage.Name(),
+						Config: pubbldpkg.Config{
+							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
+						},
+						Publish: true,
+					}))
+				})
 
 				prepareFetcherWithMissingPackageImage := func() {
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), gomock.Any(), gomock.Any()).Return(nil, image.ErrNotFound)
@@ -630,7 +843,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), gomock.Any(), gomock.Any()).Return(notPackageImage, nil)
 					h.AssertNil(t, notPackageImage.SetLabel("io.buildpacks.buildpack.layers", ""))
 
-					h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "could not find label 'io.buildpacks.buildpackage.metadata' on image 'not/package'")
+					h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "extracting buildpacks from 'not/package': could not find label 'io.buildpacks.buildpackage.metadata'")
 				})
 			})
 		})
@@ -667,4 +880,16 @@ func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
 	}
 
 	return false
+}
+
+type fakeBadImageStruct struct {
+	*fakes.Image
+}
+
+func (i fakeBadImageStruct) Name() string {
+	return "fake image"
+}
+
+func (i fakeBadImageStruct) Label(str string) (string, error) {
+	return "", errors.New("error here")
 }

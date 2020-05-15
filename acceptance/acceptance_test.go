@@ -7,9 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"html/template"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -19,6 +17,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -36,24 +35,19 @@ import (
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
+	"github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/style"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
 const (
-	envPackPath                 = "PACK_PATH"
-	envCompilePackWithVersion   = "COMPILE_PACK_WITH_VERSION"
-	envPreviousPackPath         = "PREVIOUS_PACK_PATH"
-	envPreviousPackFixturesPath = "PREVIOUS_PACK_FIXTURES_PATH"
-	envLifecyclePath            = "LIFECYCLE_PATH"
-	envPreviousLifecyclePath    = "PREVIOUS_LIFECYCLE_PATH"
-	envAcceptanceSuiteConfig    = "ACCEPTANCE_SUITE_CONFIG"
+	envCompilePackWithVersion = "COMPILE_PACK_WITH_VERSION"
 
 	runImage   = "pack-test/run"
 	buildImage = "pack-test/build"
 
 	defaultCompilePackVersion = "0.0.0"
-	defaultPlatformAPIVersion = "0.2"
+	defaultPlatformAPIVersion = "0.3"
 )
 
 var (
@@ -61,6 +55,15 @@ var (
 	registryConfig *h.TestRegistryConfig
 	suiteManager   *SuiteManager
 )
+
+type testWriter struct {
+	t *testing.T
+}
+
+func (w *testWriter) Write(p []byte) (n int, err error) {
+	w.t.Log(string(p))
+	return len(p), nil
+}
 
 func TestAcceptance(t *testing.T) {
 	var err error
@@ -74,7 +77,22 @@ func TestAcceptance(t *testing.T) {
 	registryConfig = h.RunRegistry(t)
 	defer registryConfig.StopRegistry(t)
 
-	packPath := os.Getenv(envPackPath)
+	testWriter := testWriter{t}
+	inputPathsManager, err := NewInputPathsManager(logging.NewLogWithWriters(&testWriter, &testWriter))
+	h.AssertNil(t, err)
+
+	combos, err := getRunCombinations()
+	h.AssertNil(t, err)
+
+	// Check that the provided inputs are valid for each combo
+	// If required inputs are missing, attempt to fill them in by downloading from GitHub
+	for _, c := range combos {
+		err := inputPathsManager.FillInRequiredPaths(c)
+		h.AssertNil(t, err)
+	}
+
+	// If pack path not provided, compile pack with the version provided (or use default version)
+	packPath := inputPathsManager.packPath
 	if packPath == "" {
 		compileVersion := os.Getenv(envCompilePackWithVersion)
 		if compileVersion == "" {
@@ -83,22 +101,13 @@ func TestAcceptance(t *testing.T) {
 		packPath = buildPack(t, compileVersion)
 	}
 
-	previousPackPath := os.Getenv(envPreviousPackPath)
-	if previousPackPath != "" {
-		previousPackPath, err = filepath.Abs(previousPackPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
+	previousPackPath := inputPathsManager.previousPackPath
 
-	previousPackFixturesPath := os.Getenv(envPreviousPackFixturesPath)
+	// Copy previous pack fixtures directory into a temp directory
+	// Copy the contents of "pack_previous_fixtures_overrides" into the temp directory
+	previousPackFixturesPath := inputPathsManager.previousPackFixturesPath
 	var tmpPreviousPackFixturesPath string
 	if previousPackFixturesPath != "" {
-		previousPackFixturesPath, err = filepath.Abs(previousPackFixturesPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		tmpPreviousPackFixturesPath, err = ioutil.TempDir("", "previous-pack-fixtures")
 		h.AssertNil(t, err)
 		defer os.RemoveAll(tmpPreviousPackFixturesPath)
@@ -107,6 +116,7 @@ func TestAcceptance(t *testing.T) {
 		h.RecursiveCopy(t, filepath.Join("testdata", "pack_previous_fixtures_overrides"), tmpPreviousPackFixturesPath)
 	}
 
+	lifecyclePath := inputPathsManager.lifecyclePath
 	lifecycleDescriptor := builder.LifecycleDescriptor{
 		Info: builder.LifecycleInfo{
 			Version: builder.VersionMustParse(builder.DefaultLifecycleVersion),
@@ -116,41 +126,39 @@ func TestAcceptance(t *testing.T) {
 			PlatformVersion:  api.MustParse(defaultPlatformAPIVersion),
 		},
 	}
-	lifecyclePath := os.Getenv(envLifecyclePath)
 	if lifecyclePath != "" {
-		lifecyclePath, err = filepath.Abs(lifecyclePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		lifecycleDescriptor, err = extractLifecycleDescriptor(lifecyclePath)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	previousLifecycleDescriptor := lifecycleDescriptor
-	previousLifecyclePath := os.Getenv(envPreviousLifecyclePath)
+	previousLifecyclePath := inputPathsManager.previousLifecyclePath
+	var previousLifecycleDescriptor builder.LifecycleDescriptor
 	if previousLifecyclePath != "" {
-		previousLifecyclePath, err = filepath.Abs(previousLifecyclePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		previousLifecycleDescriptor, err = extractLifecycleDescriptor(previousLifecyclePath)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	combos := []runCombo{
-		{Pack: "current", PackCreateBuilder: "current", Lifecycle: "current"},
-	}
+	suiteManager = &SuiteManager{out: t.Logf}
+	suite := spec.New("acceptance suite", spec.Report(report.Terminal{}))
 
-	suiteConfig := os.Getenv(envAcceptanceSuiteConfig)
-	if suiteConfig != "" {
-		combos, err = parseSuiteConfig(suiteConfig)
-		h.AssertNil(t, err)
+	for _, combo := range combos {
+		if combo.Pack == "current" {
+			suite("p_current", func(t *testing.T, when spec.G, it spec.S) {
+				testWithoutSpecificBuilderRequirement(
+					t,
+					when,
+					it,
+					currentPackFixturesDir,
+					packPath,
+					api.MustParse(builder.DefaultBuildpackAPIVersion),
+				)
+			}, spec.Report(report.Terminal{}))
+			break
+		}
 	}
 
 	resolvedCombos, err := resolveRunCombinations(
@@ -165,8 +173,6 @@ func TestAcceptance(t *testing.T) {
 	)
 	h.AssertNil(t, err)
 
-	suiteManager = &SuiteManager{out: t.Logf}
-	suite := spec.New("acceptance suite", spec.Report(report.Terminal{}))
 	for k, combo := range resolvedCombos {
 		t.Logf(`setting up run combination %s:
 pack:
@@ -195,8 +201,19 @@ lifecycle:
 		)
 
 		combo := combo
+
 		suite(k, func(t *testing.T, when spec.G, it spec.S) {
-			testAcceptance(t, when, it, combo.packFixturesDir, combo.packPath, combo.packCreateBuilderPath, combo.packCreateBuilderFixturesDir, combo.lifecyclePath, combo.lifecycleDescriptor)
+			testAcceptance(
+				t,
+				when,
+				it,
+				combo.packFixturesDir,
+				combo.packPath,
+				combo.packCreateBuilderPath,
+				combo.packCreateBuilderFixturesDir,
+				combo.lifecyclePath,
+				combo.lifecycleDescriptor,
+			)
 		}, spec.Report(report.Terminal{}))
 	}
 
@@ -205,8 +222,289 @@ lifecycle:
 	h.AssertNil(t, suiteManager.CleanUp())
 }
 
-func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packPath, packCreateBuilderPath, configDir, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) {
+// These tests either (a) do not require a builder or (b) do not require a specific builder to be provided
+// in order to test compatibility.
+// They should only be run against the "current" (i.e., master) version of pack.
+func testWithoutSpecificBuilderRequirement(
+	t *testing.T,
+	when spec.G,
+	it spec.S,
+	packFixturesDir, packPath string,
+	bpVersion *api.Version,
+) {
+	var (
+		bpDir    = buildpacksDir(*bpVersion)
+		packHome string
+	)
 
+	// subjectPack creates a pack `exec.Cmd` based on the current configuration
+	subjectPack := func(name string, args ...string) *exec.Cmd {
+		return packCmd(packHome, packPath, name, args...)
+	}
+
+	it.Before(func() {
+		var err error
+		packHome, err = ioutil.TempDir("", "buildpack.pack.home.")
+		h.AssertNil(t, err)
+	})
+
+	it.After(func() {
+		h.AssertNil(t, os.RemoveAll(packHome))
+	})
+
+	when("invalid subcommand", func() {
+		it("prints usage", func() {
+			output, err := h.RunE(subjectPack("some-bad-command"))
+			h.AssertNotNil(t, err)
+			h.AssertContains(t, output, `unknown command "some-bad-command" for "pack"`)
+			h.AssertContains(t, output, `Run 'pack --help' for usage.`)
+		})
+	})
+
+	when("suggest-builders", func() {
+		it("displays suggested builders", func() {
+			cmd := subjectPack("suggest-builders")
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("suggest-builders command failed: %s: %s", output, err)
+			}
+			h.AssertContains(t, string(output), "Suggested builders:")
+			h.AssertContains(t, string(output), "gcr.io/paketo-buildpacks/builder:base")
+		})
+	})
+
+	when("suggest-stacks", func() {
+		it("displays suggested stacks", func() {
+			cmd := subjectPack("suggest-stacks")
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("suggest-stacks command failed: %s: %s", output, err)
+			}
+			h.AssertContains(t, string(output), "Stacks maintained by the community:")
+		})
+	})
+
+	when("set-default-builder", func() {
+		it("sets the default-stack-id in ~/.pack/config.toml", func() {
+			output := h.Run(t, subjectPack("set-default-builder", "gcr.io/paketo-buildpacks/builder:base"))
+			h.AssertContains(t, output, "Builder 'gcr.io/paketo-buildpacks/builder:base' is now the default builder")
+		})
+	})
+
+	when("package-buildpack", func() {
+		var tmpDir string
+
+		it.Before(func() {
+			h.SkipIf(t,
+				!packSupports(packPath, "package-buildpack"),
+				"pack does not support 'package-buildpack'",
+			)
+
+			h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+
+			var err error
+			tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
+			h.AssertNil(t, err)
+
+			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package.toml"))
+
+			err = os.Rename(
+				h.CreateTGZ(t, filepath.Join(bpDir, "simple-layers-parent-buildpack"), "./", 0755),
+				filepath.Join(tmpDir, "simple-layers-parent-buildpack.tgz"),
+			)
+			h.AssertNil(t, err)
+
+			err = os.Rename(
+				h.CreateTGZ(t, filepath.Join(bpDir, "simple-layers-buildpack"), "./", 0755),
+				filepath.Join(tmpDir, "simple-layers-buildpack.tgz"),
+			)
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			h.AssertNil(t, os.RemoveAll(tmpDir))
+		})
+
+		packageBuildpackLocally := func(absConfigPath string) string {
+			t.Helper()
+			packageName := "test/package-" + h.RandString(10)
+			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath))
+			h.AssertNil(t, err)
+			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
+			return packageName
+		}
+
+		packageBuildpackRemotely := func(absConfigPath string) string {
+			t.Helper()
+			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath, "--publish"))
+			h.AssertNil(t, err)
+			h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
+			return packageName
+		}
+
+		assertImageExistsLocally := func(name string) {
+			t.Helper()
+			_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), name)
+			h.AssertNil(t, err)
+
+		}
+
+		generateAggregatePackageToml := func(buildpackURI, nestedPackageName string) string {
+			t.Helper()
+			packageTomlData := fillTemplate(t,
+				filepath.Join(packFixturesDir, "package_aggregate.toml"),
+				map[string]interface{}{
+					"BuildpackURI": buildpackURI,
+					"PackageName":  nestedPackageName,
+				},
+			)
+			packageTomlFile, err := ioutil.TempFile(tmpDir, "package_aggregate-*.toml")
+			h.AssertNil(t, err)
+			_, err = io.WriteString(packageTomlFile, packageTomlData)
+			h.AssertNil(t, err)
+			h.AssertNil(t, packageTomlFile.Close())
+
+			return packageTomlFile.Name()
+		}
+
+		when("no --format is provided", func() {
+			it("creates the package as image", func() {
+				packageName := "test/package-" + h.RandString(10)
+				output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", filepath.Join(tmpDir, "package.toml")))
+				h.AssertNil(t, err)
+				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
+				defer h.DockerRmi(dockerCli, packageName)
+
+				assertImageExistsLocally(packageName)
+			})
+		})
+
+		when("--format image", func() {
+			it("creates the package", func() {
+				t.Log("package w/ only buildpacks")
+				nestedPackageName := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
+				defer h.DockerRmi(dockerCli, nestedPackageName)
+				assertImageExistsLocally(nestedPackageName)
+
+				t.Log("package w/ buildpacks and packages")
+				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
+				packageName := packageBuildpackLocally(aggregatePackageToml)
+				defer h.DockerRmi(dockerCli, packageName)
+				assertImageExistsLocally(packageName)
+			})
+
+			when("--publish", func() {
+				it("publishes image to registry", func() {
+					nestedPackageName := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
+					defer h.DockerRmi(dockerCli, nestedPackageName)
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
+
+					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					defer h.DockerRmi(dockerCli, packageName)
+					output := h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--publish"))
+					h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
+
+					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+					h.AssertError(t, err, "No such image")
+
+					h.AssertNil(t, h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
+
+					_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+					h.AssertNil(t, err)
+				})
+			})
+
+			when("--no-pull", func() {
+				it("should use local image", func() {
+					nestedPackage := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
+					defer h.DockerRmi(dockerCli, nestedPackage)
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
+
+					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					defer h.DockerRmi(dockerCli, packageName)
+					h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
+
+					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+					h.AssertNil(t, err)
+
+				})
+
+				it("should not pull image from registry", func() {
+					nestedPackage := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
+					defer h.DockerRmi(dockerCli, nestedPackage)
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
+
+					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					defer h.DockerRmi(dockerCli, packageName)
+					_, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
+					h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", nestedPackage))
+				})
+			})
+		})
+
+		when("--format file", func() {
+			it.Before(func() {
+				h.SkipIf(t, !packSupports(packPath, "package-buildpack --format"), "format not supported")
+			})
+
+			it("creates the package", func() {
+				outputFile := filepath.Join(tmpDir, "package.cnb")
+				output, err := h.RunE(subjectPack("package-buildpack", outputFile, "--format", "file", "-p", filepath.Join(tmpDir, "package.toml")))
+				h.AssertNil(t, err)
+				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputFile))
+				h.AssertTarball(t, outputFile)
+			})
+		})
+
+		when("package.toml is invalid", func() {
+			it("displays an error", func() {
+				h.CopyFile(t, filepath.Join(packFixturesDir, "invalid_package.toml"), filepath.Join(tmpDir, "invalid_package.toml"))
+
+				_, err := h.RunE(subjectPack("package-buildpack", "some-package", "-p", filepath.Join(tmpDir, "invalid_package.toml")))
+				h.AssertError(t, err, "reading config:")
+			})
+		})
+	})
+
+	when("report", func() {
+		it.Before(func() {
+			h.SkipIf(t, !packSupports(packPath, "report"), "pack does not support 'report' command")
+		})
+
+		when("default builder is set", func() {
+			it.Before(func() {
+				h.Run(t, subjectPack("set-default-builder", "gcr.io/paketo-buildpacks/builder:base"))
+			})
+
+			it("outputs information", func() {
+				version, err := packVersion(packPath)
+				h.AssertNil(t, err)
+
+				output := h.Run(t, subjectPack("report"))
+
+				outputTemplate := filepath.Join(packFixturesDir, "report_output.txt")
+				expectedOutput := fillTemplate(t, outputTemplate,
+					map[string]interface{}{
+						"DefaultBuilder": "gcr.io/paketo-buildpacks/builder:base",
+						"Version":        version,
+						"OS":             runtime.GOOS,
+						"Arch":           runtime.GOARCH,
+					},
+				)
+				h.AssertEq(t, output, expectedOutput)
+			})
+		})
+	})
+}
+
+func testAcceptance(
+	t *testing.T,
+	when spec.G,
+	it spec.S,
+	packFixturesDir, packPath, packCreateBuilderPath, configDir, lifecyclePath string,
+	lifecycleDescriptor builder.LifecycleDescriptor,
+) {
 	var (
 		bpDir      = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
 		packHome   string
@@ -230,15 +528,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 	it.After(func() {
 		h.AssertNil(t, os.RemoveAll(packHome))
-	})
-
-	when("invalid subcommand", func() {
-		it("prints usage", func() {
-			output, err := h.RunE(subjectPack("some-bad-command"))
-			h.AssertNotNil(t, err)
-			h.AssertContains(t, output, `unknown command "some-bad-command" for "pack"`)
-			h.AssertContains(t, output, `Run 'pack --help' for usage.`)
-		})
 	})
 
 	when("stack is created", func() {
@@ -266,12 +555,35 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 			runImageMirror = value
 		})
 
+		when("creating a windows builder", func() {
+			it.Before(func() {
+				h.SkipIf(t, dockerHostOS() != "windows", "The current Docker daemon does not support Windows-based containers")
+			})
+
+			it("succeeds", func() {
+				builderName := createBuilder(t, runImageMirror, configDir, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor)
+				defer h.DockerRmi(dockerCli, builderName)
+
+				inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), builderName)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, inspect.Os, "windows")
+			})
+		})
+
 		when("builder is created", func() {
 			var (
 				builderName string
+				tmpDir      string
 			)
 
 			it.Before(func() {
+				h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+
+				var err error
+				tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
+				h.AssertNil(t, err)
+
 				key := taskKey("create-builder", runImageMirror, configDir, packCreateBuilderPath, lifecyclePath)
 				value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
 					return createBuilder(t, runImageMirror, configDir, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor), nil
@@ -282,6 +594,28 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 				})
 
 				builderName = value
+			})
+
+			it.After(func() {
+				h.AssertNil(t, os.RemoveAll(tmpDir))
+			})
+
+			when("builder.toml is invalid", func() {
+				it("displays an error", func() {
+					packVer, err := packVersion(packPath)
+					h.AssertNil(t, err)
+					packSemver := semver.MustParse(strings.TrimPrefix(strings.Split(packVer, " ")[0], "v"))
+
+					h.SkipIf(
+						t,
+						packSemver.Compare(semver.MustParse("0.9.0")) <= 0 && !packSemver.Equal(semver.MustParse("0.0.0")),
+						"builder.toml validation not supported",
+					)
+					h.CopyFile(t, filepath.Join(packFixturesDir, "invalid_builder.toml"), filepath.Join(tmpDir, "invalid_builder.toml"))
+
+					_, err = h.RunE(subjectPack("create-builder", "some-builder:build", "--builder-config", filepath.Join(tmpDir, "invalid_builder.toml")))
+					h.AssertError(t, err, "invalid builder toml")
+				})
 			})
 
 			when("build", func() {
@@ -364,21 +698,32 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						t.Log("app is runnable")
 						assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
+						version, err := packVersion(packPath)
+						h.AssertNil(t, err)
+						packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
+						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+
+						lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
 						t.Log("restores the cache")
-						if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")) {
-							h.AssertContainsMatch(t, output, `(?i)\[restorer] restoring cached layer 'simple/layers:cached-launch-layer'`)
-							h.AssertContainsMatch(t, output, `(?i)\[analyzer] using cached launch layer 'simple/layers:cached-launch-layer'`)
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring data for "simple/layers:cached-launch-layer" from cache`)
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[restorer] Restoring data for "simple/layers:cached-launch-layer" from cache`)
 							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
 						}
 
 						t.Log("exporter reuses unchanged layers")
-						h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] reusing layer 'simple/layers:cached-launch-layer'`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+						}
 
-						if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")) {
-							t.Log("cacher reuses unchanged layers")
-							h.AssertContainsMatch(t, output, `(?i)\[cacher] reusing layer 'simple/layers:cached-launch-layer'`)
+						t.Log("cacher reuses unchanged layers")
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing cache layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Reusing cache layer 'simple/layers:cached-launch-layer'`)
 						}
@@ -388,17 +733,27 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 						t.Log("skips restore")
-						h.AssertContains(t, output, "Skipping 'restore' due to clearing cache")
+						if !lifecycleSupportsCreator || !packSupportsCreator {
+							h.AssertContains(t, output, "Skipping 'restore' due to clearing cache")
+						}
 
 						t.Log("skips buildpack layer analysis")
-						h.AssertContainsMatch(t, output, `(?i)\[analyzer] Skipping buildpack layer analysis`)
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Skipping buildpack layer analysis`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Skipping buildpack layer analysis`)
+						}
 
 						t.Log("exporter reuses unchanged layers")
-						h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing layer 'simple/layers:cached-launch-layer'`)
+						} else {
+							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
+						}
 
 						t.Log("cacher adds layers")
-						if lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")) {
-							h.AssertContainsMatch(t, output, `(?i)\[cacher] (Caching|adding) layer 'simple/layers:cached-launch-layer'`)
+						if lifecycleSupportsCreator && packSupportsCreator {
+							h.AssertContainsMatch(t, output, `(?i)\[creator] Adding cache layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Adding cache layer 'simple/layers:cached-launch-layer'`)
 						}
@@ -410,12 +765,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							outputTemplate := filepath.Join(packFixturesDir, "inspect_image_local_output.txt")
 							if _, err := os.Stat(outputTemplate); err != nil {
 								t.Fatal(err.Error())
-							}
-							type process struct {
-								shell       string
-								processType string
-								command     string
-								args        []string
 							}
 							expectedOutput := fillTemplate(t, outputTemplate,
 								map[string]interface{}{
@@ -466,8 +815,19 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 									"--buildpack", buildpackTgz,
 								))
 
-								h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
-								h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
+								version, err := packVersion(packPath)
+								h.AssertNil(t, err)
+								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
+								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+
+								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+								if lifecycleSupportsCreator && packSupportsCreator {
+									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
+								} else {
+									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
+									h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
+								}
 							})
 						})
 
@@ -477,11 +837,21 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--buildpack", buildpackTgz,
-									"--network", "default",
 								))
 
-								h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
-								h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
+								version, err := packVersion(packPath)
+								h.AssertNil(t, err)
+								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
+								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+
+								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+								if lifecycleSupportsCreator && packSupportsCreator {
+									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
+								} else {
+									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
+									h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
+								}
 							})
 						})
 
@@ -498,8 +868,19 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 									"none",
 								))
 
-								h.AssertContains(t, output, "[detector] RESULT: Disconnected from the internet")
-								h.AssertContains(t, output, "[builder] RESULT: Disconnected from the internet")
+								version, err := packVersion(packPath)
+								h.AssertNil(t, err)
+								packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
+								packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+
+								lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+								if lifecycleSupportsCreator && packSupportsCreator {
+									h.AssertContains(t, output, "[creator] RESULT: Disconnected from the internet")
+								} else {
+									h.AssertContains(t, output, "[detector] RESULT: Disconnected from the internet")
+									h.AssertContains(t, output, "[builder] RESULT: Disconnected from the internet")
+								}
 							})
 						})
 					})
@@ -540,16 +921,15 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							))
 
 							if packSemver.GreaterThan(semver.MustParse("0.9.0")) || packSemver.Equal(semver.MustParse("0.0.0")) {
-								h.AssertContains(t, output, "Detect: Reading file '/platform/my-volume-mount-target/some-file': some-string")
+								h.AssertContains(t, output, "Detect: Reading file '/platform/my-volume-mount-target/some-file':")
 							}
-							h.AssertContains(t, output, "Build: Reading file '/platform/my-volume-mount-target/some-file': some-string")
+							h.AssertContains(t, output, "Build: Reading file '/platform/my-volume-mount-target/some-file':")
 						})
 					})
 
 					when("--default-process", func() {
 						it("sets the default process from those in the process list", func() {
 							h.SkipIf(t, !packSupports(packPath, "build --default-process"), "--default-process flag is not supported")
-
 							h.SkipIf(t,
 								lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.0")),
 								"skipping default process. Lifecycle does not support it",
@@ -559,7 +939,6 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 								"build", repoName,
 								"--default-process", "hello",
 								"-p", filepath.Join("testdata", "mock_app"),
-								"--buildpack", filepath.Join("testdata", "mock_buildpacks", "0.2", "simple-layers-buildpack"),
 							))
 
 							assertMockAppLogs(t, repoName, "hello world")
@@ -634,7 +1013,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 							})
 						})
 
-						when("the argument is a buildpackage", func() {
+						when("the argument is a buildpackage image", func() {
 							var packageImageName string
 
 							it.Before(func() {
@@ -643,11 +1022,10 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 									"--buildpack does not accept buildpackage unless package-buildpack is supported",
 								)
 
-								packageImageName = packageBuildpack(t,
-									filepath.Join(packFixturesDir, "package_for_build_cmd.toml"),
+								packageImageName = packageBuildpackAsImage(t,
 									packPath,
+									filepath.Join(packFixturesDir, "package_for_build_cmd.toml"),
 									lifecycleDescriptor,
-									"simple/package",
 									[]string{
 										"simple-layers-parent-buildpack",
 										"simple-layers-buildpack",
@@ -660,6 +1038,52 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--buildpack", packageImageName,
+								))
+
+								h.AssertContains(t, output, "Adding buildpack 'simple/layers/parent' version 'simple-layers-parent-version' to builder")
+								h.AssertContains(t, output, "Adding buildpack 'simple/layers' version 'simple-layers-version' to builder")
+								h.AssertContains(t, output, "Build: Simple Layers Buildpack")
+								h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+							})
+						})
+
+						when("the argument is a buildpackage file", func() {
+							var (
+								packageFile string
+								tmpDir      string
+							)
+
+							it.Before(func() {
+								h.SkipIf(t,
+									!packSupports(packPath, "package-buildpack --format"),
+									"--buildpack does not accept buildpackage file unless package-buildpack with --format is supported",
+								)
+
+								var err error
+								tmpDir, err = ioutil.TempDir("", "package-file")
+								h.AssertNil(t, err)
+
+								packageFile = packageBuildpackAsFile(t,
+									tmpDir,
+									packPath,
+									filepath.Join(packFixturesDir, "package_for_build_cmd.toml"),
+									lifecycleDescriptor,
+									[]string{
+										"simple-layers-parent-buildpack",
+										"simple-layers-buildpack",
+									},
+								)
+							})
+
+							it.After(func() {
+								h.AssertNil(t, os.RemoveAll(tmpDir))
+							})
+
+							it("adds the buildpacks to the builder and runs them", func() {
+								output := h.Run(t, subjectPack(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--buildpack", packageFile,
 								))
 
 								h.AssertContains(t, output, "Adding buildpack 'simple/layers/parent' version 'simple-layers-parent-version' to builder")
@@ -827,6 +1251,7 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
 								"--publish",
+								"--network", "host",
 							))
 							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
@@ -875,9 +1300,20 @@ func testAcceptance(t *testing.T, when spec.G, it spec.S, packFixturesDir, packP
 
 							h.AssertNil(t, cmd.Start())
 
-							go terminateAtStep(t, cmd, &buf, "[detector]")
+							version, err := packVersion(packPath)
+							h.AssertNil(t, err)
+							packSemver = semver.MustParse(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
+							packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 
-							err := cmd.Wait()
+							lifecycleSupportsCreator := !(semver.MustParse(lifecycleDescriptor.API.PlatformVersion.String()).LessThan(semver.MustParse("0.3")))
+
+							if lifecycleSupportsCreator && packSupportsCreator {
+								go terminateAtStep(t, cmd, &buf, "[creator]")
+							} else {
+								go terminateAtStep(t, cmd, &buf, "[detector]")
+							}
+
+							err = cmd.Wait()
 							h.AssertNotNil(t, err)
 							h.AssertNotContains(t, buf.String(), "Successfully built image")
 						})
@@ -1189,347 +1625,6 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 			})
 		})
 	})
-
-	when("suggest-builders", func() {
-		it("displays suggested builders", func() {
-			cmd := subjectPack("suggest-builders")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("suggest-builders command failed: %s: %s", output, err)
-			}
-			h.AssertContains(t, string(output), "Suggested builders:")
-			h.AssertContains(t, string(output), "gcr.io/paketo-buildpacks/builder:base")
-			h.AssertContains(t, string(output), "cloudfoundry/cnb:cflinuxfs3")
-			h.AssertContains(t, string(output), "gcr.io/paketo-buildpacks/builder:tiny")
-		})
-	})
-
-	when("suggest-stacks", func() {
-		it("displays suggested stacks", func() {
-			cmd := subjectPack("suggest-stacks")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("suggest-stacks command failed: %s: %s", output, err)
-			}
-			h.AssertContains(t, string(output), "Stacks maintained by the community:")
-		})
-	})
-
-	when("set-default-builder", func() {
-		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			output := h.Run(t, subjectPack("set-default-builder", "gcr.io/paketo-buildpacks/builder:base"))
-			h.AssertContains(t, output, "Builder 'gcr.io/paketo-buildpacks/builder:base' is now the default builder")
-		})
-	})
-
-	when("package-buildpack", func() {
-		var tmpDir string
-
-		it.Before(func() {
-			h.SkipIf(t,
-				!packSupports(packPath, "package-buildpack"),
-				"pack does not support 'package-buildpack'",
-			)
-
-			var err error
-			tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
-			h.AssertNil(t, err)
-
-			h.CopyFile(t, filepath.Join(packFixturesDir, "package.toml"), filepath.Join(tmpDir, "package.toml"))
-
-			err = os.Rename(
-				h.CreateTGZ(t, filepath.Join(bpDir, "simple-layers-parent-buildpack"), "./", 0755),
-				filepath.Join(tmpDir, "simple-layers-parent-buildpack.tgz"),
-			)
-			h.AssertNil(t, err)
-
-			err = os.Rename(
-				h.CreateTGZ(t, filepath.Join(bpDir, "simple-layers-buildpack"), "./", 0755),
-				filepath.Join(tmpDir, "simple-layers-buildpack.tgz"),
-			)
-			h.AssertNil(t, err)
-
-		})
-
-		it.After(func() {
-			h.AssertNil(t, os.RemoveAll(tmpDir))
-		})
-
-		packageBuildpackLocally := func(absConfigPath string) string {
-			t.Helper()
-			packageName := "test/package-" + h.RandString(10)
-			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath))
-			h.AssertNil(t, err)
-			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
-			return packageName
-		}
-
-		packageBuildpackRemotely := func(absConfigPath string) string {
-			t.Helper()
-			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-			output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", absConfigPath, "--publish"))
-			h.AssertNil(t, err)
-			h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
-			return packageName
-		}
-
-		assertImageExistsLocally := func(name string) {
-			t.Helper()
-			_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), name)
-			h.AssertNil(t, err)
-
-		}
-
-		generateAggregatePackageToml := func(buildpackURI, nestedPackageName string) string {
-			t.Helper()
-			packageTomlData := fillTemplate(t,
-				filepath.Join(packFixturesDir, "package_aggregate.toml"),
-				map[string]interface{}{
-					"BuildpackURI": buildpackURI,
-					"PackageName":  nestedPackageName,
-				},
-			)
-			packageTomlFile, err := ioutil.TempFile(tmpDir, "package_aggregate-*.toml")
-			h.AssertNil(t, err)
-			_, err = io.WriteString(packageTomlFile, packageTomlData)
-			h.AssertNil(t, err)
-			h.AssertNil(t, packageTomlFile.Close())
-
-			return packageTomlFile.Name()
-		}
-
-		when("no --format is provided", func() {
-			it("creates the package as image", func() {
-				packageName := "test/package-" + h.RandString(10)
-				output, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", filepath.Join(tmpDir, "package.toml")))
-				h.AssertNil(t, err)
-				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
-				defer h.DockerRmi(dockerCli, packageName)
-
-				assertImageExistsLocally(packageName)
-			})
-		})
-
-		when("--format image", func() {
-			it("creates the package", func() {
-				t.Log("package w/ only buildpacks")
-				nestedPackageName := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
-				defer h.DockerRmi(dockerCli, nestedPackageName)
-				assertImageExistsLocally(nestedPackageName)
-
-				t.Log("package w/ buildpacks and packages")
-				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
-				packageName := packageBuildpackLocally(aggregatePackageToml)
-				defer h.DockerRmi(dockerCli, packageName)
-				assertImageExistsLocally(packageName)
-			})
-
-			when("--publish", func() {
-				it("publishes image to registry", func() {
-					nestedPackageName := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
-					defer h.DockerRmi(dockerCli, nestedPackageName)
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
-
-					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-					defer h.DockerRmi(dockerCli, packageName)
-					output := h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--publish"))
-					h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
-
-					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-					h.AssertError(t, err, "No such image")
-
-					h.AssertNil(t, h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
-
-					_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-					h.AssertNil(t, err)
-				})
-			})
-
-			when("--no-pull", func() {
-				it("should use local image", func() {
-					nestedPackage := packageBuildpackLocally(filepath.Join(tmpDir, "package.toml"))
-					defer h.DockerRmi(dockerCli, nestedPackage)
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
-
-					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-					defer h.DockerRmi(dockerCli, packageName)
-					h.Run(t, subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
-
-					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-					h.AssertNil(t, err)
-
-				})
-
-				it("should not pull image from registry", func() {
-					nestedPackage := packageBuildpackRemotely(filepath.Join(tmpDir, "package.toml"))
-					defer h.DockerRmi(dockerCli, nestedPackage)
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
-
-					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-					defer h.DockerRmi(dockerCli, packageName)
-					_, err := h.RunE(subjectPack("package-buildpack", packageName, "-p", aggregatePackageToml, "--no-pull"))
-					h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", nestedPackage))
-				})
-			})
-		})
-
-		when("--format file", func() {
-			it.Before(func() {
-				h.SkipIf(t, !packSupports(packPath, "package-buildpack --format"), "format not supported")
-			})
-
-			it("creates the package", func() {
-				outputFile := filepath.Join(tmpDir, "package.cnb")
-				output, err := h.RunE(subjectPack("package-buildpack", outputFile, "--format", "file", "-p", filepath.Join(tmpDir, "package.toml")))
-				h.AssertNil(t, err)
-				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputFile))
-				h.AssertTarball(t, outputFile)
-			})
-		})
-
-		when("package.toml is invalid", func() {
-			it("displays an error", func() {
-				h.CopyFile(t, filepath.Join(packFixturesDir, "invalid_package.toml"), filepath.Join(tmpDir, "invalid_package.toml"))
-
-				_, err := h.RunE(subjectPack("package-buildpack", "some-package", "-p", filepath.Join(tmpDir, "invalid_package.toml")))
-				h.AssertError(t, err, "reading config:")
-			})
-		})
-	})
-
-	when("report", func() {
-		it.Before(func() {
-			h.SkipIf(t, !packSupports(packPath, "report"), "pack does not support 'report' command")
-		})
-
-		when("default builder is set", func() {
-			it.Before(func() {
-				h.Run(t, subjectPack("set-default-builder", "gcr.io/paketo-buildpacks/builder:base"))
-			})
-
-			it("outputs information", func() {
-				version, err := packVersion(packPath)
-				h.AssertNil(t, err)
-
-				output := h.Run(t, subjectPack("report"))
-
-				outputTemplate := filepath.Join(packFixturesDir, "report_output.txt")
-				expectedOutput := fillTemplate(t, outputTemplate,
-					map[string]interface{}{
-						"DefaultBuilder": "gcr.io/paketo-buildpacks/builder:base",
-						"Version":        version,
-						"OS":             runtime.GOOS,
-						"Arch":           runtime.GOARCH,
-					},
-				)
-				h.AssertEq(t, output, expectedOutput)
-			})
-		})
-	})
-}
-
-type runCombo struct {
-	Pack              string `json:"pack"`
-	PackCreateBuilder string `json:"pack_create_builder"`
-	Lifecycle         string `json:"lifecycle"`
-}
-
-type resolvedRunCombo struct {
-	packCreateBuilderFixturesDir string
-	packFixturesDir              string
-	packPath                     string
-	packCreateBuilderPath        string
-	lifecyclePath                string
-	lifecycleDescriptor          builder.LifecycleDescriptor
-}
-
-func resolveRunCombinations(
-	combos []runCombo,
-	packPath string,
-	previousPackPath string,
-	previousPackFixturesPath string,
-	lifecyclePath string,
-	lifecycleDescriptor builder.LifecycleDescriptor,
-	previousLifecyclePath string,
-	previousLifecycleDescriptor builder.LifecycleDescriptor,
-) (map[string]resolvedRunCombo, error) {
-	resolved := map[string]resolvedRunCombo{}
-	for _, c := range combos {
-		key := fmt.Sprintf("p_%s cb_%s lc_%s", c.Pack, c.PackCreateBuilder, c.Lifecycle)
-		rc := resolvedRunCombo{
-			packFixturesDir:              filepath.Join("testdata", "pack_fixtures"),
-			packCreateBuilderFixturesDir: filepath.Join("testdata", "pack_fixtures"),
-			packPath:                     packPath,
-			packCreateBuilderPath:        packPath,
-			lifecyclePath:                lifecyclePath,
-			lifecycleDescriptor:          lifecycleDescriptor,
-		}
-
-		if c.Pack == "previous" {
-			if previousPackPath == "" {
-				return resolved, errors.Errorf("must provide %s in order to run combination %s", style.Symbol(envPreviousPackPath), style.Symbol(key))
-			}
-
-			rc.packPath = previousPackPath
-			if previousPackFixturesPath != "" {
-				rc.packFixturesDir = previousPackFixturesPath
-			}
-		}
-
-		if c.PackCreateBuilder == "previous" {
-			if previousPackPath == "" {
-				return resolved, errors.Errorf("must provide %s in order to run combination %s", style.Symbol(envPreviousPackPath), style.Symbol(key))
-			}
-
-			rc.packCreateBuilderPath = previousPackPath
-			rc.packCreateBuilderFixturesDir = previousPackFixturesPath
-		}
-
-		if c.Lifecycle == "previous" {
-			if previousLifecyclePath == "" {
-				return resolved, errors.Errorf("must provide %s in order to run combination %s", style.Symbol(envPreviousLifecyclePath), style.Symbol(key))
-			}
-
-			rc.lifecyclePath = previousLifecyclePath
-			rc.lifecycleDescriptor = previousLifecycleDescriptor
-		}
-
-		resolved[key] = rc
-	}
-
-	return resolved, nil
-}
-
-func parseSuiteConfig(config string) ([]runCombo, error) {
-	var cfgs []runCombo
-	if err := json.Unmarshal([]byte(config), &cfgs); err != nil {
-		return nil, errors.Wrap(err, "parse config")
-	}
-
-	validate := func(jsonKey, value string) error {
-		switch value {
-		case "current", "previous":
-			return nil
-		default:
-			return fmt.Errorf("invalid config: %s not valid value for %s", style.Symbol(value), style.Symbol(jsonKey))
-		}
-	}
-
-	for _, c := range cfgs {
-		if err := validate("pack", c.Pack); err != nil {
-			return nil, err
-		}
-
-		if err := validate("pack_create_builder", c.PackCreateBuilder); err != nil {
-			return nil, err
-		}
-
-		if err := validate("lifecycle", c.Lifecycle); err != nil {
-			return nil, err
-		}
-	}
-
-	return cfgs, nil
 }
 
 func extractLifecycleDescriptor(lcPath string) (builder.LifecycleDescriptor, error) {
@@ -1600,16 +1695,6 @@ func packSupports(packPath, command string) bool {
 	return strings.Contains(output, search)
 }
 
-func packSupportsOneOf(packPath string, commands ...string) bool {
-	for _, cmd := range commands {
-		if packSupports(packPath, cmd) {
-			return true
-		}
-	}
-
-	return false
-}
-
 func buildpacksDir(bpAPIVersion api.Version) string {
 	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion.String())
 }
@@ -1671,44 +1756,42 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 		h.AssertNil(t, err)
 	}
 
-	// CREATE PACKAGE
-	packageImageName := packageBuildpack(t,
-		filepath.Join(configDir, "package.toml"),
-		packPath,
-		lifecycleDescriptor,
-		"test/package",
-		[]string{"simple-layers-buildpack"},
-	)
+	var packageImageName string
+	var packageId string
+	if dockerHostOS() != "windows" {
+		// CREATE PACKAGE
+		packageImageName = packageBuildpackAsImage(t,
+			packPath,
+			filepath.Join(configDir, "package.toml"),
+			lifecycleDescriptor,
+			[]string{"simple-layers-buildpack"},
+		)
+
+		packageId = "simple/layers"
+	}
+
+	// ADD lifecycle
+	var lifecycleURI string
+	var lifecycleVersion string
+	if lifecyclePath != "" {
+		t.Logf("adding lifecycle path '%s' to builder config", lifecyclePath)
+		lifecycleURI = strings.ReplaceAll(lifecyclePath, `\`, `\\`)
+	} else {
+		t.Logf("adding lifecycle version '%s' to builder config", lifecycleDescriptor.Info.Version.String())
+		lifecycleVersion = lifecycleDescriptor.Info.Version.String()
+	}
 
 	// RENDER builder.toml
 	cfgData := fillTemplate(t, filepath.Join(configDir, "builder.toml"), map[string]interface{}{
-		"package_name": packageImageName,
+		"package_image_name": packageImageName,
+		"package_id":         packageId,
+		"run_image_mirror":   runImageMirror,
+		"lifecycle_uri":      lifecycleURI,
+		"lifecycle_version":  lifecycleVersion,
 	})
+
 	err = ioutil.WriteFile(filepath.Join(tmpDir, "builder.toml"), []byte(cfgData), os.ModePerm)
 	h.AssertNil(t, err)
-
-	builderConfigFile, err := os.OpenFile(filepath.Join(tmpDir, "builder.toml"), os.O_RDWR|os.O_APPEND, os.ModePerm)
-	h.AssertNil(t, err)
-
-	// ADD run-image-mirrors
-	_, err = builderConfigFile.Write([]byte(fmt.Sprintf("run-image-mirrors = [\"%s\"]\n", runImageMirror)))
-	h.AssertNil(t, err)
-
-	// ADD lifecycle
-	_, err = builderConfigFile.Write([]byte("[lifecycle]\n"))
-	h.AssertNil(t, err)
-
-	if lifecyclePath != "" {
-		t.Logf("adding lifecycle path '%s' to builder config", lifecyclePath)
-		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("uri = \"%s\"\n", strings.ReplaceAll(lifecyclePath, `\`, `\\`))))
-		h.AssertNil(t, err)
-	} else {
-		t.Logf("adding lifecycle version '%s' to builder config", lifecycleDescriptor.Info.Version.String())
-		_, err = builderConfigFile.Write([]byte(fmt.Sprintf("version = \"%s\"\n", lifecycleDescriptor.Info.Version.String())))
-		h.AssertNil(t, err)
-	}
-
-	builderConfigFile.Close()
 
 	// NAME BUILDER
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
@@ -1722,14 +1805,32 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 	return bldr
 }
 
-func packageBuildpack(t *testing.T, configPath, packPath string, lifecycleDescriptor builder.LifecycleDescriptor, repoName string, buildpacks []string) string {
+func packageBuildpackAsImage(t *testing.T, packPath, configPath string, lifecycleDescriptor builder.LifecycleDescriptor, buildpacks []string) string {
+	tmpDir, err := ioutil.TempDir("", "package-image")
+	h.AssertNil(t, err)
+
+	outputImage := packageBuildpack(t, tmpDir, packPath, configPath, "image", lifecycleDescriptor, buildpacks)
+
+	// REGISTER CLEANUP
+	key := taskKey("package-buildpack", outputImage)
+	suiteManager.RegisterCleanUp("clean-"+key, func() error {
+		return h.DockerRmi(dockerCli, outputImage)
+	})
+
+	return outputImage
+}
+
+func packageBuildpackAsFile(t *testing.T, tmpDir, packPath, configPath string, lifecycleDescriptor builder.LifecycleDescriptor, buildpacks []string) string {
+	return packageBuildpack(t, tmpDir, packPath, configPath, "file", lifecycleDescriptor, buildpacks)
+}
+
+func packageBuildpack(t *testing.T, tmpDir, packPath, configPath, outputFormat string, lifecycleDescriptor builder.LifecycleDescriptor, buildpacks []string) string {
 	t.Helper()
 	t.Log("creating package image...")
 
 	// CREATE TEMP WORKING DIR
-	tmpDir, err := ioutil.TempDir("", "create-test-builder")
+	tmpDir, err := ioutil.TempDir(tmpDir, "create-package")
 	h.AssertNil(t, err)
-	defer os.RemoveAll(tmpDir)
 
 	// DETERMINE TEST DATA
 	buildpacksDir := buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
@@ -1746,31 +1847,41 @@ func packageBuildpack(t *testing.T, configPath, packPath string, lifecycleDescri
 	// COPY config to temp package.toml
 	h.CopyFile(t, configPath, filepath.Join(tmpDir, "package.toml"))
 
-	// NAME PACKAGE
-	packageImageName := registryConfig.RepoName(repoName + "-" + h.RandString(10))
-
 	// CREATE PACKAGE
-	cmd := exec.Command(packPath, "package-buildpack", "--no-color", packageImageName, "-p", filepath.Join(tmpDir, "package.toml"))
-	output := h.Run(t, cmd)
-	h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageImageName))
-	h.AssertNil(t, h.PushImage(dockerCli, packageImageName, registryConfig))
+	outputName := "buildpack-" + h.RandString(8)
+	var additionalArgs []string
+	switch outputFormat {
+	case "file":
+		outputName = filepath.Join(tmpDir, outputName+".cnb")
+		additionalArgs = []string{"--format", outputFormat}
+	case "image":
+		outputName = registryConfig.RepoName(outputName)
+	default:
+		t.Fatalf("unknown format: %s", outputFormat)
+	}
 
-	// REGISTER CLEANUP
-	key := taskKey("package-buildpack", packageImageName)
-	suiteManager.RegisterCleanUp("clean-"+key, func() error {
-		return h.DockerRmi(dockerCli, packageImageName)
-	})
-	return packageImageName
+	cmd := exec.Command(packPath, append([]string{
+		"package-buildpack", outputName,
+		"--no-color",
+		"-p", filepath.Join(tmpDir, "package.toml"),
+	}, additionalArgs...)...)
+	cmd.Dir = tmpDir
+	output := h.Run(t, cmd)
+	h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputName))
+
+	return outputName
 }
 
 func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror string) error {
 	t.Helper()
 	t.Log("creating stack images...")
 
-	if err := createStackImage(dockerCli, runImage, filepath.Join("testdata", "mock_stack", "run")); err != nil {
+	stackBaseDir := filepath.Join("testdata", "mock_stack", dockerHostOS())
+
+	if err := createStackImage(dockerCli, runImage, filepath.Join(stackBaseDir, "run")); err != nil {
 		return err
 	}
-	if err := createStackImage(dockerCli, buildImage, filepath.Join("testdata", "mock_stack", "build")); err != nil {
+	if err := createStackImage(dockerCli, buildImage, filepath.Join(stackBaseDir, "build")); err != nil {
 		return err
 	}
 
@@ -1965,6 +2076,14 @@ func fillTemplate(t *testing.T, templatePath string, data map[string]interface{}
 	return expectedOutput.String()
 }
 
+func dockerHostOS() string {
+	daemonInfo, err := dockerCli.Info(context.TODO())
+	if err != nil {
+		panic(err.Error())
+	}
+	return daemonInfo.OSType
+}
+
 // taskKey creates a key from the prefix and all arguments to be unique
 func taskKey(prefix string, args ...string) string {
 	hash := sha256.New()
@@ -1972,61 +2091,4 @@ func taskKey(prefix string, args ...string) string {
 		hash.Write([]byte(v))
 	}
 	return fmt.Sprintf("%s-%s", prefix, hex.EncodeToString(hash.Sum(nil)))
-}
-
-type SuiteManager struct {
-	out          func(format string, args ...interface{})
-	results      map[string]interface{}
-	cleanUpTasks map[string]func() error
-}
-
-func (s *SuiteManager) RunTaskOnceString(key string, run func() (string, error)) (string, error) {
-	v, err := s.runTaskOnce(key, func() (interface{}, error) {
-		return run()
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return v.(string), nil
-}
-
-func (s *SuiteManager) runTaskOnce(key string, run func() (interface{}, error)) (interface{}, error) {
-	if s.results == nil {
-		s.results = map[string]interface{}{}
-	}
-
-	value, found := s.results[key]
-	if !found {
-		s.out("Running task '%s'\n", key)
-		v, err := run()
-		if err != nil {
-			return nil, err
-		}
-
-		s.results[key] = v
-
-		return v, nil
-	}
-
-	return value, nil
-}
-
-func (s *SuiteManager) RegisterCleanUp(key string, cleanUp func() error) {
-	if s.cleanUpTasks == nil {
-		s.cleanUpTasks = map[string]func() error{}
-	}
-
-	s.cleanUpTasks[key] = cleanUp
-}
-
-func (s *SuiteManager) CleanUp() error {
-	for key, cleanUp := range s.cleanUpTasks {
-		s.out("Running cleanup task '%s'\n", key)
-		if err := cleanUp(); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

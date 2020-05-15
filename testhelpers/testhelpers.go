@@ -272,8 +272,8 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, dockerFile string) {
 	t.Helper()
 
-	buildContext, err := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
-	AssertNil(t, err)
+	buildContext := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
+	defer buildContext.Close()
 
 	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
 		Tags:           []string{repoName},
@@ -283,7 +283,8 @@ func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, docke
 	})
 	AssertNil(t, err)
 
-	err = checkResponse(resp)
+	defer resp.Body.Close()
+	err = checkResponse(resp.Body)
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
@@ -299,15 +300,15 @@ func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName
 	})
 	AssertNil(t, err)
 
-	err = checkResponse(resp)
+	defer resp.Body.Close()
+	err = checkResponse(resp.Body)
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
-func checkResponse(response dockertypes.ImageBuildResponse) error {
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+func checkResponse(responseBody io.Reader) error {
+	body, err := ioutil.ReadAll(responseBody)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "reading body")
 	}
 
 	messages := strings.Builder{}
@@ -361,12 +362,16 @@ func DockerRmi(dockerCli client.CommonAPIClient, repoNames ...string) error {
 func PushImage(dockerCli client.CommonAPIClient, ref string, registryConfig *TestRegistryConfig) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: registryConfig.RegistryAuth()})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "pushing image")
 	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
-		return err
+
+	defer rc.Close()
+	err = checkResponse(rc)
+	if err != nil {
+		return errors.Wrap(err, "push response")
 	}
-	return rc.Close()
+
+	return nil
 }
 
 func HTTPGetE(url string, headers map[string]string) (string, error) {
@@ -502,8 +507,8 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 }
 
 func RequireDocker(t *testing.T) {
-	_, isSet := os.LookupEnv("NO_DOCKER")
-	SkipIf(t, isSet, "Skipping because docker daemon unavailable")
+	noDocker := os.Getenv("NO_DOCKER")
+	SkipIf(t, strings.ToLower(noDocker) == "true" || noDocker == "1", "Skipping because docker daemon unavailable")
 }
 
 func SkipIf(t *testing.T, expression bool, reason string) {
@@ -578,5 +583,39 @@ func writeTAR(t *testing.T, srcDir, tarDir string, mode int64, w io.Writer) {
 	defer tw.Close()
 
 	err := archive.WriteDirToTar(tw, srcDir, tarDir, 0, 0, mode, true, nil)
+	AssertNil(t, err)
+}
+
+func RecursiveCopyNow(t *testing.T, src, dst string) {
+	t.Helper()
+	err := os.MkdirAll(dst, 0755)
+	AssertNil(t, err)
+
+	fis, err := ioutil.ReadDir(src)
+	AssertNil(t, err)
+	for _, fi := range fis {
+		if fi.Mode().IsRegular() {
+			srcFile, err := os.Open(filepath.Join(src, fi.Name()))
+			AssertNil(t, err)
+			dstFile, err := os.Create(filepath.Join(dst, fi.Name()))
+			AssertNil(t, err)
+			_, err = io.Copy(dstFile, srcFile)
+			AssertNil(t, err)
+			modifiedTime := time.Now().Local()
+			err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedTime, modifiedTime)
+			AssertNil(t, err)
+			err = os.Chmod(filepath.Join(dst, fi.Name()), 0664)
+			AssertNil(t, err)
+		}
+		if fi.IsDir() {
+			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
+			AssertNil(t, err)
+			RecursiveCopyNow(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+		}
+	}
+	modifiedTime := time.Now().Local()
+	err = os.Chtimes(dst, modifiedTime, modifiedTime)
+	AssertNil(t, err)
+	err = os.Chmod(dst, 0775)
 	AssertNil(t, err)
 }

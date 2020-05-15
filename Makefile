@@ -1,18 +1,30 @@
-GOCMD?=go
-GOENV=CGO_ENABLED=0
-GOFLAGS?=-mod=vendor
-PACK_VERSION?=dev-$(shell date +%Y-%m-%d-%H:%M:%S)
-PACK_BIN?=pack
-PACKAGE_BASE=github.com/buildpacks/pack
-PACKAGES:=$(shell $(GOCMD) list ./... | grep -v /testdata/)
-SRC:=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
-ARCHIVE_NAME=pack-$(PACK_VERSION)
-TEST_TIMEOUT?=600s
-UNIT_TIMEOUT?=$(TEST_TIMEOUT)
 ACCEPTANCE_TIMEOUT?=$(TEST_TIMEOUT)
+ARCHIVE_NAME=pack-$(PACK_VERSION)
+GOCMD?=go
+GOFLAGS?=-mod=vendor
+GOTESTFLAGS?=-v -count=1 -parallel=1
+PACKAGE_BASE=github.com/buildpacks/pack
+PACK_BIN?=pack
+PACK_GITSHA1=$(shell git rev-parse --short=7 HEAD)
+PACK_VERSION?=0.0.0
+SRC=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
+TEST_TIMEOUT?=900s
+UNIT_TIMEOUT?=$(TEST_TIMEOUT)
 
+clean_build := $(strip ${PACK_BUILD})
+clean_sha := $(strip ${PACK_GITSHA1})
+
+# append build number and git sha to version, if not-empty
+ifneq ($(and $(clean_build),$(clean_sha)),)
+PACK_VERSION:=${PACK_VERSION}+git-${clean_sha}.build-${clean_build}
+else ifneq ($(clean_build),)
+PACK_VERSION:=${PACK_VERSION}+build-${clean_build}
+else ifneq ($(clean_sha),)
+PACK_VERSION:=${PACK_VERSION}+git-${clean_sha}
+endif
 
 export GOFLAGS:=$(GOFLAGS)
+export CGO_ENABLED=0
 
 all: clean verify test build
 
@@ -26,12 +38,11 @@ mod-vendor:
 	
 tidy: mod-tidy mod-vendor format
 
-build:
+build: out
 	@echo "> Building..."
-	mkdir -p ./out
-	$(GOENV) $(GOCMD) build -ldflags "-s -w -X 'github.com/buildpacks/pack/cmd.Version=${PACK_VERSION}'" -o ./out/$(PACK_BIN) -a ./cmd/pack
+	$(GOCMD) build -ldflags "-s -w -X 'github.com/buildpacks/pack/cmd.Version=${PACK_VERSION}' -extldflags ${LDFLAGS}" -trimpath -o ./out/$(PACK_BIN) -a ./cmd/pack
 
-package:
+package: out
 	tar czf ./out/$(ARCHIVE_NAME).tgz -C out/ pack
 
 install-mockgen:
@@ -56,17 +67,22 @@ lint: install-golangci-lint
 
 test: unit acceptance
 
-unit:
+# append coverage arguments
+ifeq ($(TEST_COVERAGE), 1)
+unit: GOTESTFLAGS:=$(GOTESTFLAGS) -coverprofile=./out/tests/coverage-unit.txt -covermode=atomic
+endif
+unit: out
 	@echo "> Running unit/integration tests..."
-	$(GOCMD) test -v -count=1 -parallel=1 -timeout=$(UNIT_TIMEOUT) ./...
+	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(UNIT_TIMEOUT) ./...
 
-acceptance:
+acceptance: out
 	@echo "> Running acceptance tests..."
-	COMPILE_PACK_WITH_VERSION=$(or ${COMPILE_PACK_WITH_VERSION}, 0.0.0) $(GOCMD) test -v -count=1 -parallel=1 -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance
+	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance
 
+acceptance-all: export ACCEPTANCE_SUITE_CONFIG:=$(shell cat ./acceptance/testconfig/all.json)
 acceptance-all:
 	@echo "> Running acceptance tests..."
-	ACCEPTANCE_SUITE_CONFIG=$$(cat ./acceptance/testconfig/all.json) $(GOCMD) test -v -count=1 -parallel=1 -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance
+	$(GOCMD) test $(GOTESTFLAGS) -timeout=$(ACCEPTANCE_TIMEOUT) -tags=acceptance ./acceptance
 
 clean:
 	@echo "> Cleaning workspace..."
@@ -98,5 +114,10 @@ prepare-for-pr: tidy verify test
 	echo "NOTICE: There are some files that have not been committed." &&\
 	echo "-----------------\n"  &&\
 	exit 0;
+
+out:
+	# NOTE: Windows doesn't support `-p`
+	mkdir out
+	mkdir out/tests
 
 .PHONY: clean build format imports lint test unit acceptance verify verify-format
