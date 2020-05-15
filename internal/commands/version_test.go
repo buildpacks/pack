@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+	"github.com/spf13/cobra"
+
 	"github.com/buildpacks/pack/cmd"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"github.com/spf13/cobra"
 )
 
 func TestVersion(t *testing.T) {
