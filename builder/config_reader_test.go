@@ -137,4 +137,36 @@ uri = "noop-buildpack.tgz"
 			})
 		})
 	})
+
+	when("#Stack.Validate()", func() {
+		var (
+			testID         = "testID"
+			testRunImage   = "test-run-image"
+			testBuildImage = "test-build-image"
+		)
+
+		it("returns error if no id", func() {
+			config := builder.StackConfig{
+				BuildImage: testBuildImage,
+				RunImage:   testRunImage,
+			}
+			h.AssertError(t, config.Validate(), "stack.id is required")
+		})
+
+		it("returns error if no build image", func() {
+			config := builder.StackConfig{
+				ID:       testID,
+				RunImage: testRunImage,
+			}
+			h.AssertError(t, config.Validate(), "stack.build-image is required")
+		})
+
+		it("returns error if no run image", func() {
+			config := builder.StackConfig{
+				ID:         testID,
+				BuildImage: testBuildImage,
+			}
+			h.AssertError(t, config.Validate(), "stack.run-image is required")
+		})
+	})
 }

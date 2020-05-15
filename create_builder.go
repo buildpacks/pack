@@ -18,6 +18,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
+// CreateBuilderOptions are options passed into CreateBuilder
 type CreateBuilderOptions struct {
 	BuilderName string
 	Config      pubbldr.Config
@@ -26,30 +27,100 @@ type CreateBuilderOptions struct {
 	Registry    string
 }
 
+// CreateBuilder allows users to create a builder
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
-	if err := validateBuilderConfig(opts.Config); err != nil {
+	if err := c.validateConfig(ctx, opts); err != nil {
+		return err
+	}
+
+	builder, err := c.createBaseBuilder(ctx, opts)
+	if err != nil {
+		return errors.Wrap(err, "failed to create builder")
+	}
+
+	if err := c.addBuildpacksToBuilder(ctx, opts, builder); err != nil {
+		return errors.Wrap(err, "failed to add buildpacks to builder")
+	}
+
+	builder.SetOrder(opts.Config.Order)
+	builder.SetStack(opts.Config.Stack)
+
+	return builder.Save(c.logger)
+}
+
+func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {
+	if err := opts.Config.Validate(); err != nil {
 		return errors.Wrap(err, "invalid builder config")
 	}
 
 	if err := c.validateRunImageConfig(ctx, opts); err != nil {
-		return err
+		return errors.Wrap(err, "invalid run image config")
 	}
 
+	return nil
+}
+
+func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions) error {
+	var runImages []imgutil.Image
+	for _, i := range append([]string{opts.Config.Stack.RunImage}, opts.Config.Stack.RunImageMirrors...) {
+		if !opts.Publish {
+			img, err := c.imageFetcher.Fetch(ctx, i, true, false)
+			if err != nil {
+				if errors.Cause(err) != image.ErrNotFound {
+					return errors.Wrap(err, "failed to fetch image")
+				}
+			} else {
+				runImages = append(runImages, img)
+				continue
+			}
+		}
+
+		img, err := c.imageFetcher.Fetch(ctx, i, false, false)
+		if err != nil {
+			if errors.Cause(err) != image.ErrNotFound {
+				return errors.Wrap(err, "failed to fetch image")
+			}
+			c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
+		} else {
+			runImages = append(runImages, img)
+		}
+	}
+
+	for _, img := range runImages {
+		stackID, err := img.Label("io.buildpacks.stack.id")
+		if err != nil {
+			return errors.Wrap(err, "failed to label image")
+		}
+
+		if stackID != opts.Config.Stack.ID {
+			return fmt.Errorf(
+				"stack %s from builder config is incompatible with stack %s from run image %s",
+				style.Symbol(opts.Config.Stack.ID),
+				style.Symbol(stackID),
+				style.Symbol(img.Name()),
+			)
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions) (*builder.Builder, error) {
 	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Stack.BuildImage, !opts.Publish, !opts.NoPull)
 	if err != nil {
-		return errors.Wrap(err, "fetch build image")
+		return nil, errors.Wrap(err, "fetch build image")
 	}
 
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
 	bldr, err := builder.New(baseImage, opts.BuilderName)
 	if err != nil {
-		return errors.Wrap(err, "invalid build-image")
+		return nil, errors.Wrap(err, "invalid build-image")
 	}
 
 	bldr.SetDescription(opts.Config.Description)
 
 	if bldr.StackID != opts.Config.Stack.ID {
-		return fmt.Errorf(
+		return nil, fmt.Errorf(
 			"stack %s from builder config is incompatible with stack %s from build image",
 			style.Symbol(opts.Config.Stack.ID),
 			style.Symbol(bldr.StackID),
@@ -58,13 +129,53 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 
 	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle)
 	if err != nil {
-		return errors.Wrap(err, "fetch lifecycle")
+		return nil, errors.Wrap(err, "fetch lifecycle")
 	}
 
 	if err := bldr.SetLifecycle(lifecycle); err != nil {
-		return errors.Wrap(err, "setting lifecycle")
+		return nil, errors.Wrap(err, "setting lifecycle")
 	}
 
+	return bldr, nil
+}
+
+func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig) (builder.Lifecycle, error) {
+	if config.Version != "" && config.URI != "" {
+		return nil, errors.Errorf(
+			"%s can only declare %s or %s, not both",
+			style.Symbol("lifecycle"), style.Symbol("version"), style.Symbol("uri"),
+		)
+	}
+
+	var uri string
+	switch {
+	case config.Version != "":
+		v, err := semver.NewVersion(config.Version)
+		if err != nil {
+			return nil, errors.Wrapf(err, "%s must be a valid semver", style.Symbol("lifecycle.version"))
+		}
+
+		uri = uriFromLifecycleVersion(*v)
+	case config.URI != "":
+		uri = config.URI
+	default:
+		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion))
+	}
+
+	b, err := c.downloader.Download(ctx, uri)
+	if err != nil {
+		return nil, errors.Wrap(err, "downloading lifecycle")
+	}
+
+	lifecycle, err := builder.NewLifecycle(b)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid lifecycle")
+	}
+
+	return lifecycle, nil
+}
+
+func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	for _, b := range opts.Config.Buildpacks.Buildpacks() {
 		locatorType, err := buildpack.GetLocatorType(b.URI, []dist.BuildpackInfo{})
 		if err != nil {
@@ -141,10 +252,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		}
 	}
 
-	bldr.SetOrder(opts.Config.Order)
-	bldr.SetStack(opts.Config.Stack)
-
-	return bldr.Save(c.logger)
+	return nil
 }
 
 func validateBuildpack(bp dist.Buildpack, source, expectedID, expectedBPVersion string) error {
@@ -169,103 +277,6 @@ func validateBuildpack(bp dist.Buildpack, source, expectedID, expectedBPVersion 
 	return nil
 }
 
-func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig) (builder.Lifecycle, error) {
-	if config.Version != "" && config.URI != "" {
-		return nil, errors.Errorf(
-			"%s can only declare %s or %s, not both",
-			style.Symbol("lifecycle"), style.Symbol("version"), style.Symbol("uri"),
-		)
-	}
-
-	var uri string
-	switch {
-	case config.Version != "":
-		v, err := semver.NewVersion(config.Version)
-		if err != nil {
-			return nil, errors.Wrapf(err, "%s must be a valid semver", style.Symbol("lifecycle.version"))
-		}
-
-		uri = uriFromLifecycleVersion(*v)
-	case config.URI != "":
-		uri = config.URI
-	default:
-		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion))
-	}
-
-	b, err := c.downloader.Download(ctx, uri)
-	if err != nil {
-		return nil, errors.Wrap(err, "downloading lifecycle")
-	}
-
-	lifecycle, err := builder.NewLifecycle(b)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid lifecycle")
-	}
-
-	return lifecycle, nil
-}
-
 func uriFromLifecycleVersion(version semver.Version) string {
 	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", version.String(), version.String())
-}
-
-func validateBuilderConfig(conf pubbldr.Config) error {
-	if conf.Stack.ID == "" {
-		return errors.New("stack.id is required")
-	}
-
-	if conf.Stack.BuildImage == "" {
-		return errors.New("stack.build-image is required")
-	}
-
-	if conf.Stack.RunImage == "" {
-		return errors.New("stack.run-image is required")
-	}
-
-	return nil
-}
-
-func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderOptions) error {
-	var runImages []imgutil.Image
-	for _, i := range append([]string{opts.Config.Stack.RunImage}, opts.Config.Stack.RunImageMirrors...) {
-		if !opts.Publish {
-			img, err := c.imageFetcher.Fetch(ctx, i, true, false)
-			if err != nil {
-				if errors.Cause(err) != image.ErrNotFound {
-					return err
-				}
-			} else {
-				runImages = append(runImages, img)
-				continue
-			}
-		}
-
-		img, err := c.imageFetcher.Fetch(ctx, i, false, false)
-		if err != nil {
-			if errors.Cause(err) != image.ErrNotFound {
-				return err
-			}
-			c.logger.Warnf("run image %s is not accessible", style.Symbol(i))
-		} else {
-			runImages = append(runImages, img)
-		}
-	}
-
-	for _, img := range runImages {
-		stackID, err := img.Label("io.buildpacks.stack.id")
-		if err != nil {
-			return err
-		}
-
-		if stackID != opts.Config.Stack.ID {
-			return fmt.Errorf(
-				"stack %s from builder config is incompatible with stack %s from run image %s",
-				style.Symbol(opts.Config.Stack.ID),
-				style.Symbol(stackID),
-				style.Symbol(img.Name()),
-			)
-		}
-	}
-
-	return nil
 }

@@ -256,16 +256,41 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should warn when the run image cannot be found", func() {
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, true).Return(fakeBuildImage, nil)
 
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
 
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes!"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", false, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
 
 				h.AssertContains(t, out.String(), "Warning: run image 'some/run-image' is not accessible")
+			})
+
+			it("should fail when not publish and the run image cannot be fetched", func() {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, false).Return(nil, errors.New("yikes"))
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "failed to fetch image: yikes")
+			})
+
+			it("should fail when publish and the run image cannot be fetched", func() {
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, false).Return(nil, errors.New("yikes"))
+
+				opts.Publish = true
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "failed to fetch image: yikes")
+			})
+
+			it("should fail when the run image isn't a valid image", func() {
+				fakeImage := fakeBadImageStruct{}
+
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", gomock.Any(), gomock.Any()).Return(fakeImage, nil).AnyTimes()
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", gomock.Any(), gomock.Any()).Return(fakeImage, nil).AnyTimes()
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err, "failed to label image")
 			})
 
 			when("publish is true", func() {
@@ -282,6 +307,54 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					err := subject.CreateBuilder(context.TODO(), opts)
 					h.AssertNil(t, err)
+				})
+			})
+		})
+
+		when("creating the base builder", func() {
+			when("build image not found", func() {
+				it("should fail", func() {
+					prepareFetcherWithRunImages()
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, true).Return(nil, image.ErrNotFound)
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "fetch build image: not found")
+				})
+			})
+
+			when("build image isn't a valid image", func() {
+				it("should fail", func() {
+					fakeImage := fakeBadImageStruct{}
+
+					prepareFetcherWithRunImages()
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, true).Return(fakeImage, nil)
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "failed to create builder: invalid build-image")
+				})
+			})
+
+			when("error downloading lifecycle", func() {
+				it("should fail", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = "fake"
+					mockDownloader.EXPECT().Download(gomock.Any(), "fake").Return(nil, errors.New("error here")).AnyTimes()
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "downloading lifecycle")
+				})
+			})
+
+			when("lifecycle isn't a valid lifecycle", func() {
+				it("should fail", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = "fake"
+					mockDownloader.EXPECT().Download(gomock.Any(), "fake").Return(blob.NewBlob(filepath.Join("testdata", "empty-file")), nil).AnyTimes()
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err, "invalid lifecycle")
 				})
 			})
 		})
@@ -741,4 +814,16 @@ func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
 	}
 
 	return false
+}
+
+type fakeBadImageStruct struct {
+	*fakes.Image
+}
+
+func (i fakeBadImageStruct) Name() string {
+	return "fake image"
+}
+
+func (i fakeBadImageStruct) Label(str string) (string, error) {
+	return "", errors.New("error here")
 }
