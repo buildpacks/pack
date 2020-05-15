@@ -17,6 +17,7 @@ const (
 	FormatFile  = "file"
 )
 
+// PackageBuildpackOptions are configuration options and metadata you can pass into PackageBuildpack
 type PackageBuildpackOptions struct {
 	Name    string
 	Format  string
@@ -25,6 +26,7 @@ type PackageBuildpackOptions struct {
 	NoPull  bool
 }
 
+// PackageBuildpack packages buildpack(s) into an image or file
 func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
 	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
 
