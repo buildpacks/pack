@@ -325,6 +325,11 @@ func (l *Lifecycle) writeStackToml() (string, error) {
 		return "", errors.Wrapf(err, "writing stack.toml tempfile: %s", stackFile.Name())
 	}
 
+	// Override umask
+	if err = os.Chmod(stackFile.Name(), 0755); err != nil {
+		return "", errors.Wrapf(err, "overriding umask for stack.toml tempfile: %s", stackFile.Name())
+	}
+
 	// Some OSes (like macOS) use symlinks for the standard temp dir.
 	// Resolve it so it can be properly mounted by the Docker daemon.
 	return filepath.EvalSymlinks(stackFile.Name())
