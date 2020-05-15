@@ -186,7 +186,7 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish,
 		return phaseFactory.New(configProvider), nil
 	}
 
-	// TODO: see if we can delete this code since when publish is false we will use the creator
+	// TODO: when platform API 0.2 is no longer supported we can delete this code: https://github.com/buildpacks/pack/issues/629.
 	configProvider := NewPhaseConfigProvider(
 		"analyzer",
 		l,
@@ -291,6 +291,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		return phaseFactory.New(configProvider), nil
 	}
 
+	// TODO: when platform API 0.2 is no longer supported we can delete this code: https://github.com/buildpacks/pack/issues/629.
 	args = append([]string{"-daemon", "-launch-cache", launchCacheDir}, args...)
 	binds = append(binds, fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir))
 
