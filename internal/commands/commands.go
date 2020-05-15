@@ -50,6 +50,10 @@ func logError(logger logging.Logger, f func(cmd *cobra.Command, args []string) e
 			if !IsSoftError(err) {
 				logger.Error(err.Error())
 			}
+			if IsExperimentError(err) {
+				ee, _ := err.(ExperimentError)
+				ee.Tip(logger)
+			}
 			return err
 		}
 		return nil

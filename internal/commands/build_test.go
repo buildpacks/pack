@@ -71,7 +71,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--buildpack-registry", "some-registry"})
 				err := command.Execute()
 				h.AssertNotNil(t, err)
-				h.AssertError(t, err, "Support for buildpack registries is currently experimental.\nTip: To enable experimental features, add `experimental = true` to {{CONFIG_PATH}}.")
+				h.AssertError(t, err, "Support for buildpack registries is currently experimental.")
 			})
 		})
 
