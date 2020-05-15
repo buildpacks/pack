@@ -99,7 +99,9 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 
 	launchCache := cache.NewVolumeCache(opts.Image, "launch", l.docker)
 
-	if semver.MustParse(l.platformAPIVersion).LessThan(semver.MustParse("0.3")) || (opts.Publish && !opts.TrustBuilder) { // TODO: change the boundary to lifecycle version 0.7.5
+	// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
+	// have bugs that make using the creator problematic.
+	if l.builder.LifecycleDescriptor().Info.Version.LessThan(semver.MustParse("0.7.5")) || (opts.Publish && !opts.TrustBuilder) {
 		l.logger.Info(style.Step("DETECTING"))
 		if err := l.Detect(ctx, opts.Network, opts.Volumes, phaseFactory); err != nil {
 			return err

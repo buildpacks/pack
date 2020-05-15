@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
@@ -33,7 +34,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-const lifecycleImageName = "cnbs/lifecycle-image"
+const lifecycleImageRepo = "cnbs/lifecycle-image"
 
 type Lifecycle interface {
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
@@ -142,21 +143,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	lifecycleImage, err := c.imageFetcher.Fetch(
-		ctx,
-		fmt.Sprintf("%s:%s", lifecycleImageName, ephemeralBuilder.LifecycleDescriptor().Info.Version.String()),
-		true,
-		true,
-	)
-	if err != nil {
-		return err // TODO: what if the lifecycle is earlier than 0.7.5 and the provided builder is untrusted? We should probably warn the user and default to the (old) untrusted workflow.
-	}
-
-	return c.lifecycle.Execute(ctx, build.LifecycleOptions{
+	lifecycleOpts := build.LifecycleOptions{
 		AppPath:            appPath,
 		Image:              imageRef,
 		Builder:            ephemeralBuilder,
-		LifecycleImage:     lifecycleImage.Name(),
 		RunImage:           runImageName,
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
@@ -168,7 +158,41 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Volumes:            platformVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
 		FileFilter:         opts.FileFilter,
-	})
+	}
+
+	// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
+	// have bugs that make using the creator problematic.
+	creatorSupported := !ephemeralBuilder.LifecycleDescriptor().Info.Version.LessThan(semver.MustParse("0.7.5"))
+
+	if creatorSupported && (!opts.Publish || opts.TrustBuilder) {
+		// no need to fetch a lifecycle image, it won't be used
+		return c.lifecycle.Execute(ctx, lifecycleOpts)
+	}
+
+	var lifecycleImageName string
+	lifecycleImageSupported := !ephemeralBuilder.LifecycleDescriptor().Info.Version.LessThan(semver.MustParse("0.7.5"))
+
+	if !lifecycleImageSupported {
+		c.logger.Warnf("Lifecycle does not have an associated lifecycle image (%s). Each lifecycle phase will be run in a separate container, and registry credentials will be provided only to analyze, restore, and export.\nRun `pack build` with `--trust-builder` to silence this warning.", lifecycleImageRepo)
+
+		// use the provided builder instead
+		lifecycleImageName = ephemeralBuilder.Name()
+	} else {
+		lifecycleImage, err := c.imageFetcher.Fetch(
+			ctx,
+			fmt.Sprintf("%s:%s", lifecycleImageRepo, ephemeralBuilder.LifecycleDescriptor().Info.Version.String()),
+			true,
+			true,
+		)
+		if err != nil {
+			return errors.Wrap(err, "fetching lifecycle image")
+		}
+
+		lifecycleImageName = lifecycleImage.Name()
+	}
+
+	lifecycleOpts.LifecycleImage = lifecycleImageName
+	return c.lifecycle.Execute(ctx, lifecycleOpts)
 }
 
 func (c *Client) processBuilderName(builderName string) (name.Reference, error) {
