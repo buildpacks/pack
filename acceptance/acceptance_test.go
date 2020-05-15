@@ -1295,7 +1295,7 @@ func testAcceptance(
 
 								h.AssertContains(t, buf.String(), "[detector]")
 
-								if packSupportsCreator && !lifecycleImageAvailable  {
+								if packSupportsCreator && !lifecycleImageAvailable {
 									h.AssertContains(t, buf.String(), "Lifecycle does not have an associated lifecycle image")
 								}
 							})
