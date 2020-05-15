@@ -110,11 +110,6 @@ Created By:
 
 Stack:
   ID: test.stack.id
-  Mixins:
-    mixin1
-    mixin2
-    build:mixin3
-    build:mixin4
 
 Lifecycle:
   Version: 6.7.8
@@ -149,11 +144,6 @@ Created By:
 
 Stack:
   ID: test.stack.id
-  Mixins:
-    mixin1
-    mixin2
-    build:mixin3
-    build:mixin4
 
 Lifecycle:
   Version: 4.5.6
@@ -332,6 +322,33 @@ Detection Order:
 					h.AssertContains(t, outBuf.String(), "Inspecting builder: 'some/image'")
 					h.AssertContains(t, outBuf.String(), remoteOutput)
 					h.AssertContains(t, outBuf.String(), localOutput)
+				})
+			})
+
+			when("the logger is verbose", func() {
+				it.Before(func() {
+					logger = ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+					command = commands.InspectBuilder(logger, cfg, mockClient)
+
+					cfg.DefaultBuilder = "some/image"
+					mockClient.EXPECT().InspectBuilder("default/builder", false).Return(remoteInfo, nil)
+					mockClient.EXPECT().InspectBuilder("default/builder", true).Return(localInfo, nil)
+					command.SetArgs([]string{})
+				})
+
+				it("displays stack mixins", func() {
+					stackLabels := `
+Stack:
+  ID: test.stack.id
+  Mixins:
+    mixin1
+    mixin2
+    build:mixin3
+    build:mixin4
+`
+
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), stackLabels)
 				})
 			})
 		})
