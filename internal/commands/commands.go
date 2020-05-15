@@ -47,12 +47,15 @@ func logError(logger logging.Logger, f func(cmd *cobra.Command, args []string) e
 		cmd.SilenceUsage = true
 		err := f(cmd, args)
 		if err != nil {
-			if !IsSoftError(err) {
+			if _, isSoftError := err.(SoftError); !isSoftError {
 				logger.Error(err.Error())
 			}
-			if IsExperimentError(err) {
-				ee, _ := err.(ExperimentError)
-				ee.Tip(logger)
+			if ee, isExpError := err.(ExperimentError); isExpError {
+				configPath, err := config.DefaultConfigPath()
+				if err != nil {
+					return err
+				}
+				ee.Tip(logger, configPath)
 			}
 			return err
 		}

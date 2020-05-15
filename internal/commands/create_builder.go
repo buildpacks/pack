@@ -27,7 +27,7 @@ func validateCreateBuilderFlags(flags CreateBuilderFlags, cfg config.Config) err
 	}
 
 	if flags.Registry != "" && !cfg.Experimental {
-		return MakeExperimentError("Support for buildpack registries is currently experimental.")
+		return NewExperimentError("Support for buildpack registries is currently experimental.")
 	}
 
 	return nil
