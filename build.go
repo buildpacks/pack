@@ -34,7 +34,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-const lifecycleImageRepo = "cnbs/lifecycle-image"
+const lifecycleImageRepo = "natalieparellano/lifecycle-image"
 
 type Lifecycle interface {
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
