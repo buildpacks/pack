@@ -1346,20 +1346,21 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("Publish option", func() {
+
+			var remoteRunImage *fakes.Image
+
+			it.Before(func() {
+				remoteRunImage = fakes.NewImage("default/run", "", nil)
+				h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
+				h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
+				fakeImageFetcher.RemoteImages[remoteRunImage.Name()] = remoteRunImage
+			})
+
+			it.After(func() {
+				remoteRunImage.Cleanup()
+			})
+
 			when("true", func() {
-				var remoteRunImage *fakes.Image
-
-				it.Before(func() {
-					remoteRunImage = fakes.NewImage("default/run", "", nil)
-					h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
-					h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
-					fakeImageFetcher.RemoteImages[remoteRunImage.Name()] = remoteRunImage
-				})
-
-				it.After(func() {
-					remoteRunImage.Cleanup()
-				})
-
 				it("uses a remote run image", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
@@ -1374,137 +1375,137 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					args = fakeImageFetcher.FetchCalls[builderName]
 					h.AssertEq(t, args.Daemon, true)
 				})
-
-				when("false", func() {
-					it("uses a local run image", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: builderName,
-							Publish: false,
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.Publish, false)
-
-						args := fakeImageFetcher.FetchCalls["default/run"]
-						h.AssertEq(t, args.Daemon, true)
-						h.AssertEq(t, args.Pull, true)
-
-						args = fakeImageFetcher.FetchCalls[builderName]
-						h.AssertEq(t, args.Daemon, true)
-						h.AssertEq(t, args.Pull, true)
-					})
-				})
 			})
 
-			when("NoPull option", func() {
-				when("true", func() {
-					it("uses the local builder and run images without updating", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: builderName,
-							NoPull:  true,
-						}))
-
-						args := fakeImageFetcher.FetchCalls["default/run"]
-						h.AssertEq(t, args.Daemon, true)
-						h.AssertEq(t, args.Pull, false)
-
-						args = fakeImageFetcher.FetchCalls[builderName]
-						h.AssertEq(t, args.Daemon, true)
-						h.AssertEq(t, args.Pull, false)
-					})
-				})
-
-				when("false", func() {
-					it("uses pulls the builder and run image before using them", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: builderName,
-							NoPull:  false,
-						}))
-
-						args := fakeImageFetcher.FetchCalls["default/run"]
-						h.AssertEq(t, args.Daemon, true)
-						h.AssertEq(t, args.Pull, true)
-
-						args = fakeImageFetcher.FetchCalls[builderName]
-						h.AssertEq(t, args.Daemon, true)
-						h.AssertEq(t, args.Pull, true)
-					})
-				})
-			})
-
-			when("ProxyConfig option", func() {
-				when("ProxyConfig is nil", func() {
-					it.Before(func() {
-						h.AssertNil(t, os.Setenv("http_proxy", "other-http-proxy"))
-						h.AssertNil(t, os.Setenv("https_proxy", "other-https-proxy"))
-						h.AssertNil(t, os.Setenv("no_proxy", "other-no-proxy"))
-					})
-
-					when("*_PROXY env vars are set", func() {
-						it.Before(func() {
-							h.AssertNil(t, os.Setenv("HTTP_PROXY", "some-http-proxy"))
-							h.AssertNil(t, os.Setenv("HTTPS_PROXY", "some-https-proxy"))
-							h.AssertNil(t, os.Setenv("NO_PROXY", "some-no-proxy"))
-						})
-
-						it.After(func() {
-							h.AssertNil(t, os.Unsetenv("HTTP_PROXY"))
-							h.AssertNil(t, os.Unsetenv("HTTPS_PROXY"))
-							h.AssertNil(t, os.Unsetenv("NO_PROXY"))
-						})
-
-						it("defaults to the *_PROXY environment variables", func() {
-							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-								Image:   "some/app",
-								Builder: builderName,
-							}))
-							h.AssertEq(t, fakeLifecycle.Opts.HTTPProxy, "some-http-proxy")
-							h.AssertEq(t, fakeLifecycle.Opts.HTTPSProxy, "some-https-proxy")
-							h.AssertEq(t, fakeLifecycle.Opts.NoProxy, "some-no-proxy")
-						})
-					})
-
-					it("falls back to the *_proxy environment variables", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: builderName,
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.HTTPProxy, "other-http-proxy")
-						h.AssertEq(t, fakeLifecycle.Opts.HTTPSProxy, "other-https-proxy")
-						h.AssertEq(t, fakeLifecycle.Opts.NoProxy, "other-no-proxy")
-					})
-				}, spec.Sequential())
-
-				when("ProxyConfig is not nil", func() {
-					it("passes the values through", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: builderName,
-							ProxyConfig: &ProxyConfig{
-								HTTPProxy:  "custom-http-proxy",
-								HTTPSProxy: "custom-https-proxy",
-								NoProxy:    "custom-no-proxy",
-							},
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.HTTPProxy, "custom-http-proxy")
-						h.AssertEq(t, fakeLifecycle.Opts.HTTPSProxy, "custom-https-proxy")
-						h.AssertEq(t, fakeLifecycle.Opts.NoProxy, "custom-no-proxy")
-					})
-				})
-			})
-
-			when("Network option", func() {
-				it("passes the value through", func() {
+			when("false", func() {
+				it("uses a local run image", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
 						Builder: builderName,
-						ContainerConfig: ContainerConfig{
-							Network: "some-network",
+						Publish: false,
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.Publish, false)
+
+					args := fakeImageFetcher.FetchCalls["default/run"]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.Pull, true)
+
+					args = fakeImageFetcher.FetchCalls[builderName]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.Pull, true)
+				})
+			})
+		})
+
+		when("NoPull option", func() {
+			when("true", func() {
+				it("uses the local builder and run images without updating", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						NoPull:  true,
+					}))
+
+					args := fakeImageFetcher.FetchCalls["default/run"]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.Pull, false)
+
+					args = fakeImageFetcher.FetchCalls[builderName]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.Pull, false)
+				})
+			})
+
+			when("false", func() {
+				it("uses pulls the builder and run image before using them", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						NoPull:  false,
+					}))
+
+					args := fakeImageFetcher.FetchCalls["default/run"]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.Pull, true)
+
+					args = fakeImageFetcher.FetchCalls[builderName]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.Pull, true)
+				})
+			})
+		})
+
+		when("ProxyConfig option", func() {
+			when("ProxyConfig is nil", func() {
+				it.Before(func() {
+					h.AssertNil(t, os.Setenv("http_proxy", "other-http-proxy"))
+					h.AssertNil(t, os.Setenv("https_proxy", "other-https-proxy"))
+					h.AssertNil(t, os.Setenv("no_proxy", "other-no-proxy"))
+				})
+
+				when("*_PROXY env vars are set", func() {
+					it.Before(func() {
+						h.AssertNil(t, os.Setenv("HTTP_PROXY", "some-http-proxy"))
+						h.AssertNil(t, os.Setenv("HTTPS_PROXY", "some-https-proxy"))
+						h.AssertNil(t, os.Setenv("NO_PROXY", "some-no-proxy"))
+					})
+
+					it.After(func() {
+						h.AssertNil(t, os.Unsetenv("HTTP_PROXY"))
+						h.AssertNil(t, os.Unsetenv("HTTPS_PROXY"))
+						h.AssertNil(t, os.Unsetenv("NO_PROXY"))
+					})
+
+					it("defaults to the *_PROXY environment variables", func() {
+						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: builderName,
+						}))
+						h.AssertEq(t, fakeLifecycle.Opts.HTTPProxy, "some-http-proxy")
+						h.AssertEq(t, fakeLifecycle.Opts.HTTPSProxy, "some-https-proxy")
+						h.AssertEq(t, fakeLifecycle.Opts.NoProxy, "some-no-proxy")
+					})
+				})
+
+				it("falls back to the *_proxy environment variables", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.HTTPProxy, "other-http-proxy")
+					h.AssertEq(t, fakeLifecycle.Opts.HTTPSProxy, "other-https-proxy")
+					h.AssertEq(t, fakeLifecycle.Opts.NoProxy, "other-no-proxy")
+				})
+			}, spec.Sequential())
+
+			when("ProxyConfig is not nil", func() {
+				it("passes the values through", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: builderName,
+						ProxyConfig: &ProxyConfig{
+							HTTPProxy:  "custom-http-proxy",
+							HTTPSProxy: "custom-https-proxy",
+							NoProxy:    "custom-no-proxy",
 						},
 					}))
-					h.AssertEq(t, fakeLifecycle.Opts.Network, "some-network")
+					h.AssertEq(t, fakeLifecycle.Opts.HTTPProxy, "custom-http-proxy")
+					h.AssertEq(t, fakeLifecycle.Opts.HTTPSProxy, "custom-https-proxy")
+					h.AssertEq(t, fakeLifecycle.Opts.NoProxy, "custom-no-proxy")
 				})
+			})
+		})
+
+		when("Network option", func() {
+			it("passes the value through", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:   "some/app",
+					Builder: builderName,
+					ContainerConfig: ContainerConfig{
+						Network: "some-network",
+					},
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.Network, "some-network")
 			})
 		})
 
