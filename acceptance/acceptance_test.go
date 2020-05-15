@@ -639,7 +639,7 @@ func testAcceptance(
 				})
 
 				when("default builder is set", func() {
-					var creatorSupported, lifecycleImageSupported bool
+					var packSupportsCreator, creatorSupported, lifecycleImageAvailable bool
 
 					it.Before(func() {
 						h.Run(t, subjectPack("set-default-builder", builderName))
@@ -647,17 +647,16 @@ func testAcceptance(
 						// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 						// have bugs that make using the creator problematic.
 						lifecycleSupportsCreator := !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.5"))
-						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+						packSupportsCreator = packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 						creatorSupported = lifecycleSupportsCreator && packSupportsCreator
 
-						lifecycleImageSupported = !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.5"))
+						lifecycleImageAvailable = !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.5"))
 					})
 
 					it("creates a runnable, rebuildable image on daemon from app dir", func() {
 						appPath := filepath.Join("testdata", "mock_app")
 
-						var output string
-						output = h.Run(t, subjectPack("build", repoName, "-p", appPath))
+						output := h.Run(t, subjectPack("build", repoName, "-p", appPath))
 
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 						imgId, err := imgIDForRepoName(repoName)
@@ -815,8 +814,7 @@ func testAcceptance(
 
 						when("the network mode is not provided", func() {
 							it("reports that build and detect are online", func() {
-								var output string
-								output = h.Run(t, subjectPack(
+								output := h.Run(t, subjectPack(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--buildpack", buildpackTgz,
@@ -833,8 +831,7 @@ func testAcceptance(
 
 						when("the network mode is set to default", func() {
 							it("reports that build and detect are online", func() {
-								var output string
-								output = h.Run(t, subjectPack(
+								output := h.Run(t, subjectPack(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--buildpack", buildpackTgz,
@@ -851,8 +848,7 @@ func testAcceptance(
 
 						when("the network mode is set to none", func() {
 							it("reports that build and detect are offline", func() {
-								var output string
-								output = h.Run(t, subjectPack(
+								output := h.Run(t, subjectPack(
 									"build",
 									repoName,
 									"-p",
@@ -1280,8 +1276,7 @@ func testAcceptance(
 						when("builder is untrusted", func() {
 							it("uses the 5 phases", func() {
 								var buf bytes.Buffer
-								var cmd *exec.Cmd
-								cmd = subjectPack(
+								cmd := subjectPack(
 									"build", repoName,
 									"--builder", builderName, // untrusted by default
 									"-p", filepath.Join("testdata", "mock_app"),
@@ -1300,7 +1295,7 @@ func testAcceptance(
 
 								h.AssertContains(t, buf.String(), "[detector]")
 
-								if !lifecycleImageSupported {
+								if packSupportsCreator && !lifecycleImageAvailable  {
 									h.AssertContains(t, buf.String(), "Lifecycle does not have an associated lifecycle image")
 								}
 							})
@@ -1311,8 +1306,7 @@ func testAcceptance(
 								h.SkipIf(t, !packSupports(packPath, "build --trust-builder"), "trust-builder not supported")
 
 								var buf bytes.Buffer
-								var cmd *exec.Cmd
-								cmd = subjectPack(
+								cmd := subjectPack(
 									"build", repoName,
 									"--builder", builderName, // untrusted by default
 									"-p", filepath.Join("testdata", "mock_app"),
@@ -1346,8 +1340,7 @@ func testAcceptance(
 					when("ctrl+c", func() {
 						it("stops the execution", func() {
 							var buf bytes.Buffer
-							var cmd *exec.Cmd
-							cmd = subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
+							cmd := subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
 
 							cmd.Stdout = &buf
 							cmd.Stderr = &buf
