@@ -1308,6 +1308,8 @@ func testAcceptance(
 
 						when("builder is trusted", func() {
 							it("uses the creator (when supported)", func() {
+								h.SkipIf(t, !packSupports(packPath, "build --trust-builder"), "trust-builder not supported")
+
 								var buf bytes.Buffer
 								var cmd *exec.Cmd
 								cmd = subjectPack(
