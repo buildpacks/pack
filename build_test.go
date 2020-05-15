@@ -1346,7 +1346,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("Publish option", func() {
-
 			var remoteRunImage *fakes.Image
 
 			it.Before(func() {
