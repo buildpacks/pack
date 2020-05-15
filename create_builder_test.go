@@ -551,10 +551,76 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("supports directory buildpacks", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
-				opts.Config.Buildpacks[0].URI = "some/buildpack/dir"
+				directoryPath := "testdata/buildpack"
+				opts.Config.Buildpacks[0].URI = directoryPath
+				mockDownloader.EXPECT().Download(gomock.Any(), directoryPath).Return(blob.NewBlob(directoryPath), nil).AnyTimes()
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
+			})
+		})
+
+		when("buildpack URI is from=builder", func() {
+			it("errors", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Buildpacks[0].URI = "from=builder"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err,
+					"invalid locator: FromBuilderLocator")
+			})
+		})
+
+		when("buildpack URI is an invalid locator", func() {
+			it("errors", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Buildpacks[0].URI = "nonsense string here"
+
+				err := subject.CreateBuilder(context.TODO(), opts)
+				h.AssertError(t, err,
+					"invalid locator: InvalidLocator")
+			})
+		})
+
+		when("package file", func() {
+			it.Before(func() {
+				cnbFile := filepath.Join(tmpDir, "bp_one1.cnb")
+				buildpackPath := filepath.Join("testdata", "buildpack")
+				mockDownloader.EXPECT().Download(gomock.Any(), buildpackPath).Return(blob.NewBlob(buildpackPath), nil)
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: cnbFile,
+					Config: pubbldpkg.Config{
+						Buildpack: dist.BuildpackURI{URI: buildpackPath},
+					},
+					Format: "file",
+				}))
+
+				mockDownloader.EXPECT().Download(gomock.Any(), cnbFile).Return(blob.NewBlob(cnbFile), nil).AnyTimes()
+				opts.Config.Buildpacks = []pubbldr.BuildpackConfig{{
+					ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: cnbFile}},
+				}}
+			})
+
+			it("package file is valid", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				bldr := successfullyCreateBuilder()
+
+				bpInfo := dist.BuildpackInfo{
+					ID:       "bp.one",
+					Version:  "1.2.3",
+					Homepage: "http://one.buildpack",
+				}
+				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
+				bpInfo.Homepage = ""
+				h.AssertEq(t, bldr.Order(), dist.Order{{
+					Group: []dist.BuildpackRef{{
+						BuildpackInfo: bpInfo,
+						Optional:      false,
+					}},
+				}})
 			})
 		})
 
