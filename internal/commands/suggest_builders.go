@@ -20,14 +20,14 @@ type suggestedBuilder struct {
 
 var suggestedBuilders = []suggestedBuilder{
 	{
-		Name:               "Paketo Buildpacks",
-		Image:              "gcr.io/paketo-buildpacks/builder:bionic",
-		DefaultDescription: "Small base image with buildpacks for Java, Node.js, Golang, & .NET Core",
+		Name:               "Cloud Foundry",
+		Image:              "cloudfoundry/cnb:cflinuxfs3",
+		DefaultDescription: "Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, & PHP",
 	},
 	{
 		Name:               "Paketo Buildpacks",
-		Image:              "gcr.io/paketo-buildpacks/builder:cflinuxfs3",
-		DefaultDescription: "Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, & PHP",
+		Image:              "gcr.io/paketo-buildpacks/builder:base",
+		DefaultDescription: "Small base image with buildpacks for Java, Node.js, Golang, & .NET Core",
 	},
 	{
 		Name:               "Paketo Buildpacks",
