@@ -20,8 +20,8 @@ type suggestedBuilder struct {
 
 var suggestedBuilders = []suggestedBuilder{
 	{
-		Name:               "Cloud Foundry",
-		Image:              "cloudfoundry/cnb:cflinuxfs3",
+		Name:               "Paketo Buildpacks",
+		Image:              "gcr.io/paketo-buildpacks/builder:full-cf",
 		DefaultDescription: "Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, & PHP",
 	},
 	{

@@ -1440,7 +1440,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						h.AssertNotNil(t, err)
 						h.AssertContains(t, output, `Please select a default builder with:`)
 						h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'`)
-						h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
+						h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
 						h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks:18'`)
 					})
 				})
