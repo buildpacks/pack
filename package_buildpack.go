@@ -51,6 +51,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	packageBuilder.SetBuildpack(bp)
 
+	var bps []dist.Buildpack
 	for _, dep := range opts.Config.Dependencies {
 		if dep.URI != "" {
 			blob, err := c.downloader.Download(ctx, dep.URI)
@@ -58,22 +59,37 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(dep.URI))
 			}
 
-			depBP, err := dist.BuildpackFromRootBlob(blob, archive.DefaultTarWriterFactory())
+			isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
 			if err != nil {
-				return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
+				return errors.Wrap(err, "inspecting buildpack blob")
 			}
 
-			packageBuilder.AddDependency(depBP)
+			if isOCILayout {
+				mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(blob)
+				if err != nil {
+					return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(dep.URI))
+				}
+
+				bps = append([]dist.Buildpack{mainBP}, depBPs...)
+			} else {
+				depBP, err := dist.BuildpackFromRootBlob(blob, archive.DefaultTarWriterFactory())
+				if err != nil {
+					return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
+				}
+				bps = []dist.Buildpack{depBP}
+			}
 		} else if dep.ImageName != "" {
 			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
 			if err != nil {
 				return err
 			}
 
-			for _, depBP := range append([]dist.Buildpack{mainBP}, depBPs...) {
-				packageBuilder.AddDependency(depBP)
-			}
+			bps = append([]dist.Buildpack{mainBP}, depBPs...)
 		}
+	}
+
+	for _, depBP := range bps {
+		packageBuilder.AddDependency(depBP)
 	}
 
 	switch opts.Format {
