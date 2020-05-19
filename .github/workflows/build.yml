@@ -15,21 +15,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos, linux, windows-lcow, windows-wcow]
+        config: [macos, linux, windows-lcow, windows-wcow]
         include:
-          - os: macos
+          - config: macos
+            os: macos
             runner: macos-latest
             no_docker: "true"
             pack_bin: pack
-          - os: linux
+          - config: linux
+            os: linux
             runner: ubuntu-latest
             no_docker: "false"
             pack_bin: pack
-          - os: windows-lcow
+          - config: windows-lcow
+            os: windows
             runner: [self-hosted, windows]
             no_docker: "false"
             pack_bin: pack.exe
-          - os: windows-wcow
+          - config: windows-wcow
+            os: windows
             runner: windows-latest
             no_docker: "false"
             pack_bin: pack.exe
@@ -54,7 +58,7 @@ jobs:
           echo "::add-path::$(go env GOPATH)/bin"
       - name: Verify
         # disabled for windows due to format verification failing
-        if: ${{ !contains(matrix.os, 'windows') }}
+        if: matrix.os != 'windows'
         run: make verify
       - name: Test
         env:
@@ -71,6 +75,7 @@ jobs:
         env:
           PACK_BUILD: ${{ github.run_number }}
       - uses: actions/upload-artifact@v1
+        if: matrix.config != 'windows-wcow'
         with:
           name: pack-${{ matrix.os }}
           path: out/${{ env.PACK_BIN }}
