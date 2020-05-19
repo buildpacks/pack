@@ -102,6 +102,7 @@ func AssertContains(t *testing.T, actual, expected string) {
 	}
 }
 
+// AssertContainsMatch matches on content by regular expression
 func AssertContainsMatch(t *testing.T, actual, exp string) {
 	t.Helper()
 	if !hasMatches(actual, exp) {

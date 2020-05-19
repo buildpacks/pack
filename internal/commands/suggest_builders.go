@@ -31,13 +31,13 @@ var suggestedBuilders = []SuggestedBuilder{
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
-		Image:              "gcr.io/paketo-buildpacks/builder:full-cf",
-		DefaultDescription: "Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, & PHP",
+		Image:              "gcr.io/paketo-buildpacks/builder:base",
+		DefaultDescription: "Small base image with buildpacks for Java, Node.js, Golang, & .NET Core",
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
-		Image:              "gcr.io/paketo-buildpacks/builder:base",
-		DefaultDescription: "Small base image with buildpacks for Java, Node.js, Golang, & .NET Core",
+		Image:              "gcr.io/paketo-buildpacks/builder:full-cf",
+		DefaultDescription: "Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, & PHP",
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
@@ -63,7 +63,7 @@ func SuggestBuilders(logger logging.Logger, client PackClient) *cobra.Command {
 func suggestSettingBuilder(logger logging.Logger, client PackClient) {
 	logger.Info("Please select a default builder with:")
 	logger.Info("")
-	logger.Info("\tpack set-default-builder <builder image>")
+	logger.Info("\tpack set-default-builder <builder-image>")
 	logger.Info("")
 	suggestBuilders(logger, client)
 }
@@ -73,7 +73,13 @@ func suggestBuilders(logger logging.Logger, client PackClient) {
 }
 
 func WriteSuggestedBuilder(logger logging.Logger, client PackClient, builders []SuggestedBuilder) {
-	sort.Slice(builders, func(i, j int) bool { return builders[i].Vendor < builders[j].Vendor })
+	sort.Slice(builders, func(i, j int) bool {
+		if builders[i].Vendor == builders[j].Vendor {
+			return builders[i].Image < builders[j].Image
+		}
+
+		return builders[i].Vendor < builders[j].Vendor
+	})
 
 	logger.Info("Suggested builders:")
 
