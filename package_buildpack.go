@@ -77,7 +77,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 				if err != nil {
 					return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
 				}
-				depBPs = append([]dist.Buildpack{depBP})
+				depBPs = []dist.Buildpack{depBP}
 			}
 		} else if dep.ImageName != "" {
 			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
