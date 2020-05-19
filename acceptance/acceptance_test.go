@@ -646,7 +646,7 @@ func testAcceptance(
 
 						// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 						// have bugs that make using the creator problematic.
-						lifecycleSupportsCreator := !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.5"))
+						lifecycleSupportsCreator := !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.4"))
 						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 						creatorSupported = lifecycleSupportsCreator && packSupportsCreator
 					})
@@ -1234,6 +1234,13 @@ func testAcceptance(
 								"--publish",
 								"--network", "host",
 							))
+
+							// Test builder is untrusted by default. Verify that the 5 phases were used.
+							h.AssertContains(t, output, "DETECTING")
+							h.AssertContains(t, output, "ANALYZING")
+							h.AssertContains(t, output, "RESTORING")
+							h.AssertContains(t, output, "BUILDING")
+							h.AssertContains(t, output, "EXPORTING")
 							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 							t.Log("checking that registry has contents")
@@ -1269,65 +1276,6 @@ func testAcceptance(
 								)
 								h.AssertEq(t, output, expectedOutput)
 							}
-						})
-
-						when("builder is untrusted", func() {
-							it("uses the 5 phases", func() {
-								var buf bytes.Buffer
-								cmd := subjectPack(
-									"build", repoName,
-									"--builder", builderName, // untrusted by default
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--publish",
-									"--network", "host",
-								)
-
-								cmd.Stdout = &buf
-								cmd.Stderr = &buf
-
-								h.AssertNil(t, cmd.Start())
-
-								go terminateAtStep(t, cmd, &buf, "[detector]")
-								err := cmd.Wait()
-								h.AssertNotNil(t, err)
-
-								h.AssertContains(t, buf.String(), "[detector]")
-							})
-						})
-
-						when("builder is trusted", func() {
-							it("uses the creator (when supported)", func() {
-								h.SkipIf(t, !packSupports(packPath, "build --trust-builder"), "trust-builder not supported")
-
-								var buf bytes.Buffer
-								cmd := subjectPack(
-									"build", repoName,
-									"--builder", builderName, // untrusted by default
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--publish",
-									"--network", "host",
-									"--trust-builder",
-								)
-
-								cmd.Stdout = &buf
-								cmd.Stderr = &buf
-
-								h.AssertNil(t, cmd.Start())
-
-								if creatorSupported {
-									go terminateAtStep(t, cmd, &buf, "[creator]")
-									err := cmd.Wait()
-									h.AssertNotNil(t, err)
-
-									h.AssertContains(t, buf.String(), "[creator]")
-								} else {
-									go terminateAtStep(t, cmd, &buf, "[detector]")
-									err := cmd.Wait()
-									h.AssertNotNil(t, err)
-
-									h.AssertContains(t, buf.String(), "[detector]")
-								}
-							})
 						})
 					})
 

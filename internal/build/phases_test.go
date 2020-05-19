@@ -53,7 +53,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Create", func() {
 		it("creates a phase and then run it", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
@@ -65,7 +65,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with the expected arguments", func() {
-			verboseLifecycle := newLifecycle(t, true)
+			verboseLifecycle := newTestLifecycle(t, true)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedRepoName := "some-repo-name"
 			expectedRunImage := "some-run-image"
@@ -84,7 +84,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with the expected network mode", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedNetworkMode := "some-network-mode"
 
@@ -97,7 +97,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 		when("clear cache", func() {
 			it("configures the phase with the expected arguments", func() {
-				verboseLifecycle := newLifecycle(t, true)
+				verboseLifecycle := newTestLifecycle(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err := verboseLifecycle.Create(context.Background(), false, true, "test", "test", "test", "test", "test", fakePhaseFactory)
@@ -114,7 +114,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 		when("clear cache is false", func() {
 			it("configures the phase with the expected arguments", func() {
-				verboseLifecycle := newLifecycle(t, true)
+				verboseLifecycle := newTestLifecycle(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err := verboseLifecycle.Create(context.Background(), false, false, "test", "test", "test", "test", "test", fakePhaseFactory)
@@ -131,7 +131,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 		when("publish", func() {
 			it("configures the phase with binds", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBinds := []string{"some-cache:/cache"}
 
@@ -143,7 +143,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with root", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err := lifecycle.Create(context.Background(), true, false, "test", "test", "test", "test", "test", fakePhaseFactory)
@@ -154,7 +154,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with registry access", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRepos := "some-repo-name"
 
@@ -168,7 +168,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 		when("publish is false", func() {
 			it("configures the phase with the expected arguments", func() {
-				verboseLifecycle := newLifecycle(t, true)
+				verboseLifecycle := newTestLifecycle(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err := verboseLifecycle.Create(context.Background(), false, false, "test", "test", "test", "test", "test", fakePhaseFactory)
@@ -184,7 +184,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with daemon access", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err := lifecycle.Create(context.Background(), false, false, "test", "some-launch-cache", "some-cache", "test", "test", fakePhaseFactory)
@@ -196,7 +196,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with binds", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache"}
 
@@ -211,7 +211,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Detect", func() {
 		it("creates a phase and then runs it", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
@@ -223,7 +223,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with the expected arguments", func() {
-			verboseLifecycle := newLifecycle(t, true)
+			verboseLifecycle := newTestLifecycle(t, true)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 			err := verboseLifecycle.Detect(context.Background(), "test", []string{"test"}, fakePhaseFactory)
@@ -240,7 +240,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with the expected network mode", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedNetworkMode := "some-network-mode"
 
@@ -252,7 +252,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with binds", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedBind := "some-mount-source:/some-mount-target"
 
@@ -266,7 +266,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Analyze", func() {
 		it("creates a phase and then runs it", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
@@ -279,7 +279,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 		when("clear cache", func() {
 			it("configures the phase with the expected arguments", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRepoName := "some-repo-name"
 
@@ -294,7 +294,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 		when("clear cache is false", func() {
 			it("configures the phase with the expected arguments", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRepoName := "some-repo-name"
 
@@ -312,7 +312,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 		when("publish", func() {
 			it("runs the phase with the lifecycle image", func() {
-				lifecycle := newLifecycle(t, true, func(options *build.LifecycleOptions) {
+				lifecycle := newTestLifecycle(t, true, func(options *build.LifecycleOptions) {
 					options.LifecycleImage = "some-lifecycle-image"
 				})
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
@@ -327,7 +327,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			it("sets the CNB_USER_ID and CNB_GROUP_ID in the environment", func() {
 				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithUID(2222), fakes.WithGID(3333))
 				h.AssertNil(t, err)
-				lifecycle := newLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
+				lifecycle := newTestLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err = lifecycle.Analyze(context.Background(), "test", "test", "test", true, false, fakePhaseFactory)
@@ -339,7 +339,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with registry access", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRepos := "some-repo-name"
 				expectedNetworkMode := "some-network-mode"
@@ -353,7 +353,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with root", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err := lifecycle.Analyze(context.Background(), "test", "test", "test", true, false, fakePhaseFactory)
@@ -364,7 +364,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with the expected arguments", func() {
-				verboseLifecycle := newLifecycle(t, true)
+				verboseLifecycle := newTestLifecycle(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRepoName := "some-repo-name"
 
@@ -382,7 +382,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with binds", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBind := "some-cache:/cache"
 
@@ -396,7 +396,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 		when("publish is false", func() {
 			it("configures the phase with daemon access", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err := lifecycle.Analyze(context.Background(), "test", "test", "test", false, false, fakePhaseFactory)
@@ -408,7 +408,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with the expected arguments", func() {
-				verboseLifecycle := newLifecycle(t, true)
+				verboseLifecycle := newTestLifecycle(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRepoName := "some-repo-name"
 
@@ -427,7 +427,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with the expected network mode", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedNetworkMode := "some-network-mode"
 
@@ -439,7 +439,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with binds", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBind := "some-cache:/cache"
 
@@ -454,7 +454,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Restore", func() {
 		it("runs the phase with the lifecycle image", func() {
-			lifecycle := newLifecycle(t, true, func(options *build.LifecycleOptions) {
+			lifecycle := newTestLifecycle(t, true, func(options *build.LifecycleOptions) {
 				options.LifecycleImage = "some-lifecycle-image"
 			})
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
@@ -469,7 +469,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		it("sets the CNB_USER_ID and CNB_GROUP_ID in the environment", func() {
 			fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithUID(2222), fakes.WithGID(3333))
 			h.AssertNil(t, err)
-			lifecycle := newLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
+			lifecycle := newTestLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 			err = lifecycle.Restore(context.Background(), "test", "test", fakePhaseFactory)
@@ -481,7 +481,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("creates a phase and then runs it", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
@@ -493,7 +493,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with root access", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 			err := lifecycle.Restore(context.Background(), "test", "test", fakePhaseFactory)
@@ -504,7 +504,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with the expected arguments", func() {
-			verboseLifecycle := newLifecycle(t, true)
+			verboseLifecycle := newTestLifecycle(t, true)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 			err := verboseLifecycle.Restore(context.Background(), "test", "test", fakePhaseFactory)
@@ -521,7 +521,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with the expected network mode", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedNetworkMode := "some-network-mode"
 
@@ -533,7 +533,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with binds", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedBind := "some-cache:/cache"
 
@@ -547,7 +547,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Build", func() {
 		it("creates a phase and then runs it", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
@@ -559,7 +559,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with the expected arguments", func() {
-			verboseLifecycle := newLifecycle(t, true)
+			verboseLifecycle := newTestLifecycle(t, true)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 			err := verboseLifecycle.Build(context.Background(), "test", []string{}, fakePhaseFactory)
@@ -577,7 +577,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with the expected network mode", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedNetworkMode := "some-network-mode"
 
@@ -589,7 +589,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with binds", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedBind := "some-mount-source:/some-mount-target"
 
@@ -603,7 +603,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Export", func() {
 		it("creates a phase and then runs it", func() {
-			lifecycle := newLifecycle(t, false)
+			lifecycle := newTestLifecycle(t, false)
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
@@ -615,7 +615,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with the expected arguments", func() {
-			verboseLifecycle := newLifecycle(t, true)
+			verboseLifecycle := newTestLifecycle(t, true)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedRepoName := "some-repo-name"
 
@@ -636,7 +636,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 		when("publish", func() {
 			it("runs the phase with the lifecycle image", func() {
-				lifecycle := newLifecycle(t, true, func(options *build.LifecycleOptions) {
+				lifecycle := newTestLifecycle(t, true, func(options *build.LifecycleOptions) {
 					options.LifecycleImage = "some-lifecycle-image"
 				})
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
@@ -651,7 +651,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			it("sets the CNB_USER_ID and CNB_GROUP_ID in the environment", func() {
 				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithUID(2222), fakes.WithGID(3333))
 				h.AssertNil(t, err)
-				lifecycle := newLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
+				lifecycle := newTestLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err = lifecycle.Export(context.Background(), "test", "test", true, "test", "test", "test", fakePhaseFactory)
@@ -663,7 +663,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with registry access", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRepos := []string{"some-repo-name", "some-run-image"}
 
@@ -675,7 +675,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with root", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err := lifecycle.Export(context.Background(), "test", "test", true, "test", "test", "test", fakePhaseFactory)
@@ -686,7 +686,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with the expected network mode", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedNetworkMode := "some-network-mode"
 
@@ -698,7 +698,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with binds", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBind := "some-cache:/cache"
 
@@ -710,7 +710,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with bind mounts", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err := lifecycle.Export(context.Background(), "test", "test", true, "test", "some-cache", "test", fakePhaseFactory)
@@ -727,7 +727,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 		when("publish is false", func() {
 			it("configures the phase with daemon access", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err := lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
@@ -739,7 +739,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with the expected arguments", func() {
-				verboseLifecycle := newLifecycle(t, true)
+				verboseLifecycle := newTestLifecycle(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
 				err := verboseLifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
@@ -755,7 +755,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with the expected network mode", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedNetworkMode := "some-network-mode"
 
@@ -767,7 +767,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with binds", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache"}
 
@@ -785,7 +785,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithPlatformVersion(platformAPIVersion))
 				h.AssertNil(t, err)
-				lifecycle := newLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
+				lifecycle := newTestLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRunImage := "some-run-image"
 
@@ -815,7 +815,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("uses -run-image instead of deprecated -image", func() {
-				lifecycle := newLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
+				lifecycle := newTestLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRunImage := "some-run-image"
 
@@ -831,7 +831,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("configures the phase with default arguments", func() {
-				lifecycle := newLifecycle(t, true, fakes.WithBuilder(fakeBuilder), func(options *build.LifecycleOptions) {
+				lifecycle := newTestLifecycle(t, true, fakes.WithBuilder(fakeBuilder), func(options *build.LifecycleOptions) {
 					options.DefaultProcessType = "test-process"
 				})
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
@@ -846,7 +846,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func newLifecycle(t *testing.T, logVerbose bool, ops ...func(*build.LifecycleOptions)) *build.Lifecycle {
+func newTestLifecycle(t *testing.T, logVerbose bool, ops ...func(*build.LifecycleOptions)) *build.Lifecycle {
 	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 
