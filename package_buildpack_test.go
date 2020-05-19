@@ -351,12 +351,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		assertPackageBPFileHasBuildpacks := func(path string, parentBP dist.BuildpackDescriptor, otherBPs []dist.BuildpackDescriptor) {
-			h.AssertTarball(t, path)
 			packageBlob := blob.NewBlob(path)
-			isPackageBP, err := buildpackage.IsOCILayoutBlob(packageBlob)
-			h.AssertNil(t, err)
-			h.AssertTrue(t, isPackageBP)
-
 			mainBP, deps, err := buildpackage.BuildpacksFromOCILayoutBlob(packageBlob)
 			h.AssertNil(t, err)
 			h.AssertEq(t, mainBP.Descriptor(), parentBP)
