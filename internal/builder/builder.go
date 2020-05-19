@@ -48,6 +48,7 @@ const (
 	envGID = "CNB_GROUP_ID"
 )
 
+// Builder represents a pack builder, used to build images
 type Builder struct {
 	baseImageName        string
 	image                imgutil.Image
@@ -79,7 +80,7 @@ func FromImage(img imgutil.Image) (*Builder, error) {
 	return constructBuilder(img, "", metadata)
 }
 
-// New constructs a new builder from base image
+// New constructs a new builder from a base image
 func New(baseImage imgutil.Image, name string) (*Builder, error) {
 	var metadata Metadata
 	if _, err := dist.GetLabel(baseImage, metadataLabel, &metadata); err != nil {
@@ -162,76 +163,92 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 
 // Getters
 
+// Description returns the builder description
 func (b *Builder) Description() string {
 	return b.metadata.Description
 }
 
+// LifecycleDescriptor returns the LifecycleDescriptor
 func (b *Builder) LifecycleDescriptor() LifecycleDescriptor {
 	return b.lifecycleDescriptor
 }
 
+// Buildpacks returns the buildpack list
 func (b *Builder) Buildpacks() []dist.BuildpackInfo {
 	return b.metadata.Buildpacks
 }
 
+// CreatedBy returns metadata around the creation of the builder
 func (b *Builder) CreatedBy() CreatorMetadata {
 	return b.metadata.CreatedBy
 }
 
+// Order returns the order
 func (b *Builder) Order() dist.Order {
 	return b.order
 }
 
+// Name returns the name of the builder
 func (b *Builder) Name() string {
 	return b.image.Name()
 }
 
+// Image returns the base image
 func (b *Builder) Image() imgutil.Image {
 	return b.image
 }
 
+// Stack returns the stack metadata
 func (b *Builder) Stack() StackMetadata {
 	return b.metadata.Stack
 }
 
+// Mixins returns the mixins of the builder
 func (b *Builder) Mixins() []string {
 	return b.mixins
 }
 
+// UID returns the UID of the builder
 func (b *Builder) UID() int {
 	return b.uid
 }
 
+// GID returns the GID of the builder
 func (b *Builder) GID() int {
 	return b.gid
 }
 
 // Setters
 
+// AddBuildpack adds a buildpack to the builder
 func (b *Builder) AddBuildpack(bp dist.Buildpack) {
 	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
 	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().Info)
 }
 
-func (b *Builder) SetLifecycle(lifecycle Lifecycle) error {
+// SetLifecycle sets the lifecycle of the builder
+func (b *Builder) SetLifecycle(lifecycle Lifecycle) {
 	b.lifecycle = lifecycle
 	b.lifecycleDescriptor = lifecycle.Descriptor()
-	return nil
 }
 
+// SetEnv sets an environment variable to a value
 func (b *Builder) SetEnv(env map[string]string) {
 	b.env = env
 }
 
+// SetOrder sets the order of the builder
 func (b *Builder) SetOrder(order dist.Order) {
 	b.order = order
 	b.replaceOrder = true
 }
 
+// SetDescription sets the description of the builder
 func (b *Builder) SetDescription(description string) {
 	b.metadata.Description = description
 }
 
+// SetStack sets the stack of the builder
 func (b *Builder) SetStack(stackConfig builder.StackConfig) {
 	b.metadata.Stack = StackMetadata{
 		RunImage: RunImageMetadata{
@@ -241,6 +258,7 @@ func (b *Builder) SetStack(stackConfig builder.StackConfig) {
 	}
 }
 
+// Save saves the builder
 func (b *Builder) Save(logger logging.Logger) error {
 	logger.Debugf("Saving builder with the following buildpacks:")
 	for _, bpInfo := range b.metadata.Buildpacks {

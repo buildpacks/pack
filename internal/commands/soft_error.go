@@ -3,12 +3,7 @@ package commands
 type SoftError struct {
 }
 
-func IsSoftError(err error) bool {
-	_, isSoft := err.(SoftError)
-	return isSoft
-}
-
-func MakeSoftError() SoftError {
+func NewSoftError() SoftError {
 	return SoftError{}
 }
 

@@ -66,6 +66,15 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("--buildpack-registry flag is specified but experimental isn't set in the config", func() {
+			it("errors with a descriptive message", func() {
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--buildpack-registry", "some-registry"})
+				err := command.Execute()
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "Support for buildpack registries is currently experimental.")
+			})
+		})
+
 		when("a network is given", func() {
 			it("forwards the network onto the client", func() {
 				mockClient.EXPECT().

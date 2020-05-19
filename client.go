@@ -108,7 +108,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 			dockerClient.WithVersion("1.38"),
 		)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "creating docker client")
 		}
 	}
 

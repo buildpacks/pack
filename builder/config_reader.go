@@ -15,28 +15,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-type BuildpackCollection []BuildpackConfig
-
-func (c BuildpackCollection) Packages() []BuildpackConfig {
-	var bps []BuildpackConfig
-	for _, bp := range c {
-		if bp.ImageName != "" && bp.URI == "" {
-			bps = append(bps, bp)
-		}
-	}
-	return bps
-}
-
-func (c BuildpackCollection) Buildpacks() []BuildpackConfig {
-	var bps []BuildpackConfig
-	for _, bp := range c {
-		if bp.URI != "" && bp.ImageName == "" {
-			bps = append(bps, bp)
-		}
-	}
-	return bps
-}
-
+// Config is a builder configuration file
 type Config struct {
 	Description string              `toml:"description"`
 	Buildpacks  BuildpackCollection `toml:"buildpacks"`
@@ -45,11 +24,16 @@ type Config struct {
 	Lifecycle   LifecycleConfig     `toml:"lifecycle"`
 }
 
+// BuildpackCollection is a list of BuildpackConfigs
+type BuildpackCollection []BuildpackConfig
+
+// BuildpackConfig details the configuration of a Buildpack
 type BuildpackConfig struct {
 	dist.BuildpackInfo
 	dist.ImageOrURI
 }
 
+// StackConfig details the configuration of a Stack
 type StackConfig struct {
 	ID              string   `toml:"id"`
 	BuildImage      string   `toml:"build-image"`
@@ -57,6 +41,7 @@ type StackConfig struct {
 	RunImageMirrors []string `toml:"run-image-mirrors,omitempty"`
 }
 
+// LifecycleConfig details the configuration of the Lifecycle
 type LifecycleConfig struct {
 	URI     string `toml:"uri"`
 	Version string `toml:"version"`
