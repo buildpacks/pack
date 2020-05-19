@@ -269,7 +269,7 @@ func testWithoutSpecificBuilderRequirement(
 				t.Fatalf("suggest-builders command failed: %s: %s", output, err)
 			}
 			h.AssertContains(t, string(output), "Suggested builders:")
-			h.AssertContains(t, string(output), "cloudfoundry/cnb:bionic")
+			h.AssertContains(t, string(output), "gcr.io/paketo-buildpacks/builder:base")
 		})
 	})
 
@@ -286,8 +286,8 @@ func testWithoutSpecificBuilderRequirement(
 
 	when("set-default-builder", func() {
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			output := h.Run(t, subjectPack("set-default-builder", "cloudfoundry/cnb:bionic"))
-			h.AssertContains(t, output, "Builder 'cloudfoundry/cnb:bionic' is now the default builder")
+			output := h.Run(t, subjectPack("set-default-builder", "gcr.io/paketo-buildpacks/builder:base"))
+			h.AssertContains(t, output, "Builder 'gcr.io/paketo-buildpacks/builder:base' is now the default builder")
 		})
 	})
 
@@ -474,7 +474,7 @@ func testWithoutSpecificBuilderRequirement(
 
 		when("default builder is set", func() {
 			it.Before(func() {
-				h.Run(t, subjectPack("set-default-builder", "cloudfoundry/cnb:bionic"))
+				h.Run(t, subjectPack("set-default-builder", "gcr.io/paketo-buildpacks/builder:base"))
 			})
 
 			it("outputs information", func() {
@@ -486,7 +486,7 @@ func testWithoutSpecificBuilderRequirement(
 				outputTemplate := filepath.Join(packFixturesDir, "report_output.txt")
 				expectedOutput := fillTemplate(t, outputTemplate,
 					map[string]interface{}{
-						"DefaultBuilder": "cloudfoundry/cnb:bionic",
+						"DefaultBuilder": "gcr.io/paketo-buildpacks/builder:base",
 						"Version":        version,
 						"OS":             runtime.GOOS,
 						"Arch":           runtime.GOARCH,
@@ -1439,8 +1439,8 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						output, err := h.RunE(cmd)
 						h.AssertNotNil(t, err)
 						h.AssertContains(t, output, `Please select a default builder with:`)
-						h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
-						h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
+						h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'`)
+						h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
 						h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks:18'`)
 					})
 				})
