@@ -173,7 +173,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	lifecycleImageSupported := !ephemeralBuilder.LifecycleDescriptor().Info.Version.LessThan(semver.MustParse("0.7.5"))
 	if !lifecycleImageSupported {
-		c.logger.Warnf("Lifecycle does not have an associated lifecycle image (%s). Each lifecycle phase will be run in a separate container using the provided builder image. Registry credentials will be provided only to analyze, restore, and export.\nRun `pack build` with `--trust-builder` to silence this warning.", lifecycleImageRepo)
+		c.logger.Warnf("Lifecycle does not have an associated lifecycle image (%s).", lifecycleImageRepo)
 	} else {
 		lifecycleImage, err := c.imageFetcher.Fetch(
 			ctx,
