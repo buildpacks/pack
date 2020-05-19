@@ -34,7 +34,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-const lifecycleImageRepo = "natalieparellano/lifecycle" // TODO: change when https://github.com/buildpacks/lifecycle/pull/294 is merged.
+const lifecycleImageRepo = "buildpacksio/lifecycle"
 
 type Lifecycle interface {
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
