@@ -181,7 +181,7 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish,
 			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
 			WithRegistryAccess(authConfig),
 			WithRoot(),
-			WithArgs(args...),
+			WithArgs(l.withLogLevel(args...)...),
 			WithNetwork(networkMode),
 			WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 		)
@@ -220,9 +220,11 @@ func (l *Lifecycle) Build(ctx context.Context, networkMode string, volumes []str
 		l,
 		WithLogPrefix("builder"),
 		WithArgs(
-			"-layers", layersDir,
-			"-app", appDir,
-			"-platform", platformDir,
+			l.withLogLevel(
+				"-layers", layersDir,
+				"-app", appDir,
+				"-platform", platformDir,
+			)...,
 		),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),

@@ -375,7 +375,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, configProvider.Name(), "analyzer")
 				h.AssertIncludeAllExpectedPatterns(t,
 					configProvider.ContainerConfig().Cmd,
-					//[]string{"-log-level", "debug"}, // TODO: fix [https://github.com/buildpacks/pack/issues/419].
+					[]string{"-log-level", "debug"},
 					[]string{"-layers", "/layers"},
 					[]string{expectedRepoName},
 				)
@@ -569,7 +569,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, configProvider.Name(), "builder")
 			h.AssertIncludeAllExpectedPatterns(t,
 				configProvider.ContainerConfig().Cmd,
-				//[]string{"-log-level", "debug"}, // TODO: fix [https://github.com/buildpacks/pack/issues/419].
+				[]string{"-log-level", "debug"},
 				[]string{"-layers", "/layers"},
 				[]string{"-app", "/workspace"},
 				[]string{"-platform", "/platform"},
