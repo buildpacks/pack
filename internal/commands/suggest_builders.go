@@ -73,7 +73,7 @@ func suggestBuilders(logger logging.Logger, client PackClient) {
 }
 
 func WriteSuggestedBuilder(logger logging.Logger, client PackClient, builders []SuggestedBuilder) {
-	sort.Slice(builders, func(i, j int) bool { return builders[i].Image < builders[j].Image })
+	sort.Slice(builders, func(i, j int) bool { return builders[i].Vendor < builders[j].Vendor })
 
 	logger.Info("Suggested builders:")
 
