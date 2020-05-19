@@ -8,11 +8,10 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/buildpack"
-	"github.com/buildpacks/pack/internal/buildpackage"
-
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/buildpack"
+	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/layer"
@@ -34,19 +33,19 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 		return err
 	}
 
-	builder, err := c.createBaseBuilder(ctx, opts)
+	bldr, err := c.createBaseBuilder(ctx, opts)
 	if err != nil {
 		return errors.Wrap(err, "failed to create builder")
 	}
 
-	if err := c.addBuildpacksToBuilder(ctx, opts, builder); err != nil {
+	if err := c.addBuildpacksToBuilder(ctx, opts, bldr); err != nil {
 		return errors.Wrap(err, "failed to add buildpacks to builder")
 	}
 
-	builder.SetOrder(opts.Config.Order)
-	builder.SetStack(opts.Config.Stack)
+	bldr.SetOrder(opts.Config.Order)
+	bldr.SetStack(opts.Config.Stack)
 
-	return builder.Save(c.logger)
+	return bldr.Save(c.logger)
 }
 
 func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {
@@ -176,6 +175,8 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 
 func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	for _, b := range opts.Config.Buildpacks {
+		c.logger.Debugf("Looking up buildpack %s", style.Symbol(b.FullName()))
+
 		locator := b.URI
 		if locator == "" && b.ImageName != "" {
 			locator = b.ImageName
@@ -189,6 +190,8 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 		var bps []dist.Buildpack
 		switch locatorType {
 		case buildpack.RegistryLocator:
+			c.logger.Debugf("Downloading buildpack from registry: %s", style.Symbol(b.URI))
+
 			registryCache, err := c.getRegistry(c.logger, opts.Registry)
 			if err != nil {
 				return errors.Wrapf(err, "invalid registry '%s'", opts.Registry)
@@ -206,6 +209,8 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 
 			bps = append([]dist.Buildpack{mainBP}, depBPs...)
 		case buildpack.PackageLocator:
+			c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(b.ImageName))
+
 			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, b.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
 			if err != nil {
 				return err
@@ -213,6 +218,8 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 
 			bps = append([]dist.Buildpack{mainBP}, depBPs...)
 		case buildpack.URILocator:
+			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(b.URI))
+
 			err := ensureBPSupport(b.URI)
 			if err != nil {
 				return err
