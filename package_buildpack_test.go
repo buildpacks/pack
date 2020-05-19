@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -319,6 +320,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			nestedPackage     *fakes.Image
 			childDescriptor   dist.BuildpackDescriptor
 			packageDescriptor dist.BuildpackDescriptor
+			tmpDir            string
+			err               error
 		)
 
 		it.Before(func() {
@@ -338,6 +341,13 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					}},
 				}},
 			}
+
+			tmpDir, err = ioutil.TempDir("", "package-buildpack")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
 
 		assertPackageBPFileHasBuildpacks := func(path string, parentBP dist.BuildpackDescriptor, otherBPs []dist.BuildpackDescriptor) {
@@ -372,9 +382,6 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should pull and use local nested package image", func() {
-				tmpDir, err := ioutil.TempDir("", "package-buildpack")
-				h.AssertNil(t, err)
-
 				packagePath := filepath.Join(tmpDir, "test.cnb")
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
@@ -394,9 +401,6 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 		when("dependencies are unpackaged buildpack", func() {
 			it("should work", func() {
-				tmpDir, err := ioutil.TempDir("", "package-buildpack")
-				h.AssertNil(t, err)
-
 				packagePath := filepath.Join(tmpDir, "test.cnb")
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
@@ -417,9 +421,6 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				it("should error", func() {
 					bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
 					mockDownloader.EXPECT().Download(gomock.Any(), bpURL).Return(nil, image.ErrNotFound).AnyTimes()
-
-					tmpDir, err := ioutil.TempDir("", "package-buildpack")
-					h.AssertNil(t, err)
 
 					packagePath := filepath.Join(tmpDir, "test.cnb")
 
@@ -442,9 +443,6 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					fakeBlob := blob.NewBlob(filepath.Join("testdata", "empty-file"))
 					bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
 					mockDownloader.EXPECT().Download(gomock.Any(), bpURL).Return(fakeBlob, nil).AnyTimes()
-
-					tmpDir, err := ioutil.TempDir("", "package-buildpack")
-					h.AssertNil(t, err)
 
 					packagePath := filepath.Join(tmpDir, "test.cnb")
 
@@ -473,19 +471,10 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Stacks: []dist.Stack{{ID: "some.stack.id"}},
 				}
 
-				packageDescriptor = dist.BuildpackDescriptor{
-					API:  api.MustParse("0.2"),
-					Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
-					Order: dist.Order{{
-						Group: []dist.BuildpackRef{{
-							BuildpackInfo: dist.BuildpackInfo{ID: childDescriptor.Info.ID, Version: childDescriptor.Info.Version},
-							Optional:      false,
-						}, {
-							BuildpackInfo: dist.BuildpackInfo{ID: secondChildDescriptor.Info.ID, Version: secondChildDescriptor.Info.Version},
-							Optional:      false,
-						}},
-					}},
-				}
+				packageDescriptor.Order = append(packageDescriptor.Order, dist.OrderEntry{Group: []dist.BuildpackRef{{
+					BuildpackInfo: dist.BuildpackInfo{ID: secondChildDescriptor.Info.ID, Version: secondChildDescriptor.Info.Version},
+					Optional:      false,
+				}}})
 
 				nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
 				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
@@ -502,9 +491,6 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should include both of them", func() {
-				tmpDir, err := ioutil.TempDir("", "package-buildpack")
-				h.AssertNil(t, err)
-
 				packagePath := filepath.Join(tmpDir, "test.cnb")
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
@@ -526,13 +512,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		when("dependencies include a packaged buildpack file", func() {
 			var (
 				dependencyPackagePath string
-				tmpDir                string
-				err                   error
 			)
 			it.Before(func() {
-				tmpDir, err = ioutil.TempDir("", "package-buildpack")
-				h.AssertNil(t, err)
-
 				dependencyPackagePath = filepath.Join(tmpDir, "dep.cnb")
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
