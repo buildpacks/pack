@@ -56,6 +56,6 @@ To configure your bash shell to load completions for each session, add the follo
 		}),
 	}
 
-	completionCmd.Flags().StringVarP(&flags.Shell, "shell", "s", "bash", "[bash|zsh]")
+	completionCmd.Flags().StringVarP(&flags.Shell, "shell", "s", "bash", "Generates completion file for [bash|zsh]")
 	return completionCmd
 }
