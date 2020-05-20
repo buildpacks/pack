@@ -84,9 +84,18 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
 						Return(nil)
 
-					command.SetArgs([]string{"image", "--builder", "cloudfoundry/cnb:bionic"})
+					command.SetArgs([]string{"image", "--builder", "heroku/buildpacks:18"})
 					h.AssertNil(t, command.Execute())
 				})
+			})
+		})
+
+		when("--buildpack-registry flag is specified but experimental isn't set in the config", func() {
+			it("errors with a descriptive message", func() {
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--buildpack-registry", "some-registry"})
+				err := command.Execute()
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "Support for buildpack registries is currently experimental.")
 			})
 		})
 

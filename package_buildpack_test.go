@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -116,6 +117,38 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Publish: true,
 				})
 				h.AssertError(t, err, "creating buildpack")
+			})
+		})
+	})
+
+	when("dependencies have issues", func() {
+		when("dependencies include a flawed packaged buildpack file", func() {
+			it("should fail", func() {
+				dependencyPath := "fakePath.file"
+				mockDownloader.EXPECT().Download(gomock.Any(), dependencyPath).Return(blob.NewBlob("no-file.txt"), nil).AnyTimes()
+
+				packageDescriptor := dist.BuildpackDescriptor{
+					API:  api.MustParse("0.2"),
+					Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+					Order: dist.Order{{
+						Group: []dist.BuildpackRef{{
+							BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
+							Optional:      false,
+						}},
+					}},
+				}
+
+				err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: "test",
+					Config: pubbldpkg.Config{
+						Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
+						Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: dependencyPath}}},
+					},
+					Publish: false,
+					NoPull:  false,
+				})
+
+				h.AssertError(t, err, "inspecting buildpack blob")
 			})
 		})
 	})
@@ -287,6 +320,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			nestedPackage     *fakes.Image
 			childDescriptor   dist.BuildpackDescriptor
 			packageDescriptor dist.BuildpackDescriptor
+			tmpDir            string
+			err               error
 		)
 
 		it.Before(func() {
@@ -306,19 +341,23 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					}},
 				}},
 			}
+
+			tmpDir, err = ioutil.TempDir("", "package-buildpack")
+			h.AssertNil(t, err)
 		})
 
-		assertPackageBPFileHasBuildpacks := func(path string, parentBP dist.BuildpackDescriptor, childBP dist.BuildpackDescriptor) {
-			h.AssertTarball(t, path)
-			packageBlob := blob.NewBlob(path)
-			isPackageBP, err := buildpackage.IsOCILayoutBlob(packageBlob)
-			h.AssertNil(t, err)
-			h.AssertTrue(t, isPackageBP)
+		it.After(func() {
+			h.AssertNil(t, os.RemoveAll(tmpDir))
+		})
 
-			mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(packageBlob)
+		assertPackageBPFileHasBuildpacks := func(path string, parentBP dist.BuildpackDescriptor, otherBPs []dist.BuildpackDescriptor) {
+			packageBlob := blob.NewBlob(path)
+			mainBP, deps, err := buildpackage.BuildpacksFromOCILayoutBlob(packageBlob)
 			h.AssertNil(t, err)
 			h.AssertEq(t, mainBP.Descriptor(), parentBP)
-			h.AssertEq(t, depBPs[0].Descriptor(), childBP)
+			for i, bp := range otherBPs {
+				h.AssertEq(t, deps[i].Descriptor(), bp)
+			}
 		}
 
 		when("dependencies are packaged buildpack image", func() {
@@ -338,9 +377,6 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should pull and use local nested package image", func() {
-				tmpDir, err := ioutil.TempDir("", "package-buildpack")
-				h.AssertNil(t, err)
-
 				packagePath := filepath.Join(tmpDir, "test.cnb")
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
@@ -354,15 +390,12 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Format:  pack.FormatFile,
 				}))
 
-				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, childDescriptor)
+				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
 			})
 		})
 
 		when("dependencies are unpackaged buildpack", func() {
 			it("should work", func() {
-				tmpDir, err := ioutil.TempDir("", "package-buildpack")
-				h.AssertNil(t, err)
-
 				packagePath := filepath.Join(tmpDir, "test.cnb")
 
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
@@ -376,16 +409,13 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Format:  pack.FormatFile,
 				}))
 
-				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, childDescriptor)
+				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
 			})
 
 			when("dependency download fails", func() {
 				it("should error", func() {
 					bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
 					mockDownloader.EXPECT().Download(gomock.Any(), bpURL).Return(nil, image.ErrNotFound).AnyTimes()
-
-					tmpDir, err := ioutil.TempDir("", "package-buildpack")
-					h.AssertNil(t, err)
 
 					packagePath := filepath.Join(tmpDir, "test.cnb")
 
@@ -409,9 +439,6 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
 					mockDownloader.EXPECT().Download(gomock.Any(), bpURL).Return(fakeBlob, nil).AnyTimes()
 
-					tmpDir, err := ioutil.TempDir("", "package-buildpack")
-					h.AssertNil(t, err)
-
 					packagePath := filepath.Join(tmpDir, "test.cnb")
 
 					err = subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
@@ -426,6 +453,90 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					})
 					h.AssertError(t, err, "creating buildpack")
 				})
+			})
+		})
+
+		when("dependencies include packaged buildpack image and unpacked buildpack", func() {
+			var secondChildDescriptor dist.BuildpackDescriptor
+
+			it.Before(func() {
+				secondChildDescriptor = dist.BuildpackDescriptor{
+					API:    api.MustParse("0.2"),
+					Info:   dist.BuildpackInfo{ID: "bp.nested1", Version: "2.3.4"},
+					Stacks: []dist.Stack{{ID: "some.stack.id"}},
+				}
+
+				packageDescriptor.Order = append(packageDescriptor.Order, dist.OrderEntry{Group: []dist.BuildpackRef{{
+					BuildpackInfo: dist.BuildpackInfo{ID: secondChildDescriptor.Info.ID, Version: secondChildDescriptor.Info.Version},
+					Optional:      false,
+				}}})
+
+				nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
+				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
+
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: nestedPackage.Name(),
+					Config: pubbldpkg.Config{
+						Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
+					},
+					Publish: true,
+				}))
+
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, true).Return(nestedPackage, nil)
+			})
+
+			it("should include both of them", func() {
+				packagePath := filepath.Join(tmpDir, "test.cnb")
+
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: packagePath,
+					Config: pubbldpkg.Config{
+						Buildpack: dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
+						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}},
+							{BuildpackURI: dist.BuildpackURI{URI: createBuildpack(secondChildDescriptor)}}},
+					},
+					Publish: false,
+					NoPull:  false,
+					Format:  pack.FormatFile,
+				}))
+
+				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor, secondChildDescriptor})
+			})
+		})
+
+		when("dependencies include a packaged buildpack file", func() {
+			var (
+				dependencyPackagePath string
+			)
+			it.Before(func() {
+				dependencyPackagePath = filepath.Join(tmpDir, "dep.cnb")
+
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: dependencyPackagePath,
+					Config: pubbldpkg.Config{
+						Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
+					},
+					Format: pack.FormatFile,
+				}))
+
+				mockDownloader.EXPECT().Download(gomock.Any(), dependencyPackagePath).Return(blob.NewBlob(dependencyPackagePath), nil).AnyTimes()
+			})
+
+			it("should open file and correctly add buildpacks", func() {
+				packagePath := filepath.Join(tmpDir, "test.cnb")
+
+				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Name: packagePath,
+					Config: pubbldpkg.Config{
+						Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
+						Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: dependencyPackagePath}}},
+					},
+					Publish: false,
+					NoPull:  false,
+					Format:  pack.FormatFile,
+				}))
+
+				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
 			})
 		})
 	})

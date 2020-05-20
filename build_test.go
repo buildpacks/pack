@@ -1353,7 +1353,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
 							h.AssertNil(t, args)
 
-							h.AssertContains(t, outBuf.String(), "Lifecycle does not have an associated lifecycle image")
+							h.AssertContains(t, outBuf.String(), "Lifecycle 0.3.0 does not have an associated lifecycle image.")
 						})
 					})
 				})

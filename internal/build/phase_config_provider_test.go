@@ -33,7 +33,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			expectedBuilderName := "some-builder-name"
 			fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithName(expectedBuilderName))
 			h.AssertNil(t, err)
-			lifecycle := newLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
+			lifecycle := newTestLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
 			expectedPhaseName := "some-name"
 			expectedCmd := strslice.StrSlice{"/cnb/lifecycle/" + expectedPhaseName}
 
@@ -58,7 +58,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithArgs", func() {
 			it("sets args on the config", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				expectedArgs := strslice.StrSlice{"some-arg-1", "some-arg-2"}
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -73,7 +73,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithBinds", func() {
 			it("sets binds on the config", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				expectedBinds := []string{"some-bind-1", "some-bind-2"}
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -88,7 +88,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithDaemonAccess", func() {
 			it("sets daemon access on the config", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",
@@ -103,7 +103,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithEnv", func() {
 			it("sets the environment on the config", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",
@@ -117,7 +117,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithImage", func() {
 			it("sets the image on the config", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",
@@ -131,7 +131,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithMounts", func() {
 			it("sets the mounts on the config", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 
 				expectedMount := mount.Mount{Type: "bind", Source: "some-source", Target: "some-target", ReadOnly: true}
 
@@ -147,7 +147,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithNetwork", func() {
 			it("sets the network mode on the config", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				expectedNetworkMode := "some-network-mode"
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -166,7 +166,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithRegistryAccess", func() {
 			it("sets registry access on the config", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				authConfig := "some-auth-config"
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -185,7 +185,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithRoot", func() {
 			it("sets root user on the config", func() {
-				lifecycle := newLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",

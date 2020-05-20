@@ -61,7 +61,7 @@ type testWriter struct {
 }
 
 func (w *testWriter) Write(p []byte) (n int, err error) {
-	w.t.Log(string(p))
+	w.t.Logf(string(p))
 	return len(p), nil
 }
 
@@ -263,13 +263,14 @@ func testWithoutSpecificBuilderRequirement(
 
 	when("suggest-builders", func() {
 		it("displays suggested builders", func() {
-			cmd := subjectPack("suggest-builders")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("suggest-builders command failed: %s: %s", output, err)
-			}
-			h.AssertContains(t, string(output), "Suggested builders:")
-			h.AssertContains(t, string(output), "cloudfoundry/cnb:bionic")
+			output := h.Run(t, subjectPack("suggest-builders"))
+
+			h.AssertContains(t, output, "Suggested builders:")
+			h.AssertMatch(t, output, `Google:\s+'gcr.io/buildpacks/builder'`)
+			h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks:18'`)
+			h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'`)
+			h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
+			h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:tiny'`)
 		})
 	})
 
@@ -286,8 +287,8 @@ func testWithoutSpecificBuilderRequirement(
 
 	when("set-default-builder", func() {
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			output := h.Run(t, subjectPack("set-default-builder", "cloudfoundry/cnb:bionic"))
-			h.AssertContains(t, output, "Builder 'cloudfoundry/cnb:bionic' is now the default builder")
+			output := h.Run(t, subjectPack("set-default-builder", "gcr.io/paketo-buildpacks/builder:base"))
+			h.AssertContains(t, output, "Builder 'gcr.io/paketo-buildpacks/builder:base' is now the default builder")
 		})
 	})
 
@@ -474,7 +475,7 @@ func testWithoutSpecificBuilderRequirement(
 
 		when("default builder is set", func() {
 			it.Before(func() {
-				h.Run(t, subjectPack("set-default-builder", "cloudfoundry/cnb:bionic"))
+				h.Run(t, subjectPack("set-default-builder", "gcr.io/paketo-buildpacks/builder:base"))
 			})
 
 			it("outputs information", func() {
@@ -486,13 +487,29 @@ func testWithoutSpecificBuilderRequirement(
 				outputTemplate := filepath.Join(packFixturesDir, "report_output.txt")
 				expectedOutput := fillTemplate(t, outputTemplate,
 					map[string]interface{}{
-						"DefaultBuilder": "cloudfoundry/cnb:bionic",
+						"DefaultBuilder": "gcr.io/paketo-buildpacks/builder:base",
 						"Version":        version,
 						"OS":             runtime.GOOS,
 						"Arch":           runtime.GOARCH,
 					},
 				)
 				h.AssertEq(t, output, expectedOutput)
+			})
+		})
+	})
+
+	when("build", func() {
+		when("default builder is not set", func() {
+			it("informs the user", func() {
+				cmd := subjectPack("build", "some/image", "-p", filepath.Join("testdata", "mock_app"))
+				output, err := h.RunE(cmd)
+				h.AssertNotNil(t, err)
+				h.AssertContains(t, output, `Please select a default builder with:`)
+				h.AssertMatch(t, output, `Google:\s+'gcr.io/buildpacks/builder'`)
+				h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks:18'`)
+				h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'`)
+				h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
+				h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:tiny'`)
 			})
 		})
 	})
@@ -646,7 +663,7 @@ func testAcceptance(
 
 						// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 						// have bugs that make using the creator problematic.
-						lifecycleSupportsCreator := !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.5"))
+						lifecycleSupportsCreator := !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.4"))
 						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
 						creatorSupported = lifecycleSupportsCreator && packSupportsCreator
 					})
@@ -1234,6 +1251,13 @@ func testAcceptance(
 								"--publish",
 								"--network", "host",
 							))
+
+							// Test builder is untrusted by default. Verify that the 5 phases were used.
+							h.AssertContains(t, output, "DETECTING")
+							h.AssertContains(t, output, "ANALYZING")
+							h.AssertContains(t, output, "RESTORING")
+							h.AssertContains(t, output, "BUILDING")
+							h.AssertContains(t, output, "EXPORTING")
 							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 							t.Log("checking that registry has contents")
@@ -1464,18 +1488,6 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 								h.AssertContains(t, output, "person.png")
 							})
 						})
-					})
-				})
-
-				when("default builder is not set", func() {
-					it("informs the user", func() {
-						cmd := subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
-						output, err := h.RunE(cmd)
-						h.AssertNotNil(t, err)
-						h.AssertContains(t, output, `Please select a default builder with:`)
-						h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
-						h.AssertMatch(t, output, `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
-						h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks:18'`)
 					})
 				})
 			})

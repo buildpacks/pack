@@ -34,7 +34,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-const lifecycleImageRepo = "natalieparellano/lifecycle-image" // TODO: change when https://github.com/buildpacks/lifecycle/pull/294 is merged.
+const lifecycleImageRepo = "buildpacksio/lifecycle"
 
 type Lifecycle interface {
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
@@ -150,7 +150,9 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		RunImage:           runImageName,
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
+		UseCreator:         false,
 		TrustBuilder:       opts.TrustBuilder,
+		LifecycleImage:     ephemeralBuilder.Name(),
 		HTTPProxy:          proxyConfig.HTTPProxy,
 		HTTPSProxy:         proxyConfig.HTTPSProxy,
 		NoProxy:            proxyConfig.NoProxy,
@@ -162,26 +164,22 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 	// have bugs that make using the creator problematic.
-	creatorSupported := !ephemeralBuilder.LifecycleDescriptor().Info.Version.LessThan(semver.MustParse("0.7.5"))
+	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
+	lifecycleSupportsCreator := !lifecycleVersion.LessThan(semver.MustParse("0.7.4"))
 
-	if creatorSupported && (!opts.Publish || opts.TrustBuilder) {
+	if lifecycleSupportsCreator && (!opts.Publish || opts.TrustBuilder) {
 		// no need to fetch a lifecycle image, it won't be used
 		lifecycleOpts.UseCreator = true
 		return c.lifecycle.Execute(ctx, lifecycleOpts)
 	}
 
-	var lifecycleImageName string
-	lifecycleImageSupported := !ephemeralBuilder.LifecycleDescriptor().Info.Version.LessThan(semver.MustParse("0.7.5"))
-
+	lifecycleImageSupported := !lifecycleVersion.LessThan(semver.MustParse("0.7.5"))
 	if !lifecycleImageSupported {
-		c.logger.Warnf("Lifecycle does not have an associated lifecycle image (%s). Each lifecycle phase will be run in a separate container, and registry credentials will be provided only to analyze, restore, and export.\nRun `pack build` with `--trust-builder` to silence this warning.", lifecycleImageRepo)
-
-		// use the provided builder instead
-		lifecycleImageName = ephemeralBuilder.Name()
+		c.logger.Warnf("Lifecycle %s does not have an associated lifecycle image.", lifecycleVersion.String())
 	} else {
 		lifecycleImage, err := c.imageFetcher.Fetch(
 			ctx,
-			fmt.Sprintf("%s:%s", lifecycleImageRepo, ephemeralBuilder.LifecycleDescriptor().Info.Version.String()),
+			fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
 			true,
 			true,
 		)
@@ -189,10 +187,9 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			return errors.Wrap(err, "fetching lifecycle image")
 		}
 
-		lifecycleImageName = lifecycleImage.Name()
+		lifecycleOpts.LifecycleImage = lifecycleImage.Name()
 	}
 
-	lifecycleOpts.LifecycleImage = lifecycleImageName
 	return c.lifecycle.Execute(ctx, lifecycleOpts)
 }
 

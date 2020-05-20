@@ -80,7 +80,7 @@ func main() {
 
 	ctx := commands.CreateCancellableContext()
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
-		if commands.IsSoftError(err) {
+		if _, isSoftError := err.(commands.SoftError); isSoftError {
 			os.Exit(2)
 		}
 		os.Exit(1)
