@@ -1253,11 +1253,10 @@ func testAcceptance(
 							))
 
 							// Test builder is untrusted by default. Verify that the 5 phases were used.
-							h.AssertContains(t, output, "DETECTING")
-							h.AssertContains(t, output, "ANALYZING")
-							h.AssertContains(t, output, "RESTORING")
-							h.AssertContains(t, output, "BUILDING")
-							h.AssertContains(t, output, "EXPORTING")
+							h.AssertContains(t, output, "[detector]")
+							h.AssertContains(t, output, "[analyzer]") // not checking restorer as it doesn't always run
+							h.AssertContains(t, output, "[builder]")
+							h.AssertContains(t, output, "[exporter]")
 							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 							t.Log("checking that registry has contents")
