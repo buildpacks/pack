@@ -77,5 +77,42 @@ func testCompletionCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, outBuf.String(), filepath.Join(missingDir, "completion"))
 			})
 		})
+
+		when("Shell flag is empty(default value)", func() {
+			it("errors should not be occurred", func() {
+				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Completion File for bash is created")
+			})
+		})
+
+		when("Shell flag is zsh", func() {
+			it.Before(func() {
+				command.SetArgs([]string{"completion", "--shell", "zsh"})
+			})
+
+			it.After(func() {
+				command.SetArgs([]string{"completion"})
+			})
+
+			it("errors should not be occurred", func() {
+				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Completion File for zsh is created")
+			})
+		})
+
+		when("Shell flag is not bash or zsh", func() {
+			it.Before(func() {
+				command.SetArgs([]string{"completion", "--shell", "fish"})
+			})
+
+			it.After(func() {
+				command.SetArgs([]string{"completion"})
+			})
+
+			it("errors should be occurred", func() {
+				h.AssertError(t, command.Execute(), "fish is unsupported shell")
+				h.AssertNotContains(t, outBuf.String(), "Completion File for fish is created")
+			})
+		})
 	})
 }

@@ -10,7 +10,12 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+type CompletionFlags struct {
+	Shell string
+}
+
 func CompletionCommand(logger logging.Logger) *cobra.Command {
+	var flags CompletionFlags
 	var completionCmd = &cobra.Command{
 		Use:   "completion",
 		Short: "Outputs completion script location",
@@ -31,13 +36,26 @@ To configure your bash shell to load completions for each session, add the follo
 			}
 			completionPath := filepath.Join(packHome, "completion")
 
-			if err := cmd.Parent().GenBashCompletionFile(completionPath); err != nil {
+			var flagErr error
+			switch flags.Shell {
+			case "bash":
+				flagErr = cmd.Parent().GenBashCompletionFile(completionPath)
+			case "zsh":
+				flagErr = cmd.Parent().GenZshCompletionFile(completionPath)
+			default:
+				return errors.Errorf("%s is unsupported shell", flags.Shell)
+			}
+
+			if flagErr != nil {
 				return err
 			}
 
+			logger.Infof("Completion File for %s is created", flags.Shell)
 			logger.Info(completionPath)
 			return nil
 		}),
 	}
+
+	completionCmd.Flags().StringVarP(&flags.Shell, "shell", "s", "bash", "[bash|zsh]")
 	return completionCmd
 }
