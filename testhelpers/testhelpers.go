@@ -54,10 +54,12 @@ func AssertEq(t *testing.T, actual, expected interface{}) {
 }
 
 func AssertTrue(t *testing.T, actual interface{}) {
+	t.Helper()
 	AssertEq(t, actual, true)
 }
 
 func AssertFalse(t *testing.T, actual interface{}) {
+	t.Helper()
 	AssertEq(t, actual, false)
 }
 

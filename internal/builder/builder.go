@@ -34,7 +34,7 @@ const (
 	cnbDir = "/cnb"
 
 	orderPath          = "/cnb/order.toml"
-	stackPath          = "/cnb/stack.toml"
+	StackPath          = "/cnb/stack.toml"
 	platformDir        = "/platform"
 	lifecycleDir       = "/cnb/lifecycle"
 	compatLifecycleDir = "/lifecycle"
@@ -44,8 +44,8 @@ const (
 	metadataLabel = "io.buildpacks.builder.metadata"
 	stackLabel    = "io.buildpacks.stack.id"
 
-	envUID = "CNB_USER_ID"
-	envGID = "CNB_GROUP_ID"
+	EnvUID = "CNB_USER_ID"
+	EnvGID = "CNB_GROUP_ID"
 )
 
 // Builder represents a pack builder, used to build images
@@ -481,29 +481,29 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 }
 
 func userAndGroupIDs(img imgutil.Image) (int, int, error) {
-	sUID, err := img.Env(envUID)
+	sUID, err := img.Env(EnvUID)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "reading builder env variables")
 	} else if sUID == "" {
-		return 0, 0, fmt.Errorf("image %s missing required env var %s", style.Symbol(img.Name()), style.Symbol(envUID))
+		return 0, 0, fmt.Errorf("image %s missing required env var %s", style.Symbol(img.Name()), style.Symbol(EnvUID))
 	}
 
-	sGID, err := img.Env(envGID)
+	sGID, err := img.Env(EnvGID)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "reading builder env variables")
 	} else if sGID == "" {
-		return 0, 0, fmt.Errorf("image %s missing required env var %s", style.Symbol(img.Name()), style.Symbol(envGID))
+		return 0, 0, fmt.Errorf("image %s missing required env var %s", style.Symbol(img.Name()), style.Symbol(EnvGID))
 	}
 
 	var uid, gid int
 	uid, err = strconv.Atoi(sUID)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to parse %s, value %s should be an integer", style.Symbol(envUID), style.Symbol(sUID))
+		return 0, 0, fmt.Errorf("failed to parse %s, value %s should be an integer", style.Symbol(EnvUID), style.Symbol(sUID))
 	}
 
 	gid, err = strconv.Atoi(sGID)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to parse %s, value %s should be an integer", style.Symbol(envGID), style.Symbol(sGID))
+		return 0, 0, fmt.Errorf("failed to parse %s, value %s should be an integer", style.Symbol(EnvGID), style.Symbol(sGID))
 	}
 
 	return uid, gid, nil
@@ -601,7 +601,7 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	}
 
 	layerTar := filepath.Join(dest, "stack.tar")
-	err = layer.CreateSingleFileTar(layerTar, stackPath, buf.String(), b.layerWriterFactory)
+	err = layer.CreateSingleFileTar(layerTar, StackPath, buf.String(), b.layerWriterFactory)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create stack.toml layer tar")
 	}

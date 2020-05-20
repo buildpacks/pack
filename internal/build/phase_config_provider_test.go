@@ -8,6 +8,7 @@ import (
 	"github.com/buildpacks/pack/internal/build/fakes"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -32,7 +33,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			expectedBuilderName := "some-builder-name"
 			fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithName(expectedBuilderName))
 			h.AssertNil(t, err)
-			lifecycle := fakeLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
+			lifecycle := newTestLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
 			expectedPhaseName := "some-name"
 			expectedCmd := strslice.StrSlice{"/cnb/lifecycle/" + expectedPhaseName}
 
@@ -57,7 +58,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithArgs", func() {
 			it("sets args on the config", func() {
-				lifecycle := fakeLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				expectedArgs := strslice.StrSlice{"some-arg-1", "some-arg-2"}
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -72,7 +73,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithBinds", func() {
 			it("sets binds on the config", func() {
-				lifecycle := fakeLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				expectedBinds := []string{"some-bind-1", "some-bind-2"}
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -87,7 +88,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithDaemonAccess", func() {
 			it("sets daemon access on the config", func() {
-				lifecycle := fakeLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",
@@ -100,9 +101,53 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("called with WithEnv", func() {
+			it("sets the environment on the config", func() {
+				lifecycle := newTestLifecycle(t, false)
+
+				phaseConfigProvider := build.NewPhaseConfigProvider(
+					"some-name",
+					lifecycle,
+					build.WithEnv("SOME_VARIABLE=some-value"),
+				)
+
+				h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Env, "SOME_VARIABLE=some-value")
+			})
+		})
+
+		when("called with WithImage", func() {
+			it("sets the image on the config", func() {
+				lifecycle := newTestLifecycle(t, false)
+
+				phaseConfigProvider := build.NewPhaseConfigProvider(
+					"some-name",
+					lifecycle,
+					build.WithImage("some-image-name"),
+				)
+
+				h.AssertEq(t, phaseConfigProvider.ContainerConfig().Image, "some-image-name")
+			})
+		})
+
+		when("called with WithMounts", func() {
+			it("sets the mounts on the config", func() {
+				lifecycle := newTestLifecycle(t, false)
+
+				expectedMount := mount.Mount{Type: "bind", Source: "some-source", Target: "some-target", ReadOnly: true}
+
+				phaseConfigProvider := build.NewPhaseConfigProvider(
+					"some-name",
+					lifecycle,
+					build.WithMounts(expectedMount),
+				)
+
+				h.AssertEq(t, phaseConfigProvider.HostConfig().Mounts[0], expectedMount)
+			})
+		})
+
 		when("called with WithNetwork", func() {
 			it("sets the network mode on the config", func() {
-				lifecycle := fakeLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				expectedNetworkMode := "some-network-mode"
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -121,7 +166,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithRegistryAccess", func() {
 			it("sets registry access on the config", func() {
-				lifecycle := fakeLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 				authConfig := "some-auth-config"
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
@@ -140,7 +185,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 		when("called with WithRoot", func() {
 			it("sets root user on the config", func() {
-				lifecycle := fakeLifecycle(t, false)
+				lifecycle := newTestLifecycle(t, false)
 
 				phaseConfigProvider := build.NewPhaseConfigProvider(
 					"some-name",
