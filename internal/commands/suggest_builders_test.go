@@ -9,7 +9,6 @@ import (
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
@@ -27,7 +26,6 @@ func TestSuggestBuilders(t *testing.T) {
 
 func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command        *cobra.Command
 		logger         logging.Logger
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
@@ -38,34 +36,24 @@ func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.SuggestBuilders(logger, mockClient)
 	})
 
-	when("#SuggestBuilders", func() {
+	when("#WriteSuggestedBuilder", func() {
 		when("description metadata exists", func() {
 			it.Before(func() {
-				mockClient.EXPECT().InspectBuilder("gcr.io/paketo-buildpacks/builder:tiny", false).Return(&pack.BuilderInfo{
-					Description: "Tiny description",
-				}, nil)
-				mockClient.EXPECT().InspectBuilder("gcr.io/paketo-buildpacks/builder:base", false).Return(&pack.BuilderInfo{
-					Description: "Base description",
-				}, nil)
-				mockClient.EXPECT().InspectBuilder("gcr.io/paketo-buildpacks/builder:full-cf", false).Return(&pack.BuilderInfo{
-					Description: "CFLinuxFS3 description",
-				}, nil)
-				mockClient.EXPECT().InspectBuilder("heroku/buildpacks:18", false).Return(&pack.BuilderInfo{
-					Description: "Heroku description",
+				mockClient.EXPECT().InspectBuilder("gcr.io/some/builder:latest", false).Return(&pack.BuilderInfo{
+					Description: "Remote description",
 				}, nil)
 			})
 
 			it("displays descriptions from metadata", func() {
-				command.SetArgs([]string{})
-				h.AssertNil(t, command.Execute())
+				commands.WriteSuggestedBuilder(logger, mockClient, []commands.SuggestedBuilder{{
+					Vendor:             "Builder",
+					Image:              "gcr.io/some/builder:latest",
+					DefaultDescription: "Default description",
+				}})
 				h.AssertContains(t, outBuf.String(), "Suggested builders:")
-				h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'\s+Base description`)
-				h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'\s+CFLinuxFS3 description`)
-				h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:tiny'\s+Tiny description`)
-				h.AssertContainsMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks:18'\s+Heroku description`)
+				h.AssertContainsMatch(t, outBuf.String(), `Builder:\s+'gcr.io/some/builder:latest'\s+Remote description`)
 			})
 		})
 
@@ -77,10 +65,13 @@ func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("displays default descriptions", func() {
-				command.SetArgs([]string{})
-				h.AssertNil(t, command.Execute())
+				commands.WriteSuggestedBuilder(logger, mockClient, []commands.SuggestedBuilder{{
+					Vendor:             "Builder",
+					Image:              "gcr.io/some/builder:latest",
+					DefaultDescription: "Default description",
+				}})
 				h.AssertContains(t, outBuf.String(), "Suggested builders:")
-				assertDefaultDescriptions(t, outBuf)
+				h.AssertContainsMatch(t, outBuf.String(), `Builder:\s+'gcr.io/some/builder:latest'\s+Default description`)
 			})
 		})
 
@@ -90,18 +81,14 @@ func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("displays default descriptions", func() {
-				command.SetArgs([]string{})
-				h.AssertNil(t, command.Execute())
+				commands.WriteSuggestedBuilder(logger, mockClient, []commands.SuggestedBuilder{{
+					Vendor:             "Builder",
+					Image:              "gcr.io/some/builder:latest",
+					DefaultDescription: "Default description",
+				}})
 				h.AssertContains(t, outBuf.String(), "Suggested builders:")
-				assertDefaultDescriptions(t, outBuf)
+				h.AssertContainsMatch(t, outBuf.String(), `Builder:\s+'gcr.io/some/builder:latest'\s+Default description`)
 			})
 		})
 	})
-}
-
-func assertDefaultDescriptions(t *testing.T, outBuf bytes.Buffer) {
-	h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'\s+Small base image with buildpacks for Java, Node.js, Golang, & .NET Core`)
-	h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'\s+Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, & PHP`)
-	h.AssertContainsMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:tiny'\s+Tiny base image \(bionic build image, distroless run image\) with buildpacks for Golang`)
-	h.AssertContainsMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks:18'\s+heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP`)
 }

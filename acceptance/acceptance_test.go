@@ -61,7 +61,7 @@ type testWriter struct {
 }
 
 func (w *testWriter) Write(p []byte) (n int, err error) {
-	w.t.Log(string(p))
+	w.t.Logf(string(p))
 	return len(p), nil
 }
 
@@ -263,13 +263,14 @@ func testWithoutSpecificBuilderRequirement(
 
 	when("suggest-builders", func() {
 		it("displays suggested builders", func() {
-			cmd := subjectPack("suggest-builders")
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("suggest-builders command failed: %s: %s", output, err)
-			}
-			h.AssertContains(t, string(output), "Suggested builders:")
-			h.AssertContains(t, string(output), "gcr.io/paketo-buildpacks/builder:base")
+			output := h.Run(t, subjectPack("suggest-builders"))
+
+			h.AssertContains(t, output, "Suggested builders:")
+			h.AssertMatch(t, output, `Google:\s+'gcr.io/buildpacks/builder'`)
+			h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks:18'`)
+			h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'`)
+			h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
+			h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:tiny'`)
 		})
 	})
 
@@ -493,6 +494,22 @@ func testWithoutSpecificBuilderRequirement(
 					},
 				)
 				h.AssertEq(t, output, expectedOutput)
+			})
+		})
+	})
+
+	when("build", func() {
+		when("default builder is not set", func() {
+			it("informs the user", func() {
+				cmd := subjectPack("build", "some/image", "-p", filepath.Join("testdata", "mock_app"))
+				output, err := h.RunE(cmd)
+				h.AssertNotNil(t, err)
+				h.AssertContains(t, output, `Please select a default builder with:`)
+				h.AssertMatch(t, output, `Google:\s+'gcr.io/buildpacks/builder'`)
+				h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks:18'`)
+				h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'`)
+				h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
+				h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:tiny'`)
 			})
 		})
 	})
@@ -1430,18 +1447,6 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 								h.AssertContains(t, output, "person.png")
 							})
 						})
-					})
-				})
-
-				when("default builder is not set", func() {
-					it("informs the user", func() {
-						cmd := subjectPack("build", repoName, "-p", filepath.Join("testdata", "mock_app"))
-						output, err := h.RunE(cmd)
-						h.AssertNotNil(t, err)
-						h.AssertContains(t, output, `Please select a default builder with:`)
-						h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'`)
-						h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
-						h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks:18'`)
 					})
 				})
 			})
