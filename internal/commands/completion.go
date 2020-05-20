@@ -24,6 +24,11 @@ func CompletionCommand(logger logging.Logger) *cobra.Command {
 To configure your bash shell to load completions for each session, add the following to your '.bashrc' or '.bash_profile':
 
 	. $(pack completion)
+
+To configure your zsh shell to load completions for each session, add the following to your '.zshrc':
+
+	. $(pack completion --shell zsh)
+  
 	`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			packHome, err := config.PackHome()
