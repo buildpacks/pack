@@ -104,7 +104,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 
 			var cfgTrustedBuilder bool
 			for _, trustedBuilder := range cfg.TrustedBuilders {
-				fmt.Println("trusted builder", trustedBuilder.Name)
+				logger.Debugf("Builder %s is trusted", style.Symbol(trustedBuilder.Name))
 				if flags.Builder == trustedBuilder.Name {
 					cfgTrustedBuilder = true
 					break

@@ -9,11 +9,11 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-func TrustBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trust-builder <builder-name>",
 		Short: "Trust builder",
-		Long:  "Trust builder.\n\n When building with this builder, all lifecycle phases will be run in a single container using the builder image.\nRegistry credentials will be provided to the container (but isolated from buildpack processes).",
+		Long:  "Trust builder.\n\nWhen building with this builder, all lifecycle phases will be run in a single container using the builder image.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 || args[0] == "" {

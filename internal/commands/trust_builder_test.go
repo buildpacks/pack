@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/commands"
-	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
@@ -33,7 +32,6 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		logger         logging.Logger
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
-		mockClient     *testmocks.MockPackClient
 		tempPackHome   string
 		configPath     string
 	)
@@ -42,9 +40,8 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		var err error
 
 		mockController = gomock.NewController(t)
-		mockClient = testmocks.NewMockPackClient(mockController)
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.TrustBuilder(logger, config.Config{}, mockClient)
+		command = commands.TrustBuilder(logger, config.Config{})
 
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
