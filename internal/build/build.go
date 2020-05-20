@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Masterminds/semver"
-
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -28,10 +26,12 @@ type Builder interface {
 	UID() int
 	GID() int
 	LifecycleDescriptor() builder.LifecycleDescriptor
+	Stack() builder.StackMetadata
 }
 
 type Lifecycle struct {
 	builder            Builder
+	lifecycleImage     string
 	logger             logging.Logger
 	docker             client.CommonAPIClient
 	appPath            string
@@ -67,9 +67,11 @@ type LifecycleOptions struct {
 	AppPath            string
 	Image              name.Reference
 	Builder            Builder
+	LifecycleImage     string
 	RunImage           string
 	ClearCache         bool
 	Publish            bool
+	UseCreator         bool
 	HTTPProxy          string
 	HTTPSProxy         string
 	NoProxy            string
@@ -83,10 +85,10 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	l.Setup(opts)
 	defer l.Cleanup()
 
-	buildCache := cache.NewVolumeCache(opts.Image, "build", l.docker)
-	launchCache := cache.NewVolumeCache(opts.Image, "launch", l.docker)
-	l.logger.Debugf("Using build cache volume %s", style.Symbol(buildCache.Name()))
+	phaseFactory := NewDefaultPhaseFactory(l)
 
+	buildCache := cache.NewVolumeCache(opts.Image, "build", l.docker)
+	l.logger.Debugf("Using build cache volume %s", style.Symbol(buildCache.Name()))
 	if opts.ClearCache {
 		if err := buildCache.Clear(ctx); err != nil {
 			return errors.Wrap(err, "clearing build cache")
@@ -94,9 +96,9 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		l.logger.Debugf("Build cache %s cleared", style.Symbol(buildCache.Name()))
 	}
 
-	phaseFactory := NewDefaultPhaseFactory(l)
+	launchCache := cache.NewVolumeCache(opts.Image, "launch", l.docker)
 
-	if semver.MustParse(l.platformAPIVersion).LessThan(semver.MustParse("0.3")) {
+	if !opts.UseCreator {
 		l.logger.Info(style.Step("DETECTING"))
 		if err := l.Detect(ctx, opts.Network, opts.Volumes, phaseFactory); err != nil {
 			return err
@@ -134,6 +136,7 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.appPath = opts.AppPath
 	l.appOnce = &sync.Once{}
 	l.builder = opts.Builder
+	l.lifecycleImage = opts.LifecycleImage
 	l.httpProxy = opts.HTTPProxy
 	l.httpsProxy = opts.HTTPSProxy
 	l.noProxy = opts.NoProxy

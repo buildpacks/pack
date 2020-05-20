@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 )
 
 type PhaseConfigProviderOperation func(*PhaseConfigProvider)
@@ -71,6 +72,18 @@ func WithDaemonAccess() PhaseConfigProviderOperation {
 	}
 }
 
+func WithEnv(envs ...string) PhaseConfigProviderOperation {
+	return func(provider *PhaseConfigProvider) {
+		provider.ctrConf.Env = append(provider.ctrConf.Env, envs...)
+	}
+}
+
+func WithImage(image string) PhaseConfigProviderOperation {
+	return func(provider *PhaseConfigProvider) {
+		provider.ctrConf.Image = image
+	}
+}
+
 func WithLifecycleProxy(lifecycle *Lifecycle) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
 		if lifecycle.httpProxy != "" {
@@ -87,6 +100,12 @@ func WithLifecycleProxy(lifecycle *Lifecycle) PhaseConfigProviderOperation {
 			provider.ctrConf.Env = append(provider.ctrConf.Env, "NO_PROXY="+lifecycle.noProxy)
 			provider.ctrConf.Env = append(provider.ctrConf.Env, "no_proxy="+lifecycle.noProxy)
 		}
+	}
+}
+
+func WithMounts(mounts ...mount.Mount) PhaseConfigProviderOperation {
+	return func(provider *PhaseConfigProvider) {
+		provider.hostConf.Mounts = append(provider.hostConf.Mounts, mounts...)
 	}
 }
 

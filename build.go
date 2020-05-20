@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
@@ -33,6 +34,8 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
+const lifecycleImageRepo = "buildpacksio/lifecycle"
+
 type Lifecycle interface {
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
 }
@@ -48,6 +51,7 @@ type BuildOptions struct {
 	Publish            bool
 	NoPull             bool
 	ClearCache         bool
+	TrustBuilder       bool
 	Buildpacks         []string
 	ProxyConfig        *ProxyConfig // defaults to  environment proxy vars
 	ContainerConfig    ContainerConfig
@@ -139,13 +143,15 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	return c.lifecycle.Execute(ctx, build.LifecycleOptions{
+	lifecycleOpts := build.LifecycleOptions{
 		AppPath:            appPath,
 		Image:              imageRef,
 		Builder:            ephemeralBuilder,
 		RunImage:           runImageName,
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
+		UseCreator:         false,
+		LifecycleImage:     ephemeralBuilder.Name(),
 		HTTPProxy:          proxyConfig.HTTPProxy,
 		HTTPSProxy:         proxyConfig.HTTPSProxy,
 		NoProxy:            proxyConfig.NoProxy,
@@ -153,7 +159,37 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Volumes:            platformVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
 		FileFilter:         opts.FileFilter,
-	})
+	}
+
+	// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
+	// have bugs that make using the creator problematic.
+	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
+	lifecycleSupportsCreator := !lifecycleVersion.LessThan(semver.MustParse("0.7.4"))
+
+	if lifecycleSupportsCreator && (!opts.Publish || opts.TrustBuilder) {
+		// no need to fetch a lifecycle image, it won't be used
+		lifecycleOpts.UseCreator = true
+		return c.lifecycle.Execute(ctx, lifecycleOpts)
+	}
+
+	lifecycleImageSupported := !lifecycleVersion.LessThan(semver.MustParse("0.7.5"))
+	if !lifecycleImageSupported {
+		c.logger.Warnf("Lifecycle %s does not have an associated lifecycle image.", lifecycleVersion.String())
+	} else {
+		lifecycleImage, err := c.imageFetcher.Fetch(
+			ctx,
+			fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
+			true,
+			true,
+		)
+		if err != nil {
+			return errors.Wrap(err, "fetching lifecycle image")
+		}
+
+		lifecycleOpts.LifecycleImage = lifecycleImage.Name()
+	}
+
+	return c.lifecycle.Execute(ctx, lifecycleOpts)
 }
 
 func (c *Client) processBuilderName(builderName string) (name.Reference, error) {
