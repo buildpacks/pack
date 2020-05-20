@@ -151,6 +151,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
 		UseCreator:         false,
+		TrustBuilder:       opts.TrustBuilder,
 		LifecycleImage:     ephemeralBuilder.Name(),
 		HTTPProxy:          proxyConfig.HTTPProxy,
 		HTTPSProxy:         proxyConfig.HTTPSProxy,

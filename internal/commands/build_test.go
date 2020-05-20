@@ -64,6 +64,30 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{"-B", "my-builder", "image"})
 				h.AssertNil(t, command.Execute())
 			})
+			when("the builder is trusted", func() {
+				it("sets the trust builder option", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
+						Return(nil)
+
+					cfg := config.Config{TrustedBuilders: []config.TrustedBuilder{{Name: "my-builder"}}}
+					command := commands.Build(logger, cfg, mockClient)
+
+					command.SetArgs([]string{"image", "--builder", "my-builder"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("the builder is suggested", func() {
+				it("sets the trust builder option", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
+						Return(nil)
+
+					command.SetArgs([]string{"image", "--builder", "heroku/buildpacks:18"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
 		})
 
 		when("--buildpack-registry flag is specified but experimental isn't set in the config", func() {
@@ -335,6 +359,15 @@ func EqBuildOptionsWithNetwork(network string) gomock.Matcher {
 		description: fmt.Sprintf("Network=%s", network),
 		equals: func(o pack.BuildOptions) bool {
 			return o.ContainerConfig.Network == network
+		},
+	}
+}
+
+func EqBuildOptionsWithTrustedBuilder(trustBuilder bool) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Trust Builder=%t", trustBuilder),
+		equals: func(o pack.BuildOptions) bool {
+			return o.TrustBuilder == trustBuilder
 		},
 	}
 }

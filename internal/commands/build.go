@@ -102,6 +102,23 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				}
 			}
 
+			var cfgTrustedBuilder bool
+			for _, trustedBuilder := range cfg.TrustedBuilders {
+				logger.Debugf("Builder %s is trusted", style.Symbol(trustedBuilder.Name))
+				if flags.Builder == trustedBuilder.Name {
+					cfgTrustedBuilder = true
+					break
+				}
+			}
+
+			var suggestedBuilder bool
+			for _, builder := range suggestedBuilders {
+				if flags.Builder == builder.Image {
+					suggestedBuilder = true
+					break
+				}
+			}
+
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           flags.Builder,
@@ -113,7 +130,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Publish:           flags.Publish,
 				NoPull:            flags.NoPull,
 				ClearCache:        flags.ClearCache,
-				TrustBuilder:      flags.TrustBuilder,
+				TrustBuilder:      flags.TrustBuilder || cfgTrustedBuilder || suggestedBuilder,
 				Buildpacks:        buildpacks,
 				ContainerConfig: pack.ContainerConfig{
 					Network: flags.Network,

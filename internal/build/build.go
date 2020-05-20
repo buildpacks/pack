@@ -71,6 +71,7 @@ type LifecycleOptions struct {
 	RunImage           string
 	ClearCache         bool
 	Publish            bool
+	TrustBuilder       bool
 	UseCreator         bool
 	HTTPProxy          string
 	HTTPSProxy         string

@@ -1293,6 +1293,65 @@ func testAcceptance(
 								h.AssertEq(t, output, expectedOutput)
 							}
 						})
+
+						when("builder is untrusted", func() {
+							it("uses the 5 phases", func() {
+								var buf bytes.Buffer
+								cmd := subjectPack(
+									"build", repoName,
+									"--builder", builderName, // untrusted by default
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--publish",
+									"--network", "host",
+								)
+
+								cmd.Stdout = &buf
+								cmd.Stderr = &buf
+
+								h.AssertNil(t, cmd.Start())
+
+								go terminateAtStep(t, cmd, &buf, "[detector]")
+								err := cmd.Wait()
+								h.AssertNotNil(t, err)
+
+								h.AssertContains(t, buf.String(), "[detector]")
+							})
+						})
+
+						when("builder is trusted", func() {
+							it("uses the creator (when supported)", func() {
+								h.SkipIf(t, !packSupports(packPath, "build --trust-builder"), "trust-builder not supported")
+
+								var buf bytes.Buffer
+								cmd := subjectPack(
+									"build", repoName,
+									"--builder", builderName, // untrusted by default
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--publish",
+									"--network", "host",
+									"--trust-builder",
+								)
+
+								cmd.Stdout = &buf
+								cmd.Stderr = &buf
+
+								h.AssertNil(t, cmd.Start())
+
+								if creatorSupported {
+									go terminateAtStep(t, cmd, &buf, "[creator]")
+									err := cmd.Wait()
+									h.AssertNotNil(t, err)
+
+									h.AssertContains(t, buf.String(), "[creator]")
+								} else {
+									go terminateAtStep(t, cmd, &buf, "[detector]")
+									err := cmd.Wait()
+									h.AssertNotNil(t, err)
+
+									h.AssertContains(t, buf.String(), "[detector]")
+								}
+							})
+						})
 					})
 
 					when("ctrl+c", func() {

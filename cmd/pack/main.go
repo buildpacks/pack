@@ -61,15 +61,18 @@ func main() {
 	rootCmd.AddCommand(commands.Build(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.Rebase(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectImage(logger, &cfg, &packClient))
-
-	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
-	rootCmd.AddCommand(commands.PackageBuildpack(logger, &packClient, buildpackage.NewConfigReader()))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
-	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient))
+
 	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
+	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg))
+	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
+
+	rootCmd.AddCommand(commands.PackageBuildpack(logger, &packClient, buildpackage.NewConfigReader()))
 
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
+
 	rootCmd.AddCommand(commands.Version(logger, cmd.Version))
 	rootCmd.AddCommand(commands.Report(logger))
 
