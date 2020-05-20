@@ -163,7 +163,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 	// have bugs that make using the creator problematic.
-	lifecycleSupportsCreator := !ephemeralBuilder.LifecycleDescriptor().Info.Version.LessThan(semver.MustParse("0.7.4"))
+	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
+	lifecycleSupportsCreator := !lifecycleVersion.LessThan(semver.MustParse("0.7.4"))
 
 	if lifecycleSupportsCreator && (!opts.Publish || opts.TrustBuilder) {
 		// no need to fetch a lifecycle image, it won't be used
@@ -171,13 +172,13 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return c.lifecycle.Execute(ctx, lifecycleOpts)
 	}
 
-	lifecycleImageSupported := !ephemeralBuilder.LifecycleDescriptor().Info.Version.LessThan(semver.MustParse("0.7.5"))
+	lifecycleImageSupported := !lifecycleVersion.LessThan(semver.MustParse("0.7.5"))
 	if !lifecycleImageSupported {
-		c.logger.Warnf("Lifecycle does not have an associated lifecycle image (%s).", lifecycleImageRepo)
+		c.logger.Warnf("Lifecycle %s does not have an associated lifecycle image.", lifecycleVersion.String())
 	} else {
 		lifecycleImage, err := c.imageFetcher.Fetch(
 			ctx,
-			fmt.Sprintf("%s:%s", lifecycleImageRepo, ephemeralBuilder.LifecycleDescriptor().Info.Version.String()),
+			fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
 			true,
 			true,
 		)
