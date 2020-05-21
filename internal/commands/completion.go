@@ -55,7 +55,6 @@ To configure your zsh shell to load completions for each session, add the follow
 				return err
 			}
 
-			logger.Infof("Completion File for %s is created", flags.Shell)
 			logger.Info(completionPath)
 			return nil
 		}),

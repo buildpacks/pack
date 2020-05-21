@@ -81,7 +81,6 @@ func testCompletionCommand(t *testing.T, when spec.G, it spec.S) {
 		when("Shell flag is empty(default value)", func() {
 			it("errors should not be occurred", func() {
 				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Completion File for bash is created")
 			})
 		})
 
@@ -96,7 +95,6 @@ func testCompletionCommand(t *testing.T, when spec.G, it spec.S) {
 
 			it("errors should not be occurred", func() {
 				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Completion File for zsh is created")
 			})
 		})
 
@@ -111,7 +109,6 @@ func testCompletionCommand(t *testing.T, when spec.G, it spec.S) {
 
 			it("errors should be occurred", func() {
 				h.AssertError(t, command.Execute(), "fish is unsupported shell")
-				h.AssertNotContains(t, outBuf.String(), "Completion File for fish is created")
 			})
 		})
 	})
