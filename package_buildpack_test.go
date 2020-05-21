@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
+	"github.com/google/go-cmp/cmp"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -350,16 +351,6 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
 
-		assertPackageBPFileHasBuildpacks := func(path string, parentBP dist.BuildpackDescriptor, otherBPs []dist.BuildpackDescriptor) {
-			packageBlob := blob.NewBlob(path)
-			mainBP, deps, err := buildpackage.BuildpacksFromOCILayoutBlob(packageBlob)
-			h.AssertNil(t, err)
-			h.AssertEq(t, mainBP.Descriptor(), parentBP)
-			for i, bp := range otherBPs {
-				h.AssertEq(t, deps[i].Descriptor(), bp)
-			}
-		}
-
 		when("dependencies are packaged buildpack image", func() {
 			it.Before(func() {
 				nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
@@ -390,7 +381,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Format:  pack.FormatFile,
 				}))
 
-				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
+				assertPackageBPFileHasBuildpacks(t, packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
 			})
 		})
 
@@ -409,7 +400,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Format:  pack.FormatFile,
 				}))
 
-				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
+				assertPackageBPFileHasBuildpacks(t, packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
 			})
 
 			when("dependency download fails", func() {
@@ -500,7 +491,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Format:  pack.FormatFile,
 				}))
 
-				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor, secondChildDescriptor})
+				assertPackageBPFileHasBuildpacks(t, packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor, secondChildDescriptor})
 			})
 		})
 
@@ -536,7 +527,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Format:  pack.FormatFile,
 				}))
 
-				assertPackageBPFileHasBuildpacks(packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
+				assertPackageBPFileHasBuildpacks(t, packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
 			})
 		})
 	})
@@ -559,4 +550,25 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			h.AssertError(t, err, "unknown format: 'invalid-format'")
 		})
 	})
+}
+
+func assertPackageBPFileHasBuildpacks(t *testing.T, path string, parentBP dist.BuildpackDescriptor, otherBPs []dist.BuildpackDescriptor) {
+	packageBlob := blob.NewBlob(path)
+	mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(packageBlob)
+	h.AssertNil(t, err)
+	assertBuildpacksHaveDescriptors(t, append([]dist.Buildpack{mainBP}, depBPs...), append([]dist.BuildpackDescriptor{parentBP}, otherBPs...))
+}
+
+func assertBuildpacksHaveDescriptors(t *testing.T, bps []dist.Buildpack, descriptors []dist.BuildpackDescriptor) {
+	h.AssertEq(t, len(bps), len(descriptors))
+	for _, bp := range bps {
+		found := false
+		for _, descriptor := range descriptors {
+			if diff := cmp.Diff(bp.Descriptor(), descriptor); diff == "" {
+				found = true
+				break
+			}
+		}
+		h.AssertTrue(t, found)
+	}
 }
