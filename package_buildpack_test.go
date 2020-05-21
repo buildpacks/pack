@@ -381,7 +381,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Format:  pack.FormatFile,
 				}))
 
-				assertPackageBPFileHasBuildpacks(t, packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
+				assertPackageBPFileHasBuildpacks(t, packagePath, []dist.BuildpackDescriptor{packageDescriptor, childDescriptor})
 			})
 		})
 
@@ -400,7 +400,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Format:  pack.FormatFile,
 				}))
 
-				assertPackageBPFileHasBuildpacks(t, packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
+				assertPackageBPFileHasBuildpacks(t, packagePath, []dist.BuildpackDescriptor{packageDescriptor, childDescriptor})
 			})
 
 			when("dependency download fails", func() {
@@ -491,7 +491,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Format:  pack.FormatFile,
 				}))
 
-				assertPackageBPFileHasBuildpacks(t, packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor, secondChildDescriptor})
+				assertPackageBPFileHasBuildpacks(t, packagePath, []dist.BuildpackDescriptor{packageDescriptor, childDescriptor, secondChildDescriptor})
 			})
 		})
 
@@ -527,7 +527,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Format:  pack.FormatFile,
 				}))
 
-				assertPackageBPFileHasBuildpacks(t, packagePath, packageDescriptor, []dist.BuildpackDescriptor{childDescriptor})
+				assertPackageBPFileHasBuildpacks(t, packagePath, []dist.BuildpackDescriptor{packageDescriptor, childDescriptor})
 			})
 		})
 	})
@@ -552,11 +552,11 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func assertPackageBPFileHasBuildpacks(t *testing.T, path string, parentBP dist.BuildpackDescriptor, otherBPs []dist.BuildpackDescriptor) {
+func assertPackageBPFileHasBuildpacks(t *testing.T, path string, descriptors []dist.BuildpackDescriptor) {
 	packageBlob := blob.NewBlob(path)
 	mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(packageBlob)
 	h.AssertNil(t, err)
-	assertBuildpacksHaveDescriptors(t, append([]dist.Buildpack{mainBP}, depBPs...), append([]dist.BuildpackDescriptor{parentBP}, otherBPs...))
+	assertBuildpacksHaveDescriptors(t, append([]dist.Buildpack{mainBP}, depBPs...), descriptors)
 }
 
 func assertBuildpacksHaveDescriptors(t *testing.T, bps []dist.Buildpack, descriptors []dist.BuildpackDescriptor) {
