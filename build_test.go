@@ -1311,6 +1311,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Image:   "some/app",
 						Builder: defaultBuilderName,
 						Publish: true,
+						TrustBuilder: true, // happy path
 					}))
 					h.AssertEq(t, fakeLifecycle.Opts.Publish, true)
 
@@ -1340,20 +1341,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("lifecycle image is not available", func() {
-						it("uses the 5 phases with the provided builder and warns the user", func() {
-							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						it("errors", func() {
+							h.AssertNotNil(t, subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
 								Builder:      defaultBuilderName,
 								Publish:      true,
 								TrustBuilder: false,
 							}))
-							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
-							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, defaultBuilderImage.Name())
-
-							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
-							h.AssertNil(t, args)
-
-							h.AssertContains(t, outBuf.String(), "Lifecycle 0.3.0 does not have an associated lifecycle image.")
 						})
 					})
 				})

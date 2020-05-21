@@ -173,9 +173,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return c.lifecycle.Execute(ctx, lifecycleOpts)
 	}
 
-	lifecycleImageSupported := !lifecycleVersion.LessThan(semver.MustParse("0.7.5"))
+	lifecycleImageSupported := lifecycleVersion.Equal(builder.VersionMustParse("0.6.1")) || !lifecycleVersion.LessThan(semver.MustParse("0.7.5"))
 	if !lifecycleImageSupported {
-		c.logger.Warnf("Lifecycle %s does not have an associated lifecycle image.", lifecycleVersion.String())
+		if opts.Publish && !opts.TrustBuilder {
+			return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted to be used when publishing.", lifecycleVersion.String())
+		}
 	} else {
 		lifecycleImage, err := c.imageFetcher.Fetch(
 			ctx,
