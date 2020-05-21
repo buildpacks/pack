@@ -1308,9 +1308,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			when("true", func() {
 				it("uses a remote run image", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-						Image:   "some/app",
-						Builder: defaultBuilderName,
-						Publish: true,
+						Image:        "some/app",
+						Builder:      defaultBuilderName,
+						Publish:      true,
 						TrustBuilder: true, // happy path
 					}))
 					h.AssertEq(t, fakeLifecycle.Opts.Publish, true)
