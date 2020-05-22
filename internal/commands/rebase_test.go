@@ -18,7 +18,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestRebase(t *testing.T) {
+func TestRebaseCommand(t *testing.T) {
 	spec.Run(t, "Commands", testRebaseCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -42,6 +42,13 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#RebaseCommand", func() {
+		when("no image is provided", func() {
+			it("fails to run", func() {
+				err := command.Execute()
+				h.AssertError(t, err, "accepts 1 arg")
+			})
+		})
+
 		when("image name is provided", func() {
 			var (
 				runImage    string
@@ -73,7 +80,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 				}
 
 				mockClient.EXPECT().
-					Build(gomock.Any(), opts).
+					Rebase(gomock.Any(), opts).
 					Return(nil)
 
 				command.SetArgs([]string{repoName})

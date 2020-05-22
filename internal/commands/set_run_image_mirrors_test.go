@@ -17,7 +17,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestSetRunImageMirrors(t *testing.T) {
+func TestSetRunImageMirrorsCommand(t *testing.T) {
 	spec.Run(t, "Commands", testSetRunImageMirrorsCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -63,6 +63,13 @@ func testSetRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 			}}
 		})
 
+		when("no run image is specified", func() {
+			it("fails to run", func() {
+				err := command.Execute()
+				h.AssertError(t, err, "accepts 1 arg")
+			})
+		})
+
 		when("mirrors are provided", func() {
 			it("adds them as mirrors to the config", func() {
 				command.SetArgs([]string{runImage, "-m", testMirror1, "-m", testMirror2})
@@ -83,7 +90,7 @@ func testSetRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, command.Execute())
 
 				cfg := readConfig(t)
-				h.AssertEq(t, cfg.RunImages, []config.RunImage{})
+				h.AssertEq(t, cfg.RunImages, []config.RunImage{{Image: runImage}})
 			})
 		})
 	})
