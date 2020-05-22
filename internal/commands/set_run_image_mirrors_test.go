@@ -6,14 +6,15 @@ import (
 	"os"
 	"testing"
 
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+	"github.com/spf13/cobra"
+
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"github.com/spf13/cobra"
 )
 
 func TestSetRunImageMirrors(t *testing.T) {

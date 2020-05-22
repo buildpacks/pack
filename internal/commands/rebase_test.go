@@ -4,6 +4,11 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+	"github.com/spf13/cobra"
+
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
@@ -11,10 +16,6 @@ import (
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/golang/mock/gomock"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"github.com/spf13/cobra"
 )
 
 func TestRebase(t *testing.T) {
@@ -80,5 +81,4 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-
 }
