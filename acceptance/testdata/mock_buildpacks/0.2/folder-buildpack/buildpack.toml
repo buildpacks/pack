@@ -1,0 +1,9 @@
+api = "0.2"
+
+[buildpack]
+  id = "folder.buildpack"
+  version = "folder.buildpack.version"
+  name = "folder Buildpack"
+
+[[stacks]]
+  id = "pack.test.stack"
