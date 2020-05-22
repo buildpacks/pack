@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
@@ -243,6 +244,45 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					command.SetArgs([]string{"--builder", "my-builder", "image", "--env-file", envPath1, "--env-file", envPath2})
 					h.AssertNil(t, command.Execute())
 				})
+			})
+		})
+
+		when("env vars are passed as flags", func() {
+			var (
+				tmpVar   = "tmpVar"
+				tmpValue = "tmpKey"
+			)
+
+			it.Before(func() {
+				h.AssertNil(t, os.Setenv(tmpVar, tmpValue))
+			})
+
+			it.After(func() {
+				h.AssertNil(t, os.Unsetenv(tmpVar))
+			})
+
+			it("sets flag variables", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
+						"KEY":  "VALUE",
+						tmpVar: tmpValue,
+					})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--env", "KEY=VALUE", "--env", tmpVar})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("build fails", func() {
+			it("should show an error", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), gomock.Any()).
+					Return(errors.New(""))
+
+				command.SetArgs([]string{"--builder", "my-builder", "image"})
+				err := command.Execute()
+				h.AssertError(t, err, "failed to build")
 			})
 		})
 

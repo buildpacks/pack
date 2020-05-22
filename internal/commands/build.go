@@ -127,7 +127,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				DefaultProcessType: flags.DefaultProcessType,
 				FileFilter:         fileFilter,
 			}); err != nil {
-				return err
+				return errors.Wrap(err, "failed to build")
 			}
 			logger.Infof("Successfully built image %s", style.Symbol(imageName))
 			return nil
