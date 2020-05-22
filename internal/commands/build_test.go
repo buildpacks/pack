@@ -47,6 +47,18 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#BuildCommand", func() {
+		when("no builder is specified", func() {
+			it("returns a soft error", func() {
+				mockClient.EXPECT().InspectBuilder(gomock.Any(), false).Return(&pack.BuilderInfo{
+					Description: "",
+				}, nil).AnyTimes()
+
+				command.SetArgs([]string{"image"})
+				err := command.Execute()
+				h.AssertError(t, err, commands.NewSoftError().Error())
+			})
+		})
+
 		when("a builder and image are set", func() {
 			it("builds an image with a builder", func() {
 				mockClient.EXPECT().
@@ -332,6 +344,148 @@ version = "1.0"
 					})
 				})
 			})
+
+			when("descriptor buildpack has uri", func() {
+				var projectTomlPath string
+
+				it.Before(func() {
+					projectToml, err := ioutil.TempFile("", "project.toml")
+					h.AssertNil(t, err)
+					defer projectToml.Close()
+
+					projectToml.WriteString(`
+[project]
+name = "Sample"
+
+[[build.buildpacks]]
+id = "example/lua"
+uri = "https://www.test.tgz"
+`)
+					projectTomlPath = projectToml.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(projectTomlPath))
+				})
+
+				it("should build an image with configuration in descriptor", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithBuildpacks([]string{
+							"https://www.test.tgz",
+						})).
+						Return(nil)
+
+					command.SetArgs([]string{"image", "--builder", "my-builder", "--descriptor", projectTomlPath})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("descriptor buildpack has malformed uri", func() {
+				var projectTomlPath string
+
+				it.Before(func() {
+					projectToml, err := ioutil.TempFile("", "project.toml")
+					h.AssertNil(t, err)
+					defer projectToml.Close()
+
+					projectToml.WriteString(`
+[project]
+name = "Sample"
+
+[[build.buildpacks]]
+id = "example/lua"
+uri = "://bad-uri"
+`)
+					projectTomlPath = projectToml.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(projectTomlPath))
+				})
+
+				it("should build an image with configuration in descriptor", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithBuildpacks([]string{
+							"https://www.test.tgz",
+						})).
+						Return(nil)
+
+					command.SetArgs([]string{"image", "--builder", "my-builder", "--descriptor", projectTomlPath})
+					err := command.Execute()
+					h.AssertError(t, err, "parse")
+				})
+			})
+
+			when("descriptor has exclude", func() {
+				var projectTomlPath string
+
+				it.Before(func() {
+					projectToml, err := ioutil.TempFile("", "project.toml")
+					h.AssertNil(t, err)
+					defer projectToml.Close()
+
+					projectToml.WriteString(`
+[project]
+name = "Sample"
+
+[build]
+exclude = [ "*.jar" ]
+`)
+					projectTomlPath = projectToml.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(projectTomlPath))
+				})
+
+				it("should return appropriate fileFilter function", func() {
+					mockFilter := func(string) bool {
+						return false
+					}
+
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithFileFilter(mockFilter, "test.jar")).
+						Return(nil)
+
+					command.SetArgs([]string{"image", "--builder", "my-builder", "--descriptor", projectTomlPath})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("descriptor has include", func() {
+				var projectTomlPath string
+				it.Before(func() {
+					projectToml, err := ioutil.TempFile("", "project.toml")
+					h.AssertNil(t, err)
+					defer projectToml.Close()
+
+					projectToml.WriteString(`
+[project]
+name = "Sample"
+
+[build]
+include = [ "*.jar" ]
+`)
+					projectTomlPath = projectToml.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(projectTomlPath))
+				})
+
+				it("should return appropriate fileFilter function", func() {
+					mockFilter := func(string) bool {
+						return true
+					}
+
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithFileFilter(mockFilter, "test.jar")).
+						Return(nil)
+
+					command.SetArgs([]string{"image", "--builder", "my-builder", "--descriptor", projectTomlPath})
+					h.AssertNil(t, command.Execute())
+				})
+			})
 		})
 	})
 }
@@ -368,6 +522,15 @@ func EqBuildOptionsWithTrustedBuilder(trustBuilder bool) gomock.Matcher {
 		description: fmt.Sprintf("Trust Builder=%t", trustBuilder),
 		equals: func(o pack.BuildOptions) bool {
 			return o.TrustBuilder == trustBuilder
+		},
+	}
+}
+
+func EqBuildOptionsWithFileFilter(fileFilter func(string) bool, fileName string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("File Filter=%p", fileFilter),
+		equals: func(o pack.BuildOptions) bool {
+			return o.FileFilter(fileName) == fileFilter(fileName)
 		},
 	}
 }
