@@ -41,7 +41,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-const defaultBuilderLifecycleVersion = "0.6.1"
+const defaultBuilderLifecycleVersion = "0.3.0"
 
 func TestBuild(t *testing.T) {
 	color.Disable(true)
@@ -326,7 +326,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Lifecycle: builder.LifecycleMetadata{
 								LifecycleInfo: builder.LifecycleInfo{
 									Version: &builder.Version{
-										Version: *semver.MustParse("0.6.1"),
+										Version: *semver.MustParse("0.3.0"),
 									},
 								},
 								API: builder.LifecycleAPI{
@@ -1369,7 +1369,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("lifecycle doesn't support creator", func() {
-						// the default test builder (example.com/default/builder:tag) has lifecycle version 0.6.1, so creator is not supported
+						// the default test builder (example.com/default/builder:tag) has lifecycle version 0.3.0, so creator is not supported
 						it("uses the 5 phases with the provided builder", func() {
 							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
@@ -1421,7 +1421,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("lifecycle doesn't support creator", func() {
-					// the default test builder (example.com/default/builder:tag) has lifecycle version 0.6.1, so creator is not supported
+					// the default test builder (example.com/default/builder:tag) has lifecycle version 0.3.0, so creator is not supported
 					it("uses the 5 phases with the provided builder", func() {
 						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 							Image:        "some/app",
@@ -1577,7 +1577,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									Lifecycle: builder.LifecycleMetadata{
 										LifecycleInfo: builder.LifecycleInfo{
 											Version: &builder.Version{
-												Version: *semver.MustParse("0.6.1"),
+												Version: *semver.MustParse("0.3.0"),
 											},
 										},
 										API: builder.LifecycleAPI{
@@ -1626,7 +1626,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Lifecycle: builder.LifecycleMetadata{
 									LifecycleInfo: builder.LifecycleInfo{
 										Version: &builder.Version{
-											Version: *semver.MustParse("0.6.1"),
+											Version: *semver.MustParse("0.3.0"),
 										},
 									},
 									API: builder.LifecycleAPI{
