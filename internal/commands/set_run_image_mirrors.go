@@ -38,6 +38,6 @@ func SetRunImagesMirrors(logger logging.Logger, cfg config.Config) *cobra.Comman
 		}),
 	}
 	cmd.Flags().StringSliceVarP(&mirrors, "mirror", "m", nil, "Run image mirror"+multiValueHelp("mirror"))
-	AddHelpFlag(cmd, "configure-builder")
+	AddHelpFlag(cmd, "set-run-image-mirrors")
 	return cmd
 }
