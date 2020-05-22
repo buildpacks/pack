@@ -1,5 +1,5 @@
 # Merges changes to release branches back into master.
-name: release-sync
+name: release-merge
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - 'release/**'
 
 jobs:
-  sync:
+  merge:
     runs-on: ubuntu-latest
     steps:
       - name: Merge
