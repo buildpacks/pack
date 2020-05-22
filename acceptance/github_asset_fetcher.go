@@ -207,7 +207,7 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 	// exclude drafts
 	var releases []*github.RepositoryRelease
 	for _, release := range rawReleases {
-		if release.Draft == nil {
+		if !*release.Draft {
 			releases = append(releases, release)
 		}
 	}
