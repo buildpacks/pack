@@ -292,6 +292,19 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
+	when("trust-builder", func() {
+		it("sets the builder as trusted in ~/.pack/config.toml", func() {
+			h.SkipIf(t, !packSupports(packPath, "trust-builder"), "pack does not support 'trust-builder'")
+			builderName := "some-builder" + h.RandString(10)
+
+			h.Run(t, subjectPack("trust-builder", builderName))
+
+			packConfigFileContents, err := ioutil.ReadFile(filepath.Join(packHome, "config.toml"))
+			h.AssertNil(t, err)
+			h.AssertContains(t, string(packConfigFileContents), builderName)
+		})
+	})
+
 	when("package-buildpack", func() {
 		var tmpDir string
 
