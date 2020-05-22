@@ -167,30 +167,30 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	// have bugs that make using the creator problematic.
 	lifecycleSupportsCreator := !lifecycleVersion.LessThan(semver.MustParse("0.7.4"))
 
-	if lifecycleSupportsCreator && (!opts.Publish || opts.TrustBuilder) {
+	if lifecycleSupportsCreator && opts.TrustBuilder {
 		lifecycleOpts.UseCreator = true
 		// no need to fetch a lifecycle image, it won't be used
 		return c.lifecycle.Execute(ctx, lifecycleOpts)
 	}
 
 	lifecycleImageSupported := lifecycleVersion.Equal(builder.VersionMustParse("0.6.1")) || !lifecycleVersion.LessThan(semver.MustParse("0.7.5"))
+	if !opts.TrustBuilder {
+		switch lifecycleImageSupported {
+		case true:
+			lifecycleImage, err := c.imageFetcher.Fetch(
+				ctx,
+				fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
+				true,
+				true,
+			)
+			if err != nil {
+				return errors.Wrap(err, "fetching lifecycle image")
+			}
 
-	if lifecycleImageSupported && opts.Publish && !opts.TrustBuilder {
-		lifecycleImage, err := c.imageFetcher.Fetch(
-			ctx,
-			fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
-			true,
-			true,
-		)
-		if err != nil {
-			return errors.Wrap(err, "fetching lifecycle image")
+			lifecycleOpts.LifecycleImage = lifecycleImage.Name()
+		default:
+			return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted.", lifecycleVersion.String())
 		}
-
-		lifecycleOpts.LifecycleImage = lifecycleImage.Name()
-	}
-
-	if !lifecycleImageSupported && opts.Publish && !opts.TrustBuilder {
-		return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted to be used when publishing.", lifecycleVersion.String())
 	}
 
 	return c.lifecycle.Execute(ctx, lifecycleOpts)

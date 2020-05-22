@@ -41,7 +41,8 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-const defaultBuilderLifecycleVersion = "0.3.0"
+// 0.7.5 is the first lifecycle version where both creator and the "lifecycle image" are supported.
+const defaultBuilderLifecycleVersion = "0.7.5"
 
 func TestBuild(t *testing.T) {
 	color.Disable(true)
@@ -64,6 +65,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		tmpDir                string
 		outBuf                bytes.Buffer
 		logger                logging.Logger
+		fakeLifecycleImage    *fakes.Image
 	)
 	it.Before(func() {
 		var err error
@@ -96,6 +98,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, fakeMirror2.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
 		fakeImageFetcher.LocalImages[fakeMirror2.Name()] = fakeMirror2
 
+		fakeLifecycleImage = fakes.NewImage(fmt.Sprintf("%s:%s", lifecycleImageRepo, defaultBuilderLifecycleVersion), "", nil)
+		fakeImageFetcher.LocalImages[fakeLifecycleImage.Name()] = fakeLifecycleImage
+
 		docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
 
@@ -119,6 +124,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeMirror1.Cleanup()
 		fakeMirror2.Cleanup()
 		os.RemoveAll(tmpDir)
+		fakeLifecycleImage.Cleanup()
 	})
 
 	when("#Build", func() {
@@ -326,7 +332,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Lifecycle: builder.LifecycleMetadata{
 								LifecycleInfo: builder.LifecycleInfo{
 									Version: &builder.Version{
-										Version: *semver.MustParse("0.3.0"),
+										Version: *semver.MustParse("0.7.5"),
 									},
 								},
 								API: builder.LifecycleAPI{
@@ -1275,7 +1281,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("Publish option", func() {
-			var remoteRunImage, builderImageSupportingCreator, fakeLifecycleImage *fakes.Image
+			var remoteRunImage, builderWithoutLifecycleImageOrCreator *fakes.Image
 
 			it.Before(func() {
 				remoteRunImage = fakes.NewImage("default/run", "", nil)
@@ -1283,26 +1289,20 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
 				fakeImageFetcher.RemoteImages[remoteRunImage.Name()] = remoteRunImage
 
-				lifecycleVersionSupportingCreator := "0.7.5"
-
-				builderImageSupportingCreator = newFakeBuilderImage(
+				builderWithoutLifecycleImageOrCreator = newFakeBuilderImage(
 					t,
 					tmpDir,
 					"example.com/supportscreator/builder:tag",
 					"some.stack.id",
-					lifecycleVersionSupportingCreator,
+					"0.3.0",
 				)
-				h.AssertNil(t, builderImageSupportingCreator.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
-				fakeImageFetcher.LocalImages[builderImageSupportingCreator.Name()] = builderImageSupportingCreator
-
-				fakeLifecycleImage = fakes.NewImage(fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersionSupportingCreator), "", nil)
-				fakeImageFetcher.LocalImages[fakeLifecycleImage.Name()] = fakeLifecycleImage
+				h.AssertNil(t, builderWithoutLifecycleImageOrCreator.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
+				fakeImageFetcher.LocalImages[builderWithoutLifecycleImageOrCreator.Name()] = builderWithoutLifecycleImageOrCreator
 			})
 
 			it.After(func() {
 				remoteRunImage.Cleanup()
-				builderImageSupportingCreator.Cleanup()
-				fakeLifecycleImage.Cleanup()
+				builderWithoutLifecycleImageOrCreator.Cleanup()
 			})
 
 			when("true", func() {
@@ -1311,7 +1311,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Image:        "some/app",
 						Builder:      defaultBuilderName,
 						Publish:      true,
-						TrustBuilder: true, // happy path
 					}))
 					h.AssertEq(t, fakeLifecycle.Opts.Publish, true)
 
@@ -1327,7 +1326,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						it("uses the 5 phases with the lifecycle image", func() {
 							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
-								Builder:      builderImageSupportingCreator.Name(),
+								Builder:      defaultBuilderName,
 								Publish:      true,
 								TrustBuilder: false,
 							}))
@@ -1344,7 +1343,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						it("errors", func() {
 							h.AssertNotNil(t, subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
-								Builder:      defaultBuilderName,
+								Builder:      builderWithoutLifecycleImageOrCreator.Name(),
 								Publish:      true,
 								TrustBuilder: false,
 							}))
@@ -1354,10 +1353,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 				when("builder is trusted", func() {
 					when("lifecycle supports creator", func() {
-						it("uses the creator", func() {
+						it("uses the creator with the provided builder", func() {
 							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
-								Builder:      builderImageSupportingCreator.Name(),
+								Builder:      defaultBuilderName,
 								Publish:      true,
 								TrustBuilder: true,
 							}))
@@ -1373,12 +1372,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						it("uses the 5 phases with the provided builder", func() {
 							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
-								Builder:      defaultBuilderName,
+								Builder:      builderWithoutLifecycleImageOrCreator.Name(),
 								Publish:      true,
 								TrustBuilder: true,
 							}))
 							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
-							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, defaultBuilderImage.Name())
+							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, builderWithoutLifecycleImageOrCreator.Name())
 
 							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
 							h.AssertNil(t, args)
@@ -1405,32 +1404,67 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, args.Pull, true)
 				})
 
-				when("lifecycle supports creator", func() {
-					it("uses the creator", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:        "some/app",
-							Builder:      builderImageSupportingCreator.Name(),
-							Publish:      false,
-							TrustBuilder: false,
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.UseCreator, true)
+				when("builder is untrusted", func() {
+					when("lifecycle image is available", func() {
+						it("uses the 5 phases with the lifecycle image", func() {
+							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+								Image:        "some/app",
+								Builder:      defaultBuilderName,
+								Publish:      false,
+								TrustBuilder: false,
+							}))
+							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
+							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, fakeLifecycleImage.Name())
 
-						args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
-						h.AssertNil(t, args)
+							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
+							h.AssertEq(t, args.Daemon, true)
+							h.AssertEq(t, args.Pull, true)
+						})
+					})
+
+					when("lifecycle image is not available", func() {
+						it("errors", func() {
+							h.AssertNotNil(t, subject.Build(context.TODO(), BuildOptions{
+								Image:        "some/app",
+								Builder:      builderWithoutLifecycleImageOrCreator.Name(),
+								Publish:      false,
+								TrustBuilder: false,
+							}))
+						})
 					})
 				})
 
-				when("lifecycle doesn't support creator", func() {
-					// the default test builder (example.com/default/builder:tag) has lifecycle version 0.3.0, so creator is not supported
-					it("uses the 5 phases with the provided builder", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:        "some/app",
-							Builder:      defaultBuilderName,
-							Publish:      false,
-							TrustBuilder: true,
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
-						h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, defaultBuilderImage.Name())
+				when("builder is trusted", func() {
+					when("lifecycle supports creator", func() {
+						it("uses the creator with the provided builder", func() {
+							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+								Image:        "some/app",
+								Builder:      defaultBuilderName,
+								Publish:      false,
+								TrustBuilder: true,
+							}))
+							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, true)
+
+							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
+							h.AssertNil(t, args)
+						})
+					})
+
+					when("lifecycle doesn't support creator", func() {
+						// the default test builder (example.com/default/builder:tag) has lifecycle version 0.3.0, so creator is not supported
+						it("uses the 5 phases with the provided builder", func() {
+							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+								Image:        "some/app",
+								Builder:      builderWithoutLifecycleImageOrCreator.Name(),
+								Publish:      false,
+								TrustBuilder: true,
+							}))
+							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
+							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, builderWithoutLifecycleImageOrCreator.Name())
+
+							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
+							h.AssertNil(t, args)
+						})
 					})
 				})
 			})
@@ -1577,7 +1611,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									Lifecycle: builder.LifecycleMetadata{
 										LifecycleInfo: builder.LifecycleInfo{
 											Version: &builder.Version{
-												Version: *semver.MustParse("0.3.0"),
+												Version: *semver.MustParse("0.7.5"),
 											},
 										},
 										API: builder.LifecycleAPI{
@@ -1626,7 +1660,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Lifecycle: builder.LifecycleMetadata{
 									LifecycleInfo: builder.LifecycleInfo{
 										Version: &builder.Version{
-											Version: *semver.MustParse("0.3.0"),
+											Version: *semver.MustParse("0.7.5"),
 										},
 									},
 									API: builder.LifecycleAPI{
