@@ -52,7 +52,7 @@ To configure your zsh shell to load completions for each session, add the follow
 			}
 
 			if flagErr != nil {
-				return err
+				return flagErr
 			}
 
 			logger.Info(completionPath)
