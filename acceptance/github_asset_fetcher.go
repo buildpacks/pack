@@ -196,12 +196,23 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 	}
 
 	// get all release versions
-	releases, _, err := f.githubClient.Repositories.ListReleases(f.ctx, owner, repo, nil)
+	rawReleases, _, err := f.githubClient.Repositories.ListReleases(f.ctx, owner, repo, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "listing releases")
 	}
-	if len(releases) == 0 {
+	if len(rawReleases) == 0 {
 		return "", fmt.Errorf("no releases found for %s/%s", owner, repo)
+	}
+
+	// exclude drafts
+	var releases []*github.RepositoryRelease
+	for _, release := range rawReleases {
+		if !*release.Draft {
+			releases = append(releases, release)
+		}
+	}
+	if len(releases) == 0 {
+		return "", fmt.Errorf("no non-draft releases found for %s/%s", owner, repo)
 	}
 
 	// sort all release versions
