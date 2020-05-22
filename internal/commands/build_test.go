@@ -144,69 +144,105 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("an env file is provided", func() {
-			var envPath string
+		when("env file", func() {
+			when("an env file is provided", func() {
+				var envPath string
 
-			it.Before(func() {
-				envfile, err := ioutil.TempFile("", "envfile")
-				h.AssertNil(t, err)
-				defer envfile.Close()
+				it.Before(func() {
+					envfile, err := ioutil.TempFile("", "envfile")
+					h.AssertNil(t, err)
+					defer envfile.Close()
 
-				envfile.WriteString(`KEY=VALUE`)
-				envPath = envfile.Name()
+					envfile.WriteString(`KEY=VALUE`)
+					envPath = envfile.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(envPath))
+				})
+
+				it("builds an image env variables read from the env file", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
+							"KEY": "VALUE",
+						})).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--env-file", envPath})
+					h.AssertNil(t, command.Execute())
+				})
 			})
 
-			it.After(func() {
-				h.AssertNil(t, os.RemoveAll(envPath))
+			when("a env file is provided but doesn't exist", func() {
+				it("fails to run", func() {
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--env-file", ""})
+					err := command.Execute()
+					h.AssertError(t, err, "parse env file")
+				})
 			})
 
-			it("builds an image env variables read from the env file", func() {
-				mockClient.EXPECT().
-					Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
-						"KEY": "VALUE",
-					})).
-					Return(nil)
+			when("an empty env file is provided", func() {
+				var envPath string
 
-				command.SetArgs([]string{"--builder", "my-builder", "image", "--env-file", envPath})
-				h.AssertNil(t, command.Execute())
-			})
-		})
+				it.Before(func() {
+					envfile, err := ioutil.TempFile("", "envfile")
+					h.AssertNil(t, err)
+					defer envfile.Close()
 
-		when("two env files are provided with conflicted keys", func() {
-			var envPath1 string
-			var envPath2 string
+					envfile.WriteString(``)
+					envPath = envfile.Name()
+				})
 
-			it.Before(func() {
-				envfile1, err := ioutil.TempFile("", "envfile")
-				h.AssertNil(t, err)
-				defer envfile1.Close()
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(envPath))
+				})
 
-				envfile1.WriteString("KEY1=VALUE1\nKEY2=IGNORED")
-				envPath1 = envfile1.Name()
+				it("succesfully builds", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{})).
+						Return(nil)
 
-				envfile2, err := ioutil.TempFile("", "envfile")
-				h.AssertNil(t, err)
-				defer envfile2.Close()
-
-				envfile2.WriteString("KEY2=VALUE2")
-				envPath2 = envfile2.Name()
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--env-file", envPath})
+					h.AssertNil(t, command.Execute())
+				})
 			})
 
-			it.After(func() {
-				h.AssertNil(t, os.RemoveAll(envPath1))
-				h.AssertNil(t, os.RemoveAll(envPath2))
-			})
+			when("two env files are provided with conflicted keys", func() {
+				var envPath1 string
+				var envPath2 string
 
-			it("builds an image with the last value of each env variable", func() {
-				mockClient.EXPECT().
-					Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
-						"KEY1": "VALUE1",
-						"KEY2": "VALUE2",
-					})).
-					Return(nil)
+				it.Before(func() {
+					envfile1, err := ioutil.TempFile("", "envfile")
+					h.AssertNil(t, err)
+					defer envfile1.Close()
 
-				command.SetArgs([]string{"--builder", "my-builder", "image", "--env-file", envPath1, "--env-file", envPath2})
-				h.AssertNil(t, command.Execute())
+					envfile1.WriteString("KEY1=VALUE1\nKEY2=IGNORED")
+					envPath1 = envfile1.Name()
+
+					envfile2, err := ioutil.TempFile("", "envfile")
+					h.AssertNil(t, err)
+					defer envfile2.Close()
+
+					envfile2.WriteString("KEY2=VALUE2")
+					envPath2 = envfile2.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(envPath1))
+					h.AssertNil(t, os.RemoveAll(envPath2))
+				})
+
+				it("builds an image with the last value of each env variable", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
+							"KEY1": "VALUE1",
+							"KEY2": "VALUE2",
+						})).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--env-file", envPath1, "--env-file", envPath2})
+					h.AssertNil(t, command.Execute())
+				})
 			})
 		})
 
