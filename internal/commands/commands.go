@@ -11,6 +11,7 @@ import (
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -47,20 +48,24 @@ func logError(logger logging.Logger, f func(cmd *cobra.Command, args []string) e
 		cmd.SilenceUsage = true
 		err := f(cmd, args)
 		if err != nil {
-			if _, isSoftError := err.(SoftError); !isSoftError {
+			if _, isSoftError := err.(pack.SoftError); !isSoftError {
 				logger.Error(err.Error())
 			}
-			if ee, isExpError := err.(ExperimentError); isExpError {
+			if _, isExpError := err.(pack.ExperimentError); isExpError {
 				configPath, err := config.DefaultConfigPath()
 				if err != nil {
 					return err
 				}
-				ee.Tip(logger, configPath)
+				enableExperimentalTip(logger, configPath)
 			}
 			return err
 		}
 		return nil
 	}
+}
+
+func enableExperimentalTip(logger logging.Logger, configPath string) {
+	logging.Tip(logger, "To enable experimental features, add %s to %s.", style.Symbol("experimental = true"), style.Symbol(configPath))
 }
 
 func multiValueHelp(name string) string {

@@ -83,7 +83,7 @@ func main() {
 
 	ctx := commands.CreateCancellableContext()
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
-		if _, isSoftError := err.(commands.SoftError); isSoftError {
+		if _, isSoftError := err.(pack.SoftError); isSoftError {
 			os.Exit(2)
 		}
 		os.Exit(1)
