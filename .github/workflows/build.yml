@@ -105,8 +105,7 @@ jobs:
       - name: Download artifacts - windows
         uses: actions/download-artifact@v1
         with:
-          name: pack-windows-lcow
-          path: pack-windows
+          name: pack-windows
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack

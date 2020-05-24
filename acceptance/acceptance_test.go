@@ -592,28 +592,36 @@ func testAcceptance(
 
 			when("experimental is disabled", func() {
 				it("fails", func() {
-					builderName, err := createBuilder(t, runImageMirror, configDir, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor)
+					builderName, err := createBuilder(t, runImageMirror, configDir, "", packCreateBuilderPath, lifecyclePath, lifecycleDescriptor)
 					if err != nil {
 						defer h.DockerRmi(dockerCli, builderName)
-						h.AssertError(t, err, "Windows container support is currently experimental")
+						h.AssertError(t, err, "Windows containers support is currently experimental")
 					}
 				})
 			})
 
 			when("experimental is enabled", func() {
-				it.Before(func() {
-					packConfigFile := filepath.Join(packHome, "config.toml")
-					data, err := ioutil.ReadFile(packConfigFile)
-					if err != nil && !os.IsNotExist(err) {
-						t.Fatalf("Failed to read pack config at %s", packConfigFile)
-					}
 
-					err = ioutil.WriteFile(packConfigFile, append(data, []byte("experimental=true")...), os.ModePerm)
+				var packCreateBuilderHome string
+
+				it.Before(func() {
+					var err error
+					packCreateBuilderHome, err = ioutil.TempDir("", "pack-home")
 					h.AssertNil(t, err)
+
+					h.AssertNil(t, ioutil.WriteFile(
+						filepath.Join(packCreateBuilderHome, "config.toml"),
+						[]byte("experimental=true"),
+						os.ModePerm,
+					))
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(packCreateBuilderHome))
 				})
 
 				it("succeeds", func() {
-					builderName, err := createBuilder(t, runImageMirror, configDir, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor)
+					builderName, err := createBuilder(t, runImageMirror, configDir, packCreateBuilderHome, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor)
 					h.AssertNil(t, err)
 					defer h.DockerRmi(dockerCli, builderName)
 
@@ -640,7 +648,7 @@ func testAcceptance(
 
 				key := taskKey("create-builder", runImageMirror, configDir, packCreateBuilderPath, lifecyclePath)
 				value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
-					return createBuilder(t, runImageMirror, configDir, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor)
+					return createBuilder(t, runImageMirror, configDir, "", packCreateBuilderPath, lifecyclePath, lifecycleDescriptor)
 				})
 				h.AssertNil(t, err)
 				suiteManager.RegisterCleanUp("clean-"+key, func() error {
@@ -1811,7 +1819,7 @@ func buildPack(t *testing.T, compileVersion string) string {
 	return packPath
 }
 
-func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) (string, error) {
+func createBuilder(t *testing.T, runImageMirror, configDir, packHome, packPath, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) (string, error) {
 	t.Log("creating builder image...")
 
 	// CREATE TEMP WORKING DIR
@@ -1885,8 +1893,12 @@ func createBuilder(t *testing.T, runImageMirror, configDir, packPath, lifecycleP
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
 
 	// CREATE BUILDER
-	cmd := exec.Command(packPath, "create-builder", "--no-color", bldr, "-b", filepath.Join(tmpDir, "builder.toml"))
-	output := h.Run(t, cmd)
+	cmd := packCmd(packHome, packPath, "create-builder", "--no-color", bldr, "-b", filepath.Join(tmpDir, "builder.toml"))
+	output, err := h.RunE(cmd)
+	if err != nil {
+		return "", err
+	}
+
 	h.AssertContains(t, output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
 	h.AssertNil(t, h.PushImage(dockerCli, bldr, registryConfig))
 
