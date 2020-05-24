@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
@@ -48,10 +49,11 @@ func logError(logger logging.Logger, f func(cmd *cobra.Command, args []string) e
 		cmd.SilenceUsage = true
 		err := f(cmd, args)
 		if err != nil {
-			if _, isSoftError := err.(pack.SoftError); !isSoftError {
+			if _, isSoftError := errors.Cause(err).(pack.SoftError); !isSoftError {
 				logger.Error(err.Error())
 			}
-			if _, isExpError := err.(pack.ExperimentError); isExpError {
+
+			if _, isExpError := errors.Cause(err).(pack.ExperimentError); isExpError {
 				configPath, err := config.DefaultConfigPath()
 				if err != nil {
 					return err

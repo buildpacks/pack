@@ -334,6 +334,41 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
+			when("windows containers", func() {
+				when("experimental enabled", func() {
+					it("succeeds", func() {
+						packClientWithExperimental, err := pack.NewClient(
+							pack.WithLogger(logger),
+							pack.WithDownloader(mockDownloader),
+							pack.WithImageFactory(mockImageFactory),
+							pack.WithFetcher(mockImageFetcher),
+							pack.WithExperimental(true),
+						)
+						h.AssertNil(t, err)
+
+						prepareFetcherWithRunImages()
+
+						fakeBuildImage.SetPlatform("windows", "0123", "amd64")
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, true).Return(fakeBuildImage, nil)
+
+						err = packClientWithExperimental.CreateBuilder(context.TODO(), opts)
+						h.AssertNil(t, err)
+					})
+				})
+
+				when("experimental disabled", func() {
+					it("fails", func() {
+						prepareFetcherWithRunImages()
+
+						fakeBuildImage.SetPlatform("windows", "0123", "amd64")
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, true).Return(fakeBuildImage, nil)
+
+						err := subject.CreateBuilder(context.TODO(), opts)
+						h.AssertError(t, err, "failed to create builder: Windows containers support is currently experimental.")
+					})
+				})
+			})
+
 			when("error downloading lifecycle", func() {
 				it("should fail", func() {
 					prepareFetcherWithBuildImage()

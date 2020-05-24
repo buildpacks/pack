@@ -46,7 +46,7 @@ func main() {
 				}
 			}
 
-			packClient = initClient(logger)
+			packClient = initClient(logger, cfg)
 		},
 	}
 
@@ -103,8 +103,8 @@ func initConfig() (config.Config, error) {
 	return cfg, nil
 }
 
-func initClient(logger logging.Logger) pack.Client {
-	client, err := pack.NewClient(pack.WithLogger(logger))
+func initClient(logger logging.Logger, cfg config.Config) pack.Client {
+	client, err := pack.NewClient(pack.WithLogger(logger), pack.WithExperimental(cfg.Experimental))
 	if err != nil {
 		exitError(logger, err)
 	}
