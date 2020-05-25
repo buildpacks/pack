@@ -1,0 +1,66 @@
+name: delivery/homebrew
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  update-tap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Checkout tap
+        uses: actions/checkout@v2
+        with:
+          repository: buildpack/homebrew-tap
+          path: homebrew-tap
+      - name: Copy pack.rb
+        run: cp .github/workflows/delivery/homebrew/pack.rb homebrew-tap/Formula/pack.rb 
+      - name: Lookup assets
+        uses: actions/github-script@v1
+        id: assets
+        with:
+          script: |
+            context.payload.release.assets.forEach(asset => {
+              if (asset.name.includes("linux")) {
+                core.setOutput("linux_name", asset.name);
+                core.setOutput("linux_url", asset.browser_download_url);
+              }
+
+              if (asset.name.includes("macos")) {
+                core.setOutput("macos_name", asset.name);
+                core.setOutput("macos_url", asset.browser_download_url);
+              }
+            });
+      - name: Generate asset checksums
+        id: checksums
+        run: |
+          curl -sSL ${{ steps.assets.outputs.linux_url }} -o ${{ steps.assets.outputs.linux_name }}
+          linux_sha256=$(sha256sum ${{ steps.assets.outputs.linux_name }} | cut -d ' ' -f1)
+          echo "::set-output name=linux_sha256::$linux_sha256"
+          
+          curl -sSL ${{ steps.assets.outputs.macos_url }} -o ${{ steps.assets.outputs.macos_name }}
+          macos_sha256=$(sha256sum ${{ steps.assets.outputs.macos_name }} | cut -d ' ' -f1)
+          echo "::set-output name=macos_sha256::$macos_sha256"
+      - name: Fill pack.rb
+        uses: cschleiden/replace-tokens@v1
+        with:
+          files: homebrew-tap/Formula/pack.rb
+          tokenPrefix: '{{'
+          tokenSuffix: '}}'
+        env:
+          LINUX_URL: ${{ steps.assets.outputs.linux_url }}
+          LINUX_SHA: ${{ steps.checksums.outputs.linux_sha256 }}
+          MACOS_URL: ${{ steps.assets.outputs.macos_url }}
+          MACOS_SHA: ${{ steps.checksums.outputs.macos_sha256 }}
+      - run: cat homebrew-tap/Formula/pack.rb
+      - name: Commit changes
+        run: |
+          git config --global user.name "github-bot"
+          git config --global user.email "action@github.com"
+          
+          cd homebrew-tap
+          git add Formula/pack.rb
+          git commit -m "Version ${{ github.event.release.tag_name }}"
+          git push
