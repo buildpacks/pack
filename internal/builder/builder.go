@@ -260,7 +260,7 @@ func (b *Builder) SetStack(stackConfig builder.StackConfig) {
 
 // Save saves the builder
 func (b *Builder) Save(logger logging.Logger) error {
-	logger.Debugf("Saving builder with the following buildpacks:")
+	logger.Debugf("Creating builder with the following buildpacks:")
 	for _, bpInfo := range b.metadata.Buildpacks {
 		logger.Debugf("-> %s", style.Symbol(bpInfo.FullName()))
 	}

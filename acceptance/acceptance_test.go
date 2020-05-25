@@ -739,27 +739,14 @@ func testAcceptance(
 						assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
 						t.Log("restores the cache")
-						if creatorSupported {
-							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring data for "simple/layers:cached-launch-layer" from cache`)
-							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
-						} else {
-							h.AssertContainsMatch(t, output, `(?i)\[restorer] Restoring data for "simple/layers:cached-launch-layer" from cache`)
-							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
-						}
+						h.AssertContainsMatch(t, output, `(?i)Restoring data for "simple/layers:cached-launch-layer" from cache`)
+						h.AssertContainsMatch(t, output, `(?i)Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
 
 						t.Log("exporter reuses unchanged layers")
-						if creatorSupported {
-							h.AssertContainsMatch(t, output, `(?i)\[creator] reusing layer 'simple/layers:cached-launch-layer'`)
-						} else {
-							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
-						}
+						h.AssertContainsMatch(t, output, `(?i)Reusing layer 'simple/layers:cached-launch-layer'`)
 
 						t.Log("cacher reuses unchanged layers")
-						if creatorSupported {
-							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing cache layer 'simple/layers:cached-launch-layer'`)
-						} else {
-							h.AssertContainsMatch(t, output, `(?i)\[exporter] Reusing cache layer 'simple/layers:cached-launch-layer'`)
-						}
+						h.AssertContainsMatch(t, output, `(?i)Reusing cache layer 'simple/layers:cached-launch-layer'`)
 
 						t.Log("rebuild with --clear-cache")
 						output = h.Run(t, subjectPack("build", repoName, "-p", appPath, "--clear-cache"))
@@ -771,25 +758,13 @@ func testAcceptance(
 						}
 
 						t.Log("skips buildpack layer analysis")
-						if creatorSupported {
-							h.AssertContainsMatch(t, output, `(?i)\[creator] Skipping buildpack layer analysis`)
-						} else {
-							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Skipping buildpack layer analysis`)
-						}
+						h.AssertContainsMatch(t, output, `(?i)Skipping buildpack layer analysis`)
 
 						t.Log("exporter reuses unchanged layers")
-						if creatorSupported {
-							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing layer 'simple/layers:cached-launch-layer'`)
-						} else {
-							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
-						}
+						h.AssertContainsMatch(t, output, `(?i)Reusing layer 'simple/layers:cached-launch-layer'`)
 
 						t.Log("cacher adds layers")
-						if creatorSupported {
-							h.AssertContainsMatch(t, output, `(?i)\[creator] Adding cache layer 'simple/layers:cached-launch-layer'`)
-						} else {
-							h.AssertContainsMatch(t, output, `(?i)\[exporter] Adding cache layer 'simple/layers:cached-launch-layer'`)
-						}
+						h.AssertContainsMatch(t, output, `(?i)Adding cache layer 'simple/layers:cached-launch-layer'`)
 
 						if packSupports(packPath, "inspect-image") {
 							t.Log("inspect-image")
@@ -848,12 +823,7 @@ func testAcceptance(
 									"--buildpack", buildpackTgz,
 								))
 
-								if creatorSupported {
-									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
-								} else {
-									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
-									h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
-								}
+								h.AssertContains(t, output, "RESULT: Connected to the internet")
 							})
 						})
 
@@ -865,12 +835,7 @@ func testAcceptance(
 									"--buildpack", buildpackTgz,
 								))
 
-								if creatorSupported {
-									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
-								} else {
-									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
-									h.AssertContains(t, output, "[builder] RESULT: Connected to the internet")
-								}
+								h.AssertContains(t, output, "RESULT: Connected to the internet")
 							})
 						})
 
@@ -887,12 +852,7 @@ func testAcceptance(
 									"none",
 								))
 
-								if creatorSupported {
-									h.AssertContains(t, output, "[creator] RESULT: Disconnected from the internet")
-								} else {
-									h.AssertContains(t, output, "[detector] RESULT: Disconnected from the internet")
-									h.AssertContains(t, output, "[builder] RESULT: Disconnected from the internet")
-								}
+								h.AssertContains(t, output, "RESULT: Disconnected from the internet")
 							})
 						})
 					})
@@ -1323,7 +1283,7 @@ func testAcceptance(
 
 								h.AssertNil(t, cmd.Start())
 
-								go terminateAtStep(t, cmd, &buf, "[detector]")
+								go terminateAtOutput(t, cmd, &buf, "[detector]")
 								err := cmd.Wait()
 								h.AssertNotNil(t, err)
 
@@ -1349,18 +1309,13 @@ func testAcceptance(
 								cmd.Stderr = &buf
 
 								h.AssertNil(t, cmd.Start())
+								go terminateAtOutput(t, cmd, &buf, "ANALYZING")
+								err := cmd.Wait()
+								h.AssertNotNil(t, err)
 
 								if creatorSupported {
-									go terminateAtStep(t, cmd, &buf, "[creator]")
-									err := cmd.Wait()
-									h.AssertNotNil(t, err)
-
-									h.AssertContains(t, buf.String(), "[creator]")
+									h.AssertNotContains(t, buf.String(), "[detector]")
 								} else {
-									go terminateAtStep(t, cmd, &buf, "[detector]")
-									err := cmd.Wait()
-									h.AssertNotNil(t, err)
-
 									h.AssertContains(t, buf.String(), "[detector]")
 								}
 							})
@@ -1377,11 +1332,7 @@ func testAcceptance(
 
 							h.AssertNil(t, cmd.Start())
 
-							if creatorSupported {
-								go terminateAtStep(t, cmd, &buf, "[creator]")
-							} else {
-								go terminateAtStep(t, cmd, &buf, "[detector]")
-							}
+							go terminateAtOutput(t, cmd, &buf, "DETECTING")
 
 							err := cmd.Wait()
 							h.AssertNotNil(t, err)
@@ -2090,7 +2041,8 @@ func waitForResponse(t *testing.T, port string, timeout time.Duration) string {
 }
 
 // FIXME : buf needs a mutex
-func terminateAtStep(t *testing.T, cmd *exec.Cmd, buf *bytes.Buffer, pattern string) {
+// terminateAtOutput terminates the command when output is present in buffer.
+func terminateAtOutput(t *testing.T, cmd *exec.Cmd, buf *bytes.Buffer, pattern string) {
 	t.Helper()
 	var interruptSignal os.Signal
 

@@ -97,7 +97,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("prefixes the output with the phase name", func() {
-				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle)
+				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithLogPrefix("phase"))
 				phase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, phase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "[phase] running some-lifecycle-phase")
@@ -108,37 +108,37 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				writePhase := phaseFactory.New(configProvider)
 
 				assertRunSucceeds(t, writePhase, &outBuf, &errBuf)
-				h.AssertContains(t, outBuf.String(), "[phase] write test")
+				h.AssertContains(t, outBuf.String(), "write test")
 
 				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/layers/test.txt"))
 				readPhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
-				h.AssertContains(t, outBuf.String(), "[phase] file contents: test-layers")
+				h.AssertContains(t, outBuf.String(), "file contents: test-layers")
 			})
 
 			it("attaches the same app volume to each phase", func() {
 				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("write", "/workspace/test.txt", "test-app"))
 				writePhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, writePhase, &outBuf, &errBuf)
-				h.AssertContains(t, outBuf.String(), "[phase] write test")
+				h.AssertContains(t, outBuf.String(), "write test")
 
 				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/workspace/test.txt"))
 				readPhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
-				h.AssertContains(t, outBuf.String(), "[phase] file contents: test-app")
+				h.AssertContains(t, outBuf.String(), "file contents: test-app")
 			})
 
 			it("copies the app into the app volume before the first phase", func() {
 				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/workspace/fake-app-file"))
 				readPhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
-				h.AssertContains(t, outBuf.String(), "[phase] file contents: fake-app-contents")
-				h.AssertContains(t, outBuf.String(), "[phase] file uid/gid: 111/222")
+				h.AssertContains(t, outBuf.String(), "file contents: fake-app-contents")
+				h.AssertContains(t, outBuf.String(), "file uid/gid: 111/222")
 
 				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("delete", "/workspace/fake-app-file"))
 				deletePhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, deletePhase, &outBuf, &errBuf)
-				h.AssertContains(t, outBuf.String(), "[phase] delete test")
+				h.AssertContains(t, outBuf.String(), "delete test")
 
 				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/workspace/fake-app-file"))
 				readPhase2 := phaseFactory.New(configProvider)
@@ -238,7 +238,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("daemon"), build.WithDaemonAccess())
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
-					h.AssertContains(t, outBuf.String(), "[phase] daemon test")
+					h.AssertContains(t, outBuf.String(), "daemon test")
 				})
 			})
 
@@ -247,7 +247,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("user"), build.WithRoot())
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
-					h.AssertContains(t, outBuf.String(), "[phase] current user is root")
+					h.AssertContains(t, outBuf.String(), "current user is root")
 				})
 			})
 
@@ -260,7 +260,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("binds"), build.WithBinds("some-volume:/mounted"))
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
-					h.AssertContains(t, outBuf.String(), "[phase] binds test")
+					h.AssertContains(t, outBuf.String(), "binds test")
 					body, err := docker.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
 						Key:   "name",
 						Value: "some-volume",
@@ -285,7 +285,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
 				})
 
-				it("provides auth for registry in the container", func() { // TODO: fix this flake [https://github.com/buildpacks/pack/issues/533].
+				it("provides auth for registry in the container", func() {
 					repoName := h.CreateImageOnRemote(t, dockerCli, registry, "packs/build:v3alpha2", "FROM busybox")
 
 					authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
@@ -300,7 +300,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					)
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
-					h.AssertContains(t, outBuf.String(), "[phase] registry test")
+					h.AssertContains(t, outBuf.String(), "registry test")
 				})
 			})
 
@@ -353,7 +353,7 @@ func assertAppModTimePreserved(t *testing.T, lifecycle *build.Lifecycle, phaseFa
 	readPhase := phaseFactory.New(configProvider)
 	assertRunSucceeds(t, readPhase, outBuf, errBuf)
 
-	matches := regexp.MustCompile(regexp.QuoteMeta("[phase] file mod time (unix): ") + "(.*)").FindStringSubmatch(outBuf.String())
+	matches := regexp.MustCompile(regexp.QuoteMeta("file mod time (unix): ") + "(.*)").FindStringSubmatch(outBuf.String())
 	h.AssertEq(t, len(matches), 2)
 	h.AssertFalse(t, matches[1] == strconv.FormatInt(archive.NormalizedDateTime.Unix(), 10))
 }
