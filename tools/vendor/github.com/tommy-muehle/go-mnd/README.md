@@ -94,7 +94,7 @@ return 3
 
 ## Excludes
 
-By default the number 0 and test files are excluded! 
+By default the numbers 0 and 1 as well as test files are excluded! 
 
 ### Further known excludes
 

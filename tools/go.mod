@@ -8,7 +8,7 @@ require (
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/mock v1.4.1
 	github.com/golangci/gocyclo v0.0.0-20180528144436-0a533e8fa43d // indirect
-	github.com/golangci/golangci-lint v1.23.7
+	github.com/golangci/golangci-lint v1.27.0
 	github.com/golangci/revgrep v0.0.0-20180812185044-276a5c0a1039 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/gostaticanalysis/analysisutil v0.0.3 // indirect
@@ -25,11 +25,9 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/viper v1.6.2 // indirect
 	github.com/stretchr/testify v1.5.1 // indirect
-	github.com/tommy-muehle/go-mnd v1.3.0 // indirect
 	golang.org/x/mod v0.2.0 // indirect
-	golang.org/x/net v0.0.0-20190926025831-c00fd9afed17 // indirect
 	golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527 // indirect
-	golang.org/x/tools v0.0.0-20200302225559-9b52d559c609
+	golang.org/x/tools v0.0.0-20200502202811-ed308ab3e770
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	gopkg.in/ini.v1 v1.52.0 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.3 // indirect
