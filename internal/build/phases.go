@@ -221,7 +221,8 @@ func (l *Lifecycle) Build(ctx context.Context, networkMode string, volumes []str
 		"-platform", platformDir,
 	}
 
-	if l.platformAPIVersion > "0.2" { // lifecycle did not support log level for build until platform api 0.3
+	platformAPIVersion := semver.MustParse(l.platformAPIVersion)
+	if semver.MustParse("0.2").LessThan(platformAPIVersion) { // lifecycle did not support log level for build until platform api 0.3
 		args = l.withLogLevel(args...)
 	}
 
