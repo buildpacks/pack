@@ -700,17 +700,55 @@ func testAcceptance(
 					launchCacheVolume.Clear(context.TODO())
 				})
 
+				when("builder is untrusted", func() {
+					var untrustedBuilderName string
+
+					it.Before(func() {
+						untrustedBuilderName = createBuilder(t, runImageMirror, configDir, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor)
+					})
+
+					it.After(func() {
+						h.DockerRmi(dockerCli, untrustedBuilderName)
+					})
+
+					it("uses the 5 phases", func() {
+						output := h.Run(t, subjectPack(
+							"build", repoName,
+							"-p", filepath.Join("testdata", "mock_app"),
+							"-B", untrustedBuilderName,
+						))
+
+						lifecycleImageRequired := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
+						if lifecycleImageRequired {
+							h.AssertContains(t, output, "buildpacksio/lifecycle")
+						}
+						h.AssertContains(t, output, "[detector]")
+						h.AssertContains(t, output, "[analyzer]")
+						h.AssertContains(t, output, "[builder]")
+						h.AssertContains(t, output, "[exporter]")
+						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+					})
+				})
+
 				when("default builder is set", func() {
-					var creatorSupported bool
+					var usingCreator bool
 
 					it.Before(func() {
 						h.Run(t, subjectPack("set-default-builder", builderName))
+
+						var trustBuilder bool
+						if packSupports(packPath, "trust-builder") {
+							h.Run(t, subjectPack("trust-builder", builderName))
+							trustBuilder = true
+						}
 
 						// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 						// have bugs that make using the creator problematic.
 						lifecycleSupportsCreator := !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.4"))
 						packSupportsCreator := packSemver.GreaterThan(semver.MustParse("0.10.0")) || packSemver.Equal(semver.MustParse("0.0.0"))
-						creatorSupported = lifecycleSupportsCreator && packSupportsCreator
+						creatorSupported := lifecycleSupportsCreator && packSupportsCreator
+
+						usingCreator = creatorSupported && trustBuilder
 					})
 
 					it("creates a runnable, rebuildable image on daemon from app dir", func() {
@@ -771,7 +809,7 @@ func testAcceptance(
 						assertMockAppRunsWithOutput(t, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
 						t.Log("restores the cache")
-						if creatorSupported {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring data for "simple/layers:cached-launch-layer" from cache`)
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Restoring metadata for "simple/layers:cached-launch-layer" from app image`)
 						} else {
@@ -780,14 +818,14 @@ func testAcceptance(
 						}
 
 						t.Log("exporter reuses unchanged layers")
-						if creatorSupported {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] reusing layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
 						}
 
 						t.Log("cacher reuses unchanged layers")
-						if creatorSupported {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing cache layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Reusing cache layer 'simple/layers:cached-launch-layer'`)
@@ -798,26 +836,26 @@ func testAcceptance(
 						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 						t.Log("skips restore")
-						if !creatorSupported {
+						if !usingCreator {
 							h.AssertContains(t, output, "Skipping 'restore' due to clearing cache")
 						}
 
 						t.Log("skips buildpack layer analysis")
-						if creatorSupported {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Skipping buildpack layer analysis`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[analyzer] Skipping buildpack layer analysis`)
 						}
 
 						t.Log("exporter reuses unchanged layers")
-						if creatorSupported {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Reusing layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] reusing layer 'simple/layers:cached-launch-layer'`)
 						}
 
 						t.Log("cacher adds layers")
-						if creatorSupported {
+						if usingCreator {
 							h.AssertContainsMatch(t, output, `(?i)\[creator] Adding cache layer 'simple/layers:cached-launch-layer'`)
 						} else {
 							h.AssertContainsMatch(t, output, `(?i)\[exporter] Adding cache layer 'simple/layers:cached-launch-layer'`)
@@ -880,7 +918,7 @@ func testAcceptance(
 									"--buildpack", buildpackTgz,
 								))
 
-								if creatorSupported {
+								if usingCreator {
 									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
 								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
@@ -897,7 +935,7 @@ func testAcceptance(
 									"--buildpack", buildpackTgz,
 								))
 
-								if creatorSupported {
+								if usingCreator {
 									h.AssertContains(t, output, "[creator] RESULT: Connected to the internet")
 								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Connected to the internet")
@@ -919,7 +957,7 @@ func testAcceptance(
 									"none",
 								))
 
-								if creatorSupported {
+								if usingCreator {
 									h.AssertContains(t, output, "[creator] RESULT: Disconnected from the internet")
 								} else {
 									h.AssertContains(t, output, "[detector] RESULT: Disconnected from the internet")
@@ -1296,12 +1334,6 @@ func testAcceptance(
 								"--publish",
 								"--network", "host",
 							))
-
-							// Test builder is untrusted by default. Verify that the 5 phases were used.
-							h.AssertContains(t, output, "[detector]")
-							h.AssertContains(t, output, "[analyzer]") // not checking restorer as it doesn't always run
-							h.AssertContains(t, output, "[builder]")
-							h.AssertContains(t, output, "[exporter]")
 							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
 
 							t.Log("checking that registry has contents")
@@ -1338,65 +1370,6 @@ func testAcceptance(
 								h.AssertEq(t, output, expectedOutput)
 							}
 						})
-
-						when("builder is untrusted", func() {
-							it("uses the 5 phases", func() {
-								var buf bytes.Buffer
-								cmd := subjectPack(
-									"build", repoName,
-									"--builder", builderName, // untrusted by default
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--publish",
-									"--network", "host",
-								)
-
-								cmd.Stdout = &buf
-								cmd.Stderr = &buf
-
-								h.AssertNil(t, cmd.Start())
-
-								go terminateAtStep(t, cmd, &buf, "[detector]")
-								err := cmd.Wait()
-								h.AssertNotNil(t, err)
-
-								h.AssertContains(t, buf.String(), "[detector]")
-							})
-						})
-
-						when("builder is trusted", func() {
-							it("uses the creator (when supported)", func() {
-								h.SkipIf(t, !packSupports(packPath, "build --trust-builder"), "trust-builder not supported")
-
-								var buf bytes.Buffer
-								cmd := subjectPack(
-									"build", repoName,
-									"--builder", builderName, // untrusted by default
-									"-p", filepath.Join("testdata", "mock_app"),
-									"--publish",
-									"--network", "host",
-									"--trust-builder",
-								)
-
-								cmd.Stdout = &buf
-								cmd.Stderr = &buf
-
-								h.AssertNil(t, cmd.Start())
-
-								if creatorSupported {
-									go terminateAtStep(t, cmd, &buf, "[creator]")
-									err := cmd.Wait()
-									h.AssertNotNil(t, err)
-
-									h.AssertContains(t, buf.String(), "[creator]")
-								} else {
-									go terminateAtStep(t, cmd, &buf, "[detector]")
-									err := cmd.Wait()
-									h.AssertNotNil(t, err)
-
-									h.AssertContains(t, buf.String(), "[detector]")
-								}
-							})
-						})
 					})
 
 					when("ctrl+c", func() {
@@ -1409,7 +1382,7 @@ func testAcceptance(
 
 							h.AssertNil(t, cmd.Start())
 
-							if creatorSupported {
+							if usingCreator {
 								go terminateAtStep(t, cmd, &buf, "[creator]")
 							} else {
 								go terminateAtStep(t, cmd, &buf, "[detector]")
