@@ -181,7 +181,7 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish,
 			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
 			WithRegistryAccess(authConfig),
 			WithRoot(),
-			WithArgs(args...),
+			WithArgs(l.withLogLevel(args...)...),
 			WithNetwork(networkMode),
 			WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 		)
@@ -215,15 +215,22 @@ func prependArg(arg string, args []string) []string {
 }
 
 func (l *Lifecycle) Build(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
+	args := []string{
+		"-layers", layersDir,
+		"-app", appDir,
+		"-platform", platformDir,
+	}
+
+	platformAPIVersion := semver.MustParse(l.platformAPIVersion)
+	if semver.MustParse("0.2").LessThan(platformAPIVersion) { // lifecycle did not support log level for build until platform api 0.3
+		args = l.withLogLevel(args...)
+	}
+
 	configProvider := NewPhaseConfigProvider(
 		"builder",
 		l,
 		WithLogPrefix("builder"),
-		WithArgs(
-			"-layers", layersDir,
-			"-app", appDir,
-			"-platform", platformDir,
-		),
+		WithArgs(args...),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
 	)
