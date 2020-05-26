@@ -1,4 +1,4 @@
-name: delivery/homebrew
+name: delivery / homebrew
 
 on:
   release:
