@@ -117,6 +117,15 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 		return nil, errors.Wrap(err, "invalid build-image")
 	}
 
+	os, err := baseImage.OS()
+	if err != nil {
+		return nil, errors.Wrap(err, "lookup image OS")
+	}
+
+	if os == "windows" && !c.experimental {
+		return nil, NewExperimentError("Windows containers support is currently experimental.")
+	}
+
 	bldr.SetDescription(opts.Config.Description)
 
 	if bldr.StackID != opts.Config.Stack.ID {

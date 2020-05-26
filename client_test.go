@@ -96,4 +96,18 @@ func testClient(t *testing.T, when spec.G, it spec.S) {
 			h.AssertSameInstance(t, cl.docker, docker)
 		})
 	})
+
+	when("#WithExperimental", func() {
+		it("sets experimental = true", func() {
+			cl, err := NewClient(WithExperimental(true))
+			h.AssertNil(t, err)
+			h.AssertEq(t, cl.experimental, true)
+		})
+
+		it("sets experimental = false", func() {
+			cl, err := NewClient(WithExperimental(true))
+			h.AssertNil(t, err)
+			h.AssertEq(t, cl.experimental, true)
+		})
+	})
 }

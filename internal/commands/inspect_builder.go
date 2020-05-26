@@ -26,7 +26,7 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if cfg.DefaultBuilder == "" && len(args) == 0 {
 				suggestSettingBuilder(logger, client)
-				return NewSoftError()
+				return pack.NewSoftError()
 			}
 
 			imageName := cfg.DefaultBuilder
