@@ -198,7 +198,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, os.RemoveAll(envPath))
 				})
 
-				it("succesfully builds", func() {
+				it("successfully builds", func() {
 					mockClient.EXPECT().
 						Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{})).
 						Return(nil)
