@@ -162,32 +162,35 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		FileFilter:         opts.FileFilter,
 	}
 
+	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
 	// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 	// have bugs that make using the creator problematic.
-	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
 	lifecycleSupportsCreator := !lifecycleVersion.LessThan(semver.MustParse("0.7.4"))
 
-	if lifecycleSupportsCreator && (!opts.Publish || opts.TrustBuilder) {
-		// no need to fetch a lifecycle image, it won't be used
+	if lifecycleSupportsCreator && opts.TrustBuilder {
 		lifecycleOpts.UseCreator = true
+		// no need to fetch a lifecycle image, it won't be used
 		return c.lifecycle.Execute(ctx, lifecycleOpts)
 	}
 
-	lifecycleImageSupported := !lifecycleVersion.LessThan(semver.MustParse("0.7.5"))
-	if !lifecycleImageSupported {
-		c.logger.Warnf("Lifecycle %s does not have an associated lifecycle image.", lifecycleVersion.String())
-	} else {
-		lifecycleImage, err := c.imageFetcher.Fetch(
-			ctx,
-			fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
-			true,
-			true,
-		)
-		if err != nil {
-			return errors.Wrap(err, "fetching lifecycle image")
-		}
+	lifecycleImageSupported := lifecycleVersion.Equal(builder.VersionMustParse("0.6.1")) || !lifecycleVersion.LessThan(semver.MustParse("0.7.5"))
+	if !opts.TrustBuilder {
+		switch lifecycleImageSupported {
+		case true:
+			lifecycleImage, err := c.imageFetcher.Fetch(
+				ctx,
+				fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
+				true,
+				true,
+			)
+			if err != nil {
+				return errors.Wrap(err, "fetching lifecycle image")
+			}
 
-		lifecycleOpts.LifecycleImage = lifecycleImage.Name()
+			lifecycleOpts.LifecycleImage = lifecycleImage.Name()
+		default:
+			return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted.", lifecycleVersion.String())
+		}
 	}
 
 	return c.lifecycle.Execute(ctx, lifecycleOpts)
