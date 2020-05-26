@@ -108,6 +108,7 @@ func (l *Lifecycle) Detect(ctx context.Context, networkMode string, volumes []st
 	configProvider := NewPhaseConfigProvider(
 		"detector",
 		l,
+		WithLogPrefix("detector"),
 		WithArgs(
 			l.withLogLevel(
 				"-app", appDir,
@@ -127,6 +128,7 @@ func (l *Lifecycle) Restore(ctx context.Context, cacheName, networkMode string, 
 	configProvider := NewPhaseConfigProvider(
 		"restorer",
 		l,
+		WithLogPrefix("restorer"),
 		WithImage(l.lifecycleImage),
 		WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
 		WithRoot(), // remove after platform API 0.2 is no longer supported
@@ -174,6 +176,7 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish,
 		configProvider := NewPhaseConfigProvider(
 			"analyzer",
 			l,
+			WithLogPrefix("analyzer"),
 			WithImage(l.lifecycleImage),
 			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
 			WithRegistryAccess(authConfig),
@@ -190,6 +193,7 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish,
 	configProvider := NewPhaseConfigProvider(
 		"analyzer",
 		l,
+		WithLogPrefix("analyzer"),
 		WithDaemonAccess(),
 		WithArgs(
 			l.withLogLevel(
@@ -214,6 +218,7 @@ func (l *Lifecycle) Build(ctx context.Context, networkMode string, volumes []str
 	configProvider := NewPhaseConfigProvider(
 		"builder",
 		l,
+		WithLogPrefix("builder"),
 		WithArgs(
 			"-layers", layersDir,
 			"-app", appDir,
@@ -276,6 +281,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		configProvider := NewPhaseConfigProvider(
 			"exporter",
 			l,
+			WithLogPrefix("exporter"),
 			WithImage(l.lifecycleImage),
 			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
 			WithRegistryAccess(authConfig),
@@ -298,6 +304,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 	configProvider := NewPhaseConfigProvider(
 		"exporter",
 		l,
+		WithLogPrefix("exporter"),
 		WithDaemonAccess(),
 		WithArgs(
 			l.withLogLevel(args...)...,
