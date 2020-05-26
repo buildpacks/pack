@@ -42,6 +42,7 @@ type Client struct {
 	lifecycle    Lifecycle
 	docker       dockerClient.CommonAPIClient
 	imageFactory ImageFactory
+	experimental bool
 }
 
 type ClientOption func(c *Client)
@@ -87,6 +88,13 @@ func WithCacheDir(path string) ClientOption {
 func WithDockerClient(docker dockerClient.CommonAPIClient) ClientOption {
 	return func(c *Client) {
 		c.docker = docker
+	}
+}
+
+// WithExperimental sets whether experimental features should be enabled
+func WithExperimental(experimental bool) ClientOption {
+	return func(c *Client) {
+		c.experimental = experimental
 	}
 }
 

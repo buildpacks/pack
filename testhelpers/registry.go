@@ -48,7 +48,12 @@ func RunRegistry(t *testing.T) *TestRegistryConfig {
 		password:        password,
 	}
 
-	// ensure registry is ready
+	waitForRegistryToBeAvailable(t, registryConfig)
+
+	return registryConfig
+}
+
+func waitForRegistryToBeAvailable(t *testing.T, registryConfig *TestRegistryConfig) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	for {
@@ -57,15 +62,13 @@ func RunRegistry(t *testing.T) *TestRegistryConfig {
 			break
 		}
 
-		err = ctx.Err()
-		if err != nil {
-			t.Fatal("registry not ready:", err.Error())
+		ctxErr := ctx.Err()
+		if ctxErr != nil {
+			t.Fatal("registry not ready:", ctxErr.Error(), ":", err.Error())
 		}
 
 		time.Sleep(500 * time.Microsecond)
 	}
-
-	return registryConfig
 }
 
 func (rc *TestRegistryConfig) AuthConfig() dockertypes.AuthConfig {

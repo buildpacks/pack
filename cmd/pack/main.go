@@ -46,7 +46,7 @@ func main() {
 				}
 			}
 
-			packClient = initClient(logger)
+			packClient = initClient(logger, cfg)
 		},
 	}
 
@@ -83,7 +83,7 @@ func main() {
 
 	ctx := commands.CreateCancellableContext()
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
-		if _, isSoftError := err.(commands.SoftError); isSoftError {
+		if _, isSoftError := err.(pack.SoftError); isSoftError {
 			os.Exit(2)
 		}
 		os.Exit(1)
@@ -103,8 +103,8 @@ func initConfig() (config.Config, error) {
 	return cfg, nil
 }
 
-func initClient(logger logging.Logger) pack.Client {
-	client, err := pack.NewClient(pack.WithLogger(logger))
+func initClient(logger logging.Logger, cfg config.Config) pack.Client {
+	client, err := pack.NewClient(pack.WithLogger(logger), pack.WithExperimental(cfg.Experimental))
 	if err != nil {
 		exitError(logger, err)
 	}

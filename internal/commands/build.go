@@ -41,11 +41,11 @@ type BuildFlags struct {
 func validateBuildFlags(flags BuildFlags, logger logging.Logger, cfg config.Config, packClient PackClient) error {
 	if flags.Builder == "" {
 		suggestSettingBuilder(logger, packClient)
-		return NewSoftError()
+		return pack.NewSoftError()
 	}
 
 	if flags.Registry != "" && !cfg.Experimental {
-		return NewExperimentError("Support for buildpack registries is currently experimental.")
+		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
 	}
 
 	return nil
@@ -155,6 +155,9 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVarP(&buildFlags.AppPath, "path", "p", "", "Path to app dir or zip-formatted file (defaults to current working directory)")
 	cmd.Flags().StringVarP(&buildFlags.Builder, "builder", "B", cfg.DefaultBuilder, "Builder image")
 	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "R", cfg.DefaultRegistry, "Buildpack Registry URL")
+	if !cfg.Experimental {
+		cmd.Flags().MarkHidden("buildpack-registry")
+	}
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
 	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file.")
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed")
