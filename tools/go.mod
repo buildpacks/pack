@@ -1,6 +1,6 @@
 module github.com/buildpacks/pack/tools
 
-go 1.13
+go 1.14
 
 require (
 	github.com/bombsimon/wsl/v2 v2.1.0 // indirect
