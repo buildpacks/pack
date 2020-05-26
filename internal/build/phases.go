@@ -108,6 +108,7 @@ func (l *Lifecycle) Detect(ctx context.Context, networkMode string, volumes []st
 	configProvider := NewPhaseConfigProvider(
 		"detector",
 		l,
+		WithLogPrefix("detector"),
 		WithArgs(
 			l.withLogLevel(
 				"-app", appDir,
@@ -127,6 +128,7 @@ func (l *Lifecycle) Restore(ctx context.Context, cacheName, networkMode string, 
 	configProvider := NewPhaseConfigProvider(
 		"restorer",
 		l,
+		WithLogPrefix("restorer"),
 		WithImage(l.lifecycleImage),
 		WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
 		WithRoot(), // remove after platform API 0.2 is no longer supported
@@ -174,11 +176,12 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish,
 		configProvider := NewPhaseConfigProvider(
 			"analyzer",
 			l,
+			WithLogPrefix("analyzer"),
 			WithImage(l.lifecycleImage),
 			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
 			WithRegistryAccess(authConfig),
 			WithRoot(),
-			WithArgs(args...),
+			WithArgs(l.withLogLevel(args...)...),
 			WithNetwork(networkMode),
 			WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 		)
@@ -190,6 +193,7 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish,
 	configProvider := NewPhaseConfigProvider(
 		"analyzer",
 		l,
+		WithLogPrefix("analyzer"),
 		WithDaemonAccess(),
 		WithArgs(
 			l.withLogLevel(
@@ -211,14 +215,22 @@ func prependArg(arg string, args []string) []string {
 }
 
 func (l *Lifecycle) Build(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
+	args := []string{
+		"-layers", layersDir,
+		"-app", appDir,
+		"-platform", platformDir,
+	}
+
+	platformAPIVersion := semver.MustParse(l.platformAPIVersion)
+	if semver.MustParse("0.2").LessThan(platformAPIVersion) { // lifecycle did not support log level for build until platform api 0.3
+		args = l.withLogLevel(args...)
+	}
+
 	configProvider := NewPhaseConfigProvider(
 		"builder",
 		l,
-		WithArgs(
-			"-layers", layersDir,
-			"-app", appDir,
-			"-platform", platformDir,
-		),
+		WithLogPrefix("builder"),
+		WithArgs(args...),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
 	)
@@ -276,6 +288,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		configProvider := NewPhaseConfigProvider(
 			"exporter",
 			l,
+			WithLogPrefix("exporter"),
 			WithImage(l.lifecycleImage),
 			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
 			WithRegistryAccess(authConfig),
@@ -298,6 +311,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 	configProvider := NewPhaseConfigProvider(
 		"exporter",
 		l,
+		WithLogPrefix("exporter"),
 		WithDaemonAccess(),
 		WithArgs(
 			l.withLogLevel(args...)...,
