@@ -13,7 +13,7 @@ jobs:
       - name: Merge
         run: |
           echo '> Configuring ssh...'
-          SSH_HOME="${HOME}.ssh"
+          SSH_HOME="${HOME}/.ssh"
           mkdir -p "${SSH_HOME}"
           chmod 700 "${SSH_HOME}"
 
