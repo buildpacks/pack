@@ -30,7 +30,7 @@ func getDefaultIssueExcludeHelp() string {
 	parts := []string{"Use or not use default excludes:"}
 	for _, ep := range config.DefaultExcludePatterns {
 		parts = append(parts,
-			fmt.Sprintf("  # %s: %s", ep.Linter, ep.Why),
+			fmt.Sprintf("  # %s %s: %s", ep.ID, ep.Linter, ep.Why),
 			fmt.Sprintf("  - %s", color.YellowString(ep.Pattern)),
 			"",
 		)
@@ -105,6 +105,10 @@ func initFlagSet(fs *pflag.FlagSet, cfg *config.Config, m *lintersdb.Manager, is
 	fs.StringSliceVar(&rc.SkipDirs, "skip-dirs", nil, wh("Regexps of directories to skip"))
 	fs.BoolVar(&rc.UseDefaultSkipDirs, "skip-dirs-use-default", true, getDefaultDirectoryExcludeHelp())
 	fs.StringSliceVar(&rc.SkipFiles, "skip-files", nil, wh("Regexps of files to skip"))
+
+	const allowParallelDesc = "Allow multiple parallel golangci-lint instances running. " +
+		"If false (default) - golangci-lint acquires file lock on start."
+	fs.BoolVar(&rc.AllowParallelRunners, "allow-parallel-runners", false, wh(allowParallelDesc))
 
 	// Linters settings config
 	lsc := &cfg.LintersSettings
@@ -189,6 +193,8 @@ func initFlagSet(fs *pflag.FlagSet, cfg *config.Config, m *lintersdb.Manager, is
 	ic := &cfg.Issues
 	fs.StringSliceVarP(&ic.ExcludePatterns, "exclude", "e", nil, wh("Exclude issue by regexp"))
 	fs.BoolVar(&ic.UseDefaultExcludes, "exclude-use-default", true, getDefaultIssueExcludeHelp())
+	fs.BoolVar(&ic.ExcludeCaseSensitive, "exclude-case-sensitive", false, wh("If set to true exclude "+
+		"and exclude rules regular expressions are case sensitive"))
 
 	fs.IntVar(&ic.MaxIssuesPerLinter, "max-issues-per-linter", 50,
 		wh("Maximum issues count per one linter. Set to 0 to disable"))
@@ -249,6 +255,14 @@ func (e *Executor) initRun() {
 		Use:   "run",
 		Short: welcomeMessage,
 		Run:   e.executeRun,
+		PreRun: func(_ *cobra.Command, _ []string) {
+			if ok := e.acquireFileLock(); !ok {
+				e.log.Fatalf("Parallel golangci-lint is running")
+			}
+		},
+		PostRun: func(_ *cobra.Command, _ []string) {
+			e.releaseFileLock()
+		},
 	}
 	e.rootCmd.AddCommand(e.runCmd)
 
@@ -283,40 +297,34 @@ func fixSlicesFlags(fs *pflag.FlagSet) {
 func (e *Executor) runAnalysis(ctx context.Context, args []string) ([]result.Issue, error) {
 	e.cfg.Run.Args = args
 
-	enabledLinters, err := e.EnabledLintersSet.Get(true)
+	lintersToRun, err := e.EnabledLintersSet.GetOptimizedLinters()
 	if err != nil {
 		return nil, err
 	}
 
-	enabledOriginalLinters, err := e.EnabledLintersSet.Get(false)
+	enabledLintersMap, err := e.EnabledLintersSet.GetEnabledLintersMap()
 	if err != nil {
 		return nil, err
 	}
 
 	for _, lc := range e.DBManager.GetAllSupportedLinterConfigs() {
-		isEnabled := false
-		for _, enabledLC := range enabledOriginalLinters {
-			if enabledLC.Name() == lc.Name() {
-				isEnabled = true
-				break
-			}
-		}
+		isEnabled := enabledLintersMap[lc.Name()] != nil
 		e.reportData.AddLinter(lc.Name(), isEnabled, lc.EnabledByDefault)
 	}
 
-	lintCtx, err := e.contextLoader.Load(ctx, enabledLinters)
+	lintCtx, err := e.contextLoader.Load(ctx, lintersToRun)
 	if err != nil {
 		return nil, errors.Wrap(err, "context loading failed")
 	}
 	lintCtx.Log = e.log.Child("linters context")
 
 	runner, err := lint.NewRunner(e.cfg, e.log.Child("runner"),
-		e.goenv, e.lineCache, e.DBManager, lintCtx.Packages)
+		e.goenv, e.EnabledLintersSet, e.lineCache, e.DBManager, lintCtx.Packages)
 	if err != nil {
 		return nil, err
 	}
 
-	issues, err := runner.Run(ctx, enabledLinters, lintCtx)
+	issues, err := runner.Run(ctx, lintersToRun, lintCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -396,6 +404,8 @@ func (e *Executor) createPrinter() (printers.Printer, error) {
 		p = printers.NewCodeClimate()
 	case config.OutFormatJunitXML:
 		p = printers.NewJunitXML()
+	case config.OutFormatGithubActions:
+		p = printers.NewGithub()
 	default:
 		return nil, fmt.Errorf("unknown output format %s", format)
 	}
@@ -437,7 +447,7 @@ func (e *Executor) executeRun(_ *cobra.Command, args []string) {
 // to be removed when deadline is finally decommissioned
 func (e *Executor) setTimeoutToDeadlineIfOnlyDeadlineIsSet() {
 	//lint:ignore SA1019 We want to promoted the deprecated config value when needed
-	deadlineValue := e.cfg.Run.Deadline // nolint: staticcheck
+	deadlineValue := e.cfg.Run.Deadline // nolint:staticcheck
 	if deadlineValue != 0 && e.cfg.Run.Timeout == defaultTimeout {
 		e.cfg.Run.Timeout = deadlineValue
 	}

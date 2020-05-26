@@ -18,6 +18,7 @@ func DefaultConfig() *Config {
 		Checks: map[string]bool{},
 		IgnoredNumbers: map[string]struct{}{
 			"0": {},
+			"1": {},
 		},
 		Excludes: []*regexp.Regexp{
 			regexp.MustCompile(`_test.go`),
