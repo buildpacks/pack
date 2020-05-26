@@ -704,7 +704,9 @@ func testAcceptance(
 					var untrustedBuilderName string
 
 					it.Before(func() {
-						untrustedBuilderName = createBuilder(t, runImageMirror, configDir, packCreateBuilderPath, lifecyclePath, lifecycleDescriptor)
+						var err error
+						untrustedBuilderName, err = createBuilder(t, runImageMirror, configDir, "", packCreateBuilderPath, lifecyclePath, lifecycleDescriptor)
+						h.AssertNil(t, err)
 					})
 
 					it.After(func() {
