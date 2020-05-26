@@ -162,11 +162,11 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 func validateBuildFlags(flags BuildFlags, logger logging.Logger, cfg config.Config, packClient PackClient) error {
 	if flags.Builder == "" {
 		suggestSettingBuilder(logger, packClient)
-		return NewSoftError()
+		return pack.NewSoftError()
 	}
 
 	if flags.Registry != "" && !cfg.Experimental {
-		return NewExperimentError("Support for buildpack registries is currently experimental.")
+		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
 	}
 
 	return nil

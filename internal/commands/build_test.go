@@ -56,7 +56,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 
 				command.SetArgs([]string{"image"})
 				err := command.Execute()
-				h.AssertError(t, err, commands.NewSoftError().Error())
+				h.AssertError(t, err, pack.NewSoftError().Error())
 			})
 		})
 
