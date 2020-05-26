@@ -134,6 +134,14 @@ func AssertSliceContains(t *testing.T, slice []string, expected ...string) {
 	}
 }
 
+func AssertSliceNotContains(t *testing.T, slice []string, expected ...string) {
+	t.Helper()
+	_, missing, _ := stringset.Compare(slice, expected)
+	if len(missing) != len(expected) {
+		t.Fatalf("Expected %s not to contain elements %s", slice, expected)
+	}
+}
+
 func AssertSliceContainsMatch(t *testing.T, slice []string, expected ...string) {
 	t.Helper()
 

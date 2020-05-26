@@ -558,22 +558,53 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, fakePhase.RunCallCount, 1)
 		})
 
-		it("configures the phase with the expected arguments", func() {
-			verboseLifecycle := newTestLifecycle(t, true)
-			fakePhaseFactory := fakes.NewFakePhaseFactory()
+		when("platform api <= 0.2", func() {
+			it("configures the phase with the expected arguments", func() {
+				platformAPIVersion, err := api.NewVersion("0.2")
+				h.AssertNil(t, err)
+				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithPlatformVersion(platformAPIVersion))
+				h.AssertNil(t, err)
+				verboseLifecycle := newTestLifecycle(t, true, fakes.WithBuilder(fakeBuilder))
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-			err := verboseLifecycle.Build(context.Background(), "test", []string{}, fakePhaseFactory)
-			h.AssertNil(t, err)
+				err = verboseLifecycle.Build(context.Background(), "test", []string{}, fakePhaseFactory)
+				h.AssertNil(t, err)
 
-			configProvider := fakePhaseFactory.NewCalledWithProvider
-			h.AssertEq(t, configProvider.Name(), "builder")
-			h.AssertIncludeAllExpectedPatterns(t,
-				configProvider.ContainerConfig().Cmd,
-				[]string{"-log-level", "debug"},
-				[]string{"-layers", "/layers"},
-				[]string{"-app", "/workspace"},
-				[]string{"-platform", "/platform"},
-			)
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertEq(t, configProvider.Name(), "builder")
+
+				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-log-level", "debug")
+				h.AssertIncludeAllExpectedPatterns(t,
+					configProvider.ContainerConfig().Cmd,
+					[]string{"-layers", "/layers"},
+					[]string{"-app", "/workspace"},
+					[]string{"-platform", "/platform"},
+				)
+			})
+		})
+
+		when("platform api > 0.2", func() {
+			it("configures the phase with the expected arguments", func() {
+				platformAPIVersion, err := api.NewVersion("0.3")
+				h.AssertNil(t, err)
+				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithPlatformVersion(platformAPIVersion))
+				h.AssertNil(t, err)
+				verboseLifecycle := newTestLifecycle(t, true, fakes.WithBuilder(fakeBuilder))
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+				err = verboseLifecycle.Build(context.Background(), "test", []string{}, fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertEq(t, configProvider.Name(), "builder")
+				h.AssertIncludeAllExpectedPatterns(t,
+					configProvider.ContainerConfig().Cmd,
+					[]string{"-log-level", "debug"},
+					[]string{"-layers", "/layers"},
+					[]string{"-app", "/workspace"},
+					[]string{"-platform", "/platform"},
+				)
+			})
 		})
 
 		it("configures the phase with the expected network mode", func() {

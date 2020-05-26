@@ -215,17 +215,21 @@ func prependArg(arg string, args []string) []string {
 }
 
 func (l *Lifecycle) Build(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
+	args := []string{
+		"-layers", layersDir,
+		"-app", appDir,
+		"-platform", platformDir,
+	}
+
+	if l.platformAPIVersion > "0.2" { // lifecycle did not support log level for build until platform api 0.3
+		args = l.withLogLevel(args...)
+	}
+
 	configProvider := NewPhaseConfigProvider(
 		"builder",
 		l,
 		WithLogPrefix("builder"),
-		WithArgs(
-			l.withLogLevel(
-				"-layers", layersDir,
-				"-app", appDir,
-				"-platform", platformDir,
-			)...,
-		),
+		WithArgs(args...),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
 	)
