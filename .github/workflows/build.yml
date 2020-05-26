@@ -84,9 +84,14 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - name: Derive pack version from branch name
         run: |
           [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]}
+          if [[ -z "${version}" ]]; then
+            echo "pack version not detected."
+            exit 1
+          fi
           echo "::set-env name=PACK_VERSION::$version"
         shell: bash
       - name: Download artifacts - macos
@@ -100,8 +105,7 @@ jobs:
       - name: Download artifacts - windows
         uses: actions/download-artifact@v1
         with:
-          name: pack-windows-lcow
-          path: pack-windows
+          name: pack-windows
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack
@@ -127,6 +131,15 @@ jobs:
           PACK_HELP="${PACK_HELP//$'\n'/'%0A'}"
           PACK_HELP="${PACK_HELP//$'\r'/'%0D'}"
           echo "::set-output name=help::$PACK_HELP"
+      - uses: actions/github-script@v1
+        id: changelog
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          result-encoding: string
+          script: |
+            const path = require('path');
+            const scriptPath = path.resolve('.github/workflows/build/changelog.js');
+            require(scriptPath)({core, github, context});
       - name: Create Release
         id: create_release
         uses: actions/create-release@latest
@@ -178,7 +191,6 @@ jobs:
             2. Extract the `pack` binary
             3. (Optional) Add the directory containing `pack` to `PATH`, or copy `pack` to a directory like `/usr/local/bin`
 
-
             ## Run
 
             Run the command `pack`.
@@ -193,11 +205,7 @@ jobs:
 
             Builders created with this release of the pack CLI continue to contain [lifecycle v${{ steps.lifecycle_version.outputs.version }}](https://github.com/buildpack/lifecycle/releases/tag/v${{ steps.lifecycle_version.outputs.version }}) by default.
 
-            ## Features
-
-            ## Fixes
-
-            ## Breaking Changes
+            ${{ steps.changelog.outputs.contents }}
       - name: Upload Release Asset - macos
         uses: actions/upload-release-asset@v1
         env:
