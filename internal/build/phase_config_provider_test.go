@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/buildpacks/pack/internal/build/fakes"
+	"github.com/buildpacks/pack/logging"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -194,6 +195,24 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				)
 
 				h.AssertEq(t, phaseConfigProvider.ContainerConfig().User, "root")
+			})
+		})
+
+		when("called with WithLogPrefix", func() {
+			it("sets prefix writers", func() {
+				lifecycle := newTestLifecycle(t, false)
+
+				phaseConfigProvider := build.NewPhaseConfigProvider(
+					"some-name",
+					lifecycle,
+					build.WithLogPrefix("some-prefix"),
+				)
+
+				_, isType := phaseConfigProvider.InfoWriter().(*logging.PrefixWriter)
+				h.AssertEq(t, isType, true)
+
+				_, isType = phaseConfigProvider.ErrorWriter().(*logging.PrefixWriter)
+				h.AssertEq(t, isType, true)
 			})
 		})
 	})

@@ -127,7 +127,6 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 		return l.Export(ctx, opts.Image.Name(), opts.RunImage, opts.Publish, launchCache.Name(), buildCache.Name(), opts.Network, phaseFactory)
 	}
 
-	l.logger.Info(style.Step("CREATING"))
 	return l.Create(ctx, opts.Publish, opts.ClearCache, opts.RunImage, launchCache.Name(), buildCache.Name(), opts.Image.Name(), opts.Network, phaseFactory)
 }
 

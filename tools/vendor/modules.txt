@@ -1,12 +1,17 @@
 # github.com/BurntSushi/toml v0.3.1
 github.com/BurntSushi/toml
+# github.com/Djarvur/go-err113 v0.0.0-20200410182137-af658d038157
+github.com/Djarvur/go-err113
 # github.com/OpenPeeDeeP/depguard v1.0.1
 github.com/OpenPeeDeeP/depguard
 # github.com/bombsimon/wsl/v2 v2.1.0
-github.com/bombsimon/wsl/v2
+## explicit
+# github.com/bombsimon/wsl/v3 v3.0.0
+github.com/bombsimon/wsl/v3
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/fatih/color v1.9.0
+## explicit
 github.com/fatih/color
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
@@ -42,8 +47,10 @@ github.com/gobwas/glob/util/strings
 # github.com/gofrs/flock v0.0.0-20190320160742-5135e617513b
 github.com/gofrs/flock
 # github.com/gogo/protobuf v1.3.1
+## explicit
 github.com/gogo/protobuf/proto
 # github.com/golang/mock v1.4.1
+## explicit
 github.com/golang/mock/mockgen
 github.com/golang/mock/mockgen/model
 # github.com/golangci/check v0.0.0-20180506172741-cfe4005ccda2
@@ -64,11 +71,13 @@ github.com/golangci/go-misc/deadcode
 # github.com/golangci/goconst v0.0.0-20180610141641-041c5f2b40f3
 github.com/golangci/goconst
 # github.com/golangci/gocyclo v0.0.0-20180528144436-0a533e8fa43d
+## explicit
 github.com/golangci/gocyclo/pkg/gocyclo
 # github.com/golangci/gofmt v0.0.0-20190930125516-244bba706f1a
 github.com/golangci/gofmt/gofmt
 github.com/golangci/gofmt/goimports
-# github.com/golangci/golangci-lint v1.23.7
+# github.com/golangci/golangci-lint v1.27.0
+## explicit
 github.com/golangci/golangci-lint/cmd/golangci-lint
 github.com/golangci/golangci-lint/internal/cache
 github.com/golangci/golangci-lint/internal/errorutil
@@ -82,6 +91,7 @@ github.com/golangci/golangci-lint/pkg/fsutils
 github.com/golangci/golangci-lint/pkg/golinters
 github.com/golangci/golangci-lint/pkg/golinters/goanalysis
 github.com/golangci/golangci-lint/pkg/golinters/goanalysis/load
+github.com/golangci/golangci-lint/pkg/golinters/nolintlint
 github.com/golangci/golangci-lint/pkg/goutil
 github.com/golangci/golangci-lint/pkg/lint
 github.com/golangci/golangci-lint/pkg/lint/linter
@@ -104,10 +114,14 @@ github.com/golangci/misspell
 # github.com/golangci/prealloc v0.0.0-20180630174525-215b22d4de21
 github.com/golangci/prealloc
 # github.com/golangci/revgrep v0.0.0-20180812185044-276a5c0a1039
+## explicit
 github.com/golangci/revgrep
 # github.com/golangci/unconvert v0.0.0-20180507085042-28b1c447d1f4
 github.com/golangci/unconvert
+# github.com/google/go-cmp v0.3.1
+## explicit
 # github.com/gostaticanalysis/analysisutil v0.0.3
+## explicit
 github.com/gostaticanalysis/analysisutil
 # github.com/hashicorp/hcl v1.0.0
 github.com/hashicorp/hcl
@@ -125,17 +139,22 @@ github.com/inconshreveable/mousetrap
 # github.com/jingyugao/rowserrcheck v0.0.0-20191204022205-72ab7603b68a
 github.com/jingyugao/rowserrcheck/passes/rowserr
 # github.com/jirfag/go-printf-func-name v0.0.0-20200119135958-7558a9eaa5af
+## explicit
 github.com/jirfag/go-printf-func-name/pkg/analyzer
 # github.com/kisielk/gotool v1.0.0
 github.com/kisielk/gotool
 github.com/kisielk/gotool/internal/load
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
+## explicit
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/magiconair/properties v1.8.1
 github.com/magiconair/properties
+# github.com/maratori/testpackage v1.0.1
+github.com/maratori/testpackage/pkg/testpackage
 # github.com/matoous/godox v0.0.0-20190911065817-5d6d842e92eb
 github.com/matoous/godox
 # github.com/mattn/go-colorable v0.1.6
+## explicit
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
 github.com/mattn/go-isatty
@@ -143,6 +162,8 @@ github.com/mattn/go-isatty
 github.com/mitchellh/go-homedir
 # github.com/mitchellh/mapstructure v1.1.2
 github.com/mitchellh/mapstructure
+# github.com/nakabonne/nestif v0.3.0
+github.com/nakabonne/nestif
 # github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 github.com/nbutton23/zxcvbn-go
 github.com/nbutton23/zxcvbn-go/adjacency
@@ -154,41 +175,59 @@ github.com/nbutton23/zxcvbn-go/matching
 github.com/nbutton23/zxcvbn-go/scoring
 github.com/nbutton23/zxcvbn-go/utils/math
 # github.com/pelletier/go-toml v1.6.0
+## explicit
 github.com/pelletier/go-toml
 # github.com/pkg/errors v0.9.1
+## explicit
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
+# github.com/ryancurrah/gomodguard v1.0.4
+github.com/ryancurrah/gomodguard
 # github.com/securego/gosec v0.0.0-20200302134848-c998389da2ac
-github.com/securego/gosec
-github.com/securego/gosec/rules
+## explicit
+# github.com/securego/gosec/v2 v2.3.0
+github.com/securego/gosec/v2
+github.com/securego/gosec/v2/rules
+# github.com/shurcooL/go v0.0.0-20190704215121-7189cc372560
+## explicit
 # github.com/sirupsen/logrus v1.4.2
 github.com/sirupsen/logrus
 # github.com/sourcegraph/go-diff v0.5.1
 github.com/sourcegraph/go-diff/diff
 # github.com/spf13/afero v1.2.2
+## explicit
 github.com/spf13/afero
 github.com/spf13/afero/mem
 # github.com/spf13/cast v1.3.1
+## explicit
 github.com/spf13/cast
 # github.com/spf13/cobra v0.0.6
+## explicit
 github.com/spf13/cobra
 # github.com/spf13/jwalterweatherman v1.1.0
+## explicit
 github.com/spf13/jwalterweatherman
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
 # github.com/spf13/viper v1.6.2
+## explicit
 github.com/spf13/viper
 # github.com/stretchr/objx v0.2.0
 github.com/stretchr/objx
 # github.com/stretchr/testify v1.5.1
+## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
+# github.com/tdakkota/asciicheck v0.0.0-20200416190851-d7f85be797a2
+github.com/tdakkota/asciicheck
+# github.com/tetafro/godot v0.3.7
+github.com/tetafro/godot
 # github.com/timakin/bodyclose v0.0.0-20190930140734-f7f2e9bca95e
 github.com/timakin/bodyclose/passes/bodyclose
-# github.com/tommy-muehle/go-mnd v1.3.0
+# github.com/tommy-muehle/go-mnd v1.3.1-0.20200224220436-e6f9a994e8fa
 github.com/tommy-muehle/go-mnd
 github.com/tommy-muehle/go-mnd/checks
 github.com/tommy-muehle/go-mnd/config
@@ -199,15 +238,20 @@ github.com/ultraware/whitespace
 # github.com/uudashr/gocognit v1.0.1
 github.com/uudashr/gocognit
 # golang.org/x/mod v0.2.0
+## explicit
+golang.org/x/mod/internal/lazyregexp
+golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
 # golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527
+## explicit
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.2
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
 golang.org/x/text/width
-# golang.org/x/tools v0.0.0-20200302225559-9b52d559c609
+# golang.org/x/tools v0.0.0-20200502202811-ed308ab3e770
+## explicit
 golang.org/x/tools/cmd/goimports
 golang.org/x/tools/go/analysis
 golang.org/x/tools/go/analysis/passes/asmdecl
@@ -259,19 +303,27 @@ golang.org/x/tools/go/ssa/ssautil
 golang.org/x/tools/go/types/objectpath
 golang.org/x/tools/go/types/typeutil
 golang.org/x/tools/imports
+golang.org/x/tools/internal/analysisinternal
+golang.org/x/tools/internal/event
+golang.org/x/tools/internal/event/core
+golang.org/x/tools/internal/event/keys
+golang.org/x/tools/internal/event/label
 golang.org/x/tools/internal/fastwalk
 golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/imports
 golang.org/x/tools/internal/packagesinternal
 # golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
+## explicit
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
 # gopkg.in/ini.v1 v1.52.0
+## explicit
 gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.2.8
 gopkg.in/yaml.v2
 # honnef.co/go/tools v0.0.1-2020.1.3
+## explicit
 honnef.co/go/tools/arg
 honnef.co/go/tools/code
 honnef.co/go/tools/config
@@ -305,6 +357,8 @@ mvdan.cc/interfacer/check
 # mvdan.cc/lint v0.0.0-20170908181259-adc824a0674b
 mvdan.cc/lint
 # mvdan.cc/unparam v0.0.0-20191111180625-960b1ec0f2c2
+## explicit
 mvdan.cc/unparam/check
 # sourcegraph.com/sqs/pbtypes v1.0.0
+## explicit
 sourcegraph.com/sqs/pbtypes

@@ -60,7 +60,7 @@ func (a *ArgumentAnalyzer) Check(n ast.Node) {
 				switch expr.Args[i-1].(type) {
 				case *ast.ChanType:
 					// When it's not a simple buffered channel, report it
-					if x.Value != "1" {
+					if a.isMagicNumber(x) {
 						a.pass.Reportf(x.Pos(), reportMsg, x.Value, ArgumentCheck)
 					}
 				}
