@@ -8,14 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/pack/logging"
-
 	"github.com/sclevine/spec"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/registry"
+	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

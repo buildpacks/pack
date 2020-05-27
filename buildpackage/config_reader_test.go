@@ -6,13 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpacks/pack/buildpackage"
-	"github.com/buildpacks/pack/internal/paths"
-
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/buildpackage"
+	"github.com/buildpacks/pack/internal/paths"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

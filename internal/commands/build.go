@@ -7,9 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	ignore "github.com/sabhiram/go-gitignore"
-
 	"github.com/pkg/errors"
+	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
