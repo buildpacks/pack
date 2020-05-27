@@ -181,7 +181,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				ctx,
 				fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
 				true,
-				true,
+				!opts.NoPull,
 			)
 			if err != nil {
 				return errors.Wrap(err, "fetching lifecycle image")
