@@ -233,3 +233,9 @@ jobs:
           asset_path: ./pack-windows.zip
           asset_name: pack-v${{ env.PACK_VERSION }}-windows.zip
           asset_content_type: application/zip
+      - name: Repository Dispatch to Docs
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: pack-release
+          repository: buildpacks/docs
