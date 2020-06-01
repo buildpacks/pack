@@ -1,4 +1,4 @@
-name: delivery
+name: delivery / archlinux
 
 on:
   push:
