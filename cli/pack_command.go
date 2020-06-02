@@ -14,10 +14,6 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-var (
-	packClient pack.Client
-)
-
 // NewPackCommand generates a Pack command
 func NewPackCommand(logger *clilogger.LogWithWriters) (*cobra.Command, error) {
 	cobra.EnableCommandSorting = false
@@ -26,7 +22,7 @@ func NewPackCommand(logger *clilogger.LogWithWriters) (*cobra.Command, error) {
 		return nil, err
 	}
 
-	client, err := initClient(logger, cfg)
+	packClient, err := initClient(logger, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +44,6 @@ func NewPackCommand(logger *clilogger.LogWithWriters) (*cobra.Command, error) {
 					logger.WantTime(flag)
 				}
 			}
-
-			packClient = client
 		},
 	}
 
