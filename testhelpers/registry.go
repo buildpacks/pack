@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/pack/internal/archive"
-
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/buildpacks/pack/internal/archive"
 )
 
 var registryContainerName = "cnbs/registry:2"
