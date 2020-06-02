@@ -1486,6 +1486,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					args = fakeImageFetcher.FetchCalls[defaultBuilderName]
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.Pull, false)
+
+					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.7.5"]
+					h.AssertEq(t, args.Daemon, true)
+					h.AssertEq(t, args.Pull, false)
 				})
 			})
 
