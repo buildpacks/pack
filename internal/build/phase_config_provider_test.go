@@ -5,9 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/pack/internal/build/fakes"
-	"github.com/buildpacks/pack/logging"
-
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/strslice"
@@ -16,6 +13,8 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/build"
+	"github.com/buildpacks/pack/internal/build/fakes"
+	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

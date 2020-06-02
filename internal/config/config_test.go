@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/heroku/color"
-
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 

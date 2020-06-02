@@ -15,7 +15,6 @@ import (
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
-
 	"github.com/buildpacks/pack/logging"
 )
 
