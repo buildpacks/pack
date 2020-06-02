@@ -37,19 +37,7 @@ type BuildFlags struct {
 	DefaultProcessType string
 }
 
-func validateBuildFlags(flags BuildFlags, logger logging.Logger, cfg config.Config, packClient PackClient) error {
-	if flags.Builder == "" {
-		suggestSettingBuilder(logger, packClient)
-		return pack.NewSoftError()
-	}
-
-	if flags.Registry != "" && !cfg.Experimental {
-		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
-	}
-
-	return nil
-}
-
+// Build an image from source code
 func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
 	var flags BuildFlags
 
@@ -138,7 +126,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				DefaultProcessType: flags.DefaultProcessType,
 				FileFilter:         fileFilter,
 			}); err != nil {
-				return err
+				return errors.Wrap(err, "failed to build")
 			}
 			logger.Infof("Successfully built image %s", style.Symbol(imageName))
 			return nil
@@ -168,6 +156,19 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>'. Target path will be prefixed with '/platform/'"+multiValueHelp("volume"))
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", "Set the default process type")
+}
+
+func validateBuildFlags(flags BuildFlags, logger logging.Logger, cfg config.Config, packClient PackClient) error {
+	if flags.Builder == "" {
+		suggestSettingBuilder(logger, packClient)
+		return pack.NewSoftError()
+	}
+
+	if flags.Registry != "" && !cfg.Experimental {
+		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
+	}
+
+	return nil
 }
 
 func parseEnv(project project.Descriptor, envFiles []string, envVars []string) (map[string]string, error) {
