@@ -2,6 +2,7 @@ package logging_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -109,10 +111,33 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("time is set to true", func() {
-		it("time is logged", func() {
+		it("time is logged in info", func() {
 			logger.WantTime(true)
 			logger.Info("test")
 			h.AssertEq(t, fOut(), "2019/05/15 01:01:01.000000 test\n")
+		})
+
+		it("time is logged in error", func() {
+			logger.WantTime(true)
+			logger.Error("test")
+			h.AssertEq(t, fErr(), fmt.Sprintf("2019/05/15 01:01:01.000000 %stest\n", style.Error("ERROR: ")))
+		})
+
+		when("WriterForLevel", func() {
+			it("time is logged in info", func() {
+				logger.WantTime(true)
+				writer := logger.WriterForLevel(logging.InfoLevel)
+				writer.Write([]byte("test\n"))
+				h.AssertEq(t, fOut(), "2019/05/15 01:01:01.000000 test\n")
+			})
+
+			it("time is logged in erorr", func() {
+				logger.WantTime(true)
+				writer := logger.WriterForLevel(logging.ErrorLevel)
+				writer.Write([]byte("test\n"))
+				// The writer doesn't prepend the level
+				h.AssertEq(t, fErr(), "2019/05/15 01:01:01.000000 test\n")
+			})
 		})
 	})
 

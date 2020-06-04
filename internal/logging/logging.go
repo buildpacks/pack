@@ -26,6 +26,7 @@ const (
 	timeFmt = "2006/01/02 15:04:05.000000"
 )
 
+// LogWithWriters is a logger used with the pack CLI, allowing users to print logs for various levels, including Info, Debug and Error
 type LogWithWriters struct {
 	sync.Mutex
 	log.Logger
@@ -33,18 +34,6 @@ type LogWithWriters struct {
 	clock    func() time.Time
 	out      io.Writer
 	errOut   io.Writer
-}
-
-func WithClock(clock func() time.Time) func(writers *LogWithWriters) {
-	return func(logger *LogWithWriters) {
-		logger.clock = clock
-	}
-}
-
-func WithVerbose() func(writers *LogWithWriters) {
-	return func(logger *LogWithWriters) {
-		logger.Level = log.DebugLevel
-	}
 }
 
 // NewLogWithWriters creates a logger to be used with pack CLI.
@@ -67,54 +56,74 @@ func NewLogWithWriters(stdout, stderr io.Writer, opts ...func(*LogWithWriters)) 
 	return lw
 }
 
-func (lw *LogWithWriters) WriterForLevel(level logging.Level) io.Writer {
-	if lw.Level > log.Level(level) {
-		return ioutil.Discard
+// WithClock is an option used to initialize a LogWithWriters with a given clock function
+func WithClock(clock func() time.Time) func(writers *LogWithWriters) {
+	return func(logger *LogWithWriters) {
+		logger.clock = clock
 	}
-
-	if level == logging.ErrorLevel {
-		return lw.errOut
-	}
-
-	return lw.out
 }
 
+// WithVerbose is an option used to initialize a LogWithWriters with Verbose turned on
+func WithVerbose() func(writers *LogWithWriters) {
+	return func(logger *LogWithWriters) {
+		logger.Level = log.DebugLevel
+	}
+}
+
+// HandleLog handles log events, printing entries appropriately
 func (lw *LogWithWriters) HandleLog(e *log.Entry) error {
 	lw.Lock()
 	defer lw.Unlock()
 
 	writer := lw.WriterForLevel(logging.Level(e.Level))
-	if lw.wantTime {
-		ts := lw.clock().Format(timeFmt)
-		_, _ = fmt.Fprint(writer, appendMissingLineFeed(fmt.Sprintf("%s %s%s", ts, formatLevel(e.Level), e.Message)))
-		return nil
-	}
+	_, err := fmt.Fprint(writer, appendMissingLineFeed(fmt.Sprintf("%s%s", formatLevel(e.Level), e.Message)))
 
-	_, _ = fmt.Fprint(writer, appendMissingLineFeed(fmt.Sprintf("%s%s", formatLevel(e.Level), e.Message)))
-
-	return nil
+	return err
 }
 
+// WriterForLevel returns a Writer for the given logging.Level
+func (lw *LogWithWriters) WriterForLevel(level logging.Level) io.Writer {
+	if lw.Level > log.Level(level) {
+		return ioutil.Discard
+	}
+
+	out := lw.out
+	if level == logging.ErrorLevel {
+		out = lw.errOut
+	}
+
+	if lw.wantTime {
+		return NewTimeWriter(out, lw.clock)
+	}
+
+	return out
+}
+
+// Writer returns the base Writer for the LogWithWriters
 func (lw *LogWithWriters) Writer() io.Writer {
 	return lw.out
 }
 
+// WantTime turns timestamps on in log entries
 func (lw *LogWithWriters) WantTime(f bool) {
 	lw.wantTime = f
 }
 
+// WantQuiet reduces the number of logs returned
 func (lw *LogWithWriters) WantQuiet(f bool) {
 	if f {
 		lw.Level = quietLevel
 	}
 }
 
+// WantVerbose increases the number of logs returned
 func (lw *LogWithWriters) WantVerbose(f bool) {
 	if f {
 		lw.Level = verboseLevel
 	}
 }
 
+// IsVerbose returns whether verbose logging is on
 func (lw *LogWithWriters) IsVerbose() bool {
 	return lw.Level == log.DebugLevel
 }
@@ -130,7 +139,7 @@ func formatLevel(ll log.Level) string {
 	return ""
 }
 
-// preserve behavior of other loggers
+// Preserve behavior of other loggers
 func appendMissingLineFeed(msg string) string {
 	buff := []byte(msg)
 	if len(buff) == 0 || buff[len(buff)-1] != lineFeed {
