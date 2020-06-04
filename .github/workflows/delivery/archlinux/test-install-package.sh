@@ -4,6 +4,7 @@ set -u
 
 # ensure variable is set
 : "$PACKAGE_NAME"
+: "$GITHUB_WORKSPACE"
 
 # setup non-root user
 useradd -m archie

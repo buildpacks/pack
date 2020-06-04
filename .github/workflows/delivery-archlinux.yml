@@ -1,45 +1,35 @@
 name: delivery / archlinux
 
 on:
-  push:
-    branches:
-      - master
-      - 'release/**'
-  pull_request:
-    branches:
-      - master
-      - 'release/**'
+  release:
+    types:
+      - published
 
 jobs:
-  test-pack-cli:
+  pack-cli:
     runs-on: ubuntu-latest
     env:
       PACKAGE_NAME: pack-cli
     steps:
       - uses: actions/checkout@v2
       - name: Determine version
-        run: |
-          [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
-          echo "::set-env name=PACK_VERSION::$version"
+        run: echo "::set-env name=PACK_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`"
         shell: bash
       - name: Setup working dir
         run: |
           mkdir -p ${{ env.PACKAGE_NAME }}
           cp .github/workflows/delivery/archlinux/${{ env.PACKAGE_NAME }}/PKGBUILD ${{ env.PACKAGE_NAME }}/PKGBUILD
-      - name: Package source
-        id: package_source
+      - name: Metadata
+        id: metadata
         run: |
+          url=https://github.com/buildpacks/pack/archive/v${{ env.PACK_VERSION }}.tar.gz
           filename=pack-${{ env.PACK_VERSION }}.tgz
-          fullpath=${{ env.PACKAGE_NAME }}/$filename
-          tar czvf $fullpath --exclude='./.git/*' --exclude="./${{ env.PACKAGE_NAME }}/*" . --transform s/^\./pack-${{ env.PACK_VERSION }}/
+          fullpath=`pwd`/$filename
 
-          # debug info
-          ls -al $fullpath
-          sha512sum $fullpath
-          
-          sha=$(sha512sum $fullpath | awk '{ print $1 }')
-          echo "::set-output name=sha::$sha"
-          echo "::set-output name=filename::$filename"
+          curl -sSL "$url" -o "$fullpath"
+          sha512=$(sha512sum "$fullpath" | awk '{ print $1 }')
+          echo "::set-output name=url::$url"
+          echo "::set-output name=sha512::$sha512"
       - name: Fill PKGBUILD
         uses: cschleiden/replace-tokens@v1
         with:
@@ -48,15 +38,21 @@ jobs:
           tokenSuffix: '}}'
         env:
           PACK_VERSION: ${{ env.PACK_VERSION }}
-          SRC_TGZ_URL: ${{ steps.package_source.outputs.filename }}
-          SRC_TGZ_SHA: ${{ steps.package_source.outputs.sha }}
+          SRC_TGZ_URL: ${{ steps.metadata.outputs.url }}
+          SRC_TGZ_SHA: ${{ steps.metadata.outputs.sha512 }}
       - name: Print PKGBUILD
         run: cat ${{ env.PACKAGE_NAME }}/PKGBUILD
       - name: Test
         uses: docker://archlinux:latest
         with:
           entrypoint: .github/workflows/delivery/archlinux/test-install-package.sh
-  test-pack-cli-bin:
+      - name: Publish
+        uses: docker://archlinux:latest
+        env:
+          AUR_KEY: ${{ secrets.AUR_KEY }}
+        with:
+          entrypoint: .github/workflows/delivery/archlinux/publish-package.sh
+  pack-cli-bin:
     runs-on: ubuntu-latest
     env:
       PACKAGE_NAME: pack-cli-bin
