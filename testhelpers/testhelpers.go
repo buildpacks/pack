@@ -30,6 +30,7 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-cmp/cmp"
+	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"gopkg.in/src-d/go-git.v4"
 
@@ -736,4 +737,16 @@ func AssertGitHeadEq(t *testing.T, path1, path2 string) {
 	AssertNil(t, err)
 
 	AssertEq(t, h1.Hash().String(), h2.Hash().String())
+}
+
+func MockWriterAndOutput() (*color.Console, func() string) {
+	r, w, _ := os.Pipe()
+	console := color.NewConsole(w)
+	return console, func() string {
+		_ = w.Close()
+		var b bytes.Buffer
+		_, _ = io.Copy(&b, r)
+		_ = r.Close()
+		return b.String()
+	}
 }

@@ -1,11 +1,8 @@
 package logging_test
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"os"
 	"testing"
 	"time"
 
@@ -25,18 +22,6 @@ const (
 	testTime = "2019/05/15 01:01:01.000000"
 )
 
-func mockStd() (*color.Console, func() string) {
-	r, w, _ := os.Pipe()
-	console := color.NewConsole(w)
-	return console, func() string {
-		_ = w.Close()
-		var b bytes.Buffer
-		_, _ = io.Copy(&b, r)
-		_ = r.Close()
-		return b.String()
-	}
-}
-
 func TestLogWithWriters(t *testing.T) {
 	spec.Run(t, "logWithWriters", testLogWithWriters, spec.Parallel(), spec.Report(report.Terminal{}))
 }
@@ -49,8 +34,8 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		outCons, fOut = mockStd()
-		errCons, fErr = mockStd()
+		outCons, fOut = h.MockWriterAndOutput()
+		errCons, fErr = h.MockWriterAndOutput()
 		logger = ilogging.NewLogWithWriters(outCons, errCons, ilogging.WithClock(func() time.Time {
 			clock, _ := time.Parse(timeFmt, testTime)
 			return clock

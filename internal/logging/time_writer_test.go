@@ -4,11 +4,12 @@ import (
 	"testing"
 	"time"
 
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	ilogging "github.com/buildpacks/pack/internal/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestTimeWriter(t *testing.T) {
@@ -23,7 +24,7 @@ func testTimeWriter(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		outCons, fOut = mockStd()
+		outCons, fOut = h.MockWriterAndOutput()
 		clockFunc := func() time.Time {
 			clock, _ := time.Parse(timeFmt, testTime)
 			return clock
