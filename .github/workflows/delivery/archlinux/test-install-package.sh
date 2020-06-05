@@ -21,14 +21,18 @@ chown -R archie "$WORKSPACE"
 # run everything else as non-root user
 pushd "$WORKSPACE" > /dev/null
 su archie << "EOF"
-# debug info
+echo -n '> Debug info:'
 ls -al
 sha512sum ./*
 
-# setup AUR packaging deps
+echo -n '> Installing AUR packaging deps...'
 sudo pacman -Sy --noconfirm git base-devel libffi
 
-# install package
+echo -n '> Installing package...'
 makepkg -sri --noconfirm
+
+# print version
+echo -n '> Installed pack version: '
+pack --version
 EOF
-popd
+popd > /dev/null
