@@ -37,7 +37,6 @@ echo '> Adding AUR_KEY...'
 ssh-add - <<< "$AUR_KEY"
 
 echo '> Cloning aur...'
-rm -rf "${PACKAGE_AUR_DIR}" # TODO: Remove
 git clone "ssh://aur@aur.archlinux.org/${PACKAGE_NAME}.git" "${PACKAGE_AUR_DIR}"
 chown -R archie "${PACKAGE_AUR_DIR}"
 pushd "${PACKAGE_AUR_DIR}" > /dev/null
@@ -54,6 +53,6 @@ pushd "${PACKAGE_AUR_DIR}" > /dev/null
   git diff --color | cat
   git add .
   git commit -m "Version ${PACK_VERSION}"
-  #git push
+  git push
 
 popd > /dev/null

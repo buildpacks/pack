@@ -13,14 +13,14 @@ useradd -m archie
 pacman -Sy --noconfirm sudo
 echo 'archie ALL=(ALL:ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-# run everything else as non-root user
-su archie << "EOF"
 # setup workspace
-WORKSPACE=$GITHUB_WORKSPACE/$PACKAGE_NAME
-sudo chown -R archie $WORKSPACE
-sudo chmod -R +w $WORKSPACE
-cd $WORKSPACE
+WORKSPACE=$(mktemp -d -t "$PACKAGE_NAME-XXXXXXXXXX")
+cp -R "$GITHUB_WORKSPACE/$PACKAGE_NAME/"* "$WORKSPACE"
+chown -R archie "$WORKSPACE"
 
+# run everything else as non-root user
+pushd "$WORKSPACE" > /dev/null
+su archie << "EOF"
 # debug info
 ls -al
 sha512sum ./*
@@ -31,3 +31,4 @@ sudo pacman -Sy --noconfirm git base-devel libffi
 # install package
 makepkg -sri --noconfirm
 EOF
+popd
