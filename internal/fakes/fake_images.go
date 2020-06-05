@@ -3,8 +3,6 @@ package fakes
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -34,16 +32,15 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 				Version: bpVersion,
 			}
 
-			buildpack, err := NewFakeBuildpack(dist.BuildpackDescriptor{
+			buildpackDescriptor := dist.BuildpackDescriptor{
 				API:    bpLayerInfo.API,
 				Info:   bpInfo,
 				Stacks: bpLayerInfo.Stacks,
 				Order:  bpLayerInfo.Order,
-			}, 0755)
-			h.AssertNil(t, err)
+			}
 
-			buildpackTar := createBuildpackTar(t, tmpDir, buildpack)
-			err = fakeBuilderImage.AddLayer(buildpackTar)
+			buildpackTar := CreateBuildpackTar(t, tmpDir, buildpackDescriptor)
+			err := fakeBuilderImage.AddLayer(buildpackTar)
 			h.AssertNil(t, err)
 		}
 	}
@@ -64,22 +61,4 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 
 type orderTOML struct {
 	Order dist.Order `toml:"order"`
-}
-
-func createBuildpackTar(t *testing.T, tmpDir string, buildpack dist.Buildpack) string {
-	f, err := os.Create(filepath.Join(tmpDir, fmt.Sprintf(
-		"%s.%s.tar",
-		buildpack.Descriptor().Info.ID,
-		buildpack.Descriptor().Info.Version),
-	))
-	h.AssertNil(t, err)
-	defer f.Close()
-
-	reader, err := buildpack.Open()
-	h.AssertNil(t, err)
-
-	_, err = io.Copy(f, reader)
-	h.AssertNil(t, err)
-
-	return f.Name()
 }

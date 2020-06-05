@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"io"
 	"io/ioutil"
 	"os"
@@ -27,6 +29,39 @@ type TestRegistryConfig struct {
 	DockerConfigDir string
 	username        string
 	password        string
+}
+
+func CreateRegistryFixture(t *testing.T, tmpDir, fixturePath string) string {
+	// copy fixture to temp dir
+	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
+
+	RecursiveCopyNow(t, fixturePath, registryFixtureCopy)
+
+	// git init that dir
+	repository, err := git.PlainInit(registryFixtureCopy, false)
+	AssertNil(t, err)
+
+	// git add . that dir
+	worktree, err := repository.Worktree()
+	AssertNil(t, err)
+
+	_, err = worktree.Add(".")
+	AssertNil(t, err)
+
+	// git commit that dir
+	commit, err := worktree.Commit("first", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "John Doe",
+			Email: "john@doe.org",
+			When:  time.Now(),
+		},
+	})
+	AssertNil(t, err)
+
+	_, err = repository.CommitObject(commit)
+	AssertNil(t, err)
+
+	return registryFixtureCopy
 }
 
 func RunRegistry(t *testing.T) *TestRegistryConfig {

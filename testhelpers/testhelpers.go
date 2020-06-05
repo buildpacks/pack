@@ -23,9 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
-
 	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -34,6 +31,7 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
+	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
@@ -635,39 +633,6 @@ func RecursiveCopyNow(t *testing.T, src, dst string) {
 	AssertNil(t, err)
 	err = os.Chmod(dst, 0775)
 	AssertNil(t, err)
-}
-
-func CreateRegistryFixture(t *testing.T, tmpDir, fixturePath string) string {
-	// copy fixture to temp dir
-	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
-
-	RecursiveCopyNow(t, fixturePath, registryFixtureCopy)
-
-	// git init that dir
-	repository, err := git.PlainInit(registryFixtureCopy, false)
-	AssertNil(t, err)
-
-	// git add . that dir
-	worktree, err := repository.Worktree()
-	AssertNil(t, err)
-
-	_, err = worktree.Add(".")
-	AssertNil(t, err)
-
-	// git commit that dir
-	commit, err := worktree.Commit("first", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "John Doe",
-			Email: "john@doe.org",
-			When:  time.Now(),
-		},
-	})
-	AssertNil(t, err)
-
-	_, err = repository.CommitObject(commit)
-	AssertNil(t, err)
-
-	return registryFixtureCopy
 }
 
 func AssertTarFileContents(t *testing.T, tarfile, path, expected string) {
