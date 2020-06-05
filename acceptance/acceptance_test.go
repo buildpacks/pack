@@ -965,9 +965,9 @@ func testAcceptance(
 							))
 
 							if packSemver.GreaterThan(semver.MustParse("0.9.0")) || packSemver.Equal(semver.MustParse("0.0.0")) {
-								h.AssertContains(t, output, "Detect: Reading file '/platform/my-volume-mount-target/some-file':")
+								h.AssertContains(t, output, "Detect: Reading file '/platform/my-volume-mount-target/some-file': some-string")
 							}
-							h.AssertContains(t, output, "Build: Reading file '/platform/my-volume-mount-target/some-file':")
+							h.AssertContains(t, output, "Build: Reading file '/platform/my-volume-mount-target/some-file': some-string")
 						})
 					})
 
