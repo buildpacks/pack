@@ -128,30 +128,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, configProvider.HostConfig().NetworkMode, container.NetworkMode(expectedNetworkMode))
 		})
 
-		it("configures the phase with both cache binds and custom volume mounts", func() {
-			lifecycle := newTestLifecycle(t, false)
-			fakePhaseFactory := fakes.NewFakePhaseFactory()
-			expectedBind := "some-mount-source:/some-mount-target"
-			expectedBinds := []string{expectedBind, "some-cache:/cache", "some-launch-cache:/launch-cache"}
-
-			err := lifecycle.Create(
-				context.Background(),
-				false,
-				false,
-				"test",
-				"some-launch-cache",
-				"some-cache",
-				"test",
-				"test",
-				[]string{expectedBind},
-				fakePhaseFactory,
-			)
-			h.AssertNil(t, err)
-
-			configProvider := fakePhaseFactory.NewCalledWithProvider
-			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
-		})
-
 		when("clear cache", func() {
 			it("configures the phase with the expected arguments", func() {
 				verboseLifecycle := newTestLifecycle(t, true)
@@ -212,7 +188,8 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			it("configures the phase with binds", func() {
 				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
-				expectedBinds := []string{"some-cache:/cache"}
+				volumeMount := "custom-mount-source:/custom-mount-target"
+				expectedBinds := []string{volumeMount, "some-cache:/cache"}
 
 				err := lifecycle.Create(
 					context.Background(),
@@ -223,7 +200,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 					"some-cache",
 					"test",
 					"test",
-					[]string{},
+					[]string{volumeMount},
 					fakePhaseFactory,
 				)
 				h.AssertNil(t, err)
@@ -332,7 +309,8 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			it("configures the phase with binds", func() {
 				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
-				expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache"}
+				volumeMount := "custom-mount-source:/custom-mount-target"
+				expectedBinds := []string{volumeMount, "some-cache:/cache", "some-launch-cache:/launch-cache"}
 
 				err := lifecycle.Create(
 					context.Background(),
@@ -343,7 +321,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 					"some-cache",
 					"test",
 					"test",
-					[]string{},
+					[]string{volumeMount},
 					fakePhaseFactory,
 				)
 				h.AssertNil(t, err)
