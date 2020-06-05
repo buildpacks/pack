@@ -7,6 +7,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/fakes"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"io"
 	"io/ioutil"
 	"log"
@@ -629,4 +634,157 @@ func RecursiveCopyNow(t *testing.T, src, dst string) {
 	AssertNil(t, err)
 	err = os.Chmod(dst, 0775)
 	AssertNil(t, err)
+}
+
+func CreateRegistryFixture(t *testing.T, tmpDir string) string {
+	// copy fixture to temp dir
+	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
+
+	RecursiveCopyNow(t, filepath.Join("testdata", "registry"), registryFixtureCopy)
+
+	// git init that dir
+	repository, err := git.PlainInit(registryFixtureCopy, false)
+	AssertNil(t, err)
+
+	// git add . that dir
+	worktree, err := repository.Worktree()
+	AssertNil(t, err)
+
+	_, err = worktree.Add(".")
+	AssertNil(t, err)
+
+	// git commit that dir
+	commit, err := worktree.Commit("first", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "John Doe",
+			Email: "john@doe.org",
+			When:  time.Now(),
+		},
+	})
+	AssertNil(t, err)
+
+	_, err = repository.CommitObject(commit)
+	AssertNil(t, err)
+
+	return registryFixtureCopy
+}
+
+func AssertTarFileContents(t *testing.T, tarfile, path, expected string) {
+	t.Helper()
+	exist, contents := tarFileContents(t, tarfile, path)
+	if !exist {
+		t.Fatalf("%s does not exist in %s", path, tarfile)
+	}
+	AssertEq(t, contents, expected)
+}
+
+func tarFileContents(t *testing.T, tarfile, path string) (exist bool, contents string) {
+	t.Helper()
+	r, err := os.Open(tarfile)
+	AssertNil(t, err)
+	defer r.Close()
+
+	tr := tar.NewReader(r)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		AssertNil(t, err)
+
+		if header.Name == path {
+			buf, err := ioutil.ReadAll(tr)
+			AssertNil(t, err)
+			return true, string(buf)
+		}
+	}
+	return false, ""
+}
+
+func CreateBuildpackTar(t *testing.T, tmpDir string, descriptor dist.BuildpackDescriptor) string {
+	buildpack, err := fakes.NewFakeBuildpackBlob(descriptor, 0777)
+	AssertNil(t, err)
+
+	tempFile, err := ioutil.TempFile(tmpDir, "bp-*.tar")
+	AssertNil(t, err)
+	defer tempFile.Close()
+
+	reader, err := buildpack.Open()
+	AssertNil(t, err)
+
+	_, err = io.Copy(tempFile, reader)
+	AssertNil(t, err)
+
+	return tempFile.Name()
+}
+
+func AssertTarHasFile(t *testing.T, tarFile, path string) {
+	t.Helper()
+
+	exist := tarHasFile(t, tarFile, path)
+	if !exist {
+		t.Fatalf("%s does not exist in %s", path, tarFile)
+	}
+}
+
+func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
+	t.Helper()
+
+	r, err := os.Open(tarFile)
+	AssertNil(t, err)
+	defer r.Close()
+
+	tr := tar.NewReader(r)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		AssertNil(t, err)
+
+		if header.Name == path {
+			return true
+		}
+	}
+
+	return false
+}
+
+func AssertBuildpacksHaveDescriptors(t *testing.T, bps []dist.Buildpack, descriptors []dist.BuildpackDescriptor) {
+	AssertEq(t, len(bps), len(descriptors))
+	for _, bp := range bps {
+		found := false
+		for _, descriptor := range descriptors {
+			if diff := cmp.Diff(bp.Descriptor(), descriptor); diff == "" {
+				found = true
+				break
+			}
+		}
+		AssertTrue(t, found)
+	}
+}
+
+func ReadPackConfig(t *testing.T) config.Config {
+	path, err := config.DefaultConfigPath()
+	AssertNil(t, err)
+
+	cfg, err := config.Read(path)
+	AssertNil(t, err)
+	return cfg
+}
+
+func AssertGitHeadEq(t *testing.T, path1, path2 string) {
+	r1, err := git.PlainOpen(path1)
+	AssertNil(t, err)
+
+	r2, err := git.PlainOpen(path2)
+	AssertNil(t, err)
+
+	h1, err := r1.Head()
+	AssertNil(t, err)
+
+	h2, err := r2.Head()
+	AssertNil(t, err)
+
+	AssertEq(t, h1.Hash().String(), h2.Hash().String())
 }

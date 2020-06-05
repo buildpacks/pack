@@ -1,11 +1,9 @@
 package pack_test
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -494,12 +492,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				layerTar, err := fakeBuildImage.FindLayerWithPath("/cnb/lifecycle")
 				h.AssertNil(t, err)
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/detector")
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/restorer")
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/analyzer")
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/builder")
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/exporter")
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/launcher")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/detector")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/restorer")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/analyzer")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/builder")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/exporter")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/launcher")
 			})
 		})
 
@@ -551,13 +549,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				layerTar, err := fakeBuildImage.FindLayerWithPath("/cnb/lifecycle")
 				h.AssertNil(t, err)
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/detector")
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/restorer")
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/analyzer")
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/builder")
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/exporter")
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/cacher")
-				assertTarHasFile(t, layerTar, "/cnb/lifecycle/launcher")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/detector")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/restorer")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/analyzer")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/builder")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/exporter")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/cacher")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/launcher")
 			})
 		})
 
@@ -693,7 +691,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					os.Setenv("PACK_HOME", packHome)
 
-					registryFixture = pack.CreateRegistryFixture(t, tmpDir)
+					registryFixture = h.CreateRegistryFixture(t, tmpDir)
 
 					packageImage = fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
 					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
@@ -883,38 +881,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-func assertTarHasFile(t *testing.T, tarFile, path string) {
-	t.Helper()
-
-	exist := tarHasFile(t, tarFile, path)
-	if !exist {
-		t.Fatalf("%s does not exist in %s", path, tarFile)
-	}
-}
-
-func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
-	t.Helper()
-
-	r, err := os.Open(tarFile)
-	h.AssertNil(t, err)
-	defer r.Close()
-
-	tr := tar.NewReader(r)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		h.AssertNil(t, err)
-
-		if header.Name == path {
-			return true
-		}
-	}
-
-	return false
 }
 
 type fakeBadImageStruct struct {

@@ -74,7 +74,7 @@ func testSetRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 			it("adds them as mirrors to the config", func() {
 				command.SetArgs([]string{runImage, "-m", testMirror1, "-m", testMirror2})
 				h.AssertNil(t, command.Execute())
-				cfg := readConfig(t)
+				cfg := h.ReadPackConfig(t)
 				h.AssertEq(t, cfg.RunImages, testRunImageCfg)
 			})
 		})
@@ -89,18 +89,10 @@ func testSetRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{runImage})
 				h.AssertNil(t, command.Execute())
 
-				cfg := readConfig(t)
+				cfg := h.ReadPackConfig(t)
 				h.AssertEq(t, cfg.RunImages, []config.RunImage{{Image: runImage}})
 			})
 		})
 	})
 }
 
-func readConfig(t *testing.T) config.Config {
-	path, err := config.DefaultConfigPath()
-	h.AssertNil(t, err)
-
-	cfg, err := config.Read(path)
-	h.AssertNil(t, err)
-	return cfg
-}

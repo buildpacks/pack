@@ -2,7 +2,6 @@ package archive_test
 
 import (
 	"archive/tar"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"net"
@@ -111,11 +110,11 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tr := tar.NewReader(file)
 
-				verify := tarVerifier{t, tr, 1234, 2345}
-				verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", int64(os.ModePerm))
-				verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir", int64(os.ModePerm))
+				verify := h.TarVerifier{t, tr, 1234, 2345}
+				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", int64(os.ModePerm))
+				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", int64(os.ModePerm))
 				if runtime.GOOS != "windows" {
-					verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 				}
 			})
 		})
@@ -138,11 +137,11 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tr := tar.NewReader(file)
 
-				verify := tarVerifier{t, tr, 1234, 2345}
-				verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", fileMode(t, filepath.Join(src, "some-file.txt")))
-				verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir", fileMode(t, filepath.Join(src, "sub-dir")))
+				verify := h.TarVerifier{t, tr, 1234, 2345}
+				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", fileMode(t, filepath.Join(src, "some-file.txt")))
+				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", fileMode(t, filepath.Join(src, "sub-dir")))
 				if runtime.GOOS != "windows" {
-					verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 				}
 			})
 		})
@@ -232,13 +231,13 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 					tr := tar.NewReader(file)
 
-					verify := tarVerifier{t, tr, 1234, 2345}
-					verify.nextFile(
+					verify := h.TarVerifier{t, tr, 1234, 2345}
+					verify.NextFile(
 						"/nested/dir/dir-in-archive/fake-file",
 						"some-content",
 						0777,
 					)
-					verify.noMoreFilesExist()
+					verify.NoMoreFilesExist()
 				})
 			})
 		})
@@ -268,11 +267,11 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tr := tar.NewReader(file)
 
-				verify := tarVerifier{t, tr, 1234, 2345}
-				verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
-				verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir", 0777)
+				verify := h.TarVerifier{t, tr, 1234, 2345}
+				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
+				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0777)
 				if runtime.GOOS != "windows" {
-					verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 				}
 			})
 		})
@@ -295,11 +294,11 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tr := tar.NewReader(file)
 
-				verify := tarVerifier{t, tr, 1234, 2345}
-				verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0644)
-				verify.nextDirectory("/nested/dir/dir-in-archive/sub-dir", 0755)
+				verify := h.TarVerifier{t, tr, 1234, 2345}
+				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0644)
+				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0755)
 				if runtime.GOOS != "windows" {
-					verify.nextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 				}
 			})
 
@@ -325,9 +324,9 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 					tr := tar.NewReader(file)
 
-					verify := tarVerifier{t, tr, 1234, 2345}
-					verify.nextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
-					verify.noMoreFilesExist()
+					verify := h.TarVerifier{t, tr, 1234, 2345}
+					verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
+					verify.NoMoreFilesExist()
 				})
 			})
 		})
@@ -452,111 +451,4 @@ func fileMode(t *testing.T, path string) int64 {
 	}
 	mode := int64(info.Mode() & os.ModePerm)
 	return mode
-}
-
-type tarVerifier struct {
-	t   *testing.T
-	tr  *tar.Reader
-	uid int
-	gid int
-}
-
-func (v *tarVerifier) nextDirectory(name string, mode int64) {
-	v.t.Helper()
-	header, err := v.tr.Next()
-	if err != nil {
-		v.t.Fatalf("Failed to get next file: %s", err)
-	}
-
-	if header.Name != name {
-		v.t.Fatalf(`expected dir with name %s, got %s`, name, header.Name)
-	}
-	if header.Typeflag != tar.TypeDir {
-		v.t.Fatalf(`expected %s to be a Directory`, header.Name)
-	}
-	if header.Uid != v.uid {
-		v.t.Fatalf(`expected %s to have uid %d but, got: %d`, header.Name, v.uid, header.Uid)
-	}
-	if header.Gid != v.gid {
-		v.t.Fatalf(`expected %s to have gid %d but, got: %d`, header.Name, v.gid, header.Gid)
-	}
-	if header.Mode != mode {
-		v.t.Fatalf(`expected %s to have mode %o but, got: %o`, header.Name, mode, header.Mode)
-	}
-	if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
-		v.t.Fatalf(`expected %s to have been normalized, got: %s`, header.Name, header.ModTime.String())
-	}
-}
-
-func (v *tarVerifier) noMoreFilesExist() {
-	v.t.Helper()
-	header, err := v.tr.Next()
-	if err == nil {
-		v.t.Fatalf(`expected no more files but found: %s`, header.Name)
-	} else if err != io.EOF {
-		v.t.Error(err.Error())
-	}
-}
-
-func (v *tarVerifier) nextFile(name, expectedFileContents string, expectedFileMode int64) {
-	v.t.Helper()
-	header, err := v.tr.Next()
-	if err != nil {
-		v.t.Fatalf("Failed to get next file: %s", err)
-	}
-
-	if header.Name != name {
-		v.t.Fatalf(`expected dir with name %s, got %s`, name, header.Name)
-	}
-	if header.Typeflag != tar.TypeReg {
-		v.t.Fatalf(`expected %s to be a file`, header.Name)
-	}
-	if header.Uid != v.uid {
-		v.t.Fatalf(`expected %s to have uid %d but, got: %d`, header.Name, v.uid, header.Uid)
-	}
-	if header.Gid != v.gid {
-		v.t.Fatalf(`expected %s to have gid %d but, got: %d`, header.Name, v.gid, header.Gid)
-	}
-
-	fileContents := make([]byte, header.Size)
-	v.tr.Read(fileContents)
-	if string(fileContents) != expectedFileContents {
-		v.t.Fatalf(`expected to some-file.txt to have %s got %s`, expectedFileContents, string(fileContents))
-	}
-
-	if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
-		v.t.Fatalf(`expected %s to have been normalized, got: %s`, header.Name, header.ModTime.String())
-	}
-
-	if header.Mode != expectedFileMode {
-		v.t.Fatalf("files should have mode %o, got: %o", expectedFileMode, header.Mode)
-	}
-}
-
-func (v *tarVerifier) nextSymLink(name, link string) {
-	v.t.Helper()
-	header, err := v.tr.Next()
-	if err != nil {
-		v.t.Fatalf("Failed to get next file: %s", err)
-	}
-
-	if header.Name != name {
-		v.t.Fatalf(`expected dir with name %s, got %s`, name, header.Name)
-	}
-	if header.Typeflag != tar.TypeSymlink {
-		v.t.Fatalf(`expected %s to be a link got %s`, header.Name, string(header.Typeflag))
-	}
-	if header.Uid != v.uid {
-		v.t.Fatalf(`expected %s to have uid %d but, got: %d`, header.Name, v.uid, header.Uid)
-	}
-	if header.Gid != v.gid {
-		v.t.Fatalf(`expected %s to have gid %d but, got: %d`, header.Name, v.gid, header.Gid)
-	}
-
-	if header.Linkname != "../some-file.txt" {
-		v.t.Fatalf(`expected to link-file to have target %s got: %s`, link, header.Linkname)
-	}
-	if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
-		v.t.Fatalf(`expected %s to have been normalized, got: %s`, header.Name, header.ModTime.String())
-	}
 }
