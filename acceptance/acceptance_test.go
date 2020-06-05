@@ -933,9 +933,16 @@ func testAcceptance(
 						var buildpackTgz, tempVolume string
 
 						it.Before(func() {
+							packVer, err := packVersion(packPath)
+							h.AssertNil(t, err)
+							packSemver := semver.MustParse(strings.TrimPrefix(strings.Split(packVer, " ")[0], "v"))
+							h.SkipIf(t,
+								packSemver.Equal(semver.MustParse("0.11.0")),
+								"pack 0.11.0 shipped with a volume mounting bug",
+							)
+
 							buildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "volume-buildpack"), "./", 0755)
 
-							var err error
 							tempVolume, err = ioutil.TempDir("", "my-volume-mount-source")
 							h.AssertNil(t, err)
 							h.AssertNil(t, os.Chmod(tempVolume, 0755)) // Override umask
