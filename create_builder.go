@@ -49,7 +49,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 }
 
 func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {
-	if err := opts.Config.Validate(); err != nil {
+	if err := pubbldr.ValidateConfig(opts.Config); err != nil {
 		return errors.Wrap(err, "invalid builder config")
 	}
 
