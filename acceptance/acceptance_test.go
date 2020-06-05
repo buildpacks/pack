@@ -957,10 +957,10 @@ func testAcceptance(
 						})
 
 						it.After(func() {
-							h.AssertNil(t, os.Remove(buildpackTgz))
-							h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+							_ = os.Remove(buildpackTgz)
+							_ = h.DockerRmi(dockerCli, repoName)
 
-							h.AssertNil(t, os.RemoveAll(tempVolume))
+							_ = os.RemoveAll(tempVolume)
 						})
 
 						it("mounts the provided volume in the detect and build phases", func() {
