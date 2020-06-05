@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -33,7 +34,7 @@ func TestRegistryCache(t *testing.T) {
 			tmpDir, err := ioutil.TempDir("", "registry")
 			h.AssertNil(t, err)
 
-			registryFixture = h.CreateRegistryFixture(t, tmpDir)
+			registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("..", "..", "testdata", "registry"))
 
 			registryCache, err = registry.NewRegistryCache(logger, tmpDir, registryFixture)
 			h.AssertNil(t, err)

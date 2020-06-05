@@ -691,7 +691,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					os.Setenv("PACK_HOME", packHome)
 
-					registryFixture = h.CreateRegistryFixture(t, tmpDir)
+					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
 
 					packageImage = fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
 					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)

@@ -20,6 +20,12 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/docker/docker/client"
+	"github.com/heroku/color"
+	"github.com/onsi/gomega/ghttp"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
@@ -30,11 +36,6 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/docker/docker/client"
-	"github.com/heroku/color"
-	"github.com/onsi/gomega/ghttp"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 )
 
 // 0.7.5 is the first lifecycle version where both creator and the "lifecycle image" are supported.
@@ -525,7 +526,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			it("builder order is overwritten", func() {
-				additionalBP := h.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+				additionalBP := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 					API: api.MustParse("0.3"),
 					Info: dist.BuildpackInfo{
 						ID:      "buildpack.add.1.id",
@@ -593,7 +594,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("from=builder is set first", func() {
 				it("builder order is prepended", func() {
-					additionalBP1 := h.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.1.id",
@@ -603,7 +604,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Order:  nil,
 					})
 
-					additionalBP2 := h.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.2.id",
@@ -657,7 +658,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("from=builder is set in middle", func() {
 				it("builder order is appended", func() {
-					additionalBP1 := h.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.1.id",
@@ -667,7 +668,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Order:  nil,
 					})
 
-					additionalBP2 := h.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.2.id",
@@ -722,7 +723,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("from=builder is set last", func() {
 				it("builder order is appended", func() {
-					additionalBP1 := h.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.1.id",
@@ -732,7 +733,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Order:  nil,
 					})
 
-					additionalBP2 := h.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.2.id",
@@ -787,7 +788,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("meta-buildpack is used", func() {
 				it("resolves buildpack from builder", func() {
-					buildpackTar := h.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					buildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "metabuildpack.id",
@@ -826,7 +827,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				var fakePackage *fakes.Image
 
 				it.Before(func() {
-					metaBuildpackTar := h.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					metaBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:       "meta.buildpack.id",
@@ -845,7 +846,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						}},
 					})
 
-					childBuildpackTar := h.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:       "child.buildpack.id",
@@ -1179,9 +1180,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						os.Setenv("PACK_HOME", packHome)
 
-						registryFixture = h.CreateRegistryFixture(t, tmpDir)
+						registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
 
-						childBuildpackTar := h.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+						childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 							API: api.MustParse("0.3"),
 							Info: dist.BuildpackInfo{
 								ID:      "example/foo",
@@ -1876,4 +1877,3 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 		}},
 	)
 }
-

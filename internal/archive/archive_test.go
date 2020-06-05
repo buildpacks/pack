@@ -110,7 +110,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tr := tar.NewReader(file)
 
-				verify := h.TarVerifier{t, tr, 1234, 2345}
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
 				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", int64(os.ModePerm))
 				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", int64(os.ModePerm))
 				if runtime.GOOS != "windows" {
@@ -137,7 +137,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tr := tar.NewReader(file)
 
-				verify := h.TarVerifier{t, tr, 1234, 2345}
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
 				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", fileMode(t, filepath.Join(src, "some-file.txt")))
 				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", fileMode(t, filepath.Join(src, "sub-dir")))
 				if runtime.GOOS != "windows" {
@@ -231,7 +231,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 					tr := tar.NewReader(file)
 
-					verify := h.TarVerifier{t, tr, 1234, 2345}
+					verify := h.NewTarVerifier(t, tr, 1234, 2345)
 					verify.NextFile(
 						"/nested/dir/dir-in-archive/fake-file",
 						"some-content",
@@ -267,7 +267,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tr := tar.NewReader(file)
 
-				verify := h.TarVerifier{t, tr, 1234, 2345}
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
 				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
 				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0777)
 				if runtime.GOOS != "windows" {
@@ -294,7 +294,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tr := tar.NewReader(file)
 
-				verify := h.TarVerifier{t, tr, 1234, 2345}
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
 				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0644)
 				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0755)
 				if runtime.GOOS != "windows" {
@@ -324,7 +324,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 					tr := tar.NewReader(file)
 
-					verify := h.TarVerifier{t, tr, 1234, 2345}
+					verify := h.NewTarVerifier(t, tr, 1234, 2345)
 					verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
 					verify.NoMoreFilesExist()
 				})

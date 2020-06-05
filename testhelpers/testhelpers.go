@@ -7,11 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/fakes"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"io"
 	"io/ioutil"
 	"log"
@@ -28,6 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
+
 	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -36,6 +34,9 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/dist"
 
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/stringset"
@@ -636,11 +637,11 @@ func RecursiveCopyNow(t *testing.T, src, dst string) {
 	AssertNil(t, err)
 }
 
-func CreateRegistryFixture(t *testing.T, tmpDir string) string {
+func CreateRegistryFixture(t *testing.T, tmpDir, fixturePath string) string {
 	// copy fixture to temp dir
 	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
 
-	RecursiveCopyNow(t, filepath.Join("testdata", "registry"), registryFixtureCopy)
+	RecursiveCopyNow(t, fixturePath, registryFixtureCopy)
 
 	// git init that dir
 	repository, err := git.PlainInit(registryFixtureCopy, false)
@@ -699,23 +700,6 @@ func tarFileContents(t *testing.T, tarfile, path string) (exist bool, contents s
 		}
 	}
 	return false, ""
-}
-
-func CreateBuildpackTar(t *testing.T, tmpDir string, descriptor dist.BuildpackDescriptor) string {
-	buildpack, err := fakes.NewFakeBuildpackBlob(descriptor, 0777)
-	AssertNil(t, err)
-
-	tempFile, err := ioutil.TempFile(tmpDir, "bp-*.tar")
-	AssertNil(t, err)
-	defer tempFile.Close()
-
-	reader, err := buildpack.Open()
-	AssertNil(t, err)
-
-	_, err = io.Copy(tempFile, reader)
-	AssertNil(t, err)
-
-	return tempFile.Name()
 }
 
 func AssertTarHasFile(t *testing.T, tarFile, path string) {

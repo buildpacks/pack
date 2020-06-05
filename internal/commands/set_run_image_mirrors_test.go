@@ -95,4 +95,3 @@ func testSetRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 }
-
