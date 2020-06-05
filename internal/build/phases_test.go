@@ -57,7 +57,18 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
-			err := lifecycle.Create(context.Background(), false, false, "test", "test", "test", "test", "test", fakePhaseFactory)
+			err := lifecycle.Create(
+				context.Background(),
+				false,
+				false,
+				"test",
+				"test",
+				"test",
+				"test",
+				"test",
+				[]string{},
+				fakePhaseFactory,
+			)
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, fakePhase.CleanupCallCount, 1)
@@ -70,7 +81,18 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			expectedRepoName := "some-repo-name"
 			expectedRunImage := "some-run-image"
 
-			err := verboseLifecycle.Create(context.Background(), false, false, expectedRunImage, "test", "test", expectedRepoName, "test", fakePhaseFactory)
+			err := verboseLifecycle.Create(
+				context.Background(),
+				false,
+				false,
+				expectedRunImage,
+				"test",
+				"test",
+				expectedRepoName,
+				"test",
+				[]string{},
+				fakePhaseFactory,
+			)
 			h.AssertNil(t, err)
 
 			configProvider := fakePhaseFactory.NewCalledWithProvider
@@ -88,11 +110,46 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedNetworkMode := "some-network-mode"
 
-			err := lifecycle.Create(context.Background(), false, false, "test", "test", "test", "test", expectedNetworkMode, fakePhaseFactory)
+			err := lifecycle.Create(
+				context.Background(),
+				false,
+				false,
+				"test",
+				"test",
+				"test",
+				"test",
+				expectedNetworkMode,
+				[]string{},
+				fakePhaseFactory,
+			)
 			h.AssertNil(t, err)
 
 			configProvider := fakePhaseFactory.NewCalledWithProvider
 			h.AssertEq(t, configProvider.HostConfig().NetworkMode, container.NetworkMode(expectedNetworkMode))
+		})
+
+		it("configures the phase with both cache binds and custom volume mounts", func() {
+			lifecycle := newTestLifecycle(t, false)
+			fakePhaseFactory := fakes.NewFakePhaseFactory()
+			expectedBind := "some-mount-source:/some-mount-target"
+			expectedBinds := []string{expectedBind, "some-cache:/cache", "some-launch-cache:/launch-cache"}
+
+			err := lifecycle.Create(
+				context.Background(),
+				false,
+				false,
+				"test",
+				"some-launch-cache",
+				"some-cache",
+				"test",
+				"test",
+				[]string{expectedBind},
+				fakePhaseFactory,
+			)
+			h.AssertNil(t, err)
+
+			configProvider := fakePhaseFactory.NewCalledWithProvider
+			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 		})
 
 		when("clear cache", func() {
@@ -100,7 +157,18 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				verboseLifecycle := newTestLifecycle(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err := verboseLifecycle.Create(context.Background(), false, true, "test", "test", "test", "test", "test", fakePhaseFactory)
+				err := verboseLifecycle.Create(
+					context.Background(),
+					false,
+					true,
+					"test",
+					"test",
+					"test",
+					"test",
+					"test",
+					[]string{},
+					fakePhaseFactory,
+				)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
@@ -117,7 +185,18 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				verboseLifecycle := newTestLifecycle(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err := verboseLifecycle.Create(context.Background(), false, false, "test", "test", "test", "test", "test", fakePhaseFactory)
+				err := verboseLifecycle.Create(
+					context.Background(),
+					false,
+					false,
+					"test",
+					"test",
+					"test",
+					"test",
+					"test",
+					[]string{},
+					fakePhaseFactory,
+				)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
@@ -135,7 +214,18 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBinds := []string{"some-cache:/cache"}
 
-				err := lifecycle.Create(context.Background(), true, false, "test", "test", "some-cache", "test", "test", fakePhaseFactory)
+				err := lifecycle.Create(
+					context.Background(),
+					true,
+					false,
+					"test",
+					"test",
+					"some-cache",
+					"test",
+					"test",
+					[]string{},
+					fakePhaseFactory,
+				)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
@@ -146,7 +236,18 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err := lifecycle.Create(context.Background(), true, false, "test", "test", "test", "test", "test", fakePhaseFactory)
+				err := lifecycle.Create(
+					context.Background(),
+					true,
+					false,
+					"test",
+					"test",
+					"test",
+					"test",
+					"test",
+					[]string{},
+					fakePhaseFactory,
+				)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
@@ -158,7 +259,18 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRepos := "some-repo-name"
 
-				err := lifecycle.Create(context.Background(), true, false, "test", "test", "test", expectedRepos, "test", fakePhaseFactory)
+				err := lifecycle.Create(
+					context.Background(),
+					true,
+					false,
+					"test",
+					"test",
+					"test",
+					expectedRepos,
+					"test",
+					[]string{},
+					fakePhaseFactory,
+				)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
@@ -171,7 +283,18 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				verboseLifecycle := newTestLifecycle(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err := verboseLifecycle.Create(context.Background(), false, false, "test", "test", "test", "test", "test", fakePhaseFactory)
+				err := verboseLifecycle.Create(
+					context.Background(),
+					false,
+					false,
+					"test",
+					"test",
+					"test",
+					"test",
+					"test",
+					[]string{},
+					fakePhaseFactory,
+				)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
@@ -187,7 +310,18 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err := lifecycle.Create(context.Background(), false, false, "test", "some-launch-cache", "some-cache", "test", "test", fakePhaseFactory)
+				err := lifecycle.Create(
+					context.Background(),
+					false,
+					false,
+					"test",
+					"some-launch-cache",
+					"some-cache",
+					"test",
+					"test",
+					[]string{},
+					fakePhaseFactory,
+				)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
@@ -200,7 +334,18 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache"}
 
-				err := lifecycle.Create(context.Background(), false, false, "test", "some-launch-cache", "some-cache", "test", "test", fakePhaseFactory)
+				err := lifecycle.Create(
+					context.Background(),
+					false,
+					false,
+					"test",
+					"some-launch-cache",
+					"some-cache",
+					"test",
+					"test",
+					[]string{},
+					fakePhaseFactory,
+				)
 				h.AssertNil(t, err)
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider

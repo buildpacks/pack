@@ -36,7 +36,12 @@ type PhaseFactory interface {
 	New(provider *PhaseConfigProvider) RunnerCleaner
 }
 
-func (l *Lifecycle) Create(ctx context.Context, publish, clearCache bool, runImage, launchCacheName, cacheName, repoName, networkMode string, phaseFactory PhaseFactory) error {
+func (l *Lifecycle) Create(
+	ctx context.Context,
+	publish, clearCache bool,
+	runImage, launchCacheName, cacheName, repoName, networkMode string,
+	volumes []string,
+	phaseFactory PhaseFactory) error {
 	var configProvider *PhaseConfigProvider
 
 	args := []string{
@@ -44,7 +49,7 @@ func (l *Lifecycle) Create(ctx context.Context, publish, clearCache bool, runIma
 		repoName,
 	}
 
-	binds := []string{fmt.Sprintf("%s:%s", cacheName, cacheDir)}
+	binds := append(volumes, fmt.Sprintf("%s:%s", cacheName, cacheDir))
 
 	if clearCache {
 		args = append([]string{"-skip-restore"}, args...)
