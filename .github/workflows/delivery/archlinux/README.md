@@ -15,8 +15,7 @@ The following depicts the current state of automation:
 | ---          | ---    | ---         |
 | pack-cli     | yes    | yes         |
 | pack-cli-bin | yes    | yes         |
-| pack-cli-git | no     | no          |
-
+| pack-cli-git | yes    | yes         |
 
 ## Run Locally
 
@@ -29,5 +28,8 @@ docker pull archlinux:latest
 export GITHUB_TOKEN="<YOUR_GH_TOKEN>"
 export AUR_KEY="<AUR_KEY>"
 
-act -P ubuntu-latest=nektos/act-environments-ubuntu:18.04 -j pack-cli-bin -e .github/workflows/testdata/event-release.json -s GITHUB_TOKEN -s AUR_KEY
+act -P ubuntu-latest=nektos/act-environments-ubuntu:18.04 \
+    -e .github/workflows/testdata/event-release.json \
+    -s GITHUB_TOKEN -s AUR_KEY \
+    -j <JOB_NAME>
 ```
