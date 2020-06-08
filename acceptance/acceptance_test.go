@@ -1303,6 +1303,10 @@ ENV2_CONTENTS
 	})
 
 	when("inspect-builder", func() {
+		it.Before(func() {
+			h.SkipIf(t, containerManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+		})
+
 		it("displays configuration for a builder (local and remote)", func() {
 			configuredRunImage := "some-registry.com/pack-test/run1"
 			output := pack.SuccessfulRunWithOutput("set-run-image-mirrors", "pack-test/run", "--mirror", configuredRunImage)
@@ -1350,6 +1354,10 @@ ENV2_CONTENTS
 		)
 
 		it.Before(func() {
+			it.Before(func() {
+				h.SkipIf(t, containerManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+			})
+
 			appName = fmt.Sprintf("some-org/%s", h.RandString(10))
 			appImageName = registry.RepoName(appName)
 
