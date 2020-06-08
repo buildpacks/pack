@@ -933,9 +933,16 @@ func testAcceptance(
 						var buildpackTgz, tempVolume string
 
 						it.Before(func() {
+							packVer, err := packVersion(packPath)
+							h.AssertNil(t, err)
+							packSemver := semver.MustParse(strings.TrimPrefix(strings.Split(packVer, " ")[0], "v"))
+							h.SkipIf(t,
+								packSemver.Equal(semver.MustParse("0.11.0")),
+								"pack 0.11.0 shipped with a volume mounting bug",
+							)
+
 							buildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "volume-buildpack"), "./", 0755)
 
-							var err error
 							tempVolume, err = ioutil.TempDir("", "my-volume-mount-source")
 							h.AssertNil(t, err)
 							h.AssertNil(t, os.Chmod(tempVolume, 0755)) // Override umask
@@ -950,10 +957,10 @@ func testAcceptance(
 						})
 
 						it.After(func() {
-							h.AssertNil(t, os.Remove(buildpackTgz))
-							h.AssertNil(t, h.DockerRmi(dockerCli, repoName))
+							_ = os.Remove(buildpackTgz)
+							_ = h.DockerRmi(dockerCli, repoName)
 
-							h.AssertNil(t, os.RemoveAll(tempVolume))
+							_ = os.RemoveAll(tempVolume)
 						})
 
 						it("mounts the provided volume in the detect and build phases", func() {
@@ -965,9 +972,9 @@ func testAcceptance(
 							))
 
 							if packSemver.GreaterThan(semver.MustParse("0.9.0")) || packSemver.Equal(semver.MustParse("0.0.0")) {
-								h.AssertContains(t, output, "Detect: Reading file '/platform/my-volume-mount-target/some-file':")
+								h.AssertContains(t, output, "Detect: Reading file '/platform/my-volume-mount-target/some-file': some-string")
 							}
-							h.AssertContains(t, output, "Build: Reading file '/platform/my-volume-mount-target/some-file':")
+							h.AssertContains(t, output, "Build: Reading file '/platform/my-volume-mount-target/some-file': some-string")
 						})
 					})
 
