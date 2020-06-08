@@ -12,7 +12,6 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
-	"github.com/google/go-cmp/cmp"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -556,19 +555,5 @@ func assertPackageBPFileHasBuildpacks(t *testing.T, path string, descriptors []d
 	packageBlob := blob.NewBlob(path)
 	mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(packageBlob)
 	h.AssertNil(t, err)
-	assertBuildpacksHaveDescriptors(t, append([]dist.Buildpack{mainBP}, depBPs...), descriptors)
-}
-
-func assertBuildpacksHaveDescriptors(t *testing.T, bps []dist.Buildpack, descriptors []dist.BuildpackDescriptor) {
-	h.AssertEq(t, len(bps), len(descriptors))
-	for _, bp := range bps {
-		found := false
-		for _, descriptor := range descriptors {
-			if diff := cmp.Diff(bp.Descriptor(), descriptor); diff == "" {
-				found = true
-				break
-			}
-		}
-		h.AssertTrue(t, found)
-	}
+	h.AssertBuildpacksHaveDescriptors(t, append([]dist.Buildpack{mainBP}, depBPs...), descriptors)
 }

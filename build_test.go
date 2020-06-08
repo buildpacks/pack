@@ -1,7 +1,6 @@
 package pack
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -26,8 +25,6 @@ import (
 	"github.com/onsi/gomega/ghttp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
@@ -529,7 +526,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			it("builder order is overwritten", func() {
-				additionalBP := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+				additionalBP := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 					API: api.MustParse("0.3"),
 					Info: dist.BuildpackInfo{
 						ID:      "buildpack.add.1.id",
@@ -597,7 +594,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("from=builder is set first", func() {
 				it("builder order is prepended", func() {
-					additionalBP1 := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.1.id",
@@ -607,7 +604,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Order:  nil,
 					})
 
-					additionalBP2 := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.2.id",
@@ -661,7 +658,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("from=builder is set in middle", func() {
 				it("builder order is appended", func() {
-					additionalBP1 := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.1.id",
@@ -671,7 +668,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Order:  nil,
 					})
 
-					additionalBP2 := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.2.id",
@@ -726,7 +723,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("from=builder is set last", func() {
 				it("builder order is appended", func() {
-					additionalBP1 := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.1.id",
@@ -736,7 +733,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Order:  nil,
 					})
 
-					additionalBP2 := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "buildpack.add.2.id",
@@ -791,7 +788,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("meta-buildpack is used", func() {
 				it("resolves buildpack from builder", func() {
-					buildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					buildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:      "metabuildpack.id",
@@ -830,7 +827,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				var fakePackage *fakes.Image
 
 				it.Before(func() {
-					metaBuildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					metaBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:       "meta.buildpack.id",
@@ -849,7 +846,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						}},
 					})
 
-					childBuildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+					childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
 						Info: dist.BuildpackInfo{
 							ID:       "child.buildpack.id",
@@ -1183,9 +1180,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						os.Setenv("PACK_HOME", packHome)
 
-						registryFixture = CreateRegistryFixture(t, tmpDir)
+						registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
 
-						childBuildpackTar := createBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
+						childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 							API: api.MustParse("0.3"),
 							Info: dist.BuildpackInfo{
 								ID:      "example/foo",
@@ -1275,8 +1272,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				}))
 				layerTar, err := defaultBuilderImage.FindLayerWithPath("/platform/env/key1")
 				h.AssertNil(t, err)
-				assertTarFileContents(t, layerTar, "/platform/env/key1", `value1`)
-				assertTarFileContents(t, layerTar, "/platform/env/key2", `value2`)
+				h.AssertTarFileContents(t, layerTar, "/platform/env/key1", `value1`)
+				h.AssertTarFileContents(t, layerTar, "/platform/env/key2", `value2`)
 			})
 		})
 
@@ -1795,55 +1792,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func assertTarFileContents(t *testing.T, tarfile, path, expected string) {
-	t.Helper()
-	exist, contents := tarFileContents(t, tarfile, path)
-	if !exist {
-		t.Fatalf("%s does not exist in %s", path, tarfile)
-	}
-	h.AssertEq(t, contents, expected)
-}
-
-func tarFileContents(t *testing.T, tarfile, path string) (exist bool, contents string) {
-	t.Helper()
-	r, err := os.Open(tarfile)
-	h.AssertNil(t, err)
-	defer r.Close()
-
-	tr := tar.NewReader(r)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		h.AssertNil(t, err)
-
-		if header.Name == path {
-			buf, err := ioutil.ReadAll(tr)
-			h.AssertNil(t, err)
-			return true, string(buf)
-		}
-	}
-	return false, ""
-}
-
-func createBuildpackTar(t *testing.T, tmpDir string, descriptor dist.BuildpackDescriptor) string {
-	buildpack, err := ifakes.NewFakeBuildpackBlob(descriptor, 0777)
-	h.AssertNil(t, err)
-
-	tempFile, err := ioutil.TempFile(tmpDir, "bp-*.tar")
-	h.AssertNil(t, err)
-	defer tempFile.Close()
-
-	reader, err := buildpack.Open()
-	h.AssertNil(t, err)
-
-	_, err = io.Copy(tempFile, reader)
-	h.AssertNil(t, err)
-
-	return tempFile.Name()
-}
-
 func diffIDForFile(t *testing.T, path string) string {
 	file, err := os.Open(path)
 	h.AssertNil(t, err)
@@ -1928,37 +1876,4 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 			}},
 		}},
 	)
-}
-
-func CreateRegistryFixture(t *testing.T, tmpDir string) string {
-	// copy fixture to temp dir
-	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
-
-	h.RecursiveCopyNow(t, filepath.Join("testdata", "registry"), registryFixtureCopy)
-
-	// git init that dir
-	repository, err := git.PlainInit(registryFixtureCopy, false)
-	h.AssertNil(t, err)
-
-	// git add . that dir
-	worktree, err := repository.Worktree()
-	h.AssertNil(t, err)
-
-	_, err = worktree.Add(".")
-	h.AssertNil(t, err)
-
-	// git commit that dir
-	commit, err := worktree.Commit("first", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "John Doe",
-			Email: "john@doe.org",
-			When:  time.Now(),
-		},
-	})
-	h.AssertNil(t, err)
-
-	_, err = repository.CommitObject(commit)
-	h.AssertNil(t, err)
-
-	return registryFixtureCopy
 }
