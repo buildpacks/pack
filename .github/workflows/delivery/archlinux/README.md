@@ -13,6 +13,23 @@ The following depicts the current state of automation:
 
 | package      | tested | distributed |
 | ---          | ---    | ---         |
-| pack-cli     | yes    | no          |
-| pack-cli-bin | yes    | no          |
-| pack-cli-git | no     | no          |
+| pack-cli     | yes    | yes         |
+| pack-cli-bin | yes    | yes         |
+| pack-cli-git | yes    | yes         |
+
+## Run Locally
+
+> **CAUTION:** This makes changes directly to the published packages. To prevent changes, comment out `git push` in `publish-package.sh`.
+
+```shell script
+docker pull nektos/act-environments-ubuntu:18.04
+docker pull archlinux:latest
+
+export GITHUB_TOKEN="<YOUR_GH_TOKEN>"
+export AUR_KEY="<AUR_KEY>"
+
+act -P ubuntu-latest=nektos/act-environments-ubuntu:18.04 \
+    -e .github/workflows/testdata/event-release.json \
+    -s GITHUB_TOKEN -s AUR_KEY \
+    -j <JOB_NAME>
+```
