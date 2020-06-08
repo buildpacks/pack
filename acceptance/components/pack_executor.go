@@ -381,3 +381,12 @@ func (e *PackExecutor) ReadingFromVolumeMessage(path, output string) string {
 
 	return fmt.Sprintf("Build: Reading file '/platform%s': %s", path, output)
 }
+
+func (e *PackExecutor) FileContentsInHome(name string) string {
+	e.testObject.Helper()
+
+	contents, err := ioutil.ReadFile(filepath.Join(e.home, name))
+	e.assert.Nil(err)
+
+	return string(contents)
+}
