@@ -160,7 +160,7 @@ uri = "noop-buildpack.tgz"
 		})
 	})
 
-	when("#Stack.Validate()", func() {
+	when("#ValidateConfig()", func() {
 		var (
 			testID         = "testID"
 			testRunImage   = "test-run-image"
@@ -168,27 +168,30 @@ uri = "noop-buildpack.tgz"
 		)
 
 		it("returns error if no id", func() {
-			config := builder.StackConfig{
-				BuildImage: testBuildImage,
-				RunImage:   testRunImage,
-			}
-			h.AssertError(t, config.Validate(), "stack.id is required")
+			config := builder.Config{
+				Stack: builder.StackConfig{
+					BuildImage: testBuildImage,
+					RunImage:   testRunImage,
+				}}
+			h.AssertError(t, builder.ValidateConfig(config), "stack.id is required")
 		})
 
 		it("returns error if no build image", func() {
-			config := builder.StackConfig{
-				ID:       testID,
-				RunImage: testRunImage,
-			}
-			h.AssertError(t, config.Validate(), "stack.build-image is required")
+			config := builder.Config{
+				Stack: builder.StackConfig{
+					ID:       testID,
+					RunImage: testRunImage,
+				}}
+			h.AssertError(t, builder.ValidateConfig(config), "stack.build-image is required")
 		})
 
 		it("returns error if no run image", func() {
-			config := builder.StackConfig{
-				ID:         testID,
-				BuildImage: testBuildImage,
-			}
-			h.AssertError(t, config.Validate(), "stack.run-image is required")
+			config := builder.Config{
+				Stack: builder.StackConfig{
+					ID:         testID,
+					BuildImage: testBuildImage,
+				}}
+			h.AssertError(t, builder.ValidateConfig(config), "stack.run-image is required")
 		})
 	})
 }
