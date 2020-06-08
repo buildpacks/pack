@@ -56,6 +56,7 @@ install-goimports:
 format: install-goimports
 	@echo "> Formating code..."
 	@goimports -l -w -local ${PACKAGE_BASE} ${SRC}
+	@go run tools/pedantic_imports/main.go ${PACKAGE_BASE} ${SRC}
 
 install-golangci-lint:
 	@echo "> Installing golangci-lint..."
