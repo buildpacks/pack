@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/buildpacks/pack/internal/style"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type ComboValue int
@@ -139,17 +140,17 @@ lifecycle:
 	)
 }
 
-type comboSet []*RunCombo
+type ComboSet []*RunCombo
 
-func (combos comboSet) requiresCurrentPack() bool {
+func (combos ComboSet) requiresCurrentPack() bool {
 	return combos.requiresPackKind(Current)
 }
 
-func (combos comboSet) requiresPreviousPack() bool {
+func (combos ComboSet) requiresPreviousPack() bool {
 	return combos.requiresPackKind(Previous)
 }
 
-func (combos comboSet) requiresPackKind(k ComboValue) bool {
+func (combos ComboSet) requiresPackKind(k ComboValue) bool {
 	for _, c := range combos {
 		if c.Pack == k || c.PackCreateBuilder == k {
 			return true
@@ -159,7 +160,7 @@ func (combos comboSet) requiresPackKind(k ComboValue) bool {
 	return false
 }
 
-func (combos comboSet) IncludesCurrentSubjectPack() bool {
+func (combos ComboSet) IncludesCurrentSubjectPack() bool {
 	for _, c := range combos {
 		if c.Pack == Current {
 			return true
@@ -169,15 +170,15 @@ func (combos comboSet) IncludesCurrentSubjectPack() bool {
 	return false
 }
 
-func (combos comboSet) requiresDefaultLifecycle() bool {
+func (combos ComboSet) requiresDefaultLifecycle() bool {
 	return combos.requiresLifecycleKind(DefaultKind)
 }
 
-func (combos comboSet) requiresPreviousLifecycle() bool {
+func (combos ComboSet) requiresPreviousLifecycle() bool {
 	return combos.requiresLifecycleKind(Previous)
 }
 
-func (combos comboSet) requiresLifecycleKind(k ComboValue) bool {
+func (combos ComboSet) requiresLifecycleKind(k ComboValue) bool {
 	for _, c := range combos {
 		if c.Lifecycle == k {
 			return true

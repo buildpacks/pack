@@ -11,12 +11,10 @@ import (
 	"testing"
 
 	"github.com/buildpacks/pack/acceptance/assertions"
+	"github.com/buildpacks/pack/internal/archive"
+	h "github.com/buildpacks/pack/testhelpers"
 
 	"github.com/docker/docker/api/types"
-
-	"github.com/buildpacks/pack/internal/archive"
-
-	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/docker/docker/client"
 )
 
@@ -39,6 +37,7 @@ type StackManager struct {
 	runImageMirror   string
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func NewStackManager(
 	t *testing.T,
 	dockerCli *client.Client,

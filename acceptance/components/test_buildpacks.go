@@ -1,4 +1,4 @@
-// build +acceptance
+// +build acceptance
 
 package components
 
@@ -47,21 +47,22 @@ func (b *archiveBuildpack) FileName() string {
 	return fmt.Sprintf("%s.tgz", b.name)
 }
 
-type packageImageBuildpack struct {
+type PackageImageBuildpack struct {
 	packageManager    buildpackPackager
-	config            packageImageConfig
+	config            PackageImageConfig
 	configFixtureName string
 	buildpacks        []TestBuildpack
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func NewPackageImageBuildpack(
 	packageManager buildpackPackager,
-	config packageImageConfig,
+	config PackageImageConfig,
 	configFixtureName string,
 	buildpacks ...TestBuildpack,
-) packageImageBuildpack {
+) PackageImageBuildpack {
 
-	return packageImageBuildpack{
+	return PackageImageBuildpack{
 		packageManager:    packageManager,
 		config:            config,
 		configFixtureName: configFixtureName,
@@ -69,13 +70,13 @@ func NewPackageImageBuildpack(
 	}
 }
 
-func (b packageImageBuildpack) Place(testObject *testing.T, assert assertions.AssertionManager, sourceDir, destination string) {
+func (b PackageImageBuildpack) Place(testObject *testing.T, assert assertions.AssertionManager, sourceDir, destination string) {
 	testObject.Helper()
 
 	b.packageManager.PackageBuildpack(b.config, b.configFixtureName, b.buildpacks)
 }
 
-func (b packageImageBuildpack) BuilderConfigBlock() string {
+func (b PackageImageBuildpack) BuilderConfigBlock() string {
 	return fmt.Sprintf(`
 [[buildpacks]]
   image = "%s"

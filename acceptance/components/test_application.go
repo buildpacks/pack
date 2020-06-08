@@ -66,6 +66,7 @@ func (d Descriptor) fileContents() []byte {
 	}
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func NewTestApplication(
 	t *testing.T,
 	assert assertions.AssertionManager,

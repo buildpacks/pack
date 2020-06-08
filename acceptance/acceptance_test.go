@@ -402,6 +402,7 @@ func testWithoutSpecificBuilderRequirement(
 	})
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func testAcceptance(
 	t *testing.T,
 	when spec.G,
@@ -767,7 +768,7 @@ func testAcceptance(
 				assert.Nil(os.RemoveAll(tmpDir))
 			})
 
-			it.Focus("mounts the provided volume in the detect and build phases", func() {
+			it("mounts the provided volume in the detect and build phases", func() {
 				stackManager.EnsureDefaultStackCreated()
 				testBuilder := builderManager.EnsureComboBuilderExists()
 				pack.SetDefaultTrustedBuilder(testBuilder.Name())
@@ -1489,14 +1490,6 @@ ENV2_CONTENTS
 			})
 		})
 	})
-}
-
-func dockerHostOS() string {
-	daemonInfo, err := dockerCli.Info(context.TODO())
-	if err != nil {
-		panic(err.Error())
-	}
-	return daemonInfo.OSType
 }
 
 func newPackageName() string {

@@ -29,7 +29,7 @@ type InputConfigurationManager struct {
 	previousLifecyclePath    string
 	compilePackWithVersion   string
 	githubToken              string
-	combinations             comboSet
+	combinations             ComboSet
 }
 
 func NewInputConfigurationManager() (InputConfigurationManager, error) {
@@ -41,9 +41,9 @@ func NewInputConfigurationManager() (InputConfigurationManager, error) {
 	compilePackWithVersion := os.Getenv(envCompilePackWithVersion)
 	githubToken := os.Getenv(envGitHubToken)
 
-	absolutize_paths(&packPath, &previousPackPath, &previousPackFixturesPath, &lifecyclePath, &previousLifecyclePath)
+	absolutizePaths(&packPath, &previousPackPath, &previousPackFixturesPath, &lifecyclePath, &previousLifecyclePath)
 
-	var combos comboSet
+	var combos ComboSet
 
 	comboConfig := os.Getenv(envAcceptanceSuiteConfig)
 	if comboConfig != "" {
@@ -66,22 +66,22 @@ func NewInputConfigurationManager() (InputConfigurationManager, error) {
 	}, nil
 }
 
-func (i InputConfigurationManager) Combinations() comboSet {
+func (i InputConfigurationManager) Combinations() ComboSet {
 	return i.combinations
 }
 
-func absolutize_paths(paths ...*string) error {
+func absolutizePaths(paths ...*string) error {
 	for _, path := range paths {
 		if *path == "" {
 			continue
 		}
 
-		abs_path, err := filepath.Abs(*path)
+		absPath, err := filepath.Abs(*path)
 		if err != nil {
 			return errors.Wrapf(err, "getting absolute path for %s", *path)
 		}
 
-		*path = abs_path
+		*path = absPath
 	}
 
 	return nil

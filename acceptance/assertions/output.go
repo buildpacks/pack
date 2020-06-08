@@ -162,6 +162,7 @@ type MixedComponentOutputAssertionManager struct {
 	output             string
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func (a AssertionManager) NewMixedComponentOutputAssertionManager(
 	output string,
 	messenger mixedComponentMessageManager,

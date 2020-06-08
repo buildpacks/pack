@@ -52,6 +52,7 @@ func (p PackageManager) Cleanup() {
 	os.RemoveAll(p.tmpDir)
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func (p PackageManager) PackageBuildpack(
 	target components.PackageTarget,
 	configFixtureName string,

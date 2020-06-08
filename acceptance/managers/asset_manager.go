@@ -11,13 +11,12 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/blob"
-
-	"github.com/buildpacks/pack/internal/builder"
+	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/acceptance/variables"
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/pkg/errors"
 )
 
 const defaultCompilePackVersion = "0.0.0"
@@ -75,6 +74,9 @@ func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) 
 		}
 
 		convergedPreviousPackFixturesPath, err := assetBuilder.ensurePreviousPackFixtures()
+		if err != nil {
+			return AssetManager{}, errors.Wrap(err, "ensuring previous pack fixtures exist")
+		}
 
 		convergedPreviousPackFixturesPaths = []string{previousPackFixturesOverridesDir, convergedPreviousPackFixturesPath}
 	}

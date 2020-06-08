@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/docker/docker/client"
+
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 type PackageTarget interface {
@@ -16,7 +17,7 @@ type PackageTarget interface {
 	Cleanup()
 }
 
-type packageImageConfig struct {
+type PackageImageConfig struct {
 	registry  *h.TestRegistryConfig
 	dockerCli *client.Client
 	baseName  string
@@ -25,45 +26,45 @@ type packageImageConfig struct {
 func NewPackageImageConfig(
 	registry *h.TestRegistryConfig,
 	dockerCli *client.Client,
-) packageImageConfig {
-	return packageImageConfig{
+) PackageImageConfig {
+	return PackageImageConfig{
 		registry:  registry,
 		dockerCli: dockerCli,
 		baseName:  randomBuildpackName(),
 	}
 }
 
-func (p packageImageConfig) Name(workingDir string) string {
+func (p PackageImageConfig) Name(workingDir string) string {
 	return p.registry.RepoName(p.baseName)
 }
 
-func (p packageImageConfig) Args() []string {
+func (p PackageImageConfig) Args() []string {
 	return []string{}
 }
 
-func (p packageImageConfig) Cleanup() {
+func (p PackageImageConfig) Cleanup() {
 	h.DockerRmi(p.dockerCli, p.registry.RepoName(p.baseName))
 }
 
-type packageFileConfig struct {
+type PackageFileConfig struct {
 	baseName string
 }
 
-func NewPackageFileConfig() packageFileConfig {
-	return packageFileConfig{
+func NewPackageFileConfig() PackageFileConfig {
+	return PackageFileConfig{
 		baseName: randomBuildpackName(),
 	}
 }
 
-func (p packageFileConfig) Name(workingDir string) string {
+func (p PackageFileConfig) Name(workingDir string) string {
 	return filepath.Join(workingDir, fmt.Sprintf("%s.cnb", p.baseName))
 }
 
-func (p packageFileConfig) Args() []string {
+func (p PackageFileConfig) Args() []string {
 	return []string{"--format", "file"}
 }
 
-func (p packageFileConfig) Cleanup() {}
+func (p PackageFileConfig) Cleanup() {}
 
 func randomBuildpackName() string {
 	return fmt.Sprintf("buildpack-%s", h.RandString(8))

@@ -3,8 +3,9 @@
 package components
 
 import (
-	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/docker/docker/client"
+
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 type TestBuilder struct {

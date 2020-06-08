@@ -10,16 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/pkg/stdcopy"
-
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
 
 	"github.com/buildpacks/pack/acceptance/assertions"
-
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/docker/docker/client"
 )
 
 type TestContainerManager struct {
@@ -28,6 +26,7 @@ type TestContainerManager struct {
 	dockerCli  *client.Client
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func NewTestContainerManager(
 	t *testing.T,
 	assert assertions.AssertionManager,
@@ -208,6 +207,7 @@ func (c TestContainerManager) RunDockerImageCombinedOutput(containerName, repoNa
 		ShowStderr: true,
 		Follow:     true,
 	})
+	c.assert.Nil(err)
 
 	var output = new(bytes.Buffer)
 	copyErr := make(chan error)
@@ -233,7 +233,7 @@ func (c TestContainerManager) RunDockerImageCombinedOutput(containerName, repoNa
 func (c TestContainer) WaitForResponse(timeout time.Duration) string {
 	c.testObject.Helper()
 
-	appUri := fmt.Sprintf("http://localhost:%s", c.hostPort())
+	appURI := fmt.Sprintf("http://localhost:%s", c.hostPort())
 
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
@@ -243,7 +243,7 @@ func (c TestContainer) WaitForResponse(timeout time.Duration) string {
 	for {
 		select {
 		case <-ticker.C:
-			resp, err := h.HTTPGetE(appUri, map[string]string{})
+			resp, err := h.HTTPGetE(appURI, map[string]string{})
 			if err != nil {
 				break
 			}

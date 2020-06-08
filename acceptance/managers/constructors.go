@@ -11,6 +11,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func NewPackExecutor(
 	testObject *testing.T,
 	assetManager AssetManager,

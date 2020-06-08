@@ -31,6 +31,7 @@ type ImageAssertionManager struct {
 	imageName        string
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func (a AssertionManager) NewImageAssertionManager(
 	imageName string,
 	containerManager containerManager,

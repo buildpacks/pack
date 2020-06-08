@@ -194,10 +194,7 @@ type DynamicBuilderConfig struct {
 	lifecycle  *components.TestLifecycle
 }
 
-func (m BuilderManager) NewDynamicBuilderConfig(
-	buildpacks ...components.TestBuildpack,
-) DynamicBuilderConfig {
-
+func (m BuilderManager) NewDynamicBuilderConfig(buildpacks ...components.TestBuildpack) DynamicBuilderConfig {
 	return DynamicBuilderConfig{
 		assert:     m.assert,
 		buildpacks: buildpacks,
@@ -227,6 +224,7 @@ func (d DynamicBuilderConfig) ConfigFile(parentDir string) string {
 	return configFile.Name()
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func (m BuilderManager) createBuilder(
 	buildpacks []components.TestBuildpack,
 	configProvider builderConfigProvider,

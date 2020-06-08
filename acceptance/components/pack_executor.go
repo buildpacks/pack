@@ -33,6 +33,7 @@ type PackExecutor struct {
 	assert         assertions.AssertionManager
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func NewPackExecutor(
 	testObject *testing.T,
 	path string,
@@ -107,7 +108,7 @@ func (e *PackExecutor) SuccessfulRun(name string, args ...string) {
 	_ = e.SuccessfulRunWithOutput(name, args...)
 }
 
-func (e *PackExecutor) StartWithWriter(combinedOutput *bytes.Buffer, name string, args ...string) InterruptCmd {
+func (e *PackExecutor) StartWithWriter(combinedOutput *bytes.Buffer, name string, args ...string) *InterruptCmd {
 	cmd := e.cmd(name, args...)
 	cmd.Stderr = combinedOutput
 	cmd.Stdout = combinedOutput
@@ -115,7 +116,7 @@ func (e *PackExecutor) StartWithWriter(combinedOutput *bytes.Buffer, name string
 	err := cmd.Start()
 	e.assert.Nil(err)
 
-	return InterruptCmd{
+	return &InterruptCmd{
 		testObject:     e.testObject,
 		assert:         e.assert,
 		cmd:            cmd,
@@ -131,7 +132,7 @@ type InterruptCmd struct {
 	outputMux      sync.Mutex
 }
 
-func (c InterruptCmd) TerminateAtStep(pattern string) {
+func (c *InterruptCmd) TerminateAtStep(pattern string) {
 	c.testObject.Helper()
 
 	for {
@@ -145,7 +146,7 @@ func (c InterruptCmd) TerminateAtStep(pattern string) {
 	}
 }
 
-func (c InterruptCmd) Wait() error {
+func (c *InterruptCmd) Wait() error {
 	return c.cmd.Wait()
 }
 
@@ -201,7 +202,6 @@ func (e *PackExecutor) Supports(command string) bool {
 	switch len(parts) {
 	case 1:
 		search = parts[0]
-		break
 	case 2:
 		cmdParts = append(cmdParts, parts[0])
 		search = parts[1]
@@ -315,6 +315,7 @@ func (e *PackExecutor) TemplateFixture(templateName string, templateData map[str
 	return e.fillTemplate(outputTemplate, templateData)
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func (e *PackExecutor) TemplateVersionedFixture(
 	versionedPattern, version, fallback string,
 	templateData map[string]interface{},
@@ -339,6 +340,7 @@ func (e *PackExecutor) fillTemplate(templateContents []byte, data map[string]int
 	return templatedContent.String()
 }
 
+//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func (e *PackExecutor) TemplateFixtureToFile(
 	templateName string,
 	destination *os.File,
