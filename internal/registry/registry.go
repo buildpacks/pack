@@ -24,6 +24,17 @@ const defaultRegistryURL = "https://github.com/buildpacks/registry-index"
 
 const defaultRegistryDir = "registry"
 
+const GithubIssueTitleTemplate = "{{ if .Yanked }}YANK{{else}}ADD{{end}} {{.Namespace}}/{{.Name}}@{{.Version}}"
+
+const GithubIssueBodyTemplate = `
+### Data
+
+` + "```toml" + `
+id = "{{.Namespace}}/{{.Name}}"
+version = "{{.Version}}"
+{{ if .Yanked }}{{else}}addr = "{{.Address}}"{{end}}
+` + "```"
+
 type Buildpack struct {
 	Namespace string `json:"ns"`
 	Name      string `json:"name"`
