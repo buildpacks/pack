@@ -357,8 +357,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			h.AssertIncludeAllExpectedPatterns(t,
 				configProvider.ContainerConfig().Cmd,
 				[]string{"-log-level", "debug"},
-				[]string{"-app", "/workspace"},
-				[]string{"-platform", "/platform"},
 			)
 		})
 
@@ -499,7 +497,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				h.AssertIncludeAllExpectedPatterns(t,
 					configProvider.ContainerConfig().Cmd,
 					[]string{"-log-level", "debug"},
-					[]string{"-layers", "/layers"},
 					[]string{expectedRepoName},
 				)
 			})
@@ -544,7 +541,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 					configProvider.ContainerConfig().Cmd,
 					[]string{"-log-level", "debug"},
 					[]string{"-daemon"},
-					[]string{"-layers", "/layers"},
 					[]string{expectedRepoName},
 				)
 			})

@@ -115,10 +115,7 @@ func (l *Lifecycle) Detect(ctx context.Context, networkMode string, volumes []st
 		l,
 		WithLogPrefix("detector"),
 		WithArgs(
-			l.withLogLevel(
-				"-app", appDir,
-				"-platform", platformDir,
-			)...,
+			l.withLogLevel()...,
 		),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
@@ -163,7 +160,6 @@ func (l *Lifecycle) Analyze(ctx context.Context, repoName, cacheName, networkMod
 
 func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish, clearCache bool, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	args := []string{
-		"-layers", layersDir,
 		repoName,
 	}
 	if clearCache {
