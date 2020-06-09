@@ -535,9 +535,11 @@ func testAcceptance(
 			appName, appImageName   string
 			mockAppPath             = filepath.Join("testdata", "mock_app")
 			mixedComponentMessenger components.MixedComponents
+			cacheCleanupRequired    bool
 		)
 
 		it.Before(func() {
+			cacheCleanupRequired = false
 			h.SkipIf(t, containerManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
 
 			appName = fmt.Sprintf("some-org/%s", h.RandString(10))
@@ -546,18 +548,22 @@ func testAcceptance(
 			assertAppImage = assert.NewImageAssertionManager(appImageName, containerManager)
 
 			mixedComponentMessenger = components.NewMixedComponents(t, testLifecycle, pack)
+
+			cacheCleanupRequired = true
 		})
 
 		it.After(func() {
-			h.DockerRmi(dockerCli, appImageName)
-			ref, err := name.ParseReference(appImageName, name.WeakValidation)
-			assert.Nil(err)
-			cacheImage := cache.NewImageCache(ref, dockerCli)
-			buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
-			launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
-			cacheImage.Clear(context.TODO())
-			buildCacheVolume.Clear(context.TODO())
-			launchCacheVolume.Clear(context.TODO())
+			if cacheCleanupRequired {
+				h.DockerRmi(dockerCli, appImageName)
+				ref, err := name.ParseReference(appImageName, name.WeakValidation)
+				assert.Nil(err)
+				cacheImage := cache.NewImageCache(ref, dockerCli)
+				buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
+				launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
+				cacheImage.Clear(context.TODO())
+				buildCacheVolume.Clear(context.TODO())
+				launchCacheVolume.Clear(context.TODO())
+			}
 		})
 
 		it("creates a runnable, rebuildable image on daemon from app dir", func() {
@@ -1348,15 +1354,15 @@ ENV2_CONTENTS
 
 		var (
 			appName, appImageName, initialRunName, initialRunImageName, rebasedRunName, rebasedRunImageName string
+			cacheCleanupRequired                                                                            bool
 
 			assertAppImage assertions.ImageAssertionManager
 			mockAppPath    = filepath.Join("testdata", "mock_app")
 		)
 
 		it.Before(func() {
-			it.Before(func() {
-				h.SkipIf(t, containerManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
-			})
+			cacheCleanupRequired = false
+			h.SkipIf(t, containerManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
 
 			appName = fmt.Sprintf("some-org/%s", h.RandString(10))
 			appImageName = registry.RepoName(appName)
@@ -1367,16 +1373,20 @@ ENV2_CONTENTS
 			rebasedRunImageName = registry.RepoName(rebasedRunName)
 
 			assertAppImage = assert.NewImageAssertionManager(appImageName, containerManager)
+
+			cacheCleanupRequired = true
 		})
 
 		it.After(func() {
-			containerManager.RemoveImages(appImageName, initialRunImageName, rebasedRunImageName)
-			ref, err := name.ParseReference(appImageName, name.WeakValidation)
-			assert.Nil(err)
-			buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
-			launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
-			assert.Nil(buildCacheVolume.Clear(context.Background()))
-			assert.Nil(launchCacheVolume.Clear(context.Background()))
+			if cacheCleanupRequired {
+				containerManager.RemoveImages(appImageName, initialRunImageName, rebasedRunImageName)
+				ref, err := name.ParseReference(appImageName, name.WeakValidation)
+				assert.Nil(err)
+				buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
+				launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
+				assert.Nil(buildCacheVolume.Clear(context.Background()))
+				assert.Nil(launchCacheVolume.Clear(context.Background()))
+			}
 		})
 
 		when("--run-image locally", func() {
