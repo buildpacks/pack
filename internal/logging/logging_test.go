@@ -1,7 +1,8 @@
-package logging_test
+package logging
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -11,24 +12,22 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
 const (
-	timeFmt  = "2006/01/02 15:04:05.000000"
 	testTime = "2019/05/15 01:01:01.000000"
 )
 
 func TestLogWithWriters(t *testing.T) {
-	spec.Run(t, "logWithWriters", testLogWithWriters, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "LogWithWriters", testLogWithWriters, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 	var (
-		logger           *ilogging.LogWithWriters
+		logger           *LogWithWriters
 		outCons, errCons *color.Console
 		fOut, fErr       func() string
 	)
@@ -36,7 +35,7 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		outCons, fOut = h.MockWriterAndOutput()
 		errCons, fErr = h.MockWriterAndOutput()
-		logger = ilogging.NewLogWithWriters(outCons, errCons, ilogging.WithClock(func() time.Time {
+		logger = NewLogWithWriters(outCons, errCons, WithClock(func() time.Time {
 			clock, _ := time.Parse(timeFmt, testTime)
 			return clock
 		}))
@@ -82,9 +81,8 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 		it("will return correct writers", func() {
 			h.AssertSameInstance(t, logger.Writer(), outCons)
 			h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), ioutil.Discard)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.InfoLevel), outCons)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.WarnLevel), outCons)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
+			assertLogWriterHasOut(t, logger.WriterForLevel(logging.InfoLevel), outCons)
+			assertLogWriterHasOut(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
 		})
 
 		it("is only verbose for debug level", func() {
@@ -174,8 +172,8 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 			h.AssertSameInstance(t, logger.Writer(), outCons)
 			h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), ioutil.Discard)
 			h.AssertSameInstance(t, logger.WriterForLevel(logging.InfoLevel), ioutil.Discard)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.WarnLevel), outCons)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
+			assertLogWriterHasOut(t, logger.WriterForLevel(logging.WarnLevel), outCons)
+			assertLogWriterHasOut(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
 		})
 	})
 
@@ -212,10 +210,10 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 
 		it("will return correct writers", func() {
 			h.AssertSameInstance(t, logger.Writer(), outCons)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.DebugLevel), outCons)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.InfoLevel), outCons)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.WarnLevel), outCons)
-			h.AssertSameInstance(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
+			assertLogWriterHasOut(t, logger.WriterForLevel(logging.DebugLevel), outCons)
+			assertLogWriterHasOut(t, logger.WriterForLevel(logging.InfoLevel), outCons)
+			assertLogWriterHasOut(t, logger.WriterForLevel(logging.WarnLevel), outCons)
+			assertLogWriterHasOut(t, logger.WriterForLevel(logging.ErrorLevel), errCons)
 		})
 	})
 
@@ -224,4 +222,10 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 		expected := "\n"
 		h.AssertEq(t, fOut(), expected)
 	})
+}
+
+func assertLogWriterHasOut(t *testing.T, writer io.Writer, out io.Writer) {
+	logWriter, ok := writer.(*LogWriter)
+	h.AssertTrue(t, ok)
+	h.AssertSameInstance(t, logWriter.out, out)
 }

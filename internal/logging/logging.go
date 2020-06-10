@@ -87,16 +87,11 @@ func (lw *LogWithWriters) WriterForLevel(level logging.Level) io.Writer {
 		return ioutil.Discard
 	}
 
-	out := lw.out
 	if level == logging.ErrorLevel {
-		out = lw.errOut
+		return NewLogWriter(lw.errOut, lw.clock, lw.wantTime)
 	}
 
-	if lw.wantTime {
-		return NewTimeWriter(out, lw.clock)
-	}
-
-	return out
+	return NewLogWriter(lw.out, lw.clock, lw.wantTime)
 }
 
 // Writer returns the base Writer for the LogWithWriters

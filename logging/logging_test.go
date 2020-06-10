@@ -17,7 +17,7 @@ import (
 func TestLogging(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "logging", testLogging, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Logging", testLogging, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testLogging(t *testing.T, when spec.G, it spec.S) {
@@ -29,14 +29,12 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 				logger := ilogging.NewLogWithWriters(outCons, errCons)
 
 				infoLogger := logging.GetWriterForLevel(logger, logging.InfoLevel)
-				h.AssertSameInstance(t, infoLogger, outCons)
 				_, _ = infoLogger.Write([]byte("info test"))
-				h.AssertEq(t, output(), "info test")
+				h.AssertEq(t, output(), "info test\n")
 
 				errorLogger := logging.GetWriterForLevel(logger, logging.ErrorLevel)
-				h.AssertSameInstance(t, errorLogger, errCons)
 				_, _ = errorLogger.Write([]byte("error test"))
-				h.AssertEq(t, errOutput(), "error test")
+				h.AssertEq(t, errOutput(), "error test\n")
 			})
 		})
 
