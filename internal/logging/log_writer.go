@@ -3,6 +3,7 @@ package logging
 import (
 	"fmt"
 	"io"
+	"os"
 	"sync"
 	"time"
 )
@@ -34,6 +35,19 @@ func (tw *LogWriter) Write(buf []byte) (n int, err error) {
 		prefix = fmt.Sprintf("%s ", tw.clock().Format(timeFmt))
 	}
 
-	_, err = fmt.Fprint(tw.out, appendMissingLineFeed(fmt.Sprintf("%s%s", prefix, buf)))
+	_, err = fmt.Fprintf(tw.out, "%s%s", prefix, buf)
 	return len(buf), err
+}
+
+// Fd returns the file descriptor of the writer. This is used to ensure it is a Console, and can therefore display streams of text
+func (tw *LogWriter) Fd() uintptr {
+	tw.Lock()
+	defer tw.Unlock()
+
+	file, ok := tw.out.(*os.File)
+	if ok {
+		return file.Fd()
+	}
+
+	return 0
 }

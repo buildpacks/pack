@@ -1,6 +1,8 @@
 package logging_test
 
 import (
+	"bytes"
+	"io/ioutil"
 	"testing"
 	"time"
 
@@ -50,6 +52,25 @@ func testLogWriter(t *testing.T, when spec.G, it spec.S) {
 			writer = ilogging.NewLogWriter(outCons, clockFunc, false)
 			writer.Write([]byte("test\n"))
 			h.AssertEq(t, fOut(), "test\n")
+		})
+	})
+
+	when("#Fd", func() {
+		when("out is a file", func() {
+			it("returns a Fd", func() {
+				file, err := ioutil.TempFile("", "testFile")
+				h.AssertNil(t, err)
+				writer = ilogging.NewLogWriter(file, clockFunc, false)
+				h.AssertEq(t, int(writer.Fd()), 56)
+			})
+		})
+
+		when("out is just a Writer", func() {
+			it("returns 0", func() {
+				var out *bytes.Buffer
+				writer = ilogging.NewLogWriter(out, clockFunc, true)
+				h.AssertEq(t, int(writer.Fd()), 0)
+			})
 		})
 	})
 }

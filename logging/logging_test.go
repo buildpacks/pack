@@ -30,11 +30,11 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 
 				infoLogger := logging.GetWriterForLevel(logger, logging.InfoLevel)
 				_, _ = infoLogger.Write([]byte("info test"))
-				h.AssertEq(t, output(), "info test\n")
+				h.AssertEq(t, output(), "info test")
 
 				errorLogger := logging.GetWriterForLevel(logger, logging.ErrorLevel)
 				_, _ = errorLogger.Write([]byte("error test"))
-				h.AssertEq(t, errOutput(), "error test\n")
+				h.AssertEq(t, errOutput(), "error test")
 			})
 		})
 
