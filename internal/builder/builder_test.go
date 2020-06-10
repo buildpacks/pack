@@ -219,7 +219,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				testName := "test-name"
 				testVersion := "1.2.5"
 				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{
-					Name: testName,
+					Name:    testName,
 					Version: testVersion,
 				}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
