@@ -601,7 +601,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 		bldr.SetOrder(order)
 	}
 
-	if err := bldr.Save(c.logger, Version); err != nil {
+	if err := bldr.Save(c.logger, builder.CreatorMetadata{Version: Version}); err != nil {
 		return nil, err
 	}
 	return bldr, nil
