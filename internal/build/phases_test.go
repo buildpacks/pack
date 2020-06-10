@@ -518,6 +518,33 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("publish is false", func() {
+			it("runs the phase with the lifecycle image", func() {
+				lifecycle := newTestLifecycle(t, true, func(options *build.LifecycleOptions) {
+					options.LifecycleImage = "some-lifecycle-image"
+				})
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+				err := lifecycle.Analyze(context.Background(), "test", "test", "test", false, false, fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertEq(t, configProvider.ContainerConfig().Image, "some-lifecycle-image")
+			})
+
+			it("sets the CNB_USER_ID and CNB_GROUP_ID in the environment", func() {
+				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithUID(2222), fakes.WithGID(3333))
+				h.AssertNil(t, err)
+				lifecycle := newTestLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+				err = lifecycle.Analyze(context.Background(), "test", "test", "test", false, false, fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_USER_ID=2222")
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_GROUP_ID=3333")
+			})
+
 			it("configures the phase with daemon access", func() {
 				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
@@ -880,6 +907,33 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("publish is false", func() {
+			it("runs the phase with the lifecycle image", func() {
+				lifecycle := newTestLifecycle(t, true, func(options *build.LifecycleOptions) {
+					options.LifecycleImage = "some-lifecycle-image"
+				})
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+				err := lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertEq(t, configProvider.ContainerConfig().Image, "some-lifecycle-image")
+			})
+
+			it("sets the CNB_USER_ID and CNB_GROUP_ID in the environment", func() {
+				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithUID(2222), fakes.WithGID(3333))
+				h.AssertNil(t, err)
+				lifecycle := newTestLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+				err = lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_USER_ID=2222")
+				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "CNB_GROUP_ID=3333")
+			})
+
 			it("configures the phase with daemon access", func() {
 				lifecycle := newTestLifecycle(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
@@ -930,6 +984,21 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
+			})
+
+			it("configures the phase with bind mounts", func() {
+				lifecycle := newTestLifecycle(t, false)
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+				err := lifecycle.Export(context.Background(), "test", "test", false, "test", "some-cache", "test", fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertTrue(t, len(configProvider.HostConfig().Mounts) > 0)
+				firstMount := configProvider.HostConfig().Mounts[0]
+				h.AssertEq(t, firstMount.Type, mount.Type("bind"))
+				h.AssertEq(t, firstMount.Target, "/cnb/stack.toml")
+				h.AssertTrue(t, firstMount.ReadOnly)
 			})
 		})
 
