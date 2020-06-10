@@ -22,7 +22,10 @@ import (
 	"github.com/buildpacks/pack/internal/archive"
 )
 
-var registryContainerName = "cnbs/registry:2"
+var registryContainerNames = map[string]string{
+	"linux":   "library/registry:2",
+	"windows": "stefanscherer/registry-windows:2.6.2",
+}
 
 type TestRegistryConfig struct {
 	runRegistryName string
@@ -125,8 +128,13 @@ func (rc *TestRegistryConfig) Login(t *testing.T, username string, password stri
 }
 
 func startRegistry(t *testing.T, runRegistryName, username, password string) string {
-	AssertNil(t, PullImageWithAuth(dockerCli(t), registryContainerName, ""))
 	ctx := context.Background()
+
+	daemonInfo, err := dockerCli(t).Info(ctx)
+	AssertNil(t, err)
+
+	registryContainerName := registryContainerNames[daemonInfo.OSType]
+	AssertNil(t, PullImageWithAuth(dockerCli(t), registryContainerName, ""))
 
 	htpasswdTar := generateHtpasswd(t, username, password)
 	defer htpasswdTar.Close()
