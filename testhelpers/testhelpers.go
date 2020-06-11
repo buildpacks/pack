@@ -58,6 +58,14 @@ func AssertEq(t *testing.T, actual, expected interface{}) {
 	}
 }
 
+// Assert deep equality (and provide useful difference as a test failure)
+func AssertNotEq(t *testing.T, actual, expected interface{}) {
+	t.Helper()
+	if diff := cmp.Diff(expected, actual); diff == "" {
+		t.Fatal(diff)
+	}
+}
+
 func AssertTrue(t *testing.T, actual interface{}) {
 	t.Helper()
 	AssertEq(t, actual, true)

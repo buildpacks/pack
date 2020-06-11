@@ -61,7 +61,7 @@ func testLogWriter(t *testing.T, when spec.G, it spec.S) {
 				file, err := ioutil.TempFile("", "testFile")
 				h.AssertNil(t, err)
 				writer = ilogging.NewLogWriter(file, clockFunc, false)
-				h.AssertEq(t, int(writer.Fd()), 56)
+				h.AssertNotEq(t, int(writer.Fd()), 0)
 			})
 		})
 
