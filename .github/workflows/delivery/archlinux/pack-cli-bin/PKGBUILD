@@ -7,7 +7,6 @@ pkgdesc="CLI for building apps using Cloud Native Buildpacks"
 arch=('x86_64')
 url="https://buildpacks.io/"
 license=('Apache')
-depends=('docker')
 provides=('pack-cli')
 conflicts=('pack-cli')
 source=("{{BIN_TGZ_URL}}")

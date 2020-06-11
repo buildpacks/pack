@@ -4,6 +4,7 @@ set -u
 
 # ensure variable is set
 : "$PACKAGE_NAME"
+: "$GITHUB_WORKSPACE"
 
 # setup non-root user
 useradd -m archie
@@ -12,21 +13,26 @@ useradd -m archie
 pacman -Sy --noconfirm sudo
 echo 'archie ALL=(ALL:ALL) NOPASSWD:ALL' >> /etc/sudoers
 
-# run everything else as non-root user
-su archie << "EOF"
 # setup workspace
-WORKSPACE=$GITHUB_WORKSPACE/$PACKAGE_NAME
-sudo chown -R archie $WORKSPACE
-sudo chmod -R +w $WORKSPACE
-cd $WORKSPACE
+WORKSPACE=$(mktemp -d -t "$PACKAGE_NAME-XXXXXXXXXX")
+cp -R "$GITHUB_WORKSPACE/$PACKAGE_NAME/"* "$WORKSPACE"
+chown -R archie "$WORKSPACE"
 
-# debug info
+# run everything else as non-root user
+pushd "$WORKSPACE" > /dev/null
+su archie << "EOF"
+echo -n '> Debug info:'
 ls -al
 sha512sum ./*
 
-# setup AUR packaging deps
+echo -n '> Installing AUR packaging deps...'
 sudo pacman -Sy --noconfirm git base-devel libffi
 
-# install package
+echo -n '> Installing package...'
 makepkg -sri --noconfirm
+
+# print version
+echo -n '> Installed pack version: '
+pack --version
 EOF
+popd > /dev/null
