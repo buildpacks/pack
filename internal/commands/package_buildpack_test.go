@@ -133,6 +133,24 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 			})
 		})
+
+		when("no config path is specified", func() {
+			it("errors with a descriptive message", func() {
+				config := &packageCommandConfig{
+					logger:            logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
+					configReader:      fakes.NewFakePackageConfigReader(),
+					buildpackPackager: &fakes.FakeBuildpackPackager{},
+
+					imageName: "some-image-name",
+				}
+
+				cmd := commands.PackageBuildpack(config.logger, config.buildpackPackager, config.configReader)
+				cmd.SetArgs([]string{config.imageName})
+
+				err := cmd.Execute()
+				h.AssertError(t, err, "Please provide a package config path")
+			})
+		})
 	})
 }
 

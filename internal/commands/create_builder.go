@@ -20,22 +20,6 @@ type CreateBuilderFlags struct {
 	Registry        string
 }
 
-func validateCreateBuilderFlags(flags CreateBuilderFlags, cfg config.Config) error {
-	if flags.Publish && flags.NoPull {
-		return errors.Errorf("The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
-	}
-
-	if flags.Registry != "" && !cfg.Experimental {
-		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
-	}
-
-	if flags.BuilderTomlPath == "" {
-		return errors.Errorf("Please provide a config, using --config.")
-	}
-
-	return nil
-}
-
 func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	var flags CreateBuilderFlags
 	cmd := &cobra.Command{
@@ -86,4 +70,20 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "create-builder")
 	return cmd
+}
+
+func validateCreateBuilderFlags(flags CreateBuilderFlags, cfg config.Config) error {
+	if flags.Publish && flags.NoPull {
+		return errors.Errorf("The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
+	}
+
+	if flags.Registry != "" && !cfg.Experimental {
+		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
+	}
+
+	if flags.BuilderTomlPath == "" {
+		return errors.Errorf("Please provide a builder config path, using --config.")
+	}
+
+	return nil
 }

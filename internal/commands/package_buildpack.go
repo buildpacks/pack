@@ -19,23 +19,12 @@ type PackageBuildpackFlags struct {
 	NoPull          bool
 }
 
-func (p PackageBuildpackFlags) validate() error {
-	if p.Publish && p.NoPull {
-		return errors.Errorf("The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
-	}
-
-	if p.PackageTomlPath == "" {
-		return errors.Errorf("Please provide a config path using --config")
-	}
-	return nil
+type BuildpackPackager interface {
+	PackageBuildpack(ctx context.Context, options pack.PackageBuildpackOptions) error
 }
 
 type PackageConfigReader interface {
 	Read(path string) (pubbldpkg.Config, error)
-}
-
-type BuildpackPackager interface {
-	PackageBuildpack(ctx context.Context, options pack.PackageBuildpackOptions) error
 }
 
 func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
@@ -87,4 +76,15 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 	AddHelpFlag(cmd, "package-buildpack")
 
 	return cmd
+}
+
+func (p PackageBuildpackFlags) validate() error {
+	if p.Publish && p.NoPull {
+		return errors.Errorf("The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
+	}
+
+	if p.PackageTomlPath == "" {
+		return errors.Errorf("Please provide a package config path, using --config")
+	}
+	return nil
 }

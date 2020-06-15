@@ -127,5 +127,14 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, command.Execute())
 			})
 		})
+
+		when("no config provided", func() {
+			it("errors with a descriptive message", func() {
+				command.SetArgs([]string{
+					"some/builder",
+				})
+				h.AssertError(t, command.Execute(), "Please provide a builder config path")
+			})
+		})
 	})
 }
