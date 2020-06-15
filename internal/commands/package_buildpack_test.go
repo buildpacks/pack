@@ -36,7 +36,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				command := commands.PackageBuildpack(logger, buildpackPackager, configReader)
 				command.SetArgs([]string{
 					"some-image-name",
-					"--package-config", "/path/to/some/file",
+					"--config", "/path/to/some/file",
 					"--publish",
 					"--no-pull",
 				})
@@ -114,6 +114,25 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertEq(t, receivedOptions.Config, myConfig)
 		})
+
+		when("package-config is specified", func() {
+			it("still works", func() {
+				config := &packageCommandConfig{
+					logger:            logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
+					configReader:      fakes.NewFakePackageConfigReader(),
+					buildpackPackager: &fakes.FakeBuildpackPackager{},
+
+					imageName:  "some-image-name",
+					configPath: "/path/to/some/file",
+				}
+
+				cmd := commands.PackageBuildpack(config.logger, config.buildpackPackager, config.configReader)
+				cmd.SetArgs([]string{config.imageName, "--package-config", config.configPath})
+
+				err := cmd.Execute()
+				h.AssertNil(t, err)
+			})
+		})
 	})
 }
 
@@ -143,7 +162,7 @@ func packageBuildpackCommand(ops ...packageCommandOption) *cobra.Command {
 	}
 
 	cmd := commands.PackageBuildpack(config.logger, config.buildpackPackager, config.configReader)
-	cmd.SetArgs([]string{config.imageName, "--package-config", config.configPath})
+	cmd.SetArgs([]string{config.imageName, "--config", config.configPath})
 
 	return cmd
 }

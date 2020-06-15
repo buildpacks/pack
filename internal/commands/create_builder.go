@@ -29,13 +29,17 @@ func validateCreateBuilderFlags(flags CreateBuilderFlags, cfg config.Config) err
 		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
 	}
 
+	if flags.BuilderTomlPath == "" {
+		return errors.Errorf("Please provide a config, using --config.")
+	}
+
 	return nil
 }
 
 func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	var flags CreateBuilderFlags
 	cmd := &cobra.Command{
-		Use:   "create-builder <image-name> --builder-config <builder-config-path>",
+		Use:   "create-builder <image-name> --config <builder-config-path>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Create builder image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
@@ -67,12 +71,18 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 		}),
 	}
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling build image before use")
-	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "builder-config", "b", "", "Path to builder TOML file (required)")
 	cmd.Flags().StringVarP(&flags.Registry, "buildpack-registry", "R", cfg.DefaultRegistry, "Buildpack Registry URL")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("buildpack-registry")
 	}
-	cmd.MarkFlagRequired("builder-config")
+
+	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "builder-config", "b", "", "Path to builder TOML file (required)")
+	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
+
+	// TODO: Mark config required and remove builder-config after release of pack v0.12
+	// cmd.MarkFlagRequired("config")
+	cmd.Flags().MarkDeprecated("builder-config", "please use --config instead\n")
+
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "create-builder")
 	return cmd
