@@ -63,6 +63,7 @@ func NewPackCommand(logger *clilogger.LogWithWriters) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
 	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg))
+	rootCmd.AddCommand(commands.ListTrustedBuilders(logger, cfg))
 	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
 
 	rootCmd.AddCommand(commands.PackageBuildpack(logger, &packClient, buildpackage.NewConfigReader()))

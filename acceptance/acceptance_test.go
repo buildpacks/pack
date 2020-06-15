@@ -305,6 +305,35 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
+	when("list-trusted-builders", func() {
+		it.Before(func() {
+			h.SkipIf(t,
+				!packSupports(packPath, "list-trusted-builders"),
+				"pack does not support 'list-trusted-builders",
+			)
+		})
+
+		it("shows default builders from pack suggest-builders", func() {
+			output := h.Run(t, subjectPack("list-trusted-builders"))
+
+			h.AssertContains(t, output, "Trusted Builders:")
+			h.AssertContains(t, output, "gcr.io/buildpacks/builder")
+			h.AssertContains(t, output, "heroku/buildpacks:18")
+			h.AssertContains(t, output, "gcr.io/paketo-buildpacks/builder:base")
+			h.AssertContains(t, output, "gcr.io/paketo-buildpacks/builder:full-cf")
+			h.AssertContains(t, output, "gcr.io/paketo-buildpacks/builder:tiny")
+		})
+
+		it("shows a builder trusted by pack trust-builder", func() {
+			builderName := "some-builder" + h.RandString(10)
+
+			h.Run(t, subjectPack("trust-builder", builderName))
+
+			output := h.Run(t, subjectPack("list-trusted-builders"))
+			h.AssertContains(t, output, builderName)
+		})
+	})
+
 	when("package-buildpack", func() {
 		var tmpDir string
 
