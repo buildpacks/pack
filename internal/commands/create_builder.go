@@ -13,6 +13,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+// CreateBuilderFlags define flags provided to the CreateBuilder command
 type CreateBuilderFlags struct {
 	BuilderTomlPath string
 	Publish         bool
@@ -20,6 +21,7 @@ type CreateBuilderFlags struct {
 	Registry        string
 }
 
+// CreateBuilder creates a builder image, based on a builder config
 func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	var flags CreateBuilderFlags
 	cmd := &cobra.Command{

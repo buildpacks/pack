@@ -12,6 +12,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+// PackageBuildpackFlags define flags provided to the PackageBuildpack command
 type PackageBuildpackFlags struct {
 	PackageTomlPath string
 	Format          string
@@ -19,14 +20,17 @@ type PackageBuildpackFlags struct {
 	NoPull          bool
 }
 
+// BuildpackPackager packages buildpacks
 type BuildpackPackager interface {
 	PackageBuildpack(ctx context.Context, options pack.PackageBuildpackOptions) error
 }
 
+// PackageConfigReader reads PackageBuildpack configs
 type PackageConfigReader interface {
 	Read(path string) (pubbldpkg.Config, error)
 }
 
+// PackageBuildpack packages (a) buildpack(s) into OCI format, baed on a package config
 func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
 	var flags PackageBuildpackFlags
 	cmd := &cobra.Command{
