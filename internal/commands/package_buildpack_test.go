@@ -116,9 +116,11 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("package-config is specified", func() {
-			it("still works", func() {
+			it("logs warning and works", func() {
+				outBuf := &bytes.Buffer{}
+
 				config := &packageCommandConfig{
-					logger:            logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
+					logger:            logging.NewLogWithWriters(outBuf, outBuf),
 					configReader:      fakes.NewFakePackageConfigReader(),
 					buildpackPackager: &fakes.FakeBuildpackPackager{},
 
@@ -131,6 +133,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 				err := cmd.Execute()
 				h.AssertNil(t, err)
+				h.AssertContains(t, outBuf.String(), "Flag --package-config has been deprecated, please use --config instead")
 			})
 		})
 

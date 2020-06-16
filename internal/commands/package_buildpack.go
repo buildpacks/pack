@@ -42,6 +42,10 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 				return err
 			}
 
+			if cmd.Flags().Changed("package-config") {
+				logger.Warn("Flag --package-config has been deprecated, please use --config instead")
+			}
+
 			config, err := packageConfigReader.Read(flags.PackageTomlPath)
 			if err != nil {
 				return errors.Wrap(err, "reading config")
@@ -70,9 +74,9 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 	cmd.Flags().StringVarP(&flags.PackageTomlPath, "package-config", "p", "", "Path to package TOML config (required)")
 	cmd.Flags().StringVarP(&flags.PackageTomlPath, "config", "c", "", "Path to package TOML config (required)")
 
-	// TODO: Mark config required and remove package-config after release of pack v0.12
+	// TODO: Mark config required and remove package-config after release of pack v0.12: https://github.com/buildpacks/pack/issues/694
 	// cmd.MarkFlagRequired("config")
-	cmd.Flags().MarkDeprecated("package-config", "please use --config instead\n")
+	cmd.Flags().MarkHidden("package-config")
 
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--image" only)`)

@@ -117,7 +117,7 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 `), 0666))
 			})
 
-			it("works", func() {
+			it("logs warning and works", func() {
 				mockClient.EXPECT().CreateBuilder(gomock.Any(), gomock.Any()).Return(nil)
 
 				command.SetArgs([]string{
@@ -125,6 +125,8 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 					"--builder-config", builderConfigPath,
 				})
 				h.AssertNil(t, command.Execute())
+
+				h.AssertContains(t, outBuf.String(), "Warning: Flag --builder-config has been deprecated, please use --config instead")
 			})
 		})
 

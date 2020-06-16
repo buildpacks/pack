@@ -33,6 +33,10 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 				return err
 			}
 
+			if cmd.Flags().Changed("builder-config") {
+				logger.Warn("Flag --builder-config has been deprecated, please use --config instead")
+			}
+
 			builderConfig, warns, err := builder.ReadConfig(flags.BuilderTomlPath)
 			if err != nil {
 				return errors.Wrap(err, "invalid builder toml")
@@ -65,9 +69,9 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "builder-config", "b", "", "Path to builder TOML file (required)")
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 
-	// TODO: Mark config required and remove builder-config after release of pack v0.12
+	// TODO: Mark config required and remove builder-config after release of pack v0.12: https://github.com/buildpacks/pack/issues/694
 	// cmd.MarkFlagRequired("config")
-	cmd.Flags().MarkDeprecated("builder-config", "please use --config instead\n")
+	cmd.Flags().MarkHidden("builder-config")
 
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "create-builder")
