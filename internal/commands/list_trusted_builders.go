@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"sort"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
@@ -15,12 +17,19 @@ func ListTrustedBuilders(logger logging.Logger, cfg config.Config) *cobra.Comman
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			logger.Info("Trusted Builders:")
 
+			var trustedBuilders []string
 			for _, builder := range suggestedBuilders {
-				logger.Infof("  %s", builder.Image)
+				trustedBuilders = append(trustedBuilders, builder.Image)
 			}
 
 			for _, builder := range cfg.TrustedBuilders {
-				logger.Infof("  %s", builder.Name)
+				trustedBuilders = append(trustedBuilders, builder.Name)
+			}
+
+			sort.Strings(trustedBuilders)
+
+			for _, builder := range trustedBuilders {
+				logger.Infof("  %s", builder)
 			}
 
 			return nil

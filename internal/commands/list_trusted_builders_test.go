@@ -60,22 +60,19 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContains(t, outBuf.String(), "Trusted Builders:")
 		})
 
-		it("shows suggested builders", func() {
-			h.AssertNil(t, command.Execute())
-
-			output := outBuf.String()
-			h.AssertContains(t, output, "gcr.io/buildpacks/builder")
-			h.AssertContains(t, output, "heroku/buildpacks:18")
-			h.AssertContains(t, output, "gcr.io/paketo-buildpacks/builder:base")
-			h.AssertContains(t, output, "gcr.io/paketo-buildpacks/builder:full-cf")
-			h.AssertContains(t, output, "gcr.io/paketo-buildpacks/builder:tiny")
-		})
-
-		it("shows custom builder added as trusted", func() {
-			builderName := "some-builder-" + h.RandString(8)
+		it("shows suggested builders and locally trusted builder in alphabetical order", func() {
+			builderName := "great-builder-" + h.RandString(8)
 
 			h.AssertNil(t, command.Execute())
 			h.AssertNotContains(t, outBuf.String(), builderName)
+			h.AssertContainsAllInOrder(t,
+				outBuf,
+				"gcr.io/buildpacks/builder",
+				"gcr.io/paketo-buildpacks/builder:base",
+				"gcr.io/paketo-buildpacks/builder:full-cf",
+				"gcr.io/paketo-buildpacks/builder:tiny",
+				"heroku/buildpacks:18",
+			)
 
 			listTrustedBuildersCommand := commands.ListTrustedBuilders(
 				logger,
@@ -87,7 +84,16 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			outBuf.Reset()
 
 			h.AssertNil(t, listTrustedBuildersCommand.Execute())
-			h.AssertContains(t, outBuf.String(), builderName)
+
+			h.AssertContainsAllInOrder(t,
+				outBuf,
+				"gcr.io/buildpacks/builder",
+				"gcr.io/paketo-buildpacks/builder:base",
+				"gcr.io/paketo-buildpacks/builder:full-cf",
+				"gcr.io/paketo-buildpacks/builder:tiny",
+				builderName,
+				"heroku/buildpacks:18",
+			)
 		})
 	})
 }
