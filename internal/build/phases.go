@@ -23,7 +23,6 @@ const (
 	appDir                    = "/workspace"
 	cacheDir                  = "/cache"
 	launchCacheDir            = "/launch-cache"
-	platformDir               = "/platform"
 	defaultProcessPlatformAPI = "0.3"
 )
 
@@ -218,11 +217,7 @@ func prependArg(arg string, args []string) []string {
 }
 
 func (l *Lifecycle) Build(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
-	args := []string{
-		"-layers", layersDir,
-		"-app", appDir,
-		"-platform", platformDir,
-	}
+	var args []string
 
 	platformAPIVersion := semver.MustParse(l.platformAPIVersion)
 	if semver.MustParse("0.2").LessThan(platformAPIVersion) { // lifecycle did not support log level for build until platform api 0.3

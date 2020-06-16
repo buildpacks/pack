@@ -662,7 +662,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				configProvider.ContainerConfig().Cmd,
 				[]string{"-log-level", "debug"},
 				[]string{"-cache-dir", "/cache"},
-				[]string{"-layers", "/layers"},
 			)
 		})
 
@@ -722,9 +721,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-log-level", "debug")
 				h.AssertIncludeAllExpectedPatterns(t,
 					configProvider.ContainerConfig().Cmd,
-					[]string{"-layers", "/layers"},
-					[]string{"-app", "/workspace"},
-					[]string{"-platform", "/platform"},
 				)
 			})
 		})
@@ -746,9 +742,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				h.AssertIncludeAllExpectedPatterns(t,
 					configProvider.ContainerConfig().Cmd,
 					[]string{"-log-level", "debug"},
-					[]string{"-layers", "/layers"},
-					[]string{"-app", "/workspace"},
-					[]string{"-platform", "/platform"},
 				)
 			})
 		})
@@ -805,8 +798,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				configProvider.ContainerConfig().Cmd,
 				[]string{"-log-level", "debug"},
 				[]string{"-cache-dir", "/cache"},
-				[]string{"-layers", "/layers"},
-				[]string{"-app", "/workspace"},
 				[]string{expectedRepoName},
 			)
 		})
