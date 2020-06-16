@@ -15,8 +15,9 @@ jobs:
         with:
           repository: buildpack/homebrew-tap
           path: homebrew-tap
+          token: ${{ secrets.BOT_TOKEN }}
       - name: Copy pack.rb
-        run: cp .github/workflows/delivery/homebrew/pack.rb homebrew-tap/Formula/pack.rb 
+        run: cp .github/workflows/delivery/homebrew/pack.rb homebrew-tap/Formula/pack.rb
       - name: Lookup assets
         uses: actions/github-script@v1
         id: assets
@@ -39,7 +40,7 @@ jobs:
           curl -sSL ${{ steps.assets.outputs.linux_url }} -o ${{ steps.assets.outputs.linux_name }}
           linux_sha256=$(sha256sum ${{ steps.assets.outputs.linux_name }} | cut -d ' ' -f1)
           echo "::set-output name=linux_sha256::$linux_sha256"
-          
+
           curl -sSL ${{ steps.assets.outputs.macos_url }} -o ${{ steps.assets.outputs.macos_name }}
           macos_sha256=$(sha256sum ${{ steps.assets.outputs.macos_name }} | cut -d ' ' -f1)
           echo "::set-output name=macos_sha256::$macos_sha256"
@@ -57,9 +58,9 @@ jobs:
       - run: cat homebrew-tap/Formula/pack.rb
       - name: Commit changes
         run: |
-          git config --global user.name "github-bot"
-          git config --global user.email "action@github.com"
-          
+          git config --global user.name "buildpack-bot"
+          git config --global user.email "cncf-buildpacks-maintainers@lists.cncf.io"
+
           cd homebrew-tap
           git add Formula/pack.rb
           git commit -m "Version ${{ github.event.release.tag_name }}"
