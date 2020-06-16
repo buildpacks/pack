@@ -30,12 +30,13 @@ func testReportCommand(t *testing.T, when spec.G, it spec.S) {
 		tempPackHome      string
 		packConfigPath    string
 		tempPackEmptyHome string
+		testVersion       = "1.2.3"
 	)
 
 	it.Before(func() {
 		var err error
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.Report(logger)
+		command = commands.Report(logger, testVersion)
 
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
@@ -69,8 +70,10 @@ experimental = true
 				h.AssertNil(t, command.Execute())
 				h.AssertContains(t, outBuf.String(), `default-builder-image = "some/image"`)
 				h.AssertContains(t, outBuf.String(), `experimental = true`)
+				h.AssertContains(t, outBuf.String(), `Version:  `+testVersion)
 			})
 		})
+
 		when("config.toml is not present", func() {
 			it.Before(func() {
 				h.AssertNil(t, os.Setenv("PACK_HOME", tempPackEmptyHome))

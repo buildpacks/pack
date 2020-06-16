@@ -45,7 +45,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	bldr.SetOrder(opts.Config.Order)
 	bldr.SetStack(opts.Config.Stack)
 
-	return bldr.Save(c.logger)
+	return bldr.Save(c.logger, builder.CreatorMetadata{Version: Version})
 }
 
 func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {
