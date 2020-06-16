@@ -27,6 +27,6 @@ func ListTrustedBuilders(logger logging.Logger, cfg config.Config) *cobra.Comman
 		}),
 	}
 
-	AddHelpFlag(cmd, "trust-builder")
+	AddHelpFlag(cmd, "list-trusted-builders")
 	return cmd
 }
