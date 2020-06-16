@@ -909,21 +909,30 @@ func testAcceptance(
 						}
 					})
 
-					it("doesn't have color when --no-color", func() {
-						appPath := filepath.Join("testdata", "mock_app")
+					when("--no-color", func() {
+						it.Before(func() {
+							h.SkipIf(t,
+								packSemver.LessThan(semver.MustParse("0.12.0")) || !packSemver.Equal(semver.MustParse("0.0.0")),
+								"pack had a no-color bug for color strings in buildpacks until 0.12.0",
+							)
+						})
 
-						output := h.Run(t, subjectPack("build", repoName, "-p", appPath))
+						it("doesn't have color", func() {
+							appPath := filepath.Join("testdata", "mock_app")
 
-						h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
-						imgId, err := imgIDForRepoName(repoName)
-						if err != nil {
-							t.Fatal(err)
-						}
-						defer h.DockerRmi(dockerCli, imgId)
+							output := h.Run(t, subjectPack("build", repoName, "-p", appPath))
 
-						t.Log("has no color with --no-color")
-						colorCodeMatcher := `\x1b\[[0-9;]*m`
-						h.AssertNotContainsMatch(t, output, colorCodeMatcher)
+							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+							imgId, err := imgIDForRepoName(repoName)
+							if err != nil {
+								t.Fatal(err)
+							}
+							defer h.DockerRmi(dockerCli, imgId)
+
+							t.Log("has no color with --no-color")
+							colorCodeMatcher := `\x1b\[[0-9;]*m`
+							h.AssertNotContainsMatch(t, output, colorCodeMatcher)
+						})
 					})
 
 					it("supports building app from a zip file", func() {
