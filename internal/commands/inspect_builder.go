@@ -111,6 +111,8 @@ Created By:
 
 {{ end -}}
 
+Trusted: {{.Trusted}}
+
 Stack:
   ID: {{ .Info.Stack }}
 {{- if .Verbose}}
@@ -192,18 +194,42 @@ Detection Order:
 		warnings = append(warnings, fmt.Sprintf("%s does not specify lifecycle platform api version", style.Symbol(imageName)))
 	}
 
+	trusted := false
+	for _, builder := range suggestedBuilders {
+		if builder.Image == imageName {
+			trusted = true
+			break
+		}
+	}
+
+	if !trusted {
+		for _, builder := range cfg.TrustedBuilders {
+			if builder.Name == imageName {
+				trusted = true
+				break
+			}
+		}
+	}
+
+	trustedString := "No"
+	if trusted {
+		trustedString = "Yes"
+	}
+
 	return warnings, tpl.Execute(writer, &struct {
 		Info       pack.BuilderInfo
 		Buildpacks string
 		RunImages  string
 		Order      string
 		Verbose    bool
+		Trusted    string
 	}{
 		info,
 		bps,
 		runImgs,
 		order,
 		verbose,
+		trustedString,
 	})
 }
 

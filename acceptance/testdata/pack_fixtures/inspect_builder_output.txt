@@ -6,6 +6,8 @@ Created By:
   Name: Pack CLI
   Version: {{.pack_version}}
 
+Trusted: {{.trusted}}
+
 Stack:
   ID: pack.test.stack
   Mixins:
@@ -41,6 +43,8 @@ LOCAL:
 Created By:
   Name: Pack CLI
   Version: {{.pack_version}}
+
+Trusted: {{.trusted}}
 
 Stack:
   ID: pack.test.stack
