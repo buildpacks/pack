@@ -12,6 +12,8 @@ jobs:
       PACKAGE_NAME: pack-cli-git
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Setup working dir
         run: |
           mkdir -p ${{ env.PACKAGE_NAME }}

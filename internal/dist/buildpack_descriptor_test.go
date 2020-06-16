@@ -1,4 +1,4 @@
-package dist
+package dist_test
 
 import (
 	"testing"
@@ -7,6 +7,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/internal/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -20,12 +21,12 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 	when("#EnsureStackSupport", func() {
 		when("not validating against run image mixins", func() {
 			it("ignores run-only mixins", func() {
-				bp := BuildpackDescriptor{
-					Info: BuildpackInfo{
+				bp := dist.BuildpackDescriptor{
+					Info: dist.BuildpackInfo{
 						ID:      "some.buildpack.id",
 						Version: "some.buildpack.version",
 					},
-					Stacks: []Stack{{
+					Stacks: []dist.Stack{{
 						ID:     "some.stack.id",
 						Mixins: []string{"mixinA", "build:mixinB", "run:mixinD"},
 					}},
@@ -36,12 +37,12 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns an error with any missing (and non-ignored) mixins", func() {
-				bp := BuildpackDescriptor{
-					Info: BuildpackInfo{
+				bp := dist.BuildpackDescriptor{
+					Info: dist.BuildpackInfo{
 						ID:      "some.buildpack.id",
 						Version: "some.buildpack.version",
 					},
-					Stacks: []Stack{{
+					Stacks: []dist.Stack{{
 						ID:     "some.stack.id",
 						Mixins: []string{"mixinX", "mixinY", "run:mixinZ"},
 					}},
@@ -56,12 +57,12 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 
 		when("validating against run image mixins", func() {
 			it("requires run-only mixins", func() {
-				bp := BuildpackDescriptor{
-					Info: BuildpackInfo{
+				bp := dist.BuildpackDescriptor{
+					Info: dist.BuildpackInfo{
 						ID:      "some.buildpack.id",
 						Version: "some.buildpack.version",
 					},
-					Stacks: []Stack{{
+					Stacks: []dist.Stack{{
 						ID:     "some.stack.id",
 						Mixins: []string{"mixinA", "build:mixinB", "run:mixinD"},
 					}},
@@ -73,12 +74,12 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns an error with any missing mixins", func() {
-				bp := BuildpackDescriptor{
-					Info: BuildpackInfo{
+				bp := dist.BuildpackDescriptor{
+					Info: dist.BuildpackInfo{
 						ID:      "some.buildpack.id",
 						Version: "some.buildpack.version",
 					},
-					Stacks: []Stack{{
+					Stacks: []dist.Stack{{
 						ID:     "some.stack.id",
 						Mixins: []string{"mixinX", "mixinY", "run:mixinZ"},
 					}},
@@ -93,12 +94,12 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("returns an error when buildpack does not support stack", func() {
-			bp := BuildpackDescriptor{
-				Info: BuildpackInfo{
+			bp := dist.BuildpackDescriptor{
+				Info: dist.BuildpackInfo{
 					ID:      "some.buildpack.id",
 					Version: "some.buildpack.version",
 				},
-				Stacks: []Stack{{
+				Stacks: []dist.Stack{{
 					ID:     "some.stack.id",
 					Mixins: []string{"mixinX", "mixinY"},
 				}},
@@ -110,12 +111,12 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("skips validating order buildpack", func() {
-			bp := BuildpackDescriptor{
-				Info: BuildpackInfo{
+			bp := dist.BuildpackDescriptor{
+				Info: dist.BuildpackInfo{
 					ID:      "some.buildpack.id",
 					Version: "some.buildpack.version",
 				},
-				Stacks: []Stack{},
+				Stacks: []dist.Stack{},
 			}
 
 			h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", []string{"mixinA"}, true))

@@ -123,7 +123,7 @@ jobs:
           echo "::set-output name=version::$LIFECYCLE_VERSION"
       - name: Extract pack help
         id: pack_help
-        # Replacements have to do with multiline output. 
+        # Replacements have to do with multiline output.
         # See https://github.community/t5/GitHub-Actions/set-output-Truncates-Multiline-Strings/m-p/38372/highlight/true#M3322
         run: |
           PACK_HELP=$(./pack-linux/pack --help)
@@ -169,16 +169,16 @@ jobs:
             ```
 
             #### Linux
-            
+
             On Linux you can use the one of the following methods of installation.
-            
+
             ##### Arch Linux
-            
+
             - [pack-cli](https://aur.archlinux.org/packages/pack-cli/)
             - [pack-cli-bin](https://aur.archlinux.org/packages/pack-cli-bin/)
-            
+
             ##### Command
-            
+
             ```bash
             (export GH=buildpacks/pack; export LATEST=$(curl -s https://api.github.com/repos/$GH/releases/latest | grep -o -E "https://.+?-linux.tgz"); echo "$LATEST"; curl -sSL "$LATEST" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv $(basename $GH))
             ```

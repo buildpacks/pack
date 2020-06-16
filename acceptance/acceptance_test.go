@@ -1476,8 +1476,9 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 
 			when("inspect-builder", func() {
 				it("displays configuration for a builder (local and remote)", func() {
-					configuredRunImage := "some-registry.com/pack-test/run1"
-					output := h.Run(t, subjectPack("set-run-image-mirrors", "pack-test/run", "--mirror", configuredRunImage))
+					output := h.Run(t, subjectPack(
+						"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+					))
 					h.AssertEq(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 					output = h.Run(t, subjectPack("inspect-builder", builderName))
@@ -1504,6 +1505,46 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 							"platform_api_version":  lifecycleDescriptor.API.PlatformVersion.String(),
 							"run_image_mirror":      runImageMirror,
 							"pack_version":          createdByVersion,
+							"trusted":               "No",
+						},
+					)
+
+					h.AssertEq(t, output, expectedOutput)
+				})
+
+				it("indicates builder is trusted", func() {
+					h.SkipIf(t, !packSupports(packPath, "trust-builder"), "version of pack doesn't trust-builder command")
+
+					_ = h.Run(t, subjectPack("trust-builder", builderName))
+					_ = h.Run(t, subjectPack(
+						"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+					))
+
+					output := h.Run(t, subjectPack("inspect-builder", builderName))
+
+					// Get version of pack that had created the builder
+					createdByVersion, err := packVersion(packCreateBuilderPath)
+					h.AssertNil(t, err)
+
+					outputTemplate := filepath.Join(packFixturesDir, "inspect_builder_output.txt")
+
+					// If a different version of pack had created the builder, we need a different (versioned) template for expected output
+					versionedTemplate := filepath.Join(packFixturesDir, fmt.Sprintf("inspect_%s_builder_output.txt", strings.TrimPrefix(strings.Split(createdByVersion, " ")[0], "v")))
+					if _, err := os.Stat(versionedTemplate); err == nil {
+						outputTemplate = versionedTemplate
+					} else if !os.IsNotExist(err) {
+						t.Fatal(err.Error())
+					}
+
+					expectedOutput := fillTemplate(t, outputTemplate,
+						map[string]interface{}{
+							"builder_name":          builderName,
+							"lifecycle_version":     lifecycleDescriptor.Info.Version.String(),
+							"buildpack_api_version": lifecycleDescriptor.API.BuildpackVersion.String(),
+							"platform_api_version":  lifecycleDescriptor.API.PlatformVersion.String(),
+							"run_image_mirror":      runImageMirror,
+							"pack_version":          createdByVersion,
+							"trusted":               "Yes",
 						},
 					)
 

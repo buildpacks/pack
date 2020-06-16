@@ -210,13 +210,35 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("#Save", func() {
 			it("creates a builder from the image and renames it", func() {
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 				h.AssertEq(t, baseImage.Name(), "some/builder")
 			})
 
 			it("adds creator metadata", func() {
-				h.AssertNil(t, subject.Save(logger))
+				testName := "test-name"
+				testVersion := "1.2.5"
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{
+					Name:    testName,
+					Version: testVersion,
+				}))
+				h.AssertEq(t, baseImage.IsSaved(), true)
+
+				label, err := baseImage.Label("io.buildpacks.builder.metadata")
+				h.AssertNil(t, err)
+
+				var metadata builder.Metadata
+				h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
+
+				h.AssertEq(t, metadata.CreatedBy.Name, testName)
+				h.AssertEq(t, metadata.CreatedBy.Version, testVersion)
+			})
+
+			it("adds creator name if not provided", func() {
+				testVersion := "1.2.5"
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{
+					Version: testVersion,
+				}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
 				label, err := baseImage.Label("io.buildpacks.builder.metadata")
@@ -226,11 +248,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, json.Unmarshal([]byte(label), &metadata))
 
 				h.AssertEq(t, metadata.CreatedBy.Name, "Pack CLI")
-				h.AssertEq(t, metadata.CreatedBy.Version, "0.0.0")
+				h.AssertEq(t, metadata.CreatedBy.Version, testVersion)
 			})
 
 			it("creates the workspace dir with CNB user and group", func() {
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
 				layerTar, err := baseImage.FindLayerWithPath("/workspace")
@@ -244,7 +266,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates the layers dir with CNB user and group", func() {
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
 				layerTar, err := baseImage.FindLayerWithPath("/layers")
@@ -258,7 +280,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates the cnb dir", func() {
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
 				layerTar, err := baseImage.FindLayerWithPath("/cnb")
@@ -272,7 +294,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates the buildpacks dir", func() {
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
 				layerTar, err := baseImage.FindLayerWithPath("/cnb/buildpacks")
@@ -286,7 +308,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("creates the platform dir", func() {
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
 				layerTar, err := baseImage.FindLayerWithPath("/platform")
@@ -306,7 +328,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("sets the working dir to the layers dir", func() {
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
 				h.AssertEq(t, baseImage.WorkingDir(), "/layers")
@@ -324,7 +346,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, baseImage.AddLayer(layerFile))
 				baseImage.Save()
 
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
 				layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
@@ -348,7 +370,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								{BuildpackInfo: dist.BuildpackInfo{ID: bp1v1.Descriptor().Info.ID}}},
 						}})
 
-						err := subject.Save(logger)
+						err := subject.Save(logger, builder.CreatorMetadata{})
 						h.AssertNil(t, err)
 
 						layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
@@ -368,7 +390,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									{BuildpackInfo: dist.BuildpackInfo{ID: "missing-buildpack-id"}}},
 							}})
 
-							err := subject.Save(logger)
+							err := subject.Save(logger, builder.CreatorMetadata{})
 
 							h.AssertError(t, err, "no versions of buildpack 'missing-buildpack-id' were found on the builder")
 						})
@@ -381,7 +403,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack-1-id", Version: "missing-buildpack-version"}}},
 							}})
 
-							err := subject.Save(logger)
+							err := subject.Save(logger, builder.CreatorMetadata{})
 
 							h.AssertError(t, err, "buildpack 'buildpack-1-id' with version 'missing-buildpack-version' was not found on the builder")
 						})
@@ -401,7 +423,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									{BuildpackInfo: bp1v1.Descriptor().Info}},
 							}})
 
-							err := subject.Save(logger)
+							err := subject.Save(logger, builder.CreatorMetadata{})
 							h.AssertNil(t, err)
 
 							layerTar, err := baseImage.FindLayerWithPath("/cnb/order.toml")
@@ -422,7 +444,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 									{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack-1-id"}}},
 							}})
 
-							err := subject.Save(logger)
+							err := subject.Save(logger, builder.CreatorMetadata{})
 							h.AssertError(t, err, "multiple versions of 'buildpack-1-id' - must specify an explicit version")
 						})
 					})
@@ -437,7 +459,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							subject.AddBuildpack(bpOrder)
 
 							// order buildpack requires bp2v1
-							err := subject.Save(logger)
+							err := subject.Save(logger, builder.CreatorMetadata{})
 
 							h.AssertError(t, err, "buildpack 'buildpack-2-id@buildpack-2-version-1' not found on the builder")
 						})
@@ -451,7 +473,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							// order buildpack requires bp1v1 rather than bp1v2
 							subject.AddBuildpack(bpOrder)
 
-							err := subject.Save(logger)
+							err := subject.Save(logger, builder.CreatorMetadata{})
 
 							h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' not found on the builder")
 						})
@@ -468,7 +490,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 
 						subject.AddBuildpack(bp)
-						err = subject.Save(logger)
+						err = subject.Save(logger, builder.CreatorMetadata{})
 
 						h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' does not support stack 'some.stack.id'")
 					})
@@ -484,7 +506,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 
 						subject.AddBuildpack(bp)
-						err = subject.Save(logger)
+						err = subject.Save(logger, builder.CreatorMetadata{})
 
 						h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' (Buildpack API version 0.1) is incompatible with lifecycle '1.2.3' (Buildpack API version 0.2)")
 					})
@@ -503,7 +525,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 
 						subject.AddBuildpack(bp)
-						err = subject.Save(logger)
+						err = subject.Save(logger, builder.CreatorMetadata{})
 
 						h.AssertError(t, err, "buildpack 'buildpack-1-id@buildpack-1-version-1' requires missing mixin(s): missing")
 					})
@@ -515,7 +537,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				subject.SetLifecycle(mockLifecycle)
 
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 			})
 
@@ -598,7 +620,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("adds the buildpack as an image layer", func() {
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 				assertImageHasBPLayer(t, baseImage, bp1v1)
 				assertImageHasBPLayer(t, baseImage, bp1v2)
@@ -607,7 +629,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("adds the buildpack metadata", func() {
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
 				label, err := baseImage.Label("io.buildpacks.builder.metadata")
@@ -631,7 +653,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("adds the buildpack layers label", func() {
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
 				label, err := baseImage.Label("io.buildpacks.buildpack.layers")
@@ -699,7 +721,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					subject.SetLifecycle(mockLifecycle)
 
-					h.AssertNil(t, subject.Save(logger))
+					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 					h.AssertEq(t, baseImage.IsSaved(), true)
 				})
 
@@ -750,7 +772,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					subject.AddBuildpack(bp1v1)
-					h.AssertNil(t, subject.Save(logger))
+					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 					h.AssertEq(t, baseImage.IsSaved(), true)
 				})
 
@@ -795,7 +817,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						}},
 					})
 
-					h.AssertNil(t, subject.Save(logger))
+					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 					h.AssertEq(t, baseImage.IsSaved(), true)
 				})
 
@@ -839,7 +861,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("#SetDescription", func() {
 			it.Before(func() {
 				subject.SetDescription("Some description")
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 			})
 
@@ -859,7 +881,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					RunImage:        "some/run",
 					RunImageMirrors: []string{"some/mirror", "other/mirror"},
 				})
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 			})
 
@@ -893,7 +915,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					"SOME_KEY":  "some-val",
 					"OTHER_KEY": "other-val",
 				})
-				h.AssertNil(t, subject.Save(logger))
+				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 			})
 

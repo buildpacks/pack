@@ -11,6 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
+
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
@@ -19,7 +22,10 @@ import (
 	"github.com/buildpacks/pack/internal/archive"
 )
 
-var registryContainerName = "cnbs/registry:2"
+var registryContainerNames = map[string]string{
+	"linux":   "library/registry:2",
+	"windows": "stefanscherer/registry-windows:2.6.2",
+}
 
 type TestRegistryConfig struct {
 	runRegistryName string
@@ -27,6 +33,39 @@ type TestRegistryConfig struct {
 	DockerConfigDir string
 	username        string
 	password        string
+}
+
+func CreateRegistryFixture(t *testing.T, tmpDir, fixturePath string) string {
+	// copy fixture to temp dir
+	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
+
+	RecursiveCopyNow(t, fixturePath, registryFixtureCopy)
+
+	// git init that dir
+	repository, err := git.PlainInit(registryFixtureCopy, false)
+	AssertNil(t, err)
+
+	// git add . that dir
+	worktree, err := repository.Worktree()
+	AssertNil(t, err)
+
+	_, err = worktree.Add(".")
+	AssertNil(t, err)
+
+	// git commit that dir
+	commit, err := worktree.Commit("first", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "John Doe",
+			Email: "john@doe.org",
+			When:  time.Now(),
+		},
+	})
+	AssertNil(t, err)
+
+	_, err = repository.CommitObject(commit)
+	AssertNil(t, err)
+
+	return registryFixtureCopy
 }
 
 func RunRegistry(t *testing.T) *TestRegistryConfig {
@@ -89,8 +128,13 @@ func (rc *TestRegistryConfig) Login(t *testing.T, username string, password stri
 }
 
 func startRegistry(t *testing.T, runRegistryName, username, password string) string {
-	AssertNil(t, PullImageWithAuth(dockerCli(t), registryContainerName, ""))
 	ctx := context.Background()
+
+	daemonInfo, err := dockerCli(t).Info(ctx)
+	AssertNil(t, err)
+
+	registryContainerName := registryContainerNames[daemonInfo.OSType]
+	AssertNil(t, PullImageWithAuth(dockerCli(t), registryContainerName, ""))
 
 	htpasswdTar := generateHtpasswd(t, username, password)
 	defer htpasswdTar.Close()
