@@ -20,7 +20,7 @@
 {{- if .package_id}}
 [[order.group]]
   id = "{{.package_id}}"
-  # intentionlly missing version to test support
+  # intentionally missing version to test support
 {{- end}}
 
 [[order.group]]

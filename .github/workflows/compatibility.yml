@@ -16,7 +16,7 @@ jobs:
       matrix:
         pack_kind: [current, previous]
         create_builder_kind: [current, previous]
-        lifecycle_kind: [current, previous]
+        lifecycle_kind: [default, previous]
         exclude:
           # For all previous versions these were tested prior to release
           - pack_kind: previous
@@ -25,11 +25,11 @@ jobs:
           # Previous versions of pack cannot create a builder with a newer version of lifecycle
           - pack_kind: current
             create_builder_kind: previous
-            lifecycle_kind: current
+            lifecycle_kind: default
           # Previous versions of pack cannot create a builder with a newer version of lifecycle
           - pack_kind: previous
             create_builder_kind: previous
-            lifecycle_kind: current
+            lifecycle_kind: default
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
