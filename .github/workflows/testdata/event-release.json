@@ -240,7 +240,7 @@
     "forks": 59,
     "open_issues": 75,
     "watchers": 643,
-    "default_branch": "master",
+    "default_branch": "main",
     "temp_clone_token": null,
     "organization": {
       "login": "buildpacks",
