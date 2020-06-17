@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -28,18 +27,16 @@ func TestTrustBuilder(t *testing.T) {
 
 func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command        *cobra.Command
-		logger         logging.Logger
-		outBuf         bytes.Buffer
-		mockController *gomock.Controller
-		tempPackHome   string
-		configPath     string
+		command      *cobra.Command
+		logger       logging.Logger
+		outBuf       bytes.Buffer
+		tempPackHome string
+		configPath   string
 	)
 
 	it.Before(func() {
 		var err error
 
-		mockController = gomock.NewController(t)
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 		command = commands.TrustBuilder(logger, config.Config{})
 
@@ -51,7 +48,6 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		mockController.Finish()
 		h.AssertNil(t, os.Unsetenv("PACK_HOME"))
 		h.AssertNil(t, os.RemoveAll(tempPackHome))
 	})

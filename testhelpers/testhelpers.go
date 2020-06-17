@@ -108,6 +108,35 @@ func AssertContains(t *testing.T, actual, expected string) {
 	}
 }
 
+func AssertContainsAllInOrder(t *testing.T, actual bytes.Buffer, expected ...string) {
+	t.Helper()
+
+	var tested []byte
+
+	for _, exp := range expected {
+		b, found := readUntilString(&actual, exp)
+		tested = append(tested, b...)
+
+		if !found {
+			t.Fatalf("Expected '%s' to include all of '%s' in order", string(tested), strings.Join(expected, ", "))
+		}
+	}
+}
+
+func readUntilString(b *bytes.Buffer, expected string) (read []byte, found bool) {
+	for {
+		s, err := b.ReadBytes(expected[len(expected)-1])
+		if err != nil {
+			return append(read, s...), false
+		}
+
+		read = append(read, s...)
+		if bytes.HasSuffix(read, []byte(expected)) {
+			return read, true
+		}
+	}
+}
+
 // AssertContainsMatch matches on content by regular expression
 func AssertContainsMatch(t *testing.T, actual, exp string) {
 	t.Helper()
