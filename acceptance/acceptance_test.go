@@ -224,7 +224,7 @@ lifecycle:
 
 // These tests either (a) do not require a builder or (b) do not require a specific builder to be provided
 // in order to test compatibility.
-// They should only be run against the "current" (i.e., master) version of pack.
+// They should only be run against the "current" (i.e., main) version of pack.
 func testWithoutSpecificBuilderRequirement(
 	t *testing.T,
 	when spec.G,
