@@ -6,12 +6,12 @@ on:
       - published
 
 jobs:
-  release-dispatch:
+  dispatch2docs:
     runs-on: ubuntu-latest
     steps:
       - name: Repository Dispatch to Docs
         uses: peter-evans/repository-dispatch@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.BOT_TOKEN }}
           event-type: pack-release
           repository: buildpacks/docs
