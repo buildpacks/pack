@@ -11,20 +11,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/cmd"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
 
-func Report(logger logging.Logger) *cobra.Command {
+func Report(logger logging.Logger, version string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "report",
 		Args:  cobra.NoArgs,
 		Short: "Display useful information for reporting an issue",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			var buf bytes.Buffer
-			err := generateOutput(&buf)
+			err := generateOutput(&buf, version)
 			if err != nil {
 				return err
 			}
@@ -38,7 +37,7 @@ func Report(logger logging.Logger) *cobra.Command {
 	return cmd
 }
 
-func generateOutput(writer io.Writer) error {
+func generateOutput(writer io.Writer, version string) error {
 	tpl := template.Must(template.New("").Parse(`Pack:
   Version:  {{ .Version }}
   OS/Arch:  {{ .OS }}/{{ .Arch }}
@@ -62,7 +61,7 @@ Config:
 	}
 
 	return tpl.Execute(writer, map[string]string{
-		"Version":                 cmd.Version,
+		"Version":                 version,
 		"OS":                      runtime.GOOS,
 		"Arch":                    runtime.GOARCH,
 		"DefaultLifecycleVersion": builder.DefaultLifecycleVersion,

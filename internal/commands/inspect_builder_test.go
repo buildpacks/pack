@@ -108,6 +108,8 @@ Created By:
   Name: Pack CLI
   Version: 1.2.3
 
+Trusted: No
+
 Stack:
   ID: test.stack.id
 
@@ -141,6 +143,8 @@ Description: Some local description
 Created By:
   Name: Pack CLI
   Version: 4.5.6
+
+Trusted: No
 
 Stack:
   ID: test.stack.id
@@ -349,6 +353,34 @@ Stack:
 
 					h.AssertNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), stackLabels)
+				})
+			})
+
+			when("the builder is suggested", func() {
+				it("indicates that it is trusted", func() {
+					suggestedBuilder := "gcr.io/paketo-buildpacks/builder:tiny"
+
+					command.SetArgs([]string{suggestedBuilder})
+					mockClient.EXPECT().InspectBuilder(suggestedBuilder, false).Return(remoteInfo, nil)
+					mockClient.EXPECT().InspectBuilder(suggestedBuilder, true).Return(nil, nil)
+
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Trusted: Yes")
+				})
+			})
+
+			when("the builder has been trusted by the user", func() {
+				it("indicated that it is trusted", func() {
+					builderName := "trusted/builder"
+					cfg.TrustedBuilders = []config.TrustedBuilder{{Name: builderName}}
+					command = commands.InspectBuilder(logger, cfg, mockClient)
+
+					command.SetArgs([]string{builderName})
+					mockClient.EXPECT().InspectBuilder(builderName, false).Return(remoteInfo, nil)
+					mockClient.EXPECT().InspectBuilder(builderName, true).Return(localInfo, nil)
+
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Trusted: Yes")
 				})
 			})
 		})
