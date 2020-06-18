@@ -3,10 +3,13 @@ name: compatibility
 on:
   push:
     branches:
-      - master
+      - main
+      - 'release/**'
   pull_request:
     branches:
-      - master
+      - main
+      - 'release/**'
+
 jobs:
   acceptance-combo:
     strategy:
@@ -33,162 +36,15 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2-beta
         with:
-          go-version: '1.13'
+          go-version: '1.14'
       - name: Set up go env
         run: |
           echo "::set-env name=GOPATH::$(go env GOPATH)"
           echo "::add-path::$(go env GOPATH)/bin"
         shell: bash
-      - name: Determine download URL for previous pack binary
-        if: matrix.pack_kind == 'previous' || matrix.create_builder_kind == 'previous'
-        id: pack-download-url
-        uses: actions/github-script@0.8.0
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          result-encoding: string
-          script: |
-            return github.repos.getLatestRelease({
-              owner: "buildpacks",
-              repo: "pack"
-            })
-            .then(result => {
-              return result.data.assets
-                .filter(a => a.name.includes("linux"))
-                .map(a => a.browser_download_url)[0];
-            })
-      - name: Install previous pack binary
-        if: matrix.pack_kind == 'previous' || matrix.create_builder_kind == 'previous'
-        run: |
-          curl -sL -w 'RESP_CODE:%{response_code}\n' \
-            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o previous-pack.tgz ${{ steps.pack-download-url.outputs.result }}
-          mkdir previous-pack
-          tar -xvf previous-pack.tgz -C previous-pack
-          echo "::set-env name=PREVIOUS_PACK_PATH::$PWD/previous-pack/pack"
-      - name: Determine download URL for previous pack tarball
-        if: matrix.pack_kind == 'previous' || matrix.create_builder_kind == 'previous'
-        id: pack-tarball-url
-        uses: actions/github-script@0.8.0
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          result-encoding: string
-          script: |
-            return github.repos.getLatestRelease({
-              owner: "buildpacks",
-              repo: "pack"
-            })
-            .then(result => {
-              return result.data.tarball_url
-            })
-      - name: Downlad and untar previous pack tarball
-        if: matrix.pack_kind == 'previous' || matrix.create_builder_kind == 'previous'
-        run: |
-          curl -sL -w 'RESP_CODE:%{response_code}\n' \
-            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o previous-pack-tarball.tgz ${{ steps.pack-tarball-url.outputs.result }}
-          mkdir previous-pack-repo
-          tar -xvf previous-pack-tarball.tgz -C previous-pack-repo
-          pack_repo_dirname=$(ls previous-pack-repo)
-          echo "::set-env name=PREVIOUS_PACK_FIXTURES_PATH::$PWD/previous-pack-repo/${pack_repo_dirname}/acceptance/testdata/pack_fixtures"
-      - name: Determine download URL for latest lifecycle
-        id: latest-lifecycle-url
-        if: matrix.lifecycle_kind == 'current'
-        uses: actions/github-script@0.8.0
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          result-encoding: string
-          script: |
-            return github.actions
-              .listRepoWorkflows({
-                 owner: "buildpacks",
-                 repo: "lifecycle",
-              })
-              .then(workflows_result => {
-                let workflows = workflows_result.data.workflows
-                  .filter(a => a.name === "build" && a.state === "active")
-                  .map(a => a.id);
-
-                if (workflows.length === 0) {
-                  throw "no active workflows found with name build"
-                }
-
-                return workflows[0]
-              })
-              .then(workflow_id => {
-                return github.actions.listRepoWorkflowRuns({
-                  owner: "buildpacks",
-                  repo: "lifecycle",
-                  workflow_id: workflow_id,
-                  branch: "master",
-                  event: "push"
-                })
-              })
-              .then(workflow_runs_result => {
-                let workflow_runs = workflow_runs_result.data.workflow_runs
-                  .filter(run => run.conclusion === "success");
-
-                if (workflow_runs.length === 0) {
-                  throw "no successful workflow runs found for lifecycle master branch"
-                }
-
-                return workflow_runs[0].id
-              })
-              .then(workflow_runid => {
-                return github.actions.listWorkflowRunArtifacts({
-                  owner: "buildpacks",
-                  repo: "lifecycle",
-                  run_id: workflow_runid
-                })
-              })
-              .then(artifacts_result => {
-                let urls = artifacts_result.data.artifacts
-                  .filter(artifact => artifact.name.includes("linux"))
-                  .map(artifact => artifact.archive_download_url);
-
-                if (urls.length === 0) {
-                  throw "no artifacts found"
-                }
-
-                return urls[0]
-              })
-      - name: Download and extract latest lifecycle
-        if: matrix.lifecycle_kind == 'current'
-        run: |
-          curl -sL -w 'RESP_CODE:%{response_code}\n' \
-            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o latest-lifecycle.zip \
-            ${{ steps.latest-lifecycle-url.outputs.result }}
-          mkdir latest-lifecycle
-          unzip -d latest-lifecycle latest-lifecycle.zip
-          lifecycle_path=$(ls latest-lifecycle/lifecycle-*linux.x86-64.tgz)
-          echo "::set-env name=LIFECYCLE_PATH::$PWD/$lifecycle_path"
-      - name: Determine download URL for previous lifecycle
-        if: matrix.lifecycle_kind == 'previous'
-        id: previous-lifecycle-download-url
-        uses: actions/github-script@0.8.0
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          result-encoding: string
-          script: |
-            return github.repos.getLatestRelease({
-              owner: "buildpacks",
-              repo: "lifecycle"
-            })
-            .then(result => {
-              return result.data.assets
-                .filter(a => a.name.includes("linux"))
-                .map(a => a.browser_download_url)[0];
-            })
-      - name: Install previous lifecycle
-        if: matrix.lifecycle_kind == 'previous'
-        run: |
-          mkdir previous-lifecycle
-          curl -sL -w 'RESP_CODE:%{response_code}\n' \
-            --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            -o previous-lifecycle/previous-lifecycle.tgz ${{ steps.previous-lifecycle-download-url.outputs.result }}
-          echo "::set-env name=PREVIOUS_LIFECYCLE_PATH::$PWD/previous-lifecycle/previous-lifecycle.tgz"
       - name: Acceptance
         env:
           ACCEPTANCE_SUITE_CONFIG: '[{"pack": "${{ matrix.pack_kind }}", "pack_create_builder": "${{ matrix.create_builder_kind }}", "lifecycle": "${{ matrix.lifecycle_kind }}"}]'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           make acceptance

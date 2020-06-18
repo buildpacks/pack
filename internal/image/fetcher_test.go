@@ -9,7 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -59,22 +62,15 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 		when("daemon is false", func() {
 			when("there is a remote image", func() {
 				it.Before(func() {
-					h.CreateImageOnRemote(
-						t,
-						docker,
-						registryConfig,
-						repo,
-						"FROM scratch\nLABEL repo_name="+repoName,
-					)
+					img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+					h.AssertNil(t, err)
+
+					h.AssertNil(t, img.Save())
 				})
 
 				it("returns the remote image", func() {
-					img, err := fetcher.Fetch(context.TODO(), repoName, false, false)
+					_, err := fetcher.Fetch(context.TODO(), repoName, false, false)
 					h.AssertNil(t, err)
-
-					label, err := img.Label("repo_name")
-					h.AssertNil(t, err)
-					h.AssertEq(t, label, repoName)
 				})
 			})
 
@@ -95,12 +91,10 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						// when there's a valid local image.
 						repoName = "invalidhost" + repoName
 
-						h.CreateImage(
-							t,
-							docker,
-							repoName,
-							"FROM scratch\nLABEL repo_name="+repoName,
-						)
+						img, err := local.NewImage(repoName, docker)
+						h.AssertNil(t, err)
+
+						h.AssertNil(t, img.Save())
 					})
 
 					it.After(func() {
@@ -108,12 +102,8 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("returns the local image", func() {
-						img, err := fetcher.Fetch(context.TODO(), repoName, true, false)
+						_, err := fetcher.Fetch(context.TODO(), repoName, true, false)
 						h.AssertNil(t, err)
-
-						label, err := img.Label("repo_name")
-						h.AssertNil(t, err)
-						h.AssertEq(t, label, repoName)
 					})
 				})
 
@@ -128,13 +118,16 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 			when("pull is true", func() {
 				when("there is a remote image", func() {
 					it.Before(func() {
-						h.CreateImageOnRemote(
-							t,
-							docker,
-							registryConfig,
-							repo,
-							"FROM scratch\nLABEL repo_name="+repoName,
-						)
+						// Instantiate a pull-able local image
+						// as opposed to a remote image so that the image
+						// is created with the OS of the docker daemon
+						img, err := local.NewImage(repoName, docker)
+						h.AssertNil(t, err)
+						defer h.DockerRmi(docker, repoName)
+
+						h.AssertNil(t, img.Save())
+
+						h.AssertNil(t, h.PushImage(docker, img.Name(), registryConfig))
 					})
 
 					it.After(func() {
@@ -142,24 +135,18 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("pull the image and return the local copy", func() {
-						img, err := fetcher.Fetch(context.TODO(), repoName, true, true)
+						_, err := fetcher.Fetch(context.TODO(), repoName, true, true)
 						h.AssertNil(t, err)
-
-						label, err := img.Label("repo_name")
-						h.AssertNil(t, err)
-						h.AssertEq(t, label, repoName)
 					})
 				})
 
 				when("there is no remote image", func() {
 					when("there is a local image", func() {
 						it.Before(func() {
-							h.CreateImage(
-								t,
-								docker,
-								repoName,
-								"FROM scratch\nLABEL repo_name="+repoName,
-							)
+							img, err := local.NewImage(repoName, docker)
+							h.AssertNil(t, err)
+
+							h.AssertNil(t, img.Save())
 						})
 
 						it.After(func() {
@@ -167,12 +154,8 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("returns the local image", func() {
-							img, err := fetcher.Fetch(context.TODO(), repoName, true, true)
+							_, err := fetcher.Fetch(context.TODO(), repoName, true, true)
 							h.AssertNil(t, err)
-
-							label, err := img.Label("repo_name")
-							h.AssertNil(t, err)
-							h.AssertEq(t, label, repoName)
 						})
 					})
 

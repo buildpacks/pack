@@ -14,19 +14,20 @@ import (
 
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/container"
-	"github.com/buildpacks/pack/logging"
 )
 
 type Phase struct {
-	name     string
-	logger   logging.Logger
-	docker   client.CommonAPIClient
-	ctrConf  *dcontainer.Config
-	hostConf *dcontainer.HostConfig
-	ctr      dcontainer.ContainerCreateCreatedBody
-	uid, gid int
-	appPath  string
-	appOnce  *sync.Once
+	name        string
+	infoWriter  io.Writer
+	errorWriter io.Writer
+	docker      client.CommonAPIClient
+	ctrConf     *dcontainer.Config
+	hostConf    *dcontainer.HostConfig
+	ctr         dcontainer.ContainerCreateCreatedBody
+	uid, gid    int
+	appPath     string
+	appOnce     *sync.Once
+	fileFilter  func(string) bool
 }
 
 func (p *Phase) Run(ctx context.Context) error {
@@ -74,8 +75,8 @@ func (p *Phase) Run(ctx context.Context) error {
 		ctx,
 		p.docker,
 		p.ctr.ID,
-		logging.NewPrefixWriter(logging.GetWriterForLevel(p.logger, logging.InfoLevel), p.name),
-		logging.NewPrefixWriter(logging.GetWriterForLevel(p.logger, logging.ErrorLevel), p.name),
+		p.infoWriter,
+		p.errorWriter,
 	)
 }
 
@@ -95,8 +96,8 @@ func (p *Phase) createAppReader() (io.ReadCloser, error) {
 			mode = 0777
 		}
 
-		return archive.ReadDirAsTar(p.appPath, appDir, p.uid, p.gid, mode, false), nil
+		return archive.ReadDirAsTar(p.appPath, appDir, p.uid, p.gid, mode, false, p.fileFilter), nil
 	}
 
-	return archive.ReadZipAsTar(p.appPath, appDir, p.uid, p.gid, -1, false), nil
+	return archive.ReadZipAsTar(p.appPath, appDir, p.uid, p.gid, -1, false, p.fileFilter), nil
 }

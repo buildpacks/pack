@@ -1,7 +1,6 @@
 package testhelpers
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -12,14 +11,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/pack/internal/archive"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/buildpacks/pack/internal/archive"
 )
 
-var registryContainerName = "registry:2"
+var registryContainerNames = map[string]string{
+	"linux":   "library/registry:2",
+	"windows": "stefanscherer/registry-windows:2.6.2",
+}
 
 type TestRegistryConfig struct {
 	runRegistryName string
@@ -27,6 +33,39 @@ type TestRegistryConfig struct {
 	DockerConfigDir string
 	username        string
 	password        string
+}
+
+func CreateRegistryFixture(t *testing.T, tmpDir, fixturePath string) string {
+	// copy fixture to temp dir
+	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
+
+	RecursiveCopyNow(t, fixturePath, registryFixtureCopy)
+
+	// git init that dir
+	repository, err := git.PlainInit(registryFixtureCopy, false)
+	AssertNil(t, err)
+
+	// git add . that dir
+	worktree, err := repository.Worktree()
+	AssertNil(t, err)
+
+	_, err = worktree.Add(".")
+	AssertNil(t, err)
+
+	// git commit that dir
+	commit, err := worktree.Commit("first", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "John Doe",
+			Email: "john@doe.org",
+			When:  time.Now(),
+		},
+	})
+	AssertNil(t, err)
+
+	_, err = repository.CommitObject(commit)
+	AssertNil(t, err)
+
+	return registryFixtureCopy
 }
 
 func RunRegistry(t *testing.T) *TestRegistryConfig {
@@ -48,7 +87,27 @@ func RunRegistry(t *testing.T) *TestRegistryConfig {
 		password:        password,
 	}
 
+	waitForRegistryToBeAvailable(t, registryConfig)
+
 	return registryConfig
+}
+
+func waitForRegistryToBeAvailable(t *testing.T, registryConfig *TestRegistryConfig) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	for {
+		_, err := registryConfig.RegistryCatalog()
+		if err == nil {
+			break
+		}
+
+		ctxErr := ctx.Err()
+		if ctxErr != nil {
+			t.Fatal("registry not ready:", ctxErr.Error(), ":", err.Error())
+		}
+
+		time.Sleep(500 * time.Microsecond)
+	}
 }
 
 func (rc *TestRegistryConfig) AuthConfig() dockertypes.AuthConfig {
@@ -69,10 +128,16 @@ func (rc *TestRegistryConfig) Login(t *testing.T, username string, password stri
 }
 
 func startRegistry(t *testing.T, runRegistryName, username, password string) string {
-	AssertNil(t, PullImageWithAuth(dockerCli(t), registryContainerName, ""))
 	ctx := context.Background()
 
-	htpasswdTar := generateHtpasswd(ctx, t, username, password)
+	daemonInfo, err := dockerCli(t).Info(ctx)
+	AssertNil(t, err)
+
+	registryContainerName := registryContainerNames[daemonInfo.OSType]
+	AssertNil(t, PullImageWithAuth(dockerCli(t), registryContainerName, ""))
+
+	htpasswdTar := generateHtpasswd(t, username, password)
+	defer htpasswdTar.Close()
 
 	ctr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
 		Image:  registryContainerName,
@@ -106,22 +171,11 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) str
 	return runRegistryPort
 }
 
-func generateHtpasswd(ctx context.Context, t *testing.T, username string, password string) io.Reader {
-	//https://docs.docker.com/registry/deploying/#restricting-access
-	htpasswdCtr, err := dockerCli(t).ContainerCreate(ctx, &dockercontainer.Config{
-		Image:      registryContainerName,
-		Entrypoint: []string{"htpasswd", "-Bbn", username, password},
-	}, &dockercontainer.HostConfig{
-		AutoRemove: true,
-	}, nil, "")
-	AssertNil(t, err)
-
-	var b bytes.Buffer
-	err = RunContainer(ctx, dockerCli(t), htpasswdCtr.ID, &b, &b)
-	AssertNil(t, err)
-	reader, err := archive.CreateSingleFileTarReader("/registry_test_htpasswd", b.String())
-	AssertNil(t, err)
-
+func generateHtpasswd(t *testing.T, username string, password string) io.ReadCloser {
+	// https://docs.docker.com/registry/deploying/#restricting-access
+	// HTPASSWD format: https://github.com/foomo/htpasswd/blob/e3a90e78da9cff06a83a78861847aa9092cbebdd/hashing.go#L23
+	passwordBytes, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	reader := archive.CreateSingleFileTarReader("/registry_test_htpasswd", username+":"+string(passwordBytes))
 	return reader
 }
 

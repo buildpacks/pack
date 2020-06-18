@@ -41,6 +41,12 @@ func WithClock(clock func() time.Time) func(writers *LogWithWriters) {
 	}
 }
 
+func WithVerbose() func(writers *LogWithWriters) {
+	return func(logger *LogWithWriters) {
+		logger.Level = log.DebugLevel
+	}
+}
+
 // NewLogWithWriters creates a logger to be used with pack CLI.
 func NewLogWithWriters(stdout, stderr io.Writer, opts ...func(*LogWithWriters)) *LogWithWriters {
 	lw := &LogWithWriters{

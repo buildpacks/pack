@@ -6,13 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpacks/pack/buildpackage"
-	"github.com/buildpacks/pack/internal/paths"
-
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/buildpackage"
+	"github.com/buildpacks/pack/internal/paths"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -140,7 +139,7 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 
 			_, err = packageConfigReader.Read(configFile)
 			h.AssertNotNil(t, err)
-			h.AssertError(t, err, "unknown configuration element")
+			h.AssertError(t, err, "unknown configuration element ")
 			h.AssertError(t, err, "buildpack.url")
 			h.AssertError(t, err, configFile)
 		})

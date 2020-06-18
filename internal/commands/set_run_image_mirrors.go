@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+// SetRunImagesMirrors sets run image mirros for a given run image
 func SetRunImagesMirrors(logger logging.Logger, cfg config.Config) *cobra.Command {
 	var mirrors []string
 
@@ -37,6 +38,6 @@ func SetRunImagesMirrors(logger logging.Logger, cfg config.Config) *cobra.Comman
 		}),
 	}
 	cmd.Flags().StringSliceVarP(&mirrors, "mirror", "m", nil, "Run image mirror"+multiValueHelp("mirror"))
-	AddHelpFlag(cmd, "configure-builder")
+	AddHelpFlag(cmd, "set-run-image-mirrors")
 	return cmd
 }

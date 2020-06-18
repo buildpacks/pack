@@ -2,11 +2,11 @@ package cache_test
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
 
+	"github.com/buildpacks/imgutil/local"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -120,10 +120,10 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 
 		when("there is a cache image", func() {
 			it.Before(func() {
-				h.CreateImage(t, dockerClient, imageName, fmt.Sprintf(`
-FROM busybox
-LABEL repo_name_for_randomisation=%s
-`, imageName))
+				img, err := local.NewImage(imageName, dockerClient)
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, img.Save())
 			})
 
 			it("removes the image", func() {
@@ -131,8 +131,8 @@ LABEL repo_name_for_randomisation=%s
 				h.AssertNil(t, err)
 				images, err := dockerClient.ImageList(context.TODO(), types.ImageListOptions{
 					Filters: filters.NewArgs(filters.KeyValuePair{
-						Key:   "label",
-						Value: "repo_name_for_randomisation=" + imageName,
+						Key:   "reference",
+						Value: imageName,
 					}),
 				})
 				h.AssertNil(t, err)
