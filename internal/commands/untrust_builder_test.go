@@ -8,16 +8,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/style"
-
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -30,10 +28,11 @@ func TestUntrustBuilder(t *testing.T) {
 
 func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		logger       logging.Logger
-		outBuf       bytes.Buffer
-		tempPackHome string
-		configPath   string
+		logger        logging.Logger
+		outBuf        bytes.Buffer
+		tempPackHome  string
+		configPath    string
+		configManager configManager
 	)
 
 	it.Before(func() {
@@ -46,6 +45,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, os.Setenv("PACK_HOME", tempPackHome))
 
 		configPath = filepath.Join(tempPackHome, "config.toml")
+		configManager = newConfigManager(t, configPath)
 	})
 
 	it.After(func() {
@@ -56,7 +56,8 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	when("#UntrustBuilder", func() {
 		when("no builder is provided", func() {
 			it("prints usage", func() {
-				command := untrustBuilderCommandWithTrustedBuilders(t, logger, configPath)
+				cfg := configManager.configWithTrustedBuilders()
+				command := commands.UntrustBuilder(logger, cfg)
 				command.SetArgs([]string{})
 				h.AssertNil(t, command.Execute())
 				h.AssertContains(t, outBuf.String(), "Usage:")
@@ -67,7 +68,8 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			it("removes builder from the config", func() {
 				builderName := "some-builder"
 
-				command := untrustBuilderCommandWithTrustedBuilders(t, logger, configPath, builderName)
+				cfg := configManager.configWithTrustedBuilders(builderName)
+				command := commands.UntrustBuilder(logger, cfg)
 				command.SetArgs([]string{builderName})
 
 				h.AssertNil(t, command.Execute())
@@ -86,12 +88,8 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				untrustBuilder := "stop/trusting:me"
 				stillTrustedBuilder := "very/safe/builder"
 
-				command := untrustBuilderCommandWithTrustedBuilders(t,
-					logger,
-					configPath,
-					untrustBuilder,
-					stillTrustedBuilder,
-				)
+				cfg := configManager.configWithTrustedBuilders(untrustBuilder, stillTrustedBuilder)
+				command := commands.UntrustBuilder(logger, cfg)
 				command.SetArgs([]string{untrustBuilder})
 
 				h.AssertNil(t, command.Execute())
@@ -108,7 +106,8 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				neverTrustedBuilder := "never/trusted-builder"
 				stillTrustedBuilder := "very/safe/builder"
 
-				command := untrustBuilderCommandWithTrustedBuilders(t, logger, configPath, stillTrustedBuilder)
+				cfg := configManager.configWithTrustedBuilders(stillTrustedBuilder)
+				command := commands.UntrustBuilder(logger, cfg)
 				command.SetArgs([]string{neverTrustedBuilder})
 
 				h.AssertNil(t, command.Execute())
@@ -127,22 +126,27 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
-func untrustBuilderCommandWithTrustedBuilders(
-	t *testing.T,
-	logger logging.Logger,
-	configPath string,
-	trustedBuilders ...string,
-) *cobra.Command {
+type configManager struct {
+	testObject *testing.T
+	configPath string
+}
 
-	t.Helper()
+func newConfigManager(t *testing.T, configPath string) configManager {
+	return configManager{
+		testObject: t,
+		configPath: configPath,
+	}
+}
+
+func (c configManager) configWithTrustedBuilders(trustedBuilders ...string) config.Config {
+	c.testObject.Helper()
 
 	cfg := config.Config{}
 	for _, builderName := range trustedBuilders {
 		cfg.TrustedBuilders = append(cfg.TrustedBuilders, config.TrustedBuilder{Name: builderName})
 	}
-	err := config.Write(cfg, configPath)
-	h.AssertNil(t, err)
+	err := config.Write(cfg, c.configPath)
+	h.AssertNil(c.testObject, err)
 
-	return commands.UntrustBuilder(logger, cfg)
+	return cfg
 }
