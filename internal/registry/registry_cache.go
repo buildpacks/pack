@@ -43,12 +43,12 @@ func NewDefaultRegistryCache(logger logging.Logger, home string) (Cache, error) 
 // NewRegistryCache creates a new registry cache
 func NewRegistryCache(logger logging.Logger, home, registryURL string) (Cache, error) {
 	if _, err := os.Stat(home); err != nil {
-		return Cache{}, err
+		return Cache{}, errors.Wrapf(err, "failed to find home %s", home)
 	}
 
 	normalizedURL, err := url.Parse(registryURL)
 	if err != nil {
-		return Cache{}, err
+		return Cache{}, errors.Wrapf(err, "failed to parse registry url %s", registryURL)
 	}
 
 	key := sha256.New()
