@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
@@ -19,7 +20,11 @@ import (
 )
 
 func TestRegistryCache(t *testing.T) {
-	spec.Run(t, "Cache", func(t *testing.T, when spec.G, it spec.S) {
+	spec.Run(t, "Cache", testRegistryCache, spec.Parallel(), spec.Report(report.Terminal{}))
+}
+
+func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
+	when("RegistryCache", func() {
 		var (
 			tmpDir          string
 			registryFixture string
@@ -113,31 +118,29 @@ func TestRegistryCache(t *testing.T) {
 		})
 	})
 
-	spec.Run(t, "Buildpack", func(t *testing.T, when spec.G, it spec.S) {
-		when("#Validate", func() {
-			it("errors when address is missing", func() {
-				b := registry.Buildpack{
-					Address: "",
-				}
+	when("RegistryBuildpack#Validate", func() {
+		it("errors when address is missing", func() {
+			b := registry.Buildpack{
+				Address: "",
+			}
 
-				h.AssertNotNil(t, b.Validate())
-			})
+			h.AssertNotNil(t, b.Validate())
+		})
 
-			it("errors when not a digest", func() {
-				b := registry.Buildpack{
-					Address: "example.com/some/package:18",
-				}
+		it("errors when not a digest", func() {
+			b := registry.Buildpack{
+				Address: "example.com/some/package:18",
+			}
 
-				h.AssertNotNil(t, b.Validate())
-			})
+			h.AssertNotNil(t, b.Validate())
+		})
 
-			it("does not error when address is a digest", func() {
-				b := registry.Buildpack{
-					Address: "example.com/some/package@sha256:8c27fe111c11b722081701dfed3bd55e039b9ce92865473cf4cdfa918071c566",
-				}
+		it("does not error when address is a digest", func() {
+			b := registry.Buildpack{
+				Address: "example.com/some/package@sha256:8c27fe111c11b722081701dfed3bd55e039b9ce92865473cf4cdfa918071c566",
+			}
 
-				h.AssertNil(t, b.Validate())
-			})
+			h.AssertNil(t, b.Validate())
 		})
 	})
 }
