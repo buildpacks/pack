@@ -24,6 +24,7 @@ const defaultRegistryURL = "https://github.com/buildpacks/registry-index"
 
 const defaultRegistryDir = "registry"
 
+// Buildpack contains information about a buildpack stored in a Registry
 type Buildpack struct {
 	Namespace string `json:"ns"`
 	Name      string `json:"name"`
@@ -32,16 +33,24 @@ type Buildpack struct {
 	Address   string `json:"addr"`
 }
 
+// Entry is a list of buildpacks stored in a registry
 type Entry struct {
 	Buildpacks []Buildpack `json:"buildpacks"`
 }
 
+// Cache is a RegistryCache
 type Cache struct {
 	logger logging.Logger
 	url    *url.URL
 	Root   string
 }
 
+// NewDefaultRegistryCache creates a new registry cache with default options
+func NewDefaultRegistryCache(logger logging.Logger, home string) (Cache, error) {
+	return NewRegistryCache(logger, home, defaultRegistryURL)
+}
+
+// NewRegistryCache creates a new registry cache
 func NewRegistryCache(logger logging.Logger, home, registryURL string) (Cache, error) {
 	if _, err := os.Stat(home); err != nil {
 		return Cache{}, err
@@ -63,8 +72,109 @@ func NewRegistryCache(logger logging.Logger, home, registryURL string) (Cache, e
 	}, nil
 }
 
-func NewDefaultRegistryCache(logger logging.Logger, home string) (Cache, error) {
-	return NewRegistryCache(logger, home, defaultRegistryURL)
+// LocateBuildpack stored in registry
+func (r *Cache) LocateBuildpack(bp string) (Buildpack, error) {
+	err := r.Refresh()
+	if err != nil {
+		return Buildpack{}, errors.Wrap(err, "refreshing cache")
+	}
+
+	ns, name, version, err := buildpack.ParseRegistryID(bp)
+	if err != nil {
+		return Buildpack{}, err
+	}
+
+	entry, err := r.readEntry(ns, name)
+	if err != nil {
+		return Buildpack{}, errors.Wrap(err, "reading entry")
+	}
+
+	if len(entry.Buildpacks) > 0 {
+		if version == "" {
+			highestVersion := entry.Buildpacks[0]
+			if len(entry.Buildpacks) > 1 {
+				for _, bp := range entry.Buildpacks[1:] {
+					if semver.Compare(fmt.Sprintf("v%s", bp.Version), fmt.Sprintf("v%s", highestVersion.Version)) > 0 {
+						highestVersion = bp
+					}
+				}
+			}
+			return highestVersion, highestVersion.Validate()
+		}
+
+		for _, bpIndex := range entry.Buildpacks {
+			if bpIndex.Version == version {
+				return bpIndex, bpIndex.Validate()
+			}
+		}
+		return Buildpack{}, fmt.Errorf("could not find version for buildpack: %s", bp)
+	}
+
+	return Buildpack{}, fmt.Errorf("no entries for buildpack: %s", bp)
+}
+
+// Refresh local Registry Cache
+func (r *Cache) Refresh() error {
+	r.logger.Debugf("Refreshing registry cache for %s/%s", r.url.Host, r.url.Path)
+
+	if err := r.Initialize(); err != nil {
+		return err
+	}
+
+	repository, err := git.PlainOpen(r.Root)
+	if err != nil {
+		return errors.Wrapf(err, "could not open (%s)", r.Root)
+	}
+
+	w, err := repository.Worktree()
+	if err != nil {
+		return errors.Wrapf(err, "could not read (%s)", r.Root)
+	}
+
+	err = w.Pull(&git.PullOptions{RemoteName: "origin"})
+	if err == git.NoErrAlreadyUpToDate {
+		return nil
+	}
+	return err
+}
+
+// Initialize a local Registry Cache
+func (r *Cache) Initialize() error {
+	_, err := os.Stat(r.Root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = r.createCache()
+			if err != nil {
+				return errors.Wrap(err, "could not create registry cache")
+			}
+		}
+	}
+
+	if err := r.validateCache(); err != nil {
+		err = os.RemoveAll(r.Root)
+		if err != nil {
+			return errors.Wrap(err, "could not reset registry cache")
+		}
+		err = r.createCache()
+		if err != nil {
+			return errors.Wrap(err, "could not rebuild registry cache")
+		}
+	}
+
+	return nil
+}
+
+// Validate that a buildpack reference contains required information
+func (b *Buildpack) Validate() error {
+	if b.Address == "" {
+		return errors.New("invalid entry: address is a required field")
+	}
+	_, err := ggcrname.NewDigest(b.Address)
+	if err != nil {
+		return fmt.Errorf("invalid entry: '%s' is not a digest reference", b.Address)
+	}
+
+	return nil
 }
 
 func (r *Cache) createCache() error {
@@ -111,55 +221,6 @@ func (r *Cache) validateCache() error {
 	return errors.New("invalid registry cache remote")
 }
 
-func (r *Cache) Initialize() error {
-	_, err := os.Stat(r.Root)
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = r.createCache()
-			if err != nil {
-				return errors.Wrap(err, "could not create registry cache")
-			}
-		}
-	}
-
-	if err := r.validateCache(); err != nil {
-		err = os.RemoveAll(r.Root)
-		if err != nil {
-			return errors.Wrap(err, "could not reset registry cache")
-		}
-		err = r.createCache()
-		if err != nil {
-			return errors.Wrap(err, "could not rebuild registry cache")
-		}
-	}
-
-	return nil
-}
-
-func (r *Cache) Refresh() error {
-	r.logger.Debugf("Refreshing registry cache for %s/%s", r.url.Host, r.url.Path)
-
-	if err := r.Initialize(); err != nil {
-		return err
-	}
-
-	repository, err := git.PlainOpen(r.Root)
-	if err != nil {
-		return errors.Wrapf(err, "could not open (%s)", r.Root)
-	}
-
-	w, err := repository.Worktree()
-	if err != nil {
-		return errors.Wrapf(err, "could not read (%s)", r.Root)
-	}
-
-	err = w.Pull(&git.PullOptions{RemoteName: "origin"})
-	if err == git.NoErrAlreadyUpToDate {
-		return nil
-	}
-	return err
-}
-
 func (r *Cache) readEntry(ns, name string) (Entry, error) {
 	var indexDir string
 	switch {
@@ -204,56 +265,4 @@ func (r *Cache) readEntry(ns, name string) (Entry, error) {
 	}
 
 	return entry, nil
-}
-
-func (r *Cache) LocateBuildpack(bp string) (Buildpack, error) {
-	err := r.Refresh()
-	if err != nil {
-		return Buildpack{}, errors.Wrap(err, "refreshing cache")
-	}
-
-	ns, name, version, err := buildpack.ParseRegistryID(bp)
-	if err != nil {
-		return Buildpack{}, err
-	}
-
-	entry, err := r.readEntry(ns, name)
-	if err != nil {
-		return Buildpack{}, errors.Wrap(err, "reading entry")
-	}
-
-	if len(entry.Buildpacks) > 0 {
-		if version == "" {
-			highestVersion := entry.Buildpacks[0]
-			if len(entry.Buildpacks) > 1 {
-				for _, bp := range entry.Buildpacks[1:] {
-					if semver.Compare(fmt.Sprintf("v%s", bp.Version), fmt.Sprintf("v%s", highestVersion.Version)) > 0 {
-						highestVersion = bp
-					}
-				}
-			}
-			return highestVersion, highestVersion.Validate()
-		}
-
-		for _, bpIndex := range entry.Buildpacks {
-			if bpIndex.Version == version {
-				return bpIndex, bpIndex.Validate()
-			}
-		}
-		return Buildpack{}, fmt.Errorf("could not find version for buildpack: %s", bp)
-	}
-
-	return Buildpack{}, fmt.Errorf("no entries for buildpack: %s", bp)
-}
-
-func (b *Buildpack) Validate() error {
-	if b.Address == "" {
-		return errors.New("invalid entry: address is a required field")
-	}
-	_, err := ggcrname.NewDigest(b.Address)
-	if err != nil {
-		return fmt.Errorf("invalid entry: '%s' is not a digest reference", b.Address)
-	}
-
-	return nil
 }
