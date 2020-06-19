@@ -3,10 +3,11 @@ package registry_test
 import (
 	"testing"
 
-	"github.com/buildpacks/pack/internal/registry"
-	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/internal/registry"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestRegistryBuildpack(t *testing.T) {
@@ -39,5 +40,4 @@ func testRegistryBuildpack(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, b.Validate())
 		})
 	})
-
 }
