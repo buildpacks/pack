@@ -9,14 +9,11 @@ import (
 	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
-	clilogger "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 )
 
 // NewPackCommand generates a Pack command
-func NewPackCommand() (*cobra.Command, error) {
-	logger := clilogger.NewLogWithWriters(color.Stdout(), color.Stderr())
-
+func NewPackCommand(logger logging.ConfigurableLogger) (*cobra.Command, error) {
 	cobra.EnableCommandSorting = false
 	cfg, err := initConfig()
 	if err != nil {

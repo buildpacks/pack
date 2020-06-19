@@ -36,6 +36,14 @@ type Logger interface {
 	IsVerbose() bool
 }
 
+// ConfigurableLogger defines behavior required by the Pack cobra.Command
+type ConfigurableLogger interface {
+	Logger
+	WantTime(f bool)
+	WantQuiet(f bool)
+	WantVerbose(f bool)
+}
+
 // WithSelectableWriter is an optional interface for loggers that want to support a separate writer per log level.
 type WithSelectableWriter interface {
 	WriterForLevel(level Level) io.Writer
