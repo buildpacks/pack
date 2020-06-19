@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 
-	ggcrname "github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
 	"gopkg.in/src-d/go-git.v4"
@@ -24,25 +23,16 @@ const defaultRegistryURL = "https://github.com/buildpacks/registry-index"
 
 const defaultRegistryDir = "registry"
 
-// Buildpack contains information about a buildpack stored in a Registry
-type Buildpack struct {
-	Namespace string `json:"ns"`
-	Name      string `json:"name"`
-	Version   string `json:"version"`
-	Yanked    bool   `json:"yanked"`
-	Address   string `json:"addr"`
-}
-
-// Entry is a list of buildpacks stored in a registry
-type Entry struct {
-	Buildpacks []Buildpack `json:"buildpacks"`
-}
-
 // Cache is a RegistryCache
 type Cache struct {
 	logger logging.Logger
 	url    *url.URL
 	Root   string
+}
+
+// Entry is a list of buildpacks stored in a registry
+type Entry struct {
+	Buildpacks []Buildpack `json:"buildpacks"`
 }
 
 // NewDefaultRegistryCache creates a new registry cache with default options
@@ -159,19 +149,6 @@ func (r *Cache) Initialize() error {
 		if err != nil {
 			return errors.Wrap(err, "could not rebuild registry cache")
 		}
-	}
-
-	return nil
-}
-
-// Validate that a buildpack reference contains required information
-func (b *Buildpack) Validate() error {
-	if b.Address == "" {
-		return errors.New("invalid entry: address is a required field")
-	}
-	_, err := ggcrname.NewDigest(b.Address)
-	if err != nil {
-		return fmt.Errorf("invalid entry: '%s' is not a digest reference", b.Address)
 	}
 
 	return nil
