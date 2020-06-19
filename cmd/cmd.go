@@ -14,7 +14,9 @@ import (
 )
 
 // NewPackCommand generates a Pack command
-func NewPackCommand(logger *clilogger.LogWithWriters) (*cobra.Command, error) {
+func NewPackCommand() (*cobra.Command, error) {
+	logger := clilogger.NewLogWithWriters(color.Stdout(), color.Stderr())
+
 	cobra.EnableCommandSorting = false
 	cfg, err := initConfig()
 	if err != nil {
@@ -27,7 +29,8 @@ func NewPackCommand(logger *clilogger.LogWithWriters) (*cobra.Command, error) {
 	}
 
 	rootCmd := &cobra.Command{
-		Use: "pack",
+		Use:   "pack",
+		Short: "CLI for building apps using Cloud Native Buildpacks",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if fs := cmd.Flags(); fs != nil {
 				if flag, err := fs.GetBool("no-color"); err == nil {

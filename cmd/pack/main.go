@@ -3,22 +3,18 @@ package main
 import (
 	"os"
 
-	"github.com/buildpacks/pack/cmd"
+	"github.com/apex/log"
 
-	"github.com/heroku/color"
+	"github.com/buildpacks/pack/cmd"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
-	clilogger "github.com/buildpacks/pack/internal/logging"
 )
 
 func main() {
-	// create logger with defaults
-	logger := clilogger.NewLogWithWriters(color.Stdout(), color.Stderr())
-
-	rootCmd, err := cmd.NewPackCommand(logger)
+	rootCmd, err := cmd.NewPackCommand()
 	if err != nil {
-		logger.Error(err.Error())
+		log.Error(err.Error())
 		os.Exit(1)
 	}
 
