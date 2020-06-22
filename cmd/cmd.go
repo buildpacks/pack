@@ -12,8 +12,16 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+// ConfigurableLogger defines behavior required by the PackCommand
+type ConfigurableLogger interface {
+	logging.Logger
+	WantTime(f bool)
+	WantQuiet(f bool)
+	WantVerbose(f bool)
+}
+
 // NewPackCommand generates a Pack command
-func NewPackCommand(logger logging.ConfigurableLogger) (*cobra.Command, error) {
+func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	cobra.EnableCommandSorting = false
 	cfg, err := initConfig()
 	if err != nil {
