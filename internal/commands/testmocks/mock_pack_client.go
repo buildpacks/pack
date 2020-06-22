@@ -108,6 +108,20 @@ func (mr *MockPackClientMockRecorder) PackageBuildpack(arg0, arg1 interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PackageBuildpack", reflect.TypeOf((*MockPackClient)(nil).PackageBuildpack), arg0, arg1)
 }
 
+// PublishBuildpack mocks base method
+func (m *MockPackClient) PublishBuildpack(arg0 context.Context, arg1 pack.PublishBuildpackOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PublishBuildpack", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PublishBuildpack indicates an expected call of PublishBuildpack
+func (mr *MockPackClientMockRecorder) PublishBuildpack(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PublishBuildpack", reflect.TypeOf((*MockPackClient)(nil).PublishBuildpack), arg0, arg1)
+}
+
 // Rebase mocks base method
 func (m *MockPackClient) Rebase(arg0 context.Context, arg1 pack.RebaseOptions) error {
 	m.ctrl.T.Helper()

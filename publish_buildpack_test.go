@@ -1,10 +1,11 @@
 package pack
 
 import (
+	"testing"
+
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"testing"
 )
 
 func TestPublishBuildpack(t *testing.T) {
@@ -14,5 +15,4 @@ func TestPublishBuildpack(t *testing.T) {
 }
 
 func testPublishBuildpack(t *testing.T, when spec.G, it spec.S) {
-	return
 }
