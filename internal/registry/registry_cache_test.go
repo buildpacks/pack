@@ -122,9 +122,24 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, bp.Version, "1.1.0")
 		})
 
-		it("does not locate a buildpack", func() {
-			_, err := registryCache.LocateBuildpack("example/quack")
-			h.AssertNotNil(t, err)
+		it("returns error if can't parse buildpack id", func() {
+			_, err := registryCache.LocateBuildpack("quack")
+			h.AssertError(t, err, "parsing buildpacks registry id")
+		})
+
+		it("returns error if buildpack id is empty", func() {
+			_, err := registryCache.LocateBuildpack("example/")
+			h.AssertError(t, err, "empty buildpack name")
+		})
+
+		it("returns error if can't find buildpack with requested id", func() {
+			_, err := registryCache.LocateBuildpack("example/qu")
+			h.AssertError(t, err, "reading entry")
+		})
+
+		it("returns error if can't find buildpack with requested version", func() {
+			_, err := registryCache.LocateBuildpack("example/foo@3.5.6")
+			h.AssertError(t, err, "could not find version")
 		})
 	})
 

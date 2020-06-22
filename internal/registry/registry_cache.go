@@ -71,7 +71,7 @@ func (r *Cache) LocateBuildpack(bp string) (Buildpack, error) {
 
 	ns, name, version, err := buildpack.ParseRegistryID(bp)
 	if err != nil {
-		return Buildpack{}, err
+		return Buildpack{}, errors.Wrap(err, "parsing buildpacks registry id")
 	}
 
 	entry, err := r.readEntry(ns, name)
