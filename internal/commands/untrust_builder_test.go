@@ -59,7 +59,10 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				cfg := configManager.configWithTrustedBuilders()
 				command := commands.UntrustBuilder(logger, cfg)
 				command.SetArgs([]string{})
-				h.AssertNil(t, command.Execute())
+				command.SetOut(&outBuf)
+
+				err := command.Execute()
+				h.AssertError(t, err, "accepts 1 arg(s), received 0")
 				h.AssertContains(t, outBuf.String(), "Usage:")
 			})
 		})
