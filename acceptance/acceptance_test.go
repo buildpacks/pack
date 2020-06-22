@@ -305,6 +305,25 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
+	when("untrust-builder", func() {
+		it("removes the previously trusted builder from ~/${PACK_HOME}/config.toml", func() {
+			h.SkipIf(t, !packSupports(packPath, "untrust-builder"), "pack does not support 'untrust-builder'")
+			builderName := "some-builder" + h.RandString(10)
+
+			h.Run(t, subjectPack("trust-builder", builderName))
+
+			packConfigFileContents, err := ioutil.ReadFile(filepath.Join(packHome, "config.toml"))
+			h.AssertNil(t, err)
+			h.AssertContains(t, string(packConfigFileContents), builderName)
+
+			h.Run(t, subjectPack("untrust-builder", builderName))
+
+			packConfigFileContents, err = ioutil.ReadFile(filepath.Join(packHome, "config.toml"))
+			h.AssertNil(t, err)
+			h.AssertNotContains(t, string(packConfigFileContents), builderName)
+		})
+	})
+
 	when("list-trusted-builders", func() {
 		it.Before(func() {
 			h.SkipIf(t,
