@@ -30,24 +30,18 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/acceptance/managers"
 	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/archive"
-	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
-	"github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/style"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
 const (
-	envCompilePackWithVersion = "COMPILE_PACK_WITH_VERSION"
-
 	runImage   = "pack-test/run"
 	buildImage = "pack-test/build"
-
-	defaultCompilePackVersion = "0.0.0"
-	defaultPlatformAPIVersion = "0.3"
 )
 
 var (
@@ -55,15 +49,6 @@ var (
 	registryConfig *h.TestRegistryConfig
 	suiteManager   *SuiteManager
 )
-
-type testWriter struct {
-	t *testing.T
-}
-
-func (w *testWriter) Write(p []byte) (n int, err error) {
-	w.t.Logf(string(p))
-	return len(p), nil
-}
 
 func TestAcceptance(t *testing.T) {
 	var err error
@@ -77,142 +62,50 @@ func TestAcceptance(t *testing.T) {
 	registryConfig = h.RunRegistry(t)
 	defer registryConfig.StopRegistry(t)
 
-	testWriter := testWriter{t}
-	inputPathsManager, err := NewInputPathsManager(logging.NewLogWithWriters(&testWriter, &testWriter))
+	inputConfigManager, err := managers.NewInputConfigurationManager()
 	h.AssertNil(t, err)
 
-	combos, err := getRunCombinations()
-	h.AssertNil(t, err)
-
-	// Check that the provided inputs are valid for each combo
-	// If required inputs are missing, attempt to fill them in by downloading from GitHub
-	for _, c := range combos {
-		err := inputPathsManager.FillInRequiredPaths(c)
-		h.AssertNil(t, err)
-	}
-
-	// If pack path not provided, compile pack with the version provided (or use default version)
-	packPath := inputPathsManager.packPath
-	if packPath == "" {
-		compileVersion := os.Getenv(envCompilePackWithVersion)
-		if compileVersion == "" {
-			compileVersion = defaultCompilePackVersion
-		}
-		packPath = buildPack(t, compileVersion)
-	}
-
-	previousPackPath := inputPathsManager.previousPackPath
-
-	// Copy previous pack fixtures directory into a temp directory
-	// Copy the contents of "pack_previous_fixtures_overrides" into the temp directory
-	previousPackFixturesPath := inputPathsManager.previousPackFixturesPath
-	var tmpPreviousPackFixturesPath string
-	if previousPackFixturesPath != "" {
-		tmpPreviousPackFixturesPath, err = ioutil.TempDir("", "previous-pack-fixtures")
-		h.AssertNil(t, err)
-		defer os.RemoveAll(tmpPreviousPackFixturesPath)
-
-		h.RecursiveCopy(t, previousPackFixturesPath, tmpPreviousPackFixturesPath)
-		h.RecursiveCopy(t, filepath.Join("testdata", "pack_previous_fixtures_overrides"), tmpPreviousPackFixturesPath)
-	}
-
-	lifecyclePath := inputPathsManager.lifecyclePath
-	lifecycleDescriptor := builder.LifecycleDescriptor{
-		Info: builder.LifecycleInfo{
-			Version: builder.VersionMustParse(builder.DefaultLifecycleVersion),
-		},
-		API: builder.LifecycleAPI{
-			BuildpackVersion: api.MustParse(builder.DefaultBuildpackAPIVersion),
-			PlatformVersion:  api.MustParse(defaultPlatformAPIVersion),
-		},
-	}
-	if lifecyclePath != "" {
-		lifecycleDescriptor, err = extractLifecycleDescriptor(lifecyclePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	previousLifecyclePath := inputPathsManager.previousLifecyclePath
-	var previousLifecycleDescriptor builder.LifecycleDescriptor
-	if previousLifecyclePath != "" {
-		previousLifecycleDescriptor, err = extractLifecycleDescriptor(previousLifecyclePath)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
+	assetsConfig := managers.ConvergedAssetManager(t, inputConfigManager)
 
 	suiteManager = &SuiteManager{out: t.Logf}
 	suite := spec.New("acceptance suite", spec.Report(report.Terminal{}))
 
-	for _, combo := range combos {
-		if combo.Pack == "current" {
-			suite("p_current", func(t *testing.T, when spec.G, it spec.S) {
-				testWithoutSpecificBuilderRequirement(
-					t,
-					when,
-					it,
-					currentPackFixturesDir,
-					packPath,
-					api.MustParse(builder.DefaultBuildpackAPIVersion),
-				)
-			}, spec.Report(report.Terminal{}))
-			break
-		}
+	if inputConfigManager.Combinations().IncludesCurrentSubjectPack() {
+		suite("p_current", func(t *testing.T, when spec.G, it spec.S) {
+			packPath, packFixtures := assetsConfig.PackPaths(managers.Current)
+
+			testWithoutSpecificBuilderRequirement(
+				t,
+				when,
+				it,
+				packFixtures,
+				packPath,
+				api.MustParse(builder.DefaultBuildpackAPIVersion),
+			)
+		}, spec.Report(report.Terminal{}))
 	}
 
-	resolvedCombos, err := resolveRunCombinations(
-		combos,
-		packPath,
-		previousPackPath,
-		tmpPreviousPackFixturesPath,
-		lifecyclePath,
-		lifecycleDescriptor,
-		previousLifecyclePath,
-		previousLifecycleDescriptor,
-	)
-	h.AssertNil(t, err)
-
-	for k, combo := range resolvedCombos {
-		t.Logf(`setting up run combination %s:
-pack:
- |__ path: %s
- |__ fixtures: %s
-
-create builder:
- |__ pack path: %s
- |__ pack fixtures: %s
-
-lifecycle:
- |__ path: %s
- |__ version: %s
- |__ buildpack api: %s
- |__ platform api: %s
-`,
-			style.Symbol(k),
-			combo.packPath,
-			combo.packFixturesDir,
-			combo.packCreateBuilderPath,
-			combo.packCreateBuilderFixturesDir,
-			combo.lifecyclePath,
-			combo.lifecycleDescriptor.Info.Version,
-			combo.lifecycleDescriptor.API.BuildpackVersion,
-			combo.lifecycleDescriptor.API.PlatformVersion,
+	for _, combo := range inputConfigManager.Combinations() {
+		t.Logf(`setting up run combination %s: %s`,
+			style.Symbol(combo.String()),
+			combo.Describe(assetsConfig),
 		)
 
-		combo := combo
+		packPath, packFixtures := assetsConfig.PackPaths(combo.Pack)
+		createBuilderPackPath, createBuilderPackFixtures := assetsConfig.PackPaths(combo.PackCreateBuilder)
+		lifecyclePath, lifecycleDescriptor := assetsConfig.Lifecycle(combo.Lifecycle)
 
-		suite(k, func(t *testing.T, when spec.G, it spec.S) {
+		suite(combo.String(), func(t *testing.T, when spec.G, it spec.S) {
 			testAcceptance(
 				t,
 				when,
 				it,
-				combo.packFixturesDir,
-				combo.packPath,
-				combo.packCreateBuilderPath,
-				combo.packCreateBuilderFixturesDir,
-				combo.lifecyclePath,
-				combo.lifecycleDescriptor,
+				packFixtures,
+				packPath,
+				createBuilderPackPath,
+				createBuilderPackFixtures,
+				lifecyclePath,
+				lifecycleDescriptor,
 			)
 		}, spec.Report(report.Terminal{}))
 	}
@@ -1744,15 +1637,6 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 	})
 }
 
-func extractLifecycleDescriptor(lcPath string) (builder.LifecycleDescriptor, error) {
-	lifecycle, err := builder.NewLifecycle(blob.NewBlob(lcPath))
-	if err != nil {
-		return builder.LifecycleDescriptor{}, errors.Wrapf(err, "reading lifecycle from %s", lcPath)
-	}
-
-	return lifecycle.Descriptor(), nil
-}
-
 func packCmd(packHome string, packPath string, name string, args ...string) *exec.Cmd {
 	cmdArgs := append([]string{name}, args...)
 	cmdArgs = append(cmdArgs, "--no-color")
@@ -1814,36 +1698,6 @@ func packSupports(packPath, command string) bool {
 
 func buildpacksDir(bpAPIVersion api.Version) string {
 	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion.String())
-}
-
-func buildPack(t *testing.T, compileVersion string) string {
-	packTmpDir, err := ioutil.TempDir("", "pack.acceptance.binary.")
-	h.AssertNil(t, err)
-
-	packPath := filepath.Join(packTmpDir, "pack")
-	if runtime.GOOS == "windows" {
-		packPath = packPath + ".exe"
-	}
-
-	cwd, err := os.Getwd()
-	h.AssertNil(t, err)
-
-	cmd := exec.Command("go", "build",
-		"-ldflags", fmt.Sprintf("-X 'github.com/buildpacks/pack/cmd.Version=%s'", compileVersion),
-		"-mod=vendor",
-		"-o", packPath,
-		"./cmd/pack",
-	)
-	if filepath.Base(cwd) == "acceptance" {
-		cmd.Dir = filepath.Dir(cwd)
-	}
-
-	t.Logf("building pack: [CWD=%s] %s", cmd.Dir, cmd.Args)
-	if txt, err := cmd.CombinedOutput(); err != nil {
-		t.Fatal("building pack cli:\n", string(txt), err)
-	}
-
-	return packPath
 }
 
 func createBuilder(t *testing.T, runImageMirror, configDir, packHome, packPath, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) (string, error) {

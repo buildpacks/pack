@@ -1,4 +1,6 @@
-package acceptance
+// +build acceptance
+
+package managers
 
 import (
 	"archive/tar"
@@ -16,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -35,7 +38,7 @@ const (
 
 type GithubAssetFetcher struct {
 	ctx          context.Context
-	logger       logging.Logger
+	testObject   *testing.T
 	githubClient *github.Client
 	cacheDir     string
 }
@@ -50,7 +53,9 @@ type cachedAssets map[string][]string
 type cachedSources map[string]string
 type cachedVersions map[string]string
 
-func NewGithubAssetFetcher(githubToken string, logger logging.Logger) (*GithubAssetFetcher, error) {
+func NewGithubAssetFetcher(t *testing.T, githubToken string) (*GithubAssetFetcher, error) {
+	t.Helper()
+
 	relativeCacheDir := filepath.Join("..", "out", "tests", assetCacheDir)
 	cacheDir, err := filepath.Abs(relativeCacheDir)
 	if err != nil {
@@ -63,7 +68,7 @@ func NewGithubAssetFetcher(githubToken string, logger logging.Logger) (*GithubAs
 	ctx := context.TODO()
 	httpClient := new(http.Client)
 	if githubToken != "" {
-		logger.Info("using provided github token")
+		t.Log("using provided github token")
 		tokenSource := oauth2.StaticTokenSource(&oauth2.Token{
 			AccessToken: githubToken,
 		})
@@ -72,7 +77,7 @@ func NewGithubAssetFetcher(githubToken string, logger logging.Logger) (*GithubAs
 
 	return &GithubAssetFetcher{
 		ctx:          ctx,
-		logger:       logger,
+		testObject:   t,
 		githubClient: github.NewClient(httpClient),
 		cacheDir:     cacheDir,
 	}, nil
@@ -83,8 +88,10 @@ func NewGithubAssetFetcher(githubToken string, logger logging.Logger) (*GithubAs
 // The asset may be found in the local cache or downloaded from GitHub.
 // The return value is the location of the asset on disk, or any error encountered.
 func (f *GithubAssetFetcher) FetchReleaseAsset(owner, repo, version string, expr *regexp.Regexp, extract bool) (string, error) {
+	f.testObject.Helper()
+
 	if destPath, _ := f.cachedAsset(owner, repo, version, expr); destPath != "" {
-		f.logger.Infof("found %s in cache for %s/%s@%s", destPath, owner, repo, version)
+		f.testObject.Logf("found %s in cache for %s/%s %s", destPath, owner, repo, version)
 		return destPath, nil
 	}
 
@@ -142,7 +149,7 @@ func (f *GithubAssetFetcher) FetchReleaseAsset(owner, repo, version string, expr
 		cache[owner][repo].Assets[version] = []string{returnPath}
 	})
 	if err != nil {
-		f.logger.Warn(errors.Wrap(err, "writing cache").Error())
+		f.testObject.Log(errors.Wrap(err, "writing cache").Error())
 	}
 	return returnPath, nil
 }
@@ -158,8 +165,10 @@ func extractType(extract bool, assetName string) string {
 }
 
 func (f *GithubAssetFetcher) FetchReleaseSource(owner, repo, version string) (string, error) {
+	f.testObject.Helper()
+
 	if destDir, _ := f.cachedSource(owner, repo, version); destDir != "" {
-		f.logger.Infof("found %s in cache for %s/%s@%s", destDir, owner, repo, version)
+		f.testObject.Logf("found %s in cache for %s/%s %s", destDir, owner, repo, version)
 		return destDir, nil
 	}
 
@@ -181,7 +190,7 @@ func (f *GithubAssetFetcher) FetchReleaseSource(owner, repo, version string) (st
 		cache[owner][repo].Sources[version] = destDir
 	})
 	if err != nil {
-		f.logger.Warn(errors.Wrap(err, "writing cache").Error())
+		f.testObject.Log(errors.Wrap(err, "writing cache").Error())
 	}
 	return destDir, nil
 }
@@ -190,8 +199,10 @@ func (f *GithubAssetFetcher) FetchReleaseSource(owner, repo, version string) (st
 // Ex: when n is 0, the latest release version is returned.
 // Ex: when n is -1, the latest patch of the previous minor version is returned.
 func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (string, error) {
+	f.testObject.Helper()
+
 	if version, _ := f.cachedVersion(owner, repo, n); version != "" {
-		f.logger.Infof("found %s in cache for %s/%s n%d", version, owner, repo, n)
+		f.testObject.Logf("found %s in cache for %s/%s %d", version, owner, repo, n)
 		return version, nil
 	}
 
@@ -251,12 +262,14 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 		cache[owner][repo].Versions[strconv.Itoa(n)] = formattedVersion
 	})
 	if err != nil {
-		f.logger.Warn(errors.Wrap(err, "writing cache").Error())
+		f.testObject.Log(errors.Wrap(err, "writing cache").Error())
 	}
 	return formattedVersion, nil
 }
 
 func (f *GithubAssetFetcher) cachedAsset(owner, repo, version string, expr *regexp.Regexp) (string, error) {
+	f.testObject.Helper()
+
 	cache, err := f.loadCacheManifest()
 	if err != nil {
 		return "", errors.Wrap(err, "loading cache")
@@ -274,6 +287,8 @@ func (f *GithubAssetFetcher) cachedAsset(owner, repo, version string, expr *rege
 }
 
 func (f *GithubAssetFetcher) cachedSource(owner, repo, version string) (string, error) {
+	f.testObject.Helper()
+
 	cache, err := f.loadCacheManifest()
 	if err != nil {
 		return "", errors.Wrap(err, "loading cache")
@@ -287,6 +302,8 @@ func (f *GithubAssetFetcher) cachedSource(owner, repo, version string) (string, 
 }
 
 func (f *GithubAssetFetcher) cachedVersion(owner, repo string, n int) (string, error) {
+	f.testObject.Helper()
+
 	cache, err := f.loadCacheManifest()
 	if err != nil {
 		return "", errors.Wrap(err, "loading cache")
@@ -300,6 +317,8 @@ func (f *GithubAssetFetcher) cachedVersion(owner, repo string, n int) (string, e
 }
 
 func (f *GithubAssetFetcher) loadCacheManifest() (assetCache, error) {
+	f.testObject.Helper()
+
 	cacheManifest, err := os.Stat(filepath.Join(f.cacheDir, assetCacheManifest))
 	if os.IsNotExist(err) {
 		return assetCache{}, nil
@@ -325,6 +344,8 @@ func (f *GithubAssetFetcher) loadCacheManifest() (assetCache, error) {
 }
 
 func (f *GithubAssetFetcher) writeCacheManifest(owner, repo string, op func(cache assetCache)) error {
+	f.testObject.Helper()
+
 	cache, err := f.loadCacheManifest()
 	if err != nil {
 		return errors.Wrap(err, "loading cache")
@@ -353,7 +374,9 @@ func (f *GithubAssetFetcher) writeCacheManifest(owner, repo string, op func(cach
 }
 
 func (f *GithubAssetFetcher) downloadAndSave(assetURI, destPath string) error {
-	downloader := blob.NewDownloader(f.logger, f.cacheDir)
+	f.testObject.Helper()
+
+	downloader := blob.NewDownloader(logging.New(&testWriter{t: f.testObject}), f.cacheDir)
 
 	assetBlob, err := downloader.Download(f.ctx, assetURI)
 	if err != nil {
@@ -380,7 +403,9 @@ func (f *GithubAssetFetcher) downloadAndSave(assetURI, destPath string) error {
 }
 
 func (f *GithubAssetFetcher) downloadAndExtractTgz(assetURI, destDir string) error {
-	downloader := blob.NewDownloader(f.logger, f.cacheDir)
+	f.testObject.Helper()
+
+	downloader := blob.NewDownloader(logging.New(&testWriter{t: f.testObject}), f.cacheDir)
 
 	assetBlob, err := downloader.Download(f.ctx, assetURI)
 	if err != nil {
@@ -401,6 +426,8 @@ func (f *GithubAssetFetcher) downloadAndExtractTgz(assetURI, destDir string) err
 }
 
 func (f *GithubAssetFetcher) downloadAndExtractZip(assetURI, destPath string) error {
+	f.testObject.Helper()
+
 	if err := f.downloadAndSave(assetURI, destPath); err != nil {
 		return err
 	}
@@ -490,4 +517,13 @@ func extractZip(zipPath string) error {
 	}
 
 	return nil
+}
+
+type testWriter struct {
+	t *testing.T
+}
+
+func (w *testWriter) Write(p []byte) (n int, err error) {
+	w.t.Log(string(p))
+	return len(p), nil
 }
