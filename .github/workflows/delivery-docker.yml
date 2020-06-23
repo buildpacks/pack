@@ -11,15 +11,17 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Determine version
-        run: echo "::set-env name=PACK_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`"
+        id: version
         shell: bash
+        run: |
+          echo "::set-output name=VERSION::$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)"
       - name: Build and Push Image
         uses: docker/build-push-action@v1
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: cnbs/pack
-          tags: latest, ${{ env.PACK_VERSION }}
+          tags: latest, ${{ steps.version.outputs.VERSION }}
           tag_with_sha: true
           path: .github/workflows/delivery/docker
-          build_args: PACK_VERSION=${{ env.PACK_VERSION }}
+          build_args: VERSION=${{ steps.version.outputs.VERSION }}
