@@ -108,7 +108,7 @@ func (r *Cache) Refresh() error {
 	r.logger.Debugf("Refreshing registry cache for %s/%s", r.url.Host, r.url.Path)
 
 	if err := r.Initialize(); err != nil {
-		return err
+		return errors.Wrapf(err, "could not initialize (%s)", r.Root)
 	}
 
 	repository, err := git.PlainOpen(r.Root)

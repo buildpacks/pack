@@ -184,5 +184,44 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 				h.AssertGitHeadEq(t, registryFixture, registryCache.Root)
 			})
 		})
+
+		when("Root is an empty string", func() {
+			it("fails to refresh", func() {
+				registryCache.Root = ""
+				err = registryCache.Refresh()
+				h.AssertError(t, err, "could not initialize")
+			})
+		})
+	})
+
+	when("#Initialize", func() {
+		var (
+			registryCache Cache
+		)
+
+		it.Before(func() {
+			registryCache, err = NewRegistryCache(logger, tmpDir, registryFixture)
+			h.AssertNil(t, err)
+		})
+
+		when("root is empty string", func() {
+			it.Before(func() {
+				registryCache.Root = ""
+			})
+
+			it("fails to create registry cache", func() {
+				err = registryCache.Initialize()
+				h.AssertError(t, err, "could not create registry cache")
+			})
+
+			when("url is empty string", func() {
+				it("fails to clone cache", func() {
+					registryCache.url = &url.URL{}
+
+					err = registryCache.Initialize()
+					h.AssertError(t, err, "could not clone remote registry")
+				})
+			})
+		})
 	})
 }
