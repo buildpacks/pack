@@ -1,0 +1,25 @@
+name: delivery / docker
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  deliver-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Determine version
+        run: echo "::set-env name=PACK_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`"
+        shell: bash
+      - name: Build and Push Image
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: cnbs/pack
+          tags: latest, ${{ env.PACK_VERSION }}
+          tag_with_sha: true
+          path: .github/workflows/delivery/docker
+          build_args: PACK_VERSION=${{ env.PACK_VERSION }}
