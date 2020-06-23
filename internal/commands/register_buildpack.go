@@ -10,23 +10,23 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-func PublishBuildpack(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
-	var opts pack.PublishBuildpackOptions
+func RegisterBuildpack(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+	var opts pack.RegisterBuildpackOptions
 
 	cmd := &cobra.Command{
-		Use:   "publish-buildpack <url>",
+		Use:   "register-buildpack <url>",
 		Args:  cobra.ExactArgs(1),
-		Short: "Publish buildpack to the Buildpack Registry",
+		Short: "Register the buildpack to a registry",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			opts.BuildpackageURL = args[0]
-			if err := client.PublishBuildpack(cmd.Context(), opts); err != nil {
+			if err := client.RegisterBuildpack(cmd.Context(), opts); err != nil {
 				return err
 			}
-			logger.Infof("Successfully published %s", style.Symbol(opts.BuildpackageURL))
+			logger.Infof("Successfully registered %s", style.Symbol(opts.BuildpackageURL))
 			return nil
 		}),
 	}
 	cmd.Flags().StringVarP(&opts.BuildpackRegistry, "buildpack-registry", "R", cfg.DefaultRegistry, "Buildpack Registry URL")
-	AddHelpFlag(cmd, "publish-buildpack")
+	AddHelpFlag(cmd, "register-buildpack")
 	return cmd
 }

@@ -17,12 +17,12 @@ import (
 	"github.com/buildpacks/pack/internal/registry"
 )
 
-type PublishBuildpackOptions struct {
+type RegisterBuildpackOptions struct {
 	BuildpackageURL   string
 	BuildpackRegistry string
 }
 
-func (c *Client) PublishBuildpack(ctx context.Context, opts PublishBuildpackOptions) error {
+func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOptions) error {
 	appImage, err := c.imageFetcher.Fetch(ctx, opts.BuildpackageURL, false, true)
 	if err != nil {
 		return err

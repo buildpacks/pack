@@ -76,7 +76,7 @@ func main() {
 	rootCmd.AddCommand(commands.Version(logger, cmd.Version))
 	rootCmd.AddCommand(commands.Report(logger))
 
-	rootCmd.AddCommand(commands.PublishBuildpack(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, &packClient))
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger))
 
