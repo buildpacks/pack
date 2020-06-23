@@ -31,8 +31,7 @@ func testSuggestStacksCommand(t *testing.T, when spec.G, it spec.S) {
 		it("displays stack information", func() {
 			command.SetArgs([]string{})
 			h.AssertNil(t, command.Execute())
-			h.AssertEq(t, outBuf.String(), `
-Stacks maintained by the community:
+			h.AssertEq(t, outBuf.String(), `Stacks maintained by the community:
 
     Stack ID: heroku-18
     Description: The official Heroku stack based on Ubuntu 18.04
