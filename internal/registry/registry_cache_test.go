@@ -62,14 +62,14 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 		when("home doesn't exist", func() {
 			it("fails to create a registry cache", func() {
 				_, err := NewRegistryCache(logger, "/tmp/not-exist", "not-here")
-				h.AssertError(t, err, "failed to find home")
+				h.AssertError(t, err, "finding home")
 			})
 		})
 
 		when("registryURL isn't a valid url", func() {
 			it("fails to create a registry cache", func() {
 				_, err := NewRegistryCache(logger, tmpDir, "://bad-uri")
-				h.AssertError(t, err, "failed to parse registry url")
+				h.AssertError(t, err, "parsing registry url")
 			})
 		})
 
@@ -185,7 +185,7 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 			it("fails to refresh", func() {
 				registryCache.Root = ""
 				err = registryCache.Refresh()
-				h.AssertError(t, err, "could not initialize")
+				h.AssertError(t, err, "initializing")
 			})
 		})
 	})
@@ -207,7 +207,7 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 
 			it("fails to create registry cache", func() {
 				err = registryCache.Initialize()
-				h.AssertError(t, err, "could not create registry cache")
+				h.AssertError(t, err, "creating registry cache")
 			})
 
 			when("url is empty string", func() {
@@ -215,7 +215,7 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 					registryCache.url = &url.URL{}
 
 					err = registryCache.Initialize()
-					h.AssertError(t, err, "could not clone remote registry")
+					h.AssertError(t, err, "cloning remote registry")
 				})
 			})
 		})
