@@ -32,7 +32,7 @@ func testRegistryBuildpack(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotNil(t, b.Validate())
 		})
 
-		it("does not error when address is a digest", func() {
+		it("succeeds when address is a digest", func() {
 			b := registry.Buildpack{
 				Address: "example.com/some/package@sha256:8c27fe111c11b722081701dfed3bd55e039b9ce92865473cf4cdfa918071c566",
 			}

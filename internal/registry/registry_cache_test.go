@@ -154,10 +154,8 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("registry has new commits", func() {
-			it.Before(func() {
-				err := registryCache.Refresh()
-				h.AssertNil(t, err)
-
+			it("pulls the latest index", func() {
+				h.AssertNil(t, registryCache.Refresh())
 				h.AssertGitHeadEq(t, registryFixture, registryCache.Root)
 
 				r, err := git.PlainOpen(registryFixture)
@@ -177,9 +175,7 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 
 				_, err = r.CommitObject(commit)
 				h.AssertNil(t, err)
-			})
 
-			it("pulls the latest index", func() {
 				h.AssertNil(t, registryCache.Refresh())
 				h.AssertGitHeadEq(t, registryFixture, registryCache.Root)
 			})

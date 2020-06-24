@@ -43,12 +43,12 @@ func NewDefaultRegistryCache(logger logging.Logger, home string) (Cache, error) 
 // NewRegistryCache creates a new registry cache
 func NewRegistryCache(logger logging.Logger, home, registryURL string) (Cache, error) {
 	if _, err := os.Stat(home); err != nil {
-		return Cache{}, errors.Wrapf(err, "failed to find home %s", home)
+		return Cache{}, errors.Wrapf(err, "finding home %s", home)
 	}
 
 	normalizedURL, err := url.Parse(registryURL)
 	if err != nil {
-		return Cache{}, errors.Wrapf(err, "failed to parse registry url %s", registryURL)
+		return Cache{}, errors.Wrapf(err, "parsing registry url %s", registryURL)
 	}
 
 	key := sha256.New()
@@ -108,17 +108,17 @@ func (r *Cache) Refresh() error {
 	r.logger.Debugf("Refreshing registry cache for %s/%s", r.url.Host, r.url.Path)
 
 	if err := r.Initialize(); err != nil {
-		return errors.Wrapf(err, "could not initialize (%s)", r.Root)
+		return errors.Wrapf(err, "initializing (%s)", r.Root)
 	}
 
 	repository, err := git.PlainOpen(r.Root)
 	if err != nil {
-		return errors.Wrapf(err, "could not open (%s)", r.Root)
+		return errors.Wrapf(err, "opening (%s)", r.Root)
 	}
 
 	w, err := repository.Worktree()
 	if err != nil {
-		return errors.Wrapf(err, "could not read (%s)", r.Root)
+		return errors.Wrapf(err, "reading (%s)", r.Root)
 	}
 
 	err = w.Pull(&git.PullOptions{RemoteName: "origin"})
@@ -135,7 +135,7 @@ func (r *Cache) Initialize() error {
 		if os.IsNotExist(err) {
 			err = r.createCache()
 			if err != nil {
-				return errors.Wrap(err, "could not create registry cache")
+				return errors.Wrap(err, "creating registry cache")
 			}
 		}
 	}
@@ -143,11 +143,11 @@ func (r *Cache) Initialize() error {
 	if err := r.validateCache(); err != nil {
 		err = os.RemoveAll(r.Root)
 		if err != nil {
-			return errors.Wrap(err, "could not reset registry cache")
+			return errors.Wrap(err, "reseting registry cache")
 		}
 		err = r.createCache()
 		if err != nil {
-			return errors.Wrap(err, "could not rebuild registry cache")
+			return errors.Wrap(err, "rebuilding registry cache")
 		}
 	}
 
@@ -166,7 +166,7 @@ func (r *Cache) createCache() error {
 		URL: r.url.String(),
 	})
 	if err != nil {
-		return errors.Wrap(err, "could not clone remote registry")
+		return errors.Wrap(err, "cloning remote registry")
 	}
 
 	w, err := repository.Worktree()
@@ -182,12 +182,12 @@ func (r *Cache) validateCache() error {
 
 	repository, err := git.PlainOpen(r.Root)
 	if err != nil {
-		return errors.Wrap(err, "could not open registry cache")
+		return errors.Wrap(err, "opening registry cache")
 	}
 
 	remotes, err := repository.Remotes()
 	if err != nil {
-		return errors.Wrap(err, "could not access registry cache")
+		return errors.Wrap(err, "accessing registry cache")
 	}
 
 	for _, remote := range remotes {
@@ -216,12 +216,12 @@ func (r *Cache) readEntry(ns, name string) (Entry, error) {
 	index := filepath.Join(r.Root, indexDir, fmt.Sprintf("%s_%s", ns, name))
 
 	if _, err := os.Stat(index); err != nil {
-		return Entry{}, errors.Wrapf(err, "could not find buildpack: %s/%s", ns, name)
+		return Entry{}, errors.Wrapf(err, "finding buildpack: %s/%s", ns, name)
 	}
 
 	file, err := os.Open(index)
 	if err != nil {
-		return Entry{}, errors.Wrapf(err, "could not open index for buildpack: %s/%s", ns, name)
+		return Entry{}, errors.Wrapf(err, "opening index for buildpack: %s/%s", ns, name)
 	}
 	defer file.Close()
 
@@ -231,14 +231,14 @@ func (r *Cache) readEntry(ns, name string) (Entry, error) {
 		var bp Buildpack
 		err = json.Unmarshal([]byte(scanner.Text()), &bp)
 		if err != nil {
-			return Entry{}, errors.Wrapf(err, "could not parse index for buildpack: %s/%s", ns, name)
+			return Entry{}, errors.Wrapf(err, "parsing index for buildpack: %s/%s", ns, name)
 		}
 
 		entry.Buildpacks = append(entry.Buildpacks, bp)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return entry, errors.Wrapf(err, "could not read index for buildpack: %s/%s", ns, name)
+		return entry, errors.Wrapf(err, "reading index for buildpack: %s/%s", ns, name)
 	}
 
 	return entry, nil
