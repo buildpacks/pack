@@ -195,10 +195,10 @@ func (b assetManagerBuilder) ensurePreviousPackFixtures() string {
 	sourceDir, err := githubAssetFetcher.FetchReleaseSource("buildpacks", "pack", version)
 	h.AssertNil(b.testObject, err)
 
-	fis, err := ioutil.ReadDir(sourceDir)
+	sourceDirFiles, err := ioutil.ReadDir(sourceDir)
 	h.AssertNil(b.testObject, err)
 	// GitHub source tarballs have a top-level directory whose name includes the current commit sha.
-	innerDir := fis[0].Name()
+	innerDir := sourceDirFiles[0].Name()
 	fixturesDir := filepath.Join(sourceDir, innerDir, "acceptance", "testdata", "pack_fixtures")
 
 	b.testObject.Logf("using %s for previous pack fixtures path", fixturesDir)
