@@ -32,14 +32,14 @@ func (v ComboValue) String() string {
 	}
 }
 
-var defaultRunCombo = []*RunCombo{
-	{Pack: Current, PackCreateBuilder: Current, Lifecycle: DefaultKind},
-}
-
 type RunCombo struct {
 	Pack              ComboValue `json:"pack"`
 	PackCreateBuilder ComboValue `json:"pack_create_builder"`
 	Lifecycle         ComboValue `json:"lifecycle"`
+}
+
+var defaultRunCombo = []*RunCombo{
+	{Pack: Current, PackCreateBuilder: Current, Lifecycle: DefaultKind},
 }
 
 func (c *RunCombo) UnmarshalJSON(b []byte) error {
