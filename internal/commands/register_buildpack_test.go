@@ -2,8 +2,9 @@ package commands_test
 
 import (
 	"bytes"
-	"github.com/buildpacks/pack"
 	"testing"
+
+	"github.com/buildpacks/pack"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
@@ -67,8 +68,8 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 			it("should work for required args", func() {
 				opts := pack.RegisterBuildpackOptions{
-					BuildpackageURL: buildpackImage,
-					BuildpackRegistry:  buildpackDefaultRegistry,
+					BuildpackageURL:   buildpackImage,
+					BuildpackRegistry: buildpackDefaultRegistry,
 				}
 
 				mockClient.EXPECT().
@@ -82,8 +83,8 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			it("should support buildpack-registry flag", func() {
 				buildpackRegistry := "https://registry.com/test"
 				opts := pack.RegisterBuildpackOptions{
-					BuildpackageURL: buildpackImage,
-					BuildpackRegistry:  buildpackRegistry,
+					BuildpackageURL:   buildpackImage,
+					BuildpackRegistry: buildpackRegistry,
 				}
 
 				mockClient.EXPECT().

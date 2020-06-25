@@ -81,16 +81,18 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 	return openBrowser(issueURL.String())
 }
 
+var execCommand = exec.Command
+
 func openBrowser(url string) error {
 	var err error
 
 	switch runtime.GOOS {
 	case "linux":
-		err = exec.Command("xdg-open", url).Start()
+		err = execCommand("xdg-open", url).Start()
 	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		err = execCommand("rundll32", "url.dll,FileProtocolHandler", url).Start()
 	case "darwin":
-		err = exec.Command("open", url).Start()
+		err = execCommand("open", url).Start()
 	default:
 		err = fmt.Errorf("unsupported platform")
 	}
