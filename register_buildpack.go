@@ -18,12 +18,13 @@ import (
 )
 
 type RegisterBuildpackOptions struct {
-	BuildpackageURL   string
-	BuildpackRegistry string
+	ImageName string
+	Type      string
+	URL       string
 }
 
 func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOptions) error {
-	appImage, err := c.imageFetcher.Fetch(ctx, opts.BuildpackageURL, false, true)
+	appImage, err := c.imageFetcher.Fetch(ctx, opts.ImageName, false, true)
 	if err != nil {
 		return err
 	}
@@ -67,7 +68,7 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 		return err
 	}
 
-	issueURL, err := url.Parse("https://github.com/jkutner/buildpack-registry/issues/new")
+	issueURL, err := parseURL(opts.URL)
 	if err != nil {
 		return err
 	}
@@ -109,6 +110,13 @@ func parseID(id string) (string, string, error) {
 	}
 
 	return parts[0], parts[1], nil
+}
+
+func parseURL(githubURL string) (*url.URL, error) {
+	if githubURL == "" {
+		return nil, errors.New("missing github URL")
+	}
+	return url.Parse(fmt.Sprintf("%s/issues/new", strings.TrimSuffix(githubURL, "/")))
 }
 
 func createGithubIssueBody(buildpack registry.Buildpack) (string, error) {

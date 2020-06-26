@@ -10,23 +10,35 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+type RegisterBuildpackFlags struct {
+	BuildpackRegistry string
+}
+
 func RegisterBuildpack(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	var opts pack.RegisterBuildpackOptions
+	var flags RegisterBuildpackFlags
 
 	cmd := &cobra.Command{
 		Use:   "register-buildpack <url>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Register the buildpack to a registry",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			opts.BuildpackageURL = args[0]
+			defaultRegistry, err := cfg.GetRegistry(flags.BuildpackRegistry)
+			if err != nil {
+				return err
+			}
+			opts.ImageName = args[0]
+			opts.Type = defaultRegistry.Type
+			opts.URL = defaultRegistry.URL
+
 			if err := client.RegisterBuildpack(cmd.Context(), opts); err != nil {
 				return err
 			}
-			logger.Infof("Successfully registered %s", style.Symbol(opts.BuildpackageURL))
+			logger.Infof("Successfully registered %s", style.Symbol(opts.ImageName))
 			return nil
 		}),
 	}
-	cmd.Flags().StringVarP(&opts.BuildpackRegistry, "buildpack-registry", "R", cfg.DefaultRegistry, "Buildpack Registry URL")
+	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "R", "", "Buildpack Registry URL")
 	AddHelpFlag(cmd, "register-buildpack")
 	return cmd
 }

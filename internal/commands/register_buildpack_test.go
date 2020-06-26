@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/buildpacks/pack/internal/commands"
+
 	"github.com/buildpacks/pack"
 
 	"github.com/golang/mock/gomock"
@@ -11,7 +13,6 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
@@ -37,12 +38,12 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
+		cfg = config.Config{}
 
 		command = commands.RegisterBuildpack(logger, cfg, mockClient)
 	})
 
-	it.After(func() {
-	})
+	it.After(func() {})
 
 	when("#RegisterBuildpackCommand", func() {
 		when("no image is provided", func() {
@@ -54,22 +55,18 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("image name is provided", func() {
 			var (
-				buildpackImage           string
-				buildpackDefaultRegistry string
+				buildpackImage string
 			)
 
 			it.Before(func() {
-				buildpackImage = "test/image"
-				buildpackDefaultRegistry = "https://default-regisry.com/test"
-				cfg.DefaultRegistry = buildpackDefaultRegistry
-
-				command = commands.RegisterBuildpack(logger, cfg, mockClient)
+				buildpackImage = "buildpack/image"
 			})
 
 			it("should work for required args", func() {
 				opts := pack.RegisterBuildpackOptions{
-					BuildpackageURL:   buildpackImage,
-					BuildpackRegistry: buildpackDefaultRegistry,
+					ImageName: buildpackImage,
+					Type:      "github",
+					URL:       "https://github.com/buildpacks/registry",
 				}
 
 				mockClient.EXPECT().
@@ -80,17 +77,72 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, command.Execute())
 			})
 
-			it("should support buildpack-registry flag", func() {
-				buildpackRegistry := "https://registry.com/test"
-				opts := pack.RegisterBuildpackOptions{
-					BuildpackageURL:   buildpackImage,
-					BuildpackRegistry: buildpackRegistry,
-				}
+			when("config.toml exists", func() {
+				it("should consume registry config values", func() {
+					cfg = config.Config{
+						DefaultRegistryRef: "berneuse",
+						Registries: []config.Registry{
+							{
+								Name: "berneuse",
+								Type: "github",
+								URL:  "https://github.com/berneuse/buildpack-registry",
+							},
+						},
+					}
+					command = commands.RegisterBuildpack(logger, cfg, mockClient)
+					opts := pack.RegisterBuildpackOptions{
+						ImageName: buildpackImage,
+						Type:      "github",
+						URL:       "https://github.com/berneuse/buildpack-registry",
+					}
 
+					mockClient.EXPECT().
+						RegisterBuildpack(gomock.Any(), opts).
+						Return(nil)
+
+					command.SetArgs([]string{buildpackImage})
+					h.AssertNil(t, command.Execute())
+				})
+
+				it("should handle config errors", func() {
+					cfg = config.Config{
+						DefaultRegistryRef: "missing registry",
+					}
+					command = commands.RegisterBuildpack(logger, cfg, mockClient)
+					command.SetArgs([]string{buildpackImage})
+
+					err := command.Execute()
+					h.AssertNotNil(t, err)
+				})
+			})
+
+			it("should support buildpack-registry flag", func() {
+				buildpackRegistry := "override"
+				cfg = config.Config{
+					DefaultRegistryRef: "default",
+					Registries: []config.Registry{
+						{
+							Name: "default",
+							Type: "github",
+							URL:  "https://github.com/default/buildpack-registry",
+						},
+						{
+							Name: "override",
+							Type: "github",
+							URL:  "https://github.com/override/buildpack-registry",
+						},
+					},
+				}
+				opts := pack.RegisterBuildpackOptions{
+					ImageName: buildpackImage,
+					Type:      "github",
+					URL:       "https://github.com/override/buildpack-registry",
+				}
 				mockClient.EXPECT().
 					RegisterBuildpack(gomock.Any(), opts).
 					Return(nil)
 
+				command = commands.RegisterBuildpack(logger, cfg, mockClient)
 				command.SetArgs([]string{buildpackImage, "--buildpack-registry", buildpackRegistry})
 				h.AssertNil(t, command.Execute())
 			})

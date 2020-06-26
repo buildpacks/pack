@@ -69,14 +69,20 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertNil(t, subject.RegisterBuildpack(context.TODO(),
 					RegisterBuildpackOptions{
-						BuildpackageURL:   "buildpack/image",
-						BuildpackRegistry: "https://registry.com/test",
+						ImageName: "buildpack/image",
+						Type:      "github",
+						URL:       "https://github.com/jkutner/buildpack-registry",
 					}))
 			})
-		})
 
-		when("registry type is git", func() {
-
+			it("should throw error if missing URL", func() {
+				h.AssertError(t, subject.RegisterBuildpack(context.TODO(),
+					RegisterBuildpackOptions{
+						ImageName: "buildpack/image",
+						Type:      "github",
+						URL:       "",
+					}), "missing github URL")
+			})
 		})
 	})
 }

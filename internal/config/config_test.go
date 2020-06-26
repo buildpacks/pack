@@ -174,4 +174,71 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("#GetRegistry", func() {
+		it("should return a default registry", func() {
+			cfg := config.SetRunImageMirrors(
+				config.Config{},
+				"some/run-image",
+				[]string{"some-other/run"},
+			)
+
+			h.AssertEq(t, len(cfg.RunImages), 1)
+			h.AssertEq(t, cfg.RunImages[0].Image, "some/run-image")
+			h.AssertSliceContainsOnly(t, cfg.RunImages[0].Mirrors, "some-other/run")
+		})
+
+		it("should return the corresponding registry", func() {
+			cfg := config.Config{
+				Registries: []config.Registry{
+					{
+						Name: "default",
+						Type: "github",
+						URL:  "https://github.com/default/buildpack-registry",
+					},
+				},
+			}
+
+			registry, err := cfg.GetRegistry("default")
+
+			h.AssertNil(t, err)
+			h.AssertEq(t, registry, config.Registry{
+				Name: "default",
+				Type: "github",
+				URL:  "https://github.com/default/buildpack-registry",
+			})
+		})
+
+		it("should return the first matched registry", func() {
+			cfg := config.Config{
+				Registries: []config.Registry{
+					{
+						Name: "duplicate registry",
+						Type: "github",
+						URL:  "https://github.com/duplicate1/buildpack-registry",
+					},
+					{
+						Name: "duplicate registry",
+						Type: "github",
+						URL:  "https://github.com/duplicate2/buildpack-registry",
+					},
+				},
+			}
+
+			registry, err := cfg.GetRegistry("duplicate registry")
+
+			h.AssertNil(t, err)
+			h.AssertEq(t, registry, config.Registry{
+				Name: "duplicate registry",
+				Type: "github",
+				URL:  "https://github.com/duplicate1/buildpack-registry",
+			})
+		})
+
+		it("should return an error when mismatched", func() {
+			cfg := config.Config{}
+			_, err := cfg.GetRegistry("missing")
+			h.AssertError(t, err, "registry \"missing\" is not defined in your config file")
+		})
+	})
 }
