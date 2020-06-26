@@ -41,7 +41,7 @@ func NewInputConfigurationManager() (InputConfigurationManager, error) {
 	compilePackWithVersion := os.Getenv(envCompilePackWithVersion)
 	githubToken := os.Getenv(envGitHubToken)
 
-	err := absolutizePaths(&packPath, &previousPackPath, &previousPackFixturesPath, &lifecyclePath, &previousLifecyclePath)
+	err := resolveAbsolutePaths(&packPath, &previousPackPath, &previousPackFixturesPath, &lifecyclePath, &previousLifecyclePath)
 	if err != nil {
 		return InputConfigurationManager{}, err
 	}
@@ -73,7 +73,7 @@ func (i InputConfigurationManager) Combinations() ComboSet {
 	return i.combinations
 }
 
-func absolutizePaths(paths ...*string) error {
+func resolveAbsolutePaths(paths ...*string) error {
 	for _, path := range paths {
 		if *path == "" {
 			continue

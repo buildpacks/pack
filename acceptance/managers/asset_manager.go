@@ -110,7 +110,7 @@ func (a AssetManager) Lifecycle(kind ComboValue) (lifecyclePath string, lifecycl
 	a.testObject.Helper()
 
 	switch kind {
-	case DefaultKind:
+	case Current:
 		lifecyclePath = a.lifecyclePath
 		lifecycleDescriptor = a.lifecycleDescriptor
 	case Previous:
