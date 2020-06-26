@@ -106,21 +106,32 @@ func (a AssetManager) PackPaths(kind ComboValue) (packPath string, packFixturesP
 	return packPath, packFixturesPaths
 }
 
-func (a AssetManager) Lifecycle(kind ComboValue) (lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) {
+func (a AssetManager) LifecyclePath(kind ComboValue) string {
 	a.testObject.Helper()
 
 	switch kind {
 	case Current:
-		lifecyclePath = a.lifecyclePath
-		lifecycleDescriptor = a.lifecycleDescriptor
+		return a.lifecyclePath
 	case Previous:
-		lifecyclePath = a.previousLifecyclePath
-		lifecycleDescriptor = a.previousLifecycleDescriptor
-	default:
-		a.testObject.Fatalf("lifecycle kind must be default or previous, was %s", kind)
+		return a.previousLifecyclePath
 	}
 
-	return lifecyclePath, lifecycleDescriptor
+	a.testObject.Fatalf("lifecycle kind must be previous or current, was %s", kind)
+	return "" // Unreachable
+}
+
+func (a AssetManager) LifecycleDescriptor(kind ComboValue) builder.LifecycleDescriptor {
+	a.testObject.Helper()
+
+	switch kind {
+	case Current:
+		return a.lifecycleDescriptor
+	case Previous:
+		return a.previousLifecycleDescriptor
+	}
+
+	a.testObject.Fatalf("lifecycle kind must be previous or current, was %s", kind)
+	return builder.LifecycleDescriptor{} // Unreachable
 }
 
 type assetManagerBuilder struct {

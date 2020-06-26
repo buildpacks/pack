@@ -93,7 +93,8 @@ func TestAcceptance(t *testing.T) {
 
 		packPath, packFixtures := assetsConfig.PackPaths(combo.Pack)
 		createBuilderPackPath, createBuilderPackFixtures := assetsConfig.PackPaths(combo.PackCreateBuilder)
-		lifecyclePath, lifecycleDescriptor := assetsConfig.Lifecycle(combo.Lifecycle)
+		lifecyclePath := assetsConfig.LifecyclePath(combo.Lifecycle)
+		lifecycleDescriptor := assetsConfig.LifecycleDescriptor(combo.Lifecycle)
 
 		suite(combo.String(), func(t *testing.T, when spec.G, it spec.S) {
 			testAcceptance(

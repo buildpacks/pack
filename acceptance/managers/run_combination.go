@@ -108,7 +108,8 @@ func (c *RunCombo) String() string {
 func (c *RunCombo) Describe(assets AssetManager) string {
 	packPath, packFixturesPaths := assets.PackPaths(c.Pack)
 	cbPackPath, cbPackFixturesPaths := assets.PackPaths(c.PackCreateBuilder)
-	lifecyclePath, lifecycleDescriptor := assets.Lifecycle(c.Lifecycle)
+	lifecyclePath := assets.LifecyclePath(c.Lifecycle)
+	lifecycleDescriptor := assets.LifecycleDescriptor(c.Lifecycle)
 
 	return fmt.Sprintf(`
 pack:
