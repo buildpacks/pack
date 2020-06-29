@@ -179,7 +179,6 @@ func randString(n int) string {
 }
 
 func (l *Lifecycle) CopyApp(ctx context.Context, containerID string) error {
-	l.logger.Debugf("Copying app to container %s", style.Symbol(containerID))
 	var (
 		appReader io.ReadCloser
 		clientErr error
