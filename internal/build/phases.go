@@ -274,8 +274,6 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		repoName,
 	}...)
 
-	binds := []string{fmt.Sprintf("%s:%s", cacheName, cacheDir)}
-
 	if l.DefaultProcessType != "" {
 		if l.supportsDefaultProcess() {
 			args = append([]string{"-process-type", l.DefaultProcessType}, args...)
@@ -284,51 +282,43 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		}
 	}
 
+	opts := []PhaseConfigProviderOperation{
+		WithLogPrefix("exporter"),
+		WithImage(l.lifecycleImage),
+		WithEnv(
+			fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()),
+			fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID()),
+		),
+		WithArgs(
+			l.withLogLevel(args...)...,
+		),
+		WithRoot(),
+		WithNetwork(networkMode),
+		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
+		WithMounts(mounts...),
+	}
+
 	if publish {
 		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName, runImage)
 		if err != nil {
 			return nil, err
 		}
 
-		configProvider := NewPhaseConfigProvider(
-			"exporter",
-			l,
-			WithLogPrefix("exporter"),
-			WithImage(l.lifecycleImage),
-			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
+		opts = append(
+			opts,
 			WithRegistryAccess(authConfig),
-			WithArgs(
-				l.withLogLevel(args...)...,
-			),
 			WithRoot(),
-			WithNetwork(networkMode),
-			WithBinds(binds...),
-			WithMounts(mounts...),
 		)
-
-		return phaseFactory.New(configProvider), nil
+	} else {
+		opts = append(
+			opts,
+			WithDaemonAccess(),
+			WithArgs("-daemon", "-launch-cache", launchCacheDir),
+			WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
+		)
 	}
 
-	// TODO: when platform API 0.2 is no longer supported we can delete this code: https://github.com/buildpacks/pack/issues/629.
-	args = append([]string{"-daemon", "-launch-cache", launchCacheDir}, args...)
-	binds = append(binds, fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir))
-
-	configProvider := NewPhaseConfigProvider(
-		"exporter",
-		l,
-		WithLogPrefix("exporter"),
-		WithImage(l.lifecycleImage),
-		WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
-		WithDaemonAccess(),
-		WithArgs(
-			l.withLogLevel(args...)...,
-		),
-		WithNetwork(networkMode),
-		WithBinds(binds...),
-		WithMounts(mounts...),
-	)
-
-	return phaseFactory.New(configProvider), nil
+	return phaseFactory.New(NewPhaseConfigProvider("exporter", l, opts...)), nil
 }
 
 func (l *Lifecycle) writeStackToml() (string, error) {
