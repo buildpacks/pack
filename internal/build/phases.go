@@ -307,6 +307,7 @@ func (l *Lifecycle) WriteStackToml(path string) ContainerOperation {
 		tarBuilder := archive.TarBuilder{}
 		tarBuilder.AddFile(path, 0755, archive.NormalizedDateTime, buf.Bytes())
 		reader := tarBuilder.Reader(archive.DefaultTarWriterFactory())
+		defer reader.Close()
 
 		return l.docker.CopyToContainer(ctx, containerID, "/", reader, types.CopyToContainerOptions{})
 	}
