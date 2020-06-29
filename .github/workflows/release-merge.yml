@@ -1,4 +1,4 @@
-# Merges changes to release branches back into master.
+# Merges changes to release branches back into main.
 name: release-merge
 
 on:
@@ -33,7 +33,7 @@ jobs:
           git config --global user.email "action@github.com"
           git clone git@github.com:${GITHUB_REPOSITORY}.git
           cd pack
-          git checkout master
+          git checkout main
           git merge origin/${GITHUB_REF#refs/heads/} --no-edit
           git show -1
           git push

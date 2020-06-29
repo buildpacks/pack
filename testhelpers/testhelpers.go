@@ -30,6 +30,7 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-cmp/cmp"
+	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"gopkg.in/src-d/go-git.v4"
 
@@ -53,6 +54,14 @@ func RandString(n int) string {
 func AssertEq(t *testing.T, actual, expected interface{}) {
 	t.Helper()
 	if diff := cmp.Diff(expected, actual); diff != "" {
+		t.Fatal(diff)
+	}
+}
+
+// Assert deep equality (and provide useful difference as a test failure)
+func AssertNotEq(t *testing.T, actual, expected interface{}) {
+	t.Helper()
+	if diff := cmp.Diff(expected, actual); diff == "" {
 		t.Fatal(diff)
 	}
 }
@@ -105,6 +114,35 @@ func AssertContains(t *testing.T, actual, expected string) {
 			expected,
 			cmp.Diff(expected, actual),
 		)
+	}
+}
+
+func AssertContainsAllInOrder(t *testing.T, actual bytes.Buffer, expected ...string) {
+	t.Helper()
+
+	var tested []byte
+
+	for _, exp := range expected {
+		b, found := readUntilString(&actual, exp)
+		tested = append(tested, b...)
+
+		if !found {
+			t.Fatalf("Expected '%s' to include all of '%s' in order", string(tested), strings.Join(expected, ", "))
+		}
+	}
+}
+
+func readUntilString(b *bytes.Buffer, expected string) (read []byte, found bool) {
+	for {
+		s, err := b.ReadBytes(expected[len(expected)-1])
+		if err != nil {
+			return append(read, s...), false
+		}
+
+		read = append(read, s...)
+		if bytes.HasSuffix(read, []byte(expected)) {
+			return read, true
+		}
 	}
 }
 
@@ -736,4 +774,16 @@ func AssertGitHeadEq(t *testing.T, path1, path2 string) {
 	AssertNil(t, err)
 
 	AssertEq(t, h1.Hash().String(), h2.Hash().String())
+}
+
+func MockWriterAndOutput() (*color.Console, func() string) {
+	r, w, _ := os.Pipe()
+	console := color.NewConsole(w)
+	return console, func() string {
+		_ = w.Close()
+		var b bytes.Buffer
+		_, _ = io.Copy(&b, r)
+		_ = r.Close()
+		return b.String()
+	}
 }

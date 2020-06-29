@@ -3,7 +3,7 @@ name: delivery / archlinux / git
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   pack-cli-git:
