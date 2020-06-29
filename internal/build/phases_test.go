@@ -11,7 +11,6 @@ import (
 
 	"github.com/apex/log"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -889,21 +888,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				configProvider := fakePhaseFactory.NewCalledWithProvider
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBind)
 			})
-
-			it("configures the phase with bind mounts", func() {
-				lifecycle := newTestLifecycle(t, false)
-				fakePhaseFactory := fakes.NewFakePhaseFactory()
-
-				err := lifecycle.Export(context.Background(), "test", "test", true, "test", "some-cache", "test", fakePhaseFactory)
-				h.AssertNil(t, err)
-
-				configProvider := fakePhaseFactory.NewCalledWithProvider
-				h.AssertTrue(t, len(configProvider.HostConfig().Mounts) > 0)
-				firstMount := configProvider.HostConfig().Mounts[0]
-				h.AssertEq(t, firstMount.Type, mount.Type("bind"))
-				h.AssertEq(t, firstMount.Target, "/cnb/stack.toml")
-				h.AssertTrue(t, firstMount.ReadOnly)
-			})
 		})
 
 		when("publish is false", func() {
@@ -984,21 +968,6 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
-			})
-
-			it("configures the phase with bind mounts", func() {
-				lifecycle := newTestLifecycle(t, false)
-				fakePhaseFactory := fakes.NewFakePhaseFactory()
-
-				err := lifecycle.Export(context.Background(), "test", "test", false, "test", "some-cache", "test", fakePhaseFactory)
-				h.AssertNil(t, err)
-
-				configProvider := fakePhaseFactory.NewCalledWithProvider
-				h.AssertTrue(t, len(configProvider.HostConfig().Mounts) > 0)
-				firstMount := configProvider.HostConfig().Mounts[0]
-				h.AssertEq(t, firstMount.Type, mount.Type("bind"))
-				h.AssertEq(t, firstMount.Target, "/cnb/stack.toml")
-				h.AssertTrue(t, firstMount.ReadOnly)
 			})
 		})
 

@@ -129,7 +129,12 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("copies the app into the app volume before the first phase", func() {
-				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/workspace/fake-app-file"))
+				configProvider := build.NewPhaseConfigProvider(
+					phaseName,
+					lifecycle,
+					build.WithArgs("read", "/workspace/fake-app-file"),
+					build.WithContainerOperations(lifecycle.CopyApp),
+				)
 				readPhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "file contents: fake-app-contents")
@@ -196,9 +201,12 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 						lifecycle, err = CreateFakeLifecycle(docker, logger, tmpFakeAppDir, repoName)
 						h.AssertNil(t, err)
 						phaseFactory = build.NewDefaultPhaseFactory(lifecycle)
-
-						configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/workspace/fake-app-file"))
-						readPhase := phaseFactory.New(configProvider)
+						readPhase := phaseFactory.New(build.NewPhaseConfigProvider(
+							phaseName,
+							lifecycle,
+							build.WithArgs("read", "/workspace/fake-app-file"),
+							build.WithContainerOperations(lifecycle.CopyApp),
+						))
 						h.AssertNil(t, err)
 						err = readPhase.Run(context.TODO())
 						defer readPhase.Cleanup()
@@ -349,8 +357,13 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 }
 
 func assertAppModTimePreserved(t *testing.T, lifecycle *build.Lifecycle, phaseFactory *build.DefaultPhaseFactory, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
-	configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/workspace/fake-app-file"))
-	readPhase := phaseFactory.New(configProvider)
+	t.Helper()
+	readPhase := phaseFactory.New(build.NewPhaseConfigProvider(
+		phaseName,
+		lifecycle,
+		build.WithArgs("read", "/workspace/fake-app-file"),
+		build.WithContainerOperations(lifecycle.CopyApp),
+	))
 	assertRunSucceeds(t, readPhase, outBuf, errBuf)
 
 	matches := regexp.MustCompile(regexp.QuoteMeta("file mod time (unix): ") + "(.*)").FindStringSubmatch(outBuf.String())

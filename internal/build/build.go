@@ -2,14 +2,18 @@ package build
 
 import (
 	"context"
+	"io"
 	"math/rand"
-	"sync"
+	"os"
+	"runtime"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/style"
@@ -35,7 +39,6 @@ type Lifecycle struct {
 	logger             logging.Logger
 	docker             client.CommonAPIClient
 	appPath            string
-	appOnce            *sync.Once
 	httpProxy          string
 	httpsProxy         string
 	noProxy            string
@@ -145,7 +148,6 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.LayersVolume = "pack-layers-" + randString(10)
 	l.AppVolume = "pack-app-" + randString(10)
 	l.appPath = opts.AppPath
-	l.appOnce = &sync.Once{}
 	l.builder = opts.Builder
 	l.lifecycleImage = opts.LifecycleImage
 	l.httpProxy = opts.HTTPProxy
@@ -174,4 +176,53 @@ func randString(n int) string {
 		b[i] = 'a' + byte(rand.Intn(26))
 	}
 	return string(b)
+}
+
+func (l *Lifecycle) CopyApp(ctx context.Context, containerID string) error {
+	l.logger.Debugf("Copying app to container %s", style.Symbol(containerID))
+	var (
+		appReader io.ReadCloser
+		clientErr error
+	)
+	appReader, err := l.createAppReader()
+	if err != nil {
+		return errors.Wrapf(err, "create tar archive from '%s'", l.appPath)
+	}
+	defer appReader.Close()
+
+	doneChan := make(chan interface{})
+	pr, pw := io.Pipe()
+	go func() {
+		clientErr = l.docker.CopyToContainer(ctx, containerID, "/", pr, types.CopyToContainerOptions{})
+		close(doneChan)
+	}()
+	func() {
+		defer pw.Close()
+		_, err = io.Copy(pw, appReader)
+	}()
+
+	<-doneChan
+	if err == nil {
+		err = clientErr
+	}
+
+	return err
+}
+
+func (l *Lifecycle) createAppReader() (io.ReadCloser, error) {
+	fi, err := os.Stat(l.appPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if fi.IsDir() {
+		var mode int64 = -1
+		if runtime.GOOS == "windows" {
+			mode = 0777
+		}
+
+		return archive.ReadDirAsTar(l.appPath, appDir, l.builder.UID(), l.builder.GID(), mode, false, l.fileFilter), nil
+	}
+
+	return archive.ReadZipAsTar(l.appPath, appDir, l.builder.UID(), l.builder.GID(), -1, false, l.fileFilter), nil
 }

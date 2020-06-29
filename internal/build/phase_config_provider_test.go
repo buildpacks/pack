@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -126,22 +125,6 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				)
 
 				h.AssertEq(t, phaseConfigProvider.ContainerConfig().Image, "some-image-name")
-			})
-		})
-
-		when("called with WithMounts", func() {
-			it("sets the mounts on the config", func() {
-				lifecycle := newTestLifecycle(t, false)
-
-				expectedMount := mount.Mount{Type: "bind", Source: "some-source", Target: "some-target", ReadOnly: true}
-
-				phaseConfigProvider := build.NewPhaseConfigProvider(
-					"some-name",
-					lifecycle,
-					build.WithMounts(expectedMount),
-				)
-
-				h.AssertEq(t, phaseConfigProvider.HostConfig().Mounts[0], expectedMount)
 			})
 		})
 
