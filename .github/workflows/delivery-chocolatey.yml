@@ -34,15 +34,18 @@ jobs:
           unzip -o "$zip_path"
           rm "$zip_path"
       - name: Fill nuspec
-        uses: cschleiden/replace-tokens@v1
-        with:
-          files: "${{ env.CHOC_PATH }}/pack.nuspec"
-          tokenPrefix: '{{'
-          tokenSuffix: '}}'
-        env:
-          PACK_VERSION: ${{ env.PACK_VERSION }}
-      - name: Print nuspec
-        run: cat ${{ env.CHOC_PATH }}/pack.nuspec
+        shell: bash
+        run: |
+          file=${{ env.CHOC_PATH }}/pack.nuspec
+          sed -i "s/{{PACK_VERSION}}/${{ env.PACK_VERSION }}/g" $file
+          sed -i -e '/{{README}}/r README.md' -e 's/{{README}}//' $file
+          cat $file
+      - name: Fill License
+        shell: bash
+        run: |
+          file="${{ env.CHOC_PATH }}/tools/LICENSE.txt"
+          cat LICENSE >> $file
+          cat $file
       - name: Upload Artifacts
         uses: actions/upload-artifact@v1
         with:

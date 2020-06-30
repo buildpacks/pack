@@ -14,7 +14,7 @@
 
 ## Usage
 
-<img src="resources/pack-build.gif" width="600px" />
+<img src="https://github.com/buildpacks/pack/raw/main/resources/pack-build.gif" width="600px" />
 
 ## Getting Started
 
