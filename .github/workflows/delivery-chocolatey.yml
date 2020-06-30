@@ -4,9 +4,6 @@ on:
   release:
     types:
       - published
-  repository_dispatch:
-    types:
-      - pack-release
 
 env:
   CHOC_PATH: chocolatey
