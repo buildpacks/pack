@@ -1,19 +1,15 @@
 package commands
 
 import (
-	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/project"
@@ -60,33 +56,9 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				logger.Debugf("Using project descriptor located at %s", style.Symbol(actualDescriptorPath))
 			}
 
-			fileFilter, err := getFileFilter(descriptor)
+			env, err := parseEnv(flags.Env)
 			if err != nil {
 				return err
-			}
-
-			env, err := parseEnv(descriptor, flags.EnvFiles, flags.Env)
-			if err != nil {
-				return err
-			}
-
-			buildpacks := flags.Buildpacks
-			if len(buildpacks) == 0 {
-				buildpacks = []string{}
-				projectDescriptorDir := filepath.Dir(actualDescriptorPath)
-				for _, bp := range descriptor.Build.Buildpacks {
-					if len(bp.URI) == 0 {
-						// there are several places through out the pack code where the "id@version" format is used.
-						// we should probably central this, but it's not clear where it belongs
-						buildpacks = append(buildpacks, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
-					} else {
-						uri, err := paths.ToAbsolute(bp.URI, projectDescriptorDir)
-						if err != nil {
-							return err
-						}
-						buildpacks = append(buildpacks, uri)
-					}
-				}
 			}
 
 			var cfgTrustedBuilder bool
@@ -118,13 +90,15 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				NoPull:            flags.NoPull,
 				ClearCache:        flags.ClearCache,
 				TrustBuilder:      flags.TrustBuilder || cfgTrustedBuilder || suggestedBuilder,
-				Buildpacks:        buildpacks,
+				Buildpacks:        flags.Buildpacks,
 				ContainerConfig: pack.ContainerConfig{
 					Network: flags.Network,
 					Volumes: flags.Volumes,
 				},
 				DefaultProcessType: flags.DefaultProcessType,
-				FileFilter:         fileFilter,
+				Descriptor:         descriptor,
+				DescriptorPath: 	actualDescriptorPath,
+				EnvFiles:           flags.EnvFiles,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -171,42 +145,12 @@ func validateBuildFlags(flags BuildFlags, logger logging.Logger, cfg config.Conf
 	return nil
 }
 
-func parseEnv(project project.Descriptor, envFiles []string, envVars []string) (map[string]string, error) {
+func parseEnv(envVars []string) (map[string]string, error) {
 	env := map[string]string{}
-
-	for _, envVar := range project.Build.Env {
-		env[envVar.Name] = envVar.Value
-	}
-	for _, envFile := range envFiles {
-		envFileVars, err := parseEnvFile(envFile)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse env file '%s'", envFile)
-		}
-
-		for k, v := range envFileVars {
-			env[k] = v
-		}
-	}
 	for _, envVar := range envVars {
 		env = addEnvVar(env, envVar)
 	}
 	return env, nil
-}
-
-func parseEnvFile(filename string) (map[string]string, error) {
-	out := make(map[string]string)
-	f, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, errors.Wrapf(err, "open %s", filename)
-	}
-	for _, line := range strings.Split(string(f), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		out = addEnvVar(out, line)
-	}
-	return out, nil
 }
 
 func addEnvVar(env map[string]string, item string) map[string]string {
@@ -236,25 +180,4 @@ func parseProjectToml(appPath, descriptorPath string) (project.Descriptor, strin
 
 	descriptor, err := project.ReadProjectDescriptor(actualPath)
 	return descriptor, actualPath, err
-}
-
-func getFileFilter(descriptor project.Descriptor) (func(string) bool, error) {
-	if len(descriptor.Build.Exclude) > 0 {
-		excludes, err := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
-		if err != nil {
-			return nil, err
-		}
-		return func(fileName string) bool {
-			return !excludes.MatchesPath(fileName)
-		}, nil
-	}
-	if len(descriptor.Build.Include) > 0 {
-		includes, err := ignore.CompileIgnoreLines(descriptor.Build.Include...)
-		if err != nil {
-			return nil, err
-		}
-		return includes.MatchesPath, nil
-	}
-
-	return nil, nil
 }
