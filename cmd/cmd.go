@@ -9,12 +9,19 @@ import (
 	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
-	clilogger "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 )
 
+// ConfigurableLogger defines behavior required by the PackCommand
+type ConfigurableLogger interface {
+	logging.Logger
+	WantTime(f bool)
+	WantQuiet(f bool)
+	WantVerbose(f bool)
+}
+
 // NewPackCommand generates a Pack command
-func NewPackCommand(logger *clilogger.LogWithWriters) (*cobra.Command, error) {
+func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	cobra.EnableCommandSorting = false
 	cfg, err := initConfig()
 	if err != nil {
@@ -27,7 +34,8 @@ func NewPackCommand(logger *clilogger.LogWithWriters) (*cobra.Command, error) {
 	}
 
 	rootCmd := &cobra.Command{
-		Use: "pack",
+		Use:   "pack",
+		Short: "CLI for building apps using Cloud Native Buildpacks",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if fs := cmd.Flags(); fs != nil {
 				if flag, err := fs.GetBool("no-color"); err == nil {
@@ -78,6 +86,8 @@ func NewPackCommand(logger *clilogger.LogWithWriters) (*cobra.Command, error) {
 
 	rootCmd.Version = pack.Version
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)
+	rootCmd.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
+	rootCmd.SetErr(logging.GetWriterForLevel(logger, logging.ErrorLevel))
 
 	return rootCmd, nil
 }

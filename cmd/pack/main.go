@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 
-	"github.com/buildpacks/pack/cmd"
-
 	"github.com/heroku/color"
+
+	"github.com/buildpacks/pack/cmd"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
