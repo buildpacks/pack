@@ -260,7 +260,6 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		WithFlags(
 			l.withLogLevel(flags...)...,
 		),
-		WithFlags(),
 		WithArgs(repoName),
 		WithRoot(),
 		WithNetwork(networkMode),
