@@ -81,3 +81,19 @@ func getMirrors(config config.Config) map[string][]string {
 	}
 	return mirrors
 }
+
+func isTrustedBuilder(cfg config.Config, builder string) bool {
+	for _, trustedBuilder := range cfg.TrustedBuilders {
+		if builder == trustedBuilder.Name {
+			return true
+		}
+	}
+
+	for _, sugBuilder := range suggestedBuilders {
+		if builder == sugBuilder.Image {
+			return true
+		}
+	}
+
+	return false
+}
