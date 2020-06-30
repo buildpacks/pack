@@ -86,6 +86,8 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.Version = pack.Version
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)
+	rootCmd.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
+	rootCmd.SetErr(logging.GetWriterForLevel(logger, logging.ErrorLevel))
 
 	return rootCmd, nil
 }
