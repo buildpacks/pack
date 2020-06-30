@@ -720,12 +720,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					subject.AddBuildpack(bp2v1)
 
 					subject.SetLifecycle(mockLifecycle)
-
-					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
-					h.AssertEq(t, baseImage.IsSaved(), true)
 				})
 
 				it("appends buildpack layer info", func() {
+					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+					h.AssertEq(t, baseImage.IsSaved(), true)
+
 					label, err := baseImage.Label("io.buildpacks.buildpack.layers")
 					h.AssertNil(t, err)
 
@@ -748,14 +748,39 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, len(layers["buildpack-2-id"]["buildpack-2-version-1"].Order), 0)
 				})
 
-				it("warns when overriding existing buildpack", func() {
+				it("informs when overriding existing buildpack, and log level is DEBUG", func() {
+					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+
+					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+					h.AssertEq(t, baseImage.IsSaved(), true)
+
 					label, err := baseImage.Label("io.buildpacks.buildpack.layers")
 					h.AssertNil(t, err)
 
 					var layers dist.BuildpackLayers
 					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
 
-					h.AssertContains(t, outBuf.String(), "Warning: buildpack 'buildpack-1-id@buildpack-1-version-2' already exists on builder and will be overwritten")
+					h.AssertContains(t,
+						outBuf.String(),
+						"buildpack 'buildpack-1-id@buildpack-1-version-2' already exists on builder and will be overwritten",
+					)
+					h.AssertNotContains(t, layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDiffID, "buildpack-1-version-2-diff-id")
+				})
+
+				it("doesn't message when overriding existing buildpack when log level is INFO", func() {
+					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
+					h.AssertEq(t, baseImage.IsSaved(), true)
+
+					label, err := baseImage.Label("io.buildpacks.buildpack.layers")
+					h.AssertNil(t, err)
+
+					var layers dist.BuildpackLayers
+					h.AssertNil(t, json.Unmarshal([]byte(label), &layers))
+
+					h.AssertNotContains(t,
+						outBuf.String(),
+						"buildpack 'buildpack-1-id@buildpack-1-version-2' already exists on builder and will be overwritten",
+					)
 					h.AssertNotContains(t, layers["buildpack-1-id"]["buildpack-1-version-2"].LayerDiffID, "buildpack-1-version-2-diff-id")
 				})
 			})
