@@ -15,7 +15,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <projectSourceUrl>https://github.com/buildpacks/pack</projectSourceUrl>
     <docsUrl>https://buildpacks.io/docs/</docsUrl>
-    <mailingListUrl>cncf-buildpacks@lists.cncf.io</mailingListUrl>
+    <mailingListUrl>https://lists.cncf.io/g/cncf-buildpacks</mailingListUrl>
     <bugTrackerUrl>https://github.com/buildpacks/pack/issues</bugTrackerUrl>
     <tags>pack cloud-native-buildpacks cncf</tags>
     <summary>pack is a CLI for building apps using Cloud Native Buildpacks.</summary>
