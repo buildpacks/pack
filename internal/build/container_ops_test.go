@@ -3,9 +3,10 @@ package build_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"math/rand"
-	"path"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -57,7 +58,7 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#CopyDir", func() {
-		it("writes contents with proper permissions", func() {
+		it("writes contents with proper owner/permissions", func() {
 			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), "/some-location", 123, 456, nil)
 			ctx := context.Background()
 
@@ -70,16 +71,21 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
+			perms := "-rw-r--r--"
+			if runtime.GOOS == "windows" {
+				perms = "-rwxrwxrwx"
+			}
+
 			output := outBuf.String()
-			h.AssertContainsMatch(t, output, `
--rw-r--r--    1 123      456 (.*) fake-app-file
--rw-r--r--    1 123      456 (.*) file-to-ignore
-`)
+			h.AssertContainsMatch(t, output, fmt.Sprintf(`
+%s    1 123      456 (.*) fake-app-file
+%s    1 123      456 (.*) file-to-ignore
+`, perms, perms))
 		})
 
 		it("writes contents ignoring from file filter", func() {
 			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), "/some-location", 123, 456, func(filename string) bool {
-				return path.Base(filename) != "file-to-ignore"
+				return filepath.Base(filename) != "file-to-ignore"
 			})
 			ctx := context.Background()
 
