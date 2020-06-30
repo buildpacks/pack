@@ -20,7 +20,6 @@ import (
 )
 
 const defaultRegistryURL = "https://github.com/buildpacks/registry-index"
-
 const defaultRegistryDir = "registry"
 
 // Cache is a RegistryCache
@@ -29,6 +28,16 @@ type Cache struct {
 	url    *url.URL
 	Root   string
 }
+
+const GithubIssueTitleTemplate = "{{ if .Yanked }}YANK{{else}}ADD{{end}} {{.Namespace}}/{{.Name}}@{{.Version}}"
+const GithubIssueBodyTemplate = `
+### Data
+
+` + "```toml" + `
+id = "{{.Namespace}}/{{.Name}}"
+version = "{{.Version}}"
+{{ if .Yanked }}{{else}}addr = "{{.Address}}"{{end}}
+` + "```"
 
 // Entry is a list of buildpacks stored in a registry
 type Entry struct {

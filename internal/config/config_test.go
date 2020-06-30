@@ -174,4 +174,72 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("#GetRegistry", func() {
+		it("should return a default registry", func() {
+			cfg := config.Config{}
+
+			registry, err := cfg.GetRegistry("")
+
+			h.AssertNil(t, err)
+			h.AssertEq(t, registry, config.Registry{
+				Name: "original",
+				Type: "github",
+				URL:  "https://github.com/buildpacks/registry",
+			})
+		})
+
+		it("should return the corresponding registry", func() {
+			cfg := config.Config{
+				Registries: []config.Registry{
+					{
+						Name: "registry",
+						Type: "github",
+						URL:  "https://github.com/registry/buildpack-registry",
+					},
+				},
+			}
+
+			registry, err := cfg.GetRegistry("registry")
+
+			h.AssertNil(t, err)
+			h.AssertEq(t, registry, config.Registry{
+				Name: "registry",
+				Type: "github",
+				URL:  "https://github.com/registry/buildpack-registry",
+			})
+		})
+
+		it("should return the first matched registry", func() {
+			cfg := config.Config{
+				Registries: []config.Registry{
+					{
+						Name: "duplicate registry",
+						Type: "github",
+						URL:  "https://github.com/duplicate1/buildpack-registry",
+					},
+					{
+						Name: "duplicate registry",
+						Type: "github",
+						URL:  "https://github.com/duplicate2/buildpack-registry",
+					},
+				},
+			}
+
+			registry, err := cfg.GetRegistry("duplicate registry")
+
+			h.AssertNil(t, err)
+			h.AssertEq(t, registry, config.Registry{
+				Name: "duplicate registry",
+				Type: "github",
+				URL:  "https://github.com/duplicate1/buildpack-registry",
+			})
+		})
+
+		it("should return an error when mismatched", func() {
+			cfg := config.Config{}
+			_, err := cfg.GetRegistry("missing")
+			h.AssertError(t, err, "registry \"missing\" is not defined in your config file")
+		})
+	})
 }
