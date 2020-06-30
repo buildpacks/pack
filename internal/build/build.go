@@ -2,18 +2,13 @@ package build
 
 import (
 	"context"
-	"io"
 	"math/rand"
-	"os"
-	"runtime"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/style"
@@ -44,11 +39,26 @@ type Lifecycle struct {
 	noProxy            string
 	version            string
 	platformAPIVersion string
-	LayersVolume       string
-	AppVolume          string
-	Volumes            []string
-	DefaultProcessType string
+	layersVolume       string
+	appVolume          string
+	defaultProcessType string
 	fileFilter         func(string) bool
+}
+
+func (l *Lifecycle) Builder() Builder {
+	return l.builder
+}
+
+func (l *Lifecycle) AppPath() string {
+	return l.appPath
+}
+
+func (l *Lifecycle) AppVolume() string {
+	return l.appVolume
+}
+
+func (l *Lifecycle) LayersVolume() string {
+	return l.layersVolume
 }
 
 type Cache interface {
@@ -145,8 +155,8 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 }
 
 func (l *Lifecycle) Setup(opts LifecycleOptions) {
-	l.LayersVolume = "pack-layers-" + randString(10)
-	l.AppVolume = "pack-app-" + randString(10)
+	l.layersVolume = "pack-layers-" + randString(10)
+	l.appVolume = "pack-app-" + randString(10)
 	l.appPath = opts.AppPath
 	l.builder = opts.Builder
 	l.lifecycleImage = opts.LifecycleImage
@@ -155,17 +165,17 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.noProxy = opts.NoProxy
 	l.version = opts.Builder.LifecycleDescriptor().Info.Version.String()
 	l.platformAPIVersion = opts.Builder.LifecycleDescriptor().API.PlatformVersion.String()
-	l.DefaultProcessType = opts.DefaultProcessType
+	l.defaultProcessType = opts.DefaultProcessType
 	l.fileFilter = opts.FileFilter
 }
 
 func (l *Lifecycle) Cleanup() error {
 	var reterr error
-	if err := l.docker.VolumeRemove(context.Background(), l.LayersVolume, true); err != nil {
-		reterr = errors.Wrapf(err, "failed to clean up layers volume %s", l.LayersVolume)
+	if err := l.docker.VolumeRemove(context.Background(), l.layersVolume, true); err != nil {
+		reterr = errors.Wrapf(err, "failed to clean up layers volume %s", l.layersVolume)
 	}
-	if err := l.docker.VolumeRemove(context.Background(), l.AppVolume, true); err != nil {
-		reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.AppVolume)
+	if err := l.docker.VolumeRemove(context.Background(), l.appVolume, true); err != nil {
+		reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.appVolume)
 	}
 	return reterr
 }
@@ -176,52 +186,4 @@ func randString(n int) string {
 		b[i] = 'a' + byte(rand.Intn(26))
 	}
 	return string(b)
-}
-
-func (l *Lifecycle) CopyApp(ctx context.Context, containerID string) error {
-	var (
-		appReader io.ReadCloser
-		clientErr error
-	)
-	appReader, err := l.createAppReader()
-	if err != nil {
-		return errors.Wrapf(err, "create tar archive from '%s'", l.appPath)
-	}
-	defer appReader.Close()
-
-	doneChan := make(chan interface{})
-	pr, pw := io.Pipe()
-	go func() {
-		clientErr = l.docker.CopyToContainer(ctx, containerID, "/", pr, types.CopyToContainerOptions{})
-		close(doneChan)
-	}()
-	func() {
-		defer pw.Close()
-		_, err = io.Copy(pw, appReader)
-	}()
-
-	<-doneChan
-	if err == nil {
-		err = clientErr
-	}
-
-	return err
-}
-
-func (l *Lifecycle) createAppReader() (io.ReadCloser, error) {
-	fi, err := os.Stat(l.appPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if fi.IsDir() {
-		var mode int64 = -1
-		if runtime.GOOS == "windows" {
-			mode = 0777
-		}
-
-		return archive.ReadDirAsTar(l.appPath, appDir, l.builder.UID(), l.builder.GID(), mode, false, l.fileFilter), nil
-	}
-
-	return archive.ReadZipAsTar(l.appPath, appDir, l.builder.UID(), l.builder.GID(), -1, false, l.fileFilter), nil
 }

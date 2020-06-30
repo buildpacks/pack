@@ -1,7 +1,6 @@
 package build
 
 import (
-	"context"
 	"fmt"
 	"io"
 
@@ -11,8 +10,6 @@ import (
 )
 
 type PhaseConfigProviderOperation func(*PhaseConfigProvider)
-
-type ContainerOperation func(ctx context.Context, containerID string) error
 
 type PhaseConfigProvider struct {
 	ctrConf      *container.Config
@@ -38,8 +35,8 @@ func NewPhaseConfigProvider(name string, lifecycle *Lifecycle, ops ...PhaseConfi
 	ops = append(ops,
 		WithLifecycleProxy(lifecycle),
 		WithBinds([]string{
-			fmt.Sprintf("%s:%s", lifecycle.LayersVolume, layersDir),
-			fmt.Sprintf("%s:%s", lifecycle.AppVolume, appDir),
+			fmt.Sprintf("%s:%s", lifecycle.layersVolume, layersDir),
+			fmt.Sprintf("%s:%s", lifecycle.appVolume, appDir),
 		}...),
 	)
 

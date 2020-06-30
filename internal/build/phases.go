@@ -1,18 +1,13 @@
 package build
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
-	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle/auth"
-	"github.com/docker/docker/api/types"
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/builder"
 )
 
@@ -51,9 +46,9 @@ func (l *Lifecycle) Create(
 		flags = append(flags, "-skip-restore")
 	}
 
-	if l.DefaultProcessType != "" {
+	if l.defaultProcessType != "" {
 		if l.supportsDefaultProcess() {
-			flags = append(flags, "-process-type", l.DefaultProcessType)
+			flags = append(flags, "-process-type", l.defaultProcessType)
 		} else {
 			l.logger.Warn("You specified a default process type but that is not supported by this version of the lifecycle")
 		}
@@ -64,7 +59,7 @@ func (l *Lifecycle) Create(
 		WithArgs(repoName),
 		WithNetwork(networkMode),
 		WithBinds(append(volumes, fmt.Sprintf("%s:%s", cacheName, cacheDir))...),
-		WithContainerOperations(l.CopyApp),
+		WithContainerOperations(CopyDir(l.appPath, appDir, l.builder.UID(), l.builder.GID(), l.fileFilter)),
 	}
 
 	if publish {
@@ -100,7 +95,7 @@ func (l *Lifecycle) Detect(ctx context.Context, networkMode string, volumes []st
 		),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
-		WithContainerOperations(l.CopyApp),
+		WithContainerOperations(CopyDir(l.appPath, appDir, l.builder.UID(), l.builder.GID(), l.fileFilter)),
 	)
 
 	detect := phaseFactory.New(configProvider)
@@ -247,9 +242,9 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		"-app", appDir,
 	}...)
 
-	if l.DefaultProcessType != "" {
+	if l.defaultProcessType != "" {
 		if l.supportsDefaultProcess() {
-			flags = append(flags, "-process-type", l.DefaultProcessType)
+			flags = append(flags, "-process-type", l.defaultProcessType)
 		} else {
 			l.logger.Warn("You specified a default process type but that is not supported by this version of the lifecycle")
 		}
@@ -270,7 +265,7 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		WithRoot(),
 		WithNetwork(networkMode),
 		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
-		WithContainerOperations(l.WriteStackToml(stackPath)),
+		WithContainerOperations(WriteStackToml(stackPath, l.builder.Stack())),
 	}
 
 	if publish {
@@ -294,23 +289,6 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 	}
 
 	return phaseFactory.New(NewPhaseConfigProvider("exporter", l, opts...)), nil
-}
-
-func (l *Lifecycle) WriteStackToml(path string) ContainerOperation {
-	return func(ctx context.Context, containerID string) error {
-		buf := &bytes.Buffer{}
-		err := toml.NewEncoder(buf).Encode(l.builder.Stack())
-		if err != nil {
-			return errors.Wrap(err, "marshaling stack metadata")
-		}
-
-		tarBuilder := archive.TarBuilder{}
-		tarBuilder.AddFile(path, 0755, archive.NormalizedDateTime, buf.Bytes())
-		reader := tarBuilder.Reader(archive.DefaultTarWriterFactory())
-		defer reader.Close()
-
-		return l.docker.CopyToContainer(ctx, containerID, "/", reader, types.CopyToContainerOptions{})
-	}
 }
 
 func (l *Lifecycle) withLogLevel(args ...string) []string {

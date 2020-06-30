@@ -35,7 +35,7 @@ const phaseName = "phase"
 
 var (
 	repoName  string
-	dockerCli client.CommonAPIClient
+	ctrClient client.CommonAPIClient
 )
 
 func TestPhase(t *testing.T) {
@@ -47,18 +47,18 @@ func TestPhase(t *testing.T) {
 	h.RequireDocker(t)
 
 	var err error
-	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+	ctrClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 
-	info, err := dockerCli.Info(context.TODO())
+	info, err := ctrClient.Info(context.TODO())
 	h.AssertNil(t, err)
 	h.SkipIf(t, info.OSType == "windows", "These tests are not yet compatible with Windows-based containers")
 
 	repoName = "phase.test.lc-" + h.RandString(10)
 	wd, err := os.Getwd()
 	h.AssertNil(t, err)
-	h.CreateImageFromDir(t, dockerCli, repoName, filepath.Join(wd, "testdata", "fake-lifecycle"))
-	defer h.DockerRmi(dockerCli, repoName)
+	h.CreateImageFromDir(t, ctrClient, repoName, filepath.Join(wd, "testdata", "fake-lifecycle"))
+	defer h.DockerRmi(ctrClient, repoName)
 
 	spec.Run(t, "phase", testPhase, spec.Report(report.Terminal{}), spec.Sequential())
 }
@@ -133,7 +133,15 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					phaseName,
 					lifecycle,
 					build.WithArgs("read", "/workspace/fake-app-file"),
-					build.WithContainerOperations(lifecycle.CopyApp),
+					build.WithContainerOperations(
+						build.CopyDir(
+							lifecycle.AppPath(),
+							"/workspace",
+							lifecycle.Builder().UID(),
+							lifecycle.Builder().GID(),
+							nil,
+						),
+					),
 				)
 				readPhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
@@ -205,7 +213,9 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 							phaseName,
 							lifecycle,
 							build.WithArgs("read", "/workspace/fake-app-file"),
-							build.WithContainerOperations(lifecycle.CopyApp),
+							build.WithContainerOperations(
+								build.CopyDir(lifecycle.AppPath(), "/workspace", 0, 0, nil),
+							),
 						))
 						h.AssertNil(t, err)
 						err = readPhase.Run(context.TODO())
@@ -294,7 +304,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("provides auth for registry in the container", func() {
-					repoName := h.CreateImageOnRemote(t, dockerCli, registry, "packs/build:v3alpha2", "FROM busybox")
+					repoName := h.CreateImageOnRemote(t, ctrClient, registry, "packs/build:v3alpha2", "FROM busybox")
 
 					authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
 					h.AssertNil(t, err)
@@ -338,7 +348,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			body, err := docker.VolumeList(context.TODO(),
 				filters.NewArgs(filters.KeyValuePair{
 					Key:   "name",
-					Value: lifecycle.LayersVolume,
+					Value: lifecycle.LayersVolume(),
 				}))
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(body.Volumes), 0)
@@ -348,7 +358,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			body, err := docker.VolumeList(context.TODO(),
 				filters.NewArgs(filters.KeyValuePair{
 					Key:   "name",
-					Value: lifecycle.AppVolume,
+					Value: lifecycle.AppVolume(),
 				}))
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(body.Volumes), 0)
@@ -362,7 +372,9 @@ func assertAppModTimePreserved(t *testing.T, lifecycle *build.Lifecycle, phaseFa
 		phaseName,
 		lifecycle,
 		build.WithArgs("read", "/workspace/fake-app-file"),
-		build.WithContainerOperations(lifecycle.CopyApp),
+		build.WithContainerOperations(
+			build.CopyDir(lifecycle.AppPath(), "/workspace", 0, 0, nil),
+		),
 	))
 	assertRunSucceeds(t, readPhase, outBuf, errBuf)
 

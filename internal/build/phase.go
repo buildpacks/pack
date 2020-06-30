@@ -35,7 +35,7 @@ func (p *Phase) Run(ctx context.Context) error {
 	}
 
 	for _, containerOp := range p.containerOps {
-		if err := containerOp(ctx, p.ctr.ID); err != nil {
+		if err := containerOp(p.docker, ctx, p.ctr.ID); err != nil {
 			return err
 		}
 	}
