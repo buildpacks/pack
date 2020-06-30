@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -20,18 +21,20 @@ import (
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestBuildCommand(t *testing.T) {
+	color.Disable(true)
+	defer color.Disable(false)
+
 	spec.Run(t, "Commands", testBuildCommand, spec.Random(), spec.Report(report.Terminal{}))
 }
 
 func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command        *cobra.Command
-		logger         logging.Logger
+		logger         *ilogging.LogWithWriters
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
 		mockClient     *testmocks.MockPackClient
@@ -69,6 +72,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{"--builder", "my-builder", "image"})
 				h.AssertNil(t, command.Execute())
 			})
+
 			it("builds an image with a builder short command arg", func() {
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
@@ -76,7 +80,9 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 
 				command.SetArgs([]string{"-B", "my-builder", "image"})
 				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Builder 'my-builder' is untrusted")
 			})
+
 			when("the builder is trusted", func() {
 				it("sets the trust builder option", func() {
 					mockClient.EXPECT().
@@ -86,8 +92,10 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					cfg := config.Config{TrustedBuilders: []config.TrustedBuilder{{Name: "my-builder"}}}
 					command := commands.Build(logger, cfg, mockClient)
 
+					logger.WantVerbose(true)
 					command.SetArgs([]string{"image", "--builder", "my-builder"})
 					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Builder 'my-builder' is trusted")
 				})
 			})
 
@@ -97,8 +105,10 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
 						Return(nil)
 
+					logger.WantVerbose(true)
 					command.SetArgs([]string{"image", "--builder", "heroku/buildpacks:18"})
 					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/buildpacks:18' is trusted")
 				})
 			})
 		})
