@@ -93,7 +93,10 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if trustBuilder {
 				logger.Debugf("Builder %s is trusted", style.Symbol(flags.Builder))
 			} else {
-				logger.Warnf("Builder %s is untrusted", style.Symbol(flags.Builder))
+				logger.Debugf("Builder %s is untrusted", style.Symbol(flags.Builder))
+				logger.Debug("As a result, the phases of the lifecycle which require root access will be run in separate trusted ephemeral containers.")
+				logger.Debug("There may be some issues as a result.")
+				logger.Debug("For more information, see https://github.com/buildpacks/pack/issues/528")
 			}
 
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{

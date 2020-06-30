@@ -78,6 +78,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
 					Return(nil)
 
+				logger.WantVerbose(true)
 				command.SetArgs([]string{"-B", "my-builder", "image"})
 				h.AssertNil(t, command.Execute())
 				h.AssertContains(t, outBuf.String(), "Builder 'my-builder' is untrusted")
