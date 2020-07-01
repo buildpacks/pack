@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -55,6 +56,18 @@ func AssertEq(t *testing.T, actual, expected interface{}) {
 	t.Helper()
 	if diff := cmp.Diff(expected, actual); diff != "" {
 		t.Fatal(diff)
+	}
+}
+
+func AssertFunctionName(t *testing.T, fn interface{}, expected string) {
+	t.Helper()
+	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
+	if name == "" {
+		t.Fatalf("Unable to retrieve function name for %#v. Is it a function?", fn)
+	}
+
+	if !hasMatches(name, fmt.Sprintf(`\.(%s)\.func[\d]+$`, expected)) {
+		t.Fatalf("Expected func name '%s' to contain '%s'", name, expected)
 	}
 }
 
@@ -173,6 +186,31 @@ func AssertSliceContains(t *testing.T, slice []string, expected ...string) {
 	_, missing, _ := stringset.Compare(slice, expected)
 	if len(missing) > 0 {
 		t.Fatalf("Expected %s to contain elements %s", slice, missing)
+	}
+}
+
+func AssertSliceContainsInOrder(t *testing.T, slice []string, expected ...string) {
+	t.Helper()
+
+	AssertSliceContains(t, slice, expected...)
+
+	var common []string
+	expectedSet := stringset.FromSlice(expected)
+	for _, sliceV := range slice {
+		if _, ok := expectedSet[sliceV]; ok {
+			common = append(common, sliceV)
+		}
+	}
+
+	lastFoundI := -1
+	for _, expectedV := range expected {
+		for foundI, foundV := range common {
+			if expectedV == foundV && lastFoundI < foundI {
+				lastFoundI = foundI
+			} else if expectedV == foundV {
+				t.Fatalf("Expected '%s' come earlier in the slice.\nslice: %v\nexpected order: %v", expectedV, slice, expected)
+			}
+		}
 	}
 }
 

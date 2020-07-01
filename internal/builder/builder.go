@@ -33,7 +33,7 @@ const (
 	cnbDir = "/cnb"
 
 	orderPath          = "/cnb/order.toml"
-	StackPath          = "/cnb/stack.toml"
+	stackPath          = "/cnb/stack.toml"
 	platformDir        = "/platform"
 	lifecycleDir       = "/cnb/lifecycle"
 	compatLifecycleDir = "/lifecycle"
@@ -601,7 +601,7 @@ func (b *Builder) stackLayer(dest string) (string, error) {
 	}
 
 	layerTar := filepath.Join(dest, "stack.tar")
-	err = layer.CreateSingleFileTar(layerTar, StackPath, buf.String(), b.layerWriterFactory)
+	err = layer.CreateSingleFileTar(layerTar, stackPath, buf.String(), b.layerWriterFactory)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create stack.toml layer tar")
 	}
