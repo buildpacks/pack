@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -55,6 +56,18 @@ func AssertEq(t *testing.T, actual, expected interface{}) {
 	t.Helper()
 	if diff := cmp.Diff(expected, actual); diff != "" {
 		t.Fatal(diff)
+	}
+}
+
+func AssertFunctionName(t *testing.T, fn interface{}, expected string) {
+	t.Helper()
+	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
+	if name == "" {
+		t.Fatalf("Unable to retrieve function name for %#v. Is it a function?", fn)
+	}
+
+	if !hasMatches(name, fmt.Sprintf(`\.(%s)\.func[\d]+$`, expected)) {
+		t.Fatalf("Expected func name '%s' to contain '%s'", name, expected)
 	}
 }
 

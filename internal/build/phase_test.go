@@ -128,7 +128,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, outBuf.String(), "file contents: test-app")
 			})
 
-			it("copies the app into the app volume before the first phase", func() {
+			it("copies the app into the app volume", func() {
 				configProvider := build.NewPhaseConfigProvider(
 					phaseName,
 					lifecycle,

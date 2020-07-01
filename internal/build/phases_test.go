@@ -23,6 +23,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
+// TestPhases are unit tests that test each possible phase to ensure they are executed with the proper parameters
 func TestPhases(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -373,7 +374,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, configProvider.HostConfig().NetworkMode, container.NetworkMode(expectedNetworkMode))
 		})
 
-		it("configures the phase with binds", func() {
+		it("configures the phase to copy app dir", func() {
 			lifecycle := newTestLifecycle(t, false)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedBind := "some-mount-source:/some-mount-target"
@@ -383,6 +384,9 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 			configProvider := fakePhaseFactory.NewCalledWithProvider
 			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBind)
+
+			h.AssertEq(t, len(configProvider.ContainerOps()), 1)
+			h.AssertFunctionName(t, configProvider.ContainerOps()[0], "CopyDir")
 		})
 	})
 
@@ -888,6 +892,21 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				configProvider := fakePhaseFactory.NewCalledWithProvider
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBind)
 			})
+
+			it("configures the phase to write stack toml", func() {
+				lifecycle := newTestLifecycle(t, false)
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+				expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache"}
+
+				err := lifecycle.Export(context.Background(), "test", "test", false, "some-launch-cache", "some-cache", "test", fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
+
+				h.AssertEq(t, len(configProvider.ContainerOps()), 1)
+				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
+			})
 		})
 
 		when("publish is false", func() {
@@ -968,6 +987,21 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 				configProvider := fakePhaseFactory.NewCalledWithProvider
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
+			})
+
+			it("configures the phase to write stack toml", func() {
+				lifecycle := newTestLifecycle(t, false)
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+				expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache"}
+
+				err := lifecycle.Export(context.Background(), "test", "test", false, "some-launch-cache", "some-cache", "test", fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
+
+				h.AssertEq(t, len(configProvider.ContainerOps()), 1)
+				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
 			})
 		})
 

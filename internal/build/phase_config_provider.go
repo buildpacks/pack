@@ -53,12 +53,12 @@ func (p *PhaseConfigProvider) ContainerConfig() *container.Config {
 	return p.ctrConf
 }
 
-func (p *PhaseConfigProvider) HostConfig() *container.HostConfig {
-	return p.hostConf
+func (p *PhaseConfigProvider) ContainerOps() []ContainerOperation {
+	return p.containerOps
 }
 
-func (p *PhaseConfigProvider) ContainerOperations() []ContainerOperation {
-	return p.containerOps
+func (p *PhaseConfigProvider) HostConfig() *container.HostConfig {
+	return p.hostConf
 }
 
 func (p *PhaseConfigProvider) Name() string {
