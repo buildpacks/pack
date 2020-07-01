@@ -266,7 +266,7 @@ func testWithoutSpecificBuilderRequirement(
 			output := h.Run(t, subjectPack("suggest-builders"))
 
 			h.AssertContains(t, output, "Suggested builders:")
-			h.AssertMatch(t, output, `Google:\s+'gcr.io/buildpacks/builder'`)
+			h.AssertMatch(t, output, `Google:\s+'gcr.io/buildpacks/builder:v1'`)
 			h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks:18'`)
 			h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'`)
 			h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
@@ -336,7 +336,7 @@ func testWithoutSpecificBuilderRequirement(
 			output := h.Run(t, subjectPack("list-trusted-builders"))
 
 			h.AssertContains(t, output, "Trusted Builders:")
-			h.AssertContains(t, output, "gcr.io/buildpacks/builder")
+			h.AssertContains(t, output, "gcr.io/buildpacks/builder:v1")
 			h.AssertContains(t, output, "heroku/buildpacks:18")
 			h.AssertContains(t, output, "gcr.io/paketo-buildpacks/builder:base")
 			h.AssertContains(t, output, "gcr.io/paketo-buildpacks/builder:full-cf")
@@ -566,7 +566,7 @@ func testWithoutSpecificBuilderRequirement(
 				output, err := h.RunE(cmd)
 				h.AssertNotNil(t, err)
 				h.AssertContains(t, output, `Please select a default builder with:`)
-				h.AssertMatch(t, output, `Google:\s+'gcr.io/buildpacks/builder'`)
+				h.AssertMatch(t, output, `Google:\s+'gcr.io/buildpacks/builder:v1'`)
 				h.AssertMatch(t, output, `Heroku:\s+'heroku/buildpacks:18'`)
 				h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'`)
 				h.AssertMatch(t, output, `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
