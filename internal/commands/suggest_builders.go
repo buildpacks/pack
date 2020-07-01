@@ -21,7 +21,7 @@ type SuggestedBuilder struct {
 var suggestedBuilders = []SuggestedBuilder{
 	{
 		Vendor:             "Google",
-		Image:              "gcr.io/buildpacks/builder",
+		Image:              "gcr.io/buildpacks/builder:v1",
 		DefaultDescription: "GCP Builder for all runtimes",
 	},
 	{
