@@ -327,7 +327,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 		bpInfo := bp.Descriptor().Info
 		if _, ok := bpLayers[bpInfo.ID][bpInfo.Version]; ok {
-			logger.Warnf(
+			logger.Debugf(
 				"buildpack %s already exists on builder and will be overwritten",
 				style.Symbol(bpInfo.FullName()),
 			)
