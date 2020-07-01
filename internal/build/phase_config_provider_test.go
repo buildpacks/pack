@@ -66,7 +66,24 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					build.WithArgs(expectedArgs...),
 				)
 
-				h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Cmd, expectedArgs...)
+				cmd := phaseConfigProvider.ContainerConfig().Cmd
+				h.AssertSliceContainsInOrder(t, cmd, "some-arg-1", "some-arg-2")
+			})
+		})
+
+		when("called with WithFlags", func() {
+			it("sets args on the config", func() {
+				lifecycle := newTestLifecycle(t, false)
+
+				phaseConfigProvider := build.NewPhaseConfigProvider(
+					"some-name",
+					lifecycle,
+					build.WithArgs("arg-1", "arg-2"),
+					build.WithFlags("flag-1", "flag-2"),
+				)
+
+				cmd := phaseConfigProvider.ContainerConfig().Cmd
+				h.AssertSliceContainsInOrder(t, cmd, "flag-1", "flag-2", "arg-1", "arg-2")
 			})
 		})
 

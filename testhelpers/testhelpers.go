@@ -176,6 +176,31 @@ func AssertSliceContains(t *testing.T, slice []string, expected ...string) {
 	}
 }
 
+func AssertSliceContainsInOrder(t *testing.T, slice []string, expected ...string) {
+	t.Helper()
+
+	AssertSliceContains(t, slice, expected...)
+
+	var common []string
+	expectedSet := stringset.FromSlice(expected)
+	for _, sliceV := range slice {
+		if _, ok := expectedSet[sliceV]; ok {
+			common = append(common, sliceV)
+		}
+	}
+
+	lastFoundI := -1
+	for _, expectedV := range expected {
+		for foundI, foundV := range common {
+			if expectedV == foundV && lastFoundI < foundI {
+				lastFoundI = foundI
+			} else if expectedV == foundV {
+				t.Fatalf("Expected '%s' come earlier in the slice.\nslice: %v\nexpected order: %v", expectedV, slice, expected)
+			}
+		}
+	}
+}
+
 func AssertSliceNotContains(t *testing.T, slice []string, expected ...string) {
 	t.Helper()
 	_, missing, _ := stringset.Compare(slice, expected)
