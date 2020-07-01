@@ -100,7 +100,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			}
 
 			if !trustBuilder && len(flags.Volumes) > 0 {
-				logger.Warn("Using untrusted builder with volume mounts. If there is sensitive data in the volumes, this may present a security vulnerability")
+				logger.Warn("Using untrusted builder with volume mounts. If there is sensitive data in the volumes, this may present a security vulnerability.")
 			}
 
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
