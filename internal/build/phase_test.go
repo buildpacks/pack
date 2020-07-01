@@ -35,7 +35,7 @@ const phaseName = "phase"
 
 var (
 	repoName  string
-	dockerCli client.CommonAPIClient
+	ctrClient client.CommonAPIClient
 )
 
 func TestPhase(t *testing.T) {
@@ -47,18 +47,18 @@ func TestPhase(t *testing.T) {
 	h.RequireDocker(t)
 
 	var err error
-	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+	ctrClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 
-	info, err := dockerCli.Info(context.TODO())
+	info, err := ctrClient.Info(context.TODO())
 	h.AssertNil(t, err)
 	h.SkipIf(t, info.OSType == "windows", "These tests are not yet compatible with Windows-based containers")
 
 	repoName = "phase.test.lc-" + h.RandString(10)
 	wd, err := os.Getwd()
 	h.AssertNil(t, err)
-	h.CreateImageFromDir(t, dockerCli, repoName, filepath.Join(wd, "testdata", "fake-lifecycle"))
-	defer h.DockerRmi(dockerCli, repoName)
+	h.CreateImageFromDir(t, ctrClient, repoName, filepath.Join(wd, "testdata", "fake-lifecycle"))
+	defer h.DockerRmi(ctrClient, repoName)
 
 	spec.Run(t, "phase", testPhase, spec.Report(report.Terminal{}), spec.Sequential())
 }
@@ -128,8 +128,21 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, outBuf.String(), "file contents: test-app")
 			})
 
-			it("copies the app into the app volume before the first phase", func() {
-				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/workspace/fake-app-file"))
+			it("copies the app into the app volume", func() {
+				configProvider := build.NewPhaseConfigProvider(
+					phaseName,
+					lifecycle,
+					build.WithArgs("read", "/workspace/fake-app-file"),
+					build.WithContainerOperations(
+						build.CopyDir(
+							lifecycle.AppPath(),
+							"/workspace",
+							lifecycle.Builder().UID(),
+							lifecycle.Builder().GID(),
+							nil,
+						),
+					),
+				)
 				readPhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "file contents: fake-app-contents")
@@ -196,9 +209,14 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 						lifecycle, err = CreateFakeLifecycle(docker, logger, tmpFakeAppDir, repoName)
 						h.AssertNil(t, err)
 						phaseFactory = build.NewDefaultPhaseFactory(lifecycle)
-
-						configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/workspace/fake-app-file"))
-						readPhase := phaseFactory.New(configProvider)
+						readPhase := phaseFactory.New(build.NewPhaseConfigProvider(
+							phaseName,
+							lifecycle,
+							build.WithArgs("read", "/workspace/fake-app-file"),
+							build.WithContainerOperations(
+								build.CopyDir(lifecycle.AppPath(), "/workspace", 0, 0, nil),
+							),
+						))
 						h.AssertNil(t, err)
 						err = readPhase.Run(context.TODO())
 						defer readPhase.Cleanup()
@@ -286,7 +304,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("provides auth for registry in the container", func() {
-					repoName := h.CreateImageOnRemote(t, dockerCli, registry, "packs/build:v3alpha2", "FROM busybox")
+					repoName := h.CreateImageOnRemote(t, ctrClient, registry, "packs/build:v3alpha2", "FROM busybox")
 
 					authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
 					h.AssertNil(t, err)
@@ -330,7 +348,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			body, err := docker.VolumeList(context.TODO(),
 				filters.NewArgs(filters.KeyValuePair{
 					Key:   "name",
-					Value: lifecycle.LayersVolume,
+					Value: lifecycle.LayersVolume(),
 				}))
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(body.Volumes), 0)
@@ -340,7 +358,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			body, err := docker.VolumeList(context.TODO(),
 				filters.NewArgs(filters.KeyValuePair{
 					Key:   "name",
-					Value: lifecycle.AppVolume,
+					Value: lifecycle.AppVolume(),
 				}))
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(body.Volumes), 0)
@@ -349,8 +367,15 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 }
 
 func assertAppModTimePreserved(t *testing.T, lifecycle *build.Lifecycle, phaseFactory *build.DefaultPhaseFactory, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
-	configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/workspace/fake-app-file"))
-	readPhase := phaseFactory.New(configProvider)
+	t.Helper()
+	readPhase := phaseFactory.New(build.NewPhaseConfigProvider(
+		phaseName,
+		lifecycle,
+		build.WithArgs("read", "/workspace/fake-app-file"),
+		build.WithContainerOperations(
+			build.CopyDir(lifecycle.AppPath(), "/workspace", 0, 0, nil),
+		),
+	))
 	assertRunSucceeds(t, readPhase, outBuf, errBuf)
 
 	matches := regexp.MustCompile(regexp.QuoteMeta("file mod time (unix): ") + "(.*)").FindStringSubmatch(outBuf.String())

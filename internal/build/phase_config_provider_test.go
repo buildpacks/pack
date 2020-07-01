@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -67,7 +66,24 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					build.WithArgs(expectedArgs...),
 				)
 
-				h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Cmd, expectedArgs...)
+				cmd := phaseConfigProvider.ContainerConfig().Cmd
+				h.AssertSliceContainsInOrder(t, cmd, "some-arg-1", "some-arg-2")
+			})
+		})
+
+		when("called with WithFlags", func() {
+			it("sets args on the config", func() {
+				lifecycle := newTestLifecycle(t, false)
+
+				phaseConfigProvider := build.NewPhaseConfigProvider(
+					"some-name",
+					lifecycle,
+					build.WithArgs("arg-1", "arg-2"),
+					build.WithFlags("flag-1", "flag-2"),
+				)
+
+				cmd := phaseConfigProvider.ContainerConfig().Cmd
+				h.AssertSliceContainsInOrder(t, cmd, "flag-1", "flag-2", "arg-1", "arg-2")
 			})
 		})
 
@@ -126,22 +142,6 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				)
 
 				h.AssertEq(t, phaseConfigProvider.ContainerConfig().Image, "some-image-name")
-			})
-		})
-
-		when("called with WithMounts", func() {
-			it("sets the mounts on the config", func() {
-				lifecycle := newTestLifecycle(t, false)
-
-				expectedMount := mount.Mount{Type: "bind", Source: "some-source", Target: "some-target", ReadOnly: true}
-
-				phaseConfigProvider := build.NewPhaseConfigProvider(
-					"some-name",
-					lifecycle,
-					build.WithMounts(expectedMount),
-				)
-
-				h.AssertEq(t, phaseConfigProvider.HostConfig().Mounts[0], expectedMount)
 			})
 		})
 
