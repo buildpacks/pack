@@ -73,4 +73,39 @@ func testLogWriter(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("color is enabled", func() {
+		it("doesn't strip color", func() {
+			color.Disable(false)
+
+			writer = ilogging.NewLogWriter(outCons, clockFunc, false)
+			writer.Write([]byte(color.HiBlueString(("test"))))
+			h.AssertEq(t, fOut(), "\x1b[94mtest\x1b[0m")
+		})
+	})
+
+	when("color is disabled", func() {
+		it("strips color out", func() {
+			color.Disable(true)
+			defer color.Disable(false)
+
+			writer = ilogging.NewLogWriter(outCons, clockFunc, false)
+			writer.Write([]byte(color.HiBlueString(("test"))))
+
+			output := fOut()
+			h.AssertEq(t, output, "test")
+			h.AssertNotEq(t, output, "\x1b[94mtest\x1b[0m")
+		})
+
+		it("doesn't strip time out", func() {
+			color.Disable(true)
+			defer color.Disable(false)
+
+			writer = ilogging.NewLogWriter(outCons, clockFunc, true)
+			writer.Write([]byte(color.HiBlueString(("test"))))
+
+			output := fOut()
+			h.AssertEq(t, output, "2019/05/15 01:01:01.000000 test")
+		})
+	})
 }
