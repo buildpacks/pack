@@ -22,7 +22,7 @@ func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 			}
 
 			imageName := args[0]
-			builderToTrust := config.TrustedBuilder{Name: imageName}
+			builderToTrust := config.Builder{Image: imageName}
 
 			for _, builder := range cfg.TrustedBuilders {
 				if builder == builderToTrust {

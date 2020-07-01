@@ -70,7 +70,7 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 					b, err := ioutil.ReadFile(configPath)
 					h.AssertNil(t, err)
 					h.AssertContains(t, string(b), `[[trusted-builders]]
-  name = "some-builder"`)
+  image = "some-builder"`)
 				})
 			})
 

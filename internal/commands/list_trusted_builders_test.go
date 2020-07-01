@@ -77,7 +77,7 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			listTrustedBuildersCommand := commands.ListTrustedBuilders(
 				logger,
 				config.Config{
-					TrustedBuilders: []config.TrustedBuilder{{Name: builderName}},
+					TrustedBuilders: []config.Builder{{Image: builderName}},
 				},
 			)
 

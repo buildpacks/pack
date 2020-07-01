@@ -9,11 +9,11 @@ import (
 )
 
 type Config struct {
-	RunImages       []RunImage       `toml:"run-images"`
-	DefaultBuilder  string           `toml:"default-builder-image,omitempty"`
-	DefaultRegistry string           `toml:"default-registry-url,omitempty"`
-	Experimental    bool             `toml:"experimental,omitempty"`
-	TrustedBuilders []TrustedBuilder `toml:"trusted-builders,omitempty"`
+	RunImages       []RunImage `toml:"run-images"`
+	DefaultBuilder  string     `toml:"default-builder-image,omitempty"`
+	DefaultRegistry string     `toml:"default-registry-url,omitempty"`
+	Experimental    bool       `toml:"experimental,omitempty"`
+	TrustedBuilders []Builder  `toml:"trusted-builders,omitempty"`
 }
 
 type RunImage struct {
@@ -21,8 +21,10 @@ type RunImage struct {
 	Mirrors []string `toml:"mirrors"`
 }
 
-type TrustedBuilder struct {
-	Name string `toml:"name"`
+type Builder struct {
+	Vendor             string `toml:"-"`
+	Image              string `toml:"image"`
+	DefaultDescription string `toml:"-"`
 }
 
 func DefaultConfigPath() (string, error) {

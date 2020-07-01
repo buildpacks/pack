@@ -146,7 +146,7 @@ func (c configManager) configWithTrustedBuilders(trustedBuilders ...string) conf
 
 	cfg := config.Config{}
 	for _, builderName := range trustedBuilders {
-		cfg.TrustedBuilders = append(cfg.TrustedBuilders, config.TrustedBuilder{Name: builderName})
+		cfg.TrustedBuilders = append(cfg.TrustedBuilders, config.Builder{Image: builderName})
 	}
 	err := config.Write(cfg, c.configPath)
 	h.AssertNil(c.testObject, err)

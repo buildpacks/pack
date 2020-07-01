@@ -8,17 +8,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
-type SuggestedBuilder struct {
-	Vendor             string
-	Image              string
-	DefaultDescription string
-}
-
-var suggestedBuilders = []SuggestedBuilder{
+var suggestedBuilders = []config.Builder{
 	{
 		Vendor:             "Google",
 		Image:              "gcr.io/buildpacks/builder:v1",
@@ -72,7 +67,7 @@ func suggestBuilders(logger logging.Logger, client PackClient) {
 	WriteSuggestedBuilder(logger, client, suggestedBuilders)
 }
 
-func WriteSuggestedBuilder(logger logging.Logger, client PackClient, builders []SuggestedBuilder) {
+func WriteSuggestedBuilder(logger logging.Logger, client PackClient, builders []config.Builder) {
 	sort.Slice(builders, func(i, j int) bool {
 		if builders[i].Vendor == builders[j].Vendor {
 			return builders[i].Image < builders[j].Image
@@ -90,7 +85,7 @@ func WriteSuggestedBuilder(logger logging.Logger, client PackClient, builders []
 	for i, builder := range builders {
 		wg.Add(1)
 
-		go func(i int, builder SuggestedBuilder) {
+		go func(i int, builder config.Builder) {
 			descriptions[i] = getBuilderDescription(builder, client)
 			wg.Done()
 		}(i, builder)
@@ -107,7 +102,7 @@ func WriteSuggestedBuilder(logger logging.Logger, client PackClient, builders []
 	logger.Info("\tpack inspect-builder <builder-image>")
 }
 
-func getBuilderDescription(builder SuggestedBuilder, client PackClient) string {
+func getBuilderDescription(builder config.Builder, client PackClient) string {
 	info, err := client.InspectBuilder(builder.Image, false)
 	if err == nil && info.Description != "" {
 		return info.Description

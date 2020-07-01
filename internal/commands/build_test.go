@@ -90,7 +90,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Build(gomock.Any(), EqBuildOptionsWithTrustedBuilder(true)).
 						Return(nil)
 
-					cfg := config.Config{TrustedBuilders: []config.TrustedBuilder{{Name: "my-builder"}}}
+					cfg := config.Config{TrustedBuilders: []config.Builder{{Image: "my-builder"}}}
 					command := commands.Build(logger, cfg, mockClient)
 
 					logger.WantVerbose(true)

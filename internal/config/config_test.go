@@ -65,8 +65,8 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 							Mirrors: []string{"example.com/other/run", "example.com/other/mirror"},
 						},
 					},
-					TrustedBuilders: []config.TrustedBuilder{
-						{Name: "some-trusted-builder"},
+					TrustedBuilders: []config.Builder{
+						{Image: "some-trusted-builder"},
 					},
 				}, configPath))
 				b, err := ioutil.ReadFile(configPath)
@@ -81,7 +81,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
   mirrors = ["example.com/other/run", "example.com/other/mirror"]`)
 
 				h.AssertContains(t, string(b), `[[trusted-builders]]
-  name = "some-trusted-builder"`)
+  image = "some-trusted-builder"`)
 			})
 		})
 

@@ -372,7 +372,7 @@ Stack:
 			when("the builder has been trusted by the user", func() {
 				it("indicated that it is trusted", func() {
 					builderName := "trusted/builder"
-					cfg.TrustedBuilders = []config.TrustedBuilder{{Name: builderName}}
+					cfg.TrustedBuilders = []config.Builder{{Image: builderName}}
 					command = commands.InspectBuilder(logger, cfg, mockClient)
 
 					command.SetArgs([]string{builderName})

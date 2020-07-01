@@ -13,6 +13,7 @@ import (
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
+	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -47,7 +48,7 @@ func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("displays descriptions from metadata", func() {
-				commands.WriteSuggestedBuilder(logger, mockClient, []commands.SuggestedBuilder{{
+				commands.WriteSuggestedBuilder(logger, mockClient, []config.Builder{{
 					Vendor:             "Builder",
 					Image:              "gcr.io/some/builder:latest",
 					DefaultDescription: "Default description",
@@ -65,7 +66,7 @@ func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("displays default descriptions", func() {
-				commands.WriteSuggestedBuilder(logger, mockClient, []commands.SuggestedBuilder{{
+				commands.WriteSuggestedBuilder(logger, mockClient, []config.Builder{{
 					Vendor:             "Builder",
 					Image:              "gcr.io/some/builder:latest",
 					DefaultDescription: "Default description",
@@ -81,7 +82,7 @@ func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("displays default descriptions", func() {
-				commands.WriteSuggestedBuilder(logger, mockClient, []commands.SuggestedBuilder{{
+				commands.WriteSuggestedBuilder(logger, mockClient, []config.Builder{{
 					Vendor:             "Builder",
 					Image:              "gcr.io/some/builder:latest",
 					DefaultDescription: "Default description",
