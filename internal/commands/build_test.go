@@ -143,6 +143,16 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--volume", "a:b", "--volume", "c:d"})
 				h.AssertNil(t, command.Execute())
 			})
+
+			it("warns when running with an untrusted builder", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithVolumes([]string{"a:b", "c:d"})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--volume", "a:b", "--volume", "c:d"})
+				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Warning: Using untrusted builder with volume mounts")
+			})
 		})
 
 		when("a default process is specified", func() {

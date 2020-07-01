@@ -99,6 +99,10 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				logger.Debug("For more information, see https://github.com/buildpacks/pack/issues/528")
 			}
 
+			if !trustBuilder && len(flags.Volumes) > 0 {
+				logger.Warn("Using untrusted builder with volume mounts. If there is sensitive data in the volumes, this may present a security vulnerability.")
+			}
+
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           flags.Builder,
