@@ -192,7 +192,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		}
 	}
 
-	return c.lifecycle.Execute(ctx, lifecycleOpts)
+	if err := c.lifecycle.Execute(ctx, lifecycleOpts); err != nil {
+		return errors.Wrap(err, "executing lifecycle. This may be the result of using an untrusted builder")
+	}
+
+	return nil
 }
 
 func (c *Client) processBuilderName(builderName string) (name.Reference, error) {

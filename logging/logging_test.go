@@ -3,8 +3,6 @@ package logging_test
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"os"
 	"testing"
 
 	"github.com/heroku/color"
@@ -16,39 +14,25 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func mockStd() (*color.Console, func() string) {
-	r, w, _ := os.Pipe()
-	console := color.NewConsole(w)
-	return console, func() string {
-		_ = w.Close()
-		var b bytes.Buffer
-		_, _ = io.Copy(&b, r)
-		_ = r.Close()
-		return b.String()
-	}
-}
-
 func TestLogging(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "logging", testLogging, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Logging", testLogging, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testLogging(t *testing.T, when spec.G, it spec.S) {
 	when("#GetWriterForLevel", func() {
 		when("implements WithSelectableWriter", func() {
 			it("returns Logger for appropriate level", func() {
-				outCons, output := mockStd()
-				errCons, errOutput := mockStd()
+				outCons, output := h.MockWriterAndOutput()
+				errCons, errOutput := h.MockWriterAndOutput()
 				logger := ilogging.NewLogWithWriters(outCons, errCons)
 
 				infoLogger := logging.GetWriterForLevel(logger, logging.InfoLevel)
-				h.AssertSameInstance(t, infoLogger, outCons)
 				_, _ = infoLogger.Write([]byte("info test"))
 				h.AssertEq(t, output(), "info test")
 
 				errorLogger := logging.GetWriterForLevel(logger, logging.ErrorLevel)
-				h.AssertSameInstance(t, errorLogger, errCons)
 				_, _ = errorLogger.Write([]byte("error test"))
 				h.AssertEq(t, errOutput(), "error test")
 			})

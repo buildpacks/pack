@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
@@ -1417,6 +1419,19 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, args.Daemon, true)
 							h.AssertEq(t, args.Pull, true)
 						})
+
+						it("suggests that being untrusted may be the root of a failure", func() {
+							lifecyle := &executeFailsLifecycle{}
+							subject.lifecycle = lifecyle
+							err := subject.Build(context.TODO(), BuildOptions{
+								Image:        "some/app",
+								Builder:      defaultBuilderName,
+								Publish:      false,
+								TrustBuilder: false,
+							})
+
+							h.AssertError(t, err, "may be the result of using an untrusted builder")
+						})
 					})
 
 					when("lifecycle image is not available", func() {
@@ -1876,4 +1891,13 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 			}},
 		}},
 	)
+}
+
+type executeFailsLifecycle struct {
+	Opts build.LifecycleOptions
+}
+
+func (f *executeFailsLifecycle) Execute(ctx context.Context, opts build.LifecycleOptions) error {
+	f.Opts = opts
+	return errors.New("")
 }

@@ -60,7 +60,7 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			it("errors with a descriptive message", func() {
 				command.SetArgs([]string{
 					"some/builder",
-					"--builder-config", "some-config-path",
+					"--config", "some-config-path",
 					"--publish",
 					"--no-pull",
 				})
@@ -74,7 +74,7 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			it("errors with a descriptive message", func() {
 				command.SetArgs([]string{
 					"some/builder",
-					"--builder-config", "some-config-path",
+					"--config", "some-config-path",
 					"--buildpack-registry", "some-registry",
 				})
 				err := command.Execute()
@@ -96,11 +96,46 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 				command.SetArgs([]string{
 					"some/builder",
-					"--builder-config", builderConfigPath,
+					"--config", builderConfigPath,
 				})
 				h.AssertNil(t, command.Execute())
 
 				h.AssertContains(t, outBuf.String(), "Warning: builder configuration: empty 'order' definition")
+			})
+		})
+
+		when("uses --builder-config", func() {
+			it.Before(func() {
+				h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(`
+[[buildpacks]]
+  id = "some.buildpack"
+
+[[order]]
+	[[order.group]]
+		id = "some.buildpack"
+
+`), 0666))
+			})
+
+			it("logs warning and works", func() {
+				mockClient.EXPECT().CreateBuilder(gomock.Any(), gomock.Any()).Return(nil)
+
+				command.SetArgs([]string{
+					"some/builder",
+					"--builder-config", builderConfigPath,
+				})
+				h.AssertNil(t, command.Execute())
+
+				h.AssertContains(t, outBuf.String(), "Warning: Flag --builder-config has been deprecated, please use --config instead")
+			})
+		})
+
+		when("no config provided", func() {
+			it("errors with a descriptive message", func() {
+				command.SetArgs([]string{
+					"some/builder",
+				})
+				h.AssertError(t, command.Execute(), "Please provide a builder config path")
 			})
 		})
 	})

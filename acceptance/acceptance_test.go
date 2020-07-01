@@ -224,7 +224,7 @@ lifecycle:
 
 // These tests either (a) do not require a builder or (b) do not require a specific builder to be provided
 // in order to test compatibility.
-// They should only be run against the "current" (i.e., master) version of pack.
+// They should only be run against the "current" (i.e., main) version of pack.
 func testWithoutSpecificBuilderRequirement(
 	t *testing.T,
 	when spec.G,
@@ -302,6 +302,25 @@ func testWithoutSpecificBuilderRequirement(
 			packConfigFileContents, err := ioutil.ReadFile(filepath.Join(packHome, "config.toml"))
 			h.AssertNil(t, err)
 			h.AssertContains(t, string(packConfigFileContents), builderName)
+		})
+	})
+
+	when("untrust-builder", func() {
+		it("removes the previously trusted builder from ~/${PACK_HOME}/config.toml", func() {
+			h.SkipIf(t, !packSupports(packPath, "untrust-builder"), "pack does not support 'untrust-builder'")
+			builderName := "some-builder" + h.RandString(10)
+
+			h.Run(t, subjectPack("trust-builder", builderName))
+
+			packConfigFileContents, err := ioutil.ReadFile(filepath.Join(packHome, "config.toml"))
+			h.AssertNil(t, err)
+			h.AssertContains(t, string(packConfigFileContents), builderName)
+
+			h.Run(t, subjectPack("untrust-builder", builderName))
+
+			packConfigFileContents, err = ioutil.ReadFile(filepath.Join(packHome, "config.toml"))
+			h.AssertNil(t, err)
+			h.AssertNotContains(t, string(packConfigFileContents), builderName)
 		})
 	})
 
@@ -888,6 +907,32 @@ func testAcceptance(
 							)
 							h.AssertEq(t, output, expectedOutput)
 						}
+					})
+
+					when("--no-color", func() {
+						it.Before(func() {
+							h.SkipIf(t,
+								packSemver.LessThan(semver.MustParse("0.12.0")) || !packSemver.Equal(semver.MustParse("0.0.0")),
+								"pack had a no-color bug for color strings in buildpacks until 0.12.0",
+							)
+						})
+
+						it("doesn't have color", func() {
+							appPath := filepath.Join("testdata", "mock_app")
+
+							output := h.Run(t, subjectPack("build", repoName, "-p", appPath))
+
+							h.AssertContains(t, output, fmt.Sprintf("Successfully built image '%s'", repoName))
+							imgId, err := imgIDForRepoName(repoName)
+							if err != nil {
+								t.Fatal(err)
+							}
+							defer h.DockerRmi(dockerCli, imgId)
+
+							t.Log("has no color with --no-color")
+							colorCodeMatcher := `\x1b\[[0-9;]*m`
+							h.AssertNotContainsMatch(t, output, colorCodeMatcher)
+						})
 					})
 
 					it("supports building app from a zip file", func() {
