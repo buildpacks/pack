@@ -12,13 +12,17 @@ import (
 	"testing"
 
 	"github.com/buildpacks/pack/acceptance/variables"
+	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/style"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-const defaultCompilePackVersion = "0.0.0"
+const (
+	defaultCompilePackVersion = "0.0.0"
+	defaultPlatformAPIVersion = "0.3"
+)
 
 var (
 	currentPackFixturesDir           = filepath.Join("testdata", "pack_fixtures")
@@ -36,6 +40,7 @@ type AssetManager struct {
 	lifecycleDescriptor         builder.LifecycleDescriptor
 	previousLifecyclePath       string
 	previousLifecycleDescriptor builder.LifecycleDescriptor
+	defaultLifecycleDescriptor  builder.LifecycleDescriptor
 	testObject                  *testing.T
 }
 
@@ -46,10 +51,11 @@ func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) 
 		convergedCurrentPackPath             string
 		convergedPreviousPackPath            string
 		convergedPreviousPackFixturesPath    string
-		convergedDefaultLifecyclePath        string
-		convergedDefaultLifecycleDescriptor  builder.LifecycleDescriptor
+		convergedCurrentLifecyclePath        string
+		convergedCurrentLifecycleDescriptor  builder.LifecycleDescriptor
 		convergedPreviousLifecyclePath       string
 		convergedPreviousLifecycleDescriptor builder.LifecycleDescriptor
+		convergedDefaultLifecycleDescriptor  builder.LifecycleDescriptor
 	)
 
 	assetBuilder := assetManagerBuilder{
@@ -68,12 +74,16 @@ func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) 
 		h.RecursiveCopy(t, previousPackFixturesOverridesDir, convergedPreviousPackFixturesPath)
 	}
 
-	if inputConfig.combinations.requiresDefaultLifecycle() {
-		convergedDefaultLifecyclePath, convergedDefaultLifecycleDescriptor = assetBuilder.ensureDefaultLifecycle()
+	if inputConfig.combinations.requiresCurrentLifecycle() {
+		convergedCurrentLifecyclePath, convergedCurrentLifecycleDescriptor = assetBuilder.ensureCurrentLifecycle()
 	}
 
 	if inputConfig.combinations.requiresPreviousLifecycle() {
 		convergedPreviousLifecyclePath, convergedPreviousLifecycleDescriptor = assetBuilder.ensurePreviousLifecycle()
+	}
+
+	if inputConfig.combinations.requiresDefaultLifecycle() {
+		convergedDefaultLifecycleDescriptor = defaultLifecycleDescriptor()
 	}
 
 	return AssetManager{
@@ -81,10 +91,11 @@ func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) 
 		packFixturesPath:            currentPackFixturesDir,
 		previousPackPath:            convergedPreviousPackPath,
 		previousPackFixturesPath:    convergedPreviousPackFixturesPath,
-		lifecyclePath:               convergedDefaultLifecyclePath,
-		lifecycleDescriptor:         convergedDefaultLifecycleDescriptor,
+		lifecyclePath:               convergedCurrentLifecyclePath,
+		lifecycleDescriptor:         convergedCurrentLifecycleDescriptor,
 		previousLifecyclePath:       convergedPreviousLifecyclePath,
 		previousLifecycleDescriptor: convergedPreviousLifecycleDescriptor,
+		defaultLifecycleDescriptor:  convergedDefaultLifecycleDescriptor,
 		testObject:                  t,
 	}
 }
@@ -114,9 +125,11 @@ func (a AssetManager) LifecyclePath(kind ComboValue) string {
 		return a.lifecyclePath
 	case Previous:
 		return a.previousLifecyclePath
+	case DefaultKind:
+		return ""
 	}
 
-	a.testObject.Fatalf("lifecycle kind must be previous or current, was %s", kind)
+	a.testObject.Fatalf("lifecycle kind must be previous, current or default was %s", kind)
 	return "" // Unreachable
 }
 
@@ -128,9 +141,11 @@ func (a AssetManager) LifecycleDescriptor(kind ComboValue) builder.LifecycleDesc
 		return a.lifecycleDescriptor
 	case Previous:
 		return a.previousLifecycleDescriptor
+	case DefaultKind:
+		return a.defaultLifecycleDescriptor
 	}
 
-	a.testObject.Fatalf("lifecycle kind must be previous or current, was %s", kind)
+	a.testObject.Fatalf("lifecycle kind must be previous, current or default was %s", kind)
 	return builder.LifecycleDescriptor{} // Unreachable
 }
 
@@ -217,7 +232,7 @@ func (b assetManagerBuilder) ensurePreviousPackFixtures() string {
 	return fixturesDir
 }
 
-func (b assetManagerBuilder) ensureDefaultLifecycle() (string, builder.LifecycleDescriptor) {
+func (b assetManagerBuilder) ensureCurrentLifecycle() (string, builder.LifecycleDescriptor) {
 	b.testObject.Helper()
 
 	lifecyclePath := b.inputConfig.lifecyclePath
@@ -243,7 +258,7 @@ func (b assetManagerBuilder) ensureDefaultLifecycle() (string, builder.Lifecycle
 func (b assetManagerBuilder) ensurePreviousLifecycle() (string, builder.LifecycleDescriptor) {
 	b.testObject.Helper()
 
-	previousLifecyclePath := b.inputConfig.lifecyclePath
+	previousLifecyclePath := b.inputConfig.previousLifecyclePath
 
 	if previousLifecyclePath == "" {
 		b.testObject.Logf(
@@ -321,4 +336,16 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 	h.AssertNil(b.testObject, err)
 
 	return packPath
+}
+
+func defaultLifecycleDescriptor() builder.LifecycleDescriptor {
+	return builder.LifecycleDescriptor{
+		Info: builder.LifecycleInfo{
+			Version: builder.VersionMustParse(builder.DefaultLifecycleVersion),
+		},
+		API: builder.LifecycleAPI{
+			BuildpackVersion: api.MustParse(builder.DefaultBuildpackAPIVersion),
+			PlatformVersion:  api.MustParse(defaultPlatformAPIVersion),
+		},
+	}
 }

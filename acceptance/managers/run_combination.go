@@ -16,6 +16,7 @@ type ComboValue int
 const (
 	Current ComboValue = iota
 	Previous
+	DefaultKind
 )
 
 func (v ComboValue) String() string {
@@ -24,6 +25,8 @@ func (v ComboValue) String() string {
 		return "current"
 	case Previous:
 		return "previous"
+	case DefaultKind:
+		return "default"
 	}
 	return ""
 }
@@ -35,7 +38,7 @@ type RunCombo struct {
 }
 
 var defaultRunCombo = []*RunCombo{
-	{Pack: Current, PackCreateBuilder: Current, Lifecycle: Current},
+	{Pack: Current, PackCreateBuilder: Current, Lifecycle: DefaultKind},
 }
 
 func (c *RunCombo) UnmarshalJSON(b []byte) error {
@@ -96,6 +99,8 @@ func validateLifecycleKind(k string) (ComboValue, error) {
 		return Current, nil
 	case "previous":
 		return Previous, nil
+	case "default":
+		return DefaultKind, nil
 	default:
 		return Current, errors.Errorf("must be either current or previous, was %s", style.Symbol(k))
 	}
@@ -167,12 +172,16 @@ func (combos ComboSet) IncludesCurrentSubjectPack() bool {
 	return false
 }
 
-func (combos ComboSet) requiresDefaultLifecycle() bool {
+func (combos ComboSet) requiresCurrentLifecycle() bool {
 	return combos.requiresLifecycleKind(Current)
 }
 
 func (combos ComboSet) requiresPreviousLifecycle() bool {
 	return combos.requiresLifecycleKind(Previous)
+}
+
+func (combos ComboSet) requiresDefaultLifecycle() bool {
+	return combos.requiresLifecycleKind(DefaultKind)
 }
 
 func (combos ComboSet) requiresLifecycleKind(k ComboValue) bool {
