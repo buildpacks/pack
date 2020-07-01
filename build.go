@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/buildpacks/pack/project"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/docker/docker/api/types"
@@ -67,6 +69,35 @@ type ProxyConfig struct {
 type ContainerConfig struct {
 	Network string
 	Volumes []string
+}
+
+func (b BuildOptions) FromProjectDescriptor(descriptorFilePath string) (BuildOptions, error) {
+	if descriptorFilePath == "" {
+		return b, nil
+	}
+
+	projectDescriptor, err := project.ReadProjectDescriptor(descriptorFilePath)
+	if err != nil {
+		return b, errors.Wrapf(err, "invalid descriptor file '%s'", descriptorFilePath)
+	}
+
+	fileFilter, err := projectDescriptor.GetFileFilter()
+	if err != nil {
+		return b, err
+	}
+
+	buildpacks, err := addProjectDescriptorBuildpacks(projectDescriptor, descriptorFilePath, b.Buildpacks)
+	if err != nil {
+		return b, err
+	}
+
+	myEnvs := addProjectDescriptorEnvs(projectDescriptor, b.Env)
+
+	b.FileFilter = fileFilter
+	b.Buildpacks = buildpacks
+	b.Env = myEnvs
+
+	return b, nil
 }
 
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
@@ -630,4 +661,39 @@ func buildPlatformVolumes(volumes []string) ([]string, error) {
 		platformVolumes[i] = fmt.Sprintf("%v:%v:ro", volume.Spec.Source, dest)
 	}
 	return platformVolumes, nil
+}
+
+func addProjectDescriptorEnvs(project project.Descriptor, envVars map[string]string) map[string]string {
+	env := map[string]string{}
+
+	for k, v := range envVars {
+		env[k] = v
+	}
+	for _, envVar := range project.Build.Env {
+		env[envVar.Name] = envVar.Value
+	}
+
+	return env
+}
+
+func addProjectDescriptorBuildpacks(project project.Descriptor, actualDescriptorPath string, buildpacks []string) ([]string, error) {
+	if len(buildpacks) == 0 {
+		buildpacks = []string{}
+		projectDescriptorDir := filepath.Dir(actualDescriptorPath)
+		for _, bp := range project.Build.Buildpacks {
+			if len(bp.URI) == 0 {
+				// there are several places through out the pack code where the "id@version" format is used.
+				// we should probably central this, but it's not clear where it belongs
+				buildpacks = append(buildpacks, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
+			} else {
+				uri, err := paths.ToAbsolute(bp.URI, projectDescriptorDir)
+				if err != nil {
+					return buildpacks, err
+				}
+				buildpacks = append(buildpacks, uri)
+			}
+		}
+	}
+
+	return buildpacks, nil
 }

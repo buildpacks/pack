@@ -3,6 +3,8 @@ package project
 import (
 	"io/ioutil"
 
+	ignore "github.com/sabhiram/go-gitignore"
+
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 )
@@ -56,19 +58,40 @@ func ReadProjectDescriptor(pathToFile string) (Descriptor, error) {
 	return descriptor, descriptor.validate()
 }
 
-func (p Descriptor) validate() error {
-	if p.Build.Exclude != nil && p.Build.Include != nil {
+func (d *Descriptor) GetFileFilter() (func(string) bool, error) {
+	if len(d.Build.Exclude) > 0 {
+		excludes, err := ignore.CompileIgnoreLines(d.Build.Exclude...)
+		if err != nil {
+			return nil, err
+		}
+		return func(fileName string) bool {
+			return !excludes.MatchesPath(fileName)
+		}, nil
+	}
+	if len(d.Build.Include) > 0 {
+		includes, err := ignore.CompileIgnoreLines(d.Build.Include...)
+		if err != nil {
+			return nil, err
+		}
+		return includes.MatchesPath, nil
+	}
+
+	return nil, nil
+}
+
+func (d *Descriptor) validate() error {
+	if d.Build.Exclude != nil && d.Build.Include != nil {
 		return errors.New("project.toml: cannot have both include and exclude defined")
 	}
-	if len(p.Project.Licenses) > 0 {
-		for _, license := range p.Project.Licenses {
+	if len(d.Project.Licenses) > 0 {
+		for _, license := range d.Project.Licenses {
 			if license.Type == "" && license.URI == "" {
 				return errors.New("project.toml: must have a type or uri defined for each license")
 			}
 		}
 	}
 
-	for _, bp := range p.Build.Buildpacks {
+	for _, bp := range d.Build.Buildpacks {
 		if bp.ID == "" && bp.URI == "" {
 			return errors.New("project.toml: buildpacks must have an id or url defined")
 		}

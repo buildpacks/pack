@@ -1,22 +1,18 @@
 package commands
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
-	"github.com/buildpacks/pack/project"
 )
 
 type BuildFlags struct {
@@ -52,41 +48,9 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 
 			imageName := args[0]
 
-			descriptor, actualDescriptorPath, err := parseProjectToml(flags.AppPath, flags.DescriptorPath)
+			env, err := parseEnv(flags.EnvFiles, flags.Env)
 			if err != nil {
 				return err
-			}
-			if actualDescriptorPath != "" {
-				logger.Debugf("Using project descriptor located at %s", style.Symbol(actualDescriptorPath))
-			}
-
-			fileFilter, err := getFileFilter(descriptor)
-			if err != nil {
-				return err
-			}
-
-			env, err := parseEnv(descriptor, flags.EnvFiles, flags.Env)
-			if err != nil {
-				return err
-			}
-
-			buildpacks := flags.Buildpacks
-			if len(buildpacks) == 0 {
-				buildpacks = []string{}
-				projectDescriptorDir := filepath.Dir(actualDescriptorPath)
-				for _, bp := range descriptor.Build.Buildpacks {
-					if len(bp.URI) == 0 {
-						// there are several places through out the pack code where the "id@version" format is used.
-						// we should probably central this, but it's not clear where it belongs
-						buildpacks = append(buildpacks, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
-					} else {
-						uri, err := paths.ToAbsolute(bp.URI, projectDescriptorDir)
-						if err != nil {
-							return err
-						}
-						buildpacks = append(buildpacks, uri)
-					}
-				}
 			}
 
 			var cfgTrustedBuilder bool
@@ -106,7 +70,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				}
 			}
 
-			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
+			buildOptions := pack.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           flags.Builder,
 				Registry:          flags.Registry,
@@ -118,14 +82,28 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				NoPull:            flags.NoPull,
 				ClearCache:        flags.ClearCache,
 				TrustBuilder:      flags.TrustBuilder || cfgTrustedBuilder || suggestedBuilder,
-				Buildpacks:        buildpacks,
+				Buildpacks:        flags.Buildpacks,
 				ContainerConfig: pack.ContainerConfig{
 					Network: flags.Network,
 					Volumes: flags.Volumes,
 				},
 				DefaultProcessType: flags.DefaultProcessType,
-				FileFilter:         fileFilter,
-			}); err != nil {
+			}
+
+			actualDescriptorPath, err := parseProjectToml(flags.AppPath, flags.DescriptorPath)
+			if err != nil {
+				return err
+			}
+			if actualDescriptorPath != "" {
+				logger.Debugf("Using project descriptor located at %s", style.Symbol(actualDescriptorPath))
+			}
+
+			buildOptions, err = buildOptions.FromProjectDescriptor(actualDescriptorPath)
+			if err != nil {
+				return err
+			}
+
+			if err := packClient.Build(cmd.Context(), buildOptions); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
 			logger.Infof("Successfully built image %s", style.Symbol(imageName))
@@ -171,12 +149,8 @@ func validateBuildFlags(flags BuildFlags, logger logging.Logger, cfg config.Conf
 	return nil
 }
 
-func parseEnv(project project.Descriptor, envFiles []string, envVars []string) (map[string]string, error) {
+func parseEnv(envFiles []string, envVars []string) (map[string]string, error) {
 	env := map[string]string{}
-
-	for _, envVar := range project.Build.Env {
-		env[envVar.Name] = envVar.Value
-	}
 	for _, envFile := range envFiles {
 		envFileVars, err := parseEnvFile(envFile)
 		if err != nil {
@@ -219,7 +193,7 @@ func addEnvVar(env map[string]string, item string) map[string]string {
 	return env
 }
 
-func parseProjectToml(appPath, descriptorPath string) (project.Descriptor, string, error) {
+func parseProjectToml(appPath, descriptorPath string) (string, error) {
 	actualPath := descriptorPath
 	computePath := descriptorPath == ""
 
@@ -229,32 +203,10 @@ func parseProjectToml(appPath, descriptorPath string) (project.Descriptor, strin
 
 	if _, err := os.Stat(actualPath); err != nil {
 		if computePath {
-			return project.Descriptor{}, "", nil
+			return "", nil
 		}
-		return project.Descriptor{}, "", errors.Wrap(err, "stat project descriptor")
+		return "", errors.Wrap(err, "stat project descriptor")
 	}
 
-	descriptor, err := project.ReadProjectDescriptor(actualPath)
-	return descriptor, actualPath, err
-}
-
-func getFileFilter(descriptor project.Descriptor) (func(string) bool, error) {
-	if len(descriptor.Build.Exclude) > 0 {
-		excludes, err := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
-		if err != nil {
-			return nil, err
-		}
-		return func(fileName string) bool {
-			return !excludes.MatchesPath(fileName)
-		}, nil
-	}
-	if len(descriptor.Build.Include) > 0 {
-		includes, err := ignore.CompileIgnoreLines(descriptor.Build.Include...)
-		if err != nil {
-			return nil, err
-		}
-		return includes.MatchesPath, nil
-	}
-
-	return nil, nil
+	return actualPath, nil
 }
