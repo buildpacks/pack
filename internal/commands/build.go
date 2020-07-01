@@ -95,8 +95,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			} else {
 				logger.Debugf("Builder %s is untrusted", style.Symbol(flags.Builder))
 				logger.Debug("As a result, the phases of the lifecycle which require root access will be run in separate trusted ephemeral containers.")
-				logger.Debug("There may be some issues as a result.")
-				logger.Debug("For more information, see https://github.com/buildpacks/pack/issues/528")
+				logger.Debug("For more information, see https://medium.com/buildpacks/faster-more-secure-builds-with-pack-0-11-0-4d0c633ca619")
 			}
 
 			if !trustBuilder && len(flags.Volumes) > 0 {
