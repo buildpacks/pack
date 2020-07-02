@@ -32,6 +32,6 @@ The [release manager](#release-manager) will:
 
 For more information, see the [release process RFC][release-process]
 
-[maintainers]: @buildpacks/platform-mainters
+[maintainers]: https://github.com/buildpacks/community/blob/main/TEAMS.md#platform-team
 [release-process]: https://github.com/buildpacks/rfcs/blob/main/text/0039-release-process.md#change-control-board
 [release]: https://github.com/buildpacks/pack/releases
