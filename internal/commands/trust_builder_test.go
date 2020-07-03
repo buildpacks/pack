@@ -19,7 +19,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestTrustBuilder(t *testing.T) {
+func TestTrustBuilderCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 	spec.Run(t, "Commands", testTrustBuilderCommand, spec.Random(), spec.Report(report.Terminal{}))
@@ -87,6 +87,18 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 					newContents, err := ioutil.ReadFile(configPath)
 					h.AssertNil(t, err)
 					h.AssertEq(t, newContents, oldContents)
+				})
+			})
+
+			when("builder is a suggested builder", func() {
+				it("does nothing", func() {
+					h.AssertNil(t, ioutil.WriteFile(configPath, []byte(""), os.ModePerm))
+
+					command.SetArgs([]string{"gcr.io/paketo-buildpacks/builder:base"})
+					h.AssertNil(t, command.Execute())
+					oldContents, err := ioutil.ReadFile(configPath)
+					h.AssertNil(t, err)
+					h.AssertEq(t, string(oldContents), "")
 				})
 			})
 		})
