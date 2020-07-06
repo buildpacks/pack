@@ -38,7 +38,7 @@ func RegisterBuildpack(logger logging.Logger, cfg config.Config, client PackClie
 			return nil
 		}),
 	}
-	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "R", "", "Buildpack Registry name")
+	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
 	AddHelpFlag(cmd, "register-buildpack")
 	return cmd
 }

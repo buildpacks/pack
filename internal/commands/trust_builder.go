@@ -24,11 +24,9 @@ func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 			imageName := args[0]
 			builderToTrust := config.TrustedBuilder{Name: imageName}
 
-			for _, builder := range cfg.TrustedBuilders {
-				if builder == builderToTrust {
-					logger.Infof("Builder %s is already trusted", style.Symbol(imageName))
-					return nil
-				}
+			if isTrustedBuilder(cfg, imageName) {
+				logger.Infof("Builder %s is already trusted", style.Symbol(imageName))
+				return nil
 			}
 
 			cfg.TrustedBuilders = append(cfg.TrustedBuilders, builderToTrust)

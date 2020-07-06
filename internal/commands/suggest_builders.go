@@ -115,3 +115,13 @@ func getBuilderDescription(builder SuggestedBuilder, client PackClient) string {
 
 	return builder.DefaultDescription
 }
+
+func isSuggestedBuilder(builder string) bool {
+	for _, sugBuilder := range suggestedBuilders {
+		if builder == sugBuilder.Image {
+			return true
+		}
+	}
+
+	return false
+}

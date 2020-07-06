@@ -82,25 +82,6 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 	return openBrowser(issueURL.String())
 }
 
-var execCommand = exec.Command
-
-func openBrowser(url string) error {
-	var err error
-
-	switch runtime.GOOS {
-	case "linux":
-		err = execCommand("xdg-open", url).Start()
-	case "windows":
-		err = execCommand("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		err = execCommand("open", url).Start()
-	default:
-		err = fmt.Errorf("unsupported platform")
-	}
-
-	return err
-}
-
 func parseID(id string) (string, string, error) {
 	parts := strings.Split(id, "/")
 	if len(parts) < 2 {
@@ -146,4 +127,23 @@ func createGithubIssue(buildpack registry.Buildpack) (githubIssue, error) {
 		title.String(),
 		body.String(),
 	}, nil
+}
+
+var execCommand = exec.Command
+
+func openBrowser(url string) error {
+	var err error
+
+	switch runtime.GOOS {
+	case "linux":
+		err = execCommand("xdg-open", url).Start()
+	case "windows":
+		err = execCommand("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		err = execCommand("open", url).Start()
+	default:
+		err = fmt.Errorf("unsupported platform")
+	}
+
+	return err
 }

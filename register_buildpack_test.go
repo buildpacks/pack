@@ -66,7 +66,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should return error for missing image label", func() {
-			fakeAppImage = fakes.NewImage("misslinglabel/image", "", &fakeIdentifier{name: "buildpack-image"})
+			fakeAppImage = fakes.NewImage("missinglabel/image", "", &fakeIdentifier{name: "buildpack-image"})
 			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.buildpackage.metadata", `{}`))
 			fakeImageFetcher.RemoteImages["missinglabel/image"] = fakeAppImage
 
