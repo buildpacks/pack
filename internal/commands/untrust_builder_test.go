@@ -20,7 +20,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestUntrustBuilder(t *testing.T) {
+func TestUntrustBuilderCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 	spec.Run(t, "Commands", testUntrustBuilderCommand, spec.Random(), spec.Report(report.Terminal{}))
@@ -124,6 +124,17 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 					outBuf.String(),
 					fmt.Sprintf("Builder %s wasn't trusted", style.Symbol(neverTrustedBuilder)),
 				)
+			})
+		})
+
+		when("builder is a suggested builder", func() {
+			it("does nothing and reports that ", func() {
+				builder := "gcr.io/paketo-buildpacks/builder:base"
+				command := commands.UntrustBuilder(logger, config.Config{})
+				command.SetArgs([]string{builder})
+
+				err := command.Execute()
+				h.AssertError(t, err, fmt.Sprintf("Builder %s is a suggested builder, and is trusted by default", style.Symbol(builder)))
 			})
 		})
 	})
