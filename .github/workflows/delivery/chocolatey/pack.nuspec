@@ -19,7 +19,26 @@
     <bugTrackerUrl>https://github.com/buildpacks/pack/issues</bugTrackerUrl>
     <tags>pack cloud-native-buildpacks cncf</tags>
     <summary>pack is a CLI for building apps using Cloud Native Buildpacks.</summary>
-    <description>{{README}}
+    <description>
+This package installs/upgrades the pack - Buildpacks CLI release.
+
+[![Slack](https://slack.buildpacks.io/badge.svg)](https://slack.buildpacks.io/)
+
+`pack` makes it easy for...
+- [**App Developers**](https://buildpacks.io/docs/app-developer-guide/) to use buildpacks to convert code into runnable images.
+- [**Buildpack Authors**](https://buildpacks.io/docs/buildpack-author-guide/) to develop and package buildpacks for distribution.
+- [**Operators**](https://buildpacks.io/docs/operator-guide/) to package buildpacks for distribution and maintain applications.
+
+## Usage
+
+<img src="https://github.com/buildpacks/pack/raw/main/resources/pack-build.gif" width="600px" />
+
+## Getting Started
+
+Get started by running through our tutorial: [An App’s Brief Journey from Source to Image](https://buildpacks.io/docs/app-journey)
+
+## Specifications
+`pack` is a CLI implementation of the [Platform Interface Specification][platform-spec] for [Cloud Native Buildpacks](https://buildpacks.io/).
     </description>
   </metadata>
   <files>

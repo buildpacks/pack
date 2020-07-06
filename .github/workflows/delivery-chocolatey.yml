@@ -38,7 +38,6 @@ jobs:
         run: |
           file=${{ env.CHOC_PATH }}/pack.nuspec
           sed -i "s/{{PACK_VERSION}}/${{ env.PACK_VERSION }}/g" $file
-          sed -i -e '/{{README}}/r README.md' -e 's/{{README}}//' $file
           cat $file
       - name: Fill License
         shell: bash
