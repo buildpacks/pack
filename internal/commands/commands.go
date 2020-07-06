@@ -89,11 +89,5 @@ func isTrustedBuilder(cfg config.Config, builder string) bool {
 		}
 	}
 
-	for _, sugBuilder := range suggestedBuilders {
-		if builder == sugBuilder.Image {
-			return true
-		}
-	}
-
-	return false
+	return isSuggestedBuilder(builder)
 }
