@@ -10,23 +10,20 @@ Our development flow is detailed in [Development](DEVELOPMENT.md)
 
 ## Feature Complete
 ### Process
-5 business days prior to a scheduled release, we enter `feature complete`. A release branch (in the form `release/<VERSION>`) is created, and used for `UAT` (User Acceptance testing).
+5 business days prior to a scheduled release, we enter `feature complete`. A release branch (in the form `release/<VERSION>`) is created, and used for User Acceptance testing (`UAT`).
 
-During this period, relevant changes may be merged into the release branch, based on assessment by the [CCB](#ccb) of the impact, effort and risk of including the changes. Any other change may get merged into `main` through the normal process, and will make it into the next release.
+During this period, relevant changes may be merged into the release branch, based on assessment by the `pack` [maintainers][maintainers] of the impact, effort and risk of including the changes. Any other change may get merged into `main` through the normal process, and will make it into the next release.
 
 ### Roles
-#### CCB
-The `CCB` (Change Control Board) are the `pack` [maintainers][maintainers].
-
 #### Release Manager
-One of the [maintainers][maintainers] is designated as the release manager. They communicate the release status to the working group meetings, schedule additional meetings with the [CCB](#ccb) as needed, and finalize the release. They also take care of whatever release needs may arise.
+One of the [maintainers][maintainers] is designated as the release manager. They communicate the release status to the working group meetings, schedule additional meetings with the `pack` [maintainers][maintainers] as needed, and finalize the release. They also take care of whatever release needs may arise.
 
 ## Release Finalization
 The [release manager](#release-manager) will:
 - Create a [github release][release], containing the **artifacts**, **release notes**, and a **migration guide** (if necessary), documenting breaking changes, and providing actions to migrate from prior versions.
 - Tag the release branch as `v<version>`
 - Merge the release branch into `main`
-- Send out release notifications on
+- Send out release notifications, if deemed necessary, on
   - The [cncf-buildpacks mailing list](https://lists.cncf.io/g/cncf-buildpacks)
   - Twitter
 
