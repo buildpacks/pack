@@ -40,9 +40,6 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-// 0.7.5 is the first lifecycle version where both creator and the "lifecycle image" are supported.
-const defaultBuilderLifecycleVersion = "0.7.5"
-
 func TestBuild(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
@@ -78,7 +75,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		defaultBuilderName = "example.com/default/builder:tag"
 		defaultBuilderStackID = "some.stack.id"
 
-		defaultBuilderImage = newFakeBuilderImage(t, tmpDir, defaultBuilderName, defaultBuilderStackID, defaultBuilderLifecycleVersion)
+		defaultBuilderImage = newFakeBuilderImage(t, tmpDir, defaultBuilderName, defaultBuilderStackID, builder.DefaultLifecycleVersion)
 		h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 		fakeImageFetcher.LocalImages[defaultBuilderImage.Name()] = defaultBuilderImage
 
@@ -97,7 +94,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, fakeMirror2.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
 		fakeImageFetcher.LocalImages[fakeMirror2.Name()] = fakeMirror2
 
-		fakeLifecycleImage = fakes.NewImage(fmt.Sprintf("%s:%s", lifecycleImageRepo, defaultBuilderLifecycleVersion), "", nil)
+		fakeLifecycleImage = fakes.NewImage(fmt.Sprintf("%s:%s", lifecycleImageRepo, builder.DefaultLifecycleVersion), "", nil)
 		fakeImageFetcher.LocalImages[fakeLifecycleImage.Name()] = fakeLifecycleImage
 
 		docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
@@ -331,7 +328,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Lifecycle: builder.LifecycleMetadata{
 								LifecycleInfo: builder.LifecycleInfo{
 									Version: &builder.Version{
-										Version: *semver.MustParse("0.7.5"),
+										Version: *semver.MustParse(builder.DefaultLifecycleVersion),
 									},
 								},
 								API: builder.LifecycleAPI{
@@ -1499,7 +1496,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.Pull, false)
 
-					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.7.5"]
+					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.8.0"]
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.Pull, false)
 				})
@@ -1627,7 +1624,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									Lifecycle: builder.LifecycleMetadata{
 										LifecycleInfo: builder.LifecycleInfo{
 											Version: &builder.Version{
-												Version: *semver.MustParse("0.7.5"),
+												Version: *semver.MustParse(builder.DefaultLifecycleVersion),
 											},
 										},
 										API: builder.LifecycleAPI{
@@ -1676,7 +1673,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Lifecycle: builder.LifecycleMetadata{
 									LifecycleInfo: builder.LifecycleInfo{
 										Version: &builder.Version{
-											Version: *semver.MustParse("0.7.5"),
+											Version: *semver.MustParse(builder.DefaultLifecycleVersion),
 										},
 									},
 									API: builder.LifecycleAPI{
@@ -1897,7 +1894,7 @@ type executeFailsLifecycle struct {
 	Opts build.LifecycleOptions
 }
 
-func (f *executeFailsLifecycle) Execute(ctx context.Context, opts build.LifecycleOptions) error {
+func (f *executeFailsLifecycle) Execute(_ context.Context, opts build.LifecycleOptions) error {
 	f.Opts = opts
 	return errors.New("")
 }
