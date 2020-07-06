@@ -36,7 +36,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				command := commands.PackageBuildpack(logger, buildpackPackager, configReader)
 				command.SetArgs([]string{
 					"some-image-name",
-					"--package-config", "/path/to/some/file",
+					"--config", "/path/to/some/file",
 					"--publish",
 					"--no-pull",
 				})
@@ -114,6 +114,46 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertEq(t, receivedOptions.Config, myConfig)
 		})
+
+		when("package-config is specified", func() {
+			it("logs warning and works", func() {
+				outBuf := &bytes.Buffer{}
+
+				config := &packageCommandConfig{
+					logger:            logging.NewLogWithWriters(outBuf, outBuf),
+					configReader:      fakes.NewFakePackageConfigReader(),
+					buildpackPackager: &fakes.FakeBuildpackPackager{},
+
+					imageName:  "some-image-name",
+					configPath: "/path/to/some/file",
+				}
+
+				cmd := commands.PackageBuildpack(config.logger, config.buildpackPackager, config.configReader)
+				cmd.SetArgs([]string{config.imageName, "--package-config", config.configPath})
+
+				err := cmd.Execute()
+				h.AssertNil(t, err)
+				h.AssertContains(t, outBuf.String(), "Flag --package-config has been deprecated, please use --config instead")
+			})
+		})
+
+		when("no config path is specified", func() {
+			it("errors with a descriptive message", func() {
+				config := &packageCommandConfig{
+					logger:            logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
+					configReader:      fakes.NewFakePackageConfigReader(),
+					buildpackPackager: &fakes.FakeBuildpackPackager{},
+
+					imageName: "some-image-name",
+				}
+
+				cmd := commands.PackageBuildpack(config.logger, config.buildpackPackager, config.configReader)
+				cmd.SetArgs([]string{config.imageName})
+
+				err := cmd.Execute()
+				h.AssertError(t, err, "Please provide a package config path")
+			})
+		})
 	})
 }
 
@@ -143,7 +183,7 @@ func packageBuildpackCommand(ops ...packageCommandOption) *cobra.Command {
 	}
 
 	cmd := commands.PackageBuildpack(config.logger, config.buildpackPackager, config.configReader)
-	cmd.SetArgs([]string{config.imageName, "--package-config", config.configPath})
+	cmd.SetArgs([]string{config.imageName, "--config", config.configPath})
 
 	return cmd
 }

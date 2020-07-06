@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bytes"
 	"html/template"
 	"sort"
 
@@ -64,9 +65,7 @@ func SuggestStacks(logger logging.Logger) *cobra.Command {
 
 func suggestStacks(log logging.Logger) {
 	sort.Slice(suggestedStacks, func(i, j int) bool { return suggestedStacks[i].ID < suggestedStacks[j].ID })
-
-	tmpl := template.Must(template.New("").Parse(`
-Stacks maintained by the community:
+	tmpl := template.Must(template.New("").Parse(`Stacks maintained by the community:
 {{- range . }}
 
     Stack ID: {{ .ID }}
@@ -76,5 +75,8 @@ Stacks maintained by the community:
     Run Image: {{ .RunImage }}
 {{- end }}
 `))
-	tmpl.Execute(log.Writer(), suggestedStacks)
+
+	buf := &bytes.Buffer{}
+	tmpl.Execute(buf, suggestedStacks)
+	log.Info(buf.String())
 }

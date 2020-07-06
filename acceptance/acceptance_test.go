@@ -224,7 +224,7 @@ lifecycle:
 
 // These tests either (a) do not require a builder or (b) do not require a specific builder to be provided
 // in order to test compatibility.
-// They should only be run against the "current" (i.e., master) version of pack.
+// They should only be run against the "current" (i.e., main) version of pack.
 func testWithoutSpecificBuilderRequirement(
 	t *testing.T,
 	when spec.G,
@@ -302,6 +302,54 @@ func testWithoutSpecificBuilderRequirement(
 			packConfigFileContents, err := ioutil.ReadFile(filepath.Join(packHome, "config.toml"))
 			h.AssertNil(t, err)
 			h.AssertContains(t, string(packConfigFileContents), builderName)
+		})
+	})
+
+	when("untrust-builder", func() {
+		it("removes the previously trusted builder from ~/${PACK_HOME}/config.toml", func() {
+			h.SkipIf(t, !packSupports(packPath, "untrust-builder"), "pack does not support 'untrust-builder'")
+			builderName := "some-builder" + h.RandString(10)
+
+			h.Run(t, subjectPack("trust-builder", builderName))
+
+			packConfigFileContents, err := ioutil.ReadFile(filepath.Join(packHome, "config.toml"))
+			h.AssertNil(t, err)
+			h.AssertContains(t, string(packConfigFileContents), builderName)
+
+			h.Run(t, subjectPack("untrust-builder", builderName))
+
+			packConfigFileContents, err = ioutil.ReadFile(filepath.Join(packHome, "config.toml"))
+			h.AssertNil(t, err)
+			h.AssertNotContains(t, string(packConfigFileContents), builderName)
+		})
+	})
+
+	when("list-trusted-builders", func() {
+		it.Before(func() {
+			h.SkipIf(t,
+				!packSupports(packPath, "list-trusted-builders"),
+				"pack does not support 'list-trusted-builders",
+			)
+		})
+
+		it("shows default builders from pack suggest-builders", func() {
+			output := h.Run(t, subjectPack("list-trusted-builders"))
+
+			h.AssertContains(t, output, "Trusted Builders:")
+			h.AssertContains(t, output, "gcr.io/buildpacks/builder")
+			h.AssertContains(t, output, "heroku/buildpacks:18")
+			h.AssertContains(t, output, "gcr.io/paketo-buildpacks/builder:base")
+			h.AssertContains(t, output, "gcr.io/paketo-buildpacks/builder:full-cf")
+			h.AssertContains(t, output, "gcr.io/paketo-buildpacks/builder:tiny")
+		})
+
+		it("shows a builder trusted by pack trust-builder", func() {
+			builderName := "some-builder" + h.RandString(10)
+
+			h.Run(t, subjectPack("trust-builder", builderName))
+
+			output := h.Run(t, subjectPack("list-trusted-builders"))
+			h.AssertContains(t, output, builderName)
 		})
 	})
 
