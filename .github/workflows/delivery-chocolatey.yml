@@ -43,7 +43,7 @@ jobs:
         shell: bash
         run: |
           file="${{ env.CHOC_PATH }}/tools/LICENSE.txt"
-          cat LICENSE >> $file
+          cp LICENSE $file
           cat $file
       - name: Upload Artifacts
         uses: actions/upload-artifact@v1

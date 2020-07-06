@@ -1,4 +1,0 @@
-
-From: https://github.com/buildpacks/pack/blob/main/LICENSE
-
-LICENSE
