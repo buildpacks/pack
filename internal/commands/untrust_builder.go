@@ -16,19 +16,26 @@ func UntrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 		Long:  "Stop trusting builder.\n\nWhen building with this builder, all lifecycle phases will be no longer be run in a single container using the builder image.",
 		Args:  cobra.ExactArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			builderName := args[0]
-			existingBuilders := cfg.TrustedBuilders
+			builder := args[0]
+
+			existingTrustedBuilders := cfg.TrustedBuilders
 			cfg.TrustedBuilders = []config.TrustedBuilder{}
-			for _, builder := range existingBuilders {
-				if builder.Name == builderName {
+			for _, trustedBuilder := range existingTrustedBuilders {
+				if trustedBuilder.Name == builder {
 					continue
 				}
 
-				cfg.TrustedBuilders = append(cfg.TrustedBuilders, builder)
+				cfg.TrustedBuilders = append(cfg.TrustedBuilders, trustedBuilder)
 			}
 
-			if len(existingBuilders) == len(cfg.TrustedBuilders) {
-				logger.Infof("Builder %s wasn't trusted", style.Symbol(builderName))
+			// Builder is not in the trusted builder list
+			if len(existingTrustedBuilders) == len(cfg.TrustedBuilders) {
+				if isSuggestedBuilder(builder) {
+					// Attempted to untrust a suggested builder
+					return errors.Errorf("Builder %s is a suggested builder, and is trusted by default. Currently pack doesn't support making these builders untrusted", style.Symbol(builder))
+				}
+
+				logger.Infof("Builder %s wasn't trusted", style.Symbol(builder))
 				return nil
 			}
 
@@ -41,7 +48,7 @@ func UntrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 				return errors.Wrap(err, "writing config file")
 			}
 
-			logger.Infof("Builder %s is no longer trusted", style.Symbol(builderName))
+			logger.Infof("Builder %s is no longer trusted", style.Symbol(builder))
 			return nil
 		}),
 	}
