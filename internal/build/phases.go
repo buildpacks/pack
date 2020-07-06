@@ -20,7 +20,6 @@ import (
 
 const (
 	layersDir                 = "/layers"
-	appDir                    = "/workspace"
 	cacheDir                  = "/cache"
 	launchCacheDir            = "/launch-cache"
 	defaultProcessPlatformAPI = "0.3"
@@ -261,7 +260,6 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 	args = append(args, []string{
 		"-cache-dir", cacheDir,
 		"-layers", layersDir,
-		"-app", appDir,
 		repoName,
 	}...)
 
