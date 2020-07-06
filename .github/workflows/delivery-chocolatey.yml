@@ -1,0 +1,76 @@
+name: delivery / chocolatey
+
+on:
+  release:
+    types:
+      - published
+
+env:
+  CHOC_PATH: chocolatey
+
+jobs:
+  prepare-chocolatey:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Determine version
+        shell: bash
+        run: echo "::set-env name=PACK_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`"
+      - name: Setup working dir
+        run: |
+          mkdir -p ${{ env.CHOC_PATH }}
+          cp -r .github/workflows/delivery/chocolatey/. ${{ env.CHOC_PATH }}/
+          ls -R ${{ env.CHOC_PATH }}
+      - name: Download and unzip Pack (Windows)
+        shell: bash
+        run: |
+          url="https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-windows.zip"
+          filename=pack.zip
+          zip_path=${{ env.CHOC_PATH }}/tools/$filename
+
+          curl -sSL "$url" -o "$zip_path"
+
+          apt-get update && apt-get install unzip
+          unzip -o "$zip_path"
+          rm "$zip_path"
+      - name: Fill nuspec
+        shell: bash
+        run: |
+          file=${{ env.CHOC_PATH }}/pack.nuspec
+          sed -i "s/{{PACK_VERSION}}/${{ env.PACK_VERSION }}/g" $file
+          cat $file
+      - name: Fill License
+        shell: bash
+        run: |
+          file="${{ env.CHOC_PATH }}/tools/LICENSE.txt"
+          cp LICENSE $file
+          cat $file
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ env.CHOC_PATH }}
+          path: ${{ env.CHOC_PATH }}/
+  deliver-chocolatey:
+    runs-on: windows-latest
+    needs: [prepare-chocolatey]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Download artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: ${{ env.CHOC_PATH }}
+      - name: Determine version
+        run: echo "::set-env name=PACK_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`"
+        shell: bash
+      - name: build-release
+        uses: crazy-max/ghaction-chocolatey@v1
+        with:
+          args: pack ${{ env.CHOC_PATH }}/pack.nuspec --outputdirectory ${{ env.CHOC_PATH}}
+      - name: Test Release
+        uses: crazy-max/ghaction-chocolatey@v1
+        with:
+          args: install pack -s ${{ env.CHOC_PATH }}
+      - name: Upload Release
+        uses: crazy-max/ghaction-chocolatey@v1
+        with:
+          args: push ${{ env.CHOC_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg -s https://push.chocolatey.org/ -k ${{ secrets.CHOC_KEY }}
