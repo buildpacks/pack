@@ -31,7 +31,7 @@ This package installs/upgrades the pack - Buildpacks CLI release.
 
 ## Usage
 
-<img src="https://github.com/buildpacks/pack/raw/main/resources/pack-build.gif" width="600px" />
+![Usage](https://github.com/buildpacks/pack/raw/main/resources/pack-build.gif)
 
 ## Getting Started
 
