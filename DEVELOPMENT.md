@@ -74,3 +74,7 @@ Runs various checks to ensure compliance:
 ```shell
 make prepare-for-pr
 ```
+
+### To be removed
+
+Making an arbitrary docs change, to see if this would trigger CI
