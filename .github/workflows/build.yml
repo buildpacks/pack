@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    paths-ignore: &ignore-paths
+    paths-ignore:
       - '**.md'
       - 'resources/**'
       - 'CODEOWNERS'
@@ -11,7 +11,11 @@ on:
       - main
       - 'release/**'
   pull_request:
-    "<<": *ignore-paths
+    paths-ignore:
+      - '**.md'
+      - 'resources/**'
+      - 'CODEOWNERS'
+      - 'LICENSE'
     branches:
       - main
       - 'release/**'
