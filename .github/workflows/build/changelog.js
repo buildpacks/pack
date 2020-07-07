@@ -102,11 +102,13 @@ function createIssueEntry(issue) {
     }
   });
 
+  let line = `* ${issue.title}`;
   if (annotations.length !== 0) {
-    return `* ${issue.title} [${annotations.join(", ")}] (#${issue.number})\n`;
-  } else {
-    return `* ${issue.title} (#${issue.number})\n`;
+    line += ` [${annotations.join(", ")}]`;
   }
+  line += ` (#${issue.number} by @${issue.user.login})\n`;
+
+  return line;
 }
 
 function groupByType(issues) {
