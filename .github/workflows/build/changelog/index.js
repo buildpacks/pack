@@ -14,9 +14,10 @@ const annotationLabelsMap = {
   "breaking": "breaking-change",
 };
 
-module.exports = async ({core, github}) => {
-  const milestone = process.env.PACK_VERSION;
-  const repository = process.env.GITHUB_REPOSITORY;
+module.exports = async ({core, github, context, version}) => {
+  const milestone = version;
+  const repository = context.repository;
+
   console.log("looking up PRs for milestone", milestone, "in repo", repository);
 
   return await github.paginate("GET /search/issues", {
@@ -49,7 +50,7 @@ module.exports = async ({core, github}) => {
     for (let key in typeLabelsMap) {
       let issues = (groupedCliIssues[typeLabelsMap[key]] || []);
       if (issues.length > 0) {
-        output += `## ${key}\n\n`;
+        output += `### ${key}\n\n`;
         issues.forEach(issue => {
           output += createIssueEntry(issue);
         });
@@ -59,12 +60,12 @@ module.exports = async ({core, github}) => {
 
     // library issues
     if (Object.keys(groupedLibIssues).length > 0) {
-      output += "## Library\n\n";
-      output += "<details><p>\n";
+      output += "### Library\n\n";
+      output += "<details><summary>Changes that only affect `pack` as a library usage...</summary><p>\n\n";
       for (let key in typeLabelsMap) {
         let issues = (groupedLibIssues[typeLabelsMap[key]] || []);
         if (issues.length > 0) {
-          output += `### ${key}\n\n`;
+          output += `#### ${key}\n\n`;
           issues.forEach(issue => {
             output += createIssueEntry(issue);
           });
@@ -84,7 +85,7 @@ module.exports = async ({core, github}) => {
       }
     });
 
-    console.log("OUTPUT:\n", output);
+    console.log(`CHANGELOG:\n${output}`);
 
     core.setOutput('contents', output);
     core.setOutput('file', 'changelog.md');
