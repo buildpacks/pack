@@ -3,15 +3,13 @@ package pack
 import (
 	"bytes"
 	"context"
-	"os"
-	"os/exec"
-	"runtime"
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
 
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/internal/registry"
 	h "github.com/buildpacks/pack/testhelpers"
 
 	"github.com/heroku/color"
@@ -61,7 +59,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 				RegisterBuildpackOptions{
 					ImageName: "invalid/image",
 					Type:      "github",
-					URL:       "https://github.com/jkutner/buildpack-registry",
+					URL:       registry.DefaultRegistryURL,
 				}))
 		})
 
@@ -74,57 +72,17 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 				RegisterBuildpackOptions{
 					ImageName: "missinglabel/image",
 					Type:      "github",
-					URL:       "https://github.com/jkutner/buildpack-registry",
+					URL:       registry.DefaultRegistryURL,
 				}))
 		})
 
-		when("registry type is github", func() {
-			it("should open a github issue in the browser", func() {
-				const expectedURL = `https://github.com/jkutner/buildpack-registry/issues/new?body=%0A%23%23%23+Data%0A%0A%60%60%60toml%0Aid+%3D+%22heroku%2Fjava-function%22%0Aversion+%3D+%221.1.1%22%0Aaddr+%3D+%22buildpack-image%22%0A%60%60%60&title=ADD+heroku%2Fjava-function%401.1.1`
-
-				switch runtime.GOOS {
-				case "linux":
-					execCommand = getFakeExecCommand(t, "xdg-open", expectedURL)
-				case "windows":
-					execCommand = getFakeExecCommand(t, "rundll32", "url.dll,FileProtocolHandler", expectedURL)
-				case "darwin":
-					execCommand = getFakeExecCommand(t, "open", expectedURL)
-				default:
-					// do nothing
-				}
-
-				h.AssertNil(t, subject.RegisterBuildpack(context.TODO(),
-					RegisterBuildpackOptions{
-						ImageName: "buildpack/image",
-						Type:      "github",
-						URL:       "https://github.com/jkutner/buildpack-registry",
-					}))
-			})
-
-			it("should throw error if missing URL", func() {
-				h.AssertError(t, subject.RegisterBuildpack(context.TODO(),
-					RegisterBuildpackOptions{
-						ImageName: "buildpack/image",
-						Type:      "github",
-						URL:       "",
-					}), "missing github URL")
-			})
+		it("should throw error if missing URL", func() {
+			h.AssertError(t, subject.RegisterBuildpack(context.TODO(),
+				RegisterBuildpackOptions{
+					ImageName: "buildpack/image",
+					Type:      "github",
+					URL:       "",
+				}), "missing github URL")
 		})
 	})
-}
-
-func getFakeExecCommand(t *testing.T, expectedCmd string, expectedArgs ...string) func(command string, args ...string) *exec.Cmd {
-	return func(command string, args ...string) *exec.Cmd {
-		h.AssertEq(t, command, expectedCmd)
-		for i, arg := range args {
-			h.AssertEq(t, arg, expectedArgs[i])
-		}
-
-		cs := []string{"-test.run=TestHelperProcess", "--", command}
-		cs = append(cs, args...)
-		cmd := exec.Command(os.Args[0], cs...)
-		cmd.Env = []string{"GO_WANT_HELPER_PROCESS=1"}
-
-		return cmd
-	}
 }

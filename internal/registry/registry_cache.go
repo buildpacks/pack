@@ -19,7 +19,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-const defaultRegistryURL = "https://github.com/buildpacks/registry-index"
+const DefaultRegistryURL = "https://github.com/buildpacks/registry-index"
 const defaultRegistryDir = "registry"
 
 // Cache is a RegistryCache
@@ -46,7 +46,7 @@ type Entry struct {
 
 // NewDefaultRegistryCache creates a new registry cache with default options
 func NewDefaultRegistryCache(logger logging.Logger, home string) (Cache, error) {
-	return NewRegistryCache(logger, home, defaultRegistryURL)
+	return NewRegistryCache(logger, home, DefaultRegistryURL)
 }
 
 // NewRegistryCache creates a new registry cache

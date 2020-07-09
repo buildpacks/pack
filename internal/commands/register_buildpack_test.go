@@ -66,7 +66,7 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				opts := pack.RegisterBuildpackOptions{
 					ImageName: buildpackImage,
 					Type:      "github",
-					URL:       "https://github.com/buildpacks/registry",
+					URL:       "https://github.com/buildpacks/registry-index",
 				}
 
 				mockClient.EXPECT().
@@ -80,7 +80,7 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			when("config.toml exists", func() {
 				it("should consume registry config values", func() {
 					cfg = config.Config{
-						DefaultRegistryRef: "berneuse",
+						DefaultRegistryName: "berneuse",
 						Registries: []config.Registry{
 							{
 								Name: "berneuse",
@@ -106,7 +106,7 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 				it("should handle config errors", func() {
 					cfg = config.Config{
-						DefaultRegistryRef: "missing registry",
+						DefaultRegistryName: "missing registry",
 					}
 					command = commands.RegisterBuildpack(logger, cfg, mockClient)
 					command.SetArgs([]string{buildpackImage})
@@ -119,7 +119,7 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			it("should support buildpack-registry flag", func() {
 				buildpackRegistry := "override"
 				cfg = config.Config{
-					DefaultRegistryRef: "default",
+					DefaultRegistryName: "default",
 					Registries: []config.Registry{
 						{
 							Name: "default",

@@ -179,13 +179,13 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 		it("should return a default registry", func() {
 			cfg := config.Config{}
 
-			registry, err := cfg.GetRegistry("")
+			registry, err := config.GetRegistry(cfg, "")
 
 			h.AssertNil(t, err)
 			h.AssertEq(t, registry, config.Registry{
-				Name: "original",
+				Name: "official",
 				Type: "github",
-				URL:  "https://github.com/buildpacks/registry",
+				URL:  "https://github.com/buildpacks/registry-index",
 			})
 		})
 
@@ -200,7 +200,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 
-			registry, err := cfg.GetRegistry("registry")
+			registry, err := config.GetRegistry(cfg, "registry")
 
 			h.AssertNil(t, err)
 			h.AssertEq(t, registry, config.Registry{
@@ -226,7 +226,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 
-			registry, err := cfg.GetRegistry("duplicate registry")
+			registry, err := config.GetRegistry(cfg, "duplicate registry")
 
 			h.AssertNil(t, err)
 			h.AssertEq(t, registry, config.Registry{
@@ -238,8 +238,8 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 
 		it("should return an error when mismatched", func() {
 			cfg := config.Config{}
-			_, err := cfg.GetRegistry("missing")
-			h.AssertError(t, err, "registry \"missing\" is not defined in your config file")
+			_, err := config.GetRegistry(cfg, "missing")
+			h.AssertError(t, err, "registry 'missing' is not defined in your config file")
 		})
 	})
 }

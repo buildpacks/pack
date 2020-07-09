@@ -6,16 +6,18 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type Config struct {
-	RunImages          []RunImage       `toml:"run-images"`
-	DefaultBuilder     string           `toml:"default-builder-image,omitempty"`
-	DefaultRegistry    string           `toml:"default-registry-url,omitempty"`
-	DefaultRegistryRef string           `toml:"default-registry,omitempty"`
-	Experimental       bool             `toml:"experimental,omitempty"`
-	TrustedBuilders    []TrustedBuilder `toml:"trusted-builders,omitempty"`
-	Registries         []Registry       `toml:"registries,omitempty"`
+	RunImages           []RunImage       `toml:"run-images"`
+	DefaultBuilder      string           `toml:"default-builder-image,omitempty"`
+	DefaultRegistry     string           `toml:"default-registry-url,omitempty"`
+	DefaultRegistryName string           `toml:"default-registry,omitempty"`
+	Experimental        bool             `toml:"experimental,omitempty"`
+	TrustedBuilders     []TrustedBuilder `toml:"trusted-builders,omitempty"`
+	Registries          []Registry       `toml:"registries,omitempty"`
 }
 
 type Registry struct {
@@ -91,9 +93,9 @@ func SetRunImageMirrors(cfg Config, image string, mirrors []string) Config {
 	return cfg
 }
 
-func (cfg *Config) GetRegistry(registryName string) (Registry, error) {
+func GetRegistry(cfg Config, registryName string) (Registry, error) {
 	if registryName == "" {
-		registryName = cfg.DefaultRegistryRef
+		registryName = cfg.DefaultRegistryName
 	}
 	if registryName != "" {
 		for _, registry := range cfg.Registries {
@@ -101,12 +103,12 @@ func (cfg *Config) GetRegistry(registryName string) (Registry, error) {
 				return registry, nil
 			}
 		}
-		return Registry{}, errors.Errorf("registry \"%s\" is not defined in your config file", registryName)
+		return Registry{}, errors.Errorf("registry %s is not defined in your config file", style.Symbol(registryName))
 	}
 
 	return Registry{
-		"original",
+		"official",
 		"github",
-		"https://github.com/buildpacks/registry",
+		"https://github.com/buildpacks/registry-index",
 	}, nil
 }
