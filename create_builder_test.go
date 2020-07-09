@@ -409,6 +409,35 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
 			})
+
+			when("windows", func() {
+				it("should download from predetermined uri", func() {
+					packClientWithExperimental, err := pack.NewClient(
+						pack.WithLogger(logger),
+						pack.WithDownloader(mockDownloader),
+						pack.WithImageFactory(mockImageFactory),
+						pack.WithFetcher(mockImageFetcher),
+						pack.WithExperimental(true),
+					)
+					h.AssertNil(t, err)
+
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = ""
+					opts.Config.Lifecycle.Version = "3.4.5"
+					fakeBuildImage.SetPlatform("windows", "0123", "amd64")
+
+					mockDownloader.EXPECT().Download(
+						gomock.Any(),
+						"https://github.com/buildpacks/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+windows.x86-64.tgz",
+					).Return(
+						blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil,
+					)
+
+					err = packClientWithExperimental.CreateBuilder(context.TODO(), opts)
+					h.AssertNil(t, err)
+				})
+			})
 		})
 
 		when("no lifecycle version or URI is provided", func() {
@@ -431,6 +460,39 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
+			})
+
+			when("windows", func() {
+				it("should download default lifecycle", func() {
+					packClientWithExperimental, err := pack.NewClient(
+						pack.WithLogger(logger),
+						pack.WithDownloader(mockDownloader),
+						pack.WithImageFactory(mockImageFactory),
+						pack.WithFetcher(mockImageFetcher),
+						pack.WithExperimental(true),
+					)
+					h.AssertNil(t, err)
+
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Lifecycle.URI = ""
+					opts.Config.Lifecycle.Version = ""
+					fakeBuildImage.SetPlatform("windows", "0123", "amd64")
+
+					mockDownloader.EXPECT().Download(
+						gomock.Any(),
+						fmt.Sprintf(
+							"https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+windows.x86-64.tgz",
+							builder.DefaultLifecycleVersion,
+							builder.DefaultLifecycleVersion,
+						),
+					).Return(
+						blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil,
+					)
+
+					err = packClientWithExperimental.CreateBuilder(context.TODO(), opts)
+					h.AssertNil(t, err)
+				})
 			})
 		})
 
