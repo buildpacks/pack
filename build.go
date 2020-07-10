@@ -60,6 +60,7 @@ type BuildOptions struct {
 	ProxyConfig        *ProxyConfig // defaults to  environment proxy vars
 	ContainerConfig    ContainerConfig
 	DefaultProcessType string
+	Intercept          string
 	FileFilter         func(string) bool
 }
 
@@ -155,6 +156,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
 		UseCreator:         false,
+		Intercept:          opts.Intercept,
 		TrustBuilder:       opts.TrustBuilder,
 		LifecycleImage:     ephemeralBuilder.Name(),
 		HTTPProxy:          proxyConfig.HTTPProxy,

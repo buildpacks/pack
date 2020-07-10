@@ -35,6 +35,7 @@ type BuildFlags struct {
 	DescriptorPath     string
 	Volumes            []string
 	DefaultProcessType string
+	Intercept          string
 }
 
 // Build an image from source code
@@ -94,12 +95,13 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				logger.Debugf("Builder %s is trusted", style.Symbol(flags.Builder))
 			} else {
 				logger.Debugf("Builder %s is untrusted", style.Symbol(flags.Builder))
-				logger.Debug("As a result, the phases of the lifecycle which require root access will be run in separate trusted ephemeral containers.")
+				logger.Debug("As a result, some phases will be run in separate trusted ephemeral containers.")
 				logger.Debug("For more information, see https://medium.com/buildpacks/faster-more-secure-builds-with-pack-0-11-0-4d0c633ca619")
 			}
 
 			if !trustBuilder && len(flags.Volumes) > 0 {
-				logger.Warn("Using untrusted builder with volume mounts. If there is sensitive data in the volumes, this may present a security vulnerability.")
+				logger.Warn("Using untrusted builder with volume mounts.")
+				logger.Warn("If there is sensitive data in the volumes, this may present a security vulnerability.")
 			}
 
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
@@ -113,6 +115,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Publish:           flags.Publish,
 				NoPull:            flags.NoPull,
 				ClearCache:        flags.ClearCache,
+				Intercept:         flags.Intercept,
 				TrustBuilder:      trustBuilder,
 				Buildpacks:        buildpacks,
 				ContainerConfig: pack.ContainerConfig{
@@ -152,6 +155,10 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>'. Target path will be prefixed with '/platform/'"+multiValueHelp("volume"))
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", "Set the default process type")
+	cmd.Flags().StringVarP(&buildFlags.Intercept, "intercept", "i", "", "Intercept each phase of the lifecycle with command")
+	if !cfg.Experimental {
+		cmd.Flags().MarkHidden("intercept")
+	}
 }
 
 func validateBuildFlags(flags BuildFlags, logger logging.Logger, cfg config.Config, packClient PackClient) error {

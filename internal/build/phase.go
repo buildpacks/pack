@@ -15,76 +15,92 @@ import (
 )
 
 type Phase struct {
-	name         string
-	infoWriter   io.Writer
-	errorWriter  io.Writer
-	docker       client.CommonAPIClient
-	ctrConf      *dcontainer.Config
-	hostConf     *dcontainer.HostConfig
-	ctr          dcontainer.ContainerCreateCreatedBody
-	uid, gid     int
-	appPath      string
-	containerOps []ContainerOperation
-	fileFilter   func(string) bool
+	name          string
+	infoWriter    io.Writer
+	errorWriter   io.Writer
+	docker        client.CommonAPIClient
+	ctrConf       *dcontainer.Config
+	hostConf      *dcontainer.HostConfig
+	createdCtrIDs []string
+	uid, gid      int
+	appPath       string
+	containerOps  []ContainerOperation
+	intercept     string
+	fileFilter    func(string) bool
 }
 
 func (p *Phase) Run(ctx context.Context) error {
-	var (
-		err error
-		// TODO: Pass this as a flag via cmd
-		intercept   = true
-		originalCmd = p.ctrConf.Cmd
-	)
-
-	if intercept {
-		p.ctrConf.Cmd = []string{"/bin/sh"}
-		p.ctrConf.AttachStdin = true
-		p.ctrConf.AttachStdout = true
-		p.ctrConf.AttachStderr = true
-		p.ctrConf.Tty = true
-		p.ctrConf.OpenStdin = true
-	}
-
-	p.ctr, err = p.docker.ContainerCreate(ctx, p.ctrConf, p.hostConf, nil, "")
-	if err != nil {
-		return errors.Wrapf(err, "failed to create '%s' container", p.name)
-	}
-
-	for _, containerOp := range p.containerOps {
-		if err := containerOp(p.docker, ctx, p.ctr.ID); err != nil {
-			return err
+	if p.intercept != "" {
+		if err := p.attemptToIntercept(ctx); err == nil {
+			return nil
+		} else {
+			_, _ = fmt.Fprintf(p.errorWriter, "Failed to start intercepted container: %s\n", err.Error())
+			_, _ = fmt.Fprintln(p.infoWriter, "Will run phase normally")
 		}
 	}
 
-	if intercept {
-		_, _ = fmt.Fprint(p.infoWriter, "Intercepting...")
-		_, _ = fmt.Fprintf(p.infoWriter, `-----------
+	ctrID, err := p.createContainer(ctx, p.ctrConf)
+	if err != nil {
+		return err
+	}
+
+	return container.Run(
+		ctx,
+		p.docker,
+		ctrID,
+		p.infoWriter,
+		p.errorWriter,
+	)
+}
+
+func (p *Phase) attemptToIntercept(ctx context.Context) error {
+	originalCmd := p.ctrConf.Cmd
+
+	ctrConf := *p.ctrConf
+	ctrConf.Cmd = []string{p.intercept}
+	ctrConf.AttachStdin = true
+	ctrConf.AttachStdout = true
+	ctrConf.AttachStderr = true
+	ctrConf.Tty = true
+	ctrConf.OpenStdin = true
+
+	ctrID, err := p.createContainer(ctx, &ctrConf)
+	if err != nil {
+		return err
+	}
+
+	_, _ = fmt.Fprintf(p.infoWriter, `Attempting to intercept
+-----------
 To continue to the next phase type: exit
 To manually run the phase type:
 %s
 -----------
 `, strings.Join(originalCmd, " "))
 
-		err = container.Start(ctx, p.docker, p.ctr.ID, types.ContainerStartOptions{})
-		if err != nil {
-			return errors.Wrapf(err, "start container")
-		}
-	} else {
-		err = container.Run(
-			ctx,
-			p.docker,
-			p.ctr.ID,
-			p.infoWriter,
-			p.errorWriter,
-		)
-		if err != nil {
-			return errors.Wrapf(err, "start container")
+	return container.Start(ctx, p.docker, ctrID, types.ContainerStartOptions{})
+}
+
+func (p *Phase) createContainer(ctx context.Context, ctrConf *dcontainer.Config) (ctrID string, err error) {
+	ctr, err := p.docker.ContainerCreate(ctx, ctrConf, p.hostConf, nil, "")
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to create '%s' container", p.name)
+	}
+
+	p.createdCtrIDs = append(p.createdCtrIDs, ctr.ID)
+
+	for _, containerOp := range p.containerOps {
+		if err := containerOp(p.docker, ctx, ctr.ID); err != nil {
+			return "", err
 		}
 	}
 
-	return nil
+	return ctr.ID, nil
 }
 
 func (p *Phase) Cleanup() error {
-	return p.docker.ContainerRemove(context.Background(), p.ctr.ID, types.ContainerRemoveOptions{Force: true})
+	var err error
+	for _, ctrID := range p.createdCtrIDs {
+		err = p.docker.ContainerRemove(context.Background(), ctrID, types.ContainerRemoveOptions{Force: true})
+	}
+	return err
 }

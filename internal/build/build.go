@@ -42,6 +42,7 @@ type Lifecycle struct {
 	layersVolume       string
 	appVolume          string
 	defaultProcessType string
+	intercept          string
 	fileFilter         func(string) bool
 }
 
@@ -71,9 +72,7 @@ func init() {
 }
 
 func NewLifecycle(docker client.CommonAPIClient, logger logging.Logger) *Lifecycle {
-	l := &Lifecycle{logger: logger, docker: docker}
-
-	return l
+	return &Lifecycle{logger: logger, docker: docker}
 }
 
 type LifecycleOptions struct {
@@ -92,6 +91,7 @@ type LifecycleOptions struct {
 	Network            string
 	Volumes            []string
 	DefaultProcessType string
+	Intercept          string
 	FileFilter         func(string) bool
 }
 
@@ -163,6 +163,7 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.httpProxy = opts.HTTPProxy
 	l.httpsProxy = opts.HTTPSProxy
 	l.noProxy = opts.NoProxy
+	l.intercept = opts.Intercept
 	l.version = opts.Builder.LifecycleDescriptor().Info.Version.String()
 	l.platformAPIVersion = opts.Builder.LifecycleDescriptor().API.PlatformVersion.String()
 	l.defaultProcessType = opts.DefaultProcessType

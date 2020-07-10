@@ -4,16 +4,17 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/docker/pkg/term"
 	"github.com/pkg/errors"
-	"io"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func Run(ctx context.Context, docker client.CommonAPIClient, containerID string, out, errOut io.Writer) error {
