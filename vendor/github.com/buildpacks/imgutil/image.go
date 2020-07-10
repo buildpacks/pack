@@ -38,6 +38,7 @@ type Image interface {
 	SetCmd(...string) error
 	Rebase(string, Image) error
 	AddLayer(path string) error
+	AddLayerWithDiffID(path, diffID string) error
 	ReuseLayer(diffID string) error
 	// TopLayer returns the diff id for the top layer
 	TopLayer() (string, error)
@@ -50,6 +51,9 @@ type Image interface {
 	Delete() error
 	CreatedAt() (time.Time, error)
 	Identifier() (Identifier, error)
+	OS() (string, error)
+	OSVersion() (string, error)
+	Architecture() (string, error)
 }
 
 type Identifier fmt.Stringer

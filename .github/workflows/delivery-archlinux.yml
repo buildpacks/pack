@@ -1,0 +1,109 @@
+name: delivery / archlinux
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  pack-cli:
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_NAME: pack-cli
+    steps:
+      - uses: actions/checkout@v2
+      - name: Determine version
+        run: echo "::set-env name=PACK_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`"
+        shell: bash
+      - name: Setup working dir
+        run: |
+          mkdir -p ${{ env.PACKAGE_NAME }}
+          cp .github/workflows/delivery/archlinux/${{ env.PACKAGE_NAME }}/PKGBUILD ${{ env.PACKAGE_NAME }}/PKGBUILD
+      - name: Metadata
+        id: metadata
+        run: |
+          url=https://github.com/buildpacks/pack/archive/v${{ env.PACK_VERSION }}.tar.gz
+          filename=pack-${{ env.PACK_VERSION }}.tgz
+          fullpath=`pwd`/$filename
+
+          curl -sSL "$url" -o "$fullpath"
+          sha512=$(sha512sum "$fullpath" | awk '{ print $1 }')
+          echo "::set-output name=url::$url"
+          echo "::set-output name=sha512::$sha512"
+      - name: Fill PKGBUILD
+        uses: cschleiden/replace-tokens@v1
+        with:
+          files: ${{ env.PACKAGE_NAME }}/PKGBUILD
+          tokenPrefix: '{{'
+          tokenSuffix: '}}'
+        env:
+          PACK_VERSION: ${{ env.PACK_VERSION }}
+          SRC_TGZ_URL: ${{ steps.metadata.outputs.url }}
+          SRC_TGZ_SHA: ${{ steps.metadata.outputs.sha512 }}
+      - name: Print PKGBUILD
+        run: cat ${{ env.PACKAGE_NAME }}/PKGBUILD
+      - name: Test
+        uses: docker://archlinux:latest
+        with:
+          entrypoint: .github/workflows/delivery/archlinux/test-install-package.sh
+      - name: Publish
+        uses: docker://archlinux:latest
+        env:
+          AUR_KEY: ${{ secrets.AUR_KEY }}
+        with:
+          entrypoint: .github/workflows/delivery/archlinux/publish-package.sh
+  pack-cli-bin:
+    runs-on: ubuntu-latest
+    env:
+      PACKAGE_NAME: pack-cli-bin
+    steps:
+      - uses: actions/checkout@v2
+      - name: Determine version
+        run: echo "::set-env name=PACK_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`"
+        shell: bash
+      - name: Setup working dir
+        run: |
+          mkdir -p ${{ env.PACKAGE_NAME }}/
+          cp .github/workflows/delivery/archlinux/${{ env.PACKAGE_NAME }}/PKGBUILD ${{ env.PACKAGE_NAME }}/PKGBUILD
+          
+      - name: Lookup assets
+        uses: actions/github-script@v1
+        id: assets
+        with:
+          script: |
+            context.payload.release.assets.forEach(asset => {
+              if (asset.name.includes("linux")) {
+                core.setOutput("linux_name", asset.name);
+                core.setOutput("linux_url", asset.browser_download_url);
+              }
+            });
+      - name: Metadata
+        id: metadata
+        run: |
+          curl -sSL ${{ steps.assets.outputs.linux_url }} -o ${{ steps.assets.outputs.linux_name }}
+          sha512=$(sha512sum ${{ steps.assets.outputs.linux_name }} | cut -d ' ' -f1)
+
+          echo "::set-output name=url::${{ steps.assets.outputs.linux_url }}"
+          echo "::set-output name=sha512::$sha512"
+      - name: Fill PKGBUILD
+        uses: cschleiden/replace-tokens@v1
+        with:
+          files: ${{ env.PACKAGE_NAME }}/PKGBUILD
+          tokenPrefix: '{{'
+          tokenSuffix: '}}'
+        env:
+          PACK_VERSION: ${{ env.PACK_VERSION }}
+          BIN_TGZ_URL: ${{ steps.metadata.outputs.url }}
+          BIN_TGZ_SHA: ${{ steps.metadata.outputs.sha512 }}
+      - name: Print PKGBUILD
+        run: cat ${{ env.PACKAGE_NAME }}/PKGBUILD
+      - name: Test
+        uses: docker://archlinux:latest
+        with:
+          entrypoint: .github/workflows/delivery/archlinux/test-install-package.sh
+      - name: Publish
+        uses: docker://archlinux:latest
+        env:
+          AUR_KEY: ${{ secrets.AUR_KEY }}
+        with:
+          entrypoint: .github/workflows/delivery/archlinux/publish-package.sh

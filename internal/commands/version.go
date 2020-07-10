@@ -8,6 +8,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+// Version shows the current pack version
 func Version(logger logging.Logger, version string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",

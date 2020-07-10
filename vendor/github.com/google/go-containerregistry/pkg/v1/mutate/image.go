@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/partial"
@@ -32,13 +33,19 @@ type image struct {
 	computed   bool
 	configFile *v1.ConfigFile
 	manifest   *v1.Manifest
+	mediaType  *types.MediaType
 	diffIDMap  map[v1.Hash]v1.Layer
 	digestMap  map[v1.Hash]v1.Layer
 }
 
 var _ v1.Image = (*image)(nil)
 
-func (i *image) MediaType() (types.MediaType, error) { return i.base.MediaType() }
+func (i *image) MediaType() (types.MediaType, error) {
+	if i.mediaType != nil {
+		return *i.mediaType, nil
+	}
+	return i.base.MediaType()
+}
 
 func (i *image) compute() error {
 	// Don't re-compute if already computed.
@@ -78,26 +85,21 @@ func (i *image) compute() error {
 	manifest := m.DeepCopy()
 	manifestLayers := manifest.Layers
 	for _, add := range i.adds {
-		d := v1.Descriptor{}
-		var err error
-
-		if d.Size, err = add.Layer.Size(); err != nil {
+		desc, err := partial.Descriptor(add.Layer)
+		if err != nil {
 			return err
 		}
 
-		if d.Digest, err = add.Layer.Digest(); err != nil {
-			return err
+		// Fields in the addendum override the original descriptor.
+		if len(add.Annotations) != 0 {
+			desc.Annotations = add.Annotations
+		}
+		if len(add.URLs) != 0 {
+			desc.URLs = add.URLs
 		}
 
-		if d.MediaType, err = add.Layer.MediaType(); err != nil {
-			return err
-		}
-
-		d.Annotations = add.Annotations
-		d.URLs = add.URLs
-
-		manifestLayers = append(manifestLayers, d)
-		digestMap[d.Digest] = add.Layer
+		manifestLayers = append(manifestLayers, *desc)
+		digestMap[desc.Digest] = add.Layer
 	}
 
 	configFile.RootFS.DiffIDs = diffIDs
@@ -115,6 +117,16 @@ func (i *image) compute() error {
 	}
 	manifest.Config.Digest = d
 	manifest.Config.Size = sz
+
+	// With OCI media types, this should not be set, see discussion:
+	// https://github.com/opencontainers/image-spec/pull/795
+	if i.mediaType != nil {
+		if strings.Contains(string(*i.mediaType), types.OCIVendorPrefix) {
+			manifest.MediaType = ""
+		} else if strings.Contains(string(*i.mediaType), types.DockerVendorPrefix) {
+			manifest.MediaType = *i.mediaType
+		}
+	}
 
 	i.configFile = configFile
 	i.manifest = manifest

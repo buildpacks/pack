@@ -1,5 +1,5 @@
 [buildpack]
-uri = "noop-buildpack.tgz"
+uri = "{{ .BuildpackURI }}"
 
 [[dependencies]]
 image = "{{ .PackageName }}"

@@ -8,15 +8,13 @@ import (
 	"text/tabwriter"
 	"text/template"
 
+	"github.com/buildpacks/lifecycle/launch"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-
-	"github.com/buildpacks/lifecycle"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
-
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -130,7 +128,7 @@ func inspectImageOutput(
 	return buf.String(), nil
 }
 
-func displayProcess(p lifecycle.Process, d bool) process {
+func displayProcess(p launch.Process, d bool) process {
 	shell := ""
 	if !p.Direct {
 		shell = "bash"

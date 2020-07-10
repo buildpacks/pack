@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-echo "---> Simple mock buildpack"
+echo "---> Build: Simple Layers Buildpack"
 
 set -o errexit
 set -o nounset
@@ -10,6 +10,10 @@ launch_dir=$1
 
 ## makes a launch layer
 echo "making launch layer"
+
+# Add color line, to test for --no-color
+echo "Color: [0mStyled"
+
 mkdir "$launch_dir/launch-layer"
 echo "Launch Dep Contents" > "$launch_dir/launch-layer/launch-dep"
 ln -snf "$launch_dir/launch-layer/launch-dep" launch-dep

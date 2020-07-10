@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"strconv"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -31,7 +31,12 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-cmp/cmp"
+	"github.com/heroku/color"
 	"github.com/pkg/errors"
+	"gopkg.in/src-d/go-git.v4"
+
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/dist"
 
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/stringset"
@@ -54,11 +59,33 @@ func AssertEq(t *testing.T, actual, expected interface{}) {
 	}
 }
 
+func AssertFunctionName(t *testing.T, fn interface{}, expected string) {
+	t.Helper()
+	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
+	if name == "" {
+		t.Fatalf("Unable to retrieve function name for %#v. Is it a function?", fn)
+	}
+
+	if !hasMatches(name, fmt.Sprintf(`\.(%s)\.func[\d]+$`, expected)) {
+		t.Fatalf("Expected func name '%s' to contain '%s'", name, expected)
+	}
+}
+
+// Assert deep equality (and provide useful difference as a test failure)
+func AssertNotEq(t *testing.T, actual, expected interface{}) {
+	t.Helper()
+	if diff := cmp.Diff(expected, actual); diff == "" {
+		t.Fatal(diff)
+	}
+}
+
 func AssertTrue(t *testing.T, actual interface{}) {
+	t.Helper()
 	AssertEq(t, actual, true)
 }
 
 func AssertFalse(t *testing.T, actual interface{}) {
+	t.Helper()
 	AssertEq(t, actual, false)
 }
 
@@ -103,6 +130,36 @@ func AssertContains(t *testing.T, actual, expected string) {
 	}
 }
 
+func AssertContainsAllInOrder(t *testing.T, actual bytes.Buffer, expected ...string) {
+	t.Helper()
+
+	var tested []byte
+
+	for _, exp := range expected {
+		b, found := readUntilString(&actual, exp)
+		tested = append(tested, b...)
+
+		if !found {
+			t.Fatalf("Expected '%s' to include all of '%s' in order", string(tested), strings.Join(expected, ", "))
+		}
+	}
+}
+
+func readUntilString(b *bytes.Buffer, expected string) (read []byte, found bool) {
+	for {
+		s, err := b.ReadBytes(expected[len(expected)-1])
+		if err != nil {
+			return append(read, s...), false
+		}
+
+		read = append(read, s...)
+		if bytes.HasSuffix(read, []byte(expected)) {
+			return read, true
+		}
+	}
+}
+
+// AssertContainsMatch matches on content by regular expression
 func AssertContainsMatch(t *testing.T, actual, exp string) {
 	t.Helper()
 	if !hasMatches(actual, exp) {
@@ -127,6 +184,62 @@ func AssertNotContains(t *testing.T, actual, expected string) {
 func AssertSliceContains(t *testing.T, slice []string, expected ...string) {
 	t.Helper()
 	_, missing, _ := stringset.Compare(slice, expected)
+	if len(missing) > 0 {
+		t.Fatalf("Expected %s to contain elements %s", slice, missing)
+	}
+}
+
+func AssertSliceContainsInOrder(t *testing.T, slice []string, expected ...string) {
+	t.Helper()
+
+	AssertSliceContains(t, slice, expected...)
+
+	var common []string
+	expectedSet := stringset.FromSlice(expected)
+	for _, sliceV := range slice {
+		if _, ok := expectedSet[sliceV]; ok {
+			common = append(common, sliceV)
+		}
+	}
+
+	lastFoundI := -1
+	for _, expectedV := range expected {
+		for foundI, foundV := range common {
+			if expectedV == foundV && lastFoundI < foundI {
+				lastFoundI = foundI
+			} else if expectedV == foundV {
+				t.Fatalf("Expected '%s' come earlier in the slice.\nslice: %v\nexpected order: %v", expectedV, slice, expected)
+			}
+		}
+	}
+}
+
+func AssertSliceNotContains(t *testing.T, slice []string, expected ...string) {
+	t.Helper()
+	_, missing, _ := stringset.Compare(slice, expected)
+	if len(missing) != len(expected) {
+		t.Fatalf("Expected %s not to contain elements %s", slice, expected)
+	}
+}
+
+func AssertSliceContainsMatch(t *testing.T, slice []string, expected ...string) {
+	t.Helper()
+
+	var missing []string
+
+	for _, expectedStr := range expected {
+		var found bool
+		for _, actualStr := range slice {
+			if regexp.MustCompile(expectedStr).MatchString(actualStr) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			missing = append(missing, expectedStr)
+		}
+	}
+
 	if len(missing) > 0 {
 		t.Fatalf("Expected %s to contain elements %s", slice, missing)
 	}
@@ -162,6 +275,17 @@ func AssertNotNil(t *testing.T, actual interface{}) {
 	if isNil(actual) {
 		t.Fatal("Expected not nil")
 	}
+}
+
+func AssertTarball(t *testing.T, path string) {
+	t.Helper()
+	f, err := os.Open(path)
+	AssertNil(t, err)
+	defer f.Close()
+
+	reader := tar.NewReader(f)
+	_, err = reader.Next()
+	AssertNil(t, err)
 }
 
 func isNil(value interface{}) bool {
@@ -239,8 +363,8 @@ func Eventually(t *testing.T, test func() bool, every time.Duration, timeout tim
 func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, dockerFile string) {
 	t.Helper()
 
-	buildContext, err := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
-	AssertNil(t, err)
+	buildContext := archive.CreateSingleFileTarReader("Dockerfile", dockerFile)
+	defer buildContext.Close()
 
 	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
 		Tags:           []string{repoName},
@@ -250,14 +374,15 @@ func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, docke
 	})
 	AssertNil(t, err)
 
-	err = checkResponse(resp)
+	defer resp.Body.Close()
+	err = checkResponse(resp.Body)
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
 func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName string, dir string) {
 	t.Helper()
 
-	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1)
+	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, nil)
 	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
 		Tags:           []string{repoName},
 		Remove:         true,
@@ -266,15 +391,15 @@ func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName
 	})
 	AssertNil(t, err)
 
-	err = checkResponse(resp)
+	defer resp.Body.Close()
+	err = checkResponse(resp.Body)
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
-func checkResponse(response dockertypes.ImageBuildResponse) error {
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+func checkResponse(responseBody io.Reader) error {
+	body, err := ioutil.ReadAll(responseBody)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "reading body")
 	}
 
 	messages := strings.Builder{}
@@ -304,8 +429,6 @@ func checkResponse(response dockertypes.ImageBuildResponse) error {
 func CreateImageOnRemote(t *testing.T, dockerCli client.CommonAPIClient, registryConfig *TestRegistryConfig, repoName, dockerFile string) string {
 	t.Helper()
 	imageName := registryConfig.RepoName(repoName)
-
-	defer DockerRmi(dockerCli, imageName)
 	CreateImage(t, dockerCli, imageName, dockerFile)
 	AssertNil(t, PushImage(dockerCli, imageName, registryConfig))
 	return imageName
@@ -330,12 +453,16 @@ func DockerRmi(dockerCli client.CommonAPIClient, repoNames ...string) error {
 func PushImage(dockerCli client.CommonAPIClient, ref string, registryConfig *TestRegistryConfig) error {
 	rc, err := dockerCli.ImagePush(context.Background(), ref, dockertypes.ImagePushOptions{RegistryAuth: registryConfig.RegistryAuth()})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "pushing image")
 	}
-	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
-		return err
+
+	defer rc.Close()
+	err = checkResponse(rc)
+	if err != nil {
+		return errors.Wrap(err, "push response")
 	}
-	return rc.Close()
+
+	return nil
 }
 
 func HTTPGetE(url string, headers map[string]string) (string, error) {
@@ -471,8 +598,8 @@ func RecursiveCopy(t *testing.T, src, dst string) {
 }
 
 func RequireDocker(t *testing.T) {
-	_, isSet := os.LookupEnv("NO_DOCKER")
-	SkipIf(t, isSet, "Skipping because docker daemon unavailable")
+	noDocker := os.Getenv("NO_DOCKER")
+	SkipIf(t, strings.ToLower(noDocker) == "true" || noDocker == "1", "Skipping because docker daemon unavailable")
 }
 
 func SkipIf(t *testing.T, expression bool, reason string) {
@@ -514,21 +641,6 @@ func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id stri
 	return <-copyErr
 }
 
-func GetFreePort() (string, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
-	if err != nil {
-		return "", err
-	}
-
-	l, err := net.ListenTCP("tcp", addr)
-	if err != nil {
-		return "", err
-	}
-	defer l.Close()
-
-	return strconv.Itoa(l.Addr().(*net.TCPAddr).Port), nil
-}
-
 func CreateTGZ(t *testing.T, srcDir, tarDir string, mode int64) string {
 	t.Helper()
 
@@ -561,54 +673,155 @@ func writeTAR(t *testing.T, srcDir, tarDir string, mode int64, w io.Writer) {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
 
-	err := archive.WriteDirToTar(
-		tw,
-		srcDir,
-		tarDir,
-		0, 0, mode,
-	)
+	err := archive.WriteDirToTar(tw, srcDir, tarDir, 0, 0, mode, true, nil)
 	AssertNil(t, err)
 }
 
-func ListTarContents(tarPath string) ([]tar.Header, error) {
-	var (
-		tarFile    *os.File
-		gzipReader *gzip.Reader
-		fhFinal    io.Reader
-		err        error
-	)
+func RecursiveCopyNow(t *testing.T, src, dst string) {
+	t.Helper()
+	err := os.MkdirAll(dst, 0755)
+	AssertNil(t, err)
 
-	tarFile, err = os.Open(tarPath)
-	fhFinal = tarFile
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to open tar '%s'", tarPath)
-	}
-
-	defer tarFile.Close()
-
-	if filepath.Ext(tarPath) == ".tgz" {
-		gzipReader, err = gzip.NewReader(tarFile)
-		fhFinal = gzipReader
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to create gzip reader")
+	fis, err := ioutil.ReadDir(src)
+	AssertNil(t, err)
+	for _, fi := range fis {
+		if fi.Mode().IsRegular() {
+			srcFile, err := os.Open(filepath.Join(src, fi.Name()))
+			AssertNil(t, err)
+			dstFile, err := os.Create(filepath.Join(dst, fi.Name()))
+			AssertNil(t, err)
+			_, err = io.Copy(dstFile, srcFile)
+			AssertNil(t, err)
+			modifiedTime := time.Now().Local()
+			err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedTime, modifiedTime)
+			AssertNil(t, err)
+			err = os.Chmod(filepath.Join(dst, fi.Name()), 0664)
+			AssertNil(t, err)
 		}
-
-		defer gzipReader.Close()
+		if fi.IsDir() {
+			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
+			AssertNil(t, err)
+			RecursiveCopyNow(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+		}
 	}
+	modifiedTime := time.Now().Local()
+	err = os.Chtimes(dst, modifiedTime, modifiedTime)
+	AssertNil(t, err)
+	err = os.Chmod(dst, 0775)
+	AssertNil(t, err)
+}
 
-	var headers []tar.Header
-	tr := tar.NewReader(fhFinal)
+func AssertTarFileContents(t *testing.T, tarfile, path, expected string) {
+	t.Helper()
+	exist, contents := tarFileContents(t, tarfile, path)
+	if !exist {
+		t.Fatalf("%s does not exist in %s", path, tarfile)
+	}
+	AssertEq(t, contents, expected)
+}
+
+func tarFileContents(t *testing.T, tarfile, path string) (exist bool, contents string) {
+	t.Helper()
+	r, err := os.Open(tarfile)
+	AssertNil(t, err)
+	defer r.Close()
+
+	tr := tar.NewReader(r)
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
 			break
 		}
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get next tar entry")
-		}
+		AssertNil(t, err)
 
-		headers = append(headers, *header)
+		if header.Name == path {
+			buf, err := ioutil.ReadAll(tr)
+			AssertNil(t, err)
+			return true, string(buf)
+		}
+	}
+	return false, ""
+}
+
+func AssertTarHasFile(t *testing.T, tarFile, path string) {
+	t.Helper()
+
+	exist := tarHasFile(t, tarFile, path)
+	if !exist {
+		t.Fatalf("%s does not exist in %s", path, tarFile)
+	}
+}
+
+func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
+	t.Helper()
+
+	r, err := os.Open(tarFile)
+	AssertNil(t, err)
+	defer r.Close()
+
+	tr := tar.NewReader(r)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		AssertNil(t, err)
+
+		if header.Name == path {
+			return true
+		}
 	}
 
-	return headers, nil
+	return false
+}
+
+func AssertBuildpacksHaveDescriptors(t *testing.T, bps []dist.Buildpack, descriptors []dist.BuildpackDescriptor) {
+	AssertEq(t, len(bps), len(descriptors))
+	for _, bp := range bps {
+		found := false
+		for _, descriptor := range descriptors {
+			if diff := cmp.Diff(bp.Descriptor(), descriptor); diff == "" {
+				found = true
+				break
+			}
+		}
+		AssertTrue(t, found)
+	}
+}
+
+func ReadPackConfig(t *testing.T) config.Config {
+	path, err := config.DefaultConfigPath()
+	AssertNil(t, err)
+
+	cfg, err := config.Read(path)
+	AssertNil(t, err)
+	return cfg
+}
+
+func AssertGitHeadEq(t *testing.T, path1, path2 string) {
+	r1, err := git.PlainOpen(path1)
+	AssertNil(t, err)
+
+	r2, err := git.PlainOpen(path2)
+	AssertNil(t, err)
+
+	h1, err := r1.Head()
+	AssertNil(t, err)
+
+	h2, err := r2.Head()
+	AssertNil(t, err)
+
+	AssertEq(t, h1.Hash().String(), h2.Hash().String())
+}
+
+func MockWriterAndOutput() (*color.Console, func() string) {
+	r, w, _ := os.Pipe()
+	console := color.NewConsole(w)
+	return console, func() string {
+		_ = w.Close()
+		var b bytes.Buffer
+		_, _ = io.Copy(&b, r)
+		_ = r.Close()
+		return b.String()
+	}
 }

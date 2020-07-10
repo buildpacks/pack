@@ -1,7 +1,0 @@
-[buildpack]
-  id = "noop.buildpack"
-  version = "noop.buildpack.version"
-  name = "NOOP Buildpack"
-
-[[stacks]]
-  id = "pack.test.stack"

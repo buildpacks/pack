@@ -5,19 +5,88 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver"
+	"github.com/buildpacks/lifecycle/auth"
+	"github.com/google/go-containerregistry/pkg/authn"
+
+	"github.com/buildpacks/pack/internal/builder"
 )
 
 const (
-	layersDir      = "/layers"
-	appDir         = "/workspace"
-	cacheDir       = "/cache"
-	launchCacheDir = "/launch-cache"
-	platformDir    = "/platform"
+	layersDir                 = "/layers"
+	appDir                    = "/workspace"
+	cacheDir                  = "/cache"
+	launchCacheDir            = "/launch-cache"
+	platformDir               = "/platform"
+	stackPath                 = layersDir + "/stack.toml"
+	defaultProcessPlatformAPI = "0.3"
 )
 
-func (l *Lifecycle) Detect(ctx context.Context, networkMode string) error {
-	detect, err := l.NewPhase(
+type RunnerCleaner interface {
+	Run(ctx context.Context) error
+	Cleanup() error
+}
+
+type PhaseFactory interface {
+	New(provider *PhaseConfigProvider) RunnerCleaner
+}
+
+func (l *Lifecycle) Create(
+	ctx context.Context,
+	publish, clearCache bool,
+	runImage, launchCacheName, cacheName, repoName, networkMode string,
+	volumes []string,
+	phaseFactory PhaseFactory,
+) error {
+	flags := []string{
+		"-cache-dir", cacheDir,
+		"-run-image", runImage,
+	}
+
+	if clearCache {
+		flags = append(flags, "-skip-restore")
+	}
+
+	if l.defaultProcessType != "" {
+		if l.supportsDefaultProcess() {
+			flags = append(flags, "-process-type", l.defaultProcessType)
+		} else {
+			l.logger.Warn("You specified a default process type but that is not supported by this version of the lifecycle")
+		}
+	}
+
+	opts := []PhaseConfigProviderOperation{
+		WithFlags(l.withLogLevel(flags...)...),
+		WithArgs(repoName),
+		WithNetwork(networkMode),
+		WithBinds(append(volumes, fmt.Sprintf("%s:%s", cacheName, cacheDir))...),
+		WithContainerOperations(CopyDir(l.appPath, appDir, l.builder.UID(), l.builder.GID(), l.fileFilter)),
+	}
+
+	if publish {
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
+		if err != nil {
+			return err
+		}
+
+		opts = append(opts, WithRoot(), WithRegistryAccess(authConfig))
+	} else {
+		opts = append(opts,
+			WithDaemonAccess(),
+			WithFlags("-daemon", "-launch-cache", launchCacheDir),
+			WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
+		)
+	}
+
+	create := phaseFactory.New(NewPhaseConfigProvider("creator", l, opts...))
+	defer create.Cleanup()
+	return create.Run(ctx)
+}
+
+func (l *Lifecycle) Detect(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
+	configProvider := NewPhaseConfigProvider(
 		"detector",
+		l,
+		WithLogPrefix("detector"),
 		WithArgs(
 			l.withLogLevel(
 				"-app", appDir,
@@ -25,40 +94,40 @@ func (l *Lifecycle) Detect(ctx context.Context, networkMode string) error {
 			)...,
 		),
 		WithNetwork(networkMode),
+		WithBinds(volumes...),
+		WithContainerOperations(CopyDir(l.appPath, appDir, l.builder.UID(), l.builder.GID(), l.fileFilter)),
 	)
-	if err != nil {
-		return err
-	}
+
+	detect := phaseFactory.New(configProvider)
 	defer detect.Cleanup()
 	return detect.Run(ctx)
 }
 
-func (l *Lifecycle) Restore(ctx context.Context, cacheName string) error {
-	cacheFlag := "-path"
-	if l.CombinedExporterCacher() {
-		cacheFlag = "-cache-dir"
-	}
-
-	restore, err := l.NewPhase(
+func (l *Lifecycle) Restore(ctx context.Context, cacheName, networkMode string, phaseFactory PhaseFactory) error {
+	configProvider := NewPhaseConfigProvider(
 		"restorer",
-		WithDaemonAccess(),
+		l,
+		WithLogPrefix("restorer"),
+		WithImage(l.lifecycleImage),
+		WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
+		WithRoot(), // remove after platform API 0.2 is no longer supported
 		WithArgs(
 			l.withLogLevel(
-				cacheFlag, cacheDir,
+				"-cache-dir", cacheDir,
 				"-layers", layersDir,
 			)...,
 		),
+		WithNetwork(networkMode),
 		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 	)
-	if err != nil {
-		return err
-	}
+
+	restore := phaseFactory.New(configProvider)
 	defer restore.Cleanup()
 	return restore.Run(ctx)
 }
 
-func (l *Lifecycle) Analyze(ctx context.Context, repoName, cacheName string, publish, clearCache bool) error {
-	analyze, err := l.newAnalyze(repoName, cacheName, publish, clearCache)
+func (l *Lifecycle) Analyze(ctx context.Context, repoName, cacheName, networkMode string, publish, clearCache bool, phaseFactory PhaseFactory) error {
+	analyze, err := l.newAnalyze(repoName, cacheName, networkMode, publish, clearCache, phaseFactory)
 	if err != nil {
 		return err
 	}
@@ -66,28 +135,49 @@ func (l *Lifecycle) Analyze(ctx context.Context, repoName, cacheName string, pub
 	return analyze.Run(ctx)
 }
 
-func (l *Lifecycle) newAnalyze(repoName, cacheName string, publish, clearCache bool) (*Phase, error) {
+func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish, clearCache bool, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	args := []string{
 		"-layers", layersDir,
 		repoName,
 	}
 	if clearCache {
 		args = prependArg("-skip-layers", args)
-	} else if l.CombinedExporterCacher() {
+	} else {
 		args = append([]string{"-cache-dir", cacheDir}, args...)
 	}
 
 	if publish {
-		return l.NewPhase(
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
+		if err != nil {
+			return nil, err
+		}
+
+		configProvider := NewPhaseConfigProvider(
 			"analyzer",
-			WithRegistryAccess(repoName),
+			l,
+			WithLogPrefix("analyzer"),
+			WithImage(l.lifecycleImage),
+			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID())),
+			WithRegistryAccess(authConfig),
 			WithRoot(),
-			WithArgs(args...),
+			WithArgs(l.withLogLevel(args...)...),
+			WithNetwork(networkMode),
 			WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 		)
+
+		return phaseFactory.New(configProvider), nil
 	}
-	return l.NewPhase(
+
+	// TODO: when platform API 0.2 is no longer supported we can delete this code: https://github.com/buildpacks/pack/issues/629.
+	configProvider := NewPhaseConfigProvider(
 		"analyzer",
+		l,
+		WithLogPrefix("analyzer"),
+		WithImage(l.lifecycleImage),
+		WithEnv(
+			fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()),
+			fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID()),
+		),
 		WithDaemonAccess(),
 		WithArgs(
 			l.withLogLevel(
@@ -97,33 +187,45 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName string, publish, clearCache b
 				)...,
 			)...,
 		),
+		WithNetwork(networkMode),
 		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
 	)
+
+	return phaseFactory.New(configProvider), nil
 }
 
 func prependArg(arg string, args []string) []string {
 	return append([]string{arg}, args...)
 }
 
-func (l *Lifecycle) Build(ctx context.Context, networkMode string) error {
-	build, err := l.NewPhase(
-		"builder",
-		WithArgs(
-			"-layers", layersDir,
-			"-app", appDir,
-			"-platform", platformDir,
-		),
-		WithNetwork(networkMode),
-	)
-	if err != nil {
-		return err
+func (l *Lifecycle) Build(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
+	args := []string{
+		"-layers", layersDir,
+		"-app", appDir,
+		"-platform", platformDir,
 	}
+
+	platformAPIVersion := semver.MustParse(l.platformAPIVersion)
+	if semver.MustParse("0.2").LessThan(platformAPIVersion) { // lifecycle did not support log level for build until platform api 0.3
+		args = l.withLogLevel(args...)
+	}
+
+	configProvider := NewPhaseConfigProvider(
+		"builder",
+		l,
+		WithLogPrefix("builder"),
+		WithArgs(args...),
+		WithNetwork(networkMode),
+		WithBinds(volumes...),
+	)
+
+	build := phaseFactory.New(configProvider)
 	defer build.Cleanup()
 	return build.Run(ctx)
 }
 
-func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string, publish bool, launchCacheName, cacheName string) error {
-	export, err := l.newExport(repoName, runImage, publish, launchCacheName, cacheName)
+func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) error {
+	export, err := l.newExport(repoName, runImage, publish, launchCacheName, cacheName, networkMode, phaseFactory)
 	if err != nil {
 		return err
 	}
@@ -131,62 +233,61 @@ func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string
 	return export.Run(ctx)
 }
 
-func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCacheName, cacheName string) (*Phase, error) {
-	var binds []string
-	args := []string{
-		"-image", runImage,
+func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
+	flags := l.exportImageFlags(runImage)
+	flags = append(flags, []string{
+		"-cache-dir", cacheDir,
 		"-layers", layersDir,
+		"-stack", stackPath,
 		"-app", appDir,
-		repoName,
+	}...)
+
+	if l.defaultProcessType != "" {
+		if l.supportsDefaultProcess() {
+			flags = append(flags, "-process-type", l.defaultProcessType)
+		} else {
+			l.logger.Warn("You specified a default process type but that is not supported by this version of the lifecycle")
+		}
 	}
 
-	if l.CombinedExporterCacher() {
-		args = append([]string{"-cache-dir", cacheDir}, args...)
-		binds = []string{fmt.Sprintf("%s:%s", cacheName, cacheDir)}
+	opts := []PhaseConfigProviderOperation{
+		WithLogPrefix("exporter"),
+		WithImage(l.lifecycleImage),
+		WithEnv(
+			fmt.Sprintf("%s=%d", builder.EnvUID, l.builder.UID()),
+			fmt.Sprintf("%s=%d", builder.EnvGID, l.builder.GID()),
+		),
+		WithFlags(
+			l.withLogLevel(flags...)...,
+		),
+		WithArgs(repoName),
+		WithRoot(),
+		WithNetwork(networkMode),
+		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
+		WithContainerOperations(WriteStackToml(stackPath, l.builder.Stack())),
 	}
 
 	if publish {
-		return l.NewPhase(
-			"exporter",
-			WithRegistryAccess(repoName, runImage),
-			WithArgs(
-				l.withLogLevel(args...)...,
-			),
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName, runImage)
+		if err != nil {
+			return nil, err
+		}
+
+		opts = append(
+			opts,
+			WithRegistryAccess(authConfig),
 			WithRoot(),
-			WithBinds(binds...),
+		)
+	} else {
+		opts = append(
+			opts,
+			WithDaemonAccess(),
+			WithFlags("-daemon", "-launch-cache", launchCacheDir),
+			WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
 		)
 	}
 
-	args = append([]string{"-daemon", "-launch-cache", launchCacheDir}, args...)
-	binds = append(binds, fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir))
-	return l.NewPhase(
-		"exporter",
-		WithDaemonAccess(),
-		WithArgs(
-			l.withLogLevel(args...)...,
-		),
-		WithBinds(binds...),
-	)
-}
-
-// The cache phase is obsolete with Platform API 0.2 and will be removed in the future.
-func (l *Lifecycle) Cache(ctx context.Context, cacheName string) error {
-	cache, err := l.NewPhase(
-		"cacher",
-		WithDaemonAccess(),
-		WithArgs(
-			l.withLogLevel(
-				"-path", cacheDir,
-				"-layers", layersDir,
-			)...,
-		),
-		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
-	)
-	if err != nil {
-		return err
-	}
-	defer cache.Cleanup()
-	return cache.Run(ctx)
+	return phaseFactory.New(NewPhaseConfigProvider("exporter", l, opts...)), nil
 }
 
 func (l *Lifecycle) withLogLevel(args ...string) []string {
@@ -197,4 +298,18 @@ func (l *Lifecycle) withLogLevel(args ...string) []string {
 		}
 	}
 	return args
+}
+
+func (l *Lifecycle) exportImageFlags(runImage string) []string {
+	platformAPIVersion := semver.MustParse(l.platformAPIVersion)
+	if semver.MustParse("0.2").LessThan(platformAPIVersion) {
+		return []string{"-run-image", runImage}
+	}
+	return []string{"-image", runImage}
+}
+
+func (l *Lifecycle) supportsDefaultProcess() bool {
+	apiVersion := semver.MustParse(l.platformAPIVersion)
+	defaultProcVersion := semver.MustParse(defaultProcessPlatformAPI)
+	return apiVersion.GreaterThan(defaultProcVersion) || apiVersion.Equal(defaultProcVersion)
 }

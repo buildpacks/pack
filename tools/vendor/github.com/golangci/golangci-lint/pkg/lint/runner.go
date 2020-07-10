@@ -3,8 +3,11 @@ package lint
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime/debug"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/golangci/golangci-lint/internal/errorutil"
 	"github.com/golangci/golangci-lint/pkg/config"
@@ -26,17 +29,24 @@ type Runner struct {
 	Log        logutils.Log
 }
 
-func NewRunner(cfg *config.Config, log logutils.Log, goenv *goutil.Env,
+func NewRunner(cfg *config.Config, log logutils.Log, goenv *goutil.Env, es *lintersdb.EnabledSet,
 	lineCache *fsutils.LineCache, dbManager *lintersdb.Manager, pkgs []*gopackages.Package) (*Runner, error) {
 	icfg := cfg.Issues
 	excludePatterns := icfg.ExcludePatterns
 	if icfg.UseDefaultExcludes {
-		excludePatterns = append(excludePatterns, config.GetDefaultExcludePatternsStrings()...)
+		excludePatterns = append(excludePatterns, config.GetExcludePatternsStrings(icfg.IncludeDefaultExcludes)...)
 	}
 
 	var excludeTotalPattern string
 	if len(excludePatterns) != 0 {
 		excludeTotalPattern = fmt.Sprintf("(%s)", strings.Join(excludePatterns, "|"))
+	}
+
+	var excludeProcessor processors.Processor
+	if cfg.Issues.ExcludeCaseSensitive {
+		excludeProcessor = processors.NewExcludeCaseSensitive(excludeTotalPattern)
+	} else {
+		excludeProcessor = processors.NewExclude(excludeTotalPattern)
 	}
 
 	skipFilesProcessor, err := processors.NewSkipFiles(cfg.Run.SkipFiles)
@@ -62,6 +72,17 @@ func NewRunner(cfg *config.Config, log logutils.Log, goenv *goutil.Env,
 			Linters: r.Linters,
 		})
 	}
+	var excludeRulesProcessor processors.Processor
+	if cfg.Issues.ExcludeCaseSensitive {
+		excludeRulesProcessor = processors.NewExcludeRulesCaseSensitive(excludeRules, lineCache, log.Child("exclude_rules"))
+	} else {
+		excludeRulesProcessor = processors.NewExcludeRules(excludeRules, lineCache, log.Child("exclude_rules"))
+	}
+
+	enabledLinters, err := es.GetEnabledLintersMap()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get enabled linters")
+	}
 
 	return &Runner{
 		Processors: []processors.Processor{
@@ -80,9 +101,9 @@ func NewRunner(cfg *config.Config, log logutils.Log, goenv *goutil.Env,
 			// Must be before exclude because users see already marked output and configure excluding by it.
 			processors.NewIdentifierMarker(),
 
-			processors.NewExclude(excludeTotalPattern),
-			processors.NewExcludeRules(excludeRules, lineCache, log.Child("exclude_rules")),
-			processors.NewNolint(log.Child("nolint"), dbManager),
+			excludeProcessor,
+			excludeRulesProcessor,
+			processors.NewNolint(log.Child("nolint"), dbManager, enabledLinters),
 
 			processors.NewUniqByLine(cfg),
 			processors.NewDiff(icfg.Diff, icfg.DiffFromRevision, icfg.DiffPatchFilePath),
@@ -110,15 +131,25 @@ func (r *Runner) runLinterSafe(ctx context.Context, lintCtx *linter.Context,
 		}
 	}()
 
-	specificLintCtx := *lintCtx
-	specificLintCtx.Log = r.Log.Child(lc.Name())
-	issues, err := lc.Linter.Run(ctx, &specificLintCtx)
+	issues, err := lc.Linter.Run(ctx, lintCtx)
+
+	if lc.DoesChangeTypes {
+		// Packages in lintCtx might be dirty due to the last analysis,
+		// which affects to the next analysis.
+		// To avoid this issue, we clear type information from the packages.
+		// See https://github.com/golangci/golangci-lint/pull/944.
+		// Currently DoesChangeTypes is true only for `unused`.
+		lintCtx.ClearTypesInPackages()
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	for _, i := range issues {
-		i.FromLinter = lc.Name()
+	for i := range issues {
+		if issues[i].FromLinter == "" {
+			issues[i].FromLinter = lc.Name()
+		}
 	}
 
 	return issues, nil
@@ -172,24 +203,29 @@ func (r Runner) printPerProcessorStat(stat map[string]processorStat) {
 	}
 }
 
-func (r Runner) Run(ctx context.Context, linters []*linter.Config, lintCtx *linter.Context) []result.Issue {
+func (r Runner) Run(ctx context.Context, linters []*linter.Config, lintCtx *linter.Context) ([]result.Issue, error) {
 	sw := timeutils.NewStopwatch("linters", r.Log)
 	defer sw.Print()
 
 	var issues []result.Issue
+	var runErr error
 	for _, lc := range linters {
 		lc := lc
 		sw.TrackStage(lc.Name(), func() {
 			linterIssues, err := r.runLinterSafe(ctx, lintCtx, lc)
 			if err != nil {
 				r.Log.Warnf("Can't run linter %s: %s", lc.Linter.Name(), err)
+				if os.Getenv("GOLANGCI_COM_RUN") == "" {
+					// Don't stop all linters on one linter failure for golangci.com.
+					runErr = err
+				}
 				return
 			}
 			issues = append(issues, linterIssues...)
 		})
 	}
 
-	return r.processLintResults(issues)
+	return r.processLintResults(issues), runErr
 }
 
 func (r *Runner) processIssues(issues []result.Issue, sw *timeutils.Stopwatch, statPerProcessor map[string]processorStat) []result.Issue {

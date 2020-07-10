@@ -1,27 +1,3 @@
 #!/usr/bin/env bash
 
-echo "---> Simple mock buildpack"
-
-set -o errexit
-set -o nounset
-set -o pipefail
-
-launch_dir=$1
-
-## makes a launch layer
-echo "making launch layer"
-mkdir "$launch_dir/launch-layer"
-echo "Local Buildpack Dep Contents" > "$launch_dir/launch-layer/local-dep"
-ln -snf "$launch_dir/launch-layer/local-dep" local-dep
-echo "launch = true" > "$launch_dir/launch-layer.toml"
-
-## adds a process
-echo 'processes = [{ type = "web", command = "./run"}]' > "$launch_dir/launch.toml"
-
-if [[ "$(curl -s -X HEAD -w '%{http_code}' https://www.google.com)" == "200" ]]; then
-  echo "Connected to the internet"
-else
-  echo "Disconnected from the internet"
-fi
-
-echo "---> Done"
+echo "---> Build: Local Buildpack"

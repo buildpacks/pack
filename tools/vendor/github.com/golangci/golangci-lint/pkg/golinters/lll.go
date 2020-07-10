@@ -77,10 +77,10 @@ const lllName = "lll"
 
 func NewLLL() *goanalysis.Linter {
 	var mu sync.Mutex
-	var resIssues []result.Issue
+	var resIssues []goanalysis.Issue
 
 	analyzer := &analysis.Analyzer{
-		Name: goanalysis.TheOnlyAnalyzerName,
+		Name: lllName,
 		Doc:  goanalysis.TheOnlyanalyzerDoc,
 	}
 	return goanalysis.NewLinter(
@@ -92,18 +92,20 @@ func NewLLL() *goanalysis.Linter {
 		analyzer.Run = func(pass *analysis.Pass) (interface{}, error) {
 			var fileNames []string
 			for _, f := range pass.Files {
-				pos := pass.Fset.Position(f.Pos())
+				pos := pass.Fset.PositionFor(f.Pos(), false)
 				fileNames = append(fileNames, pos.Filename)
 			}
 
-			var res []result.Issue
+			var res []goanalysis.Issue
 			spaces := strings.Repeat(" ", lintCtx.Settings().Lll.TabWidth)
 			for _, f := range fileNames {
 				issues, err := getLLLIssuesForFile(f, lintCtx.Settings().Lll.LineLength, spaces)
 				if err != nil {
 					return nil, err
 				}
-				res = append(res, issues...)
+				for i := range issues {
+					res = append(res, goanalysis.NewIssue(&issues[i], pass))
+				}
 			}
 
 			if len(res) == 0 {
@@ -116,7 +118,7 @@ func NewLLL() *goanalysis.Linter {
 
 			return nil, nil
 		}
-	}).WithIssuesReporter(func(*linter.Context) []result.Issue {
+	}).WithIssuesReporter(func(*linter.Context) []goanalysis.Issue {
 		return resIssues
 	}).WithLoadMode(goanalysis.LoadModeSyntax)
 }

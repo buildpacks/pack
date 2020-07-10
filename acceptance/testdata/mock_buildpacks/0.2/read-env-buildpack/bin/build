@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-echo "---> Read Env Buildpack"
+echo "---> Build: Read Env Buildpack"
 
 set -o errexit
 set -o nounset

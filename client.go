@@ -42,6 +42,7 @@ type Client struct {
 	lifecycle    Lifecycle
 	docker       dockerClient.CommonAPIClient
 	imageFactory ImageFactory
+	experimental bool
 }
 
 type ClientOption func(c *Client)
@@ -90,6 +91,13 @@ func WithDockerClient(docker dockerClient.CommonAPIClient) ClientOption {
 	}
 }
 
+// WithExperimental sets whether experimental features should be enabled
+func WithExperimental(experimental bool) ClientOption {
+	return func(c *Client) {
+		c.experimental = experimental
+	}
+}
+
 func NewClient(opts ...ClientOption) (*Client, error) {
 	var client Client
 
@@ -103,9 +111,12 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 
 	if client.docker == nil {
 		var err error
-		client.docker, err = dockerClient.NewClientWithOpts(dockerClient.FromEnv, dockerClient.WithVersion("1.38"))
+		client.docker, err = dockerClient.NewClientWithOpts(
+			dockerClient.FromEnv,
+			dockerClient.WithVersion("1.38"),
+		)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "creating docker client")
 		}
 	}
 

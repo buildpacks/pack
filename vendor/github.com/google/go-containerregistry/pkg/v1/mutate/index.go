@@ -16,6 +16,7 @@ package mutate
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/logs"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -23,47 +24,56 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
-func computeDescriptor(desc v1.Descriptor, add Appendable) (*v1.Descriptor, error) {
-	d, err := add.Digest()
-	if err != nil {
-		return nil, err
-	}
-	mt, err := add.MediaType()
-	if err != nil {
-		return nil, err
-	}
-	sz, err := add.Size()
+func computeDescriptor(ia IndexAddendum) (*v1.Descriptor, error) {
+	desc, err := partial.Descriptor(ia.Add)
 	if err != nil {
 		return nil, err
 	}
 
-	// The IndexAddendum allows overriding These values.
-	if desc.Size == 0 {
-		desc.Size = sz
+	// The IndexAddendum allows overriding Descriptor values.
+	if ia.Descriptor.Size != 0 {
+		desc.Size = ia.Descriptor.Size
 	}
-	if string(desc.MediaType) == "" {
-		desc.MediaType = mt
+	if string(ia.Descriptor.MediaType) != "" {
+		desc.MediaType = ia.Descriptor.MediaType
 	}
-	if desc.Digest == (v1.Hash{}) {
-		desc.Digest = d
+	if ia.Descriptor.Digest != (v1.Hash{}) {
+		desc.Digest = ia.Descriptor.Digest
 	}
-	return &desc, nil
+	if ia.Descriptor.Platform != nil {
+		desc.Platform = ia.Descriptor.Platform
+	}
+	if len(ia.Descriptor.URLs) != 0 {
+		desc.URLs = ia.Descriptor.URLs
+	}
+	if len(ia.Descriptor.Annotations) != 0 {
+		desc.Annotations = ia.Descriptor.Annotations
+	}
+
+	return desc, nil
 }
 
 type index struct {
 	base v1.ImageIndex
 	adds []IndexAddendum
 
-	computed bool
-	manifest *v1.IndexManifest
-	imageMap map[v1.Hash]v1.Image
-	indexMap map[v1.Hash]v1.ImageIndex
+	computed  bool
+	manifest  *v1.IndexManifest
+	mediaType *types.MediaType
+	imageMap  map[v1.Hash]v1.Image
+	indexMap  map[v1.Hash]v1.ImageIndex
 }
 
 var _ v1.ImageIndex = (*index)(nil)
 
-func (i *index) MediaType() (types.MediaType, error) { return i.base.MediaType() }
-func (i *index) Size() (int64, error)                { return partial.Size(i) }
+func (i *index) MediaType() (types.MediaType, error) {
+	if i.mediaType != nil {
+		return *i.mediaType, nil
+	}
+	return i.base.MediaType()
+}
+
+func (i *index) Size() (int64, error) { return partial.Size(i) }
 
 func (i *index) compute() error {
 	// Don't re-compute if already computed.
@@ -81,7 +91,7 @@ func (i *index) compute() error {
 	manifest := m.DeepCopy()
 	manifests := manifest.Manifests
 	for _, add := range i.adds {
-		desc, err := computeDescriptor(add.Descriptor, add.Add)
+		desc, err := computeDescriptor(add)
 		if err != nil {
 			return err
 		}
@@ -96,6 +106,16 @@ func (i *index) compute() error {
 		}
 	}
 	manifest.Manifests = manifests
+
+	// With OCI media types, this should not be set, see discussion:
+	// https://github.com/opencontainers/image-spec/pull/795
+	if i.mediaType != nil {
+		if strings.Contains(string(*i.mediaType), types.OCIVendorPrefix) {
+			manifest.MediaType = ""
+		} else if strings.Contains(string(*i.mediaType), types.DockerVendorPrefix) {
+			manifest.MediaType = *i.mediaType
+		}
+	}
 
 	i.manifest = manifest
 	i.computed = true

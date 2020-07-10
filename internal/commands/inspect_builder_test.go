@@ -39,10 +39,10 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		mockClient     *testmocks.MockPackClient
 		cfg            config.Config
 		buildpack1Info = dist.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
-		buildpack2Info = dist.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0"}
-		buildpacks     = []builder.BuildpackMetadata{
-			{BuildpackInfo: buildpack1Info, Latest: true},
-			{BuildpackInfo: buildpack2Info, Latest: false},
+		buildpack2Info = dist.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0", Homepage: "http://geocities.com/cool-bp"}
+		buildpacks     = []dist.BuildpackInfo{
+			buildpack1Info,
+			buildpack2Info,
 		}
 		remoteInfo = &pack.BuilderInfo{
 			Description:     "Some remote description",
@@ -108,13 +108,10 @@ Created By:
   Name: Pack CLI
   Version: 1.2.3
 
+Trusted: No
+
 Stack:
   ID: test.stack.id
-  Mixins:
-    mixin1
-    mixin2
-    build:mixin3
-    build:mixin4
 
 Lifecycle:
   Version: 6.7.8
@@ -129,9 +126,9 @@ Run Images:
   second/default
 
 Buildpacks:
-  ID                 VERSION
-  test.bp.one        1.0.0
-  test.bp.two        2.0.0
+  ID                 VERSION        HOMEPAGE
+  test.bp.one        1.0.0          
+  test.bp.two        2.0.0          http://geocities.com/cool-bp
 
 Detection Order:
   Group #1:
@@ -147,13 +144,10 @@ Created By:
   Name: Pack CLI
   Version: 4.5.6
 
+Trusted: No
+
 Stack:
   ID: test.stack.id
-  Mixins:
-    mixin1
-    mixin2
-    build:mixin3
-    build:mixin4
 
 Lifecycle:
   Version: 4.5.6
@@ -168,9 +162,9 @@ Run Images:
   second/local-default
 
 Buildpacks:
-  ID                 VERSION
-  test.bp.one        1.0.0
-  test.bp.two        2.0.0
+  ID                 VERSION        HOMEPAGE
+  test.bp.one        1.0.0          
+  test.bp.two        2.0.0          http://geocities.com/cool-bp
 
 Detection Order:
   Group #1:
@@ -334,6 +328,61 @@ Detection Order:
 					h.AssertContains(t, outBuf.String(), localOutput)
 				})
 			})
+
+			when("the logger is verbose", func() {
+				it.Before(func() {
+					logger = ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+					command = commands.InspectBuilder(logger, cfg, mockClient)
+
+					cfg.DefaultBuilder = "some/image"
+					mockClient.EXPECT().InspectBuilder("default/builder", false).Return(remoteInfo, nil)
+					mockClient.EXPECT().InspectBuilder("default/builder", true).Return(localInfo, nil)
+					command.SetArgs([]string{})
+				})
+
+				it("displays stack mixins", func() {
+					stackLabels := `
+Stack:
+  ID: test.stack.id
+  Mixins:
+    mixin1
+    mixin2
+    build:mixin3
+    build:mixin4
+`
+
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), stackLabels)
+				})
+			})
+
+			when("the builder is suggested", func() {
+				it("indicates that it is trusted", func() {
+					suggestedBuilder := "gcr.io/paketo-buildpacks/builder:tiny"
+
+					command.SetArgs([]string{suggestedBuilder})
+					mockClient.EXPECT().InspectBuilder(suggestedBuilder, false).Return(remoteInfo, nil)
+					mockClient.EXPECT().InspectBuilder(suggestedBuilder, true).Return(nil, nil)
+
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Trusted: Yes")
+				})
+			})
+
+			when("the builder has been trusted by the user", func() {
+				it("indicated that it is trusted", func() {
+					builderName := "trusted/builder"
+					cfg.TrustedBuilders = []config.TrustedBuilder{{Name: builderName}}
+					command = commands.InspectBuilder(logger, cfg, mockClient)
+
+					command.SetArgs([]string{builderName})
+					mockClient.EXPECT().InspectBuilder(builderName, false).Return(remoteInfo, nil)
+					mockClient.EXPECT().InspectBuilder(builderName, true).Return(localInfo, nil)
+
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Trusted: Yes")
+				})
+			})
 		})
 
 		when("default builder is not set", func() {
@@ -350,9 +399,9 @@ Detection Order:
 					h.AssertNotNil(t, command.Execute())
 					h.AssertContains(t, outBuf.String(), `Please select a default builder with:
 
-	pack set-default-builder <builder image>`)
-					h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:bionic'`)
-					h.AssertMatch(t, outBuf.String(), `Cloud Foundry:\s+'cloudfoundry/cnb:cflinuxfs3'`)
+	pack set-default-builder <builder-image>`)
+					h.AssertMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'`)
+					h.AssertMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
 					h.AssertMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks:18'`)
 				})
 			})

@@ -1,0 +1,20 @@
+name: delivery / release-dispatch
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  send-release-dispatch:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        repo: ['buildpacks/docs', 'buildpacks/samples']
+    steps:
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+          event-type: pack-release
+          repository: ${{ matrix.repo }}

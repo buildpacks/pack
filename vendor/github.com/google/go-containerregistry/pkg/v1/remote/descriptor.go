@@ -67,30 +67,27 @@ type Descriptor struct {
 	platform v1.Platform
 }
 
+// RawManifest exists to satisfy the Taggable interface.
+func (d *Descriptor) RawManifest() ([]byte, error) {
+	return d.Manifest, nil
+}
+
 // Get returns a remote.Descriptor for the given reference. The response from
 // the registry is left un-interpreted, for the most part. This is useful for
 // querying what kind of artifact a reference represents.
 func Get(ref name.Reference, options ...Option) (*Descriptor, error) {
 	acceptable := []types.MediaType{
-		types.DockerManifestSchema2,
-		types.OCIManifestSchema1,
-		types.DockerManifestList,
-		types.OCIImageIndex,
 		// Just to look at them.
 		types.DockerManifestSchema1,
 		types.DockerManifestSchema1Signed,
 	}
+	acceptable = append(acceptable, acceptableImageMediaTypes...)
+	acceptable = append(acceptable, acceptableIndexMediaTypes...)
 	return get(ref, acceptable, options...)
 }
 
 // Handle options and fetch the manifest with the acceptable MediaTypes in the
 // Accept header.
-//
-// TODO: We should make it easy to turn a Descriptor into a Taggable so you can:
-// desc, _ := remote.Get(ref)
-// _ = remote.Tag(tag, desc)
-//
-// Go doesn't make this easy since the struct field names conflict with the methods names.
 func get(ref name.Reference, acceptable []types.MediaType, options ...Option) (*Descriptor, error) {
 	o, err := makeOptions(ref.Context(), options...)
 	if err != nil {
@@ -175,8 +172,9 @@ func (d *Descriptor) remoteImage() *remoteImage {
 			Ref:    d.Ref,
 			Client: d.Client,
 		},
-		manifest:  d.Manifest,
-		mediaType: d.MediaType,
+		manifest:   d.Manifest,
+		mediaType:  d.MediaType,
+		descriptor: &d.Descriptor,
 	}
 }
 
@@ -186,8 +184,9 @@ func (d *Descriptor) remoteIndex() *remoteIndex {
 			Ref:    d.Ref,
 			Client: d.Client,
 		},
-		manifest:  d.Manifest,
-		mediaType: d.MediaType,
+		manifest:   d.Manifest,
+		mediaType:  d.MediaType,
+		descriptor: &d.Descriptor,
 	}
 }
 

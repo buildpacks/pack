@@ -32,15 +32,21 @@ func NewCodeClimate() *CodeClimate {
 
 func (p CodeClimate) Print(ctx context.Context, issues []result.Issue) error {
 	allIssues := []CodeClimateIssue{}
-	for _, i := range issues {
+	for ind := range issues {
+		i := &issues[ind]
 		var issue CodeClimateIssue
 		issue.Description = i.FromLinter + ": " + i.Text
 		issue.Location.Path = i.Pos.Filename
 		issue.Location.Lines.Begin = i.Pos.Line
 
-		// Need a checksum of the issue, so we use MD5 of the filename, text, and first line of source
+		// Need a checksum of the issue, so we use MD5 of the filename, text, and first line of source if there is any
+		var firstLine string
+		if len(i.SourceLines) > 0 {
+			firstLine = i.SourceLines[0]
+		}
+
 		hash := md5.New() //nolint:gosec
-		_, _ = hash.Write([]byte(i.Pos.Filename + i.Text + i.SourceLines[0]))
+		_, _ = hash.Write([]byte(i.Pos.Filename + i.Text + firstLine))
 		issue.Fingerprint = fmt.Sprintf("%X", hash.Sum(nil))
 
 		allIssues = append(allIssues, issue)
