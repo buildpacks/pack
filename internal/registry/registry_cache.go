@@ -31,13 +31,10 @@ type Cache struct {
 
 const GithubIssueTitleTemplate = "{{ if .Yanked }}YANK{{else}}ADD{{end}} {{.Namespace}}/{{.Name}}@{{.Version}}"
 const GithubIssueBodyTemplate = `
-### Data
-
-` + "```toml" + `
 id = "{{.Namespace}}/{{.Name}}"
 version = "{{.Version}}"
 {{ if .Yanked }}{{else}}addr = "{{.Address}}"{{end}}
-` + "```"
+`
 
 // Entry is a list of buildpacks stored in a registry
 type Entry struct {
@@ -98,12 +95,12 @@ func (r *Cache) LocateBuildpack(bp string) (Buildpack, error) {
 					}
 				}
 			}
-			return highestVersion, highestVersion.Validate()
+			return highestVersion, Validate(highestVersion)
 		}
 
 		for _, bpIndex := range entry.Buildpacks {
 			if bpIndex.Version == version {
-				return bpIndex, bpIndex.Validate()
+				return bpIndex, Validate(bpIndex)
 			}
 		}
 		return Buildpack{}, fmt.Errorf("could not find version for buildpack: %s", bp)
