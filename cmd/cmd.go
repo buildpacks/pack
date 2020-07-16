@@ -84,6 +84,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	if cfg.Experimental {
 		rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, &packClient))
+		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, &packClient))
 	}
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger))
