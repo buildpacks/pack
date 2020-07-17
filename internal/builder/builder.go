@@ -18,7 +18,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/builder"
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/layer"
@@ -93,70 +92,68 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 		return nil, err
 	}
 
-	uid, gid, err := userAndGroupIDs(img)
-	if err != nil {
-		return nil, err
+	bldr := &Builder{
+		baseImageName:       img.Name(),
+		image:               img,
+		layerWriterFactory:  layerWriterFactory,
+		metadata:            metadata,
+		lifecycleDescriptor: constructLifecycleDescriptor(metadata),
+		env:                 map[string]string{},
 	}
 
-	stackID, err := img.Label(stackLabel)
-	if err != nil {
-		return nil, errors.Wrapf(err, "get label %s from image %s", style.Symbol(stackLabel), style.Symbol(img.Name()))
-	}
-	if stackID == "" {
-		return nil, fmt.Errorf("image %s missing label %s", style.Symbol(img.Name()), style.Symbol(stackLabel))
+	if err := addImgLabelsToBuildr(bldr); err != nil {
+		return nil, errors.Wrap(err, "adding image labels to builder")
 	}
 
-	var mixins []string
-	if _, err := dist.GetLabel(img, stack.MixinsLabel, &mixins); err != nil {
-		return nil, errors.Wrapf(err, "getting label %s", stack.MixinsLabel)
-	}
-
-	baseName := img.Name()
-	if newName != "" && baseName != newName {
+	if newName != "" && img.Name() != newName {
 		img.Rename(newName)
 	}
 
-	var lifecycleVersion *Version
-	if metadata.Lifecycle.Version != nil {
-		lifecycleVersion = metadata.Lifecycle.Version
+	return bldr, nil
+}
+
+func constructLifecycleDescriptor(metadata Metadata) LifecycleDescriptor {
+	return LifecycleDescriptor{
+		Info: LifecycleInfo{
+			Version: metadata.Lifecycle.Version,
+		},
+		API: LifecycleAPI{
+			PlatformVersion:  metadata.Lifecycle.API.PlatformVersion,
+			BuildpackVersion: metadata.Lifecycle.API.BuildpackVersion,
+		},
+	}
+}
+
+func addImgLabelsToBuildr(bldr *Builder) error {
+	uid, gid, err := userAndGroupIDs(bldr.image)
+	if err != nil {
+		return err
 	}
 
-	var buildpackAPIVersion *api.Version
-	if metadata.Lifecycle.API.BuildpackVersion != nil {
-		buildpackAPIVersion = metadata.Lifecycle.API.BuildpackVersion
+	stackID, err := bldr.image.Label(stackLabel)
+	if err != nil {
+		return errors.Wrapf(err, "get label %s from image %s", style.Symbol(stackLabel), style.Symbol(bldr.image.Name()))
+	}
+	if stackID == "" {
+		return fmt.Errorf("image %s missing label %s", style.Symbol(bldr.image.Name()), style.Symbol(stackLabel))
 	}
 
-	var platformAPIVersion *api.Version
-	if metadata.Lifecycle.API.PlatformVersion != nil {
-		platformAPIVersion = metadata.Lifecycle.API.PlatformVersion
+	var mixins []string
+	if _, err := dist.GetLabel(bldr.image, stack.MixinsLabel, &mixins); err != nil {
+		return errors.Wrapf(err, "getting label %s", stack.MixinsLabel)
 	}
 
 	var order dist.Order
-	if _, err := dist.GetLabel(img, OrderLabel, &order); err != nil {
-		return nil, errors.Wrapf(err, "getting label %s", OrderLabel)
+	if _, err := dist.GetLabel(bldr.image, OrderLabel, &order); err != nil {
+		return errors.Wrapf(err, "getting label %s", OrderLabel)
 	}
 
-	return &Builder{
-		baseImageName:      baseName,
-		image:              img,
-		layerWriterFactory: layerWriterFactory,
-		metadata:           metadata,
-		mixins:             mixins,
-		order:              order,
-		uid:                uid,
-		gid:                gid,
-		StackID:            stackID,
-		lifecycleDescriptor: LifecycleDescriptor{
-			Info: LifecycleInfo{
-				Version: lifecycleVersion,
-			},
-			API: LifecycleAPI{
-				PlatformVersion:  platformAPIVersion,
-				BuildpackVersion: buildpackAPIVersion,
-			},
-		},
-		env: map[string]string{},
-	}, nil
+	bldr.uid = uid
+	bldr.gid = gid
+	bldr.mixins = mixins
+	bldr.order = order
+	bldr.StackID = stackID
+	return nil
 }
 
 // Getters
