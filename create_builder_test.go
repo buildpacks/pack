@@ -593,27 +593,85 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("buildpack URI is from=builder", func() {
-			it("errors", func() {
-				prepareFetcherWithBuildImage()
-				prepareFetcherWithRunImages()
-				opts.Config.Buildpacks[0].URI = "from=builder"
+		when("invalid buildpack URI", func() {
+			when("buildpack URI is from=builder:fake", func() {
+				it("errors", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Buildpacks[0].URI = "from=builder:fake"
 
-				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err,
-					"invalid locator: FromBuilderLocator")
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err,
+						"locator type from=builder:fake")
+				})
 			})
-		})
 
-		when("buildpack URI is an invalid locator", func() {
-			it("errors", func() {
-				prepareFetcherWithBuildImage()
-				prepareFetcherWithRunImages()
-				opts.Config.Buildpacks[0].URI = "nonsense string here"
+			when("buildpack URI is from=builder", func() {
+				it("errors", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Buildpacks[0].URI = "from=builder"
 
-				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err,
-					"invalid locator: InvalidLocator")
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err,
+						"invalid locator: FromBuilderLocator")
+				})
+			})
+
+			when("buildpack URI is invalid registry", func() {
+				it("errors", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Registry = "://bad-url"
+					opts.Config.Buildpacks[0].URI = "urn:cnb:registry:fake"
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err,
+						"invalid registry")
+				})
+			})
+
+			when("buildpack is missing from registry", func() {
+				it("errors", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+
+					opts.Registry = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
+					opts.Config.Buildpacks[0].URI = "urn:cnb:registry:fake"
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err,
+						"locating in registry")
+				})
+			})
+
+			when("can't download image from registry", func() {
+				it("errors", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+
+					opts.Registry = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
+					opts.Config.Buildpacks[0].URI = "urn:cnb:registry:example/foo@1.1.0"
+
+					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), true, true).Return(nil, errors.New("failed to pull"))
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err,
+						"extracting from registry")
+				})
+			})
+
+			when("buildpack URI is an invalid locator", func() {
+				it("errors", func() {
+					prepareFetcherWithBuildImage()
+					prepareFetcherWithRunImages()
+					opts.Config.Buildpacks[0].URI = "nonsense string here"
+
+					err := subject.CreateBuilder(context.TODO(), opts)
+					h.AssertError(t, err,
+						"invalid locator: InvalidLocator")
+				})
 			})
 		})
 
