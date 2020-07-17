@@ -13,7 +13,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestSuggestStacks(t *testing.T) {
+func TestSuggestStacksCommand(t *testing.T) {
 	spec.Run(t, "Commands", testSuggestStacksCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 

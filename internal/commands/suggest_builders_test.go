@@ -18,7 +18,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestSuggestBuilders(t *testing.T) {
+func TestSuggestBuildersCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 	spec.Run(t, "Commands", testSuggestBuildersCommand, spec.Parallel(), spec.Report(report.Terminal{}))
