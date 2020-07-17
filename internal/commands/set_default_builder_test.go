@@ -22,7 +22,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestSetDefaultBuilder(t *testing.T) {
+func TestSetDefaultBuilderCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 	spec.Run(t, "Commands", testSetDefaultBuilderCommand, spec.Random(), spec.Report(report.Terminal{}))
