@@ -2,10 +2,20 @@ name: build
 
 on:
   push:
+    paths-ignore:
+      - '**.md'
+      - 'resources/**'
+      - 'CODEOWNERS'
+      - 'LICENSE'
     branches:
       - main
       - 'release/**'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'resources/**'
+      - 'CODEOWNERS'
+      - 'LICENSE'
     branches:
       - main
       - 'release/**'
@@ -138,8 +148,8 @@ jobs:
           result-encoding: string
           script: |
             const path = require('path');
-            const scriptPath = path.resolve('.github/workflows/build/changelog.js');
-            require(scriptPath)({core, github, context});
+            const scriptPath = path.resolve('.github/workflows/build/changelog/index.js');
+            require(scriptPath)({core, github, context, version: ${{ env.PACK_VERSION }}});
       - name: Create Release
         id: create_release
         uses: actions/create-release@latest

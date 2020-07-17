@@ -121,3 +121,17 @@ func (mr *MockPackClientMockRecorder) Rebase(arg0, arg1 interface{}) *gomock.Cal
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rebase", reflect.TypeOf((*MockPackClient)(nil).Rebase), arg0, arg1)
 }
+
+// RegisterBuildpack mocks base method
+func (m *MockPackClient) RegisterBuildpack(arg0 context.Context, arg1 pack.RegisterBuildpackOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RegisterBuildpack", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RegisterBuildpack indicates an expected call of RegisterBuildpack
+func (mr *MockPackClientMockRecorder) RegisterBuildpack(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterBuildpack", reflect.TypeOf((*MockPackClient)(nil).RegisterBuildpack), arg0, arg1)
+}

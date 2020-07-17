@@ -194,25 +194,8 @@ Detection Order:
 		warnings = append(warnings, fmt.Sprintf("%s does not specify lifecycle platform api version", style.Symbol(imageName)))
 	}
 
-	trusted := false
-	for _, builder := range suggestedBuilders {
-		if builder.Image == imageName {
-			trusted = true
-			break
-		}
-	}
-
-	if !trusted {
-		for _, builder := range cfg.TrustedBuilders {
-			if builder.Name == imageName {
-				trusted = true
-				break
-			}
-		}
-	}
-
 	trustedString := "No"
-	if trusted {
+	if isTrustedBuilder(cfg, imageName) {
 		trustedString = "Yes"
 	}
 

@@ -17,7 +17,7 @@ type Buildpack struct {
 }
 
 // Validate that a buildpack reference contains required information
-func (b *Buildpack) Validate() error {
+func Validate(b Buildpack) error {
 	if b.Address == "" {
 		return errors.New("invalid entry: address is a required field")
 	}

@@ -19,7 +19,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestListTrustedBuilders(t *testing.T) {
+func TestListTrustedBuildersCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 	spec.Run(t, "Commands", testListTrustedBuildersCommand, spec.Random(), spec.Report(report.Terminal{}))

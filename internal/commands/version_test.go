@@ -13,7 +13,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestVersion(t *testing.T) {
+func TestVersionCommand(t *testing.T) {
 	spec.Run(t, "Commands", testVersionCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
