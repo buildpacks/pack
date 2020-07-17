@@ -71,7 +71,7 @@ type orderTOML struct {
 func FromImage(img imgutil.Image) (*Builder, error) {
 	var metadata Metadata
 	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
 	} else if !ok {
 		return nil, fmt.Errorf("builder %s missing label %s -- try recreating builder", style.Symbol(img.Name()), style.Symbol(metadataLabel))
 	}
@@ -82,7 +82,7 @@ func FromImage(img imgutil.Image) (*Builder, error) {
 func New(baseImage imgutil.Image, name string) (*Builder, error) {
 	var metadata Metadata
 	if _, err := dist.GetLabel(baseImage, metadataLabel, &metadata); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
 	}
 	return constructBuilder(baseImage, name, metadata)
 }
@@ -108,7 +108,7 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 
 	var mixins []string
 	if _, err := dist.GetLabel(img, stack.MixinsLabel, &mixins); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "getting label %s", stack.MixinsLabel)
 	}
 
 	baseName := img.Name()
@@ -133,7 +133,7 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 
 	var order dist.Order
 	if _, err := dist.GetLabel(img, OrderLabel, &order); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "getting label %s", OrderLabel)
 	}
 
 	return &Builder{

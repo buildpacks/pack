@@ -134,7 +134,33 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("the base image is not valid", func() {
+		when("#FromImage", func() {
+			when("metadata isn't valid", func() {
+				it("returns an error", func() {
+					h.AssertNil(t, baseImage.SetLabel(
+						"io.buildpacks.builder.metadata",
+						`{"something-random": ,}`,
+					))
+
+					_, err := builder.FromImage(baseImage)
+					h.AssertError(t, err, "getting label")
+				})
+			})
+		})
+
 		when("#New", func() {
+			when("metadata isn't valid", func() {
+				it("returns an error", func() {
+					h.AssertNil(t, baseImage.SetLabel(
+						"io.buildpacks.builder.metadata",
+						`{"something-random": ,}`,
+					))
+
+					_, err := builder.FromImage(baseImage)
+					h.AssertError(t, err, "getting label")
+				})
+			})
+
 			when("missing CNB_USER_ID", func() {
 				it("returns an error", func() {
 					_, err := builder.New(baseImage, "some/builder")
@@ -186,6 +212,34 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				it("returns an error", func() {
 					_, err := builder.New(baseImage, "some/builder")
 					h.AssertError(t, err, "image 'base/image' missing label 'io.buildpacks.stack.id'")
+				})
+			})
+
+			when("mixins metadata is malformed", func() {
+				it.Before(func() {
+					h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
+					h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
+					h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some-id"))
+				})
+
+				it("returns an error", func() {
+					h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.mixins", `{"mixinX", "mixinY", "build:mixinA"}`))
+					_, err := builder.New(baseImage, "some/builder")
+					h.AssertError(t, err, "getting label io.buildpacks.stack.mixins")
+				})
+			})
+
+			when("order metadata is malformed", func() {
+				it.Before(func() {
+					h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
+					h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
+					h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some-id"))
+				})
+
+				it("returns an error", func() {
+					h.AssertNil(t, baseImage.SetLabel("io.buildpacks.buildpack.order", `{"something", }`))
+					_, err := builder.New(baseImage, "some/builder")
+					h.AssertError(t, err, "getting label io.buildpacks.buildpack.order")
 				})
 			})
 		})
@@ -961,7 +1015,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.mixins", `["mixinX", "mixinY", "build:mixinA"]`))
 			h.AssertNil(t, baseImage.SetLabel(
 				"io.buildpacks.builder.metadata",
-				`{"buildpacks": [{"id": "buildpack-1-id"}, {"id": "buildpack-2-id"}], "groups": [{"buildpacks": [{"id": "buildpack-1-id", "version": "buildpack-1-version", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}], "stack": {"runImage": {"image": "prev/run", "mirrors": ["prev/mirror"]}}, "lifecycle": {"version": "6.6.6"}}`,
+				`{"description": "some-description", "createdBy": {"name": "some-name", "version": "1.2.3"}, "buildpacks": [{"id": "buildpack-1-id"}, {"id": "buildpack-2-id"}], "groups": [{"buildpacks": [{"id": "buildpack-1-id", "version": "buildpack-1-version", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}], "stack": {"runImage": {"image": "prev/run", "mirrors": ["prev/mirror"]}}, "lifecycle": {"version": "6.6.6"}}`,
 			))
 			h.AssertNil(t, baseImage.SetLabel(
 				"io.buildpacks.buildpack.order",
@@ -1010,6 +1064,57 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				it("should error", func() {
 					_, err := builder.FromImage(builderImage)
 					h.AssertError(t, err, "missing label 'io.buildpacks.builder.metadata'")
+				})
+			})
+
+			when("#Description", func() {
+				it("return description", func() {
+					h.AssertEq(t, bldr.Description(), "some-description")
+				})
+			})
+
+			when("#CreatedBy", func() {
+				it("return CreatedBy", func() {
+					expectedCreatorMetadata := builder.CreatorMetadata{
+						Name:    "some-name",
+						Version: "1.2.3",
+					}
+					h.AssertEq(t, bldr.CreatedBy(), expectedCreatorMetadata)
+				})
+			})
+
+			when("#Name", func() {
+				it("return Name", func() {
+					h.AssertEq(t, bldr.Name(), "base/image")
+				})
+			})
+
+			when("#Image", func() {
+				it("return Image", func() {
+					h.AssertSameInstance(t, bldr.Image(), baseImage)
+				})
+			})
+
+			when("#Stack", func() {
+				it("return Stack", func() {
+					expectedStack := builder.StackMetadata{
+						RunImage: builder.RunImageMetadata{
+							Image:   "prev/run",
+							Mirrors: []string{"prev/mirror"}}}
+
+					h.AssertEq(t, bldr.Stack(), expectedStack)
+				})
+			})
+
+			when("#UID", func() {
+				it("return UID", func() {
+					h.AssertEq(t, bldr.UID(), 1234)
+				})
+			})
+
+			when("#GID", func() {
+				it("return GID", func() {
+					h.AssertEq(t, bldr.GID(), 4321)
 				})
 			})
 		})
