@@ -291,7 +291,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 	bpLayers := dist.BuildpackLayers{}
 	if _, err := dist.GetLabel(b.image, dist.BuildpackLayersLabel, &bpLayers); err != nil {
-		return err
+		return errors.Wrapf(err, "getting label %s", dist.BuildpackLayersLabel)
 	}
 
 	for _, bp := range b.additionalBuildpacks {

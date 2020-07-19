@@ -585,6 +585,18 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 			})
+
+			when("getting layers label", func() {
+				it("fails if layers label isn't set correctly", func() {
+					h.AssertNil(t, baseImage.SetLabel(
+						"io.buildpacks.buildpack.layers",
+						`{"something-here: }`,
+					))
+
+					err := subject.Save(logger, builder.CreatorMetadata{})
+					h.AssertError(t, err, "getting label io.buildpacks.buildpack.layers")
+				})
+			})
 		})
 
 		when("#SetLifecycle", func() {
