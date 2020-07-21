@@ -6,7 +6,7 @@ on:
       - published
 
 env:
-  CHOC_PATH: chocolatey
+  CHOCO_PATH: chocolatey
 
 jobs:
   prepare-chocolatey:
@@ -18,38 +18,40 @@ jobs:
         run: echo "::set-env name=PACK_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`"
       - name: Setup working dir
         run: |
-          mkdir -p ${{ env.CHOC_PATH }}
-          cp -r .github/workflows/delivery/chocolatey/. ${{ env.CHOC_PATH }}/
-          ls -R ${{ env.CHOC_PATH }}
+          mkdir -p ${{ env.CHOCO_PATH }}
+          cp -r .github/workflows/delivery/chocolatey/. ${{ env.CHOCO_PATH }}/
+          ls -R ${{ env.CHOCO_PATH }}
       - name: Download and unzip Pack (Windows)
         shell: bash
         run: |
           url="https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-windows.zip"
           filename=pack.zip
-          zip_path=${{ env.CHOC_PATH }}/tools/$filename
+          tools_path=${{ env.CHOCO_PATH }}/tools/
+          zip_path="$tools_path/$filename"
 
           curl -sSL "$url" -o "$zip_path"
 
           apt-get update && apt-get install unzip
-          unzip -o "$zip_path"
+          unzip -o "$zip_path" -d $tools_path
           rm "$zip_path"
+          ls $tools_path
       - name: Fill nuspec
         shell: bash
         run: |
-          file=${{ env.CHOC_PATH }}/pack.nuspec
+          file=${{ env.CHOCO_PATH }}/pack.nuspec
           sed -i "s/{{PACK_VERSION}}/${{ env.PACK_VERSION }}/g" $file
           cat $file
       - name: Fill License
         shell: bash
         run: |
-          file="${{ env.CHOC_PATH }}/tools/LICENSE.txt"
+          file="${{ env.CHOCO_PATH }}/tools/LICENSE.txt"
           cp LICENSE $file
           cat $file
       - name: Upload Artifacts
         uses: actions/upload-artifact@v1
         with:
-          name: ${{ env.CHOC_PATH }}
-          path: ${{ env.CHOC_PATH }}/
+          name: ${{ env.CHOCO_PATH }}
+          path: ${{ env.CHOCO_PATH }}/
   deliver-chocolatey:
     runs-on: windows-latest
     needs: [prepare-chocolatey]
@@ -58,19 +60,24 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v1
         with:
-          name: ${{ env.CHOC_PATH }}
+          name: ${{ env.CHOCO_PATH }}
       - name: Determine version
         run: echo "::set-env name=PACK_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`"
         shell: bash
       - name: build-release
         uses: crazy-max/ghaction-chocolatey@v1
         with:
-          args: pack ${{ env.CHOC_PATH }}/pack.nuspec --outputdirectory ${{ env.CHOC_PATH}}
+          args: pack ${{ env.CHOCO_PATH }}/pack.nuspec --outputdirectory ${{ env.CHOCO_PATH}}
+      - name: list files
+        shell: bash
+        run: |
+          ls ${{ env.CHOCO_PATH }}
+          ls ${{ env.CHOCO_PATH }}/tools
       - name: Test Release
         uses: crazy-max/ghaction-chocolatey@v1
         with:
-          args: install pack -s ${{ env.CHOC_PATH }}
+          args: install pack -s ${{ env.CHOCO_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg
       - name: Upload Release
         uses: crazy-max/ghaction-chocolatey@v1
         with:
-          args: push ${{ env.CHOC_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg -s https://push.chocolatey.org/ -k ${{ secrets.CHOC_KEY }}
+          args: push ${{ env.CHOCO_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg -s https://push.chocolatey.org/ -k ${{ secrets.CHOCO_KEY }}
