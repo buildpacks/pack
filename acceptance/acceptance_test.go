@@ -1713,7 +1713,7 @@ func createBuilder(t *testing.T, pack *invoke.PackInvoker, runImageMirror, lifec
 		"--no-color",
 	)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "pack failed with output %s", output)
 	}
 
 	h.AssertContains(t, output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
