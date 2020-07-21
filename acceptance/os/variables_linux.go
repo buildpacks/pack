@@ -1,7 +1,7 @@
 // +build acceptance
 // +build linux
 
-package variables
+package os
 
 import "regexp"
 

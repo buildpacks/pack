@@ -1,7 +1,7 @@
 // +build acceptance
 // +build darwin
 
-package variables
+package os
 
 import "regexp"
 

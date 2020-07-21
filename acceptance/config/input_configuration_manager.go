@@ -1,6 +1,6 @@
 // +build acceptance
 
-package managers
+package config
 
 import (
 	"encoding/json"

@@ -1,6 +1,6 @@
 // +build acceptance
 
-package managers
+package config
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/buildpacks/pack/acceptance/variables"
+	acceptanceOS "github.com/buildpacks/pack/acceptance/os"
 	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
@@ -35,7 +35,7 @@ type AssetManager struct {
 	packPath                    string
 	packFixturesPath            string
 	previousPackPath            string
-	previousPackFixturesPath    string
+	previousPackFixturesPaths   []string
 	lifecyclePath               string
 	lifecycleDescriptor         builder.LifecycleDescriptor
 	previousLifecyclePath       string
@@ -50,7 +50,7 @@ func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) 
 	var (
 		convergedCurrentPackPath             string
 		convergedPreviousPackPath            string
-		convergedPreviousPackFixturesPath    string
+		convergedPreviousPackFixturesPaths   []string
 		convergedCurrentLifecyclePath        string
 		convergedCurrentLifecycleDescriptor  builder.LifecycleDescriptor
 		convergedPreviousLifecyclePath       string
@@ -69,9 +69,9 @@ func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) 
 
 	if inputConfig.combinations.requiresPreviousPack() {
 		convergedPreviousPackPath = assetBuilder.ensurePreviousPack()
-		convergedPreviousPackFixturesPath = assetBuilder.ensurePreviousPackFixtures()
+		convergedPreviousPackFixturesPath := assetBuilder.ensurePreviousPackFixtures()
 
-		h.RecursiveCopy(t, previousPackFixturesOverridesDir, convergedPreviousPackFixturesPath)
+		convergedPreviousPackFixturesPaths = []string{previousPackFixturesOverridesDir, convergedPreviousPackFixturesPath}
 	}
 
 	if inputConfig.combinations.requiresCurrentLifecycle() {
@@ -90,7 +90,7 @@ func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) 
 		packPath:                    convergedCurrentPackPath,
 		packFixturesPath:            currentPackFixturesDir,
 		previousPackPath:            convergedPreviousPackPath,
-		previousPackFixturesPath:    convergedPreviousPackFixturesPath,
+		previousPackFixturesPaths:   convergedPreviousPackFixturesPaths,
 		lifecyclePath:               convergedCurrentLifecyclePath,
 		lifecycleDescriptor:         convergedCurrentLifecycleDescriptor,
 		previousLifecyclePath:       convergedPreviousLifecyclePath,
@@ -100,16 +100,16 @@ func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) 
 	}
 }
 
-func (a AssetManager) PackPaths(kind ComboValue) (packPath string, packFixturesPaths string) {
+func (a AssetManager) PackPaths(kind ComboValue) (packPath string, packFixturesPaths []string) {
 	a.testObject.Helper()
 
 	switch kind {
 	case Current:
 		packPath = a.packPath
-		packFixturesPaths = a.packFixturesPath
+		packFixturesPaths = []string{a.packFixturesPath}
 	case Previous:
 		packPath = a.previousPackPath
-		packFixturesPaths = a.previousPackFixturesPath
+		packFixturesPaths = a.previousPackFixturesPaths
 	default:
 		a.testObject.Fatalf("pack kind must be current or previous, was %s", kind)
 	}
@@ -190,11 +190,11 @@ func (b assetManagerBuilder) ensurePreviousPack() string {
 		"buildpacks",
 		"pack",
 		version,
-		variables.PackBinaryExp,
+		acceptanceOS.PackBinaryExp,
 		true,
 	)
 	h.AssertNil(b.testObject, err)
-	assetPath := filepath.Join(assetDir, variables.PackBinaryName)
+	assetPath := filepath.Join(assetDir, acceptanceOS.PackBinaryName)
 
 	b.testObject.Logf("using %s for previous pack path", assetPath)
 
@@ -316,7 +316,7 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 	packTmpDir, err := ioutil.TempDir("", "pack.acceptance.binary.")
 	h.AssertNil(b.testObject, err)
 
-	packPath := filepath.Join(packTmpDir, variables.PackBinaryName)
+	packPath := filepath.Join(packTmpDir, acceptanceOS.PackBinaryName)
 
 	cwd, err := os.Getwd()
 	h.AssertNil(b.testObject, err)
