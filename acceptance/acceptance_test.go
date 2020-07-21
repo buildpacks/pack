@@ -77,7 +77,7 @@ func TestAcceptance(t *testing.T) {
 				t,
 				when,
 				it,
-				assetsConfig.NewPackAssetManager(config.Current),
+				assetsConfig.NewPackAsset(config.Current),
 				api.MustParse(builder.DefaultBuildpackAPIVersion),
 			)
 		}, spec.Report(report.Terminal{}))
@@ -97,8 +97,8 @@ func TestAcceptance(t *testing.T) {
 				t,
 				when,
 				it,
-				assetsConfig.NewPackAssetManager(combo.Pack),
-				assetsConfig.NewPackAssetManager(combo.PackCreateBuilder),
+				assetsConfig.NewPackAsset(combo.Pack),
+				assetsConfig.NewPackAsset(combo.PackCreateBuilder),
 				lifecyclePath,
 				lifecycleDescriptor,
 			)
@@ -117,7 +117,7 @@ func testWithoutSpecificBuilderRequirement(
 	t *testing.T,
 	when spec.G,
 	it spec.S,
-	packConfig config.PackAssetManager,
+	packConfig config.PackAsset,
 	bpVersion *api.Version,
 ) {
 	var (
@@ -478,7 +478,7 @@ func testAcceptance(
 	t *testing.T,
 	when spec.G,
 	it spec.S,
-	subjectPackConfig, createBuilderPackConfig config.PackAssetManager,
+	subjectPackConfig, createBuilderPackConfig config.PackAsset,
 	lifecyclePath string,
 	lifecycleDescriptor builder.LifecycleDescriptor,
 ) {

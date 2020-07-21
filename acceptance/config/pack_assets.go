@@ -2,24 +2,24 @@
 
 package config
 
-type PackAssetManager struct {
+type PackAsset struct {
 	path         string
 	fixturePaths []string
 }
 
-func (a AssetManager) NewPackAssetManager(kind ComboValue) PackAssetManager {
+func (a AssetManager) NewPackAsset(kind ComboValue) PackAsset {
 	path, fixtures := a.PackPaths(kind)
 
-	return PackAssetManager{
+	return PackAsset{
 		path:         path,
 		fixturePaths: fixtures,
 	}
 }
 
-func (p PackAssetManager) Path() string {
+func (p PackAsset) Path() string {
 	return p.path
 }
 
-func (p PackAssetManager) FixturePaths() []string {
+func (p PackAsset) FixturePaths() []string {
 	return p.fixturePaths
 }
