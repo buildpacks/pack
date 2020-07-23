@@ -66,12 +66,7 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 		cmd.Flags().MarkHidden("buildpack-registry")
 	}
 
-	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "builder-config", "b", "", "Path to builder TOML file (required)")
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
-
-	// TODO: Mark config required and remove builder-config after release of pack v0.12: https://github.com/buildpacks/pack/issues/694
-	// cmd.MarkFlagRequired("config")
-	cmd.Flags().MarkHidden("builder-config")
 
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "create-builder")
