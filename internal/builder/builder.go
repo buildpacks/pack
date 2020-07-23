@@ -32,13 +32,12 @@ const (
 
 	cnbDir = "/cnb"
 
-	orderPath          = "/cnb/order.toml"
-	stackPath          = "/cnb/stack.toml"
-	platformDir        = "/platform"
-	lifecycleDir       = "/cnb/lifecycle"
-	compatLifecycleDir = "/lifecycle"
-	workspaceDir       = "/workspace"
-	layersDir          = "/layers"
+	orderPath    = "/cnb/order.toml"
+	stackPath    = "/cnb/stack.toml"
+	platformDir  = "/platform"
+	lifecycleDir = "/cnb/lifecycle"
+	workspaceDir = "/workspace"
+	layersDir    = "/layers"
 
 	metadataLabel = "io.buildpacks.builder.metadata"
 	stackLabel    = "io.buildpacks.stack.id"
@@ -702,7 +701,6 @@ func (b *Builder) lifecycleLayer(dest string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "embedding lifecycle tar")
 	}
-
 
 	return fh.Name(), nil
 }
