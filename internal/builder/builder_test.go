@@ -589,14 +589,16 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.HasFileMode(0755),
 					h.HasModTime(archive.NormalizedDateTime),
 				)
+			})
 
-				it("should add lifecycle symlink", func() {
-					h.AssertOnTarEntry(t, layerTar, "/lifecycle",
-						h.SymlinksTo("/cnb/lifecycle"),
-						h.HasFileMode(0644),
-						h.HasModTime(archive.NormalizedDateTime),
-					)
-				})
+			it("should add lifecycle symlink", func() {
+				layerTar, err := baseImage.FindLayerWithPath("/cnb/lifecycle")
+				h.AssertNil(t, err)
+				h.AssertOnTarEntry(t, layerTar, "/lifecycle",
+					h.SymlinksTo("/cnb/lifecycle"),
+					h.HasFileMode(0644),
+					h.HasModTime(archive.NormalizedDateTime),
+				)
 			})
 
 			it("sets the lifecycle version on the metadata", func() {
