@@ -260,7 +260,7 @@ func testWithoutSpecificBuilderRequirement(
 		packageBuildpackLocally := func(absConfigPath string) string {
 			t.Helper()
 			packageName := "test/package-" + h.RandString(10)
-			output, err := pack.Run("package-buildpack", packageName, "-p", absConfigPath)
+			output, err := pack.Run("package-buildpack", packageName, "-c", absConfigPath)
 			h.AssertNil(t, err)
 			h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
 			return packageName
@@ -269,7 +269,7 @@ func testWithoutSpecificBuilderRequirement(
 		packageBuildpackRemotely := func(absConfigPath string) string {
 			t.Helper()
 			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-			output, err := pack.Run("package-buildpack", packageName, "-p", absConfigPath, "--publish")
+			output, err := pack.Run("package-buildpack", packageName, "-c", absConfigPath, "--publish")
 			h.AssertNil(t, err)
 			h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
 			return packageName
@@ -304,7 +304,7 @@ func testWithoutSpecificBuilderRequirement(
 		when("no --format is provided", func() {
 			it("creates the package as image", func() {
 				packageName := "test/package-" + h.RandString(10)
-				output := pack.RunSuccessfully("package-buildpack", packageName, "-p", simplePackageConfigPath)
+				output := pack.RunSuccessfully("package-buildpack", packageName, "-c", simplePackageConfigPath)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", packageName))
 				defer h.DockerRmi(dockerCli, packageName)
 
@@ -336,7 +336,7 @@ func testWithoutSpecificBuilderRequirement(
 					defer h.DockerRmi(dockerCli, packageName)
 					output := pack.RunSuccessfully(
 						"package-buildpack", packageName,
-						"-p", aggregatePackageToml,
+						"-c", aggregatePackageToml,
 						"--publish",
 					)
 					h.AssertContains(t, output, fmt.Sprintf("Successfully published package '%s'", packageName))
@@ -361,7 +361,7 @@ func testWithoutSpecificBuilderRequirement(
 					defer h.DockerRmi(dockerCli, packageName)
 					pack.JustRunSuccessfully(
 						"package-buildpack", packageName,
-						"-p", aggregatePackageToml,
+						"-c", aggregatePackageToml,
 						"--no-pull",
 					)
 
@@ -379,7 +379,7 @@ func testWithoutSpecificBuilderRequirement(
 					defer h.DockerRmi(dockerCli, packageName)
 					output, err := pack.Run(
 						"package-buildpack", packageName,
-						"-p", aggregatePackageToml,
+						"-c", aggregatePackageToml,
 						"--no-pull",
 					)
 					h.AssertNotNil(t, err)
@@ -401,7 +401,7 @@ func testWithoutSpecificBuilderRequirement(
 				output, err := pack.Run(
 					"package-buildpack", outputFile,
 					"--format", "file",
-					"-p", simplePackageConfigPath,
+					"-c", simplePackageConfigPath,
 				)
 				h.AssertNil(t, err)
 				h.AssertContains(t, output, fmt.Sprintf("Successfully created package '%s'", outputFile))
@@ -413,7 +413,7 @@ func testWithoutSpecificBuilderRequirement(
 			it("displays an error", func() {
 				output, err := pack.Run(
 					"package-buildpack", "some-package",
-					"-p", pack.FixtureManager().FixtureLocation("invalid_package.toml"),
+					"-c", pack.FixtureManager().FixtureLocation("invalid_package.toml"),
 				)
 				h.AssertNotNil(t, err)
 				h.AssertContains(t, output, "reading config")
@@ -596,7 +596,7 @@ func testAcceptance(
 
 					output, err := pack.Run(
 						"create-builder", "some-builder:build",
-						"--builder-config", builderConfigPath,
+						"--config", builderConfigPath,
 					)
 					h.AssertNotNil(t, err)
 					h.AssertContains(t, output, "invalid builder toml")
@@ -1698,7 +1698,7 @@ func createBuilder(t *testing.T, pack *invoke.PackInvoker, lifecycle config.Life
 	// CREATE BUILDER
 	output, err := pack.Run(
 		"create-builder", bldr,
-		"-b", builderConfigFile.Name(),
+		"-c", builderConfigFile.Name(),
 		"--no-color",
 	)
 	if err != nil {
@@ -1773,7 +1773,7 @@ func packageBuildpack(t *testing.T, pack *invoke.PackInvoker, configLocation, tm
 		append([]string{
 			outputName,
 			"--no-color",
-			"-p", packageConfig,
+			"-c", packageConfig,
 		}, additionalArgs...)...,
 	)
 

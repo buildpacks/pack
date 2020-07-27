@@ -18,7 +18,7 @@ import (
 )
 
 func TestSetRunImageMirrorsCommand(t *testing.T) {
-	spec.Run(t, "Commands", testSetRunImageMirrorsCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Commands", testSetRunImageMirrorsCommand, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testSetRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
