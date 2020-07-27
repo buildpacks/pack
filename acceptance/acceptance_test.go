@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Masterminds/semver"
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/cache"
@@ -34,7 +33,6 @@ import (
 
 	"github.com/buildpacks/pack/acceptance/config"
 	"github.com/buildpacks/pack/acceptance/invoke"
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/builder"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -78,7 +76,6 @@ func TestAcceptance(t *testing.T) {
 				when,
 				it,
 				assetsConfig.NewPackAsset(config.Current),
-				api.MustParse(builder.DefaultBuildpackAPIVersion),
 			)
 		}, spec.Report(report.Terminal{}))
 	}
@@ -89,9 +86,6 @@ func TestAcceptance(t *testing.T) {
 			combo.Describe(assetsConfig),
 		)
 
-		lifecyclePath := assetsConfig.LifecyclePath(combo.Lifecycle)
-		lifecycleDescriptor := assetsConfig.LifecycleDescriptor(combo.Lifecycle)
-
 		suite(combo.String(), func(t *testing.T, when spec.G, it spec.S) {
 			testAcceptance(
 				t,
@@ -99,8 +93,7 @@ func TestAcceptance(t *testing.T) {
 				it,
 				assetsConfig.NewPackAsset(combo.Pack),
 				assetsConfig.NewPackAsset(combo.PackCreateBuilder),
-				lifecyclePath,
-				lifecycleDescriptor,
+				assetsConfig.NewLifecycleAsset(combo.Lifecycle),
 			)
 		}, spec.Report(report.Terminal{}))
 	}
@@ -118,10 +111,9 @@ func testWithoutSpecificBuilderRequirement(
 	when spec.G,
 	it spec.S,
 	packConfig config.PackAsset,
-	bpVersion *api.Version,
 ) {
 	var (
-		bpDir = buildpacksDir(*bpVersion)
+		bpDir = buildpacksDir(builder.DefaultBuildpackAPIVersion)
 		pack  *invoke.PackInvoker
 	)
 
@@ -479,12 +471,11 @@ func testAcceptance(
 	when spec.G,
 	it spec.S,
 	subjectPackConfig, createBuilderPackConfig config.PackAsset,
-	lifecyclePath string,
-	lifecycleDescriptor builder.LifecycleDescriptor,
+	lifecycle config.LifecycleAsset,
 ) {
 	var (
 		pack, createBuilderPack *invoke.PackInvoker
-		bpDir                   = buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
+		bpDir                   = buildpacksDir(lifecycle.BuildpackAPIVersion())
 	)
 
 	it.Before(func() {
@@ -531,9 +522,8 @@ func testAcceptance(
 				it("fails", func() {
 					builderName, err := createBuilder(t,
 						createBuilderPack,
+						lifecycle,
 						runImageMirror,
-						lifecyclePath,
-						lifecycleDescriptor,
 					)
 
 					if err != nil {
@@ -547,7 +537,7 @@ func testAcceptance(
 				it("succeeds", func() {
 					createBuilderPack.EnableExperimental()
 
-					builderName, err := createBuilder(t, createBuilderPack, runImageMirror, lifecyclePath, lifecycleDescriptor)
+					builderName, err := createBuilder(t, createBuilderPack, lifecycle, runImageMirror)
 					h.AssertNil(t, err)
 					defer h.DockerRmi(dockerCli, builderName)
 
@@ -575,12 +565,12 @@ func testAcceptance(
 				key := taskKey(
 					"create-builder",
 					append(
-						[]string{runImageMirror, createBuilderPackConfig.Path(), lifecyclePath},
+						[]string{runImageMirror, createBuilderPackConfig.Path(), lifecycle.Identifier()},
 						createBuilderPackConfig.FixturePaths()...,
 					)...,
 				)
 				value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
-					return createBuilder(t, createBuilderPack, runImageMirror, lifecyclePath, lifecycleDescriptor)
+					return createBuilder(t, createBuilderPack, lifecycle, runImageMirror)
 				})
 				h.AssertNil(t, err)
 				suiteManager.RegisterCleanUp("clean-"+key, func() error {
@@ -641,9 +631,8 @@ func testAcceptance(
 						untrustedBuilderName, err = createBuilder(
 							t,
 							createBuilderPack,
+							lifecycle,
 							runImageMirror,
-							lifecyclePath,
-							lifecycleDescriptor,
 						)
 						h.AssertNil(t, err)
 					})
@@ -684,8 +673,8 @@ func testAcceptance(
 
 						// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 						// have bugs that make using the creator problematic.
-						lifecycleSupportsCreator := !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.4"))
-						creatorSupported := lifecycleSupportsCreator && pack.SupportsFeature(invoke.CreatorInPack)
+						creatorSupported := lifecycle.SupportsFeature(config.CreatorInLifecycle) &&
+							pack.SupportsFeature(invoke.CreatorInPack)
 
 						usingCreator = creatorSupported && trustBuilder
 					})
@@ -787,8 +776,8 @@ func testAcceptance(
 									"base_image_top_layer":   h.TopLayerDiffID(t, runImageMirror),
 									"run_image_local_mirror": localRunImageMirror,
 									"run_image_mirror":       runImageMirror,
-									"show_reference":         !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.5.0")),
-									"show_processes":         !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")),
+									"show_reference":         lifecycle.ShouldShowReference(),
+									"show_processes":         lifecycle.ShouldShowProcesses(),
 								},
 							)
 
@@ -942,9 +931,9 @@ func testAcceptance(
 
 					when("--default-process", func() {
 						it("sets the default process from those in the process list", func() {
-							h.SkipIf(t, !pack.Supports("build --default-process"), "--default-process flag is not supported")
-							h.SkipIf(t,
-								lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.7.0")),
+							h.SkipUnless(t, pack.Supports("build --default-process"), "--default-process flag is not supported")
+							h.SkipUnless(t,
+								lifecycle.SupportsFeature(config.DefaultProcess),
 								"skipping default process. Lifecycle does not support it",
 							)
 
@@ -1032,7 +1021,7 @@ func testAcceptance(
 								packageImageName = packageBuildpackAsImage(t,
 									pack,
 									pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
-									lifecycleDescriptor,
+									lifecycle,
 									[]string{
 										"simple-layers-parent-buildpack",
 										"simple-layers-buildpack",
@@ -1074,7 +1063,7 @@ func testAcceptance(
 									pack,
 									pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
 									tmpDir,
-									lifecycleDescriptor,
+									lifecycle,
 									[]string{
 										"simple-layers-parent-buildpack",
 										"simple-layers-buildpack",
@@ -1286,8 +1275,8 @@ func testAcceptance(
 										"base_image_ref":       strings.Join([]string{runImageMirror, h.Digest(t, runImageMirror)}, "@"),
 										"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
 										"run_image_mirror":     runImageMirror,
-										"show_reference":       !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.5.0")),
-										"show_processes":       !lifecycleDescriptor.Info.Version.LessThan(semver.MustParse("0.6.0")),
+										"show_reference":       lifecycle.ShouldShowReference(),
+										"show_processes":       lifecycle.ShouldShowReference(),
 									},
 								)
 
@@ -1441,9 +1430,9 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						"inspect_builder_output.txt",
 						map[string]interface{}{
 							"builder_name":          builderName,
-							"lifecycle_version":     lifecycleDescriptor.Info.Version.String(),
-							"buildpack_api_version": lifecycleDescriptor.API.BuildpackVersion.String(),
-							"platform_api_version":  lifecycleDescriptor.API.PlatformVersion.String(),
+							"lifecycle_version":     lifecycle.Version(),
+							"buildpack_api_version": lifecycle.BuildpackAPIVersion(),
+							"platform_api_version":  lifecycle.PlatformAPIVersion(),
 							"run_image_mirror":      runImageMirror,
 							"pack_version":          createBuilderPack.Version(),
 							"trusted":               "No",
@@ -1469,9 +1458,9 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						"inspect_builder_output.txt",
 						map[string]interface{}{
 							"builder_name":          builderName,
-							"lifecycle_version":     lifecycleDescriptor.Info.Version.String(),
-							"buildpack_api_version": lifecycleDescriptor.API.BuildpackVersion.String(),
-							"platform_api_version":  lifecycleDescriptor.API.PlatformVersion.String(),
+							"lifecycle_version":     lifecycle.Version(),
+							"buildpack_api_version": lifecycle.BuildpackAPIVersion(),
+							"platform_api_version":  lifecycle.PlatformAPIVersion(),
 							"run_image_mirror":      runImageMirror,
 							"pack_version":          createBuilderPack.Version(),
 							"trusted":               "Yes",
@@ -1620,11 +1609,11 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 	})
 }
 
-func buildpacksDir(bpAPIVersion api.Version) string {
-	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion.String())
+func buildpacksDir(bpAPIVersion string) string {
+	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion)
 }
 
-func createBuilder(t *testing.T, pack *invoke.PackInvoker, runImageMirror, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) (string, error) {
+func createBuilder(t *testing.T, pack *invoke.PackInvoker, lifecycle config.LifecycleAsset, runImageMirror string) (string, error) {
 	t.Log("creating builder image...")
 
 	// CREATE TEMP WORKING DIR
@@ -1635,7 +1624,7 @@ func createBuilder(t *testing.T, pack *invoke.PackInvoker, runImageMirror, lifec
 	defer os.RemoveAll(tmpDir)
 
 	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
+	buildpacksDir := buildpacksDir(lifecycle.BuildpackAPIVersion())
 	t.Log("using buildpacks from: ", buildpacksDir)
 	h.RecursiveCopy(t, buildpacksDir, tmpDir)
 
@@ -1662,7 +1651,7 @@ func createBuilder(t *testing.T, pack *invoke.PackInvoker, runImageMirror, lifec
 		packageImageName = packageBuildpackAsImage(t,
 			pack,
 			pack.FixtureManager().FixtureLocation("package.toml"),
-			lifecycleDescriptor,
+			lifecycle,
 			[]string{"simple-layers-buildpack"},
 		)
 
@@ -1672,12 +1661,12 @@ func createBuilder(t *testing.T, pack *invoke.PackInvoker, runImageMirror, lifec
 	// ADD lifecycle
 	var lifecycleURI string
 	var lifecycleVersion string
-	if lifecyclePath != "" {
-		lifecycleURI = strings.ReplaceAll(lifecyclePath, `\`, `\\`)
+	if lifecycle.HasLocation() {
+		lifecycleURI = lifecycle.EscapedPath()
 		t.Logf("adding lifecycle path '%s' to builder config", lifecycleURI)
 	} else {
-		t.Logf("adding lifecycle version '%s' to builder config", lifecycleDescriptor.Info.Version.String())
-		lifecycleVersion = lifecycleDescriptor.Info.Version.String()
+		lifecycleVersion = lifecycle.Version()
+		t.Logf("adding lifecycle version '%s' to builder config", lifecycleVersion)
 	}
 
 	// RENDER builder.toml
@@ -1722,11 +1711,11 @@ func createBuilder(t *testing.T, pack *invoke.PackInvoker, runImageMirror, lifec
 	return bldr, nil
 }
 
-func packageBuildpackAsImage(t *testing.T, pack *invoke.PackInvoker, configLocation string, lifecycleDescriptor builder.LifecycleDescriptor, buildpacks []string) string {
+func packageBuildpackAsImage(t *testing.T, pack *invoke.PackInvoker, configLocation string, lifecycle config.LifecycleAsset, buildpacks []string) string {
 	tmpDir, err := ioutil.TempDir("", "package-image")
 	h.AssertNil(t, err)
 
-	outputImage := packageBuildpack(t, pack, configLocation, tmpDir, "image", lifecycleDescriptor, buildpacks)
+	outputImage := packageBuildpack(t, pack, configLocation, tmpDir, "image", lifecycle, buildpacks)
 
 	// REGISTER CLEANUP
 	key := taskKey("package-buildpack", outputImage)
@@ -1737,11 +1726,11 @@ func packageBuildpackAsImage(t *testing.T, pack *invoke.PackInvoker, configLocat
 	return outputImage
 }
 
-func packageBuildpackAsFile(t *testing.T, pack *invoke.PackInvoker, configLocation, tmpDir string, lifecycleDescriptor builder.LifecycleDescriptor, buildpacks []string) string {
-	return packageBuildpack(t, pack, configLocation, tmpDir, "file", lifecycleDescriptor, buildpacks)
+func packageBuildpackAsFile(t *testing.T, pack *invoke.PackInvoker, configLocation, tmpDir string, lifecycle config.LifecycleAsset, buildpacks []string) string {
+	return packageBuildpack(t, pack, configLocation, tmpDir, "file", lifecycle, buildpacks)
 }
 
-func packageBuildpack(t *testing.T, pack *invoke.PackInvoker, configLocation, tmpDir, outputFormat string, lifecycleDescriptor builder.LifecycleDescriptor, buildpacks []string) string {
+func packageBuildpack(t *testing.T, pack *invoke.PackInvoker, configLocation, tmpDir, outputFormat string, lifecycle config.LifecycleAsset, buildpacks []string) string {
 	t.Helper()
 	t.Log("creating package image...")
 
@@ -1750,7 +1739,7 @@ func packageBuildpack(t *testing.T, pack *invoke.PackInvoker, configLocation, tm
 	h.AssertNil(t, err)
 
 	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
+	buildpacksDir := buildpacksDir(lifecycle.BuildpackAPIVersion())
 	t.Log("using buildpacks from: ", buildpacksDir)
 	h.RecursiveCopy(t, buildpacksDir, tmpDir)
 
