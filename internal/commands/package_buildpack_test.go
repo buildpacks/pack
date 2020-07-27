@@ -116,7 +116,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("package-config is specified", func() {
-			it("logs warning and works", func() {
+			it("errors with a descriptive message", func() {
 				outBuf := &bytes.Buffer{}
 
 				config := &packageCommandConfig{
@@ -132,8 +132,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				cmd.SetArgs([]string{config.imageName, "--package-config", config.configPath})
 
 				err := cmd.Execute()
-				h.AssertNil(t, err)
-				h.AssertContains(t, outBuf.String(), "Flag --package-config has been deprecated, please use --config instead")
+				h.AssertError(t, err, "unknown flag: --package-config")
 			})
 		})
 
