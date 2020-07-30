@@ -13,6 +13,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/internal/api"
+
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
@@ -85,9 +87,22 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
   },
   "buildpacks": [
     {
+      "id": "test.nested",
+	  "version": "test.nested.version",
+	  "homepage": "http://geocities.com/top-bp"
+	},
+	{
       "id": "test.bp.one",
-	  "version": "1.0.0",
+	  "version": "test.bp.one.version",
 	  "homepage": "http://geocities.com/cool-bp"
+    },
+	{
+      "id": "test.bp.two",
+	  "version": "test.bp.two.version"
+    },
+	{
+      "id": "test.bp.two",
+	  "version": "test.bp.two.version"
     }
   ],
   "lifecycle": {"version": "1.2.3"},
@@ -96,12 +111,78 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertNil(t, builderImage.SetLabel(
 							"io.buildpacks.buildpack.order",
-							`[{"group": [{"id": "buildpack-1-id", "optional": false}, {"id": "buildpack-2-id", "version": "buildpack-2-version-1", "optional": true}]}]`,
+							`[
+	{
+	  "group": 
+		[
+		  {
+			"id": "test.nested",
+			"version": "test.nested.version",
+			"optional": false
+		  },
+		  {
+			"id": "test.bp.two",
+			"optional": true
+		  }
+		]
+	}
+]`,
 						))
+
+						h.AssertNil(t, builderImage.SetLabel(
+							"io.buildpacks.buildpack.layers",
+							`{
+  "test.nested": {
+    "test.nested.version": {
+      "api": "0.2",
+      "order": [
+        {
+          "group": [
+            {
+              "id": "test.bp.one",
+              "version": "test.bp.one.version"
+            },
+            {
+              "id": "test.bp.two",
+              "version": "test.bp.two.version"
+            }
+          ]
+        }
+      ],
+      "layerDiffID": "sha256:test.nested.sha256",
+	  "homepage": "http://geocities.com/top-bp"
+    }
+  },
+  "test.bp.one": {
+    "test.bp.one.version": {
+      "api": "0.2",
+      "stacks": [
+        {
+          "id": "test.stack.id"
+        }
+      ],
+      "layerDiffID": "sha256:test.bp.one.sha256",
+	  "homepage": "http://geocities.com/cool-bp"
+    }
+  },
+ "test.bp.two": {
+    "test.bp.two.version": {
+      "api": "0.2",
+      "stacks": [
+        {
+          "id": "test.stack.id"
+        }
+      ],
+      "layerDiffID": "sha256:test.bp.two.sha256"
+    }
+  }
+}`))
 					})
 
 					it("returns the builder with the given name with information from the label", func() {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+						apiVersion, err := api.NewVersion("0.2")
 						h.AssertNil(t, err)
 
 						want := BuilderInfo{
@@ -112,22 +193,83 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 							RunImageMirrors: []string{"gcr.io/some/default"},
 							Buildpacks: []dist.BuildpackInfo{
 								dist.BuildpackInfo{
+									ID:       "test.nested",
+									Version:  "test.nested.version",
+									Homepage: "http://geocities.com/top-bp",
+								},
+								dist.BuildpackInfo{
 									ID:       "test.bp.one",
-									Version:  "1.0.0",
+									Version:  "test.bp.one.version",
 									Homepage: "http://geocities.com/cool-bp",
+								},
+								dist.BuildpackInfo{
+									ID:      "test.bp.two",
+									Version: "test.bp.two.version",
 								},
 							},
 							Order: dist.Order{
 								{
 									Group: []dist.BuildpackRef{
 										{
-											BuildpackInfo: dist.BuildpackInfo{ID: "buildpack-1-id"},
+											BuildpackInfo: dist.BuildpackInfo{ID: "test.nested", Version: "test.nested.version"},
 											Optional:      false,
 										},
 										{
-											BuildpackInfo: dist.BuildpackInfo{ID: "buildpack-2-id", Version: "buildpack-2-version-1"},
+											BuildpackInfo: dist.BuildpackInfo{ID: "test.bp.two"},
 											Optional:      true,
 										},
+									},
+								},
+							},
+							BuildpackLayers: map[string]map[string]dist.BuildpackLayerInfo{
+								"test.nested": map[string]dist.BuildpackLayerInfo{
+									"test.nested.version": {
+										API: apiVersion,
+										Order: dist.Order{
+											{
+												Group: []dist.BuildpackRef{
+													{
+														BuildpackInfo: dist.BuildpackInfo{
+															ID:      "test.bp.one",
+															Version: "test.bp.one.version",
+														},
+														Optional: false,
+													},
+													{
+														BuildpackInfo: dist.BuildpackInfo{
+															ID:      "test.bp.two",
+															Version: "test.bp.two.version",
+														},
+														Optional: false,
+													},
+												},
+											},
+										},
+										LayerDiffID: "sha256:test.nested.sha256",
+										Homepage:    "http://geocities.com/top-bp",
+									},
+								},
+								"test.bp.one": map[string]dist.BuildpackLayerInfo{
+									"test.bp.one.version": {
+										API: apiVersion,
+										Stacks: []dist.Stack{
+											{
+												ID: "test.stack.id",
+											},
+										},
+										LayerDiffID: "sha256:test.bp.one.sha256",
+										Homepage:    "http://geocities.com/cool-bp",
+									},
+								},
+								"test.bp.two": map[string]dist.BuildpackLayerInfo{
+									"test.bp.two.version": {
+										API: apiVersion,
+										Stacks: []dist.Stack{
+											{
+												ID: "test.stack.id",
+											},
+										},
+										LayerDiffID: "sha256:test.bp.two.sha256",
 									},
 								},
 							},
@@ -148,17 +290,21 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					when("the image has no mixins", func() {
-						it.Before(func() {
-							h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.mixins", ""))
-						})
+						when("no depth argument is given", func() {
 
-						it("sets empty stack mixins", func() {
-							builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-							h.AssertNil(t, err)
-							h.AssertEq(t, builderInfo.Mixins, []string{})
+							it.Before(func() {
+								h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.mixins", ""))
+							})
+
+							it("sets empty stack mixins", func() {
+								builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
+								h.AssertNil(t, err)
+								h.AssertEq(t, builderInfo.Mixins, []string{})
+							})
 						})
 					})
 				})
+
 			})
 		}
 	})

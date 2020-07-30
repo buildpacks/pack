@@ -20,8 +20,14 @@ type BuilderInfo struct {
 	RunImageMirrors []string
 	Buildpacks      []dist.BuildpackInfo
 	Order           dist.Order
+	BuildpackLayers dist.BuildpackLayers
 	Lifecycle       builder.LifecycleDescriptor
 	CreatedBy       builder.CreatorMetadata
+}
+
+type buildpackInfoKey struct {
+	ID      string
+	Version string
 }
 
 func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) {
@@ -48,15 +54,50 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 		}
 	}
 
+	var bpLayers dist.BuildpackLayers
+	if _, err := dist.GetLabel(img, dist.BuildpackLayersLabel, &bpLayers); err != nil {
+		return nil, err
+	}
+
 	return &BuilderInfo{
 		Description:     bldr.Description(),
 		Stack:           bldr.StackID,
 		Mixins:          append(commonMixins, buildMixins...),
 		RunImage:        bldr.Stack().RunImage.Image,
 		RunImageMirrors: bldr.Stack().RunImage.Mirrors,
-		Buildpacks:      bldr.Buildpacks(),
+		Buildpacks:      uniqueBuildpacks(bldr.Buildpacks()),
 		Order:           bldr.Order(),
+		BuildpackLayers: bpLayers,
 		Lifecycle:       bldr.LifecycleDescriptor(),
 		CreatedBy:       bldr.CreatedBy(),
 	}, nil
+}
+
+func uniqueBuildpacks(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
+	buildpacksSet := map[buildpackInfoKey]int{}
+	homePageSet := map[buildpackInfoKey]string{}
+	for _, buildpack := range buildpacks {
+		key := buildpackInfoKey{
+			ID:      buildpack.ID,
+			Version: buildpack.Version,
+		}
+		_, ok := buildpacksSet[key]
+		switch {
+		case ok && buildpack.Homepage != "":
+			homePageSet[key] = buildpack.Homepage
+		case !ok:
+			buildpacksSet[key] = len(buildpacksSet)
+			homePageSet[key] = buildpack.Homepage
+		}
+	}
+	result := make([]dist.BuildpackInfo, len(buildpacksSet))
+	for buildpackKey, index := range buildpacksSet {
+		result[index] = dist.BuildpackInfo{
+			ID:       buildpackKey.ID,
+			Version:  buildpackKey.Version,
+			Homepage: homePageSet[buildpackKey],
+		}
+	}
+
+	return result
 }

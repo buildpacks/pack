@@ -3,7 +3,9 @@ package commands_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"testing"
+	"text/tabwriter"
 
 	"github.com/Masterminds/semver"
 	"github.com/golang/mock/gomock"
@@ -31,6 +33,11 @@ func TestInspectBuilderCommand(t *testing.T) {
 }
 
 func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
+	apiVersion, err := api.NewVersion("0.2")
+	if err != nil {
+		t.Fail()
+	}
+
 	var (
 		command        *cobra.Command
 		logger         logging.Logger
@@ -38,12 +45,84 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController *gomock.Controller
 		mockClient     *testmocks.MockPackClient
 		cfg            config.Config
-		buildpack1Info = dist.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
-		buildpack2Info = dist.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0", Homepage: "http://geocities.com/cool-bp"}
-		buildpacks     = []dist.BuildpackInfo{
-			buildpack1Info,
-			buildpack2Info,
+		//buildpack1Info = dist.BuildpackInfo{ID: "test.bp.one", Version: "1.0.0"}
+		//buildpack2Info = dist.BuildpackInfo{ID: "test.bp.two", Version: "2.0.0", Homepage: "http://geocities.com/cool-bp"}
+		buildpacks = []dist.BuildpackInfo{
+			dist.BuildpackInfo{
+				ID:       "test.nested",
+				Version:  "test.nested.version",
+				Homepage: "http://geocities.com/top-bp",
+			},
+			dist.BuildpackInfo{
+				ID:       "test.bp.one",
+				Version:  "test.bp.one.version",
+				Homepage: "http://geocities.com/cool-bp",
+			},
+			dist.BuildpackInfo{
+				ID:      "test.bp.two",
+				Version: "test.bp.two.version",
+			},
 		}
+		order = dist.Order{
+			{
+				Group: []dist.BuildpackRef{
+					{
+						BuildpackInfo: dist.BuildpackInfo{ID: "test.nested", Version: "test.nested.version"},
+						Optional:      false,
+					},
+					{
+						BuildpackInfo: dist.BuildpackInfo{ID: "test.bp.two"},
+						Optional:      true,
+					},
+				},
+			},
+		}
+		buildpackLayers = map[string]map[string]dist.BuildpackLayerInfo{
+			"test.nested": map[string]dist.BuildpackLayerInfo{
+				"test.nested.version": {
+					API: apiVersion,
+					Order: dist.Order{
+						{
+							Group: []dist.BuildpackRef{
+								{
+									BuildpackInfo: dist.BuildpackInfo{
+										ID:      "test.bp.one",
+										Version: "test.bp.one.version",
+									},
+									Optional: false,
+								},
+							},
+						},
+					},
+					LayerDiffID: "sha256:test.nested.sha256",
+					Homepage:    "http://geocities.com/top-bp",
+				},
+			},
+			"test.bp.one": map[string]dist.BuildpackLayerInfo{
+				"test.bp.one.version": {
+					API: apiVersion,
+					Stacks: []dist.Stack{
+						{
+							ID: "test.stack.id",
+						},
+					},
+					LayerDiffID: "sha256:test.bp.one.sha256",
+					Homepage:    "http://geocities.com/cool-bp",
+				},
+			},
+			"test.bp.two": map[string]dist.BuildpackLayerInfo{
+				"test.bp.two.version": {
+					API: apiVersion,
+					Stacks: []dist.Stack{
+						{
+							ID: "test.stack.id",
+						},
+					},
+					LayerDiffID: "sha256:test.bp.two.sha256",
+				},
+			},
+		}
+
 		remoteInfo = &pack.BuilderInfo{
 			Description:     "Some remote description",
 			Stack:           "test.stack.id",
@@ -51,11 +130,52 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			RunImage:        "some/run-image",
 			RunImageMirrors: []string{"first/default", "second/default"},
 			Buildpacks:      buildpacks,
-			Order: dist.Order{
-				{Group: []dist.BuildpackRef{
-					{BuildpackInfo: buildpack1Info, Optional: true},
-					{BuildpackInfo: dist.BuildpackInfo{ID: buildpack2Info.ID}},
-				}}},
+			Order:           order,
+			BuildpackLayers: map[string]map[string]dist.BuildpackLayerInfo{
+				"test.nested": map[string]dist.BuildpackLayerInfo{
+					"test.nested.version": {
+						API: apiVersion,
+						Order: dist.Order{
+							{
+								Group: []dist.BuildpackRef{
+									{
+										BuildpackInfo: dist.BuildpackInfo{
+											ID:      "test.bp.one",
+											Version: "test.bp.one.version",
+										},
+										Optional: false,
+									},
+								},
+							},
+						},
+						LayerDiffID: "sha256:test.nested.sha256",
+						Homepage:    "http://geocities.com/top-bp",
+					},
+				},
+				"test.bp.one": map[string]dist.BuildpackLayerInfo{
+					"test.bp.one.version": {
+						API: apiVersion,
+						Stacks: []dist.Stack{
+							{
+								ID: "test.stack.id",
+							},
+						},
+						LayerDiffID: "sha256:test.bp.one.sha256",
+						Homepage:    "http://geocities.com/cool-bp",
+					},
+				},
+				"test.bp.two": map[string]dist.BuildpackLayerInfo{
+					"test.bp.two.version": {
+						API: apiVersion,
+						Stacks: []dist.Stack{
+							{
+								ID: "test.stack.id",
+							},
+						},
+						LayerDiffID: "sha256:test.bp.two.sha256",
+					},
+				},
+			},
 			Lifecycle: builder.LifecycleDescriptor{
 				Info: builder.LifecycleInfo{
 					Version: &builder.Version{
@@ -79,10 +199,8 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			RunImage:        "some/run-image",
 			RunImageMirrors: []string{"first/local-default", "second/local-default"},
 			Buildpacks:      buildpacks,
-			Order: dist.Order{
-				{Group: []dist.BuildpackRef{{BuildpackInfo: buildpack1Info}}},
-				{Group: []dist.BuildpackRef{{BuildpackInfo: dist.BuildpackInfo{ID: buildpack2Info.ID}, Optional: true}}},
-			},
+			Order:           order,
+			BuildpackLayers: buildpackLayers,
 			Lifecycle: builder.LifecycleDescriptor{
 				Info: builder.LifecycleInfo{
 					Version: &builder.Version{
@@ -126,14 +244,17 @@ Run Images:
   second/default
 
 Buildpacks:
-  ID                 VERSION        HOMEPAGE
-  test.bp.one        1.0.0          
-  test.bp.two        2.0.0          http://geocities.com/cool-bp
+  ID                 VERSION                    HOMEPAGE
+  test.nested        test.nested.version        http://geocities.com/top-bp
+  test.bp.one        test.bp.one.version        http://geocities.com/cool-bp
+  test.bp.two        test.bp.two.version        
 
 Detection Order:
   Group #1:
-    test.bp.one@1.0.0    (optional)
-    test.bp.two          
+    test.nested@test.nested.version    
+      Group #2:
+        test.bp.one@test.bp.one.version    
+    test.bp.two                            (optional)
 `
 		localOutput = `
 LOCAL:
@@ -162,15 +283,17 @@ Run Images:
   second/local-default
 
 Buildpacks:
-  ID                 VERSION        HOMEPAGE
-  test.bp.one        1.0.0          
-  test.bp.two        2.0.0          http://geocities.com/cool-bp
+  ID                 VERSION                    HOMEPAGE
+  test.nested        test.nested.version        http://geocities.com/top-bp
+  test.bp.one        test.bp.one.version        http://geocities.com/cool-bp
+  test.bp.two        test.bp.two.version        
 
 Detection Order:
   Group #1:
-    test.bp.one@1.0.0    
-  Group #2:
-    test.bp.two    (optional)
+    test.nested@test.nested.version    
+      Group #2:
+        test.bp.one@test.bp.one.version    
+    test.bp.two                            (optional)
 `
 	)
 	it.Before(func() {
@@ -404,6 +527,215 @@ Stack:
 					h.AssertMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
 					h.AssertMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks:18'`)
 				})
+			})
+		})
+	})
+	when("OrderOutputWriter", func() {
+		var (
+			tabWriter       *tabwriter.Writer
+			o               commands.OrderOutputWriter
+			buf             *bytes.Buffer
+			order           dist.Order
+			buildpackLayers dist.BuildpackLayers
+		)
+
+		it.Before(func() {
+			buf = bytes.NewBuffer(nil)
+			tabWriter = new(tabwriter.Writer).Init(buf, 0, 0, 4, ' ', 0)
+			order = dist.Order{
+				{
+					Group: []dist.BuildpackRef{
+						{
+							BuildpackInfo: dist.BuildpackInfo{ID: "test.top.nested", Version: "test.top.nested.version"},
+							Optional:      false,
+						},
+						{
+							BuildpackInfo: dist.BuildpackInfo{ID: "test.bp.two"},
+							Optional:      true,
+						},
+					},
+				},
+			}
+			buildpackLayers = map[string]map[string]dist.BuildpackLayerInfo{
+				"test.top.nested": map[string]dist.BuildpackLayerInfo{
+					"test.top.nested.version": {
+						API: apiVersion,
+						Order: dist.Order{
+							{
+								Group: []dist.BuildpackRef{
+									{
+										BuildpackInfo: dist.BuildpackInfo{
+											ID:      "test.nested",
+											Version: "test.nested.version",
+										},
+										Optional: false,
+									},
+									{
+										BuildpackInfo: dist.BuildpackInfo{
+											ID:      "test.bp.three",
+											Version: "test.bp.three.version",
+										},
+										Optional: true,
+									},
+								},
+							},
+						},
+						LayerDiffID: "sha256:test.top.nested.sha256",
+					},
+				},
+				"test.nested": map[string]dist.BuildpackLayerInfo{
+					"test.nested.version": {
+						API: apiVersion,
+						Order: dist.Order{
+							{
+								Group: []dist.BuildpackRef{
+									{
+										BuildpackInfo: dist.BuildpackInfo{
+											ID:      "test.bp.one",
+											Version: "test.bp.one.version",
+										},
+										Optional: true,
+									},
+								},
+							},
+						},
+						LayerDiffID: "sha256:test.nested.sha256",
+						Homepage:    "http://geocities.com/top-bp",
+					},
+				},
+				"test.bp.one": map[string]dist.BuildpackLayerInfo{
+					"test.bp.one.version": {
+						API: apiVersion,
+						Stacks: []dist.Stack{
+							{
+								ID: "test.stack.id",
+							},
+						},
+						LayerDiffID: "sha256:test.bp.one.sha256",
+						Homepage:    "http://geocities.com/cool-bp",
+					},
+				},
+				"test.bp.two": map[string]dist.BuildpackLayerInfo{
+					"test.bp.two.version": {
+						API: apiVersion,
+						Stacks: []dist.Stack{
+							{
+								ID: "test.stack.id",
+							},
+						},
+						LayerDiffID: "sha256:test.bp.two.sha256",
+					},
+				},
+				"test.bp.three": map[string]dist.BuildpackLayerInfo{
+					"test.bp.three.version": {
+						API: apiVersion,
+						Stacks: []dist.Stack{
+							{
+								ID: "test.stack.id",
+							},
+						},
+						LayerDiffID: "sha256:test.bp.three.sha256",
+					},
+				},
+			}
+
+			o = commands.NewOrderOutputWriter(tabWriter, order, buildpackLayers)
+		})
+		when("GenerateOutput", func() {
+			it("succeeds when no depth is provided", func() {
+				err := o.GenerateOutput(0)
+				h.AssertNil(t, err)
+
+				h.AssertTrimmedContains(t, buf.String(), `  Group #1:
+    test.top.nested@test.top.nested.version    
+      Group #2:
+        test.nested@test.nested.version    
+          Group #3:
+            test.bp.one@test.bp.one.version    (optional)
+        test.bp.three@test.bp.three.version    (optional)
+    test.bp.two                                (optional)
+`)
+			})
+			it("succeeds when a depth is provided", func() {
+				err := o.GenerateOutput(2)
+				h.AssertNil(t, err)
+
+				fmt.Println("output")
+				fmt.Println(buf.String())
+
+				h.AssertTrimmedContains(t, buf.String(), `  Group #1:
+    test.top.nested@test.top.nested.version    
+      Group #2:
+        test.nested@test.nested.version        
+        test.bp.three@test.bp.three.version    (optional)
+    test.bp.two                                (optional)
+`)
+			})
+		})
+		// TODO: probably impossible but investigate this.
+		when("there is a cyclic buildpack dependency in the builder", func() {
+			it.Before(func() {
+				buildpackLayers = map[string]map[string]dist.BuildpackLayerInfo{
+					"test.top.nested": map[string]dist.BuildpackLayerInfo{
+						"test.top.nested.version": {
+							API: apiVersion,
+							Order: dist.Order{
+								{
+									Group: []dist.BuildpackRef{
+										{
+											BuildpackInfo: dist.BuildpackInfo{
+												ID:      "test.nested",
+												Version: "test.nested.version",
+											},
+											Optional: false,
+										},
+									},
+								},
+							},
+							LayerDiffID: "sha256:test.top.nested.sha256",
+						},
+					},
+					"test.nested": map[string]dist.BuildpackLayerInfo{
+						"test.nested.version": {
+							API: apiVersion,
+							Order: dist.Order{
+								{
+									Group: []dist.BuildpackRef{
+										{
+											BuildpackInfo: dist.BuildpackInfo{
+												// cyclic dependency here
+												ID:      "test.top.nested",
+												Version: "test.top.nested.version",
+											},
+											Optional: false,
+										},
+									},
+								},
+							},
+							LayerDiffID: "sha256:test.nested.sha256",
+							Homepage:    "http://geocities.com/top-bp",
+						},
+					},
+					"test.bp.two": map[string]dist.BuildpackLayerInfo{
+						"test.bp.two.version": {
+							API: apiVersion,
+							Stacks: []dist.Stack{
+								{
+									ID: "test.stack.id",
+								},
+							},
+							LayerDiffID: "sha256:test.bp.two.sha256",
+						},
+					},
+				}
+				o = commands.NewOrderOutputWriter(tabWriter, order, buildpackLayers)
+
+			})
+			it("succeeds", func() {
+
+				err := o.GenerateOutput(0)
+
+				h.AssertError(t, err, "circular dependency detected in group ordering")
 			})
 		})
 	})

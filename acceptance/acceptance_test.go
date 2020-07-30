@@ -1427,6 +1427,89 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 			})
 
 			when("inspect-builder", func() {
+				when("inspecting a nested builder", func() {
+					it.Before(func() {
+						// create our nested builder
+						h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+
+						// create a task, handled by a 'task manager' which executes our pack commands during tests.
+						// looks like this is used to de-dup tasks
+
+						key := taskKey(
+							"create-complex-builder",
+							append(
+								[]string{runImageMirror, createBuilderPackConfig.Path(), lifecyclePath},
+								createBuilderPackConfig.FixturePaths()...,
+							)...,
+						)
+						// run task on taskmanager and save output, in case there are future calls to the same task
+						// likely all our changes need to go on the createBuilderPack.
+						value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
+							return createComplexBuilder(t, createBuilderPack, runImageMirror, lifecyclePath, lifecycleDescriptor)
+						})
+						h.AssertNil(t, err)
+
+						// register task to be run to 'clean up' a task
+						suiteManager.RegisterCleanUp("clean-"+key, func() error {
+							return h.DockerRmi(dockerCli, value)
+						})
+						builderName = value
+					})
+
+					// TODO: update name
+					it("displays additional group ordering", func() {
+						output := pack.RunSuccessfully(
+							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+						h.AssertEq(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
+
+						output = pack.RunSuccessfully("inspect-builder", builderName)
+
+						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
+							"inspect_%s_builder_nested_output.txt",
+							createBuilderPack.Version(),
+							"inspect_builder_nested_output.txt",
+							map[string]interface{}{
+								"builder_name":          builderName,
+								"lifecycle_version":     lifecycleDescriptor.Info.Version.String(),
+								"buildpack_api_version": lifecycleDescriptor.API.BuildpackVersion.String(),
+								"platform_api_version":  lifecycleDescriptor.API.PlatformVersion.String(),
+								"run_image_mirror":      runImageMirror,
+								"pack_version":          createBuilderPack.Version(),
+								"trusted":               "No",
+							},
+						)
+
+						h.AssertTrimmedEq(t, output, expectedOutput)
+					})
+
+					//TODO: update name
+					it("provides info up to depth", func() {
+						output := pack.RunSuccessfully(
+							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+						h.AssertEq(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
+
+						output = pack.RunSuccessfully("inspect-builder", "--depth", "2", builderName)
+
+						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
+							"inspect_%s_builder_nested_depth_2_output.txt",
+							createBuilderPack.Version(),
+							"inspect_builder_nested_depth_2_output.txt",
+							map[string]interface{}{
+								"builder_name":          builderName,
+								"lifecycle_version":     lifecycleDescriptor.Info.Version.String(),
+								"buildpack_api_version": lifecycleDescriptor.API.BuildpackVersion.String(),
+								"platform_api_version":  lifecycleDescriptor.API.PlatformVersion.String(),
+								"run_image_mirror":      runImageMirror,
+								"pack_version":          createBuilderPack.Version(),
+								"trusted":               "No",
+							},
+						)
+
+						h.AssertTrimmedEq(t, output, expectedOutput)
+					})
+				})
 				it("displays configuration for a builder (local and remote)", func() {
 					output := pack.RunSuccessfully(
 						"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
@@ -1624,6 +1707,133 @@ func buildpacksDir(bpAPIVersion api.Version) string {
 	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion.String())
 }
 
+func createComplexBuilder(t *testing.T, pack *invoke.PackInvoker, runImageMirror, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) (string, error) {
+	t.Log("creating complex builder image...")
+
+	// CREATE TEMP WORKING DIR
+	tmpDir, err := ioutil.TempDir("", "create-complex-test-builder")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// DETERMINE TEST DATA
+	buildpacksDir := buildpacksDir(*lifecycleDescriptor.API.BuildpackVersion)
+	t.Log("using buildpacks from: ", buildpacksDir)
+	h.RecursiveCopy(t, buildpacksDir, tmpDir)
+
+	// ARCHIVE BUILDPACKS
+	buildpacks := []string{
+		"noop-buildpack",
+		"noop-buildpack-2",
+		"other-stack-buildpack",
+		"read-env-buildpack",
+	}
+
+	for _, v := range buildpacks {
+		tgz := h.CreateTGZ(t, filepath.Join(buildpacksDir, v), "./", 0755)
+		err := os.Rename(tgz, filepath.Join(tmpDir, v+".tgz"))
+		if err != nil {
+			return "", err
+		}
+	}
+	buildpackImages := []string{
+		"simple-layers-buildpack",
+		"nested-level-2-buildpack",
+		"nested-level-1-buildpack",
+	}
+
+	buildpackImageToName := map[string]interface{}{}
+
+	//var packageImageNames []string
+	var packageImageName string
+	var packageId string
+
+	if dockerHostOS() != "windows" {
+		for _, buildpackName := range buildpackImages {
+
+			//template toml file
+			packageFilePath := buildpackName + "_package.toml"
+			packageFile, err := os.OpenFile(filepath.Join(tmpDir, packageFilePath), os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.ModePerm)
+			if err != nil {
+				return "", err
+			}
+
+			pack.FixtureManager().TemplateFixtureToFile(packageFilePath, packageFile, buildpackImageToName)
+
+			packageImageName = packageBuildpackAsImage(t,
+				pack,
+				filepath.Join(tmpDir, packageFilePath),
+				lifecycleDescriptor,
+				[]string{buildpackName},
+			)
+
+			buildpackKey := strings.ReplaceAll(buildpackName, "-", "_")
+			buildpackImageToName[buildpackKey] = packageImageName
+		}
+
+		packageId = "simple/nested-level-1"
+	}
+
+	// ADD lifecycle
+	var lifecycleURI string
+	var lifecycleVersion string
+	if lifecyclePath != "" {
+		lifecycleURI = strings.ReplaceAll(lifecyclePath, `\`, `\\`)
+		t.Logf("adding lifecycle path '%s' to builder config", lifecycleURI)
+	} else {
+		t.Logf("adding lifecycle version '%s' to builder config", lifecycleDescriptor.Info.Version.String())
+		lifecycleVersion = lifecycleDescriptor.Info.Version.String()
+	}
+
+	// RENDER builder.toml
+	builderConfigFile, err := ioutil.TempFile(tmpDir, "nested_builder.toml")
+	if err != nil {
+		return "", err
+	}
+
+	templateMapping := map[string]interface{}{
+		"package_image_name": packageImageName,
+		"package_id":         packageId,
+		"run_image_mirror":   runImageMirror,
+		"lifecycle_uri":      lifecycleURI,
+		"lifecycle_version":  lifecycleVersion,
+	}
+
+	for key, val := range buildpackImageToName {
+		templateMapping[key] = val
+	}
+
+	pack.FixtureManager().TemplateFixtureToFile(
+		"nested_builder.toml",
+		builderConfigFile,
+		templateMapping,
+	)
+
+	err = builderConfigFile.Close()
+	if err != nil {
+		return "", err
+	}
+
+	// NAME BUILDER
+	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
+
+	// CREATE BUILDER
+	output, err := pack.Run(
+		"create-builder", bldr,
+		"-b", builderConfigFile.Name(),
+		"--no-color",
+	)
+	if err != nil {
+		return "", errors.Wrapf(err, "pack failed with output %s", output)
+	}
+
+	h.AssertContains(t, output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
+	h.AssertNil(t, h.PushImage(dockerCli, bldr, registryConfig))
+
+	return bldr, nil
+}
+
 func createBuilder(t *testing.T, pack *invoke.PackInvoker, runImageMirror, lifecyclePath string, lifecycleDescriptor builder.LifecycleDescriptor) (string, error) {
 	t.Log("creating builder image...")
 
@@ -1761,7 +1971,7 @@ func packageBuildpack(t *testing.T, pack *invoke.PackInvoker, configLocation, tm
 		h.AssertNil(t, err)
 	}
 
-	packageConfig := filepath.Join(tmpDir, "package.toml")
+	packageConfig := filepath.Join(tmpDir, buildpacks[len(buildpacks)-1]+"_package.toml")
 
 	// COPY config to temp package.toml
 	h.CopyFile(t, configLocation, packageConfig)

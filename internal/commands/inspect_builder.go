@@ -18,11 +18,16 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+type InspectBuilderFlags struct {
+	Depth int
+}
+
 func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+	var flags InspectBuilderFlags
 	cmd := &cobra.Command{
 		Use:   "inspect-builder <builder-image-name>",
 		Short: "Show information about a builder",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.MaximumNArgs(2),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if cfg.DefaultBuilder == "" && len(args) == 0 {
 				suggestSettingBuilder(logger, client)
@@ -35,8 +40,8 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 			}
 
 			verbose := logger.IsVerbose()
-			presentRemote, remoteOutput, remoteWarnings, remoteErr := inspectBuilderOutput(client, cfg, imageName, false, verbose)
-			presentLocal, localOutput, localWarnings, localErr := inspectBuilderOutput(client, cfg, imageName, true, verbose)
+			presentRemote, remoteOutput, remoteWarnings, remoteErr := inspectBuilderOutput(client, cfg, imageName, false, verbose, flags.Depth)
+			presentLocal, localOutput, localWarnings, localErr := inspectBuilderOutput(client, cfg, imageName, true, verbose, flags.Depth)
 
 			if !presentRemote && !presentLocal {
 				return errors.New(fmt.Sprintf("Unable to find builder '%s' locally or remotely.\n", imageName))
@@ -69,11 +74,12 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 			return nil
 		}),
 	}
+	cmd.Flags().IntVarP(&flags.Depth, "depth", "d", 0, "Detection Order inspection depth")
 	AddHelpFlag(cmd, "inspect-builder")
 	return cmd
 }
 
-func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string, local bool, verbose bool) (present bool, output string, warning []string, err error) {
+func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string, local bool, verbose bool, depth int) (present bool, output string, warning []string, err error) {
 	source := "remote"
 	if local {
 		source = "local"
@@ -89,7 +95,7 @@ func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string
 	}
 
 	var buf bytes.Buffer
-	warnings, err := generateBuilderOutput(&buf, imageName, cfg, *info, verbose)
+	warnings, err := generateBuilderOutput(&buf, imageName, cfg, *info, verbose, depth)
 	if err != nil {
 		return true, "", nil, errors.Wrapf(err, "writing output for %s image '%s'", source, imageName)
 	}
@@ -97,7 +103,7 @@ func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string
 	return true, buf.String(), warnings, nil
 }
 
-func generateBuilderOutput(writer io.Writer, imageName string, cfg config.Config, info pack.BuilderInfo, verbose bool) (warnings []string, err error) {
+func generateBuilderOutput(writer io.Writer, imageName string, cfg config.Config, info pack.BuilderInfo, verbose bool, depth int) (warnings []string, err error) {
 	tpl := template.Must(template.New("").Parse(`
 {{ if ne .Info.Description "" -}}
 Description: {{ .Info.Description }}
@@ -161,7 +167,7 @@ Detection Order:
 		warnings = append(warnings, "Users must supply buildpacks from the host machine")
 	}
 
-	order, err := detectionOrderOutput(info.Order)
+	order, err := detectionOrderOutput(info.Order, info.BuildpackLayers, depth)
 	if err != nil {
 		return nil, err
 	}
@@ -266,33 +272,140 @@ func runImagesOutput(runImage string, mirrors []string, cfg config.Config) (stri
 	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
-func detectionOrderOutput(order dist.Order) (string, error) {
+func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDepth int) (string, error) {
 	buf := strings.Builder{}
-	for i, group := range order {
-		buf.WriteString(fmt.Sprintf("  Group #%d:\n", i+1))
+	tabWriter := new(tabwriter.Writer).Init(&buf, 0, 0, 4, ' ', 0)
+	orderOutputWriter := NewOrderOutputWriter(tabWriter, order, layers)
+	err := orderOutputWriter.GenerateOutput(maxDepth)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(buf.String(), "\n"), nil
+}
 
-		tabWriter := new(tabwriter.Writer).Init(&buf, 0, 0, 4, ' ', 0)
+// generate mock
+type TabWriter interface {
+	Flush() error
+	Write(buf []byte) (n int, err error)
+}
+
+type OrderOutputWriter struct {
+	// turn this into an interface
+	twriter       TabWriter
+	builderLayers dist.BuildpackLayers
+	builderOrder  dist.Order
+	groupCount    int
+	visitedMap    map[string]bool
+}
+
+func NewOrderOutputWriter(twriter TabWriter, builderOrder dist.Order, builderLayers dist.BuildpackLayers) OrderOutputWriter {
+	return OrderOutputWriter{
+		twriter:       twriter,
+		builderOrder:  builderOrder,
+		builderLayers: builderLayers,
+		groupCount:    0,
+		visitedMap:    map[string]bool{},
+	}
+}
+
+func (o *OrderOutputWriter) Reset() {
+	o.groupCount = 0
+	o.visitedMap = map[string]bool{}
+}
+
+func (o *OrderOutputWriter) GenerateOutput(maxDepth int) error {
+	o.Reset()
+
+	defer o.Reset()
+	//all output goes into buffer
+	for _, group := range o.builderOrder {
+		o.groupCount += 1
+		if err := o.genGroupOutput(1); err != nil {
+			return err
+		}
 		for _, bp := range group.Group {
-			var optional string
-			if bp.Optional {
-				optional = "(optional)"
-			}
-
-			bpRef := bp.ID
-			if bp.Version != "" {
-				bpRef += "@" + bp.Version
-			}
-
-			if _, err := fmt.Fprintf(tabWriter, "    %s\t%s\n", bpRef, optional); err != nil {
-				return "", err
+			if err := o.genNestedOutput(bp, 1, maxDepth); err != nil {
+				return err
 			}
 		}
-		if err := tabWriter.Flush(); err != nil {
-			return "", err
+	}
+	return o.twriter.Flush()
+}
+
+func (o *OrderOutputWriter) genNestedOutput(start dist.BuildpackRef, depth, maxDepth int) error {
+	// check for max depth
+
+	// check for cycle
+	key := fmt.Sprintf("%s@%s", start.ID, start.Version)
+	if _, ok := o.visitedMap[key]; ok {
+		return fmt.Errorf("circular dependency detected in group ordering")
+	}
+	o.visitedMap[key] = true
+
+	buildpackEntries, ok := o.builderLayers[start.ID]
+	if !ok {
+		panic(fmt.Errorf("buildpack %s not found in layers map", start.ID))
+	}
+	// get the entry key (if non exists and map length is size 1, then use the present key)
+	entryVersion := start.Version
+
+	// TODO make this more readable, pretty bad right now.
+	if entryVersion == "" && len(buildpackEntries) == 1 {
+		for key, _ := range buildpackEntries {
+			entryVersion = key
+		}
+	}
+	buildpackEntry, ok := buildpackEntries[entryVersion]
+	if !ok {
+		panic(fmt.Errorf("buildpack version %s not found in layers map at %#v", entryVersion, buildpackEntries))
+	}
+
+	o.genBuildpackOutput(start, depth*2)
+
+	if maxDepth != 0 && depth >= maxDepth {
+		return nil
+	}
+
+	if len(buildpackEntry.Order) == 0 {
+		return nil
+	}
+	for _, group := range buildpackEntry.Order {
+		o.groupCount += 1
+		if err := o.genGroupOutput(depth*2 + 1); err != nil {
+			return err
+		}
+		for _, bp := range group.Group {
+			if err := o.genNestedOutput(bp, depth+1, maxDepth); err != nil {
+				return err
+			}
 		}
 	}
 
-	return strings.TrimSuffix(buf.String(), "\n"), nil
+	return nil
+}
+
+func (o *OrderOutputWriter) genBuildpackOutput(buildpack dist.BuildpackRef, indentLevel int) error {
+	var prefix string
+	var optional string
+	if buildpack.Optional {
+		optional = "(optional)"
+	}
+
+	prefix = strings.Repeat("  ", indentLevel)
+
+	bpRef := buildpack.ID
+	if buildpack.Version != "" {
+		bpRef += "@" + buildpack.Version
+	}
+
+	_, err := fmt.Fprintf(o.twriter, "%s%s\t%s\n", prefix, bpRef, optional)
+	return err
+}
+
+func (o *OrderOutputWriter) genGroupOutput(indentLevel int) error {
+	prefix := strings.Repeat("  ", indentLevel)
+	_, err := fmt.Fprintf(o.twriter, "%sGroup #%d:\n", prefix, o.groupCount)
+	return err
 }
 
 func getLocalMirrors(runImage string, cfg config.Config) []string {
