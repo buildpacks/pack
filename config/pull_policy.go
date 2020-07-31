@@ -6,10 +6,10 @@ import "github.com/pkg/errors"
 type PullPolicy int
 
 const (
-	// PullNever images, even if they are not present
-	PullNever PullPolicy = iota
 	// PullAlways images, even if they are present
-	PullAlways
+	PullAlways PullPolicy = iota
+	// PullNever images, even if they are not present
+	PullNever
 	// PullIfNotPresent pulls images if they aren't present
 	PullIfNotPresent
 )

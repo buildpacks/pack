@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
@@ -25,6 +27,7 @@ type CreateBuilderOptions struct {
 	Publish     bool
 	NoPull      bool
 	Registry    string
+	PullPolicy  config.PullPolicy
 }
 
 // CreateBuilder creates a builder
@@ -202,7 +205,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 		case buildpack.PackageLocator:
 			c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(b.ImageName))
 
-			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, b.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, b.ImageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
 			if err != nil {
 				return err
 			}
@@ -219,7 +222,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrapf(err, "locating in registry %s", style.Symbol(b.URI))
 			}
 
-			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, opts.Publish, opts.NoPull)
+			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, opts.Publish, opts.PullPolicy)
 			if err != nil {
 				return errors.Wrapf(err, "extracting from registry %s", style.Symbol(b.URI))
 			}

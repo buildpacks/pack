@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
@@ -666,7 +668,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					opts.Config.Buildpacks[0].URI = "urn:cnb:registry:example/foo@1.1.0"
 
 					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), true, true).Return(nil, errors.New("failed to pull"))
+					mockImageFetcher.EXPECT().NewFetch(gomock.Any(), packageImage.Name(), true, config.PullAlways).Return(nil, errors.New("failed to pull"))
 
 					err := subject.CreateBuilder(context.TODO(), opts)
 					h.AssertError(t, err,
@@ -740,8 +742,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				return url
 			}
 
-			shouldFetchPackageImageWith := func(demon, pull bool) {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), demon, pull).Return(packageImage, nil)
+			shouldFetchPackageImageWith := func(demon bool, pull config.PullPolicy) {
+				mockImageFetcher.EXPECT().NewFetch(gomock.Any(), packageImage.Name(), demon, pull).Return(packageImage, nil)
 			}
 
 			when("package image lives in cnb registry", func() {
@@ -795,6 +797,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = false
 						opts.NoPull = false
+						opts.PullPolicy = config.PullAlways
 						opts.Registry = registryFixture
 						opts.Config.Buildpacks = append(
 							opts.Config.Buildpacks,
@@ -807,7 +810,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						)
 
-						shouldFetchPackageImageWith(true, true)
+						shouldFetchPackageImageWith(true, config.PullAlways)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
 					})
 				})
@@ -829,12 +832,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						Config: pubbldpkg.Config{
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
 						},
-						Publish: true,
+						Publish:    true,
+						PullPolicy: config.PullAlways,
 					}))
 				})
 
 				prepareFetcherWithMissingPackageImage := func() {
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), gomock.Any(), gomock.Any()).Return(nil, image.ErrNotFound)
+					mockImageFetcher.EXPECT().NewFetch(gomock.Any(), packageImage.Name(), gomock.Any(), gomock.Any()).Return(nil, image.ErrNotFound)
 				}
 
 				when("publish=false and no-pull=false", func() {
@@ -845,6 +849,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = false
 						opts.NoPull = false
+						opts.PullPolicy = config.PullAlways
 						opts.Config.Buildpacks = append(
 							opts.Config.Buildpacks,
 							pubbldr.BuildpackConfig{
@@ -854,7 +859,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						)
 
-						shouldFetchPackageImageWith(true, true)
+						shouldFetchPackageImageWith(true, config.PullAlways)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
 					})
 				})
@@ -867,6 +872,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = true
 						opts.NoPull = false
+						opts.PullPolicy = config.PullAlways
 						opts.Config.Buildpacks = append(
 							opts.Config.Buildpacks,
 							pubbldr.BuildpackConfig{
@@ -876,12 +882,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						)
 
-						shouldFetchPackageImageWith(false, true)
+						shouldFetchPackageImageWith(false, config.PullAlways)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
 					})
 				})
 
-				when("publish=true and no-pull=true", func() {
+				when("publish=true and pull-policy=never", func() {
 					it("should push to registry and not pull package image", func() {
 						prepareFetcherWithBuildImage()
 						prepareFetcherWithRunImages()
@@ -889,6 +895,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = true
 						opts.NoPull = true
+						opts.PullPolicy = config.PullNever
 						opts.Config.Buildpacks = append(
 							opts.Config.Buildpacks,
 							pubbldr.BuildpackConfig{
@@ -898,12 +905,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						)
 
-						shouldFetchPackageImageWith(false, false)
+						shouldFetchPackageImageWith(false, config.PullNever)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
 					})
 				})
 
-				when("publish=false no-pull=true and there is no local package image", func() {
+				when("publish=false pull-policy=never and there is no local package image", func() {
 					it("should fail without trying to retrieve package image from registry", func() {
 						prepareFetcherWithBuildImage()
 						prepareFetcherWithRunImages()
@@ -911,6 +918,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						opts.Publish = false
 						opts.NoPull = true
+						opts.PullPolicy = config.PullNever
 						opts.Config.Buildpacks = append(
 							opts.Config.Buildpacks,
 							pubbldr.BuildpackConfig{
@@ -943,7 +951,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						},
 					)
 
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), gomock.Any(), gomock.Any()).Return(notPackageImage, nil)
+					mockImageFetcher.EXPECT().NewFetch(gomock.Any(), notPackageImage.Name(), gomock.Any(), gomock.Any()).Return(notPackageImage, nil)
 					h.AssertNil(t, notPackageImage.SetLabel("io.buildpacks.buildpack.layers", ""))
 
 					h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "extracting buildpacks from 'not/package': could not find label 'io.buildpacks.buildpackage.metadata'")

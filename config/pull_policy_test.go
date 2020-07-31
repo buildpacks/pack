@@ -1,11 +1,13 @@
 package config_test
 
 import (
-	"github.com/buildpacks/pack/config"
-	h "github.com/buildpacks/pack/testhelpers"
+	"testing"
+
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"testing"
+
+	"github.com/buildpacks/pack/config"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestPullPolicy(t *testing.T) {
