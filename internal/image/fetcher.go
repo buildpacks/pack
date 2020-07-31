@@ -7,6 +7,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -36,12 +38,16 @@ func NewFetcher(logger logging.Logger, docker client.CommonAPIClient) *Fetcher {
 
 var ErrNotFound = errors.New("not found")
 
-func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (image imgutil.Image, err error) {
-	if daemon && !pull {
+func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (imgutil.Image, error) {
+	return f.NewFetch(ctx, name, daemon, config.ParsePolicyFromPull(pull))
+}
+
+func (f *Fetcher) NewFetch(ctx context.Context, name string, daemon bool, pullPolicy config.PullPolicy) (imgutil.Image, error) {
+	if daemon && pullPolicy == config.PullNever {
 		return f.fetchDaemonImage(name)
 	}
 
-	image, err = remote.NewImage(name, authn.DefaultKeychain, remote.FromBaseImage(name))
+	image, err := remote.NewImage(name, authn.DefaultKeychain, remote.FromBaseImage(name))
 	if err != nil {
 		return nil, err
 	}

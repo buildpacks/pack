@@ -3,6 +3,8 @@ package fakes
 import (
 	"context"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
@@ -10,8 +12,9 @@ import (
 )
 
 type FetchArgs struct {
-	Daemon bool
-	Pull   bool
+	Daemon     bool
+	Pull       bool //TODO: REMOVE
+	PullPolicy config.PullPolicy
 }
 
 type FakeImageFetcher struct {
@@ -29,12 +32,16 @@ func NewFakeImageFetcher() *FakeImageFetcher {
 }
 
 func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (imgutil.Image, error) {
-	f.FetchCalls[name] = &FetchArgs{Daemon: daemon, Pull: pull}
+	return f.NewFetch(ctx, name, daemon, config.ParsePolicyFromPull(pull))
+}
+
+func (f *FakeImageFetcher) NewFetch(ctx context.Context, name string, daemon bool, policy config.PullPolicy) (imgutil.Image, error) {
+	f.FetchCalls[name] = &FetchArgs{Daemon: daemon, Pull: boolFromPolicy(policy), PullPolicy: policy}
 
 	ri, remoteFound := f.RemoteImages[name]
 
 	if daemon {
-		if remoteFound && pull {
+		if remoteFound && policy == config.PullAlways {
 			f.LocalImages[name] = ri
 		}
 		li, localFound := f.LocalImages[name]
@@ -49,4 +56,8 @@ func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, daemon, pull 
 	}
 
 	return ri, nil
+}
+
+func boolFromPolicy(policy config.PullPolicy) bool {
+	return policy == config.PullAlways
 }
