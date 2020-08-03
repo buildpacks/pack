@@ -294,14 +294,18 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 	tabWriter := new(tabwriter.Writer).Init(&buf, 0, 0, 4, ' ', 0)
 	invalidMaxDepth := maxDepth == -1
 
-	// lets just use a stack its likely more simple
+	// the stack for DFS
 	buildpackStack := make([]stackEntry, 0)
 	prevDepth := -1
 	groupCount := 0
 
+	// keep track of buildpacks the current buildpack is nested inside for cycle detection.
+	buildpacksDepthStack := []stackEntry{}
+
+	// optimize lookup in buildpackDepthStack.
 	buildpackSet := map[pack.BuildpackInfoKey]bool{}
 
-	//initialize stack
+	//initialize stack with top level buildpacks.
 	for _, group := range order {
 		for bpIndex, bp := range group.Group {
 			buildpackStack = append(buildpackStack, stackEntry{
@@ -312,8 +316,10 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 		}
 	}
 
+	// reverse to do a preorder traversal of buildpack nesting.
 	buildpackStack = reverseStack(buildpackStack)
 
+	// iterate until stack is empty
 	for len(buildpackStack) > 0 {
 		stackLen := len(buildpackStack)
 
@@ -326,7 +332,19 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 			Version: curEntry.LayerInfo.Version,
 		}
 
+		// pop all buildpacks of greater depth off depth stack,
+		// we can no longer have a cycle within them.
+		for len(buildpacksDepthStack) > 0 && buildpacksDepthStack[len(buildpacksDepthStack)-1].Depth > curEntry.Depth {
+			buildpackToRemove := buildpacksDepthStack[len(buildpacksDepthStack)-1]
+			buildpacksDepthStack = buildpacksDepthStack[:len(buildpacksDepthStack)-1]
+			delete(buildpackSet, pack.BuildpackInfoKey{
+				ID:      buildpackToRemove.LayerInfo.ID,
+				Version: buildpackToRemove.LayerInfo.Version,
+			})
+		}
+
 		_, visited := buildpackSet[key]
+		buildpacksDepthStack = append(buildpacksDepthStack, curEntry)
 		buildpackSet[key] = true
 
 		curLayerInfo, ok := layers.Get(curEntry.LayerInfo.ID, curEntry.LayerInfo.Version)
@@ -334,6 +352,8 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 			return "", fmt.Errorf("error: missing buildpack %s@%s from layer metadata", curEntry.LayerInfo.ID, curEntry.LayerInfo.Version)
 		}
 
+		// add all nested buildpacks if this buildpack is not the first node of a cycle,
+		// or we exceed the maxDepth
 		if !visited && (invalidMaxDepth || curEntry.Depth+1 < maxDepth) {
 			nextBuildpacks := make([]stackEntry, 0)
 			for _, group := range curLayerInfo.Order {
@@ -345,8 +365,8 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 					})
 				}
 			}
-			// need to reverse this list ordering.
 
+			// again reversal to keep preorder traversal
 			buildpackStack = append(buildpackStack, reverseStack(nextBuildpacks)...)
 		}
 
@@ -357,7 +377,6 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 			}
 			groupCount++
 		}
-
 		if err := detectionOrderAddBuildpack(tabWriter, curEntry.LayerInfo, curEntry.Depth, visited); err != nil {
 			return "", fmt.Errorf("unable to add buildpack to output: %s", err)
 		}

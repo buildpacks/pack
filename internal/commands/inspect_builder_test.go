@@ -641,24 +641,36 @@ Stack:
 								BuildpackInfo: dist.BuildpackInfo{ID: "test.bp.two"},
 								Optional:      true,
 							},
+							{
+								BuildpackInfo: dist.BuildpackInfo{ID: "test.nested", Version: "test.nested.version"},
+								Optional:      false,
+							},
 						},
 					},
 				}
 			})
-			it("indicates cycle and succeeds", func() {
-				mockClient.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
-				mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
-				command.SetArgs([]string{"some/image"})
 
-				h.AssertNil(t, command.Execute())
-				h.AssertTrimmedContains(t, outBuf.String(), `  Group #1:
+			when("there buildpacks have a cyclic ordering", func() {
+				it("indicates cycle and succeeds", func() {
+					mockClient.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
+					mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
+					command.SetArgs([]string{"some/image"})
+
+					h.AssertNil(t, command.Execute())
+					h.AssertTrimmedContains(t, outBuf.String(), `  Group #1:
     test.top.nested@test.top.nested.version    
       Group #2:
-        test.nested@test.nested.version    
+        test.nested@test.nested.version
           Group #3:
             test.top.nested@test.top.nested.version*
     test.bp.two                                         (optional)
+    test.nested@test.nested.version    
+      Group #4:
+        test.top.nested@test.top.nested.version
+          Group #5:
+            test.nested@test.nested.version*
 `)
+				})
 			})
 		})
 	})
