@@ -20,14 +20,23 @@ import (
 
 // CreateBuilderOptions are options passed to CreateBuilder
 type CreateBuilderOptions struct {
+	// Name of the builder
 	BuilderName string
+
+	// Configuration that defines the functionality a builder provides.
 	Config      pubbldr.Config
+
+	// Push resulting builder image up to Registry/BuilderName
 	Publish     bool
+
+	// only use local image assets when creating this builder,
 	NoPull      bool
+
+	// registry to save the final builder image to.
 	Registry    string
 }
 
-// CreateBuilder creates a builder
+// CreateBuilder creates a builder image using the provided configuration files.
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
 	if err := c.validateConfig(ctx, opts); err != nil {
 		return err

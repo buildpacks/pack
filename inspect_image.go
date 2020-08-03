@@ -12,17 +12,46 @@ import (
 	"github.com/buildpacks/pack/internal/image"
 )
 
+// ImageInfo is a collection of metadata describing
+// an image built using the pack.
 type ImageInfo struct {
+	// Stack this image is built on top of.
 	StackID    string
+
+	// List of buildpacks that ran during 'build' and
+	// contributed to this image.
 	Buildpacks []lifecycle.Buildpack
+
+	// Base includes two references to the run image,
+	// - the run image ID,
+	// - the sha256 of the last layer in the inspected image that belongs to the run image.
+	// a way to visualize this is given an image with n layers:
+	//
+	// last layer in run image
+	//          v
+	// [1, ..., k, k+1, ..., n]
+	// the first 1 to k layers all belong to the run image,
+	// the last k+1, to n are added by buildpacks.
+	//
 	Base       lifecycle.RunImageMetadata
+
+	// BOM or Bill of materials, contains dependency and
+	// version information logged by each buildpack.
 	BOM        []lifecycle.BOMEntry
+
+	// Metadata about the run image name, and image mirrors were used to provide the run images
 	Stack      lifecycle.StackMetadata
+
 	Processes  ProcessDetails
 }
 
+// ProcessDetails is a collection of all start command metadata
+// on an imaege
 type ProcessDetails struct {
+	// images default start command
 	DefaultProcess *launch.Process
+
+	// list of all start commands contributed by buildpacks.
 	OtherProcesses []launch.Process
 }
 
@@ -32,6 +61,10 @@ type layersMetadata struct {
 	Stack    lifecycle.StackMetadata    `json:"stack" toml:"stack"`
 }
 
+// InspectImage reads the Label metadata of the 'name' image.
+// will look for the 'name' image both using the locally configured docker registry
+// and remotely. Remote lookup will only be done if daemon is true, and requires a docker
+// daemon.
 func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, false)
 	if err != nil {

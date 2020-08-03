@@ -34,46 +34,121 @@ import (
 )
 
 const (
+	// the lifecycle image that will be used for the analysis and export phases
+	// when using an untrusted builder
 	lifecycleImageRepo                   = "buildpacksio/lifecycle"
 	minLifecycleVersionSupportingCreator = "0.7.4"
 	prevLifecycleVersionSupportingImage  = "0.6.1"
 	minLifecycleVersionSupportingImage   = "0.7.5"
 )
 
+// A Lifecycle satisfies the Cloud Native Buildpacks Lifecycle specification
+// implementations of the Lifecycle must execute the following phases by calling the
+// phase-specific lifecycle binary in order:
+//
+// Detection:         /cnb/lifecycle/detector
+// Analysis:          /cnb/lifecycle/analyzer
+// Cache Restoration: /cnb/lifecycle/restorer
+// Build:             /cnb/lifecycle/builder
+// Export:            /cnb/lifecycle/exporter
 type Lifecycle interface {
+	// Execute is responsible for invoking each of these binaries,
+	// with the desired configuration.
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
 }
 
+// BuildOptions defines configuration settings for a Build.
 type BuildOptions struct {
-	Image              string // required
-	Builder            string // required
+	// required. Name of output image
+	Image              string
+
+	// required. Builder image name.
+	Builder            string
+
+	// URI to a buildpack registry.
 	Registry           string
-	AppPath            string              // defaults to current working directory
-	RunImage           string              // defaults to the best mirror from the builder metadata or AdditionalMirrors
+
+	// path to application bits, defaults to current working directory
+	AppPath            string
+
+
+	// Specify the run image.
+	RunImage           string
+
+	// if Run Image is empty, defaults to the 'best' mirror from the builder metadata or AdditionalMirrors.
+	// where 'best' is defined as:
+	//  - if the builder or Additional mirrors has a registry that matches the registry in
+	//    Image, it is 'best'
+	//  - otherwise if there are no matches, use the builder metadata
 	AdditionalMirrors  map[string][]string // only considered if RunImage is not provided
+
+	// User provided environment variables to the buildpacks,
+	// buildpacks may both read and overwrite these values.
 	Env                map[string]string
+
+	// option passed to lifecycle,
+	// publishes Image directly to a remote registry.
 	Publish            bool
+
+	// Only use local image assets.
 	NoPull             bool
+
+	// Clear the build cache from previous builds.
 	ClearCache         bool
+
+	// optimize builds by running all lifecycle phases in a single container,
+	// this places registry credentials on the builder's build image.
+	// only trust builders from reputable sources.
 	TrustBuilder       bool
+
+	// List of buildpack images or archives to add to a builder,
+	// these buildpacks may overwrite those on the builder if they
+	// have the same ID and Version
 	Buildpacks         []string
-	ProxyConfig        *ProxyConfig // defaults to  environment proxy vars
+
+
+	// Configure the proxy environment variables,
+	// These variables will only be used on the build image
+	ProxyConfig        *ProxyConfig
+
+	// Configure network and volume mounts for the build containers
 	ContainerConfig    ContainerConfig
+
+	// Process type that will be used when setting container start command.
 	DefaultProcessType string
-	FileFilter         func(string) bool
+
+	// Filter files from AppPath or current working directory
+	// if true include file, otherwise exclude them
+	FileFilter         func(string) bool   // TODO
 }
 
+// Proxy Settings, will only be used if environment variables are not set
 type ProxyConfig struct {
-	HTTPProxy  string
-	HTTPSProxy string
-	NoProxy    string
+	HTTPProxy  string // used if HTTP_PROXY env var is not set
+	HTTPSProxy string // used if HTTPS_PROXY env var is not set
+	NoProxy    string // used if NO_PROXY env var is not set
 }
 
+// Additional configuration of the docker container
+// used to build the final output image.
 type ContainerConfig struct {
+	// Configure network settings of the build container
+	// this string value is handed directly to the docker client,
+	// for valid values of this field see:
+	// https://docs.docker.com/network/#network-drivers
 	Network string
+
+	// Volumes that mounted and accessable during detect & build phases
+	// should have the form: /path/in/host:/path/in/container
+	// for more about volume mounts, and their permissions see
+	// https://docs.docker.com/storage/volumes/
 	Volumes []string
 }
 
+
+// Build processes configures settings of the build container(s) and lifecycle,
+// then invokes the lifecycle. If any configuration is deemed invalid,
+// or if any of the lifecycle phases fail, this function will return an error.
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	imageRef, err := c.parseTagReference(opts.Image)
 	if err != nil {

@@ -18,6 +18,8 @@ import (
 )
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_image_fetcher.go github.com/buildpacks/pack ImageFetcher
+
+// ImageFetcher is an interface representing the ability to fetch images.
 type ImageFetcher interface {
 	// Fetch fetches an image by resolving it both remotely and locally depending on provided parameters.
 	// If daemon is true, it will look return a `local.Image`. Pull, applicable only when daemon is true, will
@@ -26,25 +28,49 @@ type ImageFetcher interface {
 }
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_downloader.go github.com/buildpacks/pack Downloader
+
+// Downloader is an interface for collecting both remote and local assets
 type Downloader interface {
+
+	// Download collects both local and remote assets so that they are all
+	// readable.
 	Download(ctx context.Context, pathOrURI string) (blob.Blob, error)
 }
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_image_factory.go github.com/buildpacks/pack ImageFactory
+
+// ImageFactory is an interface representing the ability to create a new OCI image.
 type ImageFactory interface {
+
+	// NewImage initialize of an image object with required settings so that it
+	// can be saved
 	NewImage(repoName string, local bool) (imgutil.Image, error)
 }
 
+// Client defines the parameters needed to run a build, and produce an image.
 type Client struct {
+	// Logger used for all client output
 	logger       logging.Logger
+
+	// Utility to pull images either locally or remotely.
 	imageFetcher ImageFetcher
+
+	// used to gather buildpacks from both remote urls, or local sources
 	downloader   Downloader
+
+	// object responsible for executing all lifecycle phases
 	lifecycle    Lifecycle
+
+	// client used to interact with local and remote registries
 	docker       dockerClient.CommonAPIClient
+
 	imageFactory ImageFactory
+
+	// enable experimental features
 	experimental bool
 }
 
+// functions that mutate some setting on the client.
 type ClientOption func(c *Client)
 
 // WithLogger supply your own logger.
@@ -98,6 +124,7 @@ func WithExperimental(experimental bool) ClientOption {
 	}
 }
 
+// NewClient and returns a Client with the specified options.
 func NewClient(opts ...ClientOption) (*Client, error) {
 	var client Client
 

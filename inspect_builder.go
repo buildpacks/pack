@@ -12,9 +12,15 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
+// ImageInfo is a collection of metadata describing
+// an image built using the pack.
 type BuilderInfo struct {
 	Description     string
+
+	// stack name the builder
 	Stack           string
+
+	// list of mixins the builder require
 	Mixins          []string
 	RunImage        string
 	RunImageMirrors []string
