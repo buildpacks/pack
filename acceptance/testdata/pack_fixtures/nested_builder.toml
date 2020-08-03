@@ -28,7 +28,6 @@
   image = "{{.nested_level_1_buildpack}}"
 {{- end}}
 
-
 [[order]]
 {{- if .package_id}}
 [[order.group]]

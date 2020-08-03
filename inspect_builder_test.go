@@ -291,7 +291,6 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					when("the image has no mixins", func() {
 						when("no depth argument is given", func() {
-
 							it.Before(func() {
 								h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.mixins", ""))
 							})
@@ -304,7 +303,6 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 				})
-
 			})
 		}
 	})

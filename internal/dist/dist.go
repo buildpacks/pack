@@ -38,6 +38,21 @@ type BuildpackLayerInfo struct {
 	Homepage    string       `json:"homepage,omitempty"`
 }
 
+func (b BuildpackLayers) Get(id, version string) (BuildpackLayerInfo, bool) {
+	buildpackLayerEntries, ok := b[id]
+	if !ok {
+		return BuildpackLayerInfo{}, false
+	}
+	if len(buildpackLayerEntries) == 1 && version == "" {
+		for key := range buildpackLayerEntries {
+			version = key
+		}
+	}
+
+	result, ok := buildpackLayerEntries[version]
+	return result, ok
+}
+
 func AddBuildpackToLayersMD(layerMD BuildpackLayers, descriptor BuildpackDescriptor, diffID string) {
 	bpInfo := descriptor.Info
 	if _, ok := layerMD[bpInfo.ID]; !ok {

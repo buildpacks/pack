@@ -74,7 +74,7 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 			return nil
 		}),
 	}
-	cmd.Flags().IntVarP(&flags.Depth, "depth", "d", 0, "Detection Order inspection depth")
+	cmd.Flags().IntVarP(&flags.Depth, "depth", "d", -1, "Detection Order inspection depth, omission of this flag or values < 0 will display the entire tree")
 	AddHelpFlag(cmd, "inspect-builder")
 	return cmd
 }
@@ -272,139 +272,130 @@ func runImagesOutput(runImage string, mirrors []string, cfg config.Config) (stri
 	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
+type stackEntry struct {
+	LayerInfo dist.BuildpackRef
+	Depth     int
+	Last      bool
+}
+
+func reverseStack(stack []stackEntry) []stackEntry {
+	left := 0
+	right := len(stack) - 1
+	for left < right {
+		stack[left], stack[right] = stack[right], stack[left]
+		left++
+		right--
+	}
+	return stack
+}
+
 func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDepth int) (string, error) {
 	buf := strings.Builder{}
 	tabWriter := new(tabwriter.Writer).Init(&buf, 0, 0, 4, ' ', 0)
-	orderOutputWriter := NewOrderOutputWriter(tabWriter, order, layers)
-	err := orderOutputWriter.GenerateOutput(maxDepth)
-	if err != nil {
-		return "", err
+	invalidMaxDepth := maxDepth == -1
+
+	// lets just use a stack its likely more simple
+	buildpackStack := make([]stackEntry, 0)
+	prevDepth := -1
+	groupCount := 0
+
+	buildpackSet := map[pack.BuildpackInfoKey]bool{}
+
+	//initialize stack
+	for _, group := range order {
+		for bpIndex, bp := range group.Group {
+			buildpackStack = append(buildpackStack, stackEntry{
+				LayerInfo: bp,
+				Depth:     0,
+				Last:      bpIndex == len(group.Group),
+			})
+		}
+	}
+
+	buildpackStack = reverseStack(buildpackStack)
+
+	for len(buildpackStack) > 0 {
+		stackLen := len(buildpackStack)
+
+		// get current entry an pop last element off the stack
+		curEntry := buildpackStack[stackLen-1]
+		buildpackStack = buildpackStack[:stackLen-1]
+
+		key := pack.BuildpackInfoKey{
+			ID:      curEntry.LayerInfo.ID,
+			Version: curEntry.LayerInfo.Version,
+		}
+
+		_, visited := buildpackSet[key]
+		buildpackSet[key] = true
+
+		curLayerInfo, ok := layers.Get(curEntry.LayerInfo.ID, curEntry.LayerInfo.Version)
+		if !ok {
+			return "", fmt.Errorf("error: missing buildpack %s@%s from layer metadata", curEntry.LayerInfo.ID, curEntry.LayerInfo.Version)
+		}
+
+		if !visited && (invalidMaxDepth || curEntry.Depth+1 < maxDepth) {
+			nextBuildpacks := make([]stackEntry, 0)
+			for _, group := range curLayerInfo.Order {
+				for bpIndex, bp := range group.Group {
+					nextBuildpacks = append(nextBuildpacks, stackEntry{
+						LayerInfo: bp,
+						Depth:     curEntry.Depth + 1,
+						Last:      bpIndex == len(group.Group),
+					})
+				}
+			}
+			// need to reverse this list ordering.
+
+			buildpackStack = append(buildpackStack, reverseStack(nextBuildpacks)...)
+		}
+
+		// output operations
+		if curEntry.Depth > prevDepth {
+			if err := detectionOrderAddGroup(tabWriter, groupCount+1, curEntry.Depth); err != nil {
+				return "", fmt.Errorf("unable to add group to output: %s", err)
+			}
+			groupCount++
+		}
+
+		if err := detectionOrderAddBuildpack(tabWriter, curEntry.LayerInfo, curEntry.Depth, visited); err != nil {
+			return "", fmt.Errorf("unable to add buildpack to output: %s", err)
+		}
+
+		prevDepth = curEntry.Depth
+	}
+
+	if err := tabWriter.Flush(); err != nil {
+		return "", fmt.Errorf("error flushing tabWriter output: %s", err)
 	}
 	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
-// generate mock
-type TabWriter interface {
-	Flush() error
-	Write(buf []byte) (n int, err error)
-}
-
-type OrderOutputWriter struct {
-	// turn this into an interface
-	twriter       TabWriter
-	builderLayers dist.BuildpackLayers
-	builderOrder  dist.Order
-	groupCount    int
-	visitedMap    map[string]bool
-}
-
-func NewOrderOutputWriter(twriter TabWriter, builderOrder dist.Order, builderLayers dist.BuildpackLayers) OrderOutputWriter {
-	return OrderOutputWriter{
-		twriter:       twriter,
-		builderOrder:  builderOrder,
-		builderLayers: builderLayers,
-		groupCount:    0,
-		visitedMap:    map[string]bool{},
-	}
-}
-
-func (o *OrderOutputWriter) Reset() {
-	o.groupCount = 0
-	o.visitedMap = map[string]bool{}
-}
-
-func (o *OrderOutputWriter) GenerateOutput(maxDepth int) error {
-	o.Reset()
-
-	defer o.Reset()
-	//all output goes into buffer
-	for _, group := range o.builderOrder {
-		o.groupCount += 1
-		if err := o.genGroupOutput(1); err != nil {
-			return err
-		}
-		for _, bp := range group.Group {
-			if err := o.genNestedOutput(bp, 1, maxDepth); err != nil {
-				return err
-			}
-		}
-	}
-	return o.twriter.Flush()
-}
-
-func (o *OrderOutputWriter) genNestedOutput(start dist.BuildpackRef, depth, maxDepth int) error {
-	// check for max depth
-
-	// check for cycle
-	key := fmt.Sprintf("%s@%s", start.ID, start.Version)
-	if _, ok := o.visitedMap[key]; ok {
-		return fmt.Errorf("circular dependency detected in group ordering")
-	}
-	o.visitedMap[key] = true
-
-	buildpackEntries, ok := o.builderLayers[start.ID]
-	if !ok {
-		panic(fmt.Errorf("buildpack %s not found in layers map", start.ID))
-	}
-	// get the entry key (if non exists and map length is size 1, then use the present key)
-	entryVersion := start.Version
-
-	// TODO make this more readable, pretty bad right now.
-	if entryVersion == "" && len(buildpackEntries) == 1 {
-		for key, _ := range buildpackEntries {
-			entryVersion = key
-		}
-	}
-	buildpackEntry, ok := buildpackEntries[entryVersion]
-	if !ok {
-		panic(fmt.Errorf("buildpack version %s not found in layers map at %#v", entryVersion, buildpackEntries))
-	}
-
-	o.genBuildpackOutput(start, depth*2)
-
-	if maxDepth != 0 && depth >= maxDepth {
-		return nil
-	}
-
-	if len(buildpackEntry.Order) == 0 {
-		return nil
-	}
-	for _, group := range buildpackEntry.Order {
-		o.groupCount += 1
-		if err := o.genGroupOutput(depth*2 + 1); err != nil {
-			return err
-		}
-		for _, bp := range group.Group {
-			if err := o.genNestedOutput(bp, depth+1, maxDepth); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (o *OrderOutputWriter) genBuildpackOutput(buildpack dist.BuildpackRef, indentLevel int) error {
+func detectionOrderAddBuildpack(w io.Writer, buildpack dist.BuildpackRef, depth int, visited bool) error {
 	var prefix string
 	var optional string
 	if buildpack.Optional {
 		optional = "(optional)"
 	}
 
-	prefix = strings.Repeat("  ", indentLevel)
+	prefix = strings.Repeat("  ", (depth+1)*2)
+	visitedStatus := ""
+	if visited {
+		visitedStatus = "*"
+	}
 
 	bpRef := buildpack.ID
 	if buildpack.Version != "" {
 		bpRef += "@" + buildpack.Version
 	}
 
-	_, err := fmt.Fprintf(o.twriter, "%s%s\t%s\n", prefix, bpRef, optional)
+	_, err := fmt.Fprintf(w, "%s%s%s\t%s\n", prefix, bpRef, visitedStatus, optional)
 	return err
 }
 
-func (o *OrderOutputWriter) genGroupOutput(indentLevel int) error {
-	prefix := strings.Repeat("  ", indentLevel)
-	_, err := fmt.Fprintf(o.twriter, "%sGroup #%d:\n", prefix, o.groupCount)
+func detectionOrderAddGroup(w io.Writer, groupCount, depth int) error {
+	prefix := strings.Repeat("  ", (depth*2)+1)
+	_, err := fmt.Fprintf(w, "%sGroup #%d:\n", prefix, groupCount)
 	return err
 }
 

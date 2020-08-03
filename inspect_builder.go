@@ -25,7 +25,7 @@ type BuilderInfo struct {
 	CreatedBy       builder.CreatorMetadata
 }
 
-type buildpackInfoKey struct {
+type BuildpackInfoKey struct {
 	ID      string
 	Version string
 }
@@ -74,10 +74,10 @@ func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) 
 }
 
 func uniqueBuildpacks(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
-	buildpacksSet := map[buildpackInfoKey]int{}
-	homePageSet := map[buildpackInfoKey]string{}
+	buildpacksSet := map[BuildpackInfoKey]int{}
+	homePageSet := map[BuildpackInfoKey]string{}
 	for _, buildpack := range buildpacks {
-		key := buildpackInfoKey{
+		key := BuildpackInfoKey{
 			ID:      buildpack.ID,
 			Version: buildpack.Version,
 		}
