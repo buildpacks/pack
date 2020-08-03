@@ -44,7 +44,7 @@ type AssetManager struct {
 	testObject                  *testing.T
 }
 
-func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) AssetManager {
+func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputConfigurationManager) AssetManager {
 	t.Helper()
 
 	var (
@@ -60,6 +60,7 @@ func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) 
 
 	assetBuilder := assetManagerBuilder{
 		testObject:  t,
+		assert:      assert,
 		inputConfig: inputConfig,
 	}
 
@@ -151,6 +152,7 @@ func (a AssetManager) LifecycleDescriptor(kind ComboValue) builder.LifecycleDesc
 
 type assetManagerBuilder struct {
 	testObject  *testing.T
+	assert      h.AssertionManager
 	inputConfig InputConfigurationManager
 }
 
@@ -184,7 +186,7 @@ func (b assetManagerBuilder) ensurePreviousPack() string {
 
 	b.ensureGithubAssetFetcher()
 	version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "pack", 0)
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	assetDir, err := githubAssetFetcher.FetchReleaseAsset(
 		"buildpacks",
@@ -193,7 +195,7 @@ func (b assetManagerBuilder) ensurePreviousPack() string {
 		acceptanceOS.PackBinaryExp,
 		true,
 	)
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 	assetPath := filepath.Join(assetDir, acceptanceOS.PackBinaryName)
 
 	b.testObject.Logf("using %s for previous pack path", assetPath)
@@ -216,13 +218,13 @@ func (b assetManagerBuilder) ensurePreviousPackFixtures() string {
 
 	b.ensureGithubAssetFetcher()
 	version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "pack", 0)
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	sourceDir, err := githubAssetFetcher.FetchReleaseSource("buildpacks", "pack", version)
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	sourceDirFiles, err := ioutil.ReadDir(sourceDir)
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 	// GitHub source tarballs have a top-level directory whose name includes the current commit sha.
 	innerDir := sourceDirFiles[0].Name()
 	fixturesDir := filepath.Join(sourceDir, innerDir, "acceptance", "testdata", "pack_fixtures")
@@ -250,7 +252,7 @@ func (b assetManagerBuilder) ensureCurrentLifecycle() (string, builder.Lifecycle
 	}
 
 	lifecycle, err := builder.NewLifecycle(blob.NewBlob(lifecyclePath))
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	return lifecyclePath, lifecycle.Descriptor()
 }
@@ -273,7 +275,7 @@ func (b assetManagerBuilder) ensurePreviousLifecycle() (string, builder.Lifecycl
 	}
 
 	lifecycle, err := builder.NewLifecycle(blob.NewBlob(previousLifecyclePath))
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	return previousLifecyclePath, lifecycle.Descriptor()
 }
@@ -284,7 +286,7 @@ func (b assetManagerBuilder) downloadLifecycle(relativeVersion int) string {
 	b.ensureGithubAssetFetcher()
 
 	version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "lifecycle", relativeVersion)
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	path, err := githubAssetFetcher.FetchReleaseAsset(
 		"buildpacks",
@@ -293,7 +295,7 @@ func (b assetManagerBuilder) downloadLifecycle(relativeVersion int) string {
 		lifecycleTgzExp,
 		false,
 	)
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	return path
 }
@@ -307,19 +309,19 @@ func (b assetManagerBuilder) ensureGithubAssetFetcher() {
 
 	var err error
 	githubAssetFetcher, err = NewGithubAssetFetcher(b.testObject, b.inputConfig.githubToken)
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 }
 
 func (b assetManagerBuilder) buildPack(compileVersion string) string {
 	b.testObject.Helper()
 
 	packTmpDir, err := ioutil.TempDir("", "pack.acceptance.binary.")
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	packPath := filepath.Join(packTmpDir, acceptanceOS.PackBinaryName)
 
 	cwd, err := os.Getwd()
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	cmd := exec.Command("go", "build",
 		"-ldflags", fmt.Sprintf("-X 'github.com/buildpacks/pack/cmd.Version=%s'", compileVersion),
@@ -333,7 +335,7 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 
 	b.testObject.Logf("building pack: [CWD=%s] %s", cmd.Dir, cmd.Args)
 	_, err = cmd.CombinedOutput()
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	return packPath
 }
