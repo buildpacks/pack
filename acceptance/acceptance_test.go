@@ -846,7 +846,8 @@ func testAcceptance(
 									"--buildpack", buildpackTgz,
 								)
 
-								assertions.NewOutputAssertionManager(t, output).ReportsConnectedToInternet()
+								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								assertBuildpackOutput.ReportsConnectedToInternet()
 							})
 						})
 
@@ -858,7 +859,8 @@ func testAcceptance(
 									"--buildpack", buildpackTgz,
 								)
 
-								assertions.NewOutputAssertionManager(t, output).ReportsConnectedToInternet()
+								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								assertBuildpackOutput.ReportsConnectedToInternet()
 							})
 						})
 
@@ -875,7 +877,8 @@ func testAcceptance(
 									"none",
 								)
 
-								assertions.NewOutputAssertionManager(t, output).ReportsDisconnectedFromInternet()
+								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								assertBuildpackOutput.ReportsDisconnectedFromInternet()
 							})
 						})
 					})
@@ -925,7 +928,7 @@ func testAcceptance(
 								expectedPhase = "Detect"
 							}
 
-							assertions.NewOutputAssertionManager(t, output).ReportsReadingFileContents(
+							assertions.NewTestBuildpackOutputAssertionManager(t, output).ReportsReadingFileContents(
 								"/my-volume-mount-target/some-file",
 								"some-string",
 								expectedPhase,
@@ -962,8 +965,10 @@ func testAcceptance(
 								)
 
 								assertOutput := assertions.NewOutputAssertionManager(t, output)
-								assertOutput.ReportsBuildStep("Simple Layers Buildpack")
-								assertOutput.ReportsBuildStep("NOOP Buildpack")
+
+								assertTestAppOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								assertTestAppOutput.ReportsBuildStep("Simple Layers Buildpack")
+								assertTestAppOutput.ReportsBuildStep("NOOP Buildpack")
 								assertOutput.ReportsSuccessfulImageBuild(repoName)
 
 								t.Log("app is runnable")
@@ -996,8 +1001,10 @@ func testAcceptance(
 
 								assertOutput := assertions.NewOutputAssertionManager(t, output)
 								assertOutput.ReportsAddingBuildpack("local/bp", "local-bp-version")
-								assertOutput.ReportsBuildStep("Local Buildpack")
 								assertOutput.ReportsSuccessfulImageBuild(repoName)
+
+								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								assertBuildpackOutput.ReportsBuildStep("Local Buildpack")
 							})
 						})
 
@@ -1013,8 +1020,10 @@ func testAcceptance(
 
 								assertOutput := assertions.NewOutputAssertionManager(t, output)
 								assertOutput.ReportsAddingBuildpack("local/bp", "local-bp-version")
-								assertOutput.ReportsBuildStep("Local Buildpack")
 								assertOutput.ReportsSuccessfulImageBuild(repoName)
+
+								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								assertBuildpackOutput.ReportsBuildStep("Local Buildpack")
 							})
 						})
 
@@ -1052,8 +1061,10 @@ func testAcceptance(
 									"simple-layers-parent-version",
 								)
 								assertOutput.ReportsAddingBuildpack("simple/layers", "simple-layers-version")
-								assertOutput.ReportsBuildStep("Simple Layers Buildpack")
 								assertOutput.ReportsSuccessfulImageBuild(repoName)
+
+								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								assertBuildpackOutput.ReportsBuildStep("Simple Layers Buildpack")
 							})
 						})
 
@@ -1103,8 +1114,10 @@ func testAcceptance(
 									"simple-layers-parent-version",
 								)
 								assertOutput.ReportsAddingBuildpack("simple/layers", "simple-layers-version")
-								assertOutput.ReportsBuildStep("Simple Layers Buildpack")
 								assertOutput.ReportsSuccessfulImageBuild(repoName)
+
+								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								assertBuildpackOutput.ReportsBuildStep("Simple Layers Buildpack")
 							})
 						})
 

@@ -64,12 +64,6 @@ func (o OutputAssertionManager) ReportsSkippingRestore() {
 	o.assert.Contains(o.output, "Skipping 'restore' due to clearing cache")
 }
 
-func (o OutputAssertionManager) ReportsReadingFileContents(path, expectedContent, phase string) {
-	o.testObject.Helper()
-
-	o.assert.ContainsF(o.output, "%s: Reading file '/platform%s': %s", phase, path, expectedContent)
-}
-
 func (o OutputAssertionManager) ReportsRunImageStackNotMatchingBuilder(runImageStack, builderStack string) {
 	o.testObject.Helper()
 
@@ -84,12 +78,6 @@ func (o OutputAssertionManager) WithoutColors() {
 	o.testObject.Log("has no color")
 
 	o.assert.NoMatches(o.output, regexp.MustCompile(`\x1b\[[0-9;]*m`))
-}
-
-func (o OutputAssertionManager) ReportsBuildStep(message string) {
-	o.testObject.Helper()
-
-	o.assert.ContainsF(o.output, "Build: %s", message)
 }
 
 func (o OutputAssertionManager) ReportsAddingBuildpack(name, version string) {
@@ -126,18 +114,6 @@ func (o OutputAssertionManager) ReportsCommandUnknown(command string) {
 	o.testObject.Helper()
 
 	o.assert.ContainsF(o.output, `unknown command "%s" for "pack"`, command)
-}
-
-func (o OutputAssertionManager) ReportsConnectedToInternet() {
-	o.testObject.Helper()
-
-	o.assert.Contains(o.output, "RESULT: Connected to the internet")
-}
-
-func (o OutputAssertionManager) ReportsDisconnectedFromInternet() {
-	o.testObject.Helper()
-
-	o.assert.Contains(o.output, "RESULT: Disconnected from the internet")
 }
 
 func (o OutputAssertionManager) IncludesUsagePrompt() {
