@@ -609,6 +609,13 @@ func SkipIf(t *testing.T, expression bool, reason string) {
 	}
 }
 
+func SkipUnless(t *testing.T, expression bool, reason string) {
+	t.Helper()
+	if !expression {
+		t.Skip(reason)
+	}
+}
+
 func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id string, stdout io.Writer, stderr io.Writer) error {
 	bodyChan, errChan := dockerCli.ContainerWait(ctx, id, container.WaitConditionNextExit)
 

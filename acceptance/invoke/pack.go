@@ -1,0 +1,285 @@
+// +build acceptance
+
+package invoke
+
+import (
+	"bytes"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+
+	"github.com/Masterminds/semver"
+
+	acceptanceOS "github.com/buildpacks/pack/acceptance/os"
+	h "github.com/buildpacks/pack/testhelpers"
+)
+
+type PackInvoker struct {
+	testObject      *testing.T
+	assert          h.AssertionManager
+	path            string
+	home            string
+	dockerConfigDir string
+	fixtureManager  PackFixtureManager
+}
+
+type packPathsProvider interface {
+	Path() string
+	FixturePaths() []string
+}
+
+func NewPackInvoker(
+	testObject *testing.T,
+	assert h.AssertionManager,
+	packAssets packPathsProvider,
+	dockerConfigDir string,
+) *PackInvoker {
+
+	testObject.Helper()
+
+	home, err := ioutil.TempDir("", "buildpack.pack.home.")
+	if err != nil {
+		testObject.Fatalf("couldn't create home folder for pack: %s", err)
+	}
+
+	return &PackInvoker{
+		testObject:      testObject,
+		assert:          assert,
+		path:            packAssets.Path(),
+		home:            home,
+		dockerConfigDir: dockerConfigDir,
+		fixtureManager: PackFixtureManager{
+			testObject: testObject,
+			assert:     assert,
+			locations:  packAssets.FixturePaths(),
+		},
+	}
+}
+
+func (i *PackInvoker) Cleanup() {
+	i.testObject.Helper()
+
+	err := os.RemoveAll(i.home)
+	i.assert.Nil(err)
+}
+
+func (i *PackInvoker) cmd(name string, args ...string) *exec.Cmd {
+	i.testObject.Helper()
+
+	cmdArgs := append([]string{name}, args...)
+	cmdArgs = append(cmdArgs, "--no-color")
+	if i.Supports("--verbose") {
+		cmdArgs = append(cmdArgs, "--verbose")
+	}
+
+	cmd := i.baseCmd(cmdArgs...)
+
+	cmd.Env = append(os.Environ(), "DOCKER_CONFIG="+i.dockerConfigDir)
+	if i.home != "" {
+		cmd.Env = append(cmd.Env, "PACK_HOME="+i.home)
+	}
+
+	return cmd
+}
+
+func (i *PackInvoker) baseCmd(parts ...string) *exec.Cmd {
+	return exec.Command(i.path, parts...)
+}
+
+func (i *PackInvoker) Run(name string, args ...string) (string, error) {
+	i.testObject.Helper()
+
+	output, err := i.cmd(name, args...).CombinedOutput()
+
+	return string(output), err
+}
+
+func (i *PackInvoker) RunSuccessfully(name string, args ...string) string {
+	i.testObject.Helper()
+
+	output, err := i.Run(name, args...)
+	i.assert.NilWithMessage(err, output)
+
+	return output
+}
+
+func (i *PackInvoker) JustRunSuccessfully(name string, args ...string) {
+	i.testObject.Helper()
+
+	_ = i.RunSuccessfully(name, args...)
+}
+
+func (i *PackInvoker) StartWithWriter(combinedOutput *bytes.Buffer, name string, args ...string) *InterruptCmd {
+	cmd := i.cmd(name, args...)
+	cmd.Stderr = combinedOutput
+	cmd.Stdout = combinedOutput
+
+	err := cmd.Start()
+	i.assert.Nil(err)
+
+	return &InterruptCmd{
+		testObject:     i.testObject,
+		assert:         i.assert,
+		cmd:            cmd,
+		combinedOutput: combinedOutput,
+	}
+}
+
+type InterruptCmd struct {
+	testObject     *testing.T
+	assert         h.AssertionManager
+	cmd            *exec.Cmd
+	combinedOutput *bytes.Buffer
+	outputMux      sync.Mutex
+}
+
+func (c *InterruptCmd) TerminateAtStep(pattern string) {
+	c.testObject.Helper()
+
+	for {
+		c.outputMux.Lock()
+		if strings.Contains(c.combinedOutput.String(), pattern) {
+			err := c.cmd.Process.Signal(acceptanceOS.InterruptSignal)
+			c.assert.Nil(err)
+			h.AssertNil(c.testObject, err)
+			return
+		}
+		c.outputMux.Unlock()
+	}
+}
+
+func (c *InterruptCmd) Wait() error {
+	return c.cmd.Wait()
+}
+
+func (i *PackInvoker) Version() string {
+	i.testObject.Helper()
+
+	output := i.RunSuccessfully("version")
+
+	return strings.TrimSpace(output)
+}
+
+func (i *PackInvoker) EnableExperimental() {
+	i.testObject.Helper()
+
+	err := ioutil.WriteFile(
+		filepath.Join(i.home, "config.toml"),
+		[]byte("experimental=true"),
+		os.ModePerm,
+	)
+	i.assert.Nil(err)
+}
+
+// supports returns whether or not the executor's pack binary supports a
+// given command string. The command string can take one of three forms:
+//   - "<command>" (e.g. "create-builder")
+//   - "<flag>" (e.g. "--verbose")
+//   - "<command> <flag>" (e.g. "build --network")
+//
+// Any other form will return false.
+func (i *PackInvoker) Supports(command string) bool {
+	i.testObject.Helper()
+
+	parts := strings.Split(command, " ")
+
+	var cmdParts = []string{"help"}
+
+	var search string
+	switch len(parts) {
+	case 1:
+		search = parts[0]
+	case 2:
+		cmdParts = append(cmdParts, parts[0])
+		search = parts[1]
+	default:
+		return false
+	}
+
+	output, err := i.baseCmd(cmdParts...).CombinedOutput()
+	i.assert.Nil(err)
+
+	return strings.Contains(string(output), search)
+}
+
+type Feature int
+
+const (
+	BuilderTomlValidation Feature = iota
+	ExcludeAndIncludeDescriptor
+	CreatorInPack
+	CustomVolumeMounts
+	NoColorInBuildpacks
+	ReadFromVolumeInDetect
+)
+
+var featureTests = map[Feature]func(e *PackInvoker) bool{
+	BuilderTomlValidation: func(e *PackInvoker) bool {
+		return e.laterThan090()
+	},
+	ExcludeAndIncludeDescriptor: func(e *PackInvoker) bool {
+		return e.laterThan090()
+	},
+	CreatorInPack: func(e *PackInvoker) bool {
+		return e.laterThan0_10_0()
+	},
+	CustomVolumeMounts: func(e *PackInvoker) bool {
+		return e.not0_11_0()
+	},
+	NoColorInBuildpacks: func(e *PackInvoker) bool {
+		return e.atLeast0_12_0()
+	},
+	ReadFromVolumeInDetect: func(e *PackInvoker) bool {
+		return e.laterThan090()
+	},
+}
+
+func (i *PackInvoker) SupportsFeature(f Feature) bool {
+	return featureTests[f](i)
+}
+
+func (i *PackInvoker) semanticVersion() *semver.Version {
+	version := i.Version()
+	semanticVersion, err := semver.NewVersion(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
+	i.assert.Nil(err)
+
+	return semanticVersion
+}
+
+func (i *PackInvoker) laterThan090() bool {
+	ver := i.semanticVersion()
+	return ver.Compare(semver.MustParse("0.9.0")) > 0 || ver.Equal(semver.MustParse("0.0.0"))
+}
+
+func (i *PackInvoker) laterThan0_10_0() bool {
+	ver := i.semanticVersion()
+	return ver.GreaterThan(semver.MustParse("0.10.0")) || ver.Equal(semver.MustParse("0.0.0"))
+}
+
+func (i *PackInvoker) not0_11_0() bool {
+	ver := i.semanticVersion()
+	return !ver.Equal(semver.MustParse("0.11.0"))
+}
+
+func (i *PackInvoker) atLeast0_12_0() bool {
+	ver := i.semanticVersion()
+	minimumVersion := semver.MustParse("0.12.0")
+	return ver.Equal(minimumVersion) || ver.GreaterThan(minimumVersion) || ver.Equal(semver.MustParse("0.0.0"))
+}
+
+func (i *PackInvoker) ConfigFileContents() string {
+	i.testObject.Helper()
+
+	contents, err := ioutil.ReadFile(filepath.Join(i.home, "config.toml"))
+	i.assert.Nil(err)
+
+	return string(contents)
+}
+
+func (i *PackInvoker) FixtureManager() PackFixtureManager {
+	return i.fixtureManager
+}

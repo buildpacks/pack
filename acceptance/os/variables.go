@@ -1,6 +1,10 @@
 // +build acceptance
 // +build !windows
 
-package variables
+package os
+
+import "os"
 
 const PackBinaryName = "pack"
+
+var InterruptSignal = os.Interrupt
