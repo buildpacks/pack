@@ -201,28 +201,28 @@ const (
 	ExcludeAndIncludeDescriptor
 	CreatorInPack
 	CustomVolumeMounts
+	ReadWriteVolumeMounts
 	NoColorInBuildpacks
-	ReadFromVolumeInDetect
 )
 
-var featureTests = map[Feature]func(e *PackInvoker) bool{
-	BuilderTomlValidation: func(e *PackInvoker) bool {
-		return e.laterThan090()
+var featureTests = map[Feature]func(i *PackInvoker) bool{
+	BuilderTomlValidation: func(i *PackInvoker) bool {
+		return i.laterThan("0.9.0")
 	},
-	ExcludeAndIncludeDescriptor: func(e *PackInvoker) bool {
-		return e.laterThan090()
+	ExcludeAndIncludeDescriptor: func(i *PackInvoker) bool {
+		return i.laterThan("0.9.0")
 	},
-	CreatorInPack: func(e *PackInvoker) bool {
-		return e.laterThan0_10_0()
+	CreatorInPack: func(i *PackInvoker) bool {
+		return i.atLeast("0.10.0")
 	},
-	CustomVolumeMounts: func(e *PackInvoker) bool {
-		return e.not0_11_0()
+	CustomVolumeMounts: func(i *PackInvoker) bool {
+		return i.laterThan("0.11.0")
 	},
-	NoColorInBuildpacks: func(e *PackInvoker) bool {
-		return e.atLeast0_12_0()
+	ReadWriteVolumeMounts: func(i *PackInvoker) bool {
+		return i.laterThan("0.12.0")
 	},
-	ReadFromVolumeInDetect: func(e *PackInvoker) bool {
-		return e.laterThan090()
+	NoColorInBuildpacks: func(i *PackInvoker) bool {
+		return i.atLeast("0.12.0")
 	},
 }
 
@@ -238,25 +238,18 @@ func (i *PackInvoker) semanticVersion() *semver.Version {
 	return semanticVersion
 }
 
-func (i *PackInvoker) laterThan090() bool {
+// laterThan returns true if pack version is older than the provided version
+func (i *PackInvoker) laterThan(version string) bool {
+	providedVersion := semver.MustParse(version)
 	ver := i.semanticVersion()
-	return ver.Compare(semver.MustParse("0.9.0")) > 0 || ver.Equal(semver.MustParse("0.0.0"))
+	return ver.Compare(providedVersion) > 0 || ver.Equal(semver.MustParse("0.0.0"))
 }
 
-func (i *PackInvoker) laterThan0_10_0() bool {
+// atLeast returns true if pack version is the same or older than the provided version
+func (i *PackInvoker) atLeast(version string) bool {
+	minimalVersion := semver.MustParse(version)
 	ver := i.semanticVersion()
-	return ver.GreaterThan(semver.MustParse("0.10.0")) || ver.Equal(semver.MustParse("0.0.0"))
-}
-
-func (i *PackInvoker) not0_11_0() bool {
-	ver := i.semanticVersion()
-	return !ver.Equal(semver.MustParse("0.11.0"))
-}
-
-func (i *PackInvoker) atLeast0_12_0() bool {
-	ver := i.semanticVersion()
-	minimumVersion := semver.MustParse("0.12.0")
-	return ver.Equal(minimumVersion) || ver.GreaterThan(minimumVersion) || ver.Equal(semver.MustParse("0.0.0"))
+	return ver.Equal(minimalVersion) || ver.GreaterThan(minimalVersion) || ver.Equal(semver.MustParse("0.0.0"))
 }
 
 func (i *PackInvoker) ConfigFileContents() string {

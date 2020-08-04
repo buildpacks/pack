@@ -1741,25 +1741,44 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("volumes are mounted from the host", func() {
-			when("not on windows", func() {
-				it.Before(func() {
-					h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
-				})
+		when("Volumes option", func() {
+			when("on posix", func() {
+				for _, test := range []struct {
+					name        string
+					volume      string
+					expectation string
+				}{
+					{"defaults to read-only", "/a:/x", "/a:/x:ro"},
+					{"defaults to read-only (nested)", "/a:/some/path/y", "/a:/some/path/y:ro"},
+					{"supports rw mode", "/a:/x:rw", "/a:/x:rw"},
+				} {
+					volume := test.volume
+					expectation := test.expectation
 
-				it("prepends /platform to the mount paths", func() {
-					subject.Build(context.TODO(), BuildOptions{
-						Image:   "some/app",
-						Builder: defaultBuilderName,
-						ContainerConfig: ContainerConfig{
-							Volumes: []string{"/a:/x", "/b:/some/path/y"},
-						},
+					it(test.name, func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultBuilderName,
+							ContainerConfig: ContainerConfig{
+								Volumes: []string{volume},
+							},
+						})
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Volumes, []string{expectation})
 					})
-					expected := []string{
-						fmt.Sprintf("/a:%v:ro", filepath.Join("/platform", "x")),
-						fmt.Sprintf("/b:%v:ro", filepath.Join("/platform", "some/path/y")),
-					}
-					h.AssertEq(t, fakeLifecycle.Opts.Volumes, expected)
+				}
+
+				when("volume mode is invalid", func() {
+					it("returns an error", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultBuilderName,
+							ContainerConfig: ContainerConfig{
+								Volumes: []string{"/a:/x:invalid"},
+							},
+						})
+						h.AssertError(t, err, `platform volume "/a:/x:invalid" has invalid format: invalid mode: invalid`)
+					})
 				})
 
 				when("volume specification is invalid", func() {
@@ -1768,10 +1787,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Image:   "some/app",
 							Builder: defaultBuilderName,
 							ContainerConfig: ContainerConfig{
-								Volumes: []string{"/a:/x", ":::"},
+								Volumes: []string{":::"},
 							},
 						})
-						h.AssertError(t, err, `Platform volume ":::" has invalid format: invalid volume specification: ':::'`)
+						h.AssertError(t, err, `platform volume ":::" has invalid format: invalid volume specification: ':::'`)
 					})
 				})
 			})
@@ -1781,7 +1800,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
 				})
 
-				it("prepends /platform to the mount paths", func() {
+				it("drive is transformed", func() {
 					dir, _ := ioutil.TempDir("", "pack-test-mount")
 					volume := fmt.Sprintf("%v:/x", dir)
 					err := subject.Build(context.TODO(), BuildOptions{
