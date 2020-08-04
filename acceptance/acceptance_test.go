@@ -115,10 +115,9 @@ func testWithoutSpecificBuilderRequirement(
 	packConfig config.PackAsset,
 ) {
 	var (
-		bpDir                = buildpacksDir(builder.DefaultBuildpackAPIVersion)
-		pack                 *invoke.PackInvoker
-		assert               = h.NewAssertionManager(t)
-		acceptanceAssertions = assertions.NewAcceptanceAssertionManager(t, assert)
+		bpDir  = buildpacksDir(builder.DefaultBuildpackAPIVersion)
+		pack   *invoke.PackInvoker
+		assert = h.NewAssertionManager(t)
 	)
 
 	it.Before(func() {
@@ -134,7 +133,7 @@ func testWithoutSpecificBuilderRequirement(
 			output, err := pack.Run("some-bad-command")
 			assert.NotNil(err)
 
-			assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+			assertOutput := assertions.NewOutputAssertionManager(t, output)
 			assertOutput.ReportsCommandUnknown("some-bad-command")
 			assertOutput.IncludesUsagePrompt()
 		})
@@ -144,7 +143,7 @@ func testWithoutSpecificBuilderRequirement(
 		it("displays suggested builders", func() {
 			output := pack.RunSuccessfully("suggest-builders")
 
-			assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+			assertOutput := assertions.NewOutputAssertionManager(t, output)
 			assertOutput.IncludesSuggestedBuildersHeading()
 			assertOutput.IncludesPrefixedGoogleBuilder()
 			assertOutput.IncludesPrefixedHerokuBuilder()
@@ -157,7 +156,7 @@ func testWithoutSpecificBuilderRequirement(
 			output, err := pack.Run("suggest-stacks")
 			assert.NilWithMessage(err, fmt.Sprintf("suggest-stacks command failed with output %s", output))
 
-			acceptanceAssertions.OutputAssertionManager(output).IncludesSuggestedStacksHeading()
+			assertions.NewOutputAssertionManager(t, output).IncludesSuggestedStacksHeading()
 		})
 	})
 
@@ -166,7 +165,7 @@ func testWithoutSpecificBuilderRequirement(
 			builderName := "gcr.io/paketo-buildpacks/builder:base"
 			output := pack.RunSuccessfully("set-default-builder", builderName)
 
-			acceptanceAssertions.OutputAssertionManager(output).ReportsSettingDefaultBuilder(builderName)
+			assertions.NewOutputAssertionManager(t, output).ReportsSettingDefaultBuilder(builderName)
 		})
 	})
 
@@ -207,7 +206,7 @@ func testWithoutSpecificBuilderRequirement(
 		it("shows default builders from pack suggest-builders", func() {
 			output := pack.RunSuccessfully("list-trusted-builders")
 
-			assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+			assertOutput := assertions.NewOutputAssertionManager(t, output)
 			assertOutput.IncludesTrustedBuildersHeading()
 			assertOutput.IncludesHerokuBuilder()
 			assertOutput.IncludesGoogleBuilder()
@@ -268,7 +267,7 @@ func testWithoutSpecificBuilderRequirement(
 			output, err := pack.Run("package-buildpack", packageName, "-c", absConfigPath)
 			assert.Nil(err)
 
-			acceptanceAssertions.OutputAssertionManager(output).ReportsPackageCreation(packageName)
+			assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(packageName)
 			return packageName
 		}
 
@@ -277,7 +276,7 @@ func testWithoutSpecificBuilderRequirement(
 			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 			output, err := pack.Run("package-buildpack", packageName, "-c", absConfigPath, "--publish")
 			assert.Nil(err)
-			acceptanceAssertions.OutputAssertionManager(output).ReportsPackagePublished(packageName)
+			assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
 			return packageName
 		}
 
@@ -311,7 +310,7 @@ func testWithoutSpecificBuilderRequirement(
 			it("creates the package as image", func() {
 				packageName := "test/package-" + h.RandString(10)
 				output := pack.RunSuccessfully("package-buildpack", packageName, "-c", simplePackageConfigPath)
-				acceptanceAssertions.OutputAssertionManager(output).ReportsPackageCreation(packageName)
+				assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(packageName)
 				defer h.DockerRmi(dockerCli, packageName)
 
 				assertImageExistsLocally(packageName)
@@ -345,7 +344,7 @@ func testWithoutSpecificBuilderRequirement(
 						"-c", aggregatePackageToml,
 						"--publish",
 					)
-					acceptanceAssertions.OutputAssertionManager(output).ReportsPackagePublished(packageName)
+					assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
 
 					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
 					h.AssertError(t, err, "No such image")
@@ -389,7 +388,7 @@ func testWithoutSpecificBuilderRequirement(
 						"--no-pull",
 					)
 					assert.NotNil(err)
-					acceptanceAssertions.OutputAssertionManager(output).ReportsImageNotExistingOnDaemon(nestedPackage)
+					assertions.NewOutputAssertionManager(t, output).ReportsImageNotExistingOnDaemon(nestedPackage)
 				})
 			})
 		})
@@ -407,7 +406,7 @@ func testWithoutSpecificBuilderRequirement(
 					"-c", simplePackageConfigPath,
 				)
 				assert.Nil(err)
-				acceptanceAssertions.OutputAssertionManager(output).ReportsPackageCreation(destinationFile)
+				assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(destinationFile)
 				h.AssertTarball(t, destinationFile)
 			})
 		})
@@ -459,7 +458,7 @@ func testWithoutSpecificBuilderRequirement(
 			)
 
 			assert.NotNil(err)
-			assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+			assertOutput := assertions.NewOutputAssertionManager(t, output)
 			assertOutput.IncludesMessageToSetDefaultBuilder()
 			assertOutput.IncludesPrefixedGoogleBuilder()
 			assertOutput.IncludesPrefixedHerokuBuilder()
@@ -478,9 +477,7 @@ func testAcceptance(
 	var (
 		pack, createBuilderPack *invoke.PackInvoker
 		bpDir                   = buildpacksDir(lifecycle.BuildpackAPIVersion())
-
-		assert               = h.NewAssertionManager(t)
-		acceptanceAssertions = assertions.NewAcceptanceAssertionManager(t, assert)
+		assert                  = h.NewAssertionManager(t)
 	)
 
 	it.Before(func() {
@@ -650,7 +647,7 @@ func testAcceptance(
 							"-B", untrustedBuilderName,
 						)
 
-						assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+						assertOutput := assertions.NewOutputAssertionManager(t, output)
 
 						if pack.SupportsFeature(invoke.CreatorInPack) {
 							assertOutput.IncludesLifecycleImageTag()
@@ -691,7 +688,7 @@ func testAcceptance(
 						}
 						defer h.DockerRmi(dockerCli, imgId)
 
-						assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+						assertOutput := assertions.NewOutputAssertionManager(t, output)
 
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
 						assertOutput.ReportsUsingBuildCacheVolume()
@@ -735,7 +732,7 @@ func testAcceptance(
 						}
 						defer h.DockerRmi(dockerCli, imgId)
 
-						assertOutput = acceptanceAssertions.OutputAssertionManager(output)
+						assertOutput = assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
 						assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
 						cachedLaunchLayer := "simple/layers:cached-launch-layer"
@@ -749,7 +746,7 @@ func testAcceptance(
 						t.Log("rebuild with --clear-cache")
 						output = pack.RunSuccessfully("build", repoName, "-p", appPath, "--clear-cache")
 
-						assertOutput = acceptanceAssertions.OutputAssertionManager(output)
+						assertOutput = assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
 						assertOutput.ReportsSkippingBuildpackLayerAnalysis()
 						assertOutput.ReportsExporterReusingUnchangedLayer(cachedLaunchLayer)
@@ -800,7 +797,7 @@ func testAcceptance(
 							}
 							defer h.DockerRmi(dockerCli, imgId)
 
-							assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+							assertOutput := assertions.NewOutputAssertionManager(t, output)
 
 							assertOutput.ReportsSuccessfulImageBuild(repoName)
 							assertOutput.WithoutColors()
@@ -810,7 +807,7 @@ func testAcceptance(
 					it("supports building app from a zip file", func() {
 						appPath := filepath.Join("testdata", "mock_app.zip")
 						output := pack.RunSuccessfully("build", repoName, "-p", appPath)
-						acceptanceAssertions.OutputAssertionManager(output).ReportsSuccessfulImageBuild(repoName)
+						assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 						imgId, err := imgIDForRepoName(repoName)
 						if err != nil {
@@ -844,7 +841,7 @@ func testAcceptance(
 									"--buildpack", buildpackTgz,
 								)
 
-								acceptanceAssertions.OutputAssertionManager(output).ReportsConnectedToInternet()
+								assertions.NewOutputAssertionManager(t, output).ReportsConnectedToInternet()
 							})
 						})
 
@@ -856,7 +853,7 @@ func testAcceptance(
 									"--buildpack", buildpackTgz,
 								)
 
-								acceptanceAssertions.OutputAssertionManager(output).ReportsConnectedToInternet()
+								assertions.NewOutputAssertionManager(t, output).ReportsConnectedToInternet()
 							})
 						})
 
@@ -873,7 +870,7 @@ func testAcceptance(
 									"none",
 								)
 
-								acceptanceAssertions.OutputAssertionManager(output).ReportsDisconnectedFromInternet()
+								assertions.NewOutputAssertionManager(t, output).ReportsDisconnectedFromInternet()
 							})
 						})
 					})
@@ -923,7 +920,7 @@ func testAcceptance(
 								expectedPhase = "Detect"
 							}
 
-							acceptanceAssertions.OutputAssertionManager(output).ReportsReadingFileContents(
+							assertions.NewOutputAssertionManager(t, output).ReportsReadingFileContents(
 								"/my-volume-mount-target/some-file",
 								"some-string",
 								expectedPhase,
@@ -959,7 +956,7 @@ func testAcceptance(
 									"--buildpack", "noop.buildpack@noop.buildpack.version",
 								)
 
-								assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+								assertOutput := assertions.NewOutputAssertionManager(t, output)
 								assertOutput.ReportsBuildStep("Simple Layers Buildpack")
 								assertOutput.ReportsBuildStep("NOOP Buildpack")
 								assertOutput.ReportsSuccessfulImageBuild(repoName)
@@ -992,7 +989,7 @@ func testAcceptance(
 									"--buildpack", localBuildpackTgz,
 								)
 
-								assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+								assertOutput := assertions.NewOutputAssertionManager(t, output)
 								assertOutput.ReportsAddingBuildpack("local/bp", "local-bp-version")
 								assertOutput.ReportsBuildStep("Local Buildpack")
 								assertOutput.ReportsSuccessfulImageBuild(repoName)
@@ -1009,7 +1006,7 @@ func testAcceptance(
 									"--buildpack", filepath.Join(bpDir, "not-in-builder-buildpack"),
 								)
 
-								assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+								assertOutput := assertions.NewOutputAssertionManager(t, output)
 								assertOutput.ReportsAddingBuildpack("local/bp", "local-bp-version")
 								assertOutput.ReportsBuildStep("Local Buildpack")
 								assertOutput.ReportsSuccessfulImageBuild(repoName)
@@ -1044,7 +1041,7 @@ func testAcceptance(
 									"--buildpack", packageImageName,
 								)
 
-								assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+								assertOutput := assertions.NewOutputAssertionManager(t, output)
 								assertOutput.ReportsAddingBuildpack(
 									"simple/layers/parent",
 									"simple-layers-parent-version",
@@ -1095,7 +1092,7 @@ func testAcceptance(
 									"--buildpack", packageFile,
 								)
 
-								assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+								assertOutput := assertions.NewOutputAssertionManager(t, output)
 								assertOutput.ReportsAddingBuildpack(
 									"simple/layers/parent",
 									"simple-layers-parent-version",
@@ -1162,7 +1159,7 @@ func testAcceptance(
 								"--env-file", envPath,
 							)
 
-							acceptanceAssertions.OutputAssertionManager(output).ReportsSuccessfulImageBuild(repoName)
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 							assertMockAppRunsWithOutput(t,
 								assert,
 								repoName,
@@ -1192,7 +1189,7 @@ func testAcceptance(
 								"--env", "ENV2_CONTENTS",
 							)
 
-							acceptanceAssertions.OutputAssertionManager(output).ReportsSuccessfulImageBuild(repoName)
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 							assertMockAppRunsWithOutput(t,
 								assert,
 								repoName,
@@ -1225,7 +1222,7 @@ func testAcceptance(
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--run-image", runImageName,
 								)
-								assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+								assertOutput := assertions.NewOutputAssertionManager(t, output)
 								assertOutput.ReportsSuccessfulImageBuild(repoName)
 								assertOutput.ReportsPullingImage(runImageName)
 
@@ -1264,7 +1261,7 @@ func testAcceptance(
 								)
 								assert.NotNil(err)
 
-								assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+								assertOutput := assertions.NewOutputAssertionManager(t, output)
 								assertOutput.ReportsRunImageStackNotMatchingBuilder(
 									"other.stack.id",
 									"pack.test.stack",
@@ -1281,7 +1278,7 @@ func testAcceptance(
 								"--publish",
 								"--network", "host",
 							)
-							acceptanceAssertions.OutputAssertionManager(output).ReportsSuccessfulImageBuild(repoName)
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 							t.Log("checking that registry has contents")
 							contents, err := registryConfig.RegistryCatalog()
@@ -1598,7 +1595,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						it("prefers the local mirror", func() {
 							output := pack.RunSuccessfully("rebase", repoName, "--no-pull")
 
-							assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+							assertOutput := assertions.NewOutputAssertionManager(t, output)
 							assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
 							assertOutput.ReportsSuccessfulRebase(repoName)
 							assertMockAppRunsWithOutput(t,
@@ -1621,7 +1618,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						it("selects the best mirror", func() {
 							output := pack.RunSuccessfully("rebase", repoName, "--no-pull")
 
-							assertOutput := acceptanceAssertions.OutputAssertionManager(output)
+							assertOutput := assertions.NewOutputAssertionManager(t, output)
 							assertOutput.ReportsSelectingRunImageMirror(runImageMirror)
 							assertOutput.ReportsSuccessfulRebase(repoName)
 							assertMockAppRunsWithOutput(t,
@@ -1655,7 +1652,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						it("uses provided run image", func() {
 							output := pack.RunSuccessfully("rebase", repoName, "--publish", "--run-image", runAfter)
 
-							acceptanceAssertions.OutputAssertionManager(output).ReportsSuccessfulRebase(repoName)
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulRebase(repoName)
 							assert.Nil(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
 							assertMockAppRunsWithOutput(t,
 								assert,

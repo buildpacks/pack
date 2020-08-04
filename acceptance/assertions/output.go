@@ -16,6 +16,14 @@ type OutputAssertionManager struct {
 	output     string
 }
 
+func NewOutputAssertionManager(t *testing.T, output string) OutputAssertionManager {
+	return OutputAssertionManager{
+		testObject: t,
+		assert:     h.NewAssertionManager(t),
+		output:     output,
+	}
+}
+
 func (o OutputAssertionManager) ReportsSuccessfulImageBuild(name string) {
 	o.testObject.Helper()
 
@@ -25,7 +33,7 @@ func (o OutputAssertionManager) ReportsSuccessfulImageBuild(name string) {
 func (o OutputAssertionManager) ReportsSuccessfulRebase(name string) {
 	o.testObject.Helper()
 
-	o.assert.Contains(o.output, fmt.Sprintf("Successfully rebased image '%s'", name))
+	o.assert.ContainsF(o.output, "Successfully rebased image '%s'", name)
 }
 
 func (o OutputAssertionManager) ReportsUsingBuildCacheVolume() {
