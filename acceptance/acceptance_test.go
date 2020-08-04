@@ -647,13 +647,14 @@ func testAcceptance(
 							"-B", untrustedBuilderName,
 						)
 
-						assertOutput := assertions.NewOutputAssertionManager(t, output)
+						assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+						assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
 
 						if pack.SupportsFeature(invoke.CreatorInPack) {
 							assertOutput.IncludesLifecycleImageTag()
 						}
 						assertOutput.IncludesSeparatePhases()
-						assertOutput.ReportsSuccessfulImageBuild(repoName)
 					})
 				})
 
@@ -736,9 +737,11 @@ func testAcceptance(
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
 						assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
 						cachedLaunchLayer := "simple/layers:cached-launch-layer"
-						assertOutput.ReportsRestoresCachedLayer(cachedLaunchLayer)
-						assertOutput.ReportsExporterReusingUnchangedLayer(cachedLaunchLayer)
-						assertOutput.ReportsCacheReuse(cachedLaunchLayer)
+
+						assertLifecycleOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+						assertLifecycleOutput.ReportsRestoresCachedLayer(cachedLaunchLayer)
+						assertLifecycleOutput.ReportsExporterReusingUnchangedLayer(cachedLaunchLayer)
+						assertLifecycleOutput.ReportsCacheReuse(cachedLaunchLayer)
 
 						t.Log("app is runnable")
 						assertMockAppRunsWithOutput(t, assert, repoName, "Launch Dep Contents", "Cached Dep Contents")
@@ -748,12 +751,14 @@ func testAcceptance(
 
 						assertOutput = assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
-						assertOutput.ReportsSkippingBuildpackLayerAnalysis()
-						assertOutput.ReportsExporterReusingUnchangedLayer(cachedLaunchLayer)
-						assertOutput.ReportsCacheCreation(cachedLaunchLayer)
 						if !usingCreator {
 							assertOutput.ReportsSkippingRestore()
 						}
+
+						assertLifecycleOutput = assertions.NewLifecycleOutputAssertionManager(t, output)
+						assertLifecycleOutput.ReportsSkippingBuildpackLayerAnalysis()
+						assertLifecycleOutput.ReportsExporterReusingUnchangedLayer(cachedLaunchLayer)
+						assertLifecycleOutput.ReportsCacheCreation(cachedLaunchLayer)
 
 						t.Log("cacher adds layers")
 						h.AssertContainsMatch(t, output, `(?i)Adding cache layer 'simple/layers:cached-launch-layer'`)

@@ -57,50 +57,11 @@ func (o OutputAssertionManager) ReportsSelectingRunImageMirrorFromLocalConfig(mi
 	o.assert.ContainsF(o.output, "Selected run image mirror '%s' from local config", mirror)
 }
 
-func (o OutputAssertionManager) ReportsRestoresCachedLayer(layer string) {
-	o.testObject.Helper()
-	o.testObject.Log("restores the cache")
-
-	o.assert.MatchesAll(
-		o.output,
-		regexp.MustCompile(fmt.Sprintf(`(?i)Restoring data for "%s" from cache`, layer)),
-		regexp.MustCompile(fmt.Sprintf(`(?i)Restoring metadata for "%s" from app image`, layer)),
-	)
-}
-
-func (o OutputAssertionManager) ReportsExporterReusingUnchangedLayer(layer string) {
-	o.testObject.Helper()
-	o.testObject.Log("exporter reuses unchanged layers")
-
-	o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`(?i)Reusing layer '%s'`, layer)))
-}
-
-func (o OutputAssertionManager) ReportsCacheReuse(layer string) {
-	o.testObject.Helper()
-	o.testObject.Log("cacher reuses unchanged layers")
-
-	o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`(?i)Reusing cache layer '%s'`, layer)))
-}
-
-func (o OutputAssertionManager) ReportsCacheCreation(layer string) {
-	o.testObject.Helper()
-	o.testObject.Log("cacher adds layers")
-
-	o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`(?i)Adding cache layer '%s'`, layer)))
-}
-
 func (o OutputAssertionManager) ReportsSkippingRestore() {
 	o.testObject.Helper()
 	o.testObject.Log("skips restore")
 
 	o.assert.Contains(o.output, "Skipping 'restore' due to clearing cache")
-}
-
-func (o OutputAssertionManager) ReportsSkippingBuildpackLayerAnalysis() {
-	o.testObject.Helper()
-	o.testObject.Log("skips buildpack layer analysis")
-
-	o.assert.Matches(o.output, regexp.MustCompile(`(?i)Skipping buildpack layer analysis`))
 }
 
 func (o OutputAssertionManager) ReportsReadingFileContents(path, expectedContent, phase string) {
@@ -213,18 +174,6 @@ func (o OutputAssertionManager) IncludesTrustedBuildersHeading() {
 	o.testObject.Helper()
 
 	o.assert.Contains(o.output, "Trusted Builders:")
-}
-
-func (o OutputAssertionManager) IncludesLifecycleImageTag() {
-	o.testObject.Helper()
-
-	o.assert.Contains(o.output, "buildpacksio/lifecycle")
-}
-
-func (o OutputAssertionManager) IncludesSeparatePhases() {
-	o.testObject.Helper()
-
-	o.assert.ContainsAll(o.output, "[detector]", "[analyzer]", "[builder]", "[exporter]")
 }
 
 const googleBuilder = "gcr.io/buildpacks/builder:v1"
