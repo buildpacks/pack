@@ -31,11 +31,7 @@ func NewFakeImageFetcher() *FakeImageFetcher {
 	}
 }
 
-func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (imgutil.Image, error) {
-	return f.NewFetch(ctx, name, daemon, config.ParsePolicyFromPull(pull))
-}
-
-func (f *FakeImageFetcher) NewFetch(ctx context.Context, name string, daemon bool, policy config.PullPolicy) (imgutil.Image, error) {
+func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, daemon bool, policy config.PullPolicy) (imgutil.Image, error) {
 	f.FetchCalls[name] = &FetchArgs{Daemon: daemon, Pull: boolFromPolicy(policy), PullPolicy: policy}
 
 	ri, remoteFound := f.RemoteImages[name]

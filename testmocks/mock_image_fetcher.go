@@ -38,7 +38,7 @@ func (m *MockImageFetcher) EXPECT() *MockImageFetcherMockRecorder {
 }
 
 // Fetch mocks base method
-func (m *MockImageFetcher) Fetch(arg0 context.Context, arg1 string, arg2, arg3 bool) (imgutil.Image, error) {
+func (m *MockImageFetcher) Fetch(arg0 context.Context, arg1 string, arg2 bool, arg3 config.PullPolicy) (imgutil.Image, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Fetch", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(imgutil.Image)
@@ -50,19 +50,4 @@ func (m *MockImageFetcher) Fetch(arg0 context.Context, arg1 string, arg2, arg3 b
 func (mr *MockImageFetcherMockRecorder) Fetch(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Fetch", reflect.TypeOf((*MockImageFetcher)(nil).Fetch), arg0, arg1, arg2, arg3)
-}
-
-// NewFetch mocks base method
-func (m *MockImageFetcher) NewFetch(arg0 context.Context, arg1 string, arg2 bool, arg3 config.PullPolicy) (imgutil.Image, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewFetch", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(imgutil.Image)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// NewFetch indicates an expected call of NewFetch
-func (mr *MockImageFetcherMockRecorder) NewFetch(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewFetch", reflect.TypeOf((*MockImageFetcher)(nil).NewFetch), arg0, arg1, arg2, arg3)
 }

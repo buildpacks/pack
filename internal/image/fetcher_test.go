@@ -70,22 +70,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("returns the remote image", func() {
-					// TODO: Remove Fetch tests
-					_, err := fetcher.Fetch(context.TODO(), repoName, false, false)
-					h.AssertNil(t, err)
-
-					_, err = fetcher.NewFetch(context.TODO(), repoName, false, pubcfg.PullAlways)
+					_, err := fetcher.Fetch(context.TODO(), repoName, false, pubcfg.PullAlways)
 					h.AssertNil(t, err)
 				})
 			})
 
 			when("there is no remote image", func() {
 				it("returns an error", func() {
-					// TODO: Remove Fetch tests
-					_, err := fetcher.Fetch(context.TODO(), repoName, false, false)
-					h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist in registry", repoName))
-
-					_, err = fetcher.NewFetch(context.TODO(), repoName, false, pubcfg.PullAlways)
+					_, err := fetcher.Fetch(context.TODO(), repoName, false, pubcfg.PullAlways)
 					h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist in registry", repoName))
 				})
 			})
@@ -111,22 +103,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("returns the local image", func() {
-						// TODO: Remove Fetch tests
-						_, err := fetcher.Fetch(context.TODO(), repoName, true, false)
-						h.AssertNil(t, err)
-
-						_, err = fetcher.NewFetch(context.TODO(), repoName, true, pubcfg.PullNever)
+						_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullNever)
 						h.AssertNil(t, err)
 					})
 				})
 
 				when("there is no local image", func() {
 					it("returns an error", func() {
-						// TODO: Remove Fetch tests
-						_, err := fetcher.Fetch(context.TODO(), repoName, true, false)
-						h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
-
-						_, err = fetcher.NewFetch(context.TODO(), repoName, true, pubcfg.PullNever)
+						_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullNever)
 						h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
 					})
 				})
@@ -152,11 +136,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("pull the image and return the local copy", func() {
-						// TODO: Remove Fetch tests
-						_, err := fetcher.Fetch(context.TODO(), repoName, true, true)
-						h.AssertNil(t, err)
-
-						_, err = fetcher.NewFetch(context.TODO(), repoName, true, pubcfg.PullAlways)
+						_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullAlways)
 						h.AssertNil(t, err)
 					})
 				})
@@ -175,22 +155,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("returns the local image", func() {
-							// TODO: Remove Fetch tests
-							_, err := fetcher.Fetch(context.TODO(), repoName, true, true)
-							h.AssertNil(t, err)
-
-							_, err = fetcher.NewFetch(context.TODO(), repoName, true, pubcfg.PullAlways)
+							_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullAlways)
 							h.AssertNil(t, err)
 						})
 					})
 
 					when("there is no local image", func() {
 						it("returns an error", func() {
-							// TODO: Remove Fetch tests
-							_, err := fetcher.Fetch(context.TODO(), repoName, true, true)
-							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
-
-							_, err = fetcher.NewFetch(context.TODO(), repoName, true, pubcfg.PullAlways)
+							_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullAlways)
 							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
 						})
 					})

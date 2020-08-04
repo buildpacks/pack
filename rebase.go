@@ -27,7 +27,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.RepoName)
 	}
 
-	appImage, err := c.imageFetcher.NewFetch(ctx, opts.RepoName, !opts.Publish, opts.PullPolicy)
+	appImage, err := c.imageFetcher.Fetch(ctx, opts.RepoName, !opts.Publish, opts.PullPolicy)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.New("run image must be specified")
 	}
 
-	baseImage, err := c.imageFetcher.NewFetch(ctx, runImageName, !opts.Publish, opts.PullPolicy)
+	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, !opts.Publish, opts.PullPolicy)
 	if err != nil {
 		return err
 	}

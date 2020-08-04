@@ -66,7 +66,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 	var runImages []imgutil.Image
 	for _, i := range append([]string{opts.Config.Stack.RunImage}, opts.Config.Stack.RunImageMirrors...) {
 		if !opts.Publish {
-			img, err := c.imageFetcher.NewFetch(ctx, i, true, opts.PullPolicy)
+			img, err := c.imageFetcher.Fetch(ctx, i, true, opts.PullPolicy)
 			if err != nil {
 				if errors.Cause(err) != image.ErrNotFound {
 					return errors.Wrap(err, "failed to fetch image")
@@ -77,7 +77,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 			}
 		}
 
-		img, err := c.imageFetcher.NewFetch(ctx, i, false, opts.PullPolicy)
+		img, err := c.imageFetcher.Fetch(ctx, i, false, opts.PullPolicy)
 		if err != nil {
 			if errors.Cause(err) != image.ErrNotFound {
 				return errors.Wrap(err, "failed to fetch image")
@@ -108,7 +108,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 }
 
 func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions) (*builder.Builder, error) {
-	baseImage, err := c.imageFetcher.NewFetch(ctx, opts.Config.Stack.BuildImage, !opts.Publish, opts.PullPolicy)
+	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Stack.BuildImage, !opts.Publish, opts.PullPolicy)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch build image")
 	}

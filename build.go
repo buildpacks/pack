@@ -92,7 +92,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
-	rawBuilderImage, err := c.imageFetcher.NewFetch(ctx, builderRef.Name(), true, opts.PullPolicy)
+	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), true, opts.PullPolicy)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
 	}
@@ -183,7 +183,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if !opts.TrustBuilder {
 		switch lifecycleImageSupported {
 		case true:
-			lifecycleImage, err := c.imageFetcher.NewFetch(
+			lifecycleImage, err := c.imageFetcher.Fetch(
 				ctx,
 				fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
 				true,
@@ -254,7 +254,7 @@ func (c *Client) validateRunImage(context context.Context, name string, pullPoli
 	if name == "" {
 		return nil, errors.New("run image must be specified")
 	}
-	img, err := c.imageFetcher.NewFetch(context, name, !publish, pullPolicy)
+	img, err := c.imageFetcher.Fetch(context, name, !publish, pullPolicy)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/registry"
@@ -19,7 +21,7 @@ type RegisterBuildpackOptions struct {
 }
 
 func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOptions) error {
-	appImage, err := c.imageFetcher.Fetch(ctx, opts.ImageName, false, true)
+	appImage, err := c.imageFetcher.Fetch(ctx, opts.ImageName, false, config.PullAlways)
 	if err != nil {
 		return err
 	}

@@ -3,6 +3,8 @@ package pack
 import (
 	"context"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/launch"
@@ -33,7 +35,7 @@ type layersMetadata struct {
 }
 
 func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
-	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, false)
+	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, config.PullNever)
 	if err != nil {
 		if errors.Cause(err) == image.ErrNotFound {
 			return nil, nil

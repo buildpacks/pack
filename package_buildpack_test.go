@@ -178,11 +178,11 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			shouldFetchNestedPackage := func(demon bool, pull config.PullPolicy) {
-				mockImageFetcher.EXPECT().NewFetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nestedPackage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nestedPackage, nil)
 			}
 
 			shouldNotFindNestedPackageWhenCallingImageFetcherWith := func(demon bool, pull config.PullPolicy) {
-				mockImageFetcher.EXPECT().NewFetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nil, image.ErrNotFound)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nil, image.ErrNotFound)
 			}
 
 			shouldCreateLocalPackage := func() imgutil.Image {
@@ -299,7 +299,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		when("nested package is not a valid package", func() {
 			it("should error", func() {
 				notPackageImage := fakes.NewImage("not/package", "", nil)
-				mockImageFetcher.EXPECT().NewFetch(gomock.Any(), notPackageImage.Name(), true, config.PullAlways).Return(notPackageImage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, config.PullAlways).Return(notPackageImage, nil)
 
 				h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: "some/package",
@@ -367,7 +367,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					PullPolicy: config.PullAlways,
 				}))
 
-				mockImageFetcher.EXPECT().NewFetch(gomock.Any(), nestedPackage.Name(), true, config.PullAlways).Return(nestedPackage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, config.PullAlways).Return(nestedPackage, nil)
 			})
 
 			it("should pull and use local nested package image", func() {
@@ -477,7 +477,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					PullPolicy: config.PullAlways,
 				}))
 
-				mockImageFetcher.EXPECT().NewFetch(gomock.Any(), nestedPackage.Name(), true, config.PullAlways).Return(nestedPackage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, config.PullAlways).Return(nestedPackage, nil)
 			})
 
 			it("should include both of them", func() {

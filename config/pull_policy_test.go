@@ -55,4 +55,12 @@ func testPullPolicy(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, config.ParsePolicyFromPull(false), config.PullNever)
 		})
 	})
+
+	when("#String", func() {
+		it("returns the right String value", func() {
+			h.AssertEq(t, config.PullAlways.String(), "always")
+			h.AssertEq(t, config.PullNever.String(), "never")
+			h.AssertEq(t, config.PullIfNotPresent.String(), "if-not-present")
+		})
+	})
 }

@@ -23,8 +23,7 @@ type ImageFetcher interface {
 	// Fetch fetches an image by resolving it both remotely and locally depending on provided parameters.
 	// If daemon is true, it will look return a `local.Image`. Pull, applicable only when daemon is true, will
 	// attempt to pull a remote image first.
-	Fetch(ctx context.Context, name string, daemon, pull bool) (imgutil.Image, error)
-	NewFetch(ctx context.Context, name string, daemon bool, pullPolicy pubcfg.PullPolicy) (imgutil.Image, error)
+	Fetch(ctx context.Context, name string, daemon bool, pullPolicy pubcfg.PullPolicy) (imgutil.Image, error)
 }
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_downloader.go github.com/buildpacks/pack Downloader

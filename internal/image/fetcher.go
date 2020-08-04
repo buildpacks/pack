@@ -38,11 +38,7 @@ func NewFetcher(logger logging.Logger, docker client.CommonAPIClient) *Fetcher {
 
 var ErrNotFound = errors.New("not found")
 
-func (f *Fetcher) Fetch(ctx context.Context, name string, daemon, pull bool) (imgutil.Image, error) {
-	return f.NewFetch(ctx, name, daemon, config.ParsePolicyFromPull(pull))
-}
-
-func (f *Fetcher) NewFetch(ctx context.Context, name string, daemon bool, pullPolicy config.PullPolicy) (imgutil.Image, error) {
+func (f *Fetcher) Fetch(ctx context.Context, name string, daemon bool, pullPolicy config.PullPolicy) (imgutil.Image, error) {
 	if daemon && pullPolicy == config.PullNever {
 		return f.fetchDaemonImage(name)
 	}
