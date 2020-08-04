@@ -39,8 +39,15 @@ func NewFetcher(logger logging.Logger, docker client.CommonAPIClient) *Fetcher {
 var ErrNotFound = errors.New("not found")
 
 func (f *Fetcher) Fetch(ctx context.Context, name string, daemon bool, pullPolicy config.PullPolicy) (imgutil.Image, error) {
-	if daemon && pullPolicy == config.PullNever {
-		return f.fetchDaemonImage(name)
+	if daemon {
+		if pullPolicy == config.PullNever {
+			return f.fetchDaemonImage(name)
+		} else if pullPolicy == config.PullIfNotPresent {
+			img, err := f.fetchDaemonImage(name)
+			if err == nil || !errors.Is(err, ErrNotFound) {
+				return img, err
+			}
+		}
 	}
 
 	image, err := remote.NewImage(name, authn.DefaultKeychain, remote.FromBaseImage(name))

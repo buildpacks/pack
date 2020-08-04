@@ -21,19 +21,19 @@ type CreateBuilderFlags struct {
 	Publish         bool
 	NoPull          bool
 	Registry        string
+	Policy          string
 }
 
 // CreateBuilder creates a builder image, based on a builder config
 func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	var flags CreateBuilderFlags
-	var policy string
 
 	cmd := &cobra.Command{
 		Use:   "create-builder <image-name> --config <builder-config-path>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Create builder image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := validateCreateBuilderFlags(flags, cfg, policy); err != nil {
+			if err := validateCreateBuilderFlags(&flags, cfg, logger); err != nil {
 				return err
 			}
 
@@ -41,19 +41,9 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 				logger.Warn("Flag --builder-config has been deprecated, please use --config instead")
 			}
 
-			if cmd.Flags().Changed("no-pull") {
-				logger.Warn("Flag --no-pull has been deprecated, please use `--pull-policy never` instead")
-
-				if cmd.Flags().Changed("pull-policy") {
-					logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
-				} else {
-					policy = config2.PullNever.String()
-				}
-			}
-
-			pullPolicy, err := config2.ParsePullPolicy(policy)
+			pullPolicy, err := config2.ParsePullPolicy(flags.Policy)
 			if err != nil {
-				return errors.Wrapf(err, "parsing pull policy %s", policy)
+				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
 
 			builderConfig, warns, err := builder.ReadConfig(flags.BuilderTomlPath)
@@ -79,23 +69,23 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 			return nil
 		}),
 	}
-	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling build image before use")
+
 	cmd.Flags().StringVarP(&flags.Registry, "buildpack-registry", "R", cfg.DefaultRegistry, "Buildpack Registry URL")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("buildpack-registry")
 	}
-
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
-
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
-	cmd.Flags().StringVar(&policy, "pull-policy", "", "pull policy to use")
+	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
+	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling build image before use")
+	cmd.Flags().MarkHidden("no-pull")
 
 	AddHelpFlag(cmd, "create-builder")
 	return cmd
 }
 
-func validateCreateBuilderFlags(flags CreateBuilderFlags, cfg config.Config, policy string) error {
-	if flags.Publish && policy == "never" {
+func validateCreateBuilderFlags(flags *CreateBuilderFlags, cfg config.Config, logger logging.Logger) error {
+	if flags.Publish && flags.Policy == config2.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
 	}
 
@@ -109,6 +99,16 @@ func validateCreateBuilderFlags(flags CreateBuilderFlags, cfg config.Config, pol
 
 	if flags.BuilderTomlPath == "" {
 		return errors.Errorf("Please provide a builder config path, using --config.")
+	}
+
+	if flags.NoPull {
+		logger.Warn("Flag --no-pull has been deprecated, please use `--pull-policy never` instead")
+
+		if flags.Policy != "" {
+			logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
+		} else {
+			flags.Policy = config2.PullNever.String()
+		}
 	}
 
 	return nil

@@ -20,7 +20,7 @@ type PackageBuildpackFlags struct {
 	Format          string
 	Publish         bool
 	NoPull          bool
-	Policy          config.PullPolicy
+	Policy          string
 }
 
 // BuildpackPackager packages buildpacks
@@ -36,19 +36,18 @@ type PackageConfigReader interface {
 // PackageBuildpack packages (a) buildpack(s) into OCI format, based on a package config
 func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
 	var flags PackageBuildpackFlags
-	var policy string
 
 	cmd := &cobra.Command{
 		Use:   `package-buildpack <name> --config <package-config-path>`,
 		Short: "Package buildpack in OCI format.",
 		Args:  cobra.ExactValidArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := validateFlags(logger, flags, &policy); err != nil {
+			if err := validateFlags(&flags, logger); err != nil {
 				return err
 			}
 
 			var err error
-			flags.Policy, err = config.ParsePullPolicy(policy)
+			pullPolicy, err := config.ParsePullPolicy(flags.Policy)
 			if err != nil {
 				return errors.Wrap(err, "parse pull policy")
 			}
@@ -68,7 +67,7 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 				Format:     flags.Format,
 				Config:     config,
 				Publish:    flags.Publish,
-				PullPolicy: flags.Policy,
+				PullPolicy: pullPolicy,
 			}); err != nil {
 				return err
 			}
@@ -86,7 +85,7 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--image" only)`)
-	cmd.Flags().StringVar(&policy, "pull-policy", "", "pull policy to use")
+	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling packages before use")
 	cmd.Flags().MarkHidden("no-pull")
 
@@ -94,8 +93,8 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 	return cmd
 }
 
-func validateFlags(logger logging.Logger, p PackageBuildpackFlags, policy *string) error {
-	if p.Publish && *policy == "never" {
+func validateFlags(p *PackageBuildpackFlags, logger logging.Logger) error {
+	if p.Publish && p.Policy == config.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
 	}
 
@@ -110,10 +109,10 @@ func validateFlags(logger logging.Logger, p PackageBuildpackFlags, policy *strin
 	if p.NoPull {
 		logger.Warn("Flag --no-pull has been deprecated, please use `--pull-policy never` instead")
 
-		if *policy != "" {
+		if p.Policy != "" {
 			logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
 		} else {
-			*policy = config.PullNever.String()
+			p.Policy = config.PullNever.String()
 		}
 	}
 

@@ -50,12 +50,11 @@ func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.
 	}
 
 	cmd.Flags().BoolVar(&opts.Publish, "publish", false, "Publish to registry")
-	cmd.Flags().StringVar(&policy, "pull-policy", "", "pull policy to use")
 	cmd.Flags().StringVar(&opts.RunImage, "run-image", "", "Run image to use for rebasing")
-	AddHelpFlag(cmd, "rebase")
-
+	cmd.Flags().StringVar(&policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	cmd.Flags().BoolVar(&noPull, "no-pull", false, "Skip pulling app and run images before use")
 	cmd.Flags().MarkHidden("no-pull")
 
+	AddHelpFlag(cmd, "rebase")
 	return cmd
 }
