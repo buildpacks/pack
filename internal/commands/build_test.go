@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"testing"
 
+	config2 "github.com/buildpacks/pack/config"
+
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
@@ -131,6 +133,29 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--network", "my-network"})
 				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("--no-pull", func() {
+			it("sets pull-policy=never and logs warning", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithPullPolicy(config2.PullNever)).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--no-pull"})
+				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Warning: Flag --no-pull has been deprecated")
+			})
+
+			it("overrides if pull-policy set to value and logs warning", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithPullPolicy(config2.PullAlways)).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--no-pull", "--pull-policy", "always"})
+				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), "Warning: Flag --no-pull has been deprecated")
+				h.AssertContains(t, outBuf.String(), "Warning: Flag --no-pull ignored in favor of --pull-policy")
 			})
 		})
 
@@ -601,6 +626,15 @@ func EqBuildOptionsDefaultProcess(defaultProc string) gomock.Matcher {
 		description: fmt.Sprintf("Default Process Type=%s", defaultProc),
 		equals: func(o pack.BuildOptions) bool {
 			return o.DefaultProcessType == defaultProc
+		},
+	}
+}
+
+func EqBuildOptionsWithPullPolicy(policy config2.PullPolicy) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("PullPolicy=%s", policy),
+		equals: func(o pack.BuildOptions) bool {
+			return o.PullPolicy == policy
 		},
 	}
 }

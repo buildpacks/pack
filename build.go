@@ -53,7 +53,6 @@ type BuildOptions struct {
 	AdditionalMirrors  map[string][]string // only considered if RunImage is not provided
 	Env                map[string]string
 	Publish            bool
-	NoPull             bool
 	ClearCache         bool
 	TrustBuilder       bool
 	Buildpacks         []string
@@ -93,7 +92,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
-	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), true, !opts.NoPull)
+	rawBuilderImage, err := c.imageFetcher.NewFetch(ctx, builderRef.Name(), true, opts.PullPolicy)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
 	}
@@ -104,7 +103,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), builderRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors, opts.Publish)
-	runImage, err := c.validateRunImage(ctx, runImageName, opts.NoPull, opts.Publish, bldr.StackID)
+	runImage, err := c.validateRunImage(ctx, runImageName, opts.PullPolicy, opts.Publish, bldr.StackID)
 	if err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
 	}
@@ -184,11 +183,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if !opts.TrustBuilder {
 		switch lifecycleImageSupported {
 		case true:
-			lifecycleImage, err := c.imageFetcher.Fetch(
+			lifecycleImage, err := c.imageFetcher.NewFetch(
 				ctx,
 				fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
 				true,
-				!opts.NoPull,
+				opts.PullPolicy,
 			)
 			if err != nil {
 				return errors.Wrap(err, "fetching lifecycle image")
@@ -251,11 +250,11 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	return bldr, nil
 }
 
-func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (imgutil.Image, error) {
+func (c *Client) validateRunImage(context context.Context, name string, pullPolicy config.PullPolicy, publish bool, expectedStack string) (imgutil.Image, error) {
 	if name == "" {
 		return nil, errors.New("run image must be specified")
 	}
-	img, err := c.imageFetcher.Fetch(context, name, !publish, !noPull)
+	img, err := c.imageFetcher.NewFetch(context, name, !publish, pullPolicy)
 	if err != nil {
 		return nil, err
 	}

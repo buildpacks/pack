@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	config2 "github.com/buildpacks/pack/config"
+
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
@@ -20,21 +22,22 @@ import (
 )
 
 type BuildFlags struct {
-	AppPath            string
-	Builder            string
-	Registry           string
-	RunImage           string
-	Env                []string
-	EnvFiles           []string
 	Publish            bool
 	NoPull             bool
 	ClearCache         bool
 	TrustBuilder       bool
-	Buildpacks         []string
+	AppPath            string
+	Builder            string
+	Registry           string
+	RunImage           string
+	Policy             string
 	Network            string
 	DescriptorPath     string
-	Volumes            []string
 	DefaultProcessType string
+	Env                []string
+	EnvFiles           []string
+	Buildpacks         []string
+	Volumes            []string
 }
 
 // Build an image from source code
@@ -102,6 +105,21 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				logger.Warn("Using untrusted builder with volume mounts. If there is sensitive data in the volumes, this may present a security vulnerability.")
 			}
 
+			if flags.NoPull {
+				logger.Warn("Flag --no-pull has been deprecated")
+
+				if flags.Policy != "" {
+					logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
+				} else {
+					flags.Policy = config2.PullNever.String()
+				}
+			}
+
+			pullPolicy, err := config2.ParsePullPolicy(flags.Policy)
+			if err != nil {
+				return errors.Wrapf(err, "parse pull policy %s", flags.Policy)
+			}
+
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           flags.Builder,
@@ -111,7 +129,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Env:               env,
 				Image:             imageName,
 				Publish:           flags.Publish,
-				NoPull:            flags.NoPull,
+				PullPolicy:        pullPolicy,
 				ClearCache:        flags.ClearCache,
 				TrustBuilder:      trustBuilder,
 				Buildpacks:        buildpacks,
@@ -129,7 +147,6 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 		}),
 	}
 	buildCommandFlags(cmd, &flags, cfg)
-	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	AddHelpFlag(cmd, "build")
 	return cmd
 }
@@ -141,6 +158,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("buildpack-registry")
 	}
+	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
 	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file.")
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed")
@@ -152,6 +170,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<mode>]'."+multiValueHelp("volume"))
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", "Set the default process type")
+	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", "pull policy to use")
 }
 
 func validateBuildFlags(flags BuildFlags, logger logging.Logger, cfg config.Config, packClient PackClient) error {

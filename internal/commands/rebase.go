@@ -31,7 +31,7 @@ func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.
 				if cmd.Flags().Changed("pull-policy") {
 					logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
 				} else if noPull {
-					policy = "never"
+					policy = pubcfg.PullNever.String()
 				}
 			}
 

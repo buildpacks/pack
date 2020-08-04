@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
@@ -1503,44 +1505,44 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("NoPull option", func() {
-			when("true", func() {
+		when("PullPolicy", func() {
+			when("never", func() {
 				it("uses the local builder and run images without updating", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-						Image:   "some/app",
-						Builder: defaultBuilderName,
-						NoPull:  true,
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						PullPolicy: config.PullNever,
 					}))
 
 					args := fakeImageFetcher.FetchCalls["default/run"]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.Pull, false)
+					h.AssertEq(t, args.PullPolicy, config.PullNever)
 
 					args = fakeImageFetcher.FetchCalls[defaultBuilderName]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.Pull, false)
+					h.AssertEq(t, args.PullPolicy, config.PullNever)
 
 					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.9.0"]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.Pull, false)
+					h.AssertEq(t, args.PullPolicy, config.PullNever)
 				})
 			})
 
-			when("false", func() {
+			when("always", func() {
 				it("uses pulls the builder and run image before using them", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-						Image:   "some/app",
-						Builder: defaultBuilderName,
-						NoPull:  false,
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						PullPolicy: config.PullAlways,
 					}))
 
 					args := fakeImageFetcher.FetchCalls["default/run"]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.Pull, true)
+					h.AssertEq(t, args.PullPolicy, config.PullAlways)
 
 					args = fakeImageFetcher.FetchCalls[defaultBuilderName]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.Pull, true)
+					h.AssertEq(t, args.PullPolicy, config.PullAlways)
 				})
 			})
 		})

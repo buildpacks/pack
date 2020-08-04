@@ -117,7 +117,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					},
 					Lifecycle: pubbldr.LifecycleConfig{URI: "file:///some-lifecycle"},
 				},
-				Publish: false,
+				Publish:    false,
+				PullPolicy: config.PullAlways,
 			}
 
 			tmpDir, err = ioutil.TempDir("", "create-builder-test")

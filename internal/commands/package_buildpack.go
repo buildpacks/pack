@@ -113,7 +113,7 @@ func validateFlags(logger logging.Logger, p PackageBuildpackFlags, policy *strin
 		if *policy != "" {
 			logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
 		} else {
-			*policy = "never"
+			*policy = config.PullNever.String()
 		}
 	}
 

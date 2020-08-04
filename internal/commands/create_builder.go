@@ -47,7 +47,7 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 				if cmd.Flags().Changed("pull-policy") {
 					logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
 				} else {
-					policy = "never"
+					policy = config2.PullNever.String()
 				}
 			}
 

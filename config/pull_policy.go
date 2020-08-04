@@ -1,6 +1,8 @@
 package config
 
-import "github.com/pkg/errors"
+import (
+	"github.com/pkg/errors"
+)
 
 // PullPolicy defines a policy for how to manage images
 type PullPolicy int
@@ -14,18 +16,15 @@ const (
 	PullIfNotPresent
 )
 
+var nameMap = map[string]PullPolicy{"always": PullAlways, "never": PullNever, "if-not-present": PullIfNotPresent, "": PullAlways}
+
 // ParsePullPolicy from string
 func ParsePullPolicy(policy string) (PullPolicy, error) {
-	switch policy {
-	case "never":
-		return PullNever, nil
-	case "if-not-present":
-		return PullIfNotPresent, nil
-	case "always", "": //Default option
-		return PullAlways, nil
-	default:
-		return PullAlways, errors.Errorf("invalid pull policy %s", policy)
+	if val, ok := nameMap[policy]; ok {
+		return val, nil
 	}
+
+	return PullAlways, errors.Errorf("invalid pull policy %s", policy)
 }
 
 //ParsePolicyFromPull parses PullPolicy from boolean
@@ -35,4 +34,8 @@ func ParsePolicyFromPull(pull bool) PullPolicy {
 	}
 
 	return PullNever
+}
+
+func (p PullPolicy) String() string {
+	return [...]string{"always", "never", "if-not-present"}[p]
 }
