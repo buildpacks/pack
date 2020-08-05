@@ -1793,6 +1793,31 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertError(t, err, `platform volume ":::" has invalid format: invalid volume specification: ':::'`)
 					})
 				})
+
+				when("mounting onto cnb spec'd dir", func() {
+					for _, p := range []string{
+						"/cnb/buildpacks",
+						"/cnb/buildpacks/nested",
+						"/cnb",
+						"/cnb/nested",
+						"/layers",
+						"/layers/nested",
+					} {
+						p := p
+						it(fmt.Sprintf("warns when mounting to '%s'", p), func() {
+							err := subject.Build(context.TODO(), BuildOptions{
+								Image:   "some/app",
+								Builder: defaultBuilderName,
+								ContainerConfig: ContainerConfig{
+									Volumes: []string{fmt.Sprintf("/tmp/path:%s", p)},
+								},
+							})
+
+							h.AssertNil(t, err)
+							h.AssertContains(t, outBuf.String(), fmt.Sprintf("Warning: mounting to a sensitive directory '%s'", p))
+						})
+					}
+				})
 			})
 
 			when("on windows", func() {

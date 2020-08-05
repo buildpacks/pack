@@ -141,9 +141,13 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
 	}
 
-	processedVolumes, err := processVolumes(opts.ContainerConfig.Volumes)
+	processedVolumes, warnings, err := processVolumes(opts.ContainerConfig.Volumes)
 	if err != nil {
 		return err
+	}
+
+	for _, warning := range warnings {
+		c.logger.Warn(warning)
 	}
 
 	lifecycleOpts := build.LifecycleOptions{
@@ -624,20 +628,24 @@ func randString(n int) string {
 	return string(b)
 }
 
-func processVolumes(volumes []string) ([]string, error) {
-	var processed []string
-
+func processVolumes(volumes []string) (processed []string, warnings []string, err error) {
 	// Assume a linux container
 	parser := mounts.NewParser(mounts.OSLinux)
 	for _, v := range volumes {
 		volume, err := parser.ParseMountRaw(v, "")
 		if err != nil {
-			return nil, errors.Wrapf(err, "platform volume %q has invalid format", v)
+			return nil, nil, errors.Wrapf(err, "platform volume %q has invalid format", v)
+		}
+
+		for _, p := range [...]string{"/cnb", "/layers"} {
+			if strings.HasPrefix(volume.Spec.Target, p) {
+				warnings = append(warnings, fmt.Sprintf("mounting to a sensitive directory %s", style.Symbol(volume.Spec.Target)))
+			}
 		}
 
 		processed = append(processed, fmt.Sprintf("%s:%s:%s", volume.Spec.Source, volume.Spec.Target, processMode(volume.Mode)))
 	}
-	return processed, nil
+	return processed, warnings, nil
 }
 
 func processMode(mode string) string {
