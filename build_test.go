@@ -1743,6 +1743,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 		when("Volumes option", func() {
 			when("on posix", func() {
+				it.Before(func() {
+					h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
+				})
+
 				for _, test := range []struct {
 					name        string
 					volume      string
