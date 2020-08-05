@@ -110,7 +110,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("daemon is true", func() {
-			when("pullPolicy is PullNever", func() {
+			when("PullNever", func() {
 				when("there is a local image", func() {
 					it.Before(func() {
 						// Make sure the repoName is not a valid remote repo.
@@ -142,7 +142,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("pullPolicy is PullAlways", func() {
+			when("PullAlways", func() {
 				when("there is a remote image", func() {
 					it.Before(func() {
 						// Instantiate a pull-able local image
@@ -195,7 +195,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("pullPolicy is PullIfNotPresent", func() {
+			when("PullIfNotPresent", func() {
 				when("there is a remote image", func() {
 					var (
 						label          = "label"

@@ -303,7 +303,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					"unknown-policy",
 				})
 
-				h.AssertError(t, command.Execute(), "parse pull policy")
+				h.AssertError(t, command.Execute(), "parsing pull policy")
 			})
 		})
 	})

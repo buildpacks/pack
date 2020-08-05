@@ -3,7 +3,7 @@ package commands
 import (
 	"fmt"
 
-	config2 "github.com/buildpacks/pack/config"
+	pubcfg "github.com/buildpacks/pack/config"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -41,7 +41,7 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 				logger.Warn("Flag --builder-config has been deprecated, please use --config instead")
 			}
 
-			pullPolicy, err := config2.ParsePullPolicy(flags.Policy)
+			pullPolicy, err := pubcfg.ParsePullPolicy(flags.Policy)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
@@ -86,7 +86,7 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 }
 
 func validateCreateBuilderFlags(flags *CreateBuilderFlags, cfg config.Config, logger logging.Logger) error {
-	if flags.Publish && flags.Policy == config2.PullNever.String() {
+	if flags.Publish && flags.Policy == pubcfg.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
 	}
 
@@ -108,7 +108,7 @@ func validateCreateBuilderFlags(flags *CreateBuilderFlags, cfg config.Config, lo
 		if flags.Policy != "" {
 			logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
 		} else {
-			flags.Policy = config2.PullNever.String()
+			flags.Policy = pubcfg.PullNever.String()
 		}
 	}
 

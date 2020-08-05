@@ -42,14 +42,14 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 		Short: "Package buildpack in OCI format.",
 		Args:  cobra.ExactValidArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := validateFlags(&flags, logger); err != nil {
+			if err := validatePackageBuildpackFlags(&flags, logger); err != nil {
 				return err
 			}
 
 			var err error
 			pullPolicy, err := config.ParsePullPolicy(flags.Policy)
 			if err != nil {
-				return errors.Wrap(err, "parse pull policy")
+				return errors.Wrap(err, "parsing pull policy")
 			}
 
 			if cmd.Flags().Changed("package-config") {
@@ -94,7 +94,7 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 	return cmd
 }
 
-func validateFlags(p *PackageBuildpackFlags, logger logging.Logger) error {
+func validatePackageBuildpackFlags(p *PackageBuildpackFlags, logger logging.Logger) error {
 	if p.Publish && p.Policy == config.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
 	}

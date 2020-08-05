@@ -6,7 +6,7 @@ import (
 
 	"github.com/heroku/color"
 
-	config2 "github.com/buildpacks/pack/config"
+	pubcfg "github.com/buildpacks/pack/config"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
@@ -76,7 +76,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 				opts = pack.RebaseOptions{
 					RepoName:   repoName,
 					Publish:    false,
-					PullPolicy: config2.PullAlways,
+					PullPolicy: pubcfg.PullAlways,
 					RunImage:   "",
 					AdditionalMirrors: map[string][]string{
 						runImage: {testMirror1, testMirror2},
@@ -95,7 +95,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 
 			when("--no-pull", func() {
 				it("logs warning and works", func() {
-					opts.PullPolicy = config2.PullNever
+					opts.PullPolicy = pubcfg.PullNever
 					mockClient.EXPECT().
 						Rebase(gomock.Any(), opts).
 						Return(nil)
@@ -107,7 +107,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 
 				when("used together with --pull-policy always", func() {
 					it("logs warning and disregards --no-pull", func() {
-						opts.PullPolicy = config2.PullAlways
+						opts.PullPolicy = pubcfg.PullAlways
 						mockClient.EXPECT().
 							Rebase(gomock.Any(), opts).
 							Return(nil)
@@ -122,7 +122,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 
 				when("used together with --pull-policy never", func() {
 					it("logs warning and disregards --no-pull", func() {
-						opts.PullPolicy = config2.PullNever
+						opts.PullPolicy = pubcfg.PullNever
 						mockClient.EXPECT().
 							Rebase(gomock.Any(), opts).
 							Return(nil)
@@ -139,7 +139,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 
 			when("--pull-policy never", func() {
 				it("works", func() {
-					opts.PullPolicy = config2.PullNever
+					opts.PullPolicy = pubcfg.PullNever
 					mockClient.EXPECT().
 						Rebase(gomock.Any(), opts).
 						Return(nil)
@@ -152,7 +152,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 			when("--pull-policy unknown-policy", func() {
 				it("fails to run", func() {
 					command.SetArgs([]string{repoName, "--pull-policy", "unknown-policy"})
-					h.AssertError(t, command.Execute(), "parse pull policy")
+					h.AssertError(t, command.Execute(), "parsing pull policy")
 				})
 			})
 		})

@@ -1357,7 +1357,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
 							h.AssertEq(t, args.Daemon, true)
-							h.AssertEq(t, args.Pull, true)
+							h.AssertEq(t, args.PullPolicy, config.PullAlways)
 						})
 					})
 
@@ -1419,11 +1419,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					args := fakeImageFetcher.FetchCalls["default/run"]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.Pull, true)
+					h.AssertEq(t, args.PullPolicy, config.PullAlways)
 
 					args = fakeImageFetcher.FetchCalls[defaultBuilderName]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.Pull, true)
+					h.AssertEq(t, args.PullPolicy, config.PullAlways)
 				})
 
 				when("builder is untrusted", func() {
@@ -1440,7 +1440,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
 							h.AssertEq(t, args.Daemon, true)
-							h.AssertEq(t, args.Pull, true)
+							h.AssertEq(t, args.PullPolicy, config.PullAlways)
 						})
 
 						it("suggests that being untrusted may be the root of a failure", func() {

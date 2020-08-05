@@ -27,15 +27,6 @@ func ParsePullPolicy(policy string) (PullPolicy, error) {
 	return PullAlways, errors.Errorf("invalid pull policy %s", policy)
 }
 
-//ParsePolicyFromPull parses PullPolicy from boolean
-func ParsePolicyFromPull(pull bool) PullPolicy {
-	if pull {
-		return PullAlways
-	}
-
-	return PullNever
-}
-
 func (p PullPolicy) String() string {
 	return [...]string{"always", "never", "if-not-present"}[p]
 }

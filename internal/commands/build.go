@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	config2 "github.com/buildpacks/pack/config"
+	pubcfg "github.com/buildpacks/pack/config"
 
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
@@ -105,9 +105,9 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				logger.Warn("Using untrusted builder with volume mounts. If there is sensitive data in the volumes, this may present a security vulnerability.")
 			}
 
-			pullPolicy, err := config2.ParsePullPolicy(flags.Policy)
+			pullPolicy, err := pubcfg.ParsePullPolicy(flags.Policy)
 			if err != nil {
-				return errors.Wrapf(err, "parse pull policy %s", flags.Policy)
+				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
 
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
@@ -181,7 +181,7 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 		if flags.Policy != "" {
 			logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
 		} else {
-			flags.Policy = config2.PullNever.String()
+			flags.Policy = pubcfg.PullNever.String()
 		}
 	}
 

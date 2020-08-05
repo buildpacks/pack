@@ -13,7 +13,6 @@ import (
 
 type FetchArgs struct {
 	Daemon     bool
-	Pull       bool //TODO: REMOVE
 	PullPolicy config.PullPolicy
 }
 
@@ -32,15 +31,17 @@ func NewFakeImageFetcher() *FakeImageFetcher {
 }
 
 func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, daemon bool, policy config.PullPolicy) (imgutil.Image, error) {
-	f.FetchCalls[name] = &FetchArgs{Daemon: daemon, Pull: boolFromPolicy(policy), PullPolicy: policy}
+	f.FetchCalls[name] = &FetchArgs{Daemon: daemon, PullPolicy: policy}
 
 	ri, remoteFound := f.RemoteImages[name]
 
 	if daemon {
-		if remoteFound && policy == config.PullAlways {
-			f.LocalImages[name] = ri
-		}
 		li, localFound := f.LocalImages[name]
+
+		if shouldPull(localFound, remoteFound, policy) {
+			f.LocalImages[name] = ri
+			li = ri
+		}
 		if !localFound {
 			return nil, errors.Wrapf(image.ErrNotFound, "image '%s' does not exist on the daemon", name)
 		}
@@ -54,6 +55,10 @@ func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, daemon bool, 
 	return ri, nil
 }
 
-func boolFromPolicy(policy config.PullPolicy) bool {
-	return policy == config.PullAlways
+func shouldPull(localFound, remoteFound bool, policy config.PullPolicy) bool {
+	if remoteFound && !localFound && policy == config.PullIfNotPresent {
+		return true
+	}
+
+	return remoteFound && policy == config.PullAlways
 }

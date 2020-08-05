@@ -8,7 +8,7 @@ import (
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/builder"
-	config2 "github.com/buildpacks/pack/config"
+	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/dist"
 
 	"github.com/golang/mock/gomock"
@@ -114,7 +114,7 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				opts := pack.CreateBuilderOptions{
 					BuilderName: "some/builder",
 					Config:      validConfigStruct,
-					PullPolicy:  config2.PullNever,
+					PullPolicy:  pubcfg.PullNever,
 				}
 				mockClient.EXPECT().CreateBuilder(gomock.Any(), opts).Return(nil)
 
@@ -131,7 +131,7 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				opts := pack.CreateBuilderOptions{
 					BuilderName: "some/builder",
 					Config:      validConfigStruct,
-					PullPolicy:  config2.PullAlways,
+					PullPolicy:  pubcfg.PullAlways,
 				}
 				mockClient.EXPECT().CreateBuilder(gomock.Any(), opts).Return(nil)
 
@@ -146,6 +146,17 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				output := outBuf.String()
 				h.AssertContains(t, output, "Warning: Flag --no-pull has been deprecated")
 				h.AssertContains(t, output, "Warning: Flag --no-pull ignored in favor of --pull-policy")
+			})
+		})
+
+		when("--pull-policy", func() {
+			it("returns error for unknown policy", func() {
+				command.SetArgs([]string{
+					"some/builder",
+					"--config", builderConfigPath,
+					"--pull-policy", "unknown-policy",
+				})
+				h.AssertError(t, command.Execute(), "parsing pull policy")
 			})
 		})
 
