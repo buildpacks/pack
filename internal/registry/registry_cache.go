@@ -10,10 +10,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
 	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/logging"
@@ -35,6 +37,7 @@ id = "{{.Namespace}}/{{.Name}}"
 version = "{{.Version}}"
 {{ if .Yanked }}{{ else if .Address }}addr = "{{.Address}}"{{ end }}
 `
+const GitCommitTemplate = `{{ if .Yanked }}YANK{{else}}ADD{{end}} {{.Namespace}}/{{.Name}}@{{.Version}}`
 
 // Entry is a list of buildpacks stored in a registry
 type Entry struct {
@@ -202,6 +205,95 @@ func (r *Cache) validateCache() error {
 		}
 	}
 	return errors.New("invalid registry cache remote")
+}
+
+func (r *Cache) CreateCommit(b Buildpack, msg string) error {
+	r.logger.Debugf("Creating commit in registry cache")
+
+	index, err := r.writeEntry(b)
+	if err != nil {
+		return errors.Wrapf(err, "writing (%s)", index)
+	}
+
+	repository, err := git.PlainOpen(r.Root)
+	if err != nil {
+		return errors.Wrap(err, "opening registry cache")
+	}
+
+	w, err := repository.Worktree()
+	if err != nil {
+		return errors.Wrapf(err, "reading (%s)", r.Root)
+	}
+
+	if _, err := w.Add(index); err != nil {
+		return errors.Wrapf(err, "adding (%s)", index)
+	}
+
+	if _, err := w.Commit(msg, &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "John Doe",
+			Email: "john@doe.org",
+			When:  time.Now(),
+		},
+	}); err != nil {
+		return errors.Wrapf(err, "committing (%s)", index)
+	}
+
+	return nil
+}
+
+func (r *Cache) writeEntry(b Buildpack) (string, error) {
+	var ns string = b.Namespace
+	var name string = b.Name
+	var indexDir string
+	switch {
+	case len(name) == 0:
+		return "", errors.New("empty buildpack name")
+	case len(name) == 1:
+		indexDir = "1"
+	case len(name) == 2:
+		indexDir = "2"
+	case len(name) == 3:
+		indexDir = "3"
+	default:
+		indexDir = filepath.Join(name[:2], name[2:4])
+	}
+
+	if _, err := os.Stat(filepath.Join(r.Root, indexDir)); os.IsNotExist(err) {
+		if err := os.MkdirAll(filepath.Join(r.Root, indexDir), 0755); err != nil {
+			return "", errors.Wrapf(err, "creating directory structure for: %s/%s", ns, name)
+		}
+	}
+
+	index := filepath.Join(r.Root, indexDir, fmt.Sprintf("%s_%s", ns, name))
+
+	f, err := os.OpenFile(index, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return "", errors.Wrapf(err, "creating buildpack file: %s/%s", ns, name)
+	}
+
+	fileContents, err := json.Marshal(b)
+	if err != nil {
+		return "", errors.Wrapf(err, "converting buildpack file to json: %s/%s", ns, name)
+	}
+
+	if _, err := f.WriteString(string(fileContents)); err != nil {
+		return "", errors.Wrapf(err, "writing buildpack to file: %s/%s", ns, name)
+	}
+
+	if err := f.Close(); err != nil {
+		return "", errors.Wrapf(err, "closing file")
+	}
+
+	if err := os.Chdir("../"); err != nil {
+		return "", errors.Wrapf(err, "change error")
+	}
+
+	if err := os.Chdir(filepath.Join(r.Root, indexDir)); err != nil {
+		return "", errors.Wrapf(err, "change error")
+	}
+
+	return filepath.Join(indexDir, fmt.Sprintf("%s_%s", ns, name)), nil
 }
 
 func (r *Cache) readEntry(ns, name string) (Entry, error) {

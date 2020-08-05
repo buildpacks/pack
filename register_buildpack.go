@@ -47,28 +47,41 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 		Yanked:    false,
 	}
 
-	issueURL, err := registry.GetIssueURL(opts.URL)
-	if err != nil {
-		return err
+	if opts.Type == "github" {
+		issueURL, err := parseURL(opts.URL)
+		if err != nil {
+			return err
+		}
+
+		issue, err := registry.CreateGithubIssue(buildpack)
+		if err != nil {
+			return err
+		}
+
+		params := url.Values{}
+		params.Add("title", issue.Title)
+		params.Add("body", issue.Body)
+		issueURL.RawQuery = params.Encode()
+
+		c.logger.Debugf("Open URL in browser: %s", issueURL)
+		cmd, err := registry.CreateBrowserCmd(issueURL.String(), runtime.GOOS)
+		if err != nil {
+			return err
+		}
+
+		return cmd.Start()
+	} else if opts.Type == "git" {
+		registryCache, err := c.getRegistry(c.logger, opts.URL)
+		if err != nil {
+			return err
+		}
+
+		if err := registry.CreateGitCommit(buildpack, registryCache); err != nil {
+			return err
+		}
 	}
 
-	issue, err := registry.CreateGithubIssue(buildpack)
-	if err != nil {
-		return err
-	}
-
-	params := url.Values{}
-	params.Add("title", issue.Title)
-	params.Add("body", issue.Body)
-	issueURL.RawQuery = params.Encode()
-
-	c.logger.Debugf("Open URL in browser: %s", issueURL)
-	cmd, err := registry.CreateBrowserCmd(issueURL.String(), runtime.GOOS)
-	if err != nil {
-		return err
-	}
-
-	return cmd.Start()
+	return nil
 }
 
 func parseID(id string) (string, string, error) {
