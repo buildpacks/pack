@@ -82,10 +82,7 @@ func uniqueBuildpacks(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
 			Version: buildpack.Version,
 		}
 		_, ok := buildpacksSet[key]
-		switch {
-		case ok && buildpack.Homepage != "":
-			homePageSet[key] = buildpack.Homepage
-		case !ok:
+		if !ok {
 			buildpacksSet[key] = len(buildpacksSet)
 			homePageSet[key] = buildpack.Homepage
 		}

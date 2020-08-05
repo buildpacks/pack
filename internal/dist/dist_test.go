@@ -50,7 +50,7 @@ func testDist(t *testing.T, when spec.G, it spec.S) {
 				}
 			})
 
-			when("ID and version are provided and present", func() {
+			when("ID and Version are provided and present", func() {
 				it("succeeds", func() {
 					out, ok := buildpackLayers.Get("buildpack", "version1")
 					h.AssertEq(t, ok, true)
@@ -72,7 +72,7 @@ func testDist(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("Id is present, Version is left empty and cannot be inferred", func() {
+			when("ID is present, Version is left empty and cannot be inferred", func() {
 				it("fails", func() {
 					out, ok := buildpackLayers.Get("other-buildpack", "")
 					h.AssertEq(t, ok, false)

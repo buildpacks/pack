@@ -547,7 +547,7 @@ Stack:
 				mockClient.EXPECT().InspectBuilder("some/image", false).Return(remoteInfo, nil)
 				mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
 			})
-			it("displays Detection order to specified depth", func() {
+			it("displays detection order up to the specified depth", func() {
 				h.AssertNil(t, command.Execute())
 
 				h.AssertContains(t, outBuf.String(), `Detection Order:
@@ -560,7 +560,7 @@ Stack:
 			})
 		})
 
-		when("these is a cyclic buildpack dependency in the builder", func() {
+		when("there is a cyclic buildpack dependency in the builder", func() {
 			it.Before(func() {
 				localInfo.BuildpackLayers = map[string]map[string]dist.BuildpackLayerInfo{
 					"test.top.nested": map[string]dist.BuildpackLayerInfo{
@@ -649,15 +649,13 @@ Stack:
 					},
 				}
 			})
+			it("indicates cycle and succeeds", func() {
+				mockClient.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
+				mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
+				command.SetArgs([]string{"some/image"})
 
-			when("there buildpacks have a cyclic ordering", func() {
-				it("indicates cycle and succeeds", func() {
-					mockClient.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
-					mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
-					command.SetArgs([]string{"some/image"})
-
-					h.AssertNil(t, command.Execute())
-					h.AssertTrimmedContains(t, outBuf.String(), `  Group #1:
+				h.AssertNil(t, command.Execute())
+				h.AssertTrimmedContains(t, outBuf.String(), `  Group #1:
     test.top.nested@test.top.nested.version    
       Group #2:
         test.nested@test.nested.version
@@ -670,7 +668,6 @@ Stack:
           Group #5:
             test.nested@test.nested.version*
 `)
-				})
 			})
 		})
 	})

@@ -18,6 +18,15 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+const (
+	writerMinWidth     = 0
+	writerTabWidth     = 0
+	buildpacksTabWidth = 8
+	defaultTabWidth    = 4
+	writerPadChar      = ' '
+	writerFlags        = 0
+)
+
 type InspectBuilderFlags struct {
 	Depth int
 }
@@ -225,7 +234,7 @@ Detection Order:
 // TODO: present buildpack order (inc. nested) [https://github.com/buildpacks/pack/issues/253].
 func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 	buf := &bytes.Buffer{}
-	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 8, ' ', 0)
+	tabWriter := new(tabwriter.Writer).Init(buf, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
 	if _, err := fmt.Fprint(tabWriter, "  ID\tVERSION\tHOMEPAGE\n"); err != nil {
 		return "", err
 	}
@@ -245,7 +254,8 @@ func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 
 func runImagesOutput(runImage string, mirrors []string, cfg config.Config) (string, error) {
 	buf := &bytes.Buffer{}
-	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 4, ' ', 0)
+
+	tabWriter := new(tabwriter.Writer).Init(buf, writerMinWidth, writerTabWidth, defaultTabWidth, writerPadChar, writerFlags)
 
 	for _, r := range getLocalMirrors(runImage, cfg) {
 		if _, err := fmt.Fprintf(tabWriter, "  %s\t(user-configured)\n", r); err != nil {
@@ -278,20 +288,9 @@ type stackEntry struct {
 	Last      bool
 }
 
-func reverseStack(stack []stackEntry) []stackEntry {
-	left := 0
-	right := len(stack) - 1
-	for left < right {
-		stack[left], stack[right] = stack[right], stack[left]
-		left++
-		right--
-	}
-	return stack
-}
-
 func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDepth int) (string, error) {
 	buf := strings.Builder{}
-	tabWriter := new(tabwriter.Writer).Init(&buf, 0, 0, 4, ' ', 0)
+	tabWriter := new(tabwriter.Writer).Init(&buf, writerMinWidth, writerTabWidth, defaultTabWidth, writerPadChar, writerFlags)
 	invalidMaxDepth := maxDepth == -1
 
 	// the stack for DFS
@@ -306,18 +305,7 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 	buildpackSet := map[pack.BuildpackInfoKey]bool{}
 
 	//initialize stack with top level buildpacks.
-	for _, group := range order {
-		for bpIndex, bp := range group.Group {
-			buildpackStack = append(buildpackStack, stackEntry{
-				LayerInfo: bp,
-				Depth:     0,
-				Last:      bpIndex == len(group.Group),
-			})
-		}
-	}
-
-	// reverse to do a preorder traversal of buildpack nesting.
-	buildpackStack = reverseStack(buildpackStack)
+	buildpackStack = addOrdering(buildpackStack, order, 0)
 
 	// iterate until stack is empty
 	for len(buildpackStack) > 0 {
@@ -332,16 +320,7 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 			Version: curEntry.LayerInfo.Version,
 		}
 
-		// pop all buildpacks of greater depth off depth stack,
-		// we can no longer have a cycle within them.
-		for len(buildpacksDepthStack) > 0 && buildpacksDepthStack[len(buildpacksDepthStack)-1].Depth > curEntry.Depth {
-			buildpackToRemove := buildpacksDepthStack[len(buildpacksDepthStack)-1]
-			buildpacksDepthStack = buildpacksDepthStack[:len(buildpacksDepthStack)-1]
-			delete(buildpackSet, pack.BuildpackInfoKey{
-				ID:      buildpackToRemove.LayerInfo.ID,
-				Version: buildpackToRemove.LayerInfo.Version,
-			})
-		}
+		buildpacksDepthStack, buildpackSet = updateCycleChecking(buildpacksDepthStack, buildpackSet, curEntry.Depth)
 
 		_, visited := buildpackSet[key]
 		buildpacksDepthStack = append(buildpacksDepthStack, curEntry)
@@ -355,19 +334,7 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 		// add all nested buildpacks if this buildpack is not the first node of a cycle,
 		// or we exceed the maxDepth
 		if !visited && (invalidMaxDepth || curEntry.Depth+1 < maxDepth) {
-			nextBuildpacks := make([]stackEntry, 0)
-			for _, group := range curLayerInfo.Order {
-				for bpIndex, bp := range group.Group {
-					nextBuildpacks = append(nextBuildpacks, stackEntry{
-						LayerInfo: bp,
-						Depth:     curEntry.Depth + 1,
-						Last:      bpIndex == len(group.Group),
-					})
-				}
-			}
-
-			// again reversal to keep preorder traversal
-			buildpackStack = append(buildpackStack, reverseStack(nextBuildpacks)...)
+			buildpackStack = addOrdering(buildpackStack, curLayerInfo.Order, curEntry.Depth+1)
 		}
 
 		// output operations
@@ -388,6 +355,47 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 		return "", fmt.Errorf("error flushing tabWriter output: %s", err)
 	}
 	return strings.TrimSuffix(buf.String(), "\n"), nil
+}
+
+// pop all buildpacks of greater depth off depth stack,
+// we can no longer have a cycle within them.
+func updateCycleChecking(buildpacksDepthStack []stackEntry, buildpackSet map[pack.BuildpackInfoKey]bool, newDepth int) ([]stackEntry, map[pack.BuildpackInfoKey]bool) {
+	for len(buildpacksDepthStack) > 0 && buildpacksDepthStack[len(buildpacksDepthStack)-1].Depth > newDepth {
+		buildpackToRemove := buildpacksDepthStack[len(buildpacksDepthStack)-1]
+		buildpacksDepthStack = buildpacksDepthStack[:len(buildpacksDepthStack)-1]
+		delete(buildpackSet, pack.BuildpackInfoKey{
+			ID:      buildpackToRemove.LayerInfo.ID,
+			Version: buildpackToRemove.LayerInfo.Version,
+		})
+	}
+	return buildpacksDepthStack, buildpackSet
+}
+
+// add nested buildpack entries from nextOrder onto our stack
+func addOrdering(stack []stackEntry, nextOrder dist.Order, nextDepth int) []stackEntry {
+	newEntries := []stackEntry{}
+	for _, group := range nextOrder {
+		for bpIndex, bp := range group.Group {
+			newEntries = append(newEntries, stackEntry{
+				LayerInfo: bp,
+				Depth:     nextDepth,
+				Last:      bpIndex == len(group.Group),
+			})
+		}
+	}
+	// reverse to do a preorder traversal of buildpack nesting.
+	return append(stack, reverseStack(newEntries)...)
+}
+
+func reverseStack(stack []stackEntry) []stackEntry {
+	left := 0
+	right := len(stack) - 1
+	for left < right {
+		stack[left], stack[right] = stack[right], stack[left]
+		left++
+		right--
+	}
+	return stack
 }
 
 func detectionOrderAddBuildpack(w io.Writer, buildpack dist.BuildpackRef, depth int, visited bool) error {

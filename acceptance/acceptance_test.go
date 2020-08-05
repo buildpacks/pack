@@ -1473,6 +1473,10 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						// create our nested builder
 						h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
 
+						h.SkipUnless(t,
+							pack.Supports("inspect-builder --depth"),
+							"pack does not support 'package-buildpack'",
+						)
 						// create a task, handled by a 'task manager' which executes our pack commands during tests.
 						// looks like this is used to de-dup tasks
 						key := taskKey(
