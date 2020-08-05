@@ -12,7 +12,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -1840,7 +1839,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					})
 					expected := []string{
-						fmt.Sprintf("%v:%v:ro", strings.ToLower(dir), path.Join("/platform", "x")),
+						fmt.Sprintf("%s:/x:ro", strings.ToLower(dir)),
 					}
 					h.AssertNil(t, err)
 					t.Log(fakeLifecycle.Opts.Volumes)
