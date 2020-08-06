@@ -1817,7 +1817,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							})
 
 							h.AssertNil(t, err)
-							h.AssertContains(t, outBuf.String(), fmt.Sprintf("Warning: mounting to a sensitive directory '%s'", p))
+							h.AssertContains(t, outBuf.String(), fmt.Sprintf("Warning: Mounting to a sensitive directory '%s'", p))
 						})
 					}
 				})

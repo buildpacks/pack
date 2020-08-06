@@ -639,7 +639,7 @@ func processVolumes(volumes []string) (processed []string, warnings []string, er
 
 		for _, p := range [...]string{"/cnb", "/layers"} {
 			if strings.HasPrefix(volume.Spec.Target, p) {
-				warnings = append(warnings, fmt.Sprintf("mounting to a sensitive directory %s", style.Symbol(volume.Spec.Target)))
+				warnings = append(warnings, fmt.Sprintf("Mounting to a sensitive directory %s", style.Symbol(volume.Spec.Target)))
 			}
 		}
 
