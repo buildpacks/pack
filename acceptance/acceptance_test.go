@@ -893,7 +893,7 @@ func testAcceptance(
 						it.Before(func() {
 							h.SkipUnless(t,
 								pack.SupportsFeature(invoke.ReadWriteVolumeMounts),
-								"pack version does not support volume mounts",
+								"pack version does not support read/write volume mounts",
 							)
 
 							readBuildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "read-volume-buildpack"), "./", 0755)
