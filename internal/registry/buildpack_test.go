@@ -40,4 +40,22 @@ func testRegistryBuildpack(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, registry.Validate(b))
 		})
 	})
+
+	when("#ParseNamespaceName", func() {
+		it("should parse buildpack id into namespace and name", func() {
+			const id = "heroku/rust@1.2.3"
+			namespace, name, err := registry.ParseNamespaceName(id)
+
+			h.AssertNil(t, err)
+			h.AssertEq(t, namespace, "heroku")
+			h.AssertEq(t, name, "rust@1.2.3")
+		})
+
+		it("should provide an error for invalid id", func() {
+			const id = "bad id"
+			_, _, err := registry.ParseNamespaceName(id)
+
+			h.AssertNotNil(t, err)
+		})
+	})
 }

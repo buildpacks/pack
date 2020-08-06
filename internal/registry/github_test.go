@@ -54,4 +54,19 @@ func testGitHub(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, cmd.Args[2], "https://buildpacks.io")
 		})
 	})
+
+	when("#GetIssueURL", func() {
+		it("should return an issueURL", func() {
+			url, err := registry.GetIssueURL("https://github.com/buildpacks")
+
+			h.AssertNil(t, err)
+			h.AssertEq(t, url.String(), "https://github.com/buildpacks/issues/new")
+		})
+
+		it("should fail when url is empty", func() {
+			_, err := registry.GetIssueURL("")
+
+			h.AssertError(t, err, "missing github URL")
+		})
+	})
 }
