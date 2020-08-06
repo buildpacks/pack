@@ -1558,6 +1558,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						h.AssertTrimmedEq(t, output, expectedOutput)
 					})
 				})
+
 				it("displays configuration for a builder (local and remote)", func() {
 					output := pack.RunSuccessfully(
 						"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
@@ -1831,18 +1832,20 @@ func createComplexBuilder(t *testing.T,
 		for _, buildpackName := range buildpackImages {
 
 			//template toml file
-			packageFilePath := buildpackName + "_package.toml"
-			packageFile, err := os.OpenFile(filepath.Join(tmpDir, packageFilePath), os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.ModePerm)
+			// use fixture manager to handle the new pack locations
+			packageFileName := buildpackName + "_package.toml"
+			packageFileDest := filepath.Join(tmpDir, packageFileName)
+			packageFile, err := os.OpenFile(packageFileDest, os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.ModePerm)
 			if err != nil {
 				return "", err
 			}
 
-			pack.FixtureManager().TemplateFixtureToFile(packageFilePath, packageFile, buildpackImageToName)
+			pack.FixtureManager().TemplateFixtureToFile(packageFileName, packageFile, buildpackImageToName)
 
 			packageImageName = packageBuildpackAsImage(t,
 				assert,
 				pack,
-				filepath.Join(tmpDir, packageFilePath),
+				packageFileDest,
 				lifecycle,
 				[]string{buildpackName},
 			)
