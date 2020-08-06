@@ -892,7 +892,7 @@ func testAcceptance(
 
 						it.Before(func() {
 							h.SkipUnless(t,
-								pack.SupportsFeature(invoke.CustomVolumeMounts),
+								pack.SupportsFeature(invoke.ReadWriteVolumeMounts),
 								"pack version does not support volume mounts",
 							)
 
@@ -952,13 +952,6 @@ func testAcceptance(
 						})
 
 						when("volume is read-write", func() {
-							it.Before(func() {
-								h.SkipUnless(t,
-									pack.SupportsFeature(invoke.ReadWriteVolumeMounts),
-									"pack version does not support read/write volume mounts",
-								)
-							})
-
 							it("can be written to", func() {
 								output := pack.RunSuccessfully(
 									"build", repoName,

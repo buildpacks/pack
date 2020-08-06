@@ -212,7 +212,6 @@ const (
 	BuilderTomlValidation Feature = iota
 	ExcludeAndIncludeDescriptor
 	CreatorInPack
-	CustomVolumeMounts
 	ReadWriteVolumeMounts
 	NoColorInBuildpacks
 )
@@ -226,9 +225,6 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	},
 	CreatorInPack: func(i *PackInvoker) bool {
 		return i.atLeast("0.10.0")
-	},
-	CustomVolumeMounts: func(i *PackInvoker) bool {
-		return i.laterThan("0.11.0")
 	},
 	ReadWriteVolumeMounts: func(i *PackInvoker) bool {
 		return i.laterThan("0.12.0")
