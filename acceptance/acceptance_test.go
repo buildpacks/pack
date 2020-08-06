@@ -902,14 +902,14 @@ func testAcceptance(
 							var err error
 							tmpVolumeSrc, err = ioutil.TempDir("", "volume-mount-source")
 							assert.Nil(err)
-							assert.Nil(os.Chmod(tmpVolumeSrc, 0755)) // Override umask
+							assert.Nil(os.Chmod(tmpVolumeSrc, 0777)) // Override umask
 
 							// Some OSes (like macOS) use symlinks for the standard temp dir.
 							// Resolve it so it can be properly mounted by the Docker daemon.
 							tmpVolumeSrc, err = filepath.EvalSymlinks(tmpVolumeSrc)
 							assert.Nil(err)
 
-							err = ioutil.WriteFile(filepath.Join(tmpVolumeSrc, "some-file"), []byte("some-content\n"), 0755)
+							err = ioutil.WriteFile(filepath.Join(tmpVolumeSrc, "some-file"), []byte("some-content\n"), 0777)
 							assert.Nil(err)
 						})
 
