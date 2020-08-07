@@ -35,10 +35,41 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("the blob can't open", func() {
+			it("throws an error", func() {
+				_, err := builder.NewLifecycle(blob.NewBlob(filepath.Join("testdata", "doesn't exist")))
+				h.AssertError(t, err, "open lifecycle blob")
+			})
+		})
+
 		when("there is no descriptor file", func() {
-			it("throws an error ", func() {
+			it("throws an error", func() {
 				_, err := builder.NewLifecycle(&fakeEmptyBlob{})
 				h.AssertError(t, err, "could not find entry path 'lifecycle.toml': not exist")
+			})
+		})
+
+		when("the descriptor file isn't valid", func() {
+			var tmpDir string
+
+			it.Before(func() {
+				var err error
+				tmpDir, err = ioutil.TempDir("", "lifecycle")
+				h.AssertNil(t, err)
+
+				h.AssertNil(t, ioutil.WriteFile(filepath.Join(tmpDir, "lifecycle.toml"), []byte(`
+[api]
+  platform "0.1"
+`), 0711))
+			})
+
+			it.After(func() {
+				h.AssertNil(t, os.RemoveAll(tmpDir))
+			})
+
+			it("returns an error", func() {
+				_, err := builder.NewLifecycle(blob.NewBlob(tmpDir))
+				h.AssertError(t, err, "decoding descriptor")
 			})
 		})
 
