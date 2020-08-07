@@ -5,14 +5,13 @@ import (
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/heroku/color"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
 
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
-
-	"github.com/heroku/color"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 )
 
 func TestYankBuildpack(t *testing.T) {

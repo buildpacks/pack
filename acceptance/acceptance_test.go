@@ -884,55 +884,90 @@ func testAcceptance(
 					})
 
 					when("--volume", func() {
-						var buildpackTgz, tempVolume string
+						var (
+							readBuildpackTgz,
+							readWriteBuildpackTgz,
+							tmpVolumeSrc string
+						)
 
 						it.Before(func() {
 							h.SkipUnless(t,
-								pack.SupportsFeature(invoke.CustomVolumeMounts),
-								"pack 0.11.0 shipped with a volume mounting bug",
+								pack.SupportsFeature(invoke.ReadWriteVolumeMounts),
+								"pack version does not support read/write volume mounts",
 							)
 
-							buildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "volume-buildpack"), "./", 0755)
+							readBuildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "read-volume-buildpack"), "./", 0755)
+							readWriteBuildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "read-write-volume-buildpack"), "./", 0755)
 
 							var err error
-							tempVolume, err = ioutil.TempDir("", "my-volume-mount-source")
+							tmpVolumeSrc, err = ioutil.TempDir("", "volume-mount-source")
 							assert.Nil(err)
-							assert.Nil(os.Chmod(tempVolume, 0755)) // Override umask
+							assert.Nil(os.Chmod(tmpVolumeSrc, 0777)) // Override umask
 
 							// Some OSes (like macOS) use symlinks for the standard temp dir.
 							// Resolve it so it can be properly mounted by the Docker daemon.
-							tempVolume, err = filepath.EvalSymlinks(tempVolume)
+							tmpVolumeSrc, err = filepath.EvalSymlinks(tmpVolumeSrc)
 							assert.Nil(err)
 
-							err = ioutil.WriteFile(filepath.Join(tempVolume, "some-file"), []byte("some-string\n"), 0755)
+							err = ioutil.WriteFile(filepath.Join(tmpVolumeSrc, "some-file"), []byte("some-content\n"), 0777)
 							assert.Nil(err)
 						})
 
 						it.After(func() {
-							_ = os.Remove(buildpackTgz)
+							_ = os.Remove(readBuildpackTgz)
+							_ = os.Remove(readWriteBuildpackTgz)
 							_ = h.DockerRmi(dockerCli, repoName)
-
-							_ = os.RemoveAll(tempVolume)
+							_ = os.RemoveAll(tmpVolumeSrc)
 						})
 
-						it("mounts the provided volume in the detect and build phases", func() {
-							output := pack.RunSuccessfully(
-								"build", repoName,
-								"-p", filepath.Join("testdata", "mock_app"),
-								"--buildpack", buildpackTgz,
-								"--volume", fmt.Sprintf("%s:%s", tempVolume, "/my-volume-mount-target"),
-							)
+						when("volume is read-only", func() {
+							it("mounts the provided volume in the detect and build phases", func() {
+								output := pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--volume", fmt.Sprintf("%s:/platform/volume-mount-target", tmpVolumeSrc),
+									"--buildpack", readBuildpackTgz,
+									"--env", "TEST_FILE_PATH=/platform/volume-mount-target/some-file",
+								)
 
-							expectedPhase := "Build"
-							if pack.SupportsFeature(invoke.ReadFromVolumeInDetect) {
-								expectedPhase = "Detect"
-							}
+								bpOutputAsserts := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								bpOutputAsserts.ReportsReadingFileContents("Detect", "/platform/volume-mount-target/some-file", "some-content")
+								bpOutputAsserts.ReportsReadingFileContents("Build", "/platform/volume-mount-target/some-file", "some-content")
+							})
 
-							assertions.NewTestBuildpackOutputAssertionManager(t, output).ReportsReadingFileContents(
-								"/my-volume-mount-target/some-file",
-								"some-string",
-								expectedPhase,
-							)
+							it("should fail to write", func() {
+								output := pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--volume", fmt.Sprintf("%s:/platform/volume-mount-target", tmpVolumeSrc),
+									"--buildpack", readWriteBuildpackTgz,
+									"--env", "DETECT_TEST_FILE_PATH=/platform/volume-mount-target/detect-file",
+									"--env", "BUILD_TEST_FILE_PATH=/platform/volume-mount-target/build-file",
+								)
+
+								bpOutputAsserts := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								bpOutputAsserts.ReportsFailingToWriteFileContents("Detect", "/platform/volume-mount-target/detect-file")
+								bpOutputAsserts.ReportsFailingToWriteFileContents("Build", "/platform/volume-mount-target/build-file")
+							})
+						})
+
+						when("volume is read-write", func() {
+							it("can be written to", func() {
+								output := pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--volume", fmt.Sprintf("%s:/volume-mount-target:rw", tmpVolumeSrc),
+									"--buildpack", readWriteBuildpackTgz,
+									"--env", "DETECT_TEST_FILE_PATH=/volume-mount-target/detect-file",
+									"--env", "BUILD_TEST_FILE_PATH=/volume-mount-target/build-file",
+								)
+
+								bpOutputAsserts := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+								bpOutputAsserts.ReportsWritingFileContents("Detect", "/volume-mount-target/detect-file")
+								bpOutputAsserts.ReportsReadingFileContents("Detect", "/volume-mount-target/detect-file", "some-content")
+								bpOutputAsserts.ReportsWritingFileContents("Build", "/volume-mount-target/build-file")
+								bpOutputAsserts.ReportsReadingFileContents("Build", "/volume-mount-target/build-file", "some-content")
+							})
 						})
 					})
 
@@ -1189,9 +1224,7 @@ func testAcceptance(
 
 					when("--env", func() {
 						it.Before(func() {
-							h.AssertNil(t,
-								os.Setenv("ENV2_CONTENTS", "Env2 Layer Contents From Environment"),
-							)
+							assert.Nil(os.Setenv("ENV2_CONTENTS", "Env2 Layer Contents From Environment"))
 						})
 
 						it.After(func() {

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+TEST_FILE_PATH=${BUILD_TEST_FILE_PATH:?"env var must be set"}
+
+echo "---> Build: Read/Write Volume Buildpack"
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+echo "Build: Writing file '${TEST_FILE_PATH}': $(echo "some-content" > "${TEST_FILE_PATH}" && echo "written" || echo "failed")"
+echo "Build: Reading file '${TEST_FILE_PATH}': $(< "${TEST_FILE_PATH}")"
+
+echo "---> Done"
