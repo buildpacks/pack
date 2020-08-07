@@ -28,5 +28,14 @@ func ParsePullPolicy(policy string) (PullPolicy, error) {
 }
 
 func (p PullPolicy) String() string {
-	return [...]string{"always", "never", "if-not-present"}[p]
+	switch p {
+	case PullAlways:
+		return "always"
+	case PullNever:
+		return "never"
+	case PullIfNotPresent:
+		return "if-not-present"
+	}
+
+	return ""
 }
