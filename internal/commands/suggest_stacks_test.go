@@ -40,22 +40,22 @@ func testSuggestStacksCommand(t *testing.T, when spec.G, it spec.S) {
     Run Image: heroku/pack:18
 
     Stack ID: io.buildpacks.stacks.bionic
-    Description: A minimal Cloud Foundry stack based on Ubuntu 18.04
-    Maintainer: Cloud Foundry
-    Build Image: cloudfoundry/build:base-cnb
-    Run Image: cloudfoundry/run:base-cnb
+    Description: A minimal Paketo stack based on Ubuntu 18.04
+    Maintainer: Paketo Project
+    Build Image: paketobuildpacks/build:base-cnb
+    Run Image: paketobuildpacks/run:base-cnb
 
-    Stack ID: org.cloudfoundry.stacks.cflinuxfs3
-    Description: A large Cloud Foundry stack based on Ubuntu 18.04
-    Maintainer: Cloud Foundry
-    Build Image: cloudfoundry/build:full-cnb
-    Run Image: cloudfoundry/run:full-cnb
+    Stack ID: io.buildpacks.stacks.bionic
+    Description: A large Paketo stack based on Ubuntu 18.04
+    Maintainer: Paketo Project
+    Build Image: paketobuildpacks/build:full-cnb
+    Run Image: paketobuildpacks/run:full-cnb
 
-    Stack ID: org.cloudfoundry.stacks.tiny
-    Description: A tiny Cloud Foundry stack based on Ubuntu 18.04, similar to distroless
-    Maintainer: Cloud Foundry
-    Build Image: cloudfoundry/build:tiny-cnb
-    Run Image: cloudfoundry/run:tiny-cnb
+    Stack ID: io.paketo.stacks.tiny
+    Description: A tiny Paketo stack based on Ubuntu 18.04, similar to distroless
+    Maintainer: Paketo Project
+    Build Image: paketobuildpacks/build:tiny-cnb
+    Run Image: paketobuildpacks/run:tiny-cnb
 `)
 		})
 	})
