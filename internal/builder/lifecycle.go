@@ -19,25 +19,30 @@ const (
 	DefaultBuildpackAPIVersion = "0.2"
 )
 
+// Blob is an interface to wrap opening blobs
 type Blob interface {
 	Open() (io.ReadCloser, error)
 }
 
+// Lifecycle is an implementation of the CNB Lifecycle spec
 //go:generate mockgen -package testmocks -destination testmocks/mock_lifecycle.go github.com/buildpacks/pack/internal/builder Lifecycle
 type Lifecycle interface {
 	Blob
 	Descriptor() LifecycleDescriptor
 }
 
+// LifecycleDescriptor contains information described in the lifecycle.toml
 type LifecycleDescriptor struct {
 	Info LifecycleInfo `toml:"lifecycle"`
 	API  LifecycleAPI  `toml:"api"`
 }
 
+// LifecycleInfo contains information about the lifecycle
 type LifecycleInfo struct {
 	Version *Version `toml:"version" json:"version"`
 }
 
+// LifecycleAPI describes which API versions the lifecycle satisfies
 type LifecycleAPI struct {
 	BuildpackVersion *api.Version `toml:"buildpack" json:"buildpack"`
 	PlatformVersion  *api.Version `toml:"platform" json:"platform"`
@@ -48,6 +53,7 @@ type lifecycle struct {
 	Blob
 }
 
+// NewLifecycle creates a Lifecycle from a Blob
 func NewLifecycle(blob Blob) (Lifecycle, error) {
 	var err error
 
@@ -79,24 +85,9 @@ func NewLifecycle(blob Blob) (Lifecycle, error) {
 	return lifecycle, nil
 }
 
+// Descriptor returns the LifecycleDescriptor
 func (l *lifecycle) Descriptor() LifecycleDescriptor {
 	return l.descriptor
-}
-
-// Binaries returns a list of all binaries contained in the lifecycle.
-func (l *lifecycle) binaries() []string {
-	binaries := []string{
-		"detector",
-		"restorer",
-		"analyzer",
-		"builder",
-		"exporter",
-		"launcher",
-	}
-	if l.Descriptor().API.PlatformVersion.Compare(api.MustParse("0.2")) < 0 {
-		binaries = append(binaries, "cacher")
-	}
-	return binaries
 }
 
 func (l *lifecycle) validateBinaries() error {
@@ -129,4 +120,20 @@ func (l *lifecycle) validateBinaries() error {
 		}
 	}
 	return nil
+}
+
+// Binaries returns a list of all binaries contained in the lifecycle.
+func (l *lifecycle) binaries() []string {
+	binaries := []string{
+		"detector",
+		"restorer",
+		"analyzer",
+		"builder",
+		"exporter",
+		"launcher",
+	}
+	if l.Descriptor().API.PlatformVersion.Compare(api.MustParse("0.2")) < 0 {
+		binaries = append(binaries, "cacher")
+	}
+	return binaries
 }
