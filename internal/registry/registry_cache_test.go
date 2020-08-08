@@ -227,7 +227,7 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 			Name:      "python",
 			Version:   "1.0.0",
 			Yanked:    false,
-			Address:   "example.com/some/package@sha256:8c27fe111c11b722081701dfed3bd55e039b9ce92865473cf4cdfa918071c566",
+			Address:   "example.com",
 		}
 
 		var (
@@ -242,8 +242,14 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 
 		when("correct buildpack and commit message is passed", func() {
 			it("creates a file and a commit", func() {
-				err := registryCache.CreateCommit(bp, msg)
-				h.AssertNil(t, err)
+				h.AssertNil(t, registryCache.CreateCommit(bp, msg))
+			})
+		})
+
+		when("empty commit message is passed", func() {
+			it("fails to create commit", func() {
+				err := registryCache.CreateCommit(bp, "")
+				h.AssertError(t, err, "invalid commit message")
 			})
 		})
 	})

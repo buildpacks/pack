@@ -210,6 +210,14 @@ func (r *Cache) validateCache() error {
 func (r *Cache) CreateCommit(b Buildpack, msg string) error {
 	r.logger.Debugf("Creating commit in registry cache")
 
+	if msg == "" {
+		return errors.New("invalid commit message")
+	}
+
+	if err := r.Initialize(); err != nil {
+		return errors.Wrapf(err, "initializing (%s)", r.Root)
+	}
+
 	index, err := r.writeEntry(b)
 	if err != nil {
 		return errors.Wrapf(err, "writing (%s)", index)
@@ -232,7 +240,7 @@ func (r *Cache) CreateCommit(b Buildpack, msg string) error {
 	if _, err := w.Commit(msg, &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  "John Doe",
-			Email: "john@doe.org",
+			Email: "",
 			When:  time.Now(),
 		},
 	}); err != nil {
@@ -283,14 +291,6 @@ func (r *Cache) writeEntry(b Buildpack) (string, error) {
 
 	if err := f.Close(); err != nil {
 		return "", errors.Wrapf(err, "closing file")
-	}
-
-	if err := os.Chdir("../"); err != nil {
-		return "", errors.Wrapf(err, "change error")
-	}
-
-	if err := os.Chdir(filepath.Join(r.Root, indexDir)); err != nil {
-		return "", errors.Wrapf(err, "change error")
 	}
 
 	return filepath.Join(indexDir, fmt.Sprintf("%s_%s", ns, name)), nil
