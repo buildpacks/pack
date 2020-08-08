@@ -20,13 +20,13 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/client"
 	"github.com/heroku/color"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
@@ -330,9 +330,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 										Version: *semver.MustParse(builder.DefaultLifecycleVersion),
 									},
 								},
-								API: builder.LifecycleAPI{
-									BuildpackVersion: api.MustParse("0.3"),
-									PlatformVersion:  api.MustParse("0.2"),
+								APIs: &builder.LifecycleAPIs{
+									Buildpack: builder.APIVersions{
+										Supported: builder.APISet{api.MustParse("0.2"), api.MustParse("0.3"), api.MustParse("0.4")},
+									},
+									Platform: builder.APIVersions{
+										Supported: builder.APISet{api.MustParse("0.3"), api.MustParse("0.4")},
+									},
 								},
 							},
 						},
@@ -1596,7 +1600,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 		when("Lifecycle option", func() {
 			when("Platform API", func() {
-				for _, supportedPlatformAPI := range []string{"0.2", "0.3"} {
+				for _, supportedPlatformAPI := range []string{"0.3", "0.4"} {
 					var (
 						supportedPlatformAPI = supportedPlatformAPI
 						compatibleBuilder    *fakes.Image
@@ -1626,9 +1630,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 												Version: *semver.MustParse(builder.DefaultLifecycleVersion),
 											},
 										},
-										API: builder.LifecycleAPI{
-											BuildpackVersion: api.MustParse("0.3"),
-											PlatformVersion:  api.MustParse(supportedPlatformAPI),
+										APIs: &builder.LifecycleAPIs{
+											Buildpack: builder.APIVersions{
+												Supported: builder.APISet{api.MustParse("0.2"), api.MustParse("0.3"), api.MustParse("0.4")},
+											},
+											Platform: builder.APIVersions{
+												Supported: builder.APISet{api.MustParse(supportedPlatformAPI)},
+											},
 										},
 									},
 								},
@@ -1889,9 +1897,13 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 						Version: *semver.MustParse(lifecycleVersion),
 					},
 				},
-				API: builder.LifecycleAPI{
-					BuildpackVersion: api.MustParse("0.3"),
-					PlatformVersion:  api.MustParse("0.2"),
+				APIs: &builder.LifecycleAPIs{
+					Buildpack: builder.APIVersions{
+						Supported: builder.APISet{api.MustParse("0.2"), api.MustParse("0.3"), api.MustParse("0.4")},
+					},
+					Platform: builder.APIVersions{
+						Supported: builder.APISet{api.MustParse("0.3"), api.MustParse("0.4")},
+					},
 				},
 			},
 		},

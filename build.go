@@ -18,7 +18,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
@@ -127,17 +126,14 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
-	lcPlatformAPIVersion := ephemeralBuilder.LifecycleDescriptor().API.PlatformVersion
-	supportsPlatform := false
-	for _, v := range build.SupportedPlatformAPIVersions {
-		if api.MustParse(v).SupportsVersion(lcPlatformAPIVersion) {
-			supportsPlatform = true
-			break
-		}
-	}
-	if !supportsPlatform {
-		c.logger.Debugf("pack %s supports Platform API version(s): %s", Version, strings.Join(build.SupportedPlatformAPIVersions, ", "))
-		c.logger.Debugf("Builder %s has Platform API version: %s", style.Symbol(opts.Builder), lcPlatformAPIVersion)
+	builderPlatformAPIs := append(
+		ephemeralBuilder.LifecycleDescriptor().APIs.Platform.Deprecated,
+		ephemeralBuilder.LifecycleDescriptor().APIs.Platform.Supported...,
+	)
+
+	if !supportsPlatformAPI(builderPlatformAPIs) {
+		c.logger.Debugf("pack %s supports Platform API(s): %s", Version, strings.Join(build.SupportedPlatformAPIVersions.AsStrings(), ", "))
+		c.logger.Debugf("Builder %s supports Platform API(s): %s", style.Symbol(opts.Builder), strings.Join(builderPlatformAPIs.AsStrings(), ", "))
 		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
 	}
 
@@ -206,6 +202,20 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	return nil
+}
+
+// supportsPlatformAPI determines whether pack can build using the builder based on the builder's supported Platform API versions.
+func supportsPlatformAPI(builderPlatformAPIs builder.APISet) bool {
+	for _, packSupportedAPI := range build.SupportedPlatformAPIVersions {
+		for _, builderSupportedAPI := range builderPlatformAPIs {
+			supportsPlatform := packSupportedAPI.Compare(builderSupportedAPI) == 0
+			if supportsPlatform {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (c *Client) processBuilderName(builderName string) (name.Reference, error) {

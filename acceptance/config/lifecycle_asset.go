@@ -58,40 +58,20 @@ func (l *LifecycleAsset) ShouldShowReference() bool {
 	return !l.SemVer().LessThan(semver.MustParse("0.5.0"))
 }
 
-func (l *LifecycleAsset) ShouldShowProcesses() bool {
-	return !l.pre060()
-}
-
 type LifecycleFeature int
 
 const (
-	DefaultProcess LifecycleFeature = iota
-	CreatorInLifecycle
-	DetailedCacheLogging
+	CreatorInLifecycle LifecycleFeature = iota
 )
 
 var lifecycleFeatureTests = map[LifecycleFeature]func(l *LifecycleAsset) bool{
-	DefaultProcess: func(l *LifecycleAsset) bool {
-		return l.atLeast070()
-	},
 	CreatorInLifecycle: func(l *LifecycleAsset) bool {
 		return l.atLeast074()
-	},
-	DetailedCacheLogging: func(l *LifecycleAsset) bool {
-		return !l.pre060()
 	},
 }
 
 func (l *LifecycleAsset) SupportsFeature(f LifecycleFeature) bool {
 	return lifecycleFeatureTests[f](l)
-}
-
-func (l *LifecycleAsset) pre060() bool {
-	return l.SemVer().LessThan(semver.MustParse("0.6.0"))
-}
-
-func (l *LifecycleAsset) atLeast070() bool {
-	return !l.SemVer().LessThan(semver.MustParse("0.7.0"))
 }
 
 func (l *LifecycleAsset) atLeast074() bool {

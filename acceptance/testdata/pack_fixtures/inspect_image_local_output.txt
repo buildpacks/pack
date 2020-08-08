@@ -8,9 +8,7 @@ LOCAL:
 Stack: pack.test.stack
 
 Base Image:
-{{- if .show_reference}}
   Reference: {{.base_image_id}}
-{{- end }}
   Top Layer: {{.base_image_top_layer}}
 
 Run Images:
@@ -21,11 +19,9 @@ Run Images:
 Buildpacks:
   ID                   VERSION
   simple/layers        simple-layers-version
-{{- if .show_processes}}
 
 Processes:
   TYPE                 SHELL        COMMAND        ARGS
   web (default)        bash         ./run          8080
   hello                             echo           hello world
-{{- end }}
 

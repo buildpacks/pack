@@ -7,10 +7,8 @@ import (
 	"path"
 	"regexp"
 
-	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/archive"
 )
 
@@ -31,23 +29,6 @@ type Lifecycle interface {
 	Descriptor() LifecycleDescriptor
 }
 
-// LifecycleDescriptor contains information described in the lifecycle.toml
-type LifecycleDescriptor struct {
-	Info LifecycleInfo `toml:"lifecycle"`
-	API  LifecycleAPI  `toml:"api"`
-}
-
-// LifecycleInfo contains information about the lifecycle
-type LifecycleInfo struct {
-	Version *Version `toml:"version" json:"version"`
-}
-
-// LifecycleAPI describes which API versions the lifecycle satisfies
-type LifecycleAPI struct {
-	BuildpackVersion *api.Version `toml:"buildpack" json:"buildpack"`
-	PlatformVersion  *api.Version `toml:"platform" json:"platform"`
-}
-
 type lifecycle struct {
 	descriptor LifecycleDescriptor
 	Blob
@@ -63,20 +44,19 @@ func NewLifecycle(blob Blob) (Lifecycle, error) {
 	}
 	defer br.Close()
 
-	var descriptor LifecycleDescriptor
 	_, buf, err := archive.ReadTarEntry(br, "lifecycle.toml")
-
 	if err != nil && errors.Cause(err) == archive.ErrEntryNotExist {
 		return nil, err
 	} else if err != nil {
-		return nil, errors.Wrap(err, "decode lifecycle descriptor")
-	}
-	_, err = toml.Decode(string(buf), &descriptor)
-	if err != nil {
-		return nil, errors.Wrap(err, "decoding descriptor")
+		return nil, errors.Wrap(err, "reading lifecycle descriptor")
 	}
 
-	lifecycle := &lifecycle{Blob: blob, descriptor: descriptor}
+	lifecycleDescriptor, err := ParseDescriptor(string(buf))
+	if err != nil {
+		return nil, err
+	}
+
+	lifecycle := &lifecycle{Blob: blob, descriptor: *lifecycleDescriptor}
 
 	if err = lifecycle.validateBinaries(); err != nil {
 		return nil, errors.Wrap(err, "validating binaries")
@@ -131,9 +111,7 @@ func (l *lifecycle) binaries() []string {
 		"builder",
 		"exporter",
 		"launcher",
-	}
-	if l.Descriptor().API.PlatformVersion.Compare(api.MustParse("0.2")) < 0 {
-		binaries = append(binaries, "cacher")
+		"creator",
 	}
 	return binaries
 }

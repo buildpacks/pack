@@ -11,8 +11,9 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/api"
+
 	acceptanceOS "github.com/buildpacks/pack/acceptance/os"
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/style"

@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -17,7 +18,7 @@ import (
 
 var (
 	// SupportedPlatformAPIVersions lists the Platform API versions pack supports.
-	SupportedPlatformAPIVersions = []string{"0.2", "0.3"}
+	SupportedPlatformAPIVersions = builder.APISet{api.MustParse("0.3"), api.MustParse("0.4")}
 )
 
 type Builder interface {
@@ -164,7 +165,7 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.httpsProxy = opts.HTTPSProxy
 	l.noProxy = opts.NoProxy
 	l.version = opts.Builder.LifecycleDescriptor().Info.Version.String()
-	l.platformAPIVersion = opts.Builder.LifecycleDescriptor().API.PlatformVersion.String()
+	l.platformAPIVersion = latestVersion(opts.Builder.LifecycleDescriptor().APIs.Platform.Supported).String()
 	l.defaultProcessType = opts.DefaultProcessType
 	l.fileFilter = opts.FileFilter
 }
@@ -186,4 +187,20 @@ func randString(n int) string {
 		b[i] = 'a' + byte(rand.Intn(26))
 	}
 	return string(b)
+}
+
+func latestVersion(versions []*api.Version) *api.Version {
+	var latest *api.Version
+	for _, version := range versions {
+		switch {
+		case version == nil:
+			continue
+		case latest == nil:
+			latest = version
+		case version.Compare(latest) > 0:
+			latest = version
+		}
+	}
+
+	return latest
 }

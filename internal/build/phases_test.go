@@ -16,7 +16,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/lifecycle/api"
+
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
 	ilogging "github.com/buildpacks/pack/internal/logging"
@@ -711,53 +712,26 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, fakePhase.RunCallCount, 1)
 		})
 
-		when("platform api <= 0.2", func() {
-			it("configures the phase with the expected arguments", func() {
-				platformAPIVersion, err := api.NewVersion("0.2")
-				h.AssertNil(t, err)
-				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithPlatformVersion(platformAPIVersion))
-				h.AssertNil(t, err)
-				verboseLifecycle := newTestLifecycle(t, true, fakes.WithBuilder(fakeBuilder))
-				fakePhaseFactory := fakes.NewFakePhaseFactory()
+		it("configures the phase with the expected arguments", func() {
+			platformAPIVersion, err := api.NewVersion("0.3")
+			h.AssertNil(t, err)
+			fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithPlatformVersion(platformAPIVersion))
+			h.AssertNil(t, err)
+			verboseLifecycle := newTestLifecycle(t, true, fakes.WithBuilder(fakeBuilder))
+			fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err = verboseLifecycle.Build(context.Background(), "test", []string{}, fakePhaseFactory)
-				h.AssertNil(t, err)
+			err = verboseLifecycle.Build(context.Background(), "test", []string{}, fakePhaseFactory)
+			h.AssertNil(t, err)
 
-				configProvider := fakePhaseFactory.NewCalledWithProvider
-				h.AssertEq(t, configProvider.Name(), "builder")
-
-				h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-log-level", "debug")
-				h.AssertIncludeAllExpectedPatterns(t,
-					configProvider.ContainerConfig().Cmd,
-					[]string{"-layers", "/layers"},
-					[]string{"-app", "/workspace"},
-					[]string{"-platform", "/platform"},
-				)
-			})
-		})
-
-		when("platform api > 0.2", func() {
-			it("configures the phase with the expected arguments", func() {
-				platformAPIVersion, err := api.NewVersion("0.3")
-				h.AssertNil(t, err)
-				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithPlatformVersion(platformAPIVersion))
-				h.AssertNil(t, err)
-				verboseLifecycle := newTestLifecycle(t, true, fakes.WithBuilder(fakeBuilder))
-				fakePhaseFactory := fakes.NewFakePhaseFactory()
-
-				err = verboseLifecycle.Build(context.Background(), "test", []string{}, fakePhaseFactory)
-				h.AssertNil(t, err)
-
-				configProvider := fakePhaseFactory.NewCalledWithProvider
-				h.AssertEq(t, configProvider.Name(), "builder")
-				h.AssertIncludeAllExpectedPatterns(t,
-					configProvider.ContainerConfig().Cmd,
-					[]string{"-log-level", "debug"},
-					[]string{"-layers", "/layers"},
-					[]string{"-app", "/workspace"},
-					[]string{"-platform", "/platform"},
-				)
-			})
+			configProvider := fakePhaseFactory.NewCalledWithProvider
+			h.AssertEq(t, configProvider.Name(), "builder")
+			h.AssertIncludeAllExpectedPatterns(t,
+				configProvider.ContainerConfig().Cmd,
+				[]string{"-log-level", "debug"},
+				[]string{"-layers", "/layers"},
+				[]string{"-app", "/workspace"},
+				[]string{"-platform", "/platform"},
+			)
 		})
 
 		it("configures the phase with the expected network mode", func() {
@@ -802,8 +776,9 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 			verboseLifecycle := newTestLifecycle(t, true)
 			fakePhaseFactory := fakes.NewFakePhaseFactory()
 			expectedRepoName := "some-repo-name"
+			expectedRunImage := "some-run-image"
 
-			err := verboseLifecycle.Export(context.Background(), expectedRepoName, "test", false, "test", "test", "test", fakePhaseFactory)
+			err := verboseLifecycle.Export(context.Background(), expectedRepoName, expectedRunImage, false, "test", "test", "test", fakePhaseFactory)
 			h.AssertNil(t, err)
 
 			configProvider := fakePhaseFactory.NewCalledWithProvider
@@ -814,6 +789,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				[]string{"-cache-dir", "/cache"},
 				[]string{"-layers", "/layers"},
 				[]string{"-app", "/workspace"},
+				[]string{"-run-image", expectedRunImage},
 				[]string{expectedRepoName},
 			)
 		})
@@ -906,6 +882,19 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, len(configProvider.ContainerOps()), 1)
 				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
+			})
+
+			it("configures the phase with default process type", func() {
+				lifecycle := newTestLifecycle(t, true, func(options *build.LifecycleOptions) {
+					options.DefaultProcessType = "test-process"
+				})
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+				expectedDefaultProc := []string{"-process-type", "test-process"}
+
+				err := lifecycle.Export(context.Background(), "test", "test", true, "test", "test", "test", fakePhaseFactory)
+				h.AssertNil(t, err)
+				configProvider := fakePhaseFactory.NewCalledWithProvider
+				h.AssertIncludeAllExpectedPatterns(t, configProvider.ContainerConfig().Cmd, expectedDefaultProc)
 			})
 		})
 
@@ -1003,61 +992,9 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(configProvider.ContainerOps()), 1)
 				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
 			})
-		})
 
-		when("platform api 0.2", func() {
-			it("uses -image", func() {
-				platformAPIVersion, err := api.NewVersion("0.2")
-				h.AssertNil(t, err)
-				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithPlatformVersion(platformAPIVersion))
-				h.AssertNil(t, err)
-				lifecycle := newTestLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
-				fakePhaseFactory := fakes.NewFakePhaseFactory()
-				expectedRunImage := "some-run-image"
-
-				err = lifecycle.Export(context.Background(), "test", expectedRunImage, false, "test", "test", "test", fakePhaseFactory)
-				h.AssertNil(t, err)
-
-				configProvider := fakePhaseFactory.NewCalledWithProvider
-				h.AssertEq(t, configProvider.Name(), "exporter")
-				h.AssertIncludeAllExpectedPatterns(t,
-					configProvider.ContainerConfig().Cmd,
-					[]string{"-image", expectedRunImage},
-				)
-			})
-		})
-
-		when("platform api 0.3+", func() {
-			var (
-				fakeBuilder *fakes.FakeBuilder
-				err         error
-			)
-
-			it.Before(func() {
-				platformAPIVersion, err := api.NewVersion("0.3")
-				h.AssertNil(t, err)
-				fakeBuilder, err = fakes.NewFakeBuilder(fakes.WithPlatformVersion(platformAPIVersion))
-				h.AssertNil(t, err)
-			})
-
-			it("uses -run-image instead of deprecated -image", func() {
-				lifecycle := newTestLifecycle(t, false, fakes.WithBuilder(fakeBuilder))
-				fakePhaseFactory := fakes.NewFakePhaseFactory()
-				expectedRunImage := "some-run-image"
-
-				err = lifecycle.Export(context.Background(), "test", expectedRunImage, false, "test", "test", "test", fakePhaseFactory)
-				h.AssertNil(t, err)
-
-				configProvider := fakePhaseFactory.NewCalledWithProvider
-				h.AssertEq(t, configProvider.Name(), "exporter")
-				h.AssertIncludeAllExpectedPatterns(t,
-					configProvider.ContainerConfig().Cmd,
-					[]string{"-run-image", expectedRunImage},
-				)
-			})
-
-			it("configures the phase with default arguments", func() {
-				lifecycle := newTestLifecycle(t, true, fakes.WithBuilder(fakeBuilder), func(options *build.LifecycleOptions) {
+			it("configures the phase with default process type", func() {
+				lifecycle := newTestLifecycle(t, true, func(options *build.LifecycleOptions) {
 					options.DefaultProcessType = "test-process"
 				})
 				fakePhaseFactory := fakes.NewFakePhaseFactory()

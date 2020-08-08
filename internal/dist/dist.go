@@ -1,6 +1,6 @@
 package dist
 
-import "github.com/buildpacks/pack/internal/api"
+import "github.com/buildpacks/lifecycle/api"
 
 const BuildpackLayersLabel = "io.buildpacks.buildpack.layers"
 

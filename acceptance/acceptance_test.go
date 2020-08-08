@@ -775,8 +775,6 @@ func testAcceptance(
 									"base_image_top_layer":   h.TopLayerDiffID(t, runImageMirror),
 									"run_image_local_mirror": localRunImageMirror,
 									"run_image_mirror":       runImageMirror,
-									"show_reference":         lifecycle.ShouldShowReference(),
-									"show_processes":         lifecycle.ShouldShowProcesses(),
 								},
 							)
 
@@ -973,12 +971,6 @@ func testAcceptance(
 
 					when("--default-process", func() {
 						it("sets the default process from those in the process list", func() {
-							h.SkipUnless(t, pack.Supports("build --default-process"), "--default-process flag is not supported")
-							h.SkipUnless(t,
-								lifecycle.SupportsFeature(config.DefaultProcess),
-								"skipping default process. Lifecycle does not support it",
-							)
-
 							pack.RunSuccessfully(
 								"build", repoName,
 								"--default-process", "hello",
@@ -1360,8 +1352,6 @@ func testAcceptance(
 										"base_image_ref":       strings.Join([]string{runImageMirror, h.Digest(t, runImageMirror)}, "@"),
 										"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
 										"run_image_mirror":     runImageMirror,
-										"show_reference":       lifecycle.ShouldShowReference(),
-										"show_processes":       lifecycle.ShouldShowReference(),
 									},
 								)
 
