@@ -233,23 +233,63 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 		var (
 			registryCache Cache
 			msg           string = "test commit message"
+			username      string = "supra08"
 		)
 
 		it.Before(func() {
 			registryCache, err = NewRegistryCache(logger, tmpDir, registryFixture)
 			h.AssertNil(t, err)
+
+			err = registryCache.CreateCache()
+			h.AssertNil(t, err)
 		})
 
 		when("correct buildpack and commit message is passed", func() {
 			it("creates a file and a commit", func() {
-				h.AssertNil(t, registryCache.CreateCommit(bp, msg))
+				h.AssertNil(t, registryCache.CreateCommit(bp, username, msg))
 			})
 		})
 
 		when("empty commit message is passed", func() {
 			it("fails to create commit", func() {
-				err := registryCache.CreateCommit(bp, "")
+				err := registryCache.CreateCommit(bp, username, "")
 				h.AssertError(t, err, "invalid commit message")
+			})
+		})
+
+		when("Root is an empty string", func() {
+			it("fails to create commit", func() {
+				registryCache.Root = ""
+				err = registryCache.CreateCommit(bp, username, msg)
+				h.AssertError(t, err, "opening registry cache: repository does not exist")
+			})
+		})
+
+		when("name is empty in buildpack", func() {
+			it("fails to create commit", func() {
+				bp := Buildpack{
+					Namespace: "example",
+					Name:      "",
+					Version:   "1.0.0",
+					Yanked:    false,
+					Address:   "example.com",
+				}
+				err = registryCache.CreateCommit(bp, username, msg)
+				h.AssertError(t, err, "empty buildpack name")
+			})
+		})
+
+		when("namespace is empty in buildpack", func() {
+			it("fails to create commit", func() {
+				bp := Buildpack{
+					Namespace: "",
+					Name:      "python",
+					Version:   "1.0.0",
+					Yanked:    false,
+					Address:   "example.com",
+				}
+				err = registryCache.CreateCommit(bp, username, msg)
+				h.AssertError(t, err, "empty buildpack namespace")
 			})
 		})
 	})

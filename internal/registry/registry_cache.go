@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/pkg/errors"
@@ -142,7 +143,7 @@ func (r *Cache) Initialize() error {
 	_, err := os.Stat(r.Root)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = r.createCache()
+			err = r.CreateCache()
 			if err != nil {
 				return errors.Wrap(err, "creating registry cache")
 			}
@@ -154,7 +155,7 @@ func (r *Cache) Initialize() error {
 		if err != nil {
 			return errors.Wrap(err, "reseting registry cache")
 		}
-		err = r.createCache()
+		err = r.CreateCache()
 		if err != nil {
 			return errors.Wrap(err, "rebuilding registry cache")
 		}
@@ -163,7 +164,7 @@ func (r *Cache) Initialize() error {
 	return nil
 }
 
-func (r *Cache) createCache() error {
+func (r *Cache) CreateCache() error {
 	r.logger.Debugf("Creating registry cache for %s/%s", r.url.Host, r.url.Path)
 
 	root, err := ioutil.TempDir("", "registry")
@@ -207,20 +208,11 @@ func (r *Cache) validateCache() error {
 	return errors.New("invalid registry cache remote")
 }
 
-func (r *Cache) CreateCommit(b Buildpack, msg string) error {
+func (r *Cache) CreateCommit(b Buildpack, username, msg string) error {
 	r.logger.Debugf("Creating commit in registry cache")
 
 	if msg == "" {
 		return errors.New("invalid commit message")
-	}
-
-	if err := r.Initialize(); err != nil {
-		return errors.Wrapf(err, "initializing (%s)", r.Root)
-	}
-
-	index, err := r.writeEntry(b)
-	if err != nil {
-		return errors.Wrapf(err, "writing (%s)", index)
 	}
 
 	repository, err := git.PlainOpen(r.Root)
@@ -233,18 +225,27 @@ func (r *Cache) CreateCommit(b Buildpack, msg string) error {
 		return errors.Wrapf(err, "reading (%s)", r.Root)
 	}
 
+	index, err := r.writeEntry(b)
+	if err != nil {
+		return errors.Wrapf(err, "writing (%s)", index)
+	}
+
+	if index == "" {
+		return nil
+	}
+
 	if _, err := w.Add(index); err != nil {
 		return errors.Wrapf(err, "adding (%s)", index)
 	}
 
 	if _, err := w.Commit(msg, &git.CommitOptions{
 		Author: &object.Signature{
-			Name:  "John Doe",
+			Name:  username,
 			Email: "",
 			When:  time.Now(),
 		},
 	}); err != nil {
-		return errors.Wrapf(err, "committing (%s)", index)
+		return errors.Wrapf(err, "committing")
 	}
 
 	return nil
@@ -253,6 +254,7 @@ func (r *Cache) CreateCommit(b Buildpack, msg string) error {
 func (r *Cache) writeEntry(b Buildpack) (string, error) {
 	var ns string = b.Namespace
 	var name string = b.Name
+
 	var indexDir string
 	switch {
 	case len(name) == 0:
@@ -267,17 +269,44 @@ func (r *Cache) writeEntry(b Buildpack) (string, error) {
 		indexDir = filepath.Join(name[:2], name[2:4])
 	}
 
-	if _, err := os.Stat(filepath.Join(r.Root, indexDir)); os.IsNotExist(err) {
-		if err := os.MkdirAll(filepath.Join(r.Root, indexDir), 0755); err != nil {
-			return "", errors.Wrapf(err, "creating directory structure for: %s/%s", ns, name)
-		}
+	if len(ns) == 0 {
+		return "", errors.New("empty buildpack namespace")
 	}
 
 	index := filepath.Join(r.Root, indexDir, fmt.Sprintf("%s_%s", ns, name))
 
+	if _, err := os.Stat(filepath.Join(r.Root, indexDir)); os.IsNotExist(err) {
+		if err := os.MkdirAll(filepath.Join(r.Root, indexDir), 0755); err != nil {
+			return "", errors.Wrapf(err, "creating directory structure for: %s/%s", ns, name)
+		}
+	} else {
+		if _, err := os.Stat(index); err == nil {
+			entry, err := r.readEntry(ns, name)
+			if err != nil {
+				return "", errors.Wrapf(err, "reading existing buildpack entries")
+			}
+
+			availableBuildpacks := entry.Buildpacks
+
+			if len(availableBuildpacks) != 0 {
+				if availableBuildpacks[len(availableBuildpacks)-1].Version == b.Version {
+					return "", errors.Wrapf(err, "same version exists, upgrade the version to add")
+				}
+			}
+		}
+	}
+
 	f, err := os.OpenFile(index, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating buildpack file: %s/%s", ns, name)
+	}
+
+	var newline string
+
+	if (runtime.GOOS == "linux") || (runtime.GOOS == "darwin") {
+		newline = "\n"
+	} else if runtime.GOOS == "windows" {
+		newline = "\r\n"
 	}
 
 	fileContents, err := json.Marshal(b)
@@ -285,7 +314,9 @@ func (r *Cache) writeEntry(b Buildpack) (string, error) {
 		return "", errors.Wrapf(err, "converting buildpack file to json: %s/%s", ns, name)
 	}
 
-	if _, err := f.WriteString(string(fileContents)); err != nil {
+	fileContentsFormatted := string(fileContents) + newline
+
+	if _, err := f.WriteString(fileContentsFormatted); err != nil {
 		return "", errors.Wrapf(err, "writing buildpack to file: %s/%s", ns, name)
 	}
 
