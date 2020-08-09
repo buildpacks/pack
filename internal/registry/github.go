@@ -64,7 +64,6 @@ func CreateBrowserCmd(browserURL, os string) (*exec.Cmd, error) {
 		return nil, fmt.Errorf("unsupported platform %s", style.Symbol(os))
 	}
 }
-<<<<<<< HEAD
 
 func GetIssueURL(githubURL string) (*url.URL, error) {
 	if githubURL == "" {
@@ -72,5 +71,3 @@ func GetIssueURL(githubURL string) (*url.URL, error) {
 	}
 	return url.Parse(fmt.Sprintf("%s/issues/new", strings.TrimSuffix(githubURL, "/")))
 }
-=======
->>>>>>> 75b0f7c7... clean-up registry-buildpack
