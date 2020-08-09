@@ -48,7 +48,7 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 	}
 
 	if opts.Type == "github" {
-		issueURL, err := parseURL(opts.URL)
+		issueURL, err := registry.GetIssueURL(opts.URL)
 		if err != nil {
 			return err
 		}
@@ -76,12 +76,29 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 			return err
 		}
 
-		if err := registry.CreateGitCommit(buildpack, registryCache); err != nil {
+		username, err := parseUsernameFromURL(opts.URL)
+		if err != nil {
+			return err
+		}
+
+		if err := registry.CreateGitCommit(buildpack, username, registryCache); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func parseUsernameFromURL(url string) (string, error) {
+	parts := strings.Split(url, "/")
+	if len(parts) < 3 {
+		return "", errors.New("invalid url: cannot parse username from url")
+	}
+	if parts[3] == "" {
+		return "", errors.New("invalid url: username is empty")
+	}
+
+	return parts[3], nil
 }
 
 func parseID(id string) (string, string, error) {
