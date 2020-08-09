@@ -40,13 +40,15 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	runImageName := c.resolveRunImage(
 		opts.RunImage,
 		imageRef.Context().RegistryStr(),
+		"",
 		builder.StackMetadata{
 			RunImage: builder.RunImageMetadata{
 				Image:   md.Stack.RunImage.Image,
 				Mirrors: md.Stack.RunImage.Mirrors,
 			},
 		},
-		opts.AdditionalMirrors)
+		opts.AdditionalMirrors,
+		opts.Publish)
 
 	if runImageName == "" {
 		return errors.New("run image must be specified")
