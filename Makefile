@@ -1,13 +1,13 @@
 ACCEPTANCE_TIMEOUT?=$(TEST_TIMEOUT)
 ARCHIVE_NAME=pack-$(PACK_VERSION)
 GOCMD?=go
-GOFLAGS?=-mod=vendor
+GOFLAGS?=
 GOTESTFLAGS?=-v -count=1 -parallel=1
 PACKAGE_BASE=github.com/buildpacks/pack
 PACK_BIN?=pack
 PACK_GITSHA1=$(shell git rev-parse --short=7 HEAD)
 PACK_VERSION?=0.0.0
-SRC=$(shell find . -type f -name '*.go' -not -path "*/vendor/*")
+SRC=$(shell find . -type f -name '*.go' -not -path "*/out/*")
 TEST_TIMEOUT?=900s
 UNIT_TIMEOUT?=$(TEST_TIMEOUT)
 
@@ -31,12 +31,8 @@ all: clean verify test build
 mod-tidy:
 	$(GOCMD) mod tidy
 	cd tools; $(GOCMD) mod tidy
-	
-mod-vendor:
-	$(GOCMD) mod vendor
-	cd tools; $(GOCMD) mod vendor
-	
-tidy: mod-tidy mod-vendor format
+
+tidy: mod-tidy format
 
 build: out
 	@echo "> Building..."
