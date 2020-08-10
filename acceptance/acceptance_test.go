@@ -476,7 +476,7 @@ func testAcceptance(
 ) {
 	var (
 		pack, createBuilderPack *invoke.PackInvoker
-		bpDir                   = buildpacksDir(lifecycle.LatestBuildpackAPIVersion())
+		bpDir                   = buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
 		assert                  = h.NewAssertionManager(t)
 	)
 
@@ -1518,6 +1518,10 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 							"run_image_mirror":          runImageMirror,
 							"pack_version":              createBuilderPack.Version(),
 							"trusted":                   "No",
+
+							// set previous pack template fields
+							"buildpack_api_version": lifecycle.EarliestBuildpackAPIVersion(),
+							"platform_api_version":  lifecycle.EarliestPlatformAPIVersion(),
 						},
 					)
 
@@ -1553,6 +1557,10 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 							"run_image_mirror":          runImageMirror,
 							"pack_version":              createBuilderPack.Version(),
 							"trusted":                   "Yes",
+
+							// set previous pack template fields
+							"buildpack_api_version": lifecycle.EarliestBuildpackAPIVersion(),
+							"platform_api_version":  lifecycle.EarliestPlatformAPIVersion(),
 						},
 					)
 
@@ -1745,7 +1753,7 @@ func createBuilder(
 	defer os.RemoveAll(tmpDir)
 
 	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(lifecycle.LatestBuildpackAPIVersion())
+	buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
 	t.Log("using buildpacks from: ", buildpacksDir)
 	h.RecursiveCopy(t, buildpacksDir, tmpDir)
 
@@ -1882,7 +1890,7 @@ func packageBuildpack(
 	assert.Nil(err)
 
 	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(lifecycle.LatestBuildpackAPIVersion())
+	buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
 	t.Log("using buildpacks from: ", buildpacksDir)
 	h.RecursiveCopy(t, buildpacksDir, tmpDir)
 

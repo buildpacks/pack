@@ -47,20 +47,27 @@ func (l *LifecycleAsset) EscapedPath() string {
 	return strings.ReplaceAll(l.path, `\`, `\\`)
 }
 
-func (l *LifecycleAsset) LatestBuildpackAPIVersion() string {
-	var latest *api.Version
-	for _, version := range l.descriptor.APIs.Buildpack.Supported {
+func earliestVersion(versions []*api.Version) *api.Version {
+	var earliest *api.Version
+	for _, version := range versions {
 		switch {
 		case version == nil:
 			continue
-		case latest == nil:
-			latest = version
-		case latest.Compare(version) > 0:
-			latest = version
+		case earliest == nil:
+			earliest = version
+		case earliest.Compare(version) > 0:
+			earliest = version
 		}
 	}
+	return earliest
+}
 
-	return latest.String()
+func (l *LifecycleAsset) EarliestBuildpackAPIVersion() string {
+	return earliestVersion(l.descriptor.APIs.Buildpack.Supported).String()
+}
+
+func (l *LifecycleAsset) EarliestPlatformAPIVersion() string {
+	return earliestVersion(l.descriptor.APIs.Platform.Supported).String()
 }
 
 func (l *LifecycleAsset) OutputForAPIs() (deprecatedBuildpackAPIs, supportedBuildpackAPIs, deprecatedPlatformAPIs, supportedPlatformAPIs string) {
