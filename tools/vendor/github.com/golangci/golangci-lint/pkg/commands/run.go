@@ -80,7 +80,9 @@ func initFlagSet(fs *pflag.FlagSet, cfg *config.Config, m *lintersdb.Manager, is
 	fs.BoolVar(&oc.PrintIssuedLine, "print-issued-lines", true, wh("Print lines of code with issue"))
 	fs.BoolVar(&oc.PrintLinterName, "print-linter-name", true, wh("Print linter name in issue line"))
 	fs.BoolVar(&oc.UniqByLine, "uniq-by-line", true, wh("Make issues output unique by line"))
+	fs.BoolVar(&oc.SortResults, "sort-results", false, wh("Sort linter results"))
 	fs.BoolVar(&oc.PrintWelcomeMessage, "print-welcome", false, wh("Print welcome message"))
+	fs.StringVar(&oc.PathPrefix, "path-prefix", "", wh("Path prefix to add to output"))
 	hideFlag("print-welcome") // no longer used
 
 	// Run config
@@ -446,8 +448,8 @@ func (e *Executor) executeRun(_ *cobra.Command, args []string) {
 
 // to be removed when deadline is finally decommissioned
 func (e *Executor) setTimeoutToDeadlineIfOnlyDeadlineIsSet() {
-	//lint:ignore SA1019 We want to promoted the deprecated config value when needed
-	deadlineValue := e.cfg.Run.Deadline // nolint:staticcheck
+	// nolint:staticcheck
+	deadlineValue := e.cfg.Run.Deadline
 	if deadlineValue != 0 && e.cfg.Run.Timeout == defaultTimeout {
 		e.cfg.Run.Timeout = deadlineValue
 	}
