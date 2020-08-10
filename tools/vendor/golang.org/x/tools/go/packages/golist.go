@@ -24,7 +24,6 @@ import (
 
 	"golang.org/x/tools/go/internal/packagesdriver"
 	"golang.org/x/tools/internal/gocommand"
-	"golang.org/x/tools/internal/packagesinternal"
 	"golang.org/x/xerrors"
 )
 
@@ -382,7 +381,7 @@ type jsonPackage struct {
 	Imports         []string
 	ImportMap       map[string]string
 	Deps            []string
-	Module          *packagesinternal.Module
+	Module          *Module
 	TestGoFiles     []string
 	TestImports     []string
 	XTestGoFiles    []string
@@ -541,7 +540,26 @@ func (state *golistState) createDriverResponse(words ...string) (*driverResponse
 			CompiledGoFiles: absJoin(p.Dir, p.CompiledGoFiles),
 			OtherFiles:      absJoin(p.Dir, otherFiles(p)...),
 			forTest:         p.ForTest,
-			module:          p.Module,
+			Module:          p.Module,
+		}
+
+		if (state.cfg.Mode&typecheckCgo) != 0 && len(p.CgoFiles) != 0 {
+			if len(p.CompiledGoFiles) > len(p.GoFiles) {
+				// We need the cgo definitions, which are in the first
+				// CompiledGoFile after the non-cgo ones. This is a hack but there
+				// isn't currently a better way to find it. We also need the pure
+				// Go files and unprocessed cgo files, all of which are already
+				// in pkg.GoFiles.
+				cgoTypes := p.CompiledGoFiles[len(p.GoFiles)]
+				pkg.CompiledGoFiles = append([]string{cgoTypes}, pkg.GoFiles...)
+			} else {
+				// golang/go#38990: go list silently fails to do cgo processing
+				pkg.CompiledGoFiles = nil
+				pkg.Errors = append(pkg.Errors, Error{
+					Msg:  "go list failed to return CompiledGoFiles; https://golang.org/issue/38990?",
+					Kind: ListError,
+				})
+			}
 		}
 
 		// Work around https://golang.org/issue/28749:
@@ -615,6 +633,39 @@ func (state *golistState) createDriverResponse(words ...string) (*driverResponse
 		// Can we delete this?
 		if len(pkg.CompiledGoFiles) == 0 {
 			pkg.CompiledGoFiles = pkg.GoFiles
+		}
+
+		// Temporary work-around for golang/go#39986. Parse filenames out of
+		// error messages. This happens if there are unrecoverable syntax
+		// errors in the source, so we can't match on a specific error message.
+		if err := p.Error; err != nil && len(err.ImportStack) == 0 && len(pkg.CompiledGoFiles) == 0 {
+			addFilenameFromPos := func(pos string) bool {
+				split := strings.Split(pos, ":")
+				if len(split) < 1 {
+					return false
+				}
+				filename := strings.TrimSpace(split[0])
+				if filename == "" {
+					return false
+				}
+				if !filepath.IsAbs(filename) {
+					filename = filepath.Join(state.cfg.Dir, filename)
+				}
+				info, _ := os.Stat(filename)
+				if info == nil {
+					return false
+				}
+				pkg.CompiledGoFiles = append(pkg.CompiledGoFiles, filename)
+				pkg.GoFiles = append(pkg.GoFiles, filename)
+				return true
+			}
+			found := addFilenameFromPos(err.Pos)
+			// In some cases, go list only reports the error position in the
+			// error text, not the error position. One such case is when the
+			// file's package name is a keyword (see golang.org/issue/39763).
+			if !found {
+				addFilenameFromPos(err.Err)
+			}
 		}
 
 		if p.Error != nil {
