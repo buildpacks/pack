@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/buildpacks/lifecycle/api"
 
 	"github.com/buildpacks/pack/internal/builder"
 )
@@ -46,16 +47,35 @@ func (l *LifecycleAsset) EscapedPath() string {
 	return strings.ReplaceAll(l.path, `\`, `\\`)
 }
 
-func (l *LifecycleAsset) BuildpackAPIVersion() string {
-	return l.descriptor.API.BuildpackVersion.String()
+func (l *LifecycleAsset) LatestBuildpackAPIVersion() string {
+	var latest *api.Version
+	for _, version := range l.descriptor.APIs.Buildpack.Supported {
+		switch {
+		case version == nil:
+			continue
+		case latest == nil:
+			latest = version
+		case latest.Compare(version) > 0:
+			latest = version
+		}
+	}
+
+	return latest.String()
 }
 
-func (l *LifecycleAsset) PlatformAPIVersion() string {
-	return l.descriptor.API.PlatformVersion.String()
-}
+func (l *LifecycleAsset) OutputForAPIs() (deprecatedBuildpackAPIs, supportedBuildpackAPIs, deprecatedPlatformAPIs, supportedPlatformAPIs string) {
+	stringify := func(apiSet builder.APISet) string {
+		versions := apiSet.AsStrings()
+		if len(versions) == 0 {
+			return "(none)"
+		}
+		return strings.Join(versions, ", ")
+	}
 
-func (l *LifecycleAsset) ShouldShowReference() bool {
-	return !l.SemVer().LessThan(semver.MustParse("0.5.0"))
+	return stringify(l.descriptor.APIs.Buildpack.Deprecated),
+		stringify(l.descriptor.APIs.Buildpack.Supported),
+		stringify(l.descriptor.APIs.Platform.Deprecated),
+		stringify(l.descriptor.APIs.Platform.Supported)
 }
 
 type LifecycleFeature int

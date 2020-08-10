@@ -12,9 +12,11 @@ import (
 	"github.com/buildpacks/pack/internal/archive"
 )
 
+// A snapshot of the latest tested lifecycle version values
 const (
 	DefaultLifecycleVersion    = "0.8.0"
 	DefaultBuildpackAPIVersion = "0.2"
+	DefaultPlatformAPIVersion  = "0.3"
 )
 
 // Blob is an interface to wrap opening blobs

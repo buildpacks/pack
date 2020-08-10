@@ -22,7 +22,6 @@ import (
 
 const (
 	defaultCompilePackVersion = "0.0.0"
-	defaultPlatformAPIVersion = "0.3"
 )
 
 var (
@@ -342,13 +341,13 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 }
 
 func defaultLifecycleDescriptor() builder.LifecycleDescriptor {
-	return builder.LifecycleDescriptor{
+	return builder.CompatDescriptor(builder.LifecycleDescriptor{
 		Info: builder.LifecycleInfo{
 			Version: builder.VersionMustParse(builder.DefaultLifecycleVersion),
 		},
 		API: builder.LifecycleAPI{
 			BuildpackVersion: api.MustParse(builder.DefaultBuildpackAPIVersion),
-			PlatformVersion:  api.MustParse(defaultPlatformAPIVersion),
+			PlatformVersion:  api.MustParse(builder.DefaultPlatformAPIVersion),
 		},
-	}
+	})
 }
