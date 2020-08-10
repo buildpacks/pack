@@ -22,8 +22,8 @@ type CreatorMetadata struct {
 type LifecycleMetadata struct {
 	LifecycleInfo
 	// Deprecated: use APIs instead
-	API  LifecycleAPI   `json:"api"`
-	APIs *LifecycleAPIs `json:"apis"`
+	API  LifecycleAPI  `json:"api"`
+	APIs LifecycleAPIs `json:"apis"`
 }
 
 type StackMetadata struct {

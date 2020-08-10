@@ -62,7 +62,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 						Version: *semver.MustParse("6.7.8"),
 					},
 				},
-				APIs: &builder.LifecycleAPIs{
+				APIs: builder.LifecycleAPIs{
 					Buildpack: builder.APIVersions{
 						Deprecated: nil,
 						Supported:  builder.APISet{api.MustParse("1.2"), api.MustParse("2.3")},
@@ -95,7 +95,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 						Version: *semver.MustParse("4.5.6"),
 					},
 				},
-				APIs: &builder.LifecycleAPIs{
+				APIs: builder.LifecycleAPIs{
 					Buildpack: builder.APIVersions{
 						Deprecated: builder.APISet{api.MustParse("4.5"), api.MustParse("6.7")},
 						Supported:  builder.APISet{api.MustParse("8.9"), api.MustParse("10.11")},

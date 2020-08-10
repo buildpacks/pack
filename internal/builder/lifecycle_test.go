@@ -27,29 +27,15 @@ func testLifecycle(t *testing.T, when spec.G, it spec.S) {
 	when("#NewLifecycle", func() {
 		when("platform api 0.3", func() {
 			it("makes a lifecycle from a blob", func() {
-				lifecycle, err := builder.NewLifecycle(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.3")))
+				_, err := builder.NewLifecycle(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.3")))
 				h.AssertNil(t, err)
-				h.AssertEq(t, lifecycle.Descriptor().Info.Version.String(), "0.0.0")
-				h.AssertEq(t, lifecycle.Descriptor().API.BuildpackVersion.String(), "0.2")
-				h.AssertEq(t, lifecycle.Descriptor().API.PlatformVersion.String(), "0.3")
-
-				// fill supported with deprecated field
-				h.AssertEq(t, lifecycle.Descriptor().APIs.Buildpack.Supported.AsStrings(), []string{"0.2"})
-				h.AssertEq(t, lifecycle.Descriptor().APIs.Platform.Supported.AsStrings(), []string{"0.3"})
 			})
 		})
 
 		when("platform api 0.4", func() {
 			it("makes a lifecycle from a blob", func() {
-				lifecycle, err := builder.NewLifecycle(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")))
+				_, err := builder.NewLifecycle(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")))
 				h.AssertNil(t, err)
-				h.AssertEq(t, lifecycle.Descriptor().Info.Version.String(), "0.0.0")
-				h.AssertEq(t, lifecycle.Descriptor().APIs.Buildpack.Supported.AsStrings(), []string{"0.2", "0.3", "0.4"})
-				h.AssertEq(t, lifecycle.Descriptor().APIs.Platform.Supported.AsStrings(), []string{"0.3", "0.4"})
-
-				// select lowest value for deprecated parameters
-				h.AssertEq(t, lifecycle.Descriptor().API.BuildpackVersion.String(), "0.2")
-				h.AssertEq(t, lifecycle.Descriptor().API.PlatformVersion.String(), "0.2")
 			})
 		})
 

@@ -37,7 +37,7 @@ func NewFakeBuilder(ops ...func(*FakeBuilder)) (*FakeBuilder, error) {
 		ReturnForUID:  99,
 		ReturnForGID:  99,
 		ReturnForLifecycleDescriptor: builder.LifecycleDescriptor{
-			APIs: &builder.LifecycleAPIs{
+			APIs: builder.LifecycleAPIs{
 				Buildpack: builder.APIVersions{
 					Supported: builder.APISet{buildpackVersion},
 				},
@@ -62,12 +62,6 @@ func NewFakeBuilder(ops ...func(*FakeBuilder)) (*FakeBuilder, error) {
 func WithName(name string) func(*FakeBuilder) {
 	return func(builder *FakeBuilder) {
 		builder.ReturnForName = name
-	}
-}
-
-func WithPlatformVersion(version *api.Version) func(*FakeBuilder) {
-	return func(builder *FakeBuilder) {
-		builder.ReturnForLifecycleDescriptor.API.PlatformVersion = version
 	}
 }
 

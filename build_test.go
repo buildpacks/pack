@@ -330,7 +330,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 										Version: *semver.MustParse(builder.DefaultLifecycleVersion),
 									},
 								},
-								APIs: &builder.LifecycleAPIs{
+								APIs: builder.LifecycleAPIs{
 									Buildpack: builder.APIVersions{
 										Supported: builder.APISet{api.MustParse("0.2"), api.MustParse("0.3"), api.MustParse("0.4")},
 									},
@@ -1630,7 +1630,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 												Version: *semver.MustParse(builder.DefaultLifecycleVersion),
 											},
 										},
-										APIs: &builder.LifecycleAPIs{
+										APIs: builder.LifecycleAPIs{
 											Buildpack: builder.APIVersions{
 												Supported: builder.APISet{api.MustParse("0.2"), api.MustParse("0.3"), api.MustParse("0.4")},
 											},
@@ -1658,7 +1658,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 				}
 
-				when("lifecycle platform API is not compatible", func() {
+				when("lifecycle Platform API is not compatible", func() {
 					var incompatibleBuilderImage *fakes.Image
 					it.Before(func() {
 						incompatibleBuilderImage = ifakes.NewFakeBuilderImage(t,
@@ -1709,6 +1709,114 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						h.AssertError(t, err, fmt.Sprintf("Builder %s is incompatible with this version of pack", style.Symbol(builderName)))
+					})
+				})
+
+				when("supported Platform APIs not specified", func() {
+					var badBuilderImage *fakes.Image
+					it.Before(func() {
+						badBuilderImage = ifakes.NewFakeBuilderImage(t,
+							tmpDir,
+							"incompatible-"+defaultBuilderName,
+							defaultBuilderStackID,
+							"1234",
+							"5678",
+							builder.Metadata{
+								Stack: builder.StackMetadata{
+									RunImage: builder.RunImageMetadata{
+										Image: "default/run",
+										Mirrors: []string{
+											"registry1.example.com/run/mirror",
+											"registry2.example.com/run/mirror",
+										},
+									},
+								},
+								Lifecycle: builder.LifecycleMetadata{
+									LifecycleInfo: builder.LifecycleInfo{
+										Version: &builder.Version{
+											Version: *semver.MustParse(builder.DefaultLifecycleVersion),
+										},
+									},
+									APIs: builder.LifecycleAPIs{
+										Buildpack: builder.APIVersions{Supported: builder.APISet{api.MustParse("0.2")}},
+									},
+								},
+							},
+							nil,
+							nil,
+						)
+
+						fakeImageFetcher.LocalImages[badBuilderImage.Name()] = badBuilderImage
+					})
+
+					it.After(func() {
+						badBuilderImage.Cleanup()
+					})
+
+					it("should error", func() {
+						builderName := badBuilderImage.Name()
+
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: builderName,
+						})
+
+						h.AssertError(t, err, "supported Lifecycle Platform APIs not specified")
+					})
+				})
+			})
+
+			when("Buildpack API", func() {
+				when("supported Buildpack APIs not specified", func() {
+					var badBuilderImage *fakes.Image
+					it.Before(func() {
+						badBuilderImage = ifakes.NewFakeBuilderImage(t,
+							tmpDir,
+							"incompatible-"+defaultBuilderName,
+							defaultBuilderStackID,
+							"1234",
+							"5678",
+							builder.Metadata{
+								Stack: builder.StackMetadata{
+									RunImage: builder.RunImageMetadata{
+										Image: "default/run",
+										Mirrors: []string{
+											"registry1.example.com/run/mirror",
+											"registry2.example.com/run/mirror",
+										},
+									},
+								},
+								Lifecycle: builder.LifecycleMetadata{
+									LifecycleInfo: builder.LifecycleInfo{
+										Version: &builder.Version{
+											Version: *semver.MustParse(builder.DefaultLifecycleVersion),
+										},
+									},
+									APIs: builder.LifecycleAPIs{
+										Platform: builder.APIVersions{Supported: builder.APISet{api.MustParse("0.4")}},
+									},
+								},
+							},
+							nil,
+							nil,
+						)
+
+						fakeImageFetcher.LocalImages[badBuilderImage.Name()] = badBuilderImage
+					})
+
+					it.After(func() {
+						badBuilderImage.Cleanup()
+					})
+
+					it("should error", func() {
+						builderName := badBuilderImage.Name()
+
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: builderName,
+						})
+
+						h.AssertError(t, err, "supported Lifecycle Buildpack APIs not specified")
 					})
 				})
 			})
@@ -1897,7 +2005,7 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 						Version: *semver.MustParse(lifecycleVersion),
 					},
 				},
-				APIs: &builder.LifecycleAPIs{
+				APIs: builder.LifecycleAPIs{
 					Buildpack: builder.APIVersions{
 						Supported: builder.APISet{api.MustParse("0.2"), api.MustParse("0.3"), api.MustParse("0.4")},
 					},

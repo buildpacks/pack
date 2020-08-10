@@ -16,8 +16,6 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
-
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
 	ilogging "github.com/buildpacks/pack/internal/logging"
@@ -713,9 +711,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("configures the phase with the expected arguments", func() {
-			platformAPIVersion, err := api.NewVersion("0.3")
-			h.AssertNil(t, err)
-			fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithPlatformVersion(platformAPIVersion))
+			fakeBuilder, err := fakes.NewFakeBuilder()
 			h.AssertNil(t, err)
 			verboseLifecycle := newTestLifecycle(t, true, fakes.WithBuilder(fakeBuilder))
 			fakePhaseFactory := fakes.NewFakePhaseFactory()

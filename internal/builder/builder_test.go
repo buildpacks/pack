@@ -67,7 +67,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		mockLifecycle = testmocks.NewMockLifecycle(mockController)
 		mockLifecycle.EXPECT().Open().Return(lifecycleTarReader, nil).AnyTimes()
-		mockLifecycle.EXPECT().Descriptor().Return(*lifecycleDescriptor).AnyTimes()
+		mockLifecycle.EXPECT().Descriptor().Return(builder.CompatDescriptor(lifecycleDescriptor)).AnyTimes()
 
 		bp1v1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),

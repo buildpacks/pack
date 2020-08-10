@@ -193,16 +193,11 @@ Detection Order:
 		warnings = append(warnings, fmt.Sprintf("%s does not specify a Lifecycle version", style.Symbol(imageName)))
 	}
 
-	deprecatedBuildpackAPIs := none
-	supportedBuildpackAPIs := none
-	deprecatedPlatformAPIs := none
-	supportedPlatformAPIs := none
-	if lcDescriptor.APIs != nil {
-		deprecatedBuildpackAPIs = stringifyAPISet(lcDescriptor.APIs.Buildpack.Deprecated)
-		supportedBuildpackAPIs = stringifyAPISet(lcDescriptor.APIs.Buildpack.Supported)
-		deprecatedPlatformAPIs = stringifyAPISet(lcDescriptor.APIs.Platform.Deprecated)
-		supportedPlatformAPIs = stringifyAPISet(lcDescriptor.APIs.Platform.Supported)
-	}
+	deprecatedBuildpackAPIs := stringifyAPISet(lcDescriptor.APIs.Buildpack.Deprecated)
+	supportedBuildpackAPIs := stringifyAPISet(lcDescriptor.APIs.Buildpack.Supported)
+	deprecatedPlatformAPIs := stringifyAPISet(lcDescriptor.APIs.Platform.Deprecated)
+	supportedPlatformAPIs := stringifyAPISet(lcDescriptor.APIs.Platform.Supported)
+
 	if supportedBuildpackAPIs == none {
 		warnings = append(warnings, fmt.Sprintf("%s does not specify supported Lifecycle Buildpack APIs", style.Symbol(imageName)))
 	}

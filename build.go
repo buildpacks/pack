@@ -97,7 +97,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	bldr, err := c.getBuilder(rawBuilderImage)
 	if err != nil {
-		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
+		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
 	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors)
@@ -231,17 +231,20 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 		return nil, err
 	}
 	if bldr.Stack().RunImage.Image == "" {
-		return nil, errors.New("builder metadata is missing runImage")
+		return nil, errors.New("builder metadata is missing run-image")
 	}
-	if bldr.LifecycleDescriptor().Info.Version == nil {
+
+	lifecycleDescriptor := bldr.LifecycleDescriptor()
+	if lifecycleDescriptor.Info.Version == nil {
 		return nil, errors.New("lifecycle version must be specified in builder")
 	}
-	if bldr.LifecycleDescriptor().API.BuildpackVersion == nil {
-		return nil, errors.New("lifecycle buildpack api version must be specified in builder")
+	if len(lifecycleDescriptor.APIs.Buildpack.Supported) == 0 {
+		return nil, errors.New("supported Lifecycle Buildpack APIs not specified")
 	}
-	if bldr.LifecycleDescriptor().API.PlatformVersion == nil {
-		return nil, errors.New("lifecycle platform api version must be specified in builder")
+	if len(lifecycleDescriptor.APIs.Platform.Supported) == 0 {
+		return nil, errors.New("supported Lifecycle Platform APIs not specified")
 	}
+
 	return bldr, nil
 }
 

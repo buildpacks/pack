@@ -114,7 +114,7 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 }
 
 func constructLifecycleDescriptor(metadata Metadata) LifecycleDescriptor {
-	return *compatDescriptor(&LifecycleDescriptor{
+	return CompatDescriptor(LifecycleDescriptor{
 		Info: LifecycleInfo{
 			Version: metadata.Lifecycle.Version,
 		},

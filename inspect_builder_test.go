@@ -92,7 +92,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 								BuildpackVersion: api.MustParse("1.2"),
 								PlatformVersion:  api.MustParse("2.3"),
 							},
-							APIs: &builder.LifecycleAPIs{
+							APIs: builder.LifecycleAPIs{
 								Buildpack: builder.APIVersions{Supported: builder.APISet{api.MustParse("1.2")}},
 								Platform:  builder.APIVersions{Supported: builder.APISet{api.MustParse("2.3")}},
 							},
@@ -169,7 +169,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 									BuildpackVersion: api.MustParse("0.1"),
 									PlatformVersion:  api.MustParse("2.3"),
 								},
-								APIs: &builder.LifecycleAPIs{
+								APIs: builder.LifecycleAPIs{
 									Buildpack: builder.APIVersions{
 										Deprecated: builder.APISet{api.MustParse("0.1")},
 										Supported:  builder.APISet{api.MustParse("1.2"), api.MustParse("1.3")},

@@ -10,8 +10,8 @@ import (
 type LifecycleDescriptor struct {
 	Info LifecycleInfo `toml:"lifecycle"`
 	// Deprecated: Use `LifecycleAPIs` instead
-	API  LifecycleAPI   `toml:"api"`
-	APIs *LifecycleAPIs `toml:"apis"`
+	API  LifecycleAPI  `toml:"api"`
+	APIs LifecycleAPIs `toml:"apis"`
 }
 
 // LifecycleInfo contains information about the lifecycle
@@ -49,29 +49,33 @@ type APIVersions struct {
 }
 
 // ParseDescriptor parses LifecycleDescriptor from toml formatted string.
-func ParseDescriptor(contents string) (*LifecycleDescriptor, error) {
-	descriptor := &LifecycleDescriptor{}
+func ParseDescriptor(contents string) (LifecycleDescriptor, error) {
+	descriptor := LifecycleDescriptor{}
 	_, err := toml.Decode(contents, &descriptor)
 	if err != nil {
-		return nil, errors.Wrap(err, "decoding descriptor")
+		return descriptor, errors.Wrap(err, "decoding descriptor")
 	}
 
-	return compatDescriptor(descriptor), nil
+	return descriptor, nil
 }
 
-// compatDescriptor provides compatibility by mapping new fields to old and vice-versa
-func compatDescriptor(descriptor *LifecycleDescriptor) *LifecycleDescriptor {
-	if descriptor.APIs != nil {
+// CompatDescriptor provides compatibility by mapping new fields to old and vice-versa
+func CompatDescriptor(descriptor LifecycleDescriptor) LifecycleDescriptor {
+	if len(descriptor.APIs.Buildpack.Supported) != 0 || len(descriptor.APIs.Platform.Supported) != 0 {
 		// select earliest value for deprecated parameters
-		descriptor.API.BuildpackVersion = findEarliestVersion(
-			append(descriptor.APIs.Buildpack.Deprecated, descriptor.APIs.Buildpack.Supported...),
-		)
-		descriptor.API.PlatformVersion = findEarliestVersion(
-			append(descriptor.APIs.Platform.Deprecated, descriptor.APIs.Platform.Supported...),
-		)
-	} else {
+		if len(descriptor.APIs.Buildpack.Supported) != 0 {
+			descriptor.API.BuildpackVersion = findEarliestVersion(
+				append(descriptor.APIs.Buildpack.Deprecated, descriptor.APIs.Buildpack.Supported...),
+			)
+		}
+		if len(descriptor.APIs.Platform.Supported) != 0 {
+			descriptor.API.PlatformVersion = findEarliestVersion(
+				append(descriptor.APIs.Platform.Deprecated, descriptor.APIs.Platform.Supported...),
+			)
+		}
+	} else if descriptor.API.BuildpackVersion != nil && descriptor.API.PlatformVersion != nil {
 		// fill supported with deprecated field
-		descriptor.APIs = &LifecycleAPIs{
+		descriptor.APIs = LifecycleAPIs{
 			Buildpack: APIVersions{
 				Supported: APISet{descriptor.API.BuildpackVersion},
 			},

@@ -56,7 +56,7 @@ func NewLifecycle(blob Blob) (Lifecycle, error) {
 		return nil, err
 	}
 
-	lifecycle := &lifecycle{Blob: blob, descriptor: *lifecycleDescriptor}
+	lifecycle := &lifecycle{Blob: blob, descriptor: CompatDescriptor(lifecycleDescriptor)}
 
 	if err = lifecycle.validateBinaries(); err != nil {
 		return nil, errors.Wrap(err, "validating binaries")
