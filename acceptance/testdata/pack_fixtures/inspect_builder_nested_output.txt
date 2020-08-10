@@ -36,13 +36,13 @@ Buildpacks:
   simple/nested-level-1        nested-l1-version
 
 Detection Order:
-  Group #1:
-    simple/nested-level-1
-      Group #2:
-        simple/nested-level-2@nested-l2-version
-          Group #3:
-            simple/layers@simple-layers-version
-    read/env@read-env-version                      (optional)
+\- Group #1:
+   +- simple/nested-level-1
+   |  \- Group #1:
+   |     \- simple/nested-level-2@nested-l2-version
+   |        \- Group #1:
+   |           \- simple/layers@simple-layers-version
+   \- read/env@read-env-version                          (optional)
 
 LOCAL:
 
@@ -80,10 +80,10 @@ Buildpacks:
   simple/nested-level-1        nested-l1-version
 
 Detection Order:
-  Group #1:
-    simple/nested-level-1
-      Group #2:
-        simple/nested-level-2@nested-l2-version
-          Group #3:
-            simple/layers@simple-layers-version
-    read/env@read-env-version                      (optional)
+\- Group #1:
+   +- simple/nested-level-1
+   |  \- Group #1:
+   |     \- simple/nested-level-2@nested-l2-version
+   |        \- Group #1:
+   |           \- simple/layers@simple-layers-version
+   \- read/env@read-env-version                          (optional)

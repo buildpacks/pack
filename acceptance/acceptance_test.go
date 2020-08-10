@@ -1529,7 +1529,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 							},
 						)
 
-						h.AssertTrimmedEq(t, output, expectedOutput)
+						assert.TrimmedEq(output, expectedOutput)
 					})
 
 					it("provides nested detection output up to depth", func() {
@@ -1555,7 +1555,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 							},
 						)
 
-						h.AssertTrimmedEq(t, output, expectedOutput)
+						assert.TrimmedEq(output, expectedOutput)
 					})
 				})
 
@@ -1582,7 +1582,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						},
 					)
 
-					assert.Equal(output, expectedOutput)
+					assert.TrimmedEq(output, expectedOutput)
 				})
 
 				it("indicates builder is trusted", func() {
@@ -1610,7 +1610,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						},
 					)
 
-					assert.Equal(output, expectedOutput)
+					assert.TrimmedEq(output, expectedOutput)
 				})
 			})
 

@@ -282,147 +282,112 @@ func runImagesOutput(runImage string, mirrors []string, cfg config.Config) (stri
 	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
-type stackEntry struct {
-	LayerInfo dist.BuildpackRef
-	Depth     int
-	Last      bool
-}
+// Unable to easily convert format makes this feel like a poor solution...
 
 func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDepth int) (string, error) {
 	buf := strings.Builder{}
 	tabWriter := new(tabwriter.Writer).Init(&buf, writerMinWidth, writerTabWidth, defaultTabWidth, writerPadChar, writerFlags)
-	invalidMaxDepth := maxDepth == -1
-
-	// the stack for DFS
-	buildpackStack := make([]stackEntry, 0)
-	prevDepth := -1
-	groupCount := 0
-
-	// keep track of buildpacks the current buildpack is nested inside for cycle detection.
-	buildpacksDepthStack := []stackEntry{}
-
-	// optimize lookup in buildpackDepthStack.
 	buildpackSet := map[pack.BuildpackInfoKey]bool{}
 
-	//initialize stack with top level buildpacks.
-	buildpackStack = addOrdering(buildpackStack, order, 0)
-
-	// iterate until stack is empty
-	for len(buildpackStack) > 0 {
-		stackLen := len(buildpackStack)
-
-		// get current entry an pop last element off the stack
-		curEntry := buildpackStack[stackLen-1]
-		buildpackStack = buildpackStack[:stackLen-1]
-
-		key := pack.BuildpackInfoKey{
-			ID:      curEntry.LayerInfo.ID,
-			Version: curEntry.LayerInfo.Version,
-		}
-
-		buildpacksDepthStack, buildpackSet = updateCycleChecking(buildpacksDepthStack, buildpackSet, curEntry.Depth)
-
-		_, visited := buildpackSet[key]
-		buildpacksDepthStack = append(buildpacksDepthStack, curEntry)
-		buildpackSet[key] = true
-
-		curLayerInfo, ok := layers.Get(curEntry.LayerInfo.ID, curEntry.LayerInfo.Version)
-		if !ok {
-			return "", fmt.Errorf("error: missing buildpack %s@%s from layer metadata", curEntry.LayerInfo.ID, curEntry.LayerInfo.Version)
-		}
-
-		// add all nested buildpacks if this buildpack is not the first node of a cycle,
-		// or we exceed the maxDepth
-		if !visited && (invalidMaxDepth || curEntry.Depth+1 < maxDepth) {
-			buildpackStack = addOrdering(buildpackStack, curLayerInfo.Order, curEntry.Depth+1)
-		}
-
-		// output operations
-		if curEntry.Depth > prevDepth {
-			if err := detectionOrderAddGroup(tabWriter, groupCount+1, curEntry.Depth); err != nil {
-				return "", fmt.Errorf("unable to add group to output: %s", err)
-			}
-			groupCount++
-		}
-		if err := detectionOrderAddBuildpack(tabWriter, curEntry.LayerInfo, curEntry.Depth, visited); err != nil {
-			return "", fmt.Errorf("unable to add buildpack to output: %s", err)
-		}
-
-		prevDepth = curEntry.Depth
+	if err := orderOutputRecurrence(tabWriter, "", order, layers, buildpackSet, 0, maxDepth); err != nil {
+		return "", err
 	}
-
 	if err := tabWriter.Flush(); err != nil {
 		return "", fmt.Errorf("error flushing tabWriter output: %s", err)
 	}
 	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
-// pop all buildpacks of greater depth off depth stack,
-// we can no longer have a cycle within them.
-func updateCycleChecking(buildpacksDepthStack []stackEntry, buildpackSet map[pack.BuildpackInfoKey]bool, newDepth int) ([]stackEntry, map[pack.BuildpackInfoKey]bool) {
-	for len(buildpacksDepthStack) > 0 && buildpacksDepthStack[len(buildpacksDepthStack)-1].Depth > newDepth {
-		buildpackToRemove := buildpacksDepthStack[len(buildpacksDepthStack)-1]
-		buildpacksDepthStack = buildpacksDepthStack[:len(buildpacksDepthStack)-1]
-		delete(buildpackSet, pack.BuildpackInfoKey{
-			ID:      buildpackToRemove.LayerInfo.ID,
-			Version: buildpackToRemove.LayerInfo.Version,
-		})
+// Recursively generate output for every buildpack in an order.
+func orderOutputRecurrence(w io.Writer, prefix string, order dist.Order, layers dist.BuildpackLayers, buildpackSet map[pack.BuildpackInfoKey]bool, curDepth, maxDepth int) error {
+	// exit if maxDepth is exceeded
+	if validMaxDepth(maxDepth) && maxDepth <= curDepth {
+		return nil
 	}
-	return buildpacksDepthStack, buildpackSet
-}
 
-// add nested buildpack entries from nextOrder onto our stack
-func addOrdering(stack []stackEntry, nextOrder dist.Order, nextDepth int) []stackEntry {
-	newEntries := []stackEntry{}
-	for _, group := range nextOrder {
-		for bpIndex, bp := range group.Group {
-			newEntries = append(newEntries, stackEntry{
-				LayerInfo: bp,
-				Depth:     nextDepth,
-				Last:      bpIndex == len(group.Group),
-			})
+	// otherwise iterate over all nested buildpacks
+	for groupIndex, group := range order {
+		lastGroup := groupIndex == (len(order) - 1)
+		if err := displayGroup(w, prefix, groupIndex+1, lastGroup); err != nil {
+			return fmt.Errorf("error when printing group info: %q", err)
+		}
+		for bpIndex, buildpackEntry := range group.Group {
+			lastBuildpack := bpIndex == len(group.Group)-1
+
+			key := pack.BuildpackInfoKey{
+				ID:      buildpackEntry.ID,
+				Version: buildpackEntry.Version,
+			}
+			_, visited := buildpackSet[key]
+			buildpackSet[key] = true
+
+			curBuildpackLayer, ok := layers.Get(buildpackEntry.ID, buildpackEntry.Version)
+			if !ok {
+				return fmt.Errorf("error: missing buildpack %s@%s from layer metadata", buildpackEntry.ID, buildpackEntry.Version)
+			}
+
+			newBuildpackPrefix := updatePrefix(prefix, lastGroup)
+			if err := displayBuildpack(w, newBuildpackPrefix, buildpackEntry, visited, bpIndex == len(group.Group)-1); err != nil {
+				return fmt.Errorf("error when printing buildpack info: %q", err)
+			}
+
+			newGroupPrefix := updatePrefix(newBuildpackPrefix, lastBuildpack)
+			if !visited {
+				if err := orderOutputRecurrence(w, newGroupPrefix, curBuildpackLayer.Order, layers, buildpackSet, curDepth+1, maxDepth); err != nil {
+					return err
+				}
+			}
+
+			// remove key from set after recurrence completes, so we only detect cycles.
+			delete(buildpackSet, key)
 		}
 	}
-	// reverse to do a preorder traversal of buildpack nesting.
-	return append(stack, reverseStack(newEntries)...)
+	return nil
 }
 
-func reverseStack(stack []stackEntry) []stackEntry {
-	left := 0
-	right := len(stack) - 1
-	for left < right {
-		stack[left], stack[right] = stack[right], stack[left]
-		left++
-		right--
+func updatePrefix(oldPrefix string, last bool) string {
+	if last {
+		return oldPrefix + "   "
 	}
-	return stack
+	return oldPrefix + "|  "
 }
 
-func detectionOrderAddBuildpack(w io.Writer, buildpack dist.BuildpackRef, depth int, visited bool) error {
-	var prefix string
-	var optional string
-	if buildpack.Optional {
-		optional = "(optional)"
-	}
+func validMaxDepth(depth int) bool {
+	return depth >= 0
+}
 
-	prefix = strings.Repeat("  ", (depth+1)*2)
-	visitedStatus := ""
-	if visited {
-		visitedStatus = "*"
+func displayGroup(w io.Writer, prefix string, groupCount int, last bool) error {
+	treePrefix := "+"
+	if last {
+		treePrefix = "\\"
 	}
-
-	bpRef := buildpack.ID
-	if buildpack.Version != "" {
-		bpRef += "@" + buildpack.Version
-	}
-
-	_, err := fmt.Fprintf(w, "%s%s%s\t%s\n", prefix, bpRef, visitedStatus, optional)
+	_, err := fmt.Fprintf(w, "%s%s- Group #%d:\n", prefix, treePrefix, groupCount)
 	return err
 }
 
-func detectionOrderAddGroup(w io.Writer, groupCount, depth int) error {
-	prefix := strings.Repeat("  ", (depth*2)+1)
-	_, err := fmt.Fprintf(w, "%sGroup #%d:\n", prefix, groupCount)
+func displayBuildpack(w io.Writer, prefix string, entry dist.BuildpackRef, visited bool, last bool) error {
+	var optional string
+	if entry.Optional {
+		optional = "(optional)"
+	}
+
+	visitedStatus := ""
+	if visited {
+		visitedStatus = "*"
+		prefix = strings.ReplaceAll(prefix, "|", "*")
+	}
+
+	bpRef := entry.ID
+	if entry.Version != "" {
+		bpRef += "@" + entry.Version
+	}
+
+	treePrefix := "+- "
+	if last {
+		treePrefix = "\\- "
+	}
+
+	_, err := fmt.Fprintf(w, "%s%s%s%s\t%s\n", prefix, treePrefix, bpRef, visitedStatus, optional)
 	return err
 }
 

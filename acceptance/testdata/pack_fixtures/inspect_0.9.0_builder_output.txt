@@ -32,9 +32,9 @@ Buildpacks:
   simple/layers         simple-layers-version               
 
 Detection Order:
-  Group #1:
-    simple/layers                
-    read/env@read-env-version    (optional)
+\- Group #1:
+   +- simple/layers
+   \-- read/env@read-env-version    (optional)
 
 LOCAL:
 
@@ -68,6 +68,6 @@ Buildpacks:
   simple/layers         simple-layers-version               
 
 Detection Order:
-  Group #1:
-    simple/layers                
-    read/env@read-env-version    (optional)
+\- Group #1:
+   +- simple/layers
+   \-- read/env@read-env-version    (optional)

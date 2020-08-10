@@ -3,6 +3,7 @@ package commands_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/Masterminds/semver"
@@ -249,15 +250,16 @@ Buildpacks:
   test.bp.three          test.bp.three.version          
 
 Detection Order:
-  Group #1:
-    test.top.nested@test.top.nested.version    
-      Group #2:
-        test.nested@test.nested.version    
-          Group #3:
-            test.bp.one@test.bp.one.version    (optional)
-        test.bp.three@test.bp.three.version    (optional)
-    test.bp.two                                (optional)
+\- Group #1:
+   +- test.top.nested@test.top.nested.version    
+   |  \- Group #1:
+   |     +- test.nested@test.nested.version    
+   |     |  \- Group #1:
+   |     |     \- test.bp.one@test.bp.one.version    (optional)
+   |     \- test.bp.three@test.bp.three.version      (optional)
+   \- test.bp.two                                    (optional)
 `
+
 		localOutput = `
 LOCAL:
 
@@ -293,14 +295,14 @@ Buildpacks:
   test.bp.three          test.bp.three.version          
 
 Detection Order:
-  Group #1:
-    test.top.nested@test.top.nested.version    
-      Group #2:
-        test.nested@test.nested.version    
-          Group #3:
-            test.bp.one@test.bp.one.version    (optional)
-        test.bp.three@test.bp.three.version    (optional)
-    test.bp.two                                (optional)
+\- Group #1:
+   +- test.top.nested@test.top.nested.version    
+   |  \- Group #1:
+   |     +- test.nested@test.nested.version    
+   |     |  \- Group #1:
+   |     |     \- test.bp.one@test.bp.one.version    (optional)
+   |     \- test.bp.three@test.bp.three.version      (optional)
+   \- test.bp.two                                    (optional)
 `
 	)
 	it.Before(func() {
@@ -550,13 +552,14 @@ Stack:
 			it("displays detection order up to the specified depth", func() {
 				h.AssertNil(t, command.Execute())
 
+				fmt.Println(outBuf.String())
 				h.AssertContains(t, outBuf.String(), `Detection Order:
-  Group #1:
-    test.top.nested@test.top.nested.version    
-      Group #2:
-        test.nested@test.nested.version        
-        test.bp.three@test.bp.three.version    (optional)
-    test.bp.two                                (optional)`)
+\- Group #1:
+   +- test.top.nested@test.top.nested.version    
+   |  \- Group #1:
+   |     +- test.nested@test.nested.version        
+   |     \- test.bp.three@test.bp.three.version    (optional)
+   \- test.bp.two                                  (optional)`)
 			})
 		})
 
@@ -641,6 +644,10 @@ Stack:
 								BuildpackInfo: dist.BuildpackInfo{ID: "test.bp.two"},
 								Optional:      true,
 							},
+						},
+					},
+					{
+						Group: []dist.BuildpackRef{
 							{
 								BuildpackInfo: dist.BuildpackInfo{ID: "test.nested", Version: "test.nested.version"},
 								Optional:      false,
@@ -655,19 +662,20 @@ Stack:
 				command.SetArgs([]string{"some/image"})
 
 				h.AssertNil(t, command.Execute())
-				h.AssertTrimmedContains(t, outBuf.String(), `  Group #1:
-    test.top.nested@test.top.nested.version    
-      Group #2:
-        test.nested@test.nested.version
-          Group #3:
-            test.top.nested@test.top.nested.version*
-    test.bp.two                                         (optional)
-    test.nested@test.nested.version    
-      Group #4:
-        test.top.nested@test.top.nested.version
-          Group #5:
-            test.nested@test.nested.version*
-`)
+				h.AssertTrimmedContains(t, outBuf.String(), `Detection Order:
++- Group #1:
+|  +- test.top.nested@test.top.nested.version
+|  |  \- Group #1:
+|  |     \- test.nested@test.nested.version
+|  |        \- Group #1:
+*  *           \- test.top.nested@test.top.nested.version*
+|  \- test.bp.two                                             (optional)
+\- Group #2:
+   \- test.nested@test.nested.version
+      \- Group #1:
+         \- test.top.nested@test.top.nested.version
+            \- Group #1:
+               \- test.nested@test.nested.version*`)
 			})
 		})
 	})
