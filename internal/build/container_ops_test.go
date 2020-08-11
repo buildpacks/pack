@@ -65,7 +65,7 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			ctr, err := createContainer(ctx, imageName, "ls", "-al", "/some-location")
 			h.AssertNil(t, err)
 
-			err = copyDirOp(ctrClient, ctx, ctr.ID)
+			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
@@ -92,7 +92,7 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			ctr, err := createContainer(ctx, imageName, "ls", "-al", "/some-location")
 			h.AssertNil(t, err)
 
-			err = copyDirOp(ctrClient, ctx, ctr.ID)
+			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
@@ -109,7 +109,7 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			ctr, err := createContainer(ctx, imageName, "ls", "-al", "/some-location")
 			h.AssertNil(t, err)
 
-			err = copyDirOp(ctrClient, ctx, ctr.ID)
+			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
@@ -137,7 +137,7 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			ctr, err := createContainer(ctx, imageName, "ls", "-al", "/some/stack.toml")
 			h.AssertNil(t, err)
 
-			err = writeOp(ctrClient, ctx, ctr.ID)
+			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
@@ -161,7 +161,7 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			ctr, err := createContainer(ctx, imageName, "cat", "/some/stack.toml")
 			h.AssertNil(t, err)
 
-			err = writeOp(ctrClient, ctx, ctr.ID)
+			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)

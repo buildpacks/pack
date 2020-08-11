@@ -18,8 +18,8 @@ Buildpacks:
 
 Processes:
   TYPE                 SHELL        COMMAND        ARGS
-  web (default)        bash         ./run          8080
-  hello                             echo           hello world
+  web (default)        bash         {{.web_command}}          8080
+  hello                             {{.hello_command}}           {{.hello_args}}
 
 
 LOCAL:
@@ -40,6 +40,6 @@ Buildpacks:
 
 Processes:
   TYPE                 SHELL        COMMAND        ARGS
-  web (default)        bash         ./run          8080
-  hello                             echo           hello world
+  web (default)        bash         {{.web_command}}          8080
+  hello                             {{.hello_command}}           {{.hello_args}}
 

@@ -1,4 +1,13 @@
+FROM golang:1.14-nanoserver-1809 AS gobuild
+
+# bake in a simple server util
+WORKDIR /util
+COPY server.go /util/server.go
+RUN go build /util/server.go
+
 FROM mcr.microsoft.com/windows/nanoserver:1809
+
+COPY --from=gobuild /util/server.exe /util/server.exe
 
 # placeholder values until correct values are deteremined
 ENV CNB_USER_ID=0

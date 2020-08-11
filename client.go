@@ -18,6 +18,8 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+//go:generate mockgen -package testmocks -destination testmocks/mock_docker_client.go github.com/docker/docker/client CommonAPIClient
+
 //go:generate mockgen -package testmocks -destination testmocks/mock_image_fetcher.go github.com/buildpacks/pack ImageFetcher
 type ImageFetcher interface {
 	// Fetch fetches an image by resolving it both remotely and locally depending on provided parameters.
