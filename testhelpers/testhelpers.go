@@ -21,6 +21,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -125,6 +126,54 @@ func AssertContains(t *testing.T, actual, expected string) {
 			cmp.Diff(expected, actual),
 		)
 	}
+}
+
+func AssertTrimmedContains(t *testing.T, actual, expected string) {
+	t.Helper()
+
+	actualLines := strings.Split(actual, "\n")
+	expectedLines := strings.Split(expected, "\n")
+	for lineIdx, line := range actualLines {
+		actualLines[lineIdx] = cutSuffixWhitespace(line)
+	}
+
+	for lineIdx, line := range expectedLines {
+		expectedLines[lineIdx] = cutSuffixWhitespace(line)
+	}
+
+	actualTrimmed := strings.Join(actualLines, "\n")
+	expectedTrimmed := strings.Join(expectedLines, "\n")
+
+	AssertContains(t, actualTrimmed, expectedTrimmed)
+}
+
+func cutSuffixWhitespace(input string) string {
+	index := len(input) - 1
+	for ; 0 <= index; index-- {
+		if !unicode.IsSpace(rune(input[index])) {
+			break
+		}
+	}
+	return input[:index+1]
+}
+
+func AssertTrimmedEq(t *testing.T, actual, expected string) {
+	t.Helper()
+
+	actualLines := strings.Split(actual, "\n")
+	expectedLines := strings.Split(expected, "\n")
+	for lineIdx, line := range actualLines {
+		actualLines[lineIdx] = cutSuffixWhitespace(line)
+	}
+
+	for lineIdx, line := range expectedLines {
+		expectedLines[lineIdx] = cutSuffixWhitespace(line)
+	}
+
+	actualTrimmed := strings.Join(actualLines, "\n")
+	expectedTrimmed := strings.Join(expectedLines, "\n")
+
+	AssertEq(t, actualTrimmed, expectedTrimmed)
 }
 
 func AssertContainsAllInOrder(t *testing.T, actual bytes.Buffer, expected ...string) {

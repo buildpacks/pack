@@ -64,10 +64,6 @@ github.com/blang/semver v3.1.0+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnweb
 github.com/blang/semver v3.5.0+incompatible/go.mod h1:kRBLl5iJ+tD4TcOOxsy/0fnwebNt5EWlYSAyrTnjyyk=
 github.com/buildpacks/imgutil v0.0.0-20200313170640-a02052f47d62 h1:jo6zuwPgCWD/V5YQEgaRKeW/uxy4fhFO9FsFWmKCtdQ=
 github.com/buildpacks/imgutil v0.0.0-20200313170640-a02052f47d62/go.mod h1:TjPmM78urjQIiMal4T7en6iBekAPv6z1yVMZobc4Kd8=
-github.com/buildpacks/imgutil v0.0.0-20200528211046-5c4cfa56bb24 h1:5JJD0uW/I2yfYyFqZZdZ4upgonr6q20WWvR1R53c7ec=
-github.com/buildpacks/imgutil v0.0.0-20200528211046-5c4cfa56bb24/go.mod h1:rkRDOGpntpFhgj0gIUhQnEt5DYvi7xUTHkZWSxbWJP0=
-github.com/buildpacks/imgutil v0.0.0-20200625161542-2281cd9b1414 h1:p0JTQSapoTcxDG8pMgeXJ5Z9sYhYiFSVc/+0GM2RiTA=
-github.com/buildpacks/imgutil v0.0.0-20200625161542-2281cd9b1414/go.mod h1:0MWMP1K2tA1fJnQOzGZDq8NHaWH+r7YUuyYLCEqYCx8=
 github.com/buildpacks/imgutil v0.0.0-20200805143852-1844b230530d h1:uVTFIiev3f7fi5BSv1RtM5W5lcqQodqLRBG5AdoDe2U=
 github.com/buildpacks/imgutil v0.0.0-20200805143852-1844b230530d/go.mod h1:uVv0fNwOEBNgyM9ZvwV0g2Dvzk31q5TtSeoC1GGmW+k=
 github.com/buildpacks/lifecycle v0.7.2 h1:FO7i2cokLNc7lcuThq/LYt1jmkB8HBrjpK+2GWWsaLI=
@@ -192,9 +188,6 @@ github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Z
 github.com/google/btree v1.0.0/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
 github.com/google/go-cmp v0.2.0/go.mod h1:oXzfMopK8JAjlY9xF4vHSVASa0yLyX7SntLO5aqRK0M=
 github.com/google/go-cmp v0.3.0/go.mod h1:8QqcDgzrUqlUb/G2PQTWiueGozuR1884gddMywk6iLU=
-github.com/google/go-cmp v0.4.1/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
-github.com/google/go-cmp v0.5.0 h1:/QaMHBdZ26BB3SSst0Iwl10Epc+xhTquomWX0oZEB6w=
-github.com/google/go-cmp v0.5.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.1 h1:JFrFEBb2xKufg6XkJsJr+WbKb4FQlURi5RUcBveYu9k=
 github.com/google/go-cmp v0.5.1/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-containerregistry v0.0.0-20200311163244-4b1985e5ea21/go.mod h1:m8YvHwSOuBCq25yrj1DaX/fIMrv6ec3CNg8jY8+5PEA=

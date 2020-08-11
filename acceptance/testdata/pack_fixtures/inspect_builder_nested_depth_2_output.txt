@@ -31,16 +31,20 @@ Run Images:
   {{.run_image_mirror}}
 
 Buildpacks:
-  ID                    VERSION                             HOMEPAGE
-  read/env              read-env-version                    
-  noop.buildpack        noop.buildpack.version              
-  noop.buildpack        noop.buildpack.later-version        http://geocities.com/cool-bp
-  simple/layers         simple-layers-version               
+  ID                           VERSION                             HOMEPAGE
+  read/env                     read-env-version
+  noop.buildpack               noop.buildpack.version
+  noop.buildpack               noop.buildpack.later-version        http://geocities.com/cool-bp
+  simple/layers                simple-layers-version
+  simple/nested-level-2        nested-l2-version
+  simple/nested-level-1        nested-l1-version
 
 Detection Order:
  └ Group #1:
-    ├ simple/layers
-    └ read/env@read-env-version    (optional)
+    ├ simple/nested-level-1
+    │  └ Group #1:
+    │     └ simple/nested-level-2@nested-l2-version
+    └ read/env@read-env-version                        (optional)
 
 LOCAL:
 
@@ -73,13 +77,17 @@ Run Images:
   {{.run_image_mirror}}
 
 Buildpacks:
-  ID                    VERSION                             HOMEPAGE
-  read/env              read-env-version                    
-  noop.buildpack        noop.buildpack.version              
-  noop.buildpack        noop.buildpack.later-version        http://geocities.com/cool-bp
-  simple/layers         simple-layers-version               
+  ID                           VERSION                             HOMEPAGE
+  read/env                     read-env-version
+  noop.buildpack               noop.buildpack.version
+  noop.buildpack               noop.buildpack.later-version        http://geocities.com/cool-bp
+  simple/layers                simple-layers-version
+  simple/nested-level-2        nested-l2-version
+  simple/nested-level-1        nested-l1-version
 
 Detection Order:
  └ Group #1:
-    ├ simple/layers
-    └ read/env@read-env-version    (optional)
+    ├ simple/nested-level-1
+    │  └ Group #1:
+    │     └ simple/nested-level-2@nested-l2-version
+    └ read/env@read-env-version                        (optional)

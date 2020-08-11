@@ -1551,6 +1551,119 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 			})
 
 			when("inspect-builder", func() {
+				when("inspecting a nested builder", func() {
+					it.Before(func() {
+						// create our nested builder
+						h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+
+						h.SkipUnless(t,
+							pack.Supports("inspect-builder --depth"),
+							"pack does not support 'package-buildpack'",
+						)
+						// create a task, handled by a 'task manager' which executes our pack commands during tests.
+						// looks like this is used to de-dup tasks
+						key := taskKey(
+							"create-complex-builder",
+							append(
+								[]string{runImageMirror, createBuilderPackConfig.Path(), lifecycle.Identifier()},
+								createBuilderPackConfig.FixturePaths()...,
+							)...,
+						)
+						// run task on taskmanager and save output, in case there are future calls to the same task
+						// likely all our changes need to go on the createBuilderPack.
+						value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
+							return createComplexBuilder(
+								t,
+								assert,
+								createBuilderPack,
+								lifecycle,
+								runImageMirror,
+							)
+						})
+						h.AssertNil(t, err)
+
+						// register task to be run to 'clean up' a task
+						suiteManager.RegisterCleanUp("clean-"+key, func() error {
+							return h.DockerRmi(dockerCli, value)
+						})
+						builderName = value
+					})
+
+					it("displays nested Detection Order groups", func() {
+						output := pack.RunSuccessfully(
+							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+						h.AssertEq(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
+
+						output = pack.RunSuccessfully("inspect-builder", builderName)
+
+						deprecatedBuildpackAPIs,
+							supportedBuildpackAPIs,
+							deprecatedPlatformAPIs,
+							supportedPlatformAPIs := lifecycle.OutputForAPIs()
+
+						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
+							"inspect_%s_builder_nested_output.txt",
+							createBuilderPack.Version(),
+							"inspect_builder_nested_output.txt",
+							map[string]interface{}{
+								"builder_name":              builderName,
+								"lifecycle_version":         lifecycle.Version(),
+								"deprecated_buildpack_apis": deprecatedBuildpackAPIs,
+								"supported_buildpack_apis":  supportedBuildpackAPIs,
+								"deprecated_platform_apis":  deprecatedPlatformAPIs,
+								"supported_platform_apis":   supportedPlatformAPIs,
+								"run_image_mirror":          runImageMirror,
+								"pack_version":              createBuilderPack.Version(),
+								"trusted":                   "No",
+
+								// set previous pack template fields
+								"buildpack_api_version": lifecycle.EarliestBuildpackAPIVersion(),
+								"platform_api_version":  lifecycle.EarliestPlatformAPIVersion(),
+							},
+						)
+
+						assert.TrimmedEq(output, expectedOutput)
+					})
+
+					it("provides nested detection output up to depth", func() {
+						output := pack.RunSuccessfully(
+							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+						assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
+
+						output = pack.RunSuccessfully("inspect-builder", "--depth", "2", builderName)
+
+						deprecatedBuildpackAPIs,
+							supportedBuildpackAPIs,
+							deprecatedPlatformAPIs,
+							supportedPlatformAPIs := lifecycle.OutputForAPIs()
+
+						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
+							"inspect_%s_builder_nested_depth_2_output.txt",
+							createBuilderPack.Version(),
+							"inspect_builder_nested_depth_2_output.txt",
+							map[string]interface{}{
+								"builder_name":              builderName,
+								"lifecycle_version":         lifecycle.Version(),
+								"deprecated_buildpack_apis": deprecatedBuildpackAPIs,
+								"supported_buildpack_apis":  supportedBuildpackAPIs,
+								"deprecated_platform_apis":  deprecatedPlatformAPIs,
+								"supported_platform_apis":   supportedPlatformAPIs,
+								"run_image_mirror":          runImageMirror,
+								"pack_version":              createBuilderPack.Version(),
+								"trusted":                   "No",
+
+								// set previous pack template fields
+								"buildpack_api_version": lifecycle.EarliestBuildpackAPIVersion(),
+								"platform_api_version":  lifecycle.EarliestPlatformAPIVersion(),
+							},
+						)
+
+						assert.TrimmedEq(output, expectedOutput)
+					})
+				})
+
 				it("displays configuration for a builder (local and remote)", func() {
 					output := pack.RunSuccessfully(
 						"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
@@ -1585,7 +1698,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						},
 					)
 
-					assert.Equal(output, expectedOutput)
+					assert.TrimmedEq(output, expectedOutput)
 				})
 
 				it("indicates builder is trusted", func() {
@@ -1624,7 +1737,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						},
 					)
 
-					assert.Equal(output, expectedOutput)
+					assert.TrimmedEq(output, expectedOutput)
 				})
 			})
 
@@ -1810,6 +1923,137 @@ func buildpacksDir(bpAPIVersion string) string {
 	return filepath.Join("testdata", "mock_buildpacks", bpAPIVersion)
 }
 
+func createComplexBuilder(t *testing.T,
+	assert h.AssertionManager,
+	pack *invoke.PackInvoker,
+	lifecycle config.LifecycleAsset,
+	runImageMirror string) (string, error) {
+
+	t.Log("creating complex builder image...")
+
+	// CREATE TEMP WORKING DIR
+	tmpDir, err := ioutil.TempDir("", "create-complex-test-builder")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// DETERMINE TEST DATA
+	buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
+	t.Log("using buildpacks from: ", buildpacksDir)
+	h.RecursiveCopy(t, buildpacksDir, tmpDir)
+
+	// ARCHIVE BUILDPACKS
+	buildpacks := []string{
+		"noop-buildpack",
+		"noop-buildpack-2",
+		"other-stack-buildpack",
+		"read-env-buildpack",
+	}
+
+	for _, v := range buildpacks {
+		tgz := h.CreateTGZ(t, filepath.Join(buildpacksDir, v), "./", 0755)
+		err := os.Rename(tgz, filepath.Join(tmpDir, v+".tgz"))
+		if err != nil {
+			return "", err
+		}
+	}
+	buildpackImages := []string{
+		"simple-layers-buildpack",
+		"nested-level-2-buildpack",
+		"nested-level-1-buildpack",
+	}
+
+	buildpackImageToName := map[string]interface{}{}
+
+	var packageImageName string
+	var packageId string
+
+	if dockerHostOS() != "windows" {
+		for _, buildpackName := range buildpackImages {
+			packageFileName := buildpackName + "_package.toml"
+			packageFileDest := filepath.Join(tmpDir, packageFileName)
+			packageFile, err := os.OpenFile(packageFileDest, os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.ModePerm)
+			if err != nil {
+				return "", err
+			}
+
+			pack.FixtureManager().TemplateFixtureToFile(packageFileName, packageFile, buildpackImageToName)
+
+			packageImageName = packageBuildpackAsImage(t,
+				assert,
+				pack,
+				packageFileDest,
+				lifecycle,
+				[]string{buildpackName},
+			)
+
+			buildpackKey := strings.ReplaceAll(buildpackName, "-", "_")
+			buildpackImageToName[buildpackKey] = packageImageName
+		}
+
+		packageId = "simple/nested-level-1"
+	}
+
+	// ADD lifecycle
+	var lifecycleURI string
+	var lifecycleVersion string
+	if lifecycle.HasLocation() {
+		lifecycleURI = lifecycle.EscapedPath()
+		t.Logf("adding lifecycle path '%s' to builder config", lifecycleURI)
+	} else {
+		lifecycleVersion = lifecycle.Version()
+		t.Logf("adding lifecycle version '%s' to builder config", lifecycleVersion)
+	}
+
+	// RENDER builder.toml
+	builderConfigFile, err := ioutil.TempFile(tmpDir, "nested_builder.toml")
+	if err != nil {
+		return "", err
+	}
+
+	templateMapping := map[string]interface{}{
+		"package_image_name": packageImageName,
+		"package_id":         packageId,
+		"run_image_mirror":   runImageMirror,
+		"lifecycle_uri":      lifecycleURI,
+		"lifecycle_version":  lifecycleVersion,
+	}
+
+	for key, val := range buildpackImageToName {
+		templateMapping[key] = val
+	}
+
+	pack.FixtureManager().TemplateFixtureToFile(
+		"nested_builder.toml",
+		builderConfigFile,
+		templateMapping,
+	)
+
+	err = builderConfigFile.Close()
+	if err != nil {
+		return "", err
+	}
+
+	// NAME BUILDER
+	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
+
+	// CREATE BUILDER
+	output, err := pack.Run(
+		"create-builder", bldr,
+		"-c", builderConfigFile.Name(),
+		"--no-color",
+	)
+	if err != nil {
+		return "", errors.Wrapf(err, "pack failed with output %s", output)
+	}
+
+	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
+	assert.Nil(h.PushImage(dockerCli, bldr, registryConfig))
+
+	return bldr, nil
+}
+
 func createBuilder(
 	t *testing.T,
 	assert h.AssertionManager,
@@ -1817,7 +2061,6 @@ func createBuilder(
 	lifecycle config.LifecycleAsset,
 	runImageMirror string,
 ) (string, error) {
-
 	t.Log("creating builder image...")
 
 	// CREATE TEMP WORKING DIR
@@ -1991,7 +2234,7 @@ func packageBuildpack(
 		assert.Nil(err)
 	}
 
-	packageConfig := filepath.Join(tmpDir, "package.toml")
+	packageConfig := filepath.Join(tmpDir, buildpacks[len(buildpacks)-1]+"_package.toml")
 
 	// COPY config to temp package.toml
 	h.CopyFile(t, configLocation, packageConfig)

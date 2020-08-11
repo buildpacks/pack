@@ -19,13 +19,26 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-const none = "(none)"
+const (
+	writerMinWidth     = 0
+	writerTabWidth     = 0
+	buildpacksTabWidth = 8
+	defaultTabWidth    = 4
+	writerPadChar      = ' '
+	writerFlags        = 0
+	none               = "(none)"
+)
+
+type InspectBuilderFlags struct {
+	Depth int
+}
 
 func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+	var flags InspectBuilderFlags
 	cmd := &cobra.Command{
 		Use:   "inspect-builder <builder-image-name>",
 		Short: "Show information about a builder",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.MaximumNArgs(2),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if cfg.DefaultBuilder == "" && len(args) == 0 {
 				suggestSettingBuilder(logger, client)
@@ -38,8 +51,8 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 			}
 
 			verbose := logger.IsVerbose()
-			presentRemote, remoteOutput, remoteWarnings, remoteErr := inspectBuilderOutput(client, cfg, imageName, false, verbose)
-			presentLocal, localOutput, localWarnings, localErr := inspectBuilderOutput(client, cfg, imageName, true, verbose)
+			presentRemote, remoteOutput, remoteWarnings, remoteErr := inspectBuilderOutput(client, cfg, imageName, false, verbose, flags.Depth)
+			presentLocal, localOutput, localWarnings, localErr := inspectBuilderOutput(client, cfg, imageName, true, verbose, flags.Depth)
 
 			if !presentRemote && !presentLocal {
 				return errors.New(fmt.Sprintf("Unable to find builder '%s' locally or remotely.\n", imageName))
@@ -72,11 +85,12 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 			return nil
 		}),
 	}
+	cmd.Flags().IntVarP(&flags.Depth, "depth", "d", -1, "Max depth to display for Detection Order.\nOmission of this flag or values < 0 will display the entire tree.")
 	AddHelpFlag(cmd, "inspect-builder")
 	return cmd
 }
 
-func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string, local bool, verbose bool) (present bool, output string, warning []string, err error) {
+func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string, local bool, verbose bool, depth int) (present bool, output string, warning []string, err error) {
 	source := "remote"
 	if local {
 		source = "local"
@@ -92,7 +106,7 @@ func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string
 	}
 
 	var buf bytes.Buffer
-	warnings, err := generateBuilderOutput(&buf, imageName, cfg, *info, verbose)
+	warnings, err := generateBuilderOutput(&buf, imageName, cfg, *info, verbose, depth)
 	if err != nil {
 		return true, "", nil, errors.Wrapf(err, "writing output for %s image '%s'", source, imageName)
 	}
@@ -100,7 +114,7 @@ func inspectBuilderOutput(client PackClient, cfg config.Config, imageName string
 	return true, buf.String(), warnings, nil
 }
 
-func generateBuilderOutput(writer io.Writer, imageName string, cfg config.Config, info pack.BuilderInfo, verbose bool) (warnings []string, err error) {
+func generateBuilderOutput(writer io.Writer, imageName string, cfg config.Config, info pack.BuilderInfo, verbose bool, depth int) (warnings []string, err error) {
 	tpl := template.Must(template.New("").Parse(`
 {{ if ne .Info.Description "" -}}
 Description: {{ .Info.Description }}
@@ -168,7 +182,7 @@ Detection Order:
 		warnings = append(warnings, "Users must supply buildpacks from the host machine")
 	}
 
-	order, err := detectionOrderOutput(info.Order)
+	order, err := detectionOrderOutput(info.Order, info.BuildpackLayers, depth)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +260,7 @@ func stringifyAPISet(versions builder.APISet) string {
 // TODO: present buildpack order (inc. nested) [https://github.com/buildpacks/pack/issues/253].
 func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 	buf := &bytes.Buffer{}
-	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 8, ' ', 0)
+	tabWriter := new(tabwriter.Writer).Init(buf, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
 	if _, err := fmt.Fprint(tabWriter, "  ID\tVERSION\tHOMEPAGE\n"); err != nil {
 		return "", err
 	}
@@ -266,7 +280,8 @@ func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 
 func runImagesOutput(runImage string, mirrors []string, cfg config.Config) (string, error) {
 	buf := &bytes.Buffer{}
-	tabWriter := new(tabwriter.Writer).Init(buf, 0, 0, 4, ' ', 0)
+
+	tabWriter := new(tabwriter.Writer).Init(buf, writerMinWidth, writerTabWidth, defaultTabWidth, writerPadChar, writerFlags)
 
 	for _, r := range getLocalMirrors(runImage, cfg) {
 		if _, err := fmt.Fprintf(tabWriter, "  %s\t(user-configured)\n", r); err != nil {
@@ -293,33 +308,117 @@ func runImagesOutput(runImage string, mirrors []string, cfg config.Config) (stri
 	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
-func detectionOrderOutput(order dist.Order) (string, error) {
+// Unable to easily convert format makes this feel like a poor solution...
+func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDepth int) (string, error) {
 	buf := strings.Builder{}
-	for i, group := range order {
-		buf.WriteString(fmt.Sprintf("  Group #%d:\n", i+1))
+	tabWriter := new(tabwriter.Writer).Init(&buf, writerMinWidth, writerTabWidth, defaultTabWidth, writerPadChar, writerFlags)
+	buildpackSet := map[pack.BuildpackInfoKey]bool{}
 
-		tabWriter := new(tabwriter.Writer).Init(&buf, 0, 0, 4, ' ', 0)
-		for _, bp := range group.Group {
-			var optional string
-			if bp.Optional {
-				optional = "(optional)"
-			}
+	if err := orderOutputRecurrence(tabWriter, "", order, layers, buildpackSet, 0, maxDepth); err != nil {
+		return "", err
+	}
+	if err := tabWriter.Flush(); err != nil {
+		return "", fmt.Errorf("error flushing tabWriter output: %s", err)
+	}
+	return strings.TrimSuffix(buf.String(), "\n"), nil
+}
 
-			bpRef := bp.ID
-			if bp.Version != "" {
-				bpRef += "@" + bp.Version
-			}
-
-			if _, err := fmt.Fprintf(tabWriter, "    %s\t%s\n", bpRef, optional); err != nil {
-				return "", err
-			}
-		}
-		if err := tabWriter.Flush(); err != nil {
-			return "", err
-		}
+// Recursively generate output for every buildpack in an order.
+func orderOutputRecurrence(w io.Writer, prefix string, order dist.Order, layers dist.BuildpackLayers, buildpackSet map[pack.BuildpackInfoKey]bool, curDepth, maxDepth int) error {
+	// exit if maxDepth is exceeded
+	if validMaxDepth(maxDepth) && maxDepth <= curDepth {
+		return nil
 	}
 
-	return strings.TrimSuffix(buf.String(), "\n"), nil
+	// otherwise iterate over all nested buildpacks
+	for groupIndex, group := range order {
+		lastGroup := groupIndex == (len(order) - 1)
+		if err := displayGroup(w, prefix, groupIndex+1, lastGroup); err != nil {
+			return fmt.Errorf("error when printing group info: %q", err)
+		}
+		for bpIndex, buildpackEntry := range group.Group {
+			lastBuildpack := bpIndex == len(group.Group)-1
+
+			key := pack.BuildpackInfoKey{
+				ID:      buildpackEntry.ID,
+				Version: buildpackEntry.Version,
+			}
+			_, visited := buildpackSet[key]
+			buildpackSet[key] = true
+
+			curBuildpackLayer, ok := layers.Get(buildpackEntry.ID, buildpackEntry.Version)
+			if !ok {
+				return fmt.Errorf("error: missing buildpack %s@%s from layer metadata", buildpackEntry.ID, buildpackEntry.Version)
+			}
+
+			newBuildpackPrefix := updatePrefix(prefix, lastGroup)
+			if err := displayBuildpack(w, newBuildpackPrefix, buildpackEntry, visited, bpIndex == len(group.Group)-1); err != nil {
+				return fmt.Errorf("error when printing buildpack info: %q", err)
+			}
+
+			newGroupPrefix := updatePrefix(newBuildpackPrefix, lastBuildpack)
+			if !visited {
+				if err := orderOutputRecurrence(w, newGroupPrefix, curBuildpackLayer.Order, layers, buildpackSet, curDepth+1, maxDepth); err != nil {
+					return err
+				}
+			}
+
+			// remove key from set after recurrence completes, so we only detect cycles.
+			delete(buildpackSet, key)
+		}
+	}
+	return nil
+}
+
+const (
+	branchPrefix     = " ├ "
+	lastBranchPrefix = " └ "
+	trunkPrefix      = " │ "
+)
+
+func updatePrefix(oldPrefix string, last bool) string {
+	if last {
+		return oldPrefix + "   "
+	}
+	return oldPrefix + trunkPrefix
+}
+
+func validMaxDepth(depth int) bool {
+	return depth >= 0
+}
+
+func displayGroup(w io.Writer, prefix string, groupCount int, last bool) error {
+	treePrefix := branchPrefix
+	if last {
+		treePrefix = lastBranchPrefix
+	}
+	_, err := fmt.Fprintf(w, "%s%sGroup #%d:\n", prefix, treePrefix, groupCount)
+	return err
+}
+
+func displayBuildpack(w io.Writer, prefix string, entry dist.BuildpackRef, visited bool, last bool) error {
+	var optional string
+	if entry.Optional {
+		optional = "(optional)"
+	}
+
+	visitedStatus := ""
+	if visited {
+		visitedStatus = "[cyclic]"
+	}
+
+	bpRef := entry.ID
+	if entry.Version != "" {
+		bpRef += "@" + entry.Version
+	}
+
+	treePrefix := branchPrefix
+	if last {
+		treePrefix = lastBranchPrefix
+	}
+
+	_, err := fmt.Fprintf(w, "%s%s%s\t%s%s\n", prefix, treePrefix, bpRef, optional, visitedStatus)
+	return err
 }
 
 func getLocalMirrors(runImage string, cfg config.Config) []string {
