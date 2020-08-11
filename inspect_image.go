@@ -68,6 +68,8 @@ type layersMetadata struct {
 	Stack    lifecycle.StackMetadata    `json:"stack" toml:"stack"`
 }
 
+const PlatformAPIEnv = "CNB_PLATFORM_API"
+
 // InspectImage reads the Label metadata of an image. It initializes a ImageInfo object
 // using this metadata, and returns it.
 // If daemon is true, first the local registry will be searched for the image.
@@ -103,8 +105,27 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		return nil, err
 	}
 
-	defaultProcessType, err := img.Env("CNB_PROCESS_TYPE")
-	if err != nil || defaultProcessType == "" {
+	platformAPI, err := img.Env(PlatformAPIEnv)
+	if err != nil {
+		return nil, errors.Wrap(err, "reading platform api")
+	}
+
+	if platformAPI == "" {
+		platformAPI = "0.3"
+	}
+
+	platformAPIVersion, err := semver.NewVersion(platformAPI)
+	if err != nil {
+		return nil, errors.Wrap(err, "parsing platform api version")
+	}
+
+	var defaultProcessType string
+	if platformAPIVersion.LessThan(semver.MustParse("0.4")) {
+		defaultProcessType, err = img.Env("CNB_PROCESS_TYPE")
+		if err != nil || defaultProcessType == "" {
+			defaultProcessType = "web"
+		}
+	} else {
 		defaultProcessType = "web"
 	}
 
