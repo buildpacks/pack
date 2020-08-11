@@ -440,7 +440,7 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 	for _, bp := range bpsToValidate {
 		bpd := bp.Descriptor()
 
-		// TODO: Should we warn when a buildpack API version is deprecated?
+		// TODO: Warn when Buildpack API is deprecated - https://github.com/buildpacks/pack/issues/788
 		compatible := false
 		for _, version := range append(lifecycleDescriptor.APIs.Buildpack.Supported, lifecycleDescriptor.APIs.Buildpack.Deprecated...) {
 			compatible = version.Compare(bpd.API) == 0

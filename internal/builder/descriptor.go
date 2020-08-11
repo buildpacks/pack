@@ -33,6 +33,30 @@ type LifecycleAPIs struct {
 
 type APISet []*api.Version
 
+func (a APISet) search(comp func(prevMatch, value *api.Version) bool) *api.Version {
+	var match *api.Version
+	for _, version := range a {
+		switch {
+		case version == nil:
+			continue
+		case match == nil:
+			match = version
+		case comp(match, version):
+			match = version
+		}
+	}
+
+	return match
+}
+
+func (a APISet) Earliest() *api.Version {
+	return a.search(func(prevMatch, value *api.Version) bool { return value.Compare(prevMatch) < 0 })
+}
+
+func (a APISet) Latest() *api.Version {
+	return a.search(func(prevMatch, value *api.Version) bool { return value.Compare(prevMatch) > 0 })
+}
+
 func (a APISet) AsStrings() []string {
 	verStrings := make([]string, len(a))
 	for i, version := range a {
@@ -64,14 +88,12 @@ func CompatDescriptor(descriptor LifecycleDescriptor) LifecycleDescriptor {
 	if len(descriptor.APIs.Buildpack.Supported) != 0 || len(descriptor.APIs.Platform.Supported) != 0 {
 		// select earliest value for deprecated parameters
 		if len(descriptor.APIs.Buildpack.Supported) != 0 {
-			descriptor.API.BuildpackVersion = findEarliestVersion(
-				append(descriptor.APIs.Buildpack.Deprecated, descriptor.APIs.Buildpack.Supported...),
-			)
+			descriptor.API.BuildpackVersion =
+				append(descriptor.APIs.Buildpack.Deprecated, descriptor.APIs.Buildpack.Supported...).Earliest()
 		}
 		if len(descriptor.APIs.Platform.Supported) != 0 {
-			descriptor.API.PlatformVersion = findEarliestVersion(
-				append(descriptor.APIs.Platform.Deprecated, descriptor.APIs.Platform.Supported...),
-			)
+			descriptor.API.PlatformVersion =
+				append(descriptor.APIs.Platform.Deprecated, descriptor.APIs.Platform.Supported...).Earliest()
 		}
 	} else if descriptor.API.BuildpackVersion != nil && descriptor.API.PlatformVersion != nil {
 		// fill supported with deprecated field
@@ -86,20 +108,4 @@ func CompatDescriptor(descriptor LifecycleDescriptor) LifecycleDescriptor {
 	}
 
 	return descriptor
-}
-
-func findEarliestVersion(versions []*api.Version) *api.Version {
-	var earliest *api.Version
-	for _, version := range versions {
-		switch {
-		case version == nil:
-			continue
-		case earliest == nil:
-			earliest = version
-		case version.Compare(earliest) < 0:
-			earliest = version
-		}
-	}
-
-	return earliest
 }

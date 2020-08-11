@@ -104,4 +104,24 @@ func testDescriptor(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("Earliest", func() {
+		it("returns lowest value", func() {
+			h.AssertEq(
+				t,
+				builder.APISet{api.MustParse("2.1"), api.MustParse("0.1"), api.MustParse("1.1")}.Earliest().String(),
+				"0.1",
+			)
+		})
+	})
+
+	when("Latest", func() {
+		it("returns highest value", func() {
+			h.AssertEq(
+				t,
+				builder.APISet{api.MustParse("1.1"), api.MustParse("2.1"), api.MustParse("0.1")}.Latest().String(),
+				"2.1",
+			)
+		})
+	})
 }

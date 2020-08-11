@@ -165,7 +165,7 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.httpsProxy = opts.HTTPSProxy
 	l.noProxy = opts.NoProxy
 	l.version = opts.Builder.LifecycleDescriptor().Info.Version.String()
-	l.platformAPIVersion = latestVersion(opts.Builder.LifecycleDescriptor().APIs.Platform.Supported).String()
+	l.platformAPIVersion = opts.Builder.LifecycleDescriptor().APIs.Platform.Supported.Latest().String()
 	l.defaultProcessType = opts.DefaultProcessType
 	l.fileFilter = opts.FileFilter
 }
@@ -187,20 +187,4 @@ func randString(n int) string {
 		b[i] = 'a' + byte(rand.Intn(26))
 	}
 	return string(b)
-}
-
-func latestVersion(versions []*api.Version) *api.Version {
-	var latest *api.Version
-	for _, version := range versions {
-		switch {
-		case version == nil:
-			continue
-		case latest == nil:
-			latest = version
-		case version.Compare(latest) > 0:
-			latest = version
-		}
-	}
-
-	return latest
 }
