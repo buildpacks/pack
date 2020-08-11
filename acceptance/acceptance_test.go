@@ -1857,7 +1857,6 @@ func createComplexBuilder(t *testing.T,
 
 	buildpackImageToName := map[string]interface{}{}
 
-	//var packageImageNames []string
 	var packageImageName string
 	var packageId string
 

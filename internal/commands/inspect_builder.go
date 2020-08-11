@@ -83,7 +83,7 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 			return nil
 		}),
 	}
-	cmd.Flags().IntVarP(&flags.Depth, "depth", "d", -1, "Detection Order inspection depth, omission of this flag or values < 0 will display the entire tree")
+	cmd.Flags().IntVarP(&flags.Depth, "depth", "d", -1, "Max depth to display for Detection Order.\nOmission of this flag or values < 0 will display the entire tree.")
 	AddHelpFlag(cmd, "inspect-builder")
 	return cmd
 }
@@ -283,7 +283,6 @@ func runImagesOutput(runImage string, mirrors []string, cfg config.Config) (stri
 }
 
 // Unable to easily convert format makes this feel like a poor solution...
-
 func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDepth int) (string, error) {
 	buf := strings.Builder{}
 	tabWriter := new(tabwriter.Writer).Init(&buf, writerMinWidth, writerTabWidth, defaultTabWidth, writerPadChar, writerFlags)
@@ -345,11 +344,17 @@ func orderOutputRecurrence(w io.Writer, prefix string, order dist.Order, layers 
 	return nil
 }
 
+const (
+	branchPrefix     = " ├ "
+	lastBranchPrefix = " └ "
+	trunkPrefix      = " │ "
+)
+
 func updatePrefix(oldPrefix string, last bool) string {
 	if last {
 		return oldPrefix + "   "
 	}
-	return oldPrefix + "|  "
+	return oldPrefix + trunkPrefix
 }
 
 func validMaxDepth(depth int) bool {
@@ -357,11 +362,11 @@ func validMaxDepth(depth int) bool {
 }
 
 func displayGroup(w io.Writer, prefix string, groupCount int, last bool) error {
-	treePrefix := "+"
+	treePrefix := branchPrefix
 	if last {
-		treePrefix = "\\"
+		treePrefix = lastBranchPrefix
 	}
-	_, err := fmt.Fprintf(w, "%s%s- Group #%d:\n", prefix, treePrefix, groupCount)
+	_, err := fmt.Fprintf(w, "%s%sGroup #%d:\n", prefix, treePrefix, groupCount)
 	return err
 }
 
@@ -373,8 +378,7 @@ func displayBuildpack(w io.Writer, prefix string, entry dist.BuildpackRef, visit
 
 	visitedStatus := ""
 	if visited {
-		visitedStatus = "*"
-		prefix = strings.ReplaceAll(prefix, "|", "*")
+		visitedStatus = "[cyclic]"
 	}
 
 	bpRef := entry.ID
@@ -382,12 +386,12 @@ func displayBuildpack(w io.Writer, prefix string, entry dist.BuildpackRef, visit
 		bpRef += "@" + entry.Version
 	}
 
-	treePrefix := "+- "
+	treePrefix := branchPrefix
 	if last {
-		treePrefix = "\\- "
+		treePrefix = lastBranchPrefix
 	}
 
-	_, err := fmt.Fprintf(w, "%s%s%s%s\t%s\n", prefix, treePrefix, bpRef, visitedStatus, optional)
+	_, err := fmt.Fprintf(w, "%s%s%s\t%s%s\n", prefix, treePrefix, bpRef, optional, visitedStatus)
 	return err
 }
 

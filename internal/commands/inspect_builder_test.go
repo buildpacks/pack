@@ -3,7 +3,6 @@ package commands_test
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/Masterminds/semver"
@@ -45,25 +44,25 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		mockClient     *testmocks.MockPackClient
 		cfg            config.Config
 		buildpacks     = []dist.BuildpackInfo{
-			dist.BuildpackInfo{
+			{
 				ID:      "test.top.nested",
 				Version: "test.top.nested.version",
 			},
-			dist.BuildpackInfo{
+			{
 				ID:       "test.nested",
 				Version:  "test.nested.version",
 				Homepage: "http://geocities.com/top-bp",
 			},
-			dist.BuildpackInfo{
+			{
 				ID:       "test.bp.one",
 				Version:  "test.bp.one.version",
 				Homepage: "http://geocities.com/cool-bp",
 			},
-			dist.BuildpackInfo{
+			{
 				ID:      "test.bp.two",
 				Version: "test.bp.two.version",
 			},
-			dist.BuildpackInfo{
+			{
 				ID:      "test.bp.three",
 				Version: "test.bp.three.version",
 			},
@@ -83,7 +82,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			},
 		}
 		buildpackLayers = map[string]map[string]dist.BuildpackLayerInfo{
-			"test.top.nested": map[string]dist.BuildpackLayerInfo{
+			"test.top.nested": {
 				"test.top.nested.version": {
 					API: apiVersion,
 					Order: dist.Order{
@@ -109,7 +108,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 					LayerDiffID: "sha256:test.top.nested.sha256",
 				},
 			},
-			"test.nested": map[string]dist.BuildpackLayerInfo{
+			"test.nested": {
 				"test.nested.version": {
 					API: apiVersion,
 					Order: dist.Order{
@@ -129,7 +128,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 					Homepage:    "http://geocities.com/top-bp",
 				},
 			},
-			"test.bp.one": map[string]dist.BuildpackLayerInfo{
+			"test.bp.one": {
 				"test.bp.one.version": {
 					API: apiVersion,
 					Stacks: []dist.Stack{
@@ -141,7 +140,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 					Homepage:    "http://geocities.com/cool-bp",
 				},
 			},
-			"test.bp.two": map[string]dist.BuildpackLayerInfo{
+			"test.bp.two": {
 				"test.bp.two.version": {
 					API: apiVersion,
 					Stacks: []dist.Stack{
@@ -152,7 +151,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 					LayerDiffID: "sha256:test.bp.two.sha256",
 				},
 			},
-			"test.bp.three": map[string]dist.BuildpackLayerInfo{
+			"test.bp.three": {
 				"test.bp.three.version": {
 					API: apiVersion,
 					Stacks: []dist.Stack{
@@ -250,14 +249,14 @@ Buildpacks:
   test.bp.three          test.bp.three.version          
 
 Detection Order:
-\- Group #1:
-   +- test.top.nested@test.top.nested.version    
-   |  \- Group #1:
-   |     +- test.nested@test.nested.version    
-   |     |  \- Group #1:
-   |     |     \- test.bp.one@test.bp.one.version    (optional)
-   |     \- test.bp.three@test.bp.three.version      (optional)
-   \- test.bp.two                                    (optional)
+ └ Group #1:
+    ├ test.top.nested@test.top.nested.version    
+    │  └ Group #1:
+    │     ├ test.nested@test.nested.version    
+    │     │  └ Group #1:
+    │     │     └ test.bp.one@test.bp.one.version    (optional)
+    │     └ test.bp.three@test.bp.three.version      (optional)
+    └ test.bp.two                                    (optional)
 `
 
 		localOutput = `
@@ -295,14 +294,14 @@ Buildpacks:
   test.bp.three          test.bp.three.version          
 
 Detection Order:
-\- Group #1:
-   +- test.top.nested@test.top.nested.version    
-   |  \- Group #1:
-   |     +- test.nested@test.nested.version    
-   |     |  \- Group #1:
-   |     |     \- test.bp.one@test.bp.one.version    (optional)
-   |     \- test.bp.three@test.bp.three.version      (optional)
-   \- test.bp.two                                    (optional)
+ └ Group #1:
+    ├ test.top.nested@test.top.nested.version    
+    │  └ Group #1:
+    │     ├ test.nested@test.nested.version    
+    │     │  └ Group #1:
+    │     │     └ test.bp.one@test.bp.one.version    (optional)
+    │     └ test.bp.three@test.bp.three.version      (optional)
+    └ test.bp.two                                    (optional)
 `
 	)
 	it.Before(func() {
@@ -549,24 +548,24 @@ Stack:
 				mockClient.EXPECT().InspectBuilder("some/image", false).Return(remoteInfo, nil)
 				mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
 			})
+
 			it("displays detection order up to the specified depth", func() {
 				h.AssertNil(t, command.Execute())
 
-				fmt.Println(outBuf.String())
 				h.AssertContains(t, outBuf.String(), `Detection Order:
-\- Group #1:
-   +- test.top.nested@test.top.nested.version    
-   |  \- Group #1:
-   |     +- test.nested@test.nested.version        
-   |     \- test.bp.three@test.bp.three.version    (optional)
-   \- test.bp.two                                  (optional)`)
+ └ Group #1:
+    ├ test.top.nested@test.top.nested.version    
+    │  └ Group #1:
+    │     ├ test.nested@test.nested.version        
+    │     └ test.bp.three@test.bp.three.version    (optional)
+    └ test.bp.two                                  (optional)`)
 			})
 		})
 
 		when("there is a cyclic buildpack dependency in the builder", func() {
 			it.Before(func() {
 				localInfo.BuildpackLayers = map[string]map[string]dist.BuildpackLayerInfo{
-					"test.top.nested": map[string]dist.BuildpackLayerInfo{
+					"test.top.nested": {
 						"test.top.nested.version": {
 							API: apiVersion,
 							Order: dist.Order{
@@ -585,7 +584,7 @@ Stack:
 							LayerDiffID: "sha256:test.top.nested.sha256",
 						},
 					},
-					"test.nested": map[string]dist.BuildpackLayerInfo{
+					"test.nested": {
 						"test.nested.version": {
 							API: apiVersion,
 							Order: dist.Order{
@@ -606,7 +605,7 @@ Stack:
 							Homepage:    "http://geocities.com/top-bp",
 						},
 					},
-					"test.bp.two": map[string]dist.BuildpackLayerInfo{
+					"test.bp.two": {
 						"test.bp.two.version": {
 							API: apiVersion,
 							Stacks: []dist.Stack{
@@ -619,16 +618,16 @@ Stack:
 					},
 				}
 				localInfo.Buildpacks = []dist.BuildpackInfo{
-					dist.BuildpackInfo{
+					{
 						ID:      "test.top.nested",
 						Version: "test.top.nested.version",
 					},
-					dist.BuildpackInfo{
+					{
 						ID:       "test.nested",
 						Version:  "test.nested.version",
 						Homepage: "http://geocities.com/top-bp",
 					},
-					dist.BuildpackInfo{
+					{
 						ID:      "test.bp.two",
 						Version: "test.bp.two.version",
 					},
@@ -656,6 +655,7 @@ Stack:
 					},
 				}
 			})
+
 			it("indicates cycle and succeeds", func() {
 				mockClient.EXPECT().InspectBuilder("some/image", false).Return(nil, nil)
 				mockClient.EXPECT().InspectBuilder("some/image", true).Return(localInfo, nil)
@@ -663,19 +663,20 @@ Stack:
 
 				h.AssertNil(t, command.Execute())
 				h.AssertTrimmedContains(t, outBuf.String(), `Detection Order:
-+- Group #1:
-|  +- test.top.nested@test.top.nested.version
-|  |  \- Group #1:
-|  |     \- test.nested@test.nested.version
-|  |        \- Group #1:
-*  *           \- test.top.nested@test.top.nested.version*
-|  \- test.bp.two                                             (optional)
-\- Group #2:
-   \- test.nested@test.nested.version
-      \- Group #1:
-         \- test.top.nested@test.top.nested.version
-            \- Group #1:
-               \- test.nested@test.nested.version*`)
+ ├ Group #1:
+ │  ├ test.top.nested@test.top.nested.version
+ │  │  └ Group #1:
+ │  │     └ test.nested@test.nested.version
+ │  │        └ Group #1:
+ │  │           └ test.top.nested@test.top.nested.version    [cyclic]
+ │  └ test.bp.two                                            (optional)
+ └ Group #2:
+    └ test.nested@test.nested.version
+       └ Group #1:
+          └ test.top.nested@test.top.nested.version
+             └ Group #1:
+                └ test.nested@test.nested.version    [cyclic]
+`)
 			})
 		})
 	})
