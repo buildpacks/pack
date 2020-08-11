@@ -139,11 +139,15 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
 	}
 
-	processedVolumes, warnings, err := processVolumes(opts.ContainerConfig.Volumes)
+	imgOS, err := rawBuilderImage.OS()
+	if err != nil {
+		return errors.Wrapf(err, "getting builder OS")
+	}
+
+	processedVolumes, warnings, err := processVolumes(imgOS, opts.ContainerConfig.Volumes)
 	if err != nil {
 		return err
 	}
-
 	for _, warning := range warnings {
 		c.logger.Warn(warning)
 	}
@@ -178,11 +182,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return c.lifecycle.Execute(ctx, lifecycleOpts)
 	}
 
-	lifecycleImageSupported := lifecycleVersion.Equal(builder.VersionMustParse(prevLifecycleVersionSupportingImage)) || !lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingImage))
-
 	if !opts.TrustBuilder {
-		switch lifecycleImageSupported {
-		case true:
+		if lifecycleImageSupported(imgOS, lifecycleVersion) {
 			lifecycleImage, err := c.imageFetcher.Fetch(
 				ctx,
 				fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
@@ -194,7 +195,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			}
 
 			lifecycleOpts.LifecycleImage = lifecycleImage.Name()
-		default:
+		} else {
 			return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted.", lifecycleVersion.String())
 		}
 	}
@@ -204,6 +205,15 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	return nil
+}
+
+func lifecycleImageSupported(builderOS string, lifecycleVersion *builder.Version) bool {
+	if builderOS == "windows" {
+		return false
+	}
+
+	return lifecycleVersion.Equal(builder.VersionMustParse(prevLifecycleVersionSupportingImage)) ||
+		!lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingImage))
 }
 
 // supportsPlatformAPI determines whether pack can build using the builder based on the builder's supported Platform API versions.
@@ -643,17 +653,24 @@ func randString(n int) string {
 	return string(b)
 }
 
-func processVolumes(volumes []string) (processed []string, warnings []string, err error) {
-	// Assume a linux container
-	parser := mounts.NewParser(mounts.OSLinux)
+func processVolumes(imgOS string, volumes []string) (processed []string, warnings []string, err error) {
+	parserOS := mounts.OSLinux
+	if imgOS == "windows" {
+		parserOS = mounts.OSWindows
+	}
+	parser := mounts.NewParser(parserOS)
 	for _, v := range volumes {
 		volume, err := parser.ParseMountRaw(v, "")
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "platform volume %q has invalid format", v)
 		}
 
-		for _, p := range [...]string{"/cnb", "/layers"} {
-			if strings.HasPrefix(volume.Spec.Target, p) {
+		sensitiveDirs := []string{"/cnb", "/layers"}
+		if imgOS == "windows" {
+			sensitiveDirs = []string{`c:/cnb`, `c:\cnb`, `c:/layers`, `c:\layers`}
+		}
+		for _, p := range sensitiveDirs {
+			if strings.HasPrefix(strings.ToLower(volume.Spec.Target), p) {
 				warnings = append(warnings, fmt.Sprintf("Mounting to a sensitive directory %s", style.Symbol(volume.Spec.Target)))
 			}
 		}

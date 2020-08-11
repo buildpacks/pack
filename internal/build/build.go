@@ -3,8 +3,10 @@ package build
 import (
 	"context"
 	"math/rand"
+	"strings"
 	"time"
 
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -27,6 +30,7 @@ type Builder interface {
 	GID() int
 	LifecycleDescriptor() builder.LifecycleDescriptor
 	Stack() builder.StackMetadata
+	Image() imgutil.Image
 }
 
 type Lifecycle struct {
@@ -44,6 +48,8 @@ type Lifecycle struct {
 	appVolume          string
 	defaultProcessType string
 	fileFilter         func(string) bool
+	os                 string
+	mountPaths         mountPaths
 }
 
 func (l *Lifecycle) Builder() Builder {
@@ -97,12 +103,16 @@ type LifecycleOptions struct {
 }
 
 func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
-	l.Setup(opts)
+	err := l.Setup(opts)
+	if err != nil {
+		return err
+	}
 	defer l.Cleanup()
 
 	phaseFactory := NewDefaultPhaseFactory(l)
 
 	buildCache := cache.NewVolumeCache(opts.Image, "build", l.docker)
+
 	l.logger.Debugf("Using build cache volume %s", style.Symbol(buildCache.Name()))
 	if opts.ClearCache {
 		if err := buildCache.Clear(ctx); err != nil {
@@ -155,9 +165,9 @@ func (l *Lifecycle) Execute(ctx context.Context, opts LifecycleOptions) error {
 	)
 }
 
-func (l *Lifecycle) Setup(opts LifecycleOptions) {
-	l.layersVolume = "pack-layers-" + randString(10)
-	l.appVolume = "pack-app-" + randString(10)
+func (l *Lifecycle) Setup(opts LifecycleOptions) error {
+	l.layersVolume = paths.FilterReservedNames("pack-layers-" + randString(10))
+	l.appVolume = paths.FilterReservedNames("pack-app-" + randString(10))
 	l.appPath = opts.AppPath
 	l.builder = opts.Builder
 	l.lifecycleImage = opts.LifecycleImage
@@ -168,6 +178,14 @@ func (l *Lifecycle) Setup(opts LifecycleOptions) {
 	l.platformAPIVersion = opts.Builder.LifecycleDescriptor().APIs.Platform.Supported.Latest().String()
 	l.defaultProcessType = opts.DefaultProcessType
 	l.fileFilter = opts.FileFilter
+
+	os, err := l.builder.Image().OS()
+	if err != nil {
+		return err
+	}
+	l.os = os
+	l.mountPaths = mountPathsForOS(l.os)
+	return nil
 }
 
 func (l *Lifecycle) Cleanup() error {
@@ -187,4 +205,54 @@ func randString(n int) string {
 		b[i] = 'a' + byte(rand.Intn(26))
 	}
 	return string(b)
+}
+
+type mountPaths struct {
+	volume    string
+	separator string
+}
+
+func mountPathsForOS(os string) mountPaths {
+	if os == "windows" {
+		return mountPaths{
+			volume:    `c:`,
+			separator: `\`,
+		}
+	}
+	return mountPaths{
+		volume:    "",
+		separator: "/",
+	}
+}
+
+func (m mountPaths) join(parts ...string) string {
+	return strings.Join(parts, m.separator)
+}
+
+func (m mountPaths) layersDir() string {
+	return m.join(m.volume, "layers")
+}
+
+func (m mountPaths) stackPath() string {
+	return m.join(m.layersDir(), "stack.toml")
+}
+
+func (m mountPaths) appDirName() string {
+	return "workspace"
+}
+
+func (m mountPaths) appDir() string {
+	return m.join(m.volume, m.appDirName())
+}
+
+func (m mountPaths) cacheDir() string {
+	return m.join(m.volume, "cache")
+}
+
+func (m mountPaths) launchCacheDir() string {
+	return m.join(m.volume, "launch-cache")
+}
+
+func (m mountPaths) platformDir() string {
+	return m.join(m.volume, "platform")
 }

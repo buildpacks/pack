@@ -6,33 +6,39 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
-
 	dockertypes "github.com/docker/docker/api/types"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/buildpacks/pack/internal/archive"
 )
 
 var registryContainerNames = map[string]string{
 	"linux":   "library/registry:2",
-	"windows": "stefanscherer/registry-windows:2.6.2",
+	"windows": "micahyoung/registry:latest",
 }
 
 type TestRegistryConfig struct {
 	runRegistryName string
+	RunRegistryHost string
 	RunRegistryPort string
 	DockerConfigDir string
 	username        string
 	password        string
+}
+
+func RegistryHost(host, port string) string {
+	return fmt.Sprintf("%s:%s", host, port)
 }
 
 func CreateRegistryFixture(t *testing.T, tmpDir, fixturePath string) string {
@@ -76,11 +82,12 @@ func RunRegistry(t *testing.T) *TestRegistryConfig {
 	username := RandString(10)
 	password := RandString(10)
 
-	runRegistryPort := startRegistry(t, runRegistryName, username, password)
-	dockerConfigDir := setupDockerConfigWithAuth(t, username, password, runRegistryPort)
+	runRegistryHost, runRegistryPort := startRegistry(t, runRegistryName, username, password)
+	dockerConfigDir := setupDockerConfigWithAuth(t, username, password, runRegistryHost, runRegistryPort)
 
 	registryConfig := &TestRegistryConfig{
 		runRegistryName: runRegistryName,
+		RunRegistryHost: runRegistryHost,
 		RunRegistryPort: runRegistryPort,
 		DockerConfigDir: dockerConfigDir,
 		username:        username,
@@ -114,7 +121,8 @@ func (rc *TestRegistryConfig) AuthConfig() dockertypes.AuthConfig {
 	return dockertypes.AuthConfig{
 		Username:      rc.username,
 		Password:      rc.password,
-		ServerAddress: fmt.Sprintf("localhost:%s", rc.RunRegistryPort)}
+		ServerAddress: RegistryHost(rc.RunRegistryHost, rc.RunRegistryPort),
+	}
 }
 
 func (rc *TestRegistryConfig) Login(t *testing.T, username string, password string) {
@@ -122,12 +130,13 @@ func (rc *TestRegistryConfig) Login(t *testing.T, username string, password stri
 		_, err := dockerCli(t).RegistryLogin(context.Background(), dockertypes.AuthConfig{
 			Username:      username,
 			Password:      password,
-			ServerAddress: fmt.Sprintf("localhost:%s", rc.RunRegistryPort)})
+			ServerAddress: RegistryHost(rc.RunRegistryHost, rc.RunRegistryPort),
+		})
 		return err == nil
 	}, 100*time.Millisecond, 10*time.Second)
 }
 
-func startRegistry(t *testing.T, runRegistryName, username, password string) string {
+func startRegistry(t *testing.T, runRegistryName, username, password string) (string, string) {
 	ctx := context.Background()
 
 	daemonInfo, err := dockerCli(t).Info(ctx)
@@ -163,12 +172,50 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) str
 	AssertNil(t, err)
 	runRegistryPort := inspect.NetworkSettings.Ports["5000/tcp"][0].HostPort
 
-	if os.Getenv("DOCKER_HOST") != "" {
-		err := proxyDockerHostPort(runRegistryPort)
-		AssertNil(t, err)
+	runRegistryHost := DockerHostname(t)
+
+	return runRegistryHost, runRegistryPort
+}
+
+func DockerHostname(t *testing.T) string {
+	dockerCli := dockerCli(t)
+
+	daemonHost := dockerCli.DaemonHost()
+	u, err := url.Parse(daemonHost)
+	if err != nil {
+		t.Fatalf("unable to parse URI client.DaemonHost: %s", err)
 	}
 
-	return runRegistryPort
+	switch u.Scheme {
+	// DOCKER_HOST is usually remote so always use its hostname/IP
+	// Note: requires "insecure-registries" CIDR entry on Daemon config
+	case "tcp":
+		return u.Hostname()
+
+	// if DOCKER_HOST is non-tcp, we assume that we are
+	// talking to the daemon over a local pipe.
+	default:
+		daemonInfo, err := dockerCli.Info(context.TODO())
+		if err != nil {
+			t.Fatalf("unable to fetch client.DockerInfo: %s", err)
+		}
+
+		if daemonInfo.OSType == "windows" {
+			// try to lookup the host IP by helper domain name (https://docs.docker.com/docker-for-windows/networking/#use-cases-and-workarounds)
+			// Note: pack appears to not support /etc/hosts-based insecure-registries
+			addrs, err := net.LookupHost("host.docker.internal")
+			if err != nil {
+				t.Fatalf("unknown address response: %+v %s", addrs, err)
+			}
+			if len(addrs) != 1 {
+				t.Fatalf("ambiguous address response: %v", addrs)
+			}
+			return addrs[0]
+		}
+
+		// Linux can use --network=host so always use "localhost"
+		return "localhost"
+	}
 }
 
 func generateHtpasswd(t *testing.T, username string, password string) io.ReadCloser {
@@ -179,18 +226,18 @@ func generateHtpasswd(t *testing.T, username string, password string) io.ReadClo
 	return reader
 }
 
-func setupDockerConfigWithAuth(t *testing.T, username string, password string, runRegistryPort string) string {
+func setupDockerConfigWithAuth(t *testing.T, username string, password string, runRegistryHost string, runRegistryPort string) string {
 	dockerConfigDir, err := ioutil.TempDir("", "pack.test.docker.config.dir")
 	AssertNil(t, err)
 
 	AssertNil(t, ioutil.WriteFile(filepath.Join(dockerConfigDir, "config.json"), []byte(fmt.Sprintf(`{
 			  "auths": {
-			    "localhost:%s": {
+			    "%s": {
 			      "auth": "%s"
 			    }
 			  }
 			}
-			`, runRegistryPort, encodedUserPass(username, password))), 0666))
+			`, RegistryHost(runRegistryHost, runRegistryPort), encodedUserPass(username, password))), 0666))
 	return dockerConfigDir
 }
 
@@ -209,7 +256,7 @@ func (rc *TestRegistryConfig) StopRegistry(t *testing.T) {
 }
 
 func (rc *TestRegistryConfig) RepoName(name string) string {
-	return "localhost:" + rc.RunRegistryPort + "/" + name
+	return RegistryHost(rc.RunRegistryHost, rc.RunRegistryPort) + "/" + name
 }
 
 func (rc *TestRegistryConfig) RegistryAuth() string {
@@ -217,7 +264,7 @@ func (rc *TestRegistryConfig) RegistryAuth() string {
 }
 
 func (rc *TestRegistryConfig) RegistryCatalog() (string, error) {
-	return HTTPGetE(fmt.Sprintf("http://localhost:%s/v2/_catalog", rc.RunRegistryPort), map[string]string{
+	return HTTPGetE(fmt.Sprintf("http://%s/v2/_catalog", RegistryHost(rc.RunRegistryHost, rc.RunRegistryPort)), map[string]string{
 		"Authorization": "Basic " + encodedUserPass(rc.username, rc.password),
 	})
 }

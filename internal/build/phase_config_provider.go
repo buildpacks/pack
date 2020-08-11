@@ -9,12 +9,18 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+const (
+	linuxContainerAdmin   = "root"
+	windowsContainerAdmin = "ContainerAdministrator"
+)
+
 type PhaseConfigProviderOperation func(*PhaseConfigProvider)
 
 type PhaseConfigProvider struct {
 	ctrConf      *container.Config
 	hostConf     *container.HostConfig
 	name         string
+	os           string
 	containerOps []ContainerOperation
 	infoWriter   io.Writer
 	errorWriter  io.Writer
@@ -25,6 +31,7 @@ func NewPhaseConfigProvider(name string, lifecycle *Lifecycle, ops ...PhaseConfi
 		ctrConf:     new(container.Config),
 		hostConf:    new(container.HostConfig),
 		name:        name,
+		os:          lifecycle.os,
 		infoWriter:  logging.GetWriterForLevel(lifecycle.logger, logging.InfoLevel),
 		errorWriter: logging.GetWriterForLevel(lifecycle.logger, logging.ErrorLevel),
 	}
@@ -32,11 +39,15 @@ func NewPhaseConfigProvider(name string, lifecycle *Lifecycle, ops ...PhaseConfi
 	provider.ctrConf.Image = lifecycle.builder.Name()
 	provider.ctrConf.Labels = map[string]string{"author": "pack"}
 
+	if lifecycle.os == "windows" {
+		provider.hostConf.Isolation = container.IsolationProcess
+	}
+
 	ops = append(ops,
 		WithLifecycleProxy(lifecycle),
 		WithBinds([]string{
-			fmt.Sprintf("%s:%s", lifecycle.layersVolume, layersDir),
-			fmt.Sprintf("%s:%s", lifecycle.appVolume, appDir),
+			fmt.Sprintf("%s:%s", lifecycle.layersVolume, lifecycle.mountPaths.layersDir()),
+			fmt.Sprintf("%s:%s", lifecycle.appVolume, lifecycle.mountPaths.appDir()),
 		}...),
 	)
 
@@ -94,8 +105,12 @@ func WithBinds(binds ...string) PhaseConfigProviderOperation {
 
 func WithDaemonAccess() PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
-		provider.ctrConf.User = "root"
-		provider.hostConf.Binds = append(provider.hostConf.Binds, "/var/run/docker.sock:/var/run/docker.sock")
+		WithRoot()(provider)
+		bind := "/var/run/docker.sock:/var/run/docker.sock"
+		if provider.os == "windows" {
+			bind = `\\.\pipe\docker_engine:\\.\pipe\docker_engine`
+		}
+		provider.hostConf.Binds = append(provider.hostConf.Binds, bind)
 	}
 }
 
@@ -154,7 +169,11 @@ func WithRegistryAccess(authConfig string) PhaseConfigProviderOperation {
 
 func WithRoot() PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
-		provider.ctrConf.User = "root"
+		if provider.os == "windows" {
+			provider.ctrConf.User = windowsContainerAdmin
+		} else {
+			provider.ctrConf.User = linuxContainerAdmin
+		}
 	}
 }
 

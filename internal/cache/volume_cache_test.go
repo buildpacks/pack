@@ -50,6 +50,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 		it("reusing the same cache for the same repo name", func() {
 			ref, err := name.ParseReference("my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
+
 			subject := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
 			expected := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
 			if subject.Name() != expected.Name() {
@@ -60,7 +61,9 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 		it("supplies different volumes for different tags", func() {
 			ref, err := name.ParseReference("my/repo:other-tag", name.WeakValidation)
 			h.AssertNil(t, err)
+
 			subject := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
+
 			ref, err = name.ParseReference("my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
 			notExpected := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
@@ -72,7 +75,9 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 		it("supplies different volumes for different registries", func() {
 			ref, err := name.ParseReference("registry.com/my/repo:other-tag", name.WeakValidation)
 			h.AssertNil(t, err)
+
 			subject := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
+
 			ref, err = name.ParseReference("my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
 			notExpected := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
@@ -84,23 +89,24 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 		it("resolves implied tag", func() {
 			ref, err := name.ParseReference("my/repo:latest", name.WeakValidation)
 			h.AssertNil(t, err)
+
 			subject := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
 
 			ref, err = name.ParseReference("my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
 			expected := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
-
 			h.AssertEq(t, subject.Name(), expected.Name())
 		})
 
 		it("resolves implied registry", func() {
 			ref, err := name.ParseReference("index.docker.io/my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
+
 			subject := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
+
 			ref, err = name.ParseReference("my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
 			expected := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
-
 			h.AssertEq(t, subject.Name(), expected.Name())
 		})
 	})
@@ -121,8 +127,8 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 
 			ref, err := name.ParseReference(h.RandString(10), name.WeakValidation)
 			h.AssertNil(t, err)
+
 			subject = cache.NewVolumeCache(ref, "some-suffix", dockerClient)
-			h.AssertNil(t, err)
 			volumeName = subject.Name()
 		})
 
@@ -136,6 +142,7 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			it("removes the volume", func() {
 				err := subject.Clear(ctx)
 				h.AssertNil(t, err)
+
 				volumes, err := dockerClient.VolumeList(context.TODO(), filters.NewArgs(filters.KeyValuePair{
 					Key:   "name",
 					Value: volumeName,

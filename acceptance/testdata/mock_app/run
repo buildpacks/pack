@@ -4,7 +4,7 @@ set -x
 
 port="${1-8080}"
 
-echo "listening on port 8080"
+echo "listening on port $port"
 
 resp=$(echo "HTTP/1.1 200 OK\n" && cat "$PWD"/*-dep /contents*.txt)
 while true; do

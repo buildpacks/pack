@@ -1344,6 +1344,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("builder is untrusted", func() {
+					when("building Windows containers", func() {
+						it("errors and mentions that builder must be trusted", func() {
+							defaultBuilderImage.SetPlatform("windows", "", "")
+							h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
+								Image:        "some/app",
+								Builder:      defaultBuilderName,
+								Publish:      true,
+								TrustBuilder: false,
+							}), "does not have an associated lifecycle image. Builder must be trusted.")
+						})
+					})
+
 					when("lifecycle image is available", func() {
 						it("uses the 5 phases with the lifecycle image", func() {
 							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
