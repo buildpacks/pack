@@ -162,7 +162,7 @@ func testWithoutSpecificBuilderRequirement(
 
 	when("set-default-builder", func() {
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			builderName := "gcr.io/paketo-buildpacks/builder:base"
+			builderName := "paketobuildpacks/builder:base"
 			output := pack.RunSuccessfully("set-default-builder", builderName)
 
 			assertions.NewOutputAssertionManager(t, output).ReportsSettingDefaultBuilder(builderName)
@@ -432,7 +432,7 @@ func testWithoutSpecificBuilderRequirement(
 
 		when("default builder is set", func() {
 			it("outputs information", func() {
-				pack.RunSuccessfully("set-default-builder", "gcr.io/paketo-buildpacks/builder:base")
+				pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
 
 				output := pack.RunSuccessfully("report")
 
@@ -441,7 +441,7 @@ func testWithoutSpecificBuilderRequirement(
 				expectedOutput := pack.FixtureManager().TemplateFixture(
 					"report_output.txt",
 					map[string]interface{}{
-						"DefaultBuilder": "gcr.io/paketo-buildpacks/builder:base",
+						"DefaultBuilder": "paketobuildpacks/builder:base",
 						"Version":        version,
 						"OS":             runtime.GOOS,
 						"Arch":           runtime.GOARCH,

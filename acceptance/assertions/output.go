@@ -181,9 +181,9 @@ func (o OutputAssertionManager) IncludesPrefixedHerokuBuilder() {
 }
 
 var paketoBuilders = []string{
-	"gcr.io/paketo-buildpacks/builder:base",
-	"gcr.io/paketo-buildpacks/builder:full-cf",
-	"gcr.io/paketo-buildpacks/builder:tiny",
+	"paketobuildpacks/builder:base",
+	"paketobuildpacks/builder:full",
+	"paketobuildpacks/builder:tiny",
 }
 
 func (o OutputAssertionManager) IncludesPaketoBuilders() {

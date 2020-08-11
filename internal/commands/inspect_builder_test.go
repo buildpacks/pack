@@ -378,7 +378,7 @@ Stack:
 
 			when("the builder is suggested", func() {
 				it("indicates that it is trusted", func() {
-					suggestedBuilder := "gcr.io/paketo-buildpacks/builder:tiny"
+					suggestedBuilder := "paketobuildpacks/builder:tiny"
 
 					command.SetArgs([]string{suggestedBuilder})
 					mockClient.EXPECT().InspectBuilder(suggestedBuilder, false).Return(remoteInfo, nil)
@@ -420,8 +420,8 @@ Stack:
 					h.AssertContains(t, outBuf.String(), `Please select a default builder with:
 
 	pack set-default-builder <builder-image>`)
-					h.AssertMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:base'`)
-					h.AssertMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'gcr.io/paketo-buildpacks/builder:full-cf'`)
+					h.AssertMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'paketobuildpacks/builder:base'`)
+					h.AssertMatch(t, outBuf.String(), `Paketo Buildpacks:\s+'paketobuildpacks/builder:full'`)
 					h.AssertMatch(t, outBuf.String(), `Heroku:\s+'heroku/buildpacks:18'`)
 				})
 			})
