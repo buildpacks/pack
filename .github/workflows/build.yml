@@ -74,25 +74,12 @@ jobs:
           echo "::add-path::$(go env GOPATH)/bin"
       - name: Verify
         run: make verify
-      - name: Test-WCOW
-        shell: powershell
-        if: matrix.config == 'windows-wcow'
-        env:
-          TEST_COVERAGE: 1
-        run: |
-          go test -v -count=1 -parallel=1 -timeout=900s ./...
-          if ($LastExitCode -ne 0) {
-            exit $LastExitCode
-          }
-          go test -v -count=1 -parallel=1 -timeout=900s -tags=acceptance ./acceptance
       - name: Test
-        if: matrix.config != 'windows-wcow'
         env:
           TEST_COVERAGE: 1
         run: make test
       - name: Upload Coverage
         uses: codecov/codecov-action@v1
-        if: matrix.config != 'windows-wcow'
         with:
           file: ./out/tests/coverage-unit.txt
           flags: unit,os_${{ matrix.os }}
