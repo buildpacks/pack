@@ -411,28 +411,46 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("run image is not supplied", func() {
 				when("there are no locally configured mirrors", func() {
-					it("chooses the best mirror from the builder", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: defaultBuilderName,
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "default/run")
+					when("Publish is true", func() {
+						it("chooses the run image mirror matching the local image", func() {
+							fakeImageFetcher.RemoteImages[fakeDefaultRunImage.Name()] = fakeDefaultRunImage
+
+							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+								Image:   "some/app",
+								Builder: defaultBuilderName,
+								Publish: true,
+							}))
+							h.AssertEq(t, fakeLifecycle.Opts.RunImage, "default/run")
+						})
+
+						for _, registry := range []string{"registry1.example.com", "registry2.example.com"} {
+							testRegistry := registry
+							it("chooses the run image mirror matching the built image", func() {
+								runImg := testRegistry + "/run/mirror"
+								fakeImageFetcher.RemoteImages[runImg] = fakeDefaultRunImage
+								h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+									Image:   testRegistry + "/some/app",
+									Builder: defaultBuilderName,
+									Publish: true,
+								}))
+								h.AssertEq(t, fakeLifecycle.Opts.RunImage, runImg)
+							})
+						}
 					})
 
-					it("chooses the best mirror from the builder", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "registry1.example.com/some/app",
-							Builder: defaultBuilderName,
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry1.example.com/run/mirror")
-					})
-
-					it("chooses the best mirror from the builder", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "registry2.example.com/some/app",
-							Builder: defaultBuilderName,
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry2.example.com/run/mirror")
+					when("Publish is false", func() {
+						for _, img := range []string{"some/app",
+							"registry1.example.com/some/app",
+							"registry2.example.com/some/app"} {
+							testImg := img
+							it("chooses a mirror on the builder registry", func() {
+								h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+									Image:   testImg,
+									Builder: defaultBuilderName,
+								}))
+								h.AssertEq(t, fakeLifecycle.Opts.RunImage, "default/run")
+							})
+						}
 					})
 				})
 
@@ -440,6 +458,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					var (
 						fakeLocalMirror  *fakes.Image
 						fakeLocalMirror1 *fakes.Image
+						mirrors          = map[string][]string{
+							"default/run": {"local/mirror", "registry1.example.com/local/mirror"},
+						}
 					)
 
 					it.Before(func() {
@@ -461,39 +482,39 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						fakeLocalMirror1.Cleanup()
 					})
 
-					it("prefers user provided mirrors", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: defaultBuilderName,
-							AdditionalMirrors: map[string][]string{
-								"default/run": {"local/mirror", "registry1.example.com/local/mirror"},
-							},
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "local/mirror")
+					when("Publish is true", func() {
+						for _, registry := range []string{"", "registry1.example.com"} {
+							testRegistry := registry
+							it("prefers user provided mirrors for registry "+testRegistry, func() {
+								if testRegistry != "" {
+									testRegistry += "/"
+								}
+								runImg := testRegistry + "local/mirror"
+								fakeImageFetcher.RemoteImages[runImg] = fakeDefaultRunImage
+
+								h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+									Image:             testRegistry + "some/app",
+									Builder:           defaultBuilderName,
+									AdditionalMirrors: mirrors,
+									Publish:           true,
+								}))
+								h.AssertEq(t, fakeLifecycle.Opts.RunImage, runImg)
+							})
+						}
 					})
 
-					it("choose the correct user provided mirror for the registry", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "registry1.example.com/some/app",
-							Builder: defaultBuilderName,
-							AdditionalMirrors: map[string][]string{
-								"default/run": {"local/mirror", "registry1.example.com/local/mirror"},
-							},
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry1.example.com/local/mirror")
-					})
-
-					when("there is no user provided mirror for the registry", func() {
-						it("chooses from builder mirrors", func() {
-							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-								Image:   "registry2.example.com/some/app",
-								Builder: defaultBuilderName,
-								AdditionalMirrors: map[string][]string{
-									"default/run": {"local/mirror", "registry1.example.com/local/mirror"},
-								},
-							}))
-							h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry2.example.com/run/mirror")
-						})
+					when("Publish is false", func() {
+						for _, registry := range []string{"", "registry1.example.com", "registry2.example.com"} {
+							testRegistry := registry
+							it("prefers user provided mirrors", func() {
+								h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+									Image:             testRegistry + "some/app",
+									Builder:           defaultBuilderName,
+									AdditionalMirrors: mirrors,
+								}))
+								h.AssertEq(t, fakeLifecycle.Opts.RunImage, "local/mirror")
+							})
+						}
 					})
 				})
 			})
