@@ -13,16 +13,28 @@ import (
 )
 
 const (
+	// Indicator that format of inputs/outputs will be an OCI image on the registry
 	FormatImage = "image"
+
+	// Indicator that format of inputs/outputs will be a file on the host filesystem
 	FormatFile  = "file"
 )
 
-// PackageBuildpackOptions are configuration options and metadata you can pass into PackageBuildpack
+// PackageBuildpackOptions are configuration options and metadata for PackageBuildpack
 type PackageBuildpackOptions struct {
+	// the name of the output artifact
 	Name    string
+
+	// Type of output format, the options are the consts FormatImage, and FormatFile
 	Format  string
+
+	// Buildpack configuration
 	Config  pubbldpkg.Config
+
+	// Push resulting builder image up to registry specified in Name
 	Publish bool
+
+	//Use only local image assets.
 	NoPull  bool
 }
 

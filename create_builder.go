@@ -36,7 +36,8 @@ type CreateBuilderOptions struct {
 	Registry    string
 }
 
-// CreateBuilder creates a builder image using the provided configuration files.
+// CreateBuilder creates and saves a builder image to a registry with the provided options.
+// If configuration is invalid, will error and exit without writing any images.
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
 	if err := c.validateConfig(ctx, opts); err != nil {
 		return err
@@ -145,7 +146,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 		)
 	}
 
-	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle)
+	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle, os)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch lifecycle")
 	}
@@ -155,7 +156,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	return bldr, nil
 }
 
-func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig) (builder.Lifecycle, error) {
+func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig, os string) (builder.Lifecycle, error) {
 	if config.Version != "" && config.URI != "" {
 		return nil, errors.Errorf(
 			"%s can only declare %s or %s, not both",
@@ -171,11 +172,11 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 			return nil, errors.Wrapf(err, "%s must be a valid semver", style.Symbol("lifecycle.version"))
 		}
 
-		uri = uriFromLifecycleVersion(*v)
+		uri = uriFromLifecycleVersion(*v, os)
 	case config.URI != "":
 		uri = config.URI
 	default:
-		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion))
+		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os)
 	}
 
 	b, err := c.downloader.Download(ctx, uri)
@@ -305,6 +306,10 @@ func validateBuildpack(bp dist.Buildpack, source, expectedID, expectedBPVersion 
 	return nil
 }
 
-func uriFromLifecycleVersion(version semver.Version) string {
+func uriFromLifecycleVersion(version semver.Version, os string) string {
+	if os == "windows" {
+		return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+windows.x86-64.tgz", version.String(), version.String())
+	}
+
 	return fmt.Sprintf("https://github.com/buildpacks/lifecycle/releases/download/v%s/lifecycle-v%s+linux.x86-64.tgz", version.String(), version.String())
 }

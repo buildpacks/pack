@@ -29,11 +29,11 @@ type Cache struct {
 	Root   string
 }
 
-const GithubIssueTitleTemplate = "{{ if .Yanked }}YANK{{else}}ADD{{end}} {{.Namespace}}/{{.Name}}@{{.Version}}"
+const GithubIssueTitleTemplate = "{{ if .Yanked }}YANK{{ else }}ADD{{ end }} {{.Namespace}}/{{.Name}}@{{.Version}}"
 const GithubIssueBodyTemplate = `
 id = "{{.Namespace}}/{{.Name}}"
 version = "{{.Version}}"
-{{ if .Yanked }}{{else}}addr = "{{.Address}}"{{end}}
+{{ if .Yanked }}{{ else if .Address }}addr = "{{.Address}}"{{ end }}
 `
 
 // Entry is a list of buildpacks stored in a registry

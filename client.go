@@ -19,7 +19,7 @@ import (
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_image_fetcher.go github.com/buildpacks/pack ImageFetcher
 
-// ImageFetcher is an interface representing the ability to fetch images.
+// ImageFetcher is an interface representing the ability to fetch local and images.
 type ImageFetcher interface {
 	// Fetch fetches an image by resolving it both remotely and locally depending on provided parameters.
 	// If daemon is true, it will look return a `local.Image`. Pull, applicable only when daemon is true, will
@@ -31,9 +31,8 @@ type ImageFetcher interface {
 
 // Downloader is an interface for collecting both remote and local assets
 type Downloader interface {
-
-	// Download collects both local and remote assets so that they are all
-	// readable.
+	// Download collects both local and remote assets and provides a blob object
+	// used to read asset contents.
 	Download(ctx context.Context, pathOrURI string) (blob.Blob, error)
 }
 
@@ -41,36 +40,24 @@ type Downloader interface {
 
 // ImageFactory is an interface representing the ability to create a new OCI image.
 type ImageFactory interface {
-
 	// NewImage initialize of an image object with required settings so that it
-	// can be saved
+	// can be written to either a local or remote registry.
 	NewImage(repoName string, local bool) (imgutil.Image, error)
 }
 
-// Client defines the parameters needed to run a build, and produce an image.
+// Client is an orchestration object, it contains all parameters needed to
+// build an app image using Cloud Native Buildpacks.
 type Client struct {
-	// Logger used for all client output
 	logger       logging.Logger
-
-	// Utility to pull images either locally or remotely.
 	imageFetcher ImageFetcher
-
-	// used to gather buildpacks from both remote urls, or local sources
 	downloader   Downloader
-
-	// object responsible for executing all lifecycle phases
 	lifecycle    Lifecycle
-
-	// client used to interact with local and remote registries
 	docker       dockerClient.CommonAPIClient
-
 	imageFactory ImageFactory
-
-	// enable experimental features
 	experimental bool
 }
 
-// functions that mutate some setting on the client.
+// ClientOption is a type of function that mutate settings on the client
 type ClientOption func(c *Client)
 
 // WithLogger supply your own logger.
@@ -88,6 +75,7 @@ func WithImageFactory(f ImageFactory) ClientOption {
 }
 
 // WithFetcher supply your own fetcher.
+// A Fetcher retrieves both local and remote images to make them available
 func WithFetcher(f ImageFetcher) ClientOption {
 	return func(c *Client) {
 		c.imageFetcher = f
@@ -95,6 +83,7 @@ func WithFetcher(f ImageFetcher) ClientOption {
 }
 
 // WithDownloader supply your own downloader.
+// A Downloader is used to gather buildpacks from both remote urls, or local sources
 func WithDownloader(d Downloader) ClientOption {
 	return func(c *Client) {
 		c.downloader = d
@@ -124,7 +113,7 @@ func WithExperimental(experimental bool) ClientOption {
 	}
 }
 
-// NewClient and returns a Client with the specified options.
+// NewClient allocates and returns a Client configured with the specified options.
 func NewClient(opts ...ClientOption) (*Client, error) {
 	var client Client
 

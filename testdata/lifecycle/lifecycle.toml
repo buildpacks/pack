@@ -1,6 +1,0 @@
-[api]
-  platform = "0.2"
-  buildpack = "0.3"
-
-[lifecycle]
-  version = "3.4.5"

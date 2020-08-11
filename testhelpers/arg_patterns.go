@@ -10,6 +10,8 @@ import (
 )
 
 func AssertIncludeAllExpectedPatterns(t *testing.T, receivedArgs []string, expectedPatterns ...[]string) {
+	t.Helper()
+
 	missingPatterns := [][]string{}
 
 	for _, expectedPattern := range expectedPatterns {
@@ -62,6 +64,8 @@ func matchLocations(expectedArg string, receivedArgs []string) []int {
 }
 
 func assertSliceEmpty(t *testing.T, actual [][]string, msg string, msgArgs ...interface{}) {
+	t.Helper()
+
 	empty, err := sliceEmpty(actual)
 
 	if err != nil {

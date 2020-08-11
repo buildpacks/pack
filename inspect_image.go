@@ -13,40 +13,45 @@ import (
 )
 
 // ImageInfo is a collection of metadata describing
-// an image built using the pack.
+// an app image built using Cloud Native Buildpacks.
 type ImageInfo struct {
-	// Stack this image is built on top of.
+	// Stack Identifier used when building this image
 	StackID    string
 
-	// List of buildpacks that ran during 'build' and
-	// contributed to this image.
+	// List of buildpacks that passed detection, ran their build
+	// phases and made a contribution to this image.
 	Buildpacks []lifecycle.Buildpack
 
 	// Base includes two references to the run image,
-	// - the run image ID,
-	// - the sha256 of the last layer in the inspected image that belongs to the run image.
-	// a way to visualize this is given an image with n layers:
+	// - the Run Image ID,
+	// - the hash of the last layer in the app image that belongs to the run image.
+	// A way to visualize this is given an image with n layers:
 	//
 	// last layer in run image
 	//          v
 	// [1, ..., k, k+1, ..., n]
-	// the first 1 to k layers all belong to the run image,
-	// the last k+1, to n are added by buildpacks.
+	//              ^
+	//   first layer added by buildpacks
 	//
+	// the first 1 to k layers all belong to the run image,
+	// the last k+1, to n are layers added by buildpacks.
+	// the sum of all of these is our app image.
 	Base       lifecycle.RunImageMetadata
 
 	// BOM or Bill of materials, contains dependency and
-	// version information logged by each buildpack.
+	// version information provided by each buildpack.
 	BOM        []lifecycle.BOMEntry
 
-	// Metadata about the run image name, and image mirrors were used to provide the run images
+	// Stack includes the run image name, and a list of image mirrors,
+	// where the run image is hosted.
 	Stack      lifecycle.StackMetadata
 
+	// Processes lists all processes contributed by buildpacks.
 	Processes  ProcessDetails
 }
 
 // ProcessDetails is a collection of all start command metadata
-// on an imaege
+// on an image
 type ProcessDetails struct {
 	// images default start command
 	DefaultProcess *launch.Process
@@ -61,10 +66,10 @@ type layersMetadata struct {
 	Stack    lifecycle.StackMetadata    `json:"stack" toml:"stack"`
 }
 
-// InspectImage reads the Label metadata of the 'name' image.
-// will look for the 'name' image both using the locally configured docker registry
-// and remotely. Remote lookup will only be done if daemon is true, and requires a docker
-// daemon.
+// InspectImage reads the Label metadata of an image. Initializes a ImageInfo object
+// using this metadata, and returns it.
+// If daemon is true, the local registry will be searched first for the image.
+// Otherwise assume the image is remote.
 func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, false)
 	if err != nil {

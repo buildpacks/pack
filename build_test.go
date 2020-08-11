@@ -12,7 +12,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -21,13 +20,13 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/client"
 	"github.com/heroku/color"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
@@ -331,9 +330,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 										Version: *semver.MustParse(builder.DefaultLifecycleVersion),
 									},
 								},
-								API: builder.LifecycleAPI{
-									BuildpackVersion: api.MustParse("0.3"),
-									PlatformVersion:  api.MustParse("0.2"),
+								APIs: builder.LifecycleAPIs{
+									Buildpack: builder.APIVersions{
+										Supported: builder.APISet{api.MustParse("0.2"), api.MustParse("0.3"), api.MustParse("0.4")},
+									},
+									Platform: builder.APIVersions{
+										Supported: builder.APISet{api.MustParse("0.3"), api.MustParse("0.4")},
+									},
 								},
 							},
 						},
@@ -408,28 +411,46 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 			when("run image is not supplied", func() {
 				when("there are no locally configured mirrors", func() {
-					it("chooses the best mirror from the builder", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: defaultBuilderName,
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "default/run")
+					when("Publish is true", func() {
+						it("chooses the run image mirror matching the local image", func() {
+							fakeImageFetcher.RemoteImages[fakeDefaultRunImage.Name()] = fakeDefaultRunImage
+
+							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+								Image:   "some/app",
+								Builder: defaultBuilderName,
+								Publish: true,
+							}))
+							h.AssertEq(t, fakeLifecycle.Opts.RunImage, "default/run")
+						})
+
+						for _, registry := range []string{"registry1.example.com", "registry2.example.com"} {
+							testRegistry := registry
+							it("chooses the run image mirror matching the built image", func() {
+								runImg := testRegistry + "/run/mirror"
+								fakeImageFetcher.RemoteImages[runImg] = fakeDefaultRunImage
+								h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+									Image:   testRegistry + "/some/app",
+									Builder: defaultBuilderName,
+									Publish: true,
+								}))
+								h.AssertEq(t, fakeLifecycle.Opts.RunImage, runImg)
+							})
+						}
 					})
 
-					it("chooses the best mirror from the builder", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "registry1.example.com/some/app",
-							Builder: defaultBuilderName,
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry1.example.com/run/mirror")
-					})
-
-					it("chooses the best mirror from the builder", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "registry2.example.com/some/app",
-							Builder: defaultBuilderName,
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry2.example.com/run/mirror")
+					when("Publish is false", func() {
+						for _, img := range []string{"some/app",
+							"registry1.example.com/some/app",
+							"registry2.example.com/some/app"} {
+							testImg := img
+							it("chooses a mirror on the builder registry", func() {
+								h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+									Image:   testImg,
+									Builder: defaultBuilderName,
+								}))
+								h.AssertEq(t, fakeLifecycle.Opts.RunImage, "default/run")
+							})
+						}
 					})
 				})
 
@@ -437,6 +458,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					var (
 						fakeLocalMirror  *fakes.Image
 						fakeLocalMirror1 *fakes.Image
+						mirrors          = map[string][]string{
+							"default/run": {"local/mirror", "registry1.example.com/local/mirror"},
+						}
 					)
 
 					it.Before(func() {
@@ -458,39 +482,39 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						fakeLocalMirror1.Cleanup()
 					})
 
-					it("prefers user provided mirrors", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "some/app",
-							Builder: defaultBuilderName,
-							AdditionalMirrors: map[string][]string{
-								"default/run": {"local/mirror", "registry1.example.com/local/mirror"},
-							},
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "local/mirror")
+					when("Publish is true", func() {
+						for _, registry := range []string{"", "registry1.example.com"} {
+							testRegistry := registry
+							it("prefers user provided mirrors for registry "+testRegistry, func() {
+								if testRegistry != "" {
+									testRegistry += "/"
+								}
+								runImg := testRegistry + "local/mirror"
+								fakeImageFetcher.RemoteImages[runImg] = fakeDefaultRunImage
+
+								h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+									Image:             testRegistry + "some/app",
+									Builder:           defaultBuilderName,
+									AdditionalMirrors: mirrors,
+									Publish:           true,
+								}))
+								h.AssertEq(t, fakeLifecycle.Opts.RunImage, runImg)
+							})
+						}
 					})
 
-					it("choose the correct user provided mirror for the registry", func() {
-						h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-							Image:   "registry1.example.com/some/app",
-							Builder: defaultBuilderName,
-							AdditionalMirrors: map[string][]string{
-								"default/run": {"local/mirror", "registry1.example.com/local/mirror"},
-							},
-						}))
-						h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry1.example.com/local/mirror")
-					})
-
-					when("there is no user provided mirror for the registry", func() {
-						it("chooses from builder mirrors", func() {
-							h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-								Image:   "registry2.example.com/some/app",
-								Builder: defaultBuilderName,
-								AdditionalMirrors: map[string][]string{
-									"default/run": {"local/mirror", "registry1.example.com/local/mirror"},
-								},
-							}))
-							h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry2.example.com/run/mirror")
-						})
+					when("Publish is false", func() {
+						for _, registry := range []string{"", "registry1.example.com", "registry2.example.com"} {
+							testRegistry := registry
+							it("prefers user provided mirrors", func() {
+								h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+									Image:             testRegistry + "some/app",
+									Builder:           defaultBuilderName,
+									AdditionalMirrors: mirrors,
+								}))
+								h.AssertEq(t, fakeLifecycle.Opts.RunImage, "local/mirror")
+							})
+						}
 					})
 				})
 			})
@@ -1496,7 +1520,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.Pull, false)
 
-					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.8.0"]
+					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.9.0"]
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.Pull, false)
 				})
@@ -1597,7 +1621,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 		when("Lifecycle option", func() {
 			when("Platform API", func() {
-				for _, supportedPlatformAPI := range []string{"0.2", "0.3"} {
+				for _, supportedPlatformAPI := range []string{"0.3", "0.4"} {
 					var (
 						supportedPlatformAPI = supportedPlatformAPI
 						compatibleBuilder    *fakes.Image
@@ -1627,9 +1651,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 												Version: *semver.MustParse(builder.DefaultLifecycleVersion),
 											},
 										},
-										API: builder.LifecycleAPI{
-											BuildpackVersion: api.MustParse("0.3"),
-											PlatformVersion:  api.MustParse(supportedPlatformAPI),
+										APIs: builder.LifecycleAPIs{
+											Buildpack: builder.APIVersions{
+												Supported: builder.APISet{api.MustParse("0.2"), api.MustParse("0.3"), api.MustParse("0.4")},
+											},
+											Platform: builder.APIVersions{
+												Supported: builder.APISet{api.MustParse(supportedPlatformAPI)},
+											},
 										},
 									},
 								},
@@ -1651,7 +1679,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 				}
 
-				when("lifecycle platform API is not compatible", func() {
+				when("lifecycle Platform API is not compatible", func() {
 					var incompatibleBuilderImage *fakes.Image
 					it.Before(func() {
 						incompatibleBuilderImage = ifakes.NewFakeBuilderImage(t,
@@ -1704,6 +1732,114 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertError(t, err, fmt.Sprintf("Builder %s is incompatible with this version of pack", style.Symbol(builderName)))
 					})
 				})
+
+				when("supported Platform APIs not specified", func() {
+					var badBuilderImage *fakes.Image
+					it.Before(func() {
+						badBuilderImage = ifakes.NewFakeBuilderImage(t,
+							tmpDir,
+							"incompatible-"+defaultBuilderName,
+							defaultBuilderStackID,
+							"1234",
+							"5678",
+							builder.Metadata{
+								Stack: builder.StackMetadata{
+									RunImage: builder.RunImageMetadata{
+										Image: "default/run",
+										Mirrors: []string{
+											"registry1.example.com/run/mirror",
+											"registry2.example.com/run/mirror",
+										},
+									},
+								},
+								Lifecycle: builder.LifecycleMetadata{
+									LifecycleInfo: builder.LifecycleInfo{
+										Version: &builder.Version{
+											Version: *semver.MustParse(builder.DefaultLifecycleVersion),
+										},
+									},
+									APIs: builder.LifecycleAPIs{
+										Buildpack: builder.APIVersions{Supported: builder.APISet{api.MustParse("0.2")}},
+									},
+								},
+							},
+							nil,
+							nil,
+						)
+
+						fakeImageFetcher.LocalImages[badBuilderImage.Name()] = badBuilderImage
+					})
+
+					it.After(func() {
+						badBuilderImage.Cleanup()
+					})
+
+					it("should error", func() {
+						builderName := badBuilderImage.Name()
+
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: builderName,
+						})
+
+						h.AssertError(t, err, "supported Lifecycle Platform APIs not specified")
+					})
+				})
+			})
+
+			when("Buildpack API", func() {
+				when("supported Buildpack APIs not specified", func() {
+					var badBuilderImage *fakes.Image
+					it.Before(func() {
+						badBuilderImage = ifakes.NewFakeBuilderImage(t,
+							tmpDir,
+							"incompatible-"+defaultBuilderName,
+							defaultBuilderStackID,
+							"1234",
+							"5678",
+							builder.Metadata{
+								Stack: builder.StackMetadata{
+									RunImage: builder.RunImageMetadata{
+										Image: "default/run",
+										Mirrors: []string{
+											"registry1.example.com/run/mirror",
+											"registry2.example.com/run/mirror",
+										},
+									},
+								},
+								Lifecycle: builder.LifecycleMetadata{
+									LifecycleInfo: builder.LifecycleInfo{
+										Version: &builder.Version{
+											Version: *semver.MustParse(builder.DefaultLifecycleVersion),
+										},
+									},
+									APIs: builder.LifecycleAPIs{
+										Platform: builder.APIVersions{Supported: builder.APISet{api.MustParse("0.4")}},
+									},
+								},
+							},
+							nil,
+							nil,
+						)
+
+						fakeImageFetcher.LocalImages[badBuilderImage.Name()] = badBuilderImage
+					})
+
+					it.After(func() {
+						badBuilderImage.Cleanup()
+					})
+
+					it("should error", func() {
+						builderName := badBuilderImage.Name()
+
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: builderName,
+						})
+
+						h.AssertError(t, err, "supported Lifecycle Buildpack APIs not specified")
+					})
+				})
 			})
 		})
 
@@ -1741,25 +1877,48 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("volumes are mounted from the host", func() {
-			when("not on windows", func() {
+		when("Volumes option", func() {
+			when("on posix", func() {
 				it.Before(func() {
 					h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
 				})
 
-				it("prepends /platform to the mount paths", func() {
-					subject.Build(context.TODO(), BuildOptions{
-						Image:   "some/app",
-						Builder: defaultBuilderName,
-						ContainerConfig: ContainerConfig{
-							Volumes: []string{"/a:/x", "/b:/some/path/y"},
-						},
+				for _, test := range []struct {
+					name        string
+					volume      string
+					expectation string
+				}{
+					{"defaults to read-only", "/a:/x", "/a:/x:ro"},
+					{"defaults to read-only (nested)", "/a:/some/path/y", "/a:/some/path/y:ro"},
+					{"supports rw mode", "/a:/x:rw", "/a:/x:rw"},
+				} {
+					volume := test.volume
+					expectation := test.expectation
+
+					it(test.name, func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultBuilderName,
+							ContainerConfig: ContainerConfig{
+								Volumes: []string{volume},
+							},
+						})
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Volumes, []string{expectation})
 					})
-					expected := []string{
-						fmt.Sprintf("/a:%v:ro", filepath.Join("/platform", "x")),
-						fmt.Sprintf("/b:%v:ro", filepath.Join("/platform", "some/path/y")),
-					}
-					h.AssertEq(t, fakeLifecycle.Opts.Volumes, expected)
+				}
+
+				when("volume mode is invalid", func() {
+					it("returns an error", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultBuilderName,
+							ContainerConfig: ContainerConfig{
+								Volumes: []string{"/a:/x:invalid"},
+							},
+						})
+						h.AssertError(t, err, `platform volume "/a:/x:invalid" has invalid format: invalid mode: invalid`)
+					})
 				})
 
 				when("volume specification is invalid", func() {
@@ -1768,11 +1927,36 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Image:   "some/app",
 							Builder: defaultBuilderName,
 							ContainerConfig: ContainerConfig{
-								Volumes: []string{"/a:/x", ":::"},
+								Volumes: []string{":::"},
 							},
 						})
-						h.AssertError(t, err, `Platform volume ":::" has invalid format: invalid volume specification: ':::'`)
+						h.AssertError(t, err, `platform volume ":::" has invalid format: invalid volume specification: ':::'`)
 					})
+				})
+
+				when("mounting onto cnb spec'd dir", func() {
+					for _, p := range []string{
+						"/cnb/buildpacks",
+						"/cnb/buildpacks/nested",
+						"/cnb",
+						"/cnb/nested",
+						"/layers",
+						"/layers/nested",
+					} {
+						p := p
+						it(fmt.Sprintf("warns when mounting to '%s'", p), func() {
+							err := subject.Build(context.TODO(), BuildOptions{
+								Image:   "some/app",
+								Builder: defaultBuilderName,
+								ContainerConfig: ContainerConfig{
+									Volumes: []string{fmt.Sprintf("/tmp/path:%s", p)},
+								},
+							})
+
+							h.AssertNil(t, err)
+							h.AssertContains(t, outBuf.String(), fmt.Sprintf("Warning: Mounting to a sensitive directory '%s'", p))
+						})
+					}
 				})
 			})
 
@@ -1781,7 +1965,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
 				})
 
-				it("prepends /platform to the mount paths", func() {
+				it("drive is transformed", func() {
 					dir, _ := ioutil.TempDir("", "pack-test-mount")
 					volume := fmt.Sprintf("%v:/x", dir)
 					err := subject.Build(context.TODO(), BuildOptions{
@@ -1792,7 +1976,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					})
 					expected := []string{
-						fmt.Sprintf("%v:%v:ro", strings.ToLower(dir), path.Join("/platform", "x")),
+						fmt.Sprintf("%s:/x:ro", strings.ToLower(dir)),
 					}
 					h.AssertNil(t, err)
 					t.Log(fakeLifecycle.Opts.Volumes)
@@ -1842,9 +2026,13 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 						Version: *semver.MustParse(lifecycleVersion),
 					},
 				},
-				API: builder.LifecycleAPI{
-					BuildpackVersion: api.MustParse("0.3"),
-					PlatformVersion:  api.MustParse("0.2"),
+				APIs: builder.LifecycleAPIs{
+					Buildpack: builder.APIVersions{
+						Supported: builder.APISet{api.MustParse("0.2"), api.MustParse("0.3"), api.MustParse("0.4")},
+					},
+					Platform: builder.APIVersions{
+						Supported: builder.APISet{api.MustParse("0.3"), api.MustParse("0.4")},
+					},
 				},
 			},
 		},

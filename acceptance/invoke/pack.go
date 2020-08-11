@@ -20,6 +20,7 @@ import (
 
 type PackInvoker struct {
 	testObject      *testing.T
+	assert          h.AssertionManager
 	path            string
 	home            string
 	dockerConfigDir string
@@ -31,7 +32,13 @@ type packPathsProvider interface {
 	FixturePaths() []string
 }
 
-func NewPackInvoker(testObject *testing.T, packAssets packPathsProvider, dockerConfigDir string) *PackInvoker {
+func NewPackInvoker(
+	testObject *testing.T,
+	assert h.AssertionManager,
+	packAssets packPathsProvider,
+	dockerConfigDir string,
+) *PackInvoker {
+
 	testObject.Helper()
 
 	home, err := ioutil.TempDir("", "buildpack.pack.home.")
@@ -41,11 +48,13 @@ func NewPackInvoker(testObject *testing.T, packAssets packPathsProvider, dockerC
 
 	return &PackInvoker{
 		testObject:      testObject,
+		assert:          assert,
 		path:            packAssets.Path(),
 		home:            home,
 		dockerConfigDir: dockerConfigDir,
 		fixtureManager: PackFixtureManager{
 			testObject: testObject,
+			assert:     assert,
 			locations:  packAssets.FixturePaths(),
 		},
 	}
@@ -55,7 +64,7 @@ func (i *PackInvoker) Cleanup() {
 	i.testObject.Helper()
 
 	err := os.RemoveAll(i.home)
-	h.AssertNil(i.testObject, err)
+	i.assert.Nil(err)
 }
 
 func (i *PackInvoker) cmd(name string, args ...string) *exec.Cmd {
@@ -93,7 +102,7 @@ func (i *PackInvoker) RunSuccessfully(name string, args ...string) string {
 	i.testObject.Helper()
 
 	output, err := i.Run(name, args...)
-	h.AssertNil(i.testObject, err)
+	i.assert.NilWithMessage(err, output)
 
 	return output
 }
@@ -110,10 +119,11 @@ func (i *PackInvoker) StartWithWriter(combinedOutput *bytes.Buffer, name string,
 	cmd.Stdout = combinedOutput
 
 	err := cmd.Start()
-	h.AssertNil(i.testObject, err)
+	i.assert.Nil(err)
 
 	return &InterruptCmd{
 		testObject:     i.testObject,
+		assert:         i.assert,
 		cmd:            cmd,
 		combinedOutput: combinedOutput,
 	}
@@ -121,6 +131,7 @@ func (i *PackInvoker) StartWithWriter(combinedOutput *bytes.Buffer, name string,
 
 type InterruptCmd struct {
 	testObject     *testing.T
+	assert         h.AssertionManager
 	cmd            *exec.Cmd
 	combinedOutput *bytes.Buffer
 	outputMux      sync.Mutex
@@ -133,6 +144,7 @@ func (c *InterruptCmd) TerminateAtStep(pattern string) {
 		c.outputMux.Lock()
 		if strings.Contains(c.combinedOutput.String(), pattern) {
 			err := c.cmd.Process.Signal(acceptanceOS.InterruptSignal)
+			c.assert.Nil(err)
 			h.AssertNil(c.testObject, err)
 			return
 		}
@@ -160,7 +172,7 @@ func (i *PackInvoker) EnableExperimental() {
 		[]byte("experimental=true"),
 		os.ModePerm,
 	)
-	h.AssertNil(i.testObject, err)
+	i.assert.Nil(err)
 }
 
 // supports returns whether or not the executor's pack binary supports a
@@ -189,7 +201,7 @@ func (i *PackInvoker) Supports(command string) bool {
 	}
 
 	output, err := i.baseCmd(cmdParts...).CombinedOutput()
-	h.AssertNil(i.testObject, err)
+	i.assert.Nil(err)
 
 	return strings.Contains(string(output), search)
 }
@@ -200,29 +212,25 @@ const (
 	BuilderTomlValidation Feature = iota
 	ExcludeAndIncludeDescriptor
 	CreatorInPack
-	CustomVolumeMounts
+	ReadWriteVolumeMounts
 	NoColorInBuildpacks
-	ReadFromVolumeInDetect
 )
 
-var featureTests = map[Feature]func(e *PackInvoker) bool{
-	BuilderTomlValidation: func(e *PackInvoker) bool {
-		return e.laterThan090()
+var featureTests = map[Feature]func(i *PackInvoker) bool{
+	BuilderTomlValidation: func(i *PackInvoker) bool {
+		return i.laterThan("0.9.0")
 	},
-	ExcludeAndIncludeDescriptor: func(e *PackInvoker) bool {
-		return e.laterThan090()
+	ExcludeAndIncludeDescriptor: func(i *PackInvoker) bool {
+		return i.laterThan("0.9.0")
 	},
-	CreatorInPack: func(e *PackInvoker) bool {
-		return e.laterThan0_10_0()
+	CreatorInPack: func(i *PackInvoker) bool {
+		return i.atLeast("0.10.0")
 	},
-	CustomVolumeMounts: func(e *PackInvoker) bool {
-		return e.not0_11_0()
+	ReadWriteVolumeMounts: func(i *PackInvoker) bool {
+		return i.laterThan("0.12.0")
 	},
-	NoColorInBuildpacks: func(e *PackInvoker) bool {
-		return e.atLeast0_12_0()
-	},
-	ReadFromVolumeInDetect: func(e *PackInvoker) bool {
-		return e.laterThan090()
+	NoColorInBuildpacks: func(i *PackInvoker) bool {
+		return i.atLeast("0.12.0")
 	},
 }
 
@@ -233,37 +241,30 @@ func (i *PackInvoker) SupportsFeature(f Feature) bool {
 func (i *PackInvoker) semanticVersion() *semver.Version {
 	version := i.Version()
 	semanticVersion, err := semver.NewVersion(strings.TrimPrefix(strings.Split(version, " ")[0], "v"))
-	h.AssertNil(i.testObject, err)
+	i.assert.Nil(err)
 
 	return semanticVersion
 }
 
-func (i *PackInvoker) laterThan090() bool {
+// laterThan returns true if pack version is older than the provided version
+func (i *PackInvoker) laterThan(version string) bool {
+	providedVersion := semver.MustParse(version)
 	ver := i.semanticVersion()
-	return ver.Compare(semver.MustParse("0.9.0")) > 0 || ver.Equal(semver.MustParse("0.0.0"))
+	return ver.Compare(providedVersion) > 0 || ver.Equal(semver.MustParse("0.0.0"))
 }
 
-func (i *PackInvoker) laterThan0_10_0() bool {
+// atLeast returns true if pack version is the same or older than the provided version
+func (i *PackInvoker) atLeast(version string) bool {
+	minimalVersion := semver.MustParse(version)
 	ver := i.semanticVersion()
-	return ver.GreaterThan(semver.MustParse("0.10.0")) || ver.Equal(semver.MustParse("0.0.0"))
-}
-
-func (i *PackInvoker) not0_11_0() bool {
-	ver := i.semanticVersion()
-	return !ver.Equal(semver.MustParse("0.11.0"))
-}
-
-func (i *PackInvoker) atLeast0_12_0() bool {
-	ver := i.semanticVersion()
-	minimumVersion := semver.MustParse("0.12.0")
-	return ver.Equal(minimumVersion) || ver.GreaterThan(minimumVersion) || ver.Equal(semver.MustParse("0.0.0"))
+	return ver.Equal(minimalVersion) || ver.GreaterThan(minimalVersion) || ver.Equal(semver.MustParse("0.0.0"))
 }
 
 func (i *PackInvoker) ConfigFileContents() string {
 	i.testObject.Helper()
 
 	contents, err := ioutil.ReadFile(filepath.Join(i.home, "config.toml"))
-	h.AssertNil(i.testObject, err)
+	i.assert.Nil(err)
 
 	return string(contents)
 }

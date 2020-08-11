@@ -11,14 +11,29 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
+// RebaseOptions is a configuration struct that control image rebase behavior
 type RebaseOptions struct {
+	// Name of image we wish to rebase.
 	RepoName          string
+
+	// Flag to publish image to remote registry after rebase completion.
 	Publish           bool
+
+	// use local registry assets only when rebasing
 	SkipPull          bool
+
+	// New image to rebase against, this must have the same StackID as the previous run image
 	RunImage          string
+
+	// A mapping from StackID to an array of mirrors.
+	// This mapping used only if both RunImage is ommited and Publish is true.
+	// AdditionalMirrors gives us inputs to recalculate the 'best' run image
+	// based on the registry we are publishing to.
 	AdditionalMirrors map[string][]string
 }
 
+// Rebase updates the run image layers in an app image.
+// This operation mutates the RepoName image specified in opts.
 func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	imageRef, err := c.parseTagReference(opts.RepoName)
 	if err != nil {
@@ -40,13 +55,15 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	runImageName := c.resolveRunImage(
 		opts.RunImage,
 		imageRef.Context().RegistryStr(),
+		"",
 		builder.StackMetadata{
 			RunImage: builder.RunImageMetadata{
 				Image:   md.Stack.RunImage.Image,
 				Mirrors: md.Stack.RunImage.Mirrors,
 			},
 		},
-		opts.AdditionalMirrors)
+		opts.AdditionalMirrors,
+		opts.Publish)
 
 	if runImageName == "" {
 		return errors.New("run image must be specified")

@@ -17,6 +17,7 @@ import (
 
 type PackFixtureManager struct {
 	testObject *testing.T
+	assert     h.AssertionManager
 	locations  []string
 }
 
@@ -56,37 +57,35 @@ func (m PackFixtureManager) TemplateFixture(templateName string, templateData ma
 	m.testObject.Helper()
 
 	outputTemplate, err := ioutil.ReadFile(m.FixtureLocation(templateName))
-	h.AssertNil(m.testObject, err)
+	m.assert.Nil(err)
 
 	return m.fillTemplate(outputTemplate, templateData)
 }
 
-//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func (m PackFixtureManager) TemplateVersionedFixture(
 	versionedPattern, version, fallback string,
 	templateData map[string]interface{},
 ) string {
-
 	m.testObject.Helper()
 
 	outputTemplate, err := ioutil.ReadFile(m.VersionedFixtureOrFallbackLocation(versionedPattern, version, fallback))
-	h.AssertNil(m.testObject, err)
+	m.assert.Nil(err)
 
 	return m.fillTemplate(outputTemplate, templateData)
 }
 
 func (m PackFixtureManager) TemplateFixtureToFile(name string, destination *os.File, data map[string]interface{}) {
 	_, err := io.WriteString(destination, m.TemplateFixture(name, data))
-	h.AssertNil(m.testObject, err)
+	m.assert.Nil(err)
 }
 
 func (m PackFixtureManager) fillTemplate(templateContents []byte, data map[string]interface{}) string {
 	tpl, err := template.New("").Parse(string(templateContents))
-	h.AssertNil(m.testObject, err)
+	m.assert.Nil(err)
 
 	var templatedContent bytes.Buffer
 	err = tpl.Execute(&templatedContent, data)
-	h.AssertNil(m.testObject, err)
+	m.assert.Nil(err)
 
 	return templatedContent.String()
 }

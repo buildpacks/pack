@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -13,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
@@ -62,9 +62,15 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 						Version: *semver.MustParse("6.7.8"),
 					},
 				},
-				API: builder.LifecycleAPI{
-					BuildpackVersion: api.MustParse("5.6"),
-					PlatformVersion:  api.MustParse("7.8"),
+				APIs: builder.LifecycleAPIs{
+					Buildpack: builder.APIVersions{
+						Deprecated: nil,
+						Supported:  builder.APISet{api.MustParse("1.2"), api.MustParse("2.3")},
+					},
+					Platform: builder.APIVersions{
+						Deprecated: builder.APISet{api.MustParse("0.1"), api.MustParse("1.2")},
+						Supported:  builder.APISet{api.MustParse("4.5")},
+					},
 				},
 			},
 			CreatedBy: builder.CreatorMetadata{
@@ -89,9 +95,15 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 						Version: *semver.MustParse("4.5.6"),
 					},
 				},
-				API: builder.LifecycleAPI{
-					BuildpackVersion: api.MustParse("1.2"),
-					PlatformVersion:  api.MustParse("3.4"),
+				APIs: builder.LifecycleAPIs{
+					Buildpack: builder.APIVersions{
+						Deprecated: builder.APISet{api.MustParse("4.5"), api.MustParse("6.7")},
+						Supported:  builder.APISet{api.MustParse("8.9"), api.MustParse("10.11")},
+					},
+					Platform: builder.APIVersions{
+						Deprecated: nil,
+						Supported:  builder.APISet{api.MustParse("7.8")},
+					},
 				},
 			},
 			CreatedBy: builder.CreatorMetadata{
@@ -115,8 +127,12 @@ Stack:
 
 Lifecycle:
   Version: 6.7.8
-  Buildpack API: 5.6
-  Platform API: 7.8
+  Buildpack APIs:
+    Deprecated: (none)
+    Supported: 1.2, 2.3
+  Platform APIs:
+    Deprecated: 0.1, 1.2
+    Supported: 4.5
 
 Run Images:
   first/local     (user-configured)
@@ -151,8 +167,12 @@ Stack:
 
 Lifecycle:
   Version: 4.5.6
-  Buildpack API: 1.2
-  Platform API: 3.4
+  Buildpack APIs:
+    Deprecated: 4.5, 6.7
+    Supported: 8.9, 10.11
+  Platform APIs:
+    Deprecated: (none)
+    Supported: 7.8
 
 Run Images:
   first/local     (user-configured)
@@ -291,9 +311,9 @@ Detection Order:
 
 			it("missing lifecycle version logs a warning", func() {
 				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify lifecycle version")
-				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify lifecycle buildpack api version")
-				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify lifecycle platform api version")
+				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify a Lifecycle version")
+				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify supported Lifecycle Buildpack APIs")
+				h.AssertContains(t, outBuf.String(), "Warning: 'some/image' does not specify supported Lifecycle Platform APIs")
 			})
 		})
 

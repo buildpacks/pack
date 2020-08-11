@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	acceptanceOS "github.com/buildpacks/pack/acceptance/os"
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/style"
@@ -21,13 +20,11 @@ import (
 
 const (
 	defaultCompilePackVersion = "0.0.0"
-	defaultPlatformAPIVersion = "0.3"
 )
 
 var (
 	currentPackFixturesDir           = filepath.Join("testdata", "pack_fixtures")
 	previousPackFixturesOverridesDir = filepath.Join("testdata", "pack_previous_fixtures_overrides")
-	githubAssetFetcher               *GithubAssetFetcher
 	lifecycleTgzExp                  = regexp.MustCompile(`lifecycle-v\d+.\d+.\d+\+linux.x86-64.tgz`)
 )
 
@@ -36,6 +33,7 @@ type AssetManager struct {
 	packFixturesPath            string
 	previousPackPath            string
 	previousPackFixturesPaths   []string
+	githubAssetFetcher          *GithubAssetFetcher
 	lifecyclePath               string
 	lifecycleDescriptor         builder.LifecycleDescriptor
 	previousLifecyclePath       string
@@ -44,7 +42,7 @@ type AssetManager struct {
 	testObject                  *testing.T
 }
 
-func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) AssetManager {
+func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig InputConfigurationManager) AssetManager {
 	t.Helper()
 
 	var (
@@ -58,9 +56,14 @@ func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) 
 		convergedDefaultLifecycleDescriptor  builder.LifecycleDescriptor
 	)
 
+	githubAssetFetcher, err := NewGithubAssetFetcher(t, inputConfig.githubToken)
+	h.AssertNil(t, err)
+
 	assetBuilder := assetManagerBuilder{
-		testObject:  t,
-		inputConfig: inputConfig,
+		testObject:         t,
+		assert:             assert,
+		inputConfig:        inputConfig,
+		githubAssetFetcher: githubAssetFetcher,
 	}
 
 	if inputConfig.combinations.requiresCurrentPack() {
@@ -83,7 +86,7 @@ func ConvergedAssetManager(t *testing.T, inputConfig InputConfigurationManager) 
 	}
 
 	if inputConfig.combinations.requiresDefaultLifecycle() {
-		convergedDefaultLifecycleDescriptor = defaultLifecycleDescriptor()
+		convergedDefaultLifecycleDescriptor = assetBuilder.defaultLifecycleDescriptor()
 	}
 
 	return AssetManager{
@@ -150,8 +153,10 @@ func (a AssetManager) LifecycleDescriptor(kind ComboValue) builder.LifecycleDesc
 }
 
 type assetManagerBuilder struct {
-	testObject  *testing.T
-	inputConfig InputConfigurationManager
+	testObject         *testing.T
+	assert             h.AssertionManager
+	inputConfig        InputConfigurationManager
+	githubAssetFetcher *GithubAssetFetcher
 }
 
 func (b assetManagerBuilder) ensureCurrentPack() string {
@@ -182,18 +187,17 @@ func (b assetManagerBuilder) ensurePreviousPack() string {
 		style.Symbol(envPreviousPackPath),
 	)
 
-	b.ensureGithubAssetFetcher()
-	version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "pack", 0)
-	h.AssertNil(b.testObject, err)
+	version, err := b.githubAssetFetcher.FetchReleaseVersion("buildpacks", "pack", 0)
+	b.assert.Nil(err)
 
-	assetDir, err := githubAssetFetcher.FetchReleaseAsset(
+	assetDir, err := b.githubAssetFetcher.FetchReleaseAsset(
 		"buildpacks",
 		"pack",
 		version,
 		acceptanceOS.PackBinaryExp,
 		true,
 	)
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 	assetPath := filepath.Join(assetDir, acceptanceOS.PackBinaryName)
 
 	b.testObject.Logf("using %s for previous pack path", assetPath)
@@ -214,15 +218,14 @@ func (b assetManagerBuilder) ensurePreviousPackFixtures() string {
 		style.Symbol(envPreviousPackFixturesPath),
 	)
 
-	b.ensureGithubAssetFetcher()
-	version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "pack", 0)
-	h.AssertNil(b.testObject, err)
+	version, err := b.githubAssetFetcher.FetchReleaseVersion("buildpacks", "pack", 0)
+	b.assert.Nil(err)
 
-	sourceDir, err := githubAssetFetcher.FetchReleaseSource("buildpacks", "pack", version)
-	h.AssertNil(b.testObject, err)
+	sourceDir, err := b.githubAssetFetcher.FetchReleaseSource("buildpacks", "pack", version)
+	b.assert.Nil(err)
 
 	sourceDirFiles, err := ioutil.ReadDir(sourceDir)
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 	// GitHub source tarballs have a top-level directory whose name includes the current commit sha.
 	innerDir := sourceDirFiles[0].Name()
 	fixturesDir := filepath.Join(sourceDir, innerDir, "acceptance", "testdata", "pack_fixtures")
@@ -244,13 +247,13 @@ func (b assetManagerBuilder) ensureCurrentLifecycle() (string, builder.Lifecycle
 			style.Symbol(envLifecyclePath),
 		)
 
-		lifecyclePath = b.downloadLifecycle(0)
+		lifecyclePath = b.downloadLifecycleRelative(0)
 
-		b.testObject.Logf("using %s for default lifecycle path", lifecyclePath)
+		b.testObject.Logf("using %s for current lifecycle path", lifecyclePath)
 	}
 
 	lifecycle, err := builder.NewLifecycle(blob.NewBlob(lifecyclePath))
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	return lifecyclePath, lifecycle.Descriptor()
 }
@@ -267,63 +270,52 @@ func (b assetManagerBuilder) ensurePreviousLifecycle() (string, builder.Lifecycl
 			style.Symbol(envPreviousLifecyclePath),
 		)
 
-		previousLifecyclePath = b.downloadLifecycle(-1)
+		previousLifecyclePath = b.downloadLifecycleRelative(-1)
 
 		b.testObject.Logf("using %s for previous lifecycle path", previousLifecyclePath)
 	}
 
 	lifecycle, err := builder.NewLifecycle(blob.NewBlob(previousLifecyclePath))
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	return previousLifecyclePath, lifecycle.Descriptor()
 }
 
-func (b assetManagerBuilder) downloadLifecycle(relativeVersion int) string {
-	b.testObject.Helper()
-
-	b.ensureGithubAssetFetcher()
-
-	version, err := githubAssetFetcher.FetchReleaseVersion("buildpacks", "lifecycle", relativeVersion)
-	h.AssertNil(b.testObject, err)
-
-	path, err := githubAssetFetcher.FetchReleaseAsset(
+func (b assetManagerBuilder) downloadLifecycle(version string) string {
+	path, err := b.githubAssetFetcher.FetchReleaseAsset(
 		"buildpacks",
 		"lifecycle",
 		version,
 		lifecycleTgzExp,
 		false,
 	)
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	return path
 }
 
-func (b assetManagerBuilder) ensureGithubAssetFetcher() {
+func (b assetManagerBuilder) downloadLifecycleRelative(relativeVersion int) string {
 	b.testObject.Helper()
 
-	if githubAssetFetcher != nil {
-		return
-	}
+	version, err := b.githubAssetFetcher.FetchReleaseVersion("buildpacks", "lifecycle", relativeVersion)
+	b.assert.Nil(err)
 
-	var err error
-	githubAssetFetcher, err = NewGithubAssetFetcher(b.testObject, b.inputConfig.githubToken)
-	h.AssertNil(b.testObject, err)
+	return b.downloadLifecycle(version)
 }
 
 func (b assetManagerBuilder) buildPack(compileVersion string) string {
 	b.testObject.Helper()
 
 	packTmpDir, err := ioutil.TempDir("", "pack.acceptance.binary.")
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	packPath := filepath.Join(packTmpDir, acceptanceOS.PackBinaryName)
 
 	cwd, err := os.Getwd()
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	cmd := exec.Command("go", "build",
 		"-ldflags", fmt.Sprintf("-X 'github.com/buildpacks/pack/cmd.Version=%s'", compileVersion),
-		"-mod=vendor",
 		"-o", packPath,
 		"./cmd/pack",
 	)
@@ -333,19 +325,18 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 
 	b.testObject.Logf("building pack: [CWD=%s] %s", cmd.Dir, cmd.Args)
 	_, err = cmd.CombinedOutput()
-	h.AssertNil(b.testObject, err)
+	b.assert.Nil(err)
 
 	return packPath
 }
 
-func defaultLifecycleDescriptor() builder.LifecycleDescriptor {
-	return builder.LifecycleDescriptor{
-		Info: builder.LifecycleInfo{
-			Version: builder.VersionMustParse(builder.DefaultLifecycleVersion),
-		},
-		API: builder.LifecycleAPI{
-			BuildpackVersion: api.MustParse(builder.DefaultBuildpackAPIVersion),
-			PlatformVersion:  api.MustParse(defaultPlatformAPIVersion),
-		},
-	}
+func (b assetManagerBuilder) defaultLifecycleDescriptor() builder.LifecycleDescriptor {
+	lifecyclePath := b.downloadLifecycle("v" + builder.DefaultLifecycleVersion)
+
+	b.testObject.Logf("using %s for default lifecycle path", lifecyclePath)
+
+	lifecycle, err := builder.NewLifecycle(blob.NewBlob(lifecyclePath))
+	b.assert.Nil(err)
+
+	return lifecycle.Descriptor()
 }
