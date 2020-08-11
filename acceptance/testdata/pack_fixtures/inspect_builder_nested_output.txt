@@ -18,8 +18,12 @@ Stack:
 
 Lifecycle:
   Version: {{.lifecycle_version}}
-  Buildpack API: {{.buildpack_api_version}}
-  Platform API: {{.platform_api_version}}
+  Buildpack APIs:
+    Deprecated: {{ .deprecated_buildpack_apis }}
+    Supported: {{ .supported_buildpack_apis }}
+  Platform APIs:
+    Deprecated: {{ .deprecated_platform_apis }}
+    Supported: {{ .supported_platform_apis }}
 
 Run Images:
   some-registry.com/pack-test/run1    (user-configured)
@@ -62,8 +66,12 @@ Stack:
 
 Lifecycle:
   Version: {{.lifecycle_version}}
-  Buildpack API: {{.buildpack_api_version}}
-  Platform API: {{.platform_api_version}}
+  Buildpack APIs:
+    Deprecated: {{ .deprecated_buildpack_apis }}
+    Supported: {{ .supported_buildpack_apis }}
+  Platform APIs:
+    Deprecated: {{ .deprecated_platform_apis }}
+    Supported: {{ .supported_platform_apis }}
 
 Run Images:
   some-registry.com/pack-test/run1    (user-configured)
