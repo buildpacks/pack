@@ -3,7 +3,7 @@ FROM golang
 RUN mkdir /lifecycle
 WORKDIR /go/src/step
 COPY . .
-RUN GO111MODULE=on go build -mod=vendor -o /cnb/lifecycle/phase ./phase.go
+RUN GO111MODULE=on go build -o /cnb/lifecycle/phase ./phase.go
 
 ENV CNB_USER_ID 111
 ENV CNB_GROUP_ID 222

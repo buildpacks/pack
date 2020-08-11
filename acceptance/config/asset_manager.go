@@ -325,7 +325,6 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 
 	cmd := exec.Command("go", "build",
 		"-ldflags", fmt.Sprintf("-X 'github.com/buildpacks/pack/cmd.Version=%s'", compileVersion),
-		"-mod=vendor",
 		"-o", packPath,
 		"./cmd/pack",
 	)
