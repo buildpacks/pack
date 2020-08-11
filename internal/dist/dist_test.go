@@ -3,11 +3,11 @@ package dist_test
 import (
 	"testing"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -74,17 +74,15 @@ func testDist(t *testing.T, when spec.G, it spec.S) {
 
 			when("ID is present, Version is left empty and cannot be inferred", func() {
 				it("fails", func() {
-					out, ok := buildpackLayers.Get("other-buildpack", "")
+					_, ok := buildpackLayers.Get("other-buildpack", "")
 					h.AssertEq(t, ok, false)
-					h.AssertEq(t, out, dist.BuildpackLayerInfo{})
 				})
 			})
 
 			when("ID is NOT provided", func() {
 				it("fails", func() {
-					out, ok := buildpackLayers.Get("missing-buildpack", "")
+					_, ok := buildpackLayers.Get("missing-buildpack", "")
 					h.AssertEq(t, ok, false)
-					h.AssertEq(t, out, dist.BuildpackLayerInfo{})
 				})
 			})
 		})

@@ -404,12 +404,16 @@ func CreateFakeLifecycle(docker client.CommonAPIClient, logger logging.Logger, a
 		return nil, err
 	}
 
-	subject.Setup(build.LifecycleOptions{
+	err = subject.Setup(build.LifecycleOptions{
 		AppPath:    appDir,
 		Builder:    bldr,
 		HTTPProxy:  "some-http-proxy",
 		HTTPSProxy: "some-https-proxy",
 		NoProxy:    "some-no-proxy",
 	})
+	if err != nil {
+		return nil, err
+	}
+
 	return subject, nil
 }

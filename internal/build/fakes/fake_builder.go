@@ -2,14 +2,16 @@ package fakes
 
 import (
 	"github.com/Masterminds/semver"
+	"github.com/buildpacks/imgutil"
+	ifakes "github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/api"
 
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 )
 
 type FakeBuilder struct {
-	ReturnForName                string
+	ReturnForImage               *ifakes.Image
 	ReturnForUID                 int
 	ReturnForGID                 int
 	ReturnForLifecycleDescriptor builder.LifecycleDescriptor
@@ -33,13 +35,17 @@ func NewFakeBuilder(ops ...func(*FakeBuilder)) (*FakeBuilder, error) {
 	}
 
 	fakeBuilder := &FakeBuilder{
-		ReturnForName: "some-builder-name",
-		ReturnForUID:  99,
-		ReturnForGID:  99,
+		ReturnForImage: ifakes.NewImage("some-builder-name", "", nil),
+		ReturnForUID:   99,
+		ReturnForGID:   99,
 		ReturnForLifecycleDescriptor: builder.LifecycleDescriptor{
-			API: builder.LifecycleAPI{
-				BuildpackVersion: buildpackVersion,
-				PlatformVersion:  platformAPIVersion,
+			APIs: builder.LifecycleAPIs{
+				Buildpack: builder.APIVersions{
+					Supported: builder.APISet{buildpackVersion},
+				},
+				Platform: builder.APIVersions{
+					Supported: builder.APISet{platformAPIVersion},
+				},
 			},
 			Info: builder.LifecycleInfo{
 				Version: &builder.Version{Version: *infoVersion},
@@ -55,15 +61,9 @@ func NewFakeBuilder(ops ...func(*FakeBuilder)) (*FakeBuilder, error) {
 	return fakeBuilder, nil
 }
 
-func WithName(name string) func(*FakeBuilder) {
+func WithImage(image *ifakes.Image) func(*FakeBuilder) {
 	return func(builder *FakeBuilder) {
-		builder.ReturnForName = name
-	}
-}
-
-func WithPlatformVersion(version *api.Version) func(*FakeBuilder) {
-	return func(builder *FakeBuilder) {
-		builder.ReturnForLifecycleDescriptor.API.PlatformVersion = version
+		builder.ReturnForImage = image
 	}
 }
 
@@ -80,7 +80,11 @@ func WithGID(gid int) func(*FakeBuilder) {
 }
 
 func (b *FakeBuilder) Name() string {
-	return b.ReturnForName
+	return b.ReturnForImage.Name()
+}
+
+func (b *FakeBuilder) Image() imgutil.Image {
+	return b.ReturnForImage
 }
 
 func (b *FakeBuilder) UID() int {

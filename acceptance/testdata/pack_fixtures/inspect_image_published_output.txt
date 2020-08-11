@@ -5,9 +5,7 @@ REMOTE:
 Stack: pack.test.stack
 
 Base Image:
-{{- if .show_reference}}
   Reference: {{.base_image_ref}}
-{{- end }}
   Top Layer: {{.base_image_top_layer}}
 
 Run Images:
@@ -17,13 +15,11 @@ Run Images:
 Buildpacks:
   ID                   VERSION
   simple/layers        simple-layers-version
-{{- if .show_processes}}
 
 Processes:
   TYPE                 SHELL        COMMAND        ARGS
-  web (default)        bash         ./run          8080
-  hello                             echo           hello world
-{{- end }}
+  web (default)        bash         {{.web_command}}          8080
+  hello                             {{.hello_command}}           {{.hello_args}}
 
 
 LOCAL:
@@ -31,9 +27,7 @@ LOCAL:
 Stack: pack.test.stack
 
 Base Image:
-{{- if .show_reference}}
   Reference: {{.base_image_ref}}
-{{- end }}
   Top Layer: {{.base_image_top_layer}}
 
 Run Images:
@@ -43,11 +37,9 @@ Run Images:
 Buildpacks:
   ID                   VERSION
   simple/layers        simple-layers-version
-{{- if .show_processes}}
 
 Processes:
   TYPE                 SHELL        COMMAND        ARGS
-  web (default)        bash         ./run          8080
-  hello                             echo           hello world
-{{- end }}
+  web (default)        bash         {{.web_command}}          8080
+  hello                             {{.hello_command}}           {{.hello_args}}
 

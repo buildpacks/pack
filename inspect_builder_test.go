@@ -5,15 +5,16 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"github.com/buildpacks/pack/internal/api"
 
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
@@ -67,10 +68,38 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 			when(fmt.Sprintf("daemon is %t", useDaemon), func() {
 				it.Before(func() {
 					if useDaemon {
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, false).Return(builderImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, config.PullNever).Return(builderImage, nil)
 					} else {
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, false).Return(builderImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, config.PullNever).Return(builderImage, nil)
 					}
+				})
+
+				when("only deprecated lifecycle apis are present", func() {
+					it.Before(func() {
+						h.AssertNil(t, builderImage.SetLabel(
+							"io.buildpacks.builder.metadata",
+							`{"lifecycle": {"version": "1.2.3", "api": {"buildpack": "1.2","platform": "2.3"}}}`,
+						))
+					})
+
+					it("returns has both deprecated and new fields", func() {
+						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, builderInfo.Lifecycle, builder.LifecycleDescriptor{
+							Info: builder.LifecycleInfo{
+								Version: builder.VersionMustParse("1.2.3"),
+							},
+							API: builder.LifecycleAPI{
+								BuildpackVersion: api.MustParse("1.2"),
+								PlatformVersion:  api.MustParse("2.3"),
+							},
+							APIs: builder.LifecycleAPIs{
+								Buildpack: builder.APIVersions{Supported: builder.APISet{api.MustParse("1.2")}},
+								Platform:  builder.APIVersions{Supported: builder.APISet{api.MustParse("2.3")}},
+							},
+						})
+					})
 				})
 
 				when("the builder image has appropriate metadata labels", func() {
@@ -105,7 +134,10 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	  "version": "test.bp.two.version"
     }
   ],
-  "lifecycle": {"version": "1.2.3"},
+  "lifecycle": {"version": "1.2.3", "api": {"buildpack": "0.1","platform": "2.3"}, "apis":  {
+	"buildpack": {"deprecated": ["0.1"], "supported": ["1.2", "1.3"]},
+	"platform": {"deprecated": [], "supported": ["2.3", "2.4"]}
+  }},
   "createdBy": {"name": "pack", "version": "1.2.3"}
 }`))
 
@@ -192,17 +224,17 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 							RunImage:        "some/run-image",
 							RunImageMirrors: []string{"gcr.io/some/default"},
 							Buildpacks: []dist.BuildpackInfo{
-								dist.BuildpackInfo{
+								{
 									ID:       "test.nested",
 									Version:  "test.nested.version",
 									Homepage: "http://geocities.com/top-bp",
 								},
-								dist.BuildpackInfo{
+								{
 									ID:       "test.bp.one",
 									Version:  "test.bp.one.version",
 									Homepage: "http://geocities.com/cool-bp",
 								},
-								dist.BuildpackInfo{
+								{
 									ID:      "test.bp.two",
 									Version: "test.bp.two.version",
 								},
@@ -222,7 +254,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 								},
 							},
 							BuildpackLayers: map[string]map[string]dist.BuildpackLayerInfo{
-								"test.nested": map[string]dist.BuildpackLayerInfo{
+								"test.nested": {
 									"test.nested.version": {
 										API: apiVersion,
 										Order: dist.Order{
@@ -249,7 +281,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 										Homepage:    "http://geocities.com/top-bp",
 									},
 								},
-								"test.bp.one": map[string]dist.BuildpackLayerInfo{
+								"test.bp.one": {
 									"test.bp.one.version": {
 										API: apiVersion,
 										Stacks: []dist.Stack{
@@ -261,7 +293,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 										Homepage:    "http://geocities.com/cool-bp",
 									},
 								},
-								"test.bp.two": map[string]dist.BuildpackLayerInfo{
+								"test.bp.two": {
 									"test.bp.two.version": {
 										API: apiVersion,
 										Stacks: []dist.Stack{
@@ -277,6 +309,20 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 								Info: builder.LifecycleInfo{
 									Version: builder.VersionMustParse("1.2.3"),
 								},
+								API: builder.LifecycleAPI{
+									BuildpackVersion: api.MustParse("0.1"),
+									PlatformVersion:  api.MustParse("2.3"),
+								},
+								APIs: builder.LifecycleAPIs{
+									Buildpack: builder.APIVersions{
+										Deprecated: builder.APISet{api.MustParse("0.1")},
+										Supported:  builder.APISet{api.MustParse("1.2"), api.MustParse("1.3")},
+									},
+									Platform: builder.APIVersions{
+										Deprecated: builder.APISet{},
+										Supported:  builder.APISet{api.MustParse("2.3"), api.MustParse("2.4")},
+									},
+								},
 							},
 							CreatedBy: builder.CreatorMetadata{
 								Name:    "pack",
@@ -284,7 +330,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						}
 
-						if diff := cmp.Diff(*builderInfo, want); diff != "" {
+						if diff := cmp.Diff(want, *builderInfo); diff != "" {
 							t.Errorf("InspectBuilder() mismatch (-want +got):\n%s", diff)
 						}
 					})
@@ -307,7 +353,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	when("fetcher fails to fetch the image", func() {
 		it.Before(func() {
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, false).Return(nil, errors.New("some-error"))
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, config.PullNever).Return(nil, errors.New("some-error"))
 		})
 
 		it("returns an error", func() {
@@ -320,7 +366,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			notFoundImage := fakes.NewImage("", "", nil)
 			notFoundImage.Delete()
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "some-error"))
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, config.PullNever).Return(nil, errors.Wrap(image.ErrNotFound, "some-error"))
 		})
 
 		it("return nil metadata", func() {

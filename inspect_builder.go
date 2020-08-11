@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
@@ -31,7 +32,7 @@ type BuildpackInfoKey struct {
 }
 
 func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) {
-	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, false)
+	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, config.PullNever)
 	if err != nil {
 		if errors.Cause(err) == image.ErrNotFound {
 			return nil, nil

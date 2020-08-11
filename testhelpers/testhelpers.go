@@ -9,9 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -25,7 +23,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -359,36 +356,6 @@ func dockerCli(t *testing.T) client.CommonAPIClient {
 	return dockerCliVal
 }
 
-func proxyDockerHostPort(port string) error {
-	ln, err := net.Listen("tcp", ":"+port)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			go func(conn net.Conn) {
-				defer conn.Close()
-				c, err := dockerdial.Dial("tcp", "localhost:"+port)
-				if err != nil {
-					log.Println(err)
-					return
-				}
-				defer c.Close()
-
-				go io.Copy(c, conn)
-				io.Copy(conn, c)
-			}(conn)
-		}
-	}()
-	return nil
-}
-
 func Eventually(t *testing.T, test func() bool, every time.Duration, timeout time.Duration) {
 	t.Helper()
 
@@ -515,13 +482,7 @@ func PushImage(dockerCli client.CommonAPIClient, ref string, registryConfig *Tes
 }
 
 func HTTPGetE(url string, headers map[string]string) (string, error) {
-	var client *http.Client
-	if os.Getenv("DOCKER_HOST") == "" {
-		client = http.DefaultClient
-	} else {
-		tr := &http.Transport{Dial: dockerdial.Dial}
-		client = &http.Client{Transport: tr}
-	}
+	client := http.DefaultClient
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -671,6 +632,16 @@ func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id stri
 	if err := dockerCli.ContainerStart(ctx, id, dockertypes.ContainerStartOptions{}); err != nil {
 		return errors.Wrap(err, "container start")
 	}
+
+	info, err := dockerCli.Info(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting docker info")
+	}
+	if info.OSType == "windows" {
+		// wait for logs to show
+		time.Sleep(time.Second)
+	}
+
 	logs, err := dockerCli.ContainerLogs(ctx, id, dockertypes.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,

@@ -18,6 +18,28 @@ func TestPaths(t *testing.T) {
 }
 
 func testPaths(t *testing.T, when spec.G, it spec.S) {
+	when("#FilterReservedNames", func() {
+		when("volume contains a reserved name", func() {
+			it("modifies the volume name", func() {
+				volumeName := "auxauxaux"
+				subject := FilterReservedNames(volumeName)
+				expected := "a_u_xa_u_xa_u_x"
+				if subject != expected {
+					t.Fatalf("The volume should not contain reserved names")
+				}
+			})
+		})
+
+		when("volume does not contain reserved names", func() {
+			it("does not modify the volume name", func() {
+				volumeName := "lbtlbtlbt"
+				subject := FilterReservedNames(volumeName)
+				if subject != volumeName {
+					t.Fatalf("The volume should not be modified")
+				}
+			})
+		})
+	})
 	when("#FilePathToURI", func() {
 		when("is windows", func() {
 			it.Before(func() {

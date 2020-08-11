@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
@@ -25,6 +26,7 @@ const (
 	defaultTabWidth    = 4
 	writerPadChar      = ' '
 	writerFlags        = 0
+	none               = "(none)"
 )
 
 type InspectBuilderFlags struct {
@@ -141,8 +143,12 @@ Stack:
 
 Lifecycle:
   Version: {{- if .Info.Lifecycle.Info.Version }} {{ .Info.Lifecycle.Info.Version }}{{- else }} (none){{- end }}
-  Buildpack API: {{- if .Info.Lifecycle.API.BuildpackVersion }} {{ .Info.Lifecycle.API.BuildpackVersion }}{{- else }} (none){{- end }}
-  Platform API: {{- if .Info.Lifecycle.API.PlatformVersion }} {{ .Info.Lifecycle.API.PlatformVersion }}{{- else }} (none){{- end }}
+  Buildpack APIs:
+    Deprecated: {{ .DeprecatedBuildpackAPIs }}
+    Supported: {{ .SupportedBuildpackAPIs }}
+  Platform APIs:
+    Deprecated: {{ .DeprecatedPlatformAPIs }}
+    Supported: {{ .SupportedPlatformAPIs }}
 
 Run Images:
 {{- if ne .RunImages "" }}
@@ -198,15 +204,19 @@ Detection Order:
 
 	lcDescriptor := &info.Lifecycle
 	if lcDescriptor.Info.Version == nil {
-		warnings = append(warnings, fmt.Sprintf("%s does not specify lifecycle version", style.Symbol(imageName)))
+		warnings = append(warnings, fmt.Sprintf("%s does not specify a Lifecycle version", style.Symbol(imageName)))
 	}
 
-	if lcDescriptor.API.BuildpackVersion == nil {
-		warnings = append(warnings, fmt.Sprintf("%s does not specify lifecycle buildpack api version", style.Symbol(imageName)))
-	}
+	deprecatedBuildpackAPIs := stringifyAPISet(lcDescriptor.APIs.Buildpack.Deprecated)
+	supportedBuildpackAPIs := stringifyAPISet(lcDescriptor.APIs.Buildpack.Supported)
+	deprecatedPlatformAPIs := stringifyAPISet(lcDescriptor.APIs.Platform.Deprecated)
+	supportedPlatformAPIs := stringifyAPISet(lcDescriptor.APIs.Platform.Supported)
 
-	if lcDescriptor.API.PlatformVersion == nil {
-		warnings = append(warnings, fmt.Sprintf("%s does not specify lifecycle platform api version", style.Symbol(imageName)))
+	if supportedBuildpackAPIs == none {
+		warnings = append(warnings, fmt.Sprintf("%s does not specify supported Lifecycle Buildpack APIs", style.Symbol(imageName)))
+	}
+	if supportedPlatformAPIs == none {
+		warnings = append(warnings, fmt.Sprintf("%s does not specify supported Lifecycle Platform APIs", style.Symbol(imageName)))
 	}
 
 	trustedString := "No"
@@ -215,12 +225,16 @@ Detection Order:
 	}
 
 	return warnings, tpl.Execute(writer, &struct {
-		Info       pack.BuilderInfo
-		Buildpacks string
-		RunImages  string
-		Order      string
-		Verbose    bool
-		Trusted    string
+		Info                    pack.BuilderInfo
+		Buildpacks              string
+		RunImages               string
+		Order                   string
+		Verbose                 bool
+		Trusted                 string
+		DeprecatedBuildpackAPIs string
+		SupportedBuildpackAPIs  string
+		DeprecatedPlatformAPIs  string
+		SupportedPlatformAPIs   string
 	}{
 		info,
 		bps,
@@ -228,7 +242,19 @@ Detection Order:
 		order,
 		verbose,
 		trustedString,
+		deprecatedBuildpackAPIs,
+		supportedBuildpackAPIs,
+		deprecatedPlatformAPIs,
+		supportedPlatformAPIs,
 	})
+}
+
+func stringifyAPISet(versions builder.APISet) string {
+	if len(versions) == 0 {
+		return none
+	}
+
+	return strings.Join(versions.AsStrings(), ", ")
 }
 
 // TODO: present buildpack order (inc. nested) [https://github.com/buildpacks/pack/issues/253].

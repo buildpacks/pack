@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/launch"
@@ -114,9 +116,9 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 			when(fmt.Sprintf("daemon is %t", useDaemon), func() {
 				it.Before(func() {
 					if useDaemon {
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", true, false).Return(fakeImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", true, config.PullNever).Return(fakeImage, nil)
 					} else {
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", false, false).Return(fakeImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/image", false, config.PullNever).Return(fakeImage, nil)
 					}
 				})
 
@@ -296,7 +298,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 
 	when("the image doesn't exist", func() {
 		it("returns nil", func() {
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "not/some-image", true, false).Return(nil, image.ErrNotFound)
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "not/some-image", true, config.PullNever).Return(nil, image.ErrNotFound)
 
 			info, err := subject.InspectImage("not/some-image", true)
 			h.AssertNil(t, err)
@@ -306,7 +308,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 
 	when("there is an error fetching the image", func() {
 		it("returns the error", func() {
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "not/some-image", true, false).Return(nil, errors.New("some-error"))
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "not/some-image", true, config.PullNever).Return(nil, errors.New("some-error"))
 
 			_, err := subject.InspectImage("not/some-image", true)
 			h.AssertError(t, err, "some-error")
@@ -316,7 +318,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 	when("the image is missing labels", func() {
 		it("returns empty data", func() {
 			mockImageFetcher.EXPECT().
-				Fetch(gomock.Any(), "missing/labels", true, false).
+				Fetch(gomock.Any(), "missing/labels", true, config.PullNever).
 				Return(fakes.NewImage("missing/labels", "", nil), nil)
 			info, err := subject.InspectImage("missing/labels", true)
 			h.AssertNil(t, err)
@@ -330,7 +332,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			badImage = fakes.NewImage("bad/image", "", nil)
 			mockImageFetcher.EXPECT().
-				Fetch(gomock.Any(), "bad/image", true, false).
+				Fetch(gomock.Any(), "bad/image", true, config.PullNever).
 				Return(badImage, nil)
 		})
 
@@ -350,7 +352,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 	when("lifecycle version is 0.4.x or earlier", func() {
 		it("includes an empty base image reference", func() {
 			oldImage := fakes.NewImage("old/image", "", nil)
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "old/image", true, false).Return(oldImage, nil)
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "old/image", true, config.PullNever).Return(oldImage, nil)
 
 			h.AssertNil(t, oldImage.SetLabel(
 				"io.buildpacks.lifecycle.metadata",

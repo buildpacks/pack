@@ -162,7 +162,7 @@ func testWithoutSpecificBuilderRequirement(
 
 	when("set-default-builder", func() {
 		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			builderName := "gcr.io/paketo-buildpacks/builder:base"
+			builderName := "paketobuildpacks/builder:base"
 			output := pack.RunSuccessfully("set-default-builder", builderName)
 
 			assertions.NewOutputAssertionManager(t, output).ReportsSettingDefaultBuilder(builderName)
@@ -364,6 +364,7 @@ func testWithoutSpecificBuilderRequirement(
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
+					// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 					pack.JustRunSuccessfully(
 						"package-buildpack", packageName,
 						"-c", aggregatePackageToml,
@@ -382,6 +383,7 @@ func testWithoutSpecificBuilderRequirement(
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
+					// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 					output, err := pack.Run(
 						"package-buildpack", packageName,
 						"-c", aggregatePackageToml,
@@ -429,8 +431,8 @@ func testWithoutSpecificBuilderRequirement(
 		})
 
 		when("default builder is set", func() {
-			it("outputs information", func() {
-				pack.RunSuccessfully("set-default-builder", "gcr.io/paketo-buildpacks/builder:base")
+			it("redacts default builder", func() {
+				pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
 
 				output := pack.RunSuccessfully("report")
 
@@ -439,7 +441,26 @@ func testWithoutSpecificBuilderRequirement(
 				expectedOutput := pack.FixtureManager().TemplateFixture(
 					"report_output.txt",
 					map[string]interface{}{
-						"DefaultBuilder": "gcr.io/paketo-buildpacks/builder:base",
+						"DefaultBuilder": "[REDACTED]",
+						"Version":        version,
+						"OS":             runtime.GOOS,
+						"Arch":           runtime.GOARCH,
+					},
+				)
+				assert.Equal(output, expectedOutput)
+			})
+
+			it("explicit mode doesn't redact", func() {
+				pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
+
+				output := pack.RunSuccessfully("report", "--explicit")
+
+				version := pack.Version()
+
+				expectedOutput := pack.FixtureManager().TemplateFixture(
+					"report_output.txt",
+					map[string]interface{}{
+						"DefaultBuilder": "paketobuildpacks/builder:base",
 						"Version":        version,
 						"OS":             runtime.GOOS,
 						"Arch":           runtime.GOARCH,
@@ -476,13 +497,15 @@ func testAcceptance(
 ) {
 	var (
 		pack, createBuilderPack *invoke.PackInvoker
-		bpDir                   = buildpacksDir(lifecycle.BuildpackAPIVersion())
+		bpDir                   = buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
 		assert                  = h.NewAssertionManager(t)
 	)
 
 	it.Before(func() {
 		pack = invoke.NewPackInvoker(t, assert, subjectPackConfig, registryConfig.DockerConfigDir)
+		pack.EnableExperimental()
 		createBuilderPack = invoke.NewPackInvoker(t, assert, createBuilderPackConfig, registryConfig.DockerConfigDir)
+		createBuilderPack.EnableExperimental()
 	})
 
 	it.After(func() {
@@ -515,38 +538,6 @@ func testAcceptance(
 			runImageMirror = value
 		})
 
-		when("creating a windows builder", func() {
-			it.Before(func() {
-				h.SkipIf(t, dockerHostOS() != "windows", "The current Docker daemon does not support Windows-based containers")
-			})
-
-			when("experimental is disabled", func() {
-				it("fails", func() {
-					builderName, err := createBuilder(t, assert, createBuilderPack, lifecycle, runImageMirror)
-
-					if err != nil {
-						defer h.DockerRmi(dockerCli, builderName)
-						h.AssertError(t, err, "Windows containers support is currently experimental")
-					}
-				})
-			})
-
-			when("experimental is enabled", func() {
-				it("succeeds", func() {
-					createBuilderPack.EnableExperimental()
-
-					builderName, err := createBuilder(t, assert, createBuilderPack, lifecycle, runImageMirror)
-					assert.Nil(err)
-					defer h.DockerRmi(dockerCli, builderName)
-
-					inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), builderName)
-					assert.Nil(err)
-
-					assert.Equal(inspect.Os, "windows")
-				})
-			})
-		})
-
 		when("builder is created", func() {
 			var (
 				builderName string
@@ -554,8 +545,6 @@ func testAcceptance(
 			)
 
 			it.Before(func() {
-				h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
-
 				var err error
 				tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
 				assert.Nil(err)
@@ -625,6 +614,8 @@ func testAcceptance(
 					var untrustedBuilderName string
 
 					it.Before(func() {
+						h.SkipIf(t, dockerHostOS() == "windows", "untrusted builders are not yet supported for windows builds")
+
 						var err error
 						untrustedBuilderName, err = createBuilder(
 							t,
@@ -637,6 +628,9 @@ func testAcceptance(
 					})
 
 					it.After(func() {
+						if dockerHostOS() == "windows" {
+							return
+						}
 						h.DockerRmi(dockerCli, untrustedBuilderName)
 					})
 
@@ -767,6 +761,21 @@ func testAcceptance(
 							t.Log("inspect-image")
 							output = pack.RunSuccessfully("inspect-image", repoName)
 
+							var (
+								webCommand   string
+								helloCommand string
+								helloArgs    string
+							)
+							if dockerHostOS() == "windows" {
+								webCommand = ".\\run"
+								helloCommand = "cmd"
+								helloArgs = " /c echo hello world"
+							} else {
+								webCommand = "./run"
+								helloCommand = "echo"
+								helloArgs = "hello world"
+							}
+
 							expectedOutput := pack.FixtureManager().TemplateFixture(
 								"inspect_image_local_output.txt",
 								map[string]interface{}{
@@ -775,8 +784,9 @@ func testAcceptance(
 									"base_image_top_layer":   h.TopLayerDiffID(t, runImageMirror),
 									"run_image_local_mirror": localRunImageMirror,
 									"run_image_mirror":       runImageMirror,
-									"show_reference":         lifecycle.ShouldShowReference(),
-									"show_processes":         lifecycle.ShouldShowProcesses(),
+									"web_command":            webCommand,
+									"hello_command":          helloCommand,
+									"hello_args":             helloArgs,
 								},
 							)
 
@@ -888,14 +898,22 @@ func testAcceptance(
 							readBuildpackTgz,
 							readWriteBuildpackTgz,
 							tmpVolumeSrc string
+							volumeRoot = "/"
+							slash      = "/"
 						)
 
 						it.Before(func() {
+							h.SkipIf(t, os.Getenv("DOCKER_HOST") != "", "cannot mount volume when DOCKER_HOST is set")
+
 							h.SkipUnless(t,
 								pack.SupportsFeature(invoke.ReadWriteVolumeMounts),
 								"pack version does not support read/write volume mounts",
 							)
 
+							if dockerHostOS() == "windows" {
+								volumeRoot = `c:\`
+								slash = `\`
+							}
 							readBuildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "read-volume-buildpack"), "./", 0755)
 							readWriteBuildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "read-write-volume-buildpack"), "./", 0755)
 
@@ -922,63 +940,65 @@ func testAcceptance(
 
 						when("volume is read-only", func() {
 							it("mounts the provided volume in the detect and build phases", func() {
+								volumeDest := volumeRoot + "platform" + slash + "volume-mount-target"
+								testFilePath := volumeDest + slash + "some-file"
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--volume", fmt.Sprintf("%s:/platform/volume-mount-target", tmpVolumeSrc),
+									"--volume", fmt.Sprintf("%s:%s", tmpVolumeSrc, volumeDest),
 									"--buildpack", readBuildpackTgz,
-									"--env", "TEST_FILE_PATH=/platform/volume-mount-target/some-file",
+									"--env", "TEST_FILE_PATH="+testFilePath,
 								)
 
 								bpOutputAsserts := assertions.NewTestBuildpackOutputAssertionManager(t, output)
-								bpOutputAsserts.ReportsReadingFileContents("Detect", "/platform/volume-mount-target/some-file", "some-content")
-								bpOutputAsserts.ReportsReadingFileContents("Build", "/platform/volume-mount-target/some-file", "some-content")
+								bpOutputAsserts.ReportsReadingFileContents("Detect", testFilePath, "some-content")
+								bpOutputAsserts.ReportsReadingFileContents("Build", testFilePath, "some-content")
 							})
 
 							it("should fail to write", func() {
+								volumeDest := volumeRoot + "platform" + slash + "volume-mount-target"
+								testDetectFilePath := volumeDest + slash + "detect-file"
+								testBuildFilePath := volumeDest + slash + "build-file"
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--volume", fmt.Sprintf("%s:/platform/volume-mount-target", tmpVolumeSrc),
+									"--volume", fmt.Sprintf("%s:%s", tmpVolumeSrc, volumeDest),
 									"--buildpack", readWriteBuildpackTgz,
-									"--env", "DETECT_TEST_FILE_PATH=/platform/volume-mount-target/detect-file",
-									"--env", "BUILD_TEST_FILE_PATH=/platform/volume-mount-target/build-file",
+									"--env", "DETECT_TEST_FILE_PATH="+testDetectFilePath,
+									"--env", "BUILD_TEST_FILE_PATH="+testBuildFilePath,
 								)
 
 								bpOutputAsserts := assertions.NewTestBuildpackOutputAssertionManager(t, output)
-								bpOutputAsserts.ReportsFailingToWriteFileContents("Detect", "/platform/volume-mount-target/detect-file")
-								bpOutputAsserts.ReportsFailingToWriteFileContents("Build", "/platform/volume-mount-target/build-file")
+								bpOutputAsserts.ReportsFailingToWriteFileContents("Detect", testDetectFilePath)
+								bpOutputAsserts.ReportsFailingToWriteFileContents("Build", testBuildFilePath)
 							})
 						})
 
 						when("volume is read-write", func() {
 							it("can be written to", func() {
+								volumeDest := volumeRoot + "volume-mount-target"
+								testDetectFilePath := volumeDest + slash + "detect-file"
+								testBuildFilePath := volumeDest + slash + "build-file"
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--volume", fmt.Sprintf("%s:/volume-mount-target:rw", tmpVolumeSrc),
+									"--volume", fmt.Sprintf("%s:%s:rw", tmpVolumeSrc, volumeDest),
 									"--buildpack", readWriteBuildpackTgz,
-									"--env", "DETECT_TEST_FILE_PATH=/volume-mount-target/detect-file",
-									"--env", "BUILD_TEST_FILE_PATH=/volume-mount-target/build-file",
+									"--env", "DETECT_TEST_FILE_PATH="+testDetectFilePath,
+									"--env", "BUILD_TEST_FILE_PATH="+testBuildFilePath,
 								)
 
 								bpOutputAsserts := assertions.NewTestBuildpackOutputAssertionManager(t, output)
-								bpOutputAsserts.ReportsWritingFileContents("Detect", "/volume-mount-target/detect-file")
-								bpOutputAsserts.ReportsReadingFileContents("Detect", "/volume-mount-target/detect-file", "some-content")
-								bpOutputAsserts.ReportsWritingFileContents("Build", "/volume-mount-target/build-file")
-								bpOutputAsserts.ReportsReadingFileContents("Build", "/volume-mount-target/build-file", "some-content")
+								bpOutputAsserts.ReportsWritingFileContents("Detect", testDetectFilePath)
+								bpOutputAsserts.ReportsReadingFileContents("Detect", testDetectFilePath, "some-content")
+								bpOutputAsserts.ReportsWritingFileContents("Build", testBuildFilePath)
+								bpOutputAsserts.ReportsReadingFileContents("Build", testBuildFilePath, "some-content")
 							})
 						})
 					})
 
 					when("--default-process", func() {
 						it("sets the default process from those in the process list", func() {
-							h.SkipUnless(t, pack.Supports("build --default-process"), "--default-process flag is not supported")
-							h.SkipUnless(t,
-								lifecycle.SupportsFeature(config.DefaultProcess),
-								"skipping default process. Lifecycle does not support it",
-							)
-
 							pack.RunSuccessfully(
 								"build", repoName,
 								"--default-process", "hello",
@@ -1070,6 +1090,7 @@ func testAcceptance(
 									!pack.Supports("package-buildpack"),
 									"--buildpack does not accept buildpackage unless package-buildpack is supported",
 								)
+								h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
 
 								packageImageName = packageBuildpackAsImage(t,
 									assert,
@@ -1114,6 +1135,7 @@ func testAcceptance(
 									!pack.Supports("package-buildpack --format"),
 									"--buildpack does not accept buildpackage file unless package-buildpack with --format is supported",
 								)
+								h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
 
 								var err error
 								tmpDir, err = ioutil.TempDir("", "package-file")
@@ -1193,8 +1215,8 @@ func testAcceptance(
 							err = os.Setenv("ENV2_CONTENTS", "Env2 Layer Contents From Environment")
 							assert.Nil(err)
 							envfile.WriteString(`
-            DETECT_ENV_BUILDPACK="true"
-			ENV1_CONTENTS="Env1 Layer Contents From File"
+            DETECT_ENV_BUILDPACK=true
+			ENV1_CONTENTS=Env1 Layer Contents From File
 			ENV2_CONTENTS
 			`)
 							envPath = envfile.Name()
@@ -1255,12 +1277,20 @@ func testAcceptance(
 
 						when("the run-image has the correct stack ID", func() {
 							it.Before(func() {
+								user := func() string {
+									if dockerHostOS() == "windows" {
+										return "ContainerAdministrator"
+									}
+
+									return "root"
+								}
+
 								runImageName = h.CreateImageOnRemote(t, dockerCli, registryConfig, "custom-run-image"+h.RandString(10), fmt.Sprintf(`
 													FROM %s
-													USER root
+													USER %s
 													RUN echo "custom-run" > /custom-run.txt
 													USER pack
-												`, runImage))
+												`, runImage, user()))
 							})
 
 							it.After(func() {
@@ -1323,12 +1353,16 @@ func testAcceptance(
 
 					when("--publish", func() {
 						it("creates image on the registry", func() {
-							output := pack.RunSuccessfully(
-								"build", repoName,
+							buildArgs := []string{
+								repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
 								"--publish",
-								"--network", "host",
-							)
+							}
+							if dockerHostOS() != "windows" {
+								buildArgs = append(buildArgs, "--network", "host")
+							}
+
+							output := pack.RunSuccessfully("build", buildArgs...)
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 							t.Log("checking that registry has contents")
@@ -1353,6 +1387,21 @@ func testAcceptance(
 								t.Log("inspect-image")
 								output = pack.RunSuccessfully("inspect-image", repoName)
 
+								var (
+									webCommand   string
+									helloCommand string
+									helloArgs    string
+								)
+								if dockerHostOS() == "windows" {
+									webCommand = ".\\run"
+									helloCommand = "cmd"
+									helloArgs = " /c echo hello world"
+								} else {
+									webCommand = "./run"
+									helloCommand = "echo"
+									helloArgs = "hello world"
+								}
+
 								expectedOutput := pack.FixtureManager().TemplateFixture(
 									"inspect_image_published_output.txt",
 									map[string]interface{}{
@@ -1360,8 +1409,9 @@ func testAcceptance(
 										"base_image_ref":       strings.Join([]string{runImageMirror, h.Digest(t, runImageMirror)}, "@"),
 										"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
 										"run_image_mirror":     runImageMirror,
-										"show_reference":       lifecycle.ShouldShowReference(),
-										"show_processes":       lifecycle.ShouldShowReference(),
+										"web_command":          webCommand,
+										"hello_command":        helloCommand,
+										"hello_args":           helloArgs,
 									},
 								)
 
@@ -1547,18 +1597,29 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 
 						output = pack.RunSuccessfully("inspect-builder", builderName)
 
+						deprecatedBuildpackAPIs,
+							supportedBuildpackAPIs,
+							deprecatedPlatformAPIs,
+							supportedPlatformAPIs := lifecycle.OutputForAPIs()
+
 						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 							"inspect_%s_builder_nested_output.txt",
 							createBuilderPack.Version(),
 							"inspect_builder_nested_output.txt",
 							map[string]interface{}{
-								"builder_name":          builderName,
-								"lifecycle_version":     lifecycle.Version(),
-								"buildpack_api_version": lifecycle.BuildpackAPIVersion(),
-								"platform_api_version":  lifecycle.PlatformAPIVersion(),
-								"run_image_mirror":      runImageMirror,
-								"pack_version":          createBuilderPack.Version(),
-								"trusted":               "No",
+								"builder_name":              builderName,
+								"lifecycle_version":         lifecycle.Version(),
+								"deprecated_buildpack_apis": deprecatedBuildpackAPIs,
+								"supported_buildpack_apis":  supportedBuildpackAPIs,
+								"deprecated_platform_apis":  deprecatedPlatformAPIs,
+								"supported_platform_apis":   supportedPlatformAPIs,
+								"run_image_mirror":          runImageMirror,
+								"pack_version":              createBuilderPack.Version(),
+								"trusted":                   "No",
+
+								// set previous pack template fields
+								"buildpack_api_version": lifecycle.EarliestBuildpackAPIVersion(),
+								"platform_api_version":  lifecycle.EarliestPlatformAPIVersion(),
 							},
 						)
 
@@ -1573,18 +1634,29 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 
 						output = pack.RunSuccessfully("inspect-builder", "--depth", "2", builderName)
 
+						deprecatedBuildpackAPIs,
+							supportedBuildpackAPIs,
+							deprecatedPlatformAPIs,
+							supportedPlatformAPIs := lifecycle.OutputForAPIs()
+
 						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 							"inspect_%s_builder_nested_depth_2_output.txt",
 							createBuilderPack.Version(),
 							"inspect_builder_nested_depth_2_output.txt",
 							map[string]interface{}{
-								"builder_name":          builderName,
-								"lifecycle_version":     lifecycle.Version(),
-								"buildpack_api_version": lifecycle.BuildpackAPIVersion(),
-								"platform_api_version":  lifecycle.PlatformAPIVersion(),
-								"run_image_mirror":      runImageMirror,
-								"pack_version":          createBuilderPack.Version(),
-								"trusted":               "No",
+								"builder_name":              builderName,
+								"lifecycle_version":         lifecycle.Version(),
+								"deprecated_buildpack_apis": deprecatedBuildpackAPIs,
+								"supported_buildpack_apis":  supportedBuildpackAPIs,
+								"deprecated_platform_apis":  deprecatedPlatformAPIs,
+								"supported_platform_apis":   supportedPlatformAPIs,
+								"run_image_mirror":          runImageMirror,
+								"pack_version":              createBuilderPack.Version(),
+								"trusted":                   "No",
+
+								// set previous pack template fields
+								"buildpack_api_version": lifecycle.EarliestBuildpackAPIVersion(),
+								"platform_api_version":  lifecycle.EarliestPlatformAPIVersion(),
 							},
 						)
 
@@ -1600,18 +1672,29 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 
 					output = pack.RunSuccessfully("inspect-builder", builderName)
 
+					deprecatedBuildpackAPIs,
+						supportedBuildpackAPIs,
+						deprecatedPlatformAPIs,
+						supportedPlatformAPIs := lifecycle.OutputForAPIs()
+
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 						"inspect_%s_builder_output.txt",
 						createBuilderPack.Version(),
 						"inspect_builder_output.txt",
 						map[string]interface{}{
-							"builder_name":          builderName,
-							"lifecycle_version":     lifecycle.Version(),
-							"buildpack_api_version": lifecycle.BuildpackAPIVersion(),
-							"platform_api_version":  lifecycle.PlatformAPIVersion(),
-							"run_image_mirror":      runImageMirror,
-							"pack_version":          createBuilderPack.Version(),
-							"trusted":               "No",
+							"builder_name":              builderName,
+							"lifecycle_version":         lifecycle.Version(),
+							"deprecated_buildpack_apis": deprecatedBuildpackAPIs,
+							"supported_buildpack_apis":  supportedBuildpackAPIs,
+							"deprecated_platform_apis":  deprecatedPlatformAPIs,
+							"supported_platform_apis":   supportedPlatformAPIs,
+							"run_image_mirror":          runImageMirror,
+							"pack_version":              createBuilderPack.Version(),
+							"trusted":                   "No",
+
+							// set previous pack template fields
+							"buildpack_api_version": lifecycle.EarliestBuildpackAPIVersion(),
+							"platform_api_version":  lifecycle.EarliestPlatformAPIVersion(),
 						},
 					)
 
@@ -1628,18 +1711,29 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 
 					output := pack.RunSuccessfully("inspect-builder", builderName)
 
+					deprecatedBuildpackAPIs,
+						supportedBuildpackAPIs,
+						deprecatedPlatformAPIs,
+						supportedPlatformAPIs := lifecycle.OutputForAPIs()
+
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 						"inspect_%s_builder_output.txt",
 						createBuilderPack.Version(),
 						"inspect_builder_output.txt",
 						map[string]interface{}{
-							"builder_name":          builderName,
-							"lifecycle_version":     lifecycle.Version(),
-							"buildpack_api_version": lifecycle.BuildpackAPIVersion(),
-							"platform_api_version":  lifecycle.PlatformAPIVersion(),
-							"run_image_mirror":      runImageMirror,
-							"pack_version":          createBuilderPack.Version(),
-							"trusted":               "Yes",
+							"builder_name":              builderName,
+							"lifecycle_version":         lifecycle.Version(),
+							"deprecated_buildpack_apis": deprecatedBuildpackAPIs,
+							"supported_buildpack_apis":  supportedBuildpackAPIs,
+							"deprecated_platform_apis":  deprecatedPlatformAPIs,
+							"supported_platform_apis":   supportedPlatformAPIs,
+							"run_image_mirror":          runImageMirror,
+							"pack_version":              createBuilderPack.Version(),
+							"trusted":                   "Yes",
+
+							// set previous pack template fields
+							"buildpack_api_version": lifecycle.EarliestBuildpackAPIVersion(),
+							"platform_api_version":  lifecycle.EarliestPlatformAPIVersion(),
 						},
 					)
 
@@ -1652,19 +1746,31 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 				var buildRunImage func(string, string, string)
 
 				it.Before(func() {
+					pack.JustRunSuccessfully("trust-builder", builderName)
+
 					repoName = registryConfig.RepoName("some-org/" + h.RandString(10))
 					runBefore = registryConfig.RepoName("run-before/" + h.RandString(10))
 
 					buildRunImage = func(newRunImage, contents1, contents2 string) {
+						user := func() string {
+							if dockerHostOS() == "windows" {
+								return "ContainerAdministrator"
+							}
+
+							return "root"
+						}
+
 						h.CreateImage(t, dockerCli, newRunImage, fmt.Sprintf(`
 													FROM %s
-													USER root
+													USER %s
 													RUN echo %s > /contents1.txt
 													RUN echo %s > /contents2.txt
 													USER pack
-												`, runImage, contents1, contents2))
+												`, runImage, user(), contents1, contents2))
 					}
+
 					buildRunImage(runBefore, "contents-before-1", "contents-before-2")
+					// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 					pack.RunSuccessfully(
 						"build", repoName,
 						"-p", filepath.Join("testdata", "mock_app"),
@@ -1705,6 +1811,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 
 						it("uses provided run image", func() {
+							// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 							output := pack.RunSuccessfully(
 								"rebase", repoName,
 								"--run-image", runAfter,
@@ -1735,6 +1842,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 
 						it("prefers the local mirror", func() {
+							// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 							output := pack.RunSuccessfully("rebase", repoName, "--no-pull")
 
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
@@ -1758,6 +1866,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 
 						it("selects the best mirror", func() {
+							// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 							output := pack.RunSuccessfully("rebase", repoName, "--no-pull")
 
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
@@ -1830,7 +1939,7 @@ func createComplexBuilder(t *testing.T,
 	defer os.RemoveAll(tmpDir)
 
 	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(lifecycle.BuildpackAPIVersion())
+	buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
 	t.Log("using buildpacks from: ", buildpacksDir)
 	h.RecursiveCopy(t, buildpacksDir, tmpDir)
 
@@ -1862,9 +1971,6 @@ func createComplexBuilder(t *testing.T,
 
 	if dockerHostOS() != "windows" {
 		for _, buildpackName := range buildpackImages {
-
-			//template toml file
-			// use fixture manager to handle the new pack locations
 			packageFileName := buildpackName + "_package.toml"
 			packageFileDest := filepath.Join(tmpDir, packageFileName)
 			packageFile, err := os.OpenFile(packageFileDest, os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.ModePerm)
@@ -1965,7 +2071,7 @@ func createBuilder(
 	defer os.RemoveAll(tmpDir)
 
 	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(lifecycle.BuildpackAPIVersion())
+	buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
 	t.Log("using buildpacks from: ", buildpacksDir)
 	h.RecursiveCopy(t, buildpacksDir, tmpDir)
 
@@ -1975,6 +2081,12 @@ func createBuilder(
 		"noop-buildpack-2",
 		"other-stack-buildpack",
 		"read-env-buildpack",
+	}
+
+	// NOTE: Windows-based packages are not yet supported, so we'll add this buildpack in the usual way for now.
+	// Remove this block once Windows-based packages are supported.
+	if dockerHostOS() == "windows" {
+		buildpacks = append(buildpacks, "simple-layers-buildpack")
 	}
 
 	for _, v := range buildpacks {
@@ -1987,6 +2099,9 @@ func createBuilder(
 
 	var packageImageName string
 	var packageId string
+
+	// NOTE: Windows-based packages are not yet supported, so we'll add this buildpack in the usual way for now (see above).
+	// Remove this guard once Windows-based packages are supported.
 	if dockerHostOS() != "windows" {
 		// CREATE PACKAGE
 		packageImageName = packageBuildpackAsImage(t,
@@ -2012,13 +2127,20 @@ func createBuilder(
 	}
 
 	// RENDER builder.toml
+	configFileName := "builder.toml"
+
+	// NOTE: Remove when Windows-based packages are supported (can use same toml at that point)
+	if dockerHostOS() == "windows" {
+		configFileName = "builder-windows.toml"
+	}
+
 	builderConfigFile, err := ioutil.TempFile(tmpDir, "builder.toml")
 	if err != nil {
 		return "", err
 	}
 
 	pack.FixtureManager().TemplateFixtureToFile(
-		"builder.toml",
+		configFileName,
 		builderConfigFile,
 		map[string]interface{}{
 			"package_image_name": packageImageName,
@@ -2046,7 +2168,6 @@ func createBuilder(
 	if err != nil {
 		return "", errors.Wrapf(err, "pack failed with output %s", output)
 	}
-
 	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
 	assert.Nil(h.PushImage(dockerCli, bldr, registryConfig))
 
@@ -2102,7 +2223,7 @@ func packageBuildpack(
 	assert.Nil(err)
 
 	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(lifecycle.BuildpackAPIVersion())
+	buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
 	t.Log("using buildpacks from: ", buildpacksDir)
 	h.RecursiveCopy(t, buildpacksDir, tmpDir)
 
@@ -2267,7 +2388,6 @@ func runDockerImageExposePort(t *testing.T, assert h.AssertionManager, container
 
 	ctr, err := dockerCli.ContainerCreate(ctx, &container.Config{
 		Image:        repoName,
-		Env:          []string{"PORT=8080"},
 		ExposedPorts: map[nat.Port]struct{}{"8080/tcp": {}},
 		Healthcheck:  nil,
 	}, &container.HostConfig{
@@ -2293,7 +2413,7 @@ func waitForResponse(t *testing.T, port string, timeout time.Duration) string {
 	for {
 		select {
 		case <-ticker.C:
-			resp, err := h.HTTPGetE("http://localhost:"+port, map[string]string{})
+			resp, err := h.HTTPGetE("http://"+h.RegistryHost(h.DockerHostname(t), port), map[string]string{})
 			if err != nil {
 				break
 			}
