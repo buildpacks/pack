@@ -453,7 +453,7 @@ func testWithoutSpecificBuilderRequirement(
 			it("explicit mode doesn't redact", func() {
 				pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
 
-				output := pack.RunSuccessfully("report", "-e")
+				output := pack.RunSuccessfully("report", "--explicit")
 
 				version := pack.Version()
 
