@@ -11,8 +11,9 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/api"
+
 	acceptanceOS "github.com/buildpacks/pack/acceptance/os"
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/style"
@@ -21,7 +22,6 @@ import (
 
 const (
 	defaultCompilePackVersion = "0.0.0"
-	defaultPlatformAPIVersion = "0.3"
 )
 
 var (
@@ -325,7 +325,6 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 
 	cmd := exec.Command("go", "build",
 		"-ldflags", fmt.Sprintf("-X 'github.com/buildpacks/pack/cmd.Version=%s'", compileVersion),
-		"-mod=vendor",
 		"-o", packPath,
 		"./cmd/pack",
 	)
@@ -341,13 +340,13 @@ func (b assetManagerBuilder) buildPack(compileVersion string) string {
 }
 
 func defaultLifecycleDescriptor() builder.LifecycleDescriptor {
-	return builder.LifecycleDescriptor{
+	return builder.CompatDescriptor(builder.LifecycleDescriptor{
 		Info: builder.LifecycleInfo{
 			Version: builder.VersionMustParse(builder.DefaultLifecycleVersion),
 		},
 		API: builder.LifecycleAPI{
 			BuildpackVersion: api.MustParse(builder.DefaultBuildpackAPIVersion),
-			PlatformVersion:  api.MustParse(defaultPlatformAPIVersion),
+			PlatformVersion:  api.MustParse(builder.DefaultPlatformAPIVersion),
 		},
-	}
+	})
 }

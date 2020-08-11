@@ -2,8 +2,8 @@ package fakes
 
 import (
 	"github.com/Masterminds/semver"
+	"github.com/buildpacks/lifecycle/api"
 
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 )
@@ -37,9 +37,13 @@ func NewFakeBuilder(ops ...func(*FakeBuilder)) (*FakeBuilder, error) {
 		ReturnForUID:  99,
 		ReturnForGID:  99,
 		ReturnForLifecycleDescriptor: builder.LifecycleDescriptor{
-			API: builder.LifecycleAPI{
-				BuildpackVersion: buildpackVersion,
-				PlatformVersion:  platformAPIVersion,
+			APIs: builder.LifecycleAPIs{
+				Buildpack: builder.APIVersions{
+					Supported: builder.APISet{buildpackVersion},
+				},
+				Platform: builder.APIVersions{
+					Supported: builder.APISet{platformAPIVersion},
+				},
 			},
 			Info: builder.LifecycleInfo{
 				Version: &builder.Version{Version: *infoVersion},
@@ -58,12 +62,6 @@ func NewFakeBuilder(ops ...func(*FakeBuilder)) (*FakeBuilder, error) {
 func WithName(name string) func(*FakeBuilder) {
 	return func(builder *FakeBuilder) {
 		builder.ReturnForName = name
-	}
-}
-
-func WithPlatformVersion(version *api.Version) func(*FakeBuilder) {
-	return func(builder *FakeBuilder) {
-		builder.ReturnForLifecycleDescriptor.API.PlatformVersion = version
 	}
 }
 

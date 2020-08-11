@@ -476,7 +476,7 @@ func testAcceptance(
 ) {
 	var (
 		pack, createBuilderPack *invoke.PackInvoker
-		bpDir                   = buildpacksDir(lifecycle.BuildpackAPIVersion())
+		bpDir                   = buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
 		assert                  = h.NewAssertionManager(t)
 	)
 
@@ -775,8 +775,6 @@ func testAcceptance(
 									"base_image_top_layer":   h.TopLayerDiffID(t, runImageMirror),
 									"run_image_local_mirror": localRunImageMirror,
 									"run_image_mirror":       runImageMirror,
-									"show_reference":         lifecycle.ShouldShowReference(),
-									"show_processes":         lifecycle.ShouldShowProcesses(),
 								},
 							)
 
@@ -973,12 +971,6 @@ func testAcceptance(
 
 					when("--default-process", func() {
 						it("sets the default process from those in the process list", func() {
-							h.SkipUnless(t, pack.Supports("build --default-process"), "--default-process flag is not supported")
-							h.SkipUnless(t,
-								lifecycle.SupportsFeature(config.DefaultProcess),
-								"skipping default process. Lifecycle does not support it",
-							)
-
 							pack.RunSuccessfully(
 								"build", repoName,
 								"--default-process", "hello",
@@ -1360,8 +1352,6 @@ func testAcceptance(
 										"base_image_ref":       strings.Join([]string{runImageMirror, h.Digest(t, runImageMirror)}, "@"),
 										"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
 										"run_image_mirror":     runImageMirror,
-										"show_reference":       lifecycle.ShouldShowReference(),
-										"show_processes":       lifecycle.ShouldShowReference(),
 									},
 								)
 
@@ -1509,18 +1499,29 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 
 					output = pack.RunSuccessfully("inspect-builder", builderName)
 
+					deprecatedBuildpackAPIs,
+						supportedBuildpackAPIs,
+						deprecatedPlatformAPIs,
+						supportedPlatformAPIs := lifecycle.OutputForAPIs()
+
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 						"inspect_%s_builder_output.txt",
 						createBuilderPack.Version(),
 						"inspect_builder_output.txt",
 						map[string]interface{}{
-							"builder_name":          builderName,
-							"lifecycle_version":     lifecycle.Version(),
-							"buildpack_api_version": lifecycle.BuildpackAPIVersion(),
-							"platform_api_version":  lifecycle.PlatformAPIVersion(),
-							"run_image_mirror":      runImageMirror,
-							"pack_version":          createBuilderPack.Version(),
-							"trusted":               "No",
+							"builder_name":              builderName,
+							"lifecycle_version":         lifecycle.Version(),
+							"deprecated_buildpack_apis": deprecatedBuildpackAPIs,
+							"supported_buildpack_apis":  supportedBuildpackAPIs,
+							"deprecated_platform_apis":  deprecatedPlatformAPIs,
+							"supported_platform_apis":   supportedPlatformAPIs,
+							"run_image_mirror":          runImageMirror,
+							"pack_version":              createBuilderPack.Version(),
+							"trusted":                   "No",
+
+							// set previous pack template fields
+							"buildpack_api_version": lifecycle.EarliestBuildpackAPIVersion(),
+							"platform_api_version":  lifecycle.EarliestPlatformAPIVersion(),
 						},
 					)
 
@@ -1537,18 +1538,29 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 
 					output := pack.RunSuccessfully("inspect-builder", builderName)
 
+					deprecatedBuildpackAPIs,
+						supportedBuildpackAPIs,
+						deprecatedPlatformAPIs,
+						supportedPlatformAPIs := lifecycle.OutputForAPIs()
+
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 						"inspect_%s_builder_output.txt",
 						createBuilderPack.Version(),
 						"inspect_builder_output.txt",
 						map[string]interface{}{
-							"builder_name":          builderName,
-							"lifecycle_version":     lifecycle.Version(),
-							"buildpack_api_version": lifecycle.BuildpackAPIVersion(),
-							"platform_api_version":  lifecycle.PlatformAPIVersion(),
-							"run_image_mirror":      runImageMirror,
-							"pack_version":          createBuilderPack.Version(),
-							"trusted":               "Yes",
+							"builder_name":              builderName,
+							"lifecycle_version":         lifecycle.Version(),
+							"deprecated_buildpack_apis": deprecatedBuildpackAPIs,
+							"supported_buildpack_apis":  supportedBuildpackAPIs,
+							"deprecated_platform_apis":  deprecatedPlatformAPIs,
+							"supported_platform_apis":   supportedPlatformAPIs,
+							"run_image_mirror":          runImageMirror,
+							"pack_version":              createBuilderPack.Version(),
+							"trusted":                   "Yes",
+
+							// set previous pack template fields
+							"buildpack_api_version": lifecycle.EarliestBuildpackAPIVersion(),
+							"platform_api_version":  lifecycle.EarliestPlatformAPIVersion(),
 						},
 					)
 
@@ -1741,7 +1753,7 @@ func createBuilder(
 	defer os.RemoveAll(tmpDir)
 
 	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(lifecycle.BuildpackAPIVersion())
+	buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
 	t.Log("using buildpacks from: ", buildpacksDir)
 	h.RecursiveCopy(t, buildpacksDir, tmpDir)
 
@@ -1878,7 +1890,7 @@ func packageBuildpack(
 	assert.Nil(err)
 
 	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(lifecycle.BuildpackAPIVersion())
+	buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
 	t.Log("using buildpacks from: ", buildpacksDir)
 	h.RecursiveCopy(t, buildpacksDir, tmpDir)
 

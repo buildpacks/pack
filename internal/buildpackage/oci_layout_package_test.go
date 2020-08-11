@@ -9,7 +9,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/api"
+	"github.com/buildpacks/lifecycle/api"
+
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/buildpackage"

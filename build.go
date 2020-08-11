@@ -18,7 +18,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
@@ -98,7 +97,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	bldr, err := c.getBuilder(rawBuilderImage)
 	if err != nil {
-		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
+		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
 	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors)
@@ -127,17 +126,14 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
-	lcPlatformAPIVersion := ephemeralBuilder.LifecycleDescriptor().API.PlatformVersion
-	supportsPlatform := false
-	for _, v := range build.SupportedPlatformAPIVersions {
-		if api.MustParse(v).SupportsVersion(lcPlatformAPIVersion) {
-			supportsPlatform = true
-			break
-		}
-	}
-	if !supportsPlatform {
-		c.logger.Debugf("pack %s supports Platform API version(s): %s", Version, strings.Join(build.SupportedPlatformAPIVersions, ", "))
-		c.logger.Debugf("Builder %s has Platform API version: %s", style.Symbol(opts.Builder), lcPlatformAPIVersion)
+	builderPlatformAPIs := append(
+		ephemeralBuilder.LifecycleDescriptor().APIs.Platform.Deprecated,
+		ephemeralBuilder.LifecycleDescriptor().APIs.Platform.Supported...,
+	)
+
+	if !supportsPlatformAPI(builderPlatformAPIs) {
+		c.logger.Debugf("pack %s supports Platform API(s): %s", Version, strings.Join(build.SupportedPlatformAPIVersions.AsStrings(), ", "))
+		c.logger.Debugf("Builder %s supports Platform API(s): %s", style.Symbol(opts.Builder), strings.Join(builderPlatformAPIs.AsStrings(), ", "))
 		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
 	}
 
@@ -208,6 +204,20 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	return nil
 }
 
+// supportsPlatformAPI determines whether pack can build using the builder based on the builder's supported Platform API versions.
+func supportsPlatformAPI(builderPlatformAPIs builder.APISet) bool {
+	for _, packSupportedAPI := range build.SupportedPlatformAPIVersions {
+		for _, builderSupportedAPI := range builderPlatformAPIs {
+			supportsPlatform := packSupportedAPI.Compare(builderSupportedAPI) == 0
+			if supportsPlatform {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func (c *Client) processBuilderName(builderName string) (name.Reference, error) {
 	if builderName == "" {
 		return nil, errors.New("builder is a required parameter if the client has no default builder")
@@ -221,17 +231,20 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 		return nil, err
 	}
 	if bldr.Stack().RunImage.Image == "" {
-		return nil, errors.New("builder metadata is missing runImage")
+		return nil, errors.New("builder metadata is missing run-image")
 	}
-	if bldr.LifecycleDescriptor().Info.Version == nil {
+
+	lifecycleDescriptor := bldr.LifecycleDescriptor()
+	if lifecycleDescriptor.Info.Version == nil {
 		return nil, errors.New("lifecycle version must be specified in builder")
 	}
-	if bldr.LifecycleDescriptor().API.BuildpackVersion == nil {
-		return nil, errors.New("lifecycle buildpack api version must be specified in builder")
+	if len(lifecycleDescriptor.APIs.Buildpack.Supported) == 0 {
+		return nil, errors.New("supported Lifecycle Buildpack APIs not specified")
 	}
-	if bldr.LifecycleDescriptor().API.PlatformVersion == nil {
-		return nil, errors.New("lifecycle platform api version must be specified in builder")
+	if len(lifecycleDescriptor.APIs.Platform.Supported) == 0 {
+		return nil, errors.New("supported Lifecycle Platform APIs not specified")
 	}
+
 	return bldr, nil
 }
 
