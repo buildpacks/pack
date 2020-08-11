@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
 	"github.com/heroku/color"
@@ -71,6 +72,34 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 					}
 				})
 
+				when("only deprecated lifecycle apis are present", func() {
+					it.Before(func() {
+						h.AssertNil(t, builderImage.SetLabel(
+							"io.buildpacks.builder.metadata",
+							`{"lifecycle": {"version": "1.2.3", "api": {"buildpack": "1.2","platform": "2.3"}}}`,
+						))
+					})
+
+					it("returns has both deprecated and new fields", func() {
+						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, builderInfo.Lifecycle, builder.LifecycleDescriptor{
+							Info: builder.LifecycleInfo{
+								Version: builder.VersionMustParse("1.2.3"),
+							},
+							API: builder.LifecycleAPI{
+								BuildpackVersion: api.MustParse("1.2"),
+								PlatformVersion:  api.MustParse("2.3"),
+							},
+							APIs: builder.LifecycleAPIs{
+								Buildpack: builder.APIVersions{Supported: builder.APISet{api.MustParse("1.2")}},
+								Platform:  builder.APIVersions{Supported: builder.APISet{api.MustParse("2.3")}},
+							},
+						})
+					})
+				})
+
 				when("the builder image has appropriate metadata labels", func() {
 					it.Before(func() {
 						h.AssertNil(t, builderImage.SetLabel("io.buildpacks.builder.metadata", `{
@@ -90,7 +119,10 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	  "homepage": "http://geocities.com/cool-bp"
     }
   ],
-  "lifecycle": {"version": "1.2.3"},
+  "lifecycle": {"version": "1.2.3", "api": {"buildpack": "0.1","platform": "2.3"}, "apis":  {
+	"buildpack": {"deprecated": ["0.1"], "supported": ["1.2", "1.3"]},
+	"platform": {"deprecated": [], "supported": ["2.3", "2.4"]}
+  }},
   "createdBy": {"name": "pack", "version": "1.2.3"}
 }`))
 
@@ -110,13 +142,11 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 							Mixins:          []string{"mixinOne", "mixinThree", "build:mixinTwo", "build:mixinFour"},
 							RunImage:        "some/run-image",
 							RunImageMirrors: []string{"gcr.io/some/default"},
-							Buildpacks: []dist.BuildpackInfo{
-								dist.BuildpackInfo{
-									ID:       "test.bp.one",
-									Version:  "1.0.0",
-									Homepage: "http://geocities.com/cool-bp",
-								},
-							},
+							Buildpacks: []dist.BuildpackInfo{{
+								ID:       "test.bp.one",
+								Version:  "1.0.0",
+								Homepage: "http://geocities.com/cool-bp",
+							}},
 							Order: dist.Order{
 								{
 									Group: []dist.BuildpackRef{
@@ -135,6 +165,20 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 								Info: builder.LifecycleInfo{
 									Version: builder.VersionMustParse("1.2.3"),
 								},
+								API: builder.LifecycleAPI{
+									BuildpackVersion: api.MustParse("0.1"),
+									PlatformVersion:  api.MustParse("2.3"),
+								},
+								APIs: builder.LifecycleAPIs{
+									Buildpack: builder.APIVersions{
+										Deprecated: builder.APISet{api.MustParse("0.1")},
+										Supported:  builder.APISet{api.MustParse("1.2"), api.MustParse("1.3")},
+									},
+									Platform: builder.APIVersions{
+										Deprecated: builder.APISet{},
+										Supported:  builder.APISet{api.MustParse("2.3"), api.MustParse("2.4")},
+									},
+								},
 							},
 							CreatedBy: builder.CreatorMetadata{
 								Name:    "pack",
@@ -142,7 +186,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						}
 
-						if diff := cmp.Diff(*builderInfo, want); diff != "" {
+						if diff := cmp.Diff(want, *builderInfo); diff != "" {
 							t.Errorf("InspectBuilder() mismatch (-want +got):\n%s", diff)
 						}
 					})

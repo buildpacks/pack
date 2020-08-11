@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
@@ -20,7 +21,6 @@ import (
 	"github.com/buildpacks/pack"
 	pubbldr "github.com/buildpacks/pack/builder"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
@@ -76,7 +76,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "some/buildpack/dir").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
-			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil).AnyTimes()
+			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle-platform-0-1").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle-platform-0.1")), nil).AnyTimes()
 
 			var err error
@@ -135,10 +135,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		var prepareFetcherWithBuildImage = func() {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any(), gomock.Any()).Return(fakeBuildImage, nil)
-		}
-
-		var configureBuilderWithLifecycleAPIv0_1 = func() {
-			opts.Config.Lifecycle = pubbldr.LifecycleConfig{URI: "file:///some-lifecycle-platform-0-1"}
 		}
 
 		var successfullyCreateBuilder = func() *builder.Builder {
@@ -403,7 +399,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					gomock.Any(),
 					"https://github.com/buildpacks/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+linux.x86-64.tgz",
 				).Return(
-					blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil,
+					blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil,
 				)
 
 				err := subject.CreateBuilder(context.TODO(), opts)
@@ -426,7 +422,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						builder.DefaultLifecycleVersion,
 					),
 				).Return(
-					blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil,
+					blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil,
 				)
 
 				err := subject.CreateBuilder(context.TODO(), opts)
@@ -484,78 +480,32 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("should embed the lifecycle", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				successfullyCreateBuilder()
 
+				layerTar, err := fakeBuildImage.FindLayerWithPath("/cnb/lifecycle")
+				h.AssertNil(t, err)
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/detector")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/restorer")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/analyzer")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/builder")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/exporter")
+				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/launcher")
+			})
+
+			it("should set lifecycle descriptor", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
 				bldr := successfullyCreateBuilder()
 
-				h.AssertEq(t, bldr.LifecycleDescriptor().Info.Version.String(), "3.4.5")
+				h.AssertEq(t, bldr.LifecycleDescriptor().Info.Version.String(), "0.0.0")
+				//nolint:staticcheck
+				h.AssertEq(t, bldr.LifecycleDescriptor().API.BuildpackVersion.String(), "0.2")
+				//nolint:staticcheck
 				h.AssertEq(t, bldr.LifecycleDescriptor().API.PlatformVersion.String(), "0.2")
-
-				layerTar, err := fakeBuildImage.FindLayerWithPath("/cnb/lifecycle")
-				h.AssertNil(t, err)
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/detector")
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/restorer")
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/analyzer")
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/builder")
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/exporter")
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/launcher")
-			})
-		})
-
-		when("creation succeeds for platform API < 0.2", func() {
-			it("should set basic metadata", func() {
-				configureBuilderWithLifecycleAPIv0_1()
-				prepareFetcherWithBuildImage()
-				prepareFetcherWithRunImages()
-
-				bldr := successfullyCreateBuilder()
-
-				h.AssertEq(t, bldr.Name(), "some/builder")
-				h.AssertEq(t, bldr.Description(), "Some description")
-				h.AssertEq(t, bldr.UID(), 1234)
-				h.AssertEq(t, bldr.GID(), 4321)
-				h.AssertEq(t, bldr.StackID, "some.stack.id")
-			})
-
-			it("should set buildpack and order metadata", func() {
-				configureBuilderWithLifecycleAPIv0_1()
-				prepareFetcherWithBuildImage()
-				prepareFetcherWithRunImages()
-
-				bldr := successfullyCreateBuilder()
-
-				bpInfo := dist.BuildpackInfo{
-					ID:      "bp.one",
-					Version: "1.2.3",
-				}
-				h.AssertEq(t, bldr.Order(), dist.Order{{
-					Group: []dist.BuildpackRef{{
-						BuildpackInfo: bpInfo,
-						Optional:      false,
-					}},
-				}})
-				bpInfo.Homepage = "http://one.buildpack"
-				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
-			})
-
-			it("should embed the lifecycle", func() {
-				configureBuilderWithLifecycleAPIv0_1()
-				prepareFetcherWithBuildImage()
-				prepareFetcherWithRunImages()
-
-				bldr := successfullyCreateBuilder()
-
-				h.AssertEq(t, bldr.LifecycleDescriptor().Info.Version.String(), "3.4.5")
-				h.AssertEq(t, bldr.LifecycleDescriptor().API.PlatformVersion.String(), "0.1")
-
-				layerTar, err := fakeBuildImage.FindLayerWithPath("/cnb/lifecycle")
-				h.AssertNil(t, err)
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/detector")
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/restorer")
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/analyzer")
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/builder")
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/exporter")
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/cacher")
-				h.AssertTarHasFile(t, layerTar, "/cnb/lifecycle/launcher")
+				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{})
+				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Supported.AsStrings(), []string{"0.2", "0.3", "0.4"})
+				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Platform.Deprecated.AsStrings(), []string{"0.2"})
+				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Platform.Supported.AsStrings(), []string{"0.3", "0.4"})
 			})
 		})
 

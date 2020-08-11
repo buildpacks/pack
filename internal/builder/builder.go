@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -113,15 +114,13 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 }
 
 func constructLifecycleDescriptor(metadata Metadata) LifecycleDescriptor {
-	return LifecycleDescriptor{
+	return CompatDescriptor(LifecycleDescriptor{
 		Info: LifecycleInfo{
 			Version: metadata.Lifecycle.Version,
 		},
-		API: LifecycleAPI{
-			PlatformVersion:  metadata.Lifecycle.API.PlatformVersion,
-			BuildpackVersion: metadata.Lifecycle.API.BuildpackVersion,
-		},
-	}
+		API:  metadata.Lifecycle.API,
+		APIs: metadata.Lifecycle.APIs,
+	})
 }
 
 func addImgLabelsToBuildr(bldr *Builder) error {
@@ -274,8 +273,10 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	}
 
 	if b.lifecycle != nil {
-		b.metadata.Lifecycle.LifecycleInfo = b.lifecycle.Descriptor().Info
-		b.metadata.Lifecycle.API = b.lifecycle.Descriptor().API
+		lifecycleDescriptor := b.lifecycle.Descriptor()
+		b.metadata.Lifecycle.LifecycleInfo = lifecycleDescriptor.Info
+		b.metadata.Lifecycle.API = lifecycleDescriptor.API
+		b.metadata.Lifecycle.APIs = lifecycleDescriptor.APIs
 		lifecycleTar, err := b.lifecycleLayer(tmpDir)
 		if err != nil {
 			return err
@@ -439,13 +440,22 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 	for _, bp := range bpsToValidate {
 		bpd := bp.Descriptor()
 
-		if !bpd.API.SupportsVersion(lifecycleDescriptor.API.BuildpackVersion) {
+		// TODO: Warn when Buildpack API is deprecated - https://github.com/buildpacks/pack/issues/788
+		compatible := false
+		for _, version := range append(lifecycleDescriptor.APIs.Buildpack.Supported, lifecycleDescriptor.APIs.Buildpack.Deprecated...) {
+			compatible = version.Compare(bpd.API) == 0
+			if compatible {
+				break
+			}
+		}
+
+		if !compatible {
 			return fmt.Errorf(
-				"buildpack %s (Buildpack API version %s) is incompatible with lifecycle %s (Buildpack API version %s)",
+				"buildpack %s (Buildpack API %s) is incompatible with lifecycle %s (Buildpack API(s) %s)",
 				style.Symbol(bpd.Info.FullName()),
 				bpd.API.String(),
 				style.Symbol(lifecycleDescriptor.Info.Version.String()),
-				lifecycleDescriptor.API.BuildpackVersion.String(),
+				strings.Join(lifecycleDescriptor.APIs.Buildpack.Supported.AsStrings(), ", "),
 			)
 		}
 
