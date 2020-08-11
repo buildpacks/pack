@@ -431,10 +431,29 @@ func testWithoutSpecificBuilderRequirement(
 		})
 
 		when("default builder is set", func() {
-			it("outputs information", func() {
+			it("redacts default builder", func() {
 				pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
 
 				output := pack.RunSuccessfully("report")
+
+				version := pack.Version()
+
+				expectedOutput := pack.FixtureManager().TemplateFixture(
+					"report_output.txt",
+					map[string]interface{}{
+						"DefaultBuilder": "[REDACTED]",
+						"Version":        version,
+						"OS":             runtime.GOOS,
+						"Arch":           runtime.GOARCH,
+					},
+				)
+				assert.Equal(output, expectedOutput)
+			})
+
+			it("explicit mode doesn't redact", func() {
+				pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
+
+				output := pack.RunSuccessfully("report", "--explicit")
 
 				version := pack.Version()
 
