@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os/exec"
+	"strings"
 	"text/template"
 
 	"github.com/pkg/errors"
@@ -62,4 +63,11 @@ func CreateBrowserCmd(browserURL, os string) (*exec.Cmd, error) {
 	default:
 		return nil, fmt.Errorf("unsupported platform %s", style.Symbol(os))
 	}
+}
+
+func GetIssueURL(githubURL string) (*url.URL, error) {
+	if githubURL == "" {
+		return nil, errors.New("missing github URL")
+	}
+	return url.Parse(fmt.Sprintf("%s/issues/new", strings.TrimSuffix(githubURL, "/")))
 }

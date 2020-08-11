@@ -22,10 +22,22 @@ func NewTestBuildpackOutputAssertionManager(t *testing.T, output string) TestBui
 	}
 }
 
-func (t TestBuildpackOutputAssertionManager) ReportsReadingFileContents(path, expectedContent, phase string) {
+func (t TestBuildpackOutputAssertionManager) ReportsReadingFileContents(phase, path, content string) {
 	t.testObject.Helper()
 
-	t.assert.ContainsF(t.output, "%s: Reading file '/platform%s': %s", phase, path, expectedContent)
+	t.assert.ContainsF(t.output, "%s: Reading file '%s': %s", phase, path, content)
+}
+
+func (t TestBuildpackOutputAssertionManager) ReportsWritingFileContents(phase, path string) {
+	t.testObject.Helper()
+
+	t.assert.ContainsF(t.output, "%s: Writing file '%s': written", phase, path)
+}
+
+func (t TestBuildpackOutputAssertionManager) ReportsFailingToWriteFileContents(phase, path string) {
+	t.testObject.Helper()
+
+	t.assert.ContainsF(t.output, "%s: Writing file '%s': failed", phase, path)
 }
 
 func (t TestBuildpackOutputAssertionManager) ReportsConnectedToInternet() {

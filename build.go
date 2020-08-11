@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -142,9 +141,13 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
 	}
 
-	platformVolumes, err := buildPlatformVolumes(opts.ContainerConfig.Volumes)
+	processedVolumes, warnings, err := processVolumes(opts.ContainerConfig.Volumes)
 	if err != nil {
 		return err
+	}
+
+	for _, warning := range warnings {
+		c.logger.Warn(warning)
 	}
 
 	lifecycleOpts := build.LifecycleOptions{
@@ -161,7 +164,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		HTTPSProxy:         proxyConfig.HTTPSProxy,
 		NoProxy:            proxyConfig.NoProxy,
 		Network:            opts.ContainerConfig.Network,
-		Volumes:            platformVolumes,
+		Volumes:            processedVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
 		FileFilter:         opts.FileFilter,
 	}
@@ -625,19 +628,30 @@ func randString(n int) string {
 	return string(b)
 }
 
-func buildPlatformVolumes(volumes []string) ([]string, error) {
-	platformVolumes := make([]string, len(volumes))
+func processVolumes(volumes []string) (processed []string, warnings []string, err error) {
 	// Assume a linux container
 	parser := mounts.NewParser(mounts.OSLinux)
-	for i, v := range volumes {
+	for _, v := range volumes {
 		volume, err := parser.ParseMountRaw(v, "")
 		if err != nil {
-			return nil, errors.Wrapf(err, "Platform volume %q has invalid format", v)
+			return nil, nil, errors.Wrapf(err, "platform volume %q has invalid format", v)
 		}
 
-		// Use path.Join instead of filepath.Join because we assume the container OS is linux but the host may be windows
-		dest := path.Join("/platform", volume.Destination)
-		platformVolumes[i] = fmt.Sprintf("%v:%v:ro", volume.Spec.Source, dest)
+		for _, p := range [...]string{"/cnb", "/layers"} {
+			if strings.HasPrefix(volume.Spec.Target, p) {
+				warnings = append(warnings, fmt.Sprintf("Mounting to a sensitive directory %s", style.Symbol(volume.Spec.Target)))
+			}
+		}
+
+		processed = append(processed, fmt.Sprintf("%s:%s:%s", volume.Spec.Source, volume.Spec.Target, processMode(volume.Mode)))
 	}
-	return platformVolumes, nil
+	return processed, warnings, nil
+}
+
+func processMode(mode string) string {
+	if mode == "" {
+		return "ro"
+	}
+
+	return mode
 }

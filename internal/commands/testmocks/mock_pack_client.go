@@ -135,3 +135,17 @@ func (mr *MockPackClientMockRecorder) RegisterBuildpack(arg0, arg1 interface{}) 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterBuildpack", reflect.TypeOf((*MockPackClient)(nil).RegisterBuildpack), arg0, arg1)
 }
+
+// YankBuildpack mocks base method
+func (m *MockPackClient) YankBuildpack(arg0 pack.YankBuildpackOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "YankBuildpack", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// YankBuildpack indicates an expected call of YankBuildpack
+func (mr *MockPackClientMockRecorder) YankBuildpack(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "YankBuildpack", reflect.TypeOf((*MockPackClient)(nil).YankBuildpack), arg0)
+}
