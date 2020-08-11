@@ -16,7 +16,6 @@ import (
 const (
 	DefaultLifecycleVersion    = "0.9.0"
 	DefaultBuildpackAPIVersion = "0.2"
-	DefaultPlatformAPIVersion  = "0.3"
 )
 
 // Blob is an interface to wrap opening blobs

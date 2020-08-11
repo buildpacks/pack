@@ -427,7 +427,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						gomock.Any(),
 						"https://github.com/buildpacks/lifecycle/releases/download/v3.4.5/lifecycle-v3.4.5+windows.x86-64.tgz",
 					).Return(
-						blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil,
+						blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil,
 					)
 
 					err = packClientWithExperimental.CreateBuilder(context.TODO(), opts)
@@ -483,7 +483,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							builder.DefaultLifecycleVersion,
 						),
 					).Return(
-						blob.NewBlob(filepath.Join("testdata", "lifecycle")), nil,
+						blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil,
 					)
 
 					err = packClientWithExperimental.CreateBuilder(context.TODO(), opts)
