@@ -19,7 +19,7 @@ import (
 )
 
 func TestReportCommand(t *testing.T) {
-	spec.Run(t, "Commands", testReportCommand, spec.Random(), spec.Report(report.Terminal{}))
+	spec.Run(t, "ReportCommand", testReportCommand, spec.Random(), spec.Report(report.Terminal{}))
 }
 
 func testReportCommand(t *testing.T, when spec.G, it spec.S) {
@@ -68,9 +68,21 @@ experimental = true
 
 			it("presents output", func() {
 				h.AssertNil(t, command.Execute())
+				h.AssertContains(t, outBuf.String(), `default-builder-image = "[REDACTED]"`)
+				h.AssertContains(t, outBuf.String(), `experimental = true`)
+				h.AssertContains(t, outBuf.String(), `Version:  `+testVersion)
+
+				h.AssertNotContains(t, outBuf.String(), `default-builder-image = "some/image"`)
+			})
+
+			it("doesn't sanitize output if explicit", func() {
+				command.SetArgs([]string{"-e"})
+				h.AssertNil(t, command.Execute())
 				h.AssertContains(t, outBuf.String(), `default-builder-image = "some/image"`)
 				h.AssertContains(t, outBuf.String(), `experimental = true`)
 				h.AssertContains(t, outBuf.String(), `Version:  `+testVersion)
+
+				h.AssertNotContains(t, outBuf.String(), `default-builder-image = "[REDACTED]"`)
 			})
 		})
 
