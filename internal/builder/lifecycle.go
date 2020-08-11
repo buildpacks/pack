@@ -14,9 +14,8 @@ import (
 
 // A snapshot of the latest tested lifecycle version values
 const (
-	DefaultLifecycleVersion    = "0.8.0"
+	DefaultLifecycleVersion    = "0.9.0"
 	DefaultBuildpackAPIVersion = "0.2"
-	DefaultPlatformAPIVersion  = "0.3"
 )
 
 // Blob is an interface to wrap opening blobs
@@ -98,7 +97,10 @@ func (l *lifecycle) validateBinaries() error {
 	for _, p := range l.binaries() {
 		_, found := headers[p]
 		if !found {
-			return fmt.Errorf("did not find '%s' in tar", p)
+			_, found = headers[p+".exe"]
+			if !found {
+				return fmt.Errorf("did not find '%s' in tar", p)
+			}
 		}
 	}
 	return nil
