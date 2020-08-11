@@ -364,6 +364,7 @@ func testWithoutSpecificBuilderRequirement(
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
+					// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 					pack.JustRunSuccessfully(
 						"package-buildpack", packageName,
 						"-c", aggregatePackageToml,
@@ -382,6 +383,7 @@ func testWithoutSpecificBuilderRequirement(
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
+					// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 					output, err := pack.Run(
 						"package-buildpack", packageName,
 						"-c", aggregatePackageToml,
@@ -1586,6 +1588,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 												`, runImage, contents1, contents2))
 					}
 					buildRunImage(runBefore, "contents-before-1", "contents-before-2")
+					// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 					pack.RunSuccessfully(
 						"build", repoName,
 						"-p", filepath.Join("testdata", "mock_app"),
@@ -1626,6 +1629,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 
 						it("uses provided run image", func() {
+							// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 							output := pack.RunSuccessfully(
 								"rebase", repoName,
 								"--run-image", runAfter,
@@ -1656,6 +1660,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 
 						it("prefers the local mirror", func() {
+							// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 							output := pack.RunSuccessfully("rebase", repoName, "--no-pull")
 
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
@@ -1679,6 +1684,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 
 						it("selects the best mirror", func() {
+							// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 							output := pack.RunSuccessfully("rebase", repoName, "--no-pull")
 
 							assertOutput := assertions.NewOutputAssertionManager(t, output)

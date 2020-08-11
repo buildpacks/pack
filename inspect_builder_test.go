@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
@@ -66,9 +68,9 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 			when(fmt.Sprintf("daemon is %t", useDaemon), func() {
 				it.Before(func() {
 					if useDaemon {
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, false).Return(builderImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, config.PullNever).Return(builderImage, nil)
 					} else {
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, false).Return(builderImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, config.PullNever).Return(builderImage, nil)
 					}
 				})
 
@@ -209,7 +211,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 	when("fetcher fails to fetch the image", func() {
 		it.Before(func() {
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, false).Return(nil, errors.New("some-error"))
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, config.PullNever).Return(nil, errors.New("some-error"))
 		})
 
 		it("returns an error", func() {
@@ -222,7 +224,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			notFoundImage := fakes.NewImage("", "", nil)
 			notFoundImage.Delete()
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, false).Return(nil, errors.Wrap(image.ErrNotFound, "some-error"))
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, config.PullNever).Return(nil, errors.Wrap(image.ErrNotFound, "some-error"))
 		})
 
 		it("return nil metadata", func() {

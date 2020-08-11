@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
@@ -23,8 +25,8 @@ type CreateBuilderOptions struct {
 	BuilderName string
 	Config      pubbldr.Config
 	Publish     bool
-	NoPull      bool
 	Registry    string
+	PullPolicy  config.PullPolicy
 }
 
 // CreateBuilder creates a builder
@@ -64,7 +66,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 	var runImages []imgutil.Image
 	for _, i := range append([]string{opts.Config.Stack.RunImage}, opts.Config.Stack.RunImageMirrors...) {
 		if !opts.Publish {
-			img, err := c.imageFetcher.Fetch(ctx, i, true, false)
+			img, err := c.imageFetcher.Fetch(ctx, i, true, opts.PullPolicy)
 			if err != nil {
 				if errors.Cause(err) != image.ErrNotFound {
 					return errors.Wrap(err, "failed to fetch image")
@@ -75,7 +77,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 			}
 		}
 
-		img, err := c.imageFetcher.Fetch(ctx, i, false, false)
+		img, err := c.imageFetcher.Fetch(ctx, i, false, opts.PullPolicy)
 		if err != nil {
 			if errors.Cause(err) != image.ErrNotFound {
 				return errors.Wrap(err, "failed to fetch image")
@@ -106,7 +108,7 @@ func (c *Client) validateRunImageConfig(ctx context.Context, opts CreateBuilderO
 }
 
 func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOptions) (*builder.Builder, error) {
-	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Stack.BuildImage, !opts.Publish, !opts.NoPull)
+	baseImage, err := c.imageFetcher.Fetch(ctx, opts.Config.Stack.BuildImage, !opts.Publish, opts.PullPolicy)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch build image")
 	}
@@ -202,7 +204,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 		case buildpack.PackageLocator:
 			c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(b.ImageName))
 
-			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, b.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, b.ImageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
 			if err != nil {
 				return err
 			}
@@ -219,7 +221,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrapf(err, "locating in registry %s", style.Symbol(b.URI))
 			}
 
-			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, opts.Publish, opts.NoPull)
+			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, opts.Publish, opts.PullPolicy)
 			if err != nil {
 				return errors.Wrapf(err, "extracting from registry %s", style.Symbol(b.URI))
 			}
