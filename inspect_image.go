@@ -2,6 +2,7 @@ package pack
 
 import (
 	"context"
+	"strings"
 
 	"github.com/buildpacks/pack/config"
 
@@ -39,6 +40,8 @@ const (
 	CNBProcessEnv       = "CNB_PROCESS_TYPE"
 	defaultProcess      = "web"
 	fallbackPlatformAPI = "0.3"
+	LauncherEntrypoint  = "/cnb/lifecycle/launcher"
+	BpEntrypointPrefix  = "/cnb/process/"
 )
 
 func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
@@ -93,7 +96,16 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 			defaultProcessType = defaultProcess
 		}
 	} else {
-		defaultProcessType = defaultProcess
+		inspect, _, err := c.docker.ImageInspectWithRaw(context.TODO(), name)
+		if err != nil {
+			return nil, errors.Wrap(err, "reading image")
+		}
+
+		entrypoint := inspect.Config.Entrypoint
+		if len(entrypoint) > 0 && entrypoint[0] != LauncherEntrypoint {
+			process := strings.Replace(entrypoint[0], BpEntrypointPrefix, "", 1)
+			defaultProcessType = process
+		}
 	}
 
 	var processDetails ProcessDetails
