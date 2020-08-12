@@ -301,9 +301,13 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("Platform API >= 0.4", func() {
-					when("PlatformAPIEnv set to bad value", func() {
+					it.Before(func() {
+						h.AssertNil(t, fakeImage.SetEnv("CNB_PLATFORM_API", "0.4"))
+					})
+
+					when("CNB_PLATFORM_API set to bad value", func() {
 						it("errors", func() {
-							h.AssertNil(t, fakeImage.SetEnv(PlatformAPIEnv, "not-semver"))
+							h.AssertNil(t, fakeImage.SetEnv("CNB_PLATFORM_API", "not-semver"))
 							_, err := subject.InspectImage("some/image", useDaemon)
 							h.AssertError(t, err, "parsing platform api version")
 						})
@@ -311,7 +315,6 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 
 					when("docker can't inspect image", func() {
 						it("errors", func() {
-							h.AssertNil(t, fakeImage.SetEnv(PlatformAPIEnv, "0.4"))
 							mockDockerClient.EXPECT().ImageInspectWithRaw(gomock.Any(), fakeImage.Name()).
 								Return(types.ImageInspect{}, nil, errors.New("some-error"))
 
@@ -322,7 +325,6 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 
 					when("ENTRYPOINT is empty", func() {
 						it("sets nil default process", func() {
-							h.AssertNil(t, fakeImage.SetEnv(PlatformAPIEnv, "0.4"))
 							mockDockerClient.EXPECT().ImageInspectWithRaw(gomock.Any(), fakeImage.Name()).
 								Return(types.ImageInspect{Config: &container.Config{}}, nil, nil)
 
@@ -354,10 +356,9 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					when("CNB_PROCESS_TYPE is set", func() {
 						it.Before(func() {
 							h.AssertNil(t, fakeImage.SetEnv("CNB_PROCESS_TYPE", "other-process"))
-							h.AssertNil(t, fakeImage.SetEnv(PlatformAPIEnv, "0.4"))
 
 							mockDockerClient.EXPECT().ImageInspectWithRaw(gomock.Any(), fakeImage.Name()).
-								Return(types.ImageInspect{Config: &container.Config{Entrypoint: []string{BpEntrypointPrefix + "web"}}}, nil, nil)
+								Return(types.ImageInspect{Config: &container.Config{Entrypoint: []string{"/cnb/process/web"}}}, nil, nil)
 						})
 
 						it("ignores it and sets the correct default process", func() {
@@ -387,9 +388,8 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 
 					when("ENTRYPOINT is set, but doesn't match an existing process", func() {
 						it.Before(func() {
-							h.AssertNil(t, fakeImage.SetEnv(PlatformAPIEnv, "0.4"))
 							mockDockerClient.EXPECT().ImageInspectWithRaw(gomock.Any(), fakeImage.Name()).
-								Return(types.ImageInspect{Config: &container.Config{Entrypoint: []string{BpEntrypointPrefix + "unknown-process"}}}, nil, nil)
+								Return(types.ImageInspect{Config: &container.Config{Entrypoint: []string{"/cnb/process/unknown-process"}}}, nil, nil)
 						})
 
 						it("returns nil default default process", func() {
@@ -417,17 +417,15 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 							)
 						})
 					})
-				})
 
-				when("ENTRYPOINT set to /cnb/lifecycle/launcher", func() {
-					it("returns a nil default process", func() {
-						h.AssertNil(t, fakeImage.SetEnv(PlatformAPIEnv, "0.4"))
-						mockDockerClient.EXPECT().ImageInspectWithRaw(gomock.Any(), fakeImage.Name()).
-							Return(types.ImageInspect{Config: &container.Config{Entrypoint: []string{LauncherEntrypoint}}}, nil, nil)
+					when("ENTRYPOINT set to /cnb/lifecycle/launcher", func() {
+						it("returns a nil default process", func() {
+							mockDockerClient.EXPECT().ImageInspectWithRaw(gomock.Any(), fakeImage.Name()).
+								Return(types.ImageInspect{Config: &container.Config{Entrypoint: []string{"/cnb/lifecycle/launcher"}}}, nil, nil)
 
-						h.AssertNil(t, fakeImage.SetLabel(
-							"io.buildpacks.build.metadata",
-							`{
+							h.AssertNil(t, fakeImage.SetLabel(
+								"io.buildpacks.build.metadata",
+								`{
 					 "processes": [
 					   {
 					     "type": "other-process",
@@ -437,24 +435,116 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					   }
 					 ]
 					}`,
-						))
+							))
 
-						info, err := subject.InspectImage("some/image", useDaemon)
-						h.AssertNil(t, err)
+							info, err := subject.InspectImage("some/image", useDaemon)
+							h.AssertNil(t, err)
 
-						h.AssertEq(t, info.Processes,
-							ProcessDetails{
-								DefaultProcess: nil,
-								OtherProcesses: []launch.Process{
-									{
-										Type:    "other-process",
-										Command: "/other/process",
-										Args:    []string{"opt", "1"},
-										Direct:  true,
+							h.AssertEq(t, info.Processes,
+								ProcessDetails{
+									DefaultProcess: nil,
+									OtherProcesses: []launch.Process{
+										{
+											Type:    "other-process",
+											Command: "/other/process",
+											Args:    []string{"opt", "1"},
+											Direct:  true,
+										},
 									},
 								},
-							},
-						)
+							)
+						})
+					})
+
+					when("Inspecting Windows images", func() {
+						when(`ENTRYPOINT set to c:\cnb\lifecycle\launcher.exe`, func() {
+							it("sets default process to nil", func() {
+								mockDockerClient.EXPECT().ImageInspectWithRaw(gomock.Any(), fakeImage.Name()).
+									Return(types.ImageInspect{Config: &container.Config{Entrypoint: []string{`c:\cnb\lifecycle\launcher.exe`}}}, nil, nil)
+
+								info, err := subject.InspectImage("some/image", useDaemon)
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, info.Processes,
+									ProcessDetails{
+										DefaultProcess: nil,
+										OtherProcesses: []launch.Process{
+											{
+												Type:    "other-process",
+												Command: "/other/process",
+												Args:    []string{"opt", "1"},
+												Direct:  true,
+											},
+											{
+												Type:    "web",
+												Command: "/start/web-process",
+												Args:    []string{"-p", "1234"},
+												Direct:  false,
+											},
+										},
+									},
+								)
+							})
+						})
+
+						when("ENTRYPOINT is set, but doesn't match an existing process", func() {
+							it("sets default process to nil", func() {
+								mockDockerClient.EXPECT().ImageInspectWithRaw(gomock.Any(), fakeImage.Name()).
+									Return(types.ImageInspect{Config: &container.Config{Entrypoint: []string{`c:\cnb\process\unknown-process.exe`}}}, nil, nil)
+
+								info, err := subject.InspectImage("some/image", useDaemon)
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, info.Processes,
+									ProcessDetails{
+										DefaultProcess: nil,
+										OtherProcesses: []launch.Process{
+											{
+												Type:    "other-process",
+												Command: "/other/process",
+												Args:    []string{"opt", "1"},
+												Direct:  true,
+											},
+											{
+												Type:    "web",
+												Command: "/start/web-process",
+												Args:    []string{"-p", "1234"},
+												Direct:  false,
+											},
+										},
+									},
+								)
+							})
+						})
+
+						when("ENTRYPOINT is set, and matches an existing process", func() {
+							it("sets default process to defined process", func() {
+								mockDockerClient.EXPECT().ImageInspectWithRaw(gomock.Any(), fakeImage.Name()).
+									Return(types.ImageInspect{Config: &container.Config{Entrypoint: []string{`c:\cnb\process\other-process.exe`}}}, nil, nil)
+
+								info, err := subject.InspectImage("some/image", useDaemon)
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, info.Processes,
+									ProcessDetails{
+										DefaultProcess: &launch.Process{
+											Type:    "other-process",
+											Command: "/other/process",
+											Args:    []string{"opt", "1"},
+											Direct:  true,
+										},
+										OtherProcesses: []launch.Process{
+											{
+												Type:    "web",
+												Command: "/start/web-process",
+												Args:    []string{"-p", "1234"},
+												Direct:  false,
+											},
+										},
+									},
+								)
+							})
+						})
 					})
 				})
 			})

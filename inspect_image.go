@@ -70,12 +70,15 @@ type layersMetadata struct {
 }
 
 const (
-	PlatformAPIEnv      = "CNB_PLATFORM_API"
-	CNBProcessEnv       = "CNB_PROCESS_TYPE"
-	defaultProcess      = "web"
-	fallbackPlatformAPI = "0.3"
-	LauncherEntrypoint  = "/cnb/lifecycle/launcher"
-	BpEntrypointPrefix  = "/cnb/process/"
+	platformAPIEnv            = "CNB_PLATFORM_API"
+	cnbProcessEnv             = "CNB_PROCESS_TYPE"
+	launcherEntrypoint        = "/cnb/lifecycle/launcher"
+	windowsLauncherEntrypoint = `c:\cnb\lifecycle\launcher.exe`
+	entrypointPrefix          = "/cnb/process/"
+	windowsEntrypointPrefix   = `c:\cnb\process\`
+	defaultProcess            = "web"
+	fallbackPlatformAPI       = "0.3"
+	windowsPrefix             = "c:"
 )
 
 // InspectImage reads the Label metadata of an image. It initializes a ImageInfo object
@@ -113,7 +116,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		return nil, err
 	}
 
-	platformAPI, err := img.Env(PlatformAPIEnv)
+	platformAPI, err := img.Env(platformAPIEnv)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading platform api")
 	}
@@ -129,7 +132,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 
 	var defaultProcessType string
 	if platformAPIVersion.LessThan(semver.MustParse("0.4")) {
-		defaultProcessType, err = img.Env(CNBProcessEnv)
+		defaultProcessType, err = img.Env(cnbProcessEnv)
 		if err != nil || defaultProcessType == "" {
 			defaultProcessType = defaultProcess
 		}
@@ -140,8 +143,15 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		}
 
 		entrypoint := inspect.Config.Entrypoint
-		if len(entrypoint) > 0 && entrypoint[0] != LauncherEntrypoint {
-			process := strings.Replace(entrypoint[0], BpEntrypointPrefix, "", 1)
+		if len(entrypoint) > 0 && entrypoint[0] != launcherEntrypoint && entrypoint[0] != windowsLauncherEntrypoint {
+			process := entrypoint[0]
+			if strings.HasPrefix(process, windowsPrefix) {
+				process = strings.TrimPrefix(process, windowsEntrypointPrefix)
+				process = strings.TrimSuffix(process, ".exe") // Trim .exe for Windows support
+			} else {
+				process = strings.TrimPrefix(process, entrypointPrefix)
+			}
+
 			defaultProcessType = process
 		}
 	}
