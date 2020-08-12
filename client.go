@@ -39,13 +39,13 @@ type ImageFactory interface {
 }
 
 type Client struct {
-	logger       logging.Logger
-	imageFetcher ImageFetcher
-	downloader   Downloader
-	lifecycle    Lifecycle
-	docker       dockerClient.CommonAPIClient
-	imageFactory ImageFactory
-	experimental bool
+	logger            logging.Logger
+	imageFetcher      ImageFetcher
+	downloader        Downloader
+	lifecycleExecutor LifecycleExecutor
+	docker            dockerClient.CommonAPIClient
+	imageFactory      ImageFactory
+	experimental      bool
 }
 
 type ClientOption func(c *Client)
@@ -139,7 +139,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		client.imageFactory = image.NewFactory(client.docker, authn.DefaultKeychain)
 	}
 
-	client.lifecycle = build.NewLifecycle(client.docker, client.logger)
+	client.lifecycleExecutor = build.NewLifecycleExecutor(client.logger, client.docker)
 
 	return &client, nil
 }

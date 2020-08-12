@@ -40,7 +40,7 @@ const (
 	minLifecycleVersionSupportingImage   = "0.7.5"
 )
 
-type Lifecycle interface {
+type LifecycleExecutor interface {
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
 }
 
@@ -179,7 +179,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if lifecycleSupportsCreator && opts.TrustBuilder {
 		lifecycleOpts.UseCreator = true
 		// no need to fetch a lifecycle image, it won't be used
-		return c.lifecycle.Execute(ctx, lifecycleOpts)
+		return c.lifecycleExecutor.Execute(ctx, lifecycleOpts)
 	}
 
 	if !opts.TrustBuilder {
@@ -200,7 +200,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		}
 	}
 
-	if err := c.lifecycle.Execute(ctx, lifecycleOpts); err != nil {
+	if err := c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
 		return errors.Wrap(err, "executing lifecycle. This may be the result of using an untrusted builder")
 	}
 
