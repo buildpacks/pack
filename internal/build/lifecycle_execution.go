@@ -74,10 +74,6 @@ func (l *LifecycleExecution) LayersVolume() string {
 	return l.layersVolume
 }
 
-func (l *LifecycleExecution) PlatformAPI() *api.Version {
-	return l.platformAPI
-}
-
 func (l *LifecycleExecution) Run(ctx context.Context) error {
 	phaseFactory := NewDefaultPhaseFactory(l)
 

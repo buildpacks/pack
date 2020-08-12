@@ -38,6 +38,7 @@ var (
 	ctrClient client.CommonAPIClient
 )
 
+// TestPhase is a integration test suite to ensure that the phase options are propagated to the container.
 func TestPhase(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
