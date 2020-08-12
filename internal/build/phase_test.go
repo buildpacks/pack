@@ -65,7 +65,7 @@ func TestPhase(t *testing.T) {
 
 func testPhase(t *testing.T, when spec.G, it spec.S) {
 	var (
-		lifecycle      *build.Lifecycle
+		lifecycleExec  *build.LifecycleExecution
 		phaseFactory   *build.DefaultPhaseFactory
 		outBuf, errBuf bytes.Buffer
 		docker         client.CommonAPIClient
@@ -78,51 +78,51 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 		var err error
 		docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
-		lifecycle, err = CreateFakeLifecycle(docker, logger, filepath.Join("testdata", "fake-app"), repoName)
+		lifecycleExec, err = CreateFakeLifecycleExecution(logger, docker, filepath.Join("testdata", "fake-app"), repoName)
 		h.AssertNil(t, err)
-		phaseFactory = build.NewDefaultPhaseFactory(lifecycle)
+		phaseFactory = build.NewDefaultPhaseFactory(lifecycleExec)
 	})
 
 	it.After(func() {
-		h.AssertNil(t, lifecycle.Cleanup())
+		h.AssertNil(t, lifecycleExec.Cleanup())
 	})
 
 	when("Phase", func() {
 		when("#Run", func() {
 			it("runs the subject phase on the builder image", func() {
-				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle)
+				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec)
 				phase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, phase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "running some-lifecycle-phase")
 			})
 
 			it("prefixes the output with the phase name", func() {
-				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithLogPrefix("phase"))
+				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithLogPrefix("phase"))
 				phase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, phase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "[phase] running some-lifecycle-phase")
 			})
 
 			it("attaches the same layers volume to each phase", func() {
-				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("write", "/layers/test.txt", "test-layers"))
+				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("write", "/layers/test.txt", "test-layers"))
 				writePhase := phaseFactory.New(configProvider)
 
 				assertRunSucceeds(t, writePhase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "write test")
 
-				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/layers/test.txt"))
+				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("read", "/layers/test.txt"))
 				readPhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "file contents: test-layers")
 			})
 
 			it("attaches the same app volume to each phase", func() {
-				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("write", "/workspace/test.txt", "test-app"))
+				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("write", "/workspace/test.txt", "test-app"))
 				writePhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, writePhase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "write test")
 
-				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/workspace/test.txt"))
+				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("read", "/workspace/test.txt"))
 				readPhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "file contents: test-app")
@@ -131,14 +131,14 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			it("copies the app into the app volume", func() {
 				configProvider := build.NewPhaseConfigProvider(
 					phaseName,
-					lifecycle,
+					lifecycleExec,
 					build.WithArgs("read", "/workspace/fake-app-file"),
 					build.WithContainerOperations(
 						build.CopyDir(
-							lifecycle.AppPath(),
+							lifecycleExec.AppPath(),
 							"/workspace",
-							lifecycle.Builder().UID(),
-							lifecycle.Builder().GID(),
+							lifecycleExec.Builder().UID(),
+							lifecycleExec.Builder().GID(),
 							nil,
 						),
 					),
@@ -148,12 +148,12 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, outBuf.String(), "file contents: fake-app-contents")
 				h.AssertContains(t, outBuf.String(), "file uid/gid: 111/222")
 
-				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("delete", "/workspace/fake-app-file"))
+				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("delete", "/workspace/fake-app-file"))
 				deletePhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, deletePhase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "delete test")
 
-				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("read", "/workspace/fake-app-file"))
+				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("read", "/workspace/fake-app-file"))
 				readPhase2 := phaseFactory.New(configProvider)
 				err := readPhase2.Run(context.TODO())
 				readPhase2.Cleanup()
@@ -163,18 +163,18 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			when("app is a dir", func() {
 				it("preserves original mod times", func() {
-					assertAppModTimePreserved(t, lifecycle, phaseFactory, &outBuf, &errBuf)
+					assertAppModTimePreserved(t, lifecycleExec, phaseFactory, &outBuf, &errBuf)
 				})
 			})
 
 			when("app is a zip", func() {
 				it("preserves original mod times", func() {
 					var err error
-					lifecycle, err = CreateFakeLifecycle(docker, logger, filepath.Join("testdata", "fake-app.zip"), repoName)
+					lifecycleExec, err = CreateFakeLifecycleExecution(logger, docker, filepath.Join("testdata", "fake-app.zip"), repoName)
 					h.AssertNil(t, err)
-					phaseFactory = build.NewDefaultPhaseFactory(lifecycle)
+					phaseFactory = build.NewDefaultPhaseFactory(lifecycleExec)
 
-					assertAppModTimePreserved(t, lifecycle, phaseFactory, &outBuf, &errBuf)
+					assertAppModTimePreserved(t, lifecycleExec, phaseFactory, &outBuf, &errBuf)
 				})
 			})
 
@@ -206,15 +206,15 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 					it("returns an error", func() {
 						logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
-						lifecycle, err = CreateFakeLifecycle(docker, logger, tmpFakeAppDir, repoName)
+						lifecycleExec, err = CreateFakeLifecycleExecution(logger, docker, tmpFakeAppDir, repoName)
 						h.AssertNil(t, err)
-						phaseFactory = build.NewDefaultPhaseFactory(lifecycle)
+						phaseFactory = build.NewDefaultPhaseFactory(lifecycleExec)
 						readPhase := phaseFactory.New(build.NewPhaseConfigProvider(
 							phaseName,
-							lifecycle,
+							lifecycleExec,
 							build.WithArgs("read", "/workspace/fake-app-file"),
 							build.WithContainerOperations(
-								build.CopyDir(lifecycle.AppPath(), "/workspace", 0, 0, nil),
+								build.CopyDir(lifecycleExec.AppPath(), "/workspace", 0, 0, nil),
 							),
 						))
 						h.AssertNil(t, err)
@@ -231,7 +231,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("sets the proxy vars in the container", func() {
-				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("proxy"))
+				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("proxy"))
 				phase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, phase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "HTTP_PROXY=some-http-proxy")
@@ -244,7 +244,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			when("#WithArgs", func() {
 				it("runs the subject phase with args", func() {
-					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("some", "args"))
+					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("some", "args"))
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
 					h.AssertContains(t, outBuf.String(), `received args [/cnb/lifecycle/phase some args]`)
@@ -253,7 +253,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			when("#WithDaemonAccess", func() {
 				it("allows daemon access inside the container", func() {
-					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("daemon"), build.WithDaemonAccess())
+					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("daemon"), build.WithDaemonAccess())
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
 					h.AssertContains(t, outBuf.String(), "daemon test")
@@ -262,7 +262,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			when("#WithRoot", func() {
 				it("sets the containers user to root", func() {
-					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("user"), build.WithRoot())
+					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("user"), build.WithRoot())
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
 					h.AssertContains(t, outBuf.String(), "current user is root")
@@ -275,7 +275,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("mounts volumes inside container", func() {
-					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("binds"), build.WithBinds("some-volume:/mounted"))
+					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("binds"), build.WithBinds("some-volume:/mounted"))
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
 					h.AssertContains(t, outBuf.String(), "binds test")
@@ -311,7 +311,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 					configProvider := build.NewPhaseConfigProvider(
 						phaseName,
-						lifecycle,
+						lifecycleExec,
 						build.WithArgs("registry", repoName),
 						build.WithRegistryAccess(authConfig),
 						build.WithNetwork("host"),
@@ -324,7 +324,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			when("#WithNetwork", func() {
 				it("specifies a network for the container", func() {
-					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle, build.WithArgs("network"), build.WithNetwork("none"))
+					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("network"), build.WithNetwork("none"))
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)
 					h.AssertNotContainsMatch(t, outBuf.String(), `interface: eth\d+`)
@@ -336,19 +336,19 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 	when("#Cleanup", func() {
 		it.Before(func() {
-			configProvider := build.NewPhaseConfigProvider(phaseName, lifecycle)
+			configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec)
 			phase := phaseFactory.New(configProvider)
 			assertRunSucceeds(t, phase, &outBuf, &errBuf)
 			h.AssertContains(t, outBuf.String(), "running some-lifecycle-phase")
 
-			h.AssertNil(t, lifecycle.Cleanup())
+			h.AssertNil(t, lifecycleExec.Cleanup())
 		})
 
 		it("should delete the layers volume", func() {
 			body, err := docker.VolumeList(context.TODO(),
 				filters.NewArgs(filters.KeyValuePair{
 					Key:   "name",
-					Value: lifecycle.LayersVolume(),
+					Value: lifecycleExec.LayersVolume(),
 				}))
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(body.Volumes), 0)
@@ -358,7 +358,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			body, err := docker.VolumeList(context.TODO(),
 				filters.NewArgs(filters.KeyValuePair{
 					Key:   "name",
-					Value: lifecycle.AppVolume(),
+					Value: lifecycleExec.AppVolume(),
 				}))
 			h.AssertNil(t, err)
 			h.AssertEq(t, len(body.Volumes), 0)
@@ -366,7 +366,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func assertAppModTimePreserved(t *testing.T, lifecycle *build.Lifecycle, phaseFactory *build.DefaultPhaseFactory, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
+func assertAppModTimePreserved(t *testing.T, lifecycle *build.LifecycleExecution, phaseFactory *build.DefaultPhaseFactory, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
 	t.Helper()
 	readPhase := phaseFactory.New(build.NewPhaseConfigProvider(
 		phaseName,
@@ -392,8 +392,7 @@ func assertRunSucceeds(t *testing.T, phase build.RunnerCleaner, outBuf *bytes.Bu
 	phase.Cleanup()
 }
 
-func CreateFakeLifecycle(docker client.CommonAPIClient, logger logging.Logger, appDir string, repoName string) (*build.Lifecycle, error) {
-	subject := build.NewLifecycle(docker, logger)
+func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, appDir string, repoName string) (*build.LifecycleExecution, error) {
 	builderImage, err := local.NewImage(repoName, docker, local.FromBaseImage(repoName))
 	if err != nil {
 		return nil, err
@@ -404,16 +403,11 @@ func CreateFakeLifecycle(docker client.CommonAPIClient, logger logging.Logger, a
 		return nil, err
 	}
 
-	err = subject.Setup(build.LifecycleOptions{
+	return build.NewLifecycleExecution(logger, docker, build.LifecycleOptions{
 		AppPath:    appDir,
 		Builder:    bldr,
 		HTTPProxy:  "some-http-proxy",
 		HTTPSProxy: "some-https-proxy",
 		NoProxy:    "some-no-proxy",
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	return subject, nil
 }

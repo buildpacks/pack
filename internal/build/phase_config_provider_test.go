@@ -44,7 +44,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, phaseConfigProvider.ContainerConfig().Image, expectedBuilderImage.Name())
 			h.AssertEq(t, phaseConfigProvider.ContainerConfig().Labels, map[string]string{"author": "pack"})
 
-			// CreateFakeLifecycle sets the following:
+			// CreateFakeLifecycleExecution sets the following:
 			h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Env, "HTTP_PROXY=some-http-proxy")
 			h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Env, "http_proxy=some-http-proxy")
 			h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Env, "HTTPS_PROXY=some-https-proxy")

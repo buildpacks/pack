@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,7 +17,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/build"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil/fakes"
@@ -30,7 +32,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
@@ -107,11 +108,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		subject = &Client{
-			logger:       logger,
-			imageFetcher: fakeImageFetcher,
-			downloader:   blob.NewDownloader(logger, dlCacheDir),
-			lifecycle:    fakeLifecycle,
-			docker:       docker,
+			logger:            logger,
+			imageFetcher:      fakeImageFetcher,
+			downloader:        blob.NewDownloader(logger, dlCacheDir),
+			lifecycleExecutor: fakeLifecycle,
+			docker:            docker,
 		}
 	})
 
@@ -1456,8 +1457,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("suggests that being untrusted may be the root of a failure", func() {
-							lifecyle := &executeFailsLifecycle{}
-							subject.lifecycle = lifecyle
+							subject.lifecycleExecutor = &executeFailsLifecycle{}
 							err := subject.Build(context.TODO(), BuildOptions{
 								Image:        "some/app",
 								Builder:      defaultBuilderName,
