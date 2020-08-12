@@ -15,8 +15,11 @@ import (
 )
 
 var (
-	// SupportedPlatformAPIVersions lists the Platform API versions pack supports.
-	SupportedPlatformAPIVersions = builder.APISet{api.MustParse("0.3"), api.MustParse("0.4")}
+	// SupportedPlatformAPIVersions lists the Platform API versions pack supports listed from earliest to latest
+	SupportedPlatformAPIVersions = builder.APISet{
+		api.MustParse("0.3"),
+		api.MustParse("0.4"),
+	}
 )
 
 type Builder interface {

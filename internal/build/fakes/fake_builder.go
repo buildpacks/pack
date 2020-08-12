@@ -11,7 +11,7 @@ import (
 )
 
 type FakeBuilder struct {
-	ReturnForImage               *ifakes.Image
+	ReturnForImage               imgutil.Image
 	ReturnForUID                 int
 	ReturnForGID                 int
 	ReturnForLifecycleDescriptor builder.LifecycleDescriptor
@@ -19,36 +19,21 @@ type FakeBuilder struct {
 }
 
 func NewFakeBuilder(ops ...func(*FakeBuilder)) (*FakeBuilder, error) {
-	infoVersion, err := semver.NewVersion("12.34")
-	if err != nil {
-		return nil, err
-	}
-
-	platformAPIVersion, err := api.NewVersion("23.45")
-	if err != nil {
-		return nil, err
-	}
-
-	buildpackVersion, err := api.NewVersion("34.56")
-	if err != nil {
-		return nil, err
-	}
-
 	fakeBuilder := &FakeBuilder{
 		ReturnForImage: ifakes.NewImage("some-builder-name", "", nil),
 		ReturnForUID:   99,
 		ReturnForGID:   99,
 		ReturnForLifecycleDescriptor: builder.LifecycleDescriptor{
+			Info: builder.LifecycleInfo{
+				Version: &builder.Version{Version: *semver.MustParse("12.34")},
+			},
 			APIs: builder.LifecycleAPIs{
 				Buildpack: builder.APIVersions{
-					Supported: builder.APISet{buildpackVersion},
+					Supported: builder.APISet{api.MustParse("0.4")},
 				},
 				Platform: builder.APIVersions{
-					Supported: builder.APISet{platformAPIVersion},
+					Supported: builder.APISet{api.MustParse("0.4")},
 				},
-			},
-			Info: builder.LifecycleInfo{
-				Version: &builder.Version{Version: *infoVersion},
 			},
 		},
 		ReturnForStack: builder.StackMetadata{},
@@ -61,7 +46,19 @@ func NewFakeBuilder(ops ...func(*FakeBuilder)) (*FakeBuilder, error) {
 	return fakeBuilder, nil
 }
 
-func WithImage(image *ifakes.Image) func(*FakeBuilder) {
+func WithDeprecatedPlatformAPIs(apis []*api.Version) func(*FakeBuilder) {
+	return func(builder *FakeBuilder) {
+		builder.ReturnForLifecycleDescriptor.APIs.Platform.Deprecated = apis
+	}
+}
+
+func WithSupportedPlatformAPIs(apis []*api.Version) func(*FakeBuilder) {
+	return func(builder *FakeBuilder) {
+		builder.ReturnForLifecycleDescriptor.APIs.Platform.Supported = apis
+	}
+}
+
+func WithImage(image imgutil.Image) func(*FakeBuilder) {
 	return func(builder *FakeBuilder) {
 		builder.ReturnForImage = image
 	}

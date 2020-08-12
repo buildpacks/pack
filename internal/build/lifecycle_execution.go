@@ -30,12 +30,20 @@ type LifecycleExecution struct {
 }
 
 func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, opts LifecycleOptions) (*LifecycleExecution, error) {
+	latestSupportedPlatformAPI, err := findLatestSupported(append(
+		opts.Builder.LifecycleDescriptor().APIs.Platform.Deprecated,
+		opts.Builder.LifecycleDescriptor().APIs.Platform.Supported...,
+	))
+	if err != nil {
+		return nil, err
+	}
+
 	exec := &LifecycleExecution{
 		logger:       logger,
 		docker:       docker,
 		layersVolume: paths.FilterReservedNames("pack-layers-" + randString(10)),
 		appVolume:    paths.FilterReservedNames("pack-app-" + randString(10)),
-		platformAPI:  opts.Builder.LifecycleDescriptor().APIs.Platform.Supported.Latest(),
+		platformAPI:  latestSupportedPlatformAPI,
 		opts:         opts,
 	}
 
@@ -48,6 +56,18 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 	exec.mountPaths = mountPathsForOS(os)
 
 	return exec, nil
+}
+
+func findLatestSupported(apis []*api.Version) (*api.Version, error) {
+	for i := len(SupportedPlatformAPIVersions) - 1; i >= 0; i-- {
+		for _, version := range apis {
+			if SupportedPlatformAPIVersions[i].Equal(version) {
+				return version, nil
+			}
+		}
+	}
+
+	return nil, errors.New("unable to find a supported Platform API version")
 }
 
 func randString(n int) string {
@@ -72,6 +92,10 @@ func (l *LifecycleExecution) AppVolume() string {
 
 func (l *LifecycleExecution) LayersVolume() string {
 	return l.layersVolume
+}
+
+func (l *LifecycleExecution) PlatformAPI() *api.Version {
+	return l.platformAPI
 }
 
 func (l *LifecycleExecution) Run(ctx context.Context) error {
