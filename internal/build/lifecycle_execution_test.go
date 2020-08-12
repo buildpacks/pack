@@ -22,17 +22,17 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-// TestPhases are unit tests that test each possible phase to ensure they are executed with the proper parameters
-func TestPhases(t *testing.T) {
+// TestLifecycleExecution are unit tests that test each possible phase to ensure they are executed with the proper parameters
+func TestLifecycleExecution(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "phases", testPhases, spec.Report(report.Terminal{}), spec.Sequential())
+	spec.Run(t, "phases", testLifecycleExecution, spec.Report(report.Terminal{}), spec.Sequential())
 }
 
-func testPhases(t *testing.T, when spec.G, it spec.S) {
+func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 	// Avoid contaminating tests with existing docker configuration.
 	// GGCR resolves the default keychain by inspecting DOCKER_CONFIG - this is used by the Analyze step
 	// when constructing the auth config (see `auth.BuildEnvVar` in phases.go).
@@ -1005,7 +1005,7 @@ func testPhases(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func newTestLifecycle(t *testing.T, logVerbose bool, ops ...func(*build.LifecycleOptions)) *build.Lifecycle {
+func newTestLifecycle(t *testing.T, logVerbose bool, ops ...func(*build.LifecycleOptions)) *build.LifecycleExecution {
 	docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	h.AssertNil(t, err)
 
@@ -1014,8 +1014,6 @@ func newTestLifecycle(t *testing.T, logVerbose bool, ops ...func(*build.Lifecycl
 	if logVerbose {
 		logger.Level = log.DebugLevel
 	}
-
-	lifecycle := build.NewLifecycle(docker, logger)
 
 	defaultBuilder, err := fakes.NewFakeBuilder()
 	h.AssertNil(t, err)
@@ -1032,7 +1030,8 @@ func newTestLifecycle(t *testing.T, logVerbose bool, ops ...func(*build.Lifecycl
 		op(&opts)
 	}
 
-	lifecycle.Setup(opts)
+	lifecycleExec, err := build.NewLifecycleExecution(logger, docker, opts)
+	h.AssertNil(t, err)
 
-	return lifecycle
+	return lifecycleExec
 }
