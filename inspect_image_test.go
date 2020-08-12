@@ -296,6 +296,14 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("Platform API >= 0.4", func() {
+					when("PlatformAPIEnv set to bad value", func() {
+						it("errors", func() {
+							h.AssertNil(t, fakeImage.SetEnv(PlatformAPIEnv, "not-semver"))
+							_, err := subject.InspectImage("some/image", useDaemon)
+							h.AssertError(t, err, "parsing platform api version")
+						})
+					})
+
 					when("CNB_PROCESS_TYPE is set", func() {
 						it.Before(func() {
 							h.AssertNil(t, fakeImage.SetEnv("CNB_PROCESS_TYPE", "other-process"))
