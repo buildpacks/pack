@@ -3,8 +3,9 @@ package pack_test
 import (
 	"context"
 	"fmt"
-	"github.com/buildpacks/pack"
 	"math/rand"
+
+	"github.com/buildpacks/pack"
 )
 
 // This example shows the basic usage of the package: Create a client,
@@ -35,20 +36,20 @@ func Example_build() {
 	randomBuilder := builderList[randomIndex]
 
 	// initialize our options
-	buildOpts := pack.BuildOptions {
-		Image: "pack-lib-test-image:0.0.1",
-		Builder: randomBuilder,
-		AppPath: appPath,
+	buildOpts := pack.BuildOptions{
+		Image:        "pack-lib-test-image:0.0.1",
+		Builder:      randomBuilder,
+		AppPath:      appPath,
 		TrustBuilder: true,
 	}
 
 	fmt.Println("building application image")
 
 	// preform an image build
-	err = client.Build(context,buildOpts)
+	err = client.Build(context, buildOpts)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("build completed");
+	fmt.Println("build completed")
 }

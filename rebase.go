@@ -3,6 +3,8 @@ package pack
 import (
 	"context"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/lifecycle"
 	"github.com/pkg/errors"
 
@@ -14,19 +16,18 @@ import (
 // RebaseOptions is a configuration struct that control image rebase behavior
 type RebaseOptions struct {
 	// Name of image we wish to rebase.
-	RepoName          string
+	RepoName string
 
 	// Flag to publish image to remote registry after rebase completion.
-	Publish           bool
+	Publish bool
 
-	// use local registry assets only when rebasing
-	SkipPull          bool
+	PullPolicy config.PullPolicy
 
 	// New image to rebase against, this must have the same StackID as the previous run image
-	RunImage          string
+	RunImage string
 
 	// A mapping from StackID to an array of mirrors.
-	// This mapping used only if both RunImage is ommited and Publish is true.
+	// This mapping used only if both RunImage is omitted and Publish is true.
 	// AdditionalMirrors gives us inputs to recalculate the 'best' run image
 	// based on the registry we are publishing to.
 	AdditionalMirrors map[string][]string
@@ -40,7 +41,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.RepoName)
 	}
 
-	appImage, err := c.imageFetcher.Fetch(ctx, opts.RepoName, !opts.Publish, !opts.SkipPull)
+	appImage, err := c.imageFetcher.Fetch(ctx, opts.RepoName, !opts.Publish, opts.PullPolicy)
 	if err != nil {
 		return err
 	}
@@ -69,7 +70,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.New("run image must be specified")
 	}
 
-	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, !opts.Publish, !opts.SkipPull)
+	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, !opts.Publish, opts.PullPolicy)
 	if err != nil {
 		return err
 	}

@@ -44,7 +44,7 @@ jobs:
             pack_bin: pack.exe
           - config: windows-wcow
             os: windows
-            runner: windows-latest
+            runner: [self-hosted, windows, wcow]
             no_docker: "false"
             pack_bin: pack.exe
     runs-on: ${{ matrix.runner }}
@@ -52,6 +52,12 @@ jobs:
       PACK_BIN: ${{ matrix.pack_bin }}
       NO_DOCKER: ${{ matrix.no_docker }}
     steps:
+      - name: Set git to use LF and symlinks
+        if: matrix.os == 'windows'
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git config --global core.symlinks true
       - uses: actions/checkout@v2
       - name: Derive pack version from branch name
         run: |
@@ -67,8 +73,6 @@ jobs:
           echo "::set-env name=GOPATH::$(go env GOPATH)"
           echo "::add-path::$(go env GOPATH)/bin"
       - name: Verify
-        # disabled for windows due to format verification failing
-        if: matrix.os != 'windows'
         run: make verify
       - name: Test
         env:

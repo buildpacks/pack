@@ -11,15 +11,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 )
 
-const (
-	layersDir                 = "/layers"
-	appDir                    = "/workspace"
-	cacheDir                  = "/cache"
-	launchCacheDir            = "/launch-cache"
-	platformDir               = "/platform"
-	stackPath                 = layersDir + "/stack.toml"
-	defaultProcessPlatformAPI = "0.3"
-)
+const defaultProcessPlatformAPI = "0.3"
 
 type RunnerCleaner interface {
 	Run(ctx context.Context) error
@@ -38,7 +30,7 @@ func (l *Lifecycle) Create(
 	phaseFactory PhaseFactory,
 ) error {
 	flags := []string{
-		"-cache-dir", cacheDir,
+		"-cache-dir", l.mountPaths.cacheDir(),
 		"-run-image", runImage,
 	}
 
@@ -58,8 +50,8 @@ func (l *Lifecycle) Create(
 		WithFlags(l.withLogLevel(flags...)...),
 		WithArgs(repoName),
 		WithNetwork(networkMode),
-		WithBinds(append(volumes, fmt.Sprintf("%s:%s", cacheName, cacheDir))...),
-		WithContainerOperations(CopyDir(l.appPath, appDir, l.builder.UID(), l.builder.GID(), l.fileFilter)),
+		WithBinds(append(volumes, fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir()))...),
+		WithContainerOperations(CopyDir(l.appPath, l.mountPaths.appDir(), l.builder.UID(), l.builder.GID(), l.fileFilter)),
 	}
 
 	if publish {
@@ -72,8 +64,8 @@ func (l *Lifecycle) Create(
 	} else {
 		opts = append(opts,
 			WithDaemonAccess(),
-			WithFlags("-daemon", "-launch-cache", launchCacheDir),
-			WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
+			WithFlags("-daemon", "-launch-cache", l.mountPaths.launchCacheDir()),
+			WithBinds(fmt.Sprintf("%s:%s", launchCacheName, l.mountPaths.launchCacheDir())),
 		)
 	}
 
@@ -89,13 +81,13 @@ func (l *Lifecycle) Detect(ctx context.Context, networkMode string, volumes []st
 		WithLogPrefix("detector"),
 		WithArgs(
 			l.withLogLevel(
-				"-app", appDir,
-				"-platform", platformDir,
+				"-app", l.mountPaths.appDir(),
+				"-platform", l.mountPaths.platformDir(),
 			)...,
 		),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
-		WithContainerOperations(CopyDir(l.appPath, appDir, l.builder.UID(), l.builder.GID(), l.fileFilter)),
+		WithContainerOperations(CopyDir(l.appPath, l.mountPaths.appDir(), l.builder.UID(), l.builder.GID(), l.fileFilter)),
 	)
 
 	detect := phaseFactory.New(configProvider)
@@ -113,12 +105,12 @@ func (l *Lifecycle) Restore(ctx context.Context, cacheName, networkMode string, 
 		WithRoot(), // remove after platform API 0.2 is no longer supported
 		WithArgs(
 			l.withLogLevel(
-				"-cache-dir", cacheDir,
-				"-layers", layersDir,
+				"-cache-dir", l.mountPaths.cacheDir(),
+				"-layers", l.mountPaths.layersDir(),
 			)...,
 		),
 		WithNetwork(networkMode),
-		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
+		WithBinds(fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir())),
 	)
 
 	restore := phaseFactory.New(configProvider)
@@ -137,13 +129,13 @@ func (l *Lifecycle) Analyze(ctx context.Context, repoName, cacheName, networkMod
 
 func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish, clearCache bool, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	args := []string{
-		"-layers", layersDir,
+		"-layers", l.mountPaths.layersDir(),
 		repoName,
 	}
 	if clearCache {
 		args = prependArg("-skip-layers", args)
 	} else {
-		args = append([]string{"-cache-dir", cacheDir}, args...)
+		args = append([]string{"-cache-dir", l.mountPaths.cacheDir()}, args...)
 	}
 
 	if publish {
@@ -162,7 +154,7 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish,
 			WithRoot(),
 			WithArgs(l.withLogLevel(args...)...),
 			WithNetwork(networkMode),
-			WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
+			WithBinds(fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir())),
 		)
 
 		return phaseFactory.New(configProvider), nil
@@ -188,7 +180,7 @@ func (l *Lifecycle) newAnalyze(repoName, cacheName, networkMode string, publish,
 			)...,
 		),
 		WithNetwork(networkMode),
-		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
+		WithBinds(fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir())),
 	)
 
 	return phaseFactory.New(configProvider), nil
@@ -200,9 +192,9 @@ func prependArg(arg string, args []string) []string {
 
 func (l *Lifecycle) Build(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
 	args := []string{
-		"-layers", layersDir,
-		"-app", appDir,
-		"-platform", platformDir,
+		"-layers", l.mountPaths.layersDir(),
+		"-app", l.mountPaths.appDir(),
+		"-platform", l.mountPaths.platformDir(),
 	}
 
 	platformAPIVersion := semver.MustParse(l.platformAPIVersion)
@@ -236,10 +228,10 @@ func (l *Lifecycle) Export(ctx context.Context, repoName string, runImage string
 func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	flags := l.exportImageFlags(runImage)
 	flags = append(flags, []string{
-		"-cache-dir", cacheDir,
-		"-layers", layersDir,
-		"-stack", stackPath,
-		"-app", appDir,
+		"-cache-dir", l.mountPaths.cacheDir(),
+		"-layers", l.mountPaths.layersDir(),
+		"-stack", l.mountPaths.stackPath(),
+		"-app", l.mountPaths.appDir(),
 	}...)
 
 	if l.defaultProcessType != "" {
@@ -263,8 +255,8 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		WithArgs(repoName),
 		WithRoot(),
 		WithNetwork(networkMode),
-		WithBinds(fmt.Sprintf("%s:%s", cacheName, cacheDir)),
-		WithContainerOperations(WriteStackToml(stackPath, l.builder.Stack())),
+		WithBinds(fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir())),
+		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.builder.Stack())),
 	}
 
 	if publish {
@@ -282,8 +274,8 @@ func (l *Lifecycle) newExport(repoName, runImage string, publish bool, launchCac
 		opts = append(
 			opts,
 			WithDaemonAccess(),
-			WithFlags("-daemon", "-launch-cache", launchCacheDir),
-			WithBinds(fmt.Sprintf("%s:%s", launchCacheName, launchCacheDir)),
+			WithFlags("-daemon", "-launch-cache", l.mountPaths.launchCacheDir()),
+			WithBinds(fmt.Sprintf("%s:%s", launchCacheName, l.mountPaths.launchCacheDir())),
 		)
 	}
 

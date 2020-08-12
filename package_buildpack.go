@@ -3,6 +3,8 @@ package pack
 import (
 	"context"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/pkg/errors"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
@@ -17,25 +19,25 @@ const (
 	FormatImage = "image"
 
 	// Indicator that format of inputs/outputs will be a file on the host filesystem
-	FormatFile  = "file"
+	FormatFile = "file"
 )
 
-// PackageBuildpackOptions are configuration options and metadata for PackageBuildpack
+// PackageBuildpackOptions are configuration options and metadata you can pass into PackageBuildpack
 type PackageBuildpackOptions struct {
 	// the name of the output artifact
-	Name    string
+	Name string
 
 	// Type of output format, the options are the consts FormatImage, and FormatFile
-	Format  string
+	Format string
 
 	// Buildpack configuration
-	Config  pubbldpkg.Config
+	Config pubbldpkg.Config
 
 	// Push resulting builder image up to registry specified in Name
 	Publish bool
 
-	//Use only local image assets.
-	NoPull  bool
+	// Strategy for updating images before a build
+	PullPolicy config.PullPolicy
 }
 
 // PackageBuildpack packages buildpack(s) into an image or file
@@ -92,7 +94,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 				depBPs = []dist.Buildpack{depBP}
 			}
 		} else if dep.ImageName != "" {
-			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
 			if err != nil {
 				return err
 			}

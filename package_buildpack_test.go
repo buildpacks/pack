@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
@@ -144,8 +146,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 						Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: dependencyPath}}},
 					},
-					Publish: false,
-					NoPull:  false,
+					Publish:    false,
+					PullPolicy: config.PullAlways,
 				})
 
 				h.AssertError(t, err, "inspecting buildpack blob")
@@ -170,15 +172,16 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Stacks: []dist.Stack{{ID: "some.stack.id"}},
 						})},
 					},
-					Publish: true,
+					Publish:    true,
+					PullPolicy: config.PullAlways,
 				}))
 			})
 
-			shouldFetchNestedPackage := func(demon, pull bool) {
+			shouldFetchNestedPackage := func(demon bool, pull config.PullPolicy) {
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nestedPackage, nil)
 			}
 
-			shouldNotFindNestedPackageWhenCallingImageFetcherWith := func(demon, pull bool) {
+			shouldNotFindNestedPackageWhenCallingImageFetcherWith := func(demon bool, pull config.PullPolicy) {
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nil, image.ErrNotFound)
 			}
 
@@ -196,7 +199,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 			when("publish=false and no-pull=false", func() {
 				it("should pull and use local nested package image", func() {
-					shouldFetchNestedPackage(true, true)
+					shouldFetchNestedPackage(true, config.PullAlways)
 					packageImage := shouldCreateLocalPackage()
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
@@ -214,15 +217,15 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							})},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 						},
-						Publish: false,
-						NoPull:  false,
+						Publish:    false,
+						PullPolicy: config.PullAlways,
 					}))
 				})
 			})
 
 			when("publish=true and no-pull=false", func() {
 				it("should use remote nested package image", func() {
-					shouldFetchNestedPackage(false, true)
+					shouldFetchNestedPackage(false, config.PullAlways)
 					packageImage := shouldCreateRemotePackage()
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
@@ -240,15 +243,15 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							})},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 						},
-						Publish: true,
-						NoPull:  false,
+						Publish:    true,
+						PullPolicy: config.PullAlways,
 					}))
 				})
 			})
 
-			when("publish=true and no-pull=true", func() {
+			when("publish=true and pull-policy=never", func() {
 				it("should push to registry and not pull nested package image", func() {
-					shouldFetchNestedPackage(false, false)
+					shouldFetchNestedPackage(false, config.PullNever)
 					packageImage := shouldCreateRemotePackage()
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
@@ -266,15 +269,15 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							})},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 						},
-						Publish: true,
-						NoPull:  true,
+						Publish:    true,
+						PullPolicy: config.PullNever,
 					}))
 				})
 			})
 
-			when("publish=false no-pull=true and there is no local image", func() {
+			when("publish=false pull-policy=never and there is no local image", func() {
 				it("should fail without trying to retrieve nested image from registry", func() {
-					shouldNotFindNestedPackageWhenCallingImageFetcherWith(true, false)
+					shouldNotFindNestedPackageWhenCallingImageFetcherWith(true, config.PullNever)
 
 					h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: "some/package",
@@ -286,8 +289,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							})},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 						},
-						Publish: false,
-						NoPull:  true,
+						Publish:    false,
+						PullPolicy: config.PullNever,
 					}), "not found")
 				})
 			})
@@ -296,7 +299,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		when("nested package is not a valid package", func() {
 			it("should error", func() {
 				notPackageImage := fakes.NewImage("not/package", "", nil)
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, true).Return(notPackageImage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, config.PullAlways).Return(notPackageImage, nil)
 
 				h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: "some/package",
@@ -308,8 +311,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						})},
 						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: notPackageImage.Name()}}},
 					},
-					Publish: false,
-					NoPull:  false,
+					Publish:    false,
+					PullPolicy: config.PullAlways,
 				}), "extracting buildpacks from 'not/package': could not find label 'io.buildpacks.buildpackage.metadata'")
 			})
 		})
@@ -360,10 +363,11 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
 					},
-					Publish: true,
+					Publish:    true,
+					PullPolicy: config.PullAlways,
 				}))
 
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, true).Return(nestedPackage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, config.PullAlways).Return(nestedPackage, nil)
 			})
 
 			it("should pull and use local nested package image", func() {
@@ -375,9 +379,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 					},
-					Publish: false,
-					NoPull:  false,
-					Format:  pack.FormatFile,
+					Publish:    false,
+					PullPolicy: config.PullAlways,
+					Format:     pack.FormatFile,
 				}))
 
 				assertPackageBPFileHasBuildpacks(t, packagePath, []dist.BuildpackDescriptor{packageDescriptor, childDescriptor})
@@ -394,9 +398,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 						Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: createBuildpack(childDescriptor)}}},
 					},
-					Publish: false,
-					NoPull:  false,
-					Format:  pack.FormatFile,
+					Publish:    false,
+					PullPolicy: config.PullAlways,
+					Format:     pack.FormatFile,
 				}))
 
 				assertPackageBPFileHasBuildpacks(t, packagePath, []dist.BuildpackDescriptor{packageDescriptor, childDescriptor})
@@ -415,9 +419,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 							Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: bpURL}}},
 						},
-						Publish: false,
-						NoPull:  false,
-						Format:  pack.FormatFile,
+						Publish:    false,
+						PullPolicy: config.PullAlways,
+						Format:     pack.FormatFile,
 					})
 					h.AssertError(t, err, "downloading buildpack")
 				})
@@ -437,9 +441,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 							Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: bpURL}}},
 						},
-						Publish: false,
-						NoPull:  false,
-						Format:  pack.FormatFile,
+						Publish:    false,
+						PullPolicy: config.PullAlways,
+						Format:     pack.FormatFile,
 					})
 					h.AssertError(t, err, "creating buildpack")
 				})
@@ -469,10 +473,11 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
 					},
-					Publish: true,
+					Publish:    true,
+					PullPolicy: config.PullAlways,
 				}))
 
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, true).Return(nestedPackage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, config.PullAlways).Return(nestedPackage, nil)
 			})
 
 			it("should include both of them", func() {
@@ -485,9 +490,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}},
 							{BuildpackURI: dist.BuildpackURI{URI: createBuildpack(secondChildDescriptor)}}},
 					},
-					Publish: false,
-					NoPull:  false,
-					Format:  pack.FormatFile,
+					Publish:    false,
+					PullPolicy: config.PullAlways,
+					Format:     pack.FormatFile,
 				}))
 
 				assertPackageBPFileHasBuildpacks(t, packagePath, []dist.BuildpackDescriptor{packageDescriptor, childDescriptor, secondChildDescriptor})
@@ -506,7 +511,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Config: pubbldpkg.Config{
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
 					},
-					Format: pack.FormatFile,
+					PullPolicy: config.PullAlways,
+					Format:     pack.FormatFile,
 				}))
 
 				mockDownloader.EXPECT().Download(gomock.Any(), dependencyPackagePath).Return(blob.NewBlob(dependencyPackagePath), nil).AnyTimes()
@@ -521,9 +527,9 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 						Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: dependencyPackagePath}}},
 					},
-					Publish: false,
-					NoPull:  false,
-					Format:  pack.FormatFile,
+					Publish:    false,
+					PullPolicy: config.PullAlways,
+					Format:     pack.FormatFile,
 				}))
 
 				assertPackageBPFileHasBuildpacks(t, packagePath, []dist.BuildpackDescriptor{packageDescriptor, childDescriptor})
@@ -543,8 +549,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Stacks: []dist.Stack{{ID: "some.stack.id"}},
 					})},
 				},
-				Publish: false,
-				NoPull:  false,
+				Publish:    false,
+				PullPolicy: config.PullAlways,
 			})
 			h.AssertError(t, err, "unknown format: 'invalid-format'")
 		})

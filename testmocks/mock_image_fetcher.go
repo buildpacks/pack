@@ -10,6 +10,8 @@ import (
 
 	imgutil "github.com/buildpacks/imgutil"
 	gomock "github.com/golang/mock/gomock"
+
+	config "github.com/buildpacks/pack/config"
 )
 
 // MockImageFetcher is a mock of ImageFetcher interface
@@ -36,7 +38,7 @@ func (m *MockImageFetcher) EXPECT() *MockImageFetcherMockRecorder {
 }
 
 // Fetch mocks base method
-func (m *MockImageFetcher) Fetch(arg0 context.Context, arg1 string, arg2, arg3 bool) (imgutil.Image, error) {
+func (m *MockImageFetcher) Fetch(arg0 context.Context, arg1 string, arg2 bool, arg3 config.PullPolicy) (imgutil.Image, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Fetch", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(imgutil.Image)

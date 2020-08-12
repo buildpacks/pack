@@ -3,6 +3,8 @@ package pack
 import (
 	"context"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/launch"
@@ -16,7 +18,7 @@ import (
 // an app image built using Cloud Native Buildpacks.
 type ImageInfo struct {
 	// Stack Identifier used when building this image
-	StackID    string
+	StackID string
 
 	// List of buildpacks that passed detection, ran their build
 	// phases and made a contribution to this image.
@@ -36,18 +38,18 @@ type ImageInfo struct {
 	// the first 1 to k layers all belong to the run image,
 	// the last k+1, to n are layers added by buildpacks.
 	// the sum of all of these is our app image.
-	Base       lifecycle.RunImageMetadata
+	Base lifecycle.RunImageMetadata
 
 	// BOM or Bill of materials, contains dependency and
 	// version information provided by each buildpack.
-	BOM        []lifecycle.BOMEntry
+	BOM []lifecycle.BOMEntry
 
 	// Stack includes the run image name, and a list of image mirrors,
 	// where the run image is hosted.
-	Stack      lifecycle.StackMetadata
+	Stack lifecycle.StackMetadata
 
 	// Processes lists all processes contributed by buildpacks.
-	Processes  ProcessDetails
+	Processes ProcessDetails
 }
 
 // ProcessDetails is a collection of all start command metadata
@@ -71,7 +73,7 @@ type layersMetadata struct {
 // If daemon is true, the local registry will be searched first for the image.
 // Otherwise assume the image is remote.
 func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
-	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, false)
+	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, config.PullNever)
 	if err != nil {
 		if errors.Cause(err) == image.ErrNotFound {
 			return nil, nil

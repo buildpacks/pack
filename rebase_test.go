@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -174,11 +176,11 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("is false", func() {
-					when("skip pull is false", func() {
+					when("pull policy is always", func() {
 						it("updates the local image", func() {
 							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
-								RepoName: "some/app",
-								SkipPull: false,
+								RepoName:   "some/app",
+								PullPolicy: config.PullAlways,
 							}))
 							h.AssertEq(t, fakeAppImage.Base(), "some/run")
 							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
@@ -186,11 +188,11 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 
-					when("skip pull is true", func() {
+					when("pull policy is never", func() {
 						it("uses local image", func() {
 							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
-								RepoName: "some/app",
-								SkipPull: true,
+								RepoName:   "some/app",
+								PullPolicy: config.PullNever,
 							}))
 							h.AssertEq(t, fakeAppImage.Base(), "some/run")
 							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")

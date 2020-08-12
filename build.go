@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/docker/docker/api/types"
@@ -58,67 +60,68 @@ type Lifecycle interface {
 // BuildOptions defines configuration settings for a Build.
 type BuildOptions struct {
 	// required. Name of output image
-	Image              string
+	Image string
 
 	// required. Builder image name.
-	Builder            string
+	Builder string
 
 	// URI to a buildpack registry. Used to
 	// add buildpacks to a build.
-	Registry           string
+	Registry string
 
 	// path to application bits, defaults to current working directory
-	AppPath            string
+	AppPath string
 
 	// Specify the run image.
-	RunImage           string
+	RunImage string
 
 	// If Run Image is empty, it is set to the the 'best' mirror using Builder metadata and AdditionalMirrors.
 	// where 'best' is defined as:
 	//  - if the builder or Additional mirrors has a registry that matches the registry in
 	//    Image, it is 'best'
 	//  - otherwise if there are no matches, use the builder metadata
-	AdditionalMirrors  map[string][]string
+	AdditionalMirrors map[string][]string
 
 	// User provided environment variables to the buildpacks,
 	// buildpacks may both read and overwrite these values.
-	Env                map[string]string
+	Env map[string]string
 
 	// option passed to lifecycle,
 	// publishes Image directly to a remote registry.
-	Publish            bool
-
-	// Only use local image assets.
-	NoPull             bool
+	Publish bool
 
 	// Clear the build cache from previous builds.
-	ClearCache         bool
+	ClearCache bool
 
 	// TrustBuild when true optimizes builds by running
 	// all lifecycle phases in a single container,
 	// this places registry credentials on the builder's build image.
 	// Only trust builders from reputable sources.
-	TrustBuilder       bool
+	TrustBuilder bool
 
 	// List of buildpack images or archives to add to a builder.
 	// These buildpacks may overwrite those on the builder if they
 	// share both an ID and Version with a buildpack on the builder.
-	Buildpacks         []string
-
+	Buildpacks []string
 
 	// Configure the proxy environment variables,
 	// These variables will only be set in the build image
-	ProxyConfig        *ProxyConfig
+	// and will not be used if proxy env vars are already
+	// set.
+	ProxyConfig *ProxyConfig
 
 	// Configure network and volume mounts for the build containers
-	ContainerConfig    ContainerConfig
+	ContainerConfig ContainerConfig
 
 	// Process type that will be used when setting container start command.
 	DefaultProcessType string
 
 	// Filter files from the application source.
 	// If true include file, otherwise exclude
-	FileFilter         func(string) bool
+	FileFilter func(string) bool
+
+	// Strategy for updating images before a build
+	PullPolicy config.PullPolicy
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container
@@ -137,13 +140,12 @@ type ContainerConfig struct {
 	// https://docs.docker.com/network/#network-drivers
 	Network string
 
-	// Volumes that mounted and accessable during detect & build phases
+	// Volumes that mounted and accessible during detect & build phases
 	// should have the form: /path/in/host:/path/in/container
 	// for more about volume mounts, and their permissions see
 	// https://docs.docker.com/storage/volumes/
 	Volumes []string
 }
-
 
 // Build configures the settings for the build container(s) and lifecycle.
 // It Then invokes the lifecycle to build an app image.
@@ -167,7 +169,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder '%s'", opts.Builder)
 	}
 
-	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), true, !opts.NoPull)
+	rawBuilderImage, err := c.imageFetcher.Fetch(ctx, builderRef.Name(), true, opts.PullPolicy)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch builder image '%s'", builderRef.Name())
 	}
@@ -178,7 +180,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), builderRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors, opts.Publish)
-	runImage, err := c.validateRunImage(ctx, runImageName, opts.NoPull, opts.Publish, bldr.StackID)
+	runImage, err := c.validateRunImage(ctx, runImageName, opts.PullPolicy, opts.Publish, bldr.StackID)
 	if err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
 	}
@@ -188,7 +190,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Image(), bldr.Buildpacks(), bldr.Order(), opts.Buildpacks, opts.NoPull, opts.Publish, opts.Registry)
+	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Image(), bldr.Buildpacks(), bldr.Order(), opts.Buildpacks, opts.PullPolicy, opts.Publish, opts.Registry)
 	if err != nil {
 		return err
 	}
@@ -214,7 +216,12 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
 	}
 
-	processedVolumes, warnings, err := processVolumes(opts.ContainerConfig.Volumes)
+	imgOS, err := rawBuilderImage.OS()
+	if err != nil {
+		return errors.Wrapf(err, "getting builder OS")
+	}
+
+	processedVolumes, warnings, err := processVolumes(imgOS, opts.ContainerConfig.Volumes)
 	if err != nil {
 		return err
 	}
@@ -253,23 +260,20 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return c.lifecycle.Execute(ctx, lifecycleOpts)
 	}
 
-	lifecycleImageSupported := lifecycleVersion.Equal(builder.VersionMustParse(prevLifecycleVersionSupportingImage)) || !lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingImage))
-
 	if !opts.TrustBuilder {
-		switch lifecycleImageSupported {
-		case true:
+		if lifecycleImageSupported(imgOS, lifecycleVersion) {
 			lifecycleImage, err := c.imageFetcher.Fetch(
 				ctx,
 				fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
 				true,
-				!opts.NoPull,
+				opts.PullPolicy,
 			)
 			if err != nil {
 				return errors.Wrap(err, "fetching lifecycle image")
 			}
 
 			lifecycleOpts.LifecycleImage = lifecycleImage.Name()
-		default:
+		} else {
 			return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted.", lifecycleVersion.String())
 		}
 	}
@@ -279,6 +283,15 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	return nil
+}
+
+func lifecycleImageSupported(builderOS string, lifecycleVersion *builder.Version) bool {
+	if builderOS == "windows" {
+		return false
+	}
+
+	return lifecycleVersion.Equal(builder.VersionMustParse(prevLifecycleVersionSupportingImage)) ||
+		!lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingImage))
 }
 
 // supportsPlatformAPI determines whether pack can build using the builder based on the builder's supported Platform API versions.
@@ -325,11 +338,11 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	return bldr, nil
 }
 
-func (c *Client) validateRunImage(context context.Context, name string, noPull bool, publish bool, expectedStack string) (imgutil.Image, error) {
+func (c *Client) validateRunImage(context context.Context, name string, pullPolicy config.PullPolicy, publish bool, expectedStack string) (imgutil.Image, error) {
 	if name == "" {
 		return nil, errors.New("run image must be specified")
 	}
-	img, err := c.imageFetcher.Fetch(context, name, !publish, !noPull)
+	img, err := c.imageFetcher.Fetch(context, name, !publish, pullPolicy)
 	if err != nil {
 		return nil, err
 	}
@@ -539,7 +552,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string, noPull bool, publish bool, registry string) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string, pullPolicy config.PullPolicy, publish bool, registry string) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
 	order = dist.Order{{Group: []dist.BuildpackRef{}}}
 	for _, bp := range declaredBPs {
 		locatorType, err := buildpack.GetLocatorType(bp, builderBPs)
@@ -609,7 +622,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			fetchedBPs = append(append(fetchedBPs, mainBP), dependencyBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.PackageLocator:
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, bp, c.imageFetcher, publish, noPull)
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, bp, c.imageFetcher, publish, pullPolicy)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(bp))
 			}
@@ -627,7 +640,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
 			}
 
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, publish, noPull)
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, publish, pullPolicy)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "extracting from registry %s", style.Symbol(bp))
 			}
@@ -718,17 +731,24 @@ func randString(n int) string {
 	return string(b)
 }
 
-func processVolumes(volumes []string) (processed []string, warnings []string, err error) {
-	// Assume a linux container
-	parser := mounts.NewParser(mounts.OSLinux)
+func processVolumes(imgOS string, volumes []string) (processed []string, warnings []string, err error) {
+	parserOS := mounts.OSLinux
+	if imgOS == "windows" {
+		parserOS = mounts.OSWindows
+	}
+	parser := mounts.NewParser(parserOS)
 	for _, v := range volumes {
 		volume, err := parser.ParseMountRaw(v, "")
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "platform volume %q has invalid format", v)
 		}
 
-		for _, p := range [...]string{"/cnb", "/layers"} {
-			if strings.HasPrefix(volume.Spec.Target, p) {
+		sensitiveDirs := []string{"/cnb", "/layers"}
+		if imgOS == "windows" {
+			sensitiveDirs = []string{`c:/cnb`, `c:\cnb`, `c:/layers`, `c:\layers`}
+		}
+		for _, p := range sensitiveDirs {
+			if strings.HasPrefix(strings.ToLower(volume.Spec.Target), p) {
 				warnings = append(warnings, fmt.Sprintf("Mounting to a sensitive directory %s", style.Symbol(volume.Spec.Target)))
 			}
 		}
