@@ -44,6 +44,9 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, phaseConfigProvider.ContainerConfig().Image, expectedBuilderImage.Name())
 			h.AssertEq(t, phaseConfigProvider.ContainerConfig().Labels, map[string]string{"author": "pack"})
 
+			// NewFakeBuilder sets the Platform API
+			h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Env, "CNB_PLATFORM_API=23.45")
+
 			// CreateFakeLifecycleExecution sets the following:
 			h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Env, "HTTP_PROXY=some-http-proxy")
 			h.AssertSliceContains(t, phaseConfigProvider.ContainerConfig().Env, "http_proxy=some-http-proxy")

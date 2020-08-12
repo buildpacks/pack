@@ -12,6 +12,7 @@ import (
 const (
 	linuxContainerAdmin   = "root"
 	windowsContainerAdmin = "ContainerAdministrator"
+	platformAPIEnvVar     = "CNB_PLATFORM_API"
 )
 
 type PhaseConfigProviderOperation func(*PhaseConfigProvider)
@@ -44,6 +45,7 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	}
 
 	ops = append(ops,
+		WithEnv(fmt.Sprintf("%s=%s", platformAPIEnvVar, lifecycleExec.platformAPI.String())),
 		WithLifecycleProxy(lifecycleExec),
 		WithBinds([]string{
 			fmt.Sprintf("%s:%s", lifecycleExec.layersVolume, lifecycleExec.mountPaths.layersDir()),
