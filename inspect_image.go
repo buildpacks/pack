@@ -34,7 +34,12 @@ type layersMetadata struct {
 	Stack    lifecycle.StackMetadata    `json:"stack" toml:"stack"`
 }
 
-const PlatformAPIEnv = "CNB_PLATFORM_API"
+const (
+	PlatformAPIEnv      = "CNB_PLATFORM_API"
+	CNBProcessEnv       = "CNB_PROCESS_TYPE"
+	defaultProcess      = "web"
+	fallbackPlatformAPI = "0.3"
+)
 
 func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, config.PullNever)
@@ -73,7 +78,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	}
 
 	if platformAPI == "" {
-		platformAPI = "0.3"
+		platformAPI = fallbackPlatformAPI
 	}
 
 	platformAPIVersion, err := semver.NewVersion(platformAPI)
@@ -83,12 +88,12 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 
 	var defaultProcessType string
 	if platformAPIVersion.LessThan(semver.MustParse("0.4")) {
-		defaultProcessType, err = img.Env("CNB_PROCESS_TYPE")
+		defaultProcessType, err = img.Env(CNBProcessEnv)
 		if err != nil || defaultProcessType == "" {
-			defaultProcessType = "web"
+			defaultProcessType = defaultProcess
 		}
 	} else {
-		defaultProcessType = "web"
+		defaultProcessType = defaultProcess
 	}
 
 	var processDetails ProcessDetails
