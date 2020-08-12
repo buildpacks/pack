@@ -25,7 +25,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/build"
-	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/build/fakes"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -399,14 +399,17 @@ func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPI
 		return nil, err
 	}
 
-	bldr, err := builder.FromImage(builderImage)
+	fakeBuilder, err := fakes.NewFakeBuilder(
+		fakes.WithUID(111), fakes.WithGID(222),
+		fakes.WithImage(builderImage),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	return build.NewLifecycleExecution(logger, docker, build.LifecycleOptions{
 		AppPath:    appDir,
-		Builder:    bldr,
+		Builder:    fakeBuilder,
 		HTTPProxy:  "some-http-proxy",
 		HTTPSProxy: "some-https-proxy",
 		NoProxy:    "some-no-proxy",
