@@ -751,7 +751,7 @@ func testAcceptance(
 						assertMockAppRunsWithOutput(t, assert, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
 						t.Log("rebuild with --clear-cache")
-						output = pack.RunSuccessfully("build", repoName, "-p", appPath, "--clear-cache")
+						output = pack.RunSuccessfully("build", repoName, "-p", appPath, "--clear-cache", "--default-process", "web")
 
 						assertOutput = assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
