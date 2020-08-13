@@ -81,12 +81,7 @@ func GenerateTarWithWriter(genFn func(TarWriter) error, twf TarWriterFactory) io
 		errChan <- closeErr
 	}()
 
-	closed := false
 	return ioutils.NewReadCloserWrapper(pr, func() error {
-		if closed {
-			return errors.New("reader already closed")
-		}
-
 		var completeErr error
 
 		// closing the reader ensures that if anything attempts
@@ -100,7 +95,6 @@ func GenerateTarWithWriter(genFn func(TarWriter) error, twf TarWriterFactory) io
 			completeErr = aggregateError(completeErr, err)
 		}
 
-		closed = true
 		return completeErr
 	})
 }
