@@ -19,6 +19,44 @@ func NewAssertionManager(testObject *testing.T) AssertionManager {
 	}
 }
 
+func (a AssertionManager) TrimmedEq(actual, expected string) {
+	a.testObject.Helper()
+
+	actualLines := strings.Split(actual, "\n")
+	expectedLines := strings.Split(expected, "\n")
+	for lineIdx, line := range actualLines {
+		actualLines[lineIdx] = cutSuffixWhitespace(line)
+	}
+
+	for lineIdx, line := range expectedLines {
+		expectedLines[lineIdx] = cutSuffixWhitespace(line)
+	}
+
+	actualTrimmed := strings.Join(actualLines, "\n")
+	expectedTrimmed := strings.Join(expectedLines, "\n")
+
+	a.Equal(actualTrimmed, expectedTrimmed)
+}
+
+func (a AssertionManager) AssertTrimmedContains(actual, expected string) {
+	a.testObject.Helper()
+
+	actualLines := strings.Split(actual, "\n")
+	expectedLines := strings.Split(expected, "\n")
+	for lineIdx, line := range actualLines {
+		actualLines[lineIdx] = cutSuffixWhitespace(line)
+	}
+
+	for lineIdx, line := range expectedLines {
+		expectedLines[lineIdx] = cutSuffixWhitespace(line)
+	}
+
+	actualTrimmed := strings.Join(actualLines, "\n")
+	expectedTrimmed := strings.Join(expectedLines, "\n")
+
+	a.Contains(actualTrimmed, expectedTrimmed)
+}
+
 func (a AssertionManager) Equal(actual, expected interface{}) {
 	a.testObject.Helper()
 

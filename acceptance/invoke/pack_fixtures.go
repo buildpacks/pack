@@ -62,12 +62,10 @@ func (m PackFixtureManager) TemplateFixture(templateName string, templateData ma
 	return m.fillTemplate(outputTemplate, templateData)
 }
 
-//nolint:whitespace // A leading line of whitespace is left after a method declaration with multi-line arguments
 func (m PackFixtureManager) TemplateVersionedFixture(
 	versionedPattern, version, fallback string,
 	templateData map[string]interface{},
 ) string {
-
 	m.testObject.Helper()
 
 	outputTemplate, err := ioutil.ReadFile(m.VersionedFixtureOrFallbackLocation(versionedPattern, version, fallback))

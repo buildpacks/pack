@@ -17,13 +17,15 @@ import (
 )
 
 func Report(logger logging.Logger, version string) *cobra.Command {
+	var explicit bool
+
 	cmd := &cobra.Command{
 		Use:   "report",
 		Args:  cobra.NoArgs,
 		Short: "Display useful information for reporting an issue",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			var buf bytes.Buffer
-			err := generateOutput(&buf, version)
+			err := generateOutput(&buf, version, explicit)
 			if err != nil {
 				return err
 			}
@@ -33,11 +35,13 @@ func Report(logger logging.Logger, version string) *cobra.Command {
 			return nil
 		}),
 	}
+
+	cmd.Flags().BoolVarP(&explicit, "explicit", "e", false, "Print config without redacting information")
 	AddHelpFlag(cmd, "report")
 	return cmd
 }
 
-func generateOutput(writer io.Writer, version string) error {
+func generateOutput(writer io.Writer, version string, explicit bool) error {
 	tpl := template.Must(template.New("").Parse(`Pack:
   Version:  {{ .Version }}
   OS/Arch:  {{ .OS }}/{{ .Arch }}
@@ -54,7 +58,11 @@ Config:
 		configData = fmt.Sprintf("(no config file found at %s)", path)
 	} else {
 		var padded strings.Builder
+
 		for _, line := range strings.Split(string(data), "\n") {
+			if !explicit {
+				line = sanitize(line)
+			}
 			_, _ = fmt.Fprintf(&padded, "  %s\n", line)
 		}
 		configData = strings.TrimRight(padded.String(), " \n")
@@ -67,4 +75,12 @@ Config:
 		"DefaultLifecycleVersion": builder.DefaultLifecycleVersion,
 		"Config":                  configData,
 	})
+}
+
+func sanitize(line string) string {
+	if strings.HasPrefix(line, "default-builder-image") {
+		return `default-builder-image = "[REDACTED]"`
+	}
+
+	return line
 }

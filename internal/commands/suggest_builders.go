@@ -31,17 +31,17 @@ var suggestedBuilders = []SuggestedBuilder{
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
-		Image:              "gcr.io/paketo-buildpacks/builder:base",
+		Image:              "paketobuildpacks/builder:base",
 		DefaultDescription: "Small base image with buildpacks for Java, Node.js, Golang, & .NET Core",
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
-		Image:              "gcr.io/paketo-buildpacks/builder:full-cf",
+		Image:              "paketobuildpacks/builder:full",
 		DefaultDescription: "Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, & PHP",
 	},
 	{
 		Vendor:             "Paketo Buildpacks",
-		Image:              "gcr.io/paketo-buildpacks/builder:tiny",
+		Image:              "paketobuildpacks/builder:tiny",
 		DefaultDescription: "Tiny base image (bionic build image, distroless run image) with buildpacks for Golang",
 	},
 }
