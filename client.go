@@ -25,8 +25,14 @@ import (
 // ImageFetcher is an interface representing the ability to fetch local and images.
 type ImageFetcher interface {
 	// Fetch fetches an image by resolving it both remotely and locally depending on provided parameters.
-	// If daemon is true, it will look return a `local.Image`. Pull, applicable only when daemon is true, will
-	// attempt to pull a remote image first.
+	// The pull behavior is dictated by the pullPolicy, which can have the following behavior
+	//   - PullNever: try to use the daemon to return a `local.Image`.
+	//   - PullIfNotPResent: try look to use the daemon to return a `local.Image`, if none is found  fetch a remote image.
+	//   - PullAlways: it will only try to fetch a remote image.
+	//
+	// These PullPolicies that these interact with the daemon argument.
+	// PullIfNotPresent and daemon = false, gives us the same behavior as PullAlways.
+	// There is a single invalid configuration, PullNever and daemon = false, this will always fail.
 	Fetch(ctx context.Context, name string, daemon bool, pullPolicy pubcfg.PullPolicy) (imgutil.Image, error)
 }
 
