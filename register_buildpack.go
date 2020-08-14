@@ -15,7 +15,7 @@ import (
 )
 
 // RegisterBuildpackOptions is a configuration struct that controls the
-// behavior of the RegisterBuildpack funtion.
+// behavior of the RegisterBuildpack function.
 type RegisterBuildpackOptions struct {
 	ImageName string
 	Type      string
