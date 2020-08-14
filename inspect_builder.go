@@ -53,8 +53,7 @@ type BuilderInfo struct {
 	CreatedBy builder.CreatorMetadata
 }
 
-// BuildpackInfoKey contains all information needed to determine
-// buildpack equivalence.
+// BuildpackInfoKey contains all information needed to determine buildpack equivalence.
 type BuildpackInfoKey struct {
 	ID      string
 	Version string

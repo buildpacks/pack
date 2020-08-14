@@ -42,7 +42,7 @@ const (
 	minLifecycleVersionSupportingImage   = "0.7.5"
 )
 
-// A Lifecycle satisfies the Cloud Native Buildpacks Lifecycle specification.
+// LifecycleExecutor executes the lifecycle which satisfies the Cloud Native Buildpacks Lifecycle specification.
 // Implementations of the Lifecycle must execute the following phases by calling the
 // phase-specific lifecycle binary in order:
 //
@@ -141,7 +141,7 @@ type ProxyConfig struct {
 	NoProxy    string // Used to set NO_PROXY env var.
 }
 
-// Additional configuration of the docker container that all build steps
+// ContainerConfig is additional configuration of the docker container that all build steps
 // occur within.
 type ContainerConfig struct {
 	// Configure network settings of the build containers.

@@ -22,7 +22,7 @@ type RegisterBuildpackOptions struct {
 	URL       string
 }
 
-// Update the Buildpack Registry with to include a new buildpack specified in
+// RegisterBuildpack updates the Buildpack Registry with to include a new buildpack specified in
 // the opts argument
 func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOptions) error {
 	appImage, err := c.imageFetcher.Fetch(ctx, opts.ImageName, false, config.PullAlways)

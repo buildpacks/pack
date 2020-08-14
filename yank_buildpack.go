@@ -17,7 +17,7 @@ type YankBuildpackOptions struct {
 	Yank    bool
 }
 
-// Yank marks a buildpack on the Buildpack Registry as 'yanked'. This forbids future
+// YankBuildpack marks a buildpack on the Buildpack Registry as 'yanked'. This forbids future
 // builds from using it.
 func (c *Client) YankBuildpack(opts YankBuildpackOptions) error {
 	namespace, name, err := registry.ParseNamespaceName(opts.ID)
