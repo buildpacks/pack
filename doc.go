@@ -4,7 +4,7 @@ of application source code, into a runnable OCI images.
 
 Prerequisites
 
-In order to use most pack functionality you will need to have Docker installed.
+In order to use most pack functionality, you will need to have Docker installed.
 For easy installation instructions see: https://docs.docker.com/desktop/.
 
 References

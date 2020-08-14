@@ -36,7 +36,7 @@ type ImageInfo struct {
 	//   first layer added by buildpacks
 	//
 	// the first 1 to k layers all belong to the run image,
-	// the last k+1, to n are layers added by buildpacks.
+	// the last k+1 to n layers are added by buildpacks.
 	// the sum of all of these is our app image.
 	Base lifecycle.RunImageMetadata
 
@@ -53,12 +53,12 @@ type ImageInfo struct {
 }
 
 // ProcessDetails is a collection of all start command metadata
-// on an image
+// on an image.
 type ProcessDetails struct {
-	// images default start command
+	// An Images default start command.
 	DefaultProcess *launch.Process
 
-	// list of all start commands contributed by buildpacks.
+	// List of all start commands contributed by buildpacks.
 	OtherProcesses []launch.Process
 }
 
@@ -68,10 +68,10 @@ type layersMetadata struct {
 	Stack    lifecycle.StackMetadata    `json:"stack" toml:"stack"`
 }
 
-// InspectImage reads the Label metadata of an image. Initializes a ImageInfo object
+// InspectImage reads the Label metadata of an image. It initializes a ImageInfo object
 // using this metadata, and returns it.
-// If daemon is true, the local registry will be searched first for the image.
-// Otherwise assume the image is remote.
+// If daemon is true, first the local registry will be searched for the image.
+// Otherwise it assumes the image is remote.
 func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, config.PullNever)
 	if err != nil {

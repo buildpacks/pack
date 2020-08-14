@@ -13,7 +13,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-// RebaseOptions is a configuration struct that control image rebase behavior
+// RebaseOptions is a configuration struct that controls image rebase behavior.
 type RebaseOptions struct {
 	// Name of image we wish to rebase.
 	RepoName string
@@ -21,9 +21,11 @@ type RebaseOptions struct {
 	// Flag to publish image to remote registry after rebase completion.
 	Publish bool
 
+	// Strategy for pulling images during rebase.
 	PullPolicy config.PullPolicy
 
-	// New image to rebase against, this must have the same StackID as the previous run image
+	// Image to rebase against. This image must have
+	// the same StackID as the previous run image.
 	RunImage string
 
 	// A mapping from StackID to an array of mirrors.
@@ -34,7 +36,7 @@ type RebaseOptions struct {
 }
 
 // Rebase updates the run image layers in an app image.
-// This operation mutates the RepoName image specified in opts.
+// This operation mutates the image specified in opts.
 func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	imageRef, err := c.parseTagReference(opts.RepoName)
 	if err != nil {

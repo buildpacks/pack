@@ -15,32 +15,34 @@ import (
 )
 
 const (
-	// Indicator that format of inputs/outputs will be an OCI image on the registry
+	// Packaging indicator that format of inputs/outputs will be an OCI image on the registry.
 	FormatImage = "image"
 
-	// Indicator that format of inputs/outputs will be a file on the host filesystem
+	// Packaging indicator that format of output will be a file on the host filesystem.
 	FormatFile = "file"
 )
 
-// PackageBuildpackOptions are configuration options and metadata you can pass into PackageBuildpack
+// PackageBuildpackOptions is a configuration object used to define
+// the behavior of PackageBuildpack.
 type PackageBuildpackOptions struct {
-	// the name of the output artifact
+	// The name of the output buildpack artifact.
 	Name string
 
-	// Type of output format, the options are the consts FormatImage, and FormatFile
+	// Type of output format, The options are the either the const FormatImage, or FormatFile.
 	Format string
 
-	// Buildpack configuration
+	// Defines the Buildpacks configuration.
 	Config pubbldpkg.Config
 
-	// Push resulting builder image up to registry specified in Name
+	// Push resulting builder image up to a registry
+	// specified in the Name variable.
 	Publish bool
 
-	// Strategy for updating images before a build
+	// Strategy for updating images before packaging.
 	PullPolicy config.PullPolicy
 }
 
-// PackageBuildpack packages buildpack(s) into an image or file
+// PackageBuildpack packages buildpack(s) into either an image or file.
 func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
 	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
 

@@ -13,20 +13,21 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-// BuilderInfo is a collection of metadata describing an builder created using pack.
+// BuilderInfo is a collection of metadata describing a builder created using pack.
 type BuilderInfo struct {
-	// Description of builder
+	// Human readable, description of a builder.
 	Description string
 
-	// stack name use by the builder
+	// Stack name used by the builder.
 	Stack string
 
-	// list of mixins provided by the Stack
+	// List of Stack mixins, this information is provided by Stack variable.
 	Mixins []string
 
+	// RunImage provided by the builder.
 	RunImage string
 
-	// list of all run image mirrors a builder will use to provide
+	// List of all run image mirrors a builder will use to provide
 	// the RunImage.
 	RunImageMirrors []string
 
@@ -36,27 +37,32 @@ type BuilderInfo struct {
 	// Top level ordering of buildpacks.
 	Order dist.Order
 
+	// Listing of all buildpack layers in a builder.
+	// All elements in the Buildpacks variable are represented in this
+	// object.
 	BuildpackLayers dist.BuildpackLayers
 
-	// metadata about the lifecycle Version this builder uses
-	// as well which platform API, and buildpack API this builder
-	// implements
+	// Lifecycle provides the following API versioning information for a builder:
+	// - Lifecycle Version used in this builder,
+	// - Platform API,
+	// - Buildpack API.
 	Lifecycle builder.LifecycleDescriptor
 
-	// Name and Version information from the tooling used
-	// to create this builder.
+	// Name and Version information from tooling used
+	// to produce this builder.
 	CreatedBy builder.CreatorMetadata
 }
 
-// BuildpackInfoKey contains all needed information to determine if
-// two buildpacks are equivalent.
+// BuildpackInfoKey contains all information needed to determine
+// buildpack equivalence.
 type BuildpackInfoKey struct {
 	ID      string
 	Version string
 }
 
-// InspectBuilder reads label metadata of a local builder image. Initializes a BuilderInfo
-// object with this metadata, and returns it.
+// InspectBuilder reads label metadata of a local or remote builder image. It initializes a BuilderInfo
+// object with this metadata, and returns it. This method will error if the name image cannot be found
+// both locally and remotely, or if the found image does not contain the proper labels.
 func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) {
 	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, config.PullNever)
 	if err != nil {

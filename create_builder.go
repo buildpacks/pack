@@ -20,26 +20,28 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
-// CreateBuilderOptions are options passed to CreateBuilder
+// CreateBuilderOptions is a configuration object used to change the behavior of
+// CreateBuilder.
 type CreateBuilderOptions struct {
-	// Name of the builder
+	// Name of the builder.
 	BuilderName string
 
 	// Configuration that defines the functionality a builder provides.
 	Config pubbldr.Config
 
-	// Push resulting builder image up to Registry/BuilderName
+	// Skip building image locally, directly publish to a registry.
+	// Requires BuilderName to be a valid registry location.
 	Publish bool
 
-	// registry to save the final builder image to.
+	// Buildpack registry location. Defines where all registry buildpacks will be pulled from.
 	Registry string
 
-	// Strategy for updating images before a build
+	// Strategy for updating images before a build.
 	PullPolicy config.PullPolicy
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.
-// If configuration is invalid, will error and exit without writing any images.
+// If any configuration is invalid, it will error and exit without creating any images.
 func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) error {
 	if err := c.validateConfig(ctx, opts); err != nil {
 		return err

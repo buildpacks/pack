@@ -9,7 +9,7 @@ import (
 )
 
 // This example shows the basic usage of the package: Create a client,
-// Create a configuration object, Call the client's Build function.
+// call a configuration object, call the client's Build function.
 func Example_build() {
 	//create a context object
 	context := context.Background()
@@ -20,9 +20,9 @@ func Example_build() {
 		panic(err)
 	}
 
-	// please replace this with the location of a sample application,
-	// for a list of prepared samples see the 'apps' folder at
-	// https://github.com/buildpacks/samples
+	// replace this with the location of a sample application
+	// For a list of prepared samples see the 'apps' folder at
+	// https://github.com/buildpacks/samples.
 	appPath := "local/path/to/application/root"
 
 	// randomly select a builder to use from among the following
@@ -45,7 +45,7 @@ func Example_build() {
 
 	fmt.Println("building application image")
 
-	// preform an image build
+	// build an image
 	err = client.Build(context, buildOpts)
 	if err != nil {
 		panic(err)

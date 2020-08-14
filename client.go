@@ -32,7 +32,7 @@ type ImageFetcher interface {
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_downloader.go github.com/buildpacks/pack Downloader
 
-// Downloader is an interface for collecting both remote and local assets
+// Downloader is an interface for collecting both remote and local assets.
 type Downloader interface {
 	// Download collects both local and remote assets and provides a blob object
 	// used to read asset contents.
@@ -43,13 +43,14 @@ type Downloader interface {
 
 // ImageFactory is an interface representing the ability to create a new OCI image.
 type ImageFactory interface {
-	// NewImage initialize of an image object with required settings so that it
-	// can be written to either a local or remote registry.
+	// NewImage initializes an image object with required settings so that it
+	// can be written either locally or to a registry.
 	NewImage(repoName string, local bool) (imgutil.Image, error)
 }
 
 // Client is an orchestration object, it contains all parameters needed to
 // build an app image using Cloud Native Buildpacks.
+// All settings on this object should be changed through ClientOption functions.
 type Client struct {
 	logger       logging.Logger
 	imageFetcher ImageFetcher
@@ -60,7 +61,8 @@ type Client struct {
 	experimental bool
 }
 
-// ClientOption is a type of function that mutate settings on the client
+// ClientOption is a type of function that mutate settings on the client.
+// Values in these functions are set through currying.
 type ClientOption func(c *Client)
 
 // WithLogger supply your own logger.
@@ -77,8 +79,8 @@ func WithImageFactory(f ImageFactory) ClientOption {
 	}
 }
 
-// WithFetcher supply your own fetcher.
-// A Fetcher retrieves both local and remote images to make them available
+// WithFetcher supply your own Fetcher.
+// A Fetcher retrieves both local and remote images to make them available.
 func WithFetcher(f ImageFetcher) ClientOption {
 	return func(c *Client) {
 		c.imageFetcher = f
@@ -86,16 +88,16 @@ func WithFetcher(f ImageFetcher) ClientOption {
 }
 
 // WithDownloader supply your own downloader.
-// A Downloader is used to gather buildpacks from both remote urls, or local sources
+// A Downloader is used to gather buildpacks from both remote urls, or local sources.
 func WithDownloader(d Downloader) ClientOption {
 	return func(c *Client) {
 		c.downloader = d
 	}
 }
 
-// WithCacheDir supply your own cache directory.
-//
 // Deprecated: use WithDownloader instead.
+//
+// WithCacheDir supply your own cache directory.
 func WithCacheDir(path string) ClientOption {
 	return func(c *Client) {
 		c.downloader = blob.NewDownloader(c.logger, path)
@@ -109,7 +111,7 @@ func WithDockerClient(docker dockerClient.CommonAPIClient) ClientOption {
 	}
 }
 
-// WithExperimental sets whether experimental features should be enabled
+// WithExperimental sets whether experimental features should be enabled.
 func WithExperimental(experimental bool) ClientOption {
 	return func(c *Client) {
 		c.experimental = experimental

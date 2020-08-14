@@ -34,8 +34,8 @@ import (
 )
 
 const (
-	// the lifecycle image that will be used for the analysis and export phases
-	// when using an untrusted builder
+	// The lifecycle image that will be used for the analysis, restore and export phases
+	// when using an untrusted builder.
 	lifecycleImageRepo                   = "buildpacksio/lifecycle"
 	minLifecycleVersionSupportingCreator = "0.7.4"
 	prevLifecycleVersionSupportingImage  = "0.6.1"
@@ -51,15 +51,20 @@ const (
 //  Cache Restoration: /cnb/lifecycle/restorer
 //  Build:             /cnb/lifecycle/builder
 //  Export:            /cnb/lifecycle/exporter
+//
+// or invoke the single creator binary:
+//
+//  Creator:            /cnb/lifecycle/creator
+//
 type Lifecycle interface {
-	// Execute is responsible for invoking each of these binaries,
+	// Execute is responsible for invoking each of these binaries
 	// with the desired configuration.
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
 }
 
 // BuildOptions defines configuration settings for a Build.
 type BuildOptions struct {
-	// required. Name of output image
+	// required. Name of output image.
 	Image string
 
 	// required. Builder image name.
@@ -69,33 +74,39 @@ type BuildOptions struct {
 	// add buildpacks to a build.
 	Registry string
 
-	// path to application bits, defaults to current working directory
+	// AppPath is the path to application bits.
+	// If unset it defaults to current working directory.
 	AppPath string
 
-	// Specify the run image.
+	// Specify the run image the Image will be
+	// built atop.
 	RunImage string
 
-	// If Run Image is empty, it is set to the the 'best' mirror using Builder metadata and AdditionalMirrors.
-	// where 'best' is defined as:
-	//  - if the builder or Additional mirrors has a registry that matches the registry in
-	//    Image, it is 'best'
-	//  - otherwise if there are no matches, use the builder metadata
+	// Used to determine a run-image mirror if Run Image is empty.
+	// Used in combination with Builder metadata to determine to the the 'best' mirror.
+	// 'best' is defined as:
+	//  - if Publish is true, the best mirror matches registry we are publishing to.
+	//  - if Publish is false, the best mirror matches a registry specified in Image.
+	//  - otherwise if both of the above did not match, use mirror specified in
+	//    the builder metadata
 	AdditionalMirrors map[string][]string
 
-	// User provided environment variables to the buildpacks,
-	// buildpacks may both read and overwrite these values.
+	// User provided environment variables to the buildpacks.
+	// Buildpacks may both read and overwrite these values.
 	Env map[string]string
 
-	// option passed to lifecycle,
-	// publishes Image directly to a remote registry.
+	// Option passed directly to the lifecycle.
+	// If true, publishes Image directly to a registry.
+	// Assumes Image contains a valid registry with credentials
+	// provided by the docker client.
 	Publish bool
 
 	// Clear the build cache from previous builds.
 	ClearCache bool
 
-	// TrustBuild when true optimizes builds by running
-	// all lifecycle phases in a single container,
-	// this places registry credentials on the builder's build image.
+	// TrustBuilder when true optimizes builds by running
+	// all lifecycle phases in a single container.
+	// This places registry credentials on the builder's build image.
 	// Only trust builders from reputable sources.
 	TrustBuilder bool
 
@@ -106,25 +117,24 @@ type BuildOptions struct {
 
 	// Configure the proxy environment variables,
 	// These variables will only be set in the build image
-	// and will not be used if proxy env vars are already
-	// set.
+	// and will not be used if proxy env vars are already set.
 	ProxyConfig *ProxyConfig
 
-	// Configure network and volume mounts for the build containers
+	// Configure network and volume mounts for the build containers.
 	ContainerConfig ContainerConfig
 
 	// Process type that will be used when setting container start command.
 	DefaultProcessType string
 
 	// Filter files from the application source.
-	// If true include file, otherwise exclude
+	// If true include file, otherwise exclude.
 	FileFilter func(string) bool
 
-	// Strategy for updating images before a build
+	// Strategy for updating local images before a build.
 	PullPolicy config.PullPolicy
 }
 
-// ProxyConfig specifies proxy setting to be set as environment variables in a container
+// ProxyConfig specifies proxy setting to be set as environment variables in a container.
 type ProxyConfig struct {
 	HTTPProxy  string // Used to set HTTP_PROXY env var.
 	HTTPSProxy string // Used to set HTTPS_PROXY env var.
@@ -134,23 +144,29 @@ type ProxyConfig struct {
 // Additional configuration of the docker container that all build steps
 // occur within.
 type ContainerConfig struct {
-	// Configure network settings of the build container
-	// this string value is handed directly to the docker client,
-	// for valid values of this field see:
+	// Configure network settings of the build containers.
+	// The value of Network is handed directly to the docker client.
+	// For valid values of this field see:
 	// https://docs.docker.com/network/#network-drivers
 	Network string
 
-	// Volumes that mounted and accessible during detect & build phases
-	// should have the form: /path/in/host:/path/in/container
-	// for more about volume mounts, and their permissions see
+	// Volumes are accessible during both detect build phases
+	// should have the form: /path/in/host:/path/in/container.
+	// For more about volume mounts, and their permissions see:
 	// https://docs.docker.com/storage/volumes/
+	//
+	// It is strongly recommended you do not override any of the
+	// paths with volume mounts at the following locations:
+	// - /cnb
+	// - /layers
+	// - anything below /cnb/**
 	Volumes []string
 }
 
-// Build configures the settings for the build container(s) and lifecycle.
-// It Then invokes the lifecycle to build an app image.
-// If any configuration is deemed invalid, or if any of the lifecycle phases fail,
-// it will return an error.
+// Build configures settings for the build container(s) and lifecycle.
+// It then invokes the lifecycle to build an app image.
+// If any configuration is deemed invalid, or if any lifecycle phases fail,
+// an error will be returned and no image produced.
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	imageRef, err := c.parseTagReference(opts.Image)
 	if err != nil {

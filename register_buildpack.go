@@ -14,12 +14,16 @@ import (
 	"github.com/buildpacks/pack/internal/registry"
 )
 
+// RegisterBuildpackOptions is a configuration struct that controls the
+// behavior of the RegisterBuildpack funtion.
 type RegisterBuildpackOptions struct {
 	ImageName string
 	Type      string
 	URL       string
 }
 
+// Update the Buildpack Registry with to include a new buildpack specified in
+// the opts argument
 func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOptions) error {
 	appImage, err := c.imageFetcher.Fetch(ctx, opts.ImageName, false, config.PullAlways)
 	if err != nil {
