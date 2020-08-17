@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -89,6 +90,23 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 				_, err = newTestLifecycleExecErr(t, false, fakes.WithBuilder(fakeBuilder))
 				h.AssertError(t, err, "unable to find a supported Platform API version")
+			})
+		})
+
+		when("builder is windows", func() {
+			it("forces platform API 0.3", func() {
+				fakeBuilderImage := ifakes.NewImage("fake-builder", "", nil)
+				fakeBuilderImage.SetPlatform("windows", "", "")
+				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{
+					api.MustParse("0.2"),
+					api.MustParse("0.3"),
+					api.MustParse("0.4"),
+					api.MustParse("0.5"),
+				}), fakes.WithImage(fakeBuilderImage))
+				h.AssertNil(t, err)
+
+				lifecycleExec := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
+				h.AssertEq(t, lifecycleExec.PlatformAPI().String(), "0.3")
 			})
 		})
 	})

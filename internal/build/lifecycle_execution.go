@@ -29,8 +29,15 @@ type LifecycleExecution struct {
 	opts         LifecycleOptions
 }
 
+const windowsSupportedPlatformAPI = "0.3"
+
 func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, opts LifecycleOptions) (*LifecycleExecution, error) {
-	latestSupportedPlatformAPI, err := findLatestSupported(append(
+	os, err := opts.Builder.Image().OS()
+	if err != nil {
+		return nil, err
+	}
+
+	latestSupportedPlatformAPI, err := findLatestSupported(os, append(
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Deprecated,
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Supported...,
 	))
@@ -38,30 +45,30 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 		return nil, err
 	}
 
-	exec := &LifecycleExecution{
+	return &LifecycleExecution{
 		logger:       logger,
 		docker:       docker,
 		layersVolume: paths.FilterReservedNames("pack-layers-" + randString(10)),
 		appVolume:    paths.FilterReservedNames("pack-app-" + randString(10)),
 		platformAPI:  latestSupportedPlatformAPI,
 		opts:         opts,
-	}
-
-	os, err := opts.Builder.Image().OS()
-	if err != nil {
-		return nil, err
-	}
-
-	exec.os = os
-	exec.mountPaths = mountPathsForOS(os)
-
-	return exec, nil
+		os:           os,
+		mountPaths:   mountPathsForOS(os),
+	}, nil
 }
 
-func findLatestSupported(apis []*api.Version) (*api.Version, error) {
-	for i := len(SupportedPlatformAPIVersions) - 1; i >= 0; i-- {
+func findLatestSupported(os string, apis []*api.Version) (*api.Version, error) {
+	var supportedPlatformAPIVersions = SupportedPlatformAPIVersions
+
+	// TODO: A current but in lifecycle prevents Windows on Platform API 0.4.
+	// See https://github.com/buildpacks/pack/issues/800 for more info
+	if os == "windows" {
+		supportedPlatformAPIVersions = []*api.Version{api.MustParse(windowsSupportedPlatformAPI)}
+	}
+
+	for i := len(supportedPlatformAPIVersions) - 1; i >= 0; i-- {
 		for _, version := range apis {
-			if SupportedPlatformAPIVersions[i].Equal(version) {
+			if supportedPlatformAPIVersions[i].Equal(version) {
 				return version, nil
 			}
 		}
