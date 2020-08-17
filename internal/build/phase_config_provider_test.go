@@ -6,6 +6,7 @@ import (
 	"time"
 
 	ifakes "github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/heroku/color"
@@ -65,7 +66,9 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			it("sets process isolation", func() {
 				fakeBuilderImage := ifakes.NewImage("fake-builder", "", nil)
 				fakeBuilderImage.SetPlatform("windows", "", "")
-				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(fakeBuilderImage))
+				fakeBuilder, err := fakes.NewFakeBuilder(
+					fakes.WithImage(fakeBuilderImage),
+					fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.3")}))
 				h.AssertNil(t, err)
 				lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
 
@@ -142,7 +145,9 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				it("sets daemon access on the config", func() {
 					fakeBuilderImage := ifakes.NewImage("fake-builder", "", nil)
 					fakeBuilderImage.SetPlatform("windows", "", "")
-					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(fakeBuilderImage))
+					fakeBuilder, err := fakes.NewFakeBuilder(
+						fakes.WithImage(fakeBuilderImage),
+						fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.3")}))
 					h.AssertNil(t, err)
 					lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
 
@@ -243,7 +248,9 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				it("sets root user on the config", func() {
 					fakeBuilderImage := ifakes.NewImage("fake-builder", "", nil)
 					fakeBuilderImage.SetPlatform("windows", "", "")
-					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(fakeBuilderImage))
+					fakeBuilder, err := fakes.NewFakeBuilder(
+						fakes.WithImage(fakeBuilderImage),
+						fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.3")}))
 					h.AssertNil(t, err)
 					lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
 
