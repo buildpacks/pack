@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-containerregistry/pkg/name"
 
 	dockertypes "github.com/docker/docker/api/types"
@@ -476,7 +477,6 @@ func testWithoutSpecificBuilderRequirement(
 			output, err := pack.Run(
 				"build", "some/image",
 				"-p", filepath.Join("testdata", "mock_app"),
-				"--default-process", "web",
 			)
 
 			assert.NotNil(err)
@@ -639,7 +639,6 @@ func testAcceptance(
 						output := pack.RunSuccessfully(
 							"build", repoName,
 							"-p", filepath.Join("testdata", "mock_app"),
-							"--default-process", "web",
 							"-B", untrustedBuilderName,
 						)
 
@@ -680,7 +679,6 @@ func testAcceptance(
 						output := pack.RunSuccessfully(
 							"build", repoName,
 							"-p", appPath,
-							"--default-process", "web",
 						)
 
 						imgId, err := imgIDForRepoName(repoName)
@@ -727,7 +725,6 @@ func testAcceptance(
 						output = pack.RunSuccessfully(
 							"build", repoName,
 							"-p", appPath,
-							"--default-process", "web",
 						)
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
 
@@ -751,7 +748,7 @@ func testAcceptance(
 						assertMockAppRunsWithOutput(t, assert, repoName, "Launch Dep Contents", "Cached Dep Contents")
 
 						t.Log("rebuild with --clear-cache")
-						output = pack.RunSuccessfully("build", repoName, "-p", appPath, "--clear-cache", "--default-process", "web")
+						output = pack.RunSuccessfully("build", repoName, "-p", appPath, "--clear-cache")
 
 						assertOutput = assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
@@ -1021,8 +1018,7 @@ func testAcceptance(
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--default-process", "web",
-									"--buildpack", "simple/layers", // Can omit version if only one
+									"--buildpack", "simple/layers", // can omit version if only one
 									"--buildpack", "noop.buildpack@noop.buildpack.version",
 								)
 
@@ -1115,7 +1111,6 @@ func testAcceptance(
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--default-process", "web",
 									"--buildpack", packageImageName,
 								)
 
@@ -1170,7 +1165,6 @@ func testAcceptance(
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--default-process", "web",
 									"--buildpack", packageFile,
 								)
 
@@ -1202,7 +1196,6 @@ func testAcceptance(
 								output, err := pack.Run(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--default-process", "web",
 									"--buildpack", otherStackBuilderTgz,
 								)
 
@@ -1241,7 +1234,6 @@ func testAcceptance(
 							output := pack.RunSuccessfully(
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
-								"--default-process", "web",
 								"--env-file", envPath,
 							)
 
@@ -1268,7 +1260,6 @@ func testAcceptance(
 							output := pack.RunSuccessfully(
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
-								"--default-process", "web",
 								"--env", "DETECT_ENV_BUILDPACK=true",
 								"--env", `ENV1_CONTENTS="Env1 Layer Contents From Command Line"`,
 								"--env", "ENV2_CONTENTS",
@@ -1313,7 +1304,6 @@ func testAcceptance(
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--default-process", "web",
 									"--run-image", runImageName,
 								)
 								assertOutput := assertions.NewOutputAssertionManager(t, output)
@@ -1351,7 +1341,6 @@ func testAcceptance(
 								output, err := pack.Run(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--default-process", "web",
 									"--run-image", runImageName,
 								)
 								assert.NotNil(err)
@@ -1370,7 +1359,6 @@ func testAcceptance(
 							buildArgs := []string{
 								repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
-								"--default-process", "web",
 								"--publish",
 							}
 							if dockerHostOS() != "windows" {
@@ -1442,7 +1430,6 @@ func testAcceptance(
 								buf,
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
-								"--default-process", "web",
 							)
 
 							go command.TerminateAtStep("DETECTING")
@@ -1790,7 +1777,6 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 					pack.RunSuccessfully(
 						"build", repoName,
 						"-p", filepath.Join("testdata", "mock_app"),
-						"--default-process", "web",
 						"--builder", builderName,
 						"--run-image", runBefore,
 						"--no-pull",
@@ -2330,12 +2316,34 @@ func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir str
 	return res.Body.Close()
 }
 
+type logWriter struct {
+	t *testing.T
+}
+
+func (l logWriter) Write(p []byte) (n int, err error) {
+	l.t.Log(string(p))
+	return len(p), nil
+}
+
 func assertMockAppRunsWithOutput(t *testing.T, assert h.AssertionManager, repoName string, expectedOutputs ...string) {
 	t.Helper()
 	containerName := "test-" + h.RandString(10)
-	runDockerImageExposePort(t, assert, containerName, repoName)
+	ctrID := runDockerImageExposePort(t, assert, containerName, repoName)
 	defer dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 	defer dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
+	logs, err := dockerCli.ContainerLogs(context.TODO(), ctrID, dockertypes.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	})
+	h.AssertNil(t, err)
+
+	copyErr := make(chan error)
+	go func() {
+		_, err := stdcopy.StdCopy(logWriter{t}, logWriter{t}, logs)
+		copyErr <- err
+	}()
+
 	launchPort := fetchHostPort(t, assert, containerName)
 	assertMockAppResponseContains(t, assert, launchPort, 10*time.Second, expectedOutputs...)
 }
