@@ -18,6 +18,10 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+const (
+	defaultProcessType = "web"
+)
+
 type LifecycleExecution struct {
 	logger       logging.Logger
 	docker       client.CommonAPIClient
@@ -182,8 +186,9 @@ func (l *LifecycleExecution) Create(
 		flags = append(flags, "-skip-restore")
 	}
 
-	if l.opts.DefaultProcessType != "" {
-		flags = append(flags, "-process-type", l.opts.DefaultProcessType)
+	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
+	if processType != "" {
+		flags = append(flags, "-process-type", processType)
 	}
 
 	opts := []PhaseConfigProviderOperation{
@@ -347,6 +352,15 @@ func (l *LifecycleExecution) Build(ctx context.Context, networkMode string, volu
 	return build.Run(ctx)
 }
 
+func determineDefaultProcessType(platformAPI *api.Version, providedValue string) string {
+	shouldSetForceDefault := platformAPI.Compare(api.MustParse("0.4")) >= 0
+	if providedValue == "" && shouldSetForceDefault {
+		return defaultProcessType
+	}
+
+	return providedValue
+}
+
 func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	flags := []string{
 		"-cache-dir", l.mountPaths.cacheDir(),
@@ -356,8 +370,9 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		"-run-image", runImage,
 	}
 
-	if l.opts.DefaultProcessType != "" {
-		flags = append(flags, "-process-type", l.opts.DefaultProcessType)
+	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
+	if processType != "" {
+		flags = append(flags, "-process-type", processType)
 	}
 
 	opts := []PhaseConfigProviderOperation{

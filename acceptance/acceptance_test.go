@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-containerregistry/pkg/name"
 
 	dockertypes "github.com/docker/docker/api/types"
@@ -2315,12 +2316,34 @@ func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir str
 	return res.Body.Close()
 }
 
+type logWriter struct {
+	t *testing.T
+}
+
+func (l logWriter) Write(p []byte) (n int, err error) {
+	l.t.Log(string(p))
+	return len(p), nil
+}
+
 func assertMockAppRunsWithOutput(t *testing.T, assert h.AssertionManager, repoName string, expectedOutputs ...string) {
 	t.Helper()
 	containerName := "test-" + h.RandString(10)
-	runDockerImageExposePort(t, assert, containerName, repoName)
+	ctrID := runDockerImageExposePort(t, assert, containerName, repoName)
 	defer dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 	defer dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
+	logs, err := dockerCli.ContainerLogs(context.TODO(), ctrID, dockertypes.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Follow:     true,
+	})
+	h.AssertNil(t, err)
+
+	copyErr := make(chan error)
+	go func() {
+		_, err := stdcopy.StdCopy(logWriter{t}, logWriter{t}, logs)
+		copyErr <- err
+	}()
+
 	launchPort := fetchHostPort(t, assert, containerName)
 	assertMockAppResponseContains(t, assert, launchPort, 10*time.Second, expectedOutputs...)
 }
