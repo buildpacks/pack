@@ -123,13 +123,20 @@ jobs:
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack
-          tar -C pack-macos -vzcf pack-macos.tgz pack
+          filename=pack-macos.tgz
+          tar -C pack-macos -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - linux
         run: |
           chmod +x pack-linux/pack
+          filename=pack-linux.tgz
           tar -C pack-linux -vzcf pack-linux.tgz pack
+          shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - windows
-        run: zip -j pack-windows.zip pack-windows/pack.exe
+        run: |
+          filename=pack-windows.zip
+          zip -j $filename pack-windows/pack.exe
+          shasum -a 256 $filename > $filename.sha256
       - name: Extract lifecycle version
         id: lifecycle_version
         run: |
