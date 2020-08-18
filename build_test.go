@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/imgutil"
+
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/config"
@@ -51,19 +53,25 @@ func TestBuild(t *testing.T) {
 
 func testBuild(t *testing.T, when spec.G, it spec.S) {
 	var (
-		subject               *Client
-		fakeImageFetcher      *ifakes.FakeImageFetcher
-		fakeLifecycle         *ifakes.FakeLifecycle
-		defaultBuilderStackID string
-		defaultBuilderImage   *fakes.Image
-		defaultBuilderName    string
-		fakeDefaultRunImage   *fakes.Image
-		fakeMirror1           *fakes.Image
-		fakeMirror2           *fakes.Image
-		tmpDir                string
-		outBuf                bytes.Buffer
-		logger                logging.Logger
-		fakeLifecycleImage    *fakes.Image
+		subject                      *Client
+		fakeImageFetcher             *ifakes.FakeImageFetcher
+		fakeLifecycle                *ifakes.FakeLifecycle
+		defaultBuilderStackID        string
+		defaultWindowsBuilderStackID string
+		defaultBuilderImage          *fakes.Image
+		defaultWindowsBuilderImage   *fakes.Image
+		defaultBuilderName           string
+		defaultWindowsBuilderName    string
+		defaultRunImageName          string
+		defaultWindowsRunImageName   string
+		fakeDefaultRunImage          *fakes.Image
+		fakeDefaultWindowsRunImage   *fakes.Image
+		fakeMirror1                  *fakes.Image
+		fakeMirror2                  *fakes.Image
+		tmpDir                       string
+		outBuf                       bytes.Buffer
+		logger                       logging.Logger
+		fakeLifecycleImage           *fakes.Image
 	)
 	it.Before(func() {
 		var err error
@@ -77,26 +85,41 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		defaultBuilderName = "example.com/default/builder:tag"
 		defaultBuilderStackID = "some.stack.id"
 
-		defaultBuilderImage = newFakeBuilderImage(t, tmpDir, defaultBuilderName, defaultBuilderStackID, builder.DefaultLifecycleVersion)
+		defaultWindowsBuilderName = "example.com/windows-default/builder:tag"
+		defaultWindowsBuilderStackID = "some.windows.stack.id"
+
+		defaultRunImageName = "default/run"
+		defaultWindowsRunImageName = "default/win-run"
+
+		defaultBuilderImage = newFakeBuilderImage(t, tmpDir, defaultBuilderName, defaultBuilderStackID, defaultRunImageName, builder.DefaultLifecycleVersion, newLinuxImage)
 		h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 		fakeImageFetcher.LocalImages[defaultBuilderImage.Name()] = defaultBuilderImage
 
-		fakeDefaultRunImage = fakes.NewImage("default/run", "", nil)
+		defaultWindowsBuilderImage = newFakeBuilderImage(t, tmpDir, defaultWindowsBuilderName, defaultWindowsBuilderStackID, defaultWindowsRunImageName, builder.DefaultLifecycleVersion, newWindowsImage)
+		h.AssertNil(t, defaultWindowsBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
+		fakeImageFetcher.LocalImages[defaultWindowsBuilderImage.Name()] = defaultWindowsBuilderImage
+
+		fakeDefaultWindowsRunImage = newWindowsImage("default/win-run", "", nil)
+		h.AssertNil(t, fakeDefaultWindowsRunImage.SetLabel("io.buildpacks.stack.id", defaultWindowsBuilderStackID))
+		h.AssertNil(t, fakeDefaultWindowsRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "run:mixinC", "mixinX", "run:mixinZ"]`))
+		fakeImageFetcher.LocalImages[fakeDefaultWindowsRunImage.Name()] = fakeDefaultWindowsRunImage
+
+		fakeDefaultRunImage = newLinuxImage("default/run", "", nil)
 		h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 		h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "run:mixinC", "mixinX", "run:mixinZ"]`))
 		fakeImageFetcher.LocalImages[fakeDefaultRunImage.Name()] = fakeDefaultRunImage
 
-		fakeMirror1 = fakes.NewImage("registry1.example.com/run/mirror", "", nil)
+		fakeMirror1 = newLinuxImage("registry1.example.com/run/mirror", "", nil)
 		h.AssertNil(t, fakeMirror1.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 		h.AssertNil(t, fakeMirror1.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
 		fakeImageFetcher.LocalImages[fakeMirror1.Name()] = fakeMirror1
 
-		fakeMirror2 = fakes.NewImage("registry2.example.com/run/mirror", "", nil)
+		fakeMirror2 = newLinuxImage("registry2.example.com/run/mirror", "", nil)
 		h.AssertNil(t, fakeMirror2.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 		h.AssertNil(t, fakeMirror2.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
 		fakeImageFetcher.LocalImages[fakeMirror2.Name()] = fakeMirror2
 
-		fakeLifecycleImage = fakes.NewImage(fmt.Sprintf("%s:%s", lifecycleImageRepo, builder.DefaultLifecycleVersion), "", nil)
+		fakeLifecycleImage = newLinuxImage(fmt.Sprintf("%s:%s", lifecycleImageRepo, builder.DefaultLifecycleVersion), "", nil)
 		fakeImageFetcher.LocalImages[fakeLifecycleImage.Name()] = fakeLifecycleImage
 
 		docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
@@ -345,6 +368,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 						nil,
 						nil,
+						newLinuxImage,
 					)
 
 					fakeImageFetcher.LocalImages[customBuilderImage.Name()] = customBuilderImage
@@ -1317,7 +1341,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					tmpDir,
 					"example.com/supportscreator/builder:tag",
 					"some.stack.id",
+					defaultRunImageName,
 					"0.3.0",
+					newLinuxImage,
 				)
 				h.AssertNil(t, builderWithoutLifecycleImageOrCreator.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 				fakeImageFetcher.LocalImages[builderWithoutLifecycleImageOrCreator.Name()] = builderWithoutLifecycleImageOrCreator
@@ -1677,6 +1703,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								},
 								nil,
 								nil,
+								newLinuxImage,
 							)
 
 							fakeImageFetcher.LocalImages[compatibleBuilder.Name()] = compatibleBuilder
@@ -1726,6 +1753,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 							nil,
 							nil,
+							newLinuxImage,
 						)
 
 						fakeImageFetcher.LocalImages[incompatibleBuilderImage.Name()] = incompatibleBuilderImage
@@ -1779,6 +1807,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 							nil,
 							nil,
+							newLinuxImage,
 						)
 
 						fakeImageFetcher.LocalImages[badBuilderImage.Name()] = badBuilderImage
@@ -1834,6 +1863,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 							nil,
 							nil,
+							newLinuxImage,
 						)
 
 						fakeImageFetcher.LocalImages[badBuilderImage.Name()] = badBuilderImage
@@ -1978,24 +2008,148 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
 				})
-
-				it("drive is transformed", func() {
-					dir, _ := ioutil.TempDir("", "pack-test-mount")
-					volume := fmt.Sprintf("%v:/x", dir)
-					err := subject.Build(context.TODO(), BuildOptions{
-						Image:   "some/app",
-						Builder: defaultBuilderName,
-						ContainerConfig: ContainerConfig{
-							Volumes: []string{volume},
-						},
+				when("linux container", func() {
+					it("drive is transformed", func() {
+						dir, _ := ioutil.TempDir("", "pack-test-mount")
+						volume := fmt.Sprintf("%v:/x", dir)
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultBuilderName,
+							ContainerConfig: ContainerConfig{
+								Volumes: []string{volume},
+							},
+							TrustBuilder: true,
+						})
+						expected := []string{
+							fmt.Sprintf("%s:/x:ro", strings.ToLower(dir)),
+						}
+						h.AssertNil(t, err)
+						t.Log(fakeLifecycle.Opts.Volumes)
+						t.Log(expected)
+						h.AssertEq(t, fakeLifecycle.Opts.Volumes, expected)
 					})
-					expected := []string{
-						fmt.Sprintf("%s:/x:ro", strings.ToLower(dir)),
-					}
-					h.AssertNil(t, err)
-					t.Log(fakeLifecycle.Opts.Volumes)
-					t.Log(expected)
-					h.AssertEq(t, fakeLifecycle.Opts.Volumes, expected)
+
+					// May not fail as mode is not used on Windows
+					when("volume mode is invalid", func() {
+						it("returns an error", func() {
+							err := subject.Build(context.TODO(), BuildOptions{
+								Image:   "some/app",
+								Builder: defaultBuilderName,
+								ContainerConfig: ContainerConfig{
+									Volumes: []string{"/a:/x:invalid"},
+								},
+								TrustBuilder: true,
+							})
+							h.AssertError(t, err, `platform volume "/a:/x:invalid" has invalid format: invalid volume specification: '/a:/x:invalid'`)
+						})
+					})
+
+					when("volume specification is invalid", func() {
+						it("returns an error", func() {
+							err := subject.Build(context.TODO(), BuildOptions{
+								Image:   "some/app",
+								Builder: defaultBuilderName,
+								ContainerConfig: ContainerConfig{
+									Volumes: []string{":::"},
+								},
+								TrustBuilder: true,
+							})
+							h.AssertError(t, err, `platform volume ":::" has invalid format: invalid volume specification: ':::'`)
+						})
+					})
+
+					when("mounting onto cnb spec'd dir", func() {
+						for _, p := range []string{
+							`/cnb`, `/cnb/buildpacks`, `/layers`,
+						} {
+							p := p
+							it(fmt.Sprintf("warns when mounting to '%s'", p), func() {
+								err := subject.Build(context.TODO(), BuildOptions{
+									Image:   "some/app",
+									Builder: defaultBuilderName,
+									ContainerConfig: ContainerConfig{
+										Volumes: []string{fmt.Sprintf("c:/Users:%s", p)},
+									},
+									TrustBuilder: true,
+								})
+
+								h.AssertNil(t, err)
+								h.AssertContains(t, outBuf.String(), fmt.Sprintf("Warning: Mounting to a sensitive directory '%s'", p))
+							})
+						}
+					})
+				})
+				when("windows container", func() {
+					it("drive is mounted", func() {
+						dir, _ := ioutil.TempDir("", "pack-test-mount")
+						volume := fmt.Sprintf("%v:c:\\x", dir)
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:   "some/app",
+							Builder: defaultWindowsBuilderName,
+							ContainerConfig: ContainerConfig{
+								Volumes: []string{volume},
+							},
+							TrustBuilder: true,
+						})
+						expected := []string{
+							fmt.Sprintf("%s:c:\\x:ro", strings.ToLower(dir)),
+						}
+						h.AssertNil(t, err)
+						t.Log(fakeLifecycle.Opts.Volumes)
+						t.Log(expected)
+						h.AssertEq(t, fakeLifecycle.Opts.Volumes, expected)
+					})
+
+					// May not fail as mode is not used on Windows
+					when("volume mode is invalid", func() {
+						it("returns an error", func() {
+							err := subject.Build(context.TODO(), BuildOptions{
+								Image:   "some/app",
+								Builder: defaultWindowsBuilderName,
+								ContainerConfig: ContainerConfig{
+									Volumes: []string{"/a:/x:invalid"},
+								},
+								TrustBuilder: true,
+							})
+							h.AssertError(t, err, `platform volume "/a:/x:invalid" has invalid format: invalid volume specification: '/a:/x:invalid'`)
+						})
+					})
+
+					// Should fail even on windows
+					when("volume specification is invalid", func() {
+						it("returns an error", func() {
+							err := subject.Build(context.TODO(), BuildOptions{
+								Image:   "some/app",
+								Builder: defaultWindowsBuilderName,
+								ContainerConfig: ContainerConfig{
+									Volumes: []string{":::"},
+								},
+								TrustBuilder: true,
+							})
+							h.AssertError(t, err, `platform volume ":::" has invalid format: invalid volume specification: ':::'`)
+						})
+					})
+
+					when("mounting onto cnb spec'd dir", func() {
+						for _, p := range []string{
+							`c:\cnb`, `c:\cnb\buildpacks`, `c:\layers`,
+						} {
+							p := p
+							it(fmt.Sprintf("warns when mounting to '%s'", p), func() {
+								err := subject.Build(context.TODO(), BuildOptions{
+									Image:   "some/app",
+									Builder: defaultWindowsBuilderName,
+									ContainerConfig: ContainerConfig{
+										Volumes: []string{fmt.Sprintf("c:/Users:%s", p)},
+									},
+									TrustBuilder: true,
+								})
+
+								h.AssertNil(t, err)
+								h.AssertContains(t, outBuf.String(), fmt.Sprintf("Warning: Mounting to a sensitive directory '%s'", p))
+							})
+						}
+					})
 				})
 			})
 		})
@@ -2013,7 +2167,19 @@ func diffIDForFile(t *testing.T, path string) string {
 	return "sha256:" + hex.EncodeToString(hasher.Sum(make([]byte, 0, hasher.Size())))
 }
 
-func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackID, lifecycleVersion string) *fakes.Image {
+func newLinuxImage(name, topLayerSha string, identifier imgutil.Identifier) *fakes.Image {
+	return fakes.NewImage(name, topLayerSha, identifier)
+}
+
+func newWindowsImage(name, topLayerSha string, identifier imgutil.Identifier) *fakes.Image {
+	result := fakes.NewImage(name, topLayerSha, identifier)
+	arch, _ := result.Architecture()
+	osVersion, _ := result.OSVersion()
+	result.SetPlatform("windows", osVersion, arch)
+	return result
+}
+
+func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackID, runImageName, lifecycleVersion string, osImageCreator ifakes.FakeImageCreator) *fakes.Image {
 	return ifakes.NewFakeBuilderImage(t,
 		tmpDir,
 		builderName,
@@ -2027,7 +2193,7 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 			},
 			Stack: builder.StackMetadata{
 				RunImage: builder.RunImageMetadata{
-					Image: "default/run",
+					Image: runImageName,
 					Mirrors: []string{
 						"registry1.example.com/run/mirror",
 						"registry2.example.com/run/mirror",
@@ -2089,6 +2255,7 @@ func newFakeBuilderImage(t *testing.T, tmpDir, builderName, defaultBuilderStackI
 				},
 			}},
 		}},
+		osImageCreator,
 	)
 }
 
