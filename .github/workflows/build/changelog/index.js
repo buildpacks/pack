@@ -16,7 +16,7 @@ const annotationLabelsMap = {
 
 module.exports = async ({core, github, context, version}) => {
   const milestone = version;
-  const repository = context.repository;
+  const repository = context.github.repository;
 
   console.log("looking up PRs for milestone", milestone, "in repo", repository);
 
