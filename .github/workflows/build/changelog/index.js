@@ -14,9 +14,8 @@ const annotationLabelsMap = {
   "breaking": "breaking-change",
 };
 
-module.exports = async ({core, github, context, version}) => {
+module.exports = async ({core, github, repository, version}) => {
   const milestone = version;
-  const repository = context.github.repository;
 
   console.log("looking up PRs for milestone", milestone, "in repo", repository);
 
@@ -45,7 +44,7 @@ module.exports = async ({core, github, context, version}) => {
     let groupedCliIssues = groupByType(cliIssues);
     let groupedLibIssues = groupByType(libIssues);
     let output = "";
-    
+
     // issues
     for (let key in typeLabelsMap) {
       let issues = (groupedCliIssues[typeLabelsMap[key]] || []);
