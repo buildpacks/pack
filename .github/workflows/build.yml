@@ -154,7 +154,7 @@ jobs:
           script: |
             const path = require('path');
             const scriptPath = path.resolve('.github/workflows/build/changelog/index.js');
-            require(scriptPath)({core, github, repository: "${{ context.github.repository }}", version: "${{ env.PACK_VERSION }}" });
+            require(scriptPath)({core, github, repository: "${{ github.repository }}", version: "${{ env.PACK_VERSION }}" });
       - name: Create Release
         id: create_release
         uses: actions/create-release@latest
