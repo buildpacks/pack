@@ -32,12 +32,13 @@ const (
 
 	cnbDir = "/cnb"
 
-	orderPath    = "/cnb/order.toml"
-	stackPath    = "/cnb/stack.toml"
-	platformDir  = "/platform"
-	lifecycleDir = "/cnb/lifecycle"
-	workspaceDir = "/workspace"
-	layersDir    = "/layers"
+	orderPath          = "/cnb/order.toml"
+	stackPath          = "/cnb/stack.toml"
+	platformDir        = "/platform"
+	lifecycleDir       = "/cnb/lifecycle"
+	compatLifecycleDir = "/lifecycle"
+	workspaceDir       = "/workspace"
+	layersDir          = "/layers"
 
 	metadataLabel = "io.buildpacks.builder.metadata"
 	stackLabel    = "io.buildpacks.stack.id"
@@ -579,6 +580,16 @@ func (b *Builder) lifecycleLayer(dest string) (string, error) {
 	err = b.embedLifecycleTar(lw)
 	if err != nil {
 		return "", errors.Wrap(err, "embedding lifecycle tar")
+	}
+
+	if err := lw.WriteHeader(&tar.Header{
+		Name:     compatLifecycleDir,
+		Linkname: lifecycleDir,
+		Typeflag: tar.TypeSymlink,
+		Mode:     0644,
+		ModTime:  archive.NormalizedDateTime,
+	}); err != nil {
+		return "", errors.Wrapf(err, "creating %s symlink", style.Symbol(compatLifecycleDir))
 	}
 
 	return fh.Name(), nil
