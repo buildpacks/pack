@@ -20,7 +20,7 @@ module.exports = async ({core, github, repository, version}) => {
   console.log("looking up PRs for milestone", milestone, "in repo", repository);
 
   return await github.paginate("GET /search/issues", {
-    q: `repo:${repository} is:pr state:closed milestone:${milestone}`,
+    q: `repo:${repository} is:pr is:merged milestone:${milestone}`,
   }).then((items) => {
 
     let cliIssues = [];
@@ -104,7 +104,7 @@ function createIssueEntry(issue) {
 
   let line = `* ${issue.title}`;
   if (annotations.length !== 0) {
-    line += ` [${annotations.join(", ")}]`;
+    line += ` [**${annotations.join(", ")}**]`;
   }
   line += ` (#${issue.number} by @${issue.user.login})\n`;
 

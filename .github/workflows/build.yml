@@ -154,7 +154,7 @@ jobs:
           script: |
             const path = require('path');
             const scriptPath = path.resolve('.github/workflows/build/changelog/index.js');
-            require(scriptPath)({core, github, repository: "${{ env.GITHUB_REPOSITORY }}", version: "${{ env.PACK_VERSION }}" });
+            require(scriptPath)({core, github, repository: "${{ context.github.repository }}", version: "${{ env.PACK_VERSION }}" });
       - name: Create Release
         id: create_release
         uses: actions/create-release@latest
@@ -206,7 +206,7 @@ jobs:
             choco install pack
             ```
 
-            #### Manual
+            #### Manually
 
             1. Download the `.tgz` or `.zip` file for your platform
             2. Extract the `pack` binary
@@ -224,8 +224,10 @@ jobs:
 
             ## Info
 
-            Builders created with this release of the pack CLI continue to contain [lifecycle v${{ steps.lifecycle_version.outputs.version }}](https://github.com/buildpack/lifecycle/releases/tag/v${{ steps.lifecycle_version.outputs.version }}) by default.
+            Builders created with this release of the pack CLI contain [lifecycle v${{ steps.lifecycle_version.outputs.version }}](https://github.com/buildpack/lifecycle/releases/tag/v${{ steps.lifecycle_version.outputs.version }}) by default.
 
+            ## Changelog
+            
             ${{ steps.changelog.outputs.contents }}
       - name: Upload Release Asset - macos
         uses: actions/upload-release-asset@v1
