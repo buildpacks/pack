@@ -74,9 +74,9 @@ Config:
 	platformAPIs := ""
 	for _, api := range build.SupportedPlatformAPIVersions {
 		if len(platformAPIs) > 0 {
-			platformAPIs += ","
+			platformAPIs += ", "
 		}
-		platformAPIs = fmt.Sprintf("%s %s", platformAPIs, api)
+		platformAPIs = fmt.Sprintf("%s%s", platformAPIs, api)
 	}
 
 	return tpl.Execute(writer, map[string]string{

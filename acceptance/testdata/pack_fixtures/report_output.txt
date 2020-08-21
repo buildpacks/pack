@@ -4,5 +4,7 @@ Pack:
 
 Default Lifecycle Version:  0.9.1
 
+Supported Platform APIs:  0.3, 0.4
+
 Config:
   default-builder-image = "{{ .DefaultBuilder }}"
