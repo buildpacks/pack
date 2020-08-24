@@ -145,7 +145,8 @@ jobs:
           PACK_HELP="${PACK_HELP//$'\n'/'%0A'}"
           PACK_HELP="${PACK_HELP//$'\r'/'%0D'}"
           echo "::set-output name=help::$PACK_HELP"
-      - uses: actions/github-script@v1
+      - name: Generate changelog
+        uses: actions/github-script@v1
         id: changelog
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
@@ -153,7 +154,7 @@ jobs:
           script: |
             const path = require('path');
             const scriptPath = path.resolve('.github/workflows/build/changelog/index.js');
-            require(scriptPath)({core, github, context, version: ${{ env.PACK_VERSION }}});
+            require(scriptPath)({core, github, repository: "${{ github.repository }}", version: "${{ env.PACK_VERSION }}" });
       - name: Create Release
         id: create_release
         uses: actions/create-release@latest
@@ -174,14 +175,6 @@ jobs:
 
             ## Install
 
-            #### macOS
-
-            If you're on macOS, you can use Homebrew:
-
-            ```bash
-            $ brew install buildpacks/tap/pack
-            ```
-
             #### Linux
 
             On Linux you can use the one of the following methods of installation.
@@ -194,12 +187,26 @@ jobs:
             ##### Command
 
             ```bash
-            (export GH=buildpacks/pack; export LATEST=$(curl -s https://api.github.com/repos/$GH/releases/latest | grep -o -E "https://.+?-linux.tgz"); echo "$LATEST"; curl -sSL "$LATEST" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv $(basename $GH))
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
             ```
 
-            #### Others
+            #### macOS
 
-            Otherwise:
+            On macOS, you can use Homebrew:
+
+            ```bash
+            brew install buildpacks/tap/pack
+            ```
+
+            #### Windows
+
+            On Windows, you can use [Chocolatey](https://chocolatey.org/):
+
+            ```bash
+            choco install pack
+            ```
+
+            #### Manually
 
             1. Download the `.tgz` or `.zip` file for your platform
             2. Extract the `pack` binary
@@ -217,8 +224,10 @@ jobs:
 
             ## Info
 
-            Builders created with this release of the pack CLI continue to contain [lifecycle v${{ steps.lifecycle_version.outputs.version }}](https://github.com/buildpack/lifecycle/releases/tag/v${{ steps.lifecycle_version.outputs.version }}) by default.
+            Builders created with this release of the pack CLI contain [lifecycle v${{ steps.lifecycle_version.outputs.version }}](https://github.com/buildpack/lifecycle/releases/tag/v${{ steps.lifecycle_version.outputs.version }}) by default.
 
+            ## Changelog
+            
             ${{ steps.changelog.outputs.contents }}
       - name: Upload Release Asset - macos
         uses: actions/upload-release-asset@v1
