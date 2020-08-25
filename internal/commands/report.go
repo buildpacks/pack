@@ -71,13 +71,7 @@ Config:
 		configData = strings.TrimRight(padded.String(), " \n")
 	}
 
-	platformAPIs := ""
-	for _, api := range build.SupportedPlatformAPIVersions {
-		if len(platformAPIs) > 0 {
-			platformAPIs += ", "
-		}
-		platformAPIs = fmt.Sprintf("%s%s", platformAPIs, api)
-	}
+	platformAPIs := strings.Join(build.SupportedPlatformAPIVersions.AsStrings(), ", ")
 
 	return tpl.Execute(writer, map[string]string{
 		"Version":                 version,
