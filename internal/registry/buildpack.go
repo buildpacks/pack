@@ -32,7 +32,8 @@ func Validate(b Buildpack) error {
 	return nil
 }
 
-func ParseNamespaceName(id string) (string, string, error) {
+// ParseNamespaceName parses a buildpack ID into Namespace and Name
+func ParseNamespaceName(id string) (ns string, name string, err error) {
 	parts := strings.Split(id, "/")
 	if len(parts) < 2 {
 		return "", "", fmt.Errorf("invalid id %s does not contain a namespace", style.Symbol(id))
