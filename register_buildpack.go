@@ -49,28 +49,58 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 		Yanked:    false,
 	}
 
-	issueURL, err := registry.GetIssueURL(opts.URL)
-	if err != nil {
-		return err
+	if opts.Type == "github" {
+		issueURL, err := registry.GetIssueURL(opts.URL)
+		if err != nil {
+			return err
+		}
+
+		issue, err := registry.CreateGithubIssue(buildpack)
+		if err != nil {
+			return err
+		}
+
+		params := url.Values{}
+		params.Add("title", issue.Title)
+		params.Add("body", issue.Body)
+		issueURL.RawQuery = params.Encode()
+
+		c.logger.Debugf("Open URL in browser: %s", issueURL)
+		cmd, err := registry.CreateBrowserCmd(issueURL.String(), runtime.GOOS)
+		if err != nil {
+			return err
+		}
+
+		return cmd.Start()
+	} else if opts.Type == "git" {
+		registryCache, err := c.getRegistry(c.logger, opts.URL)
+		if err != nil {
+			return err
+		}
+
+		username, err := parseUsernameFromURL(opts.URL)
+		if err != nil {
+			return err
+		}
+
+		if err := registry.GitCommit(buildpack, username, registryCache); err != nil {
+			return err
+		}
 	}
 
-	issue, err := registry.CreateGithubIssue(buildpack)
-	if err != nil {
-		return err
+	return nil
+}
+
+func parseUsernameFromURL(url string) (string, error) {
+	parts := strings.Split(url, "/")
+	if len(parts) < 3 {
+		return "", errors.New("invalid url: cannot parse username from url")
+	}
+	if parts[3] == "" {
+		return "", errors.New("invalid url: username is empty")
 	}
 
-	params := url.Values{}
-	params.Add("title", issue.Title)
-	params.Add("body", issue.Body)
-	issueURL.RawQuery = params.Encode()
-
-	c.logger.Debugf("Open URL in browser: %s", issueURL)
-	cmd, err := registry.CreateBrowserCmd(issueURL.String(), runtime.GOOS)
-	if err != nil {
-		return err
-	}
-
-	return cmd.Start()
+	return parts[3], nil
 }
 
 func parseID(id string) (string, string, error) {
