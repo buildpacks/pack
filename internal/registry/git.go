@@ -2,21 +2,15 @@ package registry
 
 import (
 	"bytes"
-	"os"
 	"text/template"
 
 	"github.com/pkg/errors"
 )
 
-func CreateGitCommit(b Buildpack, username string, registryCache Cache) error {
-	_, err := os.Stat(registryCache.Root)
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = registryCache.CreateCache()
-			if err != nil {
-				return errors.Wrap(err, "creating registry cache")
-			}
-		}
+// GitCommit commits a Buildpack to a registry Cache.
+func GitCommit(b Buildpack, username string, registryCache Cache) error {
+	if err := registryCache.Initialize(); err != nil {
+		return err
 	}
 
 	commitTemplate, err := template.New("buildpack").Parse(GitCommitTemplate)
@@ -26,10 +20,10 @@ func CreateGitCommit(b Buildpack, username string, registryCache Cache) error {
 
 	var commit bytes.Buffer
 	if err := commitTemplate.Execute(&commit, b); err != nil {
-		return err
+		return errors.Wrap(err, "creating template")
 	}
 
-	if err := registryCache.CreateCommit(b, username, commit.String()); err != nil {
+	if err := registryCache.Commit(b, username, commit.String()); err != nil {
 		return err
 	}
 

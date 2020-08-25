@@ -19,6 +19,7 @@ import (
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
 	"github.com/buildpacks/pack/internal/buildpack"
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -153,7 +154,7 @@ func (r *Cache) Initialize() error {
 	if err := r.validateCache(); err != nil {
 		err = os.RemoveAll(r.Root)
 		if err != nil {
-			return errors.Wrap(err, "reseting registry cache")
+			return errors.Wrap(err, "resetting registry cache")
 		}
 		err = r.CreateCache()
 		if err != nil {
@@ -164,6 +165,7 @@ func (r *Cache) Initialize() error {
 	return nil
 }
 
+// CreateCache creates the cache on the filesystem
 func (r *Cache) CreateCache() error {
 	r.logger.Debugf("Creating registry cache for %s/%s", r.url.Host, r.url.Path)
 
@@ -208,7 +210,8 @@ func (r *Cache) validateCache() error {
 	return errors.New("invalid registry cache remote")
 }
 
-func (r *Cache) CreateCommit(b Buildpack, username, msg string) error {
+// Commit a Buildpack change
+func (r *Cache) Commit(b Buildpack, username, msg string) error {
 	r.logger.Debugf("Creating commit in registry cache")
 
 	if msg == "" {
@@ -222,20 +225,21 @@ func (r *Cache) CreateCommit(b Buildpack, username, msg string) error {
 
 	w, err := repository.Worktree()
 	if err != nil {
-		return errors.Wrapf(err, "reading (%s)", r.Root)
+		return errors.Wrapf(err, "reading %s", style.Symbol(r.Root))
 	}
 
 	index, err := r.writeEntry(b)
 	if err != nil {
-		return errors.Wrapf(err, "writing (%s)", index)
+		return errors.Wrapf(err, "writing %s", style.Symbol(index))
 	}
 
-	if index == "" {
-		return nil
+	relativeIndexFile, err := filepath.Rel(r.Root, index)
+	if err != nil {
+		return errors.Wrap(err, "resolving relative path")
 	}
 
-	if _, err := w.Add(index); err != nil {
-		return errors.Wrapf(err, "adding (%s)", index)
+	if _, err := w.Add(relativeIndexFile); err != nil {
+		return errors.Wrapf(err, "adding %s", style.Symbol(index))
 	}
 
 	if _, err := w.Commit(msg, &git.CommitOptions{
@@ -252,31 +256,16 @@ func (r *Cache) CreateCommit(b Buildpack, username, msg string) error {
 }
 
 func (r *Cache) writeEntry(b Buildpack) (string, error) {
-	var ns string = b.Namespace
-	var name string = b.Name
+	var ns = b.Namespace
+	var name = b.Name
 
-	var indexDir string
-	switch {
-	case len(name) == 0:
-		return "", errors.New("empty buildpack name")
-	case len(name) == 1:
-		indexDir = "1"
-	case len(name) == 2:
-		indexDir = "2"
-	case len(name) == 3:
-		indexDir = "3"
-	default:
-		indexDir = filepath.Join(name[:2], name[2:4])
+	index, err := IndexPath(r.Root, ns, name)
+	if err != nil {
+		return "", err
 	}
 
-	if len(ns) == 0 {
-		return "", errors.New("empty buildpack namespace")
-	}
-
-	index := filepath.Join(r.Root, indexDir, fmt.Sprintf("%s_%s", ns, name))
-
-	if _, err := os.Stat(filepath.Join(r.Root, indexDir)); os.IsNotExist(err) {
-		if err := os.MkdirAll(filepath.Join(r.Root, indexDir), 0755); err != nil {
+	if _, err := os.Stat(index); os.IsNotExist(err) {
+		if err := os.MkdirAll(filepath.Dir(index), 0755); err != nil {
 			return "", errors.Wrapf(err, "creating directory structure for: %s/%s", ns, name)
 		}
 	} else {
@@ -300,12 +289,10 @@ func (r *Cache) writeEntry(b Buildpack) (string, error) {
 	if err != nil {
 		return "", errors.Wrapf(err, "creating buildpack file: %s/%s", ns, name)
 	}
+	defer f.Close()
 
-	var newline string
-
-	if (runtime.GOOS == "linux") || (runtime.GOOS == "darwin") {
-		newline = "\n"
-	} else if runtime.GOOS == "windows" {
+	newline := "\n"
+	if runtime.GOOS == "windows" {
 		newline = "\r\n"
 	}
 
@@ -315,34 +302,18 @@ func (r *Cache) writeEntry(b Buildpack) (string, error) {
 	}
 
 	fileContentsFormatted := string(fileContents) + newline
-
 	if _, err := f.WriteString(fileContentsFormatted); err != nil {
 		return "", errors.Wrapf(err, "writing buildpack to file: %s/%s", ns, name)
 	}
 
-	if err := f.Close(); err != nil {
-		return "", errors.Wrapf(err, "closing file")
-	}
-
-	return filepath.Join(indexDir, fmt.Sprintf("%s_%s", ns, name)), nil
+	return index, nil
 }
 
 func (r *Cache) readEntry(ns, name string) (Entry, error) {
-	var indexDir string
-	switch {
-	case len(name) == 0:
-		return Entry{}, errors.New("empty buildpack name")
-	case len(name) == 1:
-		indexDir = "1"
-	case len(name) == 2:
-		indexDir = "2"
-	case len(name) == 3:
-		indexDir = "3"
-	default:
-		indexDir = filepath.Join(name[:2], name[2:4])
+	index, err := IndexPath(r.Root, ns, name)
+	if err != nil {
+		return Entry{}, err
 	}
-
-	index := filepath.Join(r.Root, indexDir, fmt.Sprintf("%s_%s", ns, name))
 
 	if _, err := os.Stat(index); err != nil {
 		return Entry{}, errors.Wrapf(err, "finding buildpack: %s/%s", ns, name)

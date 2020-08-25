@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+	"gopkg.in/src-d/go-git.v4"
 
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/registry"
@@ -18,8 +18,6 @@ import (
 )
 
 func TestGit(t *testing.T) {
-	color.Disable(true)
-	defer color.Disable(false)
 	spec.Run(t, "Git", testGit, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -34,14 +32,6 @@ func testGit(t *testing.T, when spec.G, it spec.S) {
 		username        string = "supra08"
 	)
 
-	bp := registry.Buildpack{
-		Namespace: "example",
-		Name:      "python",
-		Version:   "1.0.0",
-		Yanked:    false,
-		Address:   "example.com",
-	}
-
 	it.Before(func() {
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 
@@ -54,25 +44,62 @@ func testGit(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		err := os.RemoveAll(tmpDir)
-		h.AssertNil(t, err)
+		h.AssertNil(t, os.RemoveAll(tmpDir))
 	})
 
-	when("#createGitCommit", func() {
-		it("should work with a proper buildpack and registry cache", func() {
-			err := registry.CreateGitCommit(bp, username, registryCache)
-			h.AssertNil(t, err)
+	when("#GitCommit", func() {
+		when("ADD buildpack", func() {
+			it("commits addition", func() {
+				err := registry.GitCommit(registry.Buildpack{
+					Namespace: "example",
+					Name:      "python",
+					Version:   "1.0.0",
+					Yanked:    false,
+					Address:   "example.com",
+				}, username, registryCache)
+				h.AssertNil(t, err)
+
+				repo, err := git.PlainOpen(registryCache.Root)
+				h.AssertNil(t, err)
+
+				head, err := repo.Head()
+				h.AssertNil(t, err)
+
+				cIter, err := repo.Log(&git.LogOptions{From: head.Hash()})
+				h.AssertNil(t, err)
+
+				commit, err := cIter.Next()
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, commit.Message, "ADD example/python@1.0.0")
+			})
 		})
 
-		it("should fail with incorrect buildpack format (namespace missing)", func() {
-			bp := registry.Buildpack{
-				Name:    "python",
-				Version: "1.0.0",
-				Yanked:  false,
-				Address: "example.com",
-			}
-			err := registry.CreateGitCommit(bp, username, registryCache)
-			h.AssertError(t, err, "writing (): empty buildpack namespace")
+		when("YANK buildpack", func() {
+			it("commits yank", func() {
+				err := registry.GitCommit(registry.Buildpack{
+					Namespace: "example",
+					Name:      "python",
+					Version:   "1.0.0",
+					Yanked:    true,
+					Address:   "example.com",
+				}, username, registryCache)
+				h.AssertNil(t, err)
+
+				repo, err := git.PlainOpen(registryCache.Root)
+				h.AssertNil(t, err)
+
+				head, err := repo.Head()
+				h.AssertNil(t, err)
+
+				cIter, err := repo.Log(&git.LogOptions{From: head.Hash()})
+				h.AssertNil(t, err)
+
+				commit, err := cIter.Next()
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, commit.Message, "YANK example/python@1.0.0")
+			})
 		})
 	})
 }

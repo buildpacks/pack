@@ -83,7 +83,7 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 			return err
 		}
 
-		if err := registry.CreateGitCommit(buildpack, username, registryCache); err != nil {
+		if err := registry.GitCommit(buildpack, username, registryCache); err != nil {
 			return err
 		}
 	}
