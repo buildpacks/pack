@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
@@ -48,6 +49,8 @@ func generateOutput(writer io.Writer, version string, explicit bool) error {
 
 Default Lifecycle Version:  {{ .DefaultLifecycleVersion }}
 
+Supported Platform APIs:  {{ .SupportedPlatformAPIs }}
+
 Config:
 {{ .Config -}}`))
 
@@ -68,11 +71,14 @@ Config:
 		configData = strings.TrimRight(padded.String(), " \n")
 	}
 
+	platformAPIs := strings.Join(build.SupportedPlatformAPIVersions.AsStrings(), ", ")
+
 	return tpl.Execute(writer, map[string]string{
 		"Version":                 version,
 		"OS":                      runtime.GOOS,
 		"Arch":                    runtime.GOARCH,
 		"DefaultLifecycleVersion": builder.DefaultLifecycleVersion,
+		"SupportedPlatformAPIs":   platformAPIs,
 		"Config":                  configData,
 	})
 }
