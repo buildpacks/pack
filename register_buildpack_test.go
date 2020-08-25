@@ -51,7 +51,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 			_ = fakeAppImage.Cleanup()
 		})
 
-		it("should return error for an invalid image", func() {
+		it("should return error for an invalid image (github)", func() {
 			fakeAppImage = fakes.NewImage("invalid/image", "", &fakeIdentifier{name: "buildpack-image"})
 			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.buildpackage.metadata", `{}`))
 
@@ -63,7 +63,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 				}))
 		})
 
-		it("should return error for missing image label", func() {
+		it("should return error for missing image label (github)", func() {
 			fakeAppImage = fakes.NewImage("missinglabel/image", "", &fakeIdentifier{name: "buildpack-image"})
 			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.buildpackage.metadata", `{}`))
 			fakeImageFetcher.RemoteImages["missinglabel/image"] = fakeAppImage
@@ -76,13 +76,56 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 				}))
 		})
 
-		it("should throw error if missing URL", func() {
+		it("should throw error if missing URL (github)", func() {
 			h.AssertError(t, subject.RegisterBuildpack(context.TODO(),
 				RegisterBuildpackOptions{
 					ImageName: "buildpack/image",
 					Type:      "github",
 					URL:       "",
 				}), "missing github URL")
+		})
+
+		it("should throw error if missing URL (git)", func() {
+			h.AssertError(t, subject.RegisterBuildpack(context.TODO(),
+				RegisterBuildpackOptions{
+					ImageName: "buildpack/image",
+					Type:      "git",
+					URL:       "",
+				}), "invalid url: cannot parse username from url")
+		})
+
+		it("should throw error if using malformed URL (git)", func() {
+			h.AssertError(t, subject.RegisterBuildpack(context.TODO(),
+				RegisterBuildpackOptions{
+					ImageName: "buildpack/image",
+					Type:      "git",
+					URL:       "https://github.com//buildpack-registry/",
+				}), "invalid url: username is empty")
+		})
+
+		it("should return error for an invalid image (git)", func() {
+			fakeAppImage = fakes.NewImage("invalid/image", "", &fakeIdentifier{name: "buildpack-image"})
+			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.buildpackage.metadata", `{}`))
+
+			h.AssertNotNil(t, subject.RegisterBuildpack(context.TODO(),
+				RegisterBuildpackOptions{
+					ImageName: "invalid/image",
+					Type:      "git",
+					URL:       registry.DefaultRegistryURL,
+				}))
+		})
+
+		it("should return error for missing image label (git)", func() {
+			fakeAppImage = fakes.NewImage("missinglabel/image", "", &fakeIdentifier{name: "buildpack-image"})
+			h.AssertNil(t, fakeAppImage.SetLabel("io.buildpacks.buildpackage.metadata", `{}`))
+			fakeImageFetcher.RemoteImages["missinglabel/image"] = fakeAppImage
+
+			h.AssertNotNil(t, subject.RegisterBuildpack(context.TODO(),
+				RegisterBuildpackOptions{
+					ImageName: "missinglabel/image",
+					Type:      "git",
+					URL:       registry.DefaultRegistryURL,
+				}))
 		})
 	})
 }
