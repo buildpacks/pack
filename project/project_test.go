@@ -123,8 +123,8 @@ name = "gallant"
 
 			expected := 0
 			if len(projectDescriptor.Build.Env) != 0 {
-				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
-					expected, string(len(projectDescriptor.Build.Env)))
+				t.Fatalf("Expected\n-----\n%d\n-----\nbut got\n-----\n%d\n",
+					expected, len(projectDescriptor.Build.Env))
 			}
 
 			for _, envVar := range projectDescriptor.Build.Env {

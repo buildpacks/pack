@@ -73,6 +73,18 @@ func (a AssertionManager) Nil(actual interface{}) {
 	}
 }
 
+func (a AssertionManager) Succeeds(actual interface{}) {
+	a.testObject.Helper()
+
+	a.Nil(actual)
+}
+
+func (a AssertionManager) Fails(actual interface{}) {
+	a.testObject.Helper()
+
+	a.NotNil(actual)
+}
+
 func (a AssertionManager) NilWithMessage(actual interface{}, message string) {
 	a.testObject.Helper()
 
@@ -150,7 +162,7 @@ func (a AssertionManager) MatchesAll(actual string, patterns ...*regexp.Regexp) 
 	}
 }
 
-func (a AssertionManager) NotContain(actual, expected string) {
+func (a AssertionManager) NotContains(actual, expected string) {
 	a.testObject.Helper()
 
 	if strings.Contains(actual, expected) {
@@ -174,4 +186,19 @@ func (a AssertionManager) Error(actual error) {
 	if actual == nil {
 		a.testObject.Fatal("Expected an error but got nil")
 	}
+}
+
+func (a AssertionManager) ErrorContains(actual error, expected string) {
+	a.testObject.Helper()
+
+	if actual == nil {
+		a.testObject.Fatalf("Expected %q an error but got nil", expected)
+	}
+
+	a.Contains(actual.Error(), expected)
+}
+
+func cutSuffixWhitespace(input string) string {
+	re := regexp.MustCompile(`  +$`)
+	return re.ReplaceAllString(input, "")
 }
