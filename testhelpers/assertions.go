@@ -65,12 +65,36 @@ func (a AssertionManager) Equal(actual, expected interface{}) {
 	}
 }
 
+func (a AssertionManager) NotEqual(actual, expected interface{}) {
+	a.testObject.Helper()
+
+	if diff := cmp.Diff(actual, expected); diff == "" {
+		a.testObject.Fatalf(diff)
+	}
+}
+
+func (a AssertionManager) ErrorContains(actual error, expected string) {
+	a.testObject.Helper()
+
+	if actual == nil {
+		a.testObject.Fatal("Expected an error but got nil")
+	}
+
+	a.Contains(actual.Error(), expected)
+}
+
 func (a AssertionManager) Nil(actual interface{}) {
 	a.testObject.Helper()
 
 	if !isNil(actual) {
 		a.testObject.Fatalf("expected nil: %v", actual)
 	}
+}
+
+func (a AssertionManager) Succeeds(actual interface{}) {
+	a.testObject.Helper()
+
+	a.Nil(actual)
 }
 
 func (a AssertionManager) NilWithMessage(actual interface{}, message string) {
