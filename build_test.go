@@ -56,14 +56,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		subject                      *Client
 		fakeImageFetcher             *ifakes.FakeImageFetcher
 		fakeLifecycle                *ifakes.FakeLifecycle
-		defaultBuilderStackID        string
-		defaultWindowsBuilderStackID string
+		defaultBuilderStackID        = "some.stack.id"
+		defaultWindowsBuilderStackID = "some.windows.stack.id"
 		defaultBuilderImage          *fakes.Image
 		defaultWindowsBuilderImage   *fakes.Image
-		defaultBuilderName           string
-		defaultWindowsBuilderName    string
-		defaultRunImageName          string
-		defaultWindowsRunImageName   string
+		defaultBuilderName           = "example.com/default/builder:tag"
+		defaultWindowsBuilderName    = "example.com/windows-default/builder:tag"
+		defaultRunImageName          = "default/run"
+		defaultWindowsRunImageName   = "default/win-run"
 		fakeDefaultRunImage          *fakes.Image
 		fakeDefaultWindowsRunImage   *fakes.Image
 		fakeMirror1                  *fakes.Image
@@ -81,15 +81,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 		tmpDir, err = ioutil.TempDir("", "build-test")
 		h.AssertNil(t, err)
-
-		defaultBuilderName = "example.com/default/builder:tag"
-		defaultBuilderStackID = "some.stack.id"
-
-		defaultWindowsBuilderName = "example.com/windows-default/builder:tag"
-		defaultWindowsBuilderStackID = "some.windows.stack.id"
-
-		defaultRunImageName = "default/run"
-		defaultWindowsRunImageName = "default/win-run"
 
 		defaultBuilderImage = newFakeBuilderImage(t, tmpDir, defaultBuilderName, defaultBuilderStackID, defaultRunImageName, builder.DefaultLifecycleVersion, newLinuxImage)
 		h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
@@ -2024,8 +2015,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							fmt.Sprintf("%s:/x:ro", strings.ToLower(dir)),
 						}
 						h.AssertNil(t, err)
-						t.Log(fakeLifecycle.Opts.Volumes)
-						t.Log(expected)
 						h.AssertEq(t, fakeLifecycle.Opts.Volumes, expected)
 					})
 
@@ -2095,8 +2084,6 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							fmt.Sprintf("%s:c:\\x:ro", strings.ToLower(dir)),
 						}
 						h.AssertNil(t, err)
-						t.Log(fakeLifecycle.Opts.Volumes)
-						t.Log(expected)
 						h.AssertEq(t, fakeLifecycle.Opts.Volumes, expected)
 					})
 

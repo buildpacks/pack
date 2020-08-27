@@ -16,7 +16,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-type FakeImageCreator func(string, string, imgutil.Identifier) *fakes.Image
+type FakeImageCreator func(name string, topLayerSha string, identifier imgutil.Identifier) *fakes.Image
 
 func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.BuildpackLayers, order dist.Order, creator FakeImageCreator) *fakes.Image {
 	fakeBuilderImage := creator(name, "", nil)
