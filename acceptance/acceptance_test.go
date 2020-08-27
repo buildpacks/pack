@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/pack/acceptance/buildpacks"
+
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/google/go-containerregistry/pkg/name"
 
@@ -33,7 +35,6 @@ import (
 	"github.com/buildpacks/pack/acceptance/config"
 	"github.com/buildpacks/pack/acceptance/invoke"
 	"github.com/buildpacks/pack/internal/archive"
-	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/style"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -116,7 +117,6 @@ func testWithoutSpecificBuilderRequirement(
 	packConfig config.PackAsset,
 ) {
 	var (
-		bpDir  = buildpacksDir(builder.DefaultBuildpackAPIVersion)
 		pack   *invoke.PackInvoker
 		assert = h.NewAssertionManager(t)
 	)
@@ -228,6 +228,7 @@ func testWithoutSpecificBuilderRequirement(
 		var (
 			tmpDir                  string
 			simplePackageConfigPath string
+			buildpackManager        buildpacks.BuildpackManager
 		)
 
 		it.Before(func() {
@@ -245,41 +246,13 @@ func testWithoutSpecificBuilderRequirement(
 			simplePackageConfigPath = filepath.Join(tmpDir, "package.toml")
 			h.CopyFile(t, pack.FixtureManager().FixtureLocation("package.toml"), simplePackageConfigPath)
 
-			err = os.Rename(
-				h.CreateTGZ(t, filepath.Join(bpDir, "simple-layers-parent-buildpack"), "./", 0755),
-				filepath.Join(tmpDir, "simple-layers-parent-buildpack.tgz"),
-			)
-			assert.Nil(err)
-
-			err = os.Rename(
-				h.CreateTGZ(t, filepath.Join(bpDir, "simple-layers-buildpack"), "./", 0755),
-				filepath.Join(tmpDir, "simple-layers-buildpack.tgz"),
-			)
-			assert.Nil(err)
+			buildpackManager = buildpacks.NewBuildpackManager(t, assert)
+			buildpackManager.PrepareBuildpacks(tmpDir, buildpacks.SimpleLayersParent, buildpacks.SimpleLayers)
 		})
 
 		it.After(func() {
 			assert.Nil(os.RemoveAll(tmpDir))
 		})
-
-		packageBuildpackLocally := func(absConfigPath string) string {
-			t.Helper()
-			packageName := "test/package-" + h.RandString(10)
-			output, err := pack.Run("package-buildpack", packageName, "-c", absConfigPath)
-			assert.Nil(err)
-
-			assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(packageName)
-			return packageName
-		}
-
-		packageBuildpackRemotely := func(absConfigPath string) string {
-			t.Helper()
-			packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-			output, err := pack.Run("package-buildpack", packageName, "-c", absConfigPath, "--publish")
-			assert.Nil(err)
-			assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
-			return packageName
-		}
 
 		assertImageExistsLocally := func(name string) {
 			t.Helper()
@@ -321,30 +294,57 @@ func testWithoutSpecificBuilderRequirement(
 		when("--format image", func() {
 			it("creates the package", func() {
 				t.Log("package w/ only buildpacks")
-				nestedPackageName := packageBuildpackLocally(simplePackageConfigPath)
-				defer h.DockerRmi(dockerCli, nestedPackageName)
-				assertImageExistsLocally(nestedPackageName)
+				nestedPackageName := "test/package-" + h.RandString(10)
+				packageName := "test/package-" + h.RandString(10)
 
-				t.Log("package w/ buildpacks and packages")
 				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
-				packageName := packageBuildpackLocally(aggregatePackageToml)
-				defer h.DockerRmi(dockerCli, packageName)
+
+				packageBuildpack := buildpacks.NewPackageImage(
+					t,
+					pack,
+					packageName,
+					aggregatePackageToml,
+					buildpacks.WithRequiredBuildpacks(
+						buildpacks.SimpleLayersParent,
+						buildpacks.NewPackageImage(
+							t,
+							pack,
+							nestedPackageName,
+							simplePackageConfigPath,
+							buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
+						),
+					),
+				)
+				buildpackManager.PrepareBuildpacks(tmpDir, packageBuildpack)
+				defer h.DockerRmi(dockerCli, nestedPackageName, packageName)
+
+				assertImageExistsLocally(nestedPackageName)
 				assertImageExistsLocally(packageName)
 			})
 
 			when("--publish", func() {
 				it("publishes image to registry", func() {
-					nestedPackageName := packageBuildpackRemotely(simplePackageConfigPath)
-					defer h.DockerRmi(dockerCli, nestedPackageName)
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
+					nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
+					nestedPackage := buildpacks.NewPackageImage(
+						t,
+						pack,
+						nestedPackageName,
+						simplePackageConfigPath,
+						buildpacks.WithPublish(),
+						buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
+					)
+					buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
+					defer h.DockerRmi(dockerCli, nestedPackageName)
+
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-					defer h.DockerRmi(dockerCli, packageName)
 					output := pack.RunSuccessfully(
 						"package-buildpack", packageName,
 						"-c", aggregatePackageToml,
 						"--publish",
 					)
+					defer h.DockerRmi(dockerCli, packageName)
 					assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
 
 					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
@@ -359,9 +359,17 @@ func testWithoutSpecificBuilderRequirement(
 
 			when("--no-pull", func() {
 				it("should use local image", func() {
-					nestedPackage := packageBuildpackLocally(simplePackageConfigPath)
-					defer h.DockerRmi(dockerCli, nestedPackage)
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
+					nestedPackageName := "test/package-" + h.RandString(10)
+					nestedPackage := buildpacks.NewPackageImage(
+						t,
+						pack,
+						nestedPackageName,
+						simplePackageConfigPath,
+						buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
+					)
+					buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
+					defer h.DockerRmi(dockerCli, nestedPackageName)
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
@@ -378,9 +386,18 @@ func testWithoutSpecificBuilderRequirement(
 				})
 
 				it("should not pull image from registry", func() {
-					nestedPackage := packageBuildpackRemotely(simplePackageConfigPath)
-					defer h.DockerRmi(dockerCli, nestedPackage)
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackage)
+					nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+					nestedPackage := buildpacks.NewPackageImage(
+						t,
+						pack,
+						nestedPackageName,
+						simplePackageConfigPath,
+						buildpacks.WithPublish(),
+						buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
+					)
+					buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
+					defer h.DockerRmi(dockerCli, nestedPackageName)
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName)
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
@@ -391,7 +408,7 @@ func testWithoutSpecificBuilderRequirement(
 						"--no-pull",
 					)
 					assert.NotNil(err)
-					assertions.NewOutputAssertionManager(t, output).ReportsImageNotExistingOnDaemon(nestedPackage)
+					assertions.NewOutputAssertionManager(t, output).ReportsImageNotExistingOnDaemon(nestedPackageName)
 				})
 			})
 		})
@@ -498,6 +515,7 @@ func testAcceptance(
 ) {
 	var (
 		pack, createBuilderPack *invoke.PackInvoker
+		buildpackManager        buildpacks.BuildpackManager
 		bpDir                   = buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
 		assert                  = h.NewAssertionManager(t)
 	)
@@ -505,8 +523,15 @@ func testAcceptance(
 	it.Before(func() {
 		pack = invoke.NewPackInvoker(t, assert, subjectPackConfig, registryConfig.DockerConfigDir)
 		pack.EnableExperimental()
+
 		createBuilderPack = invoke.NewPackInvoker(t, assert, createBuilderPackConfig, registryConfig.DockerConfigDir)
 		createBuilderPack.EnableExperimental()
+
+		buildpackManager = buildpacks.NewBuildpackManager(
+			t,
+			assert,
+			buildpacks.WithBuildpackAPIVersion(lifecycle.EarliestBuildpackAPIVersion()),
+		)
 	})
 
 	it.After(func() {
@@ -540,16 +565,9 @@ func testAcceptance(
 		})
 
 		when("builder is created", func() {
-			var (
-				builderName string
-				tmpDir      string
-			)
+			var builderName string
 
 			it.Before(func() {
-				var err error
-				tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
-				assert.Nil(err)
-
 				key := taskKey(
 					"create-builder",
 					append(
@@ -558,7 +576,7 @@ func testAcceptance(
 					)...,
 				)
 				value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
-					return createBuilder(t, assert, createBuilderPack, lifecycle, runImageMirror)
+					return createBuilder(t, assert, createBuilderPack, lifecycle, buildpackManager, runImageMirror)
 				})
 				assert.Nil(err)
 				suiteManager.RegisterCleanUp("clean-"+key, func() error {
@@ -566,10 +584,6 @@ func testAcceptance(
 				})
 
 				builderName = value
-			})
-
-			it.After(func() {
-				assert.Nil(os.RemoveAll(tmpDir))
 			})
 
 			when("builder.toml is invalid", func() {
@@ -623,6 +637,7 @@ func testAcceptance(
 							assert,
 							createBuilderPack,
 							lifecycle,
+							buildpackManager,
 							runImageMirror,
 						)
 						assert.Nil(err)
@@ -839,7 +854,7 @@ func testAcceptance(
 					})
 
 					when("--network", func() {
-						var buildpackTgz string
+						var tmpDir string
 
 						it.Before(func() {
 							h.SkipUnless(t,
@@ -847,20 +862,24 @@ func testAcceptance(
 								"--network flag not supported for build",
 							)
 
-							buildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "internet-capable-buildpack"), "./", 0755)
+							var err error
+							tmpDir, err = ioutil.TempDir("", "archive-buildpacks-")
+							assert.Nil(err)
+
+							buildpackManager.PrepareBuildpacks(tmpDir, buildpacks.InternetCapable)
 						})
 
 						it.After(func() {
-							assert.Nil(os.Remove(buildpackTgz))
+							assert.Nil(os.RemoveAll(tmpDir))
 							assert.Nil(h.DockerRmi(dockerCli, repoName))
 						})
 
 						when("the network mode is not provided", func() {
-							it("reports that build and detect are online", func() {
+							it("reports buildpack access to internet", func() {
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", buildpackTgz,
+									"--buildpack", buildpacks.InternetCapable.FullPathIn(tmpDir),
 								)
 
 								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
@@ -869,11 +888,12 @@ func testAcceptance(
 						})
 
 						when("the network mode is set to default", func() {
-							it("reports that build and detect are online", func() {
+							it("reports buildpack access to internet", func() {
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", buildpackTgz,
+									"--buildpack", buildpacks.InternetCapable.FullPathIn(tmpDir),
+									"--network", "default",
 								)
 
 								assertBuildpackOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
@@ -882,11 +902,11 @@ func testAcceptance(
 						})
 
 						when("the network mode is set to none", func() {
-							it("reports that build and detect are offline", func() {
+							it("reports buildpack disconnected from internet", func() {
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", buildpackTgz,
+									"--buildpack", buildpacks.InternetCapable.FullPathIn(tmpDir),
 									"--network", "none",
 								)
 
@@ -898,11 +918,10 @@ func testAcceptance(
 
 					when("--volume", func() {
 						var (
-							readBuildpackTgz,
-							readWriteBuildpackTgz,
+							volumeRoot   = "/"
+							slash        = "/"
+							tmpDir       string
 							tmpVolumeSrc string
-							volumeRoot = "/"
-							slash      = "/"
 						)
 
 						it.Before(func() {
@@ -917,10 +936,14 @@ func testAcceptance(
 								volumeRoot = `c:\`
 								slash = `\`
 							}
-							readBuildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "read-volume-buildpack"), "./", 0755)
-							readWriteBuildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "read-write-volume-buildpack"), "./", 0755)
 
 							var err error
+
+							tmpDir, err = ioutil.TempDir("", "volume-buildpack-tests-")
+							assert.Nil(err)
+
+							buildpackManager.PrepareBuildpacks(tmpDir, buildpacks.ReadVolume, buildpacks.ReadWriteVolume)
+
 							tmpVolumeSrc, err = ioutil.TempDir("", "volume-mount-source")
 							assert.Nil(err)
 							assert.Nil(os.Chmod(tmpVolumeSrc, 0777)) // Override umask
@@ -935,9 +958,8 @@ func testAcceptance(
 						})
 
 						it.After(func() {
-							_ = os.Remove(readBuildpackTgz)
-							_ = os.Remove(readWriteBuildpackTgz)
 							_ = h.DockerRmi(dockerCli, repoName)
+							_ = os.RemoveAll(tmpDir)
 							_ = os.RemoveAll(tmpVolumeSrc)
 						})
 
@@ -949,7 +971,7 @@ func testAcceptance(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--volume", fmt.Sprintf("%s:%s", tmpVolumeSrc, volumeDest),
-									"--buildpack", readBuildpackTgz,
+									"--buildpack", buildpacks.ReadVolume.FullPathIn(tmpDir),
 									"--env", "TEST_FILE_PATH="+testFilePath,
 								)
 
@@ -966,7 +988,7 @@ func testAcceptance(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--volume", fmt.Sprintf("%s:%s", tmpVolumeSrc, volumeDest),
-									"--buildpack", readWriteBuildpackTgz,
+									"--buildpack", buildpacks.ReadWriteVolume.FullPathIn(tmpDir),
 									"--env", "DETECT_TEST_FILE_PATH="+testDetectFilePath,
 									"--env", "BUILD_TEST_FILE_PATH="+testBuildFilePath,
 								)
@@ -986,7 +1008,7 @@ func testAcceptance(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
 									"--volume", fmt.Sprintf("%s:%s:rw", tmpVolumeSrc, volumeDest),
-									"--buildpack", readWriteBuildpackTgz,
+									"--buildpack", buildpacks.ReadWriteVolume.FullPathIn(tmpDir),
 									"--env", "DETECT_TEST_FILE_PATH="+testDetectFilePath,
 									"--env", "BUILD_TEST_FILE_PATH="+testBuildFilePath,
 								)
@@ -1040,21 +1062,25 @@ func testAcceptance(
 						})
 
 						when("the argument is an archive", func() {
-							var localBuildpackTgz string
+							var tmpDir string
 
 							it.Before(func() {
-								localBuildpackTgz = h.CreateTGZ(t, filepath.Join(bpDir, "not-in-builder-buildpack"), "./", 0755)
+								var err error
+								tmpDir, err = ioutil.TempDir("", "archive-buildpack-tests-")
+								assert.Nil(err)
 							})
 
 							it.After(func() {
-								assert.Nil(os.Remove(localBuildpackTgz))
+								_ = os.RemoveAll(tmpDir)
 							})
 
 							it("adds the buildpack to the builder and runs it", func() {
+								buildpackManager.PrepareBuildpacks(tmpDir, buildpacks.ArchiveNotInBuilder)
+
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", localBuildpackTgz,
+									"--buildpack", buildpacks.ArchiveNotInBuilder.FullPathIn(tmpDir),
 								)
 
 								assertOutput := assertions.NewOutputAssertionManager(t, output)
@@ -1067,13 +1093,27 @@ func testAcceptance(
 						})
 
 						when("the argument is directory", func() {
+							var tmpDir string
+
+							it.Before(func() {
+								var err error
+								tmpDir, err = ioutil.TempDir("", "folder-buildpack-tests-")
+								assert.Nil(err)
+							})
+
+							it.After(func() {
+								_ = os.RemoveAll(tmpDir)
+							})
+
 							it("adds the buildpacks to the builder and runs it", func() {
 								h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
+
+								buildpackManager.PrepareBuildpacks(tmpDir, buildpacks.FolderNotInBuilder)
 
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", filepath.Join(bpDir, "not-in-builder-buildpack"),
+									"--buildpack", buildpacks.FolderNotInBuilder.FullPathIn(tmpDir),
 								)
 
 								assertOutput := assertions.NewOutputAssertionManager(t, output)
@@ -1086,28 +1126,40 @@ func testAcceptance(
 						})
 
 						when("the argument is a buildpackage image", func() {
-							var packageImageName string
+							var (
+								tmpDir           string
+								packageImageName string
+							)
 
 							it.Before(func() {
-								h.SkipIf(t,
-									!pack.Supports("package-buildpack"),
+								h.SkipUnless(t,
+									pack.Supports("package-buildpack"),
 									"--buildpack does not accept buildpackage unless package-buildpack is supported",
 								)
 								h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+							})
 
-								packageImageName = packageBuildpackAsImage(t,
-									assert,
-									pack,
-									pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
-									lifecycle,
-									[]string{
-										"simple-layers-parent-buildpack",
-										"simple-layers-buildpack",
-									},
-								)
+							it.After(func() {
+								err := h.DockerRmi(dockerCli, packageImageName)
+								assert.Nil(err)
 							})
 
 							it("adds the buildpacks to the builder and runs them", func() {
+								packageImageName = registryConfig.RepoName("buildpack-" + h.RandString(8))
+
+								packageImage := buildpacks.NewPackageImage(
+									t,
+									pack,
+									packageImageName,
+									pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
+									buildpacks.WithRequiredBuildpacks(
+										buildpacks.FolderSimpleLayersParent,
+										buildpacks.FolderSimpleLayers,
+									),
+								)
+
+								buildpackManager.PrepareBuildpacks(tmpDir, packageImage)
+
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
@@ -1128,10 +1180,7 @@ func testAcceptance(
 						})
 
 						when("the argument is a buildpackage file", func() {
-							var (
-								packageFile string
-								tmpDir      string
-							)
+							var tmpDir string
 
 							it.Before(func() {
 								h.SkipIf(t,
@@ -1143,18 +1192,6 @@ func testAcceptance(
 								var err error
 								tmpDir, err = ioutil.TempDir("", "package-file")
 								assert.Nil(err)
-
-								packageFile = packageBuildpackAsFile(t,
-									assert,
-									pack,
-									pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
-									tmpDir,
-									lifecycle,
-									[]string{
-										"simple-layers-parent-buildpack",
-										"simple-layers-buildpack",
-									},
-								)
 							})
 
 							it.After(func() {
@@ -1162,10 +1199,26 @@ func testAcceptance(
 							})
 
 							it("adds the buildpacks to the builder and runs them", func() {
+								packageFileLocation := filepath.Join(
+									tmpDir,
+									fmt.Sprintf("buildpack-%s.cnb", h.RandString(8)),
+								)
+
+								packageFile := buildpacks.NewPackageFile(
+									t,
+									pack,
+									packageFileLocation,
+									pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
+									buildpacks.FolderSimpleLayersParent,
+									buildpacks.FolderSimpleLayers,
+								)
+
+								buildpackManager.PrepareBuildpacks(tmpDir, packageFile)
+
 								output := pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--buildpack", packageFile,
+									"--buildpack", packageFileLocation,
 								)
 
 								assertOutput := assertions.NewOutputAssertionManager(t, output)
@@ -1580,6 +1633,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 								assert,
 								createBuilderPack,
 								lifecycle,
+								buildpackManager,
 								runImageMirror,
 							)
 						})
@@ -1930,7 +1984,9 @@ func createComplexBuilder(t *testing.T,
 	assert h.AssertionManager,
 	pack *invoke.PackInvoker,
 	lifecycle config.LifecycleAsset,
-	runImageMirror string) (string, error) {
+	buildpackManager buildpacks.BuildpackManager,
+	runImageMirror string,
+) (string, error) {
 
 	t.Log("creating complex builder image...")
 
@@ -1941,72 +1997,94 @@ func createComplexBuilder(t *testing.T,
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
-	t.Log("using buildpacks from: ", buildpacksDir)
-	h.RecursiveCopy(t, buildpacksDir, tmpDir)
-
 	// ARCHIVE BUILDPACKS
-	buildpacks := []string{
-		"noop-buildpack",
-		"noop-buildpack-2",
-		"other-stack-buildpack",
-		"read-env-buildpack",
+	builderBuildpacks := []buildpacks.TestBuildpack{
+		buildpacks.Noop,
+		buildpacks.Noop2,
+		buildpacks.OtherStack,
+		buildpacks.ReadEnv,
 	}
 
-	for _, v := range buildpacks {
-		tgz := h.CreateTGZ(t, filepath.Join(buildpacksDir, v), "./", 0755)
-		err := os.Rename(tgz, filepath.Join(tmpDir, v+".tgz"))
-		if err != nil {
-			return "", err
-		}
+	templateMapping := map[string]interface{}{
+		"run_image_mirror": runImageMirror,
 	}
-	buildpackImages := []string{
-		"simple-layers-buildpack",
-		"nested-level-2-buildpack",
-		"nested-level-1-buildpack",
-	}
-
-	buildpackImageToName := map[string]interface{}{}
-
-	var packageImageName string
-	var packageId string
 
 	if dockerHostOS() != "windows" {
-		for _, buildpackName := range buildpackImages {
-			packageFileName := buildpackName + "_package.toml"
-			packageFileDest := filepath.Join(tmpDir, packageFileName)
-			packageFile, err := os.OpenFile(packageFileDest, os.O_CREATE|os.O_TRUNC|os.O_RDWR, os.ModePerm)
-			if err != nil {
-				return "", err
-			}
+		packageImageName := registryConfig.RepoName("nested-level-1-buildpack-" + h.RandString(8))
+		nestedLevelTwoBuildpackName := registryConfig.RepoName("nested-level-2-buildpack-" + h.RandString(8))
+		simpleLayersBuildpackName := registryConfig.RepoName("simple-layers-buildpack-" + h.RandString(8))
 
-			pack.FixtureManager().TemplateFixtureToFile(packageFileName, packageFile, buildpackImageToName)
+		templateMapping["package_id"] = "simple/nested-level-1"
+		templateMapping["package_image_name"] = packageImageName
+		templateMapping["nested_level_1_buildpack"] = packageImageName
+		templateMapping["nested_level_2_buildpack"] = nestedLevelTwoBuildpackName
+		templateMapping["simple_layers_buildpack"] = simpleLayersBuildpackName
 
-			packageImageName = packageBuildpackAsImage(t,
-				assert,
-				pack,
-				packageFileDest,
-				lifecycle,
-				[]string{buildpackName},
-			)
+		fixtureManager := pack.FixtureManager()
 
-			buildpackKey := strings.ReplaceAll(buildpackName, "-", "_")
-			buildpackImageToName[buildpackKey] = packageImageName
-		}
+		nestedLevelOneConfigFile, err := ioutil.TempFile(tmpDir, "nested-level-1-package.toml")
+		assert.Nil(err)
+		fixtureManager.TemplateFixtureToFile(
+			"nested-level-1-buildpack_package.toml",
+			nestedLevelOneConfigFile,
+			templateMapping,
+		)
+		err = nestedLevelOneConfigFile.Close()
+		assert.Nil(err)
 
-		packageId = "simple/nested-level-1"
+		nestedLevelTwoConfigFile, err := ioutil.TempFile(tmpDir, "nested-level-2-package.toml")
+		assert.Nil(err)
+		fixtureManager.TemplateFixtureToFile(
+			"nested-level-2-buildpack_package.toml",
+			nestedLevelTwoConfigFile,
+			templateMapping,
+		)
+		err = nestedLevelTwoConfigFile.Close()
+		assert.Nil(err)
+
+		packageImageBuildpack := buildpacks.NewPackageImage(
+			t,
+			pack,
+			packageImageName,
+			nestedLevelOneConfigFile.Name(),
+			buildpacks.WithRequiredBuildpacks(
+				buildpacks.NestedLevelOne,
+				buildpacks.NewPackageImage(
+					t,
+					pack,
+					nestedLevelTwoBuildpackName,
+					nestedLevelTwoConfigFile.Name(),
+					buildpacks.WithRequiredBuildpacks(
+						buildpacks.NestedLevelTwo,
+						buildpacks.NewPackageImage(
+							t,
+							pack,
+							simpleLayersBuildpackName,
+							fixtureManager.FixtureLocation("simple-layers-buildpack_package.toml"),
+							buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
+						),
+					),
+				),
+			),
+		)
+
+		builderBuildpacks = append(
+			builderBuildpacks,
+			packageImageBuildpack,
+		)
 	}
 
+	buildpackManager.PrepareBuildpacks(tmpDir, builderBuildpacks...)
+
 	// ADD lifecycle
-	var lifecycleURI string
-	var lifecycleVersion string
 	if lifecycle.HasLocation() {
-		lifecycleURI = lifecycle.EscapedPath()
+		lifecycleURI := lifecycle.EscapedPath()
 		t.Logf("adding lifecycle path '%s' to builder config", lifecycleURI)
+		templateMapping["lifecycle_uri"] = lifecycleURI
 	} else {
-		lifecycleVersion = lifecycle.Version()
+		lifecycleVersion := lifecycle.Version()
 		t.Logf("adding lifecycle version '%s' to builder config", lifecycleVersion)
+		templateMapping["lifecycle_version"] = lifecycleVersion
 	}
 
 	// RENDER builder.toml
@@ -2015,23 +2093,7 @@ func createComplexBuilder(t *testing.T,
 		return "", err
 	}
 
-	templateMapping := map[string]interface{}{
-		"package_image_name": packageImageName,
-		"package_id":         packageId,
-		"run_image_mirror":   runImageMirror,
-		"lifecycle_uri":      lifecycleURI,
-		"lifecycle_version":  lifecycleVersion,
-	}
-
-	for key, val := range buildpackImageToName {
-		templateMapping[key] = val
-	}
-
-	pack.FixtureManager().TemplateFixtureToFile(
-		"nested_builder.toml",
-		builderConfigFile,
-		templateMapping,
-	)
+	pack.FixtureManager().TemplateFixtureToFile("nested_builder.toml", builderConfigFile, templateMapping)
 
 	err = builderConfigFile.Close()
 	if err != nil {
@@ -2042,14 +2104,11 @@ func createComplexBuilder(t *testing.T,
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
 
 	// CREATE BUILDER
-	output, err := pack.Run(
+	output := pack.RunSuccessfully(
 		"create-builder", bldr,
 		"-c", builderConfigFile.Name(),
 		"--no-color",
 	)
-	if err != nil {
-		return "", errors.Wrapf(err, "pack failed with output %s", output)
-	}
 
 	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
 	assert.Nil(h.PushImage(dockerCli, bldr, registryConfig))
@@ -2062,61 +2121,54 @@ func createBuilder(
 	assert h.AssertionManager,
 	pack *invoke.PackInvoker,
 	lifecycle config.LifecycleAsset,
+	buildpackManager buildpacks.BuildpackManager,
 	runImageMirror string,
 ) (string, error) {
 	t.Log("creating builder image...")
 
 	// CREATE TEMP WORKING DIR
 	tmpDir, err := ioutil.TempDir("", "create-test-builder")
-	if err != nil {
-		return "", err
-	}
+	assert.Nil(err)
 	defer os.RemoveAll(tmpDir)
 
-	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
-	t.Log("using buildpacks from: ", buildpacksDir)
-	h.RecursiveCopy(t, buildpacksDir, tmpDir)
+	templateMapping := map[string]interface{}{
+		"run_image_mirror": runImageMirror,
+	}
 
 	// ARCHIVE BUILDPACKS
-	buildpacks := []string{
-		"noop-buildpack",
-		"noop-buildpack-2",
-		"other-stack-buildpack",
-		"read-env-buildpack",
+	builderBuildpacks := []buildpacks.TestBuildpack{
+		buildpacks.Noop,
+		buildpacks.Noop2,
+		buildpacks.OtherStack,
+		buildpacks.ReadEnv,
 	}
 
 	// NOTE: Windows-based packages are not yet supported, so we'll add this buildpack in the usual way for now.
 	// Remove this block once Windows-based packages are supported.
 	if dockerHostOS() == "windows" {
-		buildpacks = append(buildpacks, "simple-layers-buildpack")
+		builderBuildpacks = append(builderBuildpacks, buildpacks.SimpleLayers)
 	}
-
-	for _, v := range buildpacks {
-		tgz := h.CreateTGZ(t, filepath.Join(buildpacksDir, v), "./", 0755)
-		err := os.Rename(tgz, filepath.Join(tmpDir, v+".tgz"))
-		if err != nil {
-			return "", err
-		}
-	}
-
-	var packageImageName string
-	var packageId string
 
 	// NOTE: Windows-based packages are not yet supported, so we'll add this buildpack in the usual way for now (see above).
 	// Remove this guard once Windows-based packages are supported.
 	if dockerHostOS() != "windows" {
-		// CREATE PACKAGE
-		packageImageName = packageBuildpackAsImage(t,
-			assert,
+		packageImageName := registryConfig.RepoName("simple-layers-package-image-buildpack-" + h.RandString(8))
+
+		packageImageBuildpack := buildpacks.NewPackageImage(
+			t,
 			pack,
+			packageImageName,
 			pack.FixtureManager().FixtureLocation("package.toml"),
-			lifecycle,
-			[]string{"simple-layers-buildpack"},
+			buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
 		)
 
-		packageId = "simple/layers"
+		builderBuildpacks = append(builderBuildpacks, packageImageBuildpack)
+
+		templateMapping["package_image_name"] = packageImageName
+		templateMapping["package_id"] = "simple/layers"
 	}
+
+	buildpackManager.PrepareBuildpacks(tmpDir, builderBuildpacks...)
 
 	// ADD lifecycle
 	var lifecycleURI string
@@ -2124,9 +2176,11 @@ func createBuilder(
 	if lifecycle.HasLocation() {
 		lifecycleURI = lifecycle.EscapedPath()
 		t.Logf("adding lifecycle path '%s' to builder config", lifecycleURI)
+		templateMapping["lifecycle_uri"] = lifecycleURI
 	} else {
 		lifecycleVersion = lifecycle.Version()
 		t.Logf("adding lifecycle version '%s' to builder config", lifecycleVersion)
+		templateMapping["lifecycle_version"] = lifecycleVersion
 	}
 
 	// RENDER builder.toml
@@ -2138,135 +2192,30 @@ func createBuilder(
 	}
 
 	builderConfigFile, err := ioutil.TempFile(tmpDir, "builder.toml")
-	if err != nil {
-		return "", err
-	}
+	assert.Nil(err)
 
 	pack.FixtureManager().TemplateFixtureToFile(
 		configFileName,
 		builderConfigFile,
-		map[string]interface{}{
-			"package_image_name": packageImageName,
-			"package_id":         packageId,
-			"run_image_mirror":   runImageMirror,
-			"lifecycle_uri":      lifecycleURI,
-			"lifecycle_version":  lifecycleVersion,
-		},
+		templateMapping,
 	)
 
 	err = builderConfigFile.Close()
-	if err != nil {
-		return "", err
-	}
+	assert.Nil(err)
 
 	// NAME BUILDER
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
 
 	// CREATE BUILDER
-	output, err := pack.Run(
+	output := pack.RunSuccessfully(
 		"create-builder", bldr,
 		"-c", builderConfigFile.Name(),
 		"--no-color",
 	)
-	if err != nil {
-		return "", errors.Wrapf(err, "pack failed with output %s", output)
-	}
 	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
 	assert.Nil(h.PushImage(dockerCli, bldr, registryConfig))
 
 	return bldr, nil
-}
-
-func packageBuildpackAsImage(
-	t *testing.T,
-	assert h.AssertionManager,
-	pack *invoke.PackInvoker, configLocation string,
-	lifecycle config.LifecycleAsset,
-	buildpacks []string,
-) string {
-	tmpDir, err := ioutil.TempDir("", "package-image")
-	assert.Nil(err)
-
-	outputImage := packageBuildpack(t, assert, pack, configLocation, tmpDir, "image", lifecycle, buildpacks)
-
-	// REGISTER CLEANUP
-	key := taskKey("package-buildpack", outputImage)
-	suiteManager.RegisterCleanUp("clean-"+key, func() error {
-		return h.DockerRmi(dockerCli, outputImage)
-	})
-
-	return outputImage
-}
-
-func packageBuildpackAsFile(
-	t *testing.T,
-	assert h.AssertionManager,
-	pack *invoke.PackInvoker, configLocation, tmpDir string,
-	lifecycle config.LifecycleAsset,
-	buildpacks []string,
-) string {
-
-	return packageBuildpack(t, assert, pack, configLocation, tmpDir, "file", lifecycle, buildpacks)
-}
-
-func packageBuildpack(
-	t *testing.T,
-	assert h.AssertionManager,
-	pack *invoke.PackInvoker,
-	configLocation, tmpDir, outputFormat string,
-	lifecycle config.LifecycleAsset,
-	buildpacks []string,
-) string {
-
-	t.Helper()
-	t.Log("creating package image...")
-
-	// CREATE TEMP WORKING DIR
-	tmpDir, err := ioutil.TempDir(tmpDir, "create-package")
-	assert.Nil(err)
-
-	// DETERMINE TEST DATA
-	buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
-	t.Log("using buildpacks from: ", buildpacksDir)
-	h.RecursiveCopy(t, buildpacksDir, tmpDir)
-
-	// ARCHIVE BUILDPACKS
-	for _, v := range buildpacks {
-		tgz := h.CreateTGZ(t, filepath.Join(buildpacksDir, v), "./", 0755)
-		err := os.Rename(tgz, filepath.Join(tmpDir, v+".tgz"))
-		assert.Nil(err)
-	}
-
-	packageConfig := filepath.Join(tmpDir, buildpacks[len(buildpacks)-1]+"_package.toml")
-
-	// COPY config to temp package.toml
-	h.CopyFile(t, configLocation, packageConfig)
-
-	// CREATE PACKAGE
-	outputName := "buildpack-" + h.RandString(8)
-	var additionalArgs []string
-	switch outputFormat {
-	case "file":
-		outputName = filepath.Join(tmpDir, outputName+".cnb")
-		additionalArgs = []string{"--format", outputFormat}
-	case "image":
-		outputName = registryConfig.RepoName(outputName)
-	default:
-		t.Fatalf("unknown format: %s", outputFormat)
-	}
-
-	output := pack.RunSuccessfully(
-		"package-buildpack",
-		append([]string{
-			outputName,
-			"--no-color",
-			"-c", packageConfig,
-		}, additionalArgs...)...,
-	)
-
-	assert.Contains(output, fmt.Sprintf("Successfully created package '%s'", outputName))
-
-	return outputName
 }
 
 func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror string) error {

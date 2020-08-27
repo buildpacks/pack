@@ -1,0 +1,75 @@
+// +build acceptance
+
+package buildpacks
+
+import (
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/buildpacks/pack/acceptance/invoke"
+	h "github.com/buildpacks/pack/testhelpers"
+)
+
+type PackageFile struct {
+	testObject           *testing.T
+	pack                 *invoke.PackInvoker
+	destination          string
+	sourceConfigLocation string
+	buildpacks           []TestBuildpack
+}
+
+func NewPackageFile(
+	t *testing.T,
+	pack *invoke.PackInvoker,
+	destination, configLocation string,
+	buildpacks ...TestBuildpack,
+) PackageFile {
+
+	return PackageFile{
+		testObject:           t,
+		pack:                 pack,
+		destination:          destination,
+		sourceConfigLocation: configLocation,
+		buildpacks:           buildpacks,
+	}
+}
+
+func (p PackageFile) Prepare(sourceDir, destination string) error {
+	p.testObject.Helper()
+	p.testObject.Log("creating package image...")
+
+	tmpDir, err := ioutil.TempDir("", "package-buildpacks")
+	if err != nil {
+		return fmt.Errorf("creating temp dir for package buildpacks: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	for _, buildpack := range p.buildpacks {
+		err = buildpack.Prepare(sourceDir, tmpDir)
+		if err != nil {
+			return fmt.Errorf("preparing buildpack %s: %w", buildpack, err)
+		}
+	}
+
+	configLocation := filepath.Join(tmpDir, "package.toml")
+	h.CopyFile(p.testObject, p.sourceConfigLocation, configLocation)
+
+	output := p.pack.RunSuccessfully(
+		"package-buildpack",
+		p.destination,
+		"--no-color",
+		"-c", configLocation,
+		"--format", "file",
+	)
+
+	if !strings.Contains(output, fmt.Sprintf("Successfully created package '%s'", p.destination)) {
+		return errors.New("failed to create package")
+	}
+
+	return nil
+}
