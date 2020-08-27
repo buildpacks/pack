@@ -19,7 +19,6 @@ import (
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
-	"github.com/buildpacks/pack/internal/style"
 )
 
 type ContainerOperation func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error
@@ -32,13 +31,12 @@ func CopyDir(src, dst string, uid, gid int, fileFilter func(string) bool) Contai
 			return err
 		}
 		if info.OSType == "windows" {
-			readerDst := strings.ReplaceAll(dst, `\`, "/")[2:] // Strip volume, convert slashes to conform to TAR format
-			reader, err := createReader(src, readerDst, uid, gid, fileFilter)
+			reader, err := createReader(src, winPathToTarPath(dst), uid, gid, fileFilter)
 			if err != nil {
 				return errors.Wrapf(err, "create tar archive from '%s'", src)
 			}
 			defer reader.Close()
-			return copyDirWindows(ctx, ctrClient, containerID, reader, dst, stdout, stderr)
+			return copyWindows(ctx, ctrClient, containerID, reader, dst, stdout, stderr)
 		}
 		reader, err := createReader(src, dst, uid, gid, fileFilter)
 		if err != nil {
@@ -71,24 +69,26 @@ func copyDir(ctx context.Context, ctrClient client.CommonAPIClient, containerID 
 	return err
 }
 
-// copyDirWindows provides an alternate, Windows container-specific implementation of copyDir.
+// copyWindows provides an alternate, Windows container-specific implementation of copyDir.
 // This implementation is needed because copying directly to a mounted volume is currently buggy
 // for Windows containers and does not work. Instead, we perform the copy from inside a container
 // using xcopy.
 // See: https://github.com/moby/moby/issues/40771
-func copyDirWindows(ctx context.Context, ctrClient client.CommonAPIClient, containerID string, appReader io.Reader, dst string, stdout, stderr io.Writer) error {
+func copyWindows(ctx context.Context, ctrClient client.CommonAPIClient, containerID string, reader io.Reader, dst string, stdout, stderr io.Writer) error {
 	info, err := ctrClient.ContainerInspect(ctx, containerID)
 	if err != nil {
 		return err
 	}
 
-	pathElements := strings.Split(dst, `\`)
-	if len(pathElements) < 1 {
-		return fmt.Errorf("cannot determine base name for destination path: %s", style.Symbol(dst))
+	fileOrDir := "d"
+	findDst := dst
+	if strings.HasSuffix(dst, ".toml") {
+		fileOrDir = "f"
+		pathElements := strings.Split(dst, `\`)
+		findDst = strings.Join(pathElements[:len(pathElements)-1], `\`) // parent of file
 	}
-	baseName := pathElements[len(pathElements)-1]
 
-	mnt, err := findMount(info, dst)
+	mnt, err := findMount(info, findDst)
 	if err != nil {
 		return err
 	}
@@ -97,10 +97,9 @@ func copyDirWindows(ctx context.Context, ctrClient client.CommonAPIClient, conta
 		&dcontainer.Config{
 			Image: info.Image,
 			Cmd: []string{
-				"xcopy",
-				fmt.Sprintf(`c:\windows\%s`, baseName),
-				dst,
-				"/e", "/h", "/y", "/c", "/b",
+				"cmd",
+				"/c",
+				fmt.Sprintf(`echo %s|xcopy /e /h /y /c /b c:\windows\%s %s`, fileOrDir, dst[3:], dst),
 			},
 			WorkingDir: "/",
 			User:       windowsContainerAdmin,
@@ -116,7 +115,7 @@ func copyDirWindows(ctx context.Context, ctrClient client.CommonAPIClient, conta
 	}
 	defer ctrClient.ContainerRemove(context.Background(), ctr.ID, types.ContainerRemoveOptions{Force: true})
 
-	err = ctrClient.CopyToContainer(ctx, ctr.ID, "/windows", appReader, types.CopyToContainerOptions{})
+	err = ctrClient.CopyToContainer(ctx, ctr.ID, "/windows", reader, types.CopyToContainerOptions{})
 	if err != nil {
 		return errors.Wrap(err, "copy app to container")
 	}
@@ -149,12 +148,27 @@ func WriteStackToml(dstPath string, stack builder.StackMetadata) ContainerOperat
 		}
 
 		tarBuilder := archive.TarBuilder{}
+
+		info, err := ctrClient.Info(ctx)
+		if err != nil {
+			return err
+		}
+		if info.OSType == "windows" {
+			tarBuilder.AddFile(winPathToTarPath(dstPath), 0755, archive.NormalizedDateTime, buf.Bytes())
+			reader := tarBuilder.Reader(archive.DefaultTarWriterFactory())
+			defer reader.Close()
+			return copyWindows(ctx, ctrClient, containerID, reader, dstPath, stdout, stderr)
+		}
+
 		tarBuilder.AddFile(dstPath, 0755, archive.NormalizedDateTime, buf.Bytes())
 		reader := tarBuilder.Reader(archive.DefaultTarWriterFactory())
 		defer reader.Close()
-
 		return ctrClient.CopyToContainer(ctx, containerID, "/", reader, types.CopyToContainerOptions{})
 	}
+}
+
+func winPathToTarPath(path string) string {
+	return strings.ReplaceAll(path, `\`, "/")[2:] // strip volume, convert slashes
 }
 
 func createReader(src, dst string, uid, gid int, fileFilter func(string) bool) (io.ReadCloser, error) {

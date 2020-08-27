@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
@@ -18,6 +19,17 @@ func Run(ctx context.Context, docker client.CommonAPIClient, ctrID string, out, 
 	if err := docker.ContainerStart(ctx, ctrID, types.ContainerStartOptions{}); err != nil {
 		return errors.Wrap(err, "container start")
 	}
+
+	info, err := docker.Info(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting docker info")
+	}
+
+	if info.OSType == "windows" {
+		// wait for logs to show
+		time.Sleep(time.Second)
+	}
+
 	logs, err := docker.ContainerLogs(ctx, ctrID, types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
