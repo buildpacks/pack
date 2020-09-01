@@ -938,7 +938,6 @@ func testAcceptance(
 							}
 
 							var err error
-
 							tmpDir, err = ioutil.TempDir("", "volume-buildpack-tests-")
 							assert.Nil(err)
 
@@ -1136,12 +1135,15 @@ func testAcceptance(
 									pack.Supports("package-buildpack"),
 									"--buildpack does not accept buildpackage unless package-buildpack is supported",
 								)
-								h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+								h.SkipIf(t,
+									dockerHostOS() == "windows",
+									"These tests are not yet compatible with Windows-based containers",
+								)
 							})
 
 							it.After(func() {
-								err := h.DockerRmi(dockerCli, packageImageName)
-								assert.Nil(err)
+								_ = h.DockerRmi(dockerCli, packageImageName)
+								_ = os.RemoveAll(tmpDir)
 							})
 
 							it("adds the buildpacks to the builder and runs them", func() {
