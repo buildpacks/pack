@@ -59,7 +59,7 @@ jobs:
           git config --global core.eol lf
           git config --global core.symlinks true
       - name: Set docker to allow local registry using helpers dns names
-        if: matrix.os == 'windows'
+        if: matrix.config == 'windows-wcow'
         run: |
           # Lookup IP address by default-gateway network interface
           $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
