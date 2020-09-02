@@ -2322,7 +2322,8 @@ type logWriter struct {
 }
 
 func (l logWriter) Write(p []byte) (n int, err error) {
-	l.t.Log(string(p))
+	l.t.Helper()
+	l.t.Log(strings.TrimRight(string(p), "\n"))
 	return len(p), nil
 }
 
