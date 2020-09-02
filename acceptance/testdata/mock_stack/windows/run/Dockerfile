@@ -7,6 +7,8 @@ RUN go build /util/server.go
 
 FROM mcr.microsoft.com/windows/nanoserver:1809
 
+WORKDIR /util
+
 COPY --from=gobuild /util/server.exe /util/server.exe
 
 # placeholder values until correct values are deteremined
