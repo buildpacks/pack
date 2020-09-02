@@ -79,7 +79,6 @@ func copyWindows(ctx context.Context, ctrClient client.CommonAPIClient, containe
 	if err != nil {
 		return err
 	}
-
 	fileOrDir := "d"
 	findDst := dst
 	if strings.HasSuffix(dst, ".toml") {
@@ -99,7 +98,14 @@ func copyWindows(ctx context.Context, ctrClient client.CommonAPIClient, containe
 			Cmd: []string{
 				"cmd",
 				"/c",
-				fmt.Sprintf(`echo %s|xcopy /e /h /y /c /b c:\windows\%s %s`, fileOrDir, dst[3:], dst),
+
+				//xcopy args
+				// e - recursively create subdirectories
+				// h - copy hidden and system files
+				// b - copy symlinks, do not dereference
+				// x - copy attributes
+				// y - suppress prompting
+				fmt.Sprintf(`echo %s|xcopy /e /h /b /x /y c:\windows\%s %s`, fileOrDir, dst[3:], dst),
 			},
 			WorkingDir: "/",
 			User:       windowsContainerAdmin,
@@ -135,7 +141,7 @@ func findMount(info types.ContainerJSON, dst string) (types.MountPoint, error) {
 			return m, nil
 		}
 	}
-	return types.MountPoint{}, errors.New("no matching mount found")
+	return types.MountPoint{}, fmt.Errorf("no matching mount found for %s", dst)
 }
 
 // WriteStackToml writes a `stack.toml` based on the StackMetadata provided to the destination path.
