@@ -58,11 +58,20 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.eol lf
           git config --global core.symlinks true
-      - name: Set docker host dns helpers
+      - name: Set docker to allow local registry using helpers dns names
         if: matrix.os == 'windows'
         run: |
-          # If helper names don't resolve, augment etc/hosts with entries using primary IP
+          # Lookup IP address by default-gateway network interface
           $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
+
+          # Add daemon config allowing wildcard ports for machine ip address
+          $dockerConfig = @{}
+          $dockerConfig."insecure-registries" = @("${IPAddress}/32")
+          ConvertTo-Json -InputObject $dockerConfig | Set-Content c:\ProgramData\docker\config\daemon.json -Encoding Ascii
+          Restart-Service docker
+
+          # If helper names don't resolve, augment etc/hosts with entries using primary IP
+          # Matches Docker Desktop behavior: https://docs.docker.com/docker-for-windows/networking/#:~:text=host.docker.internal
           if (!(Resolve-DnsName host.docker.internal -ErrorAction SilentlyContinue)) {
             echo "`n${IPAddress} host.docker.internal" | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Append -Encoding utf8
           }
