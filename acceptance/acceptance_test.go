@@ -1247,10 +1247,6 @@ func testAcceptance(
 									pack.Supports("package-buildpack"),
 									"--buildpack does not accept buildpackage unless package-buildpack is supported",
 								)
-								h.SkipIf(t,
-									dockerHostOS() == "windows",
-									"These tests are not yet compatible with Windows-based containers",
-								)
 							})
 
 							it.After(func() {
@@ -1297,12 +1293,6 @@ func testAcceptance(
 							var tmpDir string
 
 							it.Before(func() {
-								h.SkipIf(t,
-									!pack.Supports("package-buildpack --format"),
-									"--buildpack does not accept buildpackage file unless package-buildpack with --format is supported",
-								)
-								h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
-
 								var err error
 								tmpDir, err = ioutil.TempDir("", "package-file")
 								assert.Nil(err)

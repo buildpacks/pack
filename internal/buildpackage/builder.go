@@ -3,6 +3,7 @@ package buildpackage
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"io/ioutil"
 	"os"
 
@@ -14,14 +15,21 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/pkg/errors"
 
+	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/style"
 )
 
+const windowsPackageBase = "mcr.microsoft.com/windows/nanoserver:1809-amd64" // TODO: Should this be hard-coded?
+
 type ImageFactory interface {
 	NewImage(repoName string, local bool) (imgutil.Image, error)
+}
+
+type ImageFetcher interface {
+	Fetch(ctx context.Context, name string, daemon bool, pullPolicy pubcfg.PullPolicy) (imgutil.Image, error)
 }
 
 type WorkableImage interface {
@@ -62,12 +70,16 @@ func (i *layoutImage) AddLayerWithDiffID(path, _ string) error {
 type PackageBuilder struct {
 	buildpack    dist.Buildpack
 	dependencies []dist.Buildpack
+	imageOS      string
 	imageFactory ImageFactory
+	imageFetcher ImageFetcher
 }
 
-func NewBuilder(imageFactory ImageFactory) *PackageBuilder {
+func NewBuilder(imageOS string, imageFactory ImageFactory, imageFetcher ImageFetcher) *PackageBuilder {
 	return &PackageBuilder{
+		imageOS:      imageOS,
 		imageFactory: imageFactory,
+		imageFetcher: imageFetcher,
 	}
 }
 
@@ -192,14 +204,26 @@ func (b *PackageBuilder) SaveAsFile(path string) error {
 	return archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, nil)
 }
 
-func (b *PackageBuilder) SaveAsImage(repoName string, publish bool) (imgutil.Image, error) {
+func (b *PackageBuilder) SaveAsImage(ctx context.Context, repoName string, publish bool, pullPolicy pubcfg.PullPolicy) (imgutil.Image, error) {
 	if err := b.validate(); err != nil {
 		return nil, err
 	}
 
-	image, err := b.imageFactory.NewImage(repoName, !publish)
-	if err != nil {
-		return nil, errors.Wrapf(err, "creating image")
+	var (
+		image imgutil.Image
+		err   error
+	)
+	if b.imageOS == "windows" {
+		image, err = b.imageFetcher.Fetch(ctx, windowsPackageBase, !publish, pullPolicy)
+		if err != nil {
+			return nil, errors.Wrapf(err, "fetching base image")
+		}
+		image.Rename(repoName)
+	} else {
+		image, err = b.imageFactory.NewImage(repoName, !publish)
+		if err != nil {
+			return nil, errors.Wrapf(err, "creating image")
+		}
 	}
 
 	tmpDir, err := ioutil.TempDir("", "package-buildpack")

@@ -89,7 +89,11 @@ func New(baseImage imgutil.Image, name string) (*Builder, error) {
 }
 
 func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Builder, error) {
-	layerWriterFactory, err := layer.NewWriterFactory(img)
+	imageOS, err := img.OS()
+	if err != nil {
+		return nil, errors.Wrap(err, "getting image OS")
+	}
+	layerWriterFactory, err := layer.NewWriterFactory(imageOS)
 	if err != nil {
 		return nil, err
 	}

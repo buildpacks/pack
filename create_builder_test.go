@@ -10,10 +10,9 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/buildpacks/pack/config"
-
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/docker/docker/api/types"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
@@ -23,6 +22,7 @@ import (
 	"github.com/buildpacks/pack"
 	pubbldr "github.com/buildpacks/pack/builder"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
+	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	cfg "github.com/buildpacks/pack/internal/config"
@@ -48,6 +48,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader     *testmocks.MockDownloader
 			mockImageFactory   *testmocks.MockImageFactory
 			mockImageFetcher   *testmocks.MockImageFetcher
+			mockDockerClient   *testmocks.MockCommonAPIClient
 			fakeBuildImage     *fakes.Image
 			fakeRunImage       *fakes.Image
 			fakeRunImageMirror *fakes.Image
@@ -64,6 +65,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader = testmocks.NewMockDownloader(mockController)
 			mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 			mockImageFactory = testmocks.NewMockImageFactory(mockController)
+			mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
 
 			fakeBuildImage = fakes.NewImage("some/build-image", "", nil)
 			h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
@@ -88,8 +90,11 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				pack.WithDownloader(mockDownloader),
 				pack.WithImageFactory(mockImageFactory),
 				pack.WithFetcher(mockImageFetcher),
+				pack.WithDockerClient(mockDockerClient),
 			)
 			h.AssertNil(t, err)
+
+			mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 
 			opts = pack.CreateBuilderOptions{
 				BuilderName: "some/builder",
@@ -563,9 +568,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				bldr := successfullyCreateBuilder()
 
 				h.AssertEq(t, bldr.LifecycleDescriptor().Info.Version.String(), "0.0.0")
-				//nolint:staticcheck
+				// nolint:staticcheck
 				h.AssertEq(t, bldr.LifecycleDescriptor().API.BuildpackVersion.String(), "0.2")
-				//nolint:staticcheck
+				// nolint:staticcheck
 				h.AssertEq(t, bldr.LifecycleDescriptor().API.PlatformVersion.String(), "0.2")
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{})
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Supported.AsStrings(), []string{"0.2", "0.3", "0.4"})

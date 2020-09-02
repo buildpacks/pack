@@ -261,7 +261,11 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 					return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(b.ID))
 				}
 			} else {
-				layerWriterFactory, err := layer.NewWriterFactory(bldr.Image())
+				imageOS, err := bldr.Image().OS()
+				if err != nil {
+					return errors.Wrap(err, "getting image OS")
+				}
+				layerWriterFactory, err := layer.NewWriterFactory(imageOS)
 				if err != nil {
 					return errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(bldr.Name()))
 				}

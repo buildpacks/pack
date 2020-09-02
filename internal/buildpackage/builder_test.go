@@ -3,6 +3,7 @@ package buildpackage_test
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,6 +22,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
@@ -36,7 +38,6 @@ func TestPackageBuilder(t *testing.T) {
 
 func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		fakePackageImage *fakes.Image
 		mockController   *gomock.Controller
 		mockImageFactory *testmocks.MockImageFactory
 		subject          *buildpackage.PackageBuilder
@@ -47,10 +48,10 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
 
-		fakePackageImage = fakes.NewImage("some/package", "", nil)
+		fakePackageImage := fakes.NewImage("some/package", "", nil)
 		mockImageFactory.EXPECT().NewImage("some/package", true).Return(fakePackageImage, nil).AnyTimes()
 
-		subject = buildpackage.NewBuilder(mockImageFactory)
+		subject = buildpackage.NewBuilder("linux", mockImageFactory, nil)
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "package_builder_tests")
@@ -68,7 +69,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			fn   func() error
 		}{
 			{name: "SaveAsImage", fn: func() error {
-				_, err := subject.SaveAsImage(fakePackageImage.Name(), false)
+				_, err := subject.SaveAsImage(context.TODO(), "some/package", false, config.PullAlways)
 				return err
 			}},
 			{name: "SaveAsFile", fn: func() error {
@@ -269,7 +270,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							subject.AddDependency(dependency2)
 
-							_, err = subject.SaveAsImage("some/package", false)
+							_, err = subject.SaveAsImage(context.TODO(), "some/package", false, config.PullAlways)
 							h.AssertError(t, err, "no compatible stacks among provided buildpacks")
 						})
 					})
@@ -324,7 +325,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							subject.AddDependency(dependency2)
 
-							img, err := subject.SaveAsImage("some/package", false)
+							img, err := subject.SaveAsImage(context.TODO(), "some/package", false, config.PullAlways)
 							h.AssertNil(t, err)
 
 							metadata := buildpackage.Metadata{}
@@ -388,7 +389,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 							subject.AddDependency(dependencyNestedNested)
 
-							img, err := subject.SaveAsImage("some/package", false)
+							img, err := subject.SaveAsImage(context.TODO(), "some/package", false, config.PullAlways)
 							h.AssertNil(t, err)
 
 							metadata := buildpackage.Metadata{}
@@ -404,97 +405,203 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#SaveAsImage", func() {
-		it("sets metadata", func() {
-			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-				API: api.MustParse("0.2"),
-				Info: dist.BuildpackInfo{
-					ID:      "bp.1.id",
-					Version: "bp.1.version",
-				},
-				Stacks: []dist.Stack{
-					{ID: "stack.id.1"},
-					{ID: "stack.id.2"},
-				},
-				Order: nil,
-			}, 0644)
-			h.AssertNil(t, err)
-
-			subject.SetBuildpack(buildpack1)
-
-			packageImage, err := subject.SaveAsImage(fakePackageImage.Name(), false)
-			h.AssertNil(t, err)
-
-			labelData, err := packageImage.Label("io.buildpacks.buildpackage.metadata")
-			h.AssertNil(t, err)
-			var md buildpackage.Metadata
-			h.AssertNil(t, json.Unmarshal([]byte(labelData), &md))
-
-			h.AssertEq(t, md.ID, "bp.1.id")
-			h.AssertEq(t, md.Version, "bp.1.version")
-			h.AssertEq(t, len(md.Stacks), 2)
-			h.AssertEq(t, md.Stacks[0].ID, "stack.id.1")
-			h.AssertEq(t, md.Stacks[1].ID, "stack.id.2")
-		})
-
-		it("sets buildpack layers label", func() {
-			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-				API:    api.MustParse("0.2"),
-				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
-				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
-				Order:  nil,
-			}, 0644)
-			h.AssertNil(t, err)
-			subject.SetBuildpack(buildpack1)
-
-			_, err = subject.SaveAsImage(fakePackageImage.Name(), false)
-			h.AssertNil(t, err)
-
-			var bpLayers dist.BuildpackLayers
-			_, err = dist.GetLabel(fakePackageImage, "io.buildpacks.buildpack.layers", &bpLayers)
-			h.AssertNil(t, err)
-
-			bp1Info, ok1 := bpLayers["bp.1.id"]["bp.1.version"]
-			h.AssertEq(t, ok1, true)
-			h.AssertEq(t, bp1Info.Stacks, []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}})
-		})
-
-		it("adds buildpack layers", func() {
-			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-				API:    api.MustParse("0.2"),
-				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
-				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
-				Order:  nil,
-			}, 0644)
-			h.AssertNil(t, err)
-			subject.SetBuildpack(buildpack1)
-
-			_, err = subject.SaveAsImage(fakePackageImage.Name(), false)
-			h.AssertNil(t, err)
-
-			buildpackExists := func(name, version string) {
-				t.Helper()
-				dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", name, version)
-				layerTar, err := fakePackageImage.FindLayerWithPath(dirPath)
+		when("creating linux package", func() {
+			it("sets metadata", func() {
+				buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					API: api.MustParse("0.2"),
+					Info: dist.BuildpackInfo{
+						ID:      "bp.1.id",
+						Version: "bp.1.version",
+					},
+					Stacks: []dist.Stack{
+						{ID: "stack.id.1"},
+						{ID: "stack.id.2"},
+					},
+					Order: nil,
+				}, 0644)
 				h.AssertNil(t, err)
 
-				h.AssertOnTarEntry(t, layerTar, dirPath,
-					h.IsDirectory(),
-				)
+				subject.SetBuildpack(buildpack1)
 
-				h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/build",
-					h.ContentEquals("build-contents"),
-					h.HasOwnerAndGroup(0, 0),
-					h.HasFileMode(0644),
-				)
+				packageImage, err := subject.SaveAsImage(context.TODO(), "some/package", false, config.PullAlways)
+				h.AssertNil(t, err)
 
-				h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/detect",
-					h.ContentEquals("detect-contents"),
-					h.HasOwnerAndGroup(0, 0),
-					h.HasFileMode(0644),
-				)
-			}
+				labelData, err := packageImage.Label("io.buildpacks.buildpackage.metadata")
+				h.AssertNil(t, err)
+				var md buildpackage.Metadata
+				h.AssertNil(t, json.Unmarshal([]byte(labelData), &md))
 
-			buildpackExists("bp.1.id", "bp.1.version")
+				h.AssertEq(t, md.ID, "bp.1.id")
+				h.AssertEq(t, md.Version, "bp.1.version")
+				h.AssertEq(t, len(md.Stacks), 2)
+				h.AssertEq(t, md.Stacks[0].ID, "stack.id.1")
+				h.AssertEq(t, md.Stacks[1].ID, "stack.id.2")
+			})
+
+			it("sets buildpack layers label", func() {
+				buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					API:    api.MustParse("0.2"),
+					Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+					Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
+					Order:  nil,
+				}, 0644)
+				h.AssertNil(t, err)
+				subject.SetBuildpack(buildpack1)
+
+				packageImage, err := subject.SaveAsImage(context.TODO(), "some/package", false, config.PullAlways)
+				h.AssertNil(t, err)
+
+				var bpLayers dist.BuildpackLayers
+				_, err = dist.GetLabel(packageImage, "io.buildpacks.buildpack.layers", &bpLayers)
+				h.AssertNil(t, err)
+
+				bp1Info, ok1 := bpLayers["bp.1.id"]["bp.1.version"]
+				h.AssertEq(t, ok1, true)
+				h.AssertEq(t, bp1Info.Stacks, []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}})
+			})
+
+			it("adds buildpack layers", func() {
+				buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					API:    api.MustParse("0.2"),
+					Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+					Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
+					Order:  nil,
+				}, 0644)
+				h.AssertNil(t, err)
+				subject.SetBuildpack(buildpack1)
+
+				packageImage, err := subject.SaveAsImage(context.TODO(), "some/package", false, config.PullAlways)
+				h.AssertNil(t, err)
+
+				buildpackExists := func(name, version string) {
+					t.Helper()
+					dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", name, version)
+					fakePackageImage := packageImage.(*fakes.Image)
+					layerTar, err := fakePackageImage.FindLayerWithPath(dirPath)
+					h.AssertNil(t, err)
+
+					h.AssertOnTarEntry(t, layerTar, dirPath,
+						h.IsDirectory(),
+					)
+
+					h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/build",
+						h.ContentEquals("build-contents"),
+						h.HasOwnerAndGroup(0, 0),
+						h.HasFileMode(0644),
+					)
+
+					h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/detect",
+						h.ContentEquals("detect-contents"),
+						h.HasOwnerAndGroup(0, 0),
+						h.HasFileMode(0644),
+					)
+				}
+
+				buildpackExists("bp.1.id", "bp.1.version")
+			})
+		})
+
+		when("creating windows package", func() {
+			it.Before(func() {
+				mockImageFetcher := testmocks.NewMockImageFetcher(mockController)
+				subject = buildpackage.NewBuilder("windows", nil, mockImageFetcher)
+				fakeBaseImage := fakes.NewImage("", "", nil)
+				mockImageFetcher.EXPECT().Fetch(context.TODO(), "mcr.microsoft.com/windows/nanoserver:1809-amd64", gomock.Any(), gomock.Any()).Return(fakeBaseImage, nil)
+			})
+
+			it("sets metadata", func() {
+				buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					API: api.MustParse("0.2"),
+					Info: dist.BuildpackInfo{
+						ID:      "bp.1.id",
+						Version: "bp.1.version",
+					},
+					Stacks: []dist.Stack{
+						{ID: "stack.id.1"},
+						{ID: "stack.id.2"},
+					},
+					Order: nil,
+				}, 0644)
+				h.AssertNil(t, err)
+
+				subject.SetBuildpack(buildpack1)
+
+				packageImage, err := subject.SaveAsImage(context.TODO(), "some/package", false, config.PullAlways)
+				h.AssertNil(t, err)
+
+				labelData, err := packageImage.Label("io.buildpacks.buildpackage.metadata")
+				h.AssertNil(t, err)
+				var md buildpackage.Metadata
+				h.AssertNil(t, json.Unmarshal([]byte(labelData), &md))
+
+				h.AssertEq(t, md.ID, "bp.1.id")
+				h.AssertEq(t, md.Version, "bp.1.version")
+				h.AssertEq(t, len(md.Stacks), 2)
+				h.AssertEq(t, md.Stacks[0].ID, "stack.id.1")
+				h.AssertEq(t, md.Stacks[1].ID, "stack.id.2")
+			})
+
+			it("sets buildpack layers label", func() {
+				buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					API:    api.MustParse("0.2"),
+					Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+					Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
+					Order:  nil,
+				}, 0644)
+				h.AssertNil(t, err)
+				subject.SetBuildpack(buildpack1)
+
+				image, err := subject.SaveAsImage(context.TODO(), "some/package", false, config.PullAlways)
+				h.AssertNil(t, err)
+
+				var bpLayers dist.BuildpackLayers
+				_, err = dist.GetLabel(image, "io.buildpacks.buildpack.layers", &bpLayers)
+				h.AssertNil(t, err)
+
+				bp1Info, ok1 := bpLayers["bp.1.id"]["bp.1.version"]
+				h.AssertEq(t, ok1, true)
+				h.AssertEq(t, bp1Info.Stacks, []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}})
+			})
+
+			it("adds buildpack layers", func() {
+				buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+					API:    api.MustParse("0.2"),
+					Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+					Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
+					Order:  nil,
+				}, 0644)
+				h.AssertNil(t, err)
+				subject.SetBuildpack(buildpack1)
+
+				packageImage, err := subject.SaveAsImage(context.TODO(), "some/package", false, config.PullAlways)
+				h.AssertNil(t, err)
+
+				buildpackExists := func(name, version string) {
+					t.Helper()
+					dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", name, version)
+					fakePackageImage := packageImage.(*fakes.Image)
+					layerTar, err := fakePackageImage.FindLayerWithPath(dirPath)
+					h.AssertNil(t, err)
+
+					h.AssertOnTarEntry(t, layerTar, dirPath,
+						h.IsDirectory(),
+					)
+
+					h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/build",
+						h.ContentEquals("build-contents"),
+						h.HasOwnerAndGroup(0, 0),
+						h.HasFileMode(0644),
+					)
+
+					h.AssertOnTarEntry(t, layerTar, dirPath+"/bin/detect",
+						h.ContentEquals("detect-contents"),
+						h.HasOwnerAndGroup(0, 0),
+						h.HasFileMode(0644),
+					)
+				}
+
+				buildpackExists("bp.1.id", "bp.1.version")
+			})
 		})
 	})
 

@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/layer"
 
 	"github.com/pkg/errors"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
@@ -44,7 +44,17 @@ type PackageBuildpackOptions struct {
 
 // PackageBuildpack packages buildpack(s) into either an image or file.
 func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
-	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
+	info, err := c.docker.Info(ctx)
+	if err != nil {
+		return errors.Wrap(err, "getting docker info")
+	}
+
+	writerFactory, err := layer.NewWriterFactory(info.OSType)
+	if err != nil {
+		return errors.Wrap(err, "creating layer writer factory")
+	}
+
+	packageBuilder := buildpackage.NewBuilder(info.OSType, c.imageFactory, c.imageFetcher)
 
 	if opts.Format == "" {
 		opts.Format = FormatImage
@@ -60,7 +70,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bpURI))
 	}
 
-	bp, err := dist.BuildpackFromRootBlob(blob, archive.DefaultTarWriterFactory())
+	bp, err := dist.BuildpackFromRootBlob(blob, writerFactory)
 	if err != nil {
 		return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bpURI))
 	}
@@ -89,7 +99,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 				depBPs = append([]dist.Buildpack{mainBP}, deps...)
 			} else {
-				depBP, err := dist.BuildpackFromRootBlob(blob, archive.DefaultTarWriterFactory())
+				depBP, err := dist.BuildpackFromRootBlob(blob, writerFactory)
 				if err != nil {
 					return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
 				}
@@ -113,7 +123,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	case FormatFile:
 		return packageBuilder.SaveAsFile(opts.Name)
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish)
+		_, err = packageBuilder.SaveAsImage(ctx, opts.Name, opts.Publish, opts.PullPolicy)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))

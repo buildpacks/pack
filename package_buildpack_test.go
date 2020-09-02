@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/docker/docker/api/types"
+
 	"github.com/buildpacks/pack/config"
 
 	"github.com/buildpacks/imgutil"
@@ -44,6 +46,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader   *testmocks.MockDownloader
 		mockImageFactory *testmocks.MockImageFactory
 		mockImageFetcher *testmocks.MockImageFetcher
+		mockDockerClient *testmocks.MockCommonAPIClient
 		out              bytes.Buffer
 	)
 
@@ -52,6 +55,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader = testmocks.NewMockDownloader(mockController)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
 		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
+		mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
 
 		var err error
 		subject, err = pack.NewClient(
@@ -59,8 +63,11 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			pack.WithDownloader(mockDownloader),
 			pack.WithImageFactory(mockImageFactory),
 			pack.WithFetcher(mockImageFetcher),
+			pack.WithDockerClient(mockDockerClient),
 		)
 		h.AssertNil(t, err)
+
+		mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 	})
 
 	it.After(func() {
