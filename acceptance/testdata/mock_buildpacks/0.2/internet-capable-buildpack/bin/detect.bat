@@ -2,7 +2,7 @@
 
 echo ---- Detect: Internet capable buildpack
 
-ping -n 1 google.com
+curl.exe --silent --head google.com >NUL
 
 if %ERRORLEVEL% equ 0 (
   echo RESULT: Connected to the internet
