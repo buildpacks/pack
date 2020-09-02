@@ -25,23 +25,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: [macos, linux, windows-lcow, windows-wcow]
+        #config: [macos, linux, windows-lcow, windows-wcow]
+        config: [windows-wcow]
         include:
-          - config: macos
-            os: macos
-            runner: macos-latest
-            no_docker: "true"
-            pack_bin: pack
-          - config: linux
-            os: linux
-            runner: ubuntu-latest
-            no_docker: "false"
-            pack_bin: pack
-          - config: windows-lcow
-            os: windows
-            runner: [self-hosted, windows]
-            no_docker: "false"
-            pack_bin: pack.exe
+#           - config: macos
+#             os: macos
+#             runner: macos-latest
+#             no_docker: "true"
+#             pack_bin: pack
+#           - config: linux
+#             os: linux
+#             runner: ubuntu-latest
+#             no_docker: "false"
+#             pack_bin: pack
+#           - config: windows-lcow
+#             os: windows
+#             runner: [self-hosted, windows]
+#             no_docker: "false"
+#             pack_bin: pack.exe
           - config: windows-wcow
             os: windows
             runner: windows-latest
@@ -58,6 +59,16 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.eol lf
           git config --global core.symlinks true
+      - name: add docker hostname helpers
+        if: matrix.os == 'windows'
+        run: |
+          $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
+          if (!(Resolve-DnsName host.docker.internal -ErrorAction SilentlyContinue)) {
+            echo "${IPAddress} host.docker.internal" | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Append -Encoding utf8
+          }
+          if (!(Resolve-DnsName gateway.docker.internal -ErrorAction SilentlyContinue)) {
+            echo "${IPAddress} gateway.docker.internal" | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Append -Encoding utf8
+          }
       - uses: actions/checkout@v2
       - name: Derive pack version from branch name
         run: |
