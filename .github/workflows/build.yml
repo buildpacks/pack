@@ -64,11 +64,13 @@ jobs:
           # If helper names don't resolve, augment etc/hosts with entries using primary IP
           $IPAddress=(Get-NetIPAddress -InterfaceAlias ((Get-NetRoute "0.0.0.0/0").InterfaceAlias) -AddressFamily IPv4)[0].IPAddress
           if (!(Resolve-DnsName host.docker.internal -ErrorAction SilentlyContinue)) {
-            echo "${IPAddress} host.docker.internal" | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Append -Encoding utf8
+            echo "`n${IPAddress} host.docker.internal" | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Append -Encoding utf8
           }
           if (!(Resolve-DnsName gateway.docker.internal -ErrorAction SilentlyContinue)) {
-            echo "${IPAddress} gateway.docker.internal" | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Append -Encoding utf8
+            echo "`n${IPAddress} gateway.docker.internal" | Out-File -Filepath C:\Windows\System32\drivers\etc\hosts -Append -Encoding utf8
           }
+          echo "Contents:"
+          Get-Content C:\Windows\System32\drivers\etc\hosts
       - uses: actions/checkout@v2
       - name: Derive pack version from branch name
         run: |
