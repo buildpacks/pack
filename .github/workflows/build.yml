@@ -44,7 +44,7 @@ jobs:
             pack_bin: pack.exe
           - config: windows-wcow
             os: windows
-            runner: [self-hosted, windows, wcow]
+            runner: windows-latest
             no_docker: "false"
             pack_bin: pack.exe
     runs-on: ${{ matrix.runner }}
