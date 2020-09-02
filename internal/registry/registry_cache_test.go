@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"gopkg.in/src-d/go-git.v4"
@@ -21,6 +22,7 @@ import (
 )
 
 func TestRegistryCache(t *testing.T) {
+	color.Disable(true)
 	spec.Run(t, "RegistryCache", testRegistryCache, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
@@ -92,17 +94,7 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 		})
 
-		it("locates a buildpack without version", func() {
-			bp, err := registryCache.LocateBuildpack("example/java")
-			h.AssertNil(t, err)
-			h.AssertNotNil(t, bp)
-
-			h.AssertEq(t, bp.Namespace, "example")
-			h.AssertEq(t, bp.Name, "java")
-			h.AssertEq(t, bp.Version, "1.0.0")
-		})
-
-		it("locates a buildpack without version", func() {
+		it("locates a buildpack without version (name len 3)", func() {
 			bp, err := registryCache.LocateBuildpack("example/foo")
 			h.AssertNil(t, err)
 			h.AssertNotNil(t, bp)
@@ -110,6 +102,16 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, bp.Namespace, "example")
 			h.AssertEq(t, bp.Name, "foo")
 			h.AssertEq(t, bp.Version, "1.2.0")
+		})
+
+		it("locates a buildpack without version (name len 4)", func() {
+			bp, err := registryCache.LocateBuildpack("example/java")
+			h.AssertNil(t, err)
+			h.AssertNotNil(t, bp)
+
+			h.AssertEq(t, bp.Namespace, "example")
+			h.AssertEq(t, bp.Name, "java")
+			h.AssertEq(t, bp.Version, "1.0.0")
 		})
 
 		it("locates a buildpack with version", func() {
@@ -129,7 +131,7 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 
 		it("returns error if buildpack id is empty", func() {
 			_, err := registryCache.LocateBuildpack("example/")
-			h.AssertError(t, err, "empty buildpack name")
+			h.AssertError(t, err, "'name' cannot be empty")
 		})
 
 		it("returns error if can't find buildpack with requested id", func() {
@@ -217,6 +219,79 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 					err = registryCache.Initialize()
 					h.AssertError(t, err, "cloning remote registry")
 				})
+			})
+		})
+	})
+
+	when("#Commit", func() {
+		bp := Buildpack{
+			Namespace: "example",
+			Name:      "python",
+			Version:   "1.0.0",
+			Yanked:    false,
+			Address:   "example.com",
+		}
+
+		var (
+			registryCache Cache
+			msg           = "test commit message"
+			username      = "supra08"
+		)
+
+		it.Before(func() {
+			registryCache, err = NewRegistryCache(logger, tmpDir, registryFixture)
+			h.AssertNil(t, err)
+
+			err = registryCache.CreateCache()
+			h.AssertNil(t, err)
+		})
+
+		when("correct buildpack and commit message is passed", func() {
+			it("creates a file and a commit", func() {
+				h.AssertNil(t, registryCache.Commit(bp, username, msg))
+			})
+		})
+
+		when("empty commit message is passed", func() {
+			it("fails to create commit", func() {
+				err := registryCache.Commit(bp, username, "")
+				h.AssertError(t, err, "invalid commit message")
+			})
+		})
+
+		when("Root is an empty string", func() {
+			it("fails to create commit", func() {
+				registryCache.Root = ""
+				err = registryCache.Commit(bp, username, msg)
+				h.AssertError(t, err, "opening registry cache: repository does not exist")
+			})
+		})
+
+		when("name is empty in buildpack", func() {
+			it("fails to create commit", func() {
+				bp := Buildpack{
+					Namespace: "example",
+					Name:      "",
+					Version:   "1.0.0",
+					Yanked:    false,
+					Address:   "example.com",
+				}
+				err = registryCache.Commit(bp, username, msg)
+				h.AssertError(t, err, "'name' cannot be empty")
+			})
+		})
+
+		when("namespace is empty in buildpack", func() {
+			it("fails to create commit", func() {
+				bp := Buildpack{
+					Namespace: "",
+					Name:      "python",
+					Version:   "1.0.0",
+					Yanked:    false,
+					Address:   "example.com",
+				}
+				err = registryCache.Commit(bp, username, msg)
+				h.AssertError(t, err, "'namespace' cannot be empty")
 			})
 		})
 	})

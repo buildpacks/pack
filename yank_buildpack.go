@@ -7,6 +7,8 @@ import (
 	"github.com/buildpacks/pack/internal/registry"
 )
 
+// YankBuildpackOptions is a configuration struct that controls the Yanking a buildpack
+// from the Buildpack Registry.
 type YankBuildpackOptions struct {
 	ID      string
 	Version string
@@ -15,6 +17,8 @@ type YankBuildpackOptions struct {
 	Yank    bool
 }
 
+// YankBuildpack marks a buildpack on the Buildpack Registry as 'yanked'. This forbids future
+// builds from using it.
 func (c *Client) YankBuildpack(opts YankBuildpackOptions) error {
 	namespace, name, err := registry.ParseNamespaceName(opts.ID)
 	if err != nil {
