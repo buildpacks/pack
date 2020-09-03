@@ -17,6 +17,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/imgutil/remote"
+
+	"github.com/google/go-containerregistry/pkg/name"
+
+	"github.com/buildpacks/imgutil/local"
+
 	"github.com/buildpacks/imgutil"
 
 	"github.com/pkg/errors"
@@ -40,7 +46,6 @@ import (
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -70,7 +75,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeMirror2                  *fakes.Image
 		tmpDir                       string
 		outBuf                       bytes.Buffer
-		logger                       logging.Logger
+		logger                       *ilogging.LogWithWriters
 		fakeLifecycleImage           *fakes.Image
 	)
 	it.Before(func() {
@@ -176,6 +181,86 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, fakeLifecycle.Opts.Image.Context().RegistryStr(), "example.com")
 				h.AssertEq(t, fakeLifecycle.Opts.Image.Context().RepositoryStr(), "some/repo")
 				h.AssertEq(t, fakeLifecycle.Opts.Image.Identifier(), "tag")
+			})
+		})
+
+		when("Quiet mode", func() {
+			var builtImage *fakes.Image
+
+			it.After(func() {
+				logger.WantQuiet(false)
+			})
+
+			when("publish", func() {
+				var remoteRunImage, builderWithoutLifecycleImageOrCreator *fakes.Image
+
+				it.Before(func() {
+					remoteRunImage = fakes.NewImage("default/run", "", nil)
+					h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
+					h.AssertNil(t, remoteRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
+					fakeImageFetcher.RemoteImages[remoteRunImage.Name()] = remoteRunImage
+
+					builderWithoutLifecycleImageOrCreator = newFakeBuilderImage(
+						t,
+						tmpDir,
+						"example.com/supportscreator/builder:tag",
+						"some.stack.id",
+						defaultRunImageName,
+						"0.3.0",
+						newLinuxImage,
+					)
+					h.AssertNil(t, builderWithoutLifecycleImageOrCreator.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
+					fakeImageFetcher.LocalImages[builderWithoutLifecycleImageOrCreator.Name()] = builderWithoutLifecycleImageOrCreator
+
+					digest, err := name.NewDigest("example.io/some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4", name.WeakValidation)
+					h.AssertNil(t, err)
+					builtImage = fakes.NewImage("example.io/some/app:latest", "", remote.DigestIdentifier{Digest: digest})
+					fakeImageFetcher.RemoteImages[builtImage.Name()] = builtImage
+				})
+
+				it.After(func() {
+					remoteRunImage.Cleanup()
+					builderWithoutLifecycleImageOrCreator.Cleanup()
+					h.AssertNil(t, builtImage.Cleanup())
+				})
+
+				it("only prints app name and sha", func() {
+					logger.WantQuiet(true)
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "example.io/some/app",
+						Builder: defaultBuilderName,
+						AppPath: filepath.Join("testdata", "some-app"),
+						Publish: true,
+					}))
+
+					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "example.io/some/app@sha256:363c754893f0")
+				})
+			})
+
+			when("local", func() {
+				it.Before(func() {
+					builtImage = fakes.NewImage("index.docker.io/some/app:latest", "", local.IDIdentifier{
+						ImageID: "363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4",
+					})
+					fakeImageFetcher.LocalImages[builtImage.Name()] = builtImage
+				})
+
+				it.After(func() {
+					builtImage.Cleanup()
+				})
+
+				it("only prints app name and sha", func() {
+					logger.WantQuiet(true)
+
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: defaultBuilderName,
+						AppPath: filepath.Join("testdata", "some-app"),
+					}))
+
+					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "some/app@sha256:363c754893f0")
+				})
 			})
 		})
 

@@ -11,6 +11,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
+
+	"github.com/buildpacks/pack/logging"
+
 	"github.com/buildpacks/pack/config"
 
 	"github.com/Masterminds/semver"
@@ -273,7 +278,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if lifecycleSupportsCreator && opts.TrustBuilder {
 		lifecycleOpts.UseCreator = true
 		// no need to fetch a lifecycle image, it won't be used
-		return c.lifecycleExecutor.Execute(ctx, lifecycleOpts)
+		if err := c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
+			return errors.Wrap(err, "executing lifecycle")
+		}
+
+		return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
 	}
 
 	if !opts.TrustBuilder {
@@ -298,7 +307,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrap(err, "executing lifecycle. This may be the result of using an untrusted builder")
 	}
 
-	return nil
+	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
 }
 
 func lifecycleImageSupported(builderOS string, lifecycleVersion *builder.Version) bool {
@@ -780,4 +789,46 @@ func processMode(mode string) string {
 	}
 
 	return mode
+}
+
+func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef name.Reference) error {
+	// The image name and sha are printed in the lifecycle logs, and there is no need to print it again, unless output is suppressed.
+	if !logging.IsQuiet(c.logger) {
+		return nil
+	}
+
+	img, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), !publish, config.PullNever)
+	if err != nil {
+		return errors.Wrap(err, "fetching built image")
+	}
+
+	id, err := img.Identifier()
+	if err != nil {
+		return errors.Wrap(err, "reading image sha")
+	}
+
+	// Remove tag, if it exists, from the image name
+	imgName := strings.TrimSuffix(imageRef.String(), imageRef.Identifier())
+	imgNameAndSha := fmt.Sprintf("%s@%s\n", imgName, parseShortDigestFromImageID(id))
+
+	// Access the logger's Writer directly to bypass ReportSuccessfulQuietBuild mode
+	_, err = c.logger.Writer().Write([]byte(imgNameAndSha))
+	return err
+}
+
+func parseShortDigestFromImageID(id imgutil.Identifier) string {
+	var shortID string
+	switch v := id.(type) {
+	case local.IDIdentifier:
+		shortID = v.String()
+	case remote.DigestIdentifier:
+		shortID = v.Digest.DigestStr()
+	}
+
+	shortID = strings.TrimPrefix(shortID, "sha256:")
+	if len(shortID) > 12 {
+		shortID = shortID[0:12]
+	}
+
+	return fmt.Sprintf("sha256:%s", shortID)
 }
