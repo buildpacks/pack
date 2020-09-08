@@ -105,15 +105,20 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 (.*)                 0 ...                    file-to-ignore
 `)
 			} else {
-				perms := "-rw-r--r--"
 				if runtime.GOOS == "windows" {
-					perms = "-rwxrwxrwx"
+					// LCOW does not currently support symlinks
+					h.AssertContainsMatch(t, output, `
+-rwxrwxrwx    1 123      456 (.*) fake-app-file
+-rwxrwxrwx    1 123      456 (.*) fake-app-symlink
+-rwxrwxrwx    1 123      456 (.*) file-to-ignore
+`)
+				} else {
+					h.AssertContainsMatch(t, output, `
+-rw-r--r--    1 123      456 (.*) fake-app-file
+lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
+-rw-r--r--    1 123      456 (.*) file-to-ignore
+`)
 				}
-				h.AssertContainsMatch(t, output, fmt.Sprintf(`
-%s    1 123      456 (.*) fake-app-file
-%s    1 123      456 (.*) fake-app-symlink -> fake-app-file
-%s    1 123      456 (.*) file-to-ignore
-`, perms, "lrwxrwxrwx", perms))
 			}
 		})
 
@@ -226,7 +231,7 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			output := strings.ReplaceAll(outBuf.String(), "\r", "")
 
 			if isWindowsDaemon {
-				h.AssertContains(t, output, `12/31/1979  05:00 PM                69 ...                    stack.toml`)
+				h.AssertContains(t, output, `01/01/1980  12:00 AM                69 ...                    stack.toml`)
 			} else {
 				h.AssertContains(t, output, `-rwxr-xr-x    1 root     root            69 Jan  1  1980 /some/stack.toml`)
 			}
