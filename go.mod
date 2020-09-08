@@ -9,6 +9,7 @@ require (
 	github.com/buildpacks/lifecycle v0.7.2
 	github.com/containerd/containerd v1.3.3 // indirect
 	github.com/containerd/continuity v0.0.0-20200107194136-26c1120b8d41 // indirect
+	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/cli v0.0.0-20200312141509-ef2f64abbd37 // indirect
 	github.com/docker/docker v1.4.2-0.20200221181110-62bd5a33f707
 	github.com/docker/go-connections v0.4.0
@@ -19,7 +20,10 @@ require (
 	github.com/google/go-containerregistry v0.0.0-20200313165449-955bf358a3d8
 	github.com/google/go-github/v30 v30.1.0
 	github.com/heroku/color v0.0.6
+	github.com/jroimartin/gocui v0.4.0
+	github.com/kr/pretty v0.2.1
 	github.com/kr/text v0.2.0 // indirect
+	github.com/lunixbochs/vtclean v1.0.0
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
@@ -29,10 +33,15 @@ require (
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/opencontainers/selinux v1.4.0 // indirect
 	github.com/pkg/errors v0.9.1
+	github.com/rs/zerolog v1.19.0
 	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
 	github.com/sclevine/spec v1.4.0
 	github.com/sergi/go-diff v1.1.0 // indirect
+	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.6
+	github.com/spf13/viper v1.4.0
+	github.com/wagoodman/dive v0.9.2
+	go.uber.org/zap v1.16.0 // indirect
 	golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
 	golang.org/x/mod v0.2.0
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect

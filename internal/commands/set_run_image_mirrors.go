@@ -17,7 +17,7 @@ func SetRunImagesMirrors(logger logging.Logger, cfg config.Config) *cobra.Comman
 		Use:   "set-run-image-mirrors <run-image-name> --mirror <run-image-mirror>",
 		Short: "Set mirrors to other repositories for a given run image",
 		Args:  cobra.ExactArgs(1),
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			runImage := args[0]
 			cfg = config.SetRunImageMirrors(cfg, runImage, mirrors)
 			configPath, err := config.DefaultConfigPath()

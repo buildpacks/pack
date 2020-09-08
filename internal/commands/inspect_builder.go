@@ -39,7 +39,7 @@ func InspectBuilder(logger logging.Logger, cfg config.Config, client PackClient)
 		Use:   "inspect-builder <builder-image-name>",
 		Short: "Show information about a builder",
 		Args:  cobra.MaximumNArgs(2),
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			if cfg.DefaultBuilder == "" && len(args) == 0 {
 				suggestSettingBuilder(logger, client)
 				return pack.NewSoftError()

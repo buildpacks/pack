@@ -21,6 +21,7 @@ type PackClient interface {
 	InspectBuilder(string, bool) (*pack.BuilderInfo, error)
 	InspectImage(string, bool) (*pack.ImageInfo, error)
 	Rebase(context.Context, pack.RebaseOptions) error
+	Dive(name string, daemon bool) (*pack.DiveResult, error)
 	CreateBuilder(context.Context, pack.CreateBuilderOptions) error
 	PackageBuildpack(ctx context.Context, opts pack.PackageBuildpackOptions) error
 	Build(context.Context, pack.BuildOptions) error
@@ -45,7 +46,7 @@ func CreateCancellableContext() context.Context {
 	return ctx
 }
 
-func logError(logger logging.Logger, f func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {
+func LogError(logger logging.Logger, f func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		cmd.SilenceUsage = true

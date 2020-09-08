@@ -41,7 +41,7 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 		Use:   `package-buildpack <name> --config <package-config-path>`,
 		Short: "Package buildpack in OCI format.",
 		Args:  cobra.ExactValidArgs(1),
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validatePackageBuildpackFlags(&flags, logger); err != nil {
 				return err
 			}

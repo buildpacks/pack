@@ -28,7 +28,7 @@ func InspectImage(logger logging.Logger, cfg *config.Config, client PackClient) 
 		Use:   "inspect-image <image-name>",
 		Short: "Show information about a built image",
 		Args:  cobra.ExactArgs(1),
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			img := args[0]
 			remote, err := client.InspectImage(img, false)
 			if err != nil {

@@ -21,7 +21,7 @@ func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.
 		Use:   "rebase <image-name>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Rebase app image with latest run image",
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			opts.RepoName = args[0]
 			opts.AdditionalMirrors = getMirrors(cfg)
 

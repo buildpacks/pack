@@ -23,7 +23,7 @@ func Report(logger logging.Logger, version string) *cobra.Command {
 		Use:   "report",
 		Args:  cobra.NoArgs,
 		Short: "Display useful information for reporting an issue",
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			var buf bytes.Buffer
 			err := generateOutput(&buf, version, explicit)
 			if err != nil {

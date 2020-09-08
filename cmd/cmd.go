@@ -5,6 +5,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/commands/dive"
+
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/commands"
@@ -81,6 +83,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.Version(logger, pack.Version))
 	rootCmd.AddCommand(commands.Report(logger, pack.Version))
+	rootCmd.AddCommand(dive.Dive(logger, cfg, &packClient))
 
 	if cfg.Experimental {
 		rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, &packClient))

@@ -48,7 +48,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 		Use:   "build <image-name>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Generate app image from source code",
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validateBuildFlags(&flags, cfg, packClient, logger); err != nil {
 				return err
 			}
