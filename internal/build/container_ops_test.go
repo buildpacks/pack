@@ -45,7 +45,6 @@ func TestContainerOperations(t *testing.T) {
 func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 	var (
 		imageName       string
-		outBuf, errBuf  bytes.Buffer
 		isWindowsDaemon bool
 	)
 
@@ -88,16 +87,15 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
+			var outBuf, errBuf bytes.Buffer
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			output := strings.ReplaceAll(outBuf.String(), "\r", "")
-
 			if isWindowsDaemon {
-				h.AssertContainsMatch(t, output, `
+				assertLogsContainMatch(t, &outBuf, &errBuf, `
 (.*)    <DIR>          ...                    .
 (.*)    <DIR>          ...                    ..
 (.*)                17 ...                    fake-app-file
@@ -107,13 +105,13 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			} else {
 				if runtime.GOOS == "windows" {
 					// LCOW does not currently support symlinks
-					h.AssertContainsMatch(t, output, `
+					assertLogsContainMatch(t, &outBuf, &errBuf, `
 -rwxrwxrwx    1 123      456 (.*) fake-app-file
 -rwxrwxrwx    1 123      456 (.*) fake-app-symlink
 -rwxrwxrwx    1 123      456 (.*) file-to-ignore
 `)
 				} else {
-					h.AssertContainsMatch(t, output, `
+					assertLogsContainMatch(t, &outBuf, &errBuf, `
 -rw-r--r--    1 123      456 (.*) fake-app-file
 lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 -rw-r--r--    1 123      456 (.*) file-to-ignore
@@ -142,15 +140,16 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
+			var outBuf, errBuf bytes.Buffer
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			output := strings.ReplaceAll(outBuf.String(), "\r", "")
+			assertLogsContainMatch(t, &outBuf, &errBuf, "fake-app-file")
 
-			h.AssertNotContains(t, output, "file-to-ignore")
+			h.AssertNotContains(t, outBuf.String(), "file-to-ignore")
 		})
 
 		it("writes contents from zip file", func() {
@@ -171,22 +170,21 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
+			var outBuf, errBuf bytes.Buffer
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			output := strings.ReplaceAll(outBuf.String(), "\r", "")
-
 			if isWindowsDaemon {
-				h.AssertContainsMatch(t, output, `
+				assertLogsContainMatch(t, &outBuf, &errBuf, `
 (.*)    <DIR>          ...                    .
 (.*)    <DIR>          ...                    ..
 (.*)                17 ...                    fake-app-file
 `)
 			} else {
-				h.AssertContainsMatch(t, output, `
+				assertLogsContainMatch(t, &outBuf, &errBuf, `
 -rw-r--r--    1 123      456 (.*) fake-app-file
 `)
 			}
@@ -222,18 +220,17 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
+			var outBuf, errBuf bytes.Buffer
 			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			output := strings.ReplaceAll(outBuf.String(), "\r", "")
-
 			if isWindowsDaemon {
-				h.AssertContains(t, output, `01/01/1980  12:00 AM                69 ...                    stack.toml`)
+				assertLogsContainMatch(t, &outBuf, &errBuf, `01/01/1980  12:00 AM                69 ...                    stack.toml`)
 			} else {
-				h.AssertContains(t, output, `-rwxr-xr-x    1 root     root            69 Jan  1  1980 /some/stack.toml`)
+				assertLogsContainMatch(t, &outBuf, &errBuf, `-rwxr-xr-x    1 root     root            69 Jan  1  1980 /some/stack.toml`)
 			}
 		})
 
@@ -257,7 +254,7 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 
 			ctrCmd := []string{"cat", "/some/stack.toml"}
 			if isWindowsDaemon {
-				ctrCmd = []string{"cmd", "/c", "type", `c:\some\stack.toml`}
+				ctrCmd = []string{"cmd", "/c", `type c:\some\stack.toml`}
 			}
 
 			ctx := context.Background()
@@ -265,26 +262,52 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
+			var outBuf, errBuf bytes.Buffer
 			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			output := strings.ReplaceAll(outBuf.String(), "\r", "")
-			h.AssertContains(t, output, `[run-image]
+			assertLogsContainMatch(t, &outBuf, &errBuf, `\[run-image\]
   image = "image-1"
-  mirrors = ["mirror-1", "mirror-2"]
+  mirrors = \["mirror-1", "mirror-2"\]
 `)
 		})
 	})
 }
 
+func assertLogsContainMatch(t *testing.T, outBuf *bytes.Buffer, errBuf *bytes.Buffer, template string) {
+	t.Helper()
+
+	h.AssertEq(t, errBuf.String(), "")
+
+	output := strings.ReplaceAll(outBuf.String(), "\r", "")
+
+	h.AssertContainsMatch(t, output, template)
+}
+
 func createContainer(ctx context.Context, imageName string, containerDir string, cmd ...string) (dcontainer.ContainerCreateCreatedBody, error) {
+	info, err := ctrClient.Info(ctx)
+	if err != nil {
+		return dcontainer.ContainerCreateCreatedBody{}, err
+	}
+
+	isolationType := dcontainer.IsolationDefault
+	containerUser := "" // default
+	if info.OSType == "windows" {
+		isolationType = dcontainer.IsolationProcess
+	}
+
 	return ctrClient.ContainerCreate(ctx,
-		&dcontainer.Config{Image: imageName, Cmd: cmd},
+		&dcontainer.Config{
+			Image: imageName,
+			Cmd:   cmd,
+			User:  containerUser,
+		},
 		&dcontainer.HostConfig{
-			Binds: []string{fmt.Sprintf("%s:%s", fmt.Sprintf("tests-volume-%s", h.RandString(5)), filepath.ToSlash(containerDir))},
+			Binds:     []string{fmt.Sprintf("%s:%s", fmt.Sprintf("tests-volume-%s", h.RandString(5)), filepath.ToSlash(containerDir))},
+			Isolation: isolationType,
 		}, nil, "",
 	)
 }

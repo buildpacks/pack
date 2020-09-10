@@ -580,31 +580,22 @@ func SkipUnless(t *testing.T, expression bool, reason string) {
 func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id string, stdout io.Writer, stderr io.Writer) error {
 	bodyChan, errChan := dockerCli.ContainerWait(ctx, id, container.WaitConditionNextExit)
 
+	logs, err := dockerCli.ContainerAttach(ctx, id, dockertypes.ContainerAttachOptions{
+		Stream: true,
+		Stdout: true,
+		Stderr: true,
+	})
+	if err != nil {
+		return err
+	}
+
 	if err := dockerCli.ContainerStart(ctx, id, dockertypes.ContainerStartOptions{}); err != nil {
 		return errors.Wrap(err, "container start")
 	}
 
-	info, err := dockerCli.Info(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting docker info")
-	}
-	if info.OSType == "windows" {
-		// wait for logs to show
-		time.Sleep(time.Second)
-	}
-
-	logs, err := dockerCli.ContainerLogs(ctx, id, dockertypes.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     true,
-	})
-	if err != nil {
-		return errors.Wrap(err, "container logs stdout")
-	}
-
 	copyErr := make(chan error)
 	go func() {
-		_, err := stdcopy.StdCopy(stdout, stderr, logs)
+		_, err := stdcopy.StdCopy(stdout, stderr, logs.Reader)
 		copyErr <- err
 	}()
 
