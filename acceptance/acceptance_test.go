@@ -1920,6 +1920,97 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 			})
 		})
 	})
+
+	when("buildpack is created", func() {
+		var (
+			tmpDir        string
+			buildpackList = []string{
+				"simple-layers-parent-buildpack",
+				"simple-layers-buildpack",
+			}
+
+			inspectBuildpackTarget string
+		)
+
+		it.Before(func() {
+			var err error
+			tmpDir, err = ioutil.TempDir("", "inspect-buildpack-tests")
+			assert.Nil(err)
+
+			// DETERMINE TEST DATA
+			buildpacksDir := buildpacksDir(lifecycle.EarliestBuildpackAPIVersion())
+			t.Log("using buildpacks from: ", buildpacksDir)
+			h.RecursiveCopy(t, buildpacksDir, tmpDir)
+
+			for _, v := range buildpackList {
+				tgz := h.CreateTGZ(t, filepath.Join(buildpacksDir, ""), "./", 0755)
+				err := os.Rename(tgz, filepath.Join(tmpDir, v+".tgz"))
+				assert.Nil(err)
+			}
+		})
+		when("buildpack archive", func() {
+			it.Before(func() {
+				inspectBuildpackTarget = packageBuildpackAsFile(t,
+					assert,
+					pack,
+					pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
+					tmpDir,
+					lifecycle,
+					buildpackList,
+				)
+			})
+
+			when("inspect-buildpack", func() {
+				it("succeeds", func() {
+					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
+						"inspect_%s_buildpack_archive_output.txt",
+						createBuilderPack.Version(),
+						"inspect_buildpack_archive_output.txt",
+						map[string]interface{}{
+							"buildpack_name": inspectBuildpackTarget,
+						},
+					)
+
+					output := pack.RunSuccessfully("inspect-buildpack", inspectBuildpackTarget)
+					assert.TrimmedEq(output, expectedOutput)
+				})
+			})
+
+		})
+
+		when("buildpack image", func() {
+			it.Before(func() {
+				tmpDir, err := ioutil.TempDir("", "create-test-builder")
+				assert.Nil(err)
+				defer os.RemoveAll(tmpDir)
+
+				inspectBuildpackTarget = packageBuildpackAsImage(t,
+					assert,
+					pack,
+					pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
+					lifecycle,
+					buildpackList,
+				)
+
+			})
+			when("inspect-buildpack", func() {
+				it("succeeds", func() {
+					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
+						"inspect_%s_buildpack_image_output.txt",
+						createBuilderPack.Version(),
+						"inspect_buildpack_image_output.txt",
+						map[string]interface{}{
+							"buildpack_name": inspectBuildpackTarget,
+						},
+					)
+
+					output := pack.RunSuccessfully("inspect-buildpack", inspectBuildpackTarget)
+					assert.TrimmedEq(output, expectedOutput)
+				})
+			})
+
+		})
+	})
 }
 
 func buildpacksDir(bpAPIVersion string) string {
