@@ -1933,6 +1933,8 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 		)
 
 		it.Before(func() {
+			h.SkipUnless(t, pack.Supports("inspect-buildpack"), "version of pack doesn't trust-builder command")
+
 			var err error
 			tmpDir, err = ioutil.TempDir("", "inspect-buildpack-tests")
 			assert.Nil(err)
