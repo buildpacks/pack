@@ -49,12 +49,12 @@ func (c *Client) InspectBuildpack(opts InspectBuildpackOptions) (*BuildpackInfo,
 	var buildpackMd buildpackage.Metadata
 
 	switch locatorType {
-	case buildpack.URILocator:
-		buildpackMd, layersMd, err = metadataFromArchive(c.downloader, opts.BuildpackName)
 	case buildpack.RegistryLocator:
 		buildpackMd, layersMd, err = metadataFromRegistry(c, opts.BuildpackName, opts.Registry)
 	case buildpack.PackageLocator:
 		buildpackMd, layersMd, err = metadataFromImage(c, opts.BuildpackName, opts.Daemon)
+	case buildpack.URILocator:
+		buildpackMd, layersMd, err = metadataFromArchive(c.downloader, opts.BuildpackName)
 	default:
 		return nil, fmt.Errorf("unable to handle locator %q: for buildpack %q", locatorType, opts.BuildpackName)
 	}
@@ -87,6 +87,7 @@ func metadataFromRegistry(client *Client, name, registry string) (buildpackMd bu
 	}
 	return buildpackMd, layersMd, nil
 }
+
 func metadataFromArchive(downloader Downloader, path string) (buildpackMd buildpackage.Metadata, layersMd dist.BuildpackLayers, err error) {
 	// open archive, read it as an image and get all metadata.
 	// This looks like a prime candidate to be added to imgutil.
@@ -134,7 +135,6 @@ func extractOrder(buildpackMd buildpackage.Metadata) dist.Order {
 			Group: []dist.BuildpackRef{
 				{
 					BuildpackInfo: buildpackMd.BuildpackInfo,
-					Optional:      false,
 				},
 			},
 		},
