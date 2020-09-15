@@ -44,18 +44,19 @@ func TestContainerOperations(t *testing.T) {
 
 func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 	var (
-		imageName       string
-		isWindowsDaemon bool
+		imageName string
+		osType    string
 	)
 
 	it.Before(func() {
 		imageName = "container-ops.test-" + h.RandString(10)
+
 		info, err := ctrClient.Info(context.TODO())
 		h.AssertNil(t, err)
-		isWindowsDaemon = info.OSType == "windows"
+		osType = info.OSType
 
 		dockerfileContent := `FROM busybox`
-		if isWindowsDaemon {
+		if osType == "windows" {
 			dockerfileContent = `FROM mcr.microsoft.com/windows/nanoserver:1809`
 		}
 
@@ -70,22 +71,22 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 
 	when("#CopyDir", func() {
 		it("writes contents with proper owner/permissions", func() {
-			containerDir := "/some-location"
-			if isWindowsDaemon {
-				containerDir = `c:\some-location`
+			containerDir := "/some-vol"
+			if osType == "windows" {
+				containerDir = `c:\some-vol`
 			}
 
-			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, nil)
+			ctrCmd := []string{"ls", "-al", "/some-vol"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `dir /q /s c:\some-vol`}
+			}
+
 			ctx := context.Background()
-
-			ctrCmd := []string{"ls", "-al", "/some-location"}
-			if isWindowsDaemon {
-				ctrCmd = []string{"cmd", "/c", `dir /q /s c:\some-location`}
-			}
-
-			ctr, err := createContainer(ctx, imageName, containerDir, ctrCmd...)
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
+
+			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, nil)
 
 			var outBuf, errBuf bytes.Buffer
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
@@ -94,8 +95,9 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			if isWindowsDaemon {
-				assertLogsContainMatch(t, &outBuf, &errBuf, `
+			h.AssertEq(t, errBuf.String(), "")
+			if osType == "windows" {
+				h.AssertContainsMatch(t, strings.ReplaceAll(outBuf.String(), "\r", ""), `
 (.*)    <DIR>          ...                    .
 (.*)    <DIR>          ...                    ..
 (.*)                17 ...                    fake-app-file
@@ -105,13 +107,13 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			} else {
 				if runtime.GOOS == "windows" {
 					// LCOW does not currently support symlinks
-					assertLogsContainMatch(t, &outBuf, &errBuf, `
+					h.AssertContainsMatch(t, outBuf.String(), `
 -rwxrwxrwx    1 123      456 (.*) fake-app-file
 -rwxrwxrwx    1 123      456 (.*) fake-app-symlink
 -rwxrwxrwx    1 123      456 (.*) file-to-ignore
 `)
 				} else {
-					assertLogsContainMatch(t, &outBuf, &errBuf, `
+					h.AssertContainsMatch(t, outBuf.String(), `
 -rw-r--r--    1 123      456 (.*) fake-app-file
 lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 -rw-r--r--    1 123      456 (.*) file-to-ignore
@@ -121,24 +123,24 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 		})
 
 		it("writes contents ignoring from file filter", func() {
-			containerDir := "/some-location"
-			if isWindowsDaemon {
-				containerDir = `c:\some-location`
+			containerDir := "/some-vol"
+			if osType == "windows" {
+				containerDir = `c:\some-vol`
 			}
 
-			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, func(filename string) bool {
-				return filepath.Base(filename) != "file-to-ignore"
-			})
-
-			ctrCmd := []string{"ls", "-al", "/some-location"}
-			if isWindowsDaemon {
-				ctrCmd = []string{"cmd", "/c", `dir /q /s /n c:\some-location`}
+			ctrCmd := []string{"ls", "-al", "/some-vol"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `dir /q /s /n c:\some-vol`}
 			}
 
 			ctx := context.Background()
-			ctr, err := createContainer(ctx, imageName, containerDir, ctrCmd...)
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
+
+			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, func(filename string) bool {
+				return filepath.Base(filename) != "file-to-ignore"
+			})
 
 			var outBuf, errBuf bytes.Buffer
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
@@ -147,28 +149,28 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			assertLogsContainMatch(t, &outBuf, &errBuf, "fake-app-file")
-
+			h.AssertEq(t, errBuf.String(), "")
+			h.AssertContains(t, outBuf.String(), "fake-app-file")
 			h.AssertNotContains(t, outBuf.String(), "file-to-ignore")
 		})
 
 		it("writes contents from zip file", func() {
-			containerDir := "/some-location"
-			if isWindowsDaemon {
-				containerDir = `c:\some-location`
+			containerDir := "/some-vol"
+			if osType == "windows" {
+				containerDir = `c:\some-vol`
 			}
 
-			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app.zip"), containerDir, 123, 456, nil)
-
-			ctrCmd := []string{"ls", "-al", "/some-location"}
-			if isWindowsDaemon {
-				ctrCmd = []string{"cmd", "/c", `dir /q /s /n c:\some-location`}
+			ctrCmd := []string{"ls", "-al", "/some-vol"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `dir /q /s /n c:\some-vol`}
 			}
 
 			ctx := context.Background()
-			ctr, err := createContainer(ctx, imageName, containerDir, ctrCmd...)
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
+
+			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app.zip"), containerDir, 123, 456, osType, nil)
 
 			var outBuf, errBuf bytes.Buffer
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
@@ -177,14 +179,15 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			if isWindowsDaemon {
-				assertLogsContainMatch(t, &outBuf, &errBuf, `
+			h.AssertEq(t, errBuf.String(), "")
+			if osType == "windows" {
+				h.AssertContainsMatch(t, strings.ReplaceAll(outBuf.String(), "\r", ""), `
 (.*)    <DIR>          ...                    .
 (.*)    <DIR>          ...                    ..
 (.*)                17 ...                    fake-app-file
 `)
 			} else {
-				assertLogsContainMatch(t, &outBuf, &errBuf, `
+				h.AssertContainsMatch(t, outBuf.String(), `
 -rw-r--r--    1 123      456 (.*) fake-app-file
 `)
 			}
@@ -193,12 +196,21 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 
 	when("#WriteStackToml", func() {
 		it("writes file", func() {
-			containerDir := "/some"
-			containerPath := "/some/stack.toml"
-			if isWindowsDaemon {
-				containerDir = `c:\some`
-				containerPath = `c:\some\stack.toml`
+			containerDir := "/layers-vol"
+			containerPath := "/layers-vol/stack.toml"
+			if osType == "windows" {
+				containerDir = `c:\layers-vol`
+				containerPath = `c:\layers-vol\stack.toml`
 			}
+
+			ctrCmd := []string{"ls", "-al", "/layers-vol/stack.toml"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `dir /q /n c:\layers-vol\stack.toml`}
+			}
+			ctx := context.Background()
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
+			h.AssertNil(t, err)
+			defer cleanupContainer(ctx, ctr.ID)
 
 			writeOp := build.WriteStackToml(containerPath, builder.StackMetadata{
 				RunImage: builder.RunImageMetadata{
@@ -208,17 +220,7 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 						"mirror-2",
 					},
 				},
-			})
-
-			ctrCmd := []string{"ls", "-al", "/some/stack.toml"}
-			if isWindowsDaemon {
-				ctrCmd = []string{"cmd", "/c", `dir /q /s /n c:\some\stack.toml`}
-			}
-
-			ctx := context.Background()
-			ctr, err := createContainer(ctx, imageName, containerDir, ctrCmd...)
-			h.AssertNil(t, err)
-			defer cleanupContainer(ctx, ctr.ID)
+			}, osType)
 
 			var outBuf, errBuf bytes.Buffer
 			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
@@ -227,20 +229,31 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			if isWindowsDaemon {
-				assertLogsContainMatch(t, &outBuf, &errBuf, `01/01/1980  12:00 AM                69 ...                    stack.toml`)
+			h.AssertEq(t, errBuf.String(), "")
+			if osType == "windows" {
+				h.AssertContains(t, outBuf.String(), `01/01/1980  12:00 AM                69 ...                    stack.toml`)
 			} else {
-				assertLogsContainMatch(t, &outBuf, &errBuf, `-rwxr-xr-x    1 root     root            69 Jan  1  1980 /some/stack.toml`)
+				h.AssertContains(t, outBuf.String(), `-rwxr-xr-x    1 root     root            69 Jan  1  1980 /layers-vol/stack.toml`)
 			}
 		})
 
 		it("has expected contents", func() {
-			containerDir := "/some"
-			containerPath := "/some/stack.toml"
-			if isWindowsDaemon {
-				containerDir = `c:\some`
-				containerPath = `c:\some\stack.toml`
+			containerDir := "/layers-vol"
+			containerPath := "/layers-vol/stack.toml"
+			if osType == "windows" {
+				containerDir = `c:\layers-vol`
+				containerPath = `c:\layers-vol\stack.toml`
 			}
+
+			ctrCmd := []string{"cat", "/layers-vol/stack.toml"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `type c:\layers-vol\stack.toml`}
+			}
+
+			ctx := context.Background()
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
+			h.AssertNil(t, err)
+			defer cleanupContainer(ctx, ctr.ID)
 
 			writeOp := build.WriteStackToml(containerPath, builder.StackMetadata{
 				RunImage: builder.RunImageMetadata{
@@ -250,17 +263,7 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 						"mirror-2",
 					},
 				},
-			})
-
-			ctrCmd := []string{"cat", "/some/stack.toml"}
-			if isWindowsDaemon {
-				ctrCmd = []string{"cmd", "/c", `type c:\some\stack.toml`}
-			}
-
-			ctx := context.Background()
-			ctr, err := createContainer(ctx, imageName, containerDir, ctrCmd...)
-			h.AssertNil(t, err)
-			defer cleanupContainer(ctx, ctr.ID)
+			}, osType)
 
 			var outBuf, errBuf bytes.Buffer
 			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
@@ -269,33 +272,62 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			assertLogsContainMatch(t, &outBuf, &errBuf, `\[run-image\]
+			h.AssertEq(t, errBuf.String(), "")
+			h.AssertContains(t, outBuf.String(), `[run-image]
   image = "image-1"
-  mirrors = \["mirror-1", "mirror-2"\]
+  mirrors = ["mirror-1", "mirror-2"]
 `)
+		})
+	})
+
+	when("#EnsureVolumeAccess", func() {
+		it("changes owner of volume", func() {
+			h.SkipIf(t, osType != "windows", "no-op for linux")
+
+			ctx := context.Background()
+
+			ctrCmd := []string{"ls", "-al", "/my-volume"}
+			containerDir := "/my-volume"
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `icacls c:\my-volume`}
+				containerDir = `c:\my-volume`
+			}
+
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
+			h.AssertNil(t, err)
+			defer cleanupContainer(ctx, ctr.ID)
+
+			inspect, err := ctrClient.ContainerInspect(ctx, ctr.ID)
+			if err != nil {
+				return
+			}
+
+			// use container's current volumes
+			var ctrVolumes []string
+			for _, m := range inspect.Mounts {
+				if m.Type == mount.TypeVolume {
+					ctrVolumes = append(ctrVolumes, m.Name)
+				}
+			}
+
+			var outBuf, errBuf bytes.Buffer
+
+			// reuse same volume twice to demonstrate multiple ops
+			initVolumeOp := build.EnsureVolumeAccess(123, 456, osType, ctrVolumes[0], ctrVolumes[0])
+			err = initVolumeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
+			h.AssertNil(t, err)
+			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, errBuf.String(), "")
+			h.AssertContains(t, outBuf.String(), `BUILTIN\Users:(OI)(CI)(F)`)
 		})
 	})
 }
 
-func assertLogsContainMatch(t *testing.T, outBuf *bytes.Buffer, errBuf *bytes.Buffer, template string) {
-	t.Helper()
-
-	h.AssertEq(t, errBuf.String(), "")
-
-	output := strings.ReplaceAll(outBuf.String(), "\r", "")
-
-	h.AssertContainsMatch(t, output, template)
-}
-
-func createContainer(ctx context.Context, imageName string, containerDir string, cmd ...string) (dcontainer.ContainerCreateCreatedBody, error) {
-	info, err := ctrClient.Info(ctx)
-	if err != nil {
-		return dcontainer.ContainerCreateCreatedBody{}, err
-	}
-
+func createContainer(ctx context.Context, imageName, containerDir, osType string, cmd ...string) (dcontainer.ContainerCreateCreatedBody, error) {
 	isolationType := dcontainer.IsolationDefault
-	containerUser := "" // default
-	if info.OSType == "windows" {
+	if osType == "windows" {
 		isolationType = dcontainer.IsolationProcess
 	}
 
@@ -303,7 +335,6 @@ func createContainer(ctx context.Context, imageName string, containerDir string,
 		&dcontainer.Config{
 			Image: imageName,
 			Cmd:   cmd,
-			User:  containerUser,
 		},
 		&dcontainer.HostConfig{
 			Binds:     []string{fmt.Sprintf("%s:%s", fmt.Sprintf("tests-volume-%s", h.RandString(5)), filepath.ToSlash(containerDir))},

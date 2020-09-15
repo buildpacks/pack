@@ -71,6 +71,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 		outBuf, errBuf bytes.Buffer
 		docker         client.CommonAPIClient
 		logger         logging.Logger
+		osType         string
 	)
 
 	it.Before(func() {
@@ -79,6 +80,11 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 		var err error
 		docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
+
+		info, err := ctrClient.Info(context.Background())
+		h.AssertNil(t, err)
+		osType = info.OSType
+
 		lifecycleExec, err = CreateFakeLifecycleExecution(logger, docker, filepath.Join("testdata", "fake-app"), repoName)
 		h.AssertNil(t, err)
 		phaseFactory = build.NewDefaultPhaseFactory(lifecycleExec)
@@ -140,6 +146,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 							"/workspace",
 							lifecycleExec.Builder().UID(),
 							lifecycleExec.Builder().GID(),
+							osType,
 							nil,
 						),
 					),
@@ -164,7 +171,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			when("app is a dir", func() {
 				it("preserves original mod times", func() {
-					assertAppModTimePreserved(t, lifecycleExec, phaseFactory, &outBuf, &errBuf)
+					assertAppModTimePreserved(t, lifecycleExec, phaseFactory, &outBuf, &errBuf, osType)
 				})
 			})
 
@@ -175,7 +182,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					phaseFactory = build.NewDefaultPhaseFactory(lifecycleExec)
 
-					assertAppModTimePreserved(t, lifecycleExec, phaseFactory, &outBuf, &errBuf)
+					assertAppModTimePreserved(t, lifecycleExec, phaseFactory, &outBuf, &errBuf, osType)
 				})
 			})
 
@@ -215,7 +222,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 							lifecycleExec,
 							build.WithArgs("read", "/workspace/fake-app-file"),
 							build.WithContainerOperations(
-								build.CopyDir(lifecycleExec.AppPath(), "/workspace", 0, 0, nil),
+								build.CopyDir(lifecycleExec.AppPath(), "/workspace", 0, 0, osType, nil),
 							),
 						))
 						h.AssertNil(t, err)
@@ -367,14 +374,14 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func assertAppModTimePreserved(t *testing.T, lifecycle *build.LifecycleExecution, phaseFactory build.PhaseFactory, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
+func assertAppModTimePreserved(t *testing.T, lifecycle *build.LifecycleExecution, phaseFactory build.PhaseFactory, outBuf *bytes.Buffer, errBuf *bytes.Buffer, osType string) {
 	t.Helper()
 	readPhase := phaseFactory.New(build.NewPhaseConfigProvider(
 		phaseName,
 		lifecycle,
 		build.WithArgs("read", "/workspace/fake-app-file"),
 		build.WithContainerOperations(
-			build.CopyDir(lifecycle.AppPath(), "/workspace", 0, 0, nil),
+			build.CopyDir(lifecycle.AppPath(), "/workspace", 0, 0, osType, nil),
 		),
 	))
 	assertRunSucceeds(t, readPhase, outBuf, errBuf)

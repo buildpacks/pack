@@ -104,3 +104,35 @@ func FilterReservedNames(path string) string {
 
 	return path
 }
+
+func WindowsDirname(path string) string {
+	pathElements := strings.Split(path, `\`)
+	if len(pathElements) < 1 {
+		return ""
+	}
+
+	dirName := strings.Join(pathElements[:len(pathElements)-1], `\`)
+
+	return dirName
+}
+
+func WindowsBasename(path string) string {
+	pathElements := strings.Split(path, `\`)
+	if len(pathElements) < 1 {
+		return ""
+	}
+
+	return pathElements[len(pathElements)-1]
+}
+
+func WindowsToPosixPath(path string) string {
+	return strings.ReplaceAll(path, `\`, "/")[2:] // strip volume, convert slashes
+}
+
+//WindowsPathSID returns the appropriate SID for a given UID and GID
+func WindowsPathSID(uid, gid int) string {
+	if uid == 0 && gid == 0 {
+		return "S-1-5-32-544" // BUILTIN\Administrators
+	}
+	return "S-1-5-32-545" // BUILTIN\Users
+}

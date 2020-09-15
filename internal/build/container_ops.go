@@ -8,13 +8,14 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime"
-	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/paths"
 
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/builder"
@@ -24,25 +25,22 @@ import (
 type ContainerOperation func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error
 
 // CopyDir copies a local directory (src) to the destination on the container while filtering files and changing it's UID/GID.
-func CopyDir(src, dst string, uid, gid int, fileFilter func(string) bool) ContainerOperation {
+func CopyDir(src, dst string, uid, gid int, os string, fileFilter func(string) bool) ContainerOperation {
 	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
-		info, err := ctrClient.Info(ctx)
-		if err != nil {
-			return err
+		tarPath := dst
+		if os == "windows" {
+			tarPath = paths.WindowsToPosixPath(dst)
 		}
-		if info.OSType == "windows" {
-			reader, err := createReader(src, winPathToTarPath(dst), uid, gid, fileFilter)
-			if err != nil {
-				return errors.Wrapf(err, "create tar archive from '%s'", src)
-			}
-			defer reader.Close()
-			return copyWindows(ctx, ctrClient, containerID, reader, dst, stdout, stderr)
-		}
-		reader, err := createReader(src, dst, uid, gid, fileFilter)
+
+		reader, err := createReader(src, tarPath, uid, gid, fileFilter)
 		if err != nil {
 			return errors.Wrapf(err, "create tar archive from '%s'", src)
 		}
 		defer reader.Close()
+
+		if os == "windows" {
+			return copyDirWindows(ctx, ctrClient, containerID, reader, dst, stdout, stderr)
+		}
 		return copyDir(ctx, ctrClient, containerID, reader)
 	}
 }
@@ -69,25 +67,20 @@ func copyDir(ctx context.Context, ctrClient client.CommonAPIClient, containerID 
 	return err
 }
 
-// copyWindows provides an alternate, Windows container-specific implementation of copyDir.
+// copyDirWindows provides an alternate, Windows container-specific implementation of copyDir.
 // This implementation is needed because copying directly to a mounted volume is currently buggy
 // for Windows containers and does not work. Instead, we perform the copy from inside a container
 // using xcopy.
 // See: https://github.com/moby/moby/issues/40771
-func copyWindows(ctx context.Context, ctrClient client.CommonAPIClient, containerID string, reader io.Reader, dst string, stdout, stderr io.Writer) error {
+func copyDirWindows(ctx context.Context, ctrClient client.CommonAPIClient, containerID string, reader io.Reader, dst string, stdout, stderr io.Writer) error {
 	info, err := ctrClient.ContainerInspect(ctx, containerID)
 	if err != nil {
 		return err
 	}
-	fileOrDir := "d"
-	findDst := dst
-	if strings.HasSuffix(dst, ".toml") {
-		fileOrDir = "f"
-		pathElements := strings.Split(dst, `\`)
-		findDst = strings.Join(pathElements[:len(pathElements)-1], `\`) // parent of file
-	}
 
-	mnt, err := findMount(info, findDst)
+	baseName := paths.WindowsBasename(dst)
+
+	mnt, err := findMount(info, dst)
 	if err != nil {
 		return err
 	}
@@ -105,7 +98,7 @@ func copyWindows(ctx context.Context, ctrClient client.CommonAPIClient, containe
 				// b - copy symlinks, do not dereference
 				// x - copy attributes
 				// y - suppress prompting
-				fmt.Sprintf(`echo %s|xcopy /e /h /b /x /y c:\windows\%s %s`, fileOrDir, dst[3:], dst),
+				fmt.Sprintf(`xcopy c:\windows\%s %s /e /h /b /x /y`, baseName, dst),
 			},
 			WorkingDir: "/",
 			User:       windowsContainerAdmin,
@@ -145,7 +138,7 @@ func findMount(info types.ContainerJSON, dst string) (types.MountPoint, error) {
 }
 
 // WriteStackToml writes a `stack.toml` based on the StackMetadata provided to the destination path.
-func WriteStackToml(dstPath string, stack builder.StackMetadata) ContainerOperation {
+func WriteStackToml(dstPath string, stack builder.StackMetadata, os string) ContainerOperation {
 	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
 		buf := &bytes.Buffer{}
 		err := toml.NewEncoder(buf).Encode(stack)
@@ -155,26 +148,22 @@ func WriteStackToml(dstPath string, stack builder.StackMetadata) ContainerOperat
 
 		tarBuilder := archive.TarBuilder{}
 
-		info, err := ctrClient.Info(ctx)
-		if err != nil {
-			return err
-		}
-		if info.OSType == "windows" {
-			tarBuilder.AddFile(winPathToTarPath(dstPath), 0755, archive.NormalizedDateTime, buf.Bytes())
-			reader := tarBuilder.Reader(archive.DefaultTarWriterFactory())
-			defer reader.Close()
-			return copyWindows(ctx, ctrClient, containerID, reader, dstPath, stdout, stderr)
+		tarPath := dstPath
+		if os == "windows" {
+			tarPath = paths.WindowsToPosixPath(dstPath)
 		}
 
-		tarBuilder.AddFile(dstPath, 0755, archive.NormalizedDateTime, buf.Bytes())
+		tarBuilder.AddFile(tarPath, 0755, archive.NormalizedDateTime, buf.Bytes())
 		reader := tarBuilder.Reader(archive.DefaultTarWriterFactory())
 		defer reader.Close()
+
+		if os == "windows" {
+			dirName := paths.WindowsDirname(dstPath)
+			return copyDirWindows(ctx, ctrClient, containerID, reader, dirName, stdout, stderr)
+		}
+
 		return ctrClient.CopyToContainer(ctx, containerID, "/", reader, types.CopyToContainerOptions{})
 	}
-}
-
-func winPathToTarPath(path string) string {
-	return strings.ReplaceAll(path, `\`, "/")[2:] // strip volume, convert slashes
 }
 
 func createReader(src, dst string, uid, gid int, fileFilter func(string) bool) (io.ReadCloser, error) {
@@ -193,4 +182,69 @@ func createReader(src, dst string, uid, gid int, fileFilter func(string) bool) (
 	}
 
 	return archive.ReadZipAsTar(src, dst, uid, gid, -1, false, fileFilter), nil
+}
+
+//EnsureVolumeAccess grants full access permissions to volumes for UID/GID-based user
+//When UID/GID are 0 it grants explicit full access to BUILTIN\Administrators and any other UID/GID grants full access to BUILTIN\Users
+//Changing permissions on volumes through stopped containers does not work on Docker for Windows so we start the container and make change using icacls
+//See: https://github.com/moby/moby/issues/40771
+func EnsureVolumeAccess(uid, gid int, os string, volumeNames ...string) ContainerOperation {
+	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
+		if os != "windows" {
+			return nil
+		}
+
+		containerInfo, err := ctrClient.ContainerInspect(ctx, containerID)
+		if err != nil {
+			return err
+		}
+
+		cmd := ""
+		binds := []string{}
+		for i, volumeName := range volumeNames {
+			containerPath := fmt.Sprintf("c:/volume-mnt-%d", i)
+			binds = append(binds, fmt.Sprintf("%s:%s", volumeName, containerPath))
+
+			if cmd != "" {
+				cmd += "&&"
+			}
+
+			//icacls args
+			// /grant - add new permissions instead of replacing
+			// (OI) - object inherit
+			// (CI) - container inherit
+			// F - full access
+			// /t - recursively apply
+			// /l - perform on a symbolic link itself versus its target
+			// /q - suppress success messages
+
+			cmd += fmt.Sprintf(`icacls %s /grant *%s:(OI)(CI)F /t /l /q`, containerPath, paths.WindowsPathSID(uid, gid))
+		}
+
+		ctr, err := ctrClient.ContainerCreate(ctx,
+			&dcontainer.Config{
+				Image:      containerInfo.Image,
+				Cmd:        []string{"cmd", "/c", cmd},
+				WorkingDir: "/",
+				User:       windowsContainerAdmin,
+			},
+			&dcontainer.HostConfig{
+				Binds:     binds,
+				Isolation: dcontainer.IsolationProcess,
+			},
+			nil, "",
+		)
+		if err != nil {
+			return err
+		}
+		defer ctrClient.ContainerRemove(context.Background(), ctr.ID, types.ContainerRemoveOptions{Force: true})
+
+		return container.Run(
+			ctx,
+			ctrClient,
+			ctr.ID,
+			ioutil.Discard, // Suppress icacls output
+			stderr,
+		)
+	}
 }

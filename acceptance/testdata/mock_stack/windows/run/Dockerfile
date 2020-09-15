@@ -9,9 +9,9 @@ FROM mcr.microsoft.com/windows/nanoserver:1809
 
 COPY --from=gobuild /util/server.exe /util/server.exe
 
-# placeholder values until correct values are deteremined
-ENV CNB_USER_ID=0
-ENV CNB_GROUP_ID=0
+# non-zero sets all user-owned directories to BUILTIN\Users
+ENV CNB_USER_ID=1
+ENV CNB_GROUP_ID=1
 
 USER ContainerAdministrator
 
