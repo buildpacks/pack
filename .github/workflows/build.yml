@@ -123,13 +123,20 @@ jobs:
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack
-          tar -C pack-macos -vzcf pack-macos.tgz pack
+          filename=pack-v${{ env.PACK_VERSION }}-macos.tgz
+          tar -C pack-macos -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - linux
         run: |
           chmod +x pack-linux/pack
-          tar -C pack-linux -vzcf pack-linux.tgz pack
+          filename=pack-v${{ env.PACK_VERSION }}-linux.tgz
+          tar -C pack-linux -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - windows
-        run: zip -j pack-windows.zip pack-windows/pack.exe
+        run: |
+          filename=pack-v${{ env.PACK_VERSION }}-windows.zip
+          zip -j $filename pack-windows/pack.exe
+          shasum -a 256 $filename > $filename.sha256
       - name: Extract lifecycle version
         id: lifecycle_version
         run: |
@@ -157,14 +164,14 @@ jobs:
             require(scriptPath)({core, github, repository: "${{ github.repository }}", version: "${{ env.PACK_VERSION }}" });
       - name: Create Release
         id: create_release
-        uses: actions/create-release@latest
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ env.PACK_VERSION }}
-          release_name: pack v${{ env.PACK_VERSION }}
+          name: pack v${{ env.PACK_VERSION }}
           draft: true
-          prerelease: false
+          files: pack-v${{ env.PACK_VERSION }}-*
           body: |
             # pack v${{ env.PACK_VERSION }}
             > This is a **beta** release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice. Note that pack is intended for local image builds, and thus requires a Docker daemon. The [lifecycle](https://github.com/buildpack/lifecycle) should be used directly when building on cloud platforms.
@@ -229,30 +236,3 @@ jobs:
             ## Changelog
             
             ${{ steps.changelog.outputs.contents }}
-      - name: Upload Release Asset - macos
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./pack-macos.tgz
-          asset_name: pack-v${{ env.PACK_VERSION }}-macos.tgz
-          asset_content_type: application/gzip
-      - name: Upload Release Asset - linux
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./pack-linux.tgz
-          asset_name: pack-v${{ env.PACK_VERSION }}-linux.tgz
-          asset_content_type: application/gzip
-      - name: Upload Release Asset - windows
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./pack-windows.zip
-          asset_name: pack-v${{ env.PACK_VERSION }}-windows.zip
-          asset_content_type: application/zip
