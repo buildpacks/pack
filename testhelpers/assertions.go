@@ -25,11 +25,11 @@ func (a AssertionManager) TrimmedEq(actual, expected string) {
 	actualLines := strings.Split(actual, "\n")
 	expectedLines := strings.Split(expected, "\n")
 	for lineIdx, line := range actualLines {
-		actualLines[lineIdx] = cutSuffixWhitespace(line)
+		actualLines[lineIdx] = strings.TrimRight(line, "\t \n")
 	}
 
 	for lineIdx, line := range expectedLines {
-		expectedLines[lineIdx] = cutSuffixWhitespace(line)
+		expectedLines[lineIdx] = strings.TrimRight(line, "\t \n")
 	}
 
 	actualTrimmed := strings.Join(actualLines, "\n")
@@ -44,11 +44,11 @@ func (a AssertionManager) AssertTrimmedContains(actual, expected string) {
 	actualLines := strings.Split(actual, "\n")
 	expectedLines := strings.Split(expected, "\n")
 	for lineIdx, line := range actualLines {
-		actualLines[lineIdx] = cutSuffixWhitespace(line)
+		actualLines[lineIdx] = strings.TrimRight(line, "\t \n")
 	}
 
 	for lineIdx, line := range expectedLines {
-		expectedLines[lineIdx] = cutSuffixWhitespace(line)
+		expectedLines[lineIdx] = strings.TrimRight(line, "\t \n")
 	}
 
 	actualTrimmed := strings.Join(actualLines, "\n")
@@ -196,9 +196,4 @@ func (a AssertionManager) ErrorContains(actual error, expected string) {
 	}
 
 	a.Contains(actual.Error(), expected)
-}
-
-func cutSuffixWhitespace(input string) string {
-	re := regexp.MustCompile(`  +$`)
-	return re.ReplaceAllString(input, "")
 }
