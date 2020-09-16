@@ -1982,6 +1982,8 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 
 		when("buildpack image", func() {
 			it.Before(func() {
+				h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+
 				tmpDir, err := ioutil.TempDir("", "create-test-builder")
 				assert.Nil(err)
 				defer os.RemoveAll(tmpDir)
