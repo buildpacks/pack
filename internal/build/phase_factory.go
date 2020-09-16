@@ -15,7 +15,9 @@ type DefaultPhaseFactory struct {
 	lifecycleExec *LifecycleExecution
 }
 
-func NewDefaultPhaseFactory(lifecycleExec *LifecycleExecution) *DefaultPhaseFactory {
+type PhaseFactoryCreator func(*LifecycleExecution) PhaseFactory
+
+func NewDefaultPhaseFactory(lifecycleExec *LifecycleExecution) PhaseFactory {
 	return &DefaultPhaseFactory{lifecycleExec: lifecycleExec}
 }
 

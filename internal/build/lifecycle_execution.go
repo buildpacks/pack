@@ -102,8 +102,8 @@ func (l *LifecycleExecution) PlatformAPI() *api.Version {
 	return l.platformAPI
 }
 
-func (l *LifecycleExecution) Run(ctx context.Context) error {
-	phaseFactory := NewDefaultPhaseFactory(l)
+func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
+	phaseFactory := phaseFactoryCreator(l)
 
 	buildCache := cache.NewVolumeCache(l.opts.Image, "build", l.docker)
 
@@ -124,7 +124,7 @@ func (l *LifecycleExecution) Run(ctx context.Context) error {
 		}
 
 		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, l.opts.Image.Name(), buildCache.Name(), l.opts.Network, l.opts.Publish, l.opts.ClearCache, phaseFactory); err != nil {
+		if err := l.Analyze(ctx, l.opts.Image.String(), buildCache.Name(), l.opts.Network, l.opts.Publish, l.opts.ClearCache, phaseFactory); err != nil {
 			return err
 		}
 
@@ -142,7 +142,7 @@ func (l *LifecycleExecution) Run(ctx context.Context) error {
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
-		return l.Export(ctx, l.opts.Image.Name(), l.opts.RunImage, l.opts.Publish, launchCache.Name(), buildCache.Name(), l.opts.Network, phaseFactory)
+		return l.Export(ctx, l.opts.Image.String(), l.opts.RunImage, l.opts.Publish, launchCache.Name(), buildCache.Name(), l.opts.Network, phaseFactory)
 	}
 
 	return l.Create(
@@ -152,7 +152,7 @@ func (l *LifecycleExecution) Run(ctx context.Context) error {
 		l.opts.RunImage,
 		launchCache.Name(),
 		buildCache.Name(),
-		l.opts.Image.Name(),
+		l.opts.Image.String(),
 		l.opts.Network,
 		l.opts.Volumes,
 		phaseFactory,

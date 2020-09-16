@@ -20,7 +20,7 @@ func (c *Client) parseTagReference(imageName string) (name.Reference, error) {
 	if _, err := name.ParseReference(imageName, name.WeakValidation); err != nil {
 		return nil, err
 	}
-	ref, err := NewTag(imageName, name.WeakValidation)
+	ref, err := name.NewTag(imageName, name.WeakValidation)
 	if err != nil {
 		return nil, fmt.Errorf("'%s' is not a tag reference", imageName)
 	}
