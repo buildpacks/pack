@@ -63,7 +63,7 @@ const buildpackLayersTag = `{
                      "version":"1.0.0"
                   },
                   {
-                     "id":"some/third-inner-buildpack",
+                     "id":"some/second-inner-buildpack",
                      "version":"3.0.0"
                   }
                ]
@@ -71,7 +71,7 @@ const buildpackLayersTag = `{
             {
                "group":[
                   {
-                     "id":"some/third-inner-buildpack",
+                     "id":"some/second-inner-buildpack",
                      "version":"3.0.0"
                   }
                ]
@@ -102,9 +102,7 @@ const buildpackLayersTag = `{
          ],
          "layerDiffID":"sha256:second-inner-buildpack-diff-id",
          "homepage":"second-inner-buildpack-homepage"
-      }
-   },
-   "some/third-inner-buildpack":{
+      },
       "3.0.0":{
          "api":"0.2",
          "stacks":[
@@ -218,7 +216,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 					Homepage: "second-inner-buildpack-homepage",
 				},
 				{
-					ID:       "some/third-inner-buildpack",
+					ID:       "some/second-inner-buildpack",
 					Version:  "3.0.0",
 					Homepage: "third-inner-buildpack-homepage",
 				},
@@ -262,7 +260,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 									},
 									{
 										BuildpackInfo: dist.BuildpackInfo{
-											ID:      "some/third-inner-buildpack",
+											ID:      "some/second-inner-buildpack",
 											Version: "3.0.0",
 										},
 										Optional: false,
@@ -273,7 +271,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 								Group: []dist.BuildpackRef{
 									{
 										BuildpackInfo: dist.BuildpackInfo{
-											ID:      "some/third-inner-buildpack",
+											ID:      "some/second-inner-buildpack",
 											Version: "3.0.0",
 										},
 										Optional: false,
@@ -295,8 +293,6 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 						LayerDiffID: "sha256:second-inner-buildpack-diff-id",
 						Homepage:    "second-inner-buildpack-homepage",
 					},
-				},
-				"some/third-inner-buildpack": {
 					"3.0.0": {
 						API: apiVersion,
 						Stacks: []dist.Stack{
@@ -447,59 +443,131 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 				h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
 			})
 		})
-		when("unable to fetch buildpack image", func() {
-			it.Before(func() {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "missing/buildpack", true, config.PullNever).Return(nil, errors.Wrapf(image.ErrNotFound, "big bad error"))
+		when("buildpack image", func() {
+			when("unable to fetch buildpack image", func() {
+				it.Before(func() {
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "missing/buildpack", true, config.PullNever).Return(nil, errors.Wrapf(image.ErrNotFound, "big bad error"))
+				})
+				it("returns an ErrNotFound error", func() {
+					inspectOptions := pack.InspectBuildpackOptions{
+						BuildpackName: "missing/buildpack",
+						Daemon:        true,
+					}
+					_, err := subject.InspectBuildpack(inspectOptions)
+					h.AssertTrue(t, errors.Is(err, image.ErrNotFound))
+				})
 			})
-			it("returns an ErrNotFound error", func() {
-				inspectOptions := pack.InspectBuildpackOptions{
-					BuildpackName: "missing/buildpack",
-					Daemon:        true,
-				}
-				_, err := subject.InspectBuildpack(inspectOptions)
-				h.AssertTrue(t, errors.Is(err, image.ErrNotFound))
+
+			when("image does not have buildpackage metadata", func() {
+				it.Before(func() {
+					fakeImage := fakes.NewImage("empty", "", nil)
+					h.AssertNil(t, fakeImage.SetLabel(dist.BuildpackLayersLabel, ":::"))
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "missing-metadata/buildpack", true, config.PullNever).Return(fakeImage, nil)
+				})
+				it("returns an error", func() {
+					inspectOptions := pack.InspectBuildpackOptions{
+						BuildpackName: "missing-metadata/buildpack",
+						Daemon:        true,
+					}
+					_, err := subject.InspectBuildpack(inspectOptions)
+
+					h.AssertError(t, err, fmt.Sprintf("unable to get image label %s", dist.BuildpackLayersLabel))
+					h.AssertFalse(t, errors.Is(err, image.ErrNotFound))
+				})
 			})
 		})
-		when("unable to fetch buildpack archive", func() {
-			it.Before(func() {
-				mockDownloader.EXPECT().Download(gomock.Any(), "https://missing/buildpack").Return(nil, errors.New("unable to download archive"))
-			})
-			it("returns a untyped error", func() {
-				inspectOptions := pack.InspectBuildpackOptions{
-					BuildpackName: "https://missing/buildpack",
-					Daemon:        true,
-				}
+		when("buildpack archive", func() {
+			when("archive is not a buildpack", func() {
+				it.Before(func() {
+					invalidBuildpackPath := filepath.Join(tmpDir, "fake-buildpack-path")
+					h.AssertNil(t, ioutil.WriteFile(invalidBuildpackPath, []byte("not a buildpack"), os.ModePerm))
 
-				_, err := subject.InspectBuildpack(inspectOptions)
-				h.AssertNotNil(t, err)
-				h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
+					mockDownloader.EXPECT().Download(gomock.Any(), "https://invalid/buildpack").Return(blob.NewBlob(invalidBuildpackPath), nil)
+				})
+				it("returns an error", func() {
+					inspectOptions := pack.InspectBuildpackOptions{
+						BuildpackName: "https://invalid/buildpack",
+						Daemon:        true,
+					}
+
+					_, err := subject.InspectBuildpack(inspectOptions)
+					h.AssertNotNil(t, err)
+					h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
+					h.AssertError(t, err, "unable to fetch config from buildpack blob:")
+				})
+			})
+			when("unable to download buildpack archive", func() {
+				it.Before(func() {
+					mockDownloader.EXPECT().Download(gomock.Any(), "https://missing/buildpack").Return(nil, errors.New("unable to download archive"))
+				})
+				it("returns a untyped error", func() {
+					inspectOptions := pack.InspectBuildpackOptions{
+						BuildpackName: "https://missing/buildpack",
+						Daemon:        true,
+					}
+
+					_, err := subject.InspectBuildpack(inspectOptions)
+					h.AssertNotNil(t, err)
+					h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
+				})
 			})
 		})
 
-		when("unable to fetch buildpack from registry", func() {
-			var registryFixture string
+		when("buildpack on registry", func() {
+			when("unable to get registry", func() {
+				it("returns an error", func() {
+					registryBuildpack := "urn:cnb:registry:example/foo"
+					inspectOptions := pack.InspectBuildpackOptions{
+						BuildpackName: registryBuildpack,
+						Daemon:        true,
+						Registry:      ":::",
+					}
 
-			it.Before(func() {
-				registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
-				packHome := filepath.Join(tmpDir, "packHome")
-				h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
-				mockImageFetcher.EXPECT().Fetch(
-					gomock.Any(),
-					"example.com/some/package@sha256:2560f05307e8de9d830f144d09556e19dd1eb7d928aee900ed02208ae9727e7a",
-					false,
-					config.PullNever).Return(nil, image.ErrNotFound)
+					_, err := subject.InspectBuildpack(inspectOptions)
+
+					h.AssertError(t, err, "invalid registry :::")
+					h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
+				})
 			})
-			it("returns an untyped error", func() {
-				registryBuildpack := "urn:cnb:registry:example/foo"
-				inspectOptions := pack.InspectBuildpackOptions{
-					BuildpackName: registryBuildpack,
-					Daemon:        true,
-					Registry:      registryFixture,
-				}
+			when("buildpack is not on registry", func() {
+				it("returns an error", func() {
+					registryBuildpack := "urn:cnb:registry:example/not-present"
+					inspectOptions := pack.InspectBuildpackOptions{
+						BuildpackName: registryBuildpack,
+						Daemon:        true,
+						Registry:      "some-registry",
+					}
 
-				_, err := subject.InspectBuildpack(inspectOptions)
-				h.AssertNotNil(t, err)
-				h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
+					_, err := subject.InspectBuildpack(inspectOptions)
+
+					h.AssertError(t, err, "unable to find 'urn:cnb:registry:example/not-present' in registry:")
+				})
+			})
+			when("unable to fetch buildpack from registry", func() {
+				var registryFixture string
+
+				it.Before(func() {
+					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
+					packHome := filepath.Join(tmpDir, "packHome")
+					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
+					mockImageFetcher.EXPECT().Fetch(
+						gomock.Any(),
+						"example.com/some/package@sha256:2560f05307e8de9d830f144d09556e19dd1eb7d928aee900ed02208ae9727e7a",
+						false,
+						config.PullNever).Return(nil, image.ErrNotFound)
+				})
+				it("returns an untyped error", func() {
+					registryBuildpack := "urn:cnb:registry:example/foo"
+					inspectOptions := pack.InspectBuildpackOptions{
+						BuildpackName: registryBuildpack,
+						Daemon:        true,
+						Registry:      registryFixture,
+					}
+
+					_, err := subject.InspectBuildpack(inspectOptions)
+					h.AssertNotNil(t, err)
+					h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
+				})
 			})
 		})
 	})

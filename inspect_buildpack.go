@@ -9,8 +9,6 @@ import (
 
 	"github.com/buildpacks/pack/internal/style"
 
-	"github.com/pkg/errors"
-
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
@@ -74,12 +72,12 @@ func (c *Client) InspectBuildpack(opts InspectBuildpackOptions) (*BuildpackInfo,
 func metadataFromRegistry(client *Client, name, registry string) (buildpackMd buildpackage.Metadata, layersMd dist.BuildpackLayers, err error) {
 	registryCache, err := client.getRegistry(client.logger, registry)
 	if err != nil {
-		return buildpackage.Metadata{}, dist.BuildpackLayers{}, errors.Wrapf(err, "invalid registry '%s'", name)
+		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("invalid registry %s: %q", registry, err)
 	}
 
 	registryBp, err := registryCache.LocateBuildpack(name)
 	if err != nil {
-		return buildpackage.Metadata{}, dist.BuildpackLayers{}, errors.Wrapf(err, "unable to find %s in registry: %q", style.Symbol(name), err)
+		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("unable to find %s in registry: %q", style.Symbol(name), err)
 	}
 	buildpackMd, layersMd, err = metadataFromImage(client, registryBp.Address, false)
 	if err != nil {
@@ -165,7 +163,7 @@ func extractBuildpacks(layersMd dist.BuildpackLayers) []dist.BuildpackInfo {
 		case result[i].ID < result[j].ID:
 			return true
 		case result[i].ID == result[j].ID:
-			// TODO: this should be a semver like comparison
+			// TODO: this should be a semver 'like' comparison
 			return result[i].Version < result[j].Version
 		default:
 			return false
