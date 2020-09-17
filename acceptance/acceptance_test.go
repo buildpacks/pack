@@ -616,8 +616,6 @@ func testAcceptance(
 					var untrustedBuilderName string
 
 					it.Before(func() {
-						h.SkipIf(t, dockerHostOS() == "windows", "untrusted builders are not yet supported for windows builds")
-
 						var err error
 						untrustedBuilderName, err = createBuilder(
 							t,
@@ -630,9 +628,6 @@ func testAcceptance(
 					})
 
 					it.After(func() {
-						if dockerHostOS() == "windows" {
-							return
-						}
 						h.DockerRmi(dockerCli, untrustedBuilderName)
 					})
 
@@ -2360,6 +2355,7 @@ func assertMockAppRunsWithOutput(t *testing.T, assert h.AssertionManager, repoNa
 	ctrID := runDockerImageExposePort(t, assert, containerName, repoName)
 	defer dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 	defer dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
+
 	logs, err := dockerCli.ContainerLogs(context.TODO(), ctrID, dockertypes.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,

@@ -311,10 +311,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 }
 
 func lifecycleImageSupported(builderOS string, lifecycleVersion *builder.Version) bool {
-	if builderOS == "windows" {
-		return false
-	}
-
 	return lifecycleVersion.Equal(builder.VersionMustParse(prevLifecycleVersionSupportingImage)) ||
 		!lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingImage))
 }
