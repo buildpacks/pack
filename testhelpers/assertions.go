@@ -25,11 +25,11 @@ func (a AssertionManager) TrimmedEq(actual, expected string) {
 	actualLines := strings.Split(actual, "\n")
 	expectedLines := strings.Split(expected, "\n")
 	for lineIdx, line := range actualLines {
-		actualLines[lineIdx] = cutSuffixWhitespace(line)
+		actualLines[lineIdx] = strings.TrimRight(line, "\t \n")
 	}
 
 	for lineIdx, line := range expectedLines {
-		expectedLines[lineIdx] = cutSuffixWhitespace(line)
+		expectedLines[lineIdx] = strings.TrimRight(line, "\t \n")
 	}
 
 	actualTrimmed := strings.Join(actualLines, "\n")
@@ -44,11 +44,11 @@ func (a AssertionManager) AssertTrimmedContains(actual, expected string) {
 	actualLines := strings.Split(actual, "\n")
 	expectedLines := strings.Split(expected, "\n")
 	for lineIdx, line := range actualLines {
-		actualLines[lineIdx] = cutSuffixWhitespace(line)
+		actualLines[lineIdx] = strings.TrimRight(line, "\t \n")
 	}
 
 	for lineIdx, line := range expectedLines {
-		expectedLines[lineIdx] = cutSuffixWhitespace(line)
+		expectedLines[lineIdx] = strings.TrimRight(line, "\t \n")
 	}
 
 	actualTrimmed := strings.Join(actualLines, "\n")
@@ -73,16 +73,6 @@ func (a AssertionManager) NotEqual(actual, expected interface{}) {
 	}
 }
 
-func (a AssertionManager) ErrorContains(actual error, expected string) {
-	a.testObject.Helper()
-
-	if actual == nil {
-		a.testObject.Fatal("Expected an error but got nil")
-	}
-
-	a.Contains(actual.Error(), expected)
-}
-
 func (a AssertionManager) Nil(actual interface{}) {
 	a.testObject.Helper()
 
@@ -95,6 +85,12 @@ func (a AssertionManager) Succeeds(actual interface{}) {
 	a.testObject.Helper()
 
 	a.Nil(actual)
+}
+
+func (a AssertionManager) Fails(actual interface{}) {
+	a.testObject.Helper()
+
+	a.NotNil(actual)
 }
 
 func (a AssertionManager) NilWithMessage(actual interface{}, message string) {
@@ -174,7 +170,7 @@ func (a AssertionManager) MatchesAll(actual string, patterns ...*regexp.Regexp) 
 	}
 }
 
-func (a AssertionManager) NotContain(actual, expected string) {
+func (a AssertionManager) NotContains(actual, expected string) {
 	a.testObject.Helper()
 
 	if strings.Contains(actual, expected) {
@@ -198,4 +194,14 @@ func (a AssertionManager) Error(actual error) {
 	if actual == nil {
 		a.testObject.Fatal("Expected an error but got nil")
 	}
+}
+
+func (a AssertionManager) ErrorContains(actual error, expected string) {
+	a.testObject.Helper()
+
+	if actual == nil {
+		a.testObject.Fatalf("Expected %q an error but got nil", expected)
+	}
+
+	a.Contains(actual.Error(), expected)
 }
