@@ -74,5 +74,5 @@ func (l *LifecycleExecutor) Execute(ctx context.Context, opts LifecycleOptions) 
 		return err
 	}
 	defer lifecycleExec.Cleanup()
-	return lifecycleExec.Run(ctx)
+	return lifecycleExec.Run(ctx, NewDefaultPhaseFactory)
 }

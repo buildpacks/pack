@@ -67,7 +67,7 @@ func TestPhase(t *testing.T) {
 func testPhase(t *testing.T, when spec.G, it spec.S) {
 	var (
 		lifecycleExec  *build.LifecycleExecution
-		phaseFactory   *build.DefaultPhaseFactory
+		phaseFactory   build.PhaseFactory
 		outBuf, errBuf bytes.Buffer
 		docker         client.CommonAPIClient
 		logger         logging.Logger
@@ -367,7 +367,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func assertAppModTimePreserved(t *testing.T, lifecycle *build.LifecycleExecution, phaseFactory *build.DefaultPhaseFactory, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
+func assertAppModTimePreserved(t *testing.T, lifecycle *build.LifecycleExecution, phaseFactory build.PhaseFactory, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
 	t.Helper()
 	readPhase := phaseFactory.New(build.NewPhaseConfigProvider(
 		phaseName,
