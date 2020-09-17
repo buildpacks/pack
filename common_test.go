@@ -32,6 +32,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 			gcrRegistry     string
 			gcrRunMirror    string
 			stackInfo       builder.StackMetadata
+			assert          = h.NewAssertionManager(t)
 		)
 
 		it.Before(func() {
@@ -39,7 +40,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 
 			var err error
 			subject, err = NewClient(WithLogger(logger))
-			h.AssertNil(t, err)
+			assert.Nil(err)
 
 			defaultRegistry = "default.registry.io"
 			runImageName = "stack/run"
@@ -60,14 +61,14 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 			it("selects that run image", func() {
 				runImgFlag := "flag/passed-run-image"
 				runImageName := subject.resolveRunImage(runImgFlag, defaultRegistry, "", stackInfo, nil, false)
-				h.AssertEq(t, runImageName, runImgFlag)
+				assert.Equal(runImageName, runImgFlag)
 			})
 		})
 
 		when("publish is true", func() {
 			it("defaults to run-image in registry publishing to", func() {
 				runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo, nil, true)
-				h.AssertEq(t, runImageName, gcrRunMirror)
+				assert.Equal(runImageName, gcrRunMirror)
 			})
 
 			it("prefers config defined run image mirror to stack defined run image mirror", func() {
@@ -75,8 +76,8 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 					runImageName: []string{defaultRegistry + "/unique-run-img"},
 				}
 				runImageName := subject.resolveRunImage("", defaultRegistry, "", stackInfo, configMirrors, true)
-				h.AssertNotEq(t, runImageName, defaultMirror)
-				h.AssertEq(t, runImageName, defaultRegistry+"/unique-run-img")
+				assert.NotEqual(runImageName, defaultMirror)
+				assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
 			})
 
 			it("returns a config mirror if no match to target registry", func() {
@@ -84,8 +85,8 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 					runImageName: []string{defaultRegistry + "/unique-run-img"},
 				}
 				runImageName := subject.resolveRunImage("", "test.registry.io", "", stackInfo, configMirrors, true)
-				h.AssertNotEq(t, runImageName, defaultMirror)
-				h.AssertEq(t, runImageName, defaultRegistry+"/unique-run-img")
+				assert.NotEqual(runImageName, defaultMirror)
+				assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
 			})
 		})
 
@@ -93,8 +94,8 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 		when("publish is false", func() {
 			it("defaults to run-image in registry publishing to", func() {
 				runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo, nil, false)
-				h.AssertEq(t, runImageName, defaultMirror)
-				h.AssertNotEq(t, runImageName, gcrRunMirror)
+				assert.Equal(runImageName, defaultMirror)
+				assert.NotEqual(runImageName, gcrRunMirror)
 			})
 
 			it("prefers config defined run image mirror to stack defined run image mirror", func() {
@@ -102,8 +103,8 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 					runImageName: []string{defaultRegistry + "/unique-run-img"},
 				}
 				runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo, configMirrors, false)
-				h.AssertNotEq(t, runImageName, defaultMirror)
-				h.AssertEq(t, runImageName, defaultRegistry+"/unique-run-img")
+				assert.NotEqual(runImageName, defaultMirror)
+				assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
 			})
 
 			it("returns a config mirror if no match to target registry", func() {
@@ -111,8 +112,8 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 					runImageName: []string{defaultRegistry + "/unique-run-img"},
 				}
 				runImageName := subject.resolveRunImage("", defaultRegistry, "test.registry.io", stackInfo, configMirrors, false)
-				h.AssertNotEq(t, runImageName, defaultMirror)
-				h.AssertEq(t, runImageName, defaultRegistry+"/unique-run-img")
+				assert.NotEqual(runImageName, defaultMirror)
+				assert.Equal(runImageName, defaultRegistry+"/unique-run-img")
 			})
 		})
 	})

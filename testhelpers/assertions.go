@@ -65,6 +65,14 @@ func (a AssertionManager) Equal(actual, expected interface{}) {
 	}
 }
 
+func (a AssertionManager) NotEqual(actual, expected interface{}) {
+	a.testObject.Helper()
+
+	if diff := cmp.Diff(actual, expected); diff == "" {
+		a.testObject.Fatalf(diff)
+	}
+}
+
 func (a AssertionManager) Nil(actual interface{}) {
 	a.testObject.Helper()
 
