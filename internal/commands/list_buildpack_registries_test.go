@@ -18,14 +18,14 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-func TestListRegistries(t *testing.T) {
+func TestListBuildpacksRegistries(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "Commands", testListRegistriesCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Commands", testListBuildpackRegistriesCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testListRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
+func testListBuildpackRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command *cobra.Command
 		logger  logging.Logger
@@ -55,10 +55,10 @@ func testListRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 				},
 			},
 		}
-		command = commands.ListRegistries(logger, cfg)
+		command = commands.ListBuildpackRegistries(logger, cfg)
 	})
 
-	when("#ListRegistries", func() {
+	when("#ListBuildpackRegistries", func() {
 		it("should list all registries", func() {
 			h.AssertNil(t, command.Execute())
 
@@ -69,11 +69,9 @@ func testListRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 
 		it("should list registries in verbose mode", func() {
 			logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
-			command = commands.ListRegistries(logger, cfg)
+			command = commands.ListBuildpackRegistries(logger, cfg)
 
 			h.AssertNil(t, command.Execute())
-
-			h.AssertContains(t, outBuf.String(), "github")
 
 			h.AssertContains(t, outBuf.String(), "public registry")
 			h.AssertContains(t, outBuf.String(), "https://github.com/buildpacks/public-registry")
@@ -87,7 +85,7 @@ func testListRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 
 		it("should list nothing when NO registries exist", func() {
 			cfg = config.Config{}
-			command = commands.ListRegistries(logger, cfg)
+			command = commands.ListBuildpackRegistries(logger, cfg)
 
 			h.AssertNil(t, command.Execute())
 			h.AssertEq(t, outBuf.String(), "")
