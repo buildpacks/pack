@@ -154,4 +154,61 @@ func testPaths(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
+	when("#WindowsDir", func() {
+		it("returns the path directory", func() {
+			path := WindowsDir(`C:\layers\file.txt`)
+			h.AssertEq(t, path, `C:\layers`)
+		})
+
+		it("returns empty for empty", func() {
+			path := WindowsBasename("")
+			h.AssertEq(t, path, "")
+		})
+	})
+
+	when("#WindowsBasename", func() {
+		it("returns the path basename", func() {
+			path := WindowsBasename(`C:\layers\file.txt`)
+			h.AssertEq(t, path, `file.txt`)
+		})
+
+		it("returns empty for empty", func() {
+			path := WindowsBasename("")
+			h.AssertEq(t, path, "")
+		})
+	})
+
+	when("#WindowsToSlash", func() {
+		it("returns the path; backward slashes converted to forward with volume stripped ", func() {
+			path := WindowsToSlash(`C:\layers\file.txt`)
+			h.AssertEq(t, path, `/layers/file.txt`)
+		})
+
+		it("returns / for volume", func() {
+			path := WindowsToSlash(`c:\`)
+			h.AssertEq(t, path, `/`)
+		})
+
+		it("returns empty for empty", func() {
+			path := WindowsToSlash("")
+			h.AssertEq(t, path, "")
+		})
+	})
+
+	when("#WindowsPathSID", func() {
+		when("UID and GID are both 0", func() {
+			it(`returns the built-in BUILTIN\Administrators SID`, func() {
+				sid := WindowsPathSID(0, 0)
+				h.AssertEq(t, sid, "S-1-5-32-544")
+			})
+		})
+
+		when("UID and GID are both non-zero", func() {
+			it(`returns the built-in BUILTIN\Users SID`, func() {
+				sid := WindowsPathSID(99, 99)
+				h.AssertEq(t, sid, "S-1-5-32-545")
+			})
+		})
+	})
 }

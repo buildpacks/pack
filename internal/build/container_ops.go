@@ -29,7 +29,7 @@ func CopyDir(src, dst string, uid, gid int, os string, fileFilter func(string) b
 	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
 		tarPath := dst
 		if os == "windows" {
-			tarPath = paths.WindowsToPosixPath(dst)
+			tarPath = paths.WindowsToSlash(dst)
 		}
 
 		reader, err := createReader(src, tarPath, uid, gid, fileFilter)
@@ -150,7 +150,7 @@ func WriteStackToml(dstPath string, stack builder.StackMetadata, os string) Cont
 
 		tarPath := dstPath
 		if os == "windows" {
-			tarPath = paths.WindowsToPosixPath(dstPath)
+			tarPath = paths.WindowsToSlash(dstPath)
 		}
 
 		tarBuilder.AddFile(tarPath, 0755, archive.NormalizedDateTime, buf.Bytes())
@@ -158,7 +158,7 @@ func WriteStackToml(dstPath string, stack builder.StackMetadata, os string) Cont
 		defer reader.Close()
 
 		if os == "windows" {
-			dirName := paths.WindowsDirname(dstPath)
+			dirName := paths.WindowsDir(dstPath)
 			return copyDirWindows(ctx, ctrClient, containerID, reader, dirName, stdout, stderr)
 		}
 
@@ -217,7 +217,6 @@ func EnsureVolumeAccess(uid, gid int, os string, volumeNames ...string) Containe
 			// /t - recursively apply
 			// /l - perform on a symbolic link itself versus its target
 			// /q - suppress success messages
-
 			cmd += fmt.Sprintf(`icacls %s /grant *%s:(OI)(CI)F /t /l /q`, containerPath, paths.WindowsPathSID(uid, gid))
 		}
 
