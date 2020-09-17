@@ -37,6 +37,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockController   *gomock.Controller
 		builderImage     *fakes.Image
 		out              bytes.Buffer
+		assert           = h.NewAssertionManager(t)
 	)
 
 	it.Before(func() {
@@ -49,13 +50,13 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		builderImage = fakes.NewImage("some/builder", "", nil)
-		h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
-		h.AssertNil(t, builderImage.SetLabel(
+		assert.Succeeds(builderImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
+		assert.Succeeds(builderImage.SetLabel(
 			"io.buildpacks.stack.mixins",
 			`["mixinOne", "build:mixinTwo", "mixinThree", "build:mixinFour"]`,
 		))
-		h.AssertNil(t, builderImage.SetEnv("CNB_USER_ID", "1234"))
-		h.AssertNil(t, builderImage.SetEnv("CNB_GROUP_ID", "4321"))
+		assert.Succeeds(builderImage.SetEnv("CNB_USER_ID", "1234"))
+		assert.Succeeds(builderImage.SetEnv("CNB_GROUP_ID", "4321"))
 	})
 
 	it.After(func() {
@@ -76,7 +77,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("only deprecated lifecycle apis are present", func() {
 					it.Before(func() {
-						h.AssertNil(t, builderImage.SetLabel(
+						assert.Succeeds(builderImage.SetLabel(
 							"io.buildpacks.builder.metadata",
 							`{"lifecycle": {"version": "1.2.3", "api": {"buildpack": "1.2","platform": "2.3"}}}`,
 						))
@@ -84,9 +85,9 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					it("returns has both deprecated and new fields", func() {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-						h.AssertNil(t, err)
+						assert.Nil(err)
 
-						h.AssertEq(t, builderInfo.Lifecycle, builder.LifecycleDescriptor{
+						assert.Equal(builderInfo.Lifecycle, builder.LifecycleDescriptor{
 							Info: builder.LifecycleInfo{
 								Version: builder.VersionMustParse("1.2.3"),
 							},
@@ -104,7 +105,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("the builder image has appropriate metadata labels", func() {
 					it.Before(func() {
-						h.AssertNil(t, builderImage.SetLabel("io.buildpacks.builder.metadata", `{
+						assert.Succeeds(builderImage.SetLabel("io.buildpacks.builder.metadata", `{
   "description": "Some description",
   "stack": {
     "runImage": {
@@ -141,7 +142,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
   "createdBy": {"name": "pack", "version": "1.2.3"}
 }`))
 
-						h.AssertNil(t, builderImage.SetLabel(
+						assert.Succeeds(builderImage.SetLabel(
 							"io.buildpacks.buildpack.order",
 							`[
 	{
@@ -161,7 +162,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 ]`,
 						))
 
-						h.AssertNil(t, builderImage.SetLabel(
+						assert.Succeeds(builderImage.SetLabel(
 							"io.buildpacks.buildpack.layers",
 							`{
   "test.nested": {
@@ -213,9 +214,9 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					it("returns the builder with the given name with information from the label", func() {
 						builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-						h.AssertNil(t, err)
+						assert.Nil(err)
 						apiVersion, err := api.NewVersion("0.2")
-						h.AssertNil(t, err)
+						assert.Nil(err)
 
 						want := BuilderInfo{
 							Description:     "Some description",
@@ -337,13 +338,13 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					when("the image has no mixins", func() {
 						it.Before(func() {
-							h.AssertNil(t, builderImage.SetLabel("io.buildpacks.stack.mixins", ""))
+							assert.Succeeds(builderImage.SetLabel("io.buildpacks.stack.mixins", ""))
 						})
 
 						it("sets empty stack mixins", func() {
 							builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-							h.AssertNil(t, err)
-							h.AssertEq(t, builderInfo.Mixins, []string{})
+							assert.Nil(err)
+							assert.Equal(builderInfo.Mixins, []string{})
 						})
 					})
 				})
@@ -358,7 +359,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		it("returns an error", func() {
 			_, err := subject.InspectBuilder("some/builder", false)
-			h.AssertError(t, err, "some-error")
+			assert.ErrorContains(err, "some-error")
 		})
 	})
 
@@ -371,8 +372,8 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		it("return nil metadata", func() {
 			metadata, err := subject.InspectBuilder("some/builder", true)
-			h.AssertNil(t, err)
-			h.AssertNil(t, metadata)
+			assert.Nil(err)
+			assert.Nil(metadata)
 		})
 	})
 }
