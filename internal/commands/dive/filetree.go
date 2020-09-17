@@ -198,6 +198,18 @@ func (v *FileTree) Setup(view *gocui.View, header *gocui.View) error {
 			Modifier: gocui.ModNone,
 			OnAction: v.CursorRight,
 		},
+		{
+			//ConfigKeys: []string{"keybinding.toggle-collapse-dir"},
+			Key:      gocui.KeySpace,
+			OnAction: v.toggleCollapse,
+			Display:  "Collapse/Expand (space)",
+		},
+		{
+			//ConfigKeys: []string{"keybinding.toggle-collapse-all-dir"},
+			Key:      gocui.KeyCtrlSpace,
+			OnAction: v.toggleCollapseAll,
+			Display:  "Collapse/Expand all  (ctrl+space)",
+		},
 	}
 
 	helpKeys, err := key.GenerateBindings(v.gui, v.name, infos)
@@ -254,4 +266,41 @@ func (v *FileTree) CursorRight() error {
 	}
 	_ = v.Update()
 	return v.Render()
+}
+
+// KeyHelp indicates all the possible actions a user can take while the current pane is selected.
+func (v *FileTree) KeyHelp() string {
+	var help string
+	for _, binding := range v.helpKeys {
+		help += binding.RenderKeyHelp()
+	}
+	return help
+}
+
+// ToggleCollapse will collapse/expand the selected FileNode.
+func (v *FileTree) toggleCollapse() error {
+	err := v.vm.ToggleCollapse(v.filterRegex)
+	if err != nil {
+		return err
+	}
+	_ = v.Update()
+	return v.Render()
+}
+
+// ToggleCollapseAll will collapse/expand the all directories.
+func (v *FileTree) toggleCollapseAll() error {
+	err := v.vm.ToggleCollapseAll()
+	if err != nil {
+		return err
+	}
+	if v.vm.CollapseAll {
+		v.resetCursor()
+	}
+	_ = v.Update()
+	return v.Render()
+}
+
+func (v *FileTree) resetCursor() {
+	_ = v.view.SetCursor(0, 0)
+	v.vm.ResetCursor()
 }

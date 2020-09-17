@@ -120,13 +120,13 @@ func analyzeCNB(diveImg *diveimage.Image, topOfStackSha string) (*diveimage.Imag
 	newRefTree := []*filetree.FileTree{}
 
 	if len(diveImg.Layers) != len(diveImg.Trees) {
-		return nil, fmt.Errorf("mismatched lengths %s vs %s", len(diveImg.Layers), len(diveImg.Trees))
+		return nil, fmt.Errorf("mismatched lengths %d vs %d", len(diveImg.Layers), len(diveImg.Trees))
 	}
 
 	var curLayer *diveimage.Layer = nil
 	var curRefTree *filetree.FileTree = nil
 	var isStack bool = true
-	for layerIdx,layer := range diveImg.Layers {
+	for layerIdx, layer := range diveImg.Layers {
 		rTree := diveImg.Trees[layerIdx]
 		if curLayer == nil {
 			curLayer = layer
@@ -154,7 +154,5 @@ func analyzeCNB(diveImg *diveimage.Image, topOfStackSha string) (*diveimage.Imag
 	result.Layers = newLayers
 
 	return &result, nil
-
-
 
 }

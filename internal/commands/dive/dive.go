@@ -27,7 +27,6 @@ func Dive(logger logging.Logger, cfg config.Config, client commands.PackClient) 
 		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
 			imgName := args[0]
 
-
 			logger.Infof("Building structures for %s\n", imgName)
 			diveResult, err := client.Dive(imgName, true)
 			if err != nil {
@@ -50,7 +49,6 @@ func Dive(logger logging.Logger, cfg config.Config, client commands.PackClient) 
 				panic(err)
 			}
 
-
 			err = app.Run()
 			if err != nil {
 				panic(err)
@@ -61,7 +59,6 @@ func Dive(logger logging.Logger, cfg config.Config, client commands.PackClient) 
 	}
 	return cmd
 }
-
 
 //
 // Debug methods

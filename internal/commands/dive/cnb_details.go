@@ -3,8 +3,9 @@ package dive
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/sirupsen/logrus"
 	"github.com/wagoodman/dive/dive/image"
@@ -188,7 +189,7 @@ func renderBOM(currentDigest string, diveResult *pack.DiveResult) string {
 	metadataString := []byte("no metadata found?")
 	var err error
 	for _, bomEntry := range diveResult.BuildMetadata.BOM {
-		if bomEntry.Buildpack.ID == entry.ID && bomEntry.Buildpack.Version == entry.Version{
+		if bomEntry.Buildpack.ID == entry.ID && bomEntry.Buildpack.Version == entry.Version {
 			metadataString, err = json.MarshalIndent(bomEntry.Metadata, "  ", "  ")
 			if err != nil {
 				metadataString = []byte("invalid metadata object")

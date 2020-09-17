@@ -3,9 +3,10 @@ package dive
 import (
 	"bytes"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"regexp"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/lunixbochs/vtclean"
 	"github.com/sirupsen/logrus"
@@ -154,7 +155,7 @@ func NewFileTreeViewModel(tree *filetree.FileTree, refTrees []*filetree.FileTree
 
 func (vm *FileTreeViewModel) ConstrainLayout() {
 	if !vm.constrainedRealEstate {
-		log.Printf("constraining filetree layout")
+		//log.Printf("constraining filetree layout")
 		vm.constrainedRealEstate = true
 		vm.unconstrainedShowAttributes = vm.ShowAttributes
 		vm.ShowAttributes = false
@@ -358,4 +359,41 @@ func (vm *FileTreeViewModel) getAbsPositionNode(filterRegex *regexp.Regexp) (nod
 	}
 
 	return node
+}
+
+// ToggleCollapse will collapse/expand the selected FileNode.
+func (vm *FileTreeViewModel) ToggleCollapse(filterRegex *regexp.Regexp) error {
+	node := vm.getAbsPositionNode(filterRegex)
+	if node != nil && node.Data.FileInfo.IsDir {
+		node.Data.ViewInfo.Collapsed = !node.Data.ViewInfo.Collapsed
+	}
+	return nil
+}
+
+// ToggleCollapseAll will collapse/expand the all directories.
+func (vm *FileTreeViewModel) ToggleCollapseAll() error {
+	vm.CollapseAll = !vm.CollapseAll
+
+	visitor := func(curNode *filetree.FileNode) error {
+		curNode.Data.ViewInfo.Collapsed = vm.CollapseAll
+		return nil
+	}
+
+	evaluator := func(curNode *filetree.FileNode) bool {
+		return curNode.Data.FileInfo.IsDir
+	}
+
+	err := vm.ModelTree.VisitDepthChildFirst(visitor, evaluator)
+	if err != nil {
+		logrus.Errorf("unable to propagate tree on ToggleCollapseAll: %+v", err)
+	}
+
+	return nil
+}
+
+// ResetCursor moves the cursor back to the top of the buffer and translates to the top of the buffer.
+func (v *FileTreeViewModel) ResetCursor() {
+	v.TreeIndex = 0
+	v.bufferIndex = 0
+	v.bufferIndexLowerBound = 0
 }

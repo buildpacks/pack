@@ -1,11 +1,12 @@
 package dive
 
 import (
+	"time"
+
 	"github.com/jroimartin/gocui"
 	"github.com/sirupsen/logrus"
 	"github.com/wagoodman/dive/runtime/ui/key"
 	"github.com/wagoodman/dive/runtime/ui/layout"
-	"time"
 
 	"github.com/buildpacks/pack"
 )
@@ -55,10 +56,9 @@ func NewApp(appOptions AppOptions) (*App, error) {
 
 		// note: order matters when adding elements to the layout
 		lm := layout.NewManager()
+		lm.Add(controller.views.Status, layout.LocationFooter)
 		lm.Add(NewLayerDetailsCompoundLayout(controller.views.Layer, controller.views.Details), layout.LocationColumn)
 		lm.Add(controller.views.Tree, layout.LocationColumn)
-
-		// todo: access this more programmatically
 
 		appOptions.GUI.Cursor = false
 		//g.Mouse = true
@@ -76,18 +76,21 @@ func NewApp(appOptions AppOptions) (*App, error) {
 			layout:      lm,
 		}
 
+		// need to set up these keybindings, there is just no preceeding configuration.
 		var infos = []key.BindingInfo{
 			{
-				ConfigKeys: []string{"keybinding.quit"},
-				OnAction:   appSingleton.Quit,
-				Display:    "Quit",
+				Key: gocui.KeyCtrlC,
+				//ConfigKeys: []string{"ctrl+c"},
+				OnAction: appSingleton.Quit,
+				Display:  "Quit (ctrl+c)",
 			},
 
-			//{
-			//	ConfigKeys: []string{"keybinding.toggle-view"},
-			//	OnAction:   controller.ToggleView,
-			//	Display:    "Switch view",
-			//},
+			{
+				Key: gocui.KeyTab,
+				//ConfigKeys: []string{"tab"},
+				OnAction: controller.ToggleView,
+				Display:  "Switch view (tab)",
+			},
 			//{
 			//	ConfigKeys: []string{"keybinding.filter-files"},
 			//	OnAction:   controller.ToggleFilterView,
@@ -102,7 +105,7 @@ func NewApp(appOptions AppOptions) (*App, error) {
 			return
 		}
 
-		//controller.views.Status.AddHelpKeys(globalHelpKeys...)
+		controller.views.Status.AddHelpKeys(globalHelpKeys...)
 
 		// perform the first update and render now that all resources have been loaded
 		err = controller.UpdateAndRender()

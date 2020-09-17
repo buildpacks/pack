@@ -6,11 +6,9 @@ package testmocks
 
 import (
 	context "context"
-	reflect "reflect"
-
-	gomock "github.com/golang/mock/gomock"
-
 	pack "github.com/buildpacks/pack"
+	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // MockPackClient is a mock of PackClient interface
@@ -62,6 +60,21 @@ func (m *MockPackClient) CreateBuilder(arg0 context.Context, arg1 pack.CreateBui
 func (mr *MockPackClientMockRecorder) CreateBuilder(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateBuilder", reflect.TypeOf((*MockPackClient)(nil).CreateBuilder), arg0, arg1)
+}
+
+// Dive mocks base method
+func (m *MockPackClient) Dive(arg0 string, arg1 bool) (*pack.DiveResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Dive", arg0, arg1)
+	ret0, _ := ret[0].(*pack.DiveResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Dive indicates an expected call of Dive
+func (mr *MockPackClientMockRecorder) Dive(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Dive", reflect.TypeOf((*MockPackClient)(nil).Dive), arg0, arg1)
 }
 
 // InspectBuilder mocks base method

@@ -9,6 +9,7 @@ import (
 type Views struct {
 	Tree    *FileTree
 	Layer   *Layer
+	Status  *Status
 	Details ImageDetails
 }
 
@@ -16,6 +17,7 @@ func (views *Views) All() []Renderer {
 	return []Renderer{
 		views.Layer,
 		views.Tree,
+		views.Status,
 		views.Details,
 	}
 }
@@ -33,11 +35,11 @@ func NewViews(g *gocui.Gui, diveResult *pack.DiveResult) (*Views, error) {
 		return nil, err
 	}
 
-	//Status := newStatusView(g)
-	//
-	//// set the layer view as the first selected view
-	//Status.SetCurrentView(Layer)
-	//
+	Status := newStatusView(g)
+
+	// set the layer view as the first selected view
+	Status.SetCurrentView(Layer)
+
 	//Filter := newFilterView(g)
 
 	// TODO add switches here so that this is in an if condition
@@ -58,9 +60,9 @@ func NewViews(g *gocui.Gui, diveResult *pack.DiveResult) (*Views, error) {
 	//Debug := newDebugView(g)
 
 	return &Views{
-		Tree:  Tree,
-		Layer: Layer,
-		//Status:  Status,
+		Tree:   Tree,
+		Layer:  Layer,
+		Status: Status,
 		//Filter:  Filter,
 		Details: Details,
 		//Debug:   Debug,

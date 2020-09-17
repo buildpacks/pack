@@ -3,6 +3,7 @@ package dive
 import (
 	"github.com/jroimartin/gocui"
 	"github.com/rs/zerolog/log"
+	"github.com/sirupsen/logrus"
 	"github.com/wagoodman/dive/runtime/ui/viewmodel"
 
 	"github.com/buildpacks/pack"
@@ -14,11 +15,11 @@ type Controller struct {
 }
 
 func (c *Controller) onFileTreeViewOptionChange() error {
-	//err := c.views.Status.Update()
-	//if err != nil {
-	//	return err
-	//}
-	//return c.views.Status.Render()
+	err := c.views.Status.Update()
+	if err != nil {
+		return err
+	}
+	return c.views.Status.Render()
 
 	return nil
 }
@@ -57,6 +58,25 @@ func (c *Controller) UpdateAndRender() error {
 	}
 
 	return nil
+}
+
+// ToggleView switches between the file view and the layer view and re-renders the screen.
+func (c *Controller) ToggleView() (err error) {
+	v := c.gui.CurrentView()
+	if v == nil || v.Name() == c.views.Layer.Name() {
+		_, err = c.gui.SetCurrentView(c.views.Tree.Name())
+		c.views.Status.SetCurrentView(c.views.Tree)
+	} else {
+		_, err = c.gui.SetCurrentView(c.views.Layer.Name())
+		c.views.Status.SetCurrentView(c.views.Layer)
+	}
+
+	if err != nil {
+		logrus.Error("unable to toggle view: ", err)
+		return err
+	}
+
+	return c.UpdateAndRender()
 }
 
 // Update refreshes the state objects for future rendering.

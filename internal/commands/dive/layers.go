@@ -2,6 +2,7 @@ package dive
 
 import (
 	"fmt"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/jroimartin/gocui"
@@ -59,6 +60,15 @@ func NewLayerView(gui *gocui.Gui, layers []*image.Layer) (controller *Layer, err
 	controller.vm = NewLayerSetState(layers, compareMode)
 
 	return controller, err
+}
+
+// KeyHelp indicates all the possible actions a user can take while the current pane is selected.
+func (v *Layer) KeyHelp() string {
+	var help string
+	for _, binding := range v.helpKeys {
+		help += binding.RenderKeyHelp()
+	}
+	return help
 }
 
 // Update refreshes the state objects for future rendering (currently does nothing).
@@ -215,6 +225,7 @@ func (v *Layer) Setup(view *gocui.View, header *gocui.View) error {
 			Modifier: gocui.ModNone,
 			OnAction: v.CursorDown,
 		},
+
 		//{
 		//	ConfigKeys: []string{"keybinding.page-up"},
 		//	OnAction:   v.PageUp,
