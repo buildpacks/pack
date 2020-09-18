@@ -144,6 +144,11 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 			when("PullAlways", func() {
 				when("there is a remote image", func() {
+					var (
+						logger *logging.LogWithWriters
+						output func() string
+					)
+
 					it.Before(func() {
 						// Instantiate a pull-able local image
 						// as opposed to a remote image so that the image
@@ -155,6 +160,11 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, img.Save())
 
 						h.AssertNil(t, h.PushImage(docker, img.Name(), registryConfig))
+
+						var outCons *color.Console
+						outCons, output = h.MockWriterAndOutput()
+						logger = logging.NewLogWithWriters(outCons, outCons)
+						fetcher = image.NewFetcher(logger, docker)
 					})
 
 					it.After(func() {
@@ -164,6 +174,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					it("pull the image and return the local copy", func() {
 						_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullAlways)
 						h.AssertNil(t, err)
+						h.AssertNotEq(t, output(), "")
+					})
+
+					it("doesn't log anything in quiet mode", func() {
+						logger.WantQuiet(true)
+						_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullAlways)
+						h.AssertNil(t, err)
+						h.AssertEq(t, output(), "")
 					})
 				})
 

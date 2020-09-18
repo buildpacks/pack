@@ -53,6 +53,27 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("IsQuiet", func() {
+		when("implements WithSelectableWriter", func() {
+			it("return true for quiet mode", func() {
+				var w bytes.Buffer
+				logger := ilogging.NewLogWithWriters(&w, &w)
+				h.AssertEq(t, logging.IsQuiet(logger), false)
+
+				logger.WantQuiet(true)
+				h.AssertEq(t, logging.IsQuiet(logger), true)
+			})
+		})
+
+		when("doesn't implement WithSelectableWriter", func() {
+			it("always returns false", func() {
+				var w bytes.Buffer
+				logger := logging.New(&w)
+				h.AssertEq(t, logging.IsQuiet(logger), false)
+			})
+		})
+	})
+
 	when("PrefixWriter#Write", func() {
 		it("prepends prefix to string", func() {
 			var w bytes.Buffer

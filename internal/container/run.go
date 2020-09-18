@@ -15,21 +15,24 @@ import (
 func Run(ctx context.Context, docker client.CommonAPIClient, ctrID string, out, errOut io.Writer) error {
 	bodyChan, errChan := docker.ContainerWait(ctx, ctrID, dcontainer.WaitConditionNextExit)
 
-	if err := docker.ContainerStart(ctx, ctrID, types.ContainerStartOptions{}); err != nil {
-		return errors.Wrap(err, "container start")
-	}
-	logs, err := docker.ContainerLogs(ctx, ctrID, types.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     true,
+	resp, err := docker.ContainerAttach(ctx, ctrID, types.ContainerAttachOptions{
+		Stream: true,
+		Stdout: true,
+		Stderr: true,
 	})
 	if err != nil {
-		return errors.Wrap(err, "container logs stdout")
+		return err
+	}
+	defer resp.Close()
+
+	if err := docker.ContainerStart(ctx, ctrID, types.ContainerStartOptions{}); err != nil {
+		return errors.Wrap(err, "container start")
 	}
 
 	copyErr := make(chan error)
 	go func() {
-		_, err := stdcopy.StdCopy(out, errOut, logs)
+		_, err := stdcopy.StdCopy(out, errOut, resp.Reader)
+
 		copyErr <- err
 	}()
 
@@ -41,5 +44,6 @@ func Run(ctx context.Context, docker client.CommonAPIClient, ctrID string, out, 
 	case err := <-errChan:
 		return err
 	}
+
 	return <-copyErr
 }
