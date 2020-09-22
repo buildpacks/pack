@@ -13,24 +13,55 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
+// BuilderInfo is a collection of metadata describing a builder created using pack.
 type BuilderInfo struct {
-	Description     string
-	Stack           string
-	Mixins          []string
-	RunImage        string
+	// Human readable, description of a builder.
+	Description string
+
+	// Stack name used by the builder.
+	Stack string
+
+	// List of Stack mixins, this information is provided by Stack variable.
+	Mixins []string
+
+	// RunImage provided by the builder.
+	RunImage string
+
+	// List of all run image mirrors a builder will use to provide
+	// the RunImage.
 	RunImageMirrors []string
-	Buildpacks      []dist.BuildpackInfo
-	Order           dist.Order
+
+	// All buildpacks included within the builder.
+	Buildpacks []dist.BuildpackInfo
+
+	// Top level ordering of buildpacks.
+	Order dist.Order
+
+	// Listing of all buildpack layers in a builder.
+	// All elements in the Buildpacks variable are represented in this
+	// object.
 	BuildpackLayers dist.BuildpackLayers
-	Lifecycle       builder.LifecycleDescriptor
-	CreatedBy       builder.CreatorMetadata
+
+	// Lifecycle provides the following API versioning information for a builder:
+	// - Lifecycle Version used in this builder,
+	// - Platform API,
+	// - Buildpack API.
+	Lifecycle builder.LifecycleDescriptor
+
+	// Name and Version information from tooling used
+	// to produce this builder.
+	CreatedBy builder.CreatorMetadata
 }
 
+// BuildpackInfoKey contains all information needed to determine buildpack equivalence.
 type BuildpackInfoKey struct {
 	ID      string
 	Version string
 }
 
+// InspectBuilder reads label metadata of a local or remote builder image. It initializes a BuilderInfo
+// object with this metadata, and returns it. This method will error if the name image cannot be found
+// both locally and remotely, or if the found image does not contain the proper labels.
 func (c *Client) InspectBuilder(name string, daemon bool) (*BuilderInfo, error) {
 	img, err := c.imageFetcher.Fetch(context.Background(), name, daemon, config.PullNever)
 	if err != nil {

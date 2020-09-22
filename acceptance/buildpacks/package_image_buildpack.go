@@ -60,9 +60,9 @@ func NewPackageImage(
 	return p
 }
 
-func (p PackageImage) Prepare(sourceDir, destination string) error {
+func (p PackageImage) Prepare(sourceDir, _ string) error {
 	p.testObject.Helper()
-	p.testObject.Log("creating package image...")
+	p.testObject.Log("creating package image from:", sourceDir)
 
 	tmpDir, err := ioutil.TempDir("", "package-buildpacks")
 	if err != nil {

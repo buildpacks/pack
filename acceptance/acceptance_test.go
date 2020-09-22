@@ -13,6 +13,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -117,12 +118,14 @@ func testWithoutSpecificBuilderRequirement(
 	packConfig config.PackAsset,
 ) {
 	var (
-		pack   *invoke.PackInvoker
-		assert = h.NewAssertionManager(t)
+		pack             *invoke.PackInvoker
+		assert           = h.NewAssertionManager(t)
+		buildpackManager buildpacks.BuildpackManager
 	)
 
 	it.Before(func() {
 		pack = invoke.NewPackInvoker(t, assert, packConfig, registryConfig.DockerConfigDir)
+		buildpackManager = buildpacks.NewBuildpackManager(t, assert)
 	})
 
 	it.After(func() {
@@ -192,7 +195,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			pack.JustRunSuccessfully("untrust-builder", builderName)
 
-			assert.NotContain(pack.ConfigFileContents(), builderName)
+			assert.NotContains(pack.ConfigFileContents(), builderName)
 		})
 	})
 
@@ -348,7 +351,7 @@ func testWithoutSpecificBuilderRequirement(
 					assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
 
 					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-					h.AssertError(t, err, "No such image")
+					assert.ErrorContains(err, "No such image")
 
 					assert.Nil(h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
 
@@ -504,6 +507,93 @@ func testWithoutSpecificBuilderRequirement(
 			assertOutput.IncludesPrefixedPaketoBuilders()
 		})
 	})
+
+	when("inspect-buildpack", func() {
+		var tmpDir string
+
+		it.Before(func() {
+			h.SkipUnless(t, pack.Supports("inspect-buildpack"), "version of pack doesn't support the 'inspect-buildpack' command")
+
+			var err error
+			tmpDir, err = ioutil.TempDir("", "inspect-buildpack-tests")
+			assert.Nil(err)
+		})
+
+		it.After(func() {
+			assert.Succeeds(os.RemoveAll(tmpDir))
+		})
+
+		when("buildpack archive", func() {
+			when("inspect-buildpack", func() {
+				it("succeeds", func() {
+
+					packageFileLocation := filepath.Join(
+						tmpDir,
+						fmt.Sprintf("buildpack-%s.cnb", h.RandString(8)),
+					)
+
+					packageFile := buildpacks.NewPackageFile(
+						t,
+						pack,
+						packageFileLocation,
+						pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
+						buildpacks.FolderSimpleLayersParent,
+						buildpacks.FolderSimpleLayers,
+					)
+
+					buildpackManager.PrepareBuildpacks(tmpDir, packageFile)
+
+					expectedOutput := pack.FixtureManager().TemplateFixture(
+						"inspect_buildpack_output.txt",
+						map[string]interface{}{
+							"buildpack_source": "LOCAL ARCHIVE",
+							"buildpack_name":   packageFileLocation,
+						},
+					)
+
+					output := pack.RunSuccessfully("inspect-buildpack", packageFileLocation)
+					assert.TrimmedEq(output, expectedOutput)
+				})
+			})
+
+		})
+
+		when("buildpack image", func() {
+			it.Before(func() {
+				h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+			})
+
+			when("inspect-buildpack", func() {
+				it("succeeds", func() {
+					packageImageName := registryConfig.RepoName("buildpack-" + h.RandString(8))
+
+					packageImage := buildpacks.NewPackageImage(
+						t,
+						pack,
+						packageImageName,
+						pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
+						buildpacks.WithRequiredBuildpacks(
+							buildpacks.FolderSimpleLayersParent,
+							buildpacks.FolderSimpleLayers,
+						),
+					)
+
+					buildpackManager.PrepareBuildpacks(tmpDir, packageImage)
+
+					expectedOutput := pack.FixtureManager().TemplateFixture(
+						"inspect_buildpack_output.txt",
+						map[string]interface{}{
+							"buildpack_source": "LOCAL IMAGE",
+							"buildpack_name":   packageImageName,
+						},
+					)
+
+					output := pack.RunSuccessfully("inspect-buildpack", packageImageName)
+					assert.TrimmedEq(output, expectedOutput)
+				})
+			})
+		})
+	})
 }
 
 func testAcceptance(
@@ -629,8 +719,6 @@ func testAcceptance(
 					var untrustedBuilderName string
 
 					it.Before(func() {
-						h.SkipIf(t, dockerHostOS() == "windows", "untrusted builders are not yet supported for windows builds")
-
 						var err error
 						untrustedBuilderName, err = createBuilder(
 							t,
@@ -644,9 +732,6 @@ func testAcceptance(
 					})
 
 					it.After(func() {
-						if dockerHostOS() == "windows" {
-							return
-						}
 						h.DockerRmi(dockerCli, untrustedBuilderName)
 					})
 
@@ -732,7 +817,7 @@ func testAcceptance(
 
 						t.Log("add a local mirror")
 						localRunImageMirror := registryConfig.RepoName("pack-test/run-mirror")
-						assert.Nil(dockerCli.ImageTag(context.TODO(), runImage, localRunImageMirror))
+						assert.Succeeds(dockerCli.ImageTag(context.TODO(), runImage, localRunImageMirror))
 						defer h.DockerRmi(dockerCli, localRunImageMirror)
 						pack.JustRunSuccessfully("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
 
@@ -777,7 +862,7 @@ func testAcceptance(
 						assertLifecycleOutput.ReportsCacheCreation(cachedLaunchLayer)
 
 						t.Log("cacher adds layers")
-						h.AssertContainsMatch(t, output, `(?i)Adding cache layer 'simple/layers:cached-launch-layer'`)
+						assert.Matches(output, regexp.MustCompile(`(?i)Adding cache layer 'simple/layers:cached-launch-layer'`))
 
 						if pack.Supports("inspect-image") {
 							t.Log("inspect-image")
@@ -827,6 +912,7 @@ func testAcceptance(
 						it("doesn't have color", func() {
 							appPath := filepath.Join("testdata", "mock_app")
 
+							// --no-color is set as a default option in our tests, and doesn't need to be explicitly provided
 							output := pack.RunSuccessfully("build", repoName, "-p", appPath)
 							imgId, err := imgIDForRepoName(repoName)
 							if err != nil {
@@ -838,6 +924,32 @@ func testAcceptance(
 
 							assertOutput.ReportsSuccessfulImageBuild(repoName)
 							assertOutput.WithoutColors()
+						})
+					})
+
+					when("--quiet", func() {
+						it.Before(func() {
+							h.SkipUnless(t,
+								pack.SupportsFeature(invoke.QuietMode),
+								"pack had a bug for quiet mode until 0.13.2",
+							)
+						})
+
+						it("only logs app name and sha", func() {
+							appPath := filepath.Join("testdata", "mock_app")
+
+							pack.SetVerbose(false)
+							defer pack.SetVerbose(true)
+
+							output := pack.RunSuccessfully("build", repoName, "-p", appPath, "--quiet")
+							imgId, err := imgIDForRepoName(repoName)
+							if err != nil {
+								t.Fatal(err)
+							}
+							defer h.DockerRmi(dockerCli, imgId)
+
+							assertOutput := assertions.NewOutputAssertionManager(t, output)
+							assertOutput.ReportSuccessfulQuietBuild(repoName)
 						})
 					})
 
@@ -870,8 +982,8 @@ func testAcceptance(
 						})
 
 						it.After(func() {
-							assert.Nil(os.RemoveAll(tmpDir))
-							assert.Nil(h.DockerRmi(dockerCli, repoName))
+							assert.Succeeds(os.RemoveAll(tmpDir))
+							assert.Succeeds(h.DockerRmi(dockerCli, repoName))
 						})
 
 						when("the network mode is not provided", func() {
@@ -945,7 +1057,7 @@ func testAcceptance(
 
 							tmpVolumeSrc, err = ioutil.TempDir("", "volume-mount-source")
 							assert.Nil(err)
-							assert.Nil(os.Chmod(tmpVolumeSrc, 0777)) // Override umask
+							assert.Succeeds(os.Chmod(tmpVolumeSrc, 0777)) // Override umask
 
 							// Some OSes (like macOS) use symlinks for the standard temp dir.
 							// Resolve it so it can be properly mounted by the Docker daemon.
@@ -1070,7 +1182,7 @@ func testAcceptance(
 							})
 
 							it.After(func() {
-								_ = os.RemoveAll(tmpDir)
+								assert.Succeeds(os.RemoveAll(tmpDir))
 							})
 
 							it("adds the buildpack to the builder and runs it", func() {
@@ -1197,7 +1309,7 @@ func testAcceptance(
 							})
 
 							it.After(func() {
-								assert.Nil(os.RemoveAll(tmpDir))
+								assert.Succeeds(os.RemoveAll(tmpDir))
 							})
 
 							it("adds the buildpacks to the builder and runs them", func() {
@@ -1244,7 +1356,7 @@ func testAcceptance(
 							})
 
 							it.After(func() {
-								assert.Nil(os.Remove(otherStackBuilderTgz))
+								assert.Succeeds(os.Remove(otherStackBuilderTgz))
 							})
 
 							it("errors", func() {
@@ -1281,8 +1393,8 @@ func testAcceptance(
 						})
 
 						it.After(func() {
-							assert.Nil(os.Unsetenv("ENV2_CONTENTS"))
-							assert.Nil(os.RemoveAll(envPath))
+							assert.Succeeds(os.Unsetenv("ENV2_CONTENTS"))
+							assert.Succeeds(os.RemoveAll(envPath))
 						})
 
 						it("provides the env vars to the build and detect steps", func() {
@@ -1304,11 +1416,11 @@ func testAcceptance(
 
 					when("--env", func() {
 						it.Before(func() {
-							assert.Nil(os.Setenv("ENV2_CONTENTS", "Env2 Layer Contents From Environment"))
+							assert.Succeeds(os.Setenv("ENV2_CONTENTS", "Env2 Layer Contents From Environment"))
 						})
 
 						it.After(func() {
-							assert.Nil(os.Unsetenv("ENV2_CONTENTS"))
+							assert.Succeeds(os.Unsetenv("ENV2_CONTENTS"))
 						})
 
 						it("provides the env vars to the build and detect steps", func() {
@@ -1430,7 +1542,7 @@ func testAcceptance(
 								t.Fatalf("Expected to see image %s in %s", repo, contents)
 							}
 
-							assert.Nil(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+							assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
 							defer h.DockerRmi(dockerCli, repoName)
 
 							t.Log("app is runnable")
@@ -1491,7 +1603,7 @@ func testAcceptance(
 
 							err := command.Wait()
 							assert.NotNil(err)
-							assert.NotContain(buf.String(), "Successfully built image")
+							assert.NotContains(buf.String(), "Successfully built image")
 						})
 					})
 
@@ -1543,7 +1655,7 @@ func testAcceptance(
 							})
 
 							it.After(func() {
-								assert.Nil(os.RemoveAll(tempAppDir))
+								assert.Succeeds(os.RemoveAll(tempAppDir))
 							})
 
 							it("should exclude ALL specified files and directories", func() {
@@ -1566,9 +1678,9 @@ exclude = [ "*.sh", "secrets/", "media/metadata" ]
 									"--buildpack", buildpackTgz,
 									"--descriptor", excludeDescriptorPath,
 								)
-								assert.NotContain(output, "api_keys.json")
-								assert.NotContain(output, "user_token")
-								assert.NotContain(output, "test.sh")
+								assert.NotContains(output, "api_keys.json")
+								assert.NotContains(output, "user_token")
+								assert.NotContains(output, "test.sh")
 
 								assert.Contains(output, "cookie.jar")
 								assert.Contains(output, "mountain.jpg")
@@ -1595,9 +1707,9 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 									"--buildpack", buildpackTgz,
 									"--descriptor", includeDescriptorPath,
 								)
-								assert.NotContain(output, "api_keys.json")
-								assert.NotContain(output, "user_token")
-								assert.NotContain(output, "test.sh")
+								assert.NotContains(output, "api_keys.json")
+								assert.NotContains(output, "user_token")
+								assert.NotContains(output, "test.sh")
 
 								assert.Contains(output, "cookie.jar")
 								assert.Contains(output, "mountain.jpg")
@@ -1639,7 +1751,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 								runImageMirror,
 							)
 						})
-						h.AssertNil(t, err)
+						assert.Nil(err)
 
 						// register task to be run to 'clean up' a task
 						suiteManager.RegisterCleanUp("clean-"+key, func() error {
@@ -1652,7 +1764,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						output := pack.RunSuccessfully(
 							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
 						)
-						h.AssertEq(t, output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
+						assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 						output = pack.RunSuccessfully("inspect-builder", builderName)
 
@@ -1852,8 +1964,8 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 					assert.Nil(err)
 					buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
 					launchCacheVolume := cache.NewVolumeCache(ref, "launch", dockerCli)
-					assert.Nil(buildCacheVolume.Clear(context.TODO()))
-					assert.Nil(launchCacheVolume.Clear(context.TODO()))
+					assert.Succeeds(buildCacheVolume.Clear(context.TODO()))
+					assert.Succeeds(launchCacheVolume.Clear(context.TODO()))
 				})
 
 				when("daemon", func() {
@@ -1866,7 +1978,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 
 						it.After(func() {
-							assert.Nil(h.DockerRmi(dockerCli, runAfter))
+							assert.Succeeds(h.DockerRmi(dockerCli, runAfter))
 						})
 
 						it("uses provided run image", func() {
@@ -1897,7 +2009,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 
 						it.After(func() {
-							assert.Nil(h.DockerRmi(dockerCli, localRunImageMirror))
+							assert.Succeeds(h.DockerRmi(dockerCli, localRunImageMirror))
 						})
 
 						it("prefers the local mirror", func() {
@@ -1919,7 +2031,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 					when("image metadata has a mirror", func() {
 						it.Before(func() {
 							// clean up existing mirror first to avoid leaking images
-							assert.Nil(h.DockerRmi(dockerCli, runImageMirror))
+							assert.Succeeds(h.DockerRmi(dockerCli, runImageMirror))
 
 							buildRunImage(runImageMirror, "mirror-after-1", "mirror-after-2")
 						})
@@ -1943,7 +2055,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 
 				when("--publish", func() {
 					it.Before(func() {
-						assert.Nil(h.PushImage(dockerCli, repoName, registryConfig))
+						assert.Succeeds(h.PushImage(dockerCli, repoName, registryConfig))
 					})
 
 					when("--run-image", func() {
@@ -1952,7 +2064,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						it.Before(func() {
 							runAfter = registryConfig.RepoName("run-after/" + h.RandString(10))
 							buildRunImage(runAfter, "contents-after-1", "contents-after-2")
-							assert.Nil(h.PushImage(dockerCli, runAfter, registryConfig))
+							assert.Succeeds(h.PushImage(dockerCli, runAfter, registryConfig))
 						})
 
 						it.After(func() {
@@ -1963,7 +2075,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 							output := pack.RunSuccessfully("rebase", repoName, "--publish", "--run-image", runAfter)
 
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulRebase(repoName)
-							assert.Nil(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+							assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
 							assertMockAppRunsWithOutput(t,
 								assert,
 								repoName,
@@ -2113,7 +2225,7 @@ func createComplexBuilder(t *testing.T,
 	)
 
 	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
-	assert.Nil(h.PushImage(dockerCli, bldr, registryConfig))
+	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
 
 	return bldr, nil
 }
@@ -2215,7 +2327,7 @@ func createBuilder(
 		"--no-color",
 	)
 	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
-	assert.Nil(h.PushImage(dockerCli, bldr, registryConfig))
+	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
 
 	return bldr, nil
 }
@@ -2283,12 +2395,13 @@ func assertMockAppRunsWithOutput(t *testing.T, assert h.AssertionManager, repoNa
 	ctrID := runDockerImageExposePort(t, assert, containerName, repoName)
 	defer dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
 	defer dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
+
 	logs, err := dockerCli.ContainerLogs(context.TODO(), ctrID, dockertypes.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     true,
 	})
-	h.AssertNil(t, err)
+	assert.Nil(err)
 
 	copyErr := make(chan error)
 	go func() {

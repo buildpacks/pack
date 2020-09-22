@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 
 	"github.com/buildpacks/pack/internal/archive"
@@ -15,8 +16,10 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.BuildpackLayers, order dist.Order) *fakes.Image {
-	fakeBuilderImage := fakes.NewImage(name, "", nil)
+type FakeImageCreator func(name string, topLayerSha string, identifier imgutil.Identifier) *fakes.Image
+
+func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid string, metadata builder.Metadata, bpLayers dist.BuildpackLayers, order dist.Order, creator FakeImageCreator) *fakes.Image {
+	fakeBuilderImage := creator(name, "", nil)
 
 	h.AssertNil(t, fakeBuilderImage.SetLabel("io.buildpacks.stack.id", stackID))
 	h.AssertNil(t, fakeBuilderImage.SetEnv("CNB_USER_ID", uid))

@@ -25,6 +25,7 @@ type PackInvoker struct {
 	home            string
 	dockerConfigDir string
 	fixtureManager  PackFixtureManager
+	verbose         bool
 }
 
 type packPathsProvider interface {
@@ -52,6 +53,7 @@ func NewPackInvoker(
 		path:            packAssets.Path(),
 		home:            home,
 		dockerConfigDir: dockerConfigDir,
+		verbose:         true,
 		fixtureManager: PackFixtureManager{
 			testObject: testObject,
 			assert:     assert,
@@ -72,7 +74,7 @@ func (i *PackInvoker) cmd(name string, args ...string) *exec.Cmd {
 
 	cmdArgs := append([]string{name}, args...)
 	cmdArgs = append(cmdArgs, "--no-color")
-	if i.Supports("--verbose") {
+	if i.verbose && i.Supports("--verbose") {
 		cmdArgs = append(cmdArgs, "--verbose")
 	}
 
@@ -96,6 +98,10 @@ func (i *PackInvoker) Run(name string, args ...string) (string, error) {
 	output, err := i.cmd(name, args...).CombinedOutput()
 
 	return string(output), err
+}
+
+func (i *PackInvoker) SetVerbose(verbose bool) {
+	i.verbose = verbose
 }
 
 func (i *PackInvoker) RunSuccessfully(name string, args ...string) string {
@@ -214,6 +220,7 @@ const (
 	CreatorInPack
 	ReadWriteVolumeMounts
 	NoColorInBuildpacks
+	QuietMode
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -231,6 +238,9 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	},
 	NoColorInBuildpacks: func(i *PackInvoker) bool {
 		return i.atLeast("0.12.0")
+	},
+	QuietMode: func(i *PackInvoker) bool {
+		return i.atLeast("0.13.2")
 	},
 }
 

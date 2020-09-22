@@ -65,6 +65,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.Build(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.Rebase(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectImage(logger, &cfg, &packClient))
+	rootCmd.AddCommand(commands.InspectBuildpack(logger, &cfg, &packClient))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
 
 	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
@@ -113,7 +114,7 @@ func initConfig() (config.Config, error) {
 func initClient(logger logging.Logger, cfg config.Config) (pack.Client, error) {
 	client, err := pack.NewClient(pack.WithLogger(logger), pack.WithExperimental(cfg.Experimental))
 	if err != nil {
-		return *client, err
+		return pack.Client{}, err
 	}
 
 	return *client, nil

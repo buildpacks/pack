@@ -39,9 +39,9 @@ func NewPackageFile(
 	}
 }
 
-func (p PackageFile) Prepare(sourceDir, destination string) error {
+func (p PackageFile) Prepare(sourceDir, _ string) error {
 	p.testObject.Helper()
-	p.testObject.Log("creating package image...")
+	p.testObject.Log("creating package file from:", sourceDir)
 
 	tmpDir, err := ioutil.TempDir("", "package-buildpacks")
 	if err != nil {

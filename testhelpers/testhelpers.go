@@ -21,7 +21,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-	"unicode"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -126,54 +125,6 @@ func AssertContains(t *testing.T, actual, expected string) {
 			cmp.Diff(expected, actual),
 		)
 	}
-}
-
-func AssertTrimmedContains(t *testing.T, actual, expected string) {
-	t.Helper()
-
-	actualLines := strings.Split(actual, "\n")
-	expectedLines := strings.Split(expected, "\n")
-	for lineIdx, line := range actualLines {
-		actualLines[lineIdx] = cutSuffixWhitespace(line)
-	}
-
-	for lineIdx, line := range expectedLines {
-		expectedLines[lineIdx] = cutSuffixWhitespace(line)
-	}
-
-	actualTrimmed := strings.Join(actualLines, "\n")
-	expectedTrimmed := strings.Join(expectedLines, "\n")
-
-	AssertContains(t, actualTrimmed, expectedTrimmed)
-}
-
-func cutSuffixWhitespace(input string) string {
-	index := len(input) - 1
-	for ; 0 <= index; index-- {
-		if !unicode.IsSpace(rune(input[index])) {
-			break
-		}
-	}
-	return input[:index+1]
-}
-
-func AssertTrimmedEq(t *testing.T, actual, expected string) {
-	t.Helper()
-
-	actualLines := strings.Split(actual, "\n")
-	expectedLines := strings.Split(expected, "\n")
-	for lineIdx, line := range actualLines {
-		actualLines[lineIdx] = cutSuffixWhitespace(line)
-	}
-
-	for lineIdx, line := range expectedLines {
-		expectedLines[lineIdx] = cutSuffixWhitespace(line)
-	}
-
-	actualTrimmed := strings.Join(actualLines, "\n")
-	expectedTrimmed := strings.Join(expectedLines, "\n")
-
-	AssertEq(t, actualTrimmed, expectedTrimmed)
 }
 
 func AssertContainsAllInOrder(t *testing.T, actual bytes.Buffer, expected ...string) {
@@ -672,31 +623,22 @@ func SkipUnless(t *testing.T, expression bool, reason string) {
 func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id string, stdout io.Writer, stderr io.Writer) error {
 	bodyChan, errChan := dockerCli.ContainerWait(ctx, id, container.WaitConditionNextExit)
 
+	logs, err := dockerCli.ContainerAttach(ctx, id, dockertypes.ContainerAttachOptions{
+		Stream: true,
+		Stdout: true,
+		Stderr: true,
+	})
+	if err != nil {
+		return err
+	}
+
 	if err := dockerCli.ContainerStart(ctx, id, dockertypes.ContainerStartOptions{}); err != nil {
 		return errors.Wrap(err, "container start")
 	}
 
-	info, err := dockerCli.Info(ctx)
-	if err != nil {
-		return errors.Wrap(err, "getting docker info")
-	}
-	if info.OSType == "windows" {
-		// wait for logs to show
-		time.Sleep(time.Second)
-	}
-
-	logs, err := dockerCli.ContainerLogs(ctx, id, dockertypes.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     true,
-	})
-	if err != nil {
-		return errors.Wrap(err, "container logs stdout")
-	}
-
 	copyErr := make(chan error)
 	go func() {
-		_, err := stdcopy.StdCopy(stdout, stderr, logs)
+		_, err := stdcopy.StdCopy(stdout, stderr, logs.Reader)
 		copyErr <- err
 	}()
 

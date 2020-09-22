@@ -15,7 +15,7 @@ if [[ -f "$platform_dir/env/ENV1_CONTENTS" ]]; then
     mkdir "$launch_dir/env1-launch-layer"
     contents=$(cat "$platform_dir/env/ENV1_CONTENTS")
     echo "$contents" > "$launch_dir/env1-launch-layer/env1-launch-dep"
-    ln -snf "$launch_dir/env1-launch-layer/env1-launch-dep" env1-launch-dep
+    ln -snf "$launch_dir/env1-launch-layer" env1-launch-deps
     echo "launch = true" > "$launch_dir/env1-launch-layer.toml"
 fi
 
@@ -25,7 +25,7 @@ if [[ -f "$platform_dir/env/ENV2_CONTENTS" ]]; then
     mkdir "$launch_dir/env2-launch-layer"
     contents=$(cat "$platform_dir/env/ENV2_CONTENTS")
     echo "$contents" > "$launch_dir/env2-launch-layer/env2-launch-dep"
-    ln -snf "$launch_dir/env2-launch-layer/env2-launch-dep" env2-launch-dep
+    ln -snf "$launch_dir/env2-launch-layer" env2-launch-deps
     echo "launch = true" > "$launch_dir/env2-launch-layer.toml"
 fi
 

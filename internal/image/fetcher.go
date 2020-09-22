@@ -98,7 +98,7 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
 		return err
 	}
 
-	writer := f.logger.Writer()
+	writer := logging.GetWriterForLevel(f.logger, logging.InfoLevel)
 	termFd, isTerm := isTerminal(writer)
 
 	err = jsonmessage.DisplayJSONMessagesStream(rc, &colorizedWriter{writer}, termFd, isTerm, nil)
