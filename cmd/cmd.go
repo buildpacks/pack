@@ -114,7 +114,7 @@ func initConfig() (config.Config, error) {
 func initClient(logger logging.Logger, cfg config.Config) (pack.Client, error) {
 	client, err := pack.NewClient(pack.WithLogger(logger), pack.WithExperimental(cfg.Experimental))
 	if err != nil {
-		return *client, err
+		return pack.Client{}, err
 	}
 
 	return *client, nil
