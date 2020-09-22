@@ -1,7 +1,6 @@
 package container
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -54,31 +53,33 @@ func Run(ctx context.Context, docker client.CommonAPIClient, containerID string,
 }
 
 func Start(ctx context.Context, client client.CommonAPIClient, containerID string, hostConfig types.ContainerStartOptions) error {
-	var (
-		out io.Writer = os.Stdout
-		err error
-	)
-
 	bodyChan, errChan := client.ContainerWait(ctx, containerID, dcontainer.WaitConditionNextExit)
-
-	if _, ok := out.(*os.File); !ok {
-		return errors.New("not a terminal")
-	}
 
 	// Attach to the container on a separate thread
 	attachCtx, cancelFn := context.WithCancel(ctx)
-	attachErrorChan := attachToContainer(attachCtx, client, containerID)
 	defer cancelFn()
 
-	// Start it
+	readerCloser, err := attachToContainerReader(attachCtx, client, containerID)
+	if err != nil {
+		return errors.Wrap(err, "attach reader")
+	}
+	defer readerCloser.Close()
+
 	err = client.ContainerStart(ctx, containerID, hostConfig)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "starting container")
 	}
+
+	// Start it
+	writerCloser, attachErrorChan := attachToContainerWriter(attachCtx, os.Stdin, client, containerID)
+	defer func() {
+		fmt.Println("finalizing", containerID)
+		writerCloser.Close()
+	}()
 
 	// TODO: wire and verify that this works
 	// Make sure terminal resizes are passed on to the container
-	//monitorTty(ctx, client, containerID, terminalFd)
+	// monitorTty(ctx, client, containerID, terminalFd)
 
 	select {
 	case err := <-attachErrorChan:
@@ -97,49 +98,53 @@ func Start(ctx context.Context, client client.CommonAPIClient, containerID strin
 	return nil
 }
 
-func attachToContainer(ctx context.Context, client client.CommonAPIClient, containerID string) chan error {
-	errChan := make(chan error)
-
+func attachToContainerReader(ctx context.Context, client client.CommonAPIClient, containerID string) (io.Closer, error) {
 	attached, err := client.ContainerAttach(ctx, containerID, types.ContainerAttachOptions{
 		Stderr: true,
 		Stdout: true,
+		Stdin:  false,
+		Stream: true,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	go io.Copy(os.Stdout, attached.Reader)
+	go io.Copy(os.Stderr, attached.Reader)
+
+	return attached.Conn, nil
+}
+
+func attachToContainerWriter(ctx context.Context, stdIn io.Reader, client client.CommonAPIClient, containerID string) (io.Closer, chan error) {
+	errChan := make(chan error)
+
+	attached, err := client.ContainerAttach(ctx, containerID, types.ContainerAttachOptions{
+		Stderr: false,
+		Stdout: false,
 		Stdin:  true,
 		Stream: true,
 	})
 
 	if err != nil {
 		errChan <- err
-		return errChan
+		return nil, errChan
 	}
 
-	go io.Copy(os.Stdout, attached.Reader)
-	go io.Copy(os.Stderr, attached.Reader)
-
-	input := make(chan []byte)
-	go func() {
-		scanner := bufio.NewScanner(os.Stdin)
-		for ctx.Err() == nil && scanner.Scan() {
-			input <- []byte(scanner.Text())
-		}
-	}()
-
-	// Write to docker container
 	go func(w io.WriteCloser) {
+		fmt.Println("scan:pre", containerID)
 		for ctx.Err() == nil {
-			data, ok := <-input
-			if !ok {
-				errChan <- errors.New("failed to get input")
-				return
-			}
+			fmt.Println("scan:read", containerID)
+			_, err := io.Copy(w, stdIn)
 
-			_, err := w.Write(append(data, '\n'))
+			fmt.Println("scan:post", containerID)
 			if err != nil {
 				errChan <- err
 			}
 		}
 	}(attached.Conn)
 
-	return errChan
+	return attached.Conn, errChan
 }
 
 // From https://github.com/docker/docker/blob/0d70706b4b6bf9d5a5daf46dd147ca71270d0ab7/api/client/utils.go#L222-L233

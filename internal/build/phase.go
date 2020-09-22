@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/container"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type Phase struct {
@@ -30,14 +31,12 @@ type Phase struct {
 }
 
 func (p *Phase) Run(ctx context.Context) error {
-	var err error
-	_, err = p.docker.ContainerCreate(ctx, p.ctrConf, p.hostConf, nil, "")
 	if p.intercept != "" {
 		if err := p.attemptToIntercept(ctx); err == nil {
 			return nil
 		} else {
 			_, _ = fmt.Fprintf(p.errorWriter, "Failed to start intercepted container: %s\n", err.Error())
-			_, _ = fmt.Fprintln(p.infoWriter, "Will run phase normally")
+			_, _ = fmt.Fprintln(p.infoWriter, "Phase will run without interception")
 		}
 	}
 
@@ -77,13 +76,13 @@ func (p *Phase) attemptToIntercept(ctx context.Context) error {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(p.infoWriter, `Attempting to intercept
+	_, _ = fmt.Fprintf(p.infoWriter, `Attempting to intercept...
 -----------
-To continue to the next phase type: exit
+To continue to the next phase type: %s
 To manually run the phase type:
 %s
 -----------
-`, strings.Join(originalCmd, " "))
+`, style.Symbol("exit"), style.Symbol(strings.Join(originalCmd, " ")))
 
 	return container.Start(ctx, p.docker, ctrID, types.ContainerStartOptions{})
 }
