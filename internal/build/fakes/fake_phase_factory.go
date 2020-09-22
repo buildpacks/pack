@@ -5,7 +5,7 @@ import "github.com/buildpacks/pack/internal/build"
 type FakePhaseFactory struct {
 	NewCallCount          int
 	ReturnForNew          build.RunnerCleaner
-	NewCalledWithProvider *build.PhaseConfigProvider
+	NewCalledWithProvider []*build.PhaseConfigProvider
 }
 
 func NewFakePhaseFactory(ops ...func(*FakePhaseFactory)) *FakePhaseFactory {
@@ -28,7 +28,7 @@ func WhichReturnsForNew(phase build.RunnerCleaner) func(*FakePhaseFactory) {
 
 func (f *FakePhaseFactory) New(phaseConfigProvider *build.PhaseConfigProvider) build.RunnerCleaner {
 	f.NewCallCount++
-	f.NewCalledWithProvider = phaseConfigProvider
+	f.NewCalledWithProvider = append(f.NewCalledWithProvider, phaseConfigProvider)
 
 	return f.ReturnForNew
 }

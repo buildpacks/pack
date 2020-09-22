@@ -5,6 +5,7 @@ package assertions
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	h "github.com/buildpacks/pack/testhelpers"
@@ -28,6 +29,13 @@ func (o OutputAssertionManager) ReportsSuccessfulImageBuild(name string) {
 	o.testObject.Helper()
 
 	o.assert.ContainsF(o.output, "Successfully built image '%s'", name)
+}
+
+func (o OutputAssertionManager) ReportSuccessfulQuietBuild(name string) {
+	o.testObject.Helper()
+	o.testObject.Log("quiet mode")
+
+	o.assert.Matches(strings.TrimSpace(o.output), regexp.MustCompile(name+`@sha256:[\w]{12}`))
 }
 
 func (o OutputAssertionManager) ReportsSuccessfulRebase(name string) {
