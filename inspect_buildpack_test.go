@@ -440,7 +440,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 				_, err := subject.InspectBuildpack(inspectOptions)
 
 				h.AssertError(t, err, "unable to handle locator ")
-				h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
+				h.AssertFalse(t, errors.Is(err, image.ErrNotFound))
 			})
 		})
 		when("buildpack image", func() {
@@ -492,7 +492,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 					_, err := subject.InspectBuildpack(inspectOptions)
 					h.AssertNotNil(t, err)
-					h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
+					h.AssertFalse(t, errors.Is(err, image.ErrNotFound))
 					h.AssertError(t, err, "unable to fetch config from buildpack blob:")
 				})
 			})
@@ -508,7 +508,8 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 					_, err := subject.InspectBuildpack(inspectOptions)
 					h.AssertNotNil(t, err)
-					h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
+					h.AssertFalse(t, errors.Is(err, image.ErrNotFound))
+					h.AssertError(t, err, "unable to download archive")
 				})
 			})
 		})
@@ -526,7 +527,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 					_, err := subject.InspectBuildpack(inspectOptions)
 
 					h.AssertError(t, err, "invalid registry :::")
-					h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
+					h.AssertFalse(t, errors.Is(err, image.ErrNotFound))
 				})
 			})
 			when("buildpack is not on registry", func() {
@@ -566,7 +567,8 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 					_, err := subject.InspectBuildpack(inspectOptions)
 					h.AssertNotNil(t, err)
-					h.AssertTrue(t, !errors.Is(err, image.ErrNotFound))
+					h.AssertFalse(t, errors.Is(err, image.ErrNotFound))
+					h.AssertError(t, err, "error pulling registry specified image")
 				})
 			})
 		})

@@ -1,6 +1,6 @@
 Inspecting buildpack: '{{ .buildpack_name }}'
 
-LOCAL IMAGE:
+{{ .buildpack_source }}:
 
 Stacks:
   ID: pack.test.stack

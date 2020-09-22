@@ -107,7 +107,6 @@ func inspectAllBuildpacks(client PackClient, flags InspectBuildpackFlags, option
 	skipCount := 0
 	for _, option := range options {
 		nextResult, err := client.InspectBuildpack(option)
-		// when do we exit
 		if err != nil {
 			if errors.Is(err, image.ErrNotFound) {
 				skipCount++

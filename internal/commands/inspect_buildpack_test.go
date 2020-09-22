@@ -543,21 +543,22 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("a depth flag is passed", func() {})
-		it.Before(func() {
-			complexInfo.Location = buildpack.URILocator
+		when("a depth flag is passed", func() {
+			it.Before(func() {
+				complexInfo.Location = buildpack.URILocator
 
-			mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
-				BuildpackName: "/other/path/to/test/buildpack",
-				Daemon:        true,
-				Registry:      "default-registry",
-			}).Return(complexInfo, nil)
-		})
-		it("displays detection order to specified depth", func() {
-			command.SetArgs([]string{"/other/path/to/test/buildpack", "-d", "2"})
-			assert.Nil(command.Execute())
+				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					BuildpackName: "/other/path/to/test/buildpack",
+					Daemon:        true,
+					Registry:      "default-registry",
+				}).Return(complexInfo, nil)
+			})
+			it("displays detection order to specified depth", func() {
+				command.SetArgs([]string{"/other/path/to/test/buildpack", "-d", "2"})
+				assert.Nil(command.Execute())
 
-			assert.AssertTrimmedContains(outBuf.String(), depthOutputSection)
+				assert.AssertTrimmedContains(outBuf.String(), depthOutputSection)
+			})
 		})
 	})
 

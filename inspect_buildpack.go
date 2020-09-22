@@ -81,7 +81,7 @@ func metadataFromRegistry(client *Client, name, registry string) (buildpackMd bu
 	}
 	buildpackMd, layersMd, err = metadataFromImage(client, registryBp.Address, false)
 	if err != nil {
-		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("error pulling image: %s", err)
+		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("error pulling registry specified image: %s", err)
 	}
 	return buildpackMd, layersMd, nil
 }
@@ -92,7 +92,7 @@ func metadataFromArchive(downloader Downloader, path string) (buildpackMd buildp
 
 	imgBlob, err := downloader.Download(context.Background(), path)
 	if err != nil {
-		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("unable to download image: %q", err)
+		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("unable to download archive: %q", err)
 		//return buildpackMd, layersMd, err
 	}
 
@@ -163,7 +163,6 @@ func extractBuildpacks(layersMd dist.BuildpackLayers) []dist.BuildpackInfo {
 		case result[i].ID < result[j].ID:
 			return true
 		case result[i].ID == result[j].ID:
-			// TODO: this should be a semver 'like' comparison
 			return result[i].Version < result[j].Version
 		default:
 			return false

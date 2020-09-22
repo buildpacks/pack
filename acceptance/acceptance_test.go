@@ -1965,11 +1965,12 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 			when("inspect-buildpack", func() {
 				it("succeeds", func() {
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
-						"inspect_%s_buildpack_archive_output.txt",
+						"inspect_%s_buildpack_output.txt",
 						createBuilderPack.Version(),
-						"inspect_buildpack_archive_output.txt",
+						"inspect_buildpack_output.txt",
 						map[string]interface{}{
-							"buildpack_name": inspectBuildpackTarget,
+							"buildpack_source": "LOCAL ARCHIVE",
+							"buildpack_name":   inspectBuildpackTarget,
 						},
 					)
 
@@ -2000,11 +2001,12 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 			when("inspect-buildpack", func() {
 				it("succeeds", func() {
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
-						"inspect_%s_buildpack_image_output.txt",
+						"inspect_%s_buildpack_output.txt",
 						createBuilderPack.Version(),
-						"inspect_buildpack_image_output.txt",
+						"inspect_buildpack_output.txt",
 						map[string]interface{}{
-							"buildpack_name": inspectBuildpackTarget,
+							"buildpack_source": "LOCAL IMAGE",
+							"buildpack_name":   inspectBuildpackTarget,
 						},
 					)
 
