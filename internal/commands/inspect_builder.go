@@ -257,7 +257,6 @@ func stringifyAPISet(versions builder.APISet) string {
 	return strings.Join(versions.AsStrings(), ", ")
 }
 
-// TODO: present buildpack order (inc. nested) [https://github.com/buildpacks/pack/issues/253].
 func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 	buf := &bytes.Buffer{}
 	tabWriter := new(tabwriter.Writer).Init(buf, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
