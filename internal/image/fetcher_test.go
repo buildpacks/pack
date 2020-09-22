@@ -1,9 +1,9 @@
 package image_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
@@ -17,6 +17,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -50,40 +51,66 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 		fetcher  *image.Fetcher
 		repoName string
 		repo     string
+		outBuf   bytes.Buffer
 	)
 
 	it.Before(func() {
 		repo = "some-org/" + h.RandString(10)
 		repoName = registryConfig.RepoName(repo)
-		fetcher = image.NewFetcher(logging.NewLogWithWriters(ioutil.Discard, ioutil.Discard), docker)
+		fetcher = image.NewFetcher(logging.NewLogWithWriters(&outBuf, &outBuf), docker)
 	})
 
 	when("#Fetch", func() {
 		when("daemon is false", func() {
-			when("there is a remote image", func() {
-				it.Before(func() {
-					img, err := remote.NewImage(repoName, authn.DefaultKeychain)
-					h.AssertNil(t, err)
+			when("PullAlways", func() {
+				when("there is a remote image", func() {
+					it.Before(func() {
+						img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+						h.AssertNil(t, err)
 
-					h.AssertNil(t, img.Save())
+						h.AssertNil(t, img.Save())
+					})
+
+					it("returns the remote image", func() {
+						_, err := fetcher.Fetch(context.TODO(), repoName, false, pubcfg.PullAlways)
+						h.AssertNil(t, err)
+					})
 				})
 
-				it("returns the remote image", func() {
-					_, err := fetcher.Fetch(context.TODO(), repoName, false, false)
-					h.AssertNil(t, err)
+				when("there is no remote image", func() {
+					it("returns an error", func() {
+						_, err := fetcher.Fetch(context.TODO(), repoName, false, pubcfg.PullAlways)
+						h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist in registry", repoName))
+					})
 				})
 			})
 
-			when("there is no remote image", func() {
-				it("returns an error", func() {
-					_, err := fetcher.Fetch(context.TODO(), repoName, false, false)
-					h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist in registry", repoName))
+			when("PullIfNotPresent", func() {
+				when("there is a remote image", func() {
+					it.Before(func() {
+						img, err := remote.NewImage(repoName, authn.DefaultKeychain)
+						h.AssertNil(t, err)
+
+						h.AssertNil(t, img.Save())
+					})
+
+					it("returns the remote image", func() {
+						_, err := fetcher.Fetch(context.TODO(), repoName, false, pubcfg.PullIfNotPresent)
+						h.AssertNil(t, err)
+					})
+				})
+
+				when("there is no remote image", func() {
+					it("returns an error", func() {
+						_, err := fetcher.Fetch(context.TODO(), repoName, false, pubcfg.PullIfNotPresent)
+						h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist in registry", repoName))
+					})
 				})
 			})
 		})
 
 		when("daemon is true", func() {
-			when("pull is false", func() {
+			when("PullNever", func() {
 				when("there is a local image", func() {
 					it.Before(func() {
 						// Make sure the repoName is not a valid remote repo.
@@ -102,21 +129,26 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("returns the local image", func() {
-						_, err := fetcher.Fetch(context.TODO(), repoName, true, false)
+						_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullNever)
 						h.AssertNil(t, err)
 					})
 				})
 
 				when("there is no local image", func() {
 					it("returns an error", func() {
-						_, err := fetcher.Fetch(context.TODO(), repoName, true, false)
+						_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullNever)
 						h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
 					})
 				})
 			})
 
-			when("pull is true", func() {
+			when("PullAlways", func() {
 				when("there is a remote image", func() {
+					var (
+						logger *logging.LogWithWriters
+						output func() string
+					)
+
 					it.Before(func() {
 						// Instantiate a pull-able local image
 						// as opposed to a remote image so that the image
@@ -128,6 +160,11 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, img.Save())
 
 						h.AssertNil(t, h.PushImage(docker, img.Name(), registryConfig))
+
+						var outCons *color.Console
+						outCons, output = h.MockWriterAndOutput()
+						logger = logging.NewLogWithWriters(outCons, outCons)
+						fetcher = image.NewFetcher(logger, docker)
 					})
 
 					it.After(func() {
@@ -135,8 +172,16 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("pull the image and return the local copy", func() {
-						_, err := fetcher.Fetch(context.TODO(), repoName, true, true)
+						_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullAlways)
 						h.AssertNil(t, err)
+						h.AssertNotEq(t, output(), "")
+					})
+
+					it("doesn't log anything in quiet mode", func() {
+						logger.WantQuiet(true)
+						_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullAlways)
+						h.AssertNil(t, err)
+						h.AssertEq(t, output(), "")
 					})
 				})
 
@@ -154,14 +199,113 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("returns the local image", func() {
-							_, err := fetcher.Fetch(context.TODO(), repoName, true, true)
+							_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullAlways)
 							h.AssertNil(t, err)
 						})
 					})
 
 					when("there is no local image", func() {
 						it("returns an error", func() {
-							_, err := fetcher.Fetch(context.TODO(), repoName, true, true)
+							_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullAlways)
+							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
+						})
+					})
+				})
+			})
+
+			when("PullIfNotPresent", func() {
+				when("there is a remote image", func() {
+					var (
+						label          = "label"
+						remoteImgLabel string
+					)
+
+					it.Before(func() {
+						// Instantiate a pull-able local image
+						// as opposed to a remote image so that the image
+						// is created with the OS of the docker daemon
+						remoteImg, err := local.NewImage(repoName, docker)
+						h.AssertNil(t, err)
+						defer h.DockerRmi(docker, repoName)
+
+						h.AssertNil(t, remoteImg.SetLabel(label, "1"))
+						h.AssertNil(t, remoteImg.Save())
+
+						h.AssertNil(t, h.PushImage(docker, remoteImg.Name(), registryConfig))
+
+						remoteImgLabel, err = remoteImg.Label(label)
+						h.AssertNil(t, err)
+					})
+
+					it.After(func() {
+						h.DockerRmi(docker, repoName)
+					})
+
+					when("there is a local image", func() {
+						var localImgLabel string
+
+						it.Before(func() {
+							localImg, err := local.NewImage(repoName, docker)
+							h.AssertNil(t, localImg.SetLabel(label, "2"))
+							h.AssertNil(t, err)
+
+							h.AssertNil(t, localImg.Save())
+
+							localImgLabel, err = localImg.Label(label)
+							h.AssertNil(t, err)
+						})
+
+						it.After(func() {
+							h.DockerRmi(docker, repoName)
+						})
+
+						it("returns the local image", func() {
+							fetchedImg, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullIfNotPresent)
+							h.AssertNil(t, err)
+							h.AssertNotContains(t, outBuf.String(), "Pulling image")
+
+							fetchedImgLabel, err := fetchedImg.Label(label)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, fetchedImgLabel, localImgLabel)
+							h.AssertNotEq(t, fetchedImgLabel, remoteImgLabel)
+						})
+					})
+
+					when("there is no local image", func() {
+						it("returns the remote image", func() {
+							fetchedImg, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullIfNotPresent)
+							h.AssertNil(t, err)
+
+							fetchedImgLabel, err := fetchedImg.Label(label)
+							h.AssertNil(t, err)
+							h.AssertEq(t, fetchedImgLabel, remoteImgLabel)
+						})
+					})
+				})
+
+				when("there is no remote image", func() {
+					when("there is a local image", func() {
+						it.Before(func() {
+							img, err := local.NewImage(repoName, docker)
+							h.AssertNil(t, err)
+
+							h.AssertNil(t, img.Save())
+						})
+
+						it.After(func() {
+							h.DockerRmi(docker, repoName)
+						})
+
+						it("returns the local image", func() {
+							_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullIfNotPresent)
+							h.AssertNil(t, err)
+						})
+					})
+
+					when("there is no local image", func() {
+						it("returns an error", func() {
+							_, err := fetcher.Fetch(context.TODO(), repoName, true, pubcfg.PullIfNotPresent)
 							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
 						})
 					})

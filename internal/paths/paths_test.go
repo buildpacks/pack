@@ -18,6 +18,28 @@ func TestPaths(t *testing.T) {
 }
 
 func testPaths(t *testing.T, when spec.G, it spec.S) {
+	when("#FilterReservedNames", func() {
+		when("volume contains a reserved name", func() {
+			it("modifies the volume name", func() {
+				volumeName := "auxauxaux"
+				subject := FilterReservedNames(volumeName)
+				expected := "a_u_xa_u_xa_u_x"
+				if subject != expected {
+					t.Fatalf("The volume should not contain reserved names")
+				}
+			})
+		})
+
+		when("volume does not contain reserved names", func() {
+			it("does not modify the volume name", func() {
+				volumeName := "lbtlbtlbt"
+				subject := FilterReservedNames(volumeName)
+				if subject != volumeName {
+					t.Fatalf("The volume should not be modified")
+				}
+			})
+		})
+	})
 	when("#FilePathToURI", func() {
 		when("is windows", func() {
 			it.Before(func() {
@@ -129,6 +151,63 @@ func testPaths(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertEq(t, path, `/tmp/file.tgz`)
 				})
+			})
+		})
+	})
+
+	when("#WindowsDir", func() {
+		it("returns the path directory", func() {
+			path := WindowsDir(`C:\layers\file.txt`)
+			h.AssertEq(t, path, `C:\layers`)
+		})
+
+		it("returns empty for empty", func() {
+			path := WindowsBasename("")
+			h.AssertEq(t, path, "")
+		})
+	})
+
+	when("#WindowsBasename", func() {
+		it("returns the path basename", func() {
+			path := WindowsBasename(`C:\layers\file.txt`)
+			h.AssertEq(t, path, `file.txt`)
+		})
+
+		it("returns empty for empty", func() {
+			path := WindowsBasename("")
+			h.AssertEq(t, path, "")
+		})
+	})
+
+	when("#WindowsToSlash", func() {
+		it("returns the path; backward slashes converted to forward with volume stripped ", func() {
+			path := WindowsToSlash(`C:\layers\file.txt`)
+			h.AssertEq(t, path, `/layers/file.txt`)
+		})
+
+		it("returns / for volume", func() {
+			path := WindowsToSlash(`c:\`)
+			h.AssertEq(t, path, `/`)
+		})
+
+		it("returns empty for empty", func() {
+			path := WindowsToSlash("")
+			h.AssertEq(t, path, "")
+		})
+	})
+
+	when("#WindowsPathSID", func() {
+		when("UID and GID are both 0", func() {
+			it(`returns the built-in BUILTIN\Administrators SID`, func() {
+				sid := WindowsPathSID(0, 0)
+				h.AssertEq(t, sid, "S-1-5-32-544")
+			})
+		})
+
+		when("UID and GID are both non-zero", func() {
+			it(`returns the built-in BUILTIN\Users SID`, func() {
+				sid := WindowsPathSID(99, 99)
+				h.AssertEq(t, sid, "S-1-5-32-545")
 			})
 		})
 	})

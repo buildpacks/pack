@@ -4,14 +4,10 @@ const {Octokit} = require("@octokit/rest");
 
 const core = require('@actions/core');
 const github = new Octokit({auth: mustGetEnvVar('GITHUB_TOKEN')});
-const context = {
-  repository: "buildpacks/pack"
-};
-
 require(scriptPath)({
   core,
   github,
-  context,
+  repository: "buildpacks/pack",
   version: mustGetEnvVar('PACK_VERSION'),
 });
 

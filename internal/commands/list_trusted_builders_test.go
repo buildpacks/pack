@@ -19,7 +19,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestListTrustedBuilders(t *testing.T) {
+func TestListTrustedBuildersCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 	spec.Run(t, "Commands", testListTrustedBuildersCommand, spec.Random(), spec.Report(report.Terminal{}))
@@ -68,10 +68,10 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContainsAllInOrder(t,
 				outBuf,
 				"gcr.io/buildpacks/builder:v1",
-				"gcr.io/paketo-buildpacks/builder:base",
-				"gcr.io/paketo-buildpacks/builder:full-cf",
-				"gcr.io/paketo-buildpacks/builder:tiny",
 				"heroku/buildpacks:18",
+				"paketobuildpacks/builder:base",
+				"paketobuildpacks/builder:full",
+				"paketobuildpacks/builder:tiny",
 			)
 
 			listTrustedBuildersCommand := commands.ListTrustedBuilders(
@@ -88,11 +88,11 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContainsAllInOrder(t,
 				outBuf,
 				"gcr.io/buildpacks/builder:v1",
-				"gcr.io/paketo-buildpacks/builder:base",
-				"gcr.io/paketo-buildpacks/builder:full-cf",
-				"gcr.io/paketo-buildpacks/builder:tiny",
 				builderName,
 				"heroku/buildpacks:18",
+				"paketobuildpacks/builder:base",
+				"paketobuildpacks/builder:full",
+				"paketobuildpacks/builder:tiny",
 			)
 		})
 	})

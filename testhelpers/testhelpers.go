@@ -9,9 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
-	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -24,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgodd/dockerdial"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -310,36 +307,6 @@ func dockerCli(t *testing.T) client.CommonAPIClient {
 	return dockerCliVal
 }
 
-func proxyDockerHostPort(port string) error {
-	ln, err := net.Listen("tcp", ":"+port)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			go func(conn net.Conn) {
-				defer conn.Close()
-				c, err := dockerdial.Dial("tcp", "localhost:"+port)
-				if err != nil {
-					log.Println(err)
-					return
-				}
-				defer c.Close()
-
-				go io.Copy(c, conn)
-				io.Copy(conn, c)
-			}(conn)
-		}
-	}()
-	return nil
-}
-
 func Eventually(t *testing.T, test func() bool, every time.Duration, timeout time.Duration) {
 	t.Helper()
 
@@ -466,13 +433,7 @@ func PushImage(dockerCli client.CommonAPIClient, ref string, registryConfig *Tes
 }
 
 func HTTPGetE(url string, headers map[string]string) (string, error) {
-	var client *http.Client
-	if os.Getenv("DOCKER_HOST") == "" {
-		client = http.DefaultClient
-	} else {
-		tr := &http.Transport{Dial: dockerdial.Dial}
-		client = &http.Client{Transport: tr}
-	}
+	client := http.DefaultClient
 
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -557,44 +518,87 @@ func PullImageWithAuth(dockerCli client.CommonAPIClient, ref, registryAuth strin
 }
 
 func CopyFile(t *testing.T, src, dst string) {
-	fi, err := os.Stat(src)
+	t.Helper()
+
+	err := CopyFileE(src, dst)
 	AssertNil(t, err)
+}
+
+func CopyFileE(src, dst string) error {
+	fi, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
 
 	srcFile, err := os.Open(src)
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
 	defer srcFile.Close()
 
 	dstFile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fi.Mode())
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
 	defer dstFile.Close()
 
 	_, err = io.Copy(dstFile, srcFile)
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
 
 	modifiedtime := time.Time{}
 	err = os.Chtimes(dst, modifiedtime, modifiedtime)
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func RecursiveCopy(t *testing.T, src, dst string) {
 	t.Helper()
-	fis, err := ioutil.ReadDir(src)
+
+	err := RecursiveCopyE(src, dst)
 	AssertNil(t, err)
+}
+
+func RecursiveCopyE(src, dst string) error {
+	fis, err := ioutil.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
 	for _, fi := range fis {
 		if fi.Mode().IsRegular() {
-			CopyFile(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+			err = CopyFileE(filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+			if err != nil {
+				return err
+			}
 		}
 		if fi.IsDir() {
 			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
-			AssertNil(t, err)
-			RecursiveCopy(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+			if err != nil {
+				return err
+			}
+			err = RecursiveCopyE(filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+			if err != nil {
+				return err
+			}
 		}
 	}
+
 	modifiedtime := time.Time{}
 	err = os.Chtimes(dst, modifiedtime, modifiedtime)
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
 	err = os.Chmod(dst, 0775)
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func RequireDocker(t *testing.T) {
@@ -609,24 +613,32 @@ func SkipIf(t *testing.T, expression bool, reason string) {
 	}
 }
 
+func SkipUnless(t *testing.T, expression bool, reason string) {
+	t.Helper()
+	if !expression {
+		t.Skip(reason)
+	}
+}
+
 func RunContainer(ctx context.Context, dockerCli client.CommonAPIClient, id string, stdout io.Writer, stderr io.Writer) error {
 	bodyChan, errChan := dockerCli.ContainerWait(ctx, id, container.WaitConditionNextExit)
+
+	logs, err := dockerCli.ContainerAttach(ctx, id, dockertypes.ContainerAttachOptions{
+		Stream: true,
+		Stdout: true,
+		Stderr: true,
+	})
+	if err != nil {
+		return err
+	}
 
 	if err := dockerCli.ContainerStart(ctx, id, dockertypes.ContainerStartOptions{}); err != nil {
 		return errors.Wrap(err, "container start")
 	}
-	logs, err := dockerCli.ContainerLogs(ctx, id, dockertypes.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     true,
-	})
-	if err != nil {
-		return errors.Wrap(err, "container logs stdout")
-	}
 
 	copyErr := make(chan error)
 	go func() {
-		_, err := stdcopy.StdCopy(stdout, stderr, logs)
+		_, err := stdcopy.StdCopy(stdout, stderr, logs.Reader)
 		copyErr <- err
 	}()
 

@@ -3,6 +3,8 @@ package pack
 import (
 	"context"
 
+	"github.com/buildpacks/pack/config"
+
 	"github.com/pkg/errors"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
@@ -13,20 +15,34 @@ import (
 )
 
 const (
+	// Packaging indicator that format of inputs/outputs will be an OCI image on the registry.
 	FormatImage = "image"
-	FormatFile  = "file"
+
+	// Packaging indicator that format of output will be a file on the host filesystem.
+	FormatFile = "file"
 )
 
-// PackageBuildpackOptions are configuration options and metadata you can pass into PackageBuildpack
+// PackageBuildpackOptions is a configuration object used to define
+// the behavior of PackageBuildpack.
 type PackageBuildpackOptions struct {
-	Name    string
-	Format  string
-	Config  pubbldpkg.Config
+	// The name of the output buildpack artifact.
+	Name string
+
+	// Type of output format, The options are the either the const FormatImage, or FormatFile.
+	Format string
+
+	// Defines the Buildpacks configuration.
+	Config pubbldpkg.Config
+
+	// Push resulting builder image up to a registry
+	// specified in the Name variable.
 	Publish bool
-	NoPull  bool
+
+	// Strategy for updating images before packaging.
+	PullPolicy config.PullPolicy
 }
 
-// PackageBuildpack packages buildpack(s) into an image or file
+// PackageBuildpack packages buildpack(s) into either an image or file.
 func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
 	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
 
@@ -80,7 +96,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 				depBPs = []dist.Buildpack{depBP}
 			}
 		} else if dep.ImageName != "" {
-			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.NoPull)
+			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
 			if err != nil {
 				return err
 			}

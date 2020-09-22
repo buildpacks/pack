@@ -24,6 +24,9 @@ type PackClient interface {
 	CreateBuilder(context.Context, pack.CreateBuilderOptions) error
 	PackageBuildpack(ctx context.Context, opts pack.PackageBuildpackOptions) error
 	Build(context.Context, pack.BuildOptions) error
+	RegisterBuildpack(context.Context, pack.RegisterBuildpackOptions) error
+	YankBuildpack(pack.YankBuildpackOptions) error
+	InspectBuildpack(pack.InspectBuildpackOptions) (*pack.BuildpackInfo, error)
 }
 
 func AddHelpFlag(cmd *cobra.Command, commandName string) {

@@ -7,7 +7,8 @@ A simple script that generates the changelog for pack based on a pack version (a
 #### Github Action
 
 ```yaml
-  - uses: actions/github-script@v1
+  - name: Generate changelog
+    uses: actions/github-script@v1
     id: changelog
     with:
       github-token: ${{secrets.GITHUB_TOKEN}}
@@ -15,7 +16,7 @@ A simple script that generates the changelog for pack based on a pack version (a
       script: |
         const path = require('path');
         const scriptPath = path.resolve('.github/workflows/build/changelog/index.js');
-        require(scriptPath)({core, github, context, version: ${{ env.PACK_VERSION }}});
+        require(scriptPath)({core, github, repository: "${{ env.GITHUB_REPOSITORY }}", version: "${{ env.PACK_VERSION }}" });
 ```
 
 #### Local
@@ -27,7 +28,7 @@ To run/test locally:
 npm install
 
 # set required info
-export GITHUB_ACTION="<GITHUB_PAT_TOKEN>"
+export GITHUB_TOKEN="<GITHUB_PAT_TOKEN>"
 export PACK_VERSION="<PACK_VERSION>"
 
 # run locally

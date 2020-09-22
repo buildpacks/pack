@@ -94,7 +94,7 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				it("does nothing", func() {
 					h.AssertNil(t, ioutil.WriteFile(configPath, []byte(""), os.ModePerm))
 
-					command.SetArgs([]string{"gcr.io/paketo-buildpacks/builder:base"})
+					command.SetArgs([]string{"paketobuildpacks/builder:base"})
 					h.AssertNil(t, command.Execute())
 					oldContents, err := ioutil.ReadFile(configPath)
 					h.AssertNil(t, err)

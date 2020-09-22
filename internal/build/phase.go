@@ -30,6 +30,8 @@ type Phase struct {
 }
 
 func (p *Phase) Run(ctx context.Context) error {
+	var err error
+	_, err = p.docker.ContainerCreate(ctx, p.ctrConf, p.hostConf, nil, "")
 	if p.intercept != "" {
 		if err := p.attemptToIntercept(ctx); err == nil {
 			return nil
@@ -41,7 +43,13 @@ func (p *Phase) Run(ctx context.Context) error {
 
 	ctrID, err := p.createContainer(ctx, p.ctrConf)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to create '%s' container", p.name)
+	}
+
+	for _, containerOp := range p.containerOps {
+		if err := containerOp(p.docker, ctx, ctrID, p.infoWriter, p.errorWriter); err != nil {
+			return err
+		}
 	}
 
 	return container.Run(
@@ -89,7 +97,7 @@ func (p *Phase) createContainer(ctx context.Context, ctrConf *dcontainer.Config)
 	p.createdCtrIDs = append(p.createdCtrIDs, ctr.ID)
 
 	for _, containerOp := range p.containerOps {
-		if err := containerOp(p.docker, ctx, ctr.ID); err != nil {
+		if err := containerOp(p.docker, ctx, ctr.ID, p.infoWriter, p.errorWriter); err != nil {
 			return "", err
 		}
 	}

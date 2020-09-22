@@ -14,14 +14,13 @@ const annotationLabelsMap = {
   "breaking": "breaking-change",
 };
 
-module.exports = async ({core, github, context, version}) => {
+module.exports = async ({core, github, repository, version}) => {
   const milestone = version;
-  const repository = context.repository;
 
   console.log("looking up PRs for milestone", milestone, "in repo", repository);
 
   return await github.paginate("GET /search/issues", {
-    q: `repo:${repository} is:pr state:closed milestone:${milestone}`,
+    q: `repo:${repository} is:pr is:merged milestone:${milestone}`,
   }).then((items) => {
 
     let cliIssues = [];
@@ -45,7 +44,7 @@ module.exports = async ({core, github, context, version}) => {
     let groupedCliIssues = groupByType(cliIssues);
     let groupedLibIssues = groupByType(libIssues);
     let output = "";
-    
+
     // issues
     for (let key in typeLabelsMap) {
       let issues = (groupedCliIssues[typeLabelsMap[key]] || []);
@@ -105,7 +104,7 @@ function createIssueEntry(issue) {
 
   let line = `* ${issue.title}`;
   if (annotations.length !== 0) {
-    line += ` [${annotations.join(", ")}]`;
+    line += ` [**${annotations.join(", ")}**]`;
   }
   line += ` (#${issue.number} by @${issue.user.login})\n`;
 

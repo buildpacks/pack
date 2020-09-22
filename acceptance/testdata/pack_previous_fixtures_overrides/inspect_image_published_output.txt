@@ -1,0 +1,45 @@
+Inspecting image: '{{.image_name}}'
+
+REMOTE:
+
+Stack: pack.test.stack
+
+Base Image:
+  Reference: {{.base_image_ref}}
+  Top Layer: {{.base_image_top_layer}}
+
+Run Images:
+  pack-test/run
+  {{.run_image_mirror}}
+
+Buildpacks:
+  ID                   VERSION
+  simple/layers        simple-layers-version
+
+Processes:
+  TYPE                 SHELL        COMMAND        ARGS
+  web (default)        bash         ./run          8080
+  hello                             echo           hello world
+
+
+LOCAL:
+
+Stack: pack.test.stack
+
+Base Image:
+  Reference: {{.base_image_ref}}
+  Top Layer: {{.base_image_top_layer}}
+
+Run Images:
+  pack-test/run
+  {{.run_image_mirror}}
+
+Buildpacks:
+  ID                   VERSION
+  simple/layers        simple-layers-version
+
+Processes:
+  TYPE                 SHELL        COMMAND        ARGS
+  web (default)        bash         ./run          8080
+  hello                             echo           hello world
+

@@ -44,7 +44,7 @@ jobs:
             pack_bin: pack.exe
           - config: windows-wcow
             os: windows
-            runner: windows-latest
+            runner: [self-hosted, windows, wcow]
             no_docker: "false"
             pack_bin: pack.exe
     runs-on: ${{ matrix.runner }}
@@ -52,6 +52,12 @@ jobs:
       PACK_BIN: ${{ matrix.pack_bin }}
       NO_DOCKER: ${{ matrix.no_docker }}
     steps:
+      - name: Set git to use LF and symlinks
+        if: matrix.os == 'windows'
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+          git config --global core.symlinks true
       - uses: actions/checkout@v2
       - name: Derive pack version from branch name
         run: |
@@ -67,8 +73,6 @@ jobs:
           echo "::set-env name=GOPATH::$(go env GOPATH)"
           echo "::add-path::$(go env GOPATH)/bin"
       - name: Verify
-        # disabled for windows due to format verification failing
-        if: matrix.os != 'windows'
         run: make verify
       - name: Test
         env:
@@ -119,13 +123,20 @@ jobs:
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack
-          tar -C pack-macos -vzcf pack-macos.tgz pack
+          filename=pack-v${{ env.PACK_VERSION }}-macos.tgz
+          tar -C pack-macos -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - linux
         run: |
           chmod +x pack-linux/pack
-          tar -C pack-linux -vzcf pack-linux.tgz pack
+          filename=pack-v${{ env.PACK_VERSION }}-linux.tgz
+          tar -C pack-linux -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - windows
-        run: zip -j pack-windows.zip pack-windows/pack.exe
+        run: |
+          filename=pack-v${{ env.PACK_VERSION }}-windows.zip
+          zip -j $filename pack-windows/pack.exe
+          shasum -a 256 $filename > $filename.sha256
       - name: Extract lifecycle version
         id: lifecycle_version
         run: |
@@ -141,7 +152,8 @@ jobs:
           PACK_HELP="${PACK_HELP//$'\n'/'%0A'}"
           PACK_HELP="${PACK_HELP//$'\r'/'%0D'}"
           echo "::set-output name=help::$PACK_HELP"
-      - uses: actions/github-script@v1
+      - name: Generate changelog
+        uses: actions/github-script@v1
         id: changelog
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
@@ -149,17 +161,17 @@ jobs:
           script: |
             const path = require('path');
             const scriptPath = path.resolve('.github/workflows/build/changelog/index.js');
-            require(scriptPath)({core, github, context, version: ${{ env.PACK_VERSION }}});
+            require(scriptPath)({core, github, repository: "${{ github.repository }}", version: "${{ env.PACK_VERSION }}" });
       - name: Create Release
         id: create_release
-        uses: actions/create-release@latest
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ env.PACK_VERSION }}
-          release_name: pack v${{ env.PACK_VERSION }}
+          name: pack v${{ env.PACK_VERSION }}
           draft: true
-          prerelease: false
+          files: pack-v${{ env.PACK_VERSION }}-*
           body: |
             # pack v${{ env.PACK_VERSION }}
             > This is a **beta** release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice. Note that pack is intended for local image builds, and thus requires a Docker daemon. The [lifecycle](https://github.com/buildpack/lifecycle) should be used directly when building on cloud platforms.
@@ -169,14 +181,6 @@ jobs:
             - The [Docker daemon](https://www.docker.com/get-started) must be installed on your workstation or accessible over the network.
 
             ## Install
-
-            #### macOS
-
-            If you're on macOS, you can use Homebrew:
-
-            ```bash
-            $ brew install buildpacks/tap/pack
-            ```
 
             #### Linux
 
@@ -190,12 +194,26 @@ jobs:
             ##### Command
 
             ```bash
-            (export GH=buildpacks/pack; export LATEST=$(curl -s https://api.github.com/repos/$GH/releases/latest | grep -o -E "https://.+?-linux.tgz"); echo "$LATEST"; curl -sSL "$LATEST" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv $(basename $GH))
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
             ```
 
-            #### Others
+            #### macOS
 
-            Otherwise:
+            On macOS, you can use Homebrew:
+
+            ```bash
+            brew install buildpacks/tap/pack
+            ```
+
+            #### Windows
+
+            On Windows, you can use [Chocolatey](https://chocolatey.org/):
+
+            ```bash
+            choco install pack
+            ```
+
+            #### Manually
 
             1. Download the `.tgz` or `.zip` file for your platform
             2. Extract the `pack` binary
@@ -213,33 +231,8 @@ jobs:
 
             ## Info
 
-            Builders created with this release of the pack CLI continue to contain [lifecycle v${{ steps.lifecycle_version.outputs.version }}](https://github.com/buildpack/lifecycle/releases/tag/v${{ steps.lifecycle_version.outputs.version }}) by default.
+            Builders created with this release of the pack CLI contain [lifecycle v${{ steps.lifecycle_version.outputs.version }}](https://github.com/buildpack/lifecycle/releases/tag/v${{ steps.lifecycle_version.outputs.version }}) by default.
 
+            ## Changelog
+            
             ${{ steps.changelog.outputs.contents }}
-      - name: Upload Release Asset - macos
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./pack-macos.tgz
-          asset_name: pack-v${{ env.PACK_VERSION }}-macos.tgz
-          asset_content_type: application/gzip
-      - name: Upload Release Asset - linux
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./pack-linux.tgz
-          asset_name: pack-v${{ env.PACK_VERSION }}-linux.tgz
-          asset_content_type: application/gzip
-      - name: Upload Release Asset - windows
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./pack-windows.zip
-          asset_name: pack-v${{ env.PACK_VERSION }}-windows.zip
-          asset_content_type: application/zip

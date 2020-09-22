@@ -2,14 +2,16 @@ package fakes
 
 import (
 	"github.com/Masterminds/semver"
+	"github.com/buildpacks/imgutil"
+	ifakes "github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/lifecycle/api"
 
-	"github.com/buildpacks/pack/internal/api"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 )
 
 type FakeBuilder struct {
-	ReturnForName                string
+	ReturnForImage               imgutil.Image
 	ReturnForUID                 int
 	ReturnForGID                 int
 	ReturnForLifecycleDescriptor builder.LifecycleDescriptor
@@ -17,32 +19,21 @@ type FakeBuilder struct {
 }
 
 func NewFakeBuilder(ops ...func(*FakeBuilder)) (*FakeBuilder, error) {
-	infoVersion, err := semver.NewVersion("12.34")
-	if err != nil {
-		return nil, err
-	}
-
-	platformAPIVersion, err := api.NewVersion("23.45")
-	if err != nil {
-		return nil, err
-	}
-
-	buildpackVersion, err := api.NewVersion("34.56")
-	if err != nil {
-		return nil, err
-	}
-
 	fakeBuilder := &FakeBuilder{
-		ReturnForName: "some-builder-name",
-		ReturnForUID:  99,
-		ReturnForGID:  99,
+		ReturnForImage: ifakes.NewImage("some-builder-name", "", nil),
+		ReturnForUID:   99,
+		ReturnForGID:   99,
 		ReturnForLifecycleDescriptor: builder.LifecycleDescriptor{
-			API: builder.LifecycleAPI{
-				BuildpackVersion: buildpackVersion,
-				PlatformVersion:  platformAPIVersion,
-			},
 			Info: builder.LifecycleInfo{
-				Version: &builder.Version{Version: *infoVersion},
+				Version: &builder.Version{Version: *semver.MustParse("12.34")},
+			},
+			APIs: builder.LifecycleAPIs{
+				Buildpack: builder.APIVersions{
+					Supported: builder.APISet{api.MustParse("0.4")},
+				},
+				Platform: builder.APIVersions{
+					Supported: builder.APISet{api.MustParse("0.4")},
+				},
 			},
 		},
 		ReturnForStack: builder.StackMetadata{},
@@ -55,15 +46,21 @@ func NewFakeBuilder(ops ...func(*FakeBuilder)) (*FakeBuilder, error) {
 	return fakeBuilder, nil
 }
 
-func WithName(name string) func(*FakeBuilder) {
+func WithDeprecatedPlatformAPIs(apis []*api.Version) func(*FakeBuilder) {
 	return func(builder *FakeBuilder) {
-		builder.ReturnForName = name
+		builder.ReturnForLifecycleDescriptor.APIs.Platform.Deprecated = apis
 	}
 }
 
-func WithPlatformVersion(version *api.Version) func(*FakeBuilder) {
+func WithSupportedPlatformAPIs(apis []*api.Version) func(*FakeBuilder) {
 	return func(builder *FakeBuilder) {
-		builder.ReturnForLifecycleDescriptor.API.PlatformVersion = version
+		builder.ReturnForLifecycleDescriptor.APIs.Platform.Supported = apis
+	}
+}
+
+func WithImage(image imgutil.Image) func(*FakeBuilder) {
+	return func(builder *FakeBuilder) {
+		builder.ReturnForImage = image
 	}
 }
 
@@ -80,7 +77,11 @@ func WithGID(gid int) func(*FakeBuilder) {
 }
 
 func (b *FakeBuilder) Name() string {
-	return b.ReturnForName
+	return b.ReturnForImage.Name()
+}
+
+func (b *FakeBuilder) Image() imgutil.Image {
+	return b.ReturnForImage
 }
 
 func (b *FakeBuilder) UID() int {
