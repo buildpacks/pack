@@ -518,44 +518,87 @@ func PullImageWithAuth(dockerCli client.CommonAPIClient, ref, registryAuth strin
 }
 
 func CopyFile(t *testing.T, src, dst string) {
-	fi, err := os.Stat(src)
+	t.Helper()
+
+	err := CopyFileE(src, dst)
 	AssertNil(t, err)
+}
+
+func CopyFileE(src, dst string) error {
+	fi, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
 
 	srcFile, err := os.Open(src)
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
 	defer srcFile.Close()
 
 	dstFile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fi.Mode())
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
 	defer dstFile.Close()
 
 	_, err = io.Copy(dstFile, srcFile)
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
 
 	modifiedtime := time.Time{}
 	err = os.Chtimes(dst, modifiedtime, modifiedtime)
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func RecursiveCopy(t *testing.T, src, dst string) {
 	t.Helper()
-	fis, err := ioutil.ReadDir(src)
+
+	err := RecursiveCopyE(src, dst)
 	AssertNil(t, err)
+}
+
+func RecursiveCopyE(src, dst string) error {
+	fis, err := ioutil.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
 	for _, fi := range fis {
 		if fi.Mode().IsRegular() {
-			CopyFile(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+			err = CopyFileE(filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+			if err != nil {
+				return err
+			}
 		}
 		if fi.IsDir() {
 			err = os.Mkdir(filepath.Join(dst, fi.Name()), fi.Mode())
-			AssertNil(t, err)
-			RecursiveCopy(t, filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+			if err != nil {
+				return err
+			}
+			err = RecursiveCopyE(filepath.Join(src, fi.Name()), filepath.Join(dst, fi.Name()))
+			if err != nil {
+				return err
+			}
 		}
 	}
+
 	modifiedtime := time.Time{}
 	err = os.Chtimes(dst, modifiedtime, modifiedtime)
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
 	err = os.Chmod(dst, 0775)
-	AssertNil(t, err)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func RequireDocker(t *testing.T) {
