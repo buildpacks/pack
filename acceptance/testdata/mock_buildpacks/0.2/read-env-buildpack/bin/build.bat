@@ -10,7 +10,7 @@ if exist %platform_dir%\env\ENV1_CONTENTS (
     mkdir %launch_dir%\env1-launch-layer
     set /p contents=<%platform_dir%\env\ENV1_CONTENTS
     echo !contents!> %launch_dir%\env1-launch-layer\env1-launch-dep
-    mklink env1-launch-dep %launch_dir%\env1-launch-layer\env1-launch-dep
+    mklink /j env1-launch-deps %launch_dir%\env1-launch-layer
     echo launch = true> %launch_dir%\env1-launch-layer.toml
 )
 
@@ -20,7 +20,7 @@ if exist %platform_dir%\env\ENV2_CONTENTS (
     mkdir %launch_dir%\env2-launch-layer
     set /p contents=<%platform_dir%\env\ENV2_CONTENTS
     echo !contents!> %launch_dir%\env2-launch-layer\env2-launch-dep
-    mklink env2-launch-dep %launch_dir%\env2-launch-layer\env2-launch-dep
+    mklink /j env2-launch-deps %launch_dir%\env2-launch-layer
     echo launch = true> %launch_dir%\env2-launch-layer.toml
 )
 

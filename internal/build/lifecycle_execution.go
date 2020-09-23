@@ -42,6 +42,11 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 		return nil, err
 	}
 
+	osType, err := opts.Builder.Image().OS()
+	if err != nil {
+		return nil, err
+	}
+
 	exec := &LifecycleExecution{
 		logger:       logger,
 		docker:       docker,
@@ -49,15 +54,9 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 		appVolume:    paths.FilterReservedNames("pack-app-" + randString(10)),
 		platformAPI:  latestSupportedPlatformAPI,
 		opts:         opts,
+		os:           osType,
+		mountPaths:   mountPathsForOS(osType),
 	}
-
-	os, err := opts.Builder.Image().OS()
-	if err != nil {
-		return nil, err
-	}
-
-	exec.os = os
-	exec.mountPaths = mountPathsForOS(os)
 
 	return exec, nil
 }
@@ -196,7 +195,7 @@ func (l *LifecycleExecution) Create(
 		WithArgs(repoName),
 		WithNetwork(networkMode),
 		WithBinds(append(volumes, fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir()))...),
-		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.opts.FileFilter)),
+		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.opts.FileFilter)),
 	}
 
 	if publish {
@@ -232,7 +231,10 @@ func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, vol
 		),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
-		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.opts.FileFilter)),
+		WithContainerOperations(
+			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
+			CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.opts.FileFilter),
+		),
 	)
 
 	detect := phaseFactory.New(configProvider)
@@ -389,7 +391,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		WithRoot(),
 		WithNetwork(networkMode),
 		WithBinds(fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir())),
-		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack())),
+		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
 	}
 
 	if publish {
