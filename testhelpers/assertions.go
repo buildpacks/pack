@@ -188,6 +188,7 @@ func (a AssertionManager) NotContainWithMessage(actual, expected, messageFormat 
 	}
 }
 
+// Error checks that the provided value is an error (non-nil)
 func (a AssertionManager) Error(actual error) {
 	a.testObject.Helper()
 

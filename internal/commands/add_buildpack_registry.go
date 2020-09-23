@@ -13,17 +13,20 @@ import (
 )
 
 func AddBuildpackRegistry(logger logging.Logger, cfg config.Config) *cobra.Command {
-	var setDefault bool
+	var (
+		setDefault   bool
+		registryType string
+	)
 
 	cmd := &cobra.Command{
-		Use:   "add-buildpack-registry <name> <url> <type> (github | git)",
-		Args:  cobra.ExactArgs(3),
+		Use:   "add-buildpack-registry <name> <url>",
+		Args:  cobra.ExactArgs(2),
 		Short: "Adds a new buildpack registry to your pack config file",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			newRegistry := config.Registry{
 				Name: args[0],
 				URL:  args[1],
-				Type: args[2],
+				Type: registryType,
 			}
 
 			err := addRegistry(newRegistry, cfg, setDefault)
@@ -35,9 +38,10 @@ func AddBuildpackRegistry(logger logging.Logger, cfg config.Config) *cobra.Comma
 			return nil
 		}),
 	}
-	cmd.Example = "pack add-buildpack-registry myregistry github https://github.com/buildpacks/mybuildpack"
+	cmd.Example = "pack add-buildpack-registry my-registry https://github.com/buildpacks/my-buildpack"
 	cmd.Flags().BoolVar(&setDefault, "default", false, "Set this buildpack registry as the default")
-	AddHelpFlag(cmd, "add-registry")
+	cmd.Flags().StringVar(&registryType, "type", "github", "Type of buildpack registry [git|github]")
+	AddHelpFlag(cmd, "add-buildpack-registry")
 
 	return cmd
 }
