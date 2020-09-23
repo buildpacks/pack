@@ -6,5 +6,4 @@ go:
     # The go.build.flags property allows you to override the default build
     # flags when compiling your program.
     flags:
-      - -buildmode=default
-      - -ldflags="-s -w -X 'github.com/buildpacks/pack.Version=#{PACK_VERSION}#' -extldflags ${LDFLAGS}"
+      - -ldflags="-s -w -X 'github.com/buildpacks/pack.Version=#{PACK_VERSION}#'"
