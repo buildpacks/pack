@@ -23,7 +23,7 @@ type ConfigurableLogger interface {
 // NewPackCommand generates a Pack command
 func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	cobra.EnableCommandSorting = false
-	cfg, err := initConfig()
+	cfg, cfgPath, err := initConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -85,6 +85,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	if cfg.Experimental {
 		rootCmd.AddCommand(commands.ListBuildpackRegistries(logger, cfg))
+		rootCmd.AddCommand(commands.AddBuildpackRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, &packClient))
 		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, &packClient))
 	}
@@ -99,17 +100,17 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	return rootCmd, nil
 }
 
-func initConfig() (config.Config, error) {
+func initConfig() (config.Config, string, error) {
 	path, err := config.DefaultConfigPath()
 	if err != nil {
-		return config.Config{}, errors.Wrap(err, "getting config path")
+		return config.Config{}, "", errors.Wrap(err, "getting config path")
 	}
 
 	cfg, err := config.Read(path)
 	if err != nil {
-		return config.Config{}, errors.Wrap(err, "reading pack config")
+		return config.Config{}, "", errors.Wrap(err, "reading pack config")
 	}
-	return cfg, nil
+	return cfg, path, nil
 }
 
 func initClient(logger logging.Logger, cfg config.Config) (pack.Client, error) {

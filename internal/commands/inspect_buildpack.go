@@ -69,6 +69,7 @@ func InspectBuildpack(logger logging.Logger, cfg *config.Config, client PackClie
 			buildpackName := args[0]
 			registry := flags.Registry
 			if registry == "" {
+				//nolint:staticcheck
 				registry = cfg.DefaultRegistry
 			}
 
