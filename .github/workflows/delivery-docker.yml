@@ -1,19 +1,14 @@
 name: delivery / docker
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag_name:
-        description: 'tag'
-        required: true
-#  release:
-#    types:
-#      - published
+  release:
+    types:
+      - published
 
 env:
   BUILDER: "paketobuildpacks/builder:tiny"
   IMG_NAME: 'pack'
-  USERNAME: 'dfreilich'
+  USERNAME: 'buildpacksio'
 
 jobs:
   deliver-docker:
@@ -24,7 +19,7 @@ jobs:
         id: version
         shell: bash
         run: |
-          echo "::set-output name=VERSION::$(echo ${{ github.event.inputs.tag_name }} | cut -d "v" -f2)"
+          echo "::set-output name=VERSION::$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)"
       - name: Setup Working Dir
         shell: bash
         run: |
