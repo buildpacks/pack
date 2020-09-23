@@ -2,11 +2,6 @@ name: build
 
 on:
   push:
-    paths-ignore:
-      - '**.md'
-      - 'resources/**'
-      - 'CODEOWNERS'
-      - 'LICENSE'
     branches:
       - main
       - 'release/**'
