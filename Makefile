@@ -29,7 +29,7 @@ GOTESTFLAGS?=-v -count=1 -parallel=1
 PACKAGE_BASE=github.com/buildpacks/pack
 PACK_GITSHA1=$(shell git rev-parse --short=7 HEAD)
 PACK_VERSION?=0.0.0
-TEST_TIMEOUT?=900s
+TEST_TIMEOUT?=1200s
 UNIT_TIMEOUT?=$(TEST_TIMEOUT)
 
 clean_build := $(strip ${PACK_BUILD})

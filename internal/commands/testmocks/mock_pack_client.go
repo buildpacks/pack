@@ -79,6 +79,21 @@ func (mr *MockPackClientMockRecorder) InspectBuilder(arg0, arg1 interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectBuilder", reflect.TypeOf((*MockPackClient)(nil).InspectBuilder), arg0, arg1)
 }
 
+// InspectBuildpack mocks base method
+func (m *MockPackClient) InspectBuildpack(arg0 pack.InspectBuildpackOptions) (*pack.BuildpackInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InspectBuildpack", arg0)
+	ret0, _ := ret[0].(*pack.BuildpackInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InspectBuildpack indicates an expected call of InspectBuildpack
+func (mr *MockPackClientMockRecorder) InspectBuildpack(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectBuildpack", reflect.TypeOf((*MockPackClient)(nil).InspectBuildpack), arg0)
+}
+
 // InspectImage mocks base method
 func (m *MockPackClient) InspectImage(arg0 string, arg1 bool) (*pack.ImageInfo, error) {
 	m.ctrl.T.Helper()
