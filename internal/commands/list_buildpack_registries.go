@@ -3,6 +3,8 @@ package commands
 import (
 	"fmt"
 
+	"github.com/buildpacks/pack/internal/style"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
@@ -19,6 +21,7 @@ func ListBuildpackRegistries(logger logging.Logger, cfg config.Config) *cobra.Co
 				registryFmt := fmtRegistry(registry, registry.Name == cfg.DefaultRegistryName, logger.IsVerbose())
 				logger.Info(registryFmt)
 			}
+			logging.Tip(logger, "Run %s to add additional registries", style.Symbol("pack add-buildpack-registry"))
 
 			return nil
 		}),

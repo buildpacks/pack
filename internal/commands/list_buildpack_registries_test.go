@@ -82,13 +82,5 @@ func testListBuildpackRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContains(t, outBuf.String(), "personal registry")
 			h.AssertContains(t, outBuf.String(), "https://github.com/buildpacks/personal-registry")
 		})
-
-		it("should list nothing when NO registries exist", func() {
-			cfg = config.Config{}
-			command = commands.ListBuildpackRegistries(logger, cfg)
-
-			h.AssertNil(t, command.Execute())
-			h.AssertEq(t, outBuf.String(), "")
-		})
 	})
 }
