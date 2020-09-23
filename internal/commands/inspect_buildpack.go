@@ -64,7 +64,7 @@ func InspectBuildpack(logger logging.Logger, cfg *config.Config, client PackClie
 	cmd := &cobra.Command{
 		Use:   "inspect-buildpack <image-name>",
 		Short: "Show information about a buildpack",
-		Args:  cobra.MaximumNArgs(4),
+		Args:  cobra.RangeArgs(1, 4),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			buildpackName := args[0]
 			registry := flags.Registry
