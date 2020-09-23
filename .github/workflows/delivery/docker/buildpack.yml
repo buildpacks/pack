@@ -7,10 +7,4 @@ go:
     # flags when compiling your program.
     flags:
       - -buildmode=default
-      - -tags=paketo
       - -ldflags="-s -w -X 'github.com/buildpacks/pack.Version=#{PACK_VERSION}#' -extldflags ${LDFLAGS}"
-
-    # The go.build.import-path property allows you to specify an import path
-    # for your application. This is necessary if you are building a $GOPATH
-    # application that imports its own sub-packages.
-    import-path: github.com/buildpacks/pack
