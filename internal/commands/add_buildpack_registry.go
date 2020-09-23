@@ -1,18 +1,21 @@
 package commands
 
 import (
-	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/slices"
+	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/registry"
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
 
-func AddBuildpackRegistry(logger logging.Logger, cfg config.Config) *cobra.Command {
+func AddBuildpackRegistry(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	var (
 		setDefault   bool
 		registryType string
@@ -29,10 +32,11 @@ func AddBuildpackRegistry(logger logging.Logger, cfg config.Config) *cobra.Comma
 				Type: registryType,
 			}
 
-			err := addRegistry(newRegistry, cfg, setDefault)
+			err := addRegistry(newRegistry, setDefault, cfg, cfgPath)
 			if err != nil {
-				return errors.Wrapf(err, "add buildpack registry")
+				return err
 			}
+
 			logger.Infof("Successfully added %s to buildpack registries", style.Symbol(newRegistry.Name))
 
 			return nil
@@ -46,20 +50,19 @@ func AddBuildpackRegistry(logger logging.Logger, cfg config.Config) *cobra.Comma
 	return cmd
 }
 
-func addRegistry(newRegistry config.Registry, cfg config.Config, setDefault bool) error {
-	if newRegistry.Type != "github" && newRegistry.Type != "git" {
+func addRegistry(newRegistry config.Registry, setDefault bool, cfg config.Config, cfgPath string) error {
+	if _, ok := stringset.FromSlice(registry.Types)[newRegistry.Type]; !ok {
 		return errors.Errorf(
-			"%s is not a valid type.  Supported types are %s or %s.",
+			"%s is not a valid type. Supported types are: %s.",
 			style.Symbol(newRegistry.Type),
-			style.Symbol("github"),
-			style.Symbol("git"))
+			strings.Join(slices.MapString(registry.Types, style.Symbol), ", "))
 	}
+
 	for _, r := range cfg.Registries {
 		if r.Name == newRegistry.Name {
 			return errors.Errorf(
-				"Buildpack registry %s already exists.  First run %s and try again.",
-				style.Symbol(newRegistry.Name),
-				style.Symbol(fmt.Sprintf("remove-buildpack-registry %s", newRegistry.Name)))
+				"Buildpack registry %s already exists.",
+				style.Symbol(newRegistry.Name))
 		}
 	}
 
@@ -67,10 +70,5 @@ func addRegistry(newRegistry config.Registry, cfg config.Config, setDefault bool
 		cfg.DefaultRegistryName = newRegistry.Name
 	}
 	cfg.Registries = append(cfg.Registries, newRegistry)
-	configPath, err := config.DefaultConfigPath()
-	if err != nil {
-		return err
-	}
-
-	return config.Write(cfg, configPath)
+	return config.Write(cfg, cfgPath)
 }

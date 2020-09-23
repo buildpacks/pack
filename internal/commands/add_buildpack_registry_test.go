@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/heroku/color"
@@ -24,37 +25,34 @@ func TestAddBuildpackRegistry(t *testing.T) {
 }
 
 func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
-	var (
-		outBuf   bytes.Buffer
-		logger   = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		packHome string
-		assert   = h.NewAssertionManager(t)
-	)
-
 	when("AddBuildpackRegistry", func() {
+		var (
+			outBuf     bytes.Buffer
+			logger     = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+			tmpDir     string
+			configFile string
+			assert     = h.NewAssertionManager(t)
+		)
+
 		it.Before(func() {
-			tmpDir, err := ioutil.TempDir("", "pack-home-*")
+			var err error
+			tmpDir, err = ioutil.TempDir("", "pack-home-*")
 			assert.Nil(err)
 
-			packHome = tmpDir
-			os.Setenv("PACK_HOME", packHome)
+			configFile = filepath.Join(tmpDir, "config.toml")
 		})
 
 		it.After(func() {
-			_ = os.RemoveAll(packHome)
-			os.Unsetenv("PACK_HOME")
+			_ = os.RemoveAll(tmpDir)
 		})
 
 		when("default is true", func() {
 			it("sets newly added registry as the default", func() {
-				command := commands.AddBuildpackRegistry(logger, config.Config{})
+				command := commands.AddBuildpackRegistry(logger, config.Config{}, configFile)
 				command.SetArgs([]string{"bp", "https://github.com/buildpacks/registry-index/", "--default"})
 				assert.Succeeds(command.Execute())
 
-				configPath, err := config.DefaultConfigPath()
-				assert.Nil(err)
-
-				cfg, err := config.Read(configPath)
+				cfg, err := config.Read(configFile)
 				assert.Nil(err)
 
 				assert.Equal(cfg.DefaultRegistryName, "bp")
@@ -63,7 +61,7 @@ func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("validation", func() {
 			it("fails with missing args", func() {
-				command := commands.AddBuildpackRegistry(logger, config.Config{})
+				command := commands.AddBuildpackRegistry(logger, config.Config{}, configFile)
 				command.SetOut(ioutil.Discard)
 				command.SetArgs([]string{})
 				err := command.Execute()
@@ -71,12 +69,12 @@ func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should validate type", func() {
-				command := commands.AddBuildpackRegistry(logger, config.Config{})
+				command := commands.AddBuildpackRegistry(logger, config.Config{}, configFile)
 				command.SetArgs([]string{"bp", "https://github.com/buildpacks/registry-index/", "--type=bogus"})
 				assert.Error(command.Execute())
 
 				output := outBuf.String()
-				h.AssertContains(t, output, "'bogus' is not a valid type.  Supported types are 'github' or 'git'.")
+				h.AssertContains(t, output, "'bogus' is not a valid type. Supported types are: 'git', 'github'.")
 			})
 
 			it("should throw error when registry already exists", func() {
@@ -88,12 +86,12 @@ func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 							URL:  "https://github.com/buildpacks/registry-index/",
 						},
 					},
-				})
+				}, configFile)
 				command.SetArgs([]string{"bp", "https://github.com/buildpacks/registry-index/"})
 				assert.Error(command.Execute())
 
 				output := outBuf.String()
-				h.AssertContains(t, output, "Buildpack registry 'bp' already exists.  First run 'remove-buildpack-registry bp' and try again.")
+				h.AssertContains(t, output, "Buildpack registry 'bp' already exists.")
 			})
 		})
 	})
