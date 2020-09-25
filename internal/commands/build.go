@@ -48,6 +48,11 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 		Args:    cobra.ExactArgs(1),
 		Short:   "Generate app image from source code",
 		Example: "pack build test_img --path apps/test-app --builder cnbs/sample-builder:bionic",
+		Long: "Pack Build uses Cloud Native Buildpacks to create a runnable  app image from source code.\n\nPack Build " +
+			"requires an image name, which will be generated from the source code. Build defaults to the current directory, " +
+			"but you can use `--path` to specify another source code directory. Build requires a `builder`, which can either " +
+			"be provided directly to build using `--builder`, or can be set using the `set-default-builder` command. For more " +
+			"on how to use `pack build`, see: https://buildpacks.io/docs/app-developer-guide/build-an-app/.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validateBuildFlags(&flags, cfg, packClient, logger); err != nil {
 				return err

@@ -43,6 +43,11 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 		Args:    cobra.ExactValidArgs(1),
 		Short:   "Package buildpack in OCI format.",
 		Example: "pack package-buildpack my-buildpack --config ./package.toml",
+		Long: "package-buildpack allows users to package (a) buildpack(s) into OCI format, which can then to be hosted in " +
+			"image repositories. You can also package a number of buildpacks together, to enable easier distribution of " +
+			"a set of buildpacks. Packaged buildpacks can be used as inputs to `pack build` (using the `--buildpack` flag), " +
+			"and they can be included in the configs used in `pack create-builder` and `pack package-buildpack`. For more " +
+			"on how to package a buildpack, see: https://buildpacks.io/docs/buildpack-author-guide/package-a-buildpack/.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validatePackageBuildpackFlags(&flags, cfg); err != nil {
 				return err
