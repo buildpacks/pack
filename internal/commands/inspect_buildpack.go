@@ -62,9 +62,10 @@ type InspectBuildpackFlags struct {
 func InspectBuildpack(logger logging.Logger, cfg *config.Config, client PackClient) *cobra.Command {
 	var flags InspectBuildpackFlags
 	cmd := &cobra.Command{
-		Use:   "inspect-buildpack <image-name>",
-		Short: "Show information about a buildpack",
-		Args:  cobra.RangeArgs(1, 4),
+		Use:     "inspect-buildpack <image-name>",
+		Args:    cobra.RangeArgs(1, 4),
+		Short:   "Show information about a buildpack",
+		Example: "pack inspect-buildpack cnbs/sample-package:hello-universe",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			buildpackName := args[0]
 			registry := flags.Registry

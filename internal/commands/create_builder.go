@@ -28,9 +28,10 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 	var flags CreateBuilderFlags
 
 	cmd := &cobra.Command{
-		Use:   "create-builder <image-name> --config <builder-config-path>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Create builder image",
+		Use:     "create-builder <image-name> --config <builder-config-path>",
+		Args:    cobra.ExactArgs(1),
+		Short:   "Create builder image",
+		Example: "pack create-builder my-builder:bionic --config ./builder.toml",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validateCreateBuilderFlags(&flags, cfg); err != nil {
 				return err

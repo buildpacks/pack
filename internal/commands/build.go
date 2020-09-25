@@ -44,9 +44,10 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 	var flags BuildFlags
 
 	cmd := &cobra.Command{
-		Use:   "build <image-name>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Generate app image from source code",
+		Use:     "build <image-name>",
+		Args:    cobra.ExactArgs(1),
+		Short:   "Generate app image from source code",
+		Example: "pack build test_img --path apps/test-app --builder cnbs/sample-builder:bionic",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validateBuildFlags(&flags, cfg, packClient, logger); err != nil {
 				return err

@@ -48,9 +48,10 @@ var suggestedBuilders = []SuggestedBuilder{
 
 func SuggestBuilders(logger logging.Logger, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "suggest-builders",
-		Short: "Display list of recommended builders",
-		Args:  cobra.NoArgs,
+		Use:     "suggest-builders",
+		Args:    cobra.NoArgs,
+		Short:   "Display list of recommended builders",
+		Example: "pack suggest-builders",
 		Run: func(cmd *cobra.Command, s []string) {
 			suggestBuilders(logger, client)
 		},

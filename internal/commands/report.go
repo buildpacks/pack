@@ -21,9 +21,10 @@ func Report(logger logging.Logger, version string) *cobra.Command {
 	var explicit bool
 
 	cmd := &cobra.Command{
-		Use:   "report",
-		Args:  cobra.NoArgs,
-		Short: "Display useful information for reporting an issue",
+		Use:     "report",
+		Args:    cobra.NoArgs,
+		Short:   "Display useful information for reporting an issue",
+		Example: "pack report",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			var buf bytes.Buffer
 			err := generateOutput(&buf, version, explicit)

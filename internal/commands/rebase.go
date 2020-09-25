@@ -17,9 +17,10 @@ func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.
 	var policy string
 
 	cmd := &cobra.Command{
-		Use:   "rebase <image-name>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Rebase app image with latest run image",
+		Use:     "rebase <image-name>",
+		Args:    cobra.ExactArgs(1),
+		Short:   "Rebase app image with latest run image",
+		Example: "pack rebase buildpacksio/pack",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			opts.RepoName = args[0]
 			opts.AdditionalMirrors = getMirrors(cfg)
