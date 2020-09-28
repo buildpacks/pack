@@ -162,8 +162,61 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           milestone: ${{ env.PACK_MILESTONE }}
-      - name: Create Release
-        id: create_release
+      - name: Create Pre-Release
+        if: ${{ env.PACK_VERSION }} != ${{ env.PACK_MILESTONE }}
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.PACK_VERSION }}
+          name: pack v${{ env.PACK_VERSION }}
+          draft: true
+          prerelease: true
+          files: pack-v${{ env.PACK_VERSION }}-*
+          body: |
+            # pack v${{ env.PACK_VERSION }}
+            > This is a **beta** pre-release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice. Note that pack is intended for local image builds, and thus requires a Docker daemon. The [lifecycle](https://github.com/buildpack/lifecycle) should be used directly when building on cloud platforms.
+
+            ## Prerequisites
+
+            - The [Docker daemon](https://www.docker.com/get-started) must be installed on your workstation or accessible over the network.
+
+            ## Install
+
+            #### Linux
+
+            ##### Command
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v0.13.1/pack-v0.13.1-linux.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
+
+            #### Manually
+
+            1. Download the `.tgz` or `.zip` file for your platform
+            2. Extract the `pack` binary
+            3. (Optional) Add the directory containing `pack` to `PATH`, or copy `pack` to a directory like `/usr/local/bin`
+
+            ## Run
+
+            Run the command `pack`.
+
+            You should see the following output:
+
+            ```text
+            ${{ steps.pack_help.outputs.help }}
+            ```
+
+            ## Info
+
+            Builders created with this release of the pack CLI contain [lifecycle v${{ steps.lifecycle_version.outputs.version }}](https://github.com/buildpack/lifecycle/releases/tag/v${{ steps.lifecycle_version.outputs.version }}) by default.
+
+            ## Changelog
+
+            ${{ steps.changelog.outputs.contents }}
+
+      - name: Create Beta Release
+        if: ${{ env.PACK_VERSION }} == ${{ env.PACK_MILESTONE }}
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -199,5 +252,5 @@ jobs:
             Builders created with this release of the pack CLI contain [lifecycle v${{ steps.lifecycle_version.outputs.version }}](https://github.com/buildpack/lifecycle/releases/tag/v${{ steps.lifecycle_version.outputs.version }}) by default.
 
             ## Changelog
-            
+
             ${{ steps.changelog.outputs.contents }}
