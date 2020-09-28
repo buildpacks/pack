@@ -188,7 +188,7 @@ jobs:
             ##### Command
 
             ```bash
-            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v0.13.1/pack-v0.13.1-linux.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
             ```
 
             #### Manually
