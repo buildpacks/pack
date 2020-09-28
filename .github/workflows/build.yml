@@ -204,10 +204,16 @@ jobs:
 
             On Windows, you can use [Chocolatey](https://chocolatey.org/):
 
-            ```bash
+            ```cmd
             choco install pack
             ```
-
+            
+            or [scoop](https://scoop.sh/):
+            
+            ```cmd
+            scoop install pack
+            ```
+            
             #### Manually
 
             1. Download the `.tgz` or `.zip` file for your platform
