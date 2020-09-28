@@ -3,7 +3,7 @@ name: delivery / release-dispatch
 on:
   release:
     types:
-      - published
+      - released
 
 jobs:
   send-release-dispatch:

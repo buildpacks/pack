@@ -3,7 +3,7 @@ name: delivery / archlinux
 on:
   release:
     types:
-      - published
+      - released
 
 jobs:
   pack-cli:

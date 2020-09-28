@@ -3,7 +3,7 @@ name: delivery / homebrew
 on:
   release:
     types:
-      - published
+      - released
 
 jobs:
   update-tap:

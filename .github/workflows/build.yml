@@ -95,14 +95,23 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Derive pack version from branch name
+        shell: bash
         run: |
-          [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]}
+          echo "GITHUB_REF=${GITHUB_REF}"
+          [[ $GITHUB_REF =~ ^refs\/heads\/release\/(.*)$ ]] && version=${BASH_REMATCH[1]}
           if [[ -z "${version}" ]]; then
-            echo "pack version not detected."
+            echo "ERROR: pack version not detected."
             exit 1
           fi
-          echo "::set-env name=PACK_VERSION::$version"
-        shell: bash
+          echo "::set-env name=PACK_VERSION::${version}"
+
+          [[ "${version}" =~ ^([^-]+).*$ ]] && milestone=${BASH_REMATCH[1]}
+          if [[ -z "${milestone}" ]]; then
+            echo "ERROR: couldn't determine the milestone to lookup from version: ${version}."
+            exit 1
+          fi
+
+          echo "::set-env name=PACK_MILESTONE::${milestone}"
       - name: Download artifacts - macos
         uses: actions/download-artifact@v1
         with:
@@ -148,15 +157,11 @@ jobs:
           PACK_HELP="${PACK_HELP//$'\r'/'%0D'}"
           echo "::set-output name=help::$PACK_HELP"
       - name: Generate changelog
-        uses: actions/github-script@v1
+        uses: ./.github/workflows/actions/release-notes
         id: changelog
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          result-encoding: string
-          script: |
-            const path = require('path');
-            const scriptPath = path.resolve('.github/workflows/build/changelog/index.js');
-            require(scriptPath)({core, github, repository: "${{ github.repository }}", version: "${{ env.PACK_VERSION }}" });
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          milestone: ${{ env.PACK_MILESTONE }}
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
@@ -177,42 +182,7 @@ jobs:
 
             ## Install
 
-            #### Linux
-
-            On Linux you can use the one of the following methods of installation.
-
-            ##### Arch Linux
-
-            - [pack-cli](https://aur.archlinux.org/packages/pack-cli/)
-            - [pack-cli-bin](https://aur.archlinux.org/packages/pack-cli-bin/)
-
-            ##### Command
-
-            ```bash
-            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
-            ```
-
-            #### macOS
-
-            On macOS, you can use Homebrew:
-
-            ```bash
-            brew install buildpacks/tap/pack
-            ```
-
-            #### Windows
-
-            On Windows, you can use [Chocolatey](https://chocolatey.org/):
-
-            ```bash
-            choco install pack
-            ```
-
-            #### Manually
-
-            1. Download the `.tgz` or `.zip` file for your platform
-            2. Extract the `pack` binary
-            3. (Optional) Add the directory containing `pack` to `PATH`, or copy `pack` to a directory like `/usr/local/bin`
+            For instructions on installing `pack`, see our [installation docs](https://buildpacks.io/docs/tools/pack/cli/install/).
 
             ## Run
 
