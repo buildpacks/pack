@@ -32,6 +32,11 @@ func AddBuildpackRegistry(logger logging.Logger, cfg config.Config, cfgPath stri
 				Type: registryType,
 			}
 
+			if newRegistry.Name == config.OfficialRegistryName {
+				return errors.Errorf("%s is a reserved registry name, please provide a different name",
+					style.Symbol(config.OfficialRegistryName))
+			}
+
 			err := addRegistry(newRegistry, setDefault, cfg, cfgPath)
 			if err != nil {
 				return err

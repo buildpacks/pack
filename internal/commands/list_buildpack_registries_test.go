@@ -76,11 +76,39 @@ func testListBuildpackRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertContains(t, outBuf.String(), "public registry")
 			h.AssertContains(t, outBuf.String(), "https://github.com/buildpacks/public-registry")
 
-			h.AssertContains(t, outBuf.String(), "private registry")
+			h.AssertContains(t, outBuf.String(), "* private registry")
 			h.AssertContains(t, outBuf.String(), "https://github.com/buildpacks/private-registry")
 
 			h.AssertContains(t, outBuf.String(), "personal registry")
 			h.AssertContains(t, outBuf.String(), "https://github.com/buildpacks/personal-registry")
+
+			h.AssertContains(t, outBuf.String(), "official")
+			h.AssertContains(t, outBuf.String(), "https://github.com/buildpacks/registry-index")
+		})
+
+		it("should indicate official as the default registry by default", func() {
+			logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+			cfg.DefaultRegistryName = ""
+
+			command = commands.ListBuildpackRegistries(logger, cfg)
+
+			h.AssertNil(t, command.Execute())
+
+			h.AssertContains(t, outBuf.String(), "* official")
+			h.AssertContains(t, outBuf.String(), "public registry")
+			h.AssertContains(t, outBuf.String(), "private registry")
+			h.AssertContains(t, outBuf.String(), "personal registry")
+		})
+
+		it("should use official when no registries are defined", func() {
+			logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+			cfg.DefaultRegistryName = ""
+
+			command = commands.ListBuildpackRegistries(logger, config.Config{})
+
+			h.AssertNil(t, command.Execute())
+
+			h.AssertContains(t, outBuf.String(), "* official")
 		})
 	})
 }

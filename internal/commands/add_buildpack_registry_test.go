@@ -93,6 +93,15 @@ func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 				output := outBuf.String()
 				h.AssertContains(t, output, "Buildpack registry 'bp' already exists.")
 			})
+
+			it("should throw error when registry name is official", func() {
+				command := commands.AddBuildpackRegistry(logger, config.Config{}, configFile)
+				command.SetArgs([]string{"official", "https://github.com/buildpacks/registry-index/", "--type=github"})
+				assert.Error(command.Execute())
+
+				output := outBuf.String()
+				h.AssertContains(t, output, "'official' is a reserved registry name, please provide a different name")
+			})
 		})
 	})
 }
