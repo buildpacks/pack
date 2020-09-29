@@ -11,9 +11,9 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-func ListBuildpackRegistries(logger logging.Logger, cfg config.Config) *cobra.Command {
+func ListRegistries(logger logging.Logger, cfg config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list-buildpack-registries",
+		Use:   "list-registries",
 		Args:  cobra.NoArgs,
 		Short: "Lists all buildpack registries",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
@@ -21,7 +21,7 @@ func ListBuildpackRegistries(logger logging.Logger, cfg config.Config) *cobra.Co
 				registryFmt := fmtRegistry(registry, registry.Name == cfg.DefaultRegistryName, logger.IsVerbose())
 				logger.Info(registryFmt)
 			}
-			logging.Tip(logger, "Run %s to add additional registries", style.Symbol("pack add-buildpack-registry"))
+			logging.Tip(logger, "Run %s to add additional registries", style.Symbol("pack add-registry"))
 
 			return nil
 		}),

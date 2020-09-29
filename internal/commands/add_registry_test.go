@@ -17,15 +17,15 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestAddBuildpackRegistry(t *testing.T) {
+func TestAddRegistry(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "Commands", testAddBuildpackRegistryCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Commands", testAddRegistryCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
-	when("AddBuildpackRegistry", func() {
+func testAddRegistryCommand(t *testing.T, when spec.G, it spec.S) {
+	when("AddRegistry", func() {
 		var (
 			outBuf     bytes.Buffer
 			logger     = ilogging.NewLogWithWriters(&outBuf, &outBuf)
@@ -48,7 +48,7 @@ func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("default is true", func() {
 			it("sets newly added registry as the default", func() {
-				command := commands.AddBuildpackRegistry(logger, config.Config{}, configFile)
+				command := commands.AddRegistry(logger, config.Config{}, configFile)
 				command.SetArgs([]string{"bp", "https://github.com/buildpacks/registry-index/", "--default"})
 				assert.Succeeds(command.Execute())
 
@@ -61,7 +61,7 @@ func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("validation", func() {
 			it("fails with missing args", func() {
-				command := commands.AddBuildpackRegistry(logger, config.Config{}, configFile)
+				command := commands.AddRegistry(logger, config.Config{}, configFile)
 				command.SetOut(ioutil.Discard)
 				command.SetArgs([]string{})
 				err := command.Execute()
@@ -69,7 +69,7 @@ func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should validate type", func() {
-				command := commands.AddBuildpackRegistry(logger, config.Config{}, configFile)
+				command := commands.AddRegistry(logger, config.Config{}, configFile)
 				command.SetArgs([]string{"bp", "https://github.com/buildpacks/registry-index/", "--type=bogus"})
 				assert.Error(command.Execute())
 
@@ -78,7 +78,7 @@ func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should throw error when registry already exists", func() {
-				command := commands.AddBuildpackRegistry(logger, config.Config{
+				command := commands.AddRegistry(logger, config.Config{
 					Registries: []config.Registry{
 						{
 							Name: "bp",
