@@ -33,7 +33,7 @@ type CreateBuilderOptions struct {
 	// Requires BuilderName to be a valid registry location.
 	Publish bool
 
-	// Buildpack registry location. Defines where all registry buildpacks will be pulled from.
+	// Buildpack registry name. Defines where all registry buildpacks will be pulled from.
 	Registry string
 
 	// Strategy for updating images before a build.

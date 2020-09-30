@@ -30,6 +30,7 @@ func RegisterBuildpack(logger logging.Logger, cfg config.Config, client PackClie
 			opts.ImageName = args[0]
 			opts.Type = registry.Type
 			opts.URL = registry.URL
+			opts.Name = registry.Name
 
 			if err := client.RegisterBuildpack(cmd.Context(), opts); err != nil {
 				return err

@@ -29,6 +29,8 @@ import (
 
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/build"
+	cfg "github.com/buildpacks/pack/internal/config"
+	rg "github.com/buildpacks/pack/internal/registry"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil/fakes"
@@ -1294,6 +1296,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						tmpDir          string
 						registryFixture string
 						packHome        string
+
+						configPath string
 					)
 
 					it.Before(func() {
@@ -1307,6 +1311,20 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						os.Setenv("PACK_HOME", packHome)
 
 						registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
+
+						configPath = filepath.Join(packHome, "config.toml")
+						h.AssertNil(t, cfg.Write(cfg.Config{
+							Registries: []cfg.Registry{
+								{
+									Name: "some-registry",
+									Type: "github",
+									URL:  registryFixture,
+								},
+							},
+						}, configPath))
+
+						_, err = rg.NewRegistryCache(logger, tmpDir, registryFixture)
+						h.AssertNil(t, err)
 
 						childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 							API: api.MustParse("0.3"),
@@ -1364,7 +1382,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Buildpacks: []string{
 								"urn:cnb:registry:example/foo@1.0.0",
 							},
-							Registry: registryFixture,
+							Registry: "some-registry",
 						})
 
 						h.AssertNil(t, err)
