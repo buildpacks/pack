@@ -24,6 +24,7 @@ import (
 )
 
 const DefaultRegistryURL = "https://github.com/buildpacks/registry-index"
+const DefaultRegistryName = "official"
 const defaultRegistryDir = "registry"
 
 // Cache is a RegistryCache

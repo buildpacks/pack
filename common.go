@@ -57,7 +57,7 @@ func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, sta
 	return runImageName
 }
 
-func (c *Client) getRegistry(logger logging.Logger, registryURL string) (registry.Cache, error) {
+func (c *Client) getRegistry(logger logging.Logger, registryName string) (registry.Cache, error) {
 	home, err := config.PackHome()
 	if err != nil {
 		return registry.Cache{}, err
@@ -67,11 +67,35 @@ func (c *Client) getRegistry(logger logging.Logger, registryURL string) (registr
 		return registry.Cache{}, err
 	}
 
-	if registryURL == "" {
+	cfg, err := getConfig()
+	if err != nil {
+		return registry.Cache{}, err
+	}
+
+	if registryName == "" {
 		return registry.NewDefaultRegistryCache(logger, home)
 	}
 
-	return registry.NewRegistryCache(logger, home, registryURL)
+	for _, reg := range cfg.Registries {
+		if reg.Name == registryName {
+			return registry.NewRegistryCache(logger, home, reg.URL)
+		}
+	}
+
+	return registry.Cache{}, fmt.Errorf("registry %s is not defined in your config file", style.Symbol(registryName))
+}
+
+func getConfig() (config.Config, error) {
+	path, err := config.DefaultConfigPath()
+	if err != nil {
+		return config.Config{}, err
+	}
+
+	cfg, err := config.Read(path)
+	if err != nil {
+		return config.Config{}, err
+	}
+	return cfg, nil
 }
 
 func contains(slc []string, v string) bool {

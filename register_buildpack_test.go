@@ -60,6 +60,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 					ImageName: "invalid/image",
 					Type:      "github",
 					URL:       registry.DefaultRegistryURL,
+					Name:      registry.DefaultRegistryName,
 				}))
 		})
 
@@ -73,6 +74,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 					ImageName: "missinglabel/image",
 					Type:      "github",
 					URL:       registry.DefaultRegistryURL,
+					Name:      registry.DefaultRegistryName,
 				}))
 		})
 
@@ -82,6 +84,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 					ImageName: "buildpack/image",
 					Type:      "github",
 					URL:       "",
+					Name:      "official",
 				}), "missing github URL")
 		})
 
@@ -91,6 +94,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 					ImageName: "buildpack/image",
 					Type:      "git",
 					URL:       "",
+					Name:      "official",
 				}), "invalid url: cannot parse username from url")
 		})
 
@@ -100,6 +104,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 					ImageName: "buildpack/image",
 					Type:      "git",
 					URL:       "https://github.com//buildpack-registry/",
+					Name:      "official",
 				}), "invalid url: username is empty")
 		})
 
@@ -112,6 +117,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 					ImageName: "invalid/image",
 					Type:      "git",
 					URL:       registry.DefaultRegistryURL,
+					Name:      registry.DefaultRegistryName,
 				}))
 		})
 
@@ -125,6 +131,7 @@ func testRegisterBuildpack(t *testing.T, when spec.G, it spec.S) {
 					ImageName: "missinglabel/image",
 					Type:      "git",
 					URL:       registry.DefaultRegistryURL,
+					Name:      registry.DefaultRegistryName,
 				}))
 		})
 	})

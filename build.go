@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -76,7 +75,7 @@ type BuildOptions struct {
 	// required. Builder image name.
 	Builder string
 
-	// URI to a buildpack registry. Used to
+	// Name of the buildpack registry. Used to
 	// add buildpacks to a build.
 	Registry string
 
@@ -652,11 +651,6 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.RegistryLocator:
-			r := regexp.MustCompile(`^(https|git)(://|@)([^/:]+)[/:]([^/:]+)/(.+).git$`)
-			if r.MatchString(registry) {
-				return fetchedBPs, order, errors.New("registry should be only specified as named")
-			}
-
 			registryCache, err := c.getRegistry(c.logger, registry)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "invalid registry '%s'", registry)
