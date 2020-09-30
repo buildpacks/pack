@@ -215,10 +215,10 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 		return "", fmt.Errorf("no releases found for %s/%s", owner, repo)
 	}
 
-	// exclude drafts
+	// exclude drafts and pre-releases
 	var releases []*github.RepositoryRelease
 	for _, release := range rawReleases {
-		if !*release.Draft {
+		if !*release.Draft && !*release.Prerelease {
 			releases = append(releases, release)
 		}
 	}
@@ -254,7 +254,7 @@ func (f *GithubAssetFetcher) FetchReleaseVersion(owner, repo string, n int) (str
 		}
 	}
 	if latestPatchOfPreviousMinor == nil {
-		return "", errors.Wrapf(err, "obtaining latest patch of previous minor")
+		return "", errors.New("obtaining latest patch of previous minor")
 	}
 	formattedVersion := fmt.Sprintf("v%s", latestPatchOfPreviousMinor.String())
 
