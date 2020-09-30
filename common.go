@@ -76,7 +76,7 @@ func (c *Client) getRegistry(logger logging.Logger, registryName string) (regist
 		return registry.NewDefaultRegistryCache(logger, home)
 	}
 
-	for _, reg := range cfg.Registries {
+	for _, reg := range config.GetRegistries(cfg) {
 		if reg.Name == registryName {
 			return registry.NewRegistryCache(logger, home, reg.URL)
 		}

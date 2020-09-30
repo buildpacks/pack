@@ -25,6 +25,7 @@ import (
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
+	cfg "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/image"
@@ -646,12 +647,31 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("buildpack is missing from registry", func() {
+				var configPath string
+				var registryFixture string
+
 				it("errors", func() {
 					prepareFetcherWithBuildImage()
 					prepareFetcherWithRunImages()
 
-					opts.Registry = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
+					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
+
+					packHome := filepath.Join(tmpDir, "packHome")
+					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
+
+					configPath = filepath.Join(packHome, "config.toml")
+					h.AssertNil(t, cfg.Write(cfg.Config{
+						Registries: []cfg.Registry{
+							{
+								Name: "some-registry",
+								Type: "github",
+								URL:  registryFixture,
+							},
+						},
+					}, configPath))
 					opts.Config.Buildpacks[0].URI = "urn:cnb:registry:fake"
+
+					opts.Registry = "some-registry"
 
 					err := subject.CreateBuilder(context.TODO(), opts)
 					h.AssertError(t, err,
@@ -660,12 +680,31 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("can't download image from registry", func() {
+				var configPath string
+				var registryFixture string
+
 				it("errors", func() {
 					prepareFetcherWithBuildImage()
 					prepareFetcherWithRunImages()
 
-					opts.Registry = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
+					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
 					opts.Config.Buildpacks[0].URI = "urn:cnb:registry:example/foo@1.1.0"
+
+					packHome := filepath.Join(tmpDir, "packHome")
+					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
+
+					configPath = filepath.Join(packHome, "config.toml")
+					h.AssertNil(t, cfg.Write(cfg.Config{
+						Registries: []cfg.Registry{
+							{
+								Name: "some-registry",
+								Type: "github",
+								URL:  registryFixture,
+							},
+						},
+					}, configPath))
+
+					opts.Registry = "some-registry"
 
 					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), true, config.PullAlways).Return(nil, errors.New("failed to pull"))
@@ -790,14 +829,29 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("publish=false and pull-policy=always", func() {
+					var configPath string
+
 					it("should pull and use local package image", func() {
 						prepareFetcherWithBuildImage()
 						prepareFetcherWithRunImages()
 						opts.BuilderName = "some/builder"
 
+						packHome := filepath.Join(tmpDir, "packHome")
+						h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
+						configPath = filepath.Join(packHome, "config.toml")
+						h.AssertNil(t, cfg.Write(cfg.Config{
+							Registries: []cfg.Registry{
+								{
+									Name: "some-registry",
+									Type: "github",
+									URL:  registryFixture,
+								},
+							},
+						}, configPath))
+
 						opts.Publish = false
 						opts.PullPolicy = config.PullAlways
-						opts.Registry = registryFixture
+						opts.Registry = "some-registry"
 						opts.Config.Buildpacks = append(
 							opts.Config.Buildpacks,
 							pubbldr.BuildpackConfig{
@@ -811,6 +865,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						shouldFetchPackageImageWith(true, config.PullAlways)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+					})
+
+					it.After(func() {
+						os.Unsetenv("PACK_HOME")
+						err := os.RemoveAll(tmpDir)
+						h.AssertNil(t, err)
 					})
 				})
 			})
