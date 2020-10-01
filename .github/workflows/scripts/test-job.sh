@@ -5,9 +5,10 @@ set -e
 
 usage() {
   echo "Usage: "
-  echo "  $0 <workflow> <job>"
+  echo "  $0 <workflow> <job> [event]"
   echo "    <workflow>  the workflow file to use"
   echo "    <job>  job name to execute"
+  echo "    [event]  event file"
   exit 1; 
 }
 
@@ -27,20 +28,27 @@ if [[ -z "${JOB_NAME}" ]]; then
   exit 1
 fi
 
-ACT_EXEC=/Users/javier.romero/dev/nektos/act/dist/local/act
+EVENT_FILE="${3}"
+
+ACT_EXEC=$(command -v act)
 if [[ -z "${ACT_EXEC}" ]]; then
   echo "Need act to be available: https://github.com/nektos/act"
   exit 1
 fi
 
-${ACT_EXEC} \
-  -v \
-  -P ubuntu-latest=nektos/act-environments-ubuntu:18.04 \
-  -s GITHUB_TOKEN \
-  -W "${WORKFLOW_FILE}" \
-  -j "${JOB_NAME}"
-
-#act -P ubuntu-latest=nektos/act-environments-ubuntu:18.04 \
-#    -e .github/workflows/testdata/event-release.json \
-#    -s GITHUB_TOKEN \
-#    -j "${JOB_NAME}"
+if [[ -n "${EVENT_FILE}" ]]; then
+  ${ACT_EXEC} \
+    -v \
+    -e "${EVENT_FILE}" \
+    -P ubuntu-latest=nektos/act-environments-ubuntu:18.04 \
+    -s GITHUB_TOKEN \
+    -W "${WORKFLOW_FILE}" \
+    -j "${JOB_NAME}"
+else
+  ${ACT_EXEC} \
+    -v \
+    -P ubuntu-latest=nektos/act-environments-ubuntu:18.04 \
+    -s GITHUB_TOKEN \
+    -W "${WORKFLOW_FILE}" \
+    -j "${JOB_NAME}"
+fi
