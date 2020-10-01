@@ -2,7 +2,6 @@
 package logging
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -60,26 +59,6 @@ func IsQuiet(logger Logger) bool {
 	}
 
 	return false
-}
-
-// PrefixWriter will prefix writes
-type PrefixWriter struct {
-	out    io.Writer
-	prefix string
-}
-
-// NewPrefixWriter writes by w will be prefixed
-func NewPrefixWriter(w io.Writer, prefix string) *PrefixWriter {
-	return &PrefixWriter{
-		out:    w,
-		prefix: fmt.Sprintf("[%s] ", style.Prefix(prefix)),
-	}
-}
-
-// Writes bytes to the embedded log function
-func (w *PrefixWriter) Write(buf []byte) (int, error) {
-	_, _ = fmt.Fprint(w.out, w.prefix+string(buf))
-	return len(buf), nil
 }
 
 // Tip logs a tip.
