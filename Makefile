@@ -47,17 +47,23 @@ endif
 export GOFLAGS:=$(GOFLAGS)
 export CGO_ENABLED=0
 
+BINDIR:=/usr/bin/
+
+build: out
+	@echo "> Building..."
+	$(GOCMD) build -ldflags "-s -w -X 'github.com/buildpacks/pack.Version=${PACK_VERSION}' -extldflags ${LDFLAGS}" -trimpath -o ./out/$(PACK_BIN) -a ./cmd/pack
+
 all: clean verify test build
+
+install:
+	mkdir -p ${DESTDIR}${BINDIR}
+	cp ./out/$(PACK_BIN) ${DESTDIR}${BINDIR}/
 
 mod-tidy:
 	$(GOCMD) mod tidy
 	cd tools && $(GOCMD) mod tidy
 
 tidy: mod-tidy format
-
-build: out
-	@echo "> Building..."
-	$(GOCMD) build -ldflags "-s -w -X 'github.com/buildpacks/pack.Version=${PACK_VERSION}' -extldflags ${LDFLAGS}" -trimpath -o ./out/$(PACK_BIN) -a ./cmd/pack
 
 package: out
 	tar czf .$/out$/$(ARCHIVE_NAME).tgz -C .$/out$/ $(PACK_BIN)
