@@ -24,12 +24,12 @@ jobs:
         with:
           script: |
             context.payload.release.assets.forEach(asset => {
-              if (asset.name.includes("linux")) {
+              if (asset.name.endsWith("linux.tgz")) {
                 core.setOutput("linux_name", asset.name);
                 core.setOutput("linux_url", asset.browser_download_url);
               }
 
-              if (asset.name.includes("macos")) {
+              if (asset.name.endsWith("macos.tgz")) {
                 core.setOutput("macos_name", asset.name);
                 core.setOutput("macos_url", asset.browser_download_url);
               }
