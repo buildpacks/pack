@@ -32,6 +32,8 @@ func Run(ctx context.Context, docker client.CommonAPIClient, ctrID string, out, 
 	copyErr := make(chan error)
 	go func() {
 		_, err := stdcopy.StdCopy(out, errOut, resp.Reader)
+		defer optionallyCloseWriter(out)
+		defer optionallyCloseWriter(errOut)
 
 		copyErr <- err
 	}()
@@ -46,4 +48,12 @@ func Run(ctx context.Context, docker client.CommonAPIClient, ctrID string, out, 
 	}
 
 	return <-copyErr
+}
+
+func optionallyCloseWriter(writer io.Writer) error {
+	if closer, ok := writer.(io.Closer); ok {
+		return closer.Close()
+	}
+
+	return nil
 }
