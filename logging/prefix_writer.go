@@ -25,7 +25,7 @@ func NewPrefixWriter(w io.Writer, prefix string) *PrefixWriter {
 	}
 }
 
-// Writes bytes to the embedded log function
+// Write writes bytes to the embedded log function
 func (w *PrefixWriter) Write(data []byte) (int, error) {
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	scanner.Split(ScanLinesKeepNewLine)
@@ -45,7 +45,7 @@ func (w *PrefixWriter) Write(data []byte) (int, error) {
 				allBits = newBits
 			}
 
-			err := w.doWrite(allBits)
+			err := w.writeWithPrefix(allBits)
 			if err != nil {
 				return 0, err
 			}
@@ -55,14 +55,10 @@ func (w *PrefixWriter) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
-func (w *PrefixWriter) doWrite(bits []byte) error {
-	_, err := fmt.Fprint(w.out, w.prefix+string(bits))
-	return err
-}
-
+// Close writes any pending data in the buffer
 func (w *PrefixWriter) Close() error {
 	if w.buf.Len() > 0 {
-		err := w.doWrite(w.buf.Bytes())
+		err := w.writeWithPrefix(w.buf.Bytes())
 		if err != nil {
 			return err
 		}
@@ -73,6 +69,12 @@ func (w *PrefixWriter) Close() error {
 	return nil
 }
 
+func (w *PrefixWriter) writeWithPrefix(bits []byte) error {
+	_, err := fmt.Fprint(w.out, w.prefix+string(bits))
+	return err
+}
+
+// A customized implementation of bufio.ScanLines that preserves new line characters.
 func ScanLinesKeepNewLine(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil
