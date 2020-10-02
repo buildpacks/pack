@@ -26,7 +26,9 @@ func testPrefixWriter(t *testing.T, when spec.G, it spec.S) {
 			prefix := "test prefix"
 			writer := logging.NewPrefixWriter(&w, prefix)
 			_, _ = writer.Write([]byte("test"))
-			h.AssertEq(t, w.String(), fmt.Sprintf("[%s] %s", prefix, "test\n"))
+			_ = writer.Close()
+
+			h.AssertEq(t, w.String(), fmt.Sprintf("[%s] %s", prefix, "test"))
 		})
 
 		it("prepends prefix to multi-line string", func() {
@@ -34,12 +36,20 @@ func testPrefixWriter(t *testing.T, when spec.G, it spec.S) {
 
 			writer := logging.NewPrefixWriter(&w, "prefix")
 			_, _ = writer.Write([]byte("line 1\nline 2\nline 3"))
-			h.AssertEq(t,
-				w.String(),
-				`[prefix] line 1
-[prefix] line 2
-[prefix] line 3
-`)
+			_ = writer.Close()
+			h.AssertEq(t, w.String(), "[prefix] line 1\n[prefix] line 2\n[prefix] line 3")
+		})
+
+		it("buffers mid-line calls", func() {
+			var buf bytes.Buffer
+
+			writer := logging.NewPrefixWriter(&buf, "prefix")
+			_, _ = writer.Write([]byte("word 1, "))
+			_, _ = writer.Write([]byte("word 2, "))
+			_, _ = writer.Write([]byte("word 3."))
+			_ = writer.Close()
+
+			h.AssertEq(t, buf.String(), "[prefix] word 1, word 2, word 3.")
 		})
 	})
 }
