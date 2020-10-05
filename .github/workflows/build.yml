@@ -113,15 +113,15 @@ jobs:
 
           echo "::set-env name=PACK_MILESTONE::${milestone}"
       - name: Download artifacts - macos
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v2.0.5
         with:
           name: pack-macos
       - name: Download artifacts - linux
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v2.0.5
         with:
           name: pack-linux
       - name: Download artifacts - windows
-        uses: actions/download-artifact@v1
+        uses: actions/download-artifact@v2.0.5
         with:
           name: pack-windows
       - name: Package artifacts - macos
