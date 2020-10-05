@@ -1,0 +1,27 @@
+# action.yml
+name: 'Pack Docker Action'
+description: 'Run the Cloud Native Buildpacks Pack CLI'
+author: 'dfreilich'
+branding:
+  color: blue
+  icon: layers   # from https://feathericons.com/
+
+inputs:
+  username:
+    description: Username used to log in to a Docker registry. If not set, then no login will occur
+    required: false
+  password:
+    description: Password or personal access token used to log in to a Docker registry. If not set, then no login will occur
+    required: false
+  registry:
+    description: Server address of Docker registry. If not set then will default to Docker Hub
+    required: false
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.args }}
+    - ${{ inputs.username }}
+    - ${{ inputs.password }}
+    - ${{ inputs.registry }}

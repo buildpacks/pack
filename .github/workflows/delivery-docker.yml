@@ -4,6 +4,11 @@ on:
   release:
     types:
       - released
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: The release tag to distribute
+        required: true
 
 env:
   BUILDER: "paketobuildpacks/builder:tiny"
@@ -14,28 +19,45 @@ jobs:
   deliver-docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
       - name: Determine version
+        uses: actions/github-script@v3
         id: version
-        shell: bash
-        run: |
-          echo "::set-output name=VERSION::$(echo ${{ github.event.release.tag_name }} | cut -d "v" -f2)"
+        with:
+          result-encoding: string
+          script: |
+            let tag = (context.payload.release && context.payload.release.tag_name)
+              || (context.payload.inputs && context.payload.inputs.tag_name);
+
+            if (!tag) {
+              throw "ERROR: unable to determine tag";
+            }
+
+            return tag.replace(/^v/, '');
+      - name: Checkout workflow
+        uses: actions/checkout@v2
+      - name: Checkout source at tag
+        uses: actions/checkout@v2
+        with:
+          path: ./src
+          ref: v${{ steps.version.outputs.result }}
       - name: Setup Working Dir
         shell: bash
         run: |
-          cp .github/workflows/delivery/docker/buildpack.yml buildpack.yml
+          cp .github/workflows/delivery/docker/buildpack.yml ./src/buildpack.yml
       - name: Fill buildpack.yml
         uses: cschleiden/replace-tokens@v1
         with:
           files: buildpack.yml
         env:
-          PACK_VERSION: ${{ steps.version.outputs.VERSION }}
+          PACK_VERSION: ${{ steps.version.outputs.result }}
       - name: Determine App Name
-        run: 'echo "::set-env name=IMG_NAME::$(echo ${USERNAME})/$(echo ${IMG_NAME})"'
+        run: 'echo "::set-env name=IMG_NAME::${{ env.USERNAME }}/${{ env.IMG_NAME }}"'
+      - name: List workdir
+        run: ls -al
       - name: Pack Build/Publish
-        uses: dfreilich/pack-action@v1.0
+        uses: ./.github/workflows/actions/pack
         with:
-          args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.VERSION }} --builder ${{ env.BUILDER }} --publish'
+          args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} --path $(pwd)/src/ --builder ${{ env.BUILDER }} --publish'
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Login to Dockerhub
@@ -45,6 +67,6 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Tag Image as Latest
         run: |
-          docker pull ${{ env.IMG_NAME }}:${{ steps.version.outputs.VERSION }}
-          docker tag ${{ env.IMG_NAME }}:${{ steps.version.outputs.VERSION }} ${{ env.IMG_NAME }}:latest
+          docker pull ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}
+          docker tag ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} ${{ env.IMG_NAME }}:latest
           docker push ${{ env.IMG_NAME }}:latest
