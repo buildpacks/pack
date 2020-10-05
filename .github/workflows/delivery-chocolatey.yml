@@ -48,7 +48,7 @@ jobs:
           cp LICENSE $file
           cat $file
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v2.2.0
         with:
           name: ${{ env.CHOCO_PATH }}
           path: ${{ env.CHOCO_PATH }}/

@@ -83,7 +83,7 @@ jobs:
         run: make build
         env:
           PACK_BUILD: ${{ github.run_number }}
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v2.2.0
         if: matrix.config != 'windows-wcow'
         with:
           name: pack-${{ matrix.os }}
