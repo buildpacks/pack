@@ -13,7 +13,7 @@ require (
 	github.com/docker/docker v1.4.2-0.20200221181110-62bd5a33f707
 	github.com/docker/go-connections v0.4.0
 	github.com/gogo/protobuf v1.3.1 // indirect
-	github.com/golang/mock v1.4.1
+	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/google/go-cmp v0.5.1
 	github.com/google/go-containerregistry v0.0.0-20200313165449-955bf358a3d8
