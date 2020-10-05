@@ -46,14 +46,12 @@ jobs:
           cp .github/workflows/delivery/docker/buildpack.yml ./src/buildpack.yml
       - name: Fill buildpack.yml
         uses: cschleiden/replace-tokens@v1
-        with:
-          files: buildpack.yml
         env:
           PACK_VERSION: ${{ steps.version.outputs.result }}
+        with:
+          files: ./src/buildpack.yml
       - name: Determine App Name
         run: 'echo "::set-env name=IMG_NAME::${{ env.USERNAME }}/${{ env.IMG_NAME }}"'
-      - name: List workdir
-        run: ls -al
       - name: Pack Build/Publish
         uses: ./.github/workflows/actions/pack
         with:
