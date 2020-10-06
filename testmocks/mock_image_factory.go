@@ -5,10 +5,9 @@
 package testmocks
 
 import (
-	reflect "reflect"
-
 	imgutil "github.com/buildpacks/imgutil"
 	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // MockImageFactory is a mock of ImageFactory interface

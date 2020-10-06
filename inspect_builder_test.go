@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"testing"
 
+	pubbldr "github.com/buildpacks/pack/builder"
+
 	"github.com/buildpacks/pack/config"
 
 	"github.com/buildpacks/imgutil/fakes"
@@ -240,16 +242,20 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 									Version: "test.bp.two.version",
 								},
 							},
-							Order: dist.Order{
+							Order: pubbldr.DetectionOrder{
 								{
-									Group: []dist.BuildpackRef{
+									GroupDetectionOrder: pubbldr.DetectionOrder{
 										{
-											BuildpackInfo: dist.BuildpackInfo{ID: "test.nested", Version: "test.nested.version"},
-											Optional:      false,
+											BuildpackRef: dist.BuildpackRef{
+												BuildpackInfo: dist.BuildpackInfo{ID: "test.nested", Version: "test.nested.version"},
+												Optional:      false,
+											},
 										},
 										{
-											BuildpackInfo: dist.BuildpackInfo{ID: "test.bp.two"},
-											Optional:      true,
+											BuildpackRef: dist.BuildpackRef{
+												BuildpackInfo: dist.BuildpackInfo{ID: "test.bp.two"},
+												Optional:      true,
+											},
 										},
 									},
 								},
@@ -336,31 +342,60 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 						}
 					})
 
-					when("the image has no mixins", func() {
-						it.Before(func() {
-							assert.Succeeds(builderImage.SetLabel("io.buildpacks.stack.mixins", ""))
-						})
+					when("order detection depth is higher than None", func() {
+						it("shows subgroup order as part of order", func() {
+							builderInfo, err := subject.InspectBuilder(
+								"some/builder",
+								useDaemon,
+								WithDetectionOrderDepth(pubbldr.OrderDetectionMaxDepth),
+							)
+							h.AssertNil(t, err)
 
-						it("sets empty stack mixins", func() {
-							builderInfo, err := subject.InspectBuilder("some/builder", useDaemon)
-							assert.Nil(err)
-							assert.Equal(builderInfo.Mixins, []string{})
+							want := pubbldr.DetectionOrder{
+								{
+									GroupDetectionOrder: pubbldr.DetectionOrder{
+										{
+											BuildpackRef: dist.BuildpackRef{
+												BuildpackInfo: dist.BuildpackInfo{ID: "test.nested", Version: "test.nested.version"},
+												Optional:      false,
+											},
+											GroupDetectionOrder: pubbldr.DetectionOrder{
+												{
+													BuildpackRef: dist.BuildpackRef{
+														BuildpackInfo: dist.BuildpackInfo{
+															ID:      "test.bp.one",
+															Version: "test.bp.one.version",
+														},
+													},
+												},
+												{
+													BuildpackRef: dist.BuildpackRef{
+														BuildpackInfo: dist.BuildpackInfo{
+															ID:      "test.bp.two",
+															Version: "test.bp.two.version",
+														},
+													},
+												},
+											},
+										},
+										{
+											BuildpackRef: dist.BuildpackRef{
+												BuildpackInfo: dist.BuildpackInfo{ID: "test.bp.two"},
+												Optional:      true,
+											},
+										},
+									},
+								},
+							}
+
+							if diff := cmp.Diff(want, builderInfo.Order); diff != "" {
+								t.Errorf("InspectBuilder() Info.Oerswe miamrxh (-want +got):\b%s", diff)
+							}
 						})
 					})
 				})
 			})
 		}
-	})
-
-	when("fetcher fails to fetch the image", func() {
-		it.Before(func() {
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, config.PullNever).Return(nil, errors.New("some-error"))
-		})
-
-		it("returns an error", func() {
-			_, err := subject.InspectBuilder("some/builder", false)
-			assert.ErrorContains(err, "some-error")
-		})
 	})
 
 	when("the image does not exist", func() {

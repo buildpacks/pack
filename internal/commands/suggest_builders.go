@@ -46,13 +46,13 @@ var suggestedBuilders = []SuggestedBuilder{
 	},
 }
 
-func SuggestBuilders(logger logging.Logger, client PackClient) *cobra.Command {
+func SuggestBuilders(logger logging.Logger, inspector BuilderInspector) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "suggest-builders",
 		Short: "Display list of recommended builders",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, s []string) {
-			suggestBuilders(logger, client)
+			suggestBuilders(logger, inspector)
 		},
 	}
 
@@ -60,19 +60,19 @@ func SuggestBuilders(logger logging.Logger, client PackClient) *cobra.Command {
 	return cmd
 }
 
-func suggestSettingBuilder(logger logging.Logger, client PackClient) {
+func suggestSettingBuilder(logger logging.Logger, inspector BuilderInspector) {
 	logger.Info("Please select a default builder with:")
 	logger.Info("")
 	logger.Info("\tpack set-default-builder <builder-image>")
 	logger.Info("")
-	suggestBuilders(logger, client)
+	suggestBuilders(logger, inspector)
 }
 
-func suggestBuilders(logger logging.Logger, client PackClient) {
+func suggestBuilders(logger logging.Logger, client BuilderInspector) {
 	WriteSuggestedBuilder(logger, client, suggestedBuilders)
 }
 
-func WriteSuggestedBuilder(logger logging.Logger, client PackClient, builders []SuggestedBuilder) {
+func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, builders []SuggestedBuilder) {
 	sort.Slice(builders, func(i, j int) bool {
 		if builders[i].Vendor == builders[j].Vendor {
 			return builders[i].Image < builders[j].Image
@@ -91,7 +91,7 @@ func WriteSuggestedBuilder(logger logging.Logger, client PackClient, builders []
 		wg.Add(1)
 
 		go func(i int, builder SuggestedBuilder) {
-			descriptions[i] = getBuilderDescription(builder, client)
+			descriptions[i] = getBuilderDescription(builder, inspector)
 			wg.Done()
 		}(i, builder)
 	}
@@ -107,8 +107,8 @@ func WriteSuggestedBuilder(logger logging.Logger, client PackClient, builders []
 	logger.Info("\tpack inspect-builder <builder-image>")
 }
 
-func getBuilderDescription(builder SuggestedBuilder, client PackClient) string {
-	info, err := client.InspectBuilder(builder.Image, false)
+func getBuilderDescription(builder SuggestedBuilder, inspector BuilderInspector) string {
+	info, err := inspector.InspectBuilder(builder.Image, false)
 	if err == nil && info.Description != "" {
 		return info.Description
 	}

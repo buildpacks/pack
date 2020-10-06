@@ -3,6 +3,7 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/Masterminds/semver"
@@ -83,6 +84,38 @@ func (l *LifecycleAsset) OutputForAPIs() (deprecatedBuildpackAPIs, supportedBuil
 		stringify(l.descriptor.APIs.Buildpack.Supported),
 		stringify(l.descriptor.APIs.Platform.Deprecated),
 		stringify(l.descriptor.APIs.Platform.Supported)
+}
+
+func (l *LifecycleAsset) JSONOutputForAPIs(baseIndentationWidth int) (
+	deprecatedBuildpacksAPIs,
+	supportedBuildpacksAPIs,
+	deprectatedPlatformAPIs,
+	supportedPlatformAPIS string,
+) {
+	stringify := func(apiSet builder.APISet, baseIndentationWidth int) string {
+		if len(apiSet) < 1 {
+			return "[]"
+		}
+
+		apiIndentation := strings.Repeat(" ", baseIndentationWidth+2)
+
+		var quotedAPIs []string
+		for _, a := range apiSet {
+			quotedAPIs = append(quotedAPIs, fmt.Sprintf(`%s%q`, apiIndentation, a))
+		}
+
+		lineEndSeparator := `,
+`
+
+		return fmt.Sprintf(`[
+%s
+%s]`, strings.Join(quotedAPIs, lineEndSeparator), strings.Repeat(" ", baseIndentationWidth))
+	}
+
+	return stringify(l.descriptor.APIs.Buildpack.Deprecated, baseIndentationWidth),
+		stringify(l.descriptor.APIs.Buildpack.Supported, baseIndentationWidth),
+		stringify(l.descriptor.APIs.Platform.Deprecated, baseIndentationWidth),
+		stringify(l.descriptor.APIs.Platform.Supported, baseIndentationWidth)
 }
 
 type LifecycleFeature int

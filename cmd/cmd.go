@@ -7,6 +7,7 @@ import (
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/buildpackage"
+	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
@@ -69,7 +70,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
 
 	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
-	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient, writer.NewFactory()))
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
 	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg))
 	rootCmd.AddCommand(commands.UntrustBuilder(logger, cfg))

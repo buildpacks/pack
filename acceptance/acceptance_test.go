@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -195,7 +196,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			pack.JustRunSuccessfully("untrust-builder", builderName)
 
-			assert.NotContains(pack.ConfigFileContents(), builderName)
+			assert.NotContain(pack.ConfigFileContents(), builderName)
 		})
 	})
 
@@ -1603,7 +1604,7 @@ func testAcceptance(
 
 							err := command.Wait()
 							assert.NotNil(err)
-							assert.NotContains(buf.String(), "Successfully built image")
+							assert.NotContain(buf.String(), "Successfully built image")
 						})
 					})
 
@@ -1678,9 +1679,9 @@ exclude = [ "*.sh", "secrets/", "media/metadata" ]
 									"--buildpack", buildpackTgz,
 									"--descriptor", excludeDescriptorPath,
 								)
-								assert.NotContains(output, "api_keys.json")
-								assert.NotContains(output, "user_token")
-								assert.NotContains(output, "test.sh")
+								assert.NotContain(output, "api_keys.json")
+								assert.NotContain(output, "user_token")
+								assert.NotContain(output, "test.sh")
 
 								assert.Contains(output, "cookie.jar")
 								assert.Contains(output, "mountain.jpg")
@@ -1707,9 +1708,9 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 									"--buildpack", buildpackTgz,
 									"--descriptor", includeDescriptorPath,
 								)
-								assert.NotContains(output, "api_keys.json")
-								assert.NotContains(output, "user_token")
-								assert.NotContains(output, "test.sh")
+								assert.NotContain(output, "api_keys.json")
+								assert.NotContain(output, "user_token")
+								assert.NotContain(output, "test.sh")
 
 								assert.Contains(output, "cookie.jar")
 								assert.Contains(output, "mountain.jpg")
@@ -1803,7 +1804,12 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						)
 						assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
-						output = pack.RunSuccessfully("inspect-builder", "--depth", "2", builderName)
+						depth := "2"
+						if pack.SupportsFeature(invoke.InspectBuilderOutputFormat) {
+							depth = "1" // The meaning of depth was changed
+						}
+
+						output = pack.RunSuccessfully("inspect-builder", "--depth", depth, builderName)
 
 						deprecatedBuildpackAPIs,
 							supportedBuildpackAPIs,
@@ -1832,6 +1838,52 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						)
 
 						assert.TrimmedEq(output, expectedOutput)
+					})
+
+					when("output format is json", func() {
+						it("prints builder information in json format", func() {
+							h.SkipUnless(t,
+								pack.SupportsFeature(invoke.InspectBuilderOutputFormat),
+								"inspect-builder output format is not yet implemented",
+							)
+
+							output := pack.RunSuccessfully(
+								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+							)
+							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
+
+							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "json")
+
+							err := json.Unmarshal([]byte(output), &struct{}{})
+							assert.Nil(err)
+
+							var prettifiedOutput bytes.Buffer
+							err = json.Indent(&prettifiedOutput, []byte(output), "", "  ")
+							assert.Nil(err)
+
+							deprecatedBuildpackAPIs,
+								supportedBuildpackAPIs,
+								deprecatedPlatformAPIs,
+								supportedPlatformAPIs := lifecycle.JSONOutputForAPIs(8)
+
+							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
+								"inspect_%s_builder_nested_output_json.txt",
+								createBuilderPack.Version(),
+								"inspect_builder_nested_output_json.txt",
+								map[string]interface{}{
+									"builder_name":              builderName,
+									"lifecycle_version":         lifecycle.Version(),
+									"deprecated_buildpack_apis": deprecatedBuildpackAPIs,
+									"supported_buildpack_apis":  supportedBuildpackAPIs,
+									"deprecated_platform_apis":  deprecatedPlatformAPIs,
+									"supported_platform_apis":   supportedPlatformAPIs,
+									"run_image_mirror":          runImageMirror,
+									"pack_version":              createBuilderPack.Version(),
+								},
+							)
+
+							assert.Equal(prettifiedOutput.String(), expectedOutput)
+						})
 					})
 				})
 

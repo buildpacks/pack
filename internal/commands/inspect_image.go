@@ -161,6 +161,15 @@ func displayProcesses(sourceProcesses pack.ProcessDetails) []process {
 	return processes
 }
 
+func getLocalMirrors(runImage string, cfg config.Config) []string {
+	for _, ri := range cfg.RunImages {
+		if ri.Image == runImage {
+			return ri.Mirrors
+		}
+	}
+	return nil
+}
+
 var runImagesTemplate = `
 Run Images:
 {{- range $_, $m := .LocalMirrors }}
