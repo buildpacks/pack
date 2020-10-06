@@ -4,13 +4,38 @@ A simple script that generates the changelog for pack based on a pack version (a
 
 ### Usage
 
-> **NOTICE:** This is not an action _yet_. Mostly due to the complexities of manually testing it via `act` because of: 
+#### Config
+
+This script takes a configuration file in the following format:
+
+```yaml
+labels:
+  # labels are grouped based on order but displayed based on weight
+  <label>:
+    # title for the group of issues
+    title: <string>
+    # description for the group of issues
+    description: <string>
+    # description for the group of issues
+    weight: <number>
+
+sections:
+  contributors:
+    # title for the contributors section, hidden if empty
+    title: <string>
+    # description for the contributors section
+    description: <string>
+```
 
 #### Github Action
 
 ```yaml
-# TODO: UPDATE
-  - name: Generate changelog
+- name: Generate changelog
+  uses: ./.github/workflows/actions/release-notes
+  id: changelog
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    milestone: <milestone>
 ```
 
 #### Local
@@ -30,7 +55,6 @@ npm run local -- <milestone> <config-path>
 
 Notice that a file `changelog.md` is created as well for further inspection.
 
-
 ### Updating
 
 This action is packaged for distribution without vendoring `npm_modules` with use of [ncc](https://github.com/vercel/ncc).
@@ -38,5 +62,5 @@ This action is packaged for distribution without vendoring `npm_modules` with us
 When making changes to the action, compile it and commit the changes.
 
 ```shell script
-npm build
+npm run-script build
 ```

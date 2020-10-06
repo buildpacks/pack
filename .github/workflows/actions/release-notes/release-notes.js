@@ -1,11 +1,6 @@
 const {promises: fs} = require('fs');
 const YAML = require('yaml');
 
-// Map of annotations to be added to issue per label.
-const annotationLabelsMap = {
-  "experimental": "🚨",
-};
-
 module.exports = async (github, repository, milestone, configPath) => {
   return await fs.readFile(configPath, "utf-8")
     .then(content => YAML.parse(content))
@@ -43,7 +38,7 @@ module.exports = async (github, repository, milestone, configPath) => {
         let hiddenIssues = groupedIssues[""] || [];
         console.warn("Issues not displayed: ", hiddenIssues.length);
         if (hiddenIssues.length > 0) {
-          console.warn(hiddenIssues.map(issue => issue.number).join(", "));
+          console.warn(" - " + hiddenIssues.map(issue => issue.number).join(", "));
         }
 
         // generate contributors list
@@ -74,24 +69,7 @@ module.exports = async (github, repository, milestone, configPath) => {
 };
 
 function createIssueEntry(issue) {
-  let annotations = [];
-
-  issue.labels.forEach(label => {
-    for (const annotation in annotationLabelsMap) {
-      if (annotationLabelsMap[annotation] === label.name) {
-        console.warn("found a match!", annotation)
-        annotations.push(annotation);
-      }
-    }
-  });
-
-  let line = `* ${issue.title}`;
-  if (annotations.length !== 0) {
-    line += ` [**${annotations.join(", ")}**]`;
-  }
-  line += ` (#${issue.number} by @${issueContrib(issue)})\n`;
-
-  return line;
+  return `* ${issue.title} (#${issue.number} by @${issueContrib(issue)})\n`;
 }
 
 function issueContrib(issue) {
