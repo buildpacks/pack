@@ -18,7 +18,7 @@ import (
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_pack_client.go github.com/buildpacks/pack/internal/commands PackClient
 type PackClient interface {
-	InspectBuilder(string, bool) (*pack.BuilderInfo, error)
+	InspectBuilder(string, bool, ...pack.BuilderInspectionModifier) (*pack.BuilderInfo, error)
 	InspectImage(string, bool) (*pack.ImageInfo, error)
 	Rebase(context.Context, pack.RebaseOptions) error
 	CreateBuilder(context.Context, pack.CreateBuilderOptions) error

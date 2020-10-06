@@ -101,6 +101,14 @@ func (a AssertionManager) NilWithMessage(actual interface{}, message string) {
 	}
 }
 
+func (a AssertionManager) TrueWithMessage(actual bool, message string) {
+	a.testObject.Helper()
+
+	if actual != true {
+		a.testObject.Fatalf("expected true: %s", message)
+	}
+}
+
 func (a AssertionManager) NotNil(actual interface{}) {
 	a.testObject.Helper()
 
@@ -170,7 +178,7 @@ func (a AssertionManager) MatchesAll(actual string, patterns ...*regexp.Regexp) 
 	}
 }
 
-func (a AssertionManager) NotContains(actual, expected string) {
+func (a AssertionManager) NotContain(actual, expected string) {
 	a.testObject.Helper()
 
 	if strings.Contains(actual, expected) {
@@ -205,4 +213,17 @@ func (a AssertionManager) ErrorContains(actual error, expected string) {
 	}
 
 	a.Contains(actual.Error(), expected)
+}
+
+func (a AssertionManager) ErrorWithMessage(actual error, message string) {
+	a.testObject.Helper()
+
+	a.Error(actual)
+	a.Equal(actual.Error(), message)
+}
+
+func (a AssertionManager) ErrorWithMessageF(actual error, format string, args ...interface{}) {
+	a.testObject.Helper()
+
+	a.ErrorWithMessage(actual, fmt.Sprintf(format, args...))
 }

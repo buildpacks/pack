@@ -6,11 +6,9 @@ package testmocks
 
 import (
 	context "context"
-	reflect "reflect"
-
-	gomock "github.com/golang/mock/gomock"
-
 	blob "github.com/buildpacks/pack/internal/blob"
+	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // MockDownloader is a mock of Downloader interface

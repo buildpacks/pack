@@ -221,6 +221,7 @@ const (
 	ReadWriteVolumeMounts
 	NoColorInBuildpacks
 	QuietMode
+	InspectBuilderOutputFormat
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -241,6 +242,9 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	},
 	QuietMode: func(i *PackInvoker) bool {
 		return i.atLeast("0.13.2")
+	},
+	InspectBuilderOutputFormat: func(i *PackInvoker) bool {
+		return i.laterThan("0.14.1")
 	},
 }
 
