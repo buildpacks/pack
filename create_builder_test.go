@@ -350,7 +350,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						prepareFetcherWithRunImages()
 
-						fakeBuildImage.SetPlatform("windows", "0123", "amd64")
+						h.AssertNil(t, fakeBuildImage.SetOS("windows"))
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, config.PullAlways).Return(fakeBuildImage, nil)
 
 						err = packClientWithExperimental.CreateBuilder(context.TODO(), opts)
@@ -362,7 +362,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					it("fails", func() {
 						prepareFetcherWithRunImages()
 
-						fakeBuildImage.SetPlatform("windows", "0123", "amd64")
+						h.AssertNil(t, fakeBuildImage.SetOS("windows"))
 						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, config.PullAlways).Return(fakeBuildImage, nil)
 
 						err := subject.CreateBuilder(context.TODO(), opts)
@@ -429,7 +429,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					prepareFetcherWithRunImages()
 					opts.Config.Lifecycle.URI = ""
 					opts.Config.Lifecycle.Version = "3.4.5"
-					fakeBuildImage.SetPlatform("windows", "0123", "amd64")
+					h.AssertNil(t, fakeBuildImage.SetOS("windows"))
 
 					mockDownloader.EXPECT().Download(
 						gomock.Any(),
@@ -481,7 +481,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					prepareFetcherWithRunImages()
 					opts.Config.Lifecycle.URI = ""
 					opts.Config.Lifecycle.Version = ""
-					fakeBuildImage.SetPlatform("windows", "0123", "amd64")
+					h.AssertNil(t, fakeBuildImage.SetOS("windows"))
 
 					mockDownloader.EXPECT().Download(
 						gomock.Any(),
@@ -568,9 +568,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				bldr := successfullyCreateBuilder()
 
 				h.AssertEq(t, bldr.LifecycleDescriptor().Info.Version.String(), "0.0.0")
-				// nolint:staticcheck
+				//nolint:staticcheck
 				h.AssertEq(t, bldr.LifecycleDescriptor().API.BuildpackVersion.String(), "0.2")
-				// nolint:staticcheck
+				//nolint:staticcheck
 				h.AssertEq(t, bldr.LifecycleDescriptor().API.PlatformVersion.String(), "0.2")
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{})
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Supported.AsStrings(), []string{"0.2", "0.3", "0.4"})

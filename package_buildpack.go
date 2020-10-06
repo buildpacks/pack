@@ -54,7 +54,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrap(err, "creating layer writer factory")
 	}
 
-	packageBuilder := buildpackage.NewBuilder(info.OSType, c.imageFactory, c.imageFetcher)
+	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
 
 	if opts.Format == "" {
 		opts.Format = FormatImage
@@ -121,9 +121,9 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	switch opts.Format {
 	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name)
+		return packageBuilder.SaveAsFile(opts.Name, info.OSType)
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(ctx, opts.Name, opts.Publish, opts.PullPolicy)
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, info.OSType)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))

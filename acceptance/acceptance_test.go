@@ -240,8 +240,6 @@ func testWithoutSpecificBuilderRequirement(
 				"pack does not support 'package-buildpack'",
 			)
 
-			h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
-
 			var err error
 			tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
 			assert.Nil(err)
