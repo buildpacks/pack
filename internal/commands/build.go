@@ -147,7 +147,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Config) {
 	cmd.Flags().StringVarP(&buildFlags.AppPath, "path", "p", "", "Path to app dir or zip-formatted file (defaults to current working directory)")
 	cmd.Flags().StringVarP(&buildFlags.Builder, "builder", "B", cfg.DefaultBuilder, "Builder image")
-	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "R", cfg.DefaultRegistry, "Buildpack Registry URL")
+	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "r", cfg.DefaultRegistryName, "Buildpack Registry by name")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("buildpack-registry")
 	}

@@ -3,7 +3,7 @@ name: delivery / chocolatey
 on:
   release:
     types:
-      - published
+      - released
 
 env:
   CHOCO_PATH: chocolatey

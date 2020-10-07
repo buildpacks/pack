@@ -75,7 +75,7 @@ type BuildOptions struct {
 	// required. Builder image name.
 	Builder string
 
-	// URI to a buildpack registry. Used to
+	// Name of the buildpack registry. Used to
 	// add buildpacks to a build.
 	Registry string
 

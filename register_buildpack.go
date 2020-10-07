@@ -20,6 +20,7 @@ type RegisterBuildpackOptions struct {
 	ImageName string
 	Type      string
 	URL       string
+	Name      string
 }
 
 // RegisterBuildpack updates the Buildpack Registry with to include a new buildpack specified in
@@ -77,7 +78,7 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 
 		return cmd.Start()
 	} else if opts.Type == "git" {
-		registryCache, err := c.getRegistry(c.logger, opts.URL)
+		registryCache, err := c.getRegistry(c.logger, opts.Name)
 		if err != nil {
 			return err
 		}

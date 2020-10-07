@@ -2,7 +2,6 @@ package logging_test
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/heroku/color"
@@ -71,16 +70,6 @@ func testLogging(t *testing.T, when spec.G, it spec.S) {
 				logger := logging.New(&w)
 				h.AssertEq(t, logging.IsQuiet(logger), false)
 			})
-		})
-	})
-
-	when("PrefixWriter#Write", func() {
-		it("prepends prefix to string", func() {
-			var w bytes.Buffer
-			prefix := "test prefix"
-			writer := logging.NewPrefixWriter(&w, prefix)
-			_, _ = writer.Write([]byte("test"))
-			h.AssertEq(t, w.String(), fmt.Sprintf("[%s] %s", prefix, "test"))
 		})
 	})
 

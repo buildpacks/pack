@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	cfg "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/image"
 
 	"github.com/google/go-containerregistry/pkg/v1/empty"
@@ -353,12 +354,25 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 	when("inspect-buildpack", func() {
 		when("inspecting a registry buildpack", func() {
 			var registryFixture string
+			var configPath string
 			it.Before(func() {
 				expectedInfo.Location = buildpack.RegistryLocator
 
 				registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
 				packHome := filepath.Join(tmpDir, "packHome")
 				h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
+
+				configPath = filepath.Join(packHome, "config.toml")
+				h.AssertNil(t, cfg.Write(cfg.Config{
+					Registries: []cfg.Registry{
+						{
+							Name: "some-registry",
+							Type: "github",
+							URL:  registryFixture,
+						},
+					},
+				}, configPath))
+
 				mockImageFetcher.EXPECT().Fetch(
 					gomock.Any(),
 					"example.com/some/package@sha256:8c27fe111c11b722081701dfed3bd55e039b9ce92865473cf4cdfa918071c566",
@@ -374,7 +388,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 				registryBuildpack := "urn:cnb:registry:example/java"
 				inspectOptions := pack.InspectBuildpackOptions{
 					BuildpackName: registryBuildpack,
-					Registry:      registryFixture,
+					Registry:      "some-registry",
 				}
 				info, err := subject.InspectBuildpack(inspectOptions)
 				h.AssertNil(t, err)
@@ -531,6 +545,24 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 			when("buildpack is not on registry", func() {
+				var registryFixture string
+				var configPath string
+
+				it.Before(func() {
+					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
+					packHome := filepath.Join(tmpDir, "packHome")
+					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
+					configPath = filepath.Join(packHome, "config.toml")
+					h.AssertNil(t, cfg.Write(cfg.Config{
+						Registries: []cfg.Registry{
+							{
+								Name: "some-registry",
+								Type: "github",
+								URL:  registryFixture,
+							},
+						},
+					}, configPath))
+				})
 				it("returns an error", func() {
 					registryBuildpack := "urn:cnb:registry:example/not-present"
 					inspectOptions := pack.InspectBuildpackOptions{
@@ -546,11 +578,23 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 			})
 			when("unable to fetch buildpack from registry", func() {
 				var registryFixture string
+				var configPath string
 
 				it.Before(func() {
 					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
 					packHome := filepath.Join(tmpDir, "packHome")
 					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
+
+					configPath = filepath.Join(packHome, "config.toml")
+					h.AssertNil(t, cfg.Write(cfg.Config{
+						Registries: []cfg.Registry{
+							{
+								Name: "some-registry",
+								Type: "github",
+								URL:  registryFixture,
+							},
+						},
+					}, configPath))
 					mockImageFetcher.EXPECT().Fetch(
 						gomock.Any(),
 						"example.com/some/package@sha256:2560f05307e8de9d830f144d09556e19dd1eb7d928aee900ed02208ae9727e7a",
@@ -562,7 +606,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 					inspectOptions := pack.InspectBuildpackOptions{
 						BuildpackName: registryBuildpack,
 						Daemon:        true,
-						Registry:      registryFixture,
+						Registry:      "some-registry",
 					}
 
 					_, err := subject.InspectBuildpack(inspectOptions)

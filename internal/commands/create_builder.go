@@ -70,6 +70,7 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 		}),
 	}
 
+	//nolint:staticcheck
 	cmd.Flags().StringVarP(&flags.Registry, "buildpack-registry", "R", cfg.DefaultRegistry, "Buildpack Registry URL")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("buildpack-registry")

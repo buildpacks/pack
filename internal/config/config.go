@@ -11,8 +11,9 @@ import (
 )
 
 type Config struct {
-	RunImages           []RunImage       `toml:"run-images"`
-	DefaultBuilder      string           `toml:"default-builder-image,omitempty"`
+	RunImages      []RunImage `toml:"run-images"`
+	DefaultBuilder string     `toml:"default-builder-image,omitempty"`
+	// Deprecated: Use DefaultRegistryName instead. See https://github.com/buildpacks/pack/issues/747.
 	DefaultRegistry     string           `toml:"default-registry-url,omitempty"`
 	DefaultRegistryName string           `toml:"default-registry,omitempty"`
 	Experimental        bool             `toml:"experimental,omitempty"`
@@ -33,6 +34,16 @@ type RunImage struct {
 
 type TrustedBuilder struct {
 	Name string `toml:"name"`
+}
+
+const OfficialRegistryName = "official"
+
+func DefaultRegistry() Registry {
+	return Registry{
+		OfficialRegistryName,
+		"github",
+		"https://github.com/buildpacks/registry-index",
+	}
 }
 
 func DefaultConfigPath() (string, error) {
@@ -93,22 +104,23 @@ func SetRunImageMirrors(cfg Config, image string, mirrors []string) Config {
 	return cfg
 }
 
+func GetRegistries(cfg Config) []Registry {
+	return append(cfg.Registries, DefaultRegistry())
+}
+
 func GetRegistry(cfg Config, registryName string) (Registry, error) {
-	if registryName == "" {
+	if registryName == "" && cfg.DefaultRegistryName != "" {
 		registryName = cfg.DefaultRegistryName
 	}
+	if registryName == "" && cfg.DefaultRegistryName == "" {
+		registryName = OfficialRegistryName
+	}
 	if registryName != "" {
-		for _, registry := range cfg.Registries {
+		for _, registry := range GetRegistries(cfg) {
 			if registry.Name == registryName {
 				return registry, nil
 			}
 		}
-		return Registry{}, errors.Errorf("registry %s is not defined in your config file", style.Symbol(registryName))
 	}
-
-	return Registry{
-		"official",
-		"github",
-		"https://github.com/buildpacks/registry-index",
-	}, nil
+	return Registry{}, errors.Errorf("registry %s is not defined in your config file", style.Symbol(registryName))
 }

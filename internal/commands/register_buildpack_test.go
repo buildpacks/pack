@@ -67,6 +67,7 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					ImageName: buildpackImage,
 					Type:      "github",
 					URL:       "https://github.com/buildpacks/registry-index",
+					Name:      "official",
 				}
 
 				mockClient.EXPECT().
@@ -94,6 +95,7 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 						ImageName: buildpackImage,
 						Type:      "github",
 						URL:       "https://github.com/berneuse/buildpack-registry",
+						Name:      "berneuse",
 					}
 
 					mockClient.EXPECT().
@@ -137,6 +139,7 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					ImageName: buildpackImage,
 					Type:      "github",
 					URL:       "https://github.com/override/buildpack-registry",
+					Name:      "override",
 				}
 				mockClient.EXPECT().
 					RegisterBuildpack(gomock.Any(), opts).
