@@ -14,7 +14,6 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/mock v1.4.4
-	github.com/golang/protobuf v1.3.5 // indirect
 	github.com/google/go-cmp v0.5.2
 	github.com/google/go-containerregistry v0.0.0-20200313165449-955bf358a3d8
 	github.com/google/go-github/v30 v30.1.0
@@ -23,8 +22,7 @@ require (
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
-	github.com/onsi/ginkgo v1.11.0 // indirect
-	github.com/onsi/gomega v1.8.1
+	github.com/onsi/gomega v1.10.2
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/opencontainers/selinux v1.4.0 // indirect
@@ -35,9 +33,7 @@ require (
 	github.com/spf13/cobra v0.0.6
 	golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
 	golang.org/x/mod v0.3.0
-	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527 // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	google.golang.org/genproto v0.0.0-20200313141609-30c55424f95d // indirect
 	google.golang.org/grpc v1.28.0 // indirect
