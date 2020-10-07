@@ -4,7 +4,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/semver v1.5.0
 	github.com/Microsoft/hcsshim v0.8.7 // indirect
-	github.com/apex/log v1.1.2
+	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20200805143852-1844b230530d
 	github.com/buildpacks/lifecycle v0.7.2
 	github.com/containerd/containerd v1.3.3 // indirect
