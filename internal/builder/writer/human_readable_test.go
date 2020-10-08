@@ -279,7 +279,7 @@ REMOTE:
 
 				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
-				assert.ErrorWithMessage(err, "Unable to find builder 'test-builder' locally or remotely.\n")
+				assert.ErrorWithMessage(err, "unable to find builder 'test-builder' locally or remotely")
 			})
 		})
 

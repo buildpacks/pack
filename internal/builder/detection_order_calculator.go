@@ -39,7 +39,6 @@ func (r *detectionOrderRecurser) detectionOrderFromOrder(
 	currentDepth int,
 	visited map[dist.BuildpackRef]interface{},
 ) pubbldr.DetectionOrder {
-
 	var detectionOrder pubbldr.DetectionOrder
 
 	for _, orderEntry := range order {
@@ -61,7 +60,6 @@ func (r *detectionOrderRecurser) detectionOrderFromGroup(
 	currentDepth int,
 	visited map[dist.BuildpackRef]interface{},
 ) pubbldr.DetectionOrder {
-
 	var groupDetectionOrder pubbldr.DetectionOrder
 
 	for _, bp := range group {

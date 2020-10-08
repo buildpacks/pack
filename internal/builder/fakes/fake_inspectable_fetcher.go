@@ -19,7 +19,7 @@ type FakeInspectableFetcher struct {
 }
 
 func (f *FakeInspectableFetcher) Fetch(ctx context.Context, name string, daemon bool, pullPolicy config.PullPolicy) (builder.Inspectable, error) {
-	f.CallCount += 1
+	f.CallCount++
 
 	f.ReceivedName = name
 	f.ReceivedDaemon = daemon

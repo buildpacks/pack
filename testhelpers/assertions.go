@@ -104,7 +104,7 @@ func (a AssertionManager) NilWithMessage(actual interface{}, message string) {
 func (a AssertionManager) TrueWithMessage(actual bool, message string) {
 	a.testObject.Helper()
 
-	if actual != true {
+	if !actual {
 		a.testObject.Fatalf("expected true: %s", message)
 	}
 }

@@ -83,11 +83,11 @@ var (
 	}
 	testOrder = dist.Order{
 		dist.OrderEntry{Group: []dist.BuildpackRef{
-			{testBuildpack, false},
+			{BuildpackInfo: testBuildpack, Optional: false},
 		}},
 		dist.OrderEntry{Group: []dist.BuildpackRef{
-			{testNestedBuildpack, false},
-			{testTopNestedBuildpack, true},
+			{BuildpackInfo: testNestedBuildpack, Optional: false},
+			{BuildpackInfo: testTopNestedBuildpack, Optional: true},
 		}},
 	}
 	testLayers = dist.BuildpackLayers{
@@ -333,7 +333,6 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 					newDetectionCalculator(errorForDetectionOrder(expectedBaseError)),
 				)
 				_, err := inspector.Inspect(testBuilderName, true, pubbldr.OrderDetectionMaxDepth)
-				_, err = inspector.Inspect(testBuilderName, true, pubbldr.OrderDetectionMaxDepth)
 
 				assert.ErrorWithMessage(err, "calculating detection order: couldn't read label")
 			})

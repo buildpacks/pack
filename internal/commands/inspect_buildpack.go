@@ -64,7 +64,6 @@ const (
 	defaultTabWidth    = 4
 	writerPadChar      = ' '
 	writerFlags        = 0
-	none               = "(none)"
 )
 
 type InspectBuildpackFlags struct {
