@@ -75,7 +75,7 @@ func (h *HumanReadable) Print(
 	builderInfo commands.SharedBuilderInfo,
 ) error {
 	if local == nil && remote == nil {
-		return fmt.Errorf("Unable to find builder '%s' locally or remotely.\n", builderInfo.Name)
+		return fmt.Errorf("unable to find builder '%s' locally or remotely", builderInfo.Name)
 	}
 
 	if builderInfo.IsDefault {
@@ -252,7 +252,7 @@ func runImagesOutput(
 		runImageOutput = fmt.Sprintf("  %s\n", none)
 	}
 
-	output = output + runImageOutput
+	output += runImageOutput
 
 	return output, warnings, nil
 }
@@ -305,7 +305,7 @@ func buildpacksOutput(buildpacks []dist.BuildpackInfo, builderName string) (stri
 		return "", []string{}, fmt.Errorf("flushing tab writer: %w", err)
 	}
 
-	output = output + tabWriterBuf.String()
+	output += tabWriterBuf.String()
 
 	return output, []string{}, nil
 }
@@ -394,7 +394,7 @@ func detectionOrderOutput(order pubbldr.DetectionOrder, builderName string) (str
 		return "", []string{}, fmt.Errorf("flushing tab writer: %w", err)
 	}
 
-	output = output + tabWriterBuf.String()
+	output += tabWriterBuf.String()
 	return output, []string{}, nil
 }
 

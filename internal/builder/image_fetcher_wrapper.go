@@ -31,6 +31,5 @@ func (w *ImageFetcherWrapper) Fetch(
 	daemon bool,
 	pullPolicy pubcfg.PullPolicy,
 ) (Inspectable, error) {
-
 	return w.fetcher.Fetch(ctx, name, daemon, pullPolicy)
 }

@@ -20,7 +20,6 @@ func (c *FakeDetectionCalculator) Order(
 	layers dist.BuildpackLayers,
 	depth int,
 ) (builder.DetectionOrder, error) {
-
 	c.ReceivedTopOrder = topOrder
 	c.ReceivedLayers = layers
 	c.ReceivedDepth = depth
