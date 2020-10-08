@@ -4,17 +4,35 @@ on:
   release:
     types:
       - released
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: The release tag to distribute
+        required: true
 
 jobs:
   pack-cli:
+    if: github.event_name == "release"
     runs-on: ubuntu-latest
     env:
       PACKAGE_NAME: pack-cli
     steps:
-      - uses: actions/checkout@v2
       - name: Determine version
-        run: echo "::set-env name=PACK_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`"
+        uses: actions/github-script@v3
+        id: version
+        with:
+          result-encoding: string
+          script: |
+            let payload = context.payload;
+            let tag = (payload.release && payload.release.tag_name) || (payload.inputs && payload.inputs.tag_name);
+            if (!tag) {
+              throw "ERROR: unable to determine tag"
+            }
+            return tag.replace(/^v/, '');
+      - name: Set PACK_VERSION
+        run: echo "::set-env name=PACK_VERSION::${{ steps.version.outputs.result }}"
         shell: bash
+      - uses: actions/checkout@v2
       - name: Setup working dir
         run: |
           mkdir -p ${{ env.PACKAGE_NAME }}
@@ -57,26 +75,47 @@ jobs:
     env:
       PACKAGE_NAME: pack-cli-bin
     steps:
-      - uses: actions/checkout@v2
       - name: Determine version
-        run: echo "::set-env name=PACK_VERSION::`echo ${{ github.event.release.tag_name }} | cut -d "v" -f2`"
+        uses: actions/github-script@v3
+        id: version
+        with:
+          result-encoding: string
+          script: |
+            let payload = context.payload;
+            let tag = (payload.release && payload.release.tag_name) || (payload.inputs && payload.inputs.tag_name);
+            if (!tag) {
+              throw "ERROR: unable to determine tag"
+            }
+            return tag.replace(/^v/, '');
+      - name: Set PACK_VERSION
+        run: echo "::set-env name=PACK_VERSION::${{ steps.version.outputs.result }}"
         shell: bash
+      - uses: actions/checkout@v2
       - name: Setup working dir
         run: |
           mkdir -p ${{ env.PACKAGE_NAME }}/
           cp .github/workflows/delivery/archlinux/${{ env.PACKAGE_NAME }}/PKGBUILD ${{ env.PACKAGE_NAME }}/PKGBUILD
-          
       - name: Lookup assets
         uses: actions/github-script@v1
         id: assets
         with:
           script: |
-            context.payload.release.assets.forEach(asset => {
-              if (asset.name.includes("linux")) {
-                core.setOutput("linux_name", asset.name);
-                core.setOutput("linux_url", asset.browser_download_url);
-              }
-            });
+            let tag_name = "v${{ env.PACK_VERSION }}";
+            var release = context.payload.release || await github.repos.listReleases(context.repo)
+                  .then(result => result.data.find(r => r.tag_name === tag_name))
+                  .catch(err => {throw "ERROR: " + err.message});
+
+            if (!release) {
+              throw "no release found with tag: " + tag_name;
+            }
+
+            let asset = release.assets.find(a => a.name.endsWith("linux.tgz"));
+            if (!asset) {
+              throw "ERROR: Failed to find linux asset!";
+            }
+
+            core.setOutput("linux_name", asset.name);
+            core.setOutput("linux_url", asset.browser_download_url);
       - name: Metadata
         id: metadata
         run: |

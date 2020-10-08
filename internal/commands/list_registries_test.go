@@ -18,14 +18,14 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-func TestListBuildpacksRegistries(t *testing.T) {
+func TestListRegistries(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "Commands", testListBuildpackRegistriesCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Commands", testListRegistriesCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testListBuildpackRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
+func testListRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command *cobra.Command
 		logger  logging.Logger

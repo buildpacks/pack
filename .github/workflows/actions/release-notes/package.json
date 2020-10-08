@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "local": "node local.js",
-    "build": "n"
+    "build": "ncc build action.js -o dist/"
   },
   "dependencies": {
     "@actions/core": "^1.2.6",
