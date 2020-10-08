@@ -94,6 +94,9 @@ func (l *LifecycleAsset) JSONOutputForAPIs(baseIndentationWidth int) (
 ) {
 	stringify := func(apiSet builder.APISet, baseIndentationWidth int) string {
 		if len(apiSet) < 1 {
+			if apiSet == nil {
+				return "null"
+			}
 			return "[]"
 		}
 
