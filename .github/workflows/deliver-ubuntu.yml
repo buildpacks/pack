@@ -1,8 +1,9 @@
 name: delivery / ubuntu
-on: push
-  #release:
-    #types:
-      #- released
+
+on:
+  release:
+    types:
+      - released
 
 jobs:
     create-ppa:
@@ -31,9 +32,7 @@ jobs:
           - name: Metadata
             id: metadata
             run: |
-                # todo handle these error cases
                 git_description=$(git describe --tags --long)
-                #git_description="0.0.0-001-$(git rev-parse --short HEAD)"
                 version=$(echo "${git_description}" | awk -F- '{print $(1)}' | sed 's/^v//')
                 revision=$(echo "${git_description}" | awk -F- '{print $(NF-1)}')
                 commit=$(echo "${git_description}" | awk -F- '{print $(NF)}'  | sed 's/^g//')
@@ -58,24 +57,22 @@ jobs:
               tokenSuffix: '}}'
             env:
               ARCH: "any"
-              #PACKAGE_NAME: "pack-cli"
-              PACKAGE_NAME: "test-package"
+              PACKAGE_NAME: "pack-cli"
               UBUNTU_VERSION:  ${{ matrix.target }}
               HOMEPAGE: "https://buildpacks.io"
               PACK_VERSION: ${{ steps.metadata.outputs.version }}
               REPO: "buildpacks/pack"
               DESCRIPTION: "CLI for building apps using Cloud Native Buildpacks"
               DATE_TIME: ${{ steps.metadata.outputs.date }}
-              MAINTAINER_NAME: thorntondwt
-              MAINTAINER_EMAIL: thorntondwt@gmail.com
+              MAINTAINER_NAME: "cncf-buildpacks"
+              MAINTAINER_EMAIL: "cncf-buildpacks-maintainers@lists.cncf.io"
 
           - name: Create PPA
             env:
-              #PACKAGE_NAME: "pack-cli"
-              PACKAGE_NAME: "test-package"
+              PACKAGE_NAME: "pack-cli"
               PACKAGE_VERSION: ${{ steps.metadata.outputs.version }}
-              MAINTAINER: "thorntondwt"
-              MAINTANER_EMAIL: "thorntondwt@gmail.com"
+              MAINTAINER: "cncf-buildpacks"
+              MAINTANER_EMAIL: "cncf-buildpacks-maintainers@lists.cncf.io"
               GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
             run: ./.github/workflows/scripts/create_ppa.sh
@@ -84,7 +81,7 @@ jobs:
             if: matrix.target == 'xenial'
             uses: docker://ubuntu:16.04
             env:
-              PACKAGE_NAME: "test-package"
+              PACKAGE_NAME: "pack-cli"
             with:
               entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
 
@@ -92,7 +89,7 @@ jobs:
             if: matrix.target == 'bionic'
             uses: docker://ubuntu:18.04
             env:
-              PACKAGE_NAME: "test-package"
+              PACKAGE_NAME: "pack-cli"
             with:
               entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
 
@@ -100,7 +97,7 @@ jobs:
             if: matrix.target == 'focal'
             uses: docker://ubuntu:20.04
             env:
-              PACKAGE_NAME: "test-package"
+              PACKAGE_NAME: "pack-cli"
             with:
               entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
 
