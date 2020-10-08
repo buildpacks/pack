@@ -32,7 +32,7 @@ require (
 	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
 	github.com/sclevine/spec v1.4.0
 	github.com/sergi/go-diff v1.1.0 // indirect
-	github.com/spf13/cobra v0.0.6
+	github.com/spf13/cobra v0.0.7
 	golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
 	golang.org/x/mod v0.3.0
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
