@@ -89,6 +89,11 @@ var (
 				},
 			},
 		},
+		pubbldr.DetectionOrderEntry{
+			BuildpackRef: dist.BuildpackRef{
+				BuildpackInfo: testBuildpackThree,
+			},
+		},
 	}
 
 	sharedBuilderInfo = commands.SharedBuilderInfo{

@@ -411,7 +411,7 @@ func writeDetectionOrderGroup(writer io.Writer, order pubbldr.DetectionOrder, pr
 		}
 
 		if includesSubGroup {
-			groupPrefix := fmt.Sprintf("%s   ", orderPrefix)
+			groupPrefix := orderPrefix
 
 			if orderEntry.ID != "" {
 				err = writeDetectionOrderBuildpack(writer, orderEntry)
@@ -430,6 +430,7 @@ func writeDetectionOrderGroup(writer io.Writer, order pubbldr.DetectionOrder, pr
 					if err != nil {
 						return fmt.Errorf("writing to detection order group writer: %w", err)
 					}
+					groupPrefix = fmt.Sprintf("%s   ", groupPrefix)
 				}
 			}
 
@@ -459,7 +460,7 @@ func writeAndUpdateEntryPrefix(writer io.Writer, last bool, prefix string) (stri
 		if err != nil {
 			return "", fmt.Errorf("writing detection order prefix: %w", err)
 		}
-		return prefix, nil
+		return fmt.Sprintf("%s%s", prefix, "   "), nil
 	}
 
 	_, err := fmt.Fprintf(writer, "%s%s", prefix, branchPrefix)

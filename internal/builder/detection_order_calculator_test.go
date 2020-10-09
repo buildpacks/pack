@@ -105,6 +105,7 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 							{
 								Group: []dist.BuildpackRef{
 									{BuildpackInfo: testLevelTwoNestedBuildpack},
+									{BuildpackInfo: testTopNestedBuildpack},
 								},
 							},
 						},
@@ -160,7 +161,11 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 										GroupDetectionOrder: pubbldr.DetectionOrder{
 											{
 												BuildpackRef: dist.BuildpackRef{BuildpackInfo: testLevelTwoNestedBuildpack},
-												Cyclical:     true,
+												Cyclical:     false,
+											},
+											{
+												BuildpackRef: dist.BuildpackRef{BuildpackInfo: testTopNestedBuildpack},
+												Cyclical: true,
 											},
 										},
 									},
