@@ -139,6 +139,10 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
             "optional": true
           }
         ]
+      },
+      {
+        "id": "test.bp.three",
+        "version": "test.bp.three.version"
       }
     ]`
 		expectedStackWithMixins = `"stack": {
