@@ -19,7 +19,6 @@ type PackageBuildpackFlags struct {
 	PackageTomlPath string
 	Format          string
 	Publish         bool
-	NoPull          bool
 	Policy          string
 }
 
@@ -42,7 +41,7 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 		Short: "Package buildpack in OCI format.",
 		Args:  cobra.ExactValidArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := validatePackageBuildpackFlags(&flags, logger); err != nil {
+			if err := validatePackageBuildpackFlags(&flags); err != nil {
 				return err
 			}
 
@@ -86,35 +85,18 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--image" only)`)
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
-	// TODO: Remove --no-pull flag after v0.13.0 released. See https://github.com/buildpacks/pack/issues/775
-	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling packages before use")
-	cmd.Flags().MarkHidden("no-pull")
 
 	AddHelpFlag(cmd, "package-buildpack")
 	return cmd
 }
 
-func validatePackageBuildpackFlags(p *PackageBuildpackFlags, logger logging.Logger) error {
+func validatePackageBuildpackFlags(p *PackageBuildpackFlags) error {
 	if p.Publish && p.Policy == config.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
 	}
 
-	if p.Publish && p.NoPull {
-		return errors.Errorf("The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
-	}
-
 	if p.PackageTomlPath == "" {
 		return errors.Errorf("Please provide a package config path, using --config")
-	}
-
-	if p.NoPull {
-		logger.Warn("Flag --no-pull has been deprecated, please use `--pull-policy never` instead")
-
-		if p.Policy != "" {
-			logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
-		} else {
-			p.Policy = config.PullNever.String()
-		}
 	}
 
 	return nil
