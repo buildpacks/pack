@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/windows/nanoserver:1809
+FROM mcr.microsoft.com/windows/servercore:ltsc2019
 
 # non-zero sets all user-owned directories to BUILTIN\Users
 ENV CNB_USER_ID=1

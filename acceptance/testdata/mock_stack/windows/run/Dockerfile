@@ -1,11 +1,11 @@
-FROM golang:1.14-nanoserver-1809 AS gobuild
+FROM golang:1.14-windowsservercore-1809 AS gobuild
 
 # bake in a simple server util
 WORKDIR /util
 COPY server.go /util/server.go
 RUN go build /util/server.go
 
-FROM mcr.microsoft.com/windows/nanoserver:1809
+FROM mcr.microsoft.com/windows/servercore:ltsc2019
 
 COPY --from=gobuild /util/server.exe /util/server.exe
 

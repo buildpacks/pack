@@ -57,7 +57,7 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 
 		dockerfileContent := `FROM busybox`
 		if osType == "windows" {
-			dockerfileContent = `FROM mcr.microsoft.com/windows/nanoserver:1809`
+			dockerfileContent = `FROM mcr.microsoft.com/windows/servercore:ltsc2019`
 		}
 
 		h.CreateImage(t, ctrClient, imageName, dockerfileContent)
@@ -98,11 +98,11 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, errBuf.String(), "")
 			if osType == "windows" {
 				h.AssertContainsMatch(t, strings.ReplaceAll(outBuf.String(), "\r", ""), `
-(.*)    <DIR>          ...                    .
-(.*)    <DIR>          ...                    ..
-(.*)                17 ...                    fake-app-file
-(.*)    <SYMLINK>      ...                    fake-app-symlink \[fake-app-file\]
-(.*)                 0 ...                    file-to-ignore
+(.*)    <DIR>          (.*) .
+(.*)    <DIR>          (.*) ..
+(.*)                17 (.*) fake-app-file
+(.*)    <SYMLINK>      (.*) \[fake-app-file\]
+(.*)                 0 (.*) file-to-ignore
 `)
 			} else {
 				if runtime.GOOS == "windows" {
@@ -182,9 +182,9 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			h.AssertEq(t, errBuf.String(), "")
 			if osType == "windows" {
 				h.AssertContainsMatch(t, strings.ReplaceAll(outBuf.String(), "\r", ""), `
-(.*)    <DIR>          ...                    .
-(.*)    <DIR>          ...                    ..
-(.*)                17 ...                    fake-app-file
+(.*)    <DIR>          (.*) .
+(.*)    <DIR>          (.*) ..
+(.*)                17 (.*) fake-app-file
 `)
 			} else {
 				h.AssertContainsMatch(t, outBuf.String(), `
@@ -231,7 +231,7 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 
 			h.AssertEq(t, errBuf.String(), "")
 			if osType == "windows" {
-				h.AssertContains(t, outBuf.String(), `01/01/1980  12:00 AM                69 ...                    stack.toml`)
+				h.AssertContainsMatch(t, strings.ReplaceAll(outBuf.String(), "\r", ""), `01/01/1980  12:00 AM (.*) 69 (.*) stack.toml`)
 			} else {
 				h.AssertContains(t, outBuf.String(), `-rwxr-xr-x    1 root     root            69 Jan  1  1980 /layers-vol/stack.toml`)
 			}
