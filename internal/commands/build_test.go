@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"testing"
 
+	pubcfg "github.com/buildpacks/pack/config"
+
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
@@ -135,6 +137,15 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("--pull-policy", func() {
+			it("sets pull-policy=never", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithPullPolicy(pubcfg.PullNever)).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--pull-policy", "never"})
+				h.AssertNil(t, command.Execute())
+			})
+
 			it("returns error for unknown policy", func() {
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--pull-policy", "unknown-policy"})
 				h.AssertError(t, command.Execute(), "parsing pull policy")
@@ -608,6 +619,15 @@ func EqBuildOptionsDefaultProcess(defaultProc string) gomock.Matcher {
 		description: fmt.Sprintf("Default Process Type=%s", defaultProc),
 		equals: func(o pack.BuildOptions) bool {
 			return o.DefaultProcessType == defaultProc
+		},
+	}
+}
+
+func EqBuildOptionsWithPullPolicy(policy pubcfg.PullPolicy) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("PullPolicy=%s", policy),
+		equals: func(o pack.BuildOptions) bool {
+			return o.PullPolicy == policy
 		},
 	}
 }
