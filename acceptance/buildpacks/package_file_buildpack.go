@@ -21,22 +21,37 @@ type PackageFile struct {
 	destination          string
 	sourceConfigLocation string
 	buildpacks           []TestBuildpack
+	os                   string
 }
+
+func (p *PackageFile) SetOS(os string) {
+	p.os = os
+}
+
+func (p *PackageFile) SetBuildpacks(buildpacks []TestBuildpack) {
+	p.buildpacks = buildpacks
+}
+
+func (p *PackageFile) SetPublish() {}
 
 func NewPackageFile(
 	t *testing.T,
 	pack *invoke.PackInvoker,
 	destination, configLocation string,
-	buildpacks ...TestBuildpack,
+	modifiers ...PackageModifier,
 ) PackageFile {
 
-	return PackageFile{
+	p := PackageFile{
 		testObject:           t,
 		pack:                 pack,
 		destination:          destination,
 		sourceConfigLocation: configLocation,
-		buildpacks:           buildpacks,
 	}
+	for _, mod := range modifiers {
+		mod(&p)
+	}
+
+	return p
 }
 
 func (p PackageFile) Prepare(sourceDir, _ string) error {
@@ -59,13 +74,18 @@ func (p PackageFile) Prepare(sourceDir, _ string) error {
 	configLocation := filepath.Join(tmpDir, "package.toml")
 	h.CopyFile(p.testObject, p.sourceConfigLocation, configLocation)
 
-	output := p.pack.RunSuccessfully(
-		"package-buildpack",
+	packArgs := []string{
 		p.destination,
 		"--no-color",
 		"-c", configLocation,
 		"--format", "file",
-	)
+	}
+
+	if p.os != "" {
+		packArgs = append(packArgs, "--os", p.os)
+	}
+
+	output := p.pack.RunSuccessfully("package-buildpack", packArgs...)
 
 	if !strings.Contains(output, fmt.Sprintf("Successfully created package '%s'", p.destination)) {
 		return errors.New("failed to create package")

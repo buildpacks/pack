@@ -3,12 +3,14 @@ package commands
 import (
 	"context"
 
-	"github.com/buildpacks/pack/config"
+	pubcfg "github.com/buildpacks/pack/config"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/config"
+
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
@@ -18,6 +20,7 @@ import (
 type PackageBuildpackFlags struct {
 	PackageTomlPath string
 	Format          string
+	OS              string
 	Publish         bool
 	NoPull          bool
 	Policy          string
@@ -34,7 +37,7 @@ type PackageConfigReader interface {
 }
 
 // PackageBuildpack packages (a) buildpack(s) into OCI format, based on a package config
-func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
+func PackageBuildpack(logger logging.Logger, cfg config.Config, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
 	var flags PackageBuildpackFlags
 
 	cmd := &cobra.Command{
@@ -42,12 +45,12 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 		Short: "Package buildpack in OCI format.",
 		Args:  cobra.ExactValidArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := validatePackageBuildpackFlags(&flags, logger); err != nil {
+			if err := validatePackageBuildpackFlags(&flags, cfg, logger); err != nil {
 				return err
 			}
 
 			var err error
-			pullPolicy, err := config.ParsePullPolicy(flags.Policy)
+			pullPolicy, err := pubcfg.ParsePullPolicy(flags.Policy)
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}
@@ -56,7 +59,7 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 				logger.Warn("Flag --package-config has been deprecated, please use --config instead")
 			}
 
-			config, err := packageConfigReader.Read(flags.PackageTomlPath)
+			cfg, err := packageConfigReader.Read(flags.PackageTomlPath)
 			if err != nil {
 				return errors.Wrap(err, "reading config")
 			}
@@ -65,7 +68,8 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 			if err := client.PackageBuildpack(cmd.Context(), pack.PackageBuildpackOptions{
 				Name:       name,
 				Format:     flags.Format,
-				Config:     config,
+				OS:         flags.OS,
+				Config:     cfg,
 				Publish:    flags.Publish,
 				PullPolicy: pullPolicy,
 			}); err != nil {
@@ -84,7 +88,11 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 	cmd.Flags().StringVarP(&flags.PackageTomlPath, "config", "c", "", "Path to package TOML config (required)")
 
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
-	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--image" only)`)
+	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--format=image" only)`)
+	cmd.Flags().StringVar(&flags.OS, "os", "", `Operating system format of the package OCI image: "linux" or "windows" (defaults to "linux", except local images which use the daemon OS)`)
+	if !cfg.Experimental {
+		cmd.Flags().MarkHidden("os")
+	}
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 	// TODO: Remove --no-pull flag after v0.13.0 released. See https://github.com/buildpacks/pack/issues/775
 	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling packages before use")
@@ -94,8 +102,8 @@ func PackageBuildpack(logger logging.Logger, client BuildpackPackager, packageCo
 	return cmd
 }
 
-func validatePackageBuildpackFlags(p *PackageBuildpackFlags, logger logging.Logger) error {
-	if p.Publish && p.Policy == config.PullNever.String() {
+func validatePackageBuildpackFlags(p *PackageBuildpackFlags, cfg config.Config, logger logging.Logger) error {
+	if p.Publish && p.Policy == pubcfg.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
 	}
 
@@ -113,8 +121,12 @@ func validatePackageBuildpackFlags(p *PackageBuildpackFlags, logger logging.Logg
 		if p.Policy != "" {
 			logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
 		} else {
-			p.Policy = config.PullNever.String()
+			p.Policy = pubcfg.PullNever.String()
 		}
+	}
+
+	if p.OS != "" && !cfg.Experimental {
+		return pack.NewExperimentError("Support for OS flag is currently experimental.")
 	}
 
 	return nil

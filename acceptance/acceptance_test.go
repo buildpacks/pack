@@ -125,6 +125,7 @@ func testWithoutSpecificBuilderRequirement(
 
 	it.Before(func() {
 		pack = invoke.NewPackInvoker(t, assert, packConfig, registryConfig.DockerConfigDir)
+		pack.EnableExperimental()
 		buildpackManager = buildpacks.NewBuildpackManager(t, assert)
 	})
 
@@ -325,6 +326,8 @@ func testWithoutSpecificBuilderRequirement(
 
 			when("--publish", func() {
 				it("publishes image to registry", func() {
+					h.SkipIf(t, !pack.Supports("package-buildpack --os"), "os not supported")
+
 					nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
 					nestedPackage := buildpacks.NewPackageImage(
@@ -332,8 +335,9 @@ func testWithoutSpecificBuilderRequirement(
 						pack,
 						nestedPackageName,
 						simplePackageConfigPath,
-						buildpacks.WithPublish(),
 						buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
+						buildpacks.WithPublish(),
+						buildpacks.WithOS(dockerHostOS()),
 					)
 					buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
 					defer h.DockerRmi(dockerCli, nestedPackageName)
@@ -344,6 +348,7 @@ func testWithoutSpecificBuilderRequirement(
 						"package-buildpack", packageName,
 						"-c", aggregatePackageToml,
 						"--publish",
+						"--os", dockerHostOS(),
 					)
 					defer h.DockerRmi(dockerCli, packageName)
 					assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
@@ -535,8 +540,10 @@ func testWithoutSpecificBuilderRequirement(
 						pack,
 						packageFileLocation,
 						pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
-						buildpacks.FolderSimpleLayersParent,
-						buildpacks.FolderSimpleLayers,
+						buildpacks.WithRequiredBuildpacks(
+							buildpacks.FolderSimpleLayersParent,
+							buildpacks.FolderSimpleLayers,
+						),
 					)
 
 					buildpackManager.PrepareBuildpacks(tmpDir, packageFile)
@@ -1242,8 +1249,8 @@ func testAcceptance(
 
 							it.Before(func() {
 								h.SkipUnless(t,
-									pack.Supports("package-buildpack"),
-									"--buildpack does not accept buildpackage unless package-buildpack is supported",
+									pack.Supports("package-buildpack --os"),
+									"--buildpack does not accept buildpackage unless package-buildpack --os is supported",
 								)
 							})
 
@@ -1291,6 +1298,11 @@ func testAcceptance(
 							var tmpDir string
 
 							it.Before(func() {
+								h.SkipUnless(t,
+									pack.Supports("package-buildpack --os"),
+									"--buildpack does not accept buildpackage unless package-buildpack --os is supported",
+								)
+
 								var err error
 								tmpDir, err = ioutil.TempDir("", "package-file")
 								assert.Nil(err)
@@ -1311,8 +1323,11 @@ func testAcceptance(
 									pack,
 									packageFileLocation,
 									pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
-									buildpacks.FolderSimpleLayersParent,
-									buildpacks.FolderSimpleLayers,
+									buildpacks.WithRequiredBuildpacks(
+										buildpacks.FolderSimpleLayersParent,
+										buildpacks.FolderSimpleLayers,
+									),
+									buildpacks.WithOS(dockerHostOS()),
 								)
 
 								buildpackManager.PrepareBuildpacks(tmpDir, packageFile)
