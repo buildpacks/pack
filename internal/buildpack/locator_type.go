@@ -23,8 +23,10 @@ const (
 	RegistryLocator
 )
 
-const fromBuilderPrefix = "from=builder"
+const fromBuilderPrefix = "urn:cnb:builder"
+const deprecatedFromBuilderPrefix = "from=builder"
 const fromRegistryPrefix = "urn:cnb:registry"
+const fromDockerPrefix = "docker:/"
 
 func (l LocatorType) String() string {
 	return []string{
@@ -40,11 +42,11 @@ func (l LocatorType) String() string {
 // If a type cannot be determined, `INVALID_LOCATOR` will be returned. If an error
 // is encountered, it will be returned.
 func GetLocatorType(locator string, buildpacksFromBuilder []dist.BuildpackInfo) (LocatorType, error) {
-	if locator == fromBuilderPrefix {
+	if locator == deprecatedFromBuilderPrefix {
 		return FromBuilderLocator, nil
 	}
 
-	if strings.HasPrefix(locator, fromBuilderPrefix+":") {
+	if strings.HasPrefix(locator, fromBuilderPrefix+":") || strings.HasPrefix(locator, deprecatedFromBuilderPrefix+":") {
 		if !builderMatchFound(locator, buildpacksFromBuilder) {
 			return InvalidLocator, fmt.Errorf("%s is not a valid identifier", style.Symbol(locator))
 		}
@@ -56,6 +58,11 @@ func GetLocatorType(locator string, buildpacksFromBuilder []dist.BuildpackInfo) 
 	}
 
 	if paths.IsURI(locator) {
+		if HasDockerLocator(locator) {
+			if _, err := name.ParseReference(locator); err == nil {
+				return PackageLocator, nil
+			}
+		}
 		return URILocator, nil
 	}
 
@@ -72,6 +79,10 @@ func GetLocatorType(locator string, buildpacksFromBuilder []dist.BuildpackInfo) 
 	}
 
 	return InvalidLocator, nil
+}
+
+func HasDockerLocator(locator string) bool {
+	return strings.HasPrefix(locator, fromDockerPrefix)
 }
 
 func builderMatchFound(locator string, candidates []dist.BuildpackInfo) bool {

@@ -643,7 +643,8 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			fetchedBPs = append(append(fetchedBPs, mainBP), dependencyBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.PackageLocator:
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, bp, c.imageFetcher, publish, pullPolicy)
+			imageName := buildpack.ParsePackageLocator(bp)
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, publish, pullPolicy)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(bp))
 			}
