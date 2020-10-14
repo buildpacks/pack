@@ -544,6 +544,7 @@ func testWithoutSpecificBuilderRequirement(
 							buildpacks.FolderSimpleLayersParent,
 							buildpacks.FolderSimpleLayers,
 						),
+						buildpacks.WithOS(dockerHostOS()),
 					)
 
 					buildpackManager.PrepareBuildpacks(tmpDir, packageFile)
@@ -564,10 +565,6 @@ func testWithoutSpecificBuilderRequirement(
 		})
 
 		when("buildpack image", func() {
-			it.Before(func() {
-				h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
-			})
-
 			when("inspect-buildpack", func() {
 				it("succeeds", func() {
 					packageImageName := registryConfig.RepoName("buildpack-" + h.RandString(8))
@@ -2126,70 +2123,68 @@ func createComplexBuilder(t *testing.T,
 		"run_image_mirror": runImageMirror,
 	}
 
-	if dockerHostOS() != "windows" {
-		packageImageName := registryConfig.RepoName("nested-level-1-buildpack-" + h.RandString(8))
-		nestedLevelTwoBuildpackName := registryConfig.RepoName("nested-level-2-buildpack-" + h.RandString(8))
-		simpleLayersBuildpackName := registryConfig.RepoName("simple-layers-buildpack-" + h.RandString(8))
+	packageImageName := registryConfig.RepoName("nested-level-1-buildpack-" + h.RandString(8))
+	nestedLevelTwoBuildpackName := registryConfig.RepoName("nested-level-2-buildpack-" + h.RandString(8))
+	simpleLayersBuildpackName := registryConfig.RepoName("simple-layers-buildpack-" + h.RandString(8))
 
-		templateMapping["package_id"] = "simple/nested-level-1"
-		templateMapping["package_image_name"] = packageImageName
-		templateMapping["nested_level_1_buildpack"] = packageImageName
-		templateMapping["nested_level_2_buildpack"] = nestedLevelTwoBuildpackName
-		templateMapping["simple_layers_buildpack"] = simpleLayersBuildpackName
+	templateMapping["package_id"] = "simple/nested-level-1"
+	templateMapping["package_image_name"] = packageImageName
+	templateMapping["nested_level_1_buildpack"] = packageImageName
+	templateMapping["nested_level_2_buildpack"] = nestedLevelTwoBuildpackName
+	templateMapping["simple_layers_buildpack"] = simpleLayersBuildpackName
 
-		fixtureManager := pack.FixtureManager()
+	fixtureManager := pack.FixtureManager()
 
-		nestedLevelOneConfigFile, err := ioutil.TempFile(tmpDir, "nested-level-1-package.toml")
-		assert.Nil(err)
-		fixtureManager.TemplateFixtureToFile(
-			"nested-level-1-buildpack_package.toml",
-			nestedLevelOneConfigFile,
-			templateMapping,
-		)
-		err = nestedLevelOneConfigFile.Close()
-		assert.Nil(err)
+	nestedLevelOneConfigFile, err := ioutil.TempFile(tmpDir, "nested-level-1-package.toml")
+	assert.Nil(err)
+	fixtureManager.TemplateFixtureToFile(
+		"nested-level-1-buildpack_package.toml",
+		nestedLevelOneConfigFile,
+		templateMapping,
+	)
+	err = nestedLevelOneConfigFile.Close()
+	assert.Nil(err)
 
-		nestedLevelTwoConfigFile, err := ioutil.TempFile(tmpDir, "nested-level-2-package.toml")
-		assert.Nil(err)
-		fixtureManager.TemplateFixtureToFile(
-			"nested-level-2-buildpack_package.toml",
-			nestedLevelTwoConfigFile,
-			templateMapping,
-		)
-		err = nestedLevelTwoConfigFile.Close()
-		assert.Nil(err)
+	nestedLevelTwoConfigFile, err := ioutil.TempFile(tmpDir, "nested-level-2-package.toml")
+	assert.Nil(err)
+	fixtureManager.TemplateFixtureToFile(
+		"nested-level-2-buildpack_package.toml",
+		nestedLevelTwoConfigFile,
+		templateMapping,
+	)
+	err = nestedLevelTwoConfigFile.Close()
+	assert.Nil(err)
 
-		packageImageBuildpack := buildpacks.NewPackageImage(
-			t,
-			pack,
-			packageImageName,
-			nestedLevelOneConfigFile.Name(),
-			buildpacks.WithRequiredBuildpacks(
-				buildpacks.NestedLevelOne,
-				buildpacks.NewPackageImage(
-					t,
-					pack,
-					nestedLevelTwoBuildpackName,
-					nestedLevelTwoConfigFile.Name(),
-					buildpacks.WithRequiredBuildpacks(
-						buildpacks.NestedLevelTwo,
-						buildpacks.NewPackageImage(
-							t,
-							pack,
-							simpleLayersBuildpackName,
-							fixtureManager.FixtureLocation("simple-layers-buildpack_package.toml"),
-							buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
-						),
+	packageImageBuildpack := buildpacks.NewPackageImage(
+		t,
+		pack,
+		packageImageName,
+		nestedLevelOneConfigFile.Name(),
+		buildpacks.WithRequiredBuildpacks(
+			buildpacks.NestedLevelOne,
+			buildpacks.NewPackageImage(
+				t,
+				pack,
+				nestedLevelTwoBuildpackName,
+				nestedLevelTwoConfigFile.Name(),
+				buildpacks.WithRequiredBuildpacks(
+					buildpacks.NestedLevelTwo,
+					buildpacks.NewPackageImage(
+						t,
+						pack,
+						simpleLayersBuildpackName,
+						fixtureManager.FixtureLocation("simple-layers-buildpack_package.toml"),
+						buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
 					),
 				),
 			),
-		)
+		),
+	)
 
-		builderBuildpacks = append(
-			builderBuildpacks,
-			packageImageBuildpack,
-		)
-	}
+	builderBuildpacks = append(
+		builderBuildpacks,
+		packageImageBuildpack,
+	)
 
 	buildpackManager.PrepareBuildpacks(tmpDir, builderBuildpacks...)
 
@@ -2260,30 +2255,20 @@ func createBuilder(
 		buildpacks.ReadEnv,
 	}
 
-	// NOTE: Windows-based packages are not yet supported, so we'll add this buildpack in the usual way for now.
-	// Remove this block once Windows-based packages are supported.
-	if dockerHostOS() == "windows" {
-		builderBuildpacks = append(builderBuildpacks, buildpacks.SimpleLayers)
-	}
+	packageImageName := registryConfig.RepoName("simple-layers-package-image-buildpack-" + h.RandString(8))
 
-	// NOTE: Windows-based packages are not yet supported, so we'll add this buildpack in the usual way for now (see above).
-	// Remove this guard once Windows-based packages are supported.
-	if dockerHostOS() != "windows" {
-		packageImageName := registryConfig.RepoName("simple-layers-package-image-buildpack-" + h.RandString(8))
+	packageImageBuildpack := buildpacks.NewPackageImage(
+		t,
+		pack,
+		packageImageName,
+		pack.FixtureManager().FixtureLocation("package.toml"),
+		buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
+	)
 
-		packageImageBuildpack := buildpacks.NewPackageImage(
-			t,
-			pack,
-			packageImageName,
-			pack.FixtureManager().FixtureLocation("package.toml"),
-			buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
-		)
+	builderBuildpacks = append(builderBuildpacks, packageImageBuildpack)
 
-		builderBuildpacks = append(builderBuildpacks, packageImageBuildpack)
-
-		templateMapping["package_image_name"] = packageImageName
-		templateMapping["package_id"] = "simple/layers"
-	}
+	templateMapping["package_image_name"] = packageImageName
+	templateMapping["package_id"] = "simple/layers"
 
 	buildpackManager.PrepareBuildpacks(tmpDir, builderBuildpacks...)
 
@@ -2302,11 +2287,6 @@ func createBuilder(
 
 	// RENDER builder.toml
 	configFileName := "builder.toml"
-
-	// NOTE: Remove when Windows-based packages are supported (can use same toml at that point)
-	if dockerHostOS() == "windows" {
-		configFileName = "builder-windows.toml"
-	}
 
 	builderConfigFile, err := ioutil.TempFile(tmpDir, "builder.toml")
 	assert.Nil(err)

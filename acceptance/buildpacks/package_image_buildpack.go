@@ -55,7 +55,6 @@ func NewPackageImage(
 	for _, mod := range modifiers {
 		mod(&p)
 	}
-
 	return p
 }
 
