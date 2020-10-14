@@ -21,7 +21,7 @@ func TestSetDefaultRegistry(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "Commands", testSetDefaultRegistryCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "SetDefaultRegistryCommand", testSetDefaultRegistryCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testSetDefaultRegistryCommand(t *testing.T, when spec.G, it spec.S) {
@@ -52,7 +52,7 @@ func testSetDefaultRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 					{
 						Name: "myregistry",
 						URL:  "https://github.com/buildpacks/registry-index",
-						Type: "Github",
+						Type: "github",
 					},
 				},
 			}

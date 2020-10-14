@@ -18,6 +18,7 @@ func SetDefaultRegistry(logger logging.Logger, cfg config.Config, cfgPath string
 		Use:   "set-default-registry <name>",
 		Args:  cobra.ExactArgs(1),
 		Short: "Set default registry",
+		Example: "pack set-default-registry myregistry",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			registryName = args[0]
 			if !containsRegistry(config.GetRegistries(cfg), registryName) {
@@ -37,7 +38,6 @@ func SetDefaultRegistry(logger logging.Logger, cfg config.Config, cfgPath string
 			return nil
 		}),
 	}
-	cmd.Example = "pack set-default-registry myregistry"
 	AddHelpFlag(cmd, "set-default-registry")
 
 	return cmd
