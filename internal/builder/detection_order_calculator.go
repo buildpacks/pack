@@ -96,7 +96,7 @@ func (r *detectionOrderRecurser) shouldGoDeeper(currentDepth int) bool {
 	return false
 }
 
-func copyMap(toCopy map[dist.BuildpackRef]interface{}) (map[dist.BuildpackRef]interface{}) {
+func copyMap(toCopy map[dist.BuildpackRef]interface{}) map[dist.BuildpackRef]interface{} {
 	result := make(map[dist.BuildpackRef]interface{}, len(toCopy))
 	for key := range toCopy {
 		result[key] = true

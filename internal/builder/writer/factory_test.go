@@ -42,6 +42,7 @@ func testFactory(t *testing.T, when spec.G, it spec.S) {
 
 				returnedWriter, err := factory.Writer("json")
 				assert.Nil(err)
+
 				_, ok := returnedWriter.(*writer.JSON)
 				assert.TrueWithMessage(
 					ok,
