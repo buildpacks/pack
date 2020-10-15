@@ -165,7 +165,7 @@ func testDetectionOrderCalculator(t *testing.T, when spec.G, it spec.S) {
 											},
 											{
 												BuildpackRef: dist.BuildpackRef{BuildpackInfo: testTopNestedBuildpack},
-												Cyclical: true,
+												Cyclical:     true,
 											},
 										},
 									},

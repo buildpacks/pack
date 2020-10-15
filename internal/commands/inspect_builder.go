@@ -33,9 +33,9 @@ type InspectBuilderFlags struct {
 }
 
 type SharedBuilderInfo struct {
-	Name      string `json:"builder_name"`
-	Trusted   bool   `json:"trusted"`
-	IsDefault bool   `json:"default"`
+	Name      string `json:"builder_name" yaml:"builder_name" toml:"builder_name"`
+	Trusted   bool   `json:"trusted" yaml:"trusted" toml:"trusted"`
+	IsDefault bool   `json:"default" yaml:"default" toml:"default"`
 }
 
 func InspectBuilder(

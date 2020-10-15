@@ -19,6 +19,10 @@ func (f *Factory) Writer(kind string) (commands.BuilderWriter, error) {
 		return NewHumanReadable(), nil
 	case "json":
 		return NewJSON(), nil
+	case "yaml":
+		return NewYAML(), nil
+	case "toml":
+		return NewTOML(), nil
 	}
 
 	return nil, fmt.Errorf("output format %s is not supported", style.Symbol(kind))
