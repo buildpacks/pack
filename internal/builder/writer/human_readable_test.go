@@ -75,17 +75,18 @@ Buildpacks:
   test.bp.three          test.bp.three.version
 
 Detection Order:
- └ Group #1:
-    ├ test.top.nested@test.top.nested.version
-    │  └ Group #1:
-    │     ├ test.nested
-    │     │  └ Group #1:
-    │     │     └ test.bp.one@test.bp.one.version      (optional)
-    │     ├ test.bp.three@test.bp.three.version        (optional)
-    │     └ test.nested.two@test.nested.two.version
-    │        └ Group #2:
-    │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
-    └ test.bp.two@test.bp.two.version                (optional)
+ ├ Group #1:
+ │  ├ test.top.nested@test.top.nested.version
+ │  │  └ Group #1:
+ │  │     ├ test.nested
+ │  │     │  └ Group #1:
+ │  │     │     └ test.bp.one@test.bp.one.version      (optional)
+ │  │     ├ test.bp.three@test.bp.three.version        (optional)
+ │  │     └ test.nested.two@test.nested.two.version
+ │  │        └ Group #2:
+ │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
+ │  └ test.bp.two@test.bp.two.version                (optional)
+ └ test.bp.three@test.bp.three.version
 `
 
 		expectedLocalOutput = `
@@ -127,17 +128,18 @@ Buildpacks:
   test.bp.three          test.bp.three.version
 
 Detection Order:
- └ Group #1:
-    ├ test.top.nested@test.top.nested.version
-    │  └ Group #1:
-    │     ├ test.nested
-    │     │  └ Group #1:
-    │     │     └ test.bp.one@test.bp.one.version      (optional)
-    │     ├ test.bp.three@test.bp.three.version        (optional)
-    │     └ test.nested.two@test.nested.two.version
-    │        └ Group #2:
-    │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
-    └ test.bp.two@test.bp.two.version                (optional)
+ ├ Group #1:
+ │  ├ test.top.nested@test.top.nested.version
+ │  │  └ Group #1:
+ │  │     ├ test.nested
+ │  │     │  └ Group #1:
+ │  │     │     └ test.bp.one@test.bp.one.version      (optional)
+ │  │     ├ test.bp.three@test.bp.three.version        (optional)
+ │  │     └ test.nested.two@test.nested.two.version
+ │  │        └ Group #2:
+ │  │           └ test.bp.one@test.bp.one.version    (optional)[cyclic]
+ │  └ test.bp.two@test.bp.two.version                (optional)
+ └ test.bp.three@test.bp.three.version
 `
 		expectedVerboseStack = `
 Stack:
@@ -467,6 +469,12 @@ REMOTE:
 				assert.Contains(outBuf.String(), expectedEmptyBuildpacks)
 				assert.Contains(outBuf.String(), "test-builder has no buildpacks")
 				assert.Contains(outBuf.String(), "Users must supply buildpacks from the host machine")
+			})
+		})
+
+		when("multiple top level groups", func() {
+			it("displays order correctly", func() {
+
 			})
 		})
 

@@ -40,9 +40,9 @@ func (r *detectionOrderRecurser) detectionOrderFromOrder(
 	visited map[dist.BuildpackRef]interface{},
 ) pubbldr.DetectionOrder {
 	var detectionOrder pubbldr.DetectionOrder
-
 	for _, orderEntry := range order {
-		groupDetectionOrder := r.detectionOrderFromGroup(orderEntry.Group, currentDepth, visited)
+		visitedCopy := copyMap(visited)
+		groupDetectionOrder := r.detectionOrderFromGroup(orderEntry.Group, currentDepth, visitedCopy)
 
 		detectionOrderEntry := pubbldr.DetectionOrderEntry{
 			BuildpackRef:        parentBuildpack,
@@ -94,4 +94,13 @@ func (r *detectionOrderRecurser) shouldGoDeeper(currentDepth int) bool {
 	}
 
 	return false
+}
+
+func copyMap(toCopy map[dist.BuildpackRef]interface{}) map[dist.BuildpackRef]interface{} {
+	result := make(map[dist.BuildpackRef]interface{}, len(toCopy))
+	for key := range toCopy {
+		result[key] = true
+	}
+
+	return result
 }
