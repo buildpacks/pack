@@ -22,6 +22,9 @@ import (
 
 	pubcfg "github.com/buildpacks/pack/config"
 
+	"github.com/ghodss/yaml"
+	"github.com/pelletier/go-toml"
+
 	"github.com/buildpacks/pack/acceptance/buildpacks"
 
 	"github.com/docker/docker/pkg/stdcopy"
@@ -1838,6 +1841,93 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						)
 
 						assert.TrimmedEq(output, expectedOutput)
+					})
+
+					when("output format is toml", func() {
+						it("prints builder information in toml format", func() {
+							h.SkipUnless(t,
+								pack.SupportsFeature(invoke.InspectBuilderOutputFormat),
+								"inspect-builder output format is not yet implemented",
+							)
+
+							output := pack.RunSuccessfully(
+								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+							)
+							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
+
+							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "toml")
+
+							err := toml.NewDecoder(strings.NewReader(string(output))).Decode(&struct{}{})
+							assert.Nil(err)
+
+							fmt.Println("OUTPUT")
+							fmt.Println(string(output))
+
+							deprecatedBuildpackAPIs,
+								supportedBuildpackAPIs,
+								deprecatedPlatformAPIs,
+								supportedPlatformAPIs := lifecycle.TOMLOutputForAPIs()
+
+							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
+								"inspect_%s_builder_nested_output_toml.txt",
+								createBuilderPack.Version(),
+								"inspect_builder_nested_output_toml.txt",
+								map[string]interface{}{
+									"builder_name":              builderName,
+									"lifecycle_version":         lifecycle.Version(),
+									"deprecated_buildpack_apis": deprecatedBuildpackAPIs,
+									"supported_buildpack_apis":  supportedBuildpackAPIs,
+									"deprecated_platform_apis":  deprecatedPlatformAPIs,
+									"supported_platform_apis":   supportedPlatformAPIs,
+									"run_image_mirror":          runImageMirror,
+									"pack_version":              createBuilderPack.Version(),
+								},
+							)
+
+							assert.TrimmedEq(string(output), expectedOutput)
+						})
+					})
+
+					when("output format is yaml", func() {
+						it("prints builder information in yaml format", func() {
+							h.SkipUnless(t,
+								pack.SupportsFeature(invoke.InspectBuilderOutputFormat),
+								"inspect-builder output format is not yet implemented",
+							)
+
+							output := pack.RunSuccessfully(
+								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+							)
+							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
+
+							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "yaml")
+
+							err := yaml.Unmarshal([]byte(output), &struct{}{})
+							assert.Nil(err)
+
+							deprecatedBuildpackAPIs,
+								supportedBuildpackAPIs,
+								deprecatedPlatformAPIs,
+								supportedPlatformAPIs := lifecycle.YAMLOutputForAPIs(14)
+
+							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
+								"inspect_%s_builder_nested_output_yaml.txt",
+								createBuilderPack.Version(),
+								"inspect_builder_nested_output_yaml.txt",
+								map[string]interface{}{
+									"builder_name":              builderName,
+									"lifecycle_version":         lifecycle.Version(),
+									"deprecated_buildpack_apis": deprecatedBuildpackAPIs,
+									"supported_buildpack_apis":  supportedBuildpackAPIs,
+									"deprecated_platform_apis":  deprecatedPlatformAPIs,
+									"supported_platform_apis":   supportedPlatformAPIs,
+									"run_image_mirror":          runImageMirror,
+									"pack_version":              createBuilderPack.Version(),
+								},
+							)
+
+							assert.TrimmedEq(string(output), expectedOutput)
+						})
 					})
 
 					when("output format is json", func() {

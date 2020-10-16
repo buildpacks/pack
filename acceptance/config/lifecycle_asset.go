@@ -86,6 +86,57 @@ func (l *LifecycleAsset) OutputForAPIs() (deprecatedBuildpackAPIs, supportedBuil
 		stringify(l.descriptor.APIs.Platform.Supported)
 }
 
+func (l *LifecycleAsset) TOMLOutputForAPIs() (deprecatedBuildpacksAPIs,
+	supportedBuildpacksAPIs,
+	deprectatedPlatformAPIs,
+	supportedPlatformAPIS string,
+) {
+	stringify := func(apiSet builder.APISet) string {
+		if len(apiSet) < 1 || apiSet == nil {
+			return "[]"
+		}
+
+		var quotedAPIs []string
+		for _, a := range apiSet {
+			quotedAPIs = append(quotedAPIs, fmt.Sprintf("%q", a))
+		}
+
+		return fmt.Sprintf("[%s]", strings.Join(quotedAPIs, ", "))
+	}
+
+	return stringify(l.descriptor.APIs.Buildpack.Deprecated),
+		stringify(l.descriptor.APIs.Buildpack.Supported),
+		stringify(l.descriptor.APIs.Platform.Deprecated),
+		stringify(l.descriptor.APIs.Platform.Supported)
+}
+
+func (l *LifecycleAsset) YAMLOutputForAPIs(baseIndentationWidth int) (deprecatedBuildpacksAPIs,
+	supportedBuildpacksAPIs,
+	deprectatedPlatformAPIs,
+	supportedPlatformAPIS string,
+) {
+	stringify := func(apiSet builder.APISet, baseIndentationWidth int) string {
+		if len(apiSet) < 1 || apiSet == nil {
+			return "[]"
+		}
+
+		apiIndentation := strings.Repeat(" ", baseIndentationWidth+2)
+
+		var quotedAPIs []string
+		for _, a := range apiSet {
+			quotedAPIs = append(quotedAPIs, fmt.Sprintf(`%s- %q`, apiIndentation, a))
+		}
+
+		return fmt.Sprintf(`
+%s`, strings.Join(quotedAPIs, "\n"))
+	}
+
+	return stringify(l.descriptor.APIs.Buildpack.Deprecated, baseIndentationWidth),
+		stringify(l.descriptor.APIs.Buildpack.Supported, baseIndentationWidth),
+		stringify(l.descriptor.APIs.Platform.Deprecated, baseIndentationWidth),
+		stringify(l.descriptor.APIs.Platform.Supported, baseIndentationWidth)
+}
+
 func (l *LifecycleAsset) JSONOutputForAPIs(baseIndentationWidth int) (
 	deprecatedBuildpacksAPIs,
 	supportedBuildpacksAPIs,
