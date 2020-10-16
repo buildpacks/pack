@@ -199,11 +199,7 @@ func testTOML(t *testing.T, when spec.G, it spec.S) {
     id = "test.bp.three"
     version = "test.bp.three.version"`
 
-		localStackWithMixins = `  [local_info.stack]
-    id = "test.stack.id"
-    mixins = ["mixin1", "mixin2", "build:mixin3", "build:mixin4"]`
-
-		remoteStackWithMixins = `  [remote_info.stack]
+		stackWithMixins = `  [stack]
     id = "test.stack.id"
     mixins = ["mixin1", "mixin2", "build:mixin3", "build:mixin4"]`
 	)
@@ -355,7 +351,7 @@ default = false
 			assert.Succeeds(validTOMLOutput(outBuf))
 			assert.Nil(err)
 
-			assert.Contains(outBuf.String(), expectedPrettifiedTOML)
+			assert.ContainsTOML(outBuf.String(), expectedPrettifiedTOML)
 		})
 
 		when("builder doesn't exist locally or remotely", func() {
@@ -380,7 +376,7 @@ default = false
 				assert.Nil(err)
 
 				assert.NotContain(outBuf.String(), "local_info")
-				assert.Contains(outBuf.String(), expectedRemoteInfo)
+				assert.ContainsTOML(outBuf.String(), expectedRemoteInfo)
 			})
 		})
 
@@ -396,7 +392,7 @@ default = false
 				assert.Nil(err)
 
 				assert.NotContain(outBuf.String(), "remote_info")
-				assert.Contains(outBuf.String(), expectedLocalInfo)
+				assert.ContainsTOML(outBuf.String(), expectedLocalInfo)
 			})
 		})
 
@@ -437,9 +433,7 @@ default = false
 				assert.Nil(err)
 
 				assert.Succeeds(validTOMLOutput(outBuf))
-
-				assert.Contains(outBuf.String(), localStackWithMixins)
-				assert.Contains(outBuf.String(), remoteStackWithMixins)
+				assert.ContainsTOML(outBuf.String(), stackWithMixins)
 			})
 		})
 

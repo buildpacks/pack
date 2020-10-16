@@ -316,7 +316,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 			prettyJSON, err := validPrettifiedJSONOutput(outBuf)
 			assert.Nil(err)
 
-			assert.Contains(prettyJSON, expectedPrettifiedJSON)
+			assert.ContainsJSON(prettyJSON, expectedPrettifiedJSON)
 		})
 
 		when("builder doesn't exist locally or remotely", func() {
@@ -340,8 +340,8 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				prettyJSON, err := validPrettifiedJSONOutput(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettyJSON, `"local_info": null`)
-				assert.Contains(prettyJSON, expectedRemoteInfo)
+				assert.ContainsJSON(prettyJSON, `{"local_info": null}`)
+				assert.ContainsJSON(prettyJSON, fmt.Sprintf("{%s}", expectedRemoteInfo))
 			})
 		})
 
@@ -356,8 +356,8 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				prettyJSON, err := validPrettifiedJSONOutput(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettyJSON, `"remote_info": null`)
-				assert.Contains(prettyJSON, expectedLocalInfo)
+				assert.ContainsJSON(prettyJSON, `{"remote_info": null}`)
+				assert.ContainsJSON(prettyJSON, fmt.Sprintf("{%s}", expectedLocalInfo))
 			})
 		})
 
@@ -400,7 +400,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				prettifiedJSON, err := validPrettifiedJSONOutput(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettifiedJSON, expectedStackWithMixins)
+				assert.ContainsJSON(prettifiedJSON, fmt.Sprintf("{%s}", expectedStackWithMixins))
 			})
 		})
 
@@ -421,7 +421,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				prettifiedJSON, err := validPrettifiedJSONOutput(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettifiedJSON, `"run_images": []`)
+				assert.ContainsJSON(prettifiedJSON, `{"run_images": []}`)
 			})
 		})
 
@@ -439,7 +439,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				prettifiedJSON, err := validPrettifiedJSONOutput(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettifiedJSON, `"buildpacks": []`)
+				assert.ContainsJSON(prettifiedJSON, `{"buildpacks": []}`)
 			})
 		})
 
@@ -457,7 +457,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				prettifiedJSON, err := validPrettifiedJSONOutput(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettifiedJSON, `"detection_order": []`)
+				assert.ContainsJSON(prettifiedJSON, `{"detection_order": []}`)
 			})
 		})
 	})

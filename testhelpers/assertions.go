@@ -1,10 +1,17 @@
 package testhelpers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/pelletier/go-toml"
+	"gopkg.in/yaml.v3"
+
+	"github.com/buildpacks/pack/testhelpers/comparehelpers"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -126,6 +133,155 @@ func (a AssertionManager) Contains(actual, expected string) {
 			actual,
 			expected,
 			cmp.Diff(expected, actual),
+		)
+	}
+}
+
+func (a AssertionManager) ContainsJSON(actualJSON, expectedJSON string) {
+	a.testObject.Helper()
+
+	var actual interface{}
+	err := json.Unmarshal([]byte(actualJSON), &actual)
+	if err != nil {
+		a.testObject.Fatalf(
+			"Unable to unmarshal 'actualJSON': %q", err,
+		)
+	}
+
+	var expected interface{}
+	err = json.Unmarshal([]byte(expectedJSON), &expected)
+	if err != nil {
+		a.testObject.Fatalf(
+			"Unable to unmarshal 'expectedJSON': %q", err,
+		)
+	}
+
+	if !comparehelpers.DeepContains(actual, expected) {
+		expectedJSONDebug, err := json.Marshal(expected)
+		if err != nil {
+			a.testObject.Fatalf("unable to render expected failure expectation: %q", err)
+		}
+
+		actualJSONDebug, err := json.Marshal(actual)
+		if err != nil {
+			a.testObject.Fatalf("unable to render actual failure expectation: %q", err)
+		}
+
+		var prettifiedExpected bytes.Buffer
+		err = json.Indent(&prettifiedExpected, expectedJSONDebug, "", "  ")
+		if err != nil {
+			a.testObject.Fatal("failed to format expected TOML output as JSON")
+		}
+
+		var prettifiedActual bytes.Buffer
+		err = json.Indent(&prettifiedActual, actualJSONDebug, "", "  ")
+		if err != nil {
+			a.testObject.Fatal("failed to format actual TOML output as JSON")
+		}
+
+		actualJSONDiffArray := strings.Split(prettifiedActual.String(), "\n")
+		expectedJSONDiffArray := strings.Split(prettifiedExpected.String(), "\n")
+
+		a.testObject.Fatalf(
+			"Expected '%s' to contain '%s'\n\nJSON Diff:%s",
+			prettifiedActual.String(),
+			prettifiedExpected.String(),
+			cmp.Diff(actualJSONDiffArray, expectedJSONDiffArray),
+		)
+	}
+}
+
+func (a AssertionManager) ContainsYAML(actualYAML, expectedYAML string) {
+	a.testObject.Helper()
+
+	var actual interface{}
+	err := yaml.Unmarshal([]byte(actualYAML), &actual)
+	if err != nil {
+		a.testObject.Fatalf(
+			"Unable to unmarshal 'actualJSON': %q", err,
+		)
+	}
+
+	var expected interface{}
+	err = yaml.Unmarshal([]byte(expectedYAML), &expected)
+	if err != nil {
+		a.testObject.Fatalf(
+			"Unable to unmarshal 'expectedYAML': %q", err,
+		)
+	}
+
+	if !comparehelpers.DeepContains(actual, expected) {
+		expectedYAMLDebug, err := yaml.Marshal(expected)
+		if err != nil {
+			a.testObject.Fatalf("unable to render expected failure expectation: %q", err)
+		}
+
+		actualYAMLDebug, err := yaml.Marshal(actual)
+		if err != nil {
+			a.testObject.Fatalf("unable to render actual failure expectation: %q", err)
+		}
+
+		actualYAMLDiffArray := strings.Split(string(actualYAMLDebug), "\n")
+		expectedYAMLDiffArray := strings.Split(string(expectedYAMLDebug), "\n")
+
+		a.testObject.Fatalf(
+			"Expected '%s' to contain '%s'\n\nDiff:%s",
+			string(actualYAMLDebug),
+			string(expectedYAMLDebug),
+			cmp.Diff(actualYAMLDiffArray, expectedYAMLDiffArray),
+		)
+	}
+}
+
+func (a AssertionManager) ContainsTOML(actualTOML, expectedTOML string) {
+	a.testObject.Helper()
+
+	var actual interface{}
+	err := toml.Unmarshal([]byte(actualTOML), &actual)
+	if err != nil {
+		a.testObject.Fatalf(
+			"Unable to unmarshal 'actualTOML': %q", err,
+		)
+	}
+
+	var expected interface{}
+	err = toml.Unmarshal([]byte(expectedTOML), &expected)
+	if err != nil {
+		a.testObject.Fatalf(
+			"Unable to unmarshal 'expectedTOML': %q", err,
+		)
+	}
+
+	// TODO: convert to a toml based diff. Unfortunately marshalling toml
+	//       from arbitrary interface{} types is not supported :(
+	if !comparehelpers.DeepContains(actual, expected) {
+		expectedJSONDebug, err := json.Marshal(expected)
+		if err != nil {
+			a.testObject.Fatalf("unable to render expected failure expectation: %q", err)
+		}
+
+		actualJSONDebug, err := json.Marshal(actual)
+		if err != nil {
+			a.testObject.Fatalf("unable to render actual failure expectation: %q", err)
+		}
+
+		var prettifiedExpected bytes.Buffer
+		err = json.Indent(&prettifiedExpected, expectedJSONDebug, "", "  ")
+		if err != nil {
+			a.testObject.Fatal("failed to format expected TOML output as JSON")
+		}
+
+		var prettifiedActual bytes.Buffer
+		err = json.Indent(&prettifiedActual, actualJSONDebug, "", "  ")
+		if err != nil {
+			a.testObject.Fatal("failed to format actual TOML output as JSON")
+		}
+
+		a.testObject.Fatalf(
+			"Expected '%s' to contain '%s'\n\nJSON Diff:%s",
+			prettifiedActual.String(),
+			prettifiedExpected.String(),
+			cmp.Diff(prettifiedActual.String(), prettifiedExpected.String()),
 		)
 	}
 }
