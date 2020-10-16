@@ -244,7 +244,7 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 		return i.atLeast("0.13.2")
 	},
 	InspectBuilderOutputFormat: func(i *PackInvoker) bool {
-		return i.laterThan("0.14.1")
+		return i.laterThan("0.14.2")
 	},
 }
 
