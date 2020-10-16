@@ -273,8 +273,8 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 				prettyYAML, err := validYAML(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettyYAML, `local_info: null`)
-				assert.Contains(prettyYAML, expectedRemoteInfo)
+				assert.ContainsYAML(prettyYAML, `local_info: null`)
+				assert.ContainsYAML(prettyYAML, expectedRemoteInfo)
 			})
 		})
 
@@ -289,8 +289,8 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 				prettyYAML, err := validYAML(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettyYAML, `remote_info: null`)
-				assert.Contains(prettyYAML, expectedLocalInfo)
+				assert.ContainsYAML(prettyYAML, `remote_info: null`)
+				assert.ContainsYAML(prettyYAML, expectedLocalInfo)
 			})
 		})
 
@@ -333,7 +333,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 				prettifiedYAML, err := validYAML(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettifiedYAML, expectedStackWithMixins)
+				assert.ContainsYAML(prettifiedYAML, expectedStackWithMixins)
 			})
 		})
 
@@ -354,7 +354,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 				prettifiedYAML, err := validYAML(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettifiedYAML, `run_images: []`)
+				assert.ContainsYAML(prettifiedYAML, `run_images: []`)
 			})
 		})
 
@@ -372,7 +372,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 				prettifiedYAML, err := validYAML(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettifiedYAML, `buildpacks: []`)
+				assert.ContainsYAML(prettifiedYAML, `buildpacks: []`)
 			})
 		})
 
@@ -390,7 +390,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 				prettifiedYAML, err := validYAML(outBuf)
 				assert.Nil(err)
 
-				assert.Contains(prettifiedYAML, `detection_order: []`)
+				assert.ContainsYAML(prettifiedYAML, `detection_order: []`)
 			})
 		})
 	})

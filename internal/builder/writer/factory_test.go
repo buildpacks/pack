@@ -51,6 +51,36 @@ func testFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("output format is yaml", func() {
+			it("return a YAML writer", func() {
+				factory := writer.NewFactory()
+
+				returnedWriter, err := factory.Writer("yaml")
+				assert.Nil(err)
+
+				_, ok := returnedWriter.(*writer.YAML)
+				assert.TrueWithMessage(
+					ok,
+					fmt.Sprintf("expected %T to be assignable to type `*writer.YAML`", returnedWriter),
+				)
+			})
+		})
+
+		when("output format is toml", func() {
+			it("return a TOML writer", func() {
+				factory := writer.NewFactory()
+
+				returnedWriter, err := factory.Writer("toml")
+				assert.Nil(err)
+
+				_, ok := returnedWriter.(*writer.TOML)
+				assert.TrueWithMessage(
+					ok,
+					fmt.Sprintf("expected %T to be assignable to type `*writer.TOML`", returnedWriter),
+				)
+			})
+		})
+
 		when("output format is not supported", func() {
 			it("returns an error", func() {
 				factory := writer.NewFactory()
