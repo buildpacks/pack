@@ -38,6 +38,7 @@ type BuildFlags struct {
 	EnvFiles           []string
 	Buildpacks         []string
 	Volumes            []string
+	Intercept          string
 }
 
 // Build an image from source code
@@ -97,12 +98,13 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				logger.Debugf("Builder %s is trusted", style.Symbol(flags.Builder))
 			} else {
 				logger.Debugf("Builder %s is untrusted", style.Symbol(flags.Builder))
-				logger.Debug("As a result, the phases of the lifecycle which require root access will be run in separate trusted ephemeral containers.")
+				logger.Debug("As a result, some phases will be run in separate trusted ephemeral containers.")
 				logger.Debug("For more information, see https://medium.com/buildpacks/faster-more-secure-builds-with-pack-0-11-0-4d0c633ca619")
 			}
 
 			if !trustBuilder && len(flags.Volumes) > 0 {
-				logger.Warn("Using untrusted builder with volume mounts. If there is sensitive data in the volumes, this may present a security vulnerability.")
+				logger.Warn("Using untrusted builder with volume mounts.")
+				logger.Warn("If there is sensitive data in the volumes, this may present a security vulnerability.")
 			}
 
 			pullPolicy, err := pubcfg.ParsePullPolicy(flags.Policy)
@@ -121,6 +123,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Publish:           flags.Publish,
 				PullPolicy:        pullPolicy,
 				ClearCache:        flags.ClearCache,
+				Intercept:         flags.Intercept,
 				TrustBuilder:      trustBuilder,
 				Buildpacks:        buildpacks,
 				ContainerConfig: pack.ContainerConfig{
@@ -160,9 +163,15 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<mode>]'."+multiValueHelp("volume"))
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
+
 	// TODO: Remove --no-pull flag after v0.13.0 released. See https://github.com/buildpacks/pack/issues/775
 	cmd.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "Skip pulling builder and run images before use")
 	cmd.Flags().MarkHidden("no-pull")
+
+	cmd.Flags().StringVarP(&buildFlags.Intercept, "intercept", "i", "", "Intercept each phase of the lifecycle with command")
+	if !cfg.Experimental {
+		cmd.Flags().MarkHidden("intercept")
+	}
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {

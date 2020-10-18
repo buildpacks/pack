@@ -61,6 +61,7 @@ type LifecycleOptions struct {
 	Network            string
 	Volumes            []string
 	DefaultProcessType string
+	Intercept          string
 	FileFilter         func(string) bool
 }
 

@@ -131,6 +131,8 @@ type BuildOptions struct {
 	// Process type that will be used when setting container start command.
 	DefaultProcessType string
 
+	Intercept string
+
 	// Filter files from the application source.
 	// If true include file, otherwise exclude.
 	FileFilter func(string) bool
@@ -259,6 +261,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
 		UseCreator:         false,
+		Intercept:          opts.Intercept,
 		TrustBuilder:       opts.TrustBuilder,
 		LifecycleImage:     ephemeralBuilder.Name(),
 		HTTPProxy:          proxyConfig.HTTPProxy,

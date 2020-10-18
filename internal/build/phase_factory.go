@@ -31,6 +31,7 @@ func (m *DefaultPhaseFactory) New(provider *PhaseConfigProvider) RunnerCleaner {
 		errorWriter:  provider.ErrorWriter(),
 		uid:          m.lifecycleExec.opts.Builder.UID(),
 		gid:          m.lifecycleExec.opts.Builder.GID(),
+		intercept:    m.lifecycleExec.opts.Intercept,
 		appPath:      m.lifecycleExec.opts.AppPath,
 		containerOps: provider.containerOps,
 		fileFilter:   m.lifecycleExec.opts.FileFilter,
