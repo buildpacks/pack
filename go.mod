@@ -4,7 +4,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/Masterminds/semver v1.5.0
 	github.com/Microsoft/hcsshim v0.8.7 // indirect
-	github.com/apex/log v1.1.2
+	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20200805143852-1844b230530d
 	github.com/buildpacks/lifecycle v0.7.2
 	github.com/containerd/containerd v1.3.3 // indirect
@@ -13,9 +13,9 @@ require (
 	github.com/docker/docker v1.4.2-0.20200221181110-62bd5a33f707
 	github.com/docker/go-connections v0.4.0
 	github.com/gogo/protobuf v1.3.1 // indirect
-	github.com/golang/mock v1.4.1
+	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.3.5 // indirect
-	github.com/google/go-cmp v0.5.1
+	github.com/google/go-cmp v0.5.2
 	github.com/google/go-containerregistry v0.0.0-20200313165449-955bf358a3d8
 	github.com/google/go-github/v30 v30.1.0
 	github.com/heroku/color v0.0.6
@@ -32,9 +32,9 @@ require (
 	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
 	github.com/sclevine/spec v1.4.0
 	github.com/sergi/go-diff v1.1.0 // indirect
-	github.com/spf13/cobra v0.0.6
+	github.com/spf13/cobra v0.0.7
 	golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
-	golang.org/x/mod v0.2.0
+	golang.org/x/mod v0.3.0
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527 // indirect

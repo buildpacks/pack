@@ -17,14 +17,14 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestAddBuildpackRegistry(t *testing.T) {
+func TestAddRegistry(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "Commands", testAddBuildpackRegistryCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Commands", testAddRegistryCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
+func testAddRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 	when("AddBuildpackRegistry", func() {
 		var (
 			outBuf     bytes.Buffer
@@ -100,7 +100,7 @@ func testAddBuildpackRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 				assert.Error(command.Execute())
 
 				output := outBuf.String()
-				h.AssertContains(t, output, "'official' is a reserved registry name, please provide a different name")
+				h.AssertContains(t, output, "'official' is a reserved registry, please provide a different name")
 			})
 		})
 	})
