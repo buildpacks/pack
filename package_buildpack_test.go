@@ -9,13 +9,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/docker/docker/api/types"
-
-	pubcfg "github.com/buildpacks/pack/config"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/docker/docker/api/types"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -23,6 +20,7 @@ import (
 
 	"github.com/buildpacks/pack"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
+	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
@@ -261,7 +259,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				return img
 			}
 
-			when("publish=false and no-pull=false", func() {
+			when("publish=false and pull-policy=always", func() {
 				it("should pull and use local nested package image", func() {
 					shouldFetchNestedPackage(true, pubcfg.PullAlways)
 					packageImage := shouldCreateLocalPackage()
@@ -287,7 +285,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("publish=true and no-pull=false", func() {
+			when("publish=true and pull-policy=always", func() {
 				it("should use remote nested package image", func() {
 					shouldFetchNestedPackage(false, pubcfg.PullAlways)
 					packageImage := shouldCreateRemotePackage()

@@ -5,10 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/config"
-
-	pubcfg "github.com/buildpacks/pack/config"
-
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
@@ -16,8 +12,10 @@ import (
 	"github.com/spf13/cobra"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
+	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/fakes"
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -81,72 +79,6 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
 
 				h.AssertEq(t, receivedOptions.Config, myConfig)
-			})
-
-			when("--no-pull", func() {
-				var (
-					outBuf                bytes.Buffer
-					cmd                   *cobra.Command
-					args                  []string
-					fakeBuildpackPackager *fakes.FakeBuildpackPackager
-				)
-
-				it.Before(func() {
-					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
-					fakeBuildpackPackager = &fakes.FakeBuildpackPackager{}
-
-					cmd = packageBuildpackCommand(withLogger(logger), withBuildpackPackager(fakeBuildpackPackager))
-					args = []string{
-						"some-image-name",
-						"--config", "/path/to/some/file",
-					}
-				})
-
-				it("logs warning and works", func() {
-					args = append(args, "--no-pull")
-					cmd.SetArgs(args)
-
-					err := cmd.Execute()
-					h.AssertContains(t, outBuf.String(), "Warning: Flag --no-pull has been deprecated")
-					h.AssertNil(t, err)
-
-					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
-				})
-
-				when("used together with --pull-policy always", func() {
-					it("logs warning and disregards --no-pull", func() {
-						args = append(args, "--no-pull", "--pull-policy", "always")
-						cmd.SetArgs(args)
-
-						err := cmd.Execute()
-						h.AssertNil(t, err)
-
-						output := outBuf.String()
-						h.AssertContains(t, outBuf.String(), "Warning: Flag --no-pull has been deprecated")
-						h.AssertContains(t, output, "Flag --no-pull ignored in favor of --pull-policy")
-
-						receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-						h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
-					})
-				})
-
-				when("used together with --pull-policy never", func() {
-					it("logs warning and disregards --no-pull", func() {
-						args = append(args, "--no-pull", "--pull-policy", "never")
-						cmd.SetArgs(args)
-
-						err := cmd.Execute()
-						h.AssertNil(t, err)
-
-						output := outBuf.String()
-						h.AssertContains(t, outBuf.String(), "Warning: Flag --no-pull has been deprecated")
-						h.AssertContains(t, output, "Flag --no-pull ignored in favor of --pull-policy")
-
-						receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-						h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
-					})
-				})
 			})
 
 			when("pull-policy", func() {
@@ -222,27 +154,6 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("invalid flags", func() {
-		when("both --publish and --no-pull flags are specified", func() {
-			it("errors with a descriptive message", func() {
-				logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
-				configReader := fakes.NewFakePackageConfigReader()
-				buildpackPackager := &fakes.FakeBuildpackPackager{}
-				clientConfig := config.Config{}
-
-				command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader)
-				command.SetArgs([]string{
-					"some-image-name",
-					"--config", "/path/to/some/file",
-					"--publish",
-					"--no-pull",
-				})
-
-				err := command.Execute()
-				h.AssertNotNil(t, err)
-				h.AssertError(t, err, "The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
-			})
-		})
-
 		when("both --publish and --pull-policy never flags are specified", func() {
 			it("errors with a descriptive message", func() {
 				logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})

@@ -9,9 +9,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/config"
-
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -22,7 +21,6 @@ type PackageBuildpackFlags struct {
 	Format          string
 	OS              string
 	Publish         bool
-	NoPull          bool
 	Policy          string
 }
 
@@ -45,7 +43,7 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 		Short: "Package buildpack in OCI format.",
 		Args:  cobra.ExactValidArgs(1),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := validatePackageBuildpackFlags(&flags, cfg, logger); err != nil {
+			if err := validatePackageBuildpackFlags(&flags, cfg); err != nil {
 				return err
 			}
 
@@ -94,35 +92,18 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 		cmd.Flags().MarkHidden("os")
 	}
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
-	// TODO: Remove --no-pull flag after v0.13.0 released. See https://github.com/buildpacks/pack/issues/775
-	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling packages before use")
-	cmd.Flags().MarkHidden("no-pull")
 
 	AddHelpFlag(cmd, "package-buildpack")
 	return cmd
 }
 
-func validatePackageBuildpackFlags(p *PackageBuildpackFlags, cfg config.Config, logger logging.Logger) error {
+func validatePackageBuildpackFlags(p *PackageBuildpackFlags, cfg config.Config) error {
 	if p.Publish && p.Policy == pubcfg.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
 	}
 
-	if p.Publish && p.NoPull {
-		return errors.Errorf("The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
-	}
-
 	if p.PackageTomlPath == "" {
 		return errors.Errorf("Please provide a package config path, using --config")
-	}
-
-	if p.NoPull {
-		logger.Warn("Flag --no-pull has been deprecated, please use `--pull-policy never` instead")
-
-		if p.Policy != "" {
-			logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
-		} else {
-			p.Policy = pubcfg.PullNever.String()
-		}
 	}
 
 	if p.OS != "" && !cfg.Experimental {

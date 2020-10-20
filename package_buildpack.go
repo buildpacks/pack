@@ -5,12 +5,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/internal/layer"
-
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
+	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/style"
 )
 
@@ -92,31 +92,43 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		var depBPs []dist.Buildpack
 
 		if dep.URI != "" {
-			blob, err := c.downloader.Download(ctx, dep.URI)
-			if err != nil {
-				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(dep.URI))
-			}
-
-			isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
-			if err != nil {
-				return errors.Wrap(err, "inspecting buildpack blob")
-			}
-
-			if isOCILayout {
-				mainBP, deps, err := buildpackage.BuildpacksFromOCILayoutBlob(blob)
+			if buildpack.HasDockerLocator(dep.URI) {
+				imageName := buildpack.ParsePackageLocator(dep.URI)
+				c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
+				mainBP, deps, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
 				if err != nil {
-					return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(dep.URI))
+					return err
 				}
 
 				depBPs = append([]dist.Buildpack{mainBP}, deps...)
 			} else {
-				depBP, err := dist.BuildpackFromRootBlob(blob, writerFactory)
+				blob, err := c.downloader.Download(ctx, dep.URI)
 				if err != nil {
-					return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
+					return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(dep.URI))
 				}
-				depBPs = []dist.Buildpack{depBP}
+
+				isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
+				if err != nil {
+					return errors.Wrap(err, "inspecting buildpack blob")
+				}
+
+				if isOCILayout {
+					mainBP, deps, err := buildpackage.BuildpacksFromOCILayoutBlob(blob)
+					if err != nil {
+						return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(dep.URI))
+					}
+
+					depBPs = append([]dist.Buildpack{mainBP}, deps...)
+				} else {
+					depBP, err := dist.BuildpackFromRootBlob(blob, writerFactory)
+					if err != nil {
+						return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
+					}
+					depBPs = []dist.Buildpack{depBP}
+				}
 			}
 		} else if dep.ImageName != "" {
+			c.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
 			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
 			if err != nil {
 				return err

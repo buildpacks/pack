@@ -23,7 +23,6 @@ import (
 
 type BuildFlags struct {
 	Publish            bool
-	NoPull             bool
 	ClearCache         bool
 	TrustBuilder       bool
 	AppPath            string
@@ -154,15 +153,12 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed")
 	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
 	cmd.Flags().BoolVar(&buildFlags.TrustBuilder, "trust-builder", false, "Trust the provided builder\nAll lifecycle phases will be run in a single container (if supported by the lifecycle).")
-	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack reference in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  the name of a packaged buildpack image"+multiValueHelp("buildpack"))
+	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack to use. One of:\n  a buildpack by id and version in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  a packaged buildpack image name in the form of '<hostname>/<repo>[:<tag>]'"+multiValueHelp("buildpack"))
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<mode>]'."+multiValueHelp("volume"))
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
-	// TODO: Remove --no-pull flag after v0.13.0 released. See https://github.com/buildpacks/pack/issues/775
-	cmd.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "Skip pulling builder and run images before use")
-	cmd.Flags().MarkHidden("no-pull")
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
@@ -173,16 +169,6 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 
 	if flags.Registry != "" && !cfg.Experimental {
 		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
-	}
-
-	if flags.NoPull {
-		logger.Warn("Flag --no-pull has been deprecated")
-
-		if flags.Policy != "" {
-			logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
-		} else {
-			flags.Policy = pubcfg.PullNever.String()
-		}
 	}
 
 	return nil
