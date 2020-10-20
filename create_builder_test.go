@@ -882,7 +882,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("package image lives in docker registry", func() {
 				it.Before(func() {
-					packageImage = fakes.NewImage("some/package-"+h.RandString(12), "", nil)
+					packageImage = fakes.NewImage("docker.io/some/package-"+h.RandString(12), "", nil)
 					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
 
 					bpd := dist.BuildpackDescriptor{
@@ -949,6 +949,28 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
+				when("publish=true and pull-policy=always", func() {
+					it("should use remote package URI", func() {
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+						opts.BuilderName = "some/builder"
+
+						opts.Publish = true
+						opts.PullPolicy = config.PullAlways
+						opts.Config.Buildpacks = append(
+							opts.Config.Buildpacks,
+							pubbldr.BuildpackConfig{
+								ImageOrURI: dist.ImageOrURI{
+									BuildpackURI: dist.BuildpackURI{URI: packageImage.Name()},
+								},
+							},
+						)
+
+						shouldFetchPackageImageWith(false, config.PullAlways)
+						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+					})
+				})
+
 				when("publish=true and pull-policy=never", func() {
 					it("should push to registry and not pull package image", func() {
 						prepareFetcherWithBuildImage()
@@ -1001,7 +1023,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					prepareFetcherWithRunImages()
 					opts.BuilderName = "some/builder"
 
-					notPackageImage := fakes.NewImage("not/package", "", nil)
+					notPackageImage := fakes.NewImage("docker.io/not/package", "", nil)
 					opts.Config.Buildpacks = append(
 						opts.Config.Buildpacks,
 						pubbldr.BuildpackConfig{
@@ -1014,7 +1036,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), gomock.Any(), gomock.Any()).Return(notPackageImage, nil)
 					h.AssertNil(t, notPackageImage.SetLabel("io.buildpacks.buildpack.layers", ""))
 
-					h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "extracting buildpacks from 'not/package': could not find label 'io.buildpacks.buildpackage.metadata'")
+					h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "extracting buildpacks from 'docker.io/not/package': could not find label 'io.buildpacks.buildpackage.metadata'")
 				})
 			})
 		})

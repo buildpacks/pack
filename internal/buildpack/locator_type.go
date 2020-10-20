@@ -66,6 +66,13 @@ func GetLocatorType(locator string, buildpacksFromBuilder []dist.BuildpackInfo) 
 		return URILocator, nil
 	}
 
+	// from here on, we're dealing with a naked locator, and we try to figure out what it is. To do this we check
+	// the following characteristics in order:
+	//   1. Does it match a path on the file system
+	//   2. Does it match a buildpack ID in the builder
+	//   3. Does it look like a Docker ref
+	//   4. Does it look like a Buildpack Registry ID
+
 	if _, err := os.Stat(locator); err == nil {
 		return URILocator, nil
 	}
@@ -74,8 +81,14 @@ func GetLocatorType(locator string, buildpacksFromBuilder []dist.BuildpackInfo) 
 		return IDLocator, nil
 	}
 
-	if _, err := name.ParseReference(locator); err == nil {
-		return PackageLocator, nil
+	if strings.Contains(locator, "@sha") || strings.Count(locator, "/") > 1 {
+		if _, err := name.ParseReference(locator); err == nil {
+			return PackageLocator, nil
+		}
+	}
+
+	if strings.Count(locator, "/") == 1 {
+		return RegistryLocator, nil
 	}
 
 	return InvalidLocator, nil
