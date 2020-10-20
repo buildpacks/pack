@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/buildpacks/pack/config"
-
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
@@ -14,8 +12,10 @@ import (
 	"github.com/spf13/cobra"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
+	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/fakes"
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -32,17 +32,17 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		when("valid package config", func() {
 			it("reads package config from the configured path", func() {
 				fakePackageConfigReader := fakes.NewFakePackageConfigReader()
-				expectedConfigPath := "/path/to/some/file"
+				expectedPackageConfigPath := "/path/to/some/file"
 
 				packageBuildpackCommand := packageBuildpackCommand(
-					withConfigReader(fakePackageConfigReader),
-					withConfigPath(expectedConfigPath),
+					withPackageConfigReader(fakePackageConfigReader),
+					withPackageConfigPath(expectedPackageConfigPath),
 				)
 
 				err := packageBuildpackCommand.Execute()
 				h.AssertNil(t, err)
 
-				h.AssertEq(t, fakePackageConfigReader.ReadCalledWithArg, expectedConfigPath)
+				h.AssertEq(t, fakePackageConfigReader.ReadCalledWithArg, expectedPackageConfigPath)
 			})
 
 			it("creates package with correct image name", func() {
@@ -70,7 +70,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 				packageBuildpackCommand := packageBuildpackCommand(
 					withBuildpackPackager(fakeBuildpackPackager),
-					withConfigReader(fakes.NewFakePackageConfigReader(whereReadReturns(myConfig, nil))),
+					withPackageConfigReader(fakes.NewFakePackageConfigReader(whereReadReturns(myConfig, nil))),
 				)
 
 				err := packageBuildpackCommand.Execute()
@@ -108,7 +108,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, config.PullNever)
+					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
 				})
 
 				it("pull-policy=always sets policy", func() {
@@ -119,7 +119,35 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, config.PullAlways)
+					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
+				})
+			})
+
+			when("--os", func() {
+				when("experimental enabled", func() {
+					it("creates package with correct image name and os", func() {
+						fakeBuildpackPackager := &fakes.FakeBuildpackPackager{}
+
+						packageBuildpackCommand := packageBuildpackCommand(
+							withBuildpackPackager(fakeBuildpackPackager),
+							withExperimental(),
+						)
+
+						packageBuildpackCommand.SetArgs(
+							[]string{
+								"some-image-name",
+								"--config", "/path/to/some/file",
+								"--os", "windows",
+							},
+						)
+
+						err := packageBuildpackCommand.Execute()
+						h.AssertNil(t, err)
+
+						receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
+
+						h.AssertEq(t, receivedOptions.OS, "windows")
+					})
 				})
 			})
 		})
@@ -131,8 +159,9 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
 				configReader := fakes.NewFakePackageConfigReader()
 				buildpackPackager := &fakes.FakeBuildpackPackager{}
+				clientConfig := config.Config{}
 
-				command := commands.PackageBuildpack(logger, buildpackPackager, configReader)
+				command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader)
 				command.SetArgs([]string{
 					"some-image-name",
 					"--config", "/path/to/some/file",
@@ -153,7 +182,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 			packageBuildpackCommand := packageBuildpackCommand(
 				withLogger(logging.NewLogWithWriters(outBuf, outBuf)),
-				withConfigReader(
+				withPackageConfigReader(
 					fakes.NewFakePackageConfigReader(whereReadReturns(pubbldpkg.Config{}, expectedErr)),
 				),
 			)
@@ -169,15 +198,15 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				outBuf := &bytes.Buffer{}
 
 				config := &packageCommandConfig{
-					logger:            logging.NewLogWithWriters(outBuf, outBuf),
-					configReader:      fakes.NewFakePackageConfigReader(),
-					buildpackPackager: &fakes.FakeBuildpackPackager{},
+					logger:              logging.NewLogWithWriters(outBuf, outBuf),
+					packageConfigReader: fakes.NewFakePackageConfigReader(),
+					buildpackPackager:   &fakes.FakeBuildpackPackager{},
 
 					imageName:  "some-image-name",
 					configPath: "/path/to/some/file",
 				}
 
-				cmd := commands.PackageBuildpack(config.logger, config.buildpackPackager, config.configReader)
+				cmd := commands.PackageBuildpack(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader)
 				cmd.SetArgs([]string{config.imageName, "--package-config", config.configPath})
 
 				err := cmd.Execute()
@@ -188,14 +217,14 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		when("no config path is specified", func() {
 			it("errors with a descriptive message", func() {
 				config := &packageCommandConfig{
-					logger:            logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
-					configReader:      fakes.NewFakePackageConfigReader(),
-					buildpackPackager: &fakes.FakeBuildpackPackager{},
+					logger:              logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
+					packageConfigReader: fakes.NewFakePackageConfigReader(),
+					buildpackPackager:   &fakes.FakeBuildpackPackager{},
 
 					imageName: "some-image-name",
 				}
 
-				cmd := commands.PackageBuildpack(config.logger, config.buildpackPackager, config.configReader)
+				cmd := commands.PackageBuildpack(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader)
 				cmd.SetArgs([]string{config.imageName})
 
 				err := cmd.Execute()
@@ -208,8 +237,9 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
 				configReader := fakes.NewFakePackageConfigReader()
 				buildpackPackager := &fakes.FakeBuildpackPackager{}
+				clientConfig := config.Config{}
 
-				command := commands.PackageBuildpack(logger, buildpackPackager, configReader)
+				command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader)
 				command.SetArgs([]string{
 					"some-image-name",
 					"--config", "/path/to/some/file",
@@ -220,13 +250,36 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, command.Execute(), "parsing pull policy")
 			})
 		})
+
+		when("--os flag is specified but experimental isn't set in the config", func() {
+			it("errors with a descriptive message", func() {
+				fakeBuildpackPackager := &fakes.FakeBuildpackPackager{}
+
+				packageBuildpackCommand := packageBuildpackCommand(
+					withBuildpackPackager(fakeBuildpackPackager),
+				)
+
+				packageBuildpackCommand.SetArgs(
+					[]string{
+						"some-image-name",
+						"--config", "/path/to/some/file",
+						"--os", "windows",
+					},
+				)
+
+				err := packageBuildpackCommand.Execute()
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "Support for OS flag is currently experimental")
+			})
+		})
 	})
 }
 
 type packageCommandConfig struct {
-	logger            *logging.LogWithWriters
-	configReader      *fakes.FakePackageConfigReader
-	buildpackPackager *fakes.FakeBuildpackPackager
+	logger              *logging.LogWithWriters
+	packageConfigReader *fakes.FakePackageConfigReader
+	buildpackPackager   *fakes.FakeBuildpackPackager
+	clientConfig        config.Config
 
 	imageName  string
 	configPath string
@@ -236,9 +289,10 @@ type packageCommandOption func(config *packageCommandConfig)
 
 func packageBuildpackCommand(ops ...packageCommandOption) *cobra.Command {
 	config := &packageCommandConfig{
-		logger:            logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
-		configReader:      fakes.NewFakePackageConfigReader(),
-		buildpackPackager: &fakes.FakeBuildpackPackager{},
+		logger:              logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
+		packageConfigReader: fakes.NewFakePackageConfigReader(),
+		buildpackPackager:   &fakes.FakeBuildpackPackager{},
+		clientConfig:        config.Config{},
 
 		imageName:  "some-image-name",
 		configPath: "/path/to/some/file",
@@ -248,7 +302,7 @@ func packageBuildpackCommand(ops ...packageCommandOption) *cobra.Command {
 		op(config)
 	}
 
-	cmd := commands.PackageBuildpack(config.logger, config.buildpackPackager, config.configReader)
+	cmd := commands.PackageBuildpack(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader)
 	cmd.SetArgs([]string{config.imageName, "--config", config.configPath})
 
 	return cmd
@@ -260,9 +314,9 @@ func withLogger(logger *logging.LogWithWriters) packageCommandOption {
 	}
 }
 
-func withConfigReader(reader *fakes.FakePackageConfigReader) packageCommandOption {
+func withPackageConfigReader(reader *fakes.FakePackageConfigReader) packageCommandOption {
 	return func(config *packageCommandConfig) {
-		config.configReader = reader
+		config.packageConfigReader = reader
 	}
 }
 
@@ -278,9 +332,15 @@ func withImageName(name string) packageCommandOption {
 	}
 }
 
-func withConfigPath(path string) packageCommandOption {
+func withPackageConfigPath(path string) packageCommandOption {
 	return func(config *packageCommandConfig) {
 		config.configPath = path
+	}
+}
+
+func withExperimental() packageCommandOption {
+	return func(config *packageCommandConfig) {
+		config.clientConfig.Experimental = true
 	}
 }
 

@@ -64,7 +64,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 		when("building for Windows", func() {
 			it("sets process isolation", func() {
 				fakeBuilderImage := ifakes.NewImage("fake-builder", "", nil)
-				fakeBuilderImage.SetPlatform("windows", "", "")
+				h.AssertNil(t, fakeBuilderImage.SetOS("windows"))
 				fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(fakeBuilderImage))
 				h.AssertNil(t, err)
 				lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
@@ -141,7 +141,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			when("building for Windows", func() {
 				it("sets daemon access on the config", func() {
 					fakeBuilderImage := ifakes.NewImage("fake-builder", "", nil)
-					fakeBuilderImage.SetPlatform("windows", "", "")
+					h.AssertNil(t, fakeBuilderImage.SetOS("windows"))
 					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(fakeBuilderImage))
 					h.AssertNil(t, err)
 					lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
@@ -242,7 +242,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 			when("building for Windows", func() {
 				it("sets root user on the config", func() {
 					fakeBuilderImage := ifakes.NewImage("fake-builder", "", nil)
-					fakeBuilderImage.SetPlatform("windows", "", "")
+					h.AssertNil(t, fakeBuilderImage.SetOS("windows"))
 					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithImage(fakeBuilderImage))
 					h.AssertNil(t, err)
 					lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))

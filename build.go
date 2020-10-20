@@ -630,7 +630,11 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 					return fetchedBPs, order, errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(bp))
 				}
 			} else {
-				layerWriterFactory, err := layer.NewWriterFactory(builderImage)
+				imageOS, err := builderImage.OS()
+				if err != nil {
+					return fetchedBPs, order, errors.Wrap(err, "getting image OS")
+				}
+				layerWriterFactory, err := layer.NewWriterFactory(imageOS)
 				if err != nil {
 					return fetchedBPs, order, errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(builderImage.Name()))
 				}

@@ -76,7 +76,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.ListTrustedBuilders(logger, cfg))
 	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
 
-	rootCmd.AddCommand(commands.PackageBuildpack(logger, &packClient, buildpackage.NewConfigReader()))
+	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, &packClient, buildpackage.NewConfigReader()))
 
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
 

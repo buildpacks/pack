@@ -51,3 +51,28 @@ func (b BuildpackManager) PrepareBuildpacks(destination string, buildpacks ...Te
 		b.assert.Nil(err)
 	}
 }
+
+type Modifiable interface {
+	SetOS(string)
+	SetPublish()
+	SetBuildpacks([]TestBuildpack)
+}
+type PackageModifier func(p Modifiable)
+
+func WithRequiredBuildpacks(buildpacks ...TestBuildpack) PackageModifier {
+	return func(p Modifiable) {
+		p.SetBuildpacks(buildpacks)
+	}
+}
+
+func WithPublish() PackageModifier {
+	return func(p Modifiable) {
+		p.SetPublish()
+	}
+}
+
+func WithOS(osVal string) PackageModifier {
+	return func(p Modifiable) {
+		p.SetOS(osVal)
+	}
+}
