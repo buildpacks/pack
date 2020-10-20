@@ -6,22 +6,16 @@ require (
 	github.com/Microsoft/hcsshim v0.8.7 // indirect
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20201015202701-6dd3ca364074
-	github.com/buildpacks/lifecycle v0.7.2
-	github.com/containerd/containerd v1.3.3 // indirect
+	github.com/buildpacks/lifecycle v0.9.1
 	github.com/containerd/continuity v0.0.0-20200107194136-26c1120b8d41 // indirect
-	github.com/docker/cli v0.0.0-20200312141509-ef2f64abbd37 // indirect
 	github.com/docker/docker v1.4.2-0.20200221181110-62bd5a33f707
 	github.com/docker/go-connections v0.4.0
-	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/mock v1.4.4
 	github.com/google/go-cmp v0.5.2
 	github.com/google/go-containerregistry v0.0.0-20200313165449-955bf358a3d8
 	github.com/google/go-github/v30 v30.1.0
 	github.com/heroku/color v0.0.6
-	github.com/kr/text v0.2.0 // indirect
-	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
-	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/onsi/gomega v1.10.2
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runc v0.1.1 // indirect
@@ -36,13 +30,8 @@ require (
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6 // indirect
 	golang.org/x/text v0.3.3 // indirect
-	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	google.golang.org/genproto v0.0.0-20200313141609-30c55424f95d // indirect
-	google.golang.org/grpc v1.28.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
-	gotest.tools/v3 v3.0.2 // indirect
 )
 
 go 1.14
