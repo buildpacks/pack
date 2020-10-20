@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	pubcfg "github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/pack/acceptance/buildpacks"
 
 	"github.com/docker/docker/pkg/stdcopy"
@@ -360,7 +362,7 @@ func testWithoutSpecificBuilderRequirement(
 				})
 			})
 
-			when("--no-pull", func() {
+			when("--pull-policy=never", func() {
 				it("should use local image", func() {
 					nestedPackageName := "test/package-" + h.RandString(10)
 					nestedPackage := buildpacks.NewPackageImage(
@@ -376,11 +378,10 @@ func testWithoutSpecificBuilderRequirement(
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
-					// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 					pack.JustRunSuccessfully(
 						"package-buildpack", packageName,
 						"-c", aggregatePackageToml,
-						"--no-pull",
+						"--pull-policy", pubcfg.PullNever.String(),
 					)
 
 					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
@@ -404,11 +405,10 @@ func testWithoutSpecificBuilderRequirement(
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
-					// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 					output, err := pack.Run(
 						"package-buildpack", packageName,
 						"-c", aggregatePackageToml,
-						"--no-pull",
+						"--pull-policy", pubcfg.PullNever.String(),
 					)
 					assert.NotNil(err)
 					assertions.NewOutputAssertionManager(t, output).ReportsImageNotExistingOnDaemon(nestedPackageName)
@@ -1941,13 +1941,12 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 					}
 
 					buildRunImage(runBefore, "contents-before-1", "contents-before-2")
-					// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 					pack.RunSuccessfully(
 						"build", repoName,
 						"-p", filepath.Join("testdata", "mock_app"),
 						"--builder", builderName,
 						"--run-image", runBefore,
-						"--no-pull",
+						"--pull-policy", pubcfg.PullNever.String(),
 					)
 					origID = h.ImageID(t, repoName)
 					assertMockAppRunsWithOutput(t,
@@ -1982,11 +1981,10 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 
 						it("uses provided run image", func() {
-							// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
 							output := pack.RunSuccessfully(
 								"rebase", repoName,
 								"--run-image", runAfter,
-								"--no-pull",
+								"--pull-policy", pubcfg.PullNever.String(),
 							)
 
 							assert.Contains(output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
@@ -2013,8 +2011,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 
 						it("prefers the local mirror", func() {
-							// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
-							output := pack.RunSuccessfully("rebase", repoName, "--no-pull")
+							output := pack.RunSuccessfully("rebase", repoName, "--pull-policy", pubcfg.PullNever.String())
 
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
 							assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
@@ -2037,8 +2034,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						})
 
 						it("selects the best mirror", func() {
-							// TODO: Replace --no-pull with pull-policy never. See https://github.com/buildpacks/pack/issues/775
-							output := pack.RunSuccessfully("rebase", repoName, "--no-pull")
+							output := pack.RunSuccessfully("rebase", repoName, "--pull-policy", pubcfg.PullNever.String())
 
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
 							assertOutput.ReportsSelectingRunImageMirror(runImageMirror)

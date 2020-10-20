@@ -197,7 +197,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				return img
 			}
 
-			when("publish=false and no-pull=false", func() {
+			when("publish=false and pull-policy=always", func() {
 				it("should pull and use local nested package image", func() {
 					shouldFetchNestedPackage(true, config.PullAlways)
 					packageImage := shouldCreateLocalPackage()
@@ -223,7 +223,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("publish=true and no-pull=false", func() {
+			when("publish=true and pull-policy=always", func() {
 				it("should use remote nested package image", func() {
 					shouldFetchNestedPackage(false, config.PullAlways)
 					packageImage := shouldCreateRemotePackage()

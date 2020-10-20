@@ -19,7 +19,6 @@ import (
 type CreateBuilderFlags struct {
 	BuilderTomlPath string
 	Publish         bool
-	NoPull          bool
 	Registry        string
 	Policy          string
 }
@@ -33,7 +32,7 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 		Args:  cobra.ExactArgs(1),
 		Short: "Create builder image",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := validateCreateBuilderFlags(&flags, cfg, logger); err != nil {
+			if err := validateCreateBuilderFlags(&flags, cfg); err != nil {
 				return err
 			}
 
@@ -78,21 +77,14 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
-	// TODO: Remove --no-pull flag after v0.13.0 released. See https://github.com/buildpacks/pack/issues/775
-	cmd.Flags().BoolVar(&flags.NoPull, "no-pull", false, "Skip pulling build image before use")
-	cmd.Flags().MarkHidden("no-pull")
 
 	AddHelpFlag(cmd, "create-builder")
 	return cmd
 }
 
-func validateCreateBuilderFlags(flags *CreateBuilderFlags, cfg config.Config, logger logging.Logger) error {
+func validateCreateBuilderFlags(flags *CreateBuilderFlags, cfg config.Config) error {
 	if flags.Publish && flags.Policy == pubcfg.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
-	}
-
-	if flags.Publish && flags.NoPull {
-		return errors.Errorf("The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
 	}
 
 	if flags.Registry != "" && !cfg.Experimental {
@@ -101,16 +93,6 @@ func validateCreateBuilderFlags(flags *CreateBuilderFlags, cfg config.Config, lo
 
 	if flags.BuilderTomlPath == "" {
 		return errors.Errorf("Please provide a builder config path, using --config.")
-	}
-
-	if flags.NoPull {
-		logger.Warn("Flag --no-pull has been deprecated, please use `--pull-policy never` instead")
-
-		if flags.Policy != "" {
-			logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
-		} else {
-			flags.Policy = pubcfg.PullNever.String()
-		}
 	}
 
 	return nil

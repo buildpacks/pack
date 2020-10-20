@@ -23,7 +23,6 @@ import (
 
 type BuildFlags struct {
 	Publish            bool
-	NoPull             bool
 	ClearCache         bool
 	TrustBuilder       bool
 	AppPath            string
@@ -160,9 +159,6 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<mode>]'."+multiValueHelp("volume"))
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
-	// TODO: Remove --no-pull flag after v0.13.0 released. See https://github.com/buildpacks/pack/issues/775
-	cmd.Flags().BoolVar(&buildFlags.NoPull, "no-pull", false, "Skip pulling builder and run images before use")
-	cmd.Flags().MarkHidden("no-pull")
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
@@ -173,16 +169,6 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 
 	if flags.Registry != "" && !cfg.Experimental {
 		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
-	}
-
-	if flags.NoPull {
-		logger.Warn("Flag --no-pull has been deprecated")
-
-		if flags.Policy != "" {
-			logger.Warn("Flag --no-pull ignored in favor of --pull-policy")
-		} else {
-			flags.Policy = pubcfg.PullNever.String()
-		}
 	}
 
 	return nil
