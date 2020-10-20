@@ -202,6 +202,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 
 		locator := b.URI
 		if locator == "" && b.ImageName != "" {
+			c.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
 			locator = b.ImageName
 		}
 
@@ -214,9 +215,9 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 		var depBPs []dist.Buildpack
 		switch locatorType {
 		case buildpack.PackageLocator:
-			c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(b.ImageName))
-
-			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, b.ImageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
+			imageName := buildpack.ParsePackageLocator(locator)
+			c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
+			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
 			if err != nil {
 				return err
 			}
