@@ -54,6 +54,21 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			expectedErr: "'from=builder:some-bp@some-other-version' is not a valid identifier",
 		},
 		{
+			locator:      "urn:cnb:builder:some-bp",
+			builderBPs:   []dist.BuildpackInfo{{ID: "some-bp", Version: "some-version"}},
+			expectedType: buildpack.IDLocator,
+		},
+		{
+			locator:     "urn:cnb:builder:some-bp",
+			builderBPs:  nil,
+			expectedErr: "'urn:cnb:builder:some-bp' is not a valid identifier",
+		},
+		{
+			locator:     "urn:cnb:builder:some-bp@some-other-version",
+			builderBPs:  []dist.BuildpackInfo{{ID: "some-bp", Version: "some-version"}},
+			expectedErr: "'urn:cnb:builder:some-bp@some-other-version' is not a valid identifier",
+		},
+		{
 			locator:      "some-bp",
 			builderBPs:   []dist.BuildpackInfo{{ID: "some-bp", Version: "any-version"}},
 			expectedType: buildpack.IDLocator,
@@ -69,17 +84,41 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			expectedType: buildpack.URILocator,
 		},
 		{
-			locator:      "cnbs/some-bp",
+			locator:      "docker://cnbs/some-bp",
 			builderBPs:   nil,
 			localPath:    "",
 			expectedType: buildpack.PackageLocator,
 		},
 		{
-			locator:      "cnbs/some-bp@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			locator:      "docker://cnbs/some-bp@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			expectedType: buildpack.PackageLocator,
 		},
 		{
-			locator:      "cnbs/some-bp:some-tag",
+			locator:      "docker://cnbs/some-bp:some-tag",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
+			locator:      "docker://cnbs/some-bp:some-tag@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
+			locator:      "docker://registry.com/cnbs/some-bp",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
+			locator:      "docker://registry.com/cnbs/some-bp@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
+			locator:      "docker://registry.com/cnbs/some-bp:some-tag",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
+			locator:      "docker://registry.com/cnbs/some-bp:some-tag@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
+			locator:      "cnbs/some-bp@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 			expectedType: buildpack.PackageLocator,
 		},
 		{
