@@ -65,42 +65,33 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
           version: test.bp.three.version`
 
 		expectedDetectionOrder = `    detection_order:
-        - buildpackref: {}
-          nested_buildpacks:
-            - buildpackref:
-                id: test.top.nested
-                version: test.top.nested.version
-              nested_buildpacks:
-                - buildpackref:
-                    id: test.nested
-                    homepage: http://geocities.com/top-bp
-                  nested_buildpacks:
-                    - buildpackref:
-                        id: test.bp.one
-                        version: test.bp.one.version
-                        homepage: http://geocities.com/cool-bp
-                        optional: true
-                - buildpackref:
-                    id: test.bp.three
-                    version: test.bp.three.version
-                    optional: true
-                - buildpackref:
-                    id: test.nested.two
-                    version: test.nested.two.version
-                  nested_buildpacks:
-                    - buildpackref:
-                        id: test.bp.one
-                        version: test.bp.one.version
-                        homepage: http://geocities.com/cool-bp
-                        optional: true
+        - buildpacks:
+            - id: test.top.nested
+              version: test.top.nested.version
+              buildpacks:
+                - id: test.nested
+                  homepage: http://geocities.com/top-bp
+                  buildpacks:
+                    - id: test.bp.one
+                      version: test.bp.one.version
+                      homepage: http://geocities.com/cool-bp
+                      optional: true
+                - id: test.bp.three
+                  version: test.bp.three.version
+                  optional: true
+                - id: test.nested.two
+                  version: test.nested.two.version
+                  buildpacks:
+                    - id: test.bp.one
+                      version: test.bp.one.version
+                      homepage: http://geocities.com/cool-bp
+                      optional: true
                       cyclic: true
-            - buildpackref:
-                id: test.bp.two
-                version: test.bp.two.version
-                optional: true
-        - buildpackref:
-            id: test.bp.three
-            version: test.bp.three.version`
+            - id: test.bp.two
+              version: test.bp.two.version
+              optional: true
+        - id: test.bp.three
+          version: test.bp.three.version`
 		expectedStackWithMixins = `    stack:
         id: test.stack.id
         mixins:

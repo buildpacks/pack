@@ -2,7 +2,7 @@ package fakes
 
 import (
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
@@ -16,7 +16,7 @@ type FakeBuilderWriter struct {
 	ReceivedInfoForRemote  *pack.BuilderInfo
 	ReceivedErrorForLocal  error
 	ReceivedErrorForRemote error
-	ReceivedBuilderInfo    commands.SharedBuilderInfo
+	ReceivedBuilderInfo    writer.SharedBuilderInfo
 	ReceivedLocalRunImages []config.RunImage
 }
 
@@ -25,7 +25,7 @@ func (w *FakeBuilderWriter) Print(
 	localRunImages []config.RunImage,
 	local, remote *pack.BuilderInfo,
 	localErr, remoteErr error,
-	builderInfo commands.SharedBuilderInfo,
+	builderInfo writer.SharedBuilderInfo,
 ) error {
 	w.ReceivedInfoForLocal = local
 	w.ReceivedInfoForRemote = remote

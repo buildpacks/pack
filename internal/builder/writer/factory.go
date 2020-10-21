@@ -3,17 +3,40 @@ package writer
 import (
 	"fmt"
 
-	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/logging"
+
 	"github.com/buildpacks/pack/internal/style"
 )
 
 type Factory struct{}
 
+type BuilderWriter interface {
+	Print(
+		logger logging.Logger,
+		localRunImages []config.RunImage,
+		local, remote *pack.BuilderInfo,
+		localErr, remoteErr error,
+		builderInfo SharedBuilderInfo,
+	) error
+}
+
+type SharedBuilderInfo struct {
+	Name      string `json:"builder_name" yaml:"builder_name" toml:"builder_name"`
+	Trusted   bool   `json:"trusted" yaml:"trusted" toml:"trusted"`
+	IsDefault bool   `json:"default" yaml:"default" toml:"default"`
+}
+
+type BuilderWriterFactory interface {
+	Writer(kind string) (BuilderWriter, error)
+}
+
 func NewFactory() *Factory {
 	return &Factory{}
 }
 
-func (f *Factory) Writer(kind string) (commands.BuilderWriter, error) {
+func (f *Factory) Writer(kind string) (BuilderWriter, error) {
 	switch kind {
 	case "human-readable":
 		return NewHumanReadable(), nil

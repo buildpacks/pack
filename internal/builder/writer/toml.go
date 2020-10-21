@@ -4,15 +4,13 @@ import (
 	"bytes"
 
 	"github.com/pelletier/go-toml"
-
-	"github.com/buildpacks/pack/internal/commands"
 )
 
 type TOML struct {
 	StructuredFormat
 }
 
-func NewTOML() commands.BuilderWriter {
+func NewTOML() BuilderWriter {
 	return &TOML{
 		StructuredFormat: StructuredFormat{
 			MarshalFunc: func(v interface{}) ([]byte, error) {

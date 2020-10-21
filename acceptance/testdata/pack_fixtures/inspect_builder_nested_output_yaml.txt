@@ -41,22 +41,17 @@ remote_info:
         - id: simple/nested-level-1
           version: nested-l1-version
     detection_order:
-        - buildpackref: {}
-          nested_buildpacks:
-            - buildpackref:
-                id: simple/nested-level-1
-              nested_buildpacks:
-                - buildpackref:
-                    id: simple/nested-level-2
-                    version: nested-l2-version
-                  nested_buildpacks:
-                    - buildpackref:
-                        id: simple/layers
-                        version: simple-layers-version
-            - buildpackref:
-                id: read/env
-                version: read-env-version
-                optional: true
+        - buildpacks:
+            - id: simple/nested-level-1
+              buildpacks:
+                - id: simple/nested-level-2
+                  version: nested-l2-version
+                  buildpacks:
+                    - id: simple/layers
+                      version: simple-layers-version
+            - id: read/env
+              version: read-env-version
+              optional: true
 local_info:
     created_by:
         name: Pack CLI
@@ -96,19 +91,14 @@ local_info:
         - id: simple/nested-level-1
           version: nested-l1-version
     detection_order:
-        - buildpackref: {}
-          nested_buildpacks:
-            - buildpackref:
-                id: simple/nested-level-1
-              nested_buildpacks:
-                - buildpackref:
-                    id: simple/nested-level-2
-                    version: nested-l2-version
-                  nested_buildpacks:
-                    - buildpackref:
-                        id: simple/layers
-                        version: simple-layers-version
-            - buildpackref:
-                id: read/env
-                version: read-env-version
-                optional: true
+        - buildpacks:
+            - id: simple/nested-level-1
+              buildpacks:
+                - id: simple/nested-level-2
+                  version: nested-l2-version
+                  buildpacks:
+                    - id: simple/layers
+                      version: simple-layers-version
+            - id: read/env
+              version: read-env-version
+              optional: true
