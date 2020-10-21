@@ -68,14 +68,14 @@
     ],
     "detection_order": [
       {
-        "nested_buildpacks": [
+        "buildpacks": [
           {
             "id": "simple/nested-level-1",
-            "nested_buildpacks": [
+            "buildpacks": [
               {
                 "id": "simple/nested-level-2",
                 "version": "nested-l2-version",
-                "nested_buildpacks": [
+                "buildpacks": [
                   {
                     "id": "simple/layers",
                     "version": "simple-layers-version"
@@ -159,14 +159,14 @@
     ],
     "detection_order": [
       {
-        "nested_buildpacks": [
+        "buildpacks": [
           {
             "id": "simple/nested-level-1",
-            "nested_buildpacks": [
+            "buildpacks": [
               {
                 "id": "simple/nested-level-2",
                 "version": "nested-l2-version",
-                "nested_buildpacks": [
+                "buildpacks": [
                   {
                     "id": "simple/layers",
                     "version": "simple-layers-version"

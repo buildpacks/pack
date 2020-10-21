@@ -2,15 +2,13 @@ package writer
 
 import (
 	"encoding/json"
-
-	"github.com/buildpacks/pack/internal/commands"
 )
 
 type JSON struct {
 	StructuredFormat
 }
 
-func NewJSON() commands.BuilderWriter {
+func NewJSON() BuilderWriter {
 	return &JSON{
 		StructuredFormat: StructuredFormat{
 			MarshalFunc: json.Marshal,

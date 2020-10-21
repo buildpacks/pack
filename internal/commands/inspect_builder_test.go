@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/buildpacks/pack/internal/builder/writer"
+
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -48,7 +50,7 @@ var (
 	}
 	expectedLocalDisplay  = "Sample output for local builder"
 	expectedRemoteDisplay = "Sample output for remote builder"
-	expectedBuilderInfo   = commands.SharedBuilderInfo{
+	expectedBuilderInfo   = writer.SharedBuilderInfo{
 		Name:      "default/builder",
 		Trusted:   false,
 		IsDefault: true,
@@ -330,7 +332,7 @@ func newBuilderWriter(modifiers ...BuilderWriterModifier) *fakes.FakeBuilderWrit
 
 type WriterFactoryModifier func(f *fakes.FakeBuilderWriterFactory)
 
-func returnsForWriter(writer commands.BuilderWriter) WriterFactoryModifier {
+func returnsForWriter(writer writer.BuilderWriter) WriterFactoryModifier {
 	return func(f *fakes.FakeBuilderWriterFactory) {
 		f.ReturnForWriter = writer
 	}

@@ -3,25 +3,13 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/builder/writer"
+
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
-
-type BuilderWriter interface {
-	Print(
-		logger logging.Logger,
-		localRunImages []config.RunImage,
-		local, remote *pack.BuilderInfo,
-		localErr, remoteErr error,
-		builderInfo SharedBuilderInfo,
-	) error
-}
-
-type BuilderWriterFactory interface {
-	Writer(kind string) (BuilderWriter, error)
-}
 
 type BuilderInspector interface {
 	InspectBuilder(name string, daemon bool, modifiers ...pack.BuilderInspectionModifier) (*pack.BuilderInfo, error)
@@ -32,17 +20,11 @@ type InspectBuilderFlags struct {
 	OutputFormat string
 }
 
-type SharedBuilderInfo struct {
-	Name      string `json:"builder_name" yaml:"builder_name" toml:"builder_name"`
-	Trusted   bool   `json:"trusted" yaml:"trusted" toml:"trusted"`
-	IsDefault bool   `json:"default" yaml:"default" toml:"default"`
-}
-
 func InspectBuilder(
 	logger logging.Logger,
 	cfg config.Config,
 	inspector BuilderInspector,
-	writerFactory BuilderWriterFactory,
+	writerFactory writer.BuilderWriterFactory,
 ) *cobra.Command {
 	var flags InspectBuilderFlags
 	cmd := &cobra.Command{
@@ -60,7 +42,7 @@ func InspectBuilder(
 				return pack.NewSoftError()
 			}
 
-			builderInfo := SharedBuilderInfo{
+			builderInfo := writer.SharedBuilderInfo{
 				Name:      imageName,
 				IsDefault: imageName == cfg.DefaultBuilder,
 				Trusted:   isTrustedBuilder(cfg, imageName),
