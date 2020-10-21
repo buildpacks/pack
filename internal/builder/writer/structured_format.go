@@ -8,14 +8,13 @@ import (
 	"github.com/buildpacks/pack"
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/logging"
 )
 
 type InspectOutput struct {
-	commands.SharedBuilderInfo
+	SharedBuilderInfo
 	RemoteInfo *BuilderInfo `json:"remote_info" yaml:"remote_info" toml:"remote_info"`
 	LocalInfo  *BuilderInfo `json:"local_info" yaml:"local_info" toml:"local_info"`
 }
@@ -55,7 +54,7 @@ func (w *StructuredFormat) Print(
 	localRunImages []config.RunImage,
 	local, remote *pack.BuilderInfo,
 	localErr, remoteErr error,
-	builderInfo commands.SharedBuilderInfo,
+	builderInfo SharedBuilderInfo,
 ) error {
 	if localErr != nil {
 		return fmt.Errorf("preparing output for %s: %w", style.Symbol(builderInfo.Name), localErr)

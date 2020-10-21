@@ -34,7 +34,7 @@ func deepContains(v1, v2 reflect.Value, depth int) bool {
 	if depth > 200 {
 		panic("deep Contains depth exceeded, likely a circular reference")
 	}
-	if !v1.IsValid() || !v2.IsValid() { // This is an odd case TODO: when does this happen??
+	if !v1.IsValid() || !v2.IsValid() {
 		return v1.IsValid() == v2.IsValid()
 	}
 

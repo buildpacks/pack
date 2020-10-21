@@ -199,7 +199,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			pack.JustRunSuccessfully("untrust-builder", builderName)
 
-			assert.NotContain(pack.ConfigFileContents(), builderName)
+			assert.NotContains(pack.ConfigFileContents(), builderName)
 		})
 	})
 
@@ -1607,7 +1607,7 @@ func testAcceptance(
 
 							err := command.Wait()
 							assert.NotNil(err)
-							assert.NotContain(buf.String(), "Successfully built image")
+							assert.NotContains(buf.String(), "Successfully built image")
 						})
 					})
 
@@ -1682,9 +1682,9 @@ exclude = [ "*.sh", "secrets/", "media/metadata" ]
 									"--buildpack", buildpackTgz,
 									"--descriptor", excludeDescriptorPath,
 								)
-								assert.NotContain(output, "api_keys.json")
-								assert.NotContain(output, "user_token")
-								assert.NotContain(output, "test.sh")
+								assert.NotContains(output, "api_keys.json")
+								assert.NotContains(output, "user_token")
+								assert.NotContains(output, "test.sh")
 
 								assert.Contains(output, "cookie.jar")
 								assert.Contains(output, "mountain.jpg")
@@ -1711,9 +1711,9 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 									"--buildpack", buildpackTgz,
 									"--descriptor", includeDescriptorPath,
 								)
-								assert.NotContain(output, "api_keys.json")
-								assert.NotContain(output, "user_token")
-								assert.NotContain(output, "test.sh")
+								assert.NotContains(output, "api_keys.json")
+								assert.NotContains(output, "user_token")
+								assert.NotContains(output, "test.sh")
 
 								assert.Contains(output, "cookie.jar")
 								assert.Contains(output, "mountain.jpg")
@@ -1859,9 +1859,6 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 
 							err := toml.NewDecoder(strings.NewReader(string(output))).Decode(&struct{}{})
 							assert.Nil(err)
-
-							fmt.Println("OUTPUT")
-							fmt.Println(string(output))
 
 							deprecatedBuildpackAPIs,
 								supportedBuildpackAPIs,

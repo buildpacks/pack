@@ -73,7 +73,6 @@ func testTOML(t *testing.T, when spec.G, it spec.S) {
 
   [[local_info.buildpacks]]
     id = "test.nested"
-    version = ""
     homepage = "http://geocities.com/top-bp"
 
   [[local_info.buildpacks]]
@@ -95,7 +94,6 @@ func testTOML(t *testing.T, when spec.G, it spec.S) {
 
   [[remote_info.buildpacks]]
     id = "test.nested"
-    version = ""
     homepage = "http://geocities.com/top-bp"
 
   [[remote_info.buildpacks]]
@@ -112,41 +110,38 @@ func testTOML(t *testing.T, when spec.G, it spec.S) {
     version = "test.bp.three.version"`
 
 		expectedLocalDetectionOrder = `  [[local_info.detection_order]]
-    id = ""
-    version = ""
 
-    [[local_info.detection_order.nested_buildpacks]]
+    [[local_info.detection_order.buildpacks]]
       id = "test.top.nested"
       version = "test.top.nested.version"
 
-      [[local_info.detection_order.nested_buildpacks.nested_buildpacks]]
+      [[local_info.detection_order.buildpacks.buildpacks]]
         id = "test.nested"
-        version = ""
         homepage = "http://geocities.com/top-bp"
 
-        [[local_info.detection_order.nested_buildpacks.nested_buildpacks.nested_buildpacks]]
+        [[local_info.detection_order.buildpacks.buildpacks.buildpacks]]
           id = "test.bp.one"
           version = "test.bp.one.version"
           homepage = "http://geocities.com/cool-bp"
           optional = true
 
-      [[local_info.detection_order.nested_buildpacks.nested_buildpacks]]
+      [[local_info.detection_order.buildpacks.buildpacks]]
         id = "test.bp.three"
         version = "test.bp.three.version"
         optional = true
 
-      [[local_info.detection_order.nested_buildpacks.nested_buildpacks]]
+      [[local_info.detection_order.buildpacks.buildpacks]]
         id = "test.nested.two"
         version = "test.nested.two.version"
 
-        [[local_info.detection_order.nested_buildpacks.nested_buildpacks.nested_buildpacks]]
+        [[local_info.detection_order.buildpacks.buildpacks.buildpacks]]
           id = "test.bp.one"
           version = "test.bp.one.version"
           homepage = "http://geocities.com/cool-bp"
           optional = true
           cyclic = true
 
-    [[local_info.detection_order.nested_buildpacks]]
+    [[local_info.detection_order.buildpacks]]
       id = "test.bp.two"
       version = "test.bp.two.version"
       optional = true
@@ -156,41 +151,38 @@ func testTOML(t *testing.T, when spec.G, it spec.S) {
     version = "test.bp.three.version"`
 
 		expectedRemoteDetectionOrder = `  [[remote_info.detection_order]]
-    id = ""
-    version = ""
 
-    [[remote_info.detection_order.nested_buildpacks]]
+    [[remote_info.detection_order.buildpacks]]
       id = "test.top.nested"
       version = "test.top.nested.version"
 
-      [[remote_info.detection_order.nested_buildpacks.nested_buildpacks]]
+      [[remote_info.detection_order.buildpacks.buildpacks]]
         id = "test.nested"
-        version = ""
         homepage = "http://geocities.com/top-bp"
 
-        [[remote_info.detection_order.nested_buildpacks.nested_buildpacks.nested_buildpacks]]
+        [[remote_info.detection_order.buildpacks.buildpacks.buildpacks]]
           id = "test.bp.one"
           version = "test.bp.one.version"
           homepage = "http://geocities.com/cool-bp"
           optional = true
 
-      [[remote_info.detection_order.nested_buildpacks.nested_buildpacks]]
+      [[remote_info.detection_order.buildpacks.buildpacks]]
         id = "test.bp.three"
         version = "test.bp.three.version"
         optional = true
 
-      [[remote_info.detection_order.nested_buildpacks.nested_buildpacks]]
+      [[remote_info.detection_order.buildpacks.buildpacks]]
         id = "test.nested.two"
         version = "test.nested.two.version"
 
-        [[remote_info.detection_order.nested_buildpacks.nested_buildpacks.nested_buildpacks]]
+        [[remote_info.detection_order.buildpacks.buildpacks.buildpacks]]
           id = "test.bp.one"
           version = "test.bp.one.version"
           homepage = "http://geocities.com/cool-bp"
           optional = true
           cyclic = true
 
-    [[remote_info.detection_order.nested_buildpacks]]
+    [[remote_info.detection_order.buildpacks]]
       id = "test.bp.two"
       version = "test.bp.two.version"
       optional = true
@@ -375,7 +367,7 @@ default = false
 				assert.Succeeds(validTOMLOutput(outBuf))
 				assert.Nil(err)
 
-				assert.NotContain(outBuf.String(), "local_info")
+				assert.NotContains(outBuf.String(), "local_info")
 				assert.ContainsTOML(outBuf.String(), expectedRemoteInfo)
 			})
 		})
@@ -391,7 +383,7 @@ default = false
 				assert.Succeeds(validTOMLOutput(outBuf))
 				assert.Nil(err)
 
-				assert.NotContain(outBuf.String(), "remote_info")
+				assert.NotContains(outBuf.String(), "remote_info")
 				assert.ContainsTOML(outBuf.String(), expectedLocalInfo)
 			})
 		})
@@ -453,7 +445,7 @@ default = false
 
 				assert.Succeeds(validTOMLOutput(outBuf))
 
-				assert.NotContain(outBuf.String(), "run_images")
+				assert.NotContains(outBuf.String(), "run_images")
 			})
 		})
 
@@ -470,8 +462,8 @@ default = false
 
 				assert.Succeeds(validTOMLOutput(outBuf))
 
-				assert.NotContain(outBuf.String(), "local_info.buildpacks")
-				assert.NotContain(outBuf.String(), "remote_info.buildpacks")
+				assert.NotContains(outBuf.String(), "local_info.buildpacks")
+				assert.NotContains(outBuf.String(), "remote_info.buildpacks")
 			})
 		})
 
@@ -487,7 +479,7 @@ default = false
 				assert.Nil(err)
 
 				assert.Succeeds(validTOMLOutput(outBuf))
-				assert.NotContain(outBuf.String(), "detection_order")
+				assert.NotContains(outBuf.String(), "detection_order")
 			})
 		})
 	})

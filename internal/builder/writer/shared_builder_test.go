@@ -2,7 +2,7 @@ package writer_test
 
 import (
 	pubbldr "github.com/buildpacks/pack/builder"
-	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 )
@@ -96,7 +96,7 @@ var (
 		},
 	}
 
-	sharedBuilderInfo = commands.SharedBuilderInfo{
+	sharedBuilderInfo = writer.SharedBuilderInfo{
 		Name:      "test-builder",
 		Trusted:   false,
 		IsDefault: false,

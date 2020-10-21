@@ -18,7 +18,6 @@ import (
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -72,7 +71,7 @@ func (h *HumanReadable) Print(
 	localRunImages []config.RunImage,
 	local, remote *pack.BuilderInfo,
 	localErr, remoteErr error,
-	builderInfo commands.SharedBuilderInfo,
+	builderInfo SharedBuilderInfo,
 ) error {
 	if local == nil && remote == nil {
 		return fmt.Errorf("unable to find builder '%s' locally or remotely", builderInfo.Name)
@@ -103,7 +102,7 @@ func writeBuilderInfo(
 	localRunImages []config.RunImage,
 	info *pack.BuilderInfo,
 	err error,
-	sharedInfo commands.SharedBuilderInfo,
+	sharedInfo SharedBuilderInfo,
 ) error {
 	if err != nil {
 		logger.Errorf("%s\n", err)

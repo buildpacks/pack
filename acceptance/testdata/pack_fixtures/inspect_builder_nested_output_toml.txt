@@ -59,22 +59,19 @@ default = false
     version = "nested-l1-version"
 
   [[remote_info.detection_order]]
-    id = ""
-    version = ""
 
-    [[remote_info.detection_order.nested_buildpacks]]
+    [[remote_info.detection_order.buildpacks]]
       id = "simple/nested-level-1"
-      version = ""
 
-      [[remote_info.detection_order.nested_buildpacks.nested_buildpacks]]
+      [[remote_info.detection_order.buildpacks.buildpacks]]
         id = "simple/nested-level-2"
         version = "nested-l2-version"
 
-        [[remote_info.detection_order.nested_buildpacks.nested_buildpacks.nested_buildpacks]]
+        [[remote_info.detection_order.buildpacks.buildpacks.buildpacks]]
           id = "simple/layers"
           version = "simple-layers-version"
 
-    [[remote_info.detection_order.nested_buildpacks]]
+    [[remote_info.detection_order.buildpacks]]
       id = "read/env"
       version = "read-env-version"
       optional = true
@@ -136,22 +133,19 @@ default = false
     version = "nested-l1-version"
 
   [[local_info.detection_order]]
-    id = ""
-    version = ""
 
-    [[local_info.detection_order.nested_buildpacks]]
+    [[local_info.detection_order.buildpacks]]
       id = "simple/nested-level-1"
-      version = ""
 
-      [[local_info.detection_order.nested_buildpacks.nested_buildpacks]]
+      [[local_info.detection_order.buildpacks.buildpacks]]
         id = "simple/nested-level-2"
         version = "nested-l2-version"
 
-        [[local_info.detection_order.nested_buildpacks.nested_buildpacks.nested_buildpacks]]
+        [[local_info.detection_order.buildpacks.buildpacks.buildpacks]]
           id = "simple/layers"
           version = "simple-layers-version"
 
-    [[local_info.detection_order.nested_buildpacks]]
+    [[local_info.detection_order.buildpacks]]
       id = "read/env"
       version = "read-env-version"
       optional = true

@@ -4,15 +4,13 @@ import (
 	"bytes"
 
 	"gopkg.in/yaml.v3"
-
-	"github.com/buildpacks/pack/internal/commands"
 )
 
 type YAML struct {
 	StructuredFormat
 }
 
-func NewYAML() commands.BuilderWriter {
+func NewYAML() BuilderWriter {
 	return &YAML{
 		StructuredFormat: StructuredFormat{
 			MarshalFunc: func(v interface{}) ([]byte, error) {

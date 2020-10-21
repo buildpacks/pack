@@ -96,15 +96,15 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
     ]`
 		expectedDetectionOrder = `"detection_order": [
       {
-        "nested_buildpacks": [
+        "buildpacks": [
           {
             "id": "test.top.nested",
             "version": "test.top.nested.version",
-            "nested_buildpacks": [
+            "buildpacks": [
               {
                 "id": "test.nested",
                 "homepage": "http://geocities.com/top-bp",
-                "nested_buildpacks": [
+                "buildpacks": [
                   {
                     "id": "test.bp.one",
                     "version": "test.bp.one.version",
@@ -121,7 +121,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
               {
                 "id": "test.nested.two",
                 "version": "test.nested.two.version",
-                "nested_buildpacks": [
+                "buildpacks": [
                   {
                     "id": "test.bp.one",
                     "version": "test.bp.one.version",

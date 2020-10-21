@@ -138,12 +138,10 @@ func testDeepContains(t *testing.T, when spec.G, it spec.S) {
 	{"Name": "Platypus", "Order": "Monotremata"},
 	{"Name": "Quoll",    "Order": "Dasyuromorphia"}
 ]`
-			//containerJSON := `["a"]`
 			var container interface{}
 			assert.Succeeds(json.Unmarshal([]byte(containerJSON), &container))
 
 			containedJSON := `[{"Name": "Notapus", "Order": "Monotremata"}]`
-			//containedJSON := `["a"]`
 
 			var contained interface{}
 			assert.Succeeds(json.Unmarshal([]byte(containedJSON), &contained))

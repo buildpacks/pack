@@ -326,7 +326,7 @@ REMOTE:
 				assert.Nil(err)
 
 				assert.Contains(outBuf.String(), errorMessage)
-				assert.NotContain(outBuf.String(), expectedLocalOutput)
+				assert.NotContains(outBuf.String(), expectedLocalOutput)
 				assert.Contains(outBuf.String(), expectedRemoteOutput)
 			})
 		})
@@ -342,7 +342,7 @@ REMOTE:
 				assert.Nil(err)
 
 				assert.Contains(outBuf.String(), errorMessage)
-				assert.NotContain(outBuf.String(), expectedRemoteOutput)
+				assert.NotContains(outBuf.String(), expectedRemoteOutput)
 				assert.Contains(outBuf.String(), expectedLocalOutput)
 			})
 		})
@@ -358,7 +358,7 @@ REMOTE:
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
-				assert.NotContain(outBuf.String(), "Description:")
+				assert.NotContains(outBuf.String(), "Description:")
 			})
 		})
 
@@ -373,7 +373,7 @@ REMOTE:
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
-				assert.NotContain(outBuf.String(), "Created By:")
+				assert.NotContains(outBuf.String(), "Created By:")
 			})
 		})
 
