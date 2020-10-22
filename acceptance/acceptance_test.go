@@ -20,22 +20,22 @@ import (
 	"testing"
 	"time"
 
-
 	"github.com/ghodss/yaml"
 	"github.com/pelletier/go-toml"
-  
+
 	pubcfg "github.com/buildpacks/pack/config"
-  
-	"github.com/buildpacks/pack/acceptance/buildpacks"
-	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/google/go-containerregistry/pkg/name"
+
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/acceptance/buildpacks"
 
 	"github.com/buildpacks/pack/acceptance/assertions"
 	"github.com/buildpacks/pack/acceptance/config"
