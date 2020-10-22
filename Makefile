@@ -49,12 +49,15 @@ export CGO_ENABLED=0
 
 BINDIR:=/usr/bin/
 
+#
 build: out
 	@echo "> Building..."
 	$(GOCMD) build -ldflags "-s -w -X 'github.com/buildpacks/pack.Version=${PACK_VERSION}' -extldflags ${LDFLAGS}" -trimpath -o ./out/$(PACK_BIN) -a ./cmd/pack
 
 all: clean verify test build
 
+# used by ap-get install when installing ubuntu ppa.
+# move pack binary onto a path location.
 install:
 	mkdir -p ${DESTDIR}${BINDIR}
 	cp ./out/$(PACK_BIN) ${DESTDIR}${BINDIR}/

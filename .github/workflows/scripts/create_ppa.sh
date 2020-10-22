@@ -63,8 +63,12 @@ function main() {
 
 # import gpg keys from env
 function import_gpg() {
-    gpg --import <(echo "$GPG_PUBLIC_KEY")
-    gpg --allow-secret-key-import --import <(echo "$GPG_PRIVATE_KEY")
+  # verify the following are set.
+  : "$GPG_PUBLIC_KEY"
+  : "$GPG_PRIVATE_KEY"
+
+  gpg --import <(echo "$GPG_PUBLIC_KEY")
+  gpg --allow-secret-key-import --import <(echo "$GPG_PRIVATE_KEY")
 }
 
 main

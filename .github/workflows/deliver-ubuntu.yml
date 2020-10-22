@@ -103,7 +103,7 @@ jobs:
 
           - name: Upload
             env:
-              PPA_DEST: "ppa:thorntondwt/testppa"
+              PPA_DEST: "ppa:cncf-buildpacks/pack-cli"
             run: |
               dput "${PPA_DEST}" ./../*.changes
 
