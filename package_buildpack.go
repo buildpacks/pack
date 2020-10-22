@@ -3,14 +3,14 @@ package pack
 import (
 	"context"
 
-	"github.com/buildpacks/pack/config"
-
 	"github.com/pkg/errors"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
-	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/style"
 )
 
@@ -31,6 +31,9 @@ type PackageBuildpackOptions struct {
 	// Type of output format, The options are the either the const FormatImage, or FormatFile.
 	Format string
 
+	// Type of OCI image to generate in the image or file. The options are "windows" or "linux"
+	OS string
+
 	// Defines the Buildpacks configuration.
 	Config pubbldpkg.Config
 
@@ -44,11 +47,29 @@ type PackageBuildpackOptions struct {
 
 // PackageBuildpack packages buildpack(s) into either an image or file.
 func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOptions) error {
-	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
-
 	if opts.Format == "" {
 		opts.Format = FormatImage
 	}
+
+	if opts.OS == "" {
+		osType, err := c.defaultOSType(ctx, opts.Publish, opts.Format)
+		if err != nil {
+			return errors.Wrap(err, "daemon OS cannot be detected")
+		}
+
+		opts.OS = osType
+	}
+
+	if opts.OS == "windows" && !c.experimental {
+		return NewExperimentError("Windows buildpackage support is currently experimental.")
+	}
+
+	writerFactory, err := layer.NewWriterFactory(opts.OS)
+	if err != nil {
+		return errors.Wrap(err, "creating layer writer factory")
+	}
+
+	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
 
 	bpURI := opts.Config.Buildpack.URI
 	if bpURI == "" {
@@ -60,7 +81,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bpURI))
 	}
 
-	bp, err := dist.BuildpackFromRootBlob(blob, archive.DefaultTarWriterFactory())
+	bp, err := dist.BuildpackFromRootBlob(blob, writerFactory)
 	if err != nil {
 		return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bpURI))
 	}
@@ -71,31 +92,43 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		var depBPs []dist.Buildpack
 
 		if dep.URI != "" {
-			blob, err := c.downloader.Download(ctx, dep.URI)
-			if err != nil {
-				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(dep.URI))
-			}
-
-			isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
-			if err != nil {
-				return errors.Wrap(err, "inspecting buildpack blob")
-			}
-
-			if isOCILayout {
-				mainBP, deps, err := buildpackage.BuildpacksFromOCILayoutBlob(blob)
+			if buildpack.HasDockerLocator(dep.URI) {
+				imageName := buildpack.ParsePackageLocator(dep.URI)
+				c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
+				mainBP, deps, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
 				if err != nil {
-					return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(dep.URI))
+					return err
 				}
 
 				depBPs = append([]dist.Buildpack{mainBP}, deps...)
 			} else {
-				depBP, err := dist.BuildpackFromRootBlob(blob, archive.DefaultTarWriterFactory())
+				blob, err := c.downloader.Download(ctx, dep.URI)
 				if err != nil {
-					return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
+					return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(dep.URI))
 				}
-				depBPs = []dist.Buildpack{depBP}
+
+				isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
+				if err != nil {
+					return errors.Wrap(err, "inspecting buildpack blob")
+				}
+
+				if isOCILayout {
+					mainBP, deps, err := buildpackage.BuildpacksFromOCILayoutBlob(blob)
+					if err != nil {
+						return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(dep.URI))
+					}
+
+					depBPs = append([]dist.Buildpack{mainBP}, deps...)
+				} else {
+					depBP, err := dist.BuildpackFromRootBlob(blob, writerFactory)
+					if err != nil {
+						return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
+					}
+					depBPs = []dist.Buildpack{depBP}
+				}
 			}
 		} else if dep.ImageName != "" {
+			c.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
 			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
 			if err != nil {
 				return err
@@ -111,11 +144,26 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	switch opts.Format {
 	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name)
+		return packageBuilder.SaveAsFile(opts.Name, opts.OS)
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish)
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.OS)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
 	}
+}
+
+func (c *Client) defaultOSType(ctx context.Context, publish bool, format string) (string, error) {
+	if publish || format == FormatFile {
+		c.logger.Warnf(`buildpackage OS unspecified - defaulting to "linux"`)
+
+		return "linux", nil
+	}
+
+	info, err := c.docker.Info(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return info.OSType, nil
 }

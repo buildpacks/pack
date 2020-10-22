@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/buildpacks/imgutil/layer"
+
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
@@ -36,7 +38,6 @@ func TestPackageBuilder(t *testing.T) {
 
 func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		fakePackageImage *fakes.Image
 		mockController   *gomock.Controller
 		mockImageFactory *testmocks.MockImageFactory
 		subject          *buildpackage.PackageBuilder
@@ -47,7 +48,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
 
-		fakePackageImage = fakes.NewImage("some/package", "", nil)
+		fakePackageImage := fakes.NewImage("some/package", "", nil)
 		mockImageFactory.EXPECT().NewImage("some/package", true).Return(fakePackageImage, nil).AnyTimes()
 
 		subject = buildpackage.NewBuilder(mockImageFactory)
@@ -68,11 +69,18 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			fn   func() error
 		}{
 			{name: "SaveAsImage", fn: func() error {
-				_, err := subject.SaveAsImage(fakePackageImage.Name(), false)
+				_, err := subject.SaveAsImage("some/package", false, "linux")
+				return err
+			}},
+			{name: "SaveAsImage", fn: func() error {
+				_, err := subject.SaveAsImage("some/package", false, "windows")
 				return err
 			}},
 			{name: "SaveAsFile", fn: func() error {
-				return subject.SaveAsFile(path.Join(tmpDir, "package.cnb"))
+				return subject.SaveAsFile(path.Join(tmpDir, "package.cnb"), "windows")
+			}},
+			{name: "SaveAsFile", fn: func() error {
+				return subject.SaveAsFile(path.Join(tmpDir, "package.cnb"), "linux")
 			}},
 		} {
 			testFn := test.fn
@@ -269,7 +277,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							subject.AddDependency(dependency2)
 
-							_, err = subject.SaveAsImage("some/package", false)
+							_, err = subject.SaveAsImage("some/package", false, "linux")
 							h.AssertError(t, err, "no compatible stacks among provided buildpacks")
 						})
 					})
@@ -324,7 +332,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							h.AssertNil(t, err)
 							subject.AddDependency(dependency2)
 
-							img, err := subject.SaveAsImage("some/package", false)
+							img, err := subject.SaveAsImage("some/package", false, "linux")
 							h.AssertNil(t, err)
 
 							metadata := buildpackage.Metadata{}
@@ -388,7 +396,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 							subject.AddDependency(dependencyNestedNested)
 
-							img, err := subject.SaveAsImage("some/package", false)
+							img, err := subject.SaveAsImage("some/package", false, "linux")
 							h.AssertNil(t, err)
 
 							metadata := buildpackage.Metadata{}
@@ -421,7 +429,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			subject.SetBuildpack(buildpack1)
 
-			packageImage, err := subject.SaveAsImage(fakePackageImage.Name(), false)
+			packageImage, err := subject.SaveAsImage("some/package", false, "linux")
 			h.AssertNil(t, err)
 
 			labelData, err := packageImage.Label("io.buildpacks.buildpackage.metadata")
@@ -434,6 +442,10 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, len(md.Stacks), 2)
 			h.AssertEq(t, md.Stacks[0].ID, "stack.id.1")
 			h.AssertEq(t, md.Stacks[1].ID, "stack.id.2")
+
+			osVal, err := packageImage.OS()
+			h.AssertNil(t, err)
+			h.AssertEq(t, osVal, "linux")
 		})
 
 		it("sets buildpack layers label", func() {
@@ -446,11 +458,11 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			subject.SetBuildpack(buildpack1)
 
-			_, err = subject.SaveAsImage(fakePackageImage.Name(), false)
+			packageImage, err := subject.SaveAsImage("some/package", false, "linux")
 			h.AssertNil(t, err)
 
 			var bpLayers dist.BuildpackLayers
-			_, err = dist.GetLabel(fakePackageImage, "io.buildpacks.buildpack.layers", &bpLayers)
+			_, err = dist.GetLabel(packageImage, "io.buildpacks.buildpack.layers", &bpLayers)
 			h.AssertNil(t, err)
 
 			bp1Info, ok1 := bpLayers["bp.1.id"]["bp.1.version"]
@@ -458,7 +470,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, bp1Info.Stacks, []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}})
 		})
 
-		it("adds buildpack layers", func() {
+		it("adds buildpack layers for linux", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
 				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
@@ -468,12 +480,13 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			subject.SetBuildpack(buildpack1)
 
-			_, err = subject.SaveAsImage(fakePackageImage.Name(), false)
+			packageImage, err := subject.SaveAsImage("some/package", false, "linux")
 			h.AssertNil(t, err)
 
 			buildpackExists := func(name, version string) {
 				t.Helper()
 				dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", name, version)
+				fakePackageImage := packageImage.(*fakes.Image)
 				layerTar, err := fakePackageImage.FindLayerWithPath(dirPath)
 				h.AssertNil(t, err)
 
@@ -495,6 +508,31 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			buildpackExists("bp.1.id", "bp.1.version")
+
+			fakePackageImage := packageImage.(*fakes.Image)
+			h.AssertEq(t, fakePackageImage.NumberOfAddedLayers(), 1)
+		})
+
+		it("adds baselayer + buildpack layers for windows", func() {
+			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+				API:    api.MustParse("0.2"),
+				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
+				Order:  nil,
+			}, 0644)
+			h.AssertNil(t, err)
+			subject.SetBuildpack(buildpack1)
+
+			packageImage, err := subject.SaveAsImage("some/package", false, "windows")
+			h.AssertNil(t, err)
+
+			fakePackageImage := packageImage.(*fakes.Image)
+
+			osVal, err := fakePackageImage.OS()
+			h.AssertNil(t, err)
+			h.AssertEq(t, osVal, "windows")
+
+			h.AssertEq(t, fakePackageImage.NumberOfAddedLayers(), 2)
 		})
 	})
 
@@ -510,7 +548,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			subject.SetBuildpack(buildpack1)
 
 			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
-			h.AssertNil(t, subject.SaveAsFile(outputFile))
+			h.AssertNil(t, subject.SaveAsFile(outputFile, "linux"))
 
 			withContents := func(fn func(data []byte)) h.TarEntryAssertion {
 				return func(t *testing.T, header *tar.Header, data []byte) {
@@ -532,6 +570,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 						"/blobs/sha256/"+index.Manifests[0].Digest.Hex(),
 						h.HasOwnerAndGroup(0, 0),
 						h.IsJSON(),
+
 						withContents(func(data []byte) {
 							manifest := v1.Manifest{}
 							err := json.Unmarshal(data, &manifest)
@@ -546,12 +585,14 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								h.ContentContains(`"io.buildpacks.buildpackage.metadata":"{\"id\":\"bp.1.id\",\"version\":\"bp.1.version\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}]}"`),
 								// buildpack layers metadata
 								h.ContentContains(`"io.buildpacks.buildpack.layers":"{\"bp.1.id\":{\"bp.1.version\":{\"api\":\"0.2\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}],\"layerDiffID\":\"sha256:a10862daec7a8a62fd04cc5d4520fdb80d4d5c07a3c146fb604a9c23c22fd5b0\"}}}"`),
+								// image os
+								h.ContentContains(`"os":"linux"`),
 							)
 						}))
 				}))
 		})
 
-		it("adds buildpack layers", func() {
+		it("adds buildpack layers for linux", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
 				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
@@ -562,7 +603,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			subject.SetBuildpack(buildpack1)
 
 			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
-			h.AssertNil(t, subject.SaveAsFile(outputFile))
+			h.AssertNil(t, subject.SaveAsFile(outputFile, "linux"))
 
 			h.AssertOnTarEntry(t, outputFile, "/blobs",
 				h.IsDirectory(),
@@ -573,8 +614,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.HasOwnerAndGroup(0, 0),
 				h.HasFileMode(0755))
 
+			bpReader, err := buildpack1.Open()
+			h.AssertNil(t, err)
+			defer bpReader.Close()
+
 			// layer: application/vnd.docker.image.rootfs.diff.tar.gzip
-			buildpackLayerSHA, err := computeBuildpackLayerSHA(buildpack1)
+			buildpackLayerSHA, err := computeLayerSHA(bpReader)
 			h.AssertNil(t, err)
 			h.AssertOnTarEntry(t, outputFile,
 				"/blobs/sha256/"+buildpackLayerSHA,
@@ -594,18 +639,53 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.HasOwnerAndGroup(0, 0),
 					h.HasFileMode(0644)))
 		})
+
+		it("adds baselayer + buildpack layers for windows", func() {
+			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+				API:    api.MustParse("0.2"),
+				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
+				Order:  nil,
+			}, 0644)
+			h.AssertNil(t, err)
+			subject.SetBuildpack(buildpack1)
+
+			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
+			h.AssertNil(t, subject.SaveAsFile(outputFile, "windows"))
+
+			// Windows baselayer content is constant
+			expectedBaseLayerReader, err := layer.WindowsBaseLayer()
+			h.AssertNil(t, err)
+
+			// layer: application/vnd.docker.image.rootfs.diff.tar.gzip
+			expectedBaseLayerSHA, err := computeLayerSHA(ioutil.NopCloser(expectedBaseLayerReader))
+			h.AssertNil(t, err)
+			h.AssertOnTarEntry(t, outputFile,
+				"/blobs/sha256/"+expectedBaseLayerSHA,
+				h.HasOwnerAndGroup(0, 0),
+				h.HasFileMode(0755),
+				h.IsGzipped(),
+			)
+
+			bpReader, err := buildpack1.Open()
+			h.AssertNil(t, err)
+			defer bpReader.Close()
+
+			buildpackLayerSHA, err := computeLayerSHA(bpReader)
+			h.AssertNil(t, err)
+			h.AssertOnTarEntry(t, outputFile,
+				"/blobs/sha256/"+buildpackLayerSHA,
+				h.HasOwnerAndGroup(0, 0),
+				h.HasFileMode(0755),
+				h.IsGzipped(),
+			)
+		})
 	})
 }
 
-func computeBuildpackLayerSHA(buildpack dist.Buildpack) (string, error) {
-	reader, err := buildpack.Open()
-	if err != nil {
-		return "", err
-	}
-	defer reader.Close()
-
-	layer := stream.NewLayer(reader, stream.WithCompressionLevel(gzip.DefaultCompression))
-	compressed, err := layer.Compressed()
+func computeLayerSHA(reader io.ReadCloser) (string, error) {
+	bpLayer := stream.NewLayer(reader, stream.WithCompressionLevel(gzip.DefaultCompression))
+	compressed, err := bpLayer.Compressed()
 	if err != nil {
 		return "", err
 	}
@@ -615,7 +695,7 @@ func computeBuildpackLayerSHA(buildpack dist.Buildpack) (string, error) {
 		return "", err
 	}
 
-	digest, err := layer.Digest()
+	digest, err := bpLayer.Digest()
 	if err != nil {
 		return "", err
 	}

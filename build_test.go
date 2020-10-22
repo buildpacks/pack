@@ -2253,7 +2253,9 @@ func newWindowsImage(name, topLayerSha string, identifier imgutil.Identifier) *f
 	result := fakes.NewImage(name, topLayerSha, identifier)
 	arch, _ := result.Architecture()
 	osVersion, _ := result.OSVersion()
-	result.SetPlatform("windows", osVersion, arch)
+	result.SetOS("windows")
+	result.SetOSVersion(osVersion)
+	result.SetArchitecture(arch)
 	return result
 }
 

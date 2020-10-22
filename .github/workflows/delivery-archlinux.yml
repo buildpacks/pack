@@ -12,7 +12,7 @@ on:
 
 jobs:
   pack-cli:
-    if: github.event_name == "release"
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     env:
       PACKAGE_NAME: pack-cli

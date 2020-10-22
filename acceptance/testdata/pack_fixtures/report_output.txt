@@ -8,3 +8,4 @@ Supported Platform APIs:  0.3, 0.4
 
 Config:
   default-builder-image = "{{ .DefaultBuilder }}"
+  experimental = true

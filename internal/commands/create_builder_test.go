@@ -6,11 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/builder"
-	pubcfg "github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/internal/dist"
-
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -34,11 +29,6 @@ const validConfig = `
 		id = "some.buildpack"
 
 `
-
-var validConfigStruct = builder.Config{
-	Buildpacks: []builder.BuildpackConfig{{BuildpackInfo: dist.BuildpackInfo{ID: "some.buildpack"}}},
-	Order:      dist.Order{{Group: []dist.BuildpackRef{{BuildpackInfo: dist.BuildpackInfo{ID: "some.buildpack"}}}}},
-}
 
 func TestCreateBuilderCommand(t *testing.T) {
 	color.Disable(true)
@@ -76,20 +66,6 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#CreateBuilder", func() {
-		when("both --publish and --no-pull flags are specified", func() {
-			it("errors with a descriptive message", func() {
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", "some-config-path",
-					"--publish",
-					"--no-pull",
-				})
-				err := command.Execute()
-				h.AssertNotNil(t, err)
-				h.AssertError(t, err, "The --publish and --no-pull flags cannot be used together. The --publish flag requires the use of remote images.")
-			})
-		})
-
 		when("both --publish and pull-policy=never flags are specified", func() {
 			it("errors with a descriptive message", func() {
 				command.SetArgs([]string{
@@ -102,50 +78,6 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				err := command.Execute()
 				h.AssertNotNil(t, err)
 				h.AssertError(t, err, "--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
-			})
-		})
-
-		when("no-pull flag is specified", func() {
-			it.Before(func() {
-				h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(validConfig), 0666))
-			})
-
-			it("works and logs warning", func() {
-				opts := pack.CreateBuilderOptions{
-					BuilderName: "some/builder",
-					Config:      validConfigStruct,
-					PullPolicy:  pubcfg.PullNever,
-				}
-				mockClient.EXPECT().CreateBuilder(gomock.Any(), opts).Return(nil)
-
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
-					"--no-pull",
-				})
-				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Warning: Flag --no-pull has been deprecated")
-			})
-
-			it("disregards no-pull if used with pull-policy always and logs warning", func() {
-				opts := pack.CreateBuilderOptions{
-					BuilderName: "some/builder",
-					Config:      validConfigStruct,
-					PullPolicy:  pubcfg.PullAlways,
-				}
-				mockClient.EXPECT().CreateBuilder(gomock.Any(), opts).Return(nil)
-
-				command.SetArgs([]string{
-					"some/builder",
-					"--config", builderConfigPath,
-					"--no-pull",
-					"--pull-policy",
-					"always",
-				})
-				h.AssertNil(t, command.Execute())
-				output := outBuf.String()
-				h.AssertContains(t, output, "Warning: Flag --no-pull has been deprecated")
-				h.AssertContains(t, output, "Warning: Flag --no-pull ignored in favor of --pull-policy")
 			})
 		})
 
