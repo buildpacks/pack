@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"testing"
 
-	"github.com/buildpacks/imgutil/fakes"
 	ilayer "github.com/buildpacks/imgutil/layer"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -18,11 +17,16 @@ func TestTarWriterFactory(t *testing.T) {
 }
 
 func testWriterFactory(t *testing.T, when spec.G, it spec.S) {
+	when("#NewWriterFactory", func() {
+		it("returns an error for invalid image OS", func() {
+			_, err := layer.NewWriterFactory("not-an-os")
+			h.AssertError(t, err, "provided image OS 'not-an-os' must be either 'linux' or 'windows'")
+		})
+	})
+
 	when("#NewWriter", func() {
-		it("returns a regular tar writer for posix-based images", func() {
-			image := fakes.NewImage("fake-image", "", nil)
-			image.SetPlatform("linux", "", "")
-			factory, err := layer.NewWriterFactory(image)
+		it("returns a regular tar writer for Linux", func() {
+			factory, err := layer.NewWriterFactory("linux")
 			h.AssertNil(t, err)
 
 			_, ok := factory.NewWriter(nil).(*tar.Writer)
@@ -31,10 +35,8 @@ func testWriterFactory(t *testing.T, when spec.G, it spec.S) {
 			}
 		})
 
-		it("returns a Windows layer writer for Windows-based images", func() {
-			image := fakes.NewImage("fake-image", "", nil)
-			image.SetPlatform("windows", "", "")
-			factory, err := layer.NewWriterFactory(image)
+		it("returns a Windows layer writer for Windows", func() {
+			factory, err := layer.NewWriterFactory("windows")
 			h.AssertNil(t, err)
 
 			_, ok := factory.NewWriter(nil).(*ilayer.WindowsWriter)

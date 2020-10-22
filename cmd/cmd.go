@@ -76,7 +76,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.ListTrustedBuilders(logger, cfg))
 	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
 
-	rootCmd.AddCommand(commands.PackageBuildpack(logger, &packClient, buildpackage.NewConfigReader()))
+	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, &packClient, buildpackage.NewConfigReader()))
 
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
 
@@ -84,9 +84,11 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.Report(logger, pack.Version))
 
 	if cfg.Experimental {
-		rootCmd.AddCommand(commands.ListBuildpackRegistries(logger, cfg))
 		rootCmd.AddCommand(commands.AddBuildpackRegistry(logger, cfg, cfgPath))
+		rootCmd.AddCommand(commands.ListBuildpackRegistries(logger, cfg))
 		rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, &packClient))
+		rootCmd.AddCommand(commands.SetDefaultRegistry(logger, cfg, cfgPath))
+		rootCmd.AddCommand(commands.RemoveRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, &packClient))
 	}
 

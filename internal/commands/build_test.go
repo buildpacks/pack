@@ -136,32 +136,18 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("--no-pull", func() {
-			it("sets pull-policy=never and logs warning", func() {
+		when("--pull-policy", func() {
+			it("sets pull-policy=never", func() {
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithPullPolicy(pubcfg.PullNever)).
 					Return(nil)
 
-				command.SetArgs([]string{"image", "--builder", "my-builder", "--no-pull"})
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--pull-policy", "never"})
 				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Warning: Flag --no-pull has been deprecated")
 			})
 
-			it("overrides if pull-policy set to value and logs warning", func() {
-				mockClient.EXPECT().
-					Build(gomock.Any(), EqBuildOptionsWithPullPolicy(pubcfg.PullAlways)).
-					Return(nil)
-
-				command.SetArgs([]string{"image", "--builder", "my-builder", "--no-pull", "--pull-policy", "always"})
-				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Warning: Flag --no-pull has been deprecated")
-				h.AssertContains(t, outBuf.String(), "Warning: Flag --no-pull ignored in favor of --pull-policy")
-			})
-		})
-
-		when("--pull-policy", func() {
 			it("returns error for unknown policy", func() {
-				command.SetArgs([]string{"image", "--builder", "my-builder", "--no-pull", "--pull-policy", "unknown-policy"})
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--pull-policy", "unknown-policy"})
 				h.AssertError(t, command.Execute(), "parsing pull policy")
 			})
 		})

@@ -93,50 +93,6 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, command.Execute())
 			})
 
-			when("--no-pull", func() {
-				it("logs warning and works", func() {
-					opts.PullPolicy = pubcfg.PullNever
-					mockClient.EXPECT().
-						Rebase(gomock.Any(), opts).
-						Return(nil)
-
-					command.SetArgs([]string{repoName, "--no-pull"})
-					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), "Warning: Flag --no-pull has been deprecated")
-				})
-
-				when("used together with --pull-policy always", func() {
-					it("logs warning and disregards --no-pull", func() {
-						opts.PullPolicy = pubcfg.PullAlways
-						mockClient.EXPECT().
-							Rebase(gomock.Any(), opts).
-							Return(nil)
-
-						command.SetArgs([]string{repoName, "--no-pull", "--pull-policy", "always"})
-						h.AssertNil(t, command.Execute())
-						output := outBuf.String()
-						h.AssertContains(t, output, "Warning: Flag --no-pull has been deprecated")
-						h.AssertContains(t, output, "Flag --no-pull ignored in favor of --pull-policy")
-					})
-				})
-
-				when("used together with --pull-policy never", func() {
-					it("logs warning and disregards --no-pull", func() {
-						opts.PullPolicy = pubcfg.PullNever
-						mockClient.EXPECT().
-							Rebase(gomock.Any(), opts).
-							Return(nil)
-
-						command.SetArgs([]string{repoName, "--no-pull", "--pull-policy", "never"})
-						h.AssertNil(t, command.Execute())
-
-						output := outBuf.String()
-						h.AssertContains(t, output, "Warning: Flag --no-pull has been deprecated")
-						h.AssertContains(t, output, "Flag --no-pull ignored in favor of --pull-policy")
-					})
-				})
-			})
-
 			when("--pull-policy never", func() {
 				it("works", func() {
 					opts.PullPolicy = pubcfg.PullNever

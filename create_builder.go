@@ -202,6 +202,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 
 		locator := b.URI
 		if locator == "" && b.ImageName != "" {
+			c.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
 			locator = b.ImageName
 		}
 
@@ -214,9 +215,9 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 		var depBPs []dist.Buildpack
 		switch locatorType {
 		case buildpack.PackageLocator:
-			c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(b.ImageName))
-
-			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, b.ImageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
+			imageName := buildpack.ParsePackageLocator(locator)
+			c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
+			mainBP, depBPs, err = extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
 			if err != nil {
 				return err
 			}
@@ -261,7 +262,11 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 					return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(b.ID))
 				}
 			} else {
-				layerWriterFactory, err := layer.NewWriterFactory(bldr.Image())
+				imageOS, err := bldr.Image().OS()
+				if err != nil {
+					return errors.Wrap(err, "getting image OS")
+				}
+				layerWriterFactory, err := layer.NewWriterFactory(imageOS)
 				if err != nil {
 					return errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(bldr.Name()))
 				}

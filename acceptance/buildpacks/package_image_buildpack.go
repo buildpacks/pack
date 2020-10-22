@@ -23,27 +23,26 @@ type PackageImage struct {
 	sourceConfigLocation string
 	buildpacks           []TestBuildpack
 	publish              bool
+	os                   string
 }
 
-type PackageImageModifier func(p *PackageImage)
-
-func WithRequiredBuildpacks(buildpacks ...TestBuildpack) PackageImageModifier {
-	return func(p *PackageImage) {
-		p.buildpacks = buildpacks
-	}
+func (p *PackageImage) SetOS(os string) {
+	p.os = os
 }
 
-func WithPublish() PackageImageModifier {
-	return func(p *PackageImage) {
-		p.publish = true
-	}
+func (p *PackageImage) SetBuildpacks(buildpacks []TestBuildpack) {
+	p.buildpacks = buildpacks
+}
+
+func (p *PackageImage) SetPublish() {
+	p.publish = true
 }
 
 func NewPackageImage(
 	t *testing.T,
 	pack *invoke.PackInvoker,
 	name, configLocation string,
-	modifiers ...PackageImageModifier,
+	modifiers ...PackageModifier,
 ) PackageImage {
 	p := PackageImage{
 		testObject:           t,
@@ -56,7 +55,6 @@ func NewPackageImage(
 	for _, mod := range modifiers {
 		mod(&p)
 	}
-
 	return p
 }
 
@@ -88,6 +86,10 @@ func (p PackageImage) Prepare(sourceDir, _ string) error {
 
 	if p.publish {
 		packArgs = append(packArgs, "--publish")
+	}
+
+	if p.os != "" {
+		packArgs = append(packArgs, "--os", p.os)
 	}
 
 	output := p.pack.RunSuccessfully("package-buildpack", packArgs...)

@@ -630,7 +630,11 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 					return fetchedBPs, order, errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(bp))
 				}
 			} else {
-				layerWriterFactory, err := layer.NewWriterFactory(builderImage)
+				imageOS, err := builderImage.OS()
+				if err != nil {
+					return fetchedBPs, order, errors.Wrap(err, "getting image OS")
+				}
+				layerWriterFactory, err := layer.NewWriterFactory(imageOS)
 				if err != nil {
 					return fetchedBPs, order, errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(builderImage.Name()))
 				}
@@ -643,7 +647,8 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			fetchedBPs = append(append(fetchedBPs, mainBP), dependencyBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.PackageLocator:
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, bp, c.imageFetcher, publish, pullPolicy)
+			imageName := buildpack.ParsePackageLocator(bp)
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, publish, pullPolicy)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(bp))
 			}
