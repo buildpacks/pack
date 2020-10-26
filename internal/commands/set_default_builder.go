@@ -13,10 +13,11 @@ import (
 
 func SetDefaultBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "set-default-builder <builder-name>",
-		Short: "Set default builder used by other commands",
-		Long:  "Set default builder used by other commands.\n\n** For suggested builders simply leave builder name empty. **",
-		Args:  cobra.MaximumNArgs(1),
+		Use:     "set-default-builder <builder-name>",
+		Args:    cobra.MaximumNArgs(1),
+		Short:   "Set default builder used by other commands",
+		Long:    "Set default builder used by other commands.\n\n** For suggested builders simply leave builder name empty. **",
+		Example: "pack set-default-builder cnbs/sample-builder:bionic",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 || args[0] == "" {
 				logger.Infof("Usage:\n\t%s\n", cmd.UseLine())
