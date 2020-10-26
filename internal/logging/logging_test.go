@@ -114,7 +114,7 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, fOut(), "2019/05/15 01:01:01.000000 test\n")
 			})
 
-			it("time is logged in erorr", func() {
+			it("time is logged in error", func() {
 				logger.WantTime(true)
 				writer := logger.WriterForLevel(logging.ErrorLevel)
 				writer.Write([]byte("test\n"))
