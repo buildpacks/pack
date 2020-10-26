@@ -3,7 +3,7 @@ version = "0.0.0"
 
 [apis]
 [apis.buildpack]
-deprecated = []
+deprecated = ["0.2", "0.3"]
 supported = ["0.2", "0.3", "0.4"]
 
 [apis.platform]
