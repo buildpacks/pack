@@ -288,6 +288,14 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 			return errors.Wrap(err, "invalid buildpack")
 		}
 
+		bpDesc := mainBP.Descriptor()
+		for _, deprecatedAPI := range bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated {
+			if deprecatedAPI.Equal(bpDesc.API) {
+				c.logger.Warnf("Buildpack %s is using deprecated Buildpacks API version %s", style.Symbol(bpDesc.Info.FullName()), style.Symbol(bpDesc.API.String()))
+				break
+			}
+		}
+
 		for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
 			bldr.AddBuildpack(bp)
 		}

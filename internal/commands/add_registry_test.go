@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -27,10 +29,11 @@ func TestAddRegistry(t *testing.T) {
 func testAddRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 	when("AddBuildpackRegistry", func() {
 		var (
-			outBuf     bytes.Buffer
-			logger     = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 			tmpDir     string
 			configFile string
+			outBuf     bytes.Buffer
+			command    *cobra.Command
+			logger     = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 			assert     = h.NewAssertionManager(t)
 		)
 
@@ -40,28 +43,43 @@ func testAddRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 			assert.Nil(err)
 
 			configFile = filepath.Join(tmpDir, "config.toml")
+			command = commands.AddBuildpackRegistry(logger, config.Config{}, configFile)
 		})
 
 		it.After(func() {
-			_ = os.RemoveAll(tmpDir)
+			assert.Nil(os.RemoveAll(tmpDir))
+		})
+
+		when("add buildpack registry", func() {
+			it("adds to registry list", func() {
+				command.SetArgs([]string{"bp", "https://github.com/buildpacks/registry-index/"})
+				assert.Succeeds(command.Execute())
+
+				cfg, err := config.Read(configFile)
+				assert.Nil(err)
+				assert.Equal(len(cfg.Registries), 1)
+				assert.Equal(cfg.Registries[0].Name, "bp")
+				assert.Equal(cfg.Registries[0].Type, "github")
+				assert.Equal(cfg.Registries[0].URL, "https://github.com/buildpacks/registry-index/")
+				assert.Equal(cfg.DefaultRegistryName, "")
+			})
 		})
 
 		when("default is true", func() {
 			it("sets newly added registry as the default", func() {
-				command := commands.AddBuildpackRegistry(logger, config.Config{}, configFile)
 				command.SetArgs([]string{"bp", "https://github.com/buildpacks/registry-index/", "--default"})
 				assert.Succeeds(command.Execute())
 
 				cfg, err := config.Read(configFile)
 				assert.Nil(err)
-
+				assert.Equal(len(cfg.Registries), 1)
+				assert.Equal(cfg.Registries[0].Name, "bp")
 				assert.Equal(cfg.DefaultRegistryName, "bp")
 			})
 		})
 
 		when("validation", func() {
 			it("fails with missing args", func() {
-				command := commands.AddBuildpackRegistry(logger, config.Config{}, configFile)
 				command.SetOut(ioutil.Discard)
 				command.SetArgs([]string{})
 				err := command.Execute()
@@ -69,7 +87,6 @@ func testAddRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should validate type", func() {
-				command := commands.AddBuildpackRegistry(logger, config.Config{}, configFile)
 				command.SetArgs([]string{"bp", "https://github.com/buildpacks/registry-index/", "--type=bogus"})
 				assert.Error(command.Execute())
 

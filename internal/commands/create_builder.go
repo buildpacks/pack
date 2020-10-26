@@ -28,9 +28,16 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 	var flags CreateBuilderFlags
 
 	cmd := &cobra.Command{
-		Use:   "create-builder <image-name> --config <builder-config-path>",
-		Args:  cobra.ExactArgs(1),
-		Short: "Create builder image",
+		Use:     "create-builder <image-name> --config <builder-config-path>",
+		Args:    cobra.ExactArgs(1),
+		Short:   "Create builder image",
+		Example: "pack create-builder my-builder:bionic --config ./builder.toml",
+		Long: `A builder is an image that bundles all the bits and information on how to build your apps, such as buildpacks, an implementation of the lifecycle, and a build-time environment that pack uses when executing the lifecycle. When building an app, you can use community builders; you can see our suggestions by running
+
+	pack suggest-builders
+
+Creating a custom builder allows you to control what buildpacks are used and what image apps are based on. For more on how to create a builder, see: https://buildpacks.io/docs/operator-guide/create-a-builder/.
+`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validateCreateBuilderFlags(&flags, cfg); err != nil {
 				return err
