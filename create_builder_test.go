@@ -30,6 +30,7 @@ import (
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/image"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/buildpacks/pack/testmocks"
@@ -60,7 +61,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			logger = ilogging.NewLogWithWriters(&out, &out)
+			logger = ilogging.NewLogWithWriters(&out, &out, ilogging.WithVerbose())
 			mockController = gomock.NewController(t)
 			mockDownloader = testmocks.NewMockDownloader(mockController)
 			mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
@@ -572,10 +573,30 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, bldr.LifecycleDescriptor().API.BuildpackVersion.String(), "0.2")
 				//nolint:staticcheck
 				h.AssertEq(t, bldr.LifecycleDescriptor().API.PlatformVersion.String(), "0.2")
-				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{})
+				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Supported.AsStrings(), []string{"0.2", "0.3", "0.4"})
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Platform.Deprecated.AsStrings(), []string{"0.2"})
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Platform.Supported.AsStrings(), []string{"0.3", "0.4"})
+			})
+
+			it("should warn when deprecated Buildpack API version used", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				bldr := successfullyCreateBuilder()
+
+				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
+				h.AssertContains(t, out.String(), fmt.Sprintf("Buildpack %s is using deprecated Buildpacks API version 0.3", style.Symbol("bp.one@v1.2.3")))
+			})
+
+			it("shouldn't warn when Buildpack API version used isn't deprecated", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Buildpacks[0].URI = "https://example.fake/bp-one-with-api-4.tgz"
+				mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz").Return(blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4")), nil).AnyTimes()
+				bldr := successfullyCreateBuilder()
+
+				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
+				h.AssertNotContains(t, out.String(), "is using deprecated Buildpacks API version")
 			})
 		})
 
