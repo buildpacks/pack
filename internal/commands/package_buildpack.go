@@ -19,7 +19,6 @@ import (
 type PackageBuildpackFlags struct {
 	PackageTomlPath string
 	Format          string
-	OS              string
 	Publish         bool
 	Policy          string
 }
@@ -72,7 +71,6 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 			if err := client.PackageBuildpack(cmd.Context(), pack.PackageBuildpackOptions{
 				Name:       name,
 				Format:     flags.Format,
-				OS:         flags.OS,
 				Config:     cfg,
 				Publish:    flags.Publish,
 				PullPolicy: pullPolicy,
@@ -93,10 +91,6 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--format=image" only)`)
-	cmd.Flags().StringVar(&flags.OS, "os", "", `Operating system format of the package OCI image: "linux" or "windows" (defaults to "linux", except local images which use the daemon OS)`)
-	if !cfg.Experimental {
-		cmd.Flags().MarkHidden("os")
-	}
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 
 	AddHelpFlag(cmd, "package-buildpack")
@@ -110,10 +104,6 @@ func validatePackageBuildpackFlags(p *PackageBuildpackFlags, cfg config.Config) 
 
 	if p.PackageTomlPath == "" {
 		return errors.Errorf("Please provide a package config path, using --config")
-	}
-
-	if p.OS != "" && !cfg.Experimental {
-		return pack.NewExperimentError("Support for OS flag is currently experimental.")
 	}
 
 	return nil

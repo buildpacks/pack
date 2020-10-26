@@ -31,9 +31,6 @@ type PackageBuildpackOptions struct {
 	// Type of output format, The options are the either the const FormatImage, or FormatFile.
 	Format string
 
-	// Type of OCI image to generate in the image or file. The options are "windows" or "linux"
-	OS string
-
 	// Defines the Buildpacks configuration.
 	Config pubbldpkg.Config
 
@@ -51,20 +48,11 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		opts.Format = FormatImage
 	}
 
-	if opts.OS == "" {
-		osType, err := c.defaultOSType(ctx, opts.Publish, opts.Format)
-		if err != nil {
-			return errors.Wrap(err, "daemon OS cannot be detected")
-		}
-
-		opts.OS = osType
-	}
-
-	if opts.OS == "windows" && !c.experimental {
+	if opts.Config.Platform.OS == "windows" && !c.experimental {
 		return NewExperimentError("Windows buildpackage support is currently experimental.")
 	}
 
-	writerFactory, err := layer.NewWriterFactory(opts.OS)
+	writerFactory, err := layer.NewWriterFactory(opts.Config.Platform.OS)
 	if err != nil {
 		return errors.Wrap(err, "creating layer writer factory")
 	}
@@ -144,26 +132,13 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	switch opts.Format {
 	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name, opts.OS)
+		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform.OS)
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.OS)
+		//TODO: should check if saving linux image on windows daemon ???
+		//
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.Config.Platform.OS)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
 	}
-}
-
-func (c *Client) defaultOSType(ctx context.Context, publish bool, format string) (string, error) {
-	if publish || format == FormatFile {
-		c.logger.Warnf(`buildpackage OS unspecified - defaulting to "linux"`)
-
-		return "linux", nil
-	}
-
-	info, err := c.docker.Info(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	return info.OSType, nil
 }

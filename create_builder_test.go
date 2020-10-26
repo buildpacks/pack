@@ -762,6 +762,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: cnbFile,
 					Config: pubbldpkg.Config{
+						Platform:  dist.Platform{OS: "linux"},
 						Buildpack: dist.BuildpackURI{URI: buildpackPath},
 					},
 					Format: "file",
@@ -842,6 +843,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packageImage.Name(),
 						Config: pubbldpkg.Config{
+							Platform:  dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
 						},
 						Publish: true,
@@ -915,6 +917,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packageImage.Name(),
 						Config: pubbldpkg.Config{
+							Platform:  dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
 						},
 						Publish:    true,

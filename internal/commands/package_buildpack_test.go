@@ -122,34 +122,6 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
 				})
 			})
-
-			when("--os", func() {
-				when("experimental enabled", func() {
-					it("creates package with correct image name and os", func() {
-						fakeBuildpackPackager := &fakes.FakeBuildpackPackager{}
-
-						packageBuildpackCommand := packageBuildpackCommand(
-							withBuildpackPackager(fakeBuildpackPackager),
-							withExperimental(),
-						)
-
-						packageBuildpackCommand.SetArgs(
-							[]string{
-								"some-image-name",
-								"--config", "/path/to/some/file",
-								"--os", "windows",
-							},
-						)
-
-						err := packageBuildpackCommand.Execute()
-						h.AssertNil(t, err)
-
-						receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-
-						h.AssertEq(t, receivedOptions.OS, "windows")
-					})
-				})
-			})
 		})
 	})
 
@@ -250,28 +222,6 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, command.Execute(), "parsing pull policy")
 			})
 		})
-
-		when("--os flag is specified but experimental isn't set in the config", func() {
-			it("errors with a descriptive message", func() {
-				fakeBuildpackPackager := &fakes.FakeBuildpackPackager{}
-
-				packageBuildpackCommand := packageBuildpackCommand(
-					withBuildpackPackager(fakeBuildpackPackager),
-				)
-
-				packageBuildpackCommand.SetArgs(
-					[]string{
-						"some-image-name",
-						"--config", "/path/to/some/file",
-						"--os", "windows",
-					},
-				)
-
-				err := packageBuildpackCommand.Execute()
-				h.AssertNotNil(t, err)
-				h.AssertError(t, err, "Support for OS flag is currently experimental")
-			})
-		})
 	})
 }
 
@@ -335,12 +285,6 @@ func withImageName(name string) packageCommandOption {
 func withPackageConfigPath(path string) packageCommandOption {
 	return func(config *packageCommandConfig) {
 		config.configPath = path
-	}
-}
-
-func withExperimental() packageCommandOption {
-	return func(config *packageCommandConfig) {
-		config.clientConfig.Experimental = true
 	}
 }
 

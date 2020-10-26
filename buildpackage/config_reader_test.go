@@ -46,9 +46,24 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 			config, err := packageConfigReader.Read(configFile)
 			h.AssertNil(t, err)
 
+			h.AssertEq(t, config.Platform.OS, "some-os")
 			h.AssertEq(t, config.Buildpack.URI, "https://example.com/bp/a.tgz")
 			h.AssertEq(t, len(config.Dependencies), 1)
 			h.AssertEq(t, config.Dependencies[0].URI, "https://example.com/bp/b.tgz")
+		})
+
+		it("returns a config with 'linux' as default when platform is missing", func() {
+			configFile := filepath.Join(tmpDir, "package.toml")
+
+			err := ioutil.WriteFile(configFile, []byte(validPackageWithoutPlatformToml), os.ModePerm)
+			h.AssertNil(t, err)
+
+			packageConfigReader := buildpackage.NewConfigReader()
+
+			config, err := packageConfigReader.Read(configFile)
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, config.Platform.OS, "linux")
 		})
 
 		it("returns an error when toml decode fails", func() {
@@ -189,6 +204,17 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 }
 
 const validPackageToml = `
+[buildpack]
+uri = "https://example.com/bp/a.tgz"
+
+[[dependencies]]
+uri = "https://example.com/bp/b.tgz"
+
+[platform]
+os = "some-os"
+`
+
+const validPackageWithoutPlatformToml = `
 [buildpack]
 uri = "https://example.com/bp/a.tgz"
 
