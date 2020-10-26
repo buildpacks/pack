@@ -585,7 +585,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				bldr := successfullyCreateBuilder()
 
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
-				h.AssertContains(t, out.String(), fmt.Sprintf("Buildpack %s is using deprecated Buildpacks API version 0.3", style.Symbol("bp.one@v1.2.3")))
+				h.AssertContains(t, out.String(), fmt.Sprintf("Buildpack %s is using deprecated Buildpacks API version %s", style.Symbol("bp.one@1.2.3"), style.Symbol("0.3")))
 			})
 
 			it("shouldn't warn when Buildpack API version used isn't deprecated", func() {

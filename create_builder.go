@@ -288,7 +288,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 		bpDesc := mainBP.Descriptor()
 		for _, deprecatedAPI := range bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated {
 			if deprecatedAPI.Equal(bpDesc.API) {
-				c.logger.Warnf("Buildpack '%s@v%s' is using deprecated Buildpacks API version %s", bpDesc.Info.ID, bpDesc.Info.Version, bpDesc.API)
+				c.logger.Warnf("Buildpack %s is using deprecated Buildpacks API version %s", style.Symbol(bpDesc.Info.FullName()), style.Symbol(bpDesc.API.String()))
 				break
 			}
 		}
