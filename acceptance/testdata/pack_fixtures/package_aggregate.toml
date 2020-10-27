@@ -3,3 +3,6 @@ uri = "{{ .BuildpackURI }}"
 
 [[dependencies]]
 image = "{{ .PackageName }}"
+
+[platform]
+os = "{{ .OS }}"

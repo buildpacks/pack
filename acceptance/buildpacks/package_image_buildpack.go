@@ -23,11 +23,6 @@ type PackageImage struct {
 	sourceConfigLocation string
 	buildpacks           []TestBuildpack
 	publish              bool
-	os                   string
-}
-
-func (p *PackageImage) SetOS(os string) {
-	p.os = os
 }
 
 func (p *PackageImage) SetBuildpacks(buildpacks []TestBuildpack) {
@@ -86,10 +81,6 @@ func (p PackageImage) Prepare(sourceDir, _ string) error {
 
 	if p.publish {
 		packArgs = append(packArgs, "--publish")
-	}
-
-	if p.os != "" {
-		packArgs = append(packArgs, "--os", p.os)
 	}
 
 	output := p.pack.RunSuccessfully("package-buildpack", packArgs...)
