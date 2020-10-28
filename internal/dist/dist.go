@@ -24,8 +24,8 @@ type OrderEntry struct {
 }
 
 type BuildpackRef struct {
-	BuildpackInfo
-	Optional bool `toml:"optional,omitempty" json:"optional,omitempty"`
+	BuildpackInfo `yaml:"buildpackinfo,inline"`
+	Optional      bool `toml:"optional,omitempty" json:"optional,omitempty" yaml:"optional,omitempty"`
 }
 
 type BuildpackLayers map[string]map[string]BuildpackLayerInfo
