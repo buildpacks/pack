@@ -389,7 +389,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 							}
 
 							if diff := cmp.Diff(want, builderInfo.Order); diff != "" {
-								t.Errorf("InspectBuilder() Info.Oerswe miamrxh (-want +got):\b%s", diff)
+								t.Errorf("\"InspectBuilder() mismatch (-want +got):\b%s", diff)
 							}
 						})
 					})

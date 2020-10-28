@@ -252,8 +252,6 @@ func (a AssertionManager) ContainsTOML(actualTOML, expectedTOML string) {
 		)
 	}
 
-	// TODO: convert to a toml based diff. Unfortunately marshalling toml
-	//       from arbitrary interface{} types is not currently supported :(
 	if !comparehelpers.DeepContains(actual, expected) {
 		expectedJSONDebug, err := json.Marshal(expected)
 		if err != nil {

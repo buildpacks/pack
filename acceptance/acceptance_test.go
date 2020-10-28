@@ -25,11 +25,6 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pelletier/go-toml"
 
-	"github.com/buildpacks/pack/acceptance/buildpacks"
-
-	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/google/go-containerregistry/pkg/name"
-
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
