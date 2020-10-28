@@ -224,6 +224,27 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				})
 				h.AssertError(t, err, "Windows buildpackage support is currently experimental.")
 			})
+
+			it("fails for mismatched platform and daemon os", func() {
+				windowsMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
+				windowsMockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "windows"}, nil).AnyTimes()
+
+				packClientWithoutExperimental, err := pack.NewClient(
+					pack.WithDockerClient(windowsMockDockerClient),
+					pack.WithExperimental(false),
+				)
+				h.AssertNil(t, err)
+
+				err = packClientWithoutExperimental.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Config: pubbldpkg.Config{
+						Platform: dist.Platform{
+							OS: "linux",
+						},
+					},
+				})
+
+				h.AssertError(t, err, "invalid 'platform.os' specified: DOCKER_OS is 'windows'")
+			})
 		})
 
 		when("nested package lives in registry", func() {

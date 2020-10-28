@@ -56,6 +56,11 @@ func (r *ConfigReader) Read(path string) (Config, error) {
 		packageConfig.Platform.OS = "linux"
 	}
 
+	if packageConfig.Platform.OS != "linux" && packageConfig.Platform.OS != "windows" {
+		return packageConfig, errors.Errorf("invalid %s configuration: only [%s, %s] is permitted",
+			style.Symbol("platform.os"), style.Symbol("linux"), style.Symbol("windows"))
+	}
+
 	configDir, err := filepath.Abs(filepath.Dir(path))
 	if err != nil {
 		return packageConfig, err

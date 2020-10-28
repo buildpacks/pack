@@ -52,6 +52,11 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return NewExperimentError("Windows buildpackage support is currently experimental.")
 	}
 
+	err := c.validateOSPlatform(ctx, opts.Config.Platform.OS, opts.Publish, opts.Format)
+	if err != nil {
+		return err
+	}
+
 	writerFactory, err := layer.NewWriterFactory(opts.Config.Platform.OS)
 	if err != nil {
 		return errors.Wrap(err, "creating layer writer factory")
@@ -134,11 +139,26 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	case FormatFile:
 		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform.OS)
 	case FormatImage:
-		//TODO: should check if saving linux image on windows daemon ???
-		//
 		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.Config.Platform.OS)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
 	}
+}
+
+func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool, format string) error {
+	if publish || format == FormatFile {
+		return nil
+	}
+
+	info, err := c.docker.Info(ctx)
+	if err != nil {
+		return err
+	}
+
+	if info.OSType != os {
+		return errors.Errorf("invalid %s specified: DOCKER_OS is %s", style.Symbol("platform.os"), style.Symbol(info.OSType))
+	}
+
+	return nil
 }
