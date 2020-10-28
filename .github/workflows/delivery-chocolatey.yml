@@ -34,8 +34,11 @@ jobs:
               throw "ERROR: unable to determine tag";
             }
 
-            core.exportVariable('PACK_VERSION', tag.replace(/^v/, ''));
-            return tag.replace(/^v/, '');
+            updatedTag = tag.replace(/^v/, '')
+            core.exportVariable('PACK_VERSION', updatedTag);
+            return updatedTag;
+      - name: Test Env
+        run: echo ${{ env.PACK_VERSION }}
       - name: Checkout workflow
         uses: actions/checkout@v2
         with:
