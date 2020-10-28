@@ -28,9 +28,10 @@ func InspectBuilder(
 ) *cobra.Command {
 	var flags InspectBuilderFlags
 	cmd := &cobra.Command{
-		Use:   "inspect-builder <builder-image-name>",
-		Short: "Show information about a builder",
-		Args:  cobra.MaximumNArgs(2),
+		Use:     "inspect-builder <builder-image-name>",
+		Args:    cobra.MaximumNArgs(2),
+		Short:   "Show information about a builder",
+		Example: "pack inspect-builder cnbs/sample-builder:bionic",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			imageName := cfg.DefaultBuilder
 			if len(args) >= 1 {

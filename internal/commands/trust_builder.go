@@ -11,10 +11,11 @@ import (
 
 func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "trust-builder <builder-name>",
-		Short: "Trust builder",
-		Long:  "Trust builder.\n\nWhen building with this builder, all lifecycle phases will be run in a single container using the builder image.",
-		Args:  cobra.MaximumNArgs(1),
+		Use:     "trust-builder <builder-name>",
+		Args:    cobra.MaximumNArgs(1),
+		Short:   "Trust builder",
+		Long:    "Trust builder.\n\nWhen building with this builder, all lifecycle phases will be run in a single container using the builder image.",
+		Example: "pack trust-builder cnbs/sample-stack-run:bionic",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 || args[0] == "" {
 				logger.Infof("Usage:\n\t%s\n", cmd.UseLine())

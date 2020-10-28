@@ -20,10 +20,10 @@ import (
 	"testing"
 	"time"
 
+	pubcfg "github.com/buildpacks/pack/config"
+
 	"github.com/ghodss/yaml"
 	"github.com/pelletier/go-toml"
-
-	pubcfg "github.com/buildpacks/pack/config"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"

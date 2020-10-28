@@ -25,9 +25,10 @@ type InspectImageFlags struct {
 func InspectImage(logger logging.Logger, cfg *config.Config, client PackClient) *cobra.Command {
 	var flags InspectImageFlags
 	cmd := &cobra.Command{
-		Use:   "inspect-image <image-name>",
-		Short: "Show information about a built image",
-		Args:  cobra.ExactArgs(1),
+		Use:     "inspect-image <image-name>",
+		Args:    cobra.ExactArgs(1),
+		Short:   "Show information about a built image",
+		Example: "pack inspect-image buildpacksio/pack",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			img := args[0]
 			remote, err := client.InspectImage(img, false)

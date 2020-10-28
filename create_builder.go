@@ -239,6 +239,9 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrapf(err, "extracting from registry %s", style.Symbol(b.URI))
 			}
 		case buildpack.URILocator:
+			if b.URI == "" {
+				b.URI = locator
+			}
 			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(b.URI))
 
 			err := ensureBPSupport(b.URI)
@@ -283,6 +286,14 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 		err = validateBuildpack(mainBP, b.URI, b.ID, b.Version)
 		if err != nil {
 			return errors.Wrap(err, "invalid buildpack")
+		}
+
+		bpDesc := mainBP.Descriptor()
+		for _, deprecatedAPI := range bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated {
+			if deprecatedAPI.Equal(bpDesc.API) {
+				c.logger.Warnf("Buildpack %s is using deprecated Buildpacks API version %s", style.Symbol(bpDesc.Info.FullName()), style.Symbol(bpDesc.API.String()))
+				break
+			}
 		}
 
 		for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
