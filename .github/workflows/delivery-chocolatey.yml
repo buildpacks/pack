@@ -37,8 +37,6 @@ jobs:
             updatedTag = tag.replace(/^v/, '')
             core.exportVariable('PACK_VERSION', updatedTag);
             return updatedTag;
-      - name: Test Env
-        run: echo ${{ env.PACK_VERSION }}
       - name: Checkout workflow
         uses: actions/checkout@v2
         with:
@@ -83,6 +81,8 @@ jobs:
         uses: crazy-max/ghaction-chocolatey@v1
         with:
           args: install pack -s ${{ env.CHOCO_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg
+      - name: Ensure Pack Installed
+        run: pack help
 #      - name: Upload Release
 #        uses: crazy-max/ghaction-chocolatey@v1
 #        with:
