@@ -83,7 +83,7 @@ jobs:
           args: install pack -s ${{ env.CHOCO_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg
       - name: Ensure Pack Installed
         run: pack help
-#      - name: Upload Release
-#        uses: crazy-max/ghaction-chocolatey@v1
-#        with:
-#          args: push ${{ env.CHOCO_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg -s https://push.chocolatey.org/ -k ${{ secrets.CHOCO_KEY }}
+      - name: Upload Release
+        uses: crazy-max/ghaction-chocolatey@v1
+        with:
+          args: push ${{ env.CHOCO_PATH }}/pack.${{ env.PACK_VERSION }}.nupkg -s https://push.chocolatey.org/ -k ${{ secrets.CHOCO_KEY }}
