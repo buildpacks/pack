@@ -21,11 +21,6 @@ type PackageFile struct {
 	destination          string
 	sourceConfigLocation string
 	buildpacks           []TestBuildpack
-	os                   string
-}
-
-func (p *PackageFile) SetOS(os string) {
-	p.os = os
 }
 
 func (p *PackageFile) SetBuildpacks(buildpacks []TestBuildpack) {
@@ -79,10 +74,6 @@ func (p PackageFile) Prepare(sourceDir, _ string) error {
 		"--no-color",
 		"-c", configLocation,
 		"--format", "file",
-	}
-
-	if p.os != "" {
-		packArgs = append(packArgs, "--os", p.os)
 	}
 
 	output := p.pack.RunSuccessfully("package-buildpack", packArgs...)

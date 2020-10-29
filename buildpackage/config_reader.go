@@ -16,6 +16,7 @@ import (
 type Config struct {
 	Buildpack    dist.BuildpackURI `toml:"buildpack"`
 	Dependencies []dist.ImageOrURI `toml:"dependencies"`
+	Platform     dist.Platform     `toml:"platform"`
 }
 
 // NewConfigReader returns an instance of ConfigReader. It does not take any parameters.
@@ -49,6 +50,15 @@ func (r *ConfigReader) Read(path string) (Config, error) {
 
 	if packageConfig.Buildpack.URI == "" {
 		return packageConfig, errors.Errorf("missing %s configuration", style.Symbol("buildpack.uri"))
+	}
+
+	if packageConfig.Platform.OS == "" {
+		packageConfig.Platform.OS = "linux"
+	}
+
+	if packageConfig.Platform.OS != "linux" && packageConfig.Platform.OS != "windows" {
+		return packageConfig, errors.Errorf("invalid %s configuration: only [%s, %s] is permitted",
+			style.Symbol("platform.os"), style.Symbol("linux"), style.Symbol("windows"))
 	}
 
 	configDir, err := filepath.Abs(filepath.Dir(path))

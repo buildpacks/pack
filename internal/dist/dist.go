@@ -17,6 +17,10 @@ type ImageOrURI struct {
 	ImageRef
 }
 
+type Platform struct {
+	OS string `toml:"os"`
+}
+
 type Order []OrderEntry
 
 type OrderEntry struct {
