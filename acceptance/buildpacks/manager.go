@@ -53,7 +53,6 @@ func (b BuildpackManager) PrepareBuildpacks(destination string, buildpacks ...Te
 }
 
 type Modifiable interface {
-	SetOS(string)
 	SetPublish()
 	SetBuildpacks([]TestBuildpack)
 }
@@ -68,11 +67,5 @@ func WithRequiredBuildpacks(buildpacks ...TestBuildpack) PackageModifier {
 func WithPublish() PackageModifier {
 	return func(p Modifiable) {
 		p.SetPublish()
-	}
-}
-
-func WithOS(osVal string) PackageModifier {
-	return func(p Modifiable) {
-		p.SetOS(osVal)
 	}
 }

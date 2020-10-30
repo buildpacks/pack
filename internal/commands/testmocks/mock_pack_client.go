@@ -65,18 +65,23 @@ func (mr *MockPackClientMockRecorder) CreateBuilder(arg0, arg1 interface{}) *gom
 }
 
 // InspectBuilder mocks base method
-func (m *MockPackClient) InspectBuilder(arg0 string, arg1 bool) (*pack.BuilderInfo, error) {
+func (m *MockPackClient) InspectBuilder(arg0 string, arg1 bool, arg2 ...pack.BuilderInspectionModifier) (*pack.BuilderInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InspectBuilder", arg0, arg1)
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "InspectBuilder", varargs...)
 	ret0, _ := ret[0].(*pack.BuilderInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InspectBuilder indicates an expected call of InspectBuilder
-func (mr *MockPackClientMockRecorder) InspectBuilder(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockPackClientMockRecorder) InspectBuilder(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectBuilder", reflect.TypeOf((*MockPackClient)(nil).InspectBuilder), arg0, arg1)
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InspectBuilder", reflect.TypeOf((*MockPackClient)(nil).InspectBuilder), varargs...)
 }
 
 // InspectBuildpack mocks base method

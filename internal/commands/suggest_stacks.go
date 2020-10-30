@@ -51,9 +51,10 @@ var suggestedStacks = []suggestedStack{
 
 func SuggestStacks(logger logging.Logger) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "suggest-stacks",
-		Short: "Display list of recommended stacks",
-		Args:  cobra.NoArgs,
+		Use:     "suggest-stacks",
+		Args:    cobra.NoArgs,
+		Short:   "Display list of recommended stacks",
+		Example: "pack suggest-stacks",
 		Run: func(*cobra.Command, []string) {
 			suggestStacks(logger)
 		},

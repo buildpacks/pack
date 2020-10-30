@@ -30,6 +30,7 @@ import (
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/image"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/buildpacks/pack/testmocks"
@@ -60,7 +61,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			logger = ilogging.NewLogWithWriters(&out, &out)
+			logger = ilogging.NewLogWithWriters(&out, &out, ilogging.WithVerbose())
 			mockController = gomock.NewController(t)
 			mockDownloader = testmocks.NewMockDownloader(mockController)
 			mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
@@ -572,10 +573,30 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, bldr.LifecycleDescriptor().API.BuildpackVersion.String(), "0.2")
 				//nolint:staticcheck
 				h.AssertEq(t, bldr.LifecycleDescriptor().API.PlatformVersion.String(), "0.2")
-				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{})
+				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Supported.AsStrings(), []string{"0.2", "0.3", "0.4"})
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Platform.Deprecated.AsStrings(), []string{"0.2"})
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Platform.Supported.AsStrings(), []string{"0.3", "0.4"})
+			})
+
+			it("should warn when deprecated Buildpack API version used", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				bldr := successfullyCreateBuilder()
+
+				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
+				h.AssertContains(t, out.String(), fmt.Sprintf("Buildpack %s is using deprecated Buildpacks API version %s", style.Symbol("bp.one@1.2.3"), style.Symbol("0.3")))
+			})
+
+			it("shouldn't warn when Buildpack API version used isn't deprecated", func() {
+				prepareFetcherWithBuildImage()
+				prepareFetcherWithRunImages()
+				opts.Config.Buildpacks[0].URI = "https://example.fake/bp-one-with-api-4.tgz"
+				mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz").Return(blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4")), nil).AnyTimes()
+				bldr := successfullyCreateBuilder()
+
+				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
+				h.AssertNotContains(t, out.String(), "is using deprecated Buildpacks API version")
 			})
 		})
 
@@ -741,6 +762,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: cnbFile,
 					Config: pubbldpkg.Config{
+						Platform:  dist.Platform{OS: "linux"},
 						Buildpack: dist.BuildpackURI{URI: buildpackPath},
 					},
 					Format: "file",
@@ -821,6 +843,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packageImage.Name(),
 						Config: pubbldpkg.Config{
+							Platform:  dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
 						},
 						Publish: true,
@@ -882,7 +905,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("package image lives in docker registry", func() {
 				it.Before(func() {
-					packageImage = fakes.NewImage("some/package-"+h.RandString(12), "", nil)
+					packageImage = fakes.NewImage("docker.io/some/package-"+h.RandString(12), "", nil)
 					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
 
 					bpd := dist.BuildpackDescriptor{
@@ -894,6 +917,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packageImage.Name(),
 						Config: pubbldpkg.Config{
+							Platform:  dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
 						},
 						Publish:    true,
@@ -940,6 +964,28 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							pubbldr.BuildpackConfig{
 								ImageOrURI: dist.ImageOrURI{
 									ImageRef: dist.ImageRef{ImageName: packageImage.Name()},
+								},
+							},
+						)
+
+						shouldFetchPackageImageWith(false, config.PullAlways)
+						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+					})
+				})
+
+				when("publish=true and pull-policy=always", func() {
+					it("should use remote package URI", func() {
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+						opts.BuilderName = "some/builder"
+
+						opts.Publish = true
+						opts.PullPolicy = config.PullAlways
+						opts.Config.Buildpacks = append(
+							opts.Config.Buildpacks,
+							pubbldr.BuildpackConfig{
+								ImageOrURI: dist.ImageOrURI{
+									BuildpackURI: dist.BuildpackURI{URI: packageImage.Name()},
 								},
 							},
 						)
@@ -1001,7 +1047,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					prepareFetcherWithRunImages()
 					opts.BuilderName = "some/builder"
 
-					notPackageImage := fakes.NewImage("not/package", "", nil)
+					notPackageImage := fakes.NewImage("docker.io/not/package", "", nil)
 					opts.Config.Buildpacks = append(
 						opts.Config.Buildpacks,
 						pubbldr.BuildpackConfig{
@@ -1014,7 +1060,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), gomock.Any(), gomock.Any()).Return(notPackageImage, nil)
 					h.AssertNil(t, notPackageImage.SetLabel("io.buildpacks.buildpack.layers", ""))
 
-					h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "extracting buildpacks from 'not/package': could not find label 'io.buildpacks.buildpackage.metadata'")
+					h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "extracting buildpacks from 'docker.io/not/package': could not find label 'io.buildpacks.buildpackage.metadata'")
 				})
 			})
 		})

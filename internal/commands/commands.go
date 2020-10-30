@@ -18,7 +18,7 @@ import (
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_pack_client.go github.com/buildpacks/pack/internal/commands PackClient
 type PackClient interface {
-	InspectBuilder(string, bool) (*pack.BuilderInfo, error)
+	InspectBuilder(string, bool, ...pack.BuilderInspectionModifier) (*pack.BuilderInfo, error)
 	InspectImage(string, bool) (*pack.ImageInfo, error)
 	Rebase(context.Context, pack.RebaseOptions) error
 	CreateBuilder(context.Context, pack.CreateBuilderOptions) error
@@ -75,6 +75,10 @@ func enableExperimentalTip(logger logging.Logger, configPath string) {
 
 func multiValueHelp(name string) string {
 	return fmt.Sprintf("\nRepeat for each %s in order,\n  or supply once by comma-separated list", name)
+}
+
+func prependExperimental(short string) string {
+	return fmt.Sprintf("(%s) %s", style.Warn("experimental"), short)
 }
 
 func getMirrors(config config.Config) map[string][]string {

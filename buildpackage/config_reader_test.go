@@ -46,9 +46,24 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 			config, err := packageConfigReader.Read(configFile)
 			h.AssertNil(t, err)
 
+			h.AssertEq(t, config.Platform.OS, "windows")
 			h.AssertEq(t, config.Buildpack.URI, "https://example.com/bp/a.tgz")
 			h.AssertEq(t, len(config.Dependencies), 1)
 			h.AssertEq(t, config.Dependencies[0].URI, "https://example.com/bp/b.tgz")
+		})
+
+		it("returns a config with 'linux' as default when platform is missing", func() {
+			configFile := filepath.Join(tmpDir, "package.toml")
+
+			err := ioutil.WriteFile(configFile, []byte(validPackageWithoutPlatformToml), os.ModePerm)
+			h.AssertNil(t, err)
+
+			packageConfigReader := buildpackage.NewConfigReader()
+
+			config, err := packageConfigReader.Read(configFile)
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, config.Platform.OS, "linux")
 		})
 
 		it("returns an error when toml decode fails", func() {
@@ -97,6 +112,20 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNotNil(t, err)
 			h.AssertError(t, err, "getting absolute path for")
 			h.AssertError(t, err, "https@@@@@@://example.com/bp/a.tgz")
+		})
+
+		it("returns an error when platform os is invalid", func() {
+			configFile := filepath.Join(tmpDir, "package.toml")
+
+			err := ioutil.WriteFile(configFile, []byte(invalidPlatformOSPackageToml), os.ModePerm)
+			h.AssertNil(t, err)
+
+			packageConfigReader := buildpackage.NewConfigReader()
+
+			_, err = packageConfigReader.Read(configFile)
+			h.AssertNotNil(t, err)
+			h.AssertError(t, err, "invalid 'platform.os' configuration")
+			h.AssertError(t, err, "only ['linux', 'windows'] is permitted")
 		})
 
 		it("returns an error when dependency uri is invalid", func() {
@@ -194,6 +223,17 @@ uri = "https://example.com/bp/a.tgz"
 
 [[dependencies]]
 uri = "https://example.com/bp/b.tgz"
+
+[platform]
+os = "windows"
+`
+
+const validPackageWithoutPlatformToml = `
+[buildpack]
+uri = "https://example.com/bp/a.tgz"
+
+[[dependencies]]
+uri = "https://example.com/bp/b.tgz"
 `
 
 const brokenPackageToml = `
@@ -231,6 +271,14 @@ uri = "noop-buildpack.tgz"
 
 [[dependenceis]] # Notice: this is misspelled
 image = "some/package-dep"
+`
+
+const invalidPlatformOSPackageToml = `
+[buildpack]
+uri = "https://example.com/bp/a.tgz"
+
+[platform]
+os = "some-incorrect-platform"
 `
 
 const unknownBPKeyPackageToml = `

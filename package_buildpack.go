@@ -31,9 +31,6 @@ type PackageBuildpackOptions struct {
 	// Type of output format, The options are the either the const FormatImage, or FormatFile.
 	Format string
 
-	// Type of OCI image to generate in the image or file. The options are "windows" or "linux"
-	OS string
-
 	// Defines the Buildpacks configuration.
 	Config pubbldpkg.Config
 
@@ -51,20 +48,16 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		opts.Format = FormatImage
 	}
 
-	if opts.OS == "" {
-		osType, err := c.defaultOSType(ctx, opts.Publish, opts.Format)
-		if err != nil {
-			return errors.Wrap(err, "daemon OS cannot be detected")
-		}
-
-		opts.OS = osType
-	}
-
-	if opts.OS == "windows" && !c.experimental {
+	if opts.Config.Platform.OS == "windows" && !c.experimental {
 		return NewExperimentError("Windows buildpackage support is currently experimental.")
 	}
 
-	writerFactory, err := layer.NewWriterFactory(opts.OS)
+	err := c.validateOSPlatform(ctx, opts.Config.Platform.OS, opts.Publish, opts.Format)
+	if err != nil {
+		return err
+	}
+
+	writerFactory, err := layer.NewWriterFactory(opts.Config.Platform.OS)
 	if err != nil {
 		return errors.Wrap(err, "creating layer writer factory")
 	}
@@ -144,26 +137,28 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	switch opts.Format {
 	case FormatFile:
-		return packageBuilder.SaveAsFile(opts.Name, opts.OS)
+		return packageBuilder.SaveAsFile(opts.Name, opts.Config.Platform.OS)
 	case FormatImage:
-		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.OS)
+		_, err = packageBuilder.SaveAsImage(opts.Name, opts.Publish, opts.Config.Platform.OS)
 		return errors.Wrapf(err, "saving image")
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
 	}
 }
 
-func (c *Client) defaultOSType(ctx context.Context, publish bool, format string) (string, error) {
+func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool, format string) error {
 	if publish || format == FormatFile {
-		c.logger.Warnf(`buildpackage OS unspecified - defaulting to "linux"`)
-
-		return "linux", nil
+		return nil
 	}
 
 	info, err := c.docker.Info(ctx)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return info.OSType, nil
+	if info.OSType != os {
+		return errors.Errorf("invalid %s specified: DOCKER_OS is %s", style.Symbol("platform.os"), style.Symbol(info.OSType))
+	}
+
+	return nil
 }

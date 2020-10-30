@@ -16,7 +16,7 @@ type LifecycleDescriptor struct {
 
 // LifecycleInfo contains information about the lifecycle
 type LifecycleInfo struct {
-	Version *Version `toml:"version" json:"version"`
+	Version *Version `toml:"version" json:"version" yaml:"version"`
 }
 
 // LifecycleAPI describes which API versions the lifecycle satisfies
@@ -68,8 +68,8 @@ func (a APISet) AsStrings() []string {
 
 // APIVersions describes the supported API versions
 type APIVersions struct {
-	Deprecated APISet `toml:"deprecated" json:"deprecated"`
-	Supported  APISet `toml:"supported" json:"supported"`
+	Deprecated APISet `toml:"deprecated" json:"deprecated" yaml:"deprecated"`
+	Supported  APISet `toml:"supported" json:"supported" yaml:"supported"`
 }
 
 // ParseDescriptor parses LifecycleDescriptor from toml formatted string.

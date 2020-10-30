@@ -84,6 +84,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: "Fake-Name",
 					Config: pubbldpkg.Config{
+						Platform:  dist.Platform{OS: "linux"},
 						Buildpack: dist.BuildpackURI{URI: ""},
 					},
 					Publish: true,
@@ -100,6 +101,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: "Fake-Name",
 					Config: pubbldpkg.Config{
+						Platform:  dist.Platform{OS: "linux"},
 						Buildpack: dist.BuildpackURI{URI: bpURL},
 					},
 					Publish: true,
@@ -117,6 +119,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: "Fake-Name",
 					Config: pubbldpkg.Config{
+						Platform:  dist.Platform{OS: "linux"},
 						Buildpack: dist.BuildpackURI{URI: bpURL},
 					},
 					Publish: true,
@@ -148,6 +151,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				err := subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: "test",
 					Config: pubbldpkg.Config{
+						Platform:     dist.Platform{OS: "linux"},
 						Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 						Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: dependencyPath}}},
 					},
@@ -186,6 +190,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Format: pack.FormatImage,
 						Name:   fakeImage.Name(),
 						Config: pubbldpkg.Config{
+							Platform: dist.Platform{OS: daemonOS},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 								API:    api.MustParse("0.2"),
 								Info:   dist.BuildpackInfo{ID: "bp.basic", Version: "2.3.4"},
@@ -203,6 +208,25 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 			it("fails without experimental on Windows daemons", func() {
 				windowsMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
+
+				packClientWithoutExperimental, err := pack.NewClient(
+					pack.WithDockerClient(windowsMockDockerClient),
+					pack.WithExperimental(false),
+				)
+				h.AssertNil(t, err)
+
+				err = packClientWithoutExperimental.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Config: pubbldpkg.Config{
+						Platform: dist.Platform{
+							OS: "windows",
+						},
+					},
+				})
+				h.AssertError(t, err, "Windows buildpackage support is currently experimental.")
+			})
+
+			it("fails for mismatched platform and daemon os", func() {
+				windowsMockDockerClient := testmocks.NewMockCommonAPIClient(mockController)
 				windowsMockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "windows"}, nil).AnyTimes()
 
 				packClientWithoutExperimental, err := pack.NewClient(
@@ -211,8 +235,15 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				)
 				h.AssertNil(t, err)
 
-				err = packClientWithoutExperimental.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{})
-				h.AssertError(t, err, "Windows buildpackage support is currently experimental.")
+				err = packClientWithoutExperimental.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+					Config: pubbldpkg.Config{
+						Platform: dist.Platform{
+							OS: "linux",
+						},
+					},
+				})
+
+				h.AssertError(t, err, "invalid 'platform.os' specified: DOCKER_OS is 'windows'")
 			})
 		})
 
@@ -228,6 +259,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: nestedPackage.Name(),
 					Config: pubbldpkg.Config{
+						Platform: dist.Platform{OS: "linux"},
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 							API:    api.MustParse("0.2"),
 							Info:   dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
@@ -267,6 +299,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packageImage.Name(),
 						Config: pubbldpkg.Config{
+							Platform: dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 								API:  api.MustParse("0.2"),
 								Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
@@ -293,6 +326,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packageImage.Name(),
 						Config: pubbldpkg.Config{
+							Platform: dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 								API:  api.MustParse("0.2"),
 								Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
@@ -319,6 +353,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packageImage.Name(),
 						Config: pubbldpkg.Config{
+							Platform: dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 								API:  api.MustParse("0.2"),
 								Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
@@ -344,6 +379,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: "some/package",
 						Config: pubbldpkg.Config{
+							Platform: dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 								API:    api.MustParse("0.2"),
 								Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
@@ -368,6 +404,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: "some/package",
 					Config: pubbldpkg.Config{
+						Platform: dist.Platform{OS: "linux"},
 						Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 							API:    api.MustParse("0.2"),
 							Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
@@ -409,8 +446,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, packClientWithExperimental.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Format: pack.FormatFile,
 						Name:   packagePath,
-						OS:     imageOS,
 						Config: pubbldpkg.Config{
+							Platform: dist.Platform{OS: imageOS},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 								API:    api.MustParse("0.2"),
 								Info:   dist.BuildpackInfo{ID: "bp.basic", Version: "2.3.4"},
@@ -466,6 +503,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: nestedPackage.Name(),
 						Config: pubbldpkg.Config{
+							Platform:  dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
 						},
 						Publish:    true,
@@ -481,6 +519,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packagePath,
 						Config: pubbldpkg.Config{
+							Platform:     dist.Platform{OS: "linux"},
 							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}}},
 						},
@@ -500,6 +539,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packagePath,
 						Config: pubbldpkg.Config{
+							Platform:     dist.Platform{OS: "linux"},
 							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 							Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: createBuildpack(childDescriptor)}}},
 						},
@@ -521,6 +561,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						err = subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 							Name: packagePath,
 							Config: pubbldpkg.Config{
+								Platform:     dist.Platform{OS: "linux"},
 								Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 								Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: bpURL}}},
 							},
@@ -543,6 +584,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						err = subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 							Name: packagePath,
 							Config: pubbldpkg.Config{
+								Platform:     dist.Platform{OS: "linux"},
 								Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 								Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: bpURL}}},
 							},
@@ -576,6 +618,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: nestedPackage.Name(),
 						Config: pubbldpkg.Config{
+							Platform:  dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
 						},
 						Publish:    true,
@@ -591,6 +634,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packagePath,
 						Config: pubbldpkg.Config{
+							Platform:  dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 							Dependencies: []dist.ImageOrURI{{ImageRef: dist.ImageRef{ImageName: nestedPackage.Name()}},
 								{BuildpackURI: dist.BuildpackURI{URI: createBuildpack(secondChildDescriptor)}}},
@@ -614,6 +658,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: dependencyPackagePath,
 						Config: pubbldpkg.Config{
+							Platform:  dist.Platform{OS: "linux"},
 							Buildpack: dist.BuildpackURI{URI: createBuildpack(childDescriptor)},
 						},
 						PullPolicy: pubcfg.PullAlways,
@@ -629,6 +674,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: packagePath,
 						Config: pubbldpkg.Config{
+							Platform:     dist.Platform{OS: "linux"},
 							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
 							Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: dependencyPackagePath}}},
 						},
@@ -651,6 +697,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				Name:   "some-buildpack",
 				Format: "invalid-format",
 				Config: pubbldpkg.Config{
+					Platform: dist.Platform{OS: "linux"},
 					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 						API:    api.MustParse("0.2"),
 						Info:   dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},

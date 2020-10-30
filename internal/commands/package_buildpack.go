@@ -19,7 +19,6 @@ import (
 type PackageBuildpackFlags struct {
 	PackageTomlPath string
 	Format          string
-	OS              string
 	Publish         bool
 	Policy          string
 }
@@ -39,9 +38,15 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 	var flags PackageBuildpackFlags
 
 	cmd := &cobra.Command{
-		Use:   `package-buildpack <name> --config <package-config-path>`,
-		Short: "Package buildpack in OCI format.",
-		Args:  cobra.ExactValidArgs(1),
+		Use:     `package-buildpack <name> --config <package-config-path>`,
+		Args:    cobra.ExactValidArgs(1),
+		Short:   "Package buildpack in OCI format.",
+		Example: "pack package-buildpack my-buildpack --config ./package.toml",
+		Long: "package-buildpack allows users to package (a) buildpack(s) into OCI format, which can then to be hosted in " +
+			"image repositories. You can also package a number of buildpacks together, to enable easier distribution of " +
+			"a set of buildpacks. Packaged buildpacks can be used as inputs to `pack build` (using the `--buildpack` flag), " +
+			"and they can be included in the configs used in `pack create-builder` and `pack package-buildpack`. For more " +
+			"on how to package a buildpack, see: https://buildpacks.io/docs/buildpack-author-guide/package-a-buildpack/.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validatePackageBuildpackFlags(&flags, cfg); err != nil {
 				return err
@@ -66,7 +71,6 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 			if err := client.PackageBuildpack(cmd.Context(), pack.PackageBuildpackOptions{
 				Name:       name,
 				Format:     flags.Format,
-				OS:         flags.OS,
 				Config:     cfg,
 				Publish:    flags.Publish,
 				PullPolicy: pullPolicy,
@@ -87,10 +91,6 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--format=image" only)`)
-	cmd.Flags().StringVar(&flags.OS, "os", "", `Operating system format of the package OCI image: "linux" or "windows" (defaults to "linux", except local images which use the daemon OS)`)
-	if !cfg.Experimental {
-		cmd.Flags().MarkHidden("os")
-	}
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
 
 	AddHelpFlag(cmd, "package-buildpack")
@@ -104,10 +104,6 @@ func validatePackageBuildpackFlags(p *PackageBuildpackFlags, cfg config.Config) 
 
 	if p.PackageTomlPath == "" {
 		return errors.Errorf("Please provide a package config path, using --config")
-	}
-
-	if p.OS != "" && !cfg.Experimental {
-		return pack.NewExperimentError("Support for OS flag is currently experimental.")
 	}
 
 	return nil

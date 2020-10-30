@@ -11,12 +11,12 @@ import (
 )
 
 type Config struct {
-	RunImages      []RunImage `toml:"run-images"`
-	DefaultBuilder string     `toml:"default-builder-image,omitempty"`
 	// Deprecated: Use DefaultRegistryName instead. See https://github.com/buildpacks/pack/issues/747.
 	DefaultRegistry     string           `toml:"default-registry-url,omitempty"`
 	DefaultRegistryName string           `toml:"default-registry,omitempty"`
+	DefaultBuilder      string           `toml:"default-builder-image,omitempty"`
 	Experimental        bool             `toml:"experimental,omitempty"`
+	RunImages           []RunImage       `toml:"run-images"`
 	TrustedBuilders     []TrustedBuilder `toml:"trusted-builders,omitempty"`
 	Registries          []Registry       `toml:"registries,omitempty"`
 }
