@@ -4,9 +4,19 @@ on:
   release:
     types:
       - released
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: The release tag to distribute
+        required: true
+      ubuntu_ppa:
+        description: flag indicating this is an ubuntu release
+        required: true
+
 
 jobs:
     create-ppa:
+      #if: github.event_name == 'release'
       strategy:
         fail-fast: false
         matrix:
@@ -25,20 +35,24 @@ jobs:
       runs-on:  ${{ matrix.runner }}
 
       steps:
+          - name: Determine version
+            uses: actions/github-script@v3
+            id: version
+            with:
+              result-encoding: string
+              script: |
+                let payload = context.payload;
+                let tag = (payload.release && payload.release.tag_name) || (payload.inputs && payload.inputs.tag_name);
+                if (!tag) {
+                  throw "ERROR: unable to determine tag"
+                }
+                return tag.replace(/^v/, '');
           - name: Checkout code
             uses: actions/checkout@v2
-          - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/* || true
 
           - name: Metadata
             id: metadata
             run: |
-                git_description=$(git describe --tags --long)
-                version=$(echo "${git_description}" | awk -F- '{print $(1)}' | sed 's/^v//')
-                revision=$(echo "${git_description}" | awk -F- '{print $(NF-1)}')
-                commit=$(echo "${git_description}" | awk -F- '{print $(NF)}'  | sed 's/^g//')
-                echo "::set-output name=version::$version"
-                echo "::set-output name=revision::$revision"
-                echo "::set-output name=commit::$commit"
                 echo "::set-output name=date::$(date +"%a, %d %b %Y %T %z")"
 
           - name: Install packaging tools
@@ -60,7 +74,7 @@ jobs:
               PACKAGE_NAME: "pack-cli"
               UBUNTU_VERSION:  ${{ matrix.target }}
               HOMEPAGE: "https://buildpacks.io"
-              PACK_VERSION: ${{ steps.metadata.outputs.version }}
+              PACK_VERSION: ${{ steps.version.outputs.result }}
               REPO: "buildpacks/pack"
               DESCRIPTION: "CLI for building apps using Cloud Native Buildpacks"
               DATE_TIME: ${{ steps.metadata.outputs.date }}
@@ -68,14 +82,14 @@ jobs:
               MAINTAINER_EMAIL: "cncf-buildpacks-maintainers@lists.cncf.io"
 
           - name: Create PPA
+            run: ./.github/workflows/scripts/create_ppa.sh
             env:
               PACKAGE_NAME: "pack-cli"
-              PACKAGE_VERSION: ${{ steps.metadata.outputs.version }}
+              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
               MAINTAINER: "cncf-buildpacks"
               MAINTANER_EMAIL: "cncf-buildpacks-maintainers@lists.cncf.io"
               GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
-            run: ./.github/workflows/scripts/create_ppa.sh
 
           - name: Test Xenial
             if: matrix.target == 'xenial'
@@ -102,9 +116,9 @@ jobs:
               entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
 
           - name: Upload
-            env:
-              PPA_DEST: "ppa:cncf-buildpacks/pack-cli"
             run: |
               dput "${PPA_DEST}" ./../*.changes
+            env:
+              PPA_DEST: "ppa:cncf-buildpacks/pack-cli"
 
 
