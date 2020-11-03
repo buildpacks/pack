@@ -62,9 +62,14 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 				logger.Warn("Flag --package-config has been deprecated, please use --config instead")
 			}
 
-			cfg, err := packageConfigReader.Read(flags.PackageTomlPath)
-			if err != nil {
-				return errors.Wrap(err, "reading config")
+			var cfg pubbldpkg.Config
+			if flags.PackageTomlPath == "" {
+				cfg = pubbldpkg.DefaultConfig()
+			} else {
+				cfg, err = packageConfigReader.Read(flags.PackageTomlPath)
+				if err != nil {
+					return errors.Wrap(err, "reading config")
+				}
 			}
 
 			name := args[0]
@@ -100,10 +105,6 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 func validatePackageBuildpackFlags(p *PackageBuildpackFlags, cfg config.Config) error {
 	if p.Publish && p.Policy == pubcfg.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
-	}
-
-	if p.PackageTomlPath == "" {
-		return errors.Errorf("Please provide a package config path, using --config")
 	}
 
 	return nil

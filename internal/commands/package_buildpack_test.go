@@ -187,7 +187,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("no config path is specified", func() {
-			it("errors with a descriptive message", func() {
+			it("creates a default config", func() {
 				config := &packageCommandConfig{
 					logger:              logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
 					packageConfigReader: fakes.NewFakePackageConfigReader(),
@@ -200,7 +200,10 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				cmd.SetArgs([]string{config.imageName})
 
 				err := cmd.Execute()
-				h.AssertError(t, err, "Please provide a package config path")
+				h.AssertNil(t, err)
+
+				receivedOptions := config.buildpackPackager.CreateCalledWithOptions
+				h.AssertEq(t, receivedOptions.Config.Buildpack.URI, ".")
 			})
 		})
 
