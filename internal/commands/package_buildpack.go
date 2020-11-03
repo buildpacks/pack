@@ -11,7 +11,6 @@ import (
 	"github.com/buildpacks/pack"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -65,11 +64,7 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 
 			var cfg pubbldpkg.Config
 			if flags.PackageTomlPath == "" {
-				cfg = pubbldpkg.Config{
-					Buildpack: dist.BuildpackURI{
-						URI: ".",
-					},
-				}
+				cfg = pubbldpkg.DefaultConfig()
 			} else {
 				cfg, err = packageConfigReader.Read(flags.PackageTomlPath)
 				if err != nil {
