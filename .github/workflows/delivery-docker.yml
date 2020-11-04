@@ -33,29 +33,30 @@ jobs:
             }
 
             return tag.replace(/^v/, '');
-      - name: Checkout workflow
+      - name: Checkout delivery configuration
         uses: actions/checkout@v2
+        with:
+          path: ./head
       - name: Checkout source at tag
         uses: actions/checkout@v2
         with:
-          path: ./src
           ref: v${{ steps.version.outputs.result }}
       - name: Setup Working Dir
         shell: bash
         run: |
-          cp .github/workflows/delivery/docker/buildpack.yml ./src/buildpack.yml
+          cp ./head/.github/workflows/delivery/docker/buildpack.yml buildpack.yml
       - name: Fill buildpack.yml
         uses: cschleiden/replace-tokens@v1
         env:
           PACK_VERSION: ${{ steps.version.outputs.result }}
         with:
-          files: ./src/buildpack.yml
+          files: buildpack.yml
       - name: Determine App Name
-        run: 'echo "::set-env name=IMG_NAME::${{ env.USERNAME }}/${{ env.IMG_NAME }}"'
+        run: 'echo "IMG_NAME=${{ env.USERNAME }}/${{ env.IMG_NAME }}" >> $GITHUB_ENV'
       - name: Pack Build/Publish
-        uses: ./.github/workflows/actions/pack
+        uses: dfreilich/pack-action@v1
         with:
-          args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} --path $(pwd)/src/ --builder ${{ env.BUILDER }} --publish'
+          args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} --path $(pwd)/ --builder ${{ env.BUILDER }} --publish'
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Login to Dockerhub
