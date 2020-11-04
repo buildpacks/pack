@@ -36,21 +36,21 @@ jobs:
       - name: Checkout delivery configuration
         uses: actions/checkout@v2
         with:
-          path: ./src
-      - name: Checkout workflow
+          path: ./main
+      - name: Checkout source at tag
         uses: actions/checkout@v2
         with:
           ref: v${{ steps.version.outputs.result }}
       - name: Setup Working Dir
         shell: bash
         run: |
-          cp ./src/.github/workflows/delivery/docker/buildpack.yml buildpack.yml
+          cp ./main/.github/workflows/delivery/docker/buildpack.yml buildpack.yml
       - name: Fill buildpack.yml
         uses: cschleiden/replace-tokens@v1
         env:
           PACK_VERSION: ${{ steps.version.outputs.result }}
         with:
-          files: ./src/buildpack.yml
+          files: buildpack.yml
       - name: Determine App Name
         run: 'echo "IMG_NAME=${{ env.USERNAME }}/${{ env.IMG_NAME }}" >> $GITHUB_ENV'
       - name: Pack Build/Publish
