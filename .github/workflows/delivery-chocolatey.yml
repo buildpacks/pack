@@ -37,6 +37,10 @@ jobs:
             updatedTag = tag.replace(/^v/, '')
             core.exportVariable('PACK_VERSION', updatedTag);
             return updatedTag;
+      - name: Checkout delivery configuration
+        uses: actions/checkout@v2
+        with:
+          path: ./src
       - name: Checkout workflow
         uses: actions/checkout@v2
         with:
@@ -44,7 +48,7 @@ jobs:
       - name: Setup working dir
         run: |
           mkdir ${{ env.CHOCO_PATH }}
-          cp -r .github/workflows/delivery/chocolatey/. ${{ env.CHOCO_PATH }}/
+          cp -r ./src/.github/workflows/delivery/chocolatey/. ${{ env.CHOCO_PATH }}/
           ls -R ${{ env.CHOCO_PATH }}
       - name: Download and unzip Pack (Windows)
         run: |
