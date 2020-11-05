@@ -1,4 +1,4 @@
-package commands_test
+package stack
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -24,15 +23,14 @@ func testSuggestStacksCommand(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		command = commands.SuggestStacks(logging.NewLogWithWriters(&outBuf, &outBuf))
+		command = newSuggestCmd(logging.NewLogWithWriters(&outBuf, &outBuf))
 	})
 
 	when("#SuggestStacks", func() {
 		it("displays stack information", func() {
 			command.SetArgs([]string{})
 			h.AssertNil(t, command.Execute())
-			h.AssertEq(t, outBuf.String(), "\x1b\x5b\x33\x33\x3b\x31\x6dWarning: \x1b\x5b\x30\x6dCommand 'pack suggest-stacks' has been deprecated, please use 'pack stack suggest' instead\n"+
-				`Stacks maintained by the community:
+			h.AssertEq(t, outBuf.String(), `Stacks maintained by the community:
 
     Stack ID: heroku-18
     Description: The official Heroku stack based on Ubuntu 18.04

@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/internal/commands/stack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
@@ -94,6 +95,8 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	}
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger))
+
+	rootCmd.AddCommand(stack.NewStackCmd(logger))
 
 	rootCmd.Version = pack.Version
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)
