@@ -4,6 +4,11 @@ on:
   release:
     types:
       - released
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: The release tag to distribute
+        required: true
 
 jobs:
   update-tap:
@@ -23,7 +28,22 @@ jobs:
         id: assets
         with:
           script: |
-            context.payload.release.assets.forEach(asset => {
+            let payload = context.payload;
+            let tag = (payload.release && payload.release.tag_name) || (payload.inputs && payload.inputs.tag_name);
+            if (!tag) {
+              throw "ERROR: unable to determine tag"
+            }
+            let tag_name = tag.replace(/^v/, '');
+
+            var release = payload.release || await github.repos.listReleases(context.repo)
+                  .then(result => result.data.find(r => r.tag_name === tag_name))
+                  .catch(err => {throw "ERROR: " + err.message});
+
+            if (!release) {
+              throw "no release found with tag: " + tag_name;
+            }
+
+            release.assets.forEach(asset => {
               if (asset.name.endsWith("linux.tgz")) {
                 core.setOutput("linux_name", asset.name);
                 core.setOutput("linux_url", asset.browser_download_url);
