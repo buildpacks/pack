@@ -8,7 +8,6 @@ import (
 
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/buildpack"
-	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
 )
@@ -27,35 +26,11 @@ func (c *Client) PullBuildpack(ctx context.Context, opts PullBuildpackOptions) e
 	}
 
 	switch locatorType {
-	case buildpack.URILocator:
-		err := ensureBPSupport(opts.URI)
-		if err != nil {
-			return errors.Wrapf(err, "checking support")
-		}
-
-		blob, err := c.downloader.Download(ctx, opts.URI)
-		if err != nil {
-			return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(opts.URI))
-		}
-
-		isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
-		if err != nil {
-			return errors.Wrapf(err, "checking format")
-		}
-
-		if isOCILayout {
-			_, _, err = buildpackage.BuildpacksFromOCILayoutBlob(blob)
-			if err != nil {
-				return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(opts.URI))
-			}
-		} else {
-			return errors.Errorf("buildpack is in an unsupported layout")
-		}
 	case buildpack.PackageLocator:
 		imageName := buildpack.ParsePackageLocator(opts.URI)
-		_, _, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, false, config.PullAlways)
+		_, err = c.imageFetcher.Fetch(ctx, imageName, true, config.PullAlways)
 		if err != nil {
-			return errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(opts.URI))
+			return errors.Wrapf(err, "fetching image %s", style.Symbol(opts.URI))
 		}
 	case buildpack.RegistryLocator:
 		registryCache, err := c.getRegistry(c.logger, opts.RegistryName)
@@ -68,9 +43,9 @@ func (c *Client) PullBuildpack(ctx context.Context, opts PullBuildpackOptions) e
 			return errors.Wrapf(err, "locating in registry %s", style.Symbol(opts.URI))
 		}
 
-		_, _, err = extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, false, config.PullAlways)
+		_, err = c.imageFetcher.Fetch(ctx, registryBp.Address, true, config.PullAlways)
 		if err != nil {
-			return errors.Wrapf(err, "extracting from registry %s", style.Symbol(opts.URI))
+			return errors.Wrapf(err, "fetching image %s", style.Symbol(opts.URI))
 		}
 	default:
 		return fmt.Errorf("invalid buildpack URI %s", style.Symbol(opts.URI))
