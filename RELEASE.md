@@ -29,6 +29,12 @@ The [release manager](#release-manager) will:
 
 For more information, see the [release process RFC][release-process]
 
+## Manual Releasing
+We release pack to a number of systems, including `homebrew`, `docker`, and `archlinux`. All of our delivery pipelines
+have workflow_dispatch triggers, if a maintainer needs to manually trigger them. To activate it, go to the
+[actions page](https://github.com/buildpacks/pack/actions), and select the desired workflow. Run it by providing the pack
+version to release, in the format `v<version>`.
+
 [maintainers]: https://github.com/buildpacks/community/blob/main/TEAMS.md#platform-team
 [release-process]: https://github.com/buildpacks/rfcs/blob/main/text/0039-release-process.md#change-control-board
 [release]: https://github.com/buildpacks/pack/releases
