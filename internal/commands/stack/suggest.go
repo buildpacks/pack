@@ -49,7 +49,7 @@ var suggestedStacks = []suggestedStack{
 	},
 }
 
-func newSuggestCmd(logger logging.Logger) *cobra.Command {
+func suggest(logger logging.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "suggest",
 		Args:    cobra.NoArgs,

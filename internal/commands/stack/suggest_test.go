@@ -12,18 +12,18 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestSuggestStacksCommand(t *testing.T) {
-	spec.Run(t, "Commands", testSuggestStacksCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+func TestStacksSuggestCommand(t *testing.T) {
+	spec.Run(t, "StacksSuggestCommand", testStacksSuggestCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testSuggestStacksCommand(t *testing.T, when spec.G, it spec.S) {
+func testStacksSuggestCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command *cobra.Command
 		outBuf  bytes.Buffer
 	)
 
 	it.Before(func() {
-		command = newSuggestCmd(logging.NewLogWithWriters(&outBuf, &outBuf))
+		command = suggest(logging.NewLogWithWriters(&outBuf, &outBuf))
 	})
 
 	when("#SuggestStacks", func() {

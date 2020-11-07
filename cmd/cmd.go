@@ -96,7 +96,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger))
 
-	rootCmd.AddCommand(stack.NewStackCmd(logger))
+	rootCmd.AddCommand(stack.Stack(logger))
 
 	rootCmd.Version = pack.Version
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)
