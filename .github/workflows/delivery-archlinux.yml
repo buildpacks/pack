@@ -12,11 +12,11 @@ on:
 
 jobs:
   pack-cli:
-    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     env:
       PACKAGE_NAME: pack-cli
     steps:
+      - uses: actions/checkout@v2
       - name: Determine version
         uses: actions/github-script@v3
         id: version
@@ -30,9 +30,8 @@ jobs:
             }
             return tag.replace(/^v/, '');
       - name: Set PACK_VERSION
-        run: echo "::set-env name=PACK_VERSION::${{ steps.version.outputs.result }}"
+        run: echo "PACK_VERSION=${{ steps.version.outputs.result }}" >> $GITHUB_ENV
         shell: bash
-      - uses: actions/checkout@v2
       - name: Setup working dir
         run: |
           mkdir -p ${{ env.PACKAGE_NAME }}
@@ -75,6 +74,7 @@ jobs:
     env:
       PACKAGE_NAME: pack-cli-bin
     steps:
+      - uses: actions/checkout@v2
       - name: Determine version
         uses: actions/github-script@v3
         id: version
@@ -88,9 +88,8 @@ jobs:
             }
             return tag.replace(/^v/, '');
       - name: Set PACK_VERSION
-        run: echo "::set-env name=PACK_VERSION::${{ steps.version.outputs.result }}"
+        run: echo "PACK_VERSION=${{ steps.version.outputs.result }}" >> $GITHUB_ENV
         shell: bash
-      - uses: actions/checkout@v2
       - name: Setup working dir
         run: |
           mkdir -p ${{ env.PACKAGE_NAME }}/
