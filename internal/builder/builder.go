@@ -408,7 +408,7 @@ func processOrder(buildpacks []dist.BuildpackInfo, order dist.Order) (dist.Order
 			}
 
 			if bpRef.Version == "" {
-				if len(matchingBps) > 1 {
+				if len(uniqueVersions(matchingBps)) > 1 {
 					return dist.Order{}, fmt.Errorf("unable to resolve version: multiple versions of %s - must specify an explicit version", style.Symbol(bpRef.ID))
 				}
 
@@ -512,6 +512,19 @@ func userAndGroupIDs(img imgutil.Image) (int, int, error) {
 	}
 
 	return uid, gid, nil
+}
+
+func uniqueVersions(buildpacks []dist.BuildpackInfo) []string {
+	results := []string{}
+	set := map[string]interface{}{}
+	for _, bpInfo := range buildpacks {
+		_, ok := set[bpInfo.Version]
+		if !ok {
+			results = append(results, bpInfo.Version)
+			set[bpInfo.Version] = true
+		}
+	}
+	return results
 }
 
 func (b *Builder) defaultDirsLayer(dest string) (string, error) {
