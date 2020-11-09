@@ -466,6 +466,35 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
+				when("has repeated buildpacks with the same ID and version", func() {
+					it.Before(func() {
+						subject.AddBuildpack(bp1v1)
+						subject.AddBuildpack(bp1v1)
+					})
+
+					when("order omits version", func() {
+						it("should de-duplicate identical buildpacks", func() {
+							subject.SetOrder(dist.Order{
+								{Group: []dist.BuildpackRef{{
+									BuildpackInfo: dist.BuildpackInfo{
+										ID:       bp1v1.Descriptor().Info.ID,
+										Homepage: bp1v1.Descriptor().Info.Homepage,
+									}}},
+								},
+								{Group: []dist.BuildpackRef{{
+									BuildpackInfo: dist.BuildpackInfo{
+										ID:       bp1v1.Descriptor().Info.ID,
+										Homepage: bp1v1.Descriptor().Info.Homepage,
+									}}},
+								},
+							})
+
+							err := subject.Save(logger, builder.CreatorMetadata{})
+							h.AssertNil(t, err)
+						})
+					})
+				})
+
 				when("has multiple buildpacks with same ID", func() {
 					it.Before(func() {
 						subject.AddBuildpack(bp1v1)
