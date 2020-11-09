@@ -1,42 +1,36 @@
-package commands_test
+package stack
 
 import (
 	"bytes"
 	"testing"
 
-	"github.com/heroku/color"
-
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestSuggestStacksCommand(t *testing.T) {
-	color.Disable(true)
-	defer color.Disable(false)
-	spec.Run(t, "Commands", testSuggestStacksCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+func TestStacksSuggestCommand(t *testing.T) {
+	spec.Run(t, "StacksSuggestCommand", testStacksSuggestCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testSuggestStacksCommand(t *testing.T, when spec.G, it spec.S) {
+func testStacksSuggestCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command *cobra.Command
 		outBuf  bytes.Buffer
 	)
 
 	it.Before(func() {
-		command = commands.SuggestStacks(logging.NewLogWithWriters(&outBuf, &outBuf))
+		command = suggest(logging.NewLogWithWriters(&outBuf, &outBuf))
 	})
 
 	when("#SuggestStacks", func() {
 		it("displays stack information", func() {
 			command.SetArgs([]string{})
 			h.AssertNil(t, command.Execute())
-			h.AssertEq(t, outBuf.String(), `Warning: Command 'pack suggest-stacks' has been deprecated, please use 'pack stack suggest' instead
-Stacks maintained by the community:
+			h.AssertEq(t, outBuf.String(), `Stacks maintained by the community:
 
     Stack ID: heroku-18
     Description: The official Heroku stack based on Ubuntu 18.04
