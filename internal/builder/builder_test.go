@@ -45,9 +45,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		bp1v2          dist.Buildpack
 		bp2v1          dist.Buildpack
 		bpOrder        dist.Buildpack
-		//bpOrderNoVersion dist.Buildpack
-		outBuf bytes.Buffer
-		logger logging.Logger
+		outBuf         bytes.Buffer
+		logger         logging.Logger
 	)
 
 	it.Before(func() {
@@ -473,15 +472,22 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						subject.AddBuildpack(bp1v1)
 					})
 
-					when("order ommits version", func() {
+					when("order omits version", func() {
 						it("should de-duplicate identical buildpacks", func() {
-							subject.SetOrder(dist.Order{{
-								Group: []dist.BuildpackRef{
-									{BuildpackInfo: dist.BuildpackInfo{
+							subject.SetOrder(dist.Order{
+								{Group: []dist.BuildpackRef{{
+									BuildpackInfo: dist.BuildpackInfo{
 										ID:       bp1v1.Descriptor().Info.ID,
 										Homepage: bp1v1.Descriptor().Info.Homepage,
 									}}},
-							}})
+								},
+								{Group: []dist.BuildpackRef{{
+									BuildpackInfo: dist.BuildpackInfo{
+										ID:       bp1v1.Descriptor().Info.ID,
+										Homepage: bp1v1.Descriptor().Info.Homepage,
+									}}},
+								},
+							})
 
 							err := subject.Save(logger, builder.CreatorMetadata{})
 							h.AssertNil(t, err)

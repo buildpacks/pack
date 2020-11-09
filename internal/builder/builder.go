@@ -408,7 +408,7 @@ func processOrder(buildpacks []dist.BuildpackInfo, order dist.Order) (dist.Order
 			}
 
 			if bpRef.Version == "" {
-				if len(matchingBps) > 1 && len(uniqueVersions(matchingBps)) > 1 {
+				if len(uniqueVersions(matchingBps)) > 1 {
 					return dist.Order{}, fmt.Errorf("unable to resolve version: multiple versions of %s - must specify an explicit version", style.Symbol(bpRef.ID))
 				}
 
