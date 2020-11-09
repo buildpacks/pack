@@ -27,13 +27,14 @@ func testCompletionCommand(t *testing.T, when spec.G, it spec.S) {
 		logger   logging.Logger
 		outBuf   bytes.Buffer
 		packHome string
+		assert   = h.NewAssertionManager(t)
 	)
 
 	it.Before(func() {
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 		var err error
 		packHome, err = ioutil.TempDir("", "")
-		h.AssertNil(t, err)
+		assert.Nil(err)
 
 		// the CompletionCommand calls a method on its Parent(), so it needs to have
 		// one.
@@ -49,7 +50,7 @@ func testCompletionCommand(t *testing.T, when spec.G, it spec.S) {
 	when("#CompletionCommand", func() {
 		when("Shell flag is empty(default value)", func() {
 			it("errors should not be occurred", func() {
-				h.AssertNil(t, command.Execute())
+				assert.Nil(command.Execute())
 			})
 		})
 
@@ -61,8 +62,8 @@ func testCompletionCommand(t *testing.T, when spec.G, it spec.S) {
 				command.AddCommand(commands.CompletionCommand(logger, missingDir))
 				command.SetArgs([]string{"completion"})
 
-				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), filepath.Join(missingDir, "completion.sh"))
+				assert.Nil(command.Execute())
+				assert.Contains(outBuf.String(), filepath.Join(missingDir, "completion.sh"))
 			})
 		})
 
@@ -80,8 +81,12 @@ func testCompletionCommand(t *testing.T, when spec.G, it spec.S) {
 			when("shell is "+shell, func() {
 				it("should create completion file ending in "+extension, func() {
 					command.SetArgs([]string{"completion", "--shell", shell})
-					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), filepath.Join(packHome, "completion"+extension))
+					assert.Nil(command.Execute())
+
+					expectedFile := filepath.Join(packHome, "completion"+extension)
+					assert.Contains(outBuf.String(), expectedFile)
+					assert.FileExists(expectedFile)
+					assert.FileIsNotEmpty(expectedFile)
 				})
 			})
 		}
