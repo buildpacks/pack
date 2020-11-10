@@ -56,10 +56,14 @@ To configure your zsh shell to load completions for each session, add the follow
 			}
 
 			logger.Info(completionPath)
+			unused()
 			return nil
 		}),
 	}
-
 	completionCmd.Flags().StringVarP(&flags.Shell, "shell", "s", "bash", "Generates completion file for [bash|zsh]")
 	return completionCmd
+}
+
+func unused() string {
+	return "I am unused"
 }
