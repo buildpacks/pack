@@ -389,9 +389,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				verify := h.NewTarVerifier(t, tr, 1234, 2345)
 				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
 				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0777)
-				if runtime.GOOS != "windows" {
-					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
-				}
+				verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 			})
 		})
 
@@ -416,9 +414,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				verify := h.NewTarVerifier(t, tr, 1234, 2345)
 				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0644)
 				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0755)
-				if runtime.GOOS != "windows" {
-					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
-				}
+				verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 			})
 
 			when("files are compressed in fat (MSDOS) format", func() {
@@ -472,9 +468,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				verify := h.NewTarVerifier(t, tr, 1234, 2345)
 				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0777)
-				if runtime.GOOS != "windows" {
-					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
-				}
+				verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 			})
 		})
 
