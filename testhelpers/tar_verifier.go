@@ -115,8 +115,9 @@ func (v *TarVerifier) NextSymLink(name, link string) {
 		v.t.Fatalf(`expected %s to have Gid %d but, got: %d`, header.Name, v.gid, header.Gid)
 	}
 
+	// tar names and linknames should be Linux formatted paths, regardless of OS
 	if header.Linkname != "../some-file.txt" {
-		v.t.Fatalf(`expected to link-file to have target %s got: %s`, link, header.Linkname)
+		v.t.Fatalf(`expected link-file to have target %s got: %s`, link, header.Linkname)
 	}
 	if !header.ModTime.Equal(time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)) {
 		v.t.Fatalf(`expected %s to have been normalized, got: %s`, header.Name, header.ModTime.String())
