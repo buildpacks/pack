@@ -783,7 +783,7 @@ func testAcceptance(
 						usingCreator = creatorSupported && trustBuilder
 					})
 
-					it("creates a runnable, rebuildable image on daemon from app dir", func() {
+					it.Focus("creates a runnable, rebuildable image on daemon from app dir", func() {
 						appPath := filepath.Join("testdata", "mock_app")
 
 						output := pack.RunSuccessfully(
@@ -1529,7 +1529,7 @@ func testAcceptance(
 					})
 
 					when("--publish", func() {
-						it("creates image on the registry", func() {
+						it.Focus("creates image on the registry", func() {
 							buildArgs := []string{
 								repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
