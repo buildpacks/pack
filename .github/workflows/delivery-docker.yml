@@ -33,14 +33,14 @@ jobs:
             }
 
             return tag.replace(/^v/, '');
-      - name: Checkout delivery configuration
-        uses: actions/checkout@v2
-        with:
-          path: head
       - name: Checkout source at tag
         uses: actions/checkout@v2
         with:
           ref: v${{ steps.version.outputs.result }}
+      - name: Checkout delivery configuration
+        uses: actions/checkout@v2
+        with:
+          path: ./head
       - name: Check dir
         run: |
           ls head
