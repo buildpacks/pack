@@ -36,15 +36,20 @@ jobs:
       - name: Checkout delivery configuration
         uses: actions/checkout@v2
         with:
-          path: ./head
+          path: head
       - name: Checkout source at tag
         uses: actions/checkout@v2
         with:
           ref: v${{ steps.version.outputs.result }}
+      - name: Check dir
+        run: |
+          ls head
+          ls ./head
+          ls head/.github/workflows/delivery/docker/
       - name: Setup Working Dir
         shell: bash
         run: |
-          cp ./head/.github/workflows/delivery/docker/buildpack.yml buildpack.yml
+          cp head/.github/workflows/delivery/docker/buildpack.yml buildpack.yml
       - name: Fill buildpack.yml
         uses: cschleiden/replace-tokens@v1
         env:
