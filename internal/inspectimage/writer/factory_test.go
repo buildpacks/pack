@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/builder/writer"
+	"github.com/buildpacks/pack/internal/inspectimage/writer"
 	h "github.com/buildpacks/pack/testhelpers"
 
 	"github.com/heroku/color"
@@ -26,7 +26,7 @@ func testFactory(t *testing.T, when spec.G, it spec.S) {
 			it("returns a HumanReadable writer", func() {
 				factory := writer.NewFactory()
 
-				returnedWriter, err := factory.Writer("human-readable")
+				returnedWriter, err := factory.Writer("human-readable", false)
 				assert.Nil(err)
 				_, ok := returnedWriter.(*writer.HumanReadable)
 				assert.TrueWithMessage(
@@ -35,62 +35,61 @@ func testFactory(t *testing.T, when spec.G, it spec.S) {
 				)
 			})
 		})
+
+
+		when("output format is json", func() {
+			it("return a JSON writer", func() {
+				factory := writer.NewFactory()
+
+				returnedWriter, err := factory.Writer("json", false)
+				assert.Nil(err)
+
+				_, ok := returnedWriter.(*writer.JSON)
+				assert.TrueWithMessage(
+					ok,
+					fmt.Sprintf("expected %T to be assignable to type `*writer.JSON`", returnedWriter),
+				)
+			})
+		})
+
+
+		when("output format is yaml", func() {
+			it("return a YAML writer", func() {
+				factory := writer.NewFactory()
+
+				returnedWriter, err := factory.Writer("yaml", false)
+				assert.Nil(err)
+
+				_, ok := returnedWriter.(*writer.YAML)
+				assert.TrueWithMessage(
+					ok,
+					fmt.Sprintf("expected %T to be assignable to type `*writer.YAML`", returnedWriter),
+				)
+			})
+		})
+
+		when("output format is toml", func() {
+			it("return a TOML writer", func() {
+				factory := writer.NewFactory()
+
+				returnedWriter, err := factory.Writer("toml", false)
+				assert.Nil(err)
+
+				_, ok := returnedWriter.(*writer.TOML)
+				assert.TrueWithMessage(
+					ok,
+					fmt.Sprintf("expected %T to be assignable to type `*writer.TOML`", returnedWriter),
+				)
+			})
+		})
+
+		when("output format is not supported", func() {
+			it("returns an error", func() {
+				factory := writer.NewFactory()
+
+				_, err := factory.Writer("mind-beam", false)
+				assert.ErrorWithMessage(err, "output format 'mind-beam' is not supported")
+			})
+		})
 	})
 }
-
-//
-//		when("output format is json", func() {
-//			it("return a JSON writer", func() {
-//				factory := writer.NewFactory()
-//
-//				returnedWriter, err := factory.Writer("json")
-//				assert.Nil(err)
-//
-//				_, ok := returnedWriter.(*writer.JSON)
-//				assert.TrueWithMessage(
-//					ok,
-//					fmt.Sprintf("expected %T to be assignable to type `*writer.JSON`", returnedWriter),
-//				)
-//			})
-//		})
-//
-//		when("output format is yaml", func() {
-//			it("return a YAML writer", func() {
-//				factory := writer.NewFactory()
-//
-//				returnedWriter, err := factory.Writer("yaml")
-//				assert.Nil(err)
-//
-//				_, ok := returnedWriter.(*writer.YAML)
-//				assert.TrueWithMessage(
-//					ok,
-//					fmt.Sprintf("expected %T to be assignable to type `*writer.YAML`", returnedWriter),
-//				)
-//			})
-//		})
-//
-//		when("output format is toml", func() {
-//			it("return a TOML writer", func() {
-//				factory := writer.NewFactory()
-//
-//				returnedWriter, err := factory.Writer("toml")
-//				assert.Nil(err)
-//
-//				_, ok := returnedWriter.(*writer.TOML)
-//				assert.TrueWithMessage(
-//					ok,
-//					fmt.Sprintf("expected %T to be assignable to type `*writer.TOML`", returnedWriter),
-//				)
-//			})
-//		})
-//
-//		when("output format is not supported", func() {
-//			it("returns an error", func() {
-//				factory := writer.NewFactory()
-//
-//				_, err := factory.Writer("mind-beam")
-//				assert.ErrorWithMessage(err, "output format 'mind-beam' is not supported")
-//			})
-//		})
-//	})
-//}

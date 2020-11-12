@@ -7,7 +7,7 @@ import (
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/inspectimage/writer"
+	"github.com/buildpacks/pack/internal/inspectimage"
 	h "github.com/buildpacks/pack/testhelpers"
 	"testing"
 
@@ -26,7 +26,7 @@ var (
 	expectedLocalImageDisplay  = "Sample output for local image"
 	expectedRemoteImageDisplay = "Sample output for remote image"
 
-	expectedSharedInfo = &writer.SharedImageInfo{
+	expectedSharedInfo = inspectimage.GeneralInfo{
 		Name: "some/image",
 	}
 
@@ -92,7 +92,7 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 
 			assert.Equal(inspectImageWriter.ReceivedInfoForLocal, expectedLocalImageInfo)
 			assert.Equal(inspectImageWriter.ReceivedInfoForRemote, expectedRemoteImageInfo)
-			assert.Equal(inspectImageWriter.RecievedSharedInfo, expectedSharedInfo)
+			assert.Equal(inspectImageWriter.RecievedGeneralInfo, expectedSharedInfo)
 			assert.Equal(inspectImageWriter.ReceivedErrorForLocal, nil)
 			assert.Equal(inspectImageWriter.ReceivedErrorForRemote, nil)
 			assert.Equal(inspectImageWriterFactory.ReceivedForKind, "human-readable")
@@ -128,7 +128,7 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 			err := command.Execute()
 			assert.Nil(err)
 
-			assert.Equal(inspectImageWriter.RecievedSharedInfo.RunImageMirrors, cfg.RunImages)
+			assert.Equal(inspectImageWriter.RecievedGeneralInfo.RunImageMirrors, cfg.RunImages)
 		})
 
 		when("error cases", func() {

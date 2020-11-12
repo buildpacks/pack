@@ -2,6 +2,7 @@ package commands
 
 import (
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
@@ -34,7 +35,7 @@ func InspectImage(
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			img := args[0]
 
-			sharedImageInfo := &writer.SharedImageInfo{
+			sharedImageInfo := inspectimage.GeneralInfo{
 				Name:            img,
 				RunImageMirrors: cfg.RunImages,
 			}

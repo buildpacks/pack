@@ -2,7 +2,10 @@ package writer_test
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/inspectimage"
 	"testing"
 
 	"github.com/buildpacks/lifecycle"
@@ -210,7 +213,7 @@ Processes:
 						Mirrors: []string{"user-configured-mirror-for-remote"},
 					},
 				}
-				sharedImageInfo := &writer.SharedImageInfo{
+				sharedImageInfo := inspectimage.GeneralInfo{
 					Name:            "test-image",
 					RunImageMirrors: runImageMirrors,
 				}
@@ -242,7 +245,7 @@ Processes:
 						Mirrors: []string{"user-configured-mirror-for-remote"},
 					},
 				}
-				sharedImageInfo := &writer.SharedImageInfo{
+				sharedImageInfo := inspectimage.GeneralInfo{
 					Name:            "test-image",
 					RunImageMirrors: runImageMirrors,
 				}
@@ -251,6 +254,7 @@ Processes:
 				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil)
 				assert.Nil(err)
+
 
 				assert.Contains(outBuf.String(), expectedLocalOutput)
 				assert.NotContains(outBuf.String(), expectedRemoteOutput)
@@ -274,7 +278,7 @@ Processes:
 						Mirrors: []string{"user-configured-mirror-for-remote"},
 					},
 				}
-				sharedImageInfo := &writer.SharedImageInfo{
+				sharedImageInfo := inspectimage.GeneralInfo{
 					Name:            "test-image",
 					RunImageMirrors: runImageMirrors,
 				}
@@ -287,6 +291,131 @@ Processes:
 				assert.NotContains(outBuf.String(), expectedLocalOutput)
 				assert.Contains(outBuf.String(), expectedRemoteOutput)
 			})
+
+			when("buildpack metadata is missing", func() {
+				it.Before(func() {
+					remoteInfo.Buildpacks = []lifecycle.Buildpack{}
+				})
+				it("displays a message indicating missing metadata", func() {
+					sharedImageInfo := inspectimage.GeneralInfo{
+						Name:            "test-image",
+						RunImageMirrors: []config.RunImage{},
+					}
+
+					humanReadableWriter := writer.NewHumanReadable()
+
+					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
+					assert.Nil(err)
+
+					assert.Contains(outBuf.String(), "(buildpack metadata not present)")
+				})
+			})
+
+			when("there are no run images", func() {
+				it.Before(func() {
+					remoteInfo.Stack = lifecycle.StackMetadata{}
+				})
+				it("displays a message indicating missing run images", func() {
+					sharedImageInfo := inspectimage.GeneralInfo{
+						Name:            "test-image",
+						RunImageMirrors: []config.RunImage{},
+					}
+
+					humanReadableWriter := writer.NewHumanReadable()
+
+					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
+					assert.Nil(err)
+
+					assert.Contains(outBuf.String(), "Run Images:\n  (none)")
+				})
+			})
+		})
+
+		when("error handled cases", func() {
+			when("there is a remoteErr", func() {
+				var remoteErr error
+				it.Before(func() {
+					remoteErr = errors.New("some remote error")
+				})
+				it("displays the remote error and local info", func() {
+					runImageMirrors := []config.RunImage{
+						{
+							Image:   "un-used-run-image",
+							Mirrors: []string{"un-used"},
+						},
+						{
+							Image:   "some-local-run-image",
+							Mirrors: []string{"user-configured-mirror-for-local"},
+						},
+						{
+							Image:   "some-remote-run-image",
+							Mirrors: []string{"user-configured-mirror-for-remote"},
+						},
+					}
+					sharedImageInfo := inspectimage.GeneralInfo{
+						Name:            "test-image",
+						RunImageMirrors: runImageMirrors,
+					}
+					humanReadableWriter := writer.NewHumanReadable()
+
+					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, remoteErr)
+					assert.Nil(err)
+
+					assert.Contains(outBuf.String(), expectedLocalOutput)
+					assert.Contains(outBuf.String(), "some remote error")
+				})
+			})
+
+			when("there is a localErr", func() {
+				var localErr error
+				it.Before(func() {
+					localErr = errors.New("some local error")
+				})
+				it("displays the remote info and local error", func() {
+					runImageMirrors := []config.RunImage{
+						{
+							Image:   "un-used-run-image",
+							Mirrors: []string{"un-used"},
+						},
+						{
+							Image:   "some-local-run-image",
+							Mirrors: []string{"user-configured-mirror-for-local"},
+						},
+						{
+							Image:   "some-remote-run-image",
+							Mirrors: []string{"user-configured-mirror-for-remote"},
+						},
+					}
+					sharedImageInfo := inspectimage.GeneralInfo{
+						Name:            "test-image",
+						RunImageMirrors: runImageMirrors,
+					}
+					humanReadableWriter := writer.NewHumanReadable()
+
+					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, localErr, nil)
+					assert.Nil(err)
+
+					assert.Contains(outBuf.String(), expectedRemoteOutput)
+					assert.Contains(outBuf.String(), "some local error")
+				})
+			})
+
+			when("error cases", func() {
+				when("both localInfo and remoteInfo are nil", func() {
+					it("displays a 'missing image' error message", func() {
+						humanReadableWriter := writer.NewHumanReadable()
+
+						logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+						err := humanReadableWriter.Print(logger, inspectimage.GeneralInfo{Name: "missing-image"}, nil, nil, nil, nil)
+						assert.ErrorWithMessage(err, fmt.Sprintf("unable to find image '%s' locally or remotely", "missing-image"))
+					})
+				})
+			})
+
 		})
 	})
 }

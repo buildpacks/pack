@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/buildpacks/pack/internal/inspectimage"
 	"strings"
 	"text/tabwriter"
 	"text/template"
 
-	"github.com/buildpacks/lifecycle/launch"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -25,26 +24,26 @@ func NewHumanReadable() *HumanReadable {
 
 func (h *HumanReadable) Print(
 	logger logging.Logger,
-	sharedInfo *SharedImageInfo,
+	generalInfo inspectimage.GeneralInfo,
 	local, remote *pack.ImageInfo,
 	localErr, remoteErr error,
 ) error {
 	if local == nil && remote == nil {
-		return fmt.Errorf("unable to find image '%s' locally or remotely", sharedInfo.Name)
+		return fmt.Errorf("unable to find image '%s' locally or remotely", generalInfo.Name)
 	}
 
-	localMirrorsFromConfig := getConfiguredMirrors(local, sharedInfo.RunImageMirrors)
-	remoteMirrorsFromConfig := getConfiguredMirrors(remote, sharedInfo.RunImageMirrors)
+	localDisplay := inspectimage.NewInfoDisplay(local, generalInfo)
+	remoteDisplay := inspectimage.NewInfoDisplay(remote, generalInfo)
 
-	logger.Infof("Inspecting image: %s\n", style.Symbol(sharedInfo.Name))
+	logger.Infof("Inspecting image: %s\n", style.Symbol(generalInfo.Name))
 
 	logger.Info("\nREMOTE:\n")
-	err := writeImageInfo(logger, remote, remoteMirrorsFromConfig, remoteErr)
+	err := writeImageInfo(logger, remoteDisplay, remoteErr)
 	if err != nil {
 		return fmt.Errorf("writing remote builder info: %w", err)
 	}
 	logger.Info("\nLOCAL:\n")
-	err = writeImageInfo(logger, local, localMirrorsFromConfig, localErr)
+	err = writeImageInfo(logger, localDisplay, localErr)
 	if err != nil {
 		return fmt.Errorf("writing local builder info: %w", err)
 	}
@@ -75,17 +74,20 @@ func logBOM(remote *pack.ImageInfo, local *pack.ImageInfo, logger logging.Logger
 	logger.Infof(string(rawBOM))
 	return nil
 }
-
 func writeImageInfo(
 	logger logging.Logger,
-	info *pack.ImageInfo,
-	cfgMirrors []string,
+	info *inspectimage.InfoDisplay,
 	err error,
 ) error {
-	imgTpl := template.Must(template.New("runImages").Parse(runImagesTemplate))
-	imgTpl = template.Must(imgTpl.New("buildpacks").Parse(buildpacksTemplate))
-	imgTpl = template.Must(imgTpl.New("processes").Parse(processesTemplate))
-	imgTpl = template.Must(imgTpl.New("image").Parse(imageTemplate))
+	imgTpl := template.Must(template.New("runImages").
+		Funcs(template.FuncMap{"StringsJoin": strings.Join}).
+		Parse(runImagesTemplate))
+	imgTpl = template.Must(imgTpl.New("buildpacks").
+		Parse(buildpacksTemplate))
+	imgTpl = template.Must(imgTpl.New("processes").
+		Parse(processesTemplate))
+	imgTpl = template.Must(imgTpl.New("image").
+		Parse(imageTemplate))
 	if err != nil {
 		logger.Errorf("%s\n", err)
 		return nil
@@ -95,107 +97,48 @@ func writeImageInfo(
 		logger.Info("(not present)\n")
 		return nil
 	}
-	remoteOutput, err := inspectImageOutput(info, cfgMirrors, imgTpl)
+	remoteOutput, err := inspectImageOutput(info, imgTpl)
 	if err != nil {
 		logger.Error(err.Error())
 	} else {
-		logger.Info(remoteOutput)
+		logger.Info(remoteOutput.String())
 	}
 	return nil
 }
 
-type process struct {
-	PType   string
-	Shell   string
-	Command string
-	Args    string
-}
-
-func inspectImageOutput(
-	info *pack.ImageInfo,
-	cfgMirrors []string,
-	tpl *template.Template,
-) (output string, err error) {
+func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template ) (*bytes.Buffer, error) {
 	if info == nil {
-		return "(not present)", nil
+		return bytes.NewBuffer([]byte("(not present)")), nil
 	}
-	var buf bytes.Buffer
-	processes := displayProcesses(info.Processes)
-	tw := tabwriter.NewWriter(&buf, 0, 0, 8, ' ', 0)
-	defer tw.Flush()
+	var buf *bytes.Buffer
+	buf = bytes.NewBuffer(nil)
+	tw := tabwriter.NewWriter(buf, 0, 0, 8, ' ', 0)
+	defer func() {
+		tw.Flush()
+	}()
 	if err := tpl.Execute(tw, &struct {
-		Info         *pack.ImageInfo
-		LocalMirrors []string
-		Processes    []process
+		Info *inspectimage.InfoDisplay
 	}{
 		info,
-		cfgMirrors,
-		processes,
 	}); err != nil {
-		return "", err
+		return bytes.NewBuffer(nil), err
 	}
-	return buf.String(), nil
+
+	return buf, nil
 }
 
-func displayProcess(p launch.Process, d bool) process {
-	shell := ""
-	if !p.Direct {
-		shell = "bash"
-	}
-
-	pType := p.Type
-	if d {
-		pType = fmt.Sprintf("%s (default)", pType)
-	}
-
-	return process{
-		PType:   pType,
-		Shell:   shell,
-		Command: p.Command,
-		Args:    strings.Join(p.Args, " "),
-	}
-}
-
-func displayProcesses(sourceProcesses pack.ProcessDetails) []process {
-	processes := []process{}
-
-	if sourceProcesses.DefaultProcess != nil {
-		processes = append(processes, displayProcess(*sourceProcesses.DefaultProcess, true))
-	}
-
-	for _, p := range sourceProcesses.OtherProcesses {
-		processes = append(processes, displayProcess(p, false))
-	}
-
-	return processes
-}
-
-func getConfiguredMirrors(info *pack.ImageInfo, imageMirrors []config.RunImage) []string {
-	var runImage string
-	if info != nil {
-		runImage = info.Stack.RunImage.Image
-	}
-
-	for _, ri := range imageMirrors {
-		if ri.Image == runImage {
-			return ri.Mirrors
-		}
-	}
-	return nil
-}
 
 var runImagesTemplate = `
 Run Images:
-{{- range $_, $m := .LocalMirrors }}
-  {{$m}}	(user-configured)
+{{- range $_, $m := .Info.RunImageMirrors }}
+  {{- if $m.UserConfigured }}
+  {{$m.Name}}	(user-configured)
+  {{- else }}
+  {{$m.Name}}
+  {{- end }}  
 {{- end }}
-{{- if .Info.Stack.RunImage.Image }}
-  {{ .Info.Stack.RunImage.Image }}
-{{- else }}
+{{- if not .Info.RunImageMirrors }}
   (none)
-{{- end }}
-{{- range $_, $m := .Info.Stack.RunImage.Mirrors }}
-  {{$m}}
 {{- end }}`
 
 var buildpacksTemplate = `
@@ -206,17 +149,21 @@ Buildpacks:
   {{ $b.ID }}	{{ $b.Version }}
 {{- end }}
 {{- else }}
-  (buildpacks metadata not present)
+  (buildpack metadata not present)
 {{- end }}`
 
 var processesTemplate = `
-{{- if .Processes }}
+{{- if .Info.Processes }}
 
 Processes:
-  TYPE	SHELL	COMMAND	ARGS
-{{- range $_, $p := .Processes }}
-  {{ $p.PType }}	{{ $p.Shell }}	{{ $p.Command }}	{{ $p.Args }}
-{{- end }}
+  TYPE	SHELL	COMMAND	ARGS	
+  {{- range $_, $p := .Info.Processes }}
+    {{- if $p.Default }}
+  {{ (printf "%s %s" $p.Type "(default)") }}	{{ $p.Shell }}	{{ $p.Command }}	{{ StringsJoin $p.Args " "  }}	
+    {{- else }}
+  {{ $p.Type }}	{{ $p.Shell }}	{{ $p.Command }}	{{ StringsJoin $p.Args " " }}	
+    {{- end }}
+  {{- end }}
 {{- end }}`
 
 var imageTemplate = `
@@ -228,6 +175,4 @@ Base Image:
 {{- end}}
   Top Layer: {{ .Info.Base.TopLayer }}
 {{ template "runImages" . }}
-{{ template "buildpacks" . }}{{ template "processes" . }}
-
-`
+{{ template "buildpacks" . }}{{ template "processes" . }}`
