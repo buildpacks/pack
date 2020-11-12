@@ -20,13 +20,13 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestStructuredFormat(t *testing.T) {
+func TestStructuredBOMFormat(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "StructuredFormat Writer", testStructuredFormat, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "StructuredBOMFormat Writer", testStructuredBOMFormat, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
+func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 	var (
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
@@ -51,12 +51,12 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 						RunImageMirrors: []config.RunImage{},
 					}
 
-					structuredWriter := writer.StructuredFormat{
+					structuredBOMWriter := writer.StructuredBOMFormat{
 						MarshalFunc: testMarshalFunc,
 					}
 
 					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
-					err := structuredWriter.Print(logger, sharedImageInfo, nil, nil, nil, nil)
+					err := structuredBOMWriter.Print(logger, sharedImageInfo, nil, nil, nil, nil)
 					assert.ErrorWithMessage(err, fmt.Sprintf("unable to find image '%s' locally or remotely", "missing-image"))
 				})
 			})
@@ -66,15 +66,15 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 						Name:            "localErr-image",
 						RunImageMirrors: []config.RunImage{},
 					}
-					structuredWriter := writer.StructuredFormat{
+					structuredBOMWriter := writer.StructuredBOMFormat{
 						MarshalFunc: testMarshalFunc,
 					}
 
 					localErr := errors.New("a local error occurred")
 
 					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
-					err := structuredWriter.Print(logger, sharedImageInfo, nil, remoteInfo, localErr, nil)
-					assert.ErrorWithMessage(err, "preparing output for 'localErr-image': a local error occurred")
+					err := structuredBOMWriter.Print(logger, sharedImageInfo, nil, remoteInfo, localErr, nil)
+					assert.ErrorWithMessage(err, "preparing BOM output for 'localErr-image': a local error occurred")
 				})
 			})
 
@@ -84,25 +84,17 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 						Name:            "remoteErr-image",
 						RunImageMirrors: []config.RunImage{},
 					}
-					structuredWriter := writer.StructuredFormat{
+					structuredBOMWriter := writer.StructuredBOMFormat{
 						MarshalFunc: testMarshalFunc,
 					}
 
 					remoteErr := errors.New("a remote error occurred")
 
 					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
-					err := structuredWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, remoteErr)
-					assert.ErrorWithMessage(err, "preparing output for 'remoteErr-image': a remote error occurred")
+					err := structuredBOMWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, remoteErr)
+					assert.ErrorWithMessage(err, "preparing BOM output for 'remoteErr-image': a remote error occurred")
 				})
 			})
 		})
 	})
-}
-
-//
-// testfunctions and helpers
-//
-
-func testMarshalFunc(i interface{}) ([]byte, error) {
-	return []byte("marshalled"), nil
 }

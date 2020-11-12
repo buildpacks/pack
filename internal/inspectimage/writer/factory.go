@@ -27,15 +27,24 @@ func NewFactory() *Factory {
 }
 
 func (f *Factory) Writer(kind string, bom bool) (InspectImageWriter, error) {
-	switch kind {
-	case "human-readable":
-		return NewHumanReadable(), nil
-	case "json":
-		return NewJSON(), nil
-	case "yaml":
-		return NewYAML(), nil
-	case "toml":
-		return NewTOML(), nil
+	if bom {
+		switch kind {
+		case "human-readable", "json":
+			return NewJSONBOM(), nil
+		case "yaml":
+			return NewYAMLBOM(), nil
+		}
+	} else {
+		switch kind {
+		case "human-readable":
+			return NewHumanReadable(), nil
+		case "json":
+			return NewJSON(), nil
+		case "yaml":
+			return NewYAML(), nil
+		case "toml":
+			return NewTOML(), nil
+		}
 	}
 
 	return nil, fmt.Errorf("output format %s is not supported", style.Symbol(kind))

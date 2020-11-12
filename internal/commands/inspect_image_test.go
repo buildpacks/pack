@@ -5,12 +5,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/buildpacks/pack/internal/inspectimage"
+
 	"github.com/buildpacks/lifecycle"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/inspectimage"
 	h "github.com/buildpacks/pack/testhelpers"
 
 	"github.com/golang/mock/gomock"

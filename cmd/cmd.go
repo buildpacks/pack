@@ -5,12 +5,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/inspectimage/writer"
+
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/buildpackage"
 	builderwriter "github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
-	inspectimagewriter "github.com/buildpacks/pack/internal/inspectimage/writer"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -68,7 +69,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.Rebase(logger, cfg, &packClient))
 	// TODO: is the config the base of truth for what run image mirrors are displayed??
 	//       or do we use the run image mirrors located on the image??
-	rootCmd.AddCommand(commands.InspectImage(logger, inspectimagewriter.NewFactory(), cfg, &packClient))
+	rootCmd.AddCommand(commands.InspectImage(logger, writer.NewFactory(), cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuildpack(logger, &cfg, &packClient))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
 

@@ -3,11 +3,11 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
 
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
 

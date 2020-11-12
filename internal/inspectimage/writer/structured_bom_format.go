@@ -10,36 +10,32 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-type StructuredFormat struct {
+type StructuredBOMFormat struct {
 	MarshalFunc func(interface{}) ([]byte, error)
 }
 
-func (w *StructuredFormat) Print(
+func (w *StructuredBOMFormat) Print(
 	logger logging.Logger,
 	generalInfo inspectimage.GeneralInfo,
 	local, remote *pack.ImageInfo,
 	localErr, remoteErr error,
 ) error {
-	// synthesize all objects here using methods
 	if local == nil && remote == nil {
 		return fmt.Errorf("unable to find image '%s' locally or remotely", generalInfo.Name)
 	}
 	if localErr != nil {
-		return fmt.Errorf("preparing output for %s: %w", style.Symbol(generalInfo.Name), localErr)
+		return fmt.Errorf("preparing BOM output for %s: %w", style.Symbol(generalInfo.Name), localErr)
 	}
 
 	if remoteErr != nil {
-		return fmt.Errorf("preparing output for %s: %w", style.Symbol(generalInfo.Name), remoteErr)
+		return fmt.Errorf("preparing BOM output for %s: %w", style.Symbol(generalInfo.Name), remoteErr)
 	}
 
-	localInfo := inspectimage.NewInfoDisplay(local, generalInfo)
-	remoteInfo := inspectimage.NewInfoDisplay(remote, generalInfo)
-
-	out, err := w.MarshalFunc(inspectimage.InspectOutput{
-		ImageName: generalInfo.Name,
-		Remote:    remoteInfo,
-		Local:     localInfo,
+	out, err := w.MarshalFunc(inspectimage.BOMDisplay{
+		Remote: inspectimage.NewBOMDisplay(remote),
+		Local:  inspectimage.NewBOMDisplay(local),
 	})
+
 	if err != nil {
 		panic(err)
 	}

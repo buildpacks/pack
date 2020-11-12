@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 
 	"github.com/buildpacks/lifecycle"
@@ -14,6 +13,8 @@ import (
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/internal/config"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
