@@ -36,7 +36,6 @@ func testFactory(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-
 		when("output format is json", func() {
 			it("return a JSON writer", func() {
 				factory := writer.NewFactory()
@@ -51,7 +50,6 @@ func testFactory(t *testing.T, when spec.G, it spec.S) {
 				)
 			})
 		})
-
 
 		when("output format is yaml", func() {
 			it("return a YAML writer", func() {

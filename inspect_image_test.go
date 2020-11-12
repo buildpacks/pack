@@ -67,7 +67,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
     }
   },
   "runImage": {
-    "topLayer": "some-top-layer",
+    "top_layer": "some-top-layer",
     "reference": "some-run-image-reference"
   }
 }`,
@@ -613,7 +613,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 				"io.buildpacks.lifecycle.metadata",
 				`{
   "runImage": {
-    "topLayer": "some-top-layer",
+    "top_layer": "some-top-layer",
     "reference": "some-run-image-reference"
   }
 }`,

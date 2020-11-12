@@ -13,7 +13,7 @@ type FakeInspectImageWriter struct {
 
 	ReceivedInfoForLocal   *pack.ImageInfo
 	ReceivedInfoForRemote  *pack.ImageInfo
-	RecievedGeneralInfo     inspectimage.GeneralInfo
+	RecievedGeneralInfo    inspectimage.GeneralInfo
 	ReceivedErrorForLocal  error
 	ReceivedErrorForRemote error
 }

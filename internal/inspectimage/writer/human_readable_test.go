@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"testing"
+
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
-	"testing"
 
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/launch"
@@ -230,7 +231,6 @@ Processes:
 
 		when("only local image exists", func() {
 			it("prints local image info in a human readable format", func() {
-
 				runImageMirrors := []config.RunImage{
 					{
 						Image:   "un-used-run-image",
@@ -255,7 +255,6 @@ Processes:
 				err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil)
 				assert.Nil(err)
 
-
 				assert.Contains(outBuf.String(), expectedLocalOutput)
 				assert.NotContains(outBuf.String(), expectedRemoteOutput)
 			})
@@ -263,7 +262,6 @@ Processes:
 
 		when("only remote image exists", func() {
 			it("prints remote image info in a human readable format", func() {
-
 				runImageMirrors := []config.RunImage{
 					{
 						Image:   "un-used-run-image",
@@ -415,7 +413,6 @@ Processes:
 					})
 				})
 			})
-
 		})
 	})
 }

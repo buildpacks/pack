@@ -1,19 +1,21 @@
 package writer_test
 
 import (
-"bytes"
-"github.com/buildpacks/lifecycle"
-"github.com/buildpacks/lifecycle/launch"
-"github.com/buildpacks/pack"
-"github.com/buildpacks/pack/internal/config"
-"github.com/buildpacks/pack/internal/inspectimage"
-"github.com/buildpacks/pack/internal/inspectimage/writer"
-ilogging "github.com/buildpacks/pack/internal/logging"
-h "github.com/buildpacks/pack/testhelpers"
-"github.com/heroku/color"
-"github.com/sclevine/spec"
-"github.com/sclevine/spec/report"
-"testing"
+	"bytes"
+	"testing"
+
+	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/launch"
+	"github.com/heroku/color"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/inspectimage"
+	"github.com/buildpacks/pack/internal/inspectimage/writer"
+	ilogging "github.com/buildpacks/pack/internal/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestYAML(t *testing.T) {
@@ -34,7 +36,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 local_info:
   stack: test.stack.id.local
   base_image:
-    topLayer: some-local-top-layer
+    top_layer: some-local-top-layer
     reference: some-local-run-image-reference
   run_images:
   - name: user-configured-mirror-for-local
@@ -69,7 +71,7 @@ local_info:
 remote_info:
   stack: test.stack.id.remote
   base_image:
-    topLayer: some-remote-top-layer
+    top_layer: some-remote-top-layer
     reference: some-remote-run-image-reference
   run_images:
   - name: user-configured-mirror-for-remote
@@ -277,8 +279,6 @@ remote_info:
 				assert.ContainsYAML(outBuf.String(), `"image_name": "test-image"`)
 				assert.ContainsYAML(outBuf.String(), expectedLocalOutput)
 
-				// How do we handle non-existance??
-				// TODO: lets develop a better method for this comparision
 				assert.NotContains(outBuf.String(), "test.stack.id.remote")
 				assert.ContainsYAML(outBuf.String(), expectedLocalOutput)
 			})
@@ -316,6 +316,4 @@ remote_info:
 			})
 		})
 	})
-
-
 }

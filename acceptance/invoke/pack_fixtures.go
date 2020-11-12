@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -80,7 +81,18 @@ func (m PackFixtureManager) TemplateFixtureToFile(name string, destination *os.F
 }
 
 func (m PackFixtureManager) fillTemplate(templateContents []byte, data map[string]interface{}) string {
-	tpl, err := template.New("").Parse(string(templateContents))
+	tpl, err := template.New("").
+		Funcs(template.FuncMap{
+			"StringsJoin": strings.Join,
+			"StringsDoubleQuote": func(s []string) []string {
+				result := []string{}
+				for _, str := range s {
+					result = append(result, fmt.Sprintf(`"%s"`, str))
+				}
+				return result
+			},
+		}).
+		Parse(string(templateContents))
 	m.assert.Nil(err)
 
 	var templatedContent bytes.Buffer

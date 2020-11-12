@@ -2,6 +2,7 @@ package writer
 
 import (
 	"bytes"
+
 	"github.com/pelletier/go-toml"
 )
 

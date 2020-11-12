@@ -4,16 +4,18 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"testing"
+
+	"github.com/heroku/color"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/heroku/color"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"testing"
 )
 
 func TestStructuredFormat(t *testing.T) {
@@ -29,24 +31,12 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 
 		remoteInfo *pack.ImageInfo
 		localInfo  *pack.ImageInfo
-
 	)
 
 	when("Print", func() {
 		it.Before(func() {
-			type someData struct {
-				String string
-				Bool   bool
-				Int    int
-				Nested struct {
-					String string
-				}
-			}
-
 			remoteInfo = &pack.ImageInfo{}
-
 			localInfo = &pack.ImageInfo{}
-
 			outBuf = bytes.Buffer{}
 		})
 
@@ -83,7 +73,6 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
 					err := structuredWriter.Print(logger, sharedImageInfo, nil, remoteInfo, localErr, nil)
 					assert.ErrorWithMessage(err, "preparing output for 'localErr-image': a local error occurred")
-
 				})
 			})
 
@@ -105,7 +94,6 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
-
 	})
 }
 

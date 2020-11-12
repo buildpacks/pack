@@ -2,14 +2,12 @@ package writer
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"github.com/buildpacks/pack/internal/inspectimage"
 	"strings"
 	"text/tabwriter"
 	"text/template"
 
-	"github.com/pkg/errors"
+	"github.com/buildpacks/pack/internal/inspectimage"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/style"
@@ -51,29 +49,6 @@ func (h *HumanReadable) Print(
 	return nil
 }
 
-type bom struct {
-	Remote interface{} `json:"remote"`
-	Local  interface{} `json:"local"`
-}
-
-func logBOM(remote *pack.ImageInfo, local *pack.ImageInfo, logger logging.Logger) error {
-	var remoteBOM, localBOM interface{}
-	if remote != nil {
-		remoteBOM = remote.BOM
-	}
-	if local != nil {
-		localBOM = local.BOM
-	}
-	rawBOM, err := json.Marshal(bom{
-		Remote: remoteBOM,
-		Local:  localBOM,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "writing bill of materials")
-	}
-	logger.Infof(string(rawBOM))
-	return nil
-}
 func writeImageInfo(
 	logger logging.Logger,
 	info *inspectimage.InfoDisplay,
@@ -106,12 +81,11 @@ func writeImageInfo(
 	return nil
 }
 
-func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template ) (*bytes.Buffer, error) {
+func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template) (*bytes.Buffer, error) {
 	if info == nil {
 		return bytes.NewBuffer([]byte("(not present)")), nil
 	}
-	var buf *bytes.Buffer
-	buf = bytes.NewBuffer(nil)
+	buf := bytes.NewBuffer(nil)
 	tw := tabwriter.NewWriter(buf, 0, 0, 8, ' ', 0)
 	defer func() {
 		tw.Flush()
@@ -126,7 +100,6 @@ func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template )
 
 	return buf, nil
 }
-
 
 var runImagesTemplate = `
 Run Images:

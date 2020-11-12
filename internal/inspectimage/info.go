@@ -3,17 +3,16 @@ package inspectimage
 import (
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/launch"
+
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 )
 
-
 type GeneralInfo struct {
 	Name            string
 	RunImageMirrors []config.RunImage
 }
-
 
 type RunImageMirrorDisplay struct {
 	Name           string `json:"name" yaml:"name" toml:"name"`
@@ -26,33 +25,33 @@ type StackDisplay struct {
 }
 
 type ProcessDisplay struct {
-	Type string `json:"type" yaml:"type" toml:"type"`
-	Shell string `json:"shell" yaml:"shell" toml:"shell"`
-	Command string `json:"command" yaml:"command" toml:"command"`
-	Default bool `json:"default" yaml:"default" toml:"default"`
-	Args []string `json:"args" yaml:"args" toml:"args"`
+	Type    string   `json:"type" yaml:"type" toml:"type"`
+	Shell   string   `json:"shell" yaml:"shell" toml:"shell"`
+	Command string   `json:"command" yaml:"command" toml:"command"`
+	Default bool     `json:"default" yaml:"default" toml:"default"`
+	Args    []string `json:"args" yaml:"args" toml:"args"`
 }
 
 type BaseDisplay struct {
-	TopLayer  string `json:"topLayer" yaml:"topLayer" toml:"topLayer"`
+	TopLayer  string `json:"top_layer" yaml:"top_layer" toml:"top_layer"`
 	Reference string `json:"reference" yaml:"reference" toml:"reference"`
 }
 
 type InfoDisplay struct {
-	StackID         string                     `json:"stack" yaml:"stack" toml:"stack"`
-	Base            BaseDisplay `json:"base_image" yaml:"base_image" toml:"base_image"`
-	RunImageMirrors []RunImageMirrorDisplay    `json:"run_images" yaml:"run_images" toml:"run_images"`
-	Buildpacks      []dist.BuildpackInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
-	Processes       []ProcessDisplay           `json:"processes" yaml:"processes" toml:"processes"`
+	StackID         string                  `json:"stack" yaml:"stack" toml:"stack"`
+	Base            BaseDisplay             `json:"base_image" yaml:"base_image" toml:"base_image"`
+	RunImageMirrors []RunImageMirrorDisplay `json:"run_images" yaml:"run_images" toml:"run_images"`
+	Buildpacks      []dist.BuildpackInfo    `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
+	Processes       []ProcessDisplay        `json:"processes" yaml:"processes" toml:"processes"`
 }
 
 type InspectOutput struct {
-	ImageName string `json:"image_name" yaml:"image_name" toml:"image_name"`
-	Remote *InfoDisplay `json:"remote_info" yaml:"remote_info" toml:"remote_info"`
-	Local  *InfoDisplay `json:"local_info" yaml:"local_info" toml:"local_info"`
+	ImageName string       `json:"image_name" yaml:"image_name" toml:"image_name"`
+	Remote    *InfoDisplay `json:"remote_info" yaml:"remote_info" toml:"remote_info"`
+	Local     *InfoDisplay `json:"local_info" yaml:"local_info" toml:"local_info"`
 }
 
-func NewInfoDisplay(info *pack.ImageInfo , generalInfo GeneralInfo) *InfoDisplay {
+func NewInfoDisplay(info *pack.ImageInfo, generalInfo GeneralInfo) *InfoDisplay {
 	if info == nil {
 		return nil
 	}
@@ -85,7 +84,7 @@ func GetConfigMirrors(info *pack.ImageInfo, imageMirrors []config.RunImage) []st
 
 func displayBase(base lifecycle.RunImageMetadata) BaseDisplay {
 	return BaseDisplay{
-		TopLayer: base.TopLayer,
+		TopLayer:  base.TopLayer,
 		Reference: base.Reference,
 	}
 }
@@ -110,7 +109,7 @@ func displayMirrors(info *pack.ImageInfo, generalInfo GeneralInfo) []RunImageMir
 	// Add run image as named by the stack.
 	if info.Stack.RunImage.Image != "" {
 		result = append(result, RunImageMirrorDisplay{
-			Name: info.Stack.RunImage.Image,
+			Name:           info.Stack.RunImage.Image,
 			UserConfigured: false,
 		})
 	}
@@ -127,12 +126,11 @@ func displayMirrors(info *pack.ImageInfo, generalInfo GeneralInfo) []RunImageMir
 	return result
 }
 
-
 func displayBuildpacks(buildpacks []lifecycle.Buildpack) []dist.BuildpackInfo {
 	result := []dist.BuildpackInfo{}
 	for _, buildpack := range buildpacks {
 		result = append(result, dist.BuildpackInfo{
-			ID: buildpack.ID,
+			ID:      buildpack.ID,
 			Version: buildpack.Version,
 		})
 	}
@@ -161,11 +159,11 @@ func convertToDisplay(proc launch.Process, isDefault bool) ProcessDisplay {
 		shell = "bash"
 	}
 	result := ProcessDisplay{
-		Type: proc.Type,
-		Shell: shell,
+		Type:    proc.Type,
+		Shell:   shell,
 		Command: proc.Command,
 		Default: isDefault,
-		Args : proc.Args,
+		Args:    proc.Args,
 	}
 
 	return result

@@ -2,18 +2,20 @@ package writer_test
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/heroku/color"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/heroku/color"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"testing"
 )
 
 func TestTOML(t *testing.T) {
@@ -34,7 +36,7 @@ func testTOML(t *testing.T, when spec.G, it spec.S) {
 stack = 'test.stack.id.local'
 
 [local_info.base_image]
-topLayer = 'some-local-top-layer'
+top_layer = 'some-local-top-layer'
 reference = 'some-local-run-image-reference'
 
 [[local_info.run_images]]
@@ -86,7 +88,7 @@ args = [
 stack = 'test.stack.id.remote'
 
 [remote_info.base_image]
-topLayer = 'some-remote-top-layer'
+top_layer = 'some-remote-top-layer'
 reference = 'some-remote-run-image-reference'
 
 [[remote_info.run_images]]
@@ -344,6 +346,4 @@ args = [
 			})
 		})
 	})
-
-
 }

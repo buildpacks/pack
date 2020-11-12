@@ -2,6 +2,7 @@ package writer
 
 import (
 	"bytes"
+
 	"gopkg.in/yaml.v3"
 )
 

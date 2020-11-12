@@ -1,6 +1,5 @@
 package fakes
 
-
 import (
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
 )
@@ -10,12 +9,12 @@ type FakeInspectImageWriterFactory struct {
 	ErrorForWriter  error
 
 	ReceivedForKind string
-	ReceivedForBOM bool
+	ReceivedForBOM  bool
 }
 
-func (f *FakeInspectImageWriterFactory) Writer(kind string, BOM bool) (writer.InspectImageWriter, error) {
+func (f *FakeInspectImageWriterFactory) Writer(kind string, bom bool) (writer.InspectImageWriter, error) {
 	f.ReceivedForKind = kind
-	f.ReceivedForBOM = BOM
+	f.ReceivedForBOM = bom
 
 	return f.ReturnForWriter, f.ErrorForWriter
 }

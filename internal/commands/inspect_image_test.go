@@ -3,13 +3,15 @@ package commands_test
 import (
 	"bytes"
 	"errors"
+	"testing"
+
 	"github.com/buildpacks/lifecycle"
+
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	h "github.com/buildpacks/pack/testhelpers"
-	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -103,18 +105,17 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 
 		it("passes configured run image mirrors to the writer", func() {
 			cfg = config.Config{
-				RunImages:           []config.RunImage{
+				RunImages: []config.RunImage{{
+					Image:   "image-name",
+					Mirrors: []string{"first-mirror", "second-mirror2"},
+				},
 					{
-						"image-name",
-						[]string{"first-mirror", "second-mirror2"},
-					},
-					{
-						"image-name2",
-						[]string{"other-mirror"},
+						Image:   "image-name2",
+						Mirrors: []string{"other-mirror"},
 					},
 				},
-				TrustedBuilders:     nil,
-				Registries:          nil,
+				TrustedBuilders: nil,
+				Registries:      nil,
 			}
 
 			inspectImageWriter := newDefaultInspectImageWriter()
@@ -132,7 +133,6 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("error cases", func() {
-
 			when("client returns an error when inspecting", func() {
 				it("passes errors to the Writer", func() {
 					inspectImageWriter := newDefaultInspectImageWriter()
