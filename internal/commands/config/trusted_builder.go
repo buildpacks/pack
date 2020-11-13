@@ -25,12 +25,19 @@ func trustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *c
 	}
 
 	addCmd := generateAdd("trusted-builder", logger, cfg, cfgPath, addTrustedBuilder)
+	addCmd.Long = "Trust builder.\n\nWhen building with this builder, all lifecycle phases will be run in a single container using the builder image."
+	addCmd.Example = "pack config trusted-builder add cnbs/sample-stack-run:bionic"
 	cmd.AddCommand(addCmd)
 
 	rmCmd := generateRemove("trusted-builder", logger, cfg, cfgPath, removeTrustedBuilder)
+	rmCmd.Long = "Stop trusting builder.\n\nWhen building with this builder, all lifecycle phases will be no longer be run in a single container using the builder image."
+	rmCmd.Example = "pack config trusted-builder remove cnbs/sample-stack-run:bionic"
 	cmd.AddCommand(rmCmd)
 
-	cmd.AddCommand(generateListCmd("trusted-builders", logger, cfg, listTrustedBuilders))
+	listCmd := generateListCmd("trusted-builders", logger, cfg, listTrustedBuilders)
+	listCmd.Long = "List Trusted Builders.\n\nShow the builders that are either trusted by default or have been explicitly trusted locally using `trust-builder`"
+	listCmd.Example = "pack config trusted-builder list"
+	cmd.AddCommand(listCmd)
 	return cmd
 }
 

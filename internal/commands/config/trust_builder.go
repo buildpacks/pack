@@ -17,6 +17,7 @@ func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 		Short:   "Trust builder",
 		Long:    "Trust builder.\n\nWhen building with this builder, all lifecycle phases will be run in a single container using the builder image.",
 		Example: "pack trust-builder cnbs/sample-stack-run:bionic",
+		Hidden:  true,
 		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
 			commands.DeprecationWarning(logger, "trust-builder", "config trusted-builder add")
 			configPath, err := config.DefaultConfigPath()
