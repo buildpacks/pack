@@ -14,7 +14,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.4.3 // indirect
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.3
 	github.com/google/go-containerregistry v0.1.4
 	github.com/google/go-github/v30 v30.1.0
 	github.com/heroku/color v0.0.6
