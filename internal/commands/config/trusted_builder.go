@@ -8,15 +8,15 @@ import (
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/style"
 
+	"github.com/spf13/cobra"
+
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
-	"github.com/spf13/cobra"
 )
 
 func trustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trusted-builder",
-		Args:  cobra.ExactArgs(1),
 		Short: "Interact with trusted builders",
 		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
 			listTrustedBuilders(logger, cfg)

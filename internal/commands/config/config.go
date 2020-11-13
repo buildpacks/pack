@@ -5,9 +5,10 @@ import (
 
 	"github.com/buildpacks/pack/internal/commands"
 
+	"github.com/spf13/cobra"
+
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
-	"github.com/spf13/cobra"
 )
 
 func Config(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {

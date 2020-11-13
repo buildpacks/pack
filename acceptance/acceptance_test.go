@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/pack/internal/style"
+
 	pubcfg "github.com/buildpacks/pack/config"
 
 	"github.com/ghodss/yaml"
@@ -42,7 +44,6 @@ import (
 	"github.com/buildpacks/pack/acceptance/invoke"
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/cache"
-	"github.com/buildpacks/pack/internal/style"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -179,12 +180,75 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
+	when("pack config", func() {
+		when("trusted-builder", func() {
+			it("prints list of trusted builders", func() {
+				output := pack.RunSuccessfully("config", "trusted-builder")
+
+				assertOutput := assertions.NewOutputAssertionManager(t, output)
+				assertOutput.IncludesTrustedBuildersHeading()
+				assertOutput.IncludesHerokuBuilder()
+				assertOutput.IncludesGoogleBuilder()
+				assertOutput.IncludesPaketoBuilders()
+				assert.NotContains(output, "has been deprecated")
+			})
+
+			when("add", func() {
+				it("sets the builder as trusted in ~/.pack/config.toml", func() {
+					builderName := "some-builder" + h.RandString(10)
+
+					output := pack.RunSuccessfully("config", "trusted-builder", "add", builderName)
+					assert.NotContains(output, "has been deprecated")
+					assert.Contains(pack.ConfigFileContents(), builderName)
+				})
+			})
+
+			when("remove", func() {
+				it("removes the previously trusted builder from ~/${PACK_HOME}/config.toml", func() {
+					builderName := "some-builder" + h.RandString(10)
+
+					pack.JustRunSuccessfully("config", "trusted-builder", "add", builderName)
+
+					assert.Contains(pack.ConfigFileContents(), builderName)
+
+					output := pack.RunSuccessfully("config", "trusted-builder", "remove", builderName)
+					assert.NotContains(output, "has been deprecated")
+
+					assert.NotContains(pack.ConfigFileContents(), builderName)
+				})
+			})
+
+			when("list", func() {
+				it("prints list of trusted builders", func() {
+					output := pack.RunSuccessfully("config", "trusted-builder", "list")
+
+					assertOutput := assertions.NewOutputAssertionManager(t, output)
+					assertOutput.IncludesTrustedBuildersHeading()
+					assertOutput.IncludesHerokuBuilder()
+					assertOutput.IncludesGoogleBuilder()
+					assertOutput.IncludesPaketoBuilders()
+					assert.NotContains(output, "has been deprecated")
+				})
+
+				it("shows a builder trusted by pack config trusted-builder add", func() {
+					builderName := "some-builder" + h.RandString(10)
+
+					pack.JustRunSuccessfully("config", "trusted-builder", "add", builderName)
+
+					output := pack.RunSuccessfully("config", "trusted-builder", "list")
+					assert.Contains(output, builderName)
+				})
+			})
+		})
+	})
+
 	when("trust-builder", func() {
 		it("sets the builder as trusted in ~/.pack/config.toml", func() {
-			h.SkipUnless(t, pack.Supports("trust-builder"), "pack does not support 'trust-builder'")
 			builderName := "some-builder" + h.RandString(10)
 
-			pack.JustRunSuccessfully("trust-builder", builderName)
+			output := pack.RunSuccessfully("trust-builder", builderName)
+			assertOutput := assertions.NewOutputAssertionManager(t, output)
+			assertOutput.IncludesDeprecationWarning()
 
 			assert.Contains(pack.ConfigFileContents(), builderName)
 		})
@@ -192,27 +256,21 @@ func testWithoutSpecificBuilderRequirement(
 
 	when("untrust-builder", func() {
 		it("removes the previously trusted builder from ~/${PACK_HOME}/config.toml", func() {
-			h.SkipUnless(t, pack.Supports("untrust-builder"), "pack does not support 'untrust-builder'")
 			builderName := "some-builder" + h.RandString(10)
 
 			pack.JustRunSuccessfully("trust-builder", builderName)
 
 			assert.Contains(pack.ConfigFileContents(), builderName)
 
-			pack.JustRunSuccessfully("untrust-builder", builderName)
+			output := pack.RunSuccessfully("untrust-builder", builderName)
+			assertOutput := assertions.NewOutputAssertionManager(t, output)
+			assertOutput.IncludesDeprecationWarning()
 
 			assert.NotContains(pack.ConfigFileContents(), builderName)
 		})
 	})
 
 	when("list-trusted-builders", func() {
-		it.Before(func() {
-			h.SkipUnless(t,
-				pack.Supports("list-trusted-builders"),
-				"pack does not support 'list-trusted-builders",
-			)
-		})
-
 		it("shows default builders from pack suggest-builders", func() {
 			output := pack.RunSuccessfully("list-trusted-builders")
 
@@ -221,6 +279,7 @@ func testWithoutSpecificBuilderRequirement(
 			assertOutput.IncludesHerokuBuilder()
 			assertOutput.IncludesGoogleBuilder()
 			assertOutput.IncludesPaketoBuilders()
+			assertOutput.IncludesDeprecationWarning()
 		})
 
 		it("shows a builder trusted by pack trust-builder", func() {
@@ -770,7 +829,10 @@ func testAcceptance(
 						pack.JustRunSuccessfully("set-default-builder", builderName)
 
 						var trustBuilder bool
-						if pack.Supports("trust-builder") {
+						if pack.Supports("config trusted-builder add") {
+							pack.JustRunSuccessfully("config", "trusted-builder", "add", builderName)
+							trustBuilder = true
+						} else if pack.Supports("trust-builder") {
 							pack.JustRunSuccessfully("trust-builder", builderName)
 							trustBuilder = true
 						}
@@ -2017,7 +2079,12 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 				it("indicates builder is trusted", func() {
 					h.SkipUnless(t, pack.Supports("trust-builder"), "version of pack doesn't trust-builder command")
 
-					pack.JustRunSuccessfully("trust-builder", builderName)
+					if pack.Supports("config trusted-builder add") {
+						pack.JustRunSuccessfully("config", "trusted-builder", "add", builderName)
+					} else {
+						pack.JustRunSuccessfully("trust-builder", builderName)
+					}
+
 					pack.JustRunSuccessfully(
 						"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
 					)
@@ -2059,7 +2126,11 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 				var buildRunImage func(string, string, string)
 
 				it.Before(func() {
-					pack.JustRunSuccessfully("trust-builder", builderName)
+					if pack.Supports("config trusted-builder add") {
+						pack.JustRunSuccessfully("config", "trusted-builder", "add", builderName)
+					} else {
+						pack.JustRunSuccessfully("trust-builder", builderName)
+					}
 
 					repoName = registryConfig.RepoName("some-org/" + h.RandString(10))
 					runBefore = registryConfig.RepoName("run-before/" + h.RandString(10))

@@ -1,9 +1,10 @@
 package config
 
 import (
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	"github.com/buildpacks/pack/internal/commands"
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"

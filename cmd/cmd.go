@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	cmdConfig "github.com/buildpacks/pack/internal/commands/config"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+
+	cmdConfig "github.com/buildpacks/pack/internal/commands/config"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/buildpackage"
@@ -107,6 +108,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger, packHome))
 
+	rootCmd.AddCommand(cmdConfig.Config(logger, cfg, cfgPath))
 	rootCmd.AddCommand(stack.Stack(logger))
 
 	rootCmd.Version = pack.Version
