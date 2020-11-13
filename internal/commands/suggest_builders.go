@@ -18,7 +18,7 @@ type SuggestedBuilder struct {
 	DefaultDescription string
 }
 
-var suggestedBuilders = []SuggestedBuilder{
+var SuggestedBuilders = []SuggestedBuilder{
 	{
 		Vendor:             "Google",
 		Image:              "gcr.io/buildpacks/builder:v1",
@@ -70,7 +70,7 @@ func suggestSettingBuilder(logger logging.Logger, inspector BuilderInspector) {
 }
 
 func suggestBuilders(logger logging.Logger, client BuilderInspector) {
-	WriteSuggestedBuilder(logger, client, suggestedBuilders)
+	WriteSuggestedBuilder(logger, client, SuggestedBuilders)
 }
 
 func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, builders []SuggestedBuilder) {
@@ -118,7 +118,7 @@ func getBuilderDescription(builder SuggestedBuilder, inspector BuilderInspector)
 }
 
 func IsSuggestedBuilder(builder string) bool {
-	for _, sugBuilder := range suggestedBuilders {
+	for _, sugBuilder := range SuggestedBuilders {
 		if builder == sugBuilder.Image {
 			return true
 		}

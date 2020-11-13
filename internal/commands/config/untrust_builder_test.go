@@ -1,4 +1,4 @@
-package commands_test
+package config_test
 
 import (
 	"bytes"
@@ -8,11 +8,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	cmdConfig "github.com/buildpacks/pack/internal/commands/config"
+
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/style"
@@ -57,7 +58,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		when("no builder is provided", func() {
 			it("prints usage", func() {
 				cfg := configManager.configWithTrustedBuilders()
-				command := commands.UntrustBuilder(logger, cfg)
+				command := cmdConfig.UntrustBuilder(logger, cfg)
 				command.SetArgs([]string{})
 				command.SetOut(&outBuf)
 
@@ -72,7 +73,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				builderName := "some-builder"
 
 				cfg := configManager.configWithTrustedBuilders(builderName)
-				command := commands.UntrustBuilder(logger, cfg)
+				command := cmdConfig.UntrustBuilder(logger, cfg)
 				command.SetArgs([]string{builderName})
 
 				h.AssertNil(t, command.Execute())
@@ -92,7 +93,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				stillTrustedBuilder := "very/safe/builder"
 
 				cfg := configManager.configWithTrustedBuilders(untrustBuilder, stillTrustedBuilder)
-				command := commands.UntrustBuilder(logger, cfg)
+				command := cmdConfig.UntrustBuilder(logger, cfg)
 				command.SetArgs([]string{untrustBuilder})
 
 				h.AssertNil(t, command.Execute())
@@ -110,7 +111,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				stillTrustedBuilder := "very/safe/builder"
 
 				cfg := configManager.configWithTrustedBuilders(stillTrustedBuilder)
-				command := commands.UntrustBuilder(logger, cfg)
+				command := cmdConfig.UntrustBuilder(logger, cfg)
 				command.SetArgs([]string{neverTrustedBuilder})
 
 				h.AssertNil(t, command.Execute())
@@ -130,7 +131,7 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		when("builder is a suggested builder", func() {
 			it("does nothing and reports that ", func() {
 				builder := "paketobuildpacks/builder:base"
-				command := commands.UntrustBuilder(logger, config.Config{})
+				command := cmdConfig.UntrustBuilder(logger, config.Config{})
 				command.SetArgs([]string{builder})
 
 				err := command.Execute()

@@ -1,4 +1,4 @@
-package commands_test
+package config_test
 
 import (
 	"bytes"
@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	cmdConfig "github.com/buildpacks/pack/internal/commands/config"
+
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
@@ -38,7 +39,7 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		var err error
 
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.TrustBuilder(logger, config.Config{})
+		command = cmdConfig.TrustBuilder(logger, config.Config{})
 
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
@@ -56,8 +57,7 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		when("no builder is provided", func() {
 			it("prints usage", func() {
 				command.SetArgs([]string{})
-				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Usage:")
+				h.AssertError(t, command.Execute(), "accepts 1 arg(s)")
 			})
 		})
 

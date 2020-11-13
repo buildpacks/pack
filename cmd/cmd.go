@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	cmdConfig "github.com/buildpacks/pack/internal/commands/config"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -73,9 +74,12 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient, writer.NewFactory()))
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
-	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg))
-	rootCmd.AddCommand(commands.UntrustBuilder(logger, cfg))
-	rootCmd.AddCommand(commands.ListTrustedBuilders(logger, cfg))
+	//nolint:staticcheck
+	rootCmd.AddCommand(cmdConfig.TrustBuilder(logger, cfg))
+	//nolint:staticcheck
+	rootCmd.AddCommand(cmdConfig.UntrustBuilder(logger, cfg))
+	//nolint:staticcheck
+	rootCmd.AddCommand(cmdConfig.ListTrustedBuilders(logger, cfg))
 	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
 
 	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, &packClient, buildpackage.NewConfigReader()))
