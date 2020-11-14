@@ -576,7 +576,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string, pullPolicy config.PullPolicy, publish bool, registry string) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
 	order = dist.Order{{Group: []dist.BuildpackRef{}}}
 	for _, bp := range declaredBPs {
-		locatorType, err := buildpack.GetLocatorType(bp, builderBPs)
+		locatorType, err := buildpack.GetLocatorType(bp, "", builderBPs)
 		if err != nil {
 			return nil, nil, err
 		}

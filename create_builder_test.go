@@ -30,6 +30,7 @@ import (
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/image"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -98,7 +99,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 
 			opts = pack.CreateBuilderOptions{
-				BuilderName: "some/builder",
+				RelativeBaseDir: "/",
+				BuilderName:     "some/builder",
 				Config: pubbldr.Config{
 					Description: "Some description",
 					Buildpacks: []pubbldr.BuildpackConfig{
@@ -405,7 +407,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					prepareFetcherWithBuildImage()
 					prepareFetcherWithRunImages()
 					opts.Config.Lifecycle.URI = "fake"
-					mockDownloader.EXPECT().Download(gomock.Any(), "fake").Return(nil, errors.New("error here")).AnyTimes()
+					mockDownloader.EXPECT().Download(gomock.Any(), "file:///fake").Return(nil, errors.New("error here")).AnyTimes()
 
 					err := subject.CreateBuilder(context.TODO(), opts)
 					h.AssertError(t, err, "downloading lifecycle")
@@ -417,7 +419,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					prepareFetcherWithBuildImage()
 					prepareFetcherWithRunImages()
 					opts.Config.Lifecycle.URI = "fake"
-					mockDownloader.EXPECT().Download(gomock.Any(), "fake").Return(blob.NewBlob(filepath.Join("testdata", "empty-file")), nil).AnyTimes()
+					mockDownloader.EXPECT().Download(gomock.Any(), "file:///fake").Return(blob.NewBlob(filepath.Join("testdata", "empty-file")), nil).AnyTimes()
 
 					err := subject.CreateBuilder(context.TODO(), opts)
 					h.AssertError(t, err, "invalid lifecycle")
@@ -654,10 +656,15 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
 				directoryPath := "testdata/buildpack"
+				opts.RelativeBaseDir = ""
 				opts.Config.Buildpacks[0].URI = directoryPath
-				mockDownloader.EXPECT().Download(gomock.Any(), directoryPath).Return(blob.NewBlob(directoryPath), nil).AnyTimes()
 
-				err := subject.CreateBuilder(context.TODO(), opts)
+				absURI, err := paths.ToAbsolute(directoryPath, "")
+				h.AssertNil(t, err)
+
+				mockDownloader.EXPECT().Download(gomock.Any(), absURI).Return(blob.NewBlob(directoryPath), nil).AnyTimes()
+
+				err = subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
 			})
 		})

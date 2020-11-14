@@ -17,12 +17,16 @@ import (
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/layer"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 )
 
 // CreateBuilderOptions is a configuration object used to change the behavior of
 // CreateBuilder.
 type CreateBuilderOptions struct {
+	// The base directory to use to resolve relative assets
+	RelativeBaseDir string
+
 	// Name of the builder.
 	BuilderName string
 
@@ -150,7 +154,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 		)
 	}
 
-	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle, os)
+	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle, opts.RelativeBaseDir, os)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch lifecycle")
 	}
@@ -160,7 +164,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	return bldr, nil
 }
 
-func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig, os string) (builder.Lifecycle, error) {
+func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig, relativeBaseDir, os string) (builder.Lifecycle, error) {
 	if config.Version != "" && config.URI != "" {
 		return nil, errors.Errorf(
 			"%s can only declare %s or %s, not both",
@@ -178,7 +182,12 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 
 		uri = uriFromLifecycleVersion(*v, os)
 	case config.URI != "":
-		uri = config.URI
+		absURI, err := paths.ToAbsolute(config.URI, relativeBaseDir)
+		if err != nil {
+			return nil, err
+		}
+
+		uri = absURI
 	default:
 		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os)
 	}
@@ -198,7 +207,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 
 func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	for _, b := range opts.Config.Buildpacks {
-		c.logger.Debugf("Looking up buildpack %s", style.Symbol(b.FullName()))
+		c.logger.Debugf("Looking up buildpack %s", style.Symbol(b.DisplayString()))
 
 		var err error
 		var locatorType buildpack.LocatorType
@@ -207,7 +216,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 			b.URI = b.ImageName
 			locatorType = buildpack.PackageLocator
 		} else {
-			locatorType, err = buildpack.GetLocatorType(b.URI, []dist.BuildpackInfo{})
+			locatorType, err = buildpack.GetLocatorType(b.URI, opts.RelativeBaseDir, []dist.BuildpackInfo{})
 			if err != nil {
 				return err
 			}
@@ -241,9 +250,15 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrapf(err, "extracting from registry %s", style.Symbol(b.URI))
 			}
 		case buildpack.URILocator:
+			absPath, err := paths.ToAbsolute(b.URI, opts.RelativeBaseDir)
+			if err != nil {
+				return errors.Wrapf(err, "making absolute: %s", style.Symbol(b.URI))
+			}
+			b.URI = absPath
+
 			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(b.URI))
 
-			err := ensureBPSupport(b.URI)
+			err = ensureBPSupport(b.URI)
 			if err != nil {
 				return err
 			}

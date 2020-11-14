@@ -155,6 +155,10 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			locator:      "example/registry-cnb",
 			expectedType: buildpack.RegistryLocator,
 		},
+		{
+			locator:      "cnbs/sample-package@hello-universe",
+			expectedType: buildpack.InvalidLocator,
+		},
 	} {
 		tc := tc
 
@@ -169,7 +173,7 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 
 		when(desc, func() {
 			it(fmt.Sprintf("should return %s", tc.expectedType), func() {
-				actualType, actualErr := buildpack.GetLocatorType(tc.locator, tc.builderBPs)
+				actualType, actualErr := buildpack.GetLocatorType(tc.locator, "", tc.builderBPs)
 
 				if tc.expectedErr == "" {
 					h.AssertNil(t, actualErr)

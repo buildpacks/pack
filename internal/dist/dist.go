@@ -17,6 +17,14 @@ type ImageOrURI struct {
 	ImageRef
 }
 
+func (c *ImageOrURI) DisplayString() string {
+	if c.BuildpackURI.URI != "" {
+		return c.BuildpackURI.URI
+	}
+
+	return c.ImageRef.ImageName
+}
+
 type Platform struct {
 	OS string `toml:"os"`
 }
