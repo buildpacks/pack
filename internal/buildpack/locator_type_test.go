@@ -80,6 +80,14 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			expectedType: buildpack.URILocator,
 		},
 		{
+			locator:      "localhost:1234/example/package-cnb",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
+			locator:      "cnbs/some-bp:latest",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
 			locator:      "docker://cnbs/some-bp",
 			expectedType: buildpack.PackageLocator,
 		},
@@ -147,10 +155,6 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			locator:      "example/registry-cnb",
 			expectedType: buildpack.RegistryLocator,
 		},
-		{
-			locator:      "localhost:1234/example/package-cnb",
-			expectedType: buildpack.PackageLocator,
-		},
 	} {
 		tc := tc
 
@@ -164,7 +168,7 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		when(desc, func() {
-			it(fmt.Sprintf("should return '%s'", tc.expectedType), func() {
+			it(fmt.Sprintf("should return %s", tc.expectedType), func() {
 				actualType, actualErr := buildpack.GetLocatorType(tc.locator, tc.builderBPs)
 
 				if tc.expectedErr == "" {

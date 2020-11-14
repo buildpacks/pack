@@ -3,6 +3,7 @@ package buildpack
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -15,12 +16,13 @@ import (
 type LocatorType int
 
 const (
-	InvalidLocator = iota
+	InvalidLocator LocatorType = iota
 	FromBuilderLocator
 	URILocator
 	IDLocator
 	PackageLocator
 	RegistryLocator
+	// added entries here should also be added to `String()`
 )
 
 const fromBuilderPrefix = "urn:cnb:builder"
@@ -35,6 +37,7 @@ func (l LocatorType) String() string {
 		"URILocator",
 		"IDLocator",
 		"PackageLocator",
+		"RegistryLocator",
 	}[l]
 }
 
@@ -47,7 +50,7 @@ func GetLocatorType(locator string, buildpacksFromBuilder []dist.BuildpackInfo) 
 	}
 
 	if strings.HasPrefix(locator, fromBuilderPrefix+":") || strings.HasPrefix(locator, deprecatedFromBuilderPrefix+":") {
-		if !builderMatchFound(locator, buildpacksFromBuilder) {
+		if !isFoundInBuilder(locator, buildpacksFromBuilder) {
 			return InvalidLocator, fmt.Errorf("%s is not a valid identifier", style.Symbol(locator))
 		}
 		return IDLocator, nil
@@ -73,20 +76,10 @@ func HasDockerLocator(locator string) bool {
 	return strings.HasPrefix(locator, fromDockerPrefix)
 }
 
-func builderMatchFound(locator string, candidates []dist.BuildpackInfo) bool {
+func isFoundInBuilder(locator string, candidates []dist.BuildpackInfo) bool {
 	id, version := ParseIDLocator(locator)
 	for _, c := range candidates {
 		if id == c.ID && (version == "" || version == c.Version) {
-			return true
-		}
-	}
-	return false
-}
-
-func hasHostPortPrefix(locator string) bool {
-	if strings.Contains(locator, "/") {
-		prefix := strings.Split(locator, "/")[0]
-		if strings.Contains(prefix, ":") {
 			return true
 		}
 	}
@@ -98,26 +91,42 @@ func parseNakedLocator(locator string, buildpacksFromBuilder []dist.BuildpackInf
 	// the following characteristics in order:
 	//   1. Does it match a path on the file system
 	//   2. Does it match a buildpack ID in the builder
-	//   3. Does it look like a Docker ref
-	//   4. Does it look like a Buildpack Registry ID
+	//   3. Does it look like a Buildpack Registry ID
+	//   4. Does it look like a Docker ref
 
 	if _, err := os.Stat(locator); err == nil {
 		return URILocator
 	}
 
-	if builderMatchFound(locator, buildpacksFromBuilder) {
+	if isFoundInBuilder(locator, buildpacksFromBuilder) {
 		return IDLocator
 	}
 
-	if hasHostPortPrefix(locator) || strings.Contains(locator, "@sha") || strings.Count(locator, "/") > 1 {
-		if _, err := name.ParseReference(locator); err == nil {
-			return PackageLocator
-		}
-	}
-
-	if strings.Count(locator, "/") == 1 {
+	if canBeRegistryRef(locator) {
 		return RegistryLocator
 	}
 
+	if canBePackageRef(locator) {
+		return PackageLocator
+	}
+
 	return InvalidLocator
+}
+
+var (
+	// https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+	semverPattern   = `(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
+	registryPattern = regexp.MustCompile(`^[a-z0-9\-\.]+\/[a-z0-9\-\.]+(?:@` + semverPattern + `)?$`)
+)
+
+func canBePackageRef(locator string) bool {
+	if _, err := name.ParseReference(locator); err == nil {
+		return true
+	}
+
+	return false
+}
+
+func canBeRegistryRef(locator string) bool {
+	return registryPattern.MatchString(locator)
 }
