@@ -132,7 +132,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 	when("dependencies have issues", func() {
 		when("dependencies include a flawed packaged buildpack file", func() {
 			it("should fail", func() {
-				dependencyPath := "fakePath.file"
+				dependencyPath := "http://example.com/flawed.file"
 				mockDownloader.EXPECT().Download(gomock.Any(), dependencyPath).Return(blob.NewBlob("no-file.txt"), nil).AnyTimes()
 
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()

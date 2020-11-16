@@ -7,10 +7,12 @@ import (
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/layer"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 )
 
@@ -25,6 +27,9 @@ const (
 // PackageBuildpackOptions is a configuration object used to define
 // the behavior of PackageBuildpack.
 type PackageBuildpackOptions struct {
+	// The base director to resolve relative assest from
+	RelativeBaseDir string
+
 	// The name of the output buildpack artifact.
 	Name string
 
@@ -69,12 +74,12 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return errors.New("buildpack URI must be provided")
 	}
 
-	blob, err := c.downloader.Download(ctx, bpURI)
+	mainBlob, err := c.downloadBuildpackFromURI(ctx, bpURI, opts.RelativeBaseDir)
 	if err != nil {
-		return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bpURI))
+		return err
 	}
 
-	bp, err := dist.BuildpackFromRootBlob(blob, writerFactory)
+	bp, err := dist.BuildpackFromRootBlob(mainBlob, writerFactory)
 	if err != nil {
 		return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bpURI))
 	}
@@ -84,8 +89,47 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	for _, dep := range opts.Config.Dependencies {
 		var depBPs []dist.Buildpack
 
-		if dep.URI != "" {
-			if buildpack.HasDockerLocator(dep.URI) {
+		if dep.ImageName != "" {
+			c.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
+			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
+			if err != nil {
+				return err
+			}
+
+			depBPs = append([]dist.Buildpack{mainBP}, deps...)
+		} else if dep.URI != "" {
+			locatorType, err := buildpack.GetLocatorType(dep.URI, opts.RelativeBaseDir, nil)
+			if err != nil {
+				return err
+			}
+
+			switch locatorType {
+			case buildpack.URILocator:
+				depBlob, err := c.downloadBuildpackFromURI(ctx, dep.URI, opts.RelativeBaseDir)
+				if err != nil {
+					return err
+				}
+
+				isOCILayout, err := buildpackage.IsOCILayoutBlob(depBlob)
+				if err != nil {
+					return errors.Wrap(err, "inspecting buildpack blob")
+				}
+
+				if isOCILayout {
+					mainBP, deps, err := buildpackage.BuildpacksFromOCILayoutBlob(depBlob)
+					if err != nil {
+						return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(dep.URI))
+					}
+
+					depBPs = append([]dist.Buildpack{mainBP}, deps...)
+				} else {
+					depBP, err := dist.BuildpackFromRootBlob(depBlob, writerFactory)
+					if err != nil {
+						return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
+					}
+					depBPs = []dist.Buildpack{depBP}
+				}
+			case buildpack.PackageLocator:
 				imageName := buildpack.ParsePackageLocator(dep.URI)
 				c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
 				mainBP, deps, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
@@ -94,40 +138,11 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 				}
 
 				depBPs = append([]dist.Buildpack{mainBP}, deps...)
-			} else {
-				blob, err := c.downloader.Download(ctx, dep.URI)
-				if err != nil {
-					return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(dep.URI))
-				}
-
-				isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
-				if err != nil {
-					return errors.Wrap(err, "inspecting buildpack blob")
-				}
-
-				if isOCILayout {
-					mainBP, deps, err := buildpackage.BuildpacksFromOCILayoutBlob(blob)
-					if err != nil {
-						return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(dep.URI))
-					}
-
-					depBPs = append([]dist.Buildpack{mainBP}, deps...)
-				} else {
-					depBP, err := dist.BuildpackFromRootBlob(blob, writerFactory)
-					if err != nil {
-						return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(dep.URI))
-					}
-					depBPs = []dist.Buildpack{depBP}
-				}
+			case buildpack.InvalidLocator:
+				return errors.Errorf("invalid locator %s", style.Symbol(dep.URI))
+			default:
+				return errors.Errorf("unsupported locator type %s", style.Symbol(locatorType.String()))
 			}
-		} else if dep.ImageName != "" {
-			c.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
-			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
-			if err != nil {
-				return err
-			}
-
-			depBPs = append([]dist.Buildpack{mainBP}, deps...)
 		}
 
 		for _, depBP := range depBPs {
@@ -144,6 +159,22 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	default:
 		return errors.Errorf("unknown format: %s", style.Symbol(opts.Format))
 	}
+}
+
+func (c *Client) downloadBuildpackFromURI(ctx context.Context, uri, relativeBaseDir string) (blob.Blob, error) {
+	absPath, err := paths.ToAbsolute(uri, relativeBaseDir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "making absolute: %s", style.Symbol(uri))
+	}
+	uri = absPath
+
+	c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(uri))
+	blob, err := c.downloader.Download(ctx, uri)
+	if err != nil {
+		return nil, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(uri))
+	}
+
+	return blob, nil
 }
 
 func (c *Client) validateOSPlatform(ctx context.Context, os string, publish bool, format string) error {

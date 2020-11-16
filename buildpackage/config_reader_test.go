@@ -11,7 +11,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/buildpackage"
-	"github.com/buildpacks/pack/internal/paths"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -80,26 +79,6 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 			h.AssertError(t, err, "decoding toml")
 		})
 
-		it("expands relative file uris to absolute paths relative to config file", func() {
-			configFile := filepath.Join(tmpDir, "package.toml")
-
-			err := ioutil.WriteFile(configFile, []byte(relativePathsPackageToml), os.ModePerm)
-			h.AssertNil(t, err)
-
-			packageConfigReader := buildpackage.NewConfigReader()
-
-			config, err := packageConfigReader.Read(configFile)
-			h.AssertNil(t, err)
-
-			expectedURI, err := paths.FilePathToURI(filepath.Join(tmpDir, "bp", "a"))
-			h.AssertNil(t, err)
-			h.AssertEq(t, config.Buildpack.URI, expectedURI)
-
-			expectedURI, err = paths.FilePathToURI(filepath.Join(tmpDir, "bp", "b"))
-			h.AssertNil(t, err)
-			h.AssertEq(t, config.Dependencies[0].URI, expectedURI)
-		})
-
 		it("returns an error when buildpack uri is invalid", func() {
 			configFile := filepath.Join(tmpDir, "package.toml")
 
@@ -110,8 +89,8 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 
 			_, err = packageConfigReader.Read(configFile)
 			h.AssertNotNil(t, err)
-			h.AssertError(t, err, "getting absolute path for")
-			h.AssertError(t, err, "https@@@@@@://example.com/bp/a.tgz")
+			h.AssertError(t, err, "invalid locator")
+			h.AssertError(t, err, "invalid/uri@version-is-invalid")
 		})
 
 		it("returns an error when platform os is invalid", func() {
@@ -138,8 +117,8 @@ func testBuildpackageConfigReader(t *testing.T, when spec.G, it spec.S) {
 
 			_, err = packageConfigReader.Read(configFile)
 			h.AssertNotNil(t, err)
-			h.AssertError(t, err, "getting absolute path for")
-			h.AssertError(t, err, "https@@@@@@://example.com/bp/b.tgz")
+			h.AssertError(t, err, "invalid locator")
+			h.AssertError(t, err, "invalid/uri@version-is-invalid")
 		})
 
 		it("returns an error when unknown array table is present", func() {
@@ -244,17 +223,9 @@ uri = "https://example.com/bp/a.tgz"
 uri = "https://example.com/bp/b.tgz"
 `
 
-const relativePathsPackageToml = `
-[buildpack]
-uri = "bp/a"
-
-[[dependencies]]
-uri = "bp/b"
-`
-
 const invalidBPURIPackageToml = `
 [buildpack]
-uri = "https@@@@@@://example.com/bp/a.tgz"
+uri = "invalid/uri@version-is-invalid"
 `
 
 const invalidDepURIPackageToml = `
@@ -262,7 +233,7 @@ const invalidDepURIPackageToml = `
 uri = "noop-buildpack.tgz"
 
 [[dependencies]]
-uri = "https@@@@@@://example.com/bp/b.tgz"
+uri = "invalid/uri@version-is-invalid"
 `
 
 const invalidDepTablePackageToml = `

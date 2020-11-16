@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"path/filepath"
 
 	pubcfg "github.com/buildpacks/pack/config"
 
@@ -62,23 +63,28 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 				logger.Warn("Flag --package-config has been deprecated, please use --config instead")
 			}
 
-			var cfg pubbldpkg.Config
-			if flags.PackageTomlPath == "" {
-				cfg = pubbldpkg.DefaultConfig()
-			} else {
+			cfg := pubbldpkg.DefaultConfig()
+			relativeBaseDir := ""
+			if flags.PackageTomlPath != "" {
 				cfg, err = packageConfigReader.Read(flags.PackageTomlPath)
 				if err != nil {
 					return errors.Wrap(err, "reading config")
+				}
+
+				relativeBaseDir, err = filepath.Abs(filepath.Dir(flags.PackageTomlPath))
+				if err != nil {
+					return errors.Wrap(err, "getting absolute path for config")
 				}
 			}
 
 			name := args[0]
 			if err := client.PackageBuildpack(cmd.Context(), pack.PackageBuildpackOptions{
-				Name:       name,
-				Format:     flags.Format,
-				Config:     cfg,
-				Publish:    flags.Publish,
-				PullPolicy: pullPolicy,
+				RelativeBaseDir: relativeBaseDir,
+				Name:            name,
+				Format:          flags.Format,
+				Config:          cfg,
+				Publish:         flags.Publish,
+				PullPolicy:      pullPolicy,
 			}); err != nil {
 				return err
 			}

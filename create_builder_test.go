@@ -790,9 +790,16 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("package file", func() {
 			it.Before(func() {
-				cnbFile := filepath.Join(tmpDir, "bp_one1.cnb")
-				buildpackPath := filepath.Join("testdata", "buildpack")
-				mockDownloader.EXPECT().Download(gomock.Any(), buildpackPath).Return(blob.NewBlob(buildpackPath), nil)
+				fileURI := func(path string) (original, uri string) {
+					absPath, err := paths.ToAbsolute(path, "")
+					h.AssertNil(t, err)
+					return path, absPath
+				}
+
+				cnbFile, cnbFileURI := fileURI(filepath.Join(tmpDir, "bp_one1.cnb"))
+				buildpackPath, buildpackPathURI := fileURI(filepath.Join("testdata", "buildpack"))
+				mockDownloader.EXPECT().Download(gomock.Any(), buildpackPathURI).Return(blob.NewBlob(buildpackPath), nil)
+
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: cnbFile,
 					Config: pubbldpkg.Config{
@@ -802,7 +809,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Format: "file",
 				}))
 
-				mockDownloader.EXPECT().Download(gomock.Any(), cnbFile).Return(blob.NewBlob(cnbFile), nil).AnyTimes()
+				mockDownloader.EXPECT().Download(gomock.Any(), cnbFileURI).Return(blob.NewBlob(cnbFile), nil).AnyTimes()
 				opts.Config.Buildpacks = []pubbldr.BuildpackConfig{{
 					ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: cnbFile}},
 				}}
