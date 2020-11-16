@@ -16,8 +16,9 @@ import (
 
 func trustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "trusted-builder",
-		Short: "Interact with trusted builders",
+		Use:     "trusted-builder",
+		Short:   "Interact with trusted builders",
+		Aliases: []string{"trusted-builders"},
 		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
 			listTrustedBuilders(logger, cfg)
 			return nil
@@ -52,7 +53,7 @@ func addTrustedBuilder(args []string, logger logging.Logger, cfg config.Config, 
 
 	cfg.TrustedBuilders = append(cfg.TrustedBuilders, builderToTrust)
 	if err := config.Write(cfg, cfgPath); err != nil {
-		return err
+		return errors.Wrap(err, "writing config")
 	}
 	logger.Infof("Builder %s is now trusted", style.Symbol(imageName))
 
@@ -83,11 +84,7 @@ func removeTrustedBuilder(args []string, logger logging.Logger, cfg config.Confi
 		return nil
 	}
 
-	configPath, err := config.DefaultConfigPath()
-	if err != nil {
-		return errors.Wrap(err, "getting config path")
-	}
-	err = config.Write(cfg, configPath)
+	err := config.Write(cfg, cfgPath)
 	if err != nil {
 		return errors.Wrap(err, "writing config file")
 	}
