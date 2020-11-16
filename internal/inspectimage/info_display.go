@@ -64,32 +64,11 @@ func NewInfoDisplay(info *pack.ImageInfo, generalInfo GeneralInfo) *InfoDisplay 
 	}
 }
 
-// feels bad to have duplication here... but we need to add tags...
-// BOM structures
-type BOMDisplay struct {
-	Remote []BOMEntryDisplay `json:"remote" yaml:"remote"`
-	Local  []BOMEntryDisplay `json:"local" yaml:"local"`
-}
-
-type BOMEntryDisplay struct {
-	Name      string                 `toml:"name" json:"name" yaml:"name"`
-	Version   string                 `toml:"version,omitempty" json:"version,omitempty" yaml:"version,omitempty"`
-	Metadata  map[string]interface{} `toml:"metadata" json:"metadata" yaml:"metadata"`
-	Buildpack dist.BuildpackRef      `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
-}
-
-func NewBOMDisplay(info *pack.ImageInfo) []BOMEntryDisplay {
-	if info == nil {
-		return nil
-	}
-	return displayBOM(info.BOM)
-}
-
 //
 // private functions
 //
 
-func GetConfigMirrors(info *pack.ImageInfo, imageMirrors []config.RunImage) []string {
+func getConfigMirrors(info *pack.ImageInfo, imageMirrors []config.RunImage) []string {
 	var runImage string
 	if info != nil {
 		runImage = info.Stack.RunImage.Image
@@ -101,27 +80,6 @@ func GetConfigMirrors(info *pack.ImageInfo, imageMirrors []config.RunImage) []st
 		}
 	}
 	return nil
-}
-
-func displayBOM(bom []lifecycle.BOMEntry) []BOMEntryDisplay {
-	result := []BOMEntryDisplay{}
-	for _, entry := range bom {
-		result = append(result, BOMEntryDisplay{
-			Name:     entry.Name,
-			Version:  entry.Version,
-			Metadata: entry.Metadata,
-
-			Buildpack: dist.BuildpackRef{
-				BuildpackInfo: dist.BuildpackInfo{
-					ID:      entry.Buildpack.ID,
-					Version: entry.Buildpack.Version,
-				},
-				Optional: entry.Buildpack.Optional,
-			},
-		})
-	}
-
-	return result
 }
 
 func displayBase(base lifecycle.RunImageMetadata) BaseDisplay {
@@ -138,7 +96,7 @@ func displayMirrors(info *pack.ImageInfo, generalInfo GeneralInfo) []RunImageMir
 		return result
 	}
 
-	cfgMirrors := GetConfigMirrors(info, generalInfo.RunImageMirrors)
+	cfgMirrors := getConfigMirrors(info, generalInfo.RunImageMirrors)
 	for _, mirror := range cfgMirrors {
 		if mirror != "" {
 			result = append(result, RunImageMirrorDisplay{

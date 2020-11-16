@@ -67,8 +67,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.Build(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.Rebase(logger, cfg, &packClient))
-	// TODO: is the config the base of truth for what run image mirrors are displayed??
-	//       or do we use the run image mirrors located on the image??
+
 	rootCmd.AddCommand(commands.InspectImage(logger, writer.NewFactory(), cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuildpack(logger, &cfg, &packClient))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
