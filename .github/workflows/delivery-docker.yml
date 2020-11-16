@@ -33,18 +33,19 @@ jobs:
             }
 
             return tag.replace(/^v/, '');
-      - name: Checkout delivery configuration
-        uses: actions/checkout@v2
-        with:
-          path: ./head
       - name: Checkout source at tag
         uses: actions/checkout@v2
         with:
           ref: v${{ steps.version.outputs.result }}
+      # This has to come after the first checkout, so it isn't clobbered
+      - name: Checkout delivery configuration
+        uses: actions/checkout@v2
+        with:
+          path: ./head
       - name: Setup Working Dir
         shell: bash
         run: |
-          cp ./head/.github/workflows/delivery/docker/buildpack.yml buildpack.yml
+          cp head/.github/workflows/delivery/docker/buildpack.yml buildpack.yml
       - name: Fill buildpack.yml
         uses: cschleiden/replace-tokens@v1
         env:
