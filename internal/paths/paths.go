@@ -24,22 +24,31 @@ func IsDir(p string) (bool, error) {
 	return fileInfo.IsDir(), nil
 }
 
-func FilePathToURI(p string) (string, error) {
-	var err error
-	if !filepath.IsAbs(p) {
-		p, err = filepath.Abs(p)
+// FilePathToURI converts a filepath to URI. If relativeTo is provided not empty and path is
+// a relative path it will be made absolute based on the provided value. Otherwise, the
+// current working directory is used.
+func FilePathToURI(path, relativeTo string) (string, error) {
+	if parsed, err := url.Parse(path); err != nil {
+		return "", err
+	} else if parsed.Scheme != "" { // already a uri
+		return path, nil
+	}
+
+	if !filepath.IsAbs(path) {
+		var err error
+		path, err = filepath.Abs(filepath.Join(relativeTo, path))
 		if err != nil {
 			return "", err
 		}
 	}
 
 	if runtime.GOOS == "windows" {
-		if strings.HasPrefix(p, `\\`) {
-			return "file://" + filepath.ToSlash(strings.TrimPrefix(p, `\\`)), nil
+		if strings.HasPrefix(path, `\\`) {
+			return "file://" + filepath.ToSlash(strings.TrimPrefix(path, `\\`)), nil
 		}
-		return "file:///" + filepath.ToSlash(p), nil
+		return "file:///" + filepath.ToSlash(path), nil
 	}
-	return "file://" + p, nil
+	return "file://" + path, nil
 }
 
 // examples:
@@ -69,22 +78,6 @@ func URIToFilePath(uri string) (string, error) {
 		return `\\` + osPath, nil
 	}
 	return osPath, nil
-}
-
-func ToAbsolute(uri, relativeTo string) (string, error) {
-	parsed, err := url.Parse(uri)
-	if err != nil {
-		return "", err
-	}
-
-	if parsed.Scheme == "" {
-		if !filepath.IsAbs(parsed.Path) {
-			absPath := filepath.Join(relativeTo, parsed.Path)
-			return FilePathToURI(absPath)
-		}
-	}
-
-	return uri, nil
 }
 
 func FilterReservedNames(p string) string {

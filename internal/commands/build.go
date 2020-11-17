@@ -88,7 +88,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 						// we should probably central this, but it's not clear where it belongs
 						buildpacks = append(buildpacks, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
 					} else {
-						uri, err := paths.ToAbsolute(bp.URI, projectDescriptorDir)
+						uri, err := paths.FilePathToURI(bp.URI, projectDescriptorDir)
 						if err != nil {
 							return err
 						}

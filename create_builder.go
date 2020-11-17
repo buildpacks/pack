@@ -173,6 +173,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 	}
 
 	var uri string
+	var err error
 	switch {
 	case config.Version != "":
 		v, err := semver.NewVersion(config.Version)
@@ -182,22 +183,20 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 
 		uri = uriFromLifecycleVersion(*v, os)
 	case config.URI != "":
-		absURI, err := paths.ToAbsolute(config.URI, relativeBaseDir)
+		uri, err = paths.FilePathToURI(config.URI, relativeBaseDir)
 		if err != nil {
 			return nil, err
 		}
-
-		uri = absURI
 	default:
 		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os)
 	}
 
-	b, err := c.downloader.Download(ctx, uri)
+	blob, err := c.downloader.Download(ctx, uri)
 	if err != nil {
 		return nil, errors.Wrap(err, "downloading lifecycle")
 	}
 
-	lifecycle, err := builder.NewLifecycle(b)
+	lifecycle, err := builder.NewLifecycle(blob)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid lifecycle")
 	}
@@ -250,11 +249,10 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrapf(err, "extracting from registry %s", style.Symbol(b.URI))
 			}
 		case buildpack.URILocator:
-			absPath, err := paths.ToAbsolute(b.URI, opts.RelativeBaseDir)
+			b.URI, err = paths.FilePathToURI(b.URI, opts.RelativeBaseDir)
 			if err != nil {
 				return errors.Wrapf(err, "making absolute: %s", style.Symbol(b.URI))
 			}
-			b.URI = absPath
 
 			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(b.URI))
 

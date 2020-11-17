@@ -40,6 +40,7 @@ func testPaths(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+
 	when("#FilePathToURI", func() {
 		when("is windows", func() {
 			it.Before(func() {
@@ -48,7 +49,7 @@ func testPaths(t *testing.T, when spec.G, it spec.S) {
 
 			when("path is absolute", func() {
 				it("returns uri", func() {
-					uri, err := FilePathToURI(`C:\some\file.txt`)
+					uri, err := FilePathToURI(`C:\some\file.txt`, "")
 					h.AssertNil(t, err)
 					h.AssertEq(t, uri, `file:///C:/some/file.txt`)
 				})
@@ -79,7 +80,7 @@ func testPaths(t *testing.T, when spec.G, it spec.S) {
 					cwd, err := os.Getwd()
 					h.AssertNil(t, err)
 
-					uri, err := FilePathToURI(`some\file.tgz`)
+					uri, err := FilePathToURI(`some\file.tgz`, "")
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, uri, fmt.Sprintf(`file:///%s/some/file.tgz`, filepath.ToSlash(cwd)))
@@ -94,7 +95,7 @@ func testPaths(t *testing.T, when spec.G, it spec.S) {
 
 			when("path is absolute", func() {
 				it("returns uri", func() {
-					uri, err := FilePathToURI("/tmp/file.tgz")
+					uri, err := FilePathToURI("/tmp/file.tgz", "")
 					h.AssertNil(t, err)
 					h.AssertEq(t, uri, "file:///tmp/file.tgz")
 				})
@@ -102,15 +103,20 @@ func testPaths(t *testing.T, when spec.G, it spec.S) {
 
 			when("path is relative", func() {
 				it("returns uri", func() {
-					h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
-
 					cwd, err := os.Getwd()
 					h.AssertNil(t, err)
 
-					uri, err := FilePathToURI("some/file.tgz")
+					uri, err := FilePathToURI("some/file.tgz", "")
 					h.AssertNil(t, err)
 
 					h.AssertEq(t, uri, fmt.Sprintf("file://%s/some/file.tgz", cwd))
+				})
+
+				it("returns uri based on relativeTo", func() {
+					uri, err := FilePathToURI("some/file.tgz", "/my/base/dir")
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, uri, "file:///my/base/dir/some/file.tgz")
 				})
 			})
 		})

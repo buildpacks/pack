@@ -407,9 +407,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					prepareFetcherWithBuildImage()
 					prepareFetcherWithRunImages()
 					opts.Config.Lifecycle.URI = "fake"
-					mockDownloader.EXPECT().Download(gomock.Any(), "file:///fake").Return(nil, errors.New("error here")).AnyTimes()
 
-					err := subject.CreateBuilder(context.TODO(), opts)
+					uri, err := paths.FilePathToURI(opts.Config.Lifecycle.URI, opts.RelativeBaseDir)
+					h.AssertNil(t, err)
+
+					mockDownloader.EXPECT().Download(gomock.Any(), uri).Return(nil, errors.New("error here")).AnyTimes()
+
+					err = subject.CreateBuilder(context.TODO(), opts)
 					h.AssertError(t, err, "downloading lifecycle")
 				})
 			})
@@ -419,9 +423,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					prepareFetcherWithBuildImage()
 					prepareFetcherWithRunImages()
 					opts.Config.Lifecycle.URI = "fake"
-					mockDownloader.EXPECT().Download(gomock.Any(), "file:///fake").Return(blob.NewBlob(filepath.Join("testdata", "empty-file")), nil).AnyTimes()
 
-					err := subject.CreateBuilder(context.TODO(), opts)
+					uri, err := paths.FilePathToURI(opts.Config.Lifecycle.URI, opts.RelativeBaseDir)
+					h.AssertNil(t, err)
+
+					mockDownloader.EXPECT().Download(gomock.Any(), uri).Return(blob.NewBlob(filepath.Join("testdata", "empty-file")), nil).AnyTimes()
+
+					err = subject.CreateBuilder(context.TODO(), opts)
 					h.AssertError(t, err, "invalid lifecycle")
 				})
 			})
@@ -638,12 +646,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("disallows directory-based buildpacks", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
-				opts.Config.Buildpacks[0].URI = "testdata/buildpack"
+				opts.Config.Buildpacks[0].URI = "./testdata/buildpack"
 
 				err := subject.CreateBuilder(context.TODO(), opts)
 				h.AssertError(t,
 					err,
-					"buildpack 'testdata/buildpack': directory-based buildpacks are not currently supported on Windows")
+					"buildpack './testdata/buildpack': directory-based buildpacks are not currently supported on Windows")
 			})
 		})
 
@@ -659,7 +667,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				opts.RelativeBaseDir = ""
 				opts.Config.Buildpacks[0].URI = directoryPath
 
-				absURI, err := paths.ToAbsolute(directoryPath, "")
+				absURI, err := paths.FilePathToURI(directoryPath, "")
 				h.AssertNil(t, err)
 
 				mockDownloader.EXPECT().Download(gomock.Any(), absURI).Return(blob.NewBlob(directoryPath), nil).AnyTimes()
@@ -791,7 +799,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("package file", func() {
 			it.Before(func() {
 				fileURI := func(path string) (original, uri string) {
-					absPath, err := paths.ToAbsolute(path, "")
+					absPath, err := paths.FilePathToURI(path, "")
 					h.AssertNil(t, err)
 					return path, absPath
 				}

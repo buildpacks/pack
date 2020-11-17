@@ -162,7 +162,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 }
 
 func (c *Client) downloadBuildpackFromURI(ctx context.Context, uri, relativeBaseDir string) (blob.Blob, error) {
-	absPath, err := paths.ToAbsolute(uri, relativeBaseDir)
+	absPath, err := paths.FilePathToURI(uri, relativeBaseDir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "making absolute: %s", style.Symbol(uri))
 	}
