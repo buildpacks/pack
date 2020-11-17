@@ -24,7 +24,7 @@
       {
         "type": "web",
         "shell": "bash",
-        "command": "{{.web_command}}",
+        "command": "{{( StringsEscapeBackslash .web_command )}}",
         "default": true,
         "args": [
           "8080"
@@ -65,7 +65,7 @@
       {
         "type": "web",
         "shell": "bash",
-        "command": "{{.web_command}}",
+        "command": "{{( StringsEscapeBackslash .web_command )}}",
         "default": true,
         "args": [
           "8080"

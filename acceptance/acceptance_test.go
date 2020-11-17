@@ -874,22 +874,26 @@ func testAcceptance(
 						t.Log("cacher adds layers")
 						assert.Matches(output, regexp.MustCompile(`(?i)Adding cache layer 'simple/layers:cached-launch-layer'`))
 
-						if pack.Supports("inspect-image") {
+						if pack.Supports("inspect-image --output") {
 							t.Log("inspect-image")
 
 							var (
-								webCommand   string
-								helloCommand string
-								helloArgs    []string
+								webCommand      string
+								helloCommand    string
+								helloArgs       []string
+								helloArgsPrefix string
 							)
 							if dockerHostOS() == "windows" {
 								webCommand = ".\\run"
 								helloCommand = "cmd"
-								helloArgs = []string{" /c", "echo", "hello", "world"}
+								helloArgs = []string{"/c", "echo hello world"}
+								helloArgsPrefix = " "
+
 							} else {
 								webCommand = "./run"
 								helloCommand = "echo"
 								helloArgs = []string{"hello", "world"}
+								helloArgsPrefix = ""
 							}
 
 							formats := []compareFormat{
@@ -930,6 +934,7 @@ func testAcceptance(
 										"web_command":            webCommand,
 										"hello_command":          helloCommand,
 										"hello_args":             helloArgs,
+										"hello_args_prefix":      helloArgsPrefix,
 									},
 								)
 
@@ -1588,23 +1593,26 @@ func testAcceptance(
 								"Cached Dep Contents",
 							)
 
-							if pack.Supports("inspect-image") {
+							if pack.Supports("inspect-image --output") {
 								t.Log("inspect-image")
 								output = pack.RunSuccessfully("inspect-image", repoName)
 
 								var (
-									webCommand   string
-									helloCommand string
-									helloArgs    []string
+									webCommand      string
+									helloCommand    string
+									helloArgs       []string
+									helloArgsPrefix string
 								)
 								if dockerHostOS() == "windows" {
 									webCommand = ".\\run"
 									helloCommand = "cmd"
-									helloArgs = []string{" /c", "echo", "hello", "world"}
+									helloArgs = []string{"/c", "echo hello world"}
+									helloArgsPrefix = " "
 								} else {
 									webCommand = "./run"
 									helloCommand = "echo"
 									helloArgs = []string{"hello", "world"}
+									helloArgsPrefix = ""
 								}
 								formats := []compareFormat{
 									{
@@ -1643,6 +1651,7 @@ func testAcceptance(
 											"web_command":          webCommand,
 											"hello_command":        helloCommand,
 											"hello_args":           helloArgs,
+											"hello_args_prefix":    helloArgsPrefix,
 										},
 									)
 

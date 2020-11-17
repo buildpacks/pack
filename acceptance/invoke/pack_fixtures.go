@@ -91,6 +91,18 @@ func (m PackFixtureManager) fillTemplate(templateContents []byte, data map[strin
 				}
 				return result
 			},
+			"StringsEscapeBackslash": func(s string) string {
+				result := []rune{}
+				for _, elem := range s {
+					switch {
+					case elem == '\\':
+						result = append(result, '\\', '\\')
+					default:
+						result = append(result, elem)
+					}
+				}
+				return string(result)
+			},
 		}).
 		Parse(string(templateContents))
 	m.assert.Nil(err)

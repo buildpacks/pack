@@ -20,7 +20,7 @@ stack = "pack.test.stack"
   [[remote_info.processes]]
   type = "web"
   shell = "bash"
-  command = "{{.web_command}}"
+  command = "{{( StringsEscapeBackslash .web_command )}}"
   default = true
   args = [ "8080" ]
 
@@ -51,7 +51,7 @@ stack = "pack.test.stack"
   [[local_info.processes]]
   type = "web"
   shell = "bash"
-  command = "{{.web_command}}"
+  command = "{{( StringsEscapeBackslash .web_command )}}"
   default = true
   args = [ "8080" ]
 

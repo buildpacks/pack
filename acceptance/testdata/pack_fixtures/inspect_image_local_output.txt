@@ -23,4 +23,4 @@ Buildpacks:
 Processes:
   TYPE                 SHELL        COMMAND        ARGS
   web (default)        bash         {{.web_command}}          8080
-  hello                             {{.hello_command}}           {{ StringsJoin .hello_args " "}}
+  hello                             {{.hello_command}}           {{ .hello_args_prefix }}{{ StringsJoin .hello_args " "}}

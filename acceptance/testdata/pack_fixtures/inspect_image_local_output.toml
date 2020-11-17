@@ -24,7 +24,7 @@ stack = "pack.test.stack"
   [[local_info.processes]]
   type = "web"
   shell = "bash"
-  command = "{{.web_command}}"
+  command = "{{ ( StringsEscapeBackslash .web_command ) }}"
   default = true
   args = [ "8080" ]
 
