@@ -3,11 +3,23 @@
 ## Prerequisites
 
 * [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+    * macOS: _(built-in)_
+    * Windows:
+        * `choco install git -y`
+        * `git config --global core.autocrlf false`
 * [Go](https://golang.org/doc/install)
-* [Docker](https://www.docker.com/)
-* Make
+    * macOS: `brew install go`
+    * Windows: `choco install golang -y`
+* [Docker](https://www.docker.com/products/docker-desktop)
+* Make (and build tools)
     * macOS: `xcode-select --install`
-    * Windows: `choco install make`
+    * Windows:
+        * `choco install cygwin make -y`
+        * `[Environment]::SetEnvironmentVariable("PATH", "C:\tools\cygwin\bin;$ENV:PATH", "MACHINE")`
+
+### Windows Caveats
+
+* Symlinks - Some of our tests attempt to create symlinks. On Windows, this requires the [permission to be provided](https://stackoverflow.com/a/24353758).
 
 ## Tasks
 
