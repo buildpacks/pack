@@ -646,12 +646,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("disallows directory-based buildpacks", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
-				opts.Config.Buildpacks[0].URI = "./testdata/buildpack"
+				opts.RelativeBaseDir = ""
+				opts.Config.Buildpacks[0].URI = `testdata\buildpack`
 
 				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t,
-					err,
-					"buildpack './testdata/buildpack': directory-based buildpacks are not currently supported on Windows")
+				h.AssertError(t, err, `testdata/buildpack`)
+				h.AssertError(t, err, "directory-based buildpacks are not currently supported on Windows")
 			})
 		})
 
@@ -663,8 +663,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("supports directory buildpacks", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
-				directoryPath := "testdata/buildpack"
 				opts.RelativeBaseDir = ""
+				directoryPath := "testdata/buildpack"
 				opts.Config.Buildpacks[0].URI = directoryPath
 
 				absURI, err := paths.FilePathToURI(directoryPath, "")

@@ -11,20 +11,16 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/imgutil/remote"
-
-	"github.com/buildpacks/pack/logging"
-
-	"github.com/buildpacks/pack/config"
-
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
@@ -36,6 +32,7 @@ import (
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/logging"
 )
 
 const (

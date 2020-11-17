@@ -28,9 +28,7 @@ func IsDir(p string) (bool, error) {
 // a relative path it will be made absolute based on the provided value. Otherwise, the
 // current working directory is used.
 func FilePathToURI(path, relativeTo string) (string, error) {
-	if parsed, err := url.Parse(path); err != nil {
-		return "", err
-	} else if parsed.Scheme != "" { // already a uri
+	if IsURI(path) {
 		return path, nil
 	}
 
