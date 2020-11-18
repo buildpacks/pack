@@ -22,6 +22,7 @@ import (
 
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpack"
@@ -66,6 +67,9 @@ type LifecycleExecutor interface {
 
 // BuildOptions defines configuration settings for a Build.
 type BuildOptions struct {
+	// The base directory to use to resolve relative assets
+	RelativeBaseDir string
+
 	// required. Name of output image.
 	Image string
 
@@ -208,7 +212,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Image(), bldr.Buildpacks(), bldr.Order(), opts.Buildpacks, opts.PullPolicy, opts.Publish, opts.Registry)
+	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Image(), bldr.Buildpacks(), bldr.Order(), opts)
 	if err != nil {
 		return err
 	}
@@ -570,10 +574,16 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string, pullPolicy config.PullPolicy, publish bool, registry string) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, opts BuildOptions) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
+	declaredBPs := opts.Buildpacks
+	pullPolicy := opts.PullPolicy
+	publish := opts.Publish
+	registry := opts.Registry
+	relativeBaseDir := opts.RelativeBaseDir
+
 	order = dist.Order{{Group: []dist.BuildpackRef{}}}
 	for _, bp := range declaredBPs {
-		locatorType, err := buildpack.GetLocatorType(bp, "", builderBPs)
+		locatorType, err := buildpack.GetLocatorType(bp, relativeBaseDir, builderBPs)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -603,6 +613,13 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				Version: version,
 			})
 		case buildpack.URILocator:
+			bp, err = paths.FilePathToURI(bp, opts.RelativeBaseDir)
+			if err != nil {
+				return fetchedBPs, order, errors.Wrapf(err, "making absolute: %s", style.Symbol(bp))
+			}
+
+			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(bp))
+
 			err := ensureBPSupport(bp)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "checking support")
@@ -613,35 +630,17 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				return fetchedBPs, order, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
 			}
 
-			var mainBP dist.Buildpack
-			var dependencyBPs []dist.Buildpack
-
-			isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
+			imageOS, err := builderImage.OS()
 			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "checking format")
+				return fetchedBPs, order, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
 			}
 
-			if isOCILayout {
-				mainBP, dependencyBPs, err = buildpackage.BuildpacksFromOCILayoutBlob(blob)
-				if err != nil {
-					return fetchedBPs, order, errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(bp))
-				}
-			} else {
-				imageOS, err := builderImage.OS()
-				if err != nil {
-					return fetchedBPs, order, errors.Wrap(err, "getting image OS")
-				}
-				layerWriterFactory, err := layer.NewWriterFactory(imageOS)
-				if err != nil {
-					return fetchedBPs, order, errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(builderImage.Name()))
-				}
-				mainBP, err = dist.BuildpackFromRootBlob(blob, layerWriterFactory)
-				if err != nil {
-					return fetchedBPs, order, errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bp))
-				}
+			mainBP, depBPs, err := decomposeBuildpack(blob, imageOS)
+			if err != nil {
+				return fetchedBPs, order, errors.Wrapf(err, "extracting from %s", style.Symbol(bp))
 			}
 
-			fetchedBPs = append(append(fetchedBPs, mainBP), dependencyBPs...)
+			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.PackageLocator:
 			imageName := buildpack.ParsePackageLocator(bp)
@@ -689,6 +688,33 @@ func appendBuildpackToOrder(order dist.Order, bpInfo dist.BuildpackInfo) (newOrd
 	}
 
 	return newOrder
+}
+
+// decomposeBuildpack decomposes a buildpack blob into the main builder (order buildpack) and it's dependencies buildpacks.
+func decomposeBuildpack(blob blob.Blob, imageOS string) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
+	isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
+	if err != nil {
+		return mainBP, depBPs, errors.Wrap(err, "inspecting buildpack blob")
+	}
+
+	if isOCILayout {
+		mainBP, depBPs, err = buildpackage.BuildpacksFromOCILayoutBlob(blob)
+		if err != nil {
+			return mainBP, depBPs, errors.Wrap(err, "extracting buildpacks")
+		}
+	} else {
+		layerWriterFactory, err := layer.NewWriterFactory(imageOS)
+		if err != nil {
+			return mainBP, depBPs, errors.Wrapf(err, "get tar writer factory for OS %s", style.Symbol(imageOS))
+		}
+
+		mainBP, err = dist.BuildpackFromRootBlob(blob, layerWriterFactory)
+		if err != nil {
+			return mainBP, depBPs, errors.Wrap(err, "reading buildpack")
+		}
+	}
+
+	return mainBP, depBPs, nil
 }
 
 func ensureBPSupport(bpPath string) (err error) {

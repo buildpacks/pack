@@ -495,42 +495,6 @@ uri = "https://www.test.tgz"
 				})
 			})
 
-			when("descriptor buildpack has malformed uri", func() {
-				var projectTomlPath string
-
-				it.Before(func() {
-					projectToml, err := ioutil.TempFile("", "project.toml")
-					h.AssertNil(t, err)
-					defer projectToml.Close()
-
-					projectToml.WriteString(`
-[project]
-name = "Sample"
-
-[[build.buildpacks]]
-id = "example/lua"
-uri = "://bad-uri"
-`)
-					projectTomlPath = projectToml.Name()
-				})
-
-				it.After(func() {
-					h.AssertNil(t, os.RemoveAll(projectTomlPath))
-				})
-
-				it("should build an image with configuration in descriptor", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithBuildpacks([]string{
-							"https://www.test.tgz",
-						})).
-						Return(nil)
-
-					command.SetArgs([]string{"image", "--builder", "my-builder", "--descriptor", projectTomlPath})
-					err := command.Execute()
-					h.AssertError(t, err, "parse")
-				})
-			})
-
 			when("descriptor has exclude", func() {
 				var projectTomlPath string
 

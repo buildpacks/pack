@@ -1142,7 +1142,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 						})
 
-						h.AssertError(t, err, fmt.Sprintf("buildpack '%s': directory-based buildpacks are not currently supported on Windows", filepath.Join("testdata", "buildpack")))
+						h.AssertError(t, err, "directory-based buildpacks are not currently supported on Windows")
 					})
 
 					it("buildpacks are added to ephemeral builder", func() {

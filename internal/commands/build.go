@@ -15,7 +15,6 @@ import (
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/project"
@@ -80,19 +79,13 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 
 			buildpacks := flags.Buildpacks
 			if len(buildpacks) == 0 {
-				buildpacks = []string{}
-				projectDescriptorDir := filepath.Dir(actualDescriptorPath)
 				for _, bp := range descriptor.Build.Buildpacks {
 					if len(bp.URI) == 0 {
 						// there are several places through out the pack code where the "id@version" format is used.
 						// we should probably central this, but it's not clear where it belongs
 						buildpacks = append(buildpacks, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
 					} else {
-						uri, err := paths.FilePathToURI(bp.URI, projectDescriptorDir)
-						if err != nil {
-							return err
-						}
-						buildpacks = append(buildpacks, uri)
+						buildpacks = append(buildpacks, bp.URI)
 					}
 				}
 			}

@@ -13,10 +13,8 @@ import (
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpack"
-	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
-	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 )
@@ -266,30 +264,14 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))
 			}
 
-			isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
+			imageOS, err := bldr.Image().OS()
 			if err != nil {
-				return errors.Wrap(err, "inspecting buildpack blob")
+				return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
 			}
 
-			if isOCILayout {
-				mainBP, depBPs, err = buildpackage.BuildpacksFromOCILayoutBlob(blob)
-				if err != nil {
-					return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(b.ID))
-				}
-			} else {
-				imageOS, err := bldr.Image().OS()
-				if err != nil {
-					return errors.Wrap(err, "getting image OS")
-				}
-				layerWriterFactory, err := layer.NewWriterFactory(imageOS)
-				if err != nil {
-					return errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(bldr.Name()))
-				}
-
-				mainBP, err = dist.BuildpackFromRootBlob(blob, layerWriterFactory)
-				if err != nil {
-					return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
-				}
+			mainBP, depBPs, err = decomposeBuildpack(blob, imageOS)
+			if err != nil {
+				return errors.Wrapf(err, "extracting from %s", style.Symbol(b.URI))
 			}
 		default:
 			return fmt.Errorf("error reading %s: invalid locator: %s", b.URI, locatorType)

@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var schemeRegexp = regexp.MustCompile(`^.+://.*`)
+var schemeRegexp = regexp.MustCompile(`^.+:/.*`)
 
 func IsURI(ref string) bool {
 	return schemeRegexp.MatchString(ref)
