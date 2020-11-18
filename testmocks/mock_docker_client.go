@@ -6,12 +6,6 @@ package testmocks
 
 import (
 	context "context"
-	io "io"
-	net "net"
-	http "net/http"
-	reflect "reflect"
-	time "time"
-
 	types "github.com/docker/docker/api/types"
 	container "github.com/docker/docker/api/types/container"
 	events "github.com/docker/docker/api/types/events"
@@ -22,6 +16,12 @@ import (
 	swarm "github.com/docker/docker/api/types/swarm"
 	volume "github.com/docker/docker/api/types/volume"
 	gomock "github.com/golang/mock/gomock"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	io "io"
+	net "net"
+	http "net/http"
+	reflect "reflect"
+	time "time"
 )
 
 // MockCommonAPIClient is a mock of CommonAPIClient interface
@@ -209,18 +209,18 @@ func (mr *MockCommonAPIClientMockRecorder) ContainerCommit(arg0, arg1, arg2 inte
 }
 
 // ContainerCreate mocks base method
-func (m *MockCommonAPIClient) ContainerCreate(arg0 context.Context, arg1 *container.Config, arg2 *container.HostConfig, arg3 *network.NetworkingConfig, arg4 string) (container.ContainerCreateCreatedBody, error) {
+func (m *MockCommonAPIClient) ContainerCreate(arg0 context.Context, arg1 *container.Config, arg2 *container.HostConfig, arg3 *network.NetworkingConfig, arg4 *v1.Platform, arg5 string) (container.ContainerCreateCreatedBody, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ContainerCreate", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "ContainerCreate", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(container.ContainerCreateCreatedBody)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ContainerCreate indicates an expected call of ContainerCreate
-func (mr *MockCommonAPIClientMockRecorder) ContainerCreate(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+func (mr *MockCommonAPIClientMockRecorder) ContainerCreate(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContainerCreate", reflect.TypeOf((*MockCommonAPIClient)(nil).ContainerCreate), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContainerCreate", reflect.TypeOf((*MockCommonAPIClient)(nil).ContainerCreate), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 // ContainerDiff mocks base method
@@ -513,6 +513,21 @@ func (m *MockCommonAPIClient) ContainerStats(arg0 context.Context, arg1 string, 
 func (mr *MockCommonAPIClientMockRecorder) ContainerStats(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContainerStats", reflect.TypeOf((*MockCommonAPIClient)(nil).ContainerStats), arg0, arg1, arg2)
+}
+
+// ContainerStatsOneShot mocks base method
+func (m *MockCommonAPIClient) ContainerStatsOneShot(arg0 context.Context, arg1 string) (types.ContainerStats, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ContainerStatsOneShot", arg0, arg1)
+	ret0, _ := ret[0].(types.ContainerStats)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ContainerStatsOneShot indicates an expected call of ContainerStatsOneShot
+func (mr *MockCommonAPIClientMockRecorder) ContainerStatsOneShot(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContainerStatsOneShot", reflect.TypeOf((*MockCommonAPIClient)(nil).ContainerStatsOneShot), arg0, arg1)
 }
 
 // ContainerStop mocks base method
