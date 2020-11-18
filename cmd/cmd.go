@@ -108,7 +108,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger, packHome))
 
-	rootCmd.AddCommand(cmdConfig.Config(logger, cfg, cfgPath))
+	rootCmd.AddCommand(cmdConfig.NewConfigCommand(logger, cfg, cfgPath))
 	rootCmd.AddCommand(stack.Stack(logger))
 
 	rootCmd.Version = pack.Version

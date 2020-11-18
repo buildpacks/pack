@@ -4,40 +4,38 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
-
-	"github.com/buildpacks/pack/internal/commands"
-	"github.com/buildpacks/pack/internal/style"
-
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
 func trustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "trusted-builder",
+		Use:     "trusted-builders",
 		Short:   "Interact with trusted builders",
-		Aliases: []string{"trusted-builders"},
+		Aliases: []string{"trusted-builder"},
 		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
 			listTrustedBuilders(logger, cfg)
 			return nil
 		}),
 	}
 
-	addCmd := generateAdd("trusted-builder", logger, cfg, cfgPath, addTrustedBuilder)
+	addCmd := generateAdd("trusted-builders", logger, cfg, cfgPath, addTrustedBuilder)
 	addCmd.Long = "Trust builder.\n\nWhen building with this builder, all lifecycle phases will be run in a single container using the builder image."
-	addCmd.Example = "pack config trusted-builder add cnbs/sample-stack-run:bionic"
+	addCmd.Example = "pack config trusted-builders add cnbs/sample-stack-run:bionic"
 	cmd.AddCommand(addCmd)
 
-	rmCmd := generateRemove("trusted-builder", logger, cfg, cfgPath, removeTrustedBuilder)
+	rmCmd := generateRemove("trusted-builders", logger, cfg, cfgPath, removeTrustedBuilder)
 	rmCmd.Long = "Stop trusting builder.\n\nWhen building with this builder, all lifecycle phases will be no longer be run in a single container using the builder image."
-	rmCmd.Example = "pack config trusted-builder remove cnbs/sample-stack-run:bionic"
+	rmCmd.Example = "pack config trusted-builders remove cnbs/sample-stack-run:bionic"
 	cmd.AddCommand(rmCmd)
 
 	listCmd := generateListCmd("trusted-builders", logger, cfg, listTrustedBuilders)
 	listCmd.Long = "List Trusted Builders.\n\nShow the builders that are either trusted by default or have been explicitly trusted locally using `trust-builder`"
-	listCmd.Example = "pack config trusted-builder list"
+	listCmd.Example = "pack config trusted-builders list"
 	cmd.AddCommand(listCmd)
 	return cmd
 }

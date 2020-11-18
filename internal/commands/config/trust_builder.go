@@ -5,12 +5,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/commands"
-
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
 
-// Deprecated: Use `trusted-builder add` instead
+// Deprecated: Use `trusted-builders add` instead
 func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "trust-builder <builder-name>",
@@ -20,7 +19,7 @@ func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 		Example: "pack trust-builder cnbs/sample-stack-run:bionic",
 		Hidden:  true,
 		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
-			commands.DeprecationWarning(logger, "trust-builder", "config trusted-builder add")
+			commands.DeprecationWarning(logger, "trust-builder", "config trusted-builders add")
 			configPath, err := config.DefaultConfigPath()
 			if err != nil {
 				return errors.Wrap(err, "getting config path")

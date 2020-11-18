@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/heroku/color"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
 	cmdConfig "github.com/buildpacks/pack/internal/commands/config"
@@ -14,10 +17,6 @@ import (
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
-
-	"github.com/heroku/color"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 )
 
 func TestConfigCommand(t *testing.T) {
@@ -41,16 +40,13 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
-		h.AssertNil(t, os.Setenv("PACK_HOME", tempPackHome))
 		configPath = filepath.Join(tempPackHome, "config.toml")
 
-		command = cmdConfig.Config(logger, config.Config{}, configPath)
+		command = cmdConfig.NewConfigCommand(logger, config.Config{}, configPath)
 		command.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
-		//command.SetErr(logging.GetWriterForLevel(logger, logging.ErrorLevel))
 	})
 
 	it.After(func() {
-		h.AssertNil(t, os.Unsetenv("PACK_HOME"))
 		h.AssertNil(t, os.RemoveAll(tempPackHome))
 	})
 
@@ -64,9 +60,9 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("trusted-builder", func() {
+	when("trusted-builders", func() {
 		it("prints list of trusted builders", func() {
-			command.SetArgs([]string{"trusted-builder"})
+			command.SetArgs([]string{"trusted-builders"})
 			h.AssertNil(t, command.Execute())
 			h.AssertContainsAllInOrder(t,
 				outBuf,

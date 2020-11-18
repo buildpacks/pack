@@ -5,8 +5,6 @@ import (
 	"html/template"
 	"sort"
 
-	"github.com/buildpacks/pack/internal/commands"
-
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/commands"

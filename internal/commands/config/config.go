@@ -3,15 +3,14 @@ package config
 import (
 	"fmt"
 
-	"github.com/buildpacks/pack/internal/commands"
-
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
 
-func Config(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
+func NewConfigCommand(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Interact with pack config",

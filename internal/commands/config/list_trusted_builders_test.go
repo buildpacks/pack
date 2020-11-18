@@ -6,15 +6,13 @@ import (
 	"os"
 	"testing"
 
-	cmdConfig "github.com/buildpacks/pack/internal/commands/config"
-
-	"github.com/buildpacks/pack/internal/config"
-
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
+	cmdConfig "github.com/buildpacks/pack/internal/commands/config"
+	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
