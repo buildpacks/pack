@@ -6,9 +6,11 @@ package testmocks
 
 import (
 	context "context"
-	pack "github.com/buildpacks/pack"
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
+
+	pack "github.com/buildpacks/pack"
 )
 
 // MockPackClient is a mock of PackClient interface
