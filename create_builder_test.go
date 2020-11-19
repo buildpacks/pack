@@ -159,6 +159,34 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			return bldr
 		}
 
+		var createBuildpack = func(descriptor dist.BuildpackDescriptor) string {
+			bp, err := ifakes.NewFakeBuildpackBlob(descriptor, 0644)
+			h.AssertNil(t, err)
+			url := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
+			mockDownloader.EXPECT().Download(gomock.Any(), url).Return(bp, nil).AnyTimes()
+			return url
+		}
+
+		var createPackage = func(imageName string) *fakes.Image {
+			packageImage := fakes.NewImage(imageName, "", nil)
+			mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
+
+			h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+				Name: packageImage.Name(),
+				Config: pubbldpkg.Config{
+					Platform: dist.Platform{OS: "linux"},
+					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
+						API:    api.MustParse("0.3"),
+						Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
+						Stacks: []dist.Stack{{ID: "some.stack.id"}},
+					})},
+				},
+				Publish: true,
+			}))
+
+			return packageImage
+		}
+
 		when("validating the builder config", func() {
 			it("should fail when the stack ID is empty", func() {
 				opts.Config.Stack.ID = ""
@@ -642,8 +670,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					opts.Config.Buildpacks[0].URI = "from=builder:fake"
 
 					err := subject.CreateBuilder(context.TODO(), opts)
-					h.AssertError(t, err,
-						"locator type from=builder:fake")
+					h.AssertError(t, err, "'from=builder:fake' is not a valid identifier")
 				})
 			})
 
@@ -800,14 +827,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				packageImage *fakes.Image
 			)
 
-			createBuildpack := func(descriptor dist.BuildpackDescriptor) string {
-				bp, err := ifakes.NewFakeBuildpackBlob(descriptor, 0644)
-				h.AssertNil(t, err)
-				url := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
-				mockDownloader.EXPECT().Download(gomock.Any(), url).Return(bp, nil).AnyTimes()
-				return url
-			}
-
 			shouldFetchPackageImageWith := func(demon bool, pull config.PullPolicy) {
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), demon, pull).Return(packageImage, nil)
 			}
@@ -831,23 +850,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
 
-					packageImage = fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
-					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
-
-					bpd := dist.BuildpackDescriptor{
-						API:    api.MustParse("0.3"),
-						Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
-						Stacks: []dist.Stack{{ID: "some.stack.id"}},
-					}
-
-					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-						Name: packageImage.Name(),
-						Config: pubbldpkg.Config{
-							Platform:  dist.Platform{OS: "linux"},
-							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
-						},
-						Publish: true,
-					}))
+					packageImage = createPackage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7")
 				})
 
 				it.After(func() {
@@ -894,12 +897,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 						shouldFetchPackageImageWith(true, config.PullAlways)
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
 					})
-
-					it.After(func() {
-						os.Unsetenv("PACK_HOME")
-						err := os.RemoveAll(tmpDir)
-						h.AssertNil(t, err)
-					})
 				})
 			})
 
@@ -928,6 +925,30 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				prepareFetcherWithMissingPackageImage := func() {
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), gomock.Any(), gomock.Any()).Return(nil, image.ErrNotFound)
 				}
+
+				when("image key is provided", func() {
+					it("should succeed", func() {
+						prepareFetcherWithBuildImage()
+						prepareFetcherWithRunImages()
+
+						packageImage = createPackage("some/package:tag")
+
+						opts.BuilderName = "some/builder"
+						opts.Publish = false
+						opts.PullPolicy = config.PullAlways
+						opts.Config.Buildpacks = append(
+							opts.Config.Buildpacks,
+							pubbldr.BuildpackConfig{
+								ImageOrURI: dist.ImageOrURI{
+									ImageRef: dist.ImageRef{ImageName: "some/package:tag"},
+								},
+							},
+						)
+
+						shouldFetchPackageImageWith(true, config.PullAlways)
+						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
+					})
+				})
 
 				when("publish=false and pull-policy=always", func() {
 					it("should pull and use local package image", func() {
