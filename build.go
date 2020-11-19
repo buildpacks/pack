@@ -19,6 +19,7 @@ import (
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+	ignore "github.com/sabhiram/go-gitignore"
 
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/archive"
@@ -34,6 +35,7 @@ import (
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/project"
 )
 
 const (
@@ -132,12 +134,14 @@ type BuildOptions struct {
 	// Process type that will be used when setting container start command.
 	DefaultProcessType string
 
-	// Filter files from the application source.
-	// If true include file, otherwise exclude.
-	FileFilter func(string) bool
-
 	// Strategy for updating local images before a build.
 	PullPolicy config.PullPolicy
+
+	// TODO
+	ProjectDescriptorBaseDir string
+
+	// TODO
+	ProjectDescriptor project.Descriptor
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -221,7 +225,16 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrap(err, "validating stack mixins")
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, opts.Env, order, fetchedBPs)
+	buildEnvs := map[string]string{}
+	for _, envVar := range opts.ProjectDescriptor.Build.Env {
+		buildEnvs[envVar.Name] = envVar.Value
+	}
+
+	for k, v := range opts.Env {
+		buildEnvs[k] = v
+	}
+
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs)
 	if err != nil {
 		return err
 	}
@@ -252,6 +265,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		c.logger.Warn(warning)
 	}
 
+	fileFilter, err := getFileFilter(opts.ProjectDescriptor)
+	if err != nil {
+		return err
+	}
+
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:            appPath,
 		Image:              imageRef,
@@ -268,7 +286,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Network:            opts.ContainerConfig.Network,
 		Volumes:            processedVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
-		FileFilter:         opts.FileFilter,
+		FileFilter:         fileFilter,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
@@ -309,6 +327,27 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
+}
+
+func getFileFilter(descriptor project.Descriptor) (func(string) bool, error) {
+	if len(descriptor.Build.Exclude) > 0 {
+		excludes, err := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
+		if err != nil {
+			return nil, err
+		}
+		return func(fileName string) bool {
+			return !excludes.MatchesPath(fileName)
+		}, nil
+	}
+	if len(descriptor.Build.Include) > 0 {
+		includes, err := ignore.CompileIgnoreLines(descriptor.Build.Include...)
+		if err != nil {
+			return nil, err
+		}
+		return includes.MatchesPath, nil
+	}
+
+	return nil, nil
 }
 
 func lifecycleImageSupported(builderOS string, lifecycleVersion *builder.Version) bool {
@@ -575,11 +614,24 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	- group:
 //		- A
 func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, opts BuildOptions) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
-	declaredBPs := opts.Buildpacks
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
 	registry := opts.Registry
 	relativeBaseDir := opts.RelativeBaseDir
+	declaredBPs := opts.Buildpacks
+
+	// declare buildpacks provided by project descriptor when no buildpacks are declared
+	if len(declaredBPs) == 0 && len(opts.ProjectDescriptor.Build.Buildpacks) != 0 {
+		relativeBaseDir = opts.ProjectDescriptorBaseDir
+
+		for _, bp := range opts.ProjectDescriptor.Build.Buildpacks {
+			if len(bp.URI) == 0 {
+				declaredBPs = append(declaredBPs, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
+			} else {
+				declaredBPs = append(declaredBPs, bp.URI)
+			}
+		}
+	}
 
 	order = dist.Order{{Group: []dist.BuildpackRef{}}}
 	for _, bp := range declaredBPs {

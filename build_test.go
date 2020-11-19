@@ -17,36 +17,30 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/imgutil/remote"
-
-	"github.com/google/go-containerregistry/pkg/name"
-
-	"github.com/buildpacks/imgutil/local"
-
-	"github.com/buildpacks/imgutil"
-
-	"github.com/pkg/errors"
-
-	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/internal/build"
-	cfg "github.com/buildpacks/pack/internal/config"
-	rg "github.com/buildpacks/pack/internal/registry"
-
 	"github.com/Masterminds/semver"
+	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/onsi/gomega/ghttp"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpackage"
+	cfg "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	rg "github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/internal/style"
 	h "github.com/buildpacks/pack/testhelpers"
 )

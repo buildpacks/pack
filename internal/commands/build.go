@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,7 +9,6 @@ import (
 	pubcfg "github.com/buildpacks/pack/config"
 
 	"github.com/pkg/errors"
-	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
@@ -63,31 +61,16 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if err != nil {
 				return err
 			}
+
 			if actualDescriptorPath != "" {
 				logger.Debugf("Using project descriptor located at %s", style.Symbol(actualDescriptorPath))
 			}
 
-			fileFilter, err := getFileFilter(descriptor)
-			if err != nil {
-				return err
-			}
-
-			env, err := parseEnv(descriptor, flags.EnvFiles, flags.Env)
-			if err != nil {
-				return err
-			}
-
 			buildpacks := flags.Buildpacks
-			if len(buildpacks) == 0 {
-				for _, bp := range descriptor.Build.Buildpacks {
-					if len(bp.URI) == 0 {
-						// there are several places through out the pack code where the "id@version" format is used.
-						// we should probably central this, but it's not clear where it belongs
-						buildpacks = append(buildpacks, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
-					} else {
-						buildpacks = append(buildpacks, bp.URI)
-					}
-				}
+
+			env, err := parseEnv(flags.EnvFiles, flags.Env)
+			if err != nil {
+				return err
 			}
 
 			trustBuilder := isTrustedBuilder(cfg, flags.Builder) || flags.TrustBuilder
@@ -125,8 +108,9 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 					Network: flags.Network,
 					Volumes: flags.Volumes,
 				},
-				DefaultProcessType: flags.DefaultProcessType,
-				FileFilter:         fileFilter,
+				DefaultProcessType:       flags.DefaultProcessType,
+				ProjectDescriptorBaseDir: filepath.Dir(actualDescriptorPath),
+				ProjectDescriptor:        descriptor,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -173,12 +157,9 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 	return nil
 }
 
-func parseEnv(project project.Descriptor, envFiles []string, envVars []string) (map[string]string, error) {
+func parseEnv(envFiles []string, envVars []string) (map[string]string, error) {
 	env := map[string]string{}
 
-	for _, envVar := range project.Build.Env {
-		env[envVar.Name] = envVar.Value
-	}
 	for _, envFile := range envFiles {
 		envFileVars, err := parseEnvFile(envFile)
 		if err != nil {
@@ -238,25 +219,4 @@ func parseProjectToml(appPath, descriptorPath string) (project.Descriptor, strin
 
 	descriptor, err := project.ReadProjectDescriptor(actualPath)
 	return descriptor, actualPath, err
-}
-
-func getFileFilter(descriptor project.Descriptor) (func(string) bool, error) {
-	if len(descriptor.Build.Exclude) > 0 {
-		excludes, err := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
-		if err != nil {
-			return nil, err
-		}
-		return func(fileName string) bool {
-			return !excludes.MatchesPath(fileName)
-		}, nil
-	}
-	if len(descriptor.Build.Include) > 0 {
-		includes, err := ignore.CompileIgnoreLines(descriptor.Build.Include...)
-		if err != nil {
-			return nil, err
-		}
-		return includes.MatchesPath, nil
-	}
-
-	return nil, nil
 }
