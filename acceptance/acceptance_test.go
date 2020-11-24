@@ -2630,7 +2630,7 @@ func assertMockAppLogs(t *testing.T, assert h.AssertionManager, repoName string,
 	containerName := "test-" + h.RandString(10)
 	ctr, err := dockerCli.ContainerCreate(context.Background(), &container.Config{
 		Image: repoName,
-	}, nil, nil, containerName)
+	}, nil, nil, nil, containerName)
 	assert.Nil(err)
 
 	var b bytes.Buffer
@@ -2697,7 +2697,7 @@ func runDockerImageExposePort(t *testing.T, assert h.AssertionManager, container
 			"8080/tcp": []nat.PortBinding{{}},
 		},
 		AutoRemove: true,
-	}, nil, containerName)
+	}, nil, nil, containerName)
 	assert.Nil(err)
 
 	err = dockerCli.ContainerStart(ctx, ctr.ID, dockertypes.ContainerStartOptions{})

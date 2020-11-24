@@ -339,7 +339,7 @@ func createContainer(ctx context.Context, imageName, containerDir, osType string
 		&dcontainer.HostConfig{
 			Binds:     []string{fmt.Sprintf("%s:%s", fmt.Sprintf("tests-volume-%s", h.RandString(5)), filepath.ToSlash(containerDir))},
 			Isolation: isolationType,
-		}, nil, "",
+		}, nil, nil, "",
 	)
 }
 
