@@ -169,7 +169,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
 	if flags.Builder == "" {
-		suggestSettingBuilder(logger, packClient)
+		SuggestSettingBuilder(logger, packClient)
 		return pack.NewSoftError()
 	}
 

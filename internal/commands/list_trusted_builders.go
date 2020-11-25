@@ -19,7 +19,7 @@ func ListTrustedBuilders(logger logging.Logger, cfg config.Config) *cobra.Comman
 			logger.Info("Trusted Builders:")
 
 			var trustedBuilders []string
-			for _, builder := range suggestedBuilders {
+			for _, builder := range SuggestedBuilders {
 				trustedBuilders = append(trustedBuilders, builder.Image)
 			}
 

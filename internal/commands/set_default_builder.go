@@ -21,7 +21,7 @@ func SetDefaultBuilder(logger logging.Logger, cfg config.Config, client PackClie
 		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 || args[0] == "" {
 				logger.Infof("Usage:\n\t%s\n", cmd.UseLine())
-				suggestBuilders(logger, client)
+				SuggestBuilders(logger, client)
 				return nil
 			}
 

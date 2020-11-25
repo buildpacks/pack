@@ -1,4 +1,4 @@
-package commands_test
+package builder_test
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/internal/commands/builder"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
@@ -30,13 +30,13 @@ const validConfig = `
 
 `
 
-func TestCreateBuilderCommand(t *testing.T) {
+func TestCreateCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "Commands", testCreateBuilderCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "CreateCommand", testCreateCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
+func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command           *cobra.Command
 		logger            logging.Logger
@@ -58,14 +58,14 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.CreateBuilder(logger, cfg, mockClient)
+		command = builder.Create(logger, cfg, mockClient)
 	})
 
 	it.After(func() {
 		mockController.Finish()
 	})
 
-	when("#CreateBuilder", func() {
+	when("#Create", func() {
 		when("both --publish and pull-policy=never flags are specified", func() {
 			it("errors with a descriptive message", func() {
 				command.SetArgs([]string{

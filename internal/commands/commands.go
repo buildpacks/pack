@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sort"
+	"sync"
 	"syscall"
+	"text/tabwriter"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -98,4 +101,108 @@ func IsTrustedBuilder(cfg config.Config, builder string) bool {
 	}
 
 	return IsSuggestedBuilder(builder)
+}
+
+func IsSuggestedBuilder(builder string) bool {
+	for _, sugBuilder := range SuggestedBuilders {
+		if builder == sugBuilder.Image {
+			return true
+		}
+	}
+
+	return false
+}
+
+type SuggestedBuilder struct {
+	Vendor             string
+	Image              string
+	DefaultDescription string
+}
+
+var SuggestedBuilders = []SuggestedBuilder{
+	{
+		Vendor:             "Google",
+		Image:              "gcr.io/buildpacks/builder:v1",
+		DefaultDescription: "GCP Builder for all runtimes",
+	},
+	{
+		Vendor:             "Heroku",
+		Image:              "heroku/buildpacks:18",
+		DefaultDescription: "heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP",
+	},
+	{
+		Vendor:             "Paketo Buildpacks",
+		Image:              "paketobuildpacks/builder:base",
+		DefaultDescription: "Small base image with buildpacks for Java, Node.js, Golang, & .NET Core",
+	},
+	{
+		Vendor:             "Paketo Buildpacks",
+		Image:              "paketobuildpacks/builder:full",
+		DefaultDescription: "Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, & PHP",
+	},
+	{
+		Vendor:             "Paketo Buildpacks",
+		Image:              "paketobuildpacks/builder:tiny",
+		DefaultDescription: "Tiny base image (bionic build image, distroless run image) with buildpacks for Golang",
+	},
+}
+
+func SuggestSettingBuilder(logger logging.Logger, inspector BuilderInspector) {
+	logger.Info("Please select a default builder with:")
+	logger.Info("")
+	logger.Info("\tpack set-default-builder <builder-image>")
+	logger.Info("")
+	SuggestBuilders(logger, inspector)
+}
+
+type BuilderInspector interface {
+	InspectBuilder(name string, daemon bool, modifiers ...pack.BuilderInspectionModifier) (*pack.BuilderInfo, error)
+}
+
+func SuggestBuilders(logger logging.Logger, client BuilderInspector) {
+	WriteSuggestedBuilder(logger, client, SuggestedBuilders)
+}
+
+func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, builders []SuggestedBuilder) {
+	sort.Slice(builders, func(i, j int) bool {
+		if builders[i].Vendor == builders[j].Vendor {
+			return builders[i].Image < builders[j].Image
+		}
+
+		return builders[i].Vendor < builders[j].Vendor
+	})
+
+	logger.Info("Suggested builders:")
+
+	// Fetch descriptions concurrently.
+	descriptions := make([]string, len(builders))
+
+	var wg sync.WaitGroup
+	for i, builder := range builders {
+		wg.Add(1)
+
+		go func(i int, builder SuggestedBuilder) {
+			descriptions[i] = getBuilderDescription(builder, inspector)
+			wg.Done()
+		}(i, builder)
+	}
+	wg.Wait()
+
+	tw := tabwriter.NewWriter(logger.Writer(), 10, 10, 5, ' ', tabwriter.TabIndent)
+	for i, builder := range builders {
+		fmt.Fprintf(tw, "\t%s:\t%s\t%s\t\n", builder.Vendor, style.Symbol(builder.Image), descriptions[i])
+	}
+	fmt.Fprintln(tw)
+
+	logging.Tip(logger, "Learn more about a specific builder with:")
+	logger.Info("\tpack inspect-builder <builder-image>")
+}
+
+func getBuilderDescription(builder SuggestedBuilder, inspector BuilderInspector) string {
+	info, err := inspector.InspectBuilder(builder.Image, false)
+	if err == nil && info.Description != "" {
+		return info.Description
+	}
+
+	return builder.DefaultDescription
 }

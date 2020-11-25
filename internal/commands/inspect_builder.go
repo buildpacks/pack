@@ -11,10 +11,6 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-type BuilderInspector interface {
-	InspectBuilder(name string, daemon bool, modifiers ...pack.BuilderInspectionModifier) (*pack.BuilderInfo, error)
-}
-
 type InspectBuilderFlags struct {
 	Depth        int
 	OutputFormat string
@@ -39,7 +35,7 @@ func InspectBuilder(
 			}
 
 			if imageName == "" {
-				suggestSettingBuilder(logger, inspector)
+				SuggestSettingBuilder(logger, inspector)
 				return pack.NewSoftError()
 			}
 
