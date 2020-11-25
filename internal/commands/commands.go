@@ -98,3 +98,7 @@ func IsTrustedBuilder(cfg config.Config, builder string) bool {
 
 	return IsSuggestedBuilder(builder)
 }
+
+func DeprecationWarning(logger logging.Logger, oldCmd, replacementCmd string) {
+	logger.Warnf("Command %s has been deprecated, please use %s instead", style.Symbol("pack "+oldCmd), style.Symbol("pack "+replacementCmd))
+}
