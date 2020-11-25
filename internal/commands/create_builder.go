@@ -38,7 +38,7 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 
 Creating a custom builder allows you to control what buildpacks are used and what image apps are based on. For more on how to create a builder, see: https://buildpacks.io/docs/operator-guide/create-a-builder/.
 `,
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validateCreateBuilderFlags(&flags, cfg); err != nil {
 				return err
 			}

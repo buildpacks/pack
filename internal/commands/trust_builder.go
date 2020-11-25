@@ -16,7 +16,7 @@ func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 		Short:   "Trust builder",
 		Long:    "Trust builder.\n\nWhen building with this builder, all lifecycle phases will be run in a single container using the builder image.",
 		Example: "pack trust-builder cnbs/sample-stack-run:bionic",
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 || args[0] == "" {
 				logger.Infof("Usage:\n\t%s\n", cmd.UseLine())
 				return nil
@@ -25,7 +25,7 @@ func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 			imageName := args[0]
 			builderToTrust := config.TrustedBuilder{Name: imageName}
 
-			if isTrustedBuilder(cfg, imageName) {
+			if IsTrustedBuilder(cfg, imageName) {
 				logger.Infof("Builder %s is already trusted", style.Symbol(imageName))
 				return nil
 			}
