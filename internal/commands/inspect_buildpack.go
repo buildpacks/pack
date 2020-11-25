@@ -79,7 +79,7 @@ func InspectBuildpack(logger logging.Logger, cfg *config.Config, client PackClie
 		Args:    cobra.RangeArgs(1, 4),
 		Short:   "Show information about a buildpack",
 		Example: "pack inspect-buildpack cnbs/sample-package:hello-universe",
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			buildpackName := args[0]
 			registry := flags.Registry
 			if registry == "" {

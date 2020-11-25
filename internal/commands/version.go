@@ -15,7 +15,7 @@ func Version(logger logging.Logger, version string) *cobra.Command {
 		Args:    cobra.NoArgs,
 		Short:   "Show current 'pack' version",
 		Example: "pack version",
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			logger.Info(strings.TrimSpace(version))
 			return nil
 		}),

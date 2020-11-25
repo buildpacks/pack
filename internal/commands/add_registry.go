@@ -24,11 +24,11 @@ func AddBuildpackRegistry(logger logging.Logger, cfg config.Config, cfgPath stri
 	cmd := &cobra.Command{
 		Use:     "add-registry <name> <url>",
 		Args:    cobra.ExactArgs(2),
-		Short:   prependExperimental("Add buildpack registry to your pack config file"),
+		Short:   PrependExperimental("Add buildpack registry to your pack config file"),
 		Example: "pack add-registry my-registry https://github.com/buildpacks/my-registry",
 		Long: "A Buildpack Registry is a (still experimental) place to publish, store, and discover buildpacks. " +
 			"Users can add buildpacks registries using add-registry, and publish/yank buildpacks from it, as well as use those buildpacks when building applications.",
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			newRegistry := config.Registry{
 				Name: args[0],
 				URL:  args[1],
