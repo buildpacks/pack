@@ -15,7 +15,7 @@ func SuggestStacks(logger logging.Logger) *cobra.Command {
 		Short:   "Display list of recommended stacks",
 		Example: "pack suggest-stacks",
 		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
-			logger.Warn("Command 'pack suggest-stacks' has been deprecated, please use 'pack stack suggest' instead")
+			commands.DeprecationWarning(logger, "suggest-stacks", "stack suggest")
 			Suggest(logger)
 			return nil
 		}),
