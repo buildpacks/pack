@@ -30,7 +30,7 @@ To configure your zsh shell to load completions for each session, add the follow
 	. $(pack completion --shell zsh)
   
 	`,
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			packHome, err := config.PackHome()
 			if err != nil {
 				return errors.Wrap(err, "getting pack home")

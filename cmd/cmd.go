@@ -80,7 +80,8 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, &packClient, buildpackage.NewConfigReader()))
 
-	rootCmd.AddCommand(commands.SuggestStacks(logger))
+	//nolint:staticcheck
+	rootCmd.AddCommand(stack.SuggestStacks(logger))
 
 	rootCmd.AddCommand(commands.Version(logger, pack.Version))
 	rootCmd.AddCommand(commands.Report(logger, pack.Version))

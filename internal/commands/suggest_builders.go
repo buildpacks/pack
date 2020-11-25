@@ -117,7 +117,7 @@ func getBuilderDescription(builder SuggestedBuilder, inspector BuilderInspector)
 	return builder.DefaultDescription
 }
 
-func isSuggestedBuilder(builder string) bool {
+func IsSuggestedBuilder(builder string) bool {
 	for _, sugBuilder := range suggestedBuilders {
 		if builder == sugBuilder.Image {
 			return true

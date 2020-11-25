@@ -47,7 +47,7 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 			"a set of buildpacks. Packaged buildpacks can be used as inputs to `pack build` (using the `--buildpack` flag), " +
 			"and they can be included in the configs used in `pack create-builder` and `pack package-buildpack`. For more " +
 			"on how to package a buildpack, see: https://buildpacks.io/docs/buildpack-author-guide/package-a-buildpack/.",
-		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validatePackageBuildpackFlags(&flags, cfg); err != nil {
 				return err
 			}
