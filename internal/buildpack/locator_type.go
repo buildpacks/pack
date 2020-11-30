@@ -86,7 +86,7 @@ func builderMatchFound(locator string, candidates []dist.BuildpackInfo) bool {
 func hasHostPortPrefix(locator string) bool {
 	if strings.Contains(locator, "/") {
 		prefix := strings.Split(locator, "/")[0]
-		if strings.Contains(prefix, ":") {
+		if strings.Contains(prefix, ":") || strings.Contains(prefix, ".") {
 			return true
 		}
 	}
