@@ -17,9 +17,9 @@ func RemoveRegistry(logger logging.Logger, cfg config.Config, cfgPath string) *c
 	cmd := &cobra.Command{
 		Use:     "remove-registry <name>",
 		Args:    cobra.ExactArgs(1),
-		Short:   PrependExperimental("Remove registry"),
+		Short:   prependExperimental("Remove registry"),
 		Example: "pack remove-registry myregistry",
-		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			registryName = args[0]
 
 			if registryName == config.OfficialRegistryName {

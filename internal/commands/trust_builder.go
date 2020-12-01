@@ -1,15 +1,14 @@
-package config
+package commands
 
 import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
 
-// Deprecated: Use `trusted-builders add` instead
+// Deprecated: Use `config trusted-builders add` instead
 func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "trust-builder <builder-name>",
@@ -18,8 +17,8 @@ func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 		Long:    "Trust builder.\n\nWhen building with this builder, all lifecycle phases will be run in a single container using the builder image.",
 		Example: "pack trust-builder cnbs/sample-stack-run:bionic",
 		Hidden:  true,
-		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
-			commands.DeprecationWarning(logger, "trust-builder", "config trusted-builders add")
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			deprecationWarning(logger, "trust-builder", "config trusted-builders add")
 			configPath, err := config.DefaultConfigPath()
 			if err != nil {
 				return errors.Wrap(err, "getting config path")
@@ -29,6 +28,6 @@ func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 		}),
 	}
 
-	commands.AddHelpFlag(cmd, "trust-builder")
+	AddHelpFlag(cmd, "trust-builder")
 	return cmd
 }

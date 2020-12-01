@@ -1,4 +1,4 @@
-package config_test
+package commands_test
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	cmdConfig "github.com/buildpacks/pack/internal/commands/config"
+	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
@@ -42,7 +42,7 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 
-		command = cmdConfig.NewConfigCommand(logger, config.Config{}, configPath)
+		command = commands.NewConfigCommand(logger, config.Config{}, configPath)
 		command.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 	})
 
@@ -75,7 +75,7 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("works with alias of trusted-builders", func() {
-			command.SetArgs([]string{"trusted-builders"})
+			command.SetArgs([]string{"trusted-builder"})
 			h.AssertNil(t, command.Execute())
 			h.AssertContainsAllInOrder(t,
 				outBuf,

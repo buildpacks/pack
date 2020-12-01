@@ -1,4 +1,4 @@
-package config_test
+package commands_test
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	cmdConfig "github.com/buildpacks/pack/internal/commands/config"
+	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
@@ -36,7 +36,7 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 		var err error
 
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = cmdConfig.ListTrustedBuilders(logger, config.Config{})
+		command = commands.ListTrustedBuilders(logger, config.Config{})
 
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
@@ -73,7 +73,7 @@ func testListTrustedBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 				"paketobuildpacks/builder:tiny",
 			)
 
-			listTrustedBuildersCommand := cmdConfig.ListTrustedBuilders(
+			listTrustedBuildersCommand := commands.ListTrustedBuilders(
 				logger,
 				config.Config{
 					TrustedBuilders: []config.TrustedBuilder{{Name: builderName}},

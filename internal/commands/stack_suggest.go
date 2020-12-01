@@ -1,4 +1,4 @@
-package stack
+package commands
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -50,13 +49,13 @@ var suggestedStacks = []suggestedStack{
 	},
 }
 
-func suggest(logger logging.Logger) *cobra.Command {
+func stackSuggest(logger logging.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "suggest",
 		Args:    cobra.NoArgs,
 		Short:   "Display list of recommended stacks",
 		Example: "pack stacks suggest",
-		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(*cobra.Command, []string) error {
 			Suggest(logger)
 			return nil
 		}),

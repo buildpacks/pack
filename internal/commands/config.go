@@ -1,11 +1,10 @@
-package config
+package commands
 
 import (
 	"fmt"
 
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
@@ -28,7 +27,7 @@ func generateAdd(cmdName string, logger logging.Logger, cfg config.Config, cfgPa
 		Use:   "add",
 		Args:  cobra.ExactArgs(1),
 		Short: fmt.Sprintf("Add a %s", cmdName),
-		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			return addFunc(args, logger, cfg, cfgPath)
 		}),
 	}
@@ -41,7 +40,7 @@ func generateRemove(cmdName string, logger logging.Logger, cfg config.Config, cf
 		Use:   "remove",
 		Args:  cobra.ExactArgs(1),
 		Short: fmt.Sprintf("Remove a %s", cmdName),
-		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			return rmFunc(args, logger, cfg, cfgPath)
 		}),
 	}
@@ -55,7 +54,7 @@ func generateListCmd(cmdName string, logger logging.Logger, cfg config.Config, l
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: fmt.Sprintf("List %s", cmdName),
-		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			listFunc(logger, cfg)
 			return nil
 		}),

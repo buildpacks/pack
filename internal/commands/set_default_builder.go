@@ -18,7 +18,7 @@ func SetDefaultBuilder(logger logging.Logger, cfg config.Config, client PackClie
 		Short:   "Set default builder used by other commands",
 		Long:    "Set default builder used by other commands.\n\n** For suggested builders simply leave builder name empty. **",
 		Example: "pack set-default-builder cnbs/sample-builder:bionic",
-		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 || args[0] == "" {
 				logger.Infof("Usage:\n\t%s\n", cmd.UseLine())
 				suggestBuilders(logger, client)

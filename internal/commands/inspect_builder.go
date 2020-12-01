@@ -32,7 +32,7 @@ func InspectBuilder(
 		Args:    cobra.MaximumNArgs(2),
 		Short:   "Show information about a builder",
 		Example: "pack inspect-builder cnbs/sample-builder:bionic",
-		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			imageName := cfg.DefaultBuilder
 			if len(args) >= 1 {
 				imageName = args[0]
@@ -46,7 +46,7 @@ func InspectBuilder(
 			builderInfo := writer.SharedBuilderInfo{
 				Name:      imageName,
 				IsDefault: imageName == cfg.DefaultBuilder,
-				Trusted:   IsTrustedBuilder(cfg, imageName),
+				Trusted:   isTrustedBuilder(cfg, imageName),
 			}
 
 			localInfo, localErr := inspector.InspectBuilder(imageName, true, pack.WithDetectionOrderDepth(flags.Depth))

@@ -47,7 +47,7 @@ func CreateCancellableContext() context.Context {
 	return ctx
 }
 
-func LogError(logger logging.Logger, f func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {
+func logError(logger logging.Logger, f func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceErrors = true
 		cmd.SilenceUsage = true
@@ -74,15 +74,15 @@ func enableExperimentalTip(logger logging.Logger, configPath string) {
 	logging.Tip(logger, "To enable experimental features, add %s to %s.", style.Symbol("experimental = true"), style.Symbol(configPath))
 }
 
-func MultiValueHelp(name string) string {
+func multiValueHelp(name string) string {
 	return fmt.Sprintf("\nRepeat for each %s in order,\n  or supply once by comma-separated list", name)
 }
 
-func PrependExperimental(short string) string {
+func prependExperimental(short string) string {
 	return fmt.Sprintf("(%s) %s", style.Warn("experimental"), short)
 }
 
-func GetMirrors(config config.Config) map[string][]string {
+func getMirrors(config config.Config) map[string][]string {
 	mirrors := map[string][]string{}
 	for _, ri := range config.RunImages {
 		mirrors[ri.Image] = ri.Mirrors
@@ -90,16 +90,16 @@ func GetMirrors(config config.Config) map[string][]string {
 	return mirrors
 }
 
-func IsTrustedBuilder(cfg config.Config, builder string) bool {
+func isTrustedBuilder(cfg config.Config, builder string) bool {
 	for _, trustedBuilder := range cfg.TrustedBuilders {
 		if builder == trustedBuilder.Name {
 			return true
 		}
 	}
 
-	return IsSuggestedBuilder(builder)
+	return isSuggestedBuilder(builder)
 }
 
-func DeprecationWarning(logger logging.Logger, oldCmd, replacementCmd string) {
+func deprecationWarning(logger logging.Logger, oldCmd, replacementCmd string) {
 	logger.Warnf("Command %s has been deprecated, please use %s instead", style.Symbol("pack "+oldCmd), style.Symbol("pack "+replacementCmd))
 }

@@ -1,4 +1,4 @@
-package config
+package commands
 
 import (
 	"sort"
@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
@@ -17,7 +16,7 @@ func trustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *c
 		Use:     "trusted-builders",
 		Short:   "Interact with trusted builders",
 		Aliases: []string{"trusted-builder"},
-		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			listTrustedBuilders(logger, cfg)
 			return nil
 		}),
@@ -44,7 +43,7 @@ func addTrustedBuilder(args []string, logger logging.Logger, cfg config.Config, 
 	imageName := args[0]
 	builderToTrust := config.TrustedBuilder{Name: imageName}
 
-	if commands.IsTrustedBuilder(cfg, imageName) {
+	if isTrustedBuilder(cfg, imageName) {
 		logger.Infof("Builder %s is already trusted", style.Symbol(imageName))
 		return nil
 	}
@@ -73,7 +72,7 @@ func removeTrustedBuilder(args []string, logger logging.Logger, cfg config.Confi
 
 	// Builder is not in the trusted builder list
 	if len(existingTrustedBuilders) == len(cfg.TrustedBuilders) {
-		if commands.IsSuggestedBuilder(builder) {
+		if isSuggestedBuilder(builder) {
 			// Attempted to untrust a suggested builder
 			return errors.Errorf("Builder %s is a suggested builder, and is trusted by default. Currently pack doesn't support making these builders untrusted", style.Symbol(builder))
 		}
@@ -95,7 +94,7 @@ func listTrustedBuilders(logger logging.Logger, cfg config.Config) {
 	logger.Info("Trusted Builders:")
 
 	var trustedBuilders []string
-	for _, builder := range commands.SuggestedBuilders {
+	for _, builder := range suggestedBuilders {
 		trustedBuilders = append(trustedBuilders, builder.Image)
 	}
 

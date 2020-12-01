@@ -1,4 +1,4 @@
-package config_test
+package commands_test
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	cmdConfig "github.com/buildpacks/pack/internal/commands/config"
+	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
@@ -38,7 +38,7 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		var err error
 
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = cmdConfig.TrustBuilder(logger, config.Config{})
+		command = commands.TrustBuilder(logger, config.Config{})
 
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)

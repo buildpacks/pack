@@ -53,7 +53,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			"but you can use `--path` to specify another source code directory. Build requires a `builder`, which can either " +
 			"be provided directly to build using `--builder`, or can be set using the `set-default-builder` command. For more " +
 			"on how to use `pack build`, see: https://buildpacks.io/docs/app-developer-guide/build-an-app/.",
-		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			if err := validateBuildFlags(&flags, cfg, packClient, logger); err != nil {
 				return err
 			}
@@ -97,7 +97,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				}
 			}
 
-			trustBuilder := IsTrustedBuilder(cfg, flags.Builder) || flags.TrustBuilder
+			trustBuilder := isTrustedBuilder(cfg, flags.Builder) || flags.TrustBuilder
 			if trustBuilder {
 				logger.Debugf("Builder %s is trusted", style.Symbol(flags.Builder))
 			} else {
@@ -119,7 +119,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				AppPath:           flags.AppPath,
 				Builder:           flags.Builder,
 				Registry:          flags.Registry,
-				AdditionalMirrors: GetMirrors(cfg),
+				AdditionalMirrors: getMirrors(cfg),
 				RunImage:          flags.RunImage,
 				Env:               env,
 				Image:             imageName,
@@ -159,10 +159,10 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed")
 	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
 	cmd.Flags().BoolVar(&buildFlags.TrustBuilder, "trust-builder", false, "Trust the provided builder\nAll lifecycle phases will be run in a single container (if supported by the lifecycle).")
-	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack to use. One of:\n  a buildpack by id and version in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  a packaged buildpack image name in the form of '<hostname>/<repo>[:<tag>]'"+MultiValueHelp("buildpack"))
+	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack to use. One of:\n  a buildpack by id and version in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  a packaged buildpack image name in the form of '<hostname>/<repo>[:<tag>]'"+multiValueHelp("buildpack"))
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
-	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<mode>]'."+MultiValueHelp("volume"))
+	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<mode>]'."+multiValueHelp("volume"))
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
 }
