@@ -141,7 +141,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
-		return l.Export(ctx, l.opts.Image.String(), l.opts.RunImage, l.opts.Publish, launchCache.Name(), buildCache.Name(), l.opts.Network, phaseFactory)
+		return l.Export(ctx, l.opts.Image.String(), l.opts.AdditionalTags, l.opts.RunImage, l.opts.Publish, launchCache.Name(), buildCache.Name(), l.opts.Network, phaseFactory)
 	}
 
 	return l.Create(
@@ -153,6 +153,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		buildCache.Name(),
 		l.opts.Image.String(),
 		l.opts.Network,
+		l.opts.AdditionalTags,
 		l.opts.Volumes,
 		phaseFactory,
 	)
@@ -173,13 +174,14 @@ func (l *LifecycleExecution) Create(
 	ctx context.Context,
 	publish, clearCache bool,
 	runImage, launchCacheName, cacheName, repoName, networkMode string,
+	additionalTags []string,
 	volumes []string,
 	phaseFactory PhaseFactory,
 ) error {
-	flags := []string{
+	flags := addTags([]string{
 		"-cache-dir", l.mountPaths.cacheDir(),
 		"-run-image", runImage,
-	}
+	}, additionalTags)
 
 	if clearCache {
 		flags = append(flags, "-skip-restore")
@@ -363,7 +365,7 @@ func determineDefaultProcessType(platformAPI *api.Version, providedValue string)
 	return providedValue
 }
 
-func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
+func (l *LifecycleExecution) newExport(repoName string, additionalTags []string, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	flags := []string{
 		"-cache-dir", l.mountPaths.cacheDir(),
 		"-layers", l.mountPaths.layersDir(),
@@ -387,7 +389,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		WithFlags(
 			l.withLogLevel(flags...)...,
 		),
-		WithArgs(repoName),
+		WithArgs(append([]string{repoName}, additionalTags...)...),
 		WithRoot(),
 		WithNetwork(networkMode),
 		WithBinds(fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir())),
@@ -417,8 +419,8 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 	return phaseFactory.New(NewPhaseConfigProvider("exporter", l, opts...)), nil
 }
 
-func (l *LifecycleExecution) Export(ctx context.Context, repoName string, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) error {
-	export, err := l.newExport(repoName, runImage, publish, launchCacheName, cacheName, networkMode, phaseFactory)
+func (l *LifecycleExecution) Export(ctx context.Context, repoName string, additionalTags []string, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) error {
+	export, err := l.newExport(repoName, additionalTags, runImage, publish, launchCacheName, cacheName, networkMode, phaseFactory)
 	if err != nil {
 		return err
 	}
@@ -435,4 +437,11 @@ func (l *LifecycleExecution) withLogLevel(args ...string) []string {
 
 func prependArg(arg string, args []string) []string {
 	return append([]string{arg}, args...)
+}
+
+func addTags(flags, additionalTags []string) []string {
+	for _, tag := range additionalTags {
+		flags = append(flags, "-tag", tag)
+	}
+	return flags
 }
