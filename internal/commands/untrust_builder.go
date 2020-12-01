@@ -16,7 +16,7 @@ func UntrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 		Short:   "Stop trusting builder",
 		Long:    "Stop trusting builder.\n\nWhen building with this builder, all lifecycle phases will be no longer be run in a single container using the builder image.",
 		Example: "pack untrust-builder cnbs/sample-stack-run:bionic",
-		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			builder := args[0]
 
 			existingTrustedBuilders := cfg.TrustedBuilders
@@ -31,7 +31,7 @@ func UntrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 
 			// Builder is not in the trusted builder list
 			if len(existingTrustedBuilders) == len(cfg.TrustedBuilders) {
-				if IsSuggestedBuilder(builder) {
+				if isSuggestedBuilder(builder) {
 					// Attempted to untrust a suggested builder
 					return errors.Errorf("Builder %s is a suggested builder, and is trusted by default. Currently pack doesn't support making these builders untrusted", style.Symbol(builder))
 				}

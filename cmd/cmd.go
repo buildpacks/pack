@@ -9,7 +9,6 @@ import (
 	"github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/commands"
-	"github.com/buildpacks/pack/internal/commands/builder"
 	"github.com/buildpacks/pack/internal/commands/stack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
@@ -74,17 +73,17 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient, writer.NewFactory()))
 	//nolint:staticcheck
-	rootCmd.AddCommand(builder.SuggestBuilders(logger, &packClient))
+	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
 	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg))
 	rootCmd.AddCommand(commands.UntrustBuilder(logger, cfg))
 	rootCmd.AddCommand(commands.ListTrustedBuilders(logger, cfg))
 	//nolint:staticcheck
-	rootCmd.AddCommand(builder.CreateBuilder(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
 
 	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, &packClient, buildpackage.NewConfigReader()))
 
 	//nolint:staticcheck
-	rootCmd.AddCommand(stack.SuggestStacks(logger))
+	rootCmd.AddCommand(commands.SuggestStacks(logger))
 
 	rootCmd.AddCommand(commands.Version(logger, pack.Version))
 	rootCmd.AddCommand(commands.Report(logger, pack.Version))
@@ -107,7 +106,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.CompletionCommand(logger, packHome))
 
 	rootCmd.AddCommand(stack.Stack(logger))
-	rootCmd.AddCommand(builder.NewBuilderCommand(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, &packClient))
 
 	rootCmd.Version = pack.Version
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)

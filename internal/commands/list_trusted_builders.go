@@ -15,11 +15,11 @@ func ListTrustedBuilders(logger logging.Logger, cfg config.Config) *cobra.Comman
 		Short:   "List Trusted Builders",
 		Long:    "List Trusted Builders.\n\nShow the builders that are either trusted by default or have been explicitly trusted locally using `trust-builder`",
 		Example: "pack list-trusted-builders",
-		RunE: LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			logger.Info("Trusted Builders:")
 
 			var trustedBuilders []string
-			for _, builder := range SuggestedBuilders {
+			for _, builder := range suggestedBuilders {
 				trustedBuilders = append(trustedBuilders, builder.Image)
 			}
 

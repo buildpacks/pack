@@ -1,4 +1,4 @@
-package builder_test
+package commands_test
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/commands/builder"
+	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
@@ -32,7 +32,7 @@ func testBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 		mockController := gomock.NewController(t)
 		mockClient := testmocks.NewMockPackClient(mockController)
-		cmd = builder.NewBuilderCommand(logger, config.Config{}, mockClient)
+		cmd = commands.NewBuilderCommand(logger, config.Config{}, mockClient)
 		cmd.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 	})
 

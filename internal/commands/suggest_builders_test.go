@@ -1,4 +1,4 @@
-package builder_test
+package commands_test
 
 import (
 	"bytes"

@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -56,10 +55,9 @@ func suggest(logger logging.Logger) *cobra.Command {
 		Args:    cobra.NoArgs,
 		Short:   "Display list of recommended stacks",
 		Example: "pack stacks suggest",
-		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
+		Run: func(*cobra.Command, []string) {
 			Suggest(logger)
-			return nil
-		}),
+		},
 	}
 
 	return cmd

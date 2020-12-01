@@ -1,4 +1,4 @@
-package builder
+package commands
 
 import (
 	"fmt"
@@ -9,36 +9,31 @@ import (
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/builder"
 	pubcfg "github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
-// CreateFlags define flags provided to the CreateBuilder command
-type CreateFlags struct {
-	BuilderTomlPath string
-	Publish         bool
-	Registry        string
-	Policy          string
-}
-
+// Deprecated: Use 'builder create' instead.
 // CreateBuilder creates a builder image, based on a builder config
-func Create(logger logging.Logger, cfg config.Config, client commands.PackClient) *cobra.Command {
-	var flags CreateFlags
+func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+	var flags BuilderCreateFlags
 
 	cmd := &cobra.Command{
-		Use:     "create <image-name> --config <builder-config-path>",
+		Use:     "create-builder <image-name> --config <builder-config-path>",
+		Hidden:  true,
 		Args:    cobra.ExactArgs(1),
 		Short:   "Create builder image",
-		Example: "pack builder create my-builder:bionic --config ./builder.toml",
+		Example: "pack create-builder my-builder:bionic --config ./builder.toml",
 		Long: `A builder is an image that bundles all the bits and information on how to build your apps, such as buildpacks, an implementation of the lifecycle, and a build-time environment that pack uses when executing the lifecycle. When building an app, you can use community builders; you can see our suggestions by running
 
-	pack builders suggest
+	pack suggest-builders
 
 Creating a custom builder allows you to control what buildpacks are used and what image apps are based on. For more on how to create a builder, see: https://buildpacks.io/docs/operator-guide/create-a-builder/.
 `,
-		RunE: commands.LogError(logger, func(cmd *cobra.Command, args []string) error {
+		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			logger.Warn("Command 'pack create-builder' has been deprecated, please use 'pack builder create' instead")
+
 			if err := validateCreateFlags(&flags, cfg); err != nil {
 				return err
 			}
@@ -48,11 +43,11 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
 
-			builderConfig, warns, err := builder.ReadConfig(flags.BuilderTomlPath)
+			builderConfig, warnings, err := builder.ReadConfig(flags.BuilderTomlPath)
 			if err != nil {
 				return errors.Wrap(err, "invalid builder toml")
 			}
-			for _, w := range warns {
+			for _, w := range warnings {
 				logger.Warnf("builder configuration: %s", w)
 			}
 
@@ -79,23 +74,5 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 	cmd.Flags().StringVarP(&flags.BuilderTomlPath, "config", "c", "", "Path to builder TOML file (required)")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
-
-	commands.AddHelpFlag(cmd, "create")
 	return cmd
-}
-
-func validateCreateFlags(flags *CreateFlags, cfg config.Config) error {
-	if flags.Publish && flags.Policy == pubcfg.PullNever.String() {
-		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
-	}
-
-	if flags.Registry != "" && !cfg.Experimental {
-		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
-	}
-
-	if flags.BuilderTomlPath == "" {
-		return errors.Errorf("Please provide a builder config path, using --config.")
-	}
-
-	return nil
 }
