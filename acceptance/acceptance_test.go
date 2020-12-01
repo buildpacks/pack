@@ -668,13 +668,8 @@ func testAcceptance(
 			var builderName string
 
 			it.Before(func() {
-				taskPrefix := "builder create"
-				if !pack.SupportsFeature(invoke.BuilderSubcommand) {
-					taskPrefix = "create-builder"
-				}
-
 				key := taskKey(
-					taskPrefix,
+					"create-builder",
 					append(
 						[]string{runImageMirror, createBuilderPackConfig.Path(), lifecycle.Identifier()},
 						createBuilderPackConfig.FixturePaths()...,
@@ -705,13 +700,13 @@ func testAcceptance(
 						output string
 						err    error
 					)
-					if pack.SupportsFeature(invoke.BuilderSubcommand) {
-						output, err = pack.Run(
+					if createBuilderPack.Supports("builder create") {
+						output, err = createBuilderPack.Run(
 							"builder", "create", "some-builder:build",
 							"--config", builderConfigPath,
 						)
 					} else {
-						output, err = pack.Run(
+						output, err = createBuilderPack.Run(
 							"create-builder", "some-builder:build",
 							"--config", builderConfigPath,
 						)
@@ -2372,7 +2367,7 @@ func createComplexBuilder(t *testing.T,
 
 	// CREATE BUILDER
 	var output string
-	if pack.SupportsFeature(invoke.BuilderSubcommand) {
+	if pack.Supports("builder create") {
 		output = pack.RunSuccessfully(
 			"builder", "create", bldr,
 			"-c", builderConfigFile.Name(),
@@ -2470,7 +2465,7 @@ func createBuilder(
 
 	// CREATE BUILDER
 	var output string
-	if pack.SupportsFeature(invoke.BuilderSubcommand) {
+	if pack.Supports("builder create") {
 		output = pack.RunSuccessfully(
 			"builder", "create", bldr,
 			"-c", builderConfigFile.Name(),
