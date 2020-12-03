@@ -12,7 +12,7 @@ import (
 func NewConfigCommand(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
-		Short: "Interact with pack config",
+		Short: "Interact with Pack's configuration",
 		RunE:  nil,
 	}
 
