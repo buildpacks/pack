@@ -55,7 +55,7 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 			command.SetArgs([]string{})
 			h.AssertNil(t, command.Execute())
 			output := outBuf.String()
-			h.AssertContains(t, output, "Interact with pack config")
+			h.AssertContains(t, output, "Interact with Pack's configuration")
 			h.AssertContains(t, output, "Usage:")
 		})
 	})
