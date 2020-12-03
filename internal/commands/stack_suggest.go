@@ -1,4 +1,4 @@
-package stack
+package commands
 
 import (
 	"bytes"
@@ -49,15 +49,16 @@ var suggestedStacks = []suggestedStack{
 	},
 }
 
-func suggest(logger logging.Logger) *cobra.Command {
+func stackSuggest(logger logging.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "suggest",
 		Args:    cobra.NoArgs,
 		Short:   "Display list of recommended stacks",
 		Example: "pack stacks suggest",
-		Run: func(*cobra.Command, []string) {
+		RunE: logError(logger, func(*cobra.Command, []string) error {
 			Suggest(logger)
-		},
+			return nil
+		}),
 	}
 
 	return cmd

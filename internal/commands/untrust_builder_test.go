@@ -139,28 +139,3 @@ func testUntrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 }
-
-type configManager struct {
-	testObject *testing.T
-	configPath string
-}
-
-func newConfigManager(t *testing.T, configPath string) configManager {
-	return configManager{
-		testObject: t,
-		configPath: configPath,
-	}
-}
-
-func (c configManager) configWithTrustedBuilders(trustedBuilders ...string) config.Config {
-	c.testObject.Helper()
-
-	cfg := config.Config{}
-	for _, builderName := range trustedBuilders {
-		cfg.TrustedBuilders = append(cfg.TrustedBuilders, config.TrustedBuilder{Name: builderName})
-	}
-	err := config.Write(cfg, c.configPath)
-	h.AssertNil(c.testObject, err)
-
-	return cfg
-}
