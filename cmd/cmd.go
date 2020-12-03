@@ -94,7 +94,12 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, &packClient))
 	}
 
-	rootCmd.AddCommand(commands.CompletionCommand(logger))
+	packHome, err := config.PackHome()
+	if err != nil {
+		return nil, err
+	}
+
+	rootCmd.AddCommand(commands.CompletionCommand(logger, packHome))
 
 	rootCmd.AddCommand(stack.Stack(logger))
 
