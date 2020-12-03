@@ -8,8 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -43,6 +46,56 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		if err := os.RemoveAll(tmpDir); err != nil {
 			t.Fatalf("failed to clean up tmp dir %s: %s", tmpDir, err)
 		}
+	})
+
+	when("#ReadDirAsTar", func() {
+		var src string
+		it.Before(func() {
+			src = filepath.Join("testdata", "dir-to-tar")
+		})
+
+		it("returns a TarReader of the dir", func() {
+			rc := archive.ReadDirAsTar(src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, nil)
+
+			tr := tar.NewReader(rc)
+			verify := h.NewTarVerifier(t, tr, 1234, 2345)
+			verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", int64(os.ModePerm))
+			verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", int64(os.ModePerm))
+			if runtime.GOOS != "windows" {
+				verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+				verify.NoMoreFilesExist()
+				h.AssertNil(t, rc.Close())
+			}
+		})
+
+		it("returns error if closed multiple times", func() {
+			rc := archive.ReadDirAsTar(src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, func(s string) bool { return false })
+			tr := tar.NewReader(rc)
+			verify := h.NewTarVerifier(t, tr, 1234, 2345)
+			verify.NoMoreFilesExist()
+			h.AssertNil(t, rc.Close())
+			h.AssertError(t, rc.Close(), "reader already closed")
+		})
+	})
+
+	when("#ReadZipAsTar", func() {
+		var src string
+		it.Before(func() {
+			src = filepath.Join("testdata", "zip-to-tar.zip")
+		})
+
+		it("returns a TarReader of the dir", func() {
+			rc := archive.ReadZipAsTar(src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, nil)
+
+			tr := tar.NewReader(rc)
+			verify := h.NewTarVerifier(t, tr, 1234, 2345)
+			verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", int64(os.ModePerm))
+			verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", int64(os.ModePerm))
+			verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+
+			verify.NoMoreFilesExist()
+			h.AssertNil(t, rc.Close())
+		})
 	})
 
 	when("#ReadTarEntry", func() {
@@ -83,6 +136,43 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				h.AssertEq(t, string(contents), "file-1 content")
 			})
+		})
+
+		when("path doesn't exist", func() {
+			it.Before(func() {
+				err = archive.CreateSingleFileTar(tarFile.Name(), "file1", "file-1 content")
+				h.AssertNil(t, err)
+			})
+
+			it("returns the file contents", func() {
+				_, _, err := archive.ReadTarEntry(tarFile, "file2")
+				h.AssertError(t, err, "could not find entry path")
+				h.AssertTrue(t, archive.IsEntryNotExist(err))
+			})
+		})
+
+		when("reader isn't tar", func() {
+			it("returns the file contents", func() {
+				reader := strings.NewReader("abcde")
+				_, _, err := archive.ReadTarEntry(reader, "file1")
+				h.AssertError(t, err, "get next tar entry")
+			})
+		})
+	})
+
+	when("#CreateSingleFileTarReader", func() {
+		it("returns the file contents", func() {
+			rc := archive.CreateSingleFileTarReader("file1", "file-1 content")
+			_, contents, err := archive.ReadTarEntry(rc, "file1")
+			h.AssertNil(t, err)
+			h.AssertEq(t, string(contents), "file-1 content")
+		})
+	})
+
+	when("#IsEntryNotExist", func() {
+		it("works", func() {
+			h.AssertTrue(t, archive.IsEntryNotExist(errors.Wrap(archive.ErrEntryNotExist, "something")))
+			h.AssertFalse(t, archive.IsEntryNotExist(errors.New("something not err not exist")))
 		})
 	})
 
@@ -140,6 +230,35 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				verify := h.NewTarVerifier(t, tr, 1234, 2345)
 				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", fileMode(t, filepath.Join(src, "some-file.txt")))
 				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", fileMode(t, filepath.Join(src, "sub-dir")))
+				if runtime.GOOS != "windows" {
+					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+				}
+			})
+		})
+
+		when("has file filter", func() {
+			it("does not add files against the file filter", func() {
+				tarFile := filepath.Join(tmpDir, "some.tar")
+				fh, err := os.Create(tarFile)
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, func(path string) bool {
+					return !strings.Contains(path, "some-file.txt")
+				})
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				tr := tar.NewReader(file)
+
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
+				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", int64(os.ModePerm))
 				if runtime.GOOS != "windows" {
 					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 				}
@@ -270,9 +389,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				verify := h.NewTarVerifier(t, tr, 1234, 2345)
 				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
 				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0777)
-				if runtime.GOOS != "windows" {
-					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
-				}
+				verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 			})
 		})
 
@@ -297,9 +414,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				verify := h.NewTarVerifier(t, tr, 1234, 2345)
 				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0644)
 				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0755)
-				if runtime.GOOS != "windows" {
-					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
-				}
+				verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 			})
 
 			when("files are compressed in fat (MSDOS) format", func() {
@@ -328,6 +443,32 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 					verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", 0777)
 					verify.NoMoreFilesExist()
 				})
+			})
+		})
+
+		when("has file filter", func() {
+			it("follows it when adding files", func() {
+				fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteZipToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, func(path string) bool {
+					return !strings.Contains(path, "some-file.txt")
+				})
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				tr := tar.NewReader(file)
+
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
+				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", 0777)
+				verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 			})
 		})
 
