@@ -182,29 +182,22 @@ func (i *PackInvoker) EnableExperimental() {
 }
 
 // supports returns whether or not the executor's pack binary supports a
-// given command string. The command string can take one of three forms:
+// given command string. The command string can take one of four forms:
 //   - "<command>" (e.g. "create-builder")
 //   - "<flag>" (e.g. "--verbose")
 //   - "<command> <flag>" (e.g. "build --network")
+//   - "<command>... <flag>" (e.g. "config trusted-builder--network")
 //
-// Any other form will return false.
+// Any other form may return false.
 func (i *PackInvoker) Supports(command string) bool {
 	i.testObject.Helper()
 
 	parts := strings.Split(command, " ")
 
 	var cmdParts = []string{"help"}
-
-	var search string
-	switch len(parts) {
-	case 1:
-		search = parts[0]
-	case 2:
-		cmdParts = append(cmdParts, parts[0])
-		search = parts[1]
-	default:
-		return false
-	}
+	last := len(parts) - 1
+	cmdParts = append(cmdParts, parts[:last]...)
+	search := parts[last]
 
 	output, err := i.baseCmd(cmdParts...).CombinedOutput()
 	i.assert.Nil(err)
