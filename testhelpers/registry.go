@@ -161,7 +161,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) (st
 		PortBindings: nat.PortMap{
 			"5000/tcp": []nat.PortBinding{{}},
 		},
-	}, nil, runRegistryName)
+	}, nil, nil, runRegistryName)
 	AssertNil(t, err)
 	err = dockerCli(t).CopyToContainer(ctx, ctr.ID, "/", htpasswdTar, dockertypes.CopyToContainerOptions{})
 	AssertNil(t, err)
