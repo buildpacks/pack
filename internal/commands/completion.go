@@ -1,12 +1,12 @@
 package commands
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -14,16 +14,37 @@ type CompletionFlags struct {
 	Shell string
 }
 
-func CompletionCommand(logger logging.Logger) *cobra.Command {
+type completionFunc func(packHome string, cmd *cobra.Command) (path string, err error)
+
+var shellExtensions = map[string]completionFunc{
+	"bash": func(packHome string, cmd *cobra.Command) (path string, err error) {
+		p := filepath.Join(packHome, "completion.sh")
+		return p, cmd.GenBashCompletionFile(p)
+	},
+	"fish": func(packHome string, cmd *cobra.Command) (path string, err error) {
+		p := filepath.Join(packHome, "completion.fish")
+		return p, cmd.GenFishCompletionFile(p, true)
+	},
+	"zsh": func(packHome string, cmd *cobra.Command) (path string, err error) {
+		p := filepath.Join(packHome, "completion.zsh")
+		return p, cmd.GenZshCompletionFile(p)
+	},
+}
+
+func CompletionCommand(logger logging.Logger, packHome string) *cobra.Command {
 	var flags CompletionFlags
 	var completionCmd = &cobra.Command{
 		Use:   "completion",
 		Short: "Outputs completion script location",
-		Long: `Generates bash completion script and outputs its location.
+		Long: `Generates completion script and outputs its location.
 
 To configure your bash shell to load completions for each session, add the following to your '.bashrc' or '.bash_profile':
 
 	. $(pack completion)
+
+To configure your fish shell to load completions for each session, add the following to your '~/.config/fish/config.fish':
+
+	source (pack completion --shell fish)
 
 To configure your zsh shell to load completions for each session, add the following to your '.zshrc':
 
@@ -31,28 +52,18 @@ To configure your zsh shell to load completions for each session, add the follow
   
 	`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			packHome, err := config.PackHome()
-			if err != nil {
-				return errors.Wrap(err, "getting pack home")
-			}
-
-			if err = config.MkdirAll(packHome); err != nil {
-				return errors.Wrapf(err, "creating pack home: %s", packHome)
-			}
-			completionPath := filepath.Join(packHome, "completion")
-
-			var flagErr error
-			switch flags.Shell {
-			case "bash":
-				flagErr = cmd.Parent().GenBashCompletionFile(completionPath)
-			case "zsh":
-				flagErr = cmd.Parent().GenZshCompletionFile(completionPath)
-			default:
+			completionFunc, ok := shellExtensions[flags.Shell]
+			if !ok {
 				return errors.Errorf("%s is unsupported shell", flags.Shell)
 			}
 
-			if flagErr != nil {
-				return flagErr
+			if err := os.MkdirAll(packHome, os.ModePerm); err != nil {
+				return err
+			}
+
+			completionPath, err := completionFunc(packHome, cmd.Parent())
+			if err != nil {
+				return err
 			}
 
 			logger.Info(completionPath)
@@ -60,6 +71,6 @@ To configure your zsh shell to load completions for each session, add the follow
 		}),
 	}
 
-	completionCmd.Flags().StringVarP(&flags.Shell, "shell", "s", "bash", "Generates completion file for [bash|zsh]")
+	completionCmd.Flags().StringVarP(&flags.Shell, "shell", "s", "bash", "Generates completion file for [bash|fish|zsh]")
 	return completionCmd
 }
