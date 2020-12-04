@@ -77,7 +77,7 @@ func (p PackageFile) Prepare(sourceDir, _ string) error {
 	}
 
 	var output string
-	if p.pack.SupportsFeature(invoke.BuildpackSubcommand) {
+	if p.pack.Supports("buildpack package") {
 		output = p.pack.RunSuccessfully("buildpack", append([]string{"package"}, packArgs...)...)
 	} else {
 		output = p.pack.RunSuccessfully("package-buildpack", packArgs...)

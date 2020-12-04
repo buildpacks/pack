@@ -216,7 +216,6 @@ const (
 	QuietMode
 	InspectBuilderOutputFormat
 	OSInPackageToml
-	BuildpackSubcommand
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -243,9 +242,6 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	},
 	OSInPackageToml: func(i *PackInvoker) bool {
 		return i.laterThan("0.15.0")
-	},
-	BuildpackSubcommand: func(i *PackInvoker) bool {
-		return i.atLeast("0.16.0")
 	},
 }
 

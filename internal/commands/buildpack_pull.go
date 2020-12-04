@@ -9,19 +9,19 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-type PullBuildpackFlags struct {
+type BuildpackPullFlags struct {
 	BuildpackRegistry string
 }
 
-func PullBuildpack(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+func BuildpackPull(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	var opts pack.PullBuildpackOptions
-	var flags PullBuildpackFlags
+	var flags BuildpackPullFlags
 
 	cmd := &cobra.Command{
-		Use:     "pull-buildpack <uri>",
+		Use:     "pull <uri>",
 		Args:    cobra.ExactArgs(1),
-		Short:   prependExperimental("Pull the buildpack and store it locally"),
-		Example: "pack pull-buildpack example/my-buildpack@1.0.0",
+		Short:   prependExperimental("Pull the buildpack from a registry and store it locally"),
+		Example: "pack buildpack pull example/my-buildpack@1.0.0",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			registry, err := config.GetRegistry(cfg, flags.BuildpackRegistry)
 			if err != nil {
@@ -40,6 +40,6 @@ func PullBuildpack(logger logging.Logger, cfg config.Config, client PackClient) 
 		}),
 	}
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
-	AddHelpFlag(cmd, "pull-buildpack")
+	AddHelpFlag(cmd, "pull")
 	return cmd
 }

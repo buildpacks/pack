@@ -103,7 +103,6 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 		rootCmd.AddCommand(commands.RemoveRegistry(logger, cfg, cfgPath))
 		//nolint:staticcheck
 		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, &packClient))
-		rootCmd.AddCommand(commands.PullBuildpack(logger, cfg, &packClient))
 	}
 
 	packHome, err := config.PackHome()

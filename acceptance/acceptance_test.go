@@ -297,7 +297,7 @@ func testWithoutSpecificBuilderRequirement(
 
 		it.Before(func() {
 			h.SkipUnless(t,
-				pack.SupportsFeature(invoke.BuildpackSubcommand) || pack.Supports("package-buildpack"),
+				pack.Supports("buildpack package") || pack.Supports("package-buildpack"),
 				"pack does not support 'package-buildpack'",
 			)
 
@@ -346,7 +346,7 @@ func testWithoutSpecificBuilderRequirement(
 				packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
 
 				var output string
-				if pack.SupportsFeature(invoke.BuildpackSubcommand) {
+				if pack.Supports("buildpack package") {
 					output = pack.RunSuccessfully("buildpack", "package", packageName, "-c", packageTomlPath)
 				} else {
 					output = pack.RunSuccessfully("package-buildpack", packageName, "-c", packageTomlPath)
@@ -412,7 +412,7 @@ func testWithoutSpecificBuilderRequirement(
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
 					var output string
-					if pack.SupportsFeature(invoke.BuildpackSubcommand) {
+					if pack.Supports("buildpack package") {
 						output = pack.RunSuccessfully(
 							"buildpack", "package", packageName,
 							"-c", aggregatePackageToml,
@@ -456,7 +456,7 @@ func testWithoutSpecificBuilderRequirement(
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
-					if pack.SupportsFeature(invoke.BuildpackSubcommand) {
+					if pack.Supports("buildpack package") {
 						pack.JustRunSuccessfully(
 							"buildpack", "package", packageName,
 							"-c", aggregatePackageToml,
@@ -495,7 +495,7 @@ func testWithoutSpecificBuilderRequirement(
 						err    error
 					)
 
-					if pack.SupportsFeature(invoke.BuildpackSubcommand) {
+					if pack.Supports("buildpack package") {
 						output, err = pack.Run(
 							"buildpack", "package", packageName,
 							"-c", aggregatePackageToml,
@@ -524,7 +524,7 @@ func testWithoutSpecificBuilderRequirement(
 				packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
 				destinationFile := filepath.Join(tmpDir, "package.cnb")
 				var output string
-				if pack.SupportsFeature(invoke.BuildpackSubcommand) {
+				if pack.Supports("buildpack package") {
 					output = pack.RunSuccessfully(
 						"buildpack", "package", destinationFile,
 						"--format", "file",
@@ -548,7 +548,7 @@ func testWithoutSpecificBuilderRequirement(
 					output string
 					err    error
 				)
-				if pack.SupportsFeature(invoke.BuildpackSubcommand) {
+				if pack.Supports("buildpack package") {
 					output, err = pack.Run(
 						"buildpack", "package", "some-package",
 						"-c", pack.FixtureManager().FixtureLocation("invalid_package.toml"),

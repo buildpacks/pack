@@ -8,14 +8,20 @@ import (
 )
 
 func NewBuildpackCommand(logger logging.Logger, cfg config.Config, client PackClient, packageConfigReader PackageConfigReader) *cobra.Command {
-	cmd := cobra.Command{
-		Use:   "buildpack",
-		Short: "Interact with buildpacks",
-		RunE:  nil,
+	cmd := &cobra.Command{
+		Use:     "buildpack",
+		Aliases: []string{"buildpacks"},
+		Short:   "Interact with buildpacks",
+		RunE:    nil,
 	}
 
 	cmd.AddCommand(BuildpackPackage(logger, client, packageConfigReader))
-	cmd.AddCommand(BuildpackRegister(logger, cfg, client))
-	cmd.AddCommand(BuildpackYank(logger, cfg, client))
-	return &cmd
+	if cfg.Experimental {
+		cmd.AddCommand(BuildpackPull(logger, cfg, client))
+		cmd.AddCommand(BuildpackRegister(logger, cfg, client))
+		cmd.AddCommand(BuildpackYank(logger, cfg, client))
+	}
+
+	AddHelpFlag(cmd, "buildpack")
+	return cmd
 }
