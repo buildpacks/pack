@@ -4,23 +4,24 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/style"
-
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
-// Deprecated: Use BuildpackRegister instead
-func RegisterBuildpack(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+type BuildpackRegisterFlags struct {
+	BuildpackRegistry string
+}
+
+func BuildpackRegister(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	var opts pack.RegisterBuildpackOptions
 	var flags BuildpackRegisterFlags
 
 	cmd := &cobra.Command{
-		Use:     "register-buildpack <image>",
-		Hidden:  true,
+		Use:     "register <image>",
 		Args:    cobra.ExactArgs(1),
 		Short:   prependExperimental("Register the buildpack to a registry"),
-		Example: "pack register-buildpack my-buildpack",
+		Example: "pack register my-buildpack",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			registry, err := config.GetRegistry(cfg, flags.BuildpackRegistry)
 			if err != nil {
@@ -39,6 +40,6 @@ func RegisterBuildpack(logger logging.Logger, cfg config.Config, client PackClie
 		}),
 	}
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
-	AddHelpFlag(cmd, "register-buildpack")
+	AddHelpFlag(cmd, "register")
 	return cmd
 }

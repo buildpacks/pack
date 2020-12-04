@@ -4,16 +4,14 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/heroku/color"
-
 	"github.com/golang/mock/gomock"
+	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
-
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
@@ -21,15 +19,15 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestYankBuildpackCommand(t *testing.T) {
+func TestYankCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "YankBuildpackCommand", testYankBuildpackCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "YankCommand", testYankCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
+func testYankCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command        *cobra.Command
+		cmd            *cobra.Command
 		logger         logging.Logger
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
@@ -43,13 +41,13 @@ func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		mockClient = testmocks.NewMockPackClient(mockController)
 		cfg = config.Config{}
 
-		command = commands.YankBuildpack(logger, cfg, mockClient)
+		cmd = commands.BuildpackYank(logger, cfg, mockClient)
 	})
 
 	when("#YankBuildpackCommand", func() {
 		when("no buildpack id@version is provided", func() {
 			it("fails to run", func() {
-				err := command.Execute()
+				err := cmd.Execute()
 				h.AssertError(t, err, "accepts 1 arg")
 			})
 		})
@@ -76,13 +74,13 @@ func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					YankBuildpack(opts).
 					Return(nil)
 
-				command.SetArgs([]string{buildpackIDVersion})
-				h.AssertNil(t, command.Execute())
+				cmd.SetArgs([]string{buildpackIDVersion})
+				h.AssertNil(t, cmd.Execute())
 			})
 
 			it("should fail for invalid buildpack id/version", func() {
-				command.SetArgs([]string{"mybuildpack"})
-				err := command.Execute()
+				cmd.SetArgs([]string{"mybuildpack"})
+				err := cmd.Execute()
 
 				h.AssertError(t, err, "invalid buildpack id@version 'mybuildpack'")
 			})
@@ -98,7 +96,7 @@ func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				}
-				command = commands.YankBuildpack(logger, cfg, mockClient)
+
 				opts := pack.YankBuildpackOptions{
 					ID:      "heroku/rust",
 					Version: "0.0.1",
@@ -111,8 +109,8 @@ func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					YankBuildpack(opts).
 					Return(nil)
 
-				command.SetArgs([]string{buildpackIDVersion})
-				h.AssertNil(t, command.Execute())
+				cmd.SetArgs([]string{buildpackIDVersion})
+				h.AssertNil(t, cmd.Execute())
 			})
 
 			it("should undo", func() {
@@ -127,9 +125,8 @@ func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					YankBuildpack(opts).
 					Return(nil)
 
-				command = commands.YankBuildpack(logger, cfg, mockClient)
-				command.SetArgs([]string{buildpackIDVersion, "--undo"})
-				h.AssertNil(t, command.Execute())
+				cmd.SetArgs([]string{buildpackIDVersion, "--undo"})
+				h.AssertNil(t, cmd.Execute())
 			})
 
 			when("buildpack-registry flag is used", func() {
@@ -161,19 +158,19 @@ func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 						YankBuildpack(opts).
 						Return(nil)
 
-					command = commands.YankBuildpack(logger, cfg, mockClient)
-					command.SetArgs([]string{buildpackIDVersion, "--buildpack-registry", buildpackRegistry})
-					h.AssertNil(t, command.Execute())
+					cmd = commands.BuildpackYank(logger, cfg, mockClient)
+					cmd.SetArgs([]string{buildpackIDVersion, "--buildpack-registry", buildpackRegistry})
+					h.AssertNil(t, cmd.Execute())
 				})
 
 				it("should handle config errors", func() {
 					cfg = config.Config{
 						DefaultRegistryName: "missing registry",
 					}
-					command = commands.YankBuildpack(logger, cfg, mockClient)
-					command.SetArgs([]string{buildpackIDVersion})
+					cmd = commands.BuildpackYank(logger, cfg, mockClient)
+					cmd.SetArgs([]string{buildpackIDVersion})
 
-					err := command.Execute()
+					err := cmd.Execute()
 					h.AssertNotNil(t, err)
 				})
 			})

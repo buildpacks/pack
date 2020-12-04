@@ -1,25 +1,30 @@
 package commands
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/style"
-
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
-// Deprecated: Use yank instead
-func YankBuildpack(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+type BuildpackYankFlags struct {
+	BuildpackRegistry string
+	Undo              bool
+}
+
+func BuildpackYank(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	var flags BuildpackYankFlags
 
 	cmd := &cobra.Command{
-		Use:     "yank-buildpack <buildpack-id-and-version>",
-		Hidden:  true,
+		Use:     "yank <buildpack-id-and-version>",
 		Args:    cobra.ExactArgs(1),
 		Short:   prependExperimental("Yank the buildpack from the registry"),
-		Example: "pack yank-buildpack my-buildpack@0.0.1",
+		Example: "pack yank my-buildpack@0.0.1",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			buildpackIDVersion := args[0]
 
@@ -49,7 +54,16 @@ func YankBuildpack(logger logging.Logger, cfg config.Config, client PackClient) 
 	}
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
 	cmd.Flags().BoolVarP(&flags.Undo, "undo", "u", false, "undo previously yanked buildpack")
-	AddHelpFlag(cmd, "yank-buildpack")
+	AddHelpFlag(cmd, "yank")
 
 	return cmd
+}
+
+func parseIDVersion(buildpackIDVersion string) (string, string, error) {
+	parts := strings.Split(buildpackIDVersion, "@")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid buildpack id@version %s", style.Symbol(buildpackIDVersion))
+	}
+
+	return parts[0], parts[1], nil
 }
