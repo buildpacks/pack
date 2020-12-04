@@ -7,9 +7,10 @@ import (
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/buildpackage"
-	"github.com/buildpacks/pack/internal/builder/writer"
+	builderwriter "github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
+	imagewriter "github.com/buildpacks/pack/internal/inspectimage/writer"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -65,12 +66,14 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.Build(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.Rebase(logger, cfg, &packClient))
-	rootCmd.AddCommand(commands.InspectImage(logger, &cfg, &packClient))
+
+	rootCmd.AddCommand(commands.InspectImage(logger, imagewriter.NewFactory(), cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuildpack(logger, &cfg, &packClient))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
 
 	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
-	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient, writer.NewFactory()))
+	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient, builderwriter.NewFactory()))
+
 	//nolint:staticcheck
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
 	//nolint:staticcheck
