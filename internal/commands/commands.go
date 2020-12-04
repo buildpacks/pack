@@ -27,6 +27,7 @@ type PackClient interface {
 	RegisterBuildpack(context.Context, pack.RegisterBuildpackOptions) error
 	YankBuildpack(pack.YankBuildpackOptions) error
 	InspectBuildpack(pack.InspectBuildpackOptions) (*pack.BuildpackInfo, error)
+	PullBuildpack(context.Context, pack.PullBuildpackOptions) error
 }
 
 func AddHelpFlag(cmd *cobra.Command, commandName string) {
@@ -97,4 +98,8 @@ func isTrustedBuilder(cfg config.Config, builder string) bool {
 	}
 
 	return isSuggestedBuilder(builder)
+}
+
+func deprecationWarning(logger logging.Logger, oldCmd, replacementCmd string) {
+	logger.Warnf("Command %s has been deprecated, please use %s instead", style.Symbol("pack "+oldCmd), style.Symbol("pack "+replacementCmd))
 }

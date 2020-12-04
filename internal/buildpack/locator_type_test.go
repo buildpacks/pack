@@ -159,6 +159,10 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			locator:      "cnbs/sample-package@hello-universe",
 			expectedType: buildpack.InvalidLocator,
 		},
+		{
+			locator:      "dev.local/http-go-fn:latest",
+			expectedType: buildpack.PackageLocator,
+		},
 	} {
 		tc := tc
 

@@ -1,4 +1,4 @@
-package stack
+package commands
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ func testStacksSuggestCommand(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		command = suggest(logging.NewLogWithWriters(&outBuf, &outBuf))
+		command = stackSuggest(logging.NewLogWithWriters(&outBuf, &outBuf))
 	})
 
 	when("#SuggestStacks", func() {

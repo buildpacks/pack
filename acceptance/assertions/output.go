@@ -207,3 +207,9 @@ func (o OutputAssertionManager) IncludesPrefixedPaketoBuilders() {
 		o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`Paketo Buildpacks:\s+'%s'`, builder)))
 	}
 }
+
+func (o OutputAssertionManager) IncludesDeprecationWarning() {
+	o.testObject.Helper()
+
+	o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`Warning: Command 'pack [\w-]+' has been deprecated, please use 'pack [\w-\s]+' instead`)))
+}
