@@ -71,6 +71,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient, writer.NewFactory()))
+	//nolint:staticcheck
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
 	//nolint:staticcheck
 	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg))
@@ -78,6 +79,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.UntrustBuilder(logger, cfg))
 	//nolint:staticcheck
 	rootCmd.AddCommand(commands.ListTrustedBuilders(logger, cfg))
+	//nolint:staticcheck
 	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
 
 	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, &packClient, buildpackage.NewConfigReader()))
@@ -107,6 +109,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath))
 	rootCmd.AddCommand(commands.NewStackCommand(logger))
+	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, &packClient))
 
 	rootCmd.Version = pack.Version
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)

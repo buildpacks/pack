@@ -202,7 +202,7 @@ func (i *PackInvoker) Supports(command string) bool {
 	output, err := i.baseCmd(cmdParts...).CombinedOutput()
 	i.assert.Nil(err)
 
-	return strings.Contains(string(output), search)
+	return strings.Contains(string(output), search) && !strings.Contains(string(output), "Unknown help topic")
 }
 
 type Feature int

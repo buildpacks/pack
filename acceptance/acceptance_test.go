@@ -146,9 +146,9 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
-	when("suggest-builders", func() {
+	when("builder suggest", func() {
 		it("displays suggested builders", func() {
-			output := pack.RunSuccessfully("suggest-builders")
+			output := pack.RunSuccessfully("builder", "suggest")
 
 			assertOutput := assertions.NewOutputAssertionManager(t, output)
 			assertOutput.IncludesSuggestedBuildersHeading()
@@ -751,10 +751,22 @@ func testAcceptance(
 
 					builderConfigPath := createBuilderPack.FixtureManager().FixtureLocation("invalid_builder.toml")
 
-					output, err := pack.Run(
-						"create-builder", "some-builder:build",
-						"--config", builderConfigPath,
+					var (
+						output string
+						err    error
 					)
+					if createBuilderPack.Supports("builder create") {
+						output, err = createBuilderPack.Run(
+							"builder", "create", "some-builder:build",
+							"--config", builderConfigPath,
+						)
+					} else {
+						output, err = createBuilderPack.Run(
+							"create-builder", "some-builder:build",
+							"--config", builderConfigPath,
+						)
+					}
+
 					assert.NotNil(err)
 					assert.Contains(output, "invalid builder toml")
 				})
@@ -2416,11 +2428,20 @@ func createComplexBuilder(t *testing.T,
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
 
 	// CREATE BUILDER
-	output := pack.RunSuccessfully(
-		"create-builder", bldr,
-		"-c", builderConfigFile.Name(),
-		"--no-color",
-	)
+	var output string
+	if pack.Supports("builder create") {
+		output = pack.RunSuccessfully(
+			"builder", "create", bldr,
+			"-c", builderConfigFile.Name(),
+			"--no-color",
+		)
+	} else {
+		output = pack.RunSuccessfully(
+			"create-builder", bldr,
+			"-c", builderConfigFile.Name(),
+			"--no-color",
+		)
+	}
 
 	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
 	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
@@ -2505,11 +2526,21 @@ func createBuilder(
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
 
 	// CREATE BUILDER
-	output := pack.RunSuccessfully(
-		"create-builder", bldr,
-		"-c", builderConfigFile.Name(),
-		"--no-color",
-	)
+	var output string
+	if pack.Supports("builder create") {
+		output = pack.RunSuccessfully(
+			"builder", "create", bldr,
+			"-c", builderConfigFile.Name(),
+			"--no-color",
+		)
+	} else {
+		output = pack.RunSuccessfully(
+			"create-builder", bldr,
+			"-c", builderConfigFile.Name(),
+			"--no-color",
+		)
+	}
+
 	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
 	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
 

@@ -18,13 +18,13 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestSuggestBuildersCommand(t *testing.T) {
+func TestSuggestCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "SuggestBuilderCommand", testSuggestBuildersCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "BuilderSuggestCommand", testSuggestCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
+func testSuggestCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		logger         logging.Logger
 		outBuf         bytes.Buffer
