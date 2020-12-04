@@ -57,6 +57,9 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 			output := outBuf.String()
 			h.AssertContains(t, output, "Interact with Pack's configuration")
 			h.AssertContains(t, output, "Usage:")
+			for _, command := range []string{"trusted-builders", "run-image-mirrors"} {
+				h.AssertContains(t, output, command)
+			}
 		})
 	})
 

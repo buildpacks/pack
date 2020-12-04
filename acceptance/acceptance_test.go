@@ -896,7 +896,11 @@ func testAcceptance(
 						localRunImageMirror := registryConfig.RepoName("pack-test/run-mirror")
 						assert.Succeeds(dockerCli.ImageTag(context.TODO(), runImage, localRunImageMirror))
 						defer h.DockerRmi(dockerCli, localRunImageMirror)
-						pack.JustRunSuccessfully("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+						if pack.Supports("config run-image-mirrors") {
+							pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImage, "-m", localRunImageMirror)
+						} else {
+							pack.JustRunSuccessfully("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+						}
 
 						t.Log("rebuild")
 						output = pack.RunSuccessfully(
@@ -1899,9 +1903,14 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 					})
 
 					it("displays nested Detection Order groups", func() {
-						output := pack.RunSuccessfully(
-							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-						)
+						var output string
+						if pack.Supports("config run-image-mirrors") {
+							output = pack.RunSuccessfully(
+								"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+						} else {
+							output = pack.RunSuccessfully(
+								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+						}
 						assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 						output = pack.RunSuccessfully("inspect-builder", builderName)
@@ -1936,9 +1945,14 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 					})
 
 					it("provides nested detection output up to depth", func() {
-						output := pack.RunSuccessfully(
-							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-						)
+						var output string
+						if pack.Supports("config run-image-mirrors") {
+							output = pack.RunSuccessfully(
+								"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+						} else {
+							output = pack.RunSuccessfully(
+								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+						}
 						assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 						depth := "2"
@@ -1984,9 +1998,15 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 								"inspect-builder output format is not yet implemented",
 							)
 
-							output := pack.RunSuccessfully(
-								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-							)
+							var output string
+							if pack.Supports("config run-image-mirrors") {
+								output = pack.RunSuccessfully(
+									"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							} else {
+								output = pack.RunSuccessfully(
+									"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							}
+
 							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "toml")
@@ -2026,9 +2046,15 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 								"inspect-builder output format is not yet implemented",
 							)
 
-							output := pack.RunSuccessfully(
-								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-							)
+							var output string
+							if pack.Supports("config run-image-mirrors") {
+								output = pack.RunSuccessfully(
+									"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							} else {
+								output = pack.RunSuccessfully(
+									"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							}
+
 							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "yaml")
@@ -2068,9 +2094,15 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 								"inspect-builder output format is not yet implemented",
 							)
 
-							output := pack.RunSuccessfully(
-								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-							)
+							var output string
+							if pack.Supports("config run-image-mirrors") {
+								output = pack.RunSuccessfully(
+									"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							} else {
+								output = pack.RunSuccessfully(
+									"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							}
+
 							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "json")
@@ -2109,9 +2141,17 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 				})
 
 				it("displays configuration for a builder (local and remote)", func() {
-					output := pack.RunSuccessfully(
-						"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-					)
+					var output string
+					if pack.Supports("config run-image-mirrors") {
+						output = pack.RunSuccessfully(
+							"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+					} else {
+						output = pack.RunSuccessfully(
+							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+					}
+
 					assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 					output = pack.RunSuccessfully("inspect-builder", builderName)
@@ -2152,9 +2192,15 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						pack.JustRunSuccessfully("trust-builder", builderName)
 					}
 
-					pack.JustRunSuccessfully(
-						"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-					)
+					if pack.Supports("config run-image-mirrors") {
+						pack.JustRunSuccessfully(
+							"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+					} else {
+						pack.JustRunSuccessfully(
+							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+					}
 
 					output := pack.RunSuccessfully("inspect-builder", builderName)
 
@@ -2283,7 +2329,11 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						it.Before(func() {
 							localRunImageMirror = registryConfig.RepoName("run-after/" + h.RandString(10))
 							buildRunImage(localRunImageMirror, "local-mirror-after-1", "local-mirror-after-2")
-							pack.JustRunSuccessfully("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+							if pack.Supports("config run-image-mirrors") {
+								pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImage, "-m", localRunImageMirror)
+							} else {
+								pack.JustRunSuccessfully("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+							}
 						})
 
 						it.After(func() {

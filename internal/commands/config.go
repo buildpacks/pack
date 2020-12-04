@@ -17,6 +17,7 @@ func NewConfigCommand(logger logging.Logger, cfg config.Config, cfgPath string) 
 	}
 
 	cmd.AddCommand(trustedBuilder(logger, cfg, cfgPath))
+	cmd.AddCommand(ConfigRunImagesMirrors(logger, cfg, cfgPath))
 	return cmd
 }
 
@@ -48,14 +49,14 @@ func generateRemove(cmdName string, logger logging.Logger, cfg config.Config, cf
 	return cmd
 }
 
-type listFunc func(logger logging.Logger, cfg config.Config)
+type listFunc func(args []string, logger logging.Logger, cfg config.Config)
 
 func generateListCmd(cmdName string, logger logging.Logger, cfg config.Config, listFunc listFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: fmt.Sprintf("List %s", cmdName),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			listFunc(logger, cfg)
+			listFunc(args, logger, cfg)
 			return nil
 		}),
 	}

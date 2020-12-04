@@ -17,7 +17,7 @@ func ListTrustedBuilders(logger logging.Logger, cfg config.Config) *cobra.Comman
 		Hidden:  true,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			deprecationWarning(logger, "list-trusted-builders", "config trusted-builders list")
-			listTrustedBuilders(logger, cfg)
+			listTrustedBuilders(args, logger, cfg)
 			return nil
 		}),
 	}

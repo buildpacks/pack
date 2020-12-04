@@ -22,7 +22,7 @@ func TestListRegistries(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
 
-	spec.Run(t, "Commands", testListRegistriesCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "ListRegistriesCommand", testListRegistriesCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testListRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
