@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	pubcfg "github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/project"
 
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -363,8 +364,16 @@ version = "1.0"
 
 				it("should build an image with configuration in descriptor", func() {
 					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithBuildpacks([]string{
-							"example/lua@1.0",
+						Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(project.Descriptor{
+							Project: project.Project{
+								Name: "Sample",
+							},
+							Build: project.Build{
+								Buildpacks: []project.Buildpack{{
+									ID:      "example/lua",
+									Version: "1.0",
+								}},
+							},
 						})).
 						Return(nil)
 
@@ -411,8 +420,20 @@ version = "1.0"
 
 					it("should use project.toml in source repo", func() {
 						mockClient.EXPECT().
-							Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
-								"KEY1": "VALUE1",
+							Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(project.Descriptor{
+								Project: project.Project{
+									Name: "Sample",
+								},
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										ID:      "example/lua",
+										Version: "1.0",
+									}},
+									Env: []project.EnvVar{{
+										Name:  "KEY1",
+										Value: "VALUE1",
+									}},
+								},
 							})).
 							Return(nil)
 
@@ -442,8 +463,20 @@ version = "1.0"
 
 					it("should use specified descriptor", func() {
 						mockClient.EXPECT().
-							Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
-								"KEY1": "VALUE1",
+							Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(project.Descriptor{
+								Project: project.Project{
+									Name: "Sample",
+								},
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										ID:      "example/lua",
+										Version: "1.0",
+									}},
+									Env: []project.EnvVar{{
+										Name:  "KEY1",
+										Value: "VALUE1",
+									}},
+								},
 							})).
 							Return(nil)
 
@@ -517,6 +550,15 @@ func EqBuildOptionsWithVolumes(volumes []string) gomock.Matcher {
 	}
 }
 
+func EqBuildOptionsWithProjectDescriptor(descriptor project.Descriptor) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Descriptor=%s", descriptor),
+		equals: func(o pack.BuildOptions) bool {
+			return reflect.DeepEqual(o.ProjectDescriptor, descriptor)
+		},
+	}
+}
+
 func EqBuildOptionsWithEnv(env map[string]string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Env=%+v", env),
@@ -528,25 +570,6 @@ func EqBuildOptionsWithEnv(env map[string]string) gomock.Matcher {
 			}
 			for k, v := range env {
 				if o.Env[k] != v {
-					return false
-				}
-			}
-			return true
-		},
-	}
-}
-
-func EqBuildOptionsWithBuildpacks(buildpacks []string) gomock.Matcher {
-	return buildOptionsMatcher{
-		description: fmt.Sprintf("Buildpacks=%+v", buildpacks),
-		equals: func(o pack.BuildOptions) bool {
-			for _, bp := range o.Buildpacks {
-				if !contains(buildpacks, bp) {
-					return false
-				}
-			}
-			for _, bp := range buildpacks {
-				if !contains(o.Buildpacks, bp) {
 					return false
 				}
 			}
@@ -569,13 +592,4 @@ func (m buildOptionsMatcher) Matches(x interface{}) bool {
 
 func (m buildOptionsMatcher) String() string {
 	return "is a BuildOptions with " + m.description
-}
-
-func contains(arr []string, str string) bool {
-	for _, a := range arr {
-		if a == str {
-			return true
-		}
-	}
-	return false
 }

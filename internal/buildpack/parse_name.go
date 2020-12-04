@@ -23,7 +23,7 @@ func ParseIDLocator(locator string) (id string, version string) {
 	return parts[0], ""
 }
 
-// ParsePackageLocator parses a locator (in format `[docker://][<host>]/<path>[:<tag>⏐@<digest>]`) in image name (`[<host>]/<path>[:<tag>⏐@<digest>]`)
+// ParsePackageLocator parses a locator (in format `[docker://][<host>/]<path>[:<tag>⏐@<digest>]`) to image name (`[<host>/]<path>[:<tag>⏐@<digest>]`)
 func ParsePackageLocator(locator string) (imageName string) {
 	return strings.TrimPrefix(
 		strings.TrimPrefix(

@@ -218,7 +218,6 @@ name = "licenses should have either a type or uri defined"
 				t.Fatal("Expected error for having neither type or uri defined for licenses")
 			}
 		})
-
 	})
 }
 

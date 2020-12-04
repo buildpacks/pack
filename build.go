@@ -137,10 +137,10 @@ type BuildOptions struct {
 	// Strategy for updating local images before a build.
 	PullPolicy config.PullPolicy
 
-	// TODO
+	// ProjectDescriptorBaseDir is the base directory to find relative resources referenced by the ProjectDescriptor
 	ProjectDescriptorBaseDir string
 
-	// TODO
+	// ProjectDescriptor describes the project and any configuration specific to the project
 	ProjectDescriptor project.Descriptor
 }
 
