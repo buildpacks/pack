@@ -5,14 +5,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/inspectimage/writer"
-
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/buildpackage"
 	builderwriter "github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/commands"
-	"github.com/buildpacks/pack/internal/commands/stack"
 	"github.com/buildpacks/pack/internal/config"
+	imagewriter "github.com/buildpacks/pack/internal/inspectimage/writer"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -69,20 +67,27 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.Build(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.Rebase(logger, cfg, &packClient))
 
-	rootCmd.AddCommand(commands.InspectImage(logger, writer.NewFactory(), cfg, &packClient))
+	rootCmd.AddCommand(commands.InspectImage(logger, imagewriter.NewFactory(), cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuildpack(logger, &cfg, &packClient))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
 
 	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient, builderwriter.NewFactory()))
+
+	//nolint:staticcheck
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
+	//nolint:staticcheck
 	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg))
+	//nolint:staticcheck
 	rootCmd.AddCommand(commands.UntrustBuilder(logger, cfg))
+	//nolint:staticcheck
 	rootCmd.AddCommand(commands.ListTrustedBuilders(logger, cfg))
+	//nolint:staticcheck
 	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
 
 	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, &packClient, buildpackage.NewConfigReader()))
 
+	//nolint:staticcheck
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
 
 	rootCmd.AddCommand(commands.Version(logger, pack.Version))
@@ -95,11 +100,19 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 		rootCmd.AddCommand(commands.SetDefaultRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.RemoveRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, &packClient))
+		rootCmd.AddCommand(commands.PullBuildpack(logger, cfg, &packClient))
 	}
 
-	rootCmd.AddCommand(commands.CompletionCommand(logger))
+	packHome, err := config.PackHome()
+	if err != nil {
+		return nil, err
+	}
 
-	rootCmd.AddCommand(stack.Stack(logger))
+	rootCmd.AddCommand(commands.CompletionCommand(logger, packHome))
+
+	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath))
+	rootCmd.AddCommand(commands.NewStackCommand(logger))
+	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, &packClient))
 
 	rootCmd.Version = pack.Version
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)

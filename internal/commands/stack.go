@@ -1,4 +1,4 @@
-package stack
+package commands
 
 import (
 	"github.com/spf13/cobra"
@@ -6,13 +6,13 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-func Stack(logger logging.Logger) *cobra.Command {
+func NewStackCommand(logger logging.Logger) *cobra.Command {
 	command := cobra.Command{
 		Use:   "stack",
 		Short: "Displays stack information",
 		RunE:  nil,
 	}
 
-	command.AddCommand(suggest(logger))
+	command.AddCommand(stackSuggest(logger))
 	return &command
 }

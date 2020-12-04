@@ -20,13 +20,23 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestCreateBuilderCommand(t *testing.T) {
+const validConfig = `
+[[buildpacks]]
+  id = "some.buildpack"
+
+[[order]]
+	[[order.group]]
+		id = "some.buildpack"
+
+`
+
+func TestCreateCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "CreateBuilderCommand", testCreateBuilderCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "CreateCommand", testCreateCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
+func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command           *cobra.Command
 		logger            logging.Logger
@@ -48,27 +58,14 @@ func testCreateBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.CreateBuilder(logger, cfg, mockClient)
+		command = commands.BuilderCreate(logger, cfg, mockClient)
 	})
 
 	it.After(func() {
 		mockController.Finish()
 	})
 
-	when("#CreateBuilder", func() {
-		it("gives deprecation warning", func() {
-			h.AssertNil(t, ioutil.WriteFile(builderConfigPath, []byte(validConfig), 0666))
-			mockClient.EXPECT().CreateBuilder(gomock.Any(), gomock.Any()).Return(nil)
-			command.SetArgs([]string{
-				"some/builder",
-				"--config", builderConfigPath,
-			})
-
-			h.AssertNil(t, command.Execute())
-
-			h.AssertContains(t, outBuf.String(), "Warning: Command 'pack create-builder' has been deprecated, please use 'pack builder create' instead")
-		})
-
+	when("#Create", func() {
 		when("both --publish and pull-policy=never flags are specified", func() {
 			it("errors with a descriptive message", func() {
 				command.SetArgs([]string{

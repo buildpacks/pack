@@ -56,8 +56,7 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		when("no builder is provided", func() {
 			it("prints usage", func() {
 				command.SetArgs([]string{})
-				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), "Usage:")
+				h.AssertError(t, command.Execute(), "accepts 1 arg(s)")
 			})
 		})
 
