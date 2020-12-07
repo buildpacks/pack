@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -17,25 +18,34 @@ var mirrors []string
 
 func ConfigRunImagesMirrors(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "run-image-mirrors",
-		Args: cobra.MaximumNArgs(3),
+		Use:   "run-image-mirrors",
+		Short: "Interact with run image mirrors",
+		Args:  cobra.MaximumNArgs(3),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			listRunImageMirror(args, logger, cfg)
 			return nil
 		}),
 	}
 
-	addCmd := generateAdd(cmd.Use, logger, cfg, cfgPath, addRunImageMirror)
+	addCmd := generateAdd("mirror for a run image", logger, cfg, cfgPath, addRunImageMirror)
+	addCmd.Use = "add <image> [-m <mirror...]"
 	addCmd.Long = "Set mirrors to other repositories for a given run image"
-	addCmd.Example = "pack set-run-image-mirrors cnbs/sample-stack-run:bionic --mirror index.docker.io/cnbs/sample-stack-run:bionic"
+	addCmd.Example = "pack config run-image-mirrors add cnbs/sample-stack-run:bionic --mirror index.docker.io/cnbs/sample-stack-run:bionic --mirror gcr.io/cnbs/sample-stack-run:bionic"
 	addCmd.Flags().StringSliceVarP(&mirrors, "mirror", "m", nil, "Run image mirror"+multiValueHelp("mirror"))
 	cmd.AddCommand(addCmd)
 
-	rmCmd := generateRemove(cmd.Use, logger, cfg, cfgPath, removeRunImageMirror)
+	rmCmd := generateRemove("mirror for a run image", logger, cfg, cfgPath, removeRunImageMirror)
+	rmCmd.Use = "remove <image> [-m <mirror...]"
+	rmCmd.Long = "Remove mirrors for a given run image. If specific mirrors are passed, they will be removed. " +
+		"If no mirrors are provided, all mirrors for the given run image will be removed from the config."
+	rmCmd.Example = "pack config run-image-mirrors remove cnbs/sample-stack-run:bionic"
 	rmCmd.Flags().StringSliceVarP(&mirrors, "mirror", "m", nil, "Run image mirror"+multiValueHelp("mirror"))
 	cmd.AddCommand(rmCmd)
 
 	listCmd := generateListCmd(cmd.Use, logger, cfg, listRunImageMirror)
+	listCmd.Long = "List all run image mirrors. If a run image is provided, it will return "
+	listCmd.Use = "list [<run-image>]"
+	listCmd.Example = "pack config run-image-mirrors list"
 	cmd.AddCommand(listCmd)
 
 	AddHelpFlag(cmd, "run-image-mirrors")
@@ -45,7 +55,7 @@ func ConfigRunImagesMirrors(logger logging.Logger, cfg config.Config, cfgPath st
 func addRunImageMirror(args []string, logger logging.Logger, cfg config.Config, cfgPath string) error {
 	runImage := args[0]
 	if len(mirrors) == 0 {
-		logger.Infof("No run image mirrors were provided. To remove a run image mirror, use `pack config run-image-mirrors remove`")
+		logger.Infof("No run image mirrors were provided.")
 		return nil
 	}
 
@@ -84,25 +94,31 @@ func removeRunImageMirror(args []string, logger logging.Logger, cfg config.Confi
 		return nil
 	}
 
-	if len(mirrors) == 0 {
+	mirrorsMap := stringset.FromSlice(mirrors)
+	var newMirrors []string
+	for _, currMirror := range cfg.RunImages[idx].Mirrors {
+		if _, ok := mirrorsMap[currMirror]; !ok {
+			newMirrors = append(newMirrors, currMirror)
+		}
+	}
+
+	if len(newMirrors) == 0 || len(mirrors) == 0 {
 		lastImageIdx := len(cfg.RunImages) - 1
 		cfg.RunImages[idx] = cfg.RunImages[lastImageIdx]
 		cfg.RunImages = cfg.RunImages[:lastImageIdx]
 	} else {
-		mirrorsMap := stringset.FromSlice(mirrors)
-		var newMirrors []string
-		for _, currMirror := range cfg.RunImages[idx].Mirrors {
-			if _, ok := mirrorsMap[currMirror]; !ok {
-				newMirrors = append(newMirrors, currMirror)
-			}
-		}
-
 		cfg = config.SetRunImageMirrors(cfg, image, newMirrors)
 	}
 
 	if err := config.Write(cfg, cfgPath); err != nil {
 		return errors.Wrapf(err, "failed to write to %s", cfgPath)
 	}
+	if len(mirrors) == 0 {
+		logger.Infof("Removed all run image mirrors for %s", style.Symbol(image))
+	} else {
+		logger.Infof("Removed mirrors %s for %s", strings.Join(mirrors, ", "), style.Symbol(image))
+	}
+
 	return nil
 }
 
@@ -116,14 +132,14 @@ func listRunImageMirror(args []string, logger logging.Logger, cfg config.Config)
 		reqImage = args[0]
 	}
 
-	logger.Info("Run Image Mirrors:")
+	buf := strings.Builder{}
+	buf.WriteString("Run Image Mirrors:\n")
 	for _, runImage := range cfg.RunImages {
 		if (reqImage != "" && runImage.Image == reqImage) || reqImage == "" {
 			found = true
-			logger.Info("Run Image Mirrors:")
-			logger.Infof("  %s:", style.Symbol(runImage.Image))
+			buf.WriteString(fmt.Sprintf("  %s:\n", style.Symbol(runImage.Image)))
 			for _, mirror := range runImage.Mirrors {
-				logger.Infof("    %s", mirror)
+				buf.WriteString(fmt.Sprintf("    %s\n", mirror))
 			}
 		}
 	}
@@ -134,6 +150,8 @@ func listRunImageMirror(args []string, logger logging.Logger, cfg config.Config)
 			suffix = fmt.Sprintf("for %s", style.Symbol(reqImage))
 		}
 		logger.Infof("No run image mirrors have been set %s", suffix)
+	} else {
+		logger.Info(buf.String())
 	}
 }
 

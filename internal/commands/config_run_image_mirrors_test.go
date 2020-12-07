@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/heroku/color"
@@ -85,9 +86,10 @@ func testConfigRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 			cmd.SetArgs([]string{})
 			h.AssertNil(t, cmd.Execute())
 			output := outBuf.String()
-			h.AssertContains(t, output, runImage)
-			h.AssertContains(t, output, testMirror1)
-			h.AssertContains(t, output, testMirror2)
+			h.AssertEq(t, strings.TrimSpace(output), `Run Image Mirrors:
+  'test/image':
+    example.com/some/run1
+    example.com/some/run2`)
 		})
 	})
 
@@ -174,6 +176,14 @@ func testConfigRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 					Image:   runImage,
 					Mirrors: []string{testMirror1},
 				}})
+			})
+
+			it("removes the image if all mirrors are removed", func() {
+				cmd.SetArgs([]string{"remove", runImage, "-m", testMirror1, "-m", testMirror2})
+				h.AssertNil(t, cmd.Execute())
+				cfg, err := config.Read(configPath)
+				h.AssertNil(t, err)
+				h.AssertEq(t, cfg.RunImages, []config.RunImage{})
 			})
 		})
 
