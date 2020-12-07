@@ -21,7 +21,7 @@ import (
 func TestSuggestBuildersCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "Commands", testSuggestBuildersCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "SuggestBuilderCommand", testSuggestBuildersCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {

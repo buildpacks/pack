@@ -3,27 +3,53 @@ package commands_test
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
-	"path/filepath"
-	"regexp"
-	"strings"
 	"testing"
 
+	"github.com/buildpacks/pack/internal/inspectimage"
+
 	"github.com/buildpacks/lifecycle"
-	"github.com/buildpacks/lifecycle/launch"
+
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/commands/fakes"
+	"github.com/buildpacks/pack/internal/config"
+	h "github.com/buildpacks/pack/testhelpers"
+
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
-	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
-	h "github.com/buildpacks/pack/testhelpers"
+)
+
+var (
+	expectedLocalImageDisplay  = "Sample output for local image"
+	expectedRemoteImageDisplay = "Sample output for remote image"
+
+	expectedSharedInfo = inspectimage.GeneralInfo{
+		Name: "some/image",
+	}
+
+	expectedLocalImageInfo = &pack.ImageInfo{
+		StackID:    "local.image.stack",
+		Buildpacks: nil,
+		Base:       lifecycle.RunImageMetadata{},
+		BOM:        nil,
+		Stack:      lifecycle.StackMetadata{},
+		Processes:  pack.ProcessDetails{},
+	}
+
+	expectedRemoteImageInfo = &pack.ImageInfo{
+		StackID:    "remote.image.stack",
+		Buildpacks: nil,
+		Base:       lifecycle.RunImageMetadata{},
+		BOM:        nil,
+		Stack:      lifecycle.StackMetadata{},
+		Processes:  pack.ProcessDetails{},
+	}
 )
 
 func TestInspectImageCommand(t *testing.T) {
@@ -34,355 +60,146 @@ func TestInspectImageCommand(t *testing.T) {
 
 func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command        *cobra.Command
 		logger         logging.Logger
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
 		mockClient     *testmocks.MockPackClient
-		cfg            *config.Config
+		cfg            config.Config
 	)
 
 	it.Before(func() {
-		cfg = &config.Config{}
+		cfg = config.Config{}
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.InspectImage(logger, cfg, mockClient)
-		command.SetArgs([]string{"some/image"})
 	})
 
 	it.After(func() {
 		mockController.Finish()
 	})
-
 	when("#InspectImage", func() {
-		when("image cannot be found", func() {
-			it.Before(func() {
-				mockClient.EXPECT().InspectImage("some/image", false).Return(nil, nil)
-				mockClient.EXPECT().InspectImage("some/image", true).Return(nil, nil)
-			})
+		var (
+			assert = h.NewAssertionManager(t)
+		)
+		it("passes output of local and remote builders to correct writer", func() {
+			inspectImageWriter := newDefaultInspectImageWriter()
+			inspectImageWriterFactory := newImageWriterFactory(inspectImageWriter)
 
-			it("logs 'Not present'", func() {
-				h.AssertNil(t, command.Execute())
+			mockClient.EXPECT().InspectImage("some/image", true).Return(expectedLocalImageInfo, nil)
+			mockClient.EXPECT().InspectImage("some/image", false).Return(expectedRemoteImageInfo, nil)
 
-				h.AssertContains(t, outBuf.String(), "REMOTE:\n(not present)\n\nLOCAL:\n(not present)\n")
-			})
+			command := commands.InspectImage(logger, inspectImageWriterFactory, cfg, mockClient)
+			command.SetArgs([]string{"some/image"})
+			err := command.Execute()
+			assert.Nil(err)
 
-			when("--bom", func() {
-				it("adds nulls for missing images", func() {
-					command.SetArgs([]string{"some/image", "--bom"})
-					h.AssertNil(t, command.Execute())
-					h.AssertEq(t,
-						outBuf.String(),
-						`{"remote":null,"local":null}`+"\n")
+			assert.Equal(inspectImageWriter.ReceivedInfoForLocal, expectedLocalImageInfo)
+			assert.Equal(inspectImageWriter.ReceivedInfoForRemote, expectedRemoteImageInfo)
+			assert.Equal(inspectImageWriter.RecievedGeneralInfo, expectedSharedInfo)
+			assert.Equal(inspectImageWriter.ReceivedErrorForLocal, nil)
+			assert.Equal(inspectImageWriter.ReceivedErrorForRemote, nil)
+			assert.Equal(inspectImageWriterFactory.ReceivedForKind, "human-readable")
+
+			assert.ContainsF(outBuf.String(), "LOCAL:\n%s", expectedLocalImageDisplay)
+			assert.ContainsF(outBuf.String(), "REMOTE:\n%s", expectedRemoteImageDisplay)
+		})
+
+		it("passes configured run image mirrors to the writer", func() {
+			cfg = config.Config{
+				RunImages: []config.RunImage{{
+					Image:   "image-name",
+					Mirrors: []string{"first-mirror", "second-mirror2"},
+				},
+					{
+						Image:   "image-name2",
+						Mirrors: []string{"other-mirror"},
+					},
+				},
+				TrustedBuilders: nil,
+				Registries:      nil,
+			}
+
+			inspectImageWriter := newDefaultInspectImageWriter()
+			inspectImageWriterFactory := newImageWriterFactory(inspectImageWriter)
+
+			mockClient.EXPECT().InspectImage("some/image", true).Return(expectedLocalImageInfo, nil)
+			mockClient.EXPECT().InspectImage("some/image", false).Return(expectedRemoteImageInfo, nil)
+
+			command := commands.InspectImage(logger, inspectImageWriterFactory, cfg, mockClient)
+			command.SetArgs([]string{"some/image"})
+			err := command.Execute()
+			assert.Nil(err)
+
+			assert.Equal(inspectImageWriter.RecievedGeneralInfo.RunImageMirrors, cfg.RunImages)
+		})
+
+		when("error cases", func() {
+			when("client returns an error when inspecting", func() {
+				it("passes errors to the Writer", func() {
+					inspectImageWriter := newDefaultInspectImageWriter()
+					inspectImageWriterFactory := newImageWriterFactory(inspectImageWriter)
+
+					localErr := errors.New("local inspection error")
+					mockClient.EXPECT().InspectImage("some/image", true).Return(nil, localErr)
+
+					remoteErr := errors.New("remote inspection error")
+					mockClient.EXPECT().InspectImage("some/image", false).Return(nil, remoteErr)
+
+					command := commands.InspectImage(logger, inspectImageWriterFactory, cfg, mockClient)
+					command.SetArgs([]string{"some/image"})
+					err := command.Execute()
+					assert.Nil(err)
+
+					assert.ErrorWithMessage(inspectImageWriter.ReceivedErrorForLocal, "local inspection error")
+					assert.ErrorWithMessage(inspectImageWriter.ReceivedErrorForRemote, "remote inspection error")
 				})
 			})
-		})
 
-		when("inspector returns an error", func() {
-			it("logs the error message", func() {
-				mockClient.EXPECT().InspectImage("some/image", false).Return(nil, errors.New("some remote error"))
-				mockClient.EXPECT().InspectImage("some/image", true).Return(nil, errors.New("some local error"))
+			when("writerFactory fails to create a writer", func() {
+				it("returns the error", func() {
+					writerFactoryErr := errors.New("unable to create writer factory")
 
-				command.SetArgs([]string{"some/image"})
-				h.AssertNil(t, command.Execute())
-
-				h.AssertContains(t, outBuf.String(), `ERROR: inspecting remote image 'some/image': some remote error`)
-				h.AssertContains(t, outBuf.String(), `ERROR: inspecting local image 'some/image': some local error`)
-			})
-		})
-
-		when("images are found", func() {
-			var remoteInfo, localInfo *pack.ImageInfo
-
-			it.Before(func() {
-				type someData struct {
-					String string
-					Bool   bool
-					Int    int
-					Nested struct {
-						String string
+					erroniousInspectImageWriterFactory := &fakes.FakeInspectImageWriterFactory{
+						ReturnForWriter: nil,
+						ErrorForWriter:  writerFactoryErr,
 					}
-				}
 
-				remoteInfo = &pack.ImageInfo{
-					StackID: "test.stack.id.remote",
-					Buildpacks: []lifecycle.Buildpack{
-						{ID: "test.bp.one.remote", Version: "1.0.0"},
-						{ID: "test.bp.two.remote", Version: "2.0.0"},
-					},
-					Base: lifecycle.RunImageMetadata{
-						TopLayer:  "some-remote-top-layer",
-						Reference: "some-remote-run-image-reference",
-					},
-					Stack: lifecycle.StackMetadata{
-						RunImage: lifecycle.StackRunImageMetadata{
-							Image:   "some-remote-run-image",
-							Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
-						},
-					},
-					BOM: []lifecycle.BOMEntry{{
-						Require: lifecycle.Require{
-							Name:    "name-1",
-							Version: "version-1",
-							Metadata: map[string]interface{}{
-								"RemoteData": someData{
-									String: "aString",
-									Bool:   true,
-									Int:    123,
-									Nested: struct {
-										String string
-									}{
-										String: "anotherString",
-									},
-								},
-							},
-						},
-						Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
-					}},
-					Processes: pack.ProcessDetails{
-						DefaultProcess: &launch.Process{
-							Type:    "some-remote-type",
-							Command: "/some/remote command",
-							Args:    []string{"some", "remote", "args"},
-							Direct:  false,
-						},
-						OtherProcesses: []launch.Process{
-							{
-								Type:    "other-remote-type",
-								Command: "/other/remote/command",
-								Args:    []string{"other", "remote", "args"},
-								Direct:  true,
-							},
-						},
-					},
-				}
-				localInfo = &pack.ImageInfo{
-					StackID: "test.stack.id.local",
-					Buildpacks: []lifecycle.Buildpack{
-						{ID: "test.bp.one.local", Version: "1.0.0"},
-						{ID: "test.bp.two.local", Version: "2.0.0"},
-					},
-					Base: lifecycle.RunImageMetadata{
-						TopLayer:  "some-local-top-layer",
-						Reference: "some-local-run-image-reference",
-					},
-					Stack: lifecycle.StackMetadata{
-						RunImage: lifecycle.StackRunImageMetadata{
-							Image:   "some-local-run-image",
-							Mirrors: []string{"some-local-mirror", "other-local-mirror"},
-						},
-					},
-					BOM: []lifecycle.BOMEntry{{
-						Require: lifecycle.Require{
-							Name:    "name-1",
-							Version: "version-1",
-							Metadata: map[string]interface{}{
-								"LocalData": someData{
-									Bool: false,
-									Int:  456,
-								},
-							},
-						},
-						Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
-					}},
-					Processes: pack.ProcessDetails{
-						DefaultProcess: &launch.Process{
-							Type:    "some-local-type",
-							Command: "/some/local command",
-							Args:    []string{"some", "local", "args"},
-							Direct:  false,
-						},
-						OtherProcesses: []launch.Process{
-							{
-								Type:    "other-local-type",
-								Command: "/other/local/command",
-								Args:    []string{"other", "local", "args"},
-								Direct:  true,
-							},
-						},
-					},
-				}
-				mockClient.EXPECT().InspectImage("some/image", false).Return(remoteInfo, nil)
-				mockClient.EXPECT().InspectImage("some/image", true).Return(localInfo, nil)
-			})
-
-			when("all metadata is present", func() {
-				it("displays stack information for local and remote", func() {
-					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, remoteOutput(outBuf), "Stack: test.stack.id.remote")
-					h.AssertContains(t, localOutput(outBuf), "Stack: test.stack.id.local")
-				})
-
-				it("displays the base information for local and remote", func() {
-					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, remoteOutput(outBuf), `Base Image:
-  Reference: some-remote-run-image-reference
-  Top Layer: some-remote-top-layer`)
-					h.AssertContains(t, localOutput(outBuf), `Base Image:
-  Reference: some-local-run-image-reference
-  Top Layer: some-local-top-layer`)
-				})
-
-				it("displays the run image information for local and remote", func() {
-					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, remoteOutput(outBuf), `Run Images:
-  some-remote-run-image
-  some-remote-mirror
-  other-remote-mirror`)
-					h.AssertContains(t, localOutput(outBuf), `Run Images:
-  some-local-run-image
-  some-local-mirror
-  other-local-mirror`)
-				})
-
-				it("displays the buildpack information for local and remote", func() {
-					h.AssertNil(t, command.Execute())
-					h.AssertContainsMatch(t, remoteOutput(outBuf), `Buildpacks:
-  ID\s+VERSION
-  test.bp.one.remote\s+1.0.0
-  test.bp.two.remote\s+2.0.0`)
-					h.AssertContainsMatch(t, localOutput(outBuf), `Buildpacks:
-  ID\s+VERSION
-  test.bp.one.local\s+1.0.0
-  test.bp.two.local\s+2.0.0`)
-				})
-
-				it("displays process info for local and remote", func() {
-					h.AssertNil(t, command.Execute())
-					h.AssertContainsMatch(t, remoteOutput(outBuf), `Processes:
-  TYPE\s+SHELL\s+COMMAND\s+ARGS
-  some-remote-type \(default\)\s+bash\s+/some/remote command\s+some remote args
-  other-remote-type\s+/other/remote/command\s+other remote args`)
-					h.AssertContainsMatch(t, localOutput(outBuf), `Processes:
-  TYPE\s+SHELL\s+COMMAND\s+ARGS
-  some-local-type \(default\)\s+bash\s+/some/local command\s+some local args
-  other-local-type\s+/other/local/command\s+other local args`)
-				})
-
-				when("there are no default processes", func() {
-					it.Before(func() {
-						remoteInfo.Processes.DefaultProcess = nil
-						localInfo.Processes.DefaultProcess = nil
-					})
-
-					it("displays all local and remote processes with no default label", func() {
-						h.AssertNil(t, command.Execute())
-						h.AssertContainsMatch(t, remoteOutput(outBuf), `Processes:
-  TYPE\s+SHELL\s+COMMAND\s+ARGS
-  other-remote-type\s+/other/remote/command\s+other remote args`)
-						h.AssertContainsMatch(t, localOutput(outBuf), `Processes:
-  TYPE\s+SHELL\s+COMMAND\s+ARGS
-  other-local-type\s+/other/local/command\s+other local args`)
-					})
-				})
-
-				when("--bom", func() {
-					it("prints the bom as JSON", func() {
-						command.SetArgs([]string{"some/image", "--bom"})
-						h.AssertNil(t, command.Execute())
-						expectedOutput, err := ioutil.ReadFile(filepath.Join("testdata", "inspect_image_output.json"))
-						h.AssertNil(t, err)
-						h.AssertEq(t, strings.TrimSpace(outBuf.String()), string(expectedOutput))
-					})
-				})
-
-				when("there are locally configured mirrors", func() {
-					it.Before(func() {
-						cfg.RunImages = []config.RunImage{
-							{Image: "some-remote-run-image", Mirrors: []string{"first-remote-user-mirror", "second-remote-user-mirror"}},
-							{Image: "some-local-run-image", Mirrors: []string{"first-local-user-mirror", "second-local-user-mirror"}},
-						}
-					})
-
-					it("add the local mirrors to the run image output", func() {
-						h.AssertNil(t, command.Execute())
-						h.AssertContainsMatch(t, remoteOutput(outBuf), `Run Images:
-  first-remote-user-mirror\s+\(user-configured\)
-  second-remote-user-mirror\s+\(user-configured\)
-  some-remote-run-image
-  some-remote-mirror
-  other-remote-mirror`)
-						h.AssertContainsMatch(t, localOutput(outBuf), `Run Images:
-  first-local-user-mirror\s+\(user-configured\)
-  second-local-user-mirror\s+\(user-configured\)
-  some-local-run-image
-  some-local-mirror
-  other-local-mirror`)
-					})
+					command := commands.InspectImage(logger, erroniousInspectImageWriterFactory, cfg, mockClient)
+					command.SetArgs([]string{"some/image"})
+					err := command.Execute()
+					assert.ErrorWithMessage(err, "unable to create writer factory")
 				})
 			})
+			when("Print returns fails", func() {
+				it("returns the error", func() {
+					printError := errors.New("unable to print")
+					inspectImageWriter := &fakes.FakeInspectImageWriter{
+						ErrorForPrint: printError,
+					}
+					inspectImageWriterFactory := newImageWriterFactory(inspectImageWriter)
 
-			when("buildpacks are missing", func() {
-				it.Before(func() {
-					remoteInfo.Buildpacks = nil
-					localInfo.Buildpacks = nil
-				})
+					mockClient.EXPECT().InspectImage("some/image", true).Return(expectedLocalImageInfo, nil)
+					mockClient.EXPECT().InspectImage("some/image", false).Return(expectedRemoteImageInfo, nil)
 
-				it("reports that the metadata is missing", func() {
-					h.AssertNil(t, command.Execute())
-
-					h.AssertContains(t, remoteOutput(outBuf), `Buildpacks:
-  (buildpacks metadata not present)`)
-					h.AssertContains(t, localOutput(outBuf), `Buildpacks:
-  (buildpacks metadata not present)`)
-				})
-			})
-
-			when("run images are missing", func() {
-				it.Before(func() {
-					remoteInfo.Stack = lifecycle.StackMetadata{}
-					localInfo.Stack = lifecycle.StackMetadata{}
-				})
-
-				it("reports that the metadata is missing", func() {
-					h.AssertNil(t, command.Execute())
-
-					h.AssertContains(t, remoteOutput(outBuf), `Run Images:
-  (none)`)
-					h.AssertContains(t, localOutput(outBuf), `Run Images:
-  (none)`)
-				})
-			})
-
-			when("base image metadata is missing", func() {
-				it.Before(func() {
-					remoteInfo.Base = lifecycle.RunImageMetadata{}
-					localInfo.Base = lifecycle.RunImageMetadata{}
-				})
-
-				it("doesn't display reference field", func() {
-					// runImage reference is wrong when image is generated by lifecycle pre-v0.5.0
-					h.AssertNil(t, command.Execute())
-
-					h.AssertContainsMatch(t, remoteOutput(outBuf), `(?m)Base Image:
-  Top Layer:\s*$`)
-					h.AssertContainsMatch(t, localOutput(outBuf), `(?m)Base Image:
-  Top Layer:\s*$`)
-				})
-			})
-
-			when("stack ID is missing", func() {
-				it.Before(func() {
-					remoteInfo.StackID = ""
-					localInfo.StackID = ""
-				})
-
-				it("reports that the metadata is missing", func() {
-					h.AssertNil(t, command.Execute())
-
-					h.AssertContainsMatch(t, remoteOutput(outBuf), `(?m)Stack:\s*$`)
-					h.AssertContainsMatch(t, localOutput(outBuf), `(?m)Stack:\s*$`)
+					command := commands.InspectImage(logger, inspectImageWriterFactory, cfg, mockClient)
+					command.SetArgs([]string{"some/image"})
+					err := command.Execute()
+					assert.ErrorWithMessage(err, "unable to print")
 				})
 			})
 		})
 	})
 }
 
-func remoteOutput(outBuf bytes.Buffer) string {
-	return regexp.MustCompile(`(?s)REMOTE:\n(.*)LOCAL:`).FindAllStringSubmatch(outBuf.String(), -1)[0][1]
+func newDefaultInspectImageWriter() *fakes.FakeInspectImageWriter {
+	return &fakes.FakeInspectImageWriter{
+		PrintForLocal:  expectedLocalImageDisplay,
+		PrintForRemote: expectedRemoteImageDisplay,
+	}
 }
 
-func localOutput(outBuf bytes.Buffer) string {
-	return regexp.MustCompile(`(?s)LOCAL:(.*)`).FindAllStringSubmatch(outBuf.String(), -1)[0][1]
+func newImageWriterFactory(writer *fakes.FakeInspectImageWriter) *fakes.FakeInspectImageWriterFactory {
+	return &fakes.FakeInspectImageWriterFactory{
+		ReturnForWriter: writer,
+	}
 }

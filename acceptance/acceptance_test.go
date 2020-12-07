@@ -20,26 +20,23 @@ import (
 	"testing"
 	"time"
 
-	pubcfg "github.com/buildpacks/pack/config"
-
-	"github.com/ghodss/yaml"
-	"github.com/pelletier/go-toml"
-
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
+	"github.com/ghodss/yaml"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/pelletier/go-toml"
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/acceptance/buildpacks"
-
 	"github.com/buildpacks/pack/acceptance/assertions"
+	"github.com/buildpacks/pack/acceptance/buildpacks"
 	"github.com/buildpacks/pack/acceptance/config"
 	"github.com/buildpacks/pack/acceptance/invoke"
+	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/style"
@@ -149,9 +146,9 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
-	when("suggest-builders", func() {
+	when("builder suggest", func() {
 		it("displays suggested builders", func() {
-			output := pack.RunSuccessfully("suggest-builders")
+			output := pack.RunSuccessfully("builder", "suggest")
 
 			assertOutput := assertions.NewOutputAssertionManager(t, output)
 			assertOutput.IncludesSuggestedBuildersHeading()
@@ -179,12 +176,75 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
+	when("pack config", func() {
+		when("trusted-builders", func() {
+			it("prints list of trusted builders", func() {
+				output := pack.RunSuccessfully("config", "trusted-builders")
+
+				assertOutput := assertions.NewOutputAssertionManager(t, output)
+				assertOutput.IncludesTrustedBuildersHeading()
+				assertOutput.IncludesHerokuBuilder()
+				assertOutput.IncludesGoogleBuilder()
+				assertOutput.IncludesPaketoBuilders()
+				assert.NotContains(output, "has been deprecated")
+			})
+
+			when("add", func() {
+				it("sets the builder as trusted in ~/.pack/config.toml", func() {
+					builderName := "some-builder" + h.RandString(10)
+
+					output := pack.RunSuccessfully("config", "trusted-builders", "add", builderName)
+					assert.NotContains(output, "has been deprecated")
+					assert.Contains(pack.ConfigFileContents(), builderName)
+				})
+			})
+
+			when("remove", func() {
+				it("removes the previously trusted builder from ~/${PACK_HOME}/config.toml", func() {
+					builderName := "some-builder" + h.RandString(10)
+
+					pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
+
+					assert.Contains(pack.ConfigFileContents(), builderName)
+
+					output := pack.RunSuccessfully("config", "trusted-builders", "remove", builderName)
+					assert.NotContains(output, "has been deprecated")
+
+					assert.NotContains(pack.ConfigFileContents(), builderName)
+				})
+			})
+
+			when("list", func() {
+				it("prints list of trusted builders", func() {
+					output := pack.RunSuccessfully("config", "trusted-builders", "list")
+
+					assertOutput := assertions.NewOutputAssertionManager(t, output)
+					assertOutput.IncludesTrustedBuildersHeading()
+					assertOutput.IncludesHerokuBuilder()
+					assertOutput.IncludesGoogleBuilder()
+					assertOutput.IncludesPaketoBuilders()
+					assert.NotContains(output, "has been deprecated")
+				})
+
+				it("shows a builder trusted by pack config trusted-builders add", func() {
+					builderName := "some-builder" + h.RandString(10)
+
+					pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
+
+					output := pack.RunSuccessfully("config", "trusted-builders", "list")
+					assert.Contains(output, builderName)
+				})
+			})
+		})
+	})
+
 	when("trust-builder", func() {
 		it("sets the builder as trusted in ~/.pack/config.toml", func() {
-			h.SkipUnless(t, pack.Supports("trust-builder"), "pack does not support 'trust-builder'")
 			builderName := "some-builder" + h.RandString(10)
 
-			pack.JustRunSuccessfully("trust-builder", builderName)
+			output := pack.RunSuccessfully("trust-builder", builderName)
+			assertOutput := assertions.NewOutputAssertionManager(t, output)
+			assertOutput.IncludesDeprecationWarning()
 
 			assert.Contains(pack.ConfigFileContents(), builderName)
 		})
@@ -192,27 +252,21 @@ func testWithoutSpecificBuilderRequirement(
 
 	when("untrust-builder", func() {
 		it("removes the previously trusted builder from ~/${PACK_HOME}/config.toml", func() {
-			h.SkipUnless(t, pack.Supports("untrust-builder"), "pack does not support 'untrust-builder'")
 			builderName := "some-builder" + h.RandString(10)
 
 			pack.JustRunSuccessfully("trust-builder", builderName)
 
 			assert.Contains(pack.ConfigFileContents(), builderName)
 
-			pack.JustRunSuccessfully("untrust-builder", builderName)
+			output := pack.RunSuccessfully("untrust-builder", builderName)
+			assertOutput := assertions.NewOutputAssertionManager(t, output)
+			assertOutput.IncludesDeprecationWarning()
 
 			assert.NotContains(pack.ConfigFileContents(), builderName)
 		})
 	})
 
 	when("list-trusted-builders", func() {
-		it.Before(func() {
-			h.SkipUnless(t,
-				pack.Supports("list-trusted-builders"),
-				"pack does not support 'list-trusted-builders",
-			)
-		})
-
 		it("shows default builders from pack suggest-builders", func() {
 			output := pack.RunSuccessfully("list-trusted-builders")
 
@@ -221,6 +275,7 @@ func testWithoutSpecificBuilderRequirement(
 			assertOutput.IncludesHerokuBuilder()
 			assertOutput.IncludesGoogleBuilder()
 			assertOutput.IncludesPaketoBuilders()
+			assertOutput.IncludesDeprecationWarning()
 		})
 
 		it("shows a builder trusted by pack trust-builder", func() {
@@ -696,10 +751,22 @@ func testAcceptance(
 
 					builderConfigPath := createBuilderPack.FixtureManager().FixtureLocation("invalid_builder.toml")
 
-					output, err := pack.Run(
-						"create-builder", "some-builder:build",
-						"--config", builderConfigPath,
+					var (
+						output string
+						err    error
 					)
+					if createBuilderPack.Supports("builder create") {
+						output, err = createBuilderPack.Run(
+							"builder", "create", "some-builder:build",
+							"--config", builderConfigPath,
+						)
+					} else {
+						output, err = createBuilderPack.Run(
+							"create-builder", "some-builder:build",
+							"--config", builderConfigPath,
+						)
+					}
+
 					assert.NotNil(err)
 					assert.Contains(output, "invalid builder toml")
 				})
@@ -792,10 +859,10 @@ func testAcceptance(
 					it.Before(func() {
 						pack.JustRunSuccessfully("set-default-builder", builderName)
 
-						var trustBuilder bool
-						if pack.Supports("trust-builder") {
+						if pack.Supports("config trusted-builders add") {
+							pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
+						} else {
 							pack.JustRunSuccessfully("trust-builder", builderName)
-							trustBuilder = true
 						}
 
 						// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
@@ -803,7 +870,7 @@ func testAcceptance(
 						creatorSupported := lifecycle.SupportsFeature(config.CreatorInLifecycle) &&
 							pack.SupportsFeature(invoke.CreatorInPack)
 
-						usingCreator = creatorSupported && trustBuilder
+						usingCreator = creatorSupported
 					})
 
 					it("creates a runnable, rebuildable image on daemon from app dir", func() {
@@ -897,40 +964,73 @@ func testAcceptance(
 						t.Log("cacher adds layers")
 						assert.Matches(output, regexp.MustCompile(`(?i)Adding cache layer 'simple/layers:cached-launch-layer'`))
 
-						if pack.Supports("inspect-image") {
+						if pack.Supports("inspect-image --output") {
 							t.Log("inspect-image")
-							output = pack.RunSuccessfully("inspect-image", repoName)
 
 							var (
-								webCommand   string
-								helloCommand string
-								helloArgs    string
+								webCommand      string
+								helloCommand    string
+								helloArgs       []string
+								helloArgsPrefix string
 							)
 							if dockerHostOS() == "windows" {
 								webCommand = ".\\run"
 								helloCommand = "cmd"
-								helloArgs = " /c echo hello world"
+								helloArgs = []string{"/c", "echo hello world"}
+								helloArgsPrefix = " "
+
 							} else {
 								webCommand = "./run"
 								helloCommand = "echo"
-								helloArgs = "hello world"
+								helloArgs = []string{"hello", "world"}
+								helloArgsPrefix = ""
 							}
 
-							expectedOutput := pack.FixtureManager().TemplateFixture(
-								"inspect_image_local_output.txt",
-								map[string]interface{}{
-									"image_name":             repoName,
-									"base_image_id":          h.ImageID(t, runImageMirror),
-									"base_image_top_layer":   h.TopLayerDiffID(t, runImageMirror),
-									"run_image_local_mirror": localRunImageMirror,
-									"run_image_mirror":       runImageMirror,
-									"web_command":            webCommand,
-									"hello_command":          helloCommand,
-									"hello_args":             helloArgs,
+							formats := []compareFormat{
+								{
+									extension:   "txt",
+									compareFunc: assert.TrimmedEq,
+									outputArg:   "human-readable",
 								},
-							)
+								{
+									extension:   "json",
+									compareFunc: assert.EqualJSON,
+									outputArg:   "json",
+								},
+								{
+									extension:   "yaml",
+									compareFunc: assert.EqualYAML,
+									outputArg:   "yaml",
+								},
+								{
+									extension:   "toml",
+									compareFunc: assert.EqualTOML,
+									outputArg:   "toml",
+								},
+							}
+							for _, format := range formats {
+								t.Logf("inspect-image %s format", format.outputArg)
 
-							assert.Equal(output, expectedOutput)
+								output = pack.RunSuccessfully("inspect-image", repoName, "--output", format.outputArg)
+
+								expectedOutput := pack.FixtureManager().TemplateFixture(
+									fmt.Sprintf("inspect_image_local_output.%s", format.extension),
+									map[string]interface{}{
+										"image_name":             repoName,
+										"base_image_id":          h.ImageID(t, runImageMirror),
+										"base_image_top_layer":   h.TopLayerDiffID(t, runImageMirror),
+										"run_image_local_mirror": localRunImageMirror,
+										"run_image_mirror":       runImageMirror,
+										"web_command":            webCommand,
+										"hello_command":          helloCommand,
+										"hello_args":             helloArgs,
+										"hello_args_prefix":      helloArgsPrefix,
+									},
+								)
+
+								format.compareFunc(output, expectedOutput)
+							}
+
 						}
 					})
 
@@ -1583,39 +1683,70 @@ func testAcceptance(
 								"Cached Dep Contents",
 							)
 
-							if pack.Supports("inspect-image") {
+							if pack.Supports("inspect-image --output") {
 								t.Log("inspect-image")
 								output = pack.RunSuccessfully("inspect-image", repoName)
 
 								var (
-									webCommand   string
-									helloCommand string
-									helloArgs    string
+									webCommand      string
+									helloCommand    string
+									helloArgs       []string
+									helloArgsPrefix string
 								)
 								if dockerHostOS() == "windows" {
 									webCommand = ".\\run"
 									helloCommand = "cmd"
-									helloArgs = " /c echo hello world"
+									helloArgs = []string{"/c", "echo hello world"}
+									helloArgsPrefix = " "
 								} else {
 									webCommand = "./run"
 									helloCommand = "echo"
-									helloArgs = "hello world"
+									helloArgs = []string{"hello", "world"}
+									helloArgsPrefix = ""
 								}
-
-								expectedOutput := pack.FixtureManager().TemplateFixture(
-									"inspect_image_published_output.txt",
-									map[string]interface{}{
-										"image_name":           repoName,
-										"base_image_ref":       strings.Join([]string{runImageMirror, h.Digest(t, runImageMirror)}, "@"),
-										"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
-										"run_image_mirror":     runImageMirror,
-										"web_command":          webCommand,
-										"hello_command":        helloCommand,
-										"hello_args":           helloArgs,
+								formats := []compareFormat{
+									{
+										extension:   "txt",
+										compareFunc: assert.TrimmedEq,
+										outputArg:   "human-readable",
 									},
-								)
+									{
+										extension:   "json",
+										compareFunc: assert.EqualJSON,
+										outputArg:   "json",
+									},
+									{
+										extension:   "yaml",
+										compareFunc: assert.EqualYAML,
+										outputArg:   "yaml",
+									},
+									{
+										extension:   "toml",
+										compareFunc: assert.EqualTOML,
+										outputArg:   "toml",
+									},
+								}
+								for _, format := range formats {
+									t.Logf("inspect-image %s format", format.outputArg)
 
-								assert.Equal(output, expectedOutput)
+									output = pack.RunSuccessfully("inspect-image", repoName, "--output", format.outputArg)
+
+									expectedOutput := pack.FixtureManager().TemplateFixture(
+										fmt.Sprintf("inspect_image_published_output.%s", format.extension),
+										map[string]interface{}{
+											"image_name":           repoName,
+											"base_image_ref":       strings.Join([]string{runImageMirror, h.Digest(t, runImageMirror)}, "@"),
+											"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
+											"run_image_mirror":     runImageMirror,
+											"web_command":          webCommand,
+											"hello_command":        helloCommand,
+											"hello_args":           helloArgs,
+											"hello_args_prefix":    helloArgsPrefix,
+										},
+									)
+
+									format.compareFunc(output, expectedOutput)
+								}
 							}
 						})
 
@@ -2100,9 +2231,12 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 				})
 
 				it("indicates builder is trusted", func() {
-					h.SkipUnless(t, pack.Supports("trust-builder"), "version of pack doesn't trust-builder command")
+					if pack.Supports("config trusted-builders add") {
+						pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
+					} else {
+						pack.JustRunSuccessfully("trust-builder", builderName)
+					}
 
-					pack.JustRunSuccessfully("trust-builder", builderName)
 					pack.JustRunSuccessfully(
 						"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
 					)
@@ -2144,7 +2278,11 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 				var buildRunImage func(string, string, string)
 
 				it.Before(func() {
-					pack.JustRunSuccessfully("trust-builder", builderName)
+					if pack.Supports("config trusted-builders add") {
+						pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
+					} else {
+						pack.JustRunSuccessfully("trust-builder", builderName)
+					}
 
 					repoName = registryConfig.RepoName("some-org/" + h.RandString(10))
 					runBefore = registryConfig.RepoName("run-before/" + h.RandString(10))
@@ -2439,11 +2577,20 @@ func createComplexBuilder(t *testing.T,
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
 
 	// CREATE BUILDER
-	output := pack.RunSuccessfully(
-		"create-builder", bldr,
-		"-c", builderConfigFile.Name(),
-		"--no-color",
-	)
+	var output string
+	if pack.Supports("builder create") {
+		output = pack.RunSuccessfully(
+			"builder", "create", bldr,
+			"-c", builderConfigFile.Name(),
+			"--no-color",
+		)
+	} else {
+		output = pack.RunSuccessfully(
+			"create-builder", bldr,
+			"-c", builderConfigFile.Name(),
+			"--no-color",
+		)
+	}
 
 	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
 	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
@@ -2528,11 +2675,21 @@ func createBuilder(
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
 
 	// CREATE BUILDER
-	output := pack.RunSuccessfully(
-		"create-builder", bldr,
-		"-c", builderConfigFile.Name(),
-		"--no-color",
-	)
+	var output string
+	if pack.Supports("builder create") {
+		output = pack.RunSuccessfully(
+			"builder", "create", bldr,
+			"-c", builderConfigFile.Name(),
+			"--no-color",
+		)
+	} else {
+		output = pack.RunSuccessfully(
+			"create-builder", bldr,
+			"-c", builderConfigFile.Name(),
+			"--no-color",
+		)
+	}
+
 	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
 	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
 
@@ -2773,4 +2930,10 @@ func taskKey(prefix string, args ...string) string {
 		hash.Write([]byte(v))
 	}
 	return fmt.Sprintf("%s-%s", prefix, hex.EncodeToString(hash.Sum(nil)))
+}
+
+type compareFormat struct {
+	extension   string
+	compareFunc func(string, string)
+	outputArg   string
 }
