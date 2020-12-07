@@ -38,10 +38,10 @@ func testPullBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		mockClient = testmocks.NewMockPackClient(mockController)
 		cfg = config.Config{}
 
-		command = commands.PullBuildpack(logger, cfg, mockClient)
+		command = commands.BuildpackPull(logger, cfg, mockClient)
 	})
 
-	when("#PullBuildpackCommand", func() {
+	when("#BuildpackPullCommand", func() {
 		when("no buildpack is provided", func() {
 			it("fails to run", func() {
 				err := command.Execute()
