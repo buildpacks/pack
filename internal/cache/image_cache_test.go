@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
+
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
@@ -38,38 +39,17 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 		})
 
-		it("reusing the same cache for the same repo name", func() {
-			ref, err := name.ParseReference("my/repo", name.WeakValidation)
-			h.AssertNil(t, err)
-			subject := cache.NewImageCache(ref, dockerClient)
-			expected := cache.NewImageCache(ref, dockerClient)
-			if subject.Name() != expected.Name() {
-				t.Fatalf("The same repo name should result in the same volume")
-			}
-		})
-
-		it("supplies different images for different tags", func() {
-			ref, err := name.ParseReference("my/repo:other-tag", name.WeakValidation)
-			h.AssertNil(t, err)
-			subject := cache.NewImageCache(ref, dockerClient)
-			ref, err = name.ParseReference("my/repo", name.WeakValidation)
-			h.AssertNil(t, err)
-			notExpected := cache.NewImageCache(ref, dockerClient)
-			if subject.Name() == notExpected.Name() {
-				t.Fatalf("Different image tags should result in different images")
-			}
-		})
-
-		it("supplies different images for different registries", func() {
-			ref, err := name.ParseReference("registry.com/my/repo:other-tag", name.WeakValidation)
-			h.AssertNil(t, err)
-			subject := cache.NewImageCache(ref, dockerClient)
-			ref, err = name.ParseReference("my/repo", name.WeakValidation)
-			h.AssertNil(t, err)
-			notExpected := cache.NewImageCache(ref, dockerClient)
-			if subject.Name() == notExpected.Name() {
-				t.Fatalf("Different image registries should result in different images")
-			}
+		when("#Name", func() {
+			it("should return the image reference used in intialization", func() {
+				refName := "gcr.io/my/repo:tag"
+				ref, err := name.ParseReference(refName, name.WeakValidation)
+				h.AssertNil(t, err)
+				subject := cache.NewImageCache(ref, dockerClient)
+				actual := subject.Name()
+				if actual != refName {
+					t.Fatalf("Incorrect cache name expected %s, got %s", refName, actual)
+				}
+			})
 		})
 
 		it("resolves implied tag", func() {
@@ -94,6 +74,26 @@ func testImageCache(t *testing.T, when spec.G, it spec.S) {
 			if subject.Name() != expected.Name() {
 				t.Fatalf("The same repo name should result in the same image")
 			}
+		})
+	})
+
+	when("#Type", func() {
+		var (
+			dockerClient client.CommonAPIClient
+		)
+
+		it.Before(func() {
+			var err error
+			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+			h.AssertNil(t, err)
+		})
+
+		it("returns the cache type", func() {
+			ref, err := name.ParseReference("my/repo", name.WeakValidation)
+			h.AssertNil(t, err)
+			subject := cache.NewImageCache(ref, dockerClient)
+			expected := cache.Image
+			h.AssertEq(t, subject.Type(), expected)
 		})
 	})
 

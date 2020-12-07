@@ -1914,6 +1914,55 @@ func testAcceptance(
 						})
 					})
 
+					when("--cache-image", func() {
+						var cacheImageName string
+						var cacheImage string
+						it.Before(func() {
+							cacheImageName = fmt.Sprintf("%s-cache", repoName)
+							cacheImage = fmt.Sprintf("%s-cache", repo)
+						})
+
+						it("creates image and cache image on the registry", func() {
+							h.SkipUnless(t,
+								pack.Supports("build --cache-image"),
+								"pack does not support 'package-buildpack'",
+							)
+
+							buildArgs := []string{
+								repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--publish",
+								"--cache-image",
+								cacheImageName,
+							}
+							if dockerHostOS() != "windows" {
+								buildArgs = append(buildArgs, "--network", "host")
+							}
+
+							output := pack.RunSuccessfully("build", buildArgs...)
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+							cacheImageRef, err := name.ParseReference(cacheImageName, name.WeakValidation)
+							assert.Nil(err)
+
+							t.Log("checking that registry has contents")
+							contents, err := registryConfig.RegistryCatalog()
+							assert.Nil(err)
+							if !strings.Contains(contents, repo) {
+								t.Fatalf("Expected to see image %s in %s", repo, contents)
+							}
+
+							if !strings.Contains(contents, cacheImage) {
+								t.Fatalf("Expected to see image %s in %s", cacheImage, contents)
+							}
+
+							assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+							assert.Succeeds(h.PullImageWithAuth(dockerCli, cacheImageRef.Name(), registryConfig.RegistryAuth()))
+							defer h.DockerRmi(dockerCli, repoName)
+							defer h.DockerRmi(dockerCli, cacheImageRef.Name())
+						})
+					})
+
 					when("ctrl+c", func() {
 						it("stops the execution", func() {
 							var buf = new(bytes.Buffer)

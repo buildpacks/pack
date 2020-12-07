@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/buildpacks/pack/internal/cache"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/docker/docker/client"
@@ -39,6 +41,7 @@ type LifecycleExecutor struct {
 type Cache interface {
 	Name() string
 	Clear(context.Context) error
+	Type() cache.Type
 }
 
 func init() {
@@ -55,6 +58,7 @@ type LifecycleOptions struct {
 	Publish            bool
 	TrustBuilder       bool
 	UseCreator         bool
+	CacheImage         string
 	HTTPProxy          string
 	HTTPSProxy         string
 	NoProxy            string

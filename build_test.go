@@ -638,6 +638,25 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("ImageCache option", func() {
+			it("passes it through to lifecycle", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:      "some/app",
+					Builder:    defaultBuilderName,
+					CacheImage: "some-cache-image",
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.CacheImage, "some-cache-image")
+			})
+
+			it("defaults to false", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Image:   "some/app",
+					Builder: defaultBuilderName,
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.CacheImage, "")
+			})
+		})
+
 		when("Buildpacks option", func() {
 			assertOrderEquals := func(content string) {
 				t.Helper()

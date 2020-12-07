@@ -103,6 +103,10 @@ type BuildOptions struct {
 	// Buildpacks may both read and overwrite these values.
 	Env map[string]string
 
+	// Option only valid if Publish is true
+	// Create an additional image that contains cache=true layers and push it to the registry.
+	CacheImage string
+
 	// Option passed directly to the lifecycle.
 	// If true, publishes Image directly to a registry.
 	// Assumes Image contains a valid registry with credentials
@@ -291,6 +295,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Volumes:            processedVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
 		FileFilter:         fileFilter,
+		CacheImage:         opts.CacheImage,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version

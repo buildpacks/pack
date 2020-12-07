@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/google/go-containerregistry/pkg/name"
+
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/docker/docker/client"
@@ -103,8 +105,16 @@ func (l *LifecycleExecution) PlatformAPI() *api.Version {
 
 func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
 	phaseFactory := phaseFactoryCreator(l)
-
-	buildCache := cache.NewVolumeCache(l.opts.Image, "build", l.docker)
+	var buildCache Cache
+	if l.opts.CacheImage != "" {
+		cacheImage, err := name.ParseReference(l.opts.CacheImage, name.WeakValidation)
+		if err != nil {
+			return fmt.Errorf("invalid cache image name: %s", err)
+		}
+		buildCache = cache.NewImageCache(cacheImage, l.docker)
+	} else {
+		buildCache = cache.NewVolumeCache(l.opts.Image, "build", l.docker)
+	}
 
 	l.logger.Debugf("Using build cache volume %s", style.Symbol(buildCache.Name()))
 	if l.opts.ClearCache {
@@ -123,14 +133,14 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 
 		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, l.opts.Image.String(), buildCache.Name(), l.opts.Network, l.opts.Publish, l.opts.ClearCache, phaseFactory); err != nil {
+		if err := l.Analyze(ctx, l.opts.Image.String(), l.opts.Network, l.opts.Publish, l.opts.ClearCache, buildCache, phaseFactory); err != nil {
 			return err
 		}
 
 		l.logger.Info(style.Step("RESTORING"))
 		if l.opts.ClearCache {
 			l.logger.Info("Skipping 'restore' due to clearing cache")
-		} else if err := l.Restore(ctx, buildCache.Name(), l.opts.Network, phaseFactory); err != nil {
+		} else if err := l.Restore(ctx, l.opts.Network, buildCache, phaseFactory); err != nil {
 			return err
 		}
 
@@ -141,7 +151,8 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
-		return l.Export(ctx, l.opts.Image.String(), l.opts.AdditionalTags, l.opts.RunImage, l.opts.Publish, launchCache.Name(), buildCache.Name(), l.opts.Network, phaseFactory)
+		return l.Export(ctx, l.opts.Image.String(), l.opts.RunImage, l.opts.Publish, l.opts.Network, launchCache, buildCache, l.opts.AdditionalTags, phaseFactory)
+
 	}
 
 	return l.Create(
@@ -149,10 +160,10 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		l.opts.Publish,
 		l.opts.ClearCache,
 		l.opts.RunImage,
-		launchCache.Name(),
-		buildCache.Name(),
 		l.opts.Image.String(),
 		l.opts.Network,
+		buildCache,
+		launchCache,
 		l.opts.AdditionalTags,
 		l.opts.Volumes,
 		phaseFactory,
@@ -173,7 +184,8 @@ func (l *LifecycleExecution) Cleanup() error {
 func (l *LifecycleExecution) Create(
 	ctx context.Context,
 	publish, clearCache bool,
-	runImage, launchCacheName, cacheName, repoName, networkMode string,
+	runImage, repoName, networkMode string,
+	buildCache, launchCache Cache,
 	additionalTags []string,
 	volumes []string,
 	phaseFactory PhaseFactory,
@@ -192,11 +204,20 @@ func (l *LifecycleExecution) Create(
 		flags = append(flags, "-process-type", processType)
 	}
 
+	var cacheOpts PhaseConfigProviderOperation
+	switch buildCache.Type() {
+	case cache.Image:
+		flags = append(flags, "-cache-image", buildCache.Name())
+		cacheOpts = WithBinds(volumes...)
+	case cache.Volume:
+		cacheOpts = WithBinds(append(volumes, fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))...)
+	}
+
 	opts := []PhaseConfigProviderOperation{
 		WithFlags(l.withLogLevel(flags...)...),
 		WithArgs(repoName),
 		WithNetwork(networkMode),
-		WithBinds(append(volumes, fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir()))...),
+		cacheOpts,
 		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.opts.FileFilter)),
 	}
 
@@ -211,7 +232,7 @@ func (l *LifecycleExecution) Create(
 		opts = append(opts,
 			WithDaemonAccess(),
 			WithFlags("-daemon", "-launch-cache", l.mountPaths.launchCacheDir()),
-			WithBinds(fmt.Sprintf("%s:%s", launchCacheName, l.mountPaths.launchCacheDir())),
+			WithBinds(fmt.Sprintf("%s:%s", launchCache.Name(), l.mountPaths.launchCacheDir())),
 		)
 	}
 
@@ -244,7 +265,16 @@ func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, vol
 	return detect.Run(ctx)
 }
 
-func (l *LifecycleExecution) Restore(ctx context.Context, cacheName, networkMode string, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) Restore(ctx context.Context, networkMode string, buildCache Cache, phaseFactory PhaseFactory) error {
+	flagsOpt := NullOp()
+	cacheOpt := NullOp()
+	switch buildCache.Type() {
+	case cache.Image:
+		flagsOpt = WithFlags("-cache-image", buildCache.Name())
+	case cache.Volume:
+		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
+	}
+
 	configProvider := NewPhaseConfigProvider(
 		"restorer",
 		l,
@@ -259,7 +289,8 @@ func (l *LifecycleExecution) Restore(ctx context.Context, cacheName, networkMode
 			)...,
 		),
 		WithNetwork(networkMode),
-		WithBinds(fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir())),
+		flagsOpt,
+		cacheOpt,
 	)
 
 	restore := phaseFactory.New(configProvider)
@@ -267,8 +298,8 @@ func (l *LifecycleExecution) Restore(ctx context.Context, cacheName, networkMode
 	return restore.Run(ctx)
 }
 
-func (l *LifecycleExecution) Analyze(ctx context.Context, repoName, cacheName, networkMode string, publish, clearCache bool, phaseFactory PhaseFactory) error {
-	analyze, err := l.newAnalyze(repoName, cacheName, networkMode, publish, clearCache, phaseFactory)
+func (l *LifecycleExecution) Analyze(ctx context.Context, repoName, networkMode string, publish, clearCache bool, cache Cache, phaseFactory PhaseFactory) error {
+	analyze, err := l.newAnalyze(repoName, networkMode, publish, clearCache, cache, phaseFactory)
 	if err != nil {
 		return err
 	}
@@ -276,7 +307,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, repoName, cacheName, n
 	return analyze.Run(ctx)
 }
 
-func (l *LifecycleExecution) newAnalyze(repoName, cacheName, networkMode string, publish, clearCache bool, phaseFactory PhaseFactory) (RunnerCleaner, error) {
+func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish, clearCache bool, buildCache Cache, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	args := []string{
 		"-layers", l.mountPaths.layersDir(),
 		repoName,
@@ -285,6 +316,17 @@ func (l *LifecycleExecution) newAnalyze(repoName, cacheName, networkMode string,
 		args = prependArg("-skip-layers", args)
 	} else {
 		args = append([]string{"-cache-dir", l.mountPaths.cacheDir()}, args...)
+	}
+
+	cacheOpt := NullOp()
+	flagsOpt := NullOp()
+	switch buildCache.Type() {
+	case cache.Image:
+		if !clearCache {
+			flagsOpt = WithFlags("-cache-image", buildCache.Name())
+		}
+	case cache.Volume:
+		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
 
 	if publish {
@@ -303,7 +345,8 @@ func (l *LifecycleExecution) newAnalyze(repoName, cacheName, networkMode string,
 			WithRoot(),
 			WithArgs(l.withLogLevel(args...)...),
 			WithNetwork(networkMode),
-			WithBinds(fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir())),
+			flagsOpt,
+			cacheOpt,
 		)
 
 		return phaseFactory.New(configProvider), nil
@@ -328,8 +371,9 @@ func (l *LifecycleExecution) newAnalyze(repoName, cacheName, networkMode string,
 				)...,
 			)...,
 		),
+		flagsOpt,
 		WithNetwork(networkMode),
-		WithBinds(fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir())),
+		cacheOpt,
 	)
 
 	return phaseFactory.New(configProvider), nil
@@ -365,7 +409,7 @@ func determineDefaultProcessType(platformAPI *api.Version, providedValue string)
 	return providedValue
 }
 
-func (l *LifecycleExecution) newExport(repoName string, additionalTags []string, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
+func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, networkMode string, buildCache, launchCache Cache,additionalTags []string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	flags := []string{
 		"-cache-dir", l.mountPaths.cacheDir(),
 		"-layers", l.mountPaths.layersDir(),
@@ -377,6 +421,14 @@ func (l *LifecycleExecution) newExport(repoName string, additionalTags []string,
 	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
 	if processType != "" {
 		flags = append(flags, "-process-type", processType)
+	}
+
+	cacheOpt := NullOp()
+	switch buildCache.Type() {
+	case cache.Image:
+		flags = append(flags, "-cache-image", buildCache.Name())
+	case cache.Volume:
+		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
 
 	opts := []PhaseConfigProviderOperation{
@@ -392,7 +444,7 @@ func (l *LifecycleExecution) newExport(repoName string, additionalTags []string,
 		WithArgs(append([]string{repoName}, additionalTags...)...),
 		WithRoot(),
 		WithNetwork(networkMode),
-		WithBinds(fmt.Sprintf("%s:%s", cacheName, l.mountPaths.cacheDir())),
+		cacheOpt,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
 	}
 
@@ -412,15 +464,15 @@ func (l *LifecycleExecution) newExport(repoName string, additionalTags []string,
 			opts,
 			WithDaemonAccess(),
 			WithFlags("-daemon", "-launch-cache", l.mountPaths.launchCacheDir()),
-			WithBinds(fmt.Sprintf("%s:%s", launchCacheName, l.mountPaths.launchCacheDir())),
+			WithBinds(fmt.Sprintf("%s:%s", launchCache.Name(), l.mountPaths.launchCacheDir())),
 		)
 	}
 
 	return phaseFactory.New(NewPhaseConfigProvider("exporter", l, opts...)), nil
 }
 
-func (l *LifecycleExecution) Export(ctx context.Context, repoName string, additionalTags []string, runImage string, publish bool, launchCacheName, cacheName, networkMode string, phaseFactory PhaseFactory) error {
-	export, err := l.newExport(repoName, additionalTags, runImage, publish, launchCacheName, cacheName, networkMode, phaseFactory)
+func (l *LifecycleExecution) Export(ctx context.Context, repoName string, runImage string, publish bool, networkMode string, buildCache, launchCache Cache,additionalTags []string, phaseFactory PhaseFactory) error {
+	export, err := l.newExport(repoName, runImage, publish, networkMode, buildCache, launchCache, additionalTags, phaseFactory)
 	if err != nil {
 		return err
 	}

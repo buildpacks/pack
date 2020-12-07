@@ -86,6 +86,10 @@ func (p *PhaseConfigProvider) InfoWriter() io.Writer {
 	return p.infoWriter
 }
 
+func NullOp() PhaseConfigProviderOperation {
+	return func(provider *PhaseConfigProvider) {}
+}
+
 func WithArgs(args ...string) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
 		provider.ctrConf.Cmd = append(provider.ctrConf.Cmd, args...)
