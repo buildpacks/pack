@@ -76,7 +76,12 @@ func (p PackageFile) Prepare(sourceDir, _ string) error {
 		"--format", "file",
 	}
 
-	output := p.pack.RunSuccessfully("package-buildpack", packArgs...)
+	var output string
+	if p.pack.Supports("buildpack package") {
+		output = p.pack.RunSuccessfully("buildpack", append([]string{"package"}, packArgs...)...)
+	} else {
+		output = p.pack.RunSuccessfully("package-buildpack", packArgs...)
+	}
 
 	if !strings.Contains(output, fmt.Sprintf("Successfully created package '%s'", p.destination)) {
 		return errors.New("failed to create package")
