@@ -137,6 +137,11 @@ func (a AssertionManager) Contains(actual, expected string) {
 	}
 }
 
+func (a AssertionManager) EqualJSON(actualJSON, expectedJSON string) {
+	a.ContainsJSON(actualJSON, expectedJSON)
+	a.ContainsJSON(expectedJSON, actualJSON)
+}
+
 func (a AssertionManager) ContainsJSON(actualJSON, expectedJSON string) {
 	a.testObject.Helper()
 
@@ -191,6 +196,11 @@ func (a AssertionManager) ContainsJSON(actualJSON, expectedJSON string) {
 	}
 }
 
+func (a AssertionManager) EqualYAML(actualYAML, expectedYAML string) {
+	a.ContainsYAML(actualYAML, expectedYAML)
+	a.ContainsYAML(expectedYAML, actualYAML)
+}
+
 func (a AssertionManager) ContainsYAML(actualYAML, expectedYAML string) {
 	a.testObject.Helper()
 
@@ -231,6 +241,11 @@ func (a AssertionManager) ContainsYAML(actualYAML, expectedYAML string) {
 			cmp.Diff(actualYAMLDiffArray, expectedYAMLDiffArray),
 		)
 	}
+}
+
+func (a AssertionManager) EqualTOML(actualTOML, expectedTOML string) {
+	a.ContainsTOML(actualTOML, expectedTOML)
+	a.ContainsTOML(expectedTOML, actualTOML)
 }
 
 func (a AssertionManager) ContainsTOML(actualTOML, expectedTOML string) {

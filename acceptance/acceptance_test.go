@@ -941,40 +941,73 @@ func testAcceptance(
 						t.Log("cacher adds layers")
 						assert.Matches(output, regexp.MustCompile(`(?i)Adding cache layer 'simple/layers:cached-launch-layer'`))
 
-						if pack.Supports("inspect-image") {
+						if pack.Supports("inspect-image --output") {
 							t.Log("inspect-image")
-							output = pack.RunSuccessfully("inspect-image", repoName)
 
 							var (
-								webCommand   string
-								helloCommand string
-								helloArgs    string
+								webCommand      string
+								helloCommand    string
+								helloArgs       []string
+								helloArgsPrefix string
 							)
 							if dockerHostOS() == "windows" {
 								webCommand = ".\\run"
 								helloCommand = "cmd"
-								helloArgs = " /c echo hello world"
+								helloArgs = []string{"/c", "echo hello world"}
+								helloArgsPrefix = " "
+
 							} else {
 								webCommand = "./run"
 								helloCommand = "echo"
-								helloArgs = "hello world"
+								helloArgs = []string{"hello", "world"}
+								helloArgsPrefix = ""
 							}
 
-							expectedOutput := pack.FixtureManager().TemplateFixture(
-								"inspect_image_local_output.txt",
-								map[string]interface{}{
-									"image_name":             repoName,
-									"base_image_id":          h.ImageID(t, runImageMirror),
-									"base_image_top_layer":   h.TopLayerDiffID(t, runImageMirror),
-									"run_image_local_mirror": localRunImageMirror,
-									"run_image_mirror":       runImageMirror,
-									"web_command":            webCommand,
-									"hello_command":          helloCommand,
-									"hello_args":             helloArgs,
+							formats := []compareFormat{
+								{
+									extension:   "txt",
+									compareFunc: assert.TrimmedEq,
+									outputArg:   "human-readable",
 								},
-							)
+								{
+									extension:   "json",
+									compareFunc: assert.EqualJSON,
+									outputArg:   "json",
+								},
+								{
+									extension:   "yaml",
+									compareFunc: assert.EqualYAML,
+									outputArg:   "yaml",
+								},
+								{
+									extension:   "toml",
+									compareFunc: assert.EqualTOML,
+									outputArg:   "toml",
+								},
+							}
+							for _, format := range formats {
+								t.Logf("inspect-image %s format", format.outputArg)
 
-							assert.Equal(output, expectedOutput)
+								output = pack.RunSuccessfully("inspect-image", repoName, "--output", format.outputArg)
+
+								expectedOutput := pack.FixtureManager().TemplateFixture(
+									fmt.Sprintf("inspect_image_local_output.%s", format.extension),
+									map[string]interface{}{
+										"image_name":             repoName,
+										"base_image_id":          h.ImageID(t, runImageMirror),
+										"base_image_top_layer":   h.TopLayerDiffID(t, runImageMirror),
+										"run_image_local_mirror": localRunImageMirror,
+										"run_image_mirror":       runImageMirror,
+										"web_command":            webCommand,
+										"hello_command":          helloCommand,
+										"hello_args":             helloArgs,
+										"hello_args_prefix":      helloArgsPrefix,
+									},
+								)
+
+								format.compareFunc(output, expectedOutput)
+							}
+
 						}
 					})
 
@@ -1627,39 +1660,70 @@ func testAcceptance(
 								"Cached Dep Contents",
 							)
 
-							if pack.Supports("inspect-image") {
+							if pack.Supports("inspect-image --output") {
 								t.Log("inspect-image")
 								output = pack.RunSuccessfully("inspect-image", repoName)
 
 								var (
-									webCommand   string
-									helloCommand string
-									helloArgs    string
+									webCommand      string
+									helloCommand    string
+									helloArgs       []string
+									helloArgsPrefix string
 								)
 								if dockerHostOS() == "windows" {
 									webCommand = ".\\run"
 									helloCommand = "cmd"
-									helloArgs = " /c echo hello world"
+									helloArgs = []string{"/c", "echo hello world"}
+									helloArgsPrefix = " "
 								} else {
 									webCommand = "./run"
 									helloCommand = "echo"
-									helloArgs = "hello world"
+									helloArgs = []string{"hello", "world"}
+									helloArgsPrefix = ""
 								}
-
-								expectedOutput := pack.FixtureManager().TemplateFixture(
-									"inspect_image_published_output.txt",
-									map[string]interface{}{
-										"image_name":           repoName,
-										"base_image_ref":       strings.Join([]string{runImageMirror, h.Digest(t, runImageMirror)}, "@"),
-										"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
-										"run_image_mirror":     runImageMirror,
-										"web_command":          webCommand,
-										"hello_command":        helloCommand,
-										"hello_args":           helloArgs,
+								formats := []compareFormat{
+									{
+										extension:   "txt",
+										compareFunc: assert.TrimmedEq,
+										outputArg:   "human-readable",
 									},
-								)
+									{
+										extension:   "json",
+										compareFunc: assert.EqualJSON,
+										outputArg:   "json",
+									},
+									{
+										extension:   "yaml",
+										compareFunc: assert.EqualYAML,
+										outputArg:   "yaml",
+									},
+									{
+										extension:   "toml",
+										compareFunc: assert.EqualTOML,
+										outputArg:   "toml",
+									},
+								}
+								for _, format := range formats {
+									t.Logf("inspect-image %s format", format.outputArg)
 
-								assert.Equal(output, expectedOutput)
+									output = pack.RunSuccessfully("inspect-image", repoName, "--output", format.outputArg)
+
+									expectedOutput := pack.FixtureManager().TemplateFixture(
+										fmt.Sprintf("inspect_image_published_output.%s", format.extension),
+										map[string]interface{}{
+											"image_name":           repoName,
+											"base_image_ref":       strings.Join([]string{runImageMirror, h.Digest(t, runImageMirror)}, "@"),
+											"base_image_top_layer": h.TopLayerDiffID(t, runImageMirror),
+											"run_image_mirror":     runImageMirror,
+											"web_command":          webCommand,
+											"hello_command":        helloCommand,
+											"hello_args":           helloArgs,
+											"hello_args_prefix":    helloArgsPrefix,
+										},
+									)
+
+									format.compareFunc(output, expectedOutput)
+								}
 							}
 						})
 					})
@@ -2781,4 +2845,10 @@ func taskKey(prefix string, args ...string) string {
 		hash.Write([]byte(v))
 	}
 	return fmt.Sprintf("%s-%s", prefix, hex.EncodeToString(hash.Sum(nil)))
+}
+
+type compareFormat struct {
+	extension   string
+	compareFunc func(string, string)
+	outputArg   string
 }
