@@ -30,7 +30,7 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 			"and they can be included in the configs used in `pack create-builder` and `pack package-buildpack`. For more " +
 			"on how to package a buildpack, see: https://buildpacks.io/docs/buildpack-author-guide/package-a-buildpack/.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			logger.Warn("Command 'pack package-buildpack' has been deprecated, please use 'pack buildpack package' instead")
+			deprecationWarning(logger, "package-buildpack", "buildpack package")
 
 			if err := validateBuildpackPackageFlags(&flags); err != nil {
 				return err

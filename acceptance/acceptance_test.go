@@ -392,7 +392,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			when("--publish", func() {
 				it("publishes image to registry", func() {
-					h.SkipUnless(t, pack.SupportsFeature(invoke.OSInPackageToml), "os not supported")
+					h.SkipUnless(t, pack.SupportsFeature(invoke.OSInPackageTOML), "os not supported")
 
 					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
 					nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
@@ -1410,7 +1410,7 @@ func testAcceptance(
 
 							it.Before(func() {
 								h.SkipUnless(t,
-									pack.SupportsFeature(invoke.OSInPackageToml),
+									pack.SupportsFeature(invoke.OSInPackageTOML),
 									"--buildpack does not accept buildpackage unless os is supported in the packakge config file",
 								)
 							})
@@ -1461,7 +1461,7 @@ func testAcceptance(
 
 							it.Before(func() {
 								h.SkipUnless(t,
-									pack.SupportsFeature(invoke.OSInPackageToml),
+									pack.SupportsFeature(invoke.OSInPackageTOML),
 									"--buildpack does not accept buildpackage unless os is supported in the package config file",
 								)
 

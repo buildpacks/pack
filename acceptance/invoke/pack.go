@@ -215,7 +215,7 @@ const (
 	NoColorInBuildpacks
 	QuietMode
 	InspectBuilderOutputFormat
-	OSInPackageToml
+	OSInPackageTOML
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -240,7 +240,7 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	InspectBuilderOutputFormat: func(i *PackInvoker) bool {
 		return i.laterThan("0.14.2")
 	},
-	OSInPackageToml: func(i *PackInvoker) bool {
+	OSInPackageTOML: func(i *PackInvoker) bool {
 		return i.laterThan("0.15.0")
 	},
 }
