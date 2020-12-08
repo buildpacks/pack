@@ -17,7 +17,7 @@ func trustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *c
 		Short:   "Interact with trusted builders",
 		Aliases: []string{"trusted-builder"},
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			listTrustedBuilders(logger, cfg)
+			listTrustedBuilders(args, logger, cfg)
 			return nil
 		}),
 	}
@@ -36,6 +36,8 @@ func trustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *c
 	listCmd.Long = "List Trusted Builders.\n\nShow the builders that are either trusted by default or have been explicitly trusted locally using `trust-builder`"
 	listCmd.Example = "pack config trusted-builders list"
 	cmd.AddCommand(listCmd)
+
+	AddHelpFlag(cmd, "trusted-builders")
 	return cmd
 }
 
@@ -90,7 +92,7 @@ func removeTrustedBuilder(args []string, logger logging.Logger, cfg config.Confi
 	return nil
 }
 
-func listTrustedBuilders(logger logging.Logger, cfg config.Config) {
+func listTrustedBuilders(args []string, logger logging.Logger, cfg config.Config) {
 	logger.Info("Trusted Builders:")
 
 	var trustedBuilders []string
