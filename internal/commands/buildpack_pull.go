@@ -9,12 +9,14 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+// BuildpackPullFlags consist of flags applicable to the `buildpack pull` command
 type BuildpackPullFlags struct {
+	// BuildpackRegistry is the name of the buildpack registry to use to search for
 	BuildpackRegistry string
 }
 
+// BuildpackPull pulls a buildpack and stores it locally
 func BuildpackPull(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
-	var opts pack.PullBuildpackOptions
 	var flags BuildpackPullFlags
 
 	cmd := &cobra.Command{
@@ -27,10 +29,11 @@ func BuildpackPull(logger logging.Logger, cfg config.Config, client PackClient) 
 			if err != nil {
 				return err
 			}
-			opts.URI = args[0]
-			opts.RegistryType = registry.Type
-			opts.RegistryURL = registry.URL
-			opts.RegistryName = registry.Name
+
+			opts := pack.PullBuildpackOptions{
+				URI:          args[0],
+				RegistryName: registry.Name,
+			}
 
 			if err := client.PullBuildpack(cmd.Context(), opts); err != nil {
 				return err

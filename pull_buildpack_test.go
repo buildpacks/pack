@@ -68,8 +68,6 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 		it("should fail if not in the registry", func() {
 			err := subject.PullBuildpack(context.TODO(), pack.PullBuildpackOptions{
 				URI:          "invalid/image",
-				RegistryType: "github",
-				RegistryURL:  registry.DefaultRegistryURL,
 				RegistryName: registry.DefaultRegistryName,
 			})
 			h.AssertError(t, err, "locating in registry")
@@ -150,8 +148,6 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 		it("should fetch the image", func() {
 			h.AssertNil(t, subject.PullBuildpack(context.TODO(), pack.PullBuildpackOptions{
 				URI:          "example/foo@1.1.0",
-				RegistryType: "github",
-				RegistryURL:  registryFixture,
 				RegistryName: "some-registry",
 			}))
 		})

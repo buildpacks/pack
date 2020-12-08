@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -55,23 +56,28 @@ func BuildpackPackage(logger logging.Logger, client BuildpackPackager, packageCo
 				return errors.Wrap(err, "parsing pull policy")
 			}
 
-			var cfg pubbldpkg.Config
-			if flags.PackageTomlPath == "" {
-				cfg = pubbldpkg.DefaultConfig()
-			} else {
+			cfg := pubbldpkg.DefaultConfig()
+			relativeBaseDir := ""
+			if flags.PackageTomlPath != "" {
 				cfg, err = packageConfigReader.Read(flags.PackageTomlPath)
 				if err != nil {
 					return errors.Wrap(err, "reading config")
+				}
+
+				relativeBaseDir, err = filepath.Abs(filepath.Dir(flags.PackageTomlPath))
+				if err != nil {
+					return errors.Wrap(err, "getting absolute path for config")
 				}
 			}
 
 			name := args[0]
 			if err := client.PackageBuildpack(cmd.Context(), pack.PackageBuildpackOptions{
-				Name:       name,
-				Format:     flags.Format,
-				Config:     cfg,
-				Publish:    flags.Publish,
-				PullPolicy: pullPolicy,
+				RelativeBaseDir: relativeBaseDir,
+				Name:            name,
+				Format:          flags.Format,
+				Config:          cfg,
+				Publish:         flags.Publish,
+				PullPolicy:      pullPolicy,
 			}); err != nil {
 				return err
 			}

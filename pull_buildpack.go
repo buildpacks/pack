@@ -14,10 +14,12 @@ import (
 
 // PullBuildpackOptions are options available for PullBuildpack
 type PullBuildpackOptions struct {
-	URI          string
-	RegistryType string
-	RegistryURL  string
+	// URI of the buildpack to retrieve.
+	URI string
+	// RegistryName to search for buildpacks from.
 	RegistryName string
+	// RelativeBaseDir to resolve relative assests from.
+	RelativeBaseDir string
 }
 
 // PullBuildpack pulls given buildpack to be stored locally
