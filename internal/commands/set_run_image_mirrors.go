@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+// Deprecated: Use `pack config run-image-mirrors add` instead
 // SetRunImagesMirrors sets run image mirros for a given run image
 func SetRunImagesMirrors(logger logging.Logger, cfg config.Config) *cobra.Command {
 	var mirrors []string
@@ -16,6 +17,7 @@ func SetRunImagesMirrors(logger logging.Logger, cfg config.Config) *cobra.Comman
 	cmd := &cobra.Command{
 		Use:     "set-run-image-mirrors <run-image-name> --mirror <run-image-mirror>",
 		Args:    cobra.ExactArgs(1),
+		Hidden:  true,
 		Short:   "Set mirrors to other repositories for a given run image",
 		Example: "pack set-run-image-mirrors cnbs/sample-stack-run:bionic --mirror index.docker.io/cnbs/sample-stack-run:bionic",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {

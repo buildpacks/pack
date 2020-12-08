@@ -288,7 +288,7 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
-	when("package-buildpack", func() {
+	when("buildpack package", func() {
 		var (
 			tmpDir                         string
 			buildpackManager               buildpacks.BuildpackManager
@@ -297,12 +297,12 @@ func testWithoutSpecificBuilderRequirement(
 
 		it.Before(func() {
 			h.SkipUnless(t,
-				pack.Supports("package-buildpack"),
+				pack.Supports("buildpack package") || pack.Supports("package-buildpack"),
 				"pack does not support 'package-buildpack'",
 			)
 
 			var err error
-			tmpDir, err = ioutil.TempDir("", "package-buildpack-tests")
+			tmpDir, err = ioutil.TempDir("", "buildpack-package-tests")
 			assert.Nil(err)
 
 			buildpackManager = buildpacks.NewBuildpackManager(t, assert)
@@ -345,7 +345,12 @@ func testWithoutSpecificBuilderRequirement(
 				packageName := "test/package-" + h.RandString(10)
 				packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
 
-				output := pack.RunSuccessfully("package-buildpack", packageName, "-c", packageTomlPath)
+				var output string
+				if pack.Supports("buildpack package") {
+					output = pack.RunSuccessfully("buildpack", "package", packageName, "-c", packageTomlPath)
+				} else {
+					output = pack.RunSuccessfully("package-buildpack", packageName, "-c", packageTomlPath)
+				}
 				assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(packageName)
 				defer h.DockerRmi(dockerCli, packageName)
 
@@ -387,7 +392,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			when("--publish", func() {
 				it("publishes image to registry", func() {
-					h.SkipIf(t, !pack.Supports("package-buildpack --os"), "os not supported")
+					h.SkipUnless(t, pack.SupportsFeature(invoke.OSInPackageTOML), "os not supported")
 
 					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
 					nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
@@ -405,11 +410,22 @@ func testWithoutSpecificBuilderRequirement(
 
 					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-					output := pack.RunSuccessfully(
-						"package-buildpack", packageName,
-						"-c", aggregatePackageToml,
-						"--publish",
-					)
+
+					var output string
+					if pack.Supports("buildpack package") {
+						output = pack.RunSuccessfully(
+							"buildpack", "package", packageName,
+							"-c", aggregatePackageToml,
+							"--publish",
+						)
+					} else {
+						output = pack.RunSuccessfully(
+							"package-buildpack", packageName,
+							"-c", aggregatePackageToml,
+							"--publish",
+						)
+					}
+
 					defer h.DockerRmi(dockerCli, packageName)
 					assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
 
@@ -440,11 +456,17 @@ func testWithoutSpecificBuilderRequirement(
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
-					pack.JustRunSuccessfully(
-						"package-buildpack", packageName,
-						"-c", aggregatePackageToml,
-						"--pull-policy", pubcfg.PullNever.String(),
-					)
+					if pack.Supports("buildpack package") {
+						pack.JustRunSuccessfully(
+							"buildpack", "package", packageName,
+							"-c", aggregatePackageToml,
+							"--pull-policy", pubcfg.PullNever.String())
+					} else {
+						pack.JustRunSuccessfully(
+							"package-buildpack", packageName,
+							"-c", aggregatePackageToml,
+							"--pull-policy", pubcfg.PullNever.String())
+					}
 
 					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
 					assert.Nil(err)
@@ -468,11 +490,25 @@ func testWithoutSpecificBuilderRequirement(
 
 					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 					defer h.DockerRmi(dockerCli, packageName)
-					output, err := pack.Run(
-						"package-buildpack", packageName,
-						"-c", aggregatePackageToml,
-						"--pull-policy", pubcfg.PullNever.String(),
+					var (
+						output string
+						err    error
 					)
+
+					if pack.Supports("buildpack package") {
+						output, err = pack.Run(
+							"buildpack", "package", packageName,
+							"-c", aggregatePackageToml,
+							"--pull-policy", pubcfg.PullNever.String(),
+						)
+					} else {
+						output, err = pack.Run(
+							"package-buildpack", packageName,
+							"-c", aggregatePackageToml,
+							"--pull-policy", pubcfg.PullNever.String(),
+						)
+					}
+
 					assert.NotNil(err)
 					assertions.NewOutputAssertionManager(t, output).ReportsImageNotExistingOnDaemon(nestedPackageName)
 				})
@@ -487,12 +523,20 @@ func testWithoutSpecificBuilderRequirement(
 			it("creates the package", func() {
 				packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
 				destinationFile := filepath.Join(tmpDir, "package.cnb")
-				output, err := pack.Run(
-					"package-buildpack", destinationFile,
-					"--format", "file",
-					"-c", packageTomlPath,
-				)
-				assert.Nil(err)
+				var output string
+				if pack.Supports("buildpack package") {
+					output = pack.RunSuccessfully(
+						"buildpack", "package", destinationFile,
+						"--format", "file",
+						"-c", packageTomlPath,
+					)
+				} else {
+					output = pack.RunSuccessfully(
+						"package-buildpack", destinationFile,
+						"--format", "file",
+						"-c", packageTomlPath,
+					)
+				}
 				assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(destinationFile)
 				h.AssertTarball(t, destinationFile)
 			})
@@ -500,10 +544,22 @@ func testWithoutSpecificBuilderRequirement(
 
 		when("package.toml is invalid", func() {
 			it("displays an error", func() {
-				output, err := pack.Run(
-					"package-buildpack", "some-package",
-					"-c", pack.FixtureManager().FixtureLocation("invalid_package.toml"),
+				var (
+					output string
+					err    error
 				)
+				if pack.Supports("buildpack package") {
+					output, err = pack.Run(
+						"buildpack", "package", "some-package",
+						"-c", pack.FixtureManager().FixtureLocation("invalid_package.toml"),
+					)
+				} else {
+					output, err = pack.Run(
+						"package-buildpack", "some-package",
+						"-c", pack.FixtureManager().FixtureLocation("invalid_package.toml"),
+					)
+				}
+
 				assert.NotNil(err)
 				assert.Contains(output, "reading config")
 			})
@@ -919,7 +975,11 @@ func testAcceptance(
 						localRunImageMirror := registryConfig.RepoName("pack-test/run-mirror")
 						assert.Succeeds(dockerCli.ImageTag(context.TODO(), runImage, localRunImageMirror))
 						defer h.DockerRmi(dockerCli, localRunImageMirror)
-						pack.JustRunSuccessfully("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+						if pack.Supports("config run-image-mirrors") {
+							pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImage, "-m", localRunImageMirror)
+						} else {
+							pack.JustRunSuccessfully("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+						}
 
 						t.Log("rebuild")
 						output = pack.RunSuccessfully(
@@ -1377,8 +1437,8 @@ func testAcceptance(
 
 							it.Before(func() {
 								h.SkipUnless(t,
-									pack.Supports("package-buildpack --os"),
-									"--buildpack does not accept buildpackage unless package-buildpack --os is supported",
+									pack.SupportsFeature(invoke.OSInPackageTOML),
+									"--buildpack does not accept buildpackage unless os is supported in the packakge config file",
 								)
 							})
 
@@ -1390,11 +1450,12 @@ func testAcceptance(
 							it("adds the buildpacks to the builder and runs them", func() {
 								packageImageName = registryConfig.RepoName("buildpack-" + h.RandString(8))
 
+								packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", dockerHostOS())
 								packageImage := buildpacks.NewPackageImage(
 									t,
 									pack,
 									packageImageName,
-									pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
+									packageTomlPath,
 									buildpacks.WithRequiredBuildpacks(
 										buildpacks.FolderSimpleLayersParent,
 										buildpacks.FolderSimpleLayers,
@@ -1427,8 +1488,8 @@ func testAcceptance(
 
 							it.Before(func() {
 								h.SkipUnless(t,
-									pack.Supports("package-buildpack --os"),
-									"--buildpack does not accept buildpackage unless package-buildpack --os is supported",
+									pack.SupportsFeature(invoke.OSInPackageTOML),
+									"--buildpack does not accept buildpackage unless os is supported in the package config file",
 								)
 
 								var err error
@@ -1446,11 +1507,12 @@ func testAcceptance(
 									fmt.Sprintf("buildpack-%s.cnb", h.RandString(8)),
 								)
 
+								packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", dockerHostOS())
 								packageFile := buildpacks.NewPackageFile(
 									t,
 									pack,
 									packageFileLocation,
-									pack.FixtureManager().FixtureLocation("package_for_build_cmd.toml"),
+									packageTomlPath,
 									buildpacks.WithRequiredBuildpacks(
 										buildpacks.FolderSimpleLayersParent,
 										buildpacks.FolderSimpleLayers,
@@ -1951,7 +2013,7 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 
 						h.SkipUnless(t,
 							pack.Supports("inspect-builder --depth"),
-							"pack does not support 'package-buildpack'",
+							"pack does not support 'inspect-builder --depth'",
 						)
 						// create a task, handled by a 'task manager' which executes our pack commands during tests.
 						// looks like this is used to de-dup tasks
@@ -1984,9 +2046,14 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 					})
 
 					it("displays nested Detection Order groups", func() {
-						output := pack.RunSuccessfully(
-							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-						)
+						var output string
+						if pack.Supports("config run-image-mirrors") {
+							output = pack.RunSuccessfully(
+								"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+						} else {
+							output = pack.RunSuccessfully(
+								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+						}
 						assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 						output = pack.RunSuccessfully("inspect-builder", builderName)
@@ -2021,9 +2088,14 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 					})
 
 					it("provides nested detection output up to depth", func() {
-						output := pack.RunSuccessfully(
-							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-						)
+						var output string
+						if pack.Supports("config run-image-mirrors") {
+							output = pack.RunSuccessfully(
+								"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+						} else {
+							output = pack.RunSuccessfully(
+								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+						}
 						assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 						depth := "2"
@@ -2069,9 +2141,15 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 								"inspect-builder output format is not yet implemented",
 							)
 
-							output := pack.RunSuccessfully(
-								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-							)
+							var output string
+							if pack.Supports("config run-image-mirrors") {
+								output = pack.RunSuccessfully(
+									"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							} else {
+								output = pack.RunSuccessfully(
+									"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							}
+
 							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "toml")
@@ -2111,9 +2189,15 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 								"inspect-builder output format is not yet implemented",
 							)
 
-							output := pack.RunSuccessfully(
-								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-							)
+							var output string
+							if pack.Supports("config run-image-mirrors") {
+								output = pack.RunSuccessfully(
+									"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							} else {
+								output = pack.RunSuccessfully(
+									"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							}
+
 							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "yaml")
@@ -2153,9 +2237,15 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 								"inspect-builder output format is not yet implemented",
 							)
 
-							output := pack.RunSuccessfully(
-								"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-							)
+							var output string
+							if pack.Supports("config run-image-mirrors") {
+								output = pack.RunSuccessfully(
+									"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							} else {
+								output = pack.RunSuccessfully(
+									"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+							}
+
 							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "json")
@@ -2194,9 +2284,17 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 				})
 
 				it("displays configuration for a builder (local and remote)", func() {
-					output := pack.RunSuccessfully(
-						"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-					)
+					var output string
+					if pack.Supports("config run-image-mirrors") {
+						output = pack.RunSuccessfully(
+							"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+					} else {
+						output = pack.RunSuccessfully(
+							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+					}
+
 					assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
 
 					output = pack.RunSuccessfully("inspect-builder", builderName)
@@ -2237,9 +2335,15 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						pack.JustRunSuccessfully("trust-builder", builderName)
 					}
 
-					pack.JustRunSuccessfully(
-						"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
-					)
+					if pack.Supports("config run-image-mirrors") {
+						pack.JustRunSuccessfully(
+							"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+					} else {
+						pack.JustRunSuccessfully(
+							"set-run-image-mirrors", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
+						)
+					}
 
 					output := pack.RunSuccessfully("inspect-builder", builderName)
 
@@ -2368,7 +2472,11 @@ include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
 						it.Before(func() {
 							localRunImageMirror = registryConfig.RepoName("run-after/" + h.RandString(10))
 							buildRunImage(localRunImageMirror, "local-mirror-after-1", "local-mirror-after-2")
-							pack.JustRunSuccessfully("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+							if pack.Supports("config run-image-mirrors") {
+								pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImage, "-m", localRunImageMirror)
+							} else {
+								pack.JustRunSuccessfully("set-run-image-mirrors", runImage, "-m", localRunImageMirror)
+							}
 						})
 
 						it.After(func() {

@@ -19,13 +19,13 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestRegisterBuildpackCommand(t *testing.T) {
-	spec.Run(t, "Commands", testRegisterBuildpackCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+func TestRegisterCommand(t *testing.T) {
+	spec.Run(t, "RegisterCommand", testRegisterCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
+func testRegisterCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command        *cobra.Command
+		cmd            *cobra.Command
 		logger         logging.Logger
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
@@ -39,7 +39,7 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		mockClient = testmocks.NewMockPackClient(mockController)
 		cfg = config.Config{}
 
-		command = commands.RegisterBuildpack(logger, cfg, mockClient)
+		cmd = commands.BuildpackRegister(logger, cfg, mockClient)
 	})
 
 	it.After(func() {})
@@ -47,19 +47,13 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 	when("#RegisterBuildpackCommand", func() {
 		when("no image is provided", func() {
 			it("fails to run", func() {
-				err := command.Execute()
+				err := cmd.Execute()
 				h.AssertError(t, err, "accepts 1 arg")
 			})
 		})
 
 		when("image name is provided", func() {
-			var (
-				buildpackImage string
-			)
-
-			it.Before(func() {
-				buildpackImage = "buildpack/image"
-			})
+			var buildpackImage = "buildpack/image"
 
 			it("should work for required args", func() {
 				opts := pack.RegisterBuildpackOptions{
@@ -73,8 +67,8 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					RegisterBuildpack(gomock.Any(), opts).
 					Return(nil)
 
-				command.SetArgs([]string{buildpackImage})
-				h.AssertNil(t, command.Execute())
+				cmd.SetArgs([]string{buildpackImage})
+				h.AssertNil(t, cmd.Execute())
 			})
 
 			when("config.toml exists", func() {
@@ -89,7 +83,7 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					}
-					command = commands.RegisterBuildpack(logger, cfg, mockClient)
+					cmd = commands.BuildpackRegister(logger, cfg, mockClient)
 					opts := pack.RegisterBuildpackOptions{
 						ImageName: buildpackImage,
 						Type:      "github",
@@ -101,18 +95,18 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 						RegisterBuildpack(gomock.Any(), opts).
 						Return(nil)
 
-					command.SetArgs([]string{buildpackImage})
-					h.AssertNil(t, command.Execute())
+					cmd.SetArgs([]string{buildpackImage})
+					h.AssertNil(t, cmd.Execute())
 				})
 
 				it("should handle config errors", func() {
 					cfg = config.Config{
 						DefaultRegistryName: "missing registry",
 					}
-					command = commands.RegisterBuildpack(logger, cfg, mockClient)
-					command.SetArgs([]string{buildpackImage})
+					cmd = commands.BuildpackRegister(logger, cfg, mockClient)
+					cmd.SetArgs([]string{buildpackImage})
 
-					err := command.Execute()
+					err := cmd.Execute()
 					h.AssertNotNil(t, err)
 				})
 			})
@@ -144,9 +138,9 @@ func testRegisterBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					RegisterBuildpack(gomock.Any(), opts).
 					Return(nil)
 
-				command = commands.RegisterBuildpack(logger, cfg, mockClient)
-				command.SetArgs([]string{buildpackImage, "--buildpack-registry", buildpackRegistry})
-				h.AssertNil(t, command.Execute())
+				cmd = commands.BuildpackRegister(logger, cfg, mockClient)
+				cmd.SetArgs([]string{buildpackImage, "--buildpack-registry", buildpackRegistry})
+				h.AssertNil(t, cmd.Execute())
 			})
 		})
 	})
