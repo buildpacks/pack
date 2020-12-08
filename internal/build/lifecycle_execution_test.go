@@ -197,6 +197,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				"test",
 				"test",
 				[]string{},
+				[]string{},
 				fakePhaseFactory,
 			)
 			h.AssertNil(t, err)
@@ -220,6 +221,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				"test",
 				expectedRepoName,
 				"test",
+				[]string{},
 				[]string{},
 				fakePhaseFactory,
 			)
@@ -253,6 +255,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				"test",
 				expectedNetworkMode,
 				[]string{},
+				[]string{},
 				fakePhaseFactory,
 			)
 			h.AssertNil(t, err)
@@ -278,6 +281,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					"test",
 					"test",
 					"test",
+					[]string{},
 					[]string{},
 					fakePhaseFactory,
 				)
@@ -310,6 +314,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					"test",
 					"test",
 					[]string{},
+					[]string{},
 					fakePhaseFactory,
 				)
 				h.AssertNil(t, err)
@@ -322,6 +327,38 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertIncludeAllExpectedPatterns(t,
 					configProvider.ContainerConfig().Cmd,
 					[]string{"-cache-dir", "/cache"},
+				)
+			})
+		})
+
+		when("additional tags are specified", func() {
+			it("configures phases with additional tags", func() {
+				lifecycle := newTestLifecycleExec(t, false)
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+				additionalTags := []string{"additional-tag-1", "additional-tag-2"}
+
+				err := lifecycle.Create(
+					context.Background(),
+					false,
+					false,
+					"test",
+					"test",
+					"test",
+					"test",
+					"test",
+					additionalTags,
+					[]string{},
+					fakePhaseFactory,
+				)
+				h.AssertNil(t, err)
+
+				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+				h.AssertNotEq(t, lastCallIndex, -1)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+				h.AssertIncludeAllExpectedPatterns(t,
+					configProvider.ContainerConfig().Cmd,
+					[]string{"-tag", additionalTags[0], "-tag", additionalTags[1]},
 				)
 			})
 		})
@@ -342,6 +379,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					"some-cache",
 					"test",
 					"test",
+					[]string{},
 					[]string{volumeMount},
 					fakePhaseFactory,
 				)
@@ -367,6 +405,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					"test",
 					"test",
 					"test",
+					[]string{},
 					[]string{},
 					fakePhaseFactory,
 				)
@@ -394,6 +433,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					expectedRepos,
 					"test",
 					[]string{},
+					[]string{},
 					fakePhaseFactory,
 				)
 				h.AssertNil(t, err)
@@ -412,7 +452,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-					err = lifecycle.Export(context.Background(), "test", "test", true, "test", "test", "test", fakePhaseFactory)
+					err = lifecycle.Export(context.Background(), "test", []string{}, "test", true, "test", "test", "test", fakePhaseFactory)
 					h.AssertNil(t, err)
 
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -430,7 +470,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-					err = lifecycle.Export(context.Background(), "test", "test", true, "test", "test", "test", fakePhaseFactory)
+					err = lifecycle.Export(context.Background(), "test", []string{}, "test", true, "test", "test", "test", fakePhaseFactory)
 					h.AssertNil(t, err)
 
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -456,6 +496,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					"test",
 					"test",
 					"test",
+					[]string{},
 					[]string{},
 					fakePhaseFactory,
 				)
@@ -487,6 +528,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					"test",
 					"test",
 					[]string{},
+					[]string{},
 					fakePhaseFactory,
 				)
 				h.AssertNil(t, err)
@@ -514,6 +556,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					"some-cache",
 					"test",
 					"test",
+					[]string{},
 					[]string{volumeMount},
 					fakePhaseFactory,
 				)
@@ -533,7 +576,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-					err = lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+					err = lifecycle.Export(context.Background(), "test", []string{}, "test", false, "test", "test", "test", fakePhaseFactory)
 					h.AssertNil(t, err)
 
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -551,7 +594,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-					err = lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+					err = lifecycle.Export(context.Background(), "test", []string{}, "test", false, "test", "test", "test", fakePhaseFactory)
 					h.AssertNil(t, err)
 
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1073,7 +1116,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
-			err := lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+			err := lifecycle.Export(context.Background(), "test", []string{}, "test", false, "test", "test", "test", fakePhaseFactory)
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, fakePhase.CleanupCallCount, 1)
@@ -1086,7 +1129,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			expectedRepoName := "some-repo-name"
 			expectedRunImage := "some-run-image"
 
-			err := verboseLifecycle.Export(context.Background(), expectedRepoName, expectedRunImage, false, "test", "test", "test", fakePhaseFactory)
+			err := verboseLifecycle.Export(context.Background(), expectedRepoName, []string{}, expectedRunImage, false, "test", "test", "test", fakePhaseFactory)
 			h.AssertNil(t, err)
 
 			lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1105,6 +1148,34 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			)
 		})
 
+		when("additional tags are specified", func() {
+			it("passes tag arguments to the exporter", func() {
+				verboseLifecycle := newTestLifecycleExec(t, true)
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+				expectedRepoName := "some-repo-name"
+				expectedRunImage := "some-run-image"
+				additionalTags := []string{"additional-tag-1", "additional-tag-2"}
+
+				err := verboseLifecycle.Export(context.Background(), expectedRepoName, additionalTags, expectedRunImage, false, "test", "test", "test", fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+				h.AssertNotEq(t, lastCallIndex, -1)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+				h.AssertEq(t, configProvider.Name(), "exporter")
+				h.AssertIncludeAllExpectedPatterns(t,
+					configProvider.ContainerConfig().Cmd,
+					[]string{"-log-level", "debug"},
+					[]string{"-cache-dir", "/cache"},
+					[]string{"-layers", "/layers"},
+					[]string{"-app", "/workspace"},
+					[]string{"-run-image", expectedRunImage},
+					[]string{expectedRepoName, additionalTags[0], additionalTags[1]},
+				)
+			})
+		})
+
 		when("publish", func() {
 			it("runs the phase with the lifecycle image", func() {
 				lifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
@@ -1112,7 +1183,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err := lifecycle.Export(context.Background(), "test", "test", true, "test", "test", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", true, "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1128,7 +1199,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err = lifecycle.Export(context.Background(), "test", "test", true, "test", "test", "test", fakePhaseFactory)
+				err = lifecycle.Export(context.Background(), "test", []string{}, "test", true, "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1144,7 +1215,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedRepos := []string{"some-repo-name", "some-run-image"}
 
-				err := lifecycle.Export(context.Background(), expectedRepos[0], expectedRepos[1], true, "test", "test", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), expectedRepos[0], []string{}, expectedRepos[1], true, "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1158,7 +1229,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				lifecycle := newTestLifecycleExec(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err := lifecycle.Export(context.Background(), "test", "test", true, "test", "test", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", true, "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1173,7 +1244,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedNetworkMode := "some-network-mode"
 
-				err := lifecycle.Export(context.Background(), "test", "test", true, "test", "test", expectedNetworkMode, fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", true, "test", "test", expectedNetworkMode, fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1188,7 +1259,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBind := "some-cache:/cache"
 
-				err := lifecycle.Export(context.Background(), "test", "test", true, "test", "some-cache", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", true, "test", "some-cache", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1203,7 +1274,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache"}
 
-				err := lifecycle.Export(context.Background(), "test", "test", false, "some-launch-cache", "some-cache", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", false, "some-launch-cache", "some-cache", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1223,7 +1294,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedDefaultProc := []string{"-process-type", "test-process"}
 
-				err := lifecycle.Export(context.Background(), "test", "test", true, "test", "test", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", true, "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1240,7 +1311,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-					err = lifecycle.Export(context.Background(), "test", "test", true, "test", "test", "test", fakePhaseFactory)
+					err = lifecycle.Export(context.Background(), "test", []string{}, "test", true, "test", "test", "test", fakePhaseFactory)
 					h.AssertNil(t, err)
 
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1258,7 +1329,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-					err = lifecycle.Export(context.Background(), "test", "test", true, "test", "test", "test", fakePhaseFactory)
+					err = lifecycle.Export(context.Background(), "test", []string{}, "test", true, "test", "test", "test", fakePhaseFactory)
 					h.AssertNil(t, err)
 
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1277,7 +1348,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err := lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", false, "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1293,7 +1364,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				lifecycle := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err = lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+				err = lifecycle.Export(context.Background(), "test", []string{}, "test", false, "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1308,7 +1379,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				lifecycle := newTestLifecycleExec(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err := lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", false, "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1323,7 +1394,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				verboseLifecycle := newTestLifecycleExec(t, true)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-				err := verboseLifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+				err := verboseLifecycle.Export(context.Background(), "test", []string{}, "test", false, "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1343,7 +1414,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedNetworkMode := "some-network-mode"
 
-				err := lifecycle.Export(context.Background(), "test", "test", false, "test", "test", expectedNetworkMode, fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", false, "test", "test", expectedNetworkMode, fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1358,7 +1429,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache"}
 
-				err := lifecycle.Export(context.Background(), "test", "test", false, "some-launch-cache", "some-cache", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", false, "some-launch-cache", "some-cache", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1373,7 +1444,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedBinds := []string{"some-cache:/cache", "some-launch-cache:/launch-cache"}
 
-				err := lifecycle.Export(context.Background(), "test", "test", false, "some-launch-cache", "some-cache", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", false, "some-launch-cache", "some-cache", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1393,7 +1464,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				expectedDefaultProc := []string{"-process-type", "test-process"}
 
-				err := lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+				err := lifecycle.Export(context.Background(), "test", []string{}, "test", false, "test", "test", "test", fakePhaseFactory)
 				h.AssertNil(t, err)
 
 				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1410,7 +1481,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-					err = lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+					err = lifecycle.Export(context.Background(), "test", []string{}, "test", false, "test", "test", "test", fakePhaseFactory)
 					h.AssertNil(t, err)
 
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1428,7 +1499,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-					err = lifecycle.Export(context.Background(), "test", "test", false, "test", "test", "test", fakePhaseFactory)
+					err = lifecycle.Export(context.Background(), "test", []string{}, "test", false, "test", "test", "test", fakePhaseFactory)
 					h.AssertNil(t, err)
 
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1

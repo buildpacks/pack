@@ -39,7 +39,7 @@ func patternExists(expectedPattern []string, receivedArgs []string) bool {
 	}
 
 	for _, loc := range matchLocations(expectedPattern[0], receivedArgs) {
-		finalElementLoc := loc + len(expectedPattern)
+		finalElementLoc := intMin(loc+len(expectedPattern), len(receivedArgs))
 
 		receivedSubSlice := receivedArgs[loc:finalElementLoc]
 
@@ -84,4 +84,11 @@ func sliceEmpty(slice [][]string) (bool, error) {
 	default:
 		return true, fmt.Errorf("invoked with non slice actual: %v", slice)
 	}
+}
+
+func intMin(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

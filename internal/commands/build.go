@@ -34,6 +34,7 @@ type BuildFlags struct {
 	EnvFiles           []string
 	Buildpacks         []string
 	Volumes            []string
+	AdditionalTags     []string
 }
 
 // Build an image from source code
@@ -96,6 +97,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Builder:           flags.Builder,
 				Registry:          flags.Registry,
 				AdditionalMirrors: getMirrors(cfg),
+				AdditionalTags:    flags.AdditionalTags,
 				RunImage:          flags.RunImage,
 				Env:               env,
 				Image:             imageName,
@@ -142,6 +144,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<mode>]'."+multiValueHelp("volume"))
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
+	cmd.Flags().StringSliceVarP(&buildFlags.AdditionalTags, "tag", "t", nil, "Additional tags to push the output image to."+multiValueHelp("tag"))
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {

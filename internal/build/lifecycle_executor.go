@@ -59,6 +59,7 @@ type LifecycleOptions struct {
 	HTTPSProxy         string
 	NoProxy            string
 	Network            string
+	AdditionalTags     []string
 	Volumes            []string
 	DefaultProcessType string
 	FileFilter         func(string) bool

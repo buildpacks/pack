@@ -123,6 +123,9 @@ type BuildOptions struct {
 	// share both an ID and Version with a buildpack on the builder.
 	Buildpacks []string
 
+	// Additional image tags to push to, each will contain contents identical to Image
+	AdditionalTags []string
+
 	// Configure the proxy environment variables,
 	// These variables will only be set in the build image
 	// and will not be used if proxy env vars are already set.
@@ -284,6 +287,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		HTTPSProxy:         proxyConfig.HTTPSProxy,
 		NoProxy:            proxyConfig.NoProxy,
 		Network:            opts.ContainerConfig.Network,
+		AdditionalTags:     opts.AdditionalTags,
 		Volumes:            processedVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
 		FileFilter:         fileFilter,
