@@ -850,7 +850,6 @@ func testAcceptance(
 
 				when("builder is untrusted", func() {
 					var untrustedBuilderName string
-
 					it.Before(func() {
 						var err error
 						untrustedBuilderName, err = createBuilder(
@@ -861,6 +860,7 @@ func testAcceptance(
 							buildpackManager,
 							runImageMirror,
 						)
+
 						assert.Nil(err)
 					})
 
@@ -883,6 +883,29 @@ func testAcceptance(
 							assertOutput.IncludesLifecycleImageTag()
 						}
 						assertOutput.IncludesSeparatePhases()
+					})
+
+					when("additional tags", func() {
+						var additionalRepoName string
+
+						it.Before(func() {
+							additionalRepoName = fmt.Sprintf("%s_additional", repoName)
+						})
+						it("pushes image to additional tags", func() {
+							h.SkipUnless(t,
+								pack.Supports("build --tag"),
+								"--tag flag not supported for build",
+							)
+							output := pack.RunSuccessfully(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"-B", untrustedBuilderName,
+								"--tag", additionalRepoName,
+							)
+
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+							assert.Contains(output, additionalRepoName)
+						})
 					})
 				})
 
@@ -1787,6 +1810,68 @@ func testAcceptance(
 									format.compareFunc(output, expectedOutput)
 								}
 							}
+						})
+
+						when("additional tags are specified with --tag", func() {
+							var additionalRepo string
+							var additionalRepoName string
+
+							it.Before(func() {
+								additionalRepo = fmt.Sprintf("%s_additional", repo)
+								additionalRepoName = fmt.Sprintf("%s_additional", repoName)
+							})
+							it("creates additional tags on the registry", func() {
+								h.SkipUnless(t,
+									pack.Supports("build --tag"),
+									"--tag flag not supported for build",
+								)
+
+								buildArgs := []string{
+									repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--publish",
+									"--tag", additionalRepoName,
+								}
+
+								if dockerHostOS() != "windows" {
+									buildArgs = append(buildArgs, "--network", "host")
+								}
+
+								output := pack.RunSuccessfully("build", buildArgs...)
+								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+								t.Log("checking that registry has contents")
+								contents, err := registryConfig.RegistryCatalog()
+								assert.Nil(err)
+
+								if !strings.Contains(contents, repo) {
+									t.Fatalf("Expected to see image %s in %s", repo, contents)
+								}
+
+								if !strings.Contains(contents, additionalRepo) {
+									t.Fatalf("Expected to see image %s in %s", additionalRepo, contents)
+								}
+
+								assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+								defer h.DockerRmi(dockerCli, repoName)
+
+								assert.Succeeds(h.PullImageWithAuth(dockerCli, additionalRepoName, registryConfig.RegistryAuth()))
+								defer h.DockerRmi(dockerCli, additionalRepoName)
+
+								t.Log("additional app is runnable")
+								assertMockAppRunsWithOutput(t,
+									assert,
+									additionalRepoName,
+									"Launch Dep Contents",
+									"Cached Dep Contents",
+								)
+
+								imageDigest := h.Digest(t, repoName)
+								additionalDigest := h.Digest(t, additionalRepoName)
+
+								assert.Equal(imageDigest, additionalDigest)
+							})
+
 						})
 					})
 

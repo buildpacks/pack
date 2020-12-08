@@ -602,6 +602,18 @@ include = [ "*.jar" ]
 				})
 			})
 		})
+
+		when("additional tags are specified", func() {
+			it("forwards additional tags to lifecycle", func() {
+				expectedTags := []string{"additional-tag-1", "additional-tag-2"}
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithAdditionalTags(expectedTags)).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--tag", expectedTags[0], "--tag", expectedTags[1]})
+				h.AssertNil(t, command.Execute())
+			})
+		})
 	})
 }
 
@@ -655,6 +667,15 @@ func EqBuildOptionsWithFileFilter(fileFilter func(string) bool, fileName string)
 		description: fmt.Sprintf("File Filter=%p", fileFilter),
 		equals: func(o pack.BuildOptions) bool {
 			return o.FileFilter(fileName) == fileFilter(fileName)
+		},
+	}
+}
+
+func EqBuildOptionsWithAdditionalTags(additionalTags []string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("AdditionalTags=%s", additionalTags),
+		equals: func(o pack.BuildOptions) bool {
+			return reflect.DeepEqual(o.AdditionalTags, additionalTags)
 		},
 	}
 }
