@@ -167,16 +167,16 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
-	when("set-default-builder", func() {
-		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			builderName := "paketobuildpacks/builder:base"
-			output := pack.RunSuccessfully("set-default-builder", builderName)
-
-			assertions.NewOutputAssertionManager(t, output).ReportsSettingDefaultBuilder(builderName)
-		})
-	})
-
 	when("pack config", func() {
+		when("default-builder", func() {
+			it("sets the default builder in ~/.pack/config.toml", func() {
+				builderName := "paketobuildpacks/builder:base"
+				output := pack.RunSuccessfully("config", "default-builder", builderName)
+
+				assertions.NewOutputAssertionManager(t, output).ReportsSettingDefaultBuilder(builderName)
+			})
+		})
+
 		when("trusted-builders", func() {
 			it("prints list of trusted builders", func() {
 				output := pack.RunSuccessfully("config", "trusted-builders")
@@ -573,7 +573,11 @@ func testWithoutSpecificBuilderRequirement(
 
 		when("default builder is set", func() {
 			it("redacts default builder", func() {
-				pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
+				if pack.Supports("config default-builder") {
+					pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
+				} else {
+					pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
+				}
 
 				output := pack.RunSuccessfully("report")
 
@@ -592,7 +596,11 @@ func testWithoutSpecificBuilderRequirement(
 			})
 
 			it("explicit mode doesn't redact", func() {
-				pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
+				if pack.Supports("config default-builder") {
+					pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
+				} else {
+					pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
+				}
 
 				output := pack.RunSuccessfully("report", "--explicit")
 
@@ -913,7 +921,11 @@ func testAcceptance(
 					var usingCreator bool
 
 					it.Before(func() {
-						pack.JustRunSuccessfully("set-default-builder", builderName)
+						if pack.Supports("config default-builder") {
+							pack.RunSuccessfully("config", "default-builder", builderName)
+						} else {
+							pack.RunSuccessfully("set-default-builder", builderName)
+						}
 
 						if pack.Supports("config trusted-builders add") {
 							pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)

@@ -11,7 +11,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-func trustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
+func ConfigTrustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "trusted-builders",
 		Short:   "Interact with trusted builders",

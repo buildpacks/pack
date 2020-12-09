@@ -18,7 +18,7 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestReportCommand(t *testing.T) {
+func TestReport(t *testing.T) {
 	spec.Run(t, "ReportCommand", testReportCommand, spec.Random(), spec.Report(report.Terminal{}))
 }
 
@@ -36,12 +36,13 @@ func testReportCommand(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.Report(logger, testVersion)
 
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
 
 		packConfigPath = filepath.Join(tempPackHome, "config.toml")
+		command = commands.Report(logger, testVersion, packConfigPath)
+		command.SetArgs([]string{})
 		h.AssertNil(t, ioutil.WriteFile(packConfigPath, []byte(`
 default-builder-image = "some/image"
 experimental = true
@@ -58,14 +59,6 @@ experimental = true
 
 	when("#ReportCommand", func() {
 		when("config.toml is present", func() {
-			it.Before(func() {
-				h.AssertNil(t, os.Setenv("PACK_HOME", tempPackHome))
-			})
-
-			it.After(func() {
-				h.AssertNil(t, os.Unsetenv("PACK_HOME"))
-			})
-
 			it("presents output", func() {
 				h.AssertNil(t, command.Execute())
 				h.AssertContains(t, outBuf.String(), `default-builder-image = "[REDACTED]"`)
@@ -87,13 +80,9 @@ experimental = true
 		})
 
 		when("config.toml is not present", func() {
-			it.Before(func() {
-				h.AssertNil(t, os.Setenv("PACK_HOME", tempPackEmptyHome))
-			})
-			it.After(func() {
-				h.AssertNil(t, os.Unsetenv("PACK_HOME"))
-			})
 			it("logs a message", func() {
+				command = commands.Report(logger, testVersion, filepath.Join(tempPackEmptyHome, "/config.toml"))
+				command.SetArgs([]string{})
 				h.AssertNil(t, command.Execute())
 				h.AssertContains(t, outBuf.String(), fmt.Sprintf("(no config file found at %s)", filepath.Join(tempPackEmptyHome, "config.toml")))
 			})
