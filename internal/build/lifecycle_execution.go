@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/google/go-containerregistry/pkg/name"
-
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/builder"
@@ -152,7 +151,6 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 
 		l.logger.Info(style.Step("EXPORTING"))
 		return l.Export(ctx, l.opts.Image.String(), l.opts.RunImage, l.opts.Publish, l.opts.Network, launchCache, buildCache, l.opts.AdditionalTags, phaseFactory)
-
 	}
 
 	return l.Create(
@@ -409,7 +407,7 @@ func determineDefaultProcessType(platformAPI *api.Version, providedValue string)
 	return providedValue
 }
 
-func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, networkMode string, buildCache, launchCache Cache,additionalTags []string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
+func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, networkMode string, buildCache, launchCache Cache, additionalTags []string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	flags := []string{
 		"-cache-dir", l.mountPaths.cacheDir(),
 		"-layers", l.mountPaths.layersDir(),
@@ -471,7 +469,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 	return phaseFactory.New(NewPhaseConfigProvider("exporter", l, opts...)), nil
 }
 
-func (l *LifecycleExecution) Export(ctx context.Context, repoName string, runImage string, publish bool, networkMode string, buildCache, launchCache Cache,additionalTags []string, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) Export(ctx context.Context, repoName string, runImage string, publish bool, networkMode string, buildCache, launchCache Cache, additionalTags []string, phaseFactory PhaseFactory) error {
 	export, err := l.newExport(repoName, runImage, publish, networkMode, buildCache, launchCache, additionalTags, phaseFactory)
 	if err != nil {
 		return err

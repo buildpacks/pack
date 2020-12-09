@@ -5,10 +5,10 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/buildpacks/pack/internal/paths"
-
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
+
+	"github.com/buildpacks/pack/internal/paths"
 )
 
 type VolumeCache struct {

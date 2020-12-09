@@ -602,7 +602,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-					err = lifecycle.Export(context.Background(), "test", "test", true, "test", fakeBuildCache, fakeLaunchCache,[]string{}, fakePhaseFactory)
+					err = lifecycle.Export(context.Background(), "test", "test", true, "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
 					h.AssertNil(t, err)
 
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1412,7 +1412,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
-			err := lifecycle.Export(context.Background(), "test", "test", false, "test", fakeBuildCache, fakeLaunchCache,[]string{}, fakePhaseFactory)
+			err := lifecycle.Export(context.Background(), "test", "test", false, "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, fakePhase.CleanupCallCount, 1)
@@ -1853,7 +1853,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
-					err = lifecycle.Export(context.Background(), "test", "test", false, "test", fakeBuildCache, fakeLaunchCache,  []string{},fakePhaseFactory)
+					err = lifecycle.Export(context.Background(), "test", "test", false, "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
 					h.AssertNil(t, err)
 
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
