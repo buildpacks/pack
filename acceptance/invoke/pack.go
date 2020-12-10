@@ -173,12 +173,16 @@ func (i *PackInvoker) Version() string {
 func (i *PackInvoker) EnableExperimental() {
 	i.testObject.Helper()
 
-	err := ioutil.WriteFile(
-		filepath.Join(i.home, "config.toml"),
-		[]byte("experimental=true"),
-		os.ModePerm,
-	)
-	i.assert.Nil(err)
+	if i.Supports("config experimental") {
+		i.JustRunSuccessfully("config", "experimental", "true")
+	} else {
+		err := ioutil.WriteFile(
+			filepath.Join(i.home, "config.toml"),
+			[]byte("experimental=true"),
+			os.ModePerm,
+		)
+		i.assert.Nil(err)
+	}
 }
 
 // supports returns whether or not the executor's pack binary supports a
