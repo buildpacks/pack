@@ -359,7 +359,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	}
 
 	if len(b.env) > 0 {
-		logger.Debugf("Environment variables available are %s", style.Map(b.env))
+		logger.Debugf("Provided Environment Variables\n  %s", style.Map(b.env, "  ", "\n"))
 	}
 
 	envTar, err := b.envLayer(tmpDir, b.env)
