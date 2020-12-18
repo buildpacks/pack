@@ -358,10 +358,15 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		return errors.Wrap(err, "adding stack.tar layer")
 	}
 
+	if len(b.env) > 0 {
+		logger.Debugf("Environment variables available are %s", style.Map(b.env))
+	}
+
 	envTar, err := b.envLayer(tmpDir, b.env)
 	if err != nil {
 		return err
 	}
+
 	if err := b.image.AddLayer(envTar); err != nil {
 		return errors.Wrap(err, "adding env layer")
 	}
