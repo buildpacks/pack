@@ -14,14 +14,14 @@ var Symbol = func(value string) string {
 	return "'" + value + "'"
 }
 
-var Map = func(value map[string]string) string {
+var Map = func(value map[string]string, prefix, separator string) string {
 	result := ""
 	for key, val := range value {
-		result += fmt.Sprintf("%s=%s ", key, val)
+		result += fmt.Sprintf("%s%s=%s%s", prefix, key, val, separator)
 	}
 
 	if color.Enabled() {
-		return Key(result)
+		return Key(strings.TrimSpace(result))
 	}
 	return "'" + strings.TrimSpace(result) + "'"
 }

@@ -28,11 +28,12 @@ func testStyle(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("Map function should return a string with all key value pairs", func() {
-			h.AssertEq(t, style.Map(map[string]string{"FOO": "foo", "BAR": "bar"}), "'FOO=foo BAR=bar'")
+			h.AssertEq(t, style.Map(map[string]string{"FOO": "foo", "BAR": "bar"}, "", " "), "'FOO=foo BAR=bar'")
+			h.AssertEq(t, style.Map(map[string]string{"FOO": "foo", "BAR": "bar"}, "  ", "\n"), "'FOO=foo\n  BAR=bar'")
 		})
 
 		it("Map function should return an empty string", func() {
-			h.AssertEq(t, style.Map(map[string]string{}), "''")
+			h.AssertEq(t, style.Map(map[string]string{}, "", " "), "''")
 		})
 	})
 }
