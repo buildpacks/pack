@@ -126,7 +126,7 @@ func displayMirrors(info *pack.ImageInfo, generalInfo GeneralInfo) []RunImageMir
 	return result
 }
 
-func displayBuildpacks(buildpacks []lifecycle.Buildpack) []dist.BuildpackInfo {
+func displayBuildpacks(buildpacks []lifecycle.GroupBuildpack) []dist.BuildpackInfo {
 	result := []dist.BuildpackInfo{}
 	for _, buildpack := range buildpacks {
 		result = append(result, dist.BuildpackInfo{

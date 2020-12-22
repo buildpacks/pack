@@ -164,7 +164,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 
 			remoteInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.remote",
-				Buildpacks: []lifecycle.Buildpack{
+				Buildpacks: []lifecycle.GroupBuildpack{
 					{ID: "test.bp.one.remote", Version: "1.0.0"},
 					{ID: "test.bp.two.remote", Version: "2.0.0"},
 				},
@@ -195,7 +195,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{
@@ -217,7 +217,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 
 			localInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.local",
-				Buildpacks: []lifecycle.Buildpack{
+				Buildpacks: []lifecycle.GroupBuildpack{
 					{ID: "test.bp.one.local", Version: "1.0.0"},
 					{ID: "test.bp.two.local", Version: "2.0.0"},
 				},
@@ -242,7 +242,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{

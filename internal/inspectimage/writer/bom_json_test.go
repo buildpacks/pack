@@ -106,7 +106,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 				}}}
 
 			localInfo = &pack.ImageInfo{
@@ -121,7 +121,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 				}},
 			}
 
