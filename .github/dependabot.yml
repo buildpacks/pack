@@ -6,6 +6,10 @@ updates:
     schedule:
       # Check for updates to GitHub Actions every weekday
       interval: "daily"
+    labels:
+      - "dependencies"
+      - "go"
+      - "type/chore"
 
   # Set update schedule for GitHub Actions
   - package-ecosystem: "github-actions"
@@ -13,3 +17,7 @@ updates:
     schedule:
       # Check for updates to GitHub Actions every weekday
       interval: "daily"
+    labels:
+      - "dependencies"
+      - "github_actions"
+      - "type/chore"
