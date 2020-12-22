@@ -3,6 +3,7 @@ package style
 import (
 	"fmt"
 	"strings"
+	"sort"
 
 	"github.com/heroku/color"
 )
@@ -16,8 +17,17 @@ var Symbol = func(value string) string {
 
 var Map = func(value map[string]string, prefix, separator string) string {
 	result := ""
-	for key, val := range value {
-		result += fmt.Sprintf("%s%s=%s%s", prefix, key, val, separator)
+
+	var keys []string
+
+	for key := range value {
+		keys = append(keys, key)
+	}
+
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		result += fmt.Sprintf("%s%s=%s%s", prefix, key, value[key], separator)
 	}
 
 	if color.Enabled() {

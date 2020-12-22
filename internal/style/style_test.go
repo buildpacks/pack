@@ -64,15 +64,15 @@ func testStyle(t *testing.T, when spec.G, it spec.S) {
 
     when("#Map", func() {
         it("It should return a string with all key value pairs", func() {
-            h.AssertEq(t, style.Map(map[string]string{"FOO": "foo", "BAR": "bar"}, "", " "), "'FOO=foo BAR=bar'")
-            h.AssertEq(t, style.Map(map[string]string{"FOO": "foo", "BAR": "bar"}, "  ", "\n"), "'FOO=foo\n  BAR=bar'")
+            h.AssertEq(t, style.Map(map[string]string{"FOO": "foo", "BAR": "bar"}, "", " "), "'BAR=bar FOO=foo'")
+            h.AssertEq(t, style.Map(map[string]string{"BAR": "bar", "FOO": "foo"}, "  ", "\n"), "'BAR=bar\n  FOO=foo'")
         })
 
         it("It should return a string with all key value pairs while color enabled", func() {
             color.Disable(false)
             defer color.Disable(true)
-            h.AssertEq(t, style.Map(map[string]string{"FOO": "foo", "BAR": "bar"}, "", " "), "\x1b[94mFOO=foo BAR=bar\x1b[0m")
-            h.AssertEq(t, style.Map(map[string]string{"VAR1": "var1", "VAR2": "var2"}, "  ", "\n"), "\x1b[94mVAR1=var1\n  VAR2=var2\x1b[0m")
+            h.AssertEq(t, style.Map(map[string]string{"FOO": "foo", "BAR": "bar"}, "", " "), "\x1b[94mBAR=bar FOO=foo\x1b[0m")
+            h.AssertEq(t, style.Map(map[string]string{"BAR": "bar", "FOO": "foo"}, "  ", "\n"), "\x1b[94mBAR=bar\n  FOO=foo\x1b[0m")
         })
 
         it("It should return an empty string", func() {
