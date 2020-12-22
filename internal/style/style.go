@@ -2,8 +2,8 @@ package style
 
 import (
 	"fmt"
-	"strings"
 	"sort"
+	"strings"
 
 	"github.com/heroku/color"
 )
