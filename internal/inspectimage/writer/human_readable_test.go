@@ -98,7 +98,7 @@ Processes:
 
 			remoteInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.remote",
-				Buildpacks: []lifecycle.Buildpack{
+				Buildpacks: []lifecycle.GroupBuildpack{
 					{ID: "test.bp.one.remote", Version: "1.0.0"},
 					{ID: "test.bp.two.remote", Version: "2.0.0"},
 				},
@@ -129,7 +129,7 @@ Processes:
 							},
 						},
 					},
-					Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{
@@ -151,7 +151,7 @@ Processes:
 
 			localInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.local",
-				Buildpacks: []lifecycle.Buildpack{
+				Buildpacks: []lifecycle.GroupBuildpack{
 					{ID: "test.bp.one.local", Version: "1.0.0"},
 					{ID: "test.bp.two.local", Version: "2.0.0"},
 				},
@@ -176,7 +176,7 @@ Processes:
 							},
 						},
 					},
-					Buildpack: lifecycle.Buildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{
@@ -293,7 +293,7 @@ Processes:
 
 			when("buildpack metadata is missing", func() {
 				it.Before(func() {
-					remoteInfo.Buildpacks = []lifecycle.Buildpack{}
+					remoteInfo.Buildpacks = []lifecycle.GroupBuildpack{}
 				})
 				it("displays a message indicating missing metadata", func() {
 					sharedImageInfo := inspectimage.GeneralInfo{
