@@ -64,6 +64,7 @@ func testSetDefaultRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 			assert.Nil(err)
 
 			assert.Equal(cfg.DefaultRegistryName, "myregistry")
+			assert.Contains(outBuf.String(), "has been deprecated, please use 'pack config registries default'")
 		})
 
 		it("should fail if no corresponding registry exists", func() {

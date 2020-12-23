@@ -56,20 +56,23 @@ func testListRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 			},
 		}
 		command = commands.ListBuildpackRegistries(logger, cfg)
+		command.SetArgs([]string{})
 	})
 
 	when("#ListBuildpackRegistries", func() {
 		it("should list all registries", func() {
 			h.AssertNil(t, command.Execute())
 
+			h.AssertContains(t, outBuf.String(), "has been deprecated, please use 'pack config registries list'")
 			h.AssertContains(t, outBuf.String(), "public registry")
 			h.AssertContains(t, outBuf.String(), "* private registry")
 			h.AssertContains(t, outBuf.String(), "personal registry")
 		})
 
 		it("should list registries in verbose mode", func() {
-			logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+			logger = ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
 			command = commands.ListBuildpackRegistries(logger, cfg)
+			command.SetArgs([]string{})
 
 			h.AssertNil(t, command.Execute())
 
@@ -87,10 +90,9 @@ func testListRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should indicate official as the default registry by default", func() {
-			logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
 			cfg.DefaultRegistryName = ""
-
 			command = commands.ListBuildpackRegistries(logger, cfg)
+			command.SetArgs([]string{})
 
 			h.AssertNil(t, command.Execute())
 
@@ -101,10 +103,9 @@ func testListRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should use official when no registries are defined", func() {
-			logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
 			cfg.DefaultRegistryName = ""
-
 			command = commands.ListBuildpackRegistries(logger, config.Config{})
+			command.SetArgs([]string{})
 
 			h.AssertNil(t, command.Execute())
 

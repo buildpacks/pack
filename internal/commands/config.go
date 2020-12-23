@@ -20,6 +20,10 @@ func NewConfigCommand(logger logging.Logger, cfg config.Config, cfgPath string) 
 	cmd.AddCommand(ConfigRunImagesMirrors(logger, cfg, cfgPath))
 	cmd.AddCommand(ConfigExperimental(logger, cfg, cfgPath))
 
+	if cfg.Experimental {
+		cmd.AddCommand(ConfigRegistries(logger, cfg, cfgPath))
+	}
+
 	AddHelpFlag(cmd, "config")
 	return cmd
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+// Deprecated: Use `pack config registries default` instead
 func SetDefaultRegistry(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	var (
 		registryName string
@@ -20,8 +21,9 @@ func SetDefaultRegistry(logger logging.Logger, cfg config.Config, cfgPath string
 		Short:   prependExperimental("Set default registry"),
 		Example: "pack set-default-registry myregistry",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			deprecationWarning(logger, "set-default-registry", "config registries default")
 			registryName = args[0]
-			if !containsRegistry(config.GetRegistries(cfg), registryName) {
+			if !registriesContains(config.GetRegistries(cfg), registryName) {
 				return errors.Errorf("no registry with the name %s exists", style.Symbol(registryName))
 			}
 
@@ -41,14 +43,4 @@ func SetDefaultRegistry(logger logging.Logger, cfg config.Config, cfgPath string
 	AddHelpFlag(cmd, "set-default-registry")
 
 	return cmd
-}
-
-func containsRegistry(registries []config.Registry, registry string) bool {
-	for _, r := range registries {
-		if r.Name == registry {
-			return true
-		}
-	}
-
-	return false
 }

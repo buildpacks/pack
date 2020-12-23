@@ -22,6 +22,7 @@ type ConfigurableLogger interface {
 	WantVerbose(f bool)
 }
 
+//nolint:staticcheck
 // NewPackCommand generates a Pack command
 func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	cobra.EnableCommandSorting = false
@@ -69,27 +70,17 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.InspectImage(logger, imagewriter.NewFactory(), cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuildpack(logger, &cfg, &packClient))
-	//nolint:staticcheck
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
 
 	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient, builderwriter.NewFactory()))
 
-	//nolint:staticcheck
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
-	//nolint:staticcheck
 	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg))
-	//nolint:staticcheck
 	rootCmd.AddCommand(commands.UntrustBuilder(logger, cfg))
-	//nolint:staticcheck
 	rootCmd.AddCommand(commands.ListTrustedBuilders(logger, cfg))
-	//nolint:staticcheck
 	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
-
-	//nolint:staticcheck
 	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, &packClient, buildpackage.NewConfigReader()))
-
-	//nolint:staticcheck
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
 
 	rootCmd.AddCommand(commands.Version(logger, pack.Version))
@@ -98,11 +89,9 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	if cfg.Experimental {
 		rootCmd.AddCommand(commands.AddBuildpackRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.ListBuildpackRegistries(logger, cfg))
-		//nolint:staticcheck
 		rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, &packClient))
 		rootCmd.AddCommand(commands.SetDefaultRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.RemoveRegistry(logger, cfg, cfgPath))
-		//nolint:staticcheck
 		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, &packClient))
 	}
 
