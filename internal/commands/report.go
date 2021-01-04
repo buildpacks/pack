@@ -13,11 +13,10 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
 )
 
-func Report(logger logging.Logger, version string) *cobra.Command {
+func Report(logger logging.Logger, version, cfgPath string) *cobra.Command {
 	var explicit bool
 
 	cmd := &cobra.Command{
@@ -27,7 +26,7 @@ func Report(logger logging.Logger, version string) *cobra.Command {
 		Example: "pack report",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			var buf bytes.Buffer
-			err := generateOutput(&buf, version, explicit)
+			err := generateOutput(&buf, version, cfgPath, explicit)
 			if err != nil {
 				return err
 			}
@@ -43,7 +42,7 @@ func Report(logger logging.Logger, version string) *cobra.Command {
 	return cmd
 }
 
-func generateOutput(writer io.Writer, version string, explicit bool) error {
+func generateOutput(writer io.Writer, version, cfgPath string, explicit bool) error {
 	tpl := template.Must(template.New("").Parse(`Pack:
   Version:  {{ .Version }}
   OS/Arch:  {{ .OS }}/{{ .Arch }}
@@ -56,10 +55,8 @@ Config:
 {{ .Config -}}`))
 
 	configData := ""
-	if path, err := config.DefaultConfigPath(); err != nil {
-		configData = fmt.Sprintf("(error: %s)", err.Error())
-	} else if data, err := ioutil.ReadFile(path); err != nil {
-		configData = fmt.Sprintf("(no config file found at %s)", path)
+	if data, err := ioutil.ReadFile(cfgPath); err != nil {
+		configData = fmt.Sprintf("(no config file found at %s)", cfgPath)
 	} else {
 		var padded strings.Builder
 

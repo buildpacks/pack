@@ -44,7 +44,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 
-		command = commands.NewConfigCommand(logger, config.Config{}, configPath)
+		command = commands.ConfigTrustedBuilder(logger, config.Config{}, configPath)
 		command.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 	})
 
@@ -52,8 +52,36 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, os.RemoveAll(tempPackHome))
 	})
 
-	when("trusted-builders list", func() {
-		var args = []string{"trusted-builders", "list"}
+	when("no args", func() {
+		it("prints list of trusted builders", func() {
+			command.SetArgs([]string{})
+			h.AssertNil(t, command.Execute())
+			h.AssertContainsAllInOrder(t,
+				outBuf,
+				"gcr.io/buildpacks/builder:v1",
+				"heroku/buildpacks:18",
+				"paketobuildpacks/builder:base",
+				"paketobuildpacks/builder:full",
+				"paketobuildpacks/builder:tiny",
+			)
+		})
+
+		it("works with alias of trusted-builders", func() {
+			command.SetArgs([]string{})
+			h.AssertNil(t, command.Execute())
+			h.AssertContainsAllInOrder(t,
+				outBuf,
+				"gcr.io/buildpacks/builder:v1",
+				"heroku/buildpacks:18",
+				"paketobuildpacks/builder:base",
+				"paketobuildpacks/builder:full",
+				"paketobuildpacks/builder:tiny",
+			)
+		})
+	})
+
+	when("list", func() {
+		var args = []string{"list"}
 
 		it("shows suggested builders and locally trusted builder in alphabetical order", func() {
 			builderName := "great-builder-" + h.RandString(8)
@@ -72,7 +100,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			outBuf.Reset()
 
 			configManager := newConfigManager(t, configPath)
-			command = commands.NewConfigCommand(logger, configManager.configWithTrustedBuilders(builderName), configPath)
+			command = commands.ConfigTrustedBuilder(logger, configManager.configWithTrustedBuilders(builderName), configPath)
 			command.SetArgs(args)
 			h.AssertNil(t, command.Execute())
 
@@ -88,8 +116,8 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("trusted-builders add", func() {
-		var args = []string{"trusted-builders", "add"}
+	when("add", func() {
+		var args = []string{"add"}
 		when("no builder is provided", func() {
 			it("prints usage", func() {
 				command.SetArgs(args)
@@ -101,7 +129,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			it("fails", func() {
 				tempPath := filepath.Join(tempPackHome, "non-existent-file.toml")
 				h.AssertNil(t, ioutil.WriteFile(tempPath, []byte("something"), 0111))
-				command = commands.NewConfigCommand(logger, config.Config{}, tempPath)
+				command = commands.ConfigTrustedBuilder(logger, config.Config{}, tempPath)
 				command.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 				command.SetArgs(append(args, "some-builder"))
 				h.AssertError(t, command.Execute(), "writing config")
@@ -151,9 +179,9 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("trusted-builders remove", func() {
+	when("remove", func() {
 		var (
-			args          = []string{"trusted-builders", "remove"}
+			args          = []string{"remove"}
 			configManager configManager
 		)
 
@@ -164,7 +192,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		when("no builder is provided", func() {
 			it("prints usage", func() {
 				cfg := configManager.configWithTrustedBuilders()
-				command := commands.NewConfigCommand(logger, cfg, configPath)
+				command := commands.ConfigTrustedBuilder(logger, cfg, configPath)
 				command.SetArgs(args)
 				command.SetOut(&outBuf)
 
@@ -179,7 +207,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				builderName := "some-builder"
 
 				cfg := configManager.configWithTrustedBuilders(builderName)
-				command := commands.NewConfigCommand(logger, cfg, configPath)
+				command := commands.ConfigTrustedBuilder(logger, cfg, configPath)
 				command.SetArgs(append(args, builderName))
 
 				h.AssertNil(t, command.Execute())
@@ -199,7 +227,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				stillTrustedBuilder := "very/safe/builder"
 
 				cfg := configManager.configWithTrustedBuilders(untrustBuilder, stillTrustedBuilder)
-				command := commands.NewConfigCommand(logger, cfg, configPath)
+				command := commands.ConfigTrustedBuilder(logger, cfg, configPath)
 				command.SetArgs(append(args, untrustBuilder))
 
 				h.AssertNil(t, command.Execute())
@@ -217,7 +245,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				stillTrustedBuilder := "very/safe/builder"
 
 				cfg := configManager.configWithTrustedBuilders(stillTrustedBuilder)
-				command := commands.NewConfigCommand(logger, cfg, configPath)
+				command := commands.ConfigTrustedBuilder(logger, cfg, configPath)
 				command.SetArgs(append(args, neverTrustedBuilder))
 
 				h.AssertNil(t, command.Execute())
@@ -237,7 +265,7 @@ func testTrustedBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		when("builder is a suggested builder", func() {
 			it("does nothing and reports that ", func() {
 				builder := "paketobuildpacks/builder:base"
-				command := commands.NewConfigCommand(logger, config.Config{}, configPath)
+				command := commands.ConfigTrustedBuilder(logger, config.Config{}, configPath)
 				command.SetArgs(append(args, builder))
 
 				err := command.Execute()

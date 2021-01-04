@@ -84,7 +84,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
 
 	rootCmd.AddCommand(commands.Version(logger, pack.Version))
-	rootCmd.AddCommand(commands.Report(logger, pack.Version))
+	rootCmd.AddCommand(commands.Report(logger, pack.Version, cfgPath))
 
 	if cfg.Experimental {
 		rootCmd.AddCommand(commands.AddBuildpackRegistry(logger, cfg, cfgPath))
@@ -102,7 +102,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger, packHome))
 
-	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath))
+	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath, &packClient))
 	rootCmd.AddCommand(commands.NewStackCommand(logger))
 	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, &packClient))
 
