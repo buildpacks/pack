@@ -62,6 +62,7 @@ func testAddRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 				assert.Equal(cfg.Registries[0].Type, "github")
 				assert.Equal(cfg.Registries[0].URL, "https://github.com/buildpacks/registry-index/")
 				assert.Equal(cfg.DefaultRegistryName, "")
+				assert.Contains(outBuf.String(), "been deprecated, please use 'pack config registries add' instead")
 			})
 		})
 

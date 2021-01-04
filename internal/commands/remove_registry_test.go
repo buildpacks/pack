@@ -83,6 +83,7 @@ func testRemoveRegistryCommand(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			})
+			assert.Contains(outBuf.String(), "been deprecated, please use 'pack config registries remove' instead")
 		})
 
 		it("should remove the registry and matching default registry name", func() {

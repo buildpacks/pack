@@ -42,7 +42,7 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 
-		command = commands.NewConfigCommand(logger, config.Config{}, configPath)
+		command = commands.NewConfigCommand(logger, config.Config{Experimental: true}, configPath)
 		command.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 	})
 
@@ -57,9 +57,17 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 			output := outBuf.String()
 			h.AssertContains(t, output, "Interact with Pack's configuration")
 			h.AssertContains(t, output, "Usage:")
-			for _, command := range []string{"trusted-builders", "run-image-mirrors", "experimental"} {
-				h.AssertContains(t, output, command)
+			for _, subcmd := range []string{"trusted-builders", "run-image-mirrors", "experimental", "registries"} {
+				h.AssertContains(t, output, subcmd)
 			}
+		})
+
+		it("doesn't print experimental commands if experimental not enabled", func() {
+			command = commands.NewConfigCommand(logger, config.Config{}, configPath)
+			command.SetArgs([]string{})
+			h.AssertNil(t, command.Execute())
+			output := outBuf.String()
+			h.AssertNotContains(t, output, "registries")
 		})
 	})
 
