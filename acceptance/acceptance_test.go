@@ -876,21 +876,48 @@ func testAcceptance(
 						h.DockerRmi(dockerCli, untrustedBuilderName)
 					})
 
-					it("uses the 5 phases", func() {
-						output := pack.RunSuccessfully(
-							"build", repoName,
-							"-p", filepath.Join("testdata", "mock_app"),
-							"-B", untrustedBuilderName,
-						)
+					when("daemon", func() {
+						it("uses the 5 phases", func() {
+							output := pack.RunSuccessfully(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"-B", untrustedBuilderName,
+							)
 
-						assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
-						assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
 
-						if pack.SupportsFeature(invoke.CreatorInPack) {
-							assertOutput.IncludesLifecycleImageTag()
-						}
-						assertOutput.IncludesSeparatePhases()
+							if pack.SupportsFeature(invoke.CreatorInPack) {
+								assertOutput.IncludesLifecycleImageTag()
+							}
+							assertOutput.IncludesSeparatePhases()
+						})
+					})
+
+					when("--publish", func() {
+						it("uses the 5 phases", func() {
+							buildArgs := []string{
+								repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"-B", untrustedBuilderName,
+								"--publish",
+							}
+							if dockerHostOS() != "windows" {
+								buildArgs = append(buildArgs, "--network", "host")
+							}
+
+							output := pack.RunSuccessfully("build", buildArgs...)
+
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+
+							if pack.SupportsFeature(invoke.CreatorInPack) {
+								assertOutput.IncludesLifecycleImageTag()
+							}
+							assertOutput.IncludesSeparatePhases()
+						})
 					})
 
 					when("additional tags", func() {
