@@ -23,6 +23,7 @@ func NewConfigCommand(logger logging.Logger, cfg config.Config, cfgPath string, 
 
 	if cfg.Experimental {
 		cmd.AddCommand(ConfigRegistries(logger, cfg, cfgPath))
+		cmd.AddCommand(ConfigPullPolicy(logger, cfg, cfgPath))
 	}
 
 	AddHelpFlag(cmd, "config")
