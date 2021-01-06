@@ -7,12 +7,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
@@ -32,17 +34,21 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 		outBuf       bytes.Buffer
 		tempPackHome string
 		configPath   string
+		mockClient   *testmocks.MockPackClient
 	)
 
 	it.Before(func() {
 		var err error
+
+		mockController := gomock.NewController(t)
+		mockClient = testmocks.NewMockPackClient(mockController)
 
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
 
-		command = commands.NewConfigCommand(logger, config.Config{}, configPath)
+		command = commands.NewConfigCommand(logger, config.Config{Experimental: true}, configPath, mockClient)
 		command.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 	})
 
@@ -57,37 +63,17 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 			output := outBuf.String()
 			h.AssertContains(t, output, "Interact with Pack's configuration")
 			h.AssertContains(t, output, "Usage:")
-			for _, command := range []string{"trusted-builders", "run-image-mirrors"} {
+			for _, command := range []string{"trusted-builders", "run-image-mirrors", "default-builder", "experimental", "registries"} {
 				h.AssertContains(t, output, command)
 			}
 		})
-	})
 
-	when("trusted-builders", func() {
-		it("prints list of trusted builders", func() {
-			command.SetArgs([]string{"trusted-builders"})
+		it("doesn't print experimental commands if experimental not enabled", func() {
+			command = commands.NewConfigCommand(logger, config.Config{}, configPath, mockClient)
+			command.SetArgs([]string{})
 			h.AssertNil(t, command.Execute())
-			h.AssertContainsAllInOrder(t,
-				outBuf,
-				"gcr.io/buildpacks/builder:v1",
-				"heroku/buildpacks:18",
-				"paketobuildpacks/builder:base",
-				"paketobuildpacks/builder:full",
-				"paketobuildpacks/builder:tiny",
-			)
-		})
-
-		it("works with alias of trusted-builders", func() {
-			command.SetArgs([]string{"trusted-builder"})
-			h.AssertNil(t, command.Execute())
-			h.AssertContainsAllInOrder(t,
-				outBuf,
-				"gcr.io/buildpacks/builder:v1",
-				"heroku/buildpacks:18",
-				"paketobuildpacks/builder:base",
-				"paketobuildpacks/builder:full",
-				"paketobuildpacks/builder:tiny",
-			)
+			output := outBuf.String()
+			h.AssertNotContains(t, output, "registries")
 		})
 	})
 }

@@ -11,11 +11,11 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-func trustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
+func ConfigTrustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "trusted-builders",
 		Short:   "Interact with trusted builders",
-		Aliases: []string{"trusted-builder"},
+		Aliases: []string{"trusted-builder", "trust-builder", "trust-builders"},
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			listTrustedBuilders(args, logger, cfg)
 			return nil

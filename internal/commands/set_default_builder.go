@@ -11,14 +11,17 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+// Deprecated: Use `pack config default-builder`
 func SetDefaultBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "set-default-builder <builder-name>",
+		Hidden:  true,
 		Args:    cobra.MaximumNArgs(1),
 		Short:   "Set default builder used by other commands",
 		Long:    "Set default builder used by other commands.\n\n** For suggested builders simply leave builder name empty. **",
 		Example: "pack set-default-builder cnbs/sample-builder:bionic",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
+			deprecationWarning(logger, "set-default-builder", "config default-builder")
 			if len(args) < 1 || args[0] == "" {
 				logger.Infof("Usage:\n\t%s\n", cmd.UseLine())
 				suggestBuilders(logger, client)

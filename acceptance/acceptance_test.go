@@ -167,16 +167,16 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
-	when("set-default-builder", func() {
-		it("sets the default-stack-id in ~/.pack/config.toml", func() {
-			builderName := "paketobuildpacks/builder:base"
-			output := pack.RunSuccessfully("set-default-builder", builderName)
-
-			assertions.NewOutputAssertionManager(t, output).ReportsSettingDefaultBuilder(builderName)
-		})
-	})
-
 	when("pack config", func() {
+		when("default-builder", func() {
+			it("sets the default builder in ~/.pack/config.toml", func() {
+				builderName := "paketobuildpacks/builder:base"
+				output := pack.RunSuccessfully("config", "default-builder", builderName)
+
+				assertions.NewOutputAssertionManager(t, output).ReportsSettingDefaultBuilder(builderName)
+			})
+		})
+
 		when("trusted-builders", func() {
 			it("prints list of trusted builders", func() {
 				output := pack.RunSuccessfully("config", "trusted-builders")
@@ -573,7 +573,11 @@ func testWithoutSpecificBuilderRequirement(
 
 		when("default builder is set", func() {
 			it("redacts default builder", func() {
-				pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
+				if pack.Supports("config default-builder") {
+					pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
+				} else {
+					pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
+				}
 
 				output := pack.RunSuccessfully("report")
 
@@ -592,7 +596,11 @@ func testWithoutSpecificBuilderRequirement(
 			})
 
 			it("explicit mode doesn't redact", func() {
-				pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
+				if pack.Supports("config default-builder") {
+					pack.RunSuccessfully("config", "default-builder", "paketobuildpacks/builder:base")
+				} else {
+					pack.RunSuccessfully("set-default-builder", "paketobuildpacks/builder:base")
+				}
 
 				output := pack.RunSuccessfully("report", "--explicit")
 
@@ -868,21 +876,48 @@ func testAcceptance(
 						h.DockerRmi(dockerCli, untrustedBuilderName)
 					})
 
-					it("uses the 5 phases", func() {
-						output := pack.RunSuccessfully(
-							"build", repoName,
-							"-p", filepath.Join("testdata", "mock_app"),
-							"-B", untrustedBuilderName,
-						)
+					when("daemon", func() {
+						it("uses the 5 phases", func() {
+							output := pack.RunSuccessfully(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"-B", untrustedBuilderName,
+							)
 
-						assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
-						assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
 
-						if pack.SupportsFeature(invoke.CreatorInPack) {
-							assertOutput.IncludesLifecycleImageTag()
-						}
-						assertOutput.IncludesSeparatePhases()
+							if pack.SupportsFeature(invoke.CreatorInPack) {
+								assertOutput.IncludesLifecycleImageTag()
+							}
+							assertOutput.IncludesSeparatePhases()
+						})
+					})
+
+					when("--publish", func() {
+						it("uses the 5 phases", func() {
+							buildArgs := []string{
+								repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"-B", untrustedBuilderName,
+								"--publish",
+							}
+							if dockerHostOS() != "windows" {
+								buildArgs = append(buildArgs, "--network", "host")
+							}
+
+							output := pack.RunSuccessfully("build", buildArgs...)
+
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
+
+							if pack.SupportsFeature(invoke.CreatorInPack) {
+								assertOutput.IncludesLifecycleImageTag()
+							}
+							assertOutput.IncludesSeparatePhases()
+						})
 					})
 
 					when("additional tags", func() {
@@ -913,7 +948,11 @@ func testAcceptance(
 					var usingCreator bool
 
 					it.Before(func() {
-						pack.JustRunSuccessfully("set-default-builder", builderName)
+						if pack.Supports("config default-builder") {
+							pack.RunSuccessfully("config", "default-builder", builderName)
+						} else {
+							pack.RunSuccessfully("set-default-builder", builderName)
+						}
 
 						if pack.Supports("config trusted-builders add") {
 							pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)

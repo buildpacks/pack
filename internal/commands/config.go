@@ -9,15 +9,21 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-func NewConfigCommand(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
+func NewConfigCommand(logger logging.Logger, cfg config.Config, cfgPath string, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Interact with Pack's configuration",
 		RunE:  nil,
 	}
 
-	cmd.AddCommand(trustedBuilder(logger, cfg, cfgPath))
+	cmd.AddCommand(ConfigDefaultBuilder(logger, cfg, cfgPath, client))
+	cmd.AddCommand(ConfigExperimental(logger, cfg, cfgPath))
+	cmd.AddCommand(ConfigTrustedBuilder(logger, cfg, cfgPath))
 	cmd.AddCommand(ConfigRunImagesMirrors(logger, cfg, cfgPath))
+
+	if cfg.Experimental {
+		cmd.AddCommand(ConfigRegistries(logger, cfg, cfgPath))
+	}
 
 	AddHelpFlag(cmd, "config")
 	return cmd

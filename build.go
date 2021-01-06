@@ -335,19 +335,13 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 func getFileFilter(descriptor project.Descriptor) (func(string) bool, error) {
 	if len(descriptor.Build.Exclude) > 0 {
-		excludes, err := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
-		if err != nil {
-			return nil, err
-		}
+		excludes := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
 		return func(fileName string) bool {
 			return !excludes.MatchesPath(fileName)
 		}, nil
 	}
 	if len(descriptor.Build.Include) > 0 {
-		includes, err := ignore.CompileIgnoreLines(descriptor.Build.Include...)
-		if err != nil {
-			return nil, err
-		}
+		includes := ignore.CompileIgnoreLines(descriptor.Build.Include...)
 		return includes.MatchesPath, nil
 	}
 

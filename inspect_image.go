@@ -23,7 +23,7 @@ type ImageInfo struct {
 
 	// List of buildpacks that passed detection, ran their build
 	// phases and made a contribution to this image.
-	Buildpacks []lifecycle.Buildpack
+	Buildpacks []lifecycle.GroupBuildpack
 
 	// Base includes two references to the run image,
 	// - the Run Image ID,
