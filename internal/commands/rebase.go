@@ -2,6 +2,7 @@ package commands
 
 import (
 	"github.com/pkg/errors"
+
 	"github.com/spf13/cobra"
 
 	pubcfg "github.com/buildpacks/pack/config"
@@ -28,9 +29,13 @@ func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.
 			opts.AdditionalMirrors = getMirrors(cfg)
 
 			var err error
-			opts.PullPolicy, err = pubcfg.ParsePullPolicy(policy)
+			stringPolicy := policy
+			if stringPolicy == "" {
+				stringPolicy = cfg.PullPolicy
+			}
+			opts.PullPolicy, err = pubcfg.ParsePullPolicy(stringPolicy)
 			if err != nil {
-				return errors.Wrapf(err, "parsing pull policy %s", policy)
+				return errors.Wrapf(err, "parsing pull policy %s", stringPolicy)
 			}
 
 			if err := client.Rebase(cmd.Context(), opts); err != nil {

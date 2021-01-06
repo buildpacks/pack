@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -25,7 +23,7 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 			"* To list your pull policy, run `pack config pull-policy`.\n" +
 			"* To set your pull policy, run `pack config pull-policy <pull-policy>`.\n" +
 			"* To unset your pull policy, run `pack config pull-policy --unset`.\n" +
-			fmt.Sprintf("Unsetting the pull policy will reset the policy to the default, which is always"),
+			"Unsetting the pull policy will reset the policy to the default, which is always",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			switch {
 			case unset:
@@ -45,7 +43,6 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 
 				logger.Infof("Successfully unset pull policy %s", style.Symbol(oldPullPolicy))
 				logger.Infof("Pull policy has been set to %s", style.Symbol(pullPolicy.String()))
-
 			case len(args) == 0: // list
 				pullPolicy, err := pubcfg.ParsePullPolicy(cfg.PullPolicy)
 				if err != nil {
@@ -68,11 +65,7 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 
 				cfg.PullPolicy = newPullPolicy
 				if err := config.Write(cfg, cfgPath); err != nil {
-<<<<<<< HEAD
 					return errors.Wrapf(err, "writing config to %s", cfgPath)
-=======
-					return errors.Wrap(err, "writing config to")
->>>>>>> c57c6a95 (Add ConfigPullPolicy function and tests)
 				}
 
 				logger.Infof("Successfully set %s as the pull policy", style.Symbol(pullPolicy.String()))

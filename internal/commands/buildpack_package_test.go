@@ -112,6 +112,21 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
 				})
 			})
+			when("no --pull-policy", func() {
+				var pullPolicyArgs = []string{
+					"some-image-name",
+					"--config", "/path/to/some/file",
+				}
+
+				it("uses the default policy when no policy configured", func() {
+					cmd := packageCommand(withBuildpackPackager(fakeBuildpackPackager))
+					cmd.SetArgs(pullPolicyArgs)
+					h.AssertNil(t, cmd.Execute())
+
+					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
+					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
+				})
+			})
 		})
 
 		when("no config path is specified", func() {
@@ -209,7 +224,7 @@ func packageCommand(ops ...packageCommandOption) *cobra.Command {
 		op(config)
 	}
 
-	cmd := commands.BuildpackPackage(config.logger, config.buildpackPackager, config.packageConfigReader)
+	cmd := commands.BuildpackPackage(config.logger, config.buildpackPackager, config.clientConfig, config.packageConfigReader)
 	cmd.SetArgs([]string{config.imageName, "--config", config.configPath})
 
 	return cmd

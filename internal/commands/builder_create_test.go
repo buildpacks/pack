@@ -92,6 +92,20 @@ func testCreateCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("--pull-policy is not specified", func() {
+			when("configured pull policy is invalid", func() {
+				it("errors when config set with unknown policy", func() {
+					cfg = config.Config{PullPolicy: "unknown-policy"}
+					command = commands.BuilderCreate(logger, cfg, mockClient)
+					command.SetArgs([]string{
+						"some/builder",
+						"--config", builderConfigPath,
+					})
+					h.AssertError(t, command.Execute(), "parsing pull policy")
+				})
+			})
+		})
+
 		when("--buildpack-registry flag is specified but experimental isn't set in the config", func() {
 			it("errors with a descriptive message", func() {
 				command.SetArgs([]string{

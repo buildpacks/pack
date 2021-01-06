@@ -28,7 +28,7 @@ func TestConfigPullPolicy(t *testing.T) {
 
 func testConfigPullPolicyCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		command          *cobra.Command
+		command      *cobra.Command
 		logger       logging.Logger
 		outBuf       bytes.Buffer
 		tempPackHome string
