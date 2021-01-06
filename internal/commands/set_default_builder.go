@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+// Deprecated: Use `pack config default-builder`
 func SetDefaultBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "set-default-builder <builder-name>",

@@ -12,6 +12,7 @@ func ListBuildpackRegistries(logger logging.Logger, cfg config.Config) *cobra.Co
 	cmd := &cobra.Command{
 		Use:     "list-registries",
 		Args:    cobra.NoArgs,
+		Hidden:  true,
 		Short:   prependExperimental("List buildpack registries"),
 		Example: "pack list-registries",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {

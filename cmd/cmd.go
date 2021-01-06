@@ -66,15 +66,18 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	commands.AddHelpFlag(rootCmd, "pack")
 
 	rootCmd.AddCommand(commands.Build(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.NewBuildpackCommand(logger, cfg, &packClient, buildpackage.NewConfigReader()))
+	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath, &packClient))
 	rootCmd.AddCommand(commands.Rebase(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.NewStackCommand(logger))
 
 	rootCmd.AddCommand(commands.InspectImage(logger, imagewriter.NewFactory(), cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuildpack(logger, &cfg, &packClient))
-	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
-
-	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient, builderwriter.NewFactory()))
 
+	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg))
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
 	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg))
 	rootCmd.AddCommand(commands.UntrustBuilder(logger, cfg))
@@ -82,9 +85,6 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, &packClient, buildpackage.NewConfigReader()))
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
-
-	rootCmd.AddCommand(commands.Version(logger, pack.Version))
-	rootCmd.AddCommand(commands.Report(logger, pack.Version, cfgPath))
 
 	if cfg.Experimental {
 		rootCmd.AddCommand(commands.AddBuildpackRegistry(logger, cfg, cfgPath))
@@ -101,12 +101,8 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	}
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger, packHome))
-
-	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath, &packClient))
-	rootCmd.AddCommand(commands.NewStackCommand(logger))
-	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, &packClient))
-
-	rootCmd.AddCommand(commands.NewBuildpackCommand(logger, cfg, &packClient, buildpackage.NewConfigReader()))
+	rootCmd.AddCommand(commands.Report(logger, pack.Version, cfgPath))
+	rootCmd.AddCommand(commands.Version(logger, pack.Version))
 
 	rootCmd.Version = pack.Version
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)
