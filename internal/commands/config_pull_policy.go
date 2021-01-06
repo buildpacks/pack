@@ -68,7 +68,11 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 
 				cfg.PullPolicy = newPullPolicy
 				if err := config.Write(cfg, cfgPath); err != nil {
+<<<<<<< HEAD
 					return errors.Wrapf(err, "writing config to %s", cfgPath)
+=======
+					return errors.Wrap(err, "writing config to")
+>>>>>>> c57c6a95 (Add ConfigPullPolicy function and tests)
 				}
 
 				logger.Infof("Successfully set %s as the pull policy", style.Symbol(pullPolicy.String()))
