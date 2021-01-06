@@ -17,6 +17,7 @@ func AddBuildpackRegistry(logger logging.Logger, cfg config.Config, cfgPath stri
 	cmd := &cobra.Command{
 		Use:     "add-registry <name> <url>",
 		Args:    cobra.ExactArgs(2),
+		Hidden:  true,
 		Short:   prependExperimental("Add buildpack registry to your pack config file"),
 		Example: "pack add-registry my-registry https://github.com/buildpacks/my-registry",
 		Long: "A Buildpack Registry is a (still experimental) place to publish, store, and discover buildpacks. " +
