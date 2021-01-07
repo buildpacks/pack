@@ -114,7 +114,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				DefaultProcessType:       flags.DefaultProcessType,
 				ProjectDescriptorBaseDir: filepath.Dir(actualDescriptorPath),
 				ProjectDescriptor:        descriptor,
-				CacheImage:         flags.CacheImage,
+				CacheImage:               flags.CacheImage,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}

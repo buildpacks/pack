@@ -24,7 +24,6 @@ func (c *ImageCache) Name() string {
 	return c.image
 }
 
-// No-op as we should not delete remote images, these should be dealt with by managers of the registry
 func (c *ImageCache) Clear(ctx context.Context) error {
 	_, err := c.docker.ImageRemove(ctx, c.Name(), types.ImageRemoveOptions{
 		Force: true,

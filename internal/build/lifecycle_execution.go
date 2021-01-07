@@ -150,7 +150,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
-		return l.Export(ctx, l.opts.Image.String(), l.opts.RunImage, l.opts.Publish, l.opts.Network, launchCache, buildCache, l.opts.AdditionalTags, phaseFactory)
+		return l.Export(ctx, l.opts.Image.String(), l.opts.RunImage, l.opts.Publish, l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, phaseFactory)
 	}
 
 	return l.Create(
