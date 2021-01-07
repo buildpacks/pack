@@ -53,13 +53,16 @@ func ReadProjectDescriptor(pathToFile string) (Descriptor, error) {
 		return Descriptor{}, err
 	}
 
-	return descriptor, descriptor.validate()
+	err = validate(descriptor)
+
+	return descriptor, err
 }
 
-func (p Descriptor) validate() error {
+func validate(p Descriptor) error {
 	if p.Build.Exclude != nil && p.Build.Include != nil {
 		return errors.New("project.toml: cannot have both include and exclude defined")
 	}
+
 	if len(p.Project.Licenses) > 0 {
 		for _, license := range p.Project.Licenses {
 			if license.Type == "" && license.URI == "" {

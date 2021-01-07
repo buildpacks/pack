@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	pubcfg "github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/project"
 
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -363,8 +364,16 @@ version = "1.0"
 
 				it("should build an image with configuration in descriptor", func() {
 					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithBuildpacks([]string{
-							"example/lua@1.0",
+						Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(project.Descriptor{
+							Project: project.Project{
+								Name: "Sample",
+							},
+							Build: project.Build{
+								Buildpacks: []project.Buildpack{{
+									ID:      "example/lua",
+									Version: "1.0",
+								}},
+							},
 						})).
 						Return(nil)
 
@@ -411,8 +420,20 @@ version = "1.0"
 
 					it("should use project.toml in source repo", func() {
 						mockClient.EXPECT().
-							Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
-								"KEY1": "VALUE1",
+							Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(project.Descriptor{
+								Project: project.Project{
+									Name: "Sample",
+								},
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										ID:      "example/lua",
+										Version: "1.0",
+									}},
+									Env: []project.EnvVar{{
+										Name:  "KEY1",
+										Value: "VALUE1",
+									}},
+								},
 							})).
 							Return(nil)
 
@@ -442,8 +463,20 @@ version = "1.0"
 
 					it("should use specified descriptor", func() {
 						mockClient.EXPECT().
-							Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
-								"KEY1": "VALUE1",
+							Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(project.Descriptor{
+								Project: project.Project{
+									Name: "Sample",
+								},
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										ID:      "example/lua",
+										Version: "1.0",
+									}},
+									Env: []project.EnvVar{{
+										Name:  "KEY1",
+										Value: "VALUE1",
+									}},
+								},
 							})).
 							Return(nil)
 
@@ -457,148 +490,6 @@ version = "1.0"
 						command.SetArgs([]string{"--builder", "my-builder", "--descriptor", "non-existent-path", "image"})
 						h.AssertError(t, command.Execute(), "stat project descriptor")
 					})
-				})
-			})
-
-			when("descriptor buildpack has uri", func() {
-				var projectTomlPath string
-
-				it.Before(func() {
-					projectToml, err := ioutil.TempFile("", "project.toml")
-					h.AssertNil(t, err)
-					defer projectToml.Close()
-
-					projectToml.WriteString(`
-[project]
-name = "Sample"
-
-[[build.buildpacks]]
-id = "example/lua"
-uri = "https://www.test.tgz"
-`)
-					projectTomlPath = projectToml.Name()
-				})
-
-				it.After(func() {
-					h.AssertNil(t, os.RemoveAll(projectTomlPath))
-				})
-
-				it("should build an image with configuration in descriptor", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithBuildpacks([]string{
-							"https://www.test.tgz",
-						})).
-						Return(nil)
-
-					command.SetArgs([]string{"image", "--builder", "my-builder", "--descriptor", projectTomlPath})
-					h.AssertNil(t, command.Execute())
-				})
-			})
-
-			when("descriptor buildpack has malformed uri", func() {
-				var projectTomlPath string
-
-				it.Before(func() {
-					projectToml, err := ioutil.TempFile("", "project.toml")
-					h.AssertNil(t, err)
-					defer projectToml.Close()
-
-					projectToml.WriteString(`
-[project]
-name = "Sample"
-
-[[build.buildpacks]]
-id = "example/lua"
-uri = "://bad-uri"
-`)
-					projectTomlPath = projectToml.Name()
-				})
-
-				it.After(func() {
-					h.AssertNil(t, os.RemoveAll(projectTomlPath))
-				})
-
-				it("should build an image with configuration in descriptor", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithBuildpacks([]string{
-							"https://www.test.tgz",
-						})).
-						Return(nil)
-
-					command.SetArgs([]string{"image", "--builder", "my-builder", "--descriptor", projectTomlPath})
-					err := command.Execute()
-					h.AssertError(t, err, "parse")
-				})
-			})
-
-			when("descriptor has exclude", func() {
-				var projectTomlPath string
-
-				it.Before(func() {
-					projectToml, err := ioutil.TempFile("", "project.toml")
-					h.AssertNil(t, err)
-					defer projectToml.Close()
-
-					projectToml.WriteString(`
-[project]
-name = "Sample"
-
-[build]
-exclude = [ "*.jar" ]
-`)
-					projectTomlPath = projectToml.Name()
-				})
-
-				it.After(func() {
-					h.AssertNil(t, os.RemoveAll(projectTomlPath))
-				})
-
-				it("should return appropriate fileFilter function", func() {
-					mockFilter := func(string) bool {
-						return false
-					}
-
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithFileFilter(mockFilter, "test.jar")).
-						Return(nil)
-
-					command.SetArgs([]string{"image", "--builder", "my-builder", "--descriptor", projectTomlPath})
-					h.AssertNil(t, command.Execute())
-				})
-			})
-
-			when("descriptor has include", func() {
-				var projectTomlPath string
-				it.Before(func() {
-					projectToml, err := ioutil.TempFile("", "project.toml")
-					h.AssertNil(t, err)
-					defer projectToml.Close()
-
-					projectToml.WriteString(`
-[project]
-name = "Sample"
-
-[build]
-include = [ "*.jar" ]
-`)
-					projectTomlPath = projectToml.Name()
-				})
-
-				it.After(func() {
-					h.AssertNil(t, os.RemoveAll(projectTomlPath))
-				})
-
-				it("should return appropriate fileFilter function", func() {
-					mockFilter := func(string) bool {
-						return true
-					}
-
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithFileFilter(mockFilter, "test.jar")).
-						Return(nil)
-
-					command.SetArgs([]string{"image", "--builder", "my-builder", "--descriptor", projectTomlPath})
-					h.AssertNil(t, command.Execute())
 				})
 			})
 		})
@@ -662,11 +553,11 @@ func EqBuildOptionsWithTrustedBuilder(trustBuilder bool) gomock.Matcher {
 	}
 }
 
-func EqBuildOptionsWithFileFilter(fileFilter func(string) bool, fileName string) gomock.Matcher {
+func EqBuildOptionsWithVolumes(volumes []string) gomock.Matcher {
 	return buildOptionsMatcher{
-		description: fmt.Sprintf("File Filter=%p", fileFilter),
+		description: fmt.Sprintf("Volumes=%s", volumes),
 		equals: func(o pack.BuildOptions) bool {
-			return o.FileFilter(fileName) == fileFilter(fileName)
+			return reflect.DeepEqual(o.ContainerConfig.Volumes, volumes)
 		},
 	}
 }
@@ -680,11 +571,11 @@ func EqBuildOptionsWithAdditionalTags(additionalTags []string) gomock.Matcher {
 	}
 }
 
-func EqBuildOptionsWithVolumes(volumes []string) gomock.Matcher {
+func EqBuildOptionsWithProjectDescriptor(descriptor project.Descriptor) gomock.Matcher {
 	return buildOptionsMatcher{
-		description: fmt.Sprintf("Volumes=%s", volumes),
+		description: fmt.Sprintf("Descriptor=%s", descriptor),
 		equals: func(o pack.BuildOptions) bool {
-			return reflect.DeepEqual(o.ContainerConfig.Volumes, volumes)
+			return reflect.DeepEqual(o.ProjectDescriptor, descriptor)
 		},
 	}
 }
@@ -708,25 +599,6 @@ func EqBuildOptionsWithEnv(env map[string]string) gomock.Matcher {
 	}
 }
 
-func EqBuildOptionsWithBuildpacks(buildpacks []string) gomock.Matcher {
-	return buildOptionsMatcher{
-		description: fmt.Sprintf("Buildpacks=%+v", buildpacks),
-		equals: func(o pack.BuildOptions) bool {
-			for _, bp := range o.Buildpacks {
-				if !contains(buildpacks, bp) {
-					return false
-				}
-			}
-			for _, bp := range buildpacks {
-				if !contains(o.Buildpacks, bp) {
-					return false
-				}
-			}
-			return true
-		},
-	}
-}
-
 type buildOptionsMatcher struct {
 	equals      func(pack.BuildOptions) bool
 	description string
@@ -741,13 +613,4 @@ func (m buildOptionsMatcher) Matches(x interface{}) bool {
 
 func (m buildOptionsMatcher) String() string {
 	return "is a BuildOptions with " + m.description
-}
-
-func contains(arr []string, str string) bool {
-	for _, a := range arr {
-		if a == str {
-			return true
-		}
-	}
-	return false
 }

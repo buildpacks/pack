@@ -54,8 +54,6 @@ func testPullBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				buildpackImage := "buildpack/image"
 				opts := pack.PullBuildpackOptions{
 					URI:          buildpackImage,
-					RegistryType: "github",
-					RegistryURL:  "https://github.com/buildpacks/registry-index",
 					RegistryName: "official",
 				}
 

@@ -2,16 +2,13 @@ package builder
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 )
 
@@ -33,6 +30,14 @@ type BuildpackConfig struct {
 	dist.ImageOrURI
 }
 
+func (c *BuildpackConfig) DisplayString() string {
+	if c.BuildpackInfo.FullName() != "" {
+		return c.BuildpackInfo.FullName()
+	}
+
+	return c.ImageOrURI.DisplayString()
+}
+
 // StackConfig details the configuration of a Stack
 type StackConfig struct {
 	ID              string   `toml:"id"`
@@ -50,18 +55,13 @@ type LifecycleConfig struct {
 // ReadConfig reads a builder configuration from the file path provided and returns the
 // configuration along with any warnings encountered while parsing
 func ReadConfig(path string) (config Config, warnings []string, err error) {
-	builderDir, err := filepath.Abs(filepath.Dir(path))
-	if err != nil {
-		return Config{}, nil, err
-	}
-
 	file, err := os.Open(path)
 	if err != nil {
 		return Config{}, nil, errors.Wrap(err, "opening config file")
 	}
 	defer file.Close()
 
-	config, err = parseConfig(file, builderDir, path)
+	config, err = parseConfig(file)
 	if err != nil {
 		return Config{}, nil, errors.Wrapf(err, "parse contents of '%s'", path)
 	}
@@ -90,10 +90,10 @@ func ValidateConfig(c Config) error {
 	return nil
 }
 
-// parseConfig reads a builder configuration from reader and resolves relative buildpack paths using `relativeToDir`
-func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
+// parseConfig reads a builder configuration from file
+func parseConfig(file *os.File) (Config, error) {
 	builderConfig := Config{}
-	tomlMetadata, err := toml.DecodeReader(reader, &builderConfig)
+	tomlMetadata, err := toml.DecodeReader(file, &builderConfig)
 	if err != nil {
 		return Config{}, errors.Wrap(err, "decoding toml contents")
 	}
@@ -104,28 +104,8 @@ func parseConfig(reader io.Reader, relativeToDir, path string) (Config, error) {
 
 		return Config{}, errors.Errorf("%s in %s",
 			unknownElementsMsg,
-			style.Symbol(path),
+			style.Symbol(file.Name()),
 		)
-	}
-
-	for i, bp := range builderConfig.Buildpacks {
-		if bp.URI == "" {
-			continue
-		}
-
-		uri, err := paths.ToAbsolute(bp.URI, relativeToDir)
-		if err != nil {
-			return Config{}, errors.Wrap(err, "transforming buildpack URI")
-		}
-		builderConfig.Buildpacks[i].URI = uri
-	}
-
-	if builderConfig.Lifecycle.URI != "" {
-		uri, err := paths.ToAbsolute(builderConfig.Lifecycle.URI, relativeToDir)
-		if err != nil {
-			return Config{}, errors.Wrap(err, "transforming lifecycle URI")
-		}
-		builderConfig.Lifecycle.URI = uri
 	}
 
 	return builderConfig, nil

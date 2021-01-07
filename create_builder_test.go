@@ -30,6 +30,7 @@ import (
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/image"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -98,7 +99,8 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 
 			opts = pack.CreateBuilderOptions{
-				BuilderName: "some/builder",
+				RelativeBaseDir: "/",
+				BuilderName:     "some/builder",
 				Config: pubbldr.Config{
 					Description: "Some description",
 					Buildpacks: []pubbldr.BuildpackConfig{
@@ -405,9 +407,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					prepareFetcherWithBuildImage()
 					prepareFetcherWithRunImages()
 					opts.Config.Lifecycle.URI = "fake"
-					mockDownloader.EXPECT().Download(gomock.Any(), "fake").Return(nil, errors.New("error here")).AnyTimes()
 
-					err := subject.CreateBuilder(context.TODO(), opts)
+					uri, err := paths.FilePathToURI(opts.Config.Lifecycle.URI, opts.RelativeBaseDir)
+					h.AssertNil(t, err)
+
+					mockDownloader.EXPECT().Download(gomock.Any(), uri).Return(nil, errors.New("error here")).AnyTimes()
+
+					err = subject.CreateBuilder(context.TODO(), opts)
 					h.AssertError(t, err, "downloading lifecycle")
 				})
 			})
@@ -417,9 +423,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					prepareFetcherWithBuildImage()
 					prepareFetcherWithRunImages()
 					opts.Config.Lifecycle.URI = "fake"
-					mockDownloader.EXPECT().Download(gomock.Any(), "fake").Return(blob.NewBlob(filepath.Join("testdata", "empty-file")), nil).AnyTimes()
 
-					err := subject.CreateBuilder(context.TODO(), opts)
+					uri, err := paths.FilePathToURI(opts.Config.Lifecycle.URI, opts.RelativeBaseDir)
+					h.AssertNil(t, err)
+
+					mockDownloader.EXPECT().Download(gomock.Any(), uri).Return(blob.NewBlob(filepath.Join("testdata", "empty-file")), nil).AnyTimes()
+
+					err = subject.CreateBuilder(context.TODO(), opts)
 					h.AssertError(t, err, "invalid lifecycle")
 				})
 			})
@@ -636,12 +646,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("disallows directory-based buildpacks", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
-				opts.Config.Buildpacks[0].URI = "testdata/buildpack"
+				opts.RelativeBaseDir = ""
+				opts.Config.Buildpacks[0].URI = `testdata\buildpack`
 
 				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t,
-					err,
-					"buildpack 'testdata/buildpack': directory-based buildpacks are not currently supported on Windows")
+				h.AssertError(t, err, `testdata/buildpack`)
+				h.AssertError(t, err, "directory-based buildpacks are not currently supported on Windows")
 			})
 		})
 
@@ -653,11 +663,16 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			it("supports directory buildpacks", func() {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
+				opts.RelativeBaseDir = ""
 				directoryPath := "testdata/buildpack"
 				opts.Config.Buildpacks[0].URI = directoryPath
-				mockDownloader.EXPECT().Download(gomock.Any(), directoryPath).Return(blob.NewBlob(directoryPath), nil).AnyTimes()
 
-				err := subject.CreateBuilder(context.TODO(), opts)
+				absURI, err := paths.FilePathToURI(directoryPath, "")
+				h.AssertNil(t, err)
+
+				mockDownloader.EXPECT().Download(gomock.Any(), absURI).Return(blob.NewBlob(directoryPath), nil).AnyTimes()
+
+				err = subject.CreateBuilder(context.TODO(), opts)
 				h.AssertNil(t, err)
 			})
 		})
@@ -783,9 +798,16 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("package file", func() {
 			it.Before(func() {
-				cnbFile := filepath.Join(tmpDir, "bp_one1.cnb")
-				buildpackPath := filepath.Join("testdata", "buildpack")
-				mockDownloader.EXPECT().Download(gomock.Any(), buildpackPath).Return(blob.NewBlob(buildpackPath), nil)
+				fileURI := func(path string) (original, uri string) {
+					absPath, err := paths.FilePathToURI(path, "")
+					h.AssertNil(t, err)
+					return path, absPath
+				}
+
+				cnbFile, cnbFileURI := fileURI(filepath.Join(tmpDir, "bp_one1.cnb"))
+				buildpackPath, buildpackPathURI := fileURI(filepath.Join("testdata", "buildpack"))
+				mockDownloader.EXPECT().Download(gomock.Any(), buildpackPathURI).Return(blob.NewBlob(buildpackPath), nil)
+
 				h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 					Name: cnbFile,
 					Config: pubbldpkg.Config{
@@ -795,7 +817,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Format: "file",
 				}))
 
-				mockDownloader.EXPECT().Download(gomock.Any(), cnbFile).Return(blob.NewBlob(cnbFile), nil).AnyTimes()
+				mockDownloader.EXPECT().Download(gomock.Any(), cnbFileURI).Return(blob.NewBlob(cnbFile), nil).AnyTimes()
 				opts.Config.Buildpacks = []pubbldr.BuildpackConfig{{
 					ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: cnbFile}},
 				}}

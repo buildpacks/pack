@@ -13,16 +13,18 @@ import (
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpack"
-	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
-	"github.com/buildpacks/pack/internal/layer"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 )
 
 // CreateBuilderOptions is a configuration object used to change the behavior of
 // CreateBuilder.
 type CreateBuilderOptions struct {
+	// The base directory to use to resolve relative assets
+	RelativeBaseDir string
+
 	// Name of the builder.
 	BuilderName string
 
@@ -150,7 +152,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 		)
 	}
 
-	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle, os)
+	lifecycle, err := c.fetchLifecycle(ctx, opts.Config.Lifecycle, opts.RelativeBaseDir, os)
 	if err != nil {
 		return nil, errors.Wrap(err, "fetch lifecycle")
 	}
@@ -160,7 +162,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	return bldr, nil
 }
 
-func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig, os string) (builder.Lifecycle, error) {
+func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleConfig, relativeBaseDir, os string) (builder.Lifecycle, error) {
 	if config.Version != "" && config.URI != "" {
 		return nil, errors.Errorf(
 			"%s can only declare %s or %s, not both",
@@ -169,6 +171,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 	}
 
 	var uri string
+	var err error
 	switch {
 	case config.Version != "":
 		v, err := semver.NewVersion(config.Version)
@@ -178,17 +181,20 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 
 		uri = uriFromLifecycleVersion(*v, os)
 	case config.URI != "":
-		uri = config.URI
+		uri, err = paths.FilePathToURI(config.URI, relativeBaseDir)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		uri = uriFromLifecycleVersion(*semver.MustParse(builder.DefaultLifecycleVersion), os)
 	}
 
-	b, err := c.downloader.Download(ctx, uri)
+	blob, err := c.downloader.Download(ctx, uri)
 	if err != nil {
 		return nil, errors.Wrap(err, "downloading lifecycle")
 	}
 
-	lifecycle, err := builder.NewLifecycle(b)
+	lifecycle, err := builder.NewLifecycle(blob)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid lifecycle")
 	}
@@ -198,7 +204,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 
 func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	for _, b := range opts.Config.Buildpacks {
-		c.logger.Debugf("Looking up buildpack %s", style.Symbol(b.FullName()))
+		c.logger.Debugf("Looking up buildpack %s", style.Symbol(b.DisplayString()))
 
 		var err error
 		var locatorType buildpack.LocatorType
@@ -207,7 +213,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 			b.URI = b.ImageName
 			locatorType = buildpack.PackageLocator
 		} else {
-			locatorType, err = buildpack.GetLocatorType(b.URI, []dist.BuildpackInfo{})
+			locatorType, err = buildpack.GetLocatorType(b.URI, opts.RelativeBaseDir, []dist.BuildpackInfo{})
 			if err != nil {
 				return err
 			}
@@ -241,9 +247,14 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrapf(err, "extracting from registry %s", style.Symbol(b.URI))
 			}
 		case buildpack.URILocator:
+			b.URI, err = paths.FilePathToURI(b.URI, opts.RelativeBaseDir)
+			if err != nil {
+				return errors.Wrapf(err, "making absolute: %s", style.Symbol(b.URI))
+			}
+
 			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(b.URI))
 
-			err := ensureBPSupport(b.URI)
+			err = ensureBPSupport(b.URI)
 			if err != nil {
 				return err
 			}
@@ -253,30 +264,14 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))
 			}
 
-			isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
+			imageOS, err := bldr.Image().OS()
 			if err != nil {
-				return errors.Wrap(err, "inspecting buildpack blob")
+				return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
 			}
 
-			if isOCILayout {
-				mainBP, depBPs, err = buildpackage.BuildpacksFromOCILayoutBlob(blob)
-				if err != nil {
-					return errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(b.ID))
-				}
-			} else {
-				imageOS, err := bldr.Image().OS()
-				if err != nil {
-					return errors.Wrap(err, "getting image OS")
-				}
-				layerWriterFactory, err := layer.NewWriterFactory(imageOS)
-				if err != nil {
-					return errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(bldr.Name()))
-				}
-
-				mainBP, err = dist.BuildpackFromRootBlob(blob, layerWriterFactory)
-				if err != nil {
-					return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(b.URI))
-				}
+			mainBP, depBPs, err = decomposeBuildpack(blob, imageOS)
+			if err != nil {
+				return errors.Wrapf(err, "extracting from %s", style.Symbol(b.URI))
 			}
 		default:
 			return fmt.Errorf("error reading %s: invalid locator: %s", b.URI, locatorType)

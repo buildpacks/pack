@@ -141,10 +141,9 @@ name = "gallant"
 					"project.toml does not exist error", "no error")
 			}
 		})
-	})
 
-	it("should enforce mutual exclusivity between exclude and include", func() {
-		projectToml := `
+		it("should enforce mutual exclusivity between exclude and include", func() {
+			projectToml := `
 [project]
 name = "bad excludes and includes"
 
@@ -152,38 +151,38 @@ name = "bad excludes and includes"
 exclude = [ "*.jar" ]
 include = [ "*.jpg" ]
 `
-		tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = ReadProjectDescriptor(tmpProjectToml.Name())
-		if err == nil {
-			t.Fatalf(
-				"Expected error for having both exclude and include defined")
-		}
-	})
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+			if err == nil {
+				t.Fatalf(
+					"Expected error for having both exclude and include defined")
+			}
+		})
 
-	it("should have an id or uri defined for buildpacks", func() {
-		projectToml := `
+		it("should have an id or uri defined for buildpacks", func() {
+			projectToml := `
 [project]
 name = "missing buildpacks id and uri"
 
 [[build.buildpacks]]
 version = "1.2.3"
 `
-		tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
-		if err != nil {
-			t.Fatal(err)
-		}
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		_, err = ReadProjectDescriptor(tmpProjectToml.Name())
-		if err == nil {
-			t.Fatalf("Expected error for NOT having id or uri defined for buildpacks")
-		}
-	})
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+			if err == nil {
+				t.Fatalf("Expected error for NOT having id or uri defined for buildpacks")
+			}
+		})
 
-	it("should not allow both uri and version", func() {
-		projectToml := `
+		it("should not allow both uri and version", func() {
+			projectToml := `
 [project]
 name = "cannot have both uri and version defined"
 
@@ -191,33 +190,34 @@ name = "cannot have both uri and version defined"
 uri = "https://example.com/buildpack"
 version = "1.2.3"
 `
-		tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
-		if err != nil {
-			t.Fatal(err)
-		}
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		_, err = ReadProjectDescriptor(tmpProjectToml.Name())
-		if err == nil {
-			t.Fatal("Expected error for having both uri and version defined for a buildpack(s)")
-		}
-	})
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+			if err == nil {
+				t.Fatal("Expected error for having both uri and version defined for a buildpack(s)")
+			}
+		})
 
-	it("should require either a type or uri for licenses", func() {
-		projectToml := `
+		it("should require either a type or uri for licenses", func() {
+			projectToml := `
 [project]
 name = "licenses should have either a type or uri defined"
 
 [[project.licenses]]
 `
-		tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
-		if err != nil {
-			t.Fatal(err)
-		}
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		_, err = ReadProjectDescriptor(tmpProjectToml.Name())
-		if err == nil {
-			t.Fatal("Expected error for having neither type or uri defined for licenses")
-		}
+			_, err = ReadProjectDescriptor(tmpProjectToml.Name())
+			if err == nil {
+				t.Fatal("Expected error for having neither type or uri defined for licenses")
+			}
+		})
 	})
 }
 

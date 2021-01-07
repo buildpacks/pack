@@ -1,13 +1,14 @@
 package commands
 
 import (
+	"path/filepath"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	pubcfg "github.com/buildpacks/pack/config"
-
 	"github.com/buildpacks/pack"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
+	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
@@ -42,23 +43,28 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 				return errors.Wrap(err, "parsing pull policy")
 			}
 
-			var cfg pubbldpkg.Config
-			if flags.PackageTomlPath == "" {
-				cfg = pubbldpkg.DefaultConfig()
-			} else {
+			cfg := pubbldpkg.DefaultConfig()
+			relativeBaseDir := ""
+			if flags.PackageTomlPath != "" {
 				cfg, err = packageConfigReader.Read(flags.PackageTomlPath)
 				if err != nil {
 					return errors.Wrap(err, "reading config")
+				}
+
+				relativeBaseDir, err = filepath.Abs(filepath.Dir(flags.PackageTomlPath))
+				if err != nil {
+					return errors.Wrap(err, "getting absolute path for config")
 				}
 			}
 
 			name := args[0]
 			if err := client.PackageBuildpack(cmd.Context(), pack.PackageBuildpackOptions{
-				Name:       name,
-				Format:     flags.Format,
-				Config:     cfg,
-				Publish:    flags.Publish,
-				PullPolicy: pullPolicy,
+				RelativeBaseDir: relativeBaseDir,
+				Name:            name,
+				Format:          flags.Format,
+				Config:          cfg,
+				Publish:         flags.Publish,
+				PullPolicy:      pullPolicy,
 			}); err != nil {
 				return err
 			}

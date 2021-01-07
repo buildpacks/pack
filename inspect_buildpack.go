@@ -37,9 +37,8 @@ func (iw ImgWrapper) Label(name string) (string, error) {
 	return iw.Labels[name], nil
 }
 
-// Must return an BuildpackNotFoundError
 func (c *Client) InspectBuildpack(opts InspectBuildpackOptions) (*BuildpackInfo, error) {
-	locatorType, err := buildpack.GetLocatorType(opts.BuildpackName, []dist.BuildpackInfo{})
+	locatorType, err := buildpack.GetLocatorType(opts.BuildpackName, "", []dist.BuildpackInfo{})
 	if err != nil {
 		return nil, err
 	}
@@ -87,13 +86,9 @@ func metadataFromRegistry(client *Client, name, registry string) (buildpackMd bu
 }
 
 func metadataFromArchive(downloader Downloader, path string) (buildpackMd buildpackage.Metadata, layersMd dist.BuildpackLayers, err error) {
-	// open archive, read it as an image and get all metadata.
-	// This looks like a prime candidate to be added to imgutil.
-
 	imgBlob, err := downloader.Download(context.Background(), path)
 	if err != nil {
 		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("unable to download archive: %q", err)
-		//return buildpackMd, layersMd, err
 	}
 
 	config, err := buildpackage.ConfigFromOCILayoutBlob(imgBlob)

@@ -68,19 +68,21 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 		it("should fail if not in the registry", func() {
 			err := subject.PullBuildpack(context.TODO(), pack.PullBuildpackOptions{
 				URI:          "invalid/image",
-				RegistryType: "github",
-				RegistryURL:  registry.DefaultRegistryURL,
 				RegistryName: registry.DefaultRegistryName,
 			})
 			h.AssertError(t, err, "locating in registry")
 		})
 
+		it("should fail if it's a URI type", func() {
+			err := subject.PullBuildpack(context.TODO(), pack.PullBuildpackOptions{
+				URI: "file://some-file",
+			})
+			h.AssertError(t, err, "unsupported buildpack URI type: 'URILocator'")
+		})
+
 		it("should fail if not a valid URI", func() {
 			err := subject.PullBuildpack(context.TODO(), pack.PullBuildpackOptions{
-				URI:          "foobar",
-				RegistryType: "github",
-				RegistryURL:  registry.DefaultRegistryURL,
-				RegistryName: registry.DefaultRegistryName,
+				URI: "G@Rb*g3_",
 			})
 			h.AssertError(t, err, "invalid buildpack URI")
 		})
@@ -146,8 +148,6 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 		it("should fetch the image", func() {
 			h.AssertNil(t, subject.PullBuildpack(context.TODO(), pack.PullBuildpackOptions{
 				URI:          "example/foo@1.1.0",
-				RegistryType: "github",
-				RegistryURL:  registryFixture,
 				RegistryName: "some-registry",
 			}))
 		})

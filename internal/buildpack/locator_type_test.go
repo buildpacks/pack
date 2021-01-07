@@ -26,7 +26,6 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		builderBPs   []dist.BuildpackInfo
 		expectedType buildpack.LocatorType
 		expectedErr  string
-		localPath    string
 	}
 
 	var localPath = func(path string) string {
@@ -45,7 +44,6 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		},
 		{
 			locator:     "from=builder:some-bp",
-			builderBPs:  nil,
 			expectedErr: "'from=builder:some-bp' is not a valid identifier",
 		},
 		{
@@ -60,7 +58,6 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		},
 		{
 			locator:     "urn:cnb:builder:some-bp",
-			builderBPs:  nil,
 			expectedErr: "'urn:cnb:builder:some-bp' is not a valid identifier",
 		},
 		{
@@ -76,7 +73,6 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		{
 			locator:      localPath("some-bp"),
 			builderBPs:   []dist.BuildpackInfo{{ID: localPath("some-bp"), Version: "some-version"}},
-			localPath:    localPath("some-bp"),
 			expectedType: buildpack.URILocator,
 		},
 		{
@@ -84,9 +80,15 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			expectedType: buildpack.URILocator,
 		},
 		{
+			locator:      "localhost:1234/example/package-cnb",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
+			locator:      "cnbs/some-bp:latest",
+			expectedType: buildpack.PackageLocator,
+		},
+		{
 			locator:      "docker://cnbs/some-bp",
-			builderBPs:   nil,
-			localPath:    "",
 			expectedType: buildpack.PackageLocator,
 		},
 		{
@@ -142,11 +144,11 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			expectedType: buildpack.PackageLocator,
 		},
 		{
-			locator:      "urn:cnb:registry:example/foo:1.0.0",
+			locator:      "urn:cnb:registry:example/foo@1.0.0",
 			expectedType: buildpack.RegistryLocator,
 		},
 		{
-			locator:      "example/foo:1.0.0",
+			locator:      "example/foo@1.0.0",
 			expectedType: buildpack.RegistryLocator,
 		},
 		{
@@ -154,8 +156,8 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			expectedType: buildpack.RegistryLocator,
 		},
 		{
-			locator:      "localhost:1234/example/package-cnb",
-			expectedType: buildpack.PackageLocator,
+			locator:      "cnbs/sample-package@hello-universe",
+			expectedType: buildpack.InvalidLocator,
 		},
 		{
 			locator:      "dev.local/http-go-fn:latest",
@@ -172,13 +174,10 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 			}
 			desc += fmt.Sprintf(" and builder has buildpacks %s", names)
 		}
-		if tc.localPath != "" {
-			desc += fmt.Sprintf(" and a local path exists at '%s'", tc.localPath)
-		}
 
 		when(desc, func() {
-			it(fmt.Sprintf("should return '%s'", tc.expectedType), func() {
-				actualType, actualErr := buildpack.GetLocatorType(tc.locator, tc.builderBPs)
+			it(fmt.Sprintf("should return %s", tc.expectedType), func() {
+				actualType, actualErr := buildpack.GetLocatorType(tc.locator, "", tc.builderBPs)
 
 				if tc.expectedErr == "" {
 					h.AssertNil(t, actualErr)

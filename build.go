@@ -11,21 +11,19 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/imgutil/remote"
-
-	"github.com/buildpacks/pack/logging"
-
-	"github.com/buildpacks/pack/config"
-
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
+	ignore "github.com/sabhiram/go-gitignore"
 
+	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpack"
@@ -36,6 +34,8 @@ import (
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/project"
 )
 
 const (
@@ -69,6 +69,9 @@ type LifecycleExecutor interface {
 
 // BuildOptions defines configuration settings for a Build.
 type BuildOptions struct {
+	// The base directory to use to resolve relative assets
+	RelativeBaseDir string
+
 	// required. Name of output image.
 	Image string
 
@@ -134,12 +137,14 @@ type BuildOptions struct {
 	// Process type that will be used when setting container start command.
 	DefaultProcessType string
 
-	// Filter files from the application source.
-	// If true include file, otherwise exclude.
-	FileFilter func(string) bool
-
 	// Strategy for updating local images before a build.
 	PullPolicy config.PullPolicy
+
+	// ProjectDescriptorBaseDir is the base directory to find relative resources referenced by the ProjectDescriptor
+	ProjectDescriptorBaseDir string
+
+	// ProjectDescriptor describes the project and any configuration specific to the project
+	ProjectDescriptor project.Descriptor
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -214,7 +219,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Image(), bldr.Buildpacks(), bldr.Order(), opts.Buildpacks, opts.PullPolicy, opts.Publish, opts.Registry)
+	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Image(), bldr.Buildpacks(), bldr.Order(), opts)
 	if err != nil {
 		return err
 	}
@@ -223,7 +228,16 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrap(err, "validating stack mixins")
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, opts.Env, order, fetchedBPs)
+	buildEnvs := map[string]string{}
+	for _, envVar := range opts.ProjectDescriptor.Build.Env {
+		buildEnvs[envVar.Name] = envVar.Value
+	}
+
+	for k, v := range opts.Env {
+		buildEnvs[k] = v
+	}
+
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs)
 	if err != nil {
 		return err
 	}
@@ -254,6 +268,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		c.logger.Warn(warning)
 	}
 
+	fileFilter, err := getFileFilter(opts.ProjectDescriptor)
+	if err != nil {
+		return err
+	}
+
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:            appPath,
 		Image:              imageRef,
@@ -271,7 +290,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		AdditionalTags:     opts.AdditionalTags,
 		Volumes:            processedVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
-		FileFilter:         opts.FileFilter,
+		FileFilter:         fileFilter,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
@@ -312,6 +331,21 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
+}
+
+func getFileFilter(descriptor project.Descriptor) (func(string) bool, error) {
+	if len(descriptor.Build.Exclude) > 0 {
+		excludes := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
+		return func(fileName string) bool {
+			return !excludes.MatchesPath(fileName)
+		}, nil
+	}
+	if len(descriptor.Build.Include) > 0 {
+		includes := ignore.CompileIgnoreLines(descriptor.Build.Include...)
+		return includes.MatchesPath, nil
+	}
+
+	return nil, nil
 }
 
 func lifecycleImageSupported(builderOS string, lifecycleVersion *builder.Version) bool {
@@ -577,10 +611,29 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, declaredBPs []string, pullPolicy config.PullPolicy, publish bool, registry string) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, opts BuildOptions) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
+	pullPolicy := opts.PullPolicy
+	publish := opts.Publish
+	registry := opts.Registry
+	relativeBaseDir := opts.RelativeBaseDir
+	declaredBPs := opts.Buildpacks
+
+	// declare buildpacks provided by project descriptor when no buildpacks are declared
+	if len(declaredBPs) == 0 && len(opts.ProjectDescriptor.Build.Buildpacks) != 0 {
+		relativeBaseDir = opts.ProjectDescriptorBaseDir
+
+		for _, bp := range opts.ProjectDescriptor.Build.Buildpacks {
+			if len(bp.URI) == 0 {
+				declaredBPs = append(declaredBPs, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
+			} else {
+				declaredBPs = append(declaredBPs, bp.URI)
+			}
+		}
+	}
+
 	order = dist.Order{{Group: []dist.BuildpackRef{}}}
 	for _, bp := range declaredBPs {
-		locatorType, err := buildpack.GetLocatorType(bp, builderBPs)
+		locatorType, err := buildpack.GetLocatorType(bp, relativeBaseDir, builderBPs)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -610,6 +663,13 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				Version: version,
 			})
 		case buildpack.URILocator:
+			bp, err = paths.FilePathToURI(bp, opts.RelativeBaseDir)
+			if err != nil {
+				return fetchedBPs, order, errors.Wrapf(err, "making absolute: %s", style.Symbol(bp))
+			}
+
+			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(bp))
+
 			err := ensureBPSupport(bp)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "checking support")
@@ -620,35 +680,17 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				return fetchedBPs, order, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
 			}
 
-			var mainBP dist.Buildpack
-			var dependencyBPs []dist.Buildpack
-
-			isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
+			imageOS, err := builderImage.OS()
 			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "checking format")
+				return fetchedBPs, order, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
 			}
 
-			if isOCILayout {
-				mainBP, dependencyBPs, err = buildpackage.BuildpacksFromOCILayoutBlob(blob)
-				if err != nil {
-					return fetchedBPs, order, errors.Wrapf(err, "extracting buildpacks from %s", style.Symbol(bp))
-				}
-			} else {
-				imageOS, err := builderImage.OS()
-				if err != nil {
-					return fetchedBPs, order, errors.Wrap(err, "getting image OS")
-				}
-				layerWriterFactory, err := layer.NewWriterFactory(imageOS)
-				if err != nil {
-					return fetchedBPs, order, errors.Wrapf(err, "get tar writer factory for image %s", style.Symbol(builderImage.Name()))
-				}
-				mainBP, err = dist.BuildpackFromRootBlob(blob, layerWriterFactory)
-				if err != nil {
-					return fetchedBPs, order, errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bp))
-				}
+			mainBP, depBPs, err := decomposeBuildpack(blob, imageOS)
+			if err != nil {
+				return fetchedBPs, order, errors.Wrapf(err, "extracting from %s", style.Symbol(bp))
 			}
 
-			fetchedBPs = append(append(fetchedBPs, mainBP), dependencyBPs...)
+			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.PackageLocator:
 			imageName := buildpack.ParsePackageLocator(bp)
@@ -696,6 +738,33 @@ func appendBuildpackToOrder(order dist.Order, bpInfo dist.BuildpackInfo) (newOrd
 	}
 
 	return newOrder
+}
+
+// decomposeBuildpack decomposes a buildpack blob into the main builder (order buildpack) and it's dependencies buildpacks.
+func decomposeBuildpack(blob blob.Blob, imageOS string) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
+	isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
+	if err != nil {
+		return mainBP, depBPs, errors.Wrap(err, "inspecting buildpack blob")
+	}
+
+	if isOCILayout {
+		mainBP, depBPs, err = buildpackage.BuildpacksFromOCILayoutBlob(blob)
+		if err != nil {
+			return mainBP, depBPs, errors.Wrap(err, "extracting buildpacks")
+		}
+	} else {
+		layerWriterFactory, err := layer.NewWriterFactory(imageOS)
+		if err != nil {
+			return mainBP, depBPs, errors.Wrapf(err, "get tar writer factory for OS %s", style.Symbol(imageOS))
+		}
+
+		mainBP, err = dist.BuildpackFromRootBlob(blob, layerWriterFactory)
+		if err != nil {
+			return mainBP, depBPs, errors.Wrap(err, "reading buildpack")
+		}
+	}
+
+	return mainBP, depBPs, nil
 }
 
 func ensureBPSupport(bpPath string) (err error) {

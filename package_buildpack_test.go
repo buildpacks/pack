@@ -27,6 +27,7 @@ import (
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/internal/paths"
 	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/buildpacks/pack/testmocks"
 )
@@ -132,7 +133,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 	when("dependencies have issues", func() {
 		when("dependencies include a flawed packaged buildpack file", func() {
 			it("should fail", func() {
-				dependencyPath := "fakePath.file"
+				dependencyPath := "http://example.com/flawed.file"
 				mockDownloader.EXPECT().Download(gomock.Any(), dependencyPath).Return(blob.NewBlob("no-file.txt"), nil).AnyTimes()
 
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
@@ -654,6 +655,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				)
 				it.Before(func() {
 					dependencyPackagePath = filepath.Join(tmpDir, "dep.cnb")
+					dependencyPackageURI, err := paths.FilePathToURI(dependencyPackagePath, "")
+					h.AssertNil(t, err)
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: dependencyPackagePath,
@@ -665,7 +668,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Format:     pack.FormatFile,
 					}))
 
-					mockDownloader.EXPECT().Download(gomock.Any(), dependencyPackagePath).Return(blob.NewBlob(dependencyPackagePath), nil).AnyTimes()
+					mockDownloader.EXPECT().Download(gomock.Any(), dependencyPackageURI).Return(blob.NewBlob(dependencyPackagePath), nil).AnyTimes()
 				})
 
 				it("should open file and correctly add buildpacks", func() {

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -51,13 +52,19 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				logger.Warnf("builder configuration: %s", w)
 			}
 
+			relativeBaseDir, err := filepath.Abs(filepath.Dir(flags.BuilderTomlPath))
+			if err != nil {
+				return errors.Wrap(err, "getting absolute path for config")
+			}
+
 			imageName := args[0]
 			if err := client.CreateBuilder(cmd.Context(), pack.CreateBuilderOptions{
-				BuilderName: imageName,
-				Config:      builderConfig,
-				Publish:     flags.Publish,
-				Registry:    flags.Registry,
-				PullPolicy:  pullPolicy,
+				RelativeBaseDir: relativeBaseDir,
+				BuilderName:     imageName,
+				Config:          builderConfig,
+				Publish:         flags.Publish,
+				Registry:        flags.Registry,
+				PullPolicy:      pullPolicy,
 			}); err != nil {
 				return err
 			}
