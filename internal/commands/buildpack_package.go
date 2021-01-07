@@ -34,7 +34,7 @@ type PackageConfigReader interface {
 }
 
 // BuildpackPackage packages (a) buildpack(s) into OCI format, based on a package config
-func BuildpackPackage(logger logging.Logger, client BuildpackPackager, cfg config.Config, packageConfigReader PackageConfigReader) *cobra.Command {
+func BuildpackPackage(logger logging.Logger, cfg config.Config, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
 	var flags BuildpackPackageFlags
 	cmd := &cobra.Command{
 		Use:     "package <name> --config <config-path>",
@@ -51,21 +51,19 @@ func BuildpackPackage(logger logging.Logger, client BuildpackPackager, cfg confi
 				return err
 			}
 
-			var err error
-			var pullPolicy pubcfg.PullPolicy
 			stringPolicy := flags.Policy
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err = pubcfg.ParsePullPolicy(stringPolicy)
+			pullPolicy, err := pubcfg.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}
 
-			pubbldpkgCfg := pubbldpkg.DefaultConfig()
+			bpPackageCfg := pubbldpkg.DefaultConfig()
 			relativeBaseDir := ""
 			if flags.PackageTomlPath != "" {
-				pubbldpkgCfg, err = packageConfigReader.Read(flags.PackageTomlPath)
+				bpPackageCfg, err = packageConfigReader.Read(flags.PackageTomlPath)
 				if err != nil {
 					return errors.Wrap(err, "reading config")
 				}
@@ -81,7 +79,7 @@ func BuildpackPackage(logger logging.Logger, client BuildpackPackager, cfg confi
 				RelativeBaseDir: relativeBaseDir,
 				Name:            name,
 				Format:          flags.Format,
-				Config:          pubbldpkgCfg,
+				Config:          bpPackageCfg,
 				Publish:         flags.Publish,
 				PullPolicy:      pullPolicy,
 			}); err != nil {

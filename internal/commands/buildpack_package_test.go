@@ -126,6 +126,23 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
 					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
 				})
+				it("uses the configured pull policy when policy configured", func() {
+					cmd := packageCommand(
+						withBuildpackPackager(fakeBuildpackPackager),
+						withClientConfig(config.Config{PullPolicy: "never"}),
+					)
+
+					cmd.SetArgs([]string{
+						"some-image-name",
+						"--config", "/path/to/some/file",
+					})
+
+					err := cmd.Execute()
+					h.AssertNil(t, err)
+
+					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
+					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+				})
 			})
 		})
 
@@ -224,7 +241,7 @@ func packageCommand(ops ...packageCommandOption) *cobra.Command {
 		op(config)
 	}
 
-	cmd := commands.BuildpackPackage(config.logger, config.buildpackPackager, config.clientConfig, config.packageConfigReader)
+	cmd := commands.BuildpackPackage(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader)
 	cmd.SetArgs([]string{config.imageName, "--config", config.configPath})
 
 	return cmd
@@ -257,6 +274,12 @@ func withImageName(name string) packageCommandOption {
 func withPackageConfigPath(path string) packageCommandOption {
 	return func(config *packageCommandConfig) {
 		config.configPath = path
+	}
+}
+
+func withClientConfig(clientCfg config.Config) packageCommandOption {
+	return func(config *packageCommandConfig) {
+		config.clientConfig = clientCfg
 	}
 }
 

@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -15,15 +17,14 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 	var unset bool
 
 	cmd := &cobra.Command{
-		Use:     "pull-policy <if-not-present | always | never>",
-		Args:    cobra.MaximumNArgs(1),
-		Short:   "List, set and unset the global pull policy used by other commands",
-		Aliases: []string{"pull-policy"},
+		Use:   "pull-policy <if-not-present | always | never>",
+		Args:  cobra.MaximumNArgs(1),
+		Short: "List, set and unset the global pull policy used by other commands",
 		Long: bpRegistryExplanation + "\n\nYou can use this command to list, set, and unset the default pull policy that will be used when working with containers:\n" +
 			"* To list your pull policy, run `pack config pull-policy`.\n" +
 			"* To set your pull policy, run `pack config pull-policy <pull-policy>`.\n" +
 			"* To unset your pull policy, run `pack config pull-policy --unset`.\n" +
-			"Unsetting the pull policy will reset the policy to the default, which is always",
+			fmt.Sprintf("Unsetting the pull policy will reset the policy to the default, which is %s", style.Symbol("always")),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			switch {
 			case unset:
@@ -75,7 +76,7 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 		}),
 	}
 
-	cmd.Flags().BoolVarP(&unset, "unset", "u", false, "Unset pull policy, and set it back to the default pull-policy, which is always")
+	cmd.Flags().BoolVarP(&unset, "unset", "u", false, "Unset pull policy, and set it back to the default pull-policy, which is "+style.Symbol("always"))
 	AddHelpFlag(cmd, "pull-policy")
 	return cmd
 }
