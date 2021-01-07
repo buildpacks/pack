@@ -31,6 +31,7 @@ To produce the release candidate the [release manager](#release-manager) will:
     - The GitHub release will contain the following:
         - **artifacts**
         - **release notes**
+    - The release notes should be edited and cleaned
 - Merge the release branch into `main`.
 
 ### Release Finalization
