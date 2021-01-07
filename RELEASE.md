@@ -19,13 +19,11 @@ Our development flow is detailed in [Development](DEVELOPMENT.md).
 
 ### Feature Complete
 
-5 business days prior to a scheduled release, we enter `feature complete`. This entails releasing a Release Candidate:
+5 business days prior to a scheduled release, we enter `feature complete`.
 
-A release branch (in the form `release/<VERSION>-rc<NUMBER>`) is created, yielding a draft GitHub release to be published and used for further User Acceptance testing (`UAT`)
+During this period, a **Release Candidate** (RC) is published and used for further User Acceptance testing (`UAT`). Furthermore, additional RCs may be published based on assessment by the `pack` [maintainers][maintainers] of the **impact**, **effort** and **risk** of including the changes in the upcoming release. Any other changes may be merged into the `main` branch through the normal process, and will make it into the next release.
 
-During this period, relevant changes may be merged into the release branch, based on assessment by the `pack` [maintainers][maintainers] of the impact, effort and risk of including the changes. Any other change may get merged into `main` through the normal process, and will make it into the next release.
-
-The [release manager](#release-manager) will:
+To produce the release candidate the [release manager](#release-manager) will:
 - Create a new release branch in form `release/<VERSION>-rc<NUMBER>` yielding a draft GitHub release to be published. 
 - Publish the [GitHub release][release]:
     - Tag release branch as `v<VERSION>-rc<NUMBER>`.
