@@ -29,15 +29,14 @@ func TestVolumeCache(t *testing.T) {
 }
 
 func testCache(t *testing.T, when spec.G, it spec.S) {
+	var dockerClient client.CommonAPIClient
+
+	it.Before(func() {
+		var err error
+		dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+		h.AssertNil(t, err)
+	})
 	when("#NewVolumeCache", func() {
-		var dockerClient client.CommonAPIClient
-
-		it.Before(func() {
-			var err error
-			dockerClient, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
-			h.AssertNil(t, err)
-		})
-
 		it("adds suffix to calculated name", func() {
 			ref, err := name.ParseReference("my/repo", name.WeakValidation)
 			h.AssertNil(t, err)
@@ -157,6 +156,16 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 				err := subject.Clear(ctx)
 				h.AssertNil(t, err)
 			})
+		})
+	})
+
+	when("#Type", func() {
+		it("returns the cache type", func() {
+			ref, err := name.ParseReference("my/repo", name.WeakValidation)
+			h.AssertNil(t, err)
+			subject := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
+			expected := cache.Volume
+			h.AssertEq(t, subject.Type(), expected)
 		})
 	})
 }

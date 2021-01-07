@@ -2,8 +2,6 @@ package cache
 
 import (
 	"context"
-	"crypto/sha256"
-	"fmt"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -16,9 +14,8 @@ type ImageCache struct {
 }
 
 func NewImageCache(imageRef name.Reference, dockerClient client.CommonAPIClient) *ImageCache {
-	sum := sha256.Sum256([]byte(imageRef.Name()))
 	return &ImageCache{
-		image:  fmt.Sprintf("pack-cache-%x", sum[:6]),
+		image:  imageRef.Name(),
 		docker: dockerClient,
 	}
 }
@@ -35,4 +32,8 @@ func (c *ImageCache) Clear(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (c *ImageCache) Type() Type {
+	return Image
 }

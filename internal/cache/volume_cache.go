@@ -37,3 +37,7 @@ func (c *VolumeCache) Clear(ctx context.Context) error {
 	}
 	return nil
 }
+
+func (c *VolumeCache) Type() Type {
+	return Volume
+}

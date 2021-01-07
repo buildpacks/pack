@@ -22,6 +22,7 @@ type BuildFlags struct {
 	Publish            bool
 	ClearCache         bool
 	TrustBuilder       bool
+	CacheImage         string
 	AppPath            string
 	Builder            string
 	Registry           string
@@ -113,6 +114,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				DefaultProcessType:       flags.DefaultProcessType,
 				ProjectDescriptorBaseDir: filepath.Dir(actualDescriptorPath),
 				ProjectDescriptor:        descriptor,
+				CacheImage:               flags.CacheImage,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -145,6 +147,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
 	cmd.Flags().StringSliceVarP(&buildFlags.AdditionalTags, "tag", "t", nil, "Additional tags to push the output image to."+multiValueHelp("tag"))
+	cmd.Flags().StringVar(&buildFlags.CacheImage, "cache-image", "", `Cache build layers in remote registry. Requires --publish`)
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
@@ -155,6 +158,10 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 
 	if flags.Registry != "" && !cfg.Experimental {
 		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
+	}
+
+	if flags.CacheImage != "" && !flags.Publish {
+		return errors.New("cache-image flag requires the publish flag")
 	}
 
 	return nil

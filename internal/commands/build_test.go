@@ -287,6 +287,30 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("a cache-image passed", func() {
+			when("--publish is not used", func() {
+				it("errors", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithCacheImage("some-cache-image")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--cache-image", "some-cache-image"})
+					err := command.Execute()
+					h.AssertError(t, err, "cache-image flag requires the publish flag")
+				})
+			})
+			when("--publish is used", func() {
+				it("succeeds", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithCacheImage("some-cache-image")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--cache-image", "some-cache-image", "--publish"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+		})
+
 		when("env vars are passed as flags", func() {
 			var (
 				tmpVar   = "tmpVar"
@@ -531,6 +555,15 @@ func EqBuildOptionsWithPullPolicy(policy pubcfg.PullPolicy) gomock.Matcher {
 		description: fmt.Sprintf("PullPolicy=%s", policy),
 		equals: func(o pack.BuildOptions) bool {
 			return o.PullPolicy == policy
+		},
+	}
+}
+
+func EqBuildOptionsWithCacheImage(cacheImage string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("CacheImage=%s", cacheImage),
+		equals: func(o pack.BuildOptions) bool {
+			return o.CacheImage == cacheImage
 		},
 	}
 }
