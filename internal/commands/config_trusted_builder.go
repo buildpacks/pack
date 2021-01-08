@@ -13,14 +13,24 @@ import (
 
 func ConfigTrustedBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "trusted-builders",
-		Short:   "Interact with trusted builders",
+		Use:   "trusted-builders",
+		Short: "List, add and remove trusted builders",
+		Long: "When pack considers a builder to be trusted, `pack build` operations will use a single lifecycle binary " +
+			"called the creator. This is more efficient than using an untrusted builder, where pack will execute " +
+			"five separate lifecycle binaries: detect, analyze, restore, build and export.\n\n" +
+			"For more on trusted builders, and when to trust or untrust a builder, " +
+			"check out our docs here: https://buildpacks.io/docs/tools/pack/concepts/trusted_builders/",
 		Aliases: []string{"trusted-builder", "trust-builder", "trust-builders"},
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			listTrustedBuilders(args, logger, cfg)
 			return nil
 		}),
 	}
+
+	listCmd := generateListCmd("trusted-builders", logger, cfg, listTrustedBuilders)
+	listCmd.Long = "List Trusted Builders.\n\nShow the builders that are either trusted by default or have been explicitly trusted locally using `trust-builder`"
+	listCmd.Example = "pack config trusted-builders list"
+	cmd.AddCommand(listCmd)
 
 	addCmd := generateAdd("trusted-builders", logger, cfg, cfgPath, addTrustedBuilder)
 	addCmd.Long = "Trust builder.\n\nWhen building with this builder, all lifecycle phases will be run in a single container using the builder image."
@@ -31,11 +41,6 @@ func ConfigTrustedBuilder(logger logging.Logger, cfg config.Config, cfgPath stri
 	rmCmd.Long = "Stop trusting builder.\n\nWhen building with this builder, all lifecycle phases will be no longer be run in a single container using the builder image."
 	rmCmd.Example = "pack config trusted-builders remove cnbs/sample-stack-run:bionic"
 	cmd.AddCommand(rmCmd)
-
-	listCmd := generateListCmd("trusted-builders", logger, cfg, listTrustedBuilders)
-	listCmd.Long = "List Trusted Builders.\n\nShow the builders that are either trusted by default or have been explicitly trusted locally using `trust-builder`"
-	listCmd.Example = "pack config trusted-builders list"
-	cmd.AddCommand(listCmd)
 
 	AddHelpFlag(cmd, "trusted-builders")
 	return cmd

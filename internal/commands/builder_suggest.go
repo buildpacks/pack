@@ -10,7 +10,7 @@ func BuilderSuggest(logger logging.Logger, inspector BuilderInspector) *cobra.Co
 	cmd := &cobra.Command{
 		Use:     "suggest",
 		Args:    cobra.NoArgs,
-		Short:   "Display list of recommended builders",
+		Short:   "List the recommended builders",
 		Example: "pack builder suggest",
 		Run: func(cmd *cobra.Command, s []string) {
 			suggestBuilders(logger, inspector)

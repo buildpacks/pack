@@ -78,7 +78,6 @@ func testConfigRegistries(t *testing.T, when spec.G, it spec.S) {
 			cmd.SetArgs([]string{"-h"})
 			assert.Nil(cmd.Execute())
 			output := outBuf.String()
-			assert.Contains(output, "Interact with registries")
 			assert.Contains(output, "Usage:")
 			for _, command := range []string{"add", "remove", "list", "default"} {
 				assert.Contains(output, command)

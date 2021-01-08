@@ -28,12 +28,19 @@ func ConfigRegistries(logger logging.Logger, cfg config.Config, cfgPath string) 
 	cmd := &cobra.Command{
 		Use:     "registries",
 		Aliases: []string{"registry", "registreis"},
-		Short:   prependExperimental("Interact with registries"),
+		Short:   prependExperimental("List, add and remove registries"),
+		Long:    bpRegistryExplanation + "\nYou can use the attached commands to list, add, and remove registries from your config",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			listRegistries(args, logger, cfg)
 			return nil
 		}),
 	}
+
+	listCmd := generateListCmd("registries", logger, cfg, listRegistries)
+	listCmd.Example = "pack config registries list"
+	listCmd.Short = prependExperimental(listCmd.Short)
+	listCmd.Long = bpRegistryExplanation + "List Registries saved in the pack config.\n\nShow the registries that are either added by default or have been explicitly added by using `pack config registries add`"
+	cmd.AddCommand(listCmd)
 
 	addCmd := generateAdd("registries", logger, cfg, cfgPath, addRegistry)
 	addCmd.Args = cobra.ExactArgs(2)
@@ -49,12 +56,6 @@ func ConfigRegistries(logger logging.Logger, cfg config.Config, cfgPath string) 
 	rmCmd.Short = prependExperimental(rmCmd.Short)
 	rmCmd.Long = bpRegistryExplanation + "Users can remove registries from the config by using `pack config registries remove <registry>`"
 	cmd.AddCommand(rmCmd)
-
-	listCmd := generateListCmd("registries", logger, cfg, listRegistries)
-	listCmd.Example = "pack config registries list"
-	listCmd.Short = prependExperimental(listCmd.Short)
-	listCmd.Long = bpRegistryExplanation + "List Registries saved in the pack config.\n\nShow the registries that are either added by default or have been explicitly added by using `pack config registries add`"
-	cmd.AddCommand(listCmd)
 
 	cmd.AddCommand(ConfigRegistriesDefault(logger, cfg, cfgPath))
 
