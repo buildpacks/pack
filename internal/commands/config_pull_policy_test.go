@@ -109,7 +109,7 @@ func testConfigPullPolicyCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, command.Execute())
 
 					output := outBuf.String()
-					h.AssertEq(t, strings.TrimSpace(output), `Pull policy is already set to if-not-present`)
+					h.AssertEq(t, strings.TrimSpace(output), `Pull policy is already set to 'if-not-present'`)
 				})
 				it("it does not change the configured policy", func() {
 					command = commands.ConfigPullPolicy(logger, cfg, configFile)

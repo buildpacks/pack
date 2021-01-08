@@ -17,12 +17,12 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 	var unset bool
 
 	cmd := &cobra.Command{
-		Use:   "pull-policy <if-not-present | always | never>",
+		Use:   "pull-policy <always | if-not-present | never>",
 		Args:  cobra.MaximumNArgs(1),
 		Short: "List, set and unset the global pull policy used by other commands",
-		Long: bpRegistryExplanation + "\n\nYou can use this command to list, set, and unset the default pull policy that will be used when working with containers:\n" +
+		Long: "You can use this command to list, set, and unset the default pull policy that will be used when working with containers:\n" +
 			"* To list your pull policy, run `pack config pull-policy`.\n" +
-			"* To set your pull policy, run `pack config pull-policy <pull-policy>`.\n" +
+			"* To set your pull policy, run `pack config pull-policy <always | if-not-present | never>`.\n" +
 			"* To unset your pull policy, run `pack config pull-policy --unset`.\n" +
 			fmt.Sprintf("Unsetting the pull policy will reset the policy to the default, which is %s", style.Symbol("always")),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
@@ -55,7 +55,7 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 				newPullPolicy := args[0]
 
 				if newPullPolicy == cfg.PullPolicy {
-					logger.Infof("Pull policy is already set to %s", newPullPolicy)
+					logger.Infof("Pull policy is already set to %s", style.Symbol(newPullPolicy))
 					return nil
 				}
 
