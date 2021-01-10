@@ -3,6 +3,7 @@ package builder
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	pubbldr "github.com/buildpacks/pack/builder"
@@ -123,7 +124,7 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 		Mixins:          append(commonMixins, buildMixins...),
 		RunImage:        metadata.Stack.RunImage.Image,
 		RunImageMirrors: metadata.Stack.RunImage.Mirrors,
-		Buildpacks:      uniqueBuildpacks(metadata.Buildpacks),
+		Buildpacks:      sortBuildPacksByID(uniqueBuildpacks(metadata.Buildpacks)),
 		Order:           detectionOrder,
 		BuildpackLayers: layers,
 		Lifecycle:       lifecycle,
@@ -144,4 +145,12 @@ func uniqueBuildpacks(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
 	}
 
 	return uniqueBuildpacks
+}
+
+func sortBuildPacksByID(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
+	sort.Slice(buildpacks, func(i int, j int) bool {
+		return buildpacks[i].ID < buildpacks[j].ID
+	})
+
+	return buildpacks
 }
