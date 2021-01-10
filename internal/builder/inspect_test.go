@@ -40,9 +40,9 @@ var (
 		Version: "test.bp.two.version",
 	}
 	testBuildpacks = []dist.BuildpackInfo{
-		testTopNestedBuildpack,
-		testNestedBuildpack,
 		testBuildpack,
+		testNestedBuildpack,
+		testTopNestedBuildpack,
 	}
 	testLifecycleInfo = builder.LifecycleInfo{
 		Version: builder.VersionMustParse("1.2.3"),
@@ -234,7 +234,7 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 				info, err := inspector.Inspect(testBuilderName, true, pubbldr.OrderDetectionNone)
 
 				assert.Nil(err)
-				assert.Equal(info.Buildpacks, []dist.BuildpackInfo{testTopNestedBuildpack, testNestedBuildpack})
+				assert.Equal(info.Buildpacks, []dist.BuildpackInfo{testNestedBuildpack, testTopNestedBuildpack})
 			})
 		})
 

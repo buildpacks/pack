@@ -1076,12 +1076,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Version: "buildpack.2.version",
 						},
 						{
-							ID:      "meta.buildpack.id",
-							Version: "meta.buildpack.version",
-						},
-						{
 							ID:      "child.buildpack.id",
 							Version: "child.buildpack.version",
+						},
+						{
+							ID:      "meta.buildpack.id",
+							Version: "meta.buildpack.version",
 						},
 					})
 				})
@@ -1231,9 +1231,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							}},
 						})
 						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+							dirBuildpackInfo,
 							buildpack1Info,
 							buildpack2Info,
-							dirBuildpackInfo,
 							tgzBuildpackInfo,
 						})
 					})

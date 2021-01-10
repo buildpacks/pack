@@ -168,7 +168,7 @@ func (b *Builder) LifecycleDescriptor() LifecycleDescriptor {
 
 // Buildpacks returns the buildpack list
 func (b *Builder) Buildpacks() []dist.BuildpackInfo {
-	return b.metadata.Buildpacks
+	return sortBuildPacksByID(b.metadata.Buildpacks)
 }
 
 // CreatedBy returns metadata around the creation of the builder

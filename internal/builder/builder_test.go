@@ -917,14 +917,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, len(metadata.Buildpacks), 2)
 
 					// keeps original metadata
-					h.AssertEq(t, metadata.Buildpacks[0].ID, "prev.id")
+					h.AssertEq(t, metadata.Buildpacks[1].ID, "prev.id")
 					h.AssertEq(t, metadata.Stack.RunImage.Image, "prev/run")
 					h.AssertEq(t, metadata.Stack.RunImage.Mirrors[0], "prev/mirror")
 					h.AssertEq(t, subject.LifecycleDescriptor().Info.Version.String(), "6.6.6")
 
 					// adds new buildpack
-					h.AssertEq(t, metadata.Buildpacks[1].ID, "buildpack-1-id")
-					h.AssertEq(t, metadata.Buildpacks[1].Version, "buildpack-1-version-1")
+					h.AssertEq(t, metadata.Buildpacks[0].ID, "buildpack-1-id")
+					h.AssertEq(t, metadata.Buildpacks[0].Version, "buildpack-1-version-1")
 				})
 			})
 		})
