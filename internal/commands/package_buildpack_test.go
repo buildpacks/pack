@@ -129,6 +129,46 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
 					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
 				})
+				it("takes precedence over a configured pull policy", func() {
+					logger := ilogging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
+					configReader := fakes.NewFakePackageConfigReader()
+					buildpackPackager := &fakes.FakeBuildpackPackager{}
+					clientConfig := config.Config{PullPolicy: "if-not-present"}
+
+					command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader)
+					command.SetArgs([]string{
+						"some-image-name",
+						"--config", "/path/to/some/file",
+						"--pull-policy",
+						"never",
+					})
+
+					err := command.Execute()
+					h.AssertNil(t, err)
+
+					receivedOptions := buildpackPackager.CreateCalledWithOptions
+					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+				})
+			})
+			when("configured pull policy", func() {
+				it("uses the configured pull policy", func() {
+					logger := ilogging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
+					configReader := fakes.NewFakePackageConfigReader()
+					buildpackPackager := &fakes.FakeBuildpackPackager{}
+					clientConfig := config.Config{PullPolicy: "never"}
+
+					command := commands.PackageBuildpack(logger, clientConfig, buildpackPackager, configReader)
+					command.SetArgs([]string{
+						"some-image-name",
+						"--config", "/path/to/some/file",
+					})
+
+					err := command.Execute()
+					h.AssertNil(t, err)
+
+					receivedOptions := buildpackPackager.CreateCalledWithOptions
+					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+				})
 			})
 		})
 	})
