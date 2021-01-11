@@ -53,7 +53,7 @@ func stackSuggest(logger logging.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "suggest",
 		Args:    cobra.NoArgs,
-		Short:   "Display list of recommended stacks",
+		Short:   "List the recommended stacks",
 		Example: "pack stacks suggest",
 		RunE: logError(logger, func(*cobra.Command, []string) error {
 			Suggest(logger)

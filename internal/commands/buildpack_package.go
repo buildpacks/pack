@@ -37,7 +37,7 @@ func BuildpackPackage(logger logging.Logger, client BuildpackPackager, packageCo
 	var flags BuildpackPackageFlags
 	cmd := &cobra.Command{
 		Use:     "package <name> --config <config-path>",
-		Short:   "Package buildpack in OCI format.",
+		Short:   "Package a buildpack in OCI format.",
 		Args:    cobra.ExactValidArgs(1),
 		Example: "pack buildpack package my-buildpack --config ./package.toml",
 		Long: "buildpack package allows users to package (a) buildpack(s) into OCI format, which can then to be hosted in " +

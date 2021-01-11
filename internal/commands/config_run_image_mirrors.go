@@ -19,13 +19,19 @@ var mirrors []string
 func ConfigRunImagesMirrors(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run-image-mirrors",
-		Short: "Interact with run image mirrors",
+		Short: "List, add and remove run image mirrors",
 		Args:  cobra.MaximumNArgs(3),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			listRunImageMirror(args, logger, cfg)
 			return nil
 		}),
 	}
+
+	listCmd := generateListCmd(cmd.Use, logger, cfg, listRunImageMirror)
+	listCmd.Long = "List all run image mirrors. If a run image is provided, it will return "
+	listCmd.Use = "list [<run-image>]"
+	listCmd.Example = "pack config run-image-mirrors list"
+	cmd.AddCommand(listCmd)
 
 	addCmd := generateAdd("mirror for a run image", logger, cfg, cfgPath, addRunImageMirror)
 	addCmd.Use = "add <image> [-m <mirror...]"
@@ -41,12 +47,6 @@ func ConfigRunImagesMirrors(logger logging.Logger, cfg config.Config, cfgPath st
 	rmCmd.Example = "pack config run-image-mirrors remove cnbs/sample-stack-run:bionic"
 	rmCmd.Flags().StringSliceVarP(&mirrors, "mirror", "m", nil, "Run image mirror"+multiValueHelp("mirror"))
 	cmd.AddCommand(rmCmd)
-
-	listCmd := generateListCmd(cmd.Use, logger, cfg, listRunImageMirror)
-	listCmd.Long = "List all run image mirrors. If a run image is provided, it will return "
-	listCmd.Use = "list [<run-image>]"
-	listCmd.Example = "pack config run-image-mirrors list"
-	cmd.AddCommand(listCmd)
 
 	AddHelpFlag(cmd, "run-image-mirrors")
 	return cmd

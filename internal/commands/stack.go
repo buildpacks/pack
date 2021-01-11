@@ -9,7 +9,7 @@ import (
 func NewStackCommand(logger logging.Logger) *cobra.Command {
 	command := cobra.Command{
 		Use:   "stack",
-		Short: "Displays stack information",
+		Short: "Interact with stacks",
 		RunE:  nil,
 	}
 
