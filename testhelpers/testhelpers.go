@@ -509,7 +509,7 @@ func RunE(cmd *exec.Cmd) (string, error) {
 func PullImageWithAuth(dockerCli client.CommonAPIClient, ref, registryAuth string) error {
 	rc, err := dockerCli.ImagePull(context.Background(), ref, dockertypes.ImagePullOptions{RegistryAuth: registryAuth})
 	if err != nil {
-		return nil
+		return err
 	}
 	if _, err := io.Copy(ioutil.Discard, rc); err != nil {
 		return err

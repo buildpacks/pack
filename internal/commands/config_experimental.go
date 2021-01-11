@@ -15,7 +15,7 @@ func ConfigExperimental(logger logging.Logger, cfg config.Config, cfgPath string
 	cmd := &cobra.Command{
 		Use:   "experimental [<true | false>]",
 		Args:  cobra.MaximumNArgs(1),
-		Short: "Print and set the current 'experimental' value from the config",
+		Short: "List and set the current 'experimental' value from the config",
 		Long: "Experimental features in pack are gated, and require you adding setting `experimental=true` to the Pack Config, either manually, or using this command.\n\n" +
 			"* Running `pack config experimental` prints whether experimental features are currently enabled.\n" +
 			"* Running `pack config experimental <true | false>` enables or disables experimental features.",
