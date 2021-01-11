@@ -16,10 +16,11 @@ import (
 
 // BuildpackPackageFlags define flags provided to the BuildpackPackage command
 type BuildpackPackageFlags struct {
-	PackageTomlPath string
-	Format          string
-	Publish         bool
-	Policy          string
+	PackageTomlPath   string
+	Format            string
+	Publish           bool
+	Policy            string
+	BuildpackRegistry string
 }
 
 // BuildpackPackager packages buildpacks
@@ -78,6 +79,7 @@ func BuildpackPackage(logger logging.Logger, client BuildpackPackager, packageCo
 				Config:          cfg,
 				Publish:         flags.Publish,
 				PullPolicy:      pullPolicy,
+				Registry:        flags.BuildpackRegistry,
 			}); err != nil {
 				return err
 			}
@@ -96,6 +98,7 @@ func BuildpackPackage(logger logging.Logger, client BuildpackPackager, packageCo
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--format=image" only)`)
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
+	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
 
 	AddHelpFlag(cmd, "package")
 	return cmd
