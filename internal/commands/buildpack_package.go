@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/pack"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	pubcfg "github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -34,11 +35,11 @@ type PackageConfigReader interface {
 }
 
 // BuildpackPackage packages (a) buildpack(s) into OCI format, based on a package config
-func BuildpackPackage(logger logging.Logger, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
+func BuildpackPackage(logger logging.Logger, cfg config.Config, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
 	var flags BuildpackPackageFlags
 	cmd := &cobra.Command{
 		Use:     "package <name> --config <config-path>",
-		Short:   "Package buildpack in OCI format.",
+		Short:   "Package a buildpack in OCI format.",
 		Args:    cobra.ExactValidArgs(1),
 		Example: "pack buildpack package my-buildpack --config ./package.toml",
 		Long: "buildpack package allows users to package (a) buildpack(s) into OCI format, which can then to be hosted in " +
@@ -51,16 +52,19 @@ func BuildpackPackage(logger logging.Logger, client BuildpackPackager, packageCo
 				return err
 			}
 
-			var err error
-			pullPolicy, err := pubcfg.ParsePullPolicy(flags.Policy)
+			stringPolicy := flags.Policy
+			if stringPolicy == "" {
+				stringPolicy = cfg.PullPolicy
+			}
+			pullPolicy, err := pubcfg.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}
 
-			cfg := pubbldpkg.DefaultConfig()
+			bpPackageCfg := pubbldpkg.DefaultConfig()
 			relativeBaseDir := ""
 			if flags.PackageTomlPath != "" {
-				cfg, err = packageConfigReader.Read(flags.PackageTomlPath)
+				bpPackageCfg, err = packageConfigReader.Read(flags.PackageTomlPath)
 				if err != nil {
 					return errors.Wrap(err, "reading config")
 				}
@@ -76,7 +80,7 @@ func BuildpackPackage(logger logging.Logger, client BuildpackPackager, packageCo
 				RelativeBaseDir: relativeBaseDir,
 				Name:            name,
 				Format:          flags.Format,
-				Config:          cfg,
+				Config:          bpPackageCfg,
 				Publish:         flags.Publish,
 				PullPolicy:      pullPolicy,
 				Registry:        flags.BuildpackRegistry,

@@ -61,9 +61,8 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 			command.SetArgs([]string{})
 			h.AssertNil(t, command.Execute())
 			output := outBuf.String()
-			h.AssertContains(t, output, "Interact with Pack's configuration")
 			h.AssertContains(t, output, "Usage:")
-			for _, command := range []string{"trusted-builders", "run-image-mirrors", "default-builder", "experimental", "registries"} {
+			for _, command := range []string{"trusted-builders", "run-image-mirrors", "default-builder", "experimental", "registries", "pull-policy"} {
 				h.AssertContains(t, output, command)
 			}
 		})

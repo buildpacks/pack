@@ -15,6 +15,7 @@ type Config struct {
 	DefaultRegistry     string           `toml:"default-registry-url,omitempty"`
 	DefaultRegistryName string           `toml:"default-registry,omitempty"`
 	DefaultBuilder      string           `toml:"default-builder-image,omitempty"`
+	PullPolicy          string           `toml:"pull-policy,omitempty"`
 	Experimental        bool             `toml:"experimental,omitempty"`
 	RunImages           []RunImage       `toml:"run-images"`
 	TrustedBuilders     []TrustedBuilder `toml:"trusted-builders,omitempty"`

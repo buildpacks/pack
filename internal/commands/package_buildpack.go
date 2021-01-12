@@ -37,8 +37,11 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 				return err
 			}
 
-			var err error
-			pullPolicy, err := pubcfg.ParsePullPolicy(flags.Policy)
+			stringPolicy := flags.Policy
+			if stringPolicy == "" {
+				stringPolicy = cfg.PullPolicy
+			}
+			pullPolicy, err := pubcfg.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}

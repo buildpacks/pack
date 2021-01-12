@@ -103,12 +103,51 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 					command.SetArgs([]string{repoName, "--pull-policy", "never"})
 					h.AssertNil(t, command.Execute())
 				})
+				it("takes precedence over config policy", func() {
+					opts.PullPolicy = pubcfg.PullNever
+					mockClient.EXPECT().
+						Rebase(gomock.Any(), opts).
+						Return(nil)
+
+					cfg.PullPolicy = "if-not-present"
+					command = commands.Rebase(logger, cfg, mockClient)
+
+					command.SetArgs([]string{repoName, "--pull-policy", "never"})
+					h.AssertNil(t, command.Execute())
+				})
 			})
 
 			when("--pull-policy unknown-policy", func() {
 				it("fails to run", func() {
 					command.SetArgs([]string{repoName, "--pull-policy", "unknown-policy"})
 					h.AssertError(t, command.Execute(), "parsing pull policy")
+				})
+			})
+			when("--pull-policy not set", func() {
+				when("no policy set in config", func() {
+					it("uses the default policy", func() {
+						opts.PullPolicy = pubcfg.PullAlways
+						mockClient.EXPECT().
+							Rebase(gomock.Any(), opts).
+							Return(nil)
+
+						command.SetArgs([]string{repoName})
+						h.AssertNil(t, command.Execute())
+					})
+				})
+				when("policy is set in config", func() {
+					it("uses set policy", func() {
+						opts.PullPolicy = pubcfg.PullIfNotPresent
+						mockClient.EXPECT().
+							Rebase(gomock.Any(), opts).
+							Return(nil)
+
+						cfg.PullPolicy = "if-not-present"
+						command = commands.Rebase(logger, cfg, mockClient)
+
+						command.SetArgs([]string{repoName})
+						h.AssertNil(t, command.Execute())
+					})
 				})
 			})
 		})

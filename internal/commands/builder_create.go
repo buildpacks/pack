@@ -43,7 +43,11 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 				return err
 			}
 
-			pullPolicy, err := pubcfg.ParsePullPolicy(flags.Policy)
+			stringPolicy := flags.Policy
+			if stringPolicy == "" {
+				stringPolicy = cfg.PullPolicy
+			}
+			pullPolicy, err := pubcfg.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
