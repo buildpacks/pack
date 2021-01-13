@@ -1205,6 +1205,7 @@ func testAcceptance(
 								pack.Supports("build --network"),
 								"--network flag not supported for build",
 							)
+							h.SkipIf(t, dockerHostOS() == "windows", "temporarily disabled on WCOW due to CI flakiness")
 
 							var err error
 							tmpDir, err = ioutil.TempDir("", "archive-buildpacks-")
@@ -1214,6 +1215,7 @@ func testAcceptance(
 						})
 
 						it.After(func() {
+							h.SkipIf(t, dockerHostOS() == "windows", "temporarily disabled on WCOW due to CI flakiness")
 							assert.Succeeds(os.RemoveAll(tmpDir))
 							assert.Succeeds(h.DockerRmi(dockerCli, repoName))
 						})
