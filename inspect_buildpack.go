@@ -108,7 +108,8 @@ func metadataFromArchive(downloader Downloader, path string) (buildpackMd buildp
 }
 
 func metadataFromImage(client *Client, name string, daemon bool) (buildpackMd buildpackage.Metadata, layersMd dist.BuildpackLayers, err error) {
-	img, err := client.imageFetcher.Fetch(context.Background(), name, daemon, config.PullNever)
+	imageName := buildpack.ParsePackageLocator(name)
+	img, err := client.imageFetcher.Fetch(context.Background(), imageName, daemon, config.PullNever)
 	if err != nil {
 		return buildpackage.Metadata{}, dist.BuildpackLayers{}, err
 	}
