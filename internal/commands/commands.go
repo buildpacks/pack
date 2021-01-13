@@ -71,7 +71,7 @@ func logError(logger logging.Logger, f func(cmd *cobra.Command, args []string) e
 }
 
 func enableExperimentalTip(logger logging.Logger, configPath string) {
-	logging.Tip(logger, "To enable experimental features, add %s to %s.", style.Symbol("experimental = true"), style.Symbol(configPath))
+	logging.Tip(logger, "To enable experimental features, run `pack config experimental true` to add %s to %s.", style.Symbol("experimental = true"), style.Symbol(configPath))
 }
 
 func multiValueHelp(name string) string {
