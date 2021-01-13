@@ -151,6 +151,45 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--pull-policy", "unknown-policy"})
 				h.AssertError(t, command.Execute(), "parsing pull policy")
 			})
+			it("takes precedence over a configured pull policy", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithPullPolicy(pubcfg.PullNever)).
+					Return(nil)
+
+				cfg := config.Config{PullPolicy: "if-not-present"}
+				command := commands.Build(logger, cfg, mockClient)
+
+				logger.WantVerbose(true)
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--pull-policy", "never"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("--pull-policy is not specified", func() {
+			when("no pull policy set in config", func() {
+				it("uses the default policy", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithPullPolicy(pubcfg.PullAlways)).
+						Return(nil)
+
+					command.SetArgs([]string{"image", "--builder", "my-builder"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("pull policy is set in config", func() {
+				it("uses the set policy", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithPullPolicy(pubcfg.PullNever)).
+						Return(nil)
+
+					cfg := config.Config{PullPolicy: "never"}
+					command := commands.Build(logger, cfg, mockClient)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"image", "--builder", "my-builder"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
 		})
 
 		when("volume mounts are specified", func() {
