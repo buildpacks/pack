@@ -28,7 +28,7 @@ func ConfigTrustedBuilder(logger logging.Logger, cfg config.Config, cfgPath stri
 	}
 
 	listCmd := generateListCmd("trusted-builders", logger, cfg, listTrustedBuilders)
-	listCmd.Long = "List Trusted Builders.\n\nShow the builders that are either trusted by default or have been explicitly trusted locally using `trust-builder`"
+	listCmd.Long = "List Trusted Builders.\n\nShow the builders that are either trusted by default or have been explicitly trusted locally using `trusted-builder add`"
 	listCmd.Example = "pack config trusted-builders list"
 	cmd.AddCommand(listCmd)
 

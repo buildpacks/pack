@@ -251,7 +251,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 
 				assert.Contains(outBuf.String(), `Please select a default builder with:
 
-	pack set-default-builder <builder-image>`)
+	pack config default-builder <builder-image>`)
 
 				assert.Matches(outBuf.String(), regexp.MustCompile(`Paketo Buildpacks:\s+'paketobuildpacks/builder:base'`))
 				assert.Matches(outBuf.String(), regexp.MustCompile(`Paketo Buildpacks:\s+'paketobuildpacks/builder:full'`))

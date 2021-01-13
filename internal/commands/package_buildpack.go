@@ -28,7 +28,7 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 		Long: "package-buildpack allows users to package (a) buildpack(s) into OCI format, which can then to be hosted in " +
 			"image repositories. You can also package a number of buildpacks together, to enable easier distribution of " +
 			"a set of buildpacks. Packaged buildpacks can be used as inputs to `pack build` (using the `--buildpack` flag), " +
-			"and they can be included in the configs used in `pack create-builder` and `pack package-buildpack`. For more " +
+			"and they can be included in the configs used in `pack builder create` and `pack buildpack package`. For more " +
 			"on how to package a buildpack, see: https://buildpacks.io/docs/buildpack-author-guide/package-a-buildpack/.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			deprecationWarning(logger, "package-buildpack", "buildpack package")
