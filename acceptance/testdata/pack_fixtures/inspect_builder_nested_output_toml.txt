@@ -35,12 +35,12 @@ default = false
 
   [[remote_info.buildpacks]]
     id = "noop.buildpack"
-    version = "noop.buildpack.version"
+    version = "noop.buildpack.later-version"
+    homepage = "http://geocities.com/cool-bp"
 
   [[remote_info.buildpacks]]
     id = "noop.buildpack"
-    version = "noop.buildpack.later-version"
-    homepage = "http://geocities.com/cool-bp"
+    version = "noop.buildpack.version"
 
   [[remote_info.buildpacks]]
     id = "read/env"
@@ -109,12 +109,12 @@ default = false
 
   [[local_info.buildpacks]]
     id = "noop.buildpack"
-    version = "noop.buildpack.version"
+    version = "noop.buildpack.later-version"
+    homepage = "http://geocities.com/cool-bp"
 
   [[local_info.buildpacks]]
     id = "noop.buildpack"
-    version = "noop.buildpack.later-version"
-    homepage = "http://geocities.com/cool-bp"
+    version = "noop.buildpack.version"
 
   [[local_info.buildpacks]]
     id = "read/env"

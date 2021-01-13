@@ -149,6 +149,10 @@ func uniqueBuildpacks(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
 
 func sortBuildPacksByID(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
 	sort.Slice(buildpacks, func(i int, j int) bool {
+		if buildpacks[i].ID == buildpacks[j].ID {
+			return buildpacks[i].Version < buildpacks[j].Version
+		}
+
 		return buildpacks[i].ID < buildpacks[j].ID
 	})
 
