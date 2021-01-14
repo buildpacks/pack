@@ -5,6 +5,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/dist"
 )
 
 type Buildpack struct {
@@ -25,14 +27,9 @@ type Build struct {
 	Env        []EnvVar    `toml:"env"`
 }
 
-type License struct {
-	Type string `toml:"type"`
-	URI  string `toml:"uri"`
-}
-
 type Project struct {
-	Name     string    `toml:"name"`
-	Licenses []License `toml:"licenses"`
+	Name     string         `toml:"name"`
+	Licenses []dist.License `toml:"licenses"`
 }
 
 type Descriptor struct {
