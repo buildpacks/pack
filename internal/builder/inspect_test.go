@@ -39,6 +39,10 @@ var (
 		ID:      "test.bp.two",
 		Version: "test.bp.two.version",
 	}
+	testBuildpackVersionTwo = dist.BuildpackInfo{
+		ID:      "test.bp.two",
+		Version: "test.bp.two.version-2",
+	}
 	testBuildpacks = []dist.BuildpackInfo{
 		testBuildpack,
 		testNestedBuildpack,
@@ -212,6 +216,29 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 			assert.Equal(info.BuildpackLayers, testLayers)
 			assert.Equal(info.Lifecycle, expectedTestLifecycle)
 			assert.Equal(info.CreatedBy, testCreatorData)
+		})
+
+		it("sorts buildPacks by ID then Version", func() {
+			metadata := builder.Metadata{
+				Description: testBuilderDescription,
+				Buildpacks: []dist.BuildpackInfo{
+					testNestedBuildpack,
+					testBuildpackVersionTwo,
+					testBuildpack,
+				},
+			}
+
+			labelManager := newLabelManager(returnForMetadata(metadata))
+			inspector := builder.NewInspector(
+				newDefaultInspectableFetcher(),
+				newLabelManagerFactory(labelManager),
+				newDefaultDetectionCalculator(),
+			)
+
+			info, err := inspector.Inspect(testBuilderName, true, pubbldr.OrderDetectionNone)
+
+			assert.Nil(err)
+			assert.Equal(info.Buildpacks, []dist.BuildpackInfo{testBuildpack, testBuildpackVersionTwo, testNestedBuildpack})
 		})
 
 		when("there are duplicated buildpacks in metadata", func() {
