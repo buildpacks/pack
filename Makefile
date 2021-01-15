@@ -114,7 +114,7 @@ acceptance-all:
 
 clean:
 	@echo "> Cleaning workspace..."
-	@$(RMRF) .$/out || (exit 0)
+	@$(RMRF) .$/out benchmarks.test || (exit 0)
 
 verify: verify-format lint
 
@@ -137,9 +137,20 @@ prepare-for-pr: tidy verify test
 	echo "-----------------\n"  &&\
 	exit 0)
 
+benchmark: out
+	@echo "> Running Benchmarks"
+	$(GOCMD) test -run=^$  -bench=. -benchtime=1s -benchmem -memprofile=./out/bench_mem.out -cpuprofile=./out/bench_cpu.out -tags=benchmarks ./benchmarks/ -v
+# NOTE: You can analyze the results, using go tool pprof. For instance, you can start a server to see a graph of the cpu usage by running
+# go tool pprof -http=":8082" out/bench_cpu.out. Alternatively, you can run go tool pprof, and in the ensuing cli, run
+# commands like top10 or web to dig down into the cpu and memory usage
+# For more, see https://blog.golang.org/pprof
+
 # NOTE: Windows doesn't support `-p`
 out:
-	@mkdir out
-	mkdir out$/tests
+	@if [ ! -d out ]; then \
+		mkdir out; \
+		mkdir out$/tests; \
+	fi
 
-.PHONY: clean build format imports lint test unit acceptance prepare-for-pr verify verify-format
+
+.PHONY: clean build format imports lint test unit acceptance prepare-for-pr verify verify-format benchmark
