@@ -429,9 +429,17 @@ version = "1.2.3"
 	when("#Match", func() {
 		it("compares, using only the id and version", func() {
 			other := dist.BuildpackInfo{
-				ID:       "same",
-				Version:  "1.2.3",
-				Homepage: "something else",
+				ID:          "same",
+				Version:     "1.2.3",
+				Description: "something else",
+				Homepage:    "something else",
+				Keywords:    []string{"something", "else"},
+				Licenses: []dist.License{
+					{
+						Type: "MIT",
+						URI:  "https://example.com",
+					},
+				},
 			}
 
 			self := dist.BuildpackInfo{
