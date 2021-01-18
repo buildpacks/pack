@@ -41,29 +41,29 @@
     ],
     "buildpacks": [
       {
-        "id": "read/env",
-        "version": "read-env-version"
+        "id": "noop.buildpack",
+        "version": "noop.buildpack.later-version",
+        "homepage": "http://geocities.com/cool-bp"
       },
       {
         "id": "noop.buildpack",
         "version": "noop.buildpack.version"
       },
       {
-        "id": "noop.buildpack",
-        "version": "noop.buildpack.later-version",
-        "homepage": "http://geocities.com/cool-bp"
+        "id": "read/env",
+        "version": "read-env-version"
       },
       {
         "id": "simple/layers",
         "version": "simple-layers-version"
       },
       {
-        "id": "simple/nested-level-2",
-        "version": "nested-l2-version"
-      },
-      {
         "id": "simple/nested-level-1",
         "version": "nested-l1-version"
+      },
+      {
+        "id": "simple/nested-level-2",
+        "version": "nested-l2-version"
       }
     ],
     "detection_order": [
@@ -132,29 +132,29 @@
     ],
     "buildpacks": [
       {
-        "id": "read/env",
-        "version": "read-env-version"
+        "id": "noop.buildpack",
+        "version": "noop.buildpack.later-version",
+        "homepage": "http://geocities.com/cool-bp"
       },
       {
         "id": "noop.buildpack",
         "version": "noop.buildpack.version"
       },
       {
-        "id": "noop.buildpack",
-        "version": "noop.buildpack.later-version",
-        "homepage": "http://geocities.com/cool-bp"
+        "id": "read/env",
+        "version": "read-env-version"
       },
       {
         "id": "simple/layers",
         "version": "simple-layers-version"
       },
       {
-        "id": "simple/nested-level-2",
-        "version": "nested-l2-version"
-      },
-      {
         "id": "simple/nested-level-1",
         "version": "nested-l1-version"
+      },
+      {
+        "id": "simple/nested-level-2",
+        "version": "nested-l2-version"
       }
     ],
     "detection_order": [

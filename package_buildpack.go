@@ -45,6 +45,10 @@ type PackageBuildpackOptions struct {
 
 	// Strategy for updating images before packaging.
 	PullPolicy config.PullPolicy
+
+	// Name of the buildpack registry. Used to
+	// add buildpacks to a package.
+	Registry string
 }
 
 // PackageBuildpack packages buildpack(s) into either an image or file.
@@ -135,6 +139,23 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 				mainBP, deps, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, opts.Publish, opts.PullPolicy)
 				if err != nil {
 					return err
+				}
+
+				depBPs = append([]dist.Buildpack{mainBP}, deps...)
+			case buildpack.RegistryLocator:
+				registryCache, err := c.getRegistry(c.logger, opts.Registry)
+				if err != nil {
+					return errors.Wrapf(err, "invalid registry '%s'", opts.Registry)
+				}
+
+				registryBp, err := registryCache.LocateBuildpack(dep.URI)
+				if err != nil {
+					return errors.Wrapf(err, "locating in registry %s", style.Symbol(dep.URI))
+				}
+
+				mainBP, deps, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, opts.Publish, opts.PullPolicy)
+				if err != nil {
+					return errors.Wrapf(err, "extracting from registry %s", style.Symbol(dep.URI))
 				}
 
 				depBPs = append([]dist.Buildpack{mainBP}, deps...)

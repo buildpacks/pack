@@ -34,29 +34,29 @@ default = false
     name = "{{.run_image_mirror}}"
 
   [[remote_info.buildpacks]]
-    id = "read/env"
-    version = "read-env-version"
+    id = "noop.buildpack"
+    version = "noop.buildpack.later-version"
+    homepage = "http://geocities.com/cool-bp"
 
   [[remote_info.buildpacks]]
     id = "noop.buildpack"
     version = "noop.buildpack.version"
 
   [[remote_info.buildpacks]]
-    id = "noop.buildpack"
-    version = "noop.buildpack.later-version"
-    homepage = "http://geocities.com/cool-bp"
+    id = "read/env"
+    version = "read-env-version"
 
   [[remote_info.buildpacks]]
     id = "simple/layers"
     version = "simple-layers-version"
 
   [[remote_info.buildpacks]]
-    id = "simple/nested-level-2"
-    version = "nested-l2-version"
-
-  [[remote_info.buildpacks]]
     id = "simple/nested-level-1"
     version = "nested-l1-version"
+
+  [[remote_info.buildpacks]]
+    id = "simple/nested-level-2"
+    version = "nested-l2-version"
 
   [[remote_info.detection_order]]
 
@@ -108,29 +108,29 @@ default = false
     name = "{{.run_image_mirror}}"
 
   [[local_info.buildpacks]]
-    id = "read/env"
-    version = "read-env-version"
+    id = "noop.buildpack"
+    version = "noop.buildpack.later-version"
+    homepage = "http://geocities.com/cool-bp"
 
   [[local_info.buildpacks]]
     id = "noop.buildpack"
     version = "noop.buildpack.version"
 
   [[local_info.buildpacks]]
-    id = "noop.buildpack"
-    version = "noop.buildpack.later-version"
-    homepage = "http://geocities.com/cool-bp"
+    id = "read/env"
+    version = "read-env-version"
 
   [[local_info.buildpacks]]
     id = "simple/layers"
     version = "simple-layers-version"
 
   [[local_info.buildpacks]]
-    id = "simple/nested-level-2"
-    version = "nested-l2-version"
-
-  [[local_info.buildpacks]]
     id = "simple/nested-level-1"
     version = "nested-l1-version"
+
+  [[local_info.buildpacks]]
+    id = "simple/nested-level-2"
+    version = "nested-l2-version"
 
   [[local_info.detection_order]]
 
