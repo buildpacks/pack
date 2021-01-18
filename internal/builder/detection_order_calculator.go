@@ -30,14 +30,14 @@ func (c *DetectionOrderCalculator) Order(
 ) (pubbldr.DetectionOrder, error) {
 	recurser := newDetectionOrderRecurser(layers, maxDepth)
 
-	return recurser.detectionOrderFromOrder(order, dist.BuildpackRef{}, 0, map[dist.BuildpackRef]interface{}{}), nil
+	return recurser.detectionOrderFromOrder(order, dist.BuildpackRef{}, 0, map[string]interface{}{}), nil
 }
 
 func (r *detectionOrderRecurser) detectionOrderFromOrder(
 	order dist.Order,
 	parentBuildpack dist.BuildpackRef,
 	currentDepth int,
-	visited map[dist.BuildpackRef]interface{},
+	visited map[string]interface{},
 ) pubbldr.DetectionOrder {
 	var detectionOrder pubbldr.DetectionOrder
 	for _, orderEntry := range order {
@@ -58,14 +58,14 @@ func (r *detectionOrderRecurser) detectionOrderFromOrder(
 func (r *detectionOrderRecurser) detectionOrderFromGroup(
 	group []dist.BuildpackRef,
 	currentDepth int,
-	visited map[dist.BuildpackRef]interface{},
+	visited map[string]interface{},
 ) pubbldr.DetectionOrder {
 	var groupDetectionOrder pubbldr.DetectionOrder
 
 	for _, bp := range group {
-		_, bpSeen := visited[bp]
+		_, bpSeen := visited[bp.FullName()]
 		if !bpSeen {
-			visited[bp] = true
+			visited[bp.FullName()] = true
 		}
 
 		layer, ok := r.layers.Get(bp.ID, bp.Version)
@@ -96,8 +96,8 @@ func (r *detectionOrderRecurser) shouldGoDeeper(currentDepth int) bool {
 	return false
 }
 
-func copyMap(toCopy map[dist.BuildpackRef]interface{}) map[dist.BuildpackRef]interface{} {
-	result := make(map[dist.BuildpackRef]interface{}, len(toCopy))
+func copyMap(toCopy map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{}, len(toCopy))
 	for key := range toCopy {
 		result[key] = true
 	}

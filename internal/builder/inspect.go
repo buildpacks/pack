@@ -133,14 +133,14 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 }
 
 func uniqueBuildpacks(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
-	foundBuildpacks := map[dist.BuildpackInfo]interface{}{}
+	foundBuildpacks := map[string]interface{}{}
 	var uniqueBuildpacks []dist.BuildpackInfo
 
 	for _, bp := range buildpacks {
-		_, ok := foundBuildpacks[bp]
+		_, ok := foundBuildpacks[bp.FullName()]
 		if !ok {
 			uniqueBuildpacks = append(uniqueBuildpacks, bp)
-			foundBuildpacks[bp] = true
+			foundBuildpacks[bp.FullName()] = true
 		}
 	}
 

@@ -416,8 +416,17 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API: api.MustParse("0.2"),
 				Info: dist.BuildpackInfo{
-					ID:      "bp.1.id",
-					Version: "bp.1.version",
+					ID:          "bp.1.id",
+					Version:     "bp.1.version",
+					Description: "some description",
+					Homepage:    "https://example.com/homepage",
+					Keywords:    []string{"some-keyword"},
+					Licenses: []dist.License{
+						{
+							Type: "MIT",
+							URI:  "https://example.com/license",
+						},
+					},
 				},
 				Stacks: []dist.Stack{
 					{ID: "stack.id.1"},
@@ -442,6 +451,11 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, len(md.Stacks), 2)
 			h.AssertEq(t, md.Stacks[0].ID, "stack.id.1")
 			h.AssertEq(t, md.Stacks[1].ID, "stack.id.2")
+			h.AssertEq(t, md.Keywords[0], "some-keyword")
+			h.AssertEq(t, md.Homepage, "https://example.com/homepage")
+			h.AssertEq(t, md.Description, "some description")
+			h.AssertEq(t, md.Licenses[0].Type, "MIT")
+			h.AssertEq(t, md.Licenses[0].URI, "https://example.com/license")
 
 			osVal, err := packageImage.OS()
 			h.AssertNil(t, err)

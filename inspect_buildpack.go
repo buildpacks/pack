@@ -137,7 +137,7 @@ func extractOrder(buildpackMd buildpackage.Metadata) dist.Order {
 
 func extractBuildpacks(layersMd dist.BuildpackLayers) []dist.BuildpackInfo {
 	result := []dist.BuildpackInfo{}
-	buildpackSet := map[dist.BuildpackInfo]bool{}
+	buildpackSet := map[*dist.BuildpackInfo]bool{}
 
 	for buildpackID, buildpackMap := range layersMd {
 		for version, layerInfo := range buildpackMap {
@@ -146,12 +146,12 @@ func extractBuildpacks(layersMd dist.BuildpackLayers) []dist.BuildpackInfo {
 				Version:  version,
 				Homepage: layerInfo.Homepage,
 			}
-			buildpackSet[bp] = true
+			buildpackSet[&bp] = true
 		}
 	}
 
 	for currentBuildpack := range buildpackSet {
-		result = append(result, currentBuildpack)
+		result = append(result, *currentBuildpack)
 	}
 
 	sort.Slice(result, func(i int, j int) bool {

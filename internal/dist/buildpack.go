@@ -40,9 +40,17 @@ type Buildpack interface {
 }
 
 type BuildpackInfo struct {
-	ID       string `toml:"id,omitempty" json:"id,omitempty" yaml:"id,omitempty"`
-	Version  string `toml:"version,omitempty" json:"version,omitempty" yaml:"version,omitempty"`
-	Homepage string `toml:"homepage,omitempty" json:"homepage,omitempty" yaml:"homepage,omitempty"`
+	ID          string    `toml:"id,omitempty" json:"id,omitempty" yaml:"id,omitempty"`
+	Version     string    `toml:"version,omitempty" json:"version,omitempty" yaml:"version,omitempty"`
+	Description string    `toml:"description,omitempty" json:"description,omitempty" yaml:"description,omitempty"`
+	Homepage    string    `toml:"homepage,omitempty" json:"homepage,omitempty" yaml:"homepage,omitempty"`
+	Keywords    []string  `toml:"keywords,omitempty" json:"keywords,omitempty" yaml:"keywords,omitempty"`
+	Licenses    []License `toml:"licenses,omitempty" json:"licenses,omitempty" yaml:"licenses,omitempty"`
+}
+
+type License struct {
+	Type string `toml:"type"`
+	URI  string `toml:"uri"`
 }
 
 func (b BuildpackInfo) FullName() string {
