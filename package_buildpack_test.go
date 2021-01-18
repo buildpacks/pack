@@ -23,6 +23,7 @@ import (
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/buildpackage"
+	cfg "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/image"
@@ -684,6 +685,89 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						Publish:    false,
 						PullPolicy: pubcfg.PullAlways,
 						Format:     pack.FormatFile,
+					}))
+
+					assertPackageBPFileHasBuildpacks(t, packagePath, []dist.BuildpackDescriptor{packageDescriptor, childDescriptor})
+				})
+			})
+
+			when("dependencies include a buildpack registry urn file", func() {
+				var (
+					tmpDir          string
+					registryFixture string
+					packHome        string
+				)
+				it.Before(func() {
+					var err error
+
+					childDescriptor = dist.BuildpackDescriptor{
+						API:    api.MustParse("0.2"),
+						Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
+						Stacks: []dist.Stack{{ID: "some.stack.id"}},
+					}
+
+					packageDescriptor = dist.BuildpackDescriptor{
+						API:  api.MustParse("0.2"),
+						Info: dist.BuildpackInfo{ID: "bp.1", Version: "1.2.3"},
+						Order: dist.Order{{
+							Group: []dist.BuildpackRef{{
+								BuildpackInfo: dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
+								Optional:      false,
+							}},
+						}},
+					}
+
+					tmpDir, err = ioutil.TempDir("", "registry")
+					h.AssertNil(t, err)
+
+					packHome = filepath.Join(tmpDir, ".pack")
+					err = os.MkdirAll(packHome, 0755)
+					h.AssertNil(t, err)
+					os.Setenv("PACK_HOME", packHome)
+
+					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
+					h.AssertNotNil(t, registryFixture)
+
+					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
+					packageImage.AddLayerWithDiffID("testdata/empty-file", "sha256:xxx")
+					packageImage.SetLabel("io.buildpacks.buildpackage.metadata", `{"id":"example/foo", "version":"1.1.0", "stacks":[{"id":"some.stack.id"}]}`)
+					packageImage.SetLabel("io.buildpacks.buildpack.layers", `{"example/foo":{"1.1.0":{"api": "0.2", "layerDiffID":"sha256:xxx", "stacks":[{"id":"some.stack.id"}]}}}`)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), true, pubcfg.PullAlways).Return(packageImage, nil)
+
+					packHome := filepath.Join(tmpDir, "packHome")
+					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
+					configPath := filepath.Join(packHome, "config.toml")
+					h.AssertNil(t, cfg.Write(cfg.Config{
+						Registries: []cfg.Registry{
+							{
+								Name: "some-registry",
+								Type: "github",
+								URL:  registryFixture,
+							},
+						},
+					}, configPath))
+				})
+
+				it.After(func() {
+					os.Unsetenv("PACK_HOME")
+					err := os.RemoveAll(tmpDir)
+					h.AssertNil(t, err)
+				})
+
+				it("should open file and correctly add buildpacks", func() {
+					packagePath := filepath.Join(tmpDir, "test.cnb")
+
+					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
+						Name: packagePath,
+						Config: pubbldpkg.Config{
+							Platform:     dist.Platform{OS: "linux"},
+							Buildpack:    dist.BuildpackURI{URI: createBuildpack(packageDescriptor)},
+							Dependencies: []dist.ImageOrURI{{BuildpackURI: dist.BuildpackURI{URI: "urn:cnb:registry:example/foo@1.1.0"}}},
+						},
+						Publish:    false,
+						PullPolicy: pubcfg.PullAlways,
+						Format:     pack.FormatFile,
+						Registry:   "some-registry",
 					}))
 
 					assertPackageBPFileHasBuildpacks(t, packagePath, []dist.BuildpackDescriptor{packageDescriptor, childDescriptor})
