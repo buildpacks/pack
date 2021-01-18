@@ -8,7 +8,7 @@ labels:
     description: |
       _Experimental features that may change in the future. Use them at your discretion._
       
-      _To enable these features, add `experimental = true` to your `~/.pack/config.toml`._
+      _To enable these features, run `pack config experimental true`, or add `experimental = true` to your `~/.pack/config.toml`._
     weight: 9
   type/enhancement:
     title: Features

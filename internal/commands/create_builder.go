@@ -28,12 +28,12 @@ func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) 
 		Example: "pack create-builder my-builder:bionic --config ./builder.toml",
 		Long: `A builder is an image that bundles all the bits and information on how to build your apps, such as buildpacks, an implementation of the lifecycle, and a build-time environment that pack uses when executing the lifecycle. When building an app, you can use community builders; you can see our suggestions by running
 
-	pack suggest-builders
+	pack builder suggest
 
 Creating a custom builder allows you to control what buildpacks are used and what image apps are based on. For more on how to create a builder, see: https://buildpacks.io/docs/operator-guide/create-a-builder/.
 `,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			logger.Warn("Command 'pack create-builder' has been deprecated, please use 'pack builder create' instead")
+			deprecationWarning(logger, "create-builder", "builder create")
 
 			if err := validateCreateFlags(&flags, cfg); err != nil {
 				return err

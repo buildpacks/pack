@@ -55,7 +55,7 @@ func SuggestBuilders(logger logging.Logger, inspector BuilderInspector) *cobra.C
 		Short:   "Display list of recommended builders",
 		Example: "pack suggest-builders",
 		Run: func(cmd *cobra.Command, s []string) {
-			logger.Warn("Command 'pack suggest-builder' has been deprecated, please use 'pack builder suggest' instead")
+			deprecationWarning(logger, "suggest-builder", "builder suggest")
 			suggestBuilders(logger, inspector)
 		},
 	}
@@ -66,7 +66,7 @@ func SuggestBuilders(logger logging.Logger, inspector BuilderInspector) *cobra.C
 func suggestSettingBuilder(logger logging.Logger, inspector BuilderInspector) {
 	logger.Info("Please select a default builder with:")
 	logger.Info("")
-	logger.Info("\tpack set-default-builder <builder-image>")
+	logger.Info("\tpack config default-builder <builder-image>")
 	logger.Info("")
 	suggestBuilders(logger, inspector)
 }
