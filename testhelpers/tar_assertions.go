@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-containerregistry/pkg/v1/v1util"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/archive"
@@ -133,7 +132,7 @@ func IsJSON() TarEntryAssertion {
 
 func IsGzipped() TarEntryAssertion {
 	return func(t *testing.T, header *tar.Header, data []byte) {
-		isGzipped, err := v1util.IsGzipped(bytes.NewReader(data))
+		_, isGzipped, err := isGzipped(bytes.NewReader(data))
 		AssertNil(t, err)
 		if !isGzipped {
 			t.Fatal("is not gzipped")
