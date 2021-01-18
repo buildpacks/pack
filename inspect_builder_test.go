@@ -228,11 +228,6 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 							RunImageMirrors: []string{"gcr.io/some/default"},
 							Buildpacks: []dist.BuildpackInfo{
 								{
-									ID:       "test.nested",
-									Version:  "test.nested.version",
-									Homepage: "http://geocities.com/top-bp",
-								},
-								{
 									ID:       "test.bp.one",
 									Version:  "test.bp.one.version",
 									Homepage: "http://geocities.com/cool-bp",
@@ -240,6 +235,11 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 								{
 									ID:      "test.bp.two",
 									Version: "test.bp.two.version",
+								},
+								{
+									ID:       "test.nested",
+									Version:  "test.nested.version",
+									Homepage: "http://geocities.com/top-bp",
 								},
 							},
 							Order: pubbldr.DetectionOrder{

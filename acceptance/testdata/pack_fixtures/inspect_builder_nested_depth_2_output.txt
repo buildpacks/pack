@@ -32,12 +32,12 @@ Run Images:
 
 Buildpacks:
   ID                           VERSION                             HOMEPAGE
-  read/env                     read-env-version
-  noop.buildpack               noop.buildpack.version
   noop.buildpack               noop.buildpack.later-version        http://geocities.com/cool-bp
+  noop.buildpack               noop.buildpack.version
+  read/env                     read-env-version
   simple/layers                simple-layers-version
-  simple/nested-level-2        nested-l2-version
   simple/nested-level-1        nested-l1-version
+  simple/nested-level-2        nested-l2-version
 
 Detection Order:
  └ Group #1:
@@ -78,12 +78,12 @@ Run Images:
 
 Buildpacks:
   ID                           VERSION                             HOMEPAGE
-  read/env                     read-env-version
-  noop.buildpack               noop.buildpack.version
   noop.buildpack               noop.buildpack.later-version        http://geocities.com/cool-bp
+  noop.buildpack               noop.buildpack.version
+  read/env                     read-env-version
   simple/layers                simple-layers-version
-  simple/nested-level-2        nested-l2-version
   simple/nested-level-1        nested-l1-version
+  simple/nested-level-2        nested-l2-version
 
 Detection Order:
  └ Group #1:
