@@ -80,6 +80,8 @@ func isGzipped(reader io.Reader) (headerBytes []byte, isGzipped bool, err error)
 	if err != nil {
 		return magicHeader, false, err
 	}
+	// This assertion is based on https://stackoverflow.com/a/28332019. It checks whether the two header bytes of
+	//the file match the expected headers for a gzip file; the first one is 0x1f and the second is 0x8b
 	return magicHeader, bytes.Equal(magicHeader, gzipMagicHeader), nil
 }
 
@@ -132,9 +134,9 @@ func IsJSON() TarEntryAssertion {
 
 func IsGzipped() TarEntryAssertion {
 	return func(t *testing.T, header *tar.Header, data []byte) {
-		// This assertion is based on https://stackoverflow.com/a/28332019. It checks whether the two header bytes of
-		//the file match the expected headers for a gzip file; the first one is 0x1f and the second is 0x8b
-		if len(data) < 2 || data[0] != 31 || data[1] != 139 {
+		_, isGzipped, err := isGzipped(bytes.NewReader(data))
+		AssertNil(t, err)
+		if !isGzipped {
 			t.Fatal("is not gzipped")
 		}
 	}
