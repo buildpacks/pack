@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-containerregistry/pkg/v1/v1util"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/archive"
@@ -133,9 +132,9 @@ func IsJSON() TarEntryAssertion {
 
 func IsGzipped() TarEntryAssertion {
 	return func(t *testing.T, header *tar.Header, data []byte) {
-		isGzipped, err := v1util.IsGzipped(bytes.NewReader(data))
-		AssertNil(t, err)
-		if !isGzipped {
+		// This assertion is based on https://stackoverflow.com/a/28332019. It checks whether the two header bytes of
+		//the file match the expected headers for a gzip file; the first one is 0x1f and the second is 0x8b
+		if len(data) < 2 || data[0] != 31 || data[1] != 139 {
 			t.Fatal("is not gzipped")
 		}
 	}
