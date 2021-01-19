@@ -5,6 +5,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
@@ -15,8 +16,6 @@ var (
 		"bash": createBashBuildpack,
 		"go": createGolangBuildpack,
 		"golang": createGolangBuildpack,
-		"python": createPythonBuildpack,
-		"py": createPythonBuildpack,
 	}
 
 	bashBinBuild = `
@@ -69,6 +68,7 @@ func (c *Client) CreateBuildpack(ctx context.Context, opts CreateBuildpackOption
 		return err
 	}
 	defer f.Close()
+	c.logger.Infof("    %s  buildpack.toml", style.Key("create"))
 
 	if err := os.MkdirAll(filepath.Join(opts.Path, "bin"), 0755); err != nil {
 		return err
@@ -79,10 +79,10 @@ func (c *Client) CreateBuildpack(ctx context.Context, opts CreateBuildpackOption
 		return errors.Wrapf(err, "Unsupported language: %s", opts.Language)
 	}
 
-	return createFunc.(func(string) error)(opts.Path)
+	return createFunc.(func(string, *Client) error)(opts.Path, c)
 }
 
-func createBashBuildpack(path string) error {
+func createBashBuildpack(path string, c *Client) error {
 	bin := filepath.Join(path, "bin", "detect")
 	f, err := os.Create(bin)
 	if err != nil {
@@ -95,6 +95,7 @@ func createBashBuildpack(path string) error {
 	if err = os.Chmod(bin, 755); err != nil {
 		return err
 	}
+	c.logger.Infof("    %s  bin/detect", style.Key("create"))
 
 	bin = filepath.Join(path, "bin", "build")
 	f, err = os.Create(filepath.Join(path, "bin", "build"))
@@ -105,16 +106,13 @@ func createBashBuildpack(path string) error {
 	if _, err = f.WriteString(bashBinBuild); err != nil {
 		return err
 	}
+	c.logger.Infof("    %s  bin/build", style.Key("create"))
 
 	return os.Chmod(bin, 755)
 }
 
-func createGolangBuildpack(path string) error {
+func createGolangBuildpack(path string, c *Client) error {
 	// TODO
 	// include libbuildpack dependency
-	return nil
-}
-
-func createPythonBuildpack(path string) error {
 	return nil
 }
