@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
-	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
@@ -21,14 +20,9 @@ type BuildpackCreateFlags struct {
 	Stacks   []string
 }
 
-// BuildpackPackager packages buildpacks
+// BuildpackCreator creates buildpacks
 type BuildpackCreator interface {
 	CreateBuildpack(ctx context.Context, options pack.CreateBuildpackOptions) error
-}
-
-// PackageConfigReader reads BuildpackPackage configs
-type CreatorConfigReader interface {
-	Read(path string) (pubbldpkg.Config, error)
 }
 
 // BuildpackCreate generates the scaffolding of a buildpack
