@@ -9,7 +9,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
@@ -52,16 +51,9 @@ type CreateBuildpackOptions struct {
 
 	// The stacks this buildpack will work with
 	Stacks []dist.Stack
-
-	// Defines the Buildpacks configuration.
-	Config pubbldpkg.Config
 }
 
 func (c *Client) CreateBuildpack(ctx context.Context, opts CreateBuildpackOptions) error {
-	if opts.Config.Platform.OS == "windows" && !c.experimental {
-		return NewExperimentError("Windows buildpack create support is currently experimental.")
-	}
-
 	buildpackTOML := dist.BuildpackDescriptor{
 		API:    build.SupportedPlatformAPIVersions.Latest(),
 		Stacks: opts.Stacks,
@@ -90,10 +82,10 @@ func (c *Client) CreateBuildpack(ctx context.Context, opts CreateBuildpackOption
 		return errors.Wrapf(err, "Unsupported language: %s", opts.Language)
 	}
 
-	return createFunc.(func(string, pubbldpkg.Config, *Client) error)(opts.Path, opts.Config, c)
+	return createFunc.(func(string, *Client) error)(opts.Path, c)
 }
 
-func createBashBuildpack(path string, config pubbldpkg.Config, c *Client) error {
+func createBashBuildpack(path string, c *Client) error {
 	if err := createBinScript(path, "build", bashBinBuild); err != nil {
 		return err
 	}
@@ -107,7 +99,7 @@ func createBashBuildpack(path string, config pubbldpkg.Config, c *Client) error 
 	return nil
 }
 
-func createGolangBuildpack(path string, config pubbldpkg.Config, c *Client) error {
+func createGolangBuildpack(path string, c *Client) error {
 	// TODO
 	// include libbuildpack dependency
 	return nil
