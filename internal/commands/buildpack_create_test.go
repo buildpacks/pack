@@ -71,5 +71,12 @@ func testBuildpackCreateCommand(t *testing.T, when spec.G, it spec.S) {
 			err := command.Execute()
 			h.AssertNil(t, err)
 		})
+
+		it("rejects unknown languages", func() {
+			command.SetArgs([]string{"--path", tmpDir, "--language", "lua", "example/some-cnb"})
+
+			err := command.Execute()
+			h.AssertError(t, err, "\"lua\" is not a valid language choice")
+		})
 	})
 }
