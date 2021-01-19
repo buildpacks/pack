@@ -2,14 +2,16 @@ package commands
 
 import (
 	"context"
+	"os"
+
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+
 	"github.com/buildpacks/pack"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-	"os"
 )
 
 // BuildpackCreateFlags define flags provided to the BuildpackCreate command
@@ -45,7 +47,6 @@ func BuildpackCreate(logger logging.Logger, client BuildpackCreator) *cobra.Comm
 
 			path := flags.Path
 			if len(path) == 0 {
-
 				cwd, err := os.Getwd()
 				if err != nil {
 					return err

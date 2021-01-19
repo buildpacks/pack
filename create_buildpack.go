@@ -2,19 +2,21 @@ package pack
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+
 	"github.com/BurntSushi/toml"
+	"github.com/pkg/errors"
+
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/pkg/errors"
-	"os"
-	"path/filepath"
 )
 
 var (
 	BuildpackLanguages = map[string]interface{}{
-		"bash": createBashBuildpack,
-		"go": createGolangBuildpack,
+		"bash":   createBashBuildpack,
+		"go":     createGolangBuildpack,
 		"golang": createGolangBuildpack,
 	}
 
@@ -52,10 +54,10 @@ type CreateBuildpackOptions struct {
 
 func (c *Client) CreateBuildpack(ctx context.Context, opts CreateBuildpackOptions) error {
 	buildpackTOML := dist.BuildpackDescriptor{
-		API: build.SupportedPlatformAPIVersions.Latest(),
+		API:    build.SupportedPlatformAPIVersions.Latest(),
 		Stacks: opts.Stacks,
 		Info: dist.BuildpackInfo{
-			ID: opts.ID,
+			ID:      opts.ID,
 			Version: "0.0.0",
 		},
 	}
@@ -92,7 +94,7 @@ func createBashBuildpack(path string, c *Client) error {
 	if _, err = f.WriteString(bashBinDetect); err != nil {
 		return err
 	}
-	if err = os.Chmod(bin, 755); err != nil {
+	if err = os.Chmod(bin, 0755); err != nil {
 		return err
 	}
 	c.logger.Infof("    %s  bin/detect", style.Key("create"))
@@ -108,7 +110,7 @@ func createBashBuildpack(path string, c *Client) error {
 	}
 	c.logger.Infof("    %s  bin/build", style.Key("create"))
 
-	return os.Chmod(bin, 755)
+	return os.Chmod(bin, 0755)
 }
 
 func createGolangBuildpack(path string, c *Client) error {
