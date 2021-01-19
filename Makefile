@@ -147,7 +147,9 @@ benchmark: out
 
 # NOTE: Windows doesn't support `-p`
 out:
-	@if [ ! -d out ]; then \
+	@if [ -d out ]; then \
+		@echo "out exists"; \
+	else \
 		mkdir out; \
 		mkdir out$/tests; \
 	fi
