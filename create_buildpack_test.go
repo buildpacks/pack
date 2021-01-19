@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/heroku/color"
@@ -57,11 +58,15 @@ func testCreateBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 			info, err := os.Stat(filepath.Join(tmpDir, "bin/build"))
 			h.AssertFalse(t, os.IsNotExist(err))
-			h.AssertTrue(t, info.Mode()&0100 != 0)
+			if runtime.GOOS != "windows" {
+				h.AssertTrue(t, info.Mode()&0100 != 0)
+			}
 
 			info, err = os.Stat(filepath.Join(tmpDir, "bin/detect"))
 			h.AssertFalse(t, os.IsNotExist(err))
-			h.AssertTrue(t, info.Mode()&0100 != 0)
+			if runtime.GOOS != "windows" {
+				h.AssertTrue(t, info.Mode()&0100 != 0)
+			}
 
 			assertBuildpackToml(t, tmpDir, "example/my-cnb")
 		})

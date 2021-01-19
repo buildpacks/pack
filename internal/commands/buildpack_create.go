@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 
+	pubbldpkg "github.com/buildpacks/pack/buildpackage"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -58,6 +60,7 @@ func BuildpackCreate(logger logging.Logger, client BuildpackCreator) *cobra.Comm
 
 			id := args[0]
 			if err := client.CreateBuildpack(cmd.Context(), pack.CreateBuildpackOptions{
+				Config:   pubbldpkg.DefaultConfig(),
 				ID:       id,
 				Path:     path,
 				Language: flags.Language,
