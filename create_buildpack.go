@@ -101,7 +101,8 @@ func createBashBuildpack(path string, c *Client) error {
 
 func createGolangBuildpack(path string, c *Client) error {
 	// TODO
-	// include libbuildpack dependency
+	// include libbuildpack dependency?
+	// should this shell out to some `go mod init` command first?
 	return nil
 }
 

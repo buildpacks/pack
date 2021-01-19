@@ -55,23 +55,21 @@ func testBuildpackCreateCommand(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("BuildpackCreate#Execute", func() {
-		when("valid package config", func() {
-			it("uses the args to generate artifacts", func() {
-				mockClient.EXPECT().CreateBuildpack(gomock.Any(), pack.CreateBuildpackOptions{
-					ID:       "example/some-cnb",
-					Language: "bash",
-					Path:     tmpDir,
-					Stacks: []dist.Stack{{
-						ID:     "io.buildpacks.stacks.bionic",
-						Mixins: []string{},
-					}},
-				}).Return(nil).MaxTimes(1)
+		it("uses the args to generate artifacts", func() {
+			mockClient.EXPECT().CreateBuildpack(gomock.Any(), pack.CreateBuildpackOptions{
+				ID:       "example/some-cnb",
+				Language: "bash",
+				Path:     tmpDir,
+				Stacks: []dist.Stack{{
+					ID:     "io.buildpacks.stacks.bionic",
+					Mixins: []string{},
+				}},
+			}).Return(nil).MaxTimes(1)
 
-				command.SetArgs([]string{"--path", tmpDir, "example/some-cnb"})
+			command.SetArgs([]string{"--path", tmpDir, "example/some-cnb"})
 
-				err := command.Execute()
-				h.AssertNil(t, err)
-			})
+			err := command.Execute()
+			h.AssertNil(t, err)
 		})
 	})
 }
