@@ -147,12 +147,8 @@ benchmark: out
 
 # NOTE: Windows doesn't support `-p`
 out:
-	@if [ -d out ]; then \
-		@echo "out exists"; \
-	else \
-		mkdir out; \
-		mkdir out$/tests; \
-	fi
+	@mkdir out || (exit 0)
+	mkdir out$/tests || (exit 0)
 
 
 .PHONY: clean build format imports lint test unit acceptance prepare-for-pr verify verify-format benchmark
