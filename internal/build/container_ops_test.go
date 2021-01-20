@@ -97,6 +97,7 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 
 			h.AssertEq(t, errBuf.String(), "")
 			if osType == "windows" {
+				// Expected WCOW results
 				h.AssertContainsMatch(t, strings.ReplaceAll(outBuf.String(), "\r", ""), `
 (.*)    <DIR>          ...                    .
 (.*)    <DIR>          ...                    ..
@@ -106,13 +107,14 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 `)
 			} else {
 				if runtime.GOOS == "windows" {
-					// LCOW does not currently support symlinks
+					// Expected LCOW results
 					h.AssertContainsMatch(t, outBuf.String(), `
 -rwxrwxrwx    1 123      456 (.*) fake-app-file
--rwxrwxrwx    1 123      456 (.*) fake-app-symlink
+lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 -rwxrwxrwx    1 123      456 (.*) file-to-ignore
 `)
 				} else {
+					// Expected results
 					h.AssertContainsMatch(t, outBuf.String(), `
 -rw-r--r--    1 123      456 (.*) fake-app-file
 lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
