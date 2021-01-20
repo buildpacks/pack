@@ -128,7 +128,7 @@ func (c *Client) createBaseBuilder(ctx context.Context, opts CreateBuilderOption
 	}
 
 	c.logger.Debugf("Creating builder %s from build-image %s", style.Symbol(opts.BuilderName), style.Symbol(baseImage.Name()))
-	bldr, err := builder.New(baseImage, opts.BuilderName)
+	bldr, err := builder.New(baseImage, opts.BuilderName, config.GroupID{})
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid build-image")
 	}

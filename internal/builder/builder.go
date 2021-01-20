@@ -19,6 +19,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/builder"
+	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/stack"
@@ -76,20 +78,21 @@ func FromImage(img imgutil.Image) (*Builder, error) {
 	} else if !ok {
 		return nil, fmt.Errorf("builder %s missing label %s -- try recreating builder", style.Symbol(img.Name()), style.Symbol(metadataLabel))
 	}
-	return constructBuilder(img, "", metadata)
+	return constructBuilder(img, "", metadata, config.GroupID{})
 }
 
 // New constructs a new builder from a base image
-func New(baseImage imgutil.Image, name string) (*Builder, error) {
+func New(baseImage imgutil.Image, name string, gid config.GroupID) (*Builder, error) {
 	var metadata Metadata
 	if _, err := dist.GetLabel(baseImage, metadataLabel, &metadata); err != nil {
 		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
 	}
-	return constructBuilder(baseImage, name, metadata)
+	return constructBuilder(baseImage, name, metadata, gid)
 }
 
-func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Builder, error) {
+func constructBuilder(img imgutil.Image, newName string, metadata Metadata, gid config.GroupID) (*Builder, error) {
 	imageOS, err := img.OS()
+
 	if err != nil {
 		return nil, errors.Wrap(err, "getting image OS")
 	}
@@ -106,6 +109,8 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 		lifecycleDescriptor: constructLifecycleDescriptor(metadata),
 		env:                 map[string]string{},
 	}
+
+	bldr.uid, bldr.gid, err = userAndGroupIDs(img, gid)
 
 	if err := addImgLabelsToBuildr(bldr); err != nil {
 		return nil, errors.Wrap(err, "adding image labels to builder")
@@ -130,7 +135,6 @@ func constructLifecycleDescriptor(metadata Metadata) LifecycleDescriptor {
 
 func addImgLabelsToBuildr(bldr *Builder) error {
 	var err error
-	bldr.uid, bldr.gid, err = userAndGroupIDs(bldr.image)
 	if err != nil {
 		return err
 	}
@@ -490,7 +494,7 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 	return nil
 }
 
-func userAndGroupIDs(img imgutil.Image) (int, int, error) {
+func userAndGroupIDs(img imgutil.Image, groupID config.GroupID) (int, int, error) {
 	sUID, err := img.Env(EnvUID)
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "reading builder env variables")
@@ -511,7 +515,8 @@ func userAndGroupIDs(img imgutil.Image) (int, int, error) {
 		return 0, 0, fmt.Errorf("failed to parse %s, value %s should be an integer", style.Symbol(EnvUID), style.Symbol(sUID))
 	}
 
-	gid, err = strconv.Atoi(sGID)
+	gid, err = groupID.GetID(sGID)
+
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to parse %s, value %s should be an integer", style.Symbol(EnvGID), style.Symbol(sGID))
 	}

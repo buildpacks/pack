@@ -149,6 +149,9 @@ type BuildOptions struct {
 
 	// ProjectDescriptor describes the project and any configuration specific to the project
 	ProjectDescriptor project.Descriptor
+
+	// TBD
+	GroupID config.GroupID
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -241,7 +244,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		buildEnvs[k] = v
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs)
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, opts)
 	if err != nil {
 		return err
 	}
@@ -803,9 +806,10 @@ func ensureBPSupport(bpPath string) (err error) {
 	return nil
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []dist.Buildpack) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []dist.Buildpack, opts BuildOptions) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
-	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
+	name := fmt.Sprintf("pack.local/builder/%x:latest", randString(10))
+	bldr, err := builder.New(rawBuilderImage, name, opts.GroupID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invalid builder %s", style.Symbol(origBuilderName))
 	}

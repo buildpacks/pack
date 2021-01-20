@@ -31,6 +31,7 @@ type BuildFlags struct {
 	Network            string
 	DescriptorPath     string
 	DefaultProcessType string
+	GroupID            string
 	Env                []string
 	EnvFiles           []string
 	Buildpacks         []string
@@ -97,6 +98,11 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
 
+			var gid = pubcfg.GroupID{
+				FlagProvided: flags.GroupID != "",
+				ID:           flags.GroupID,
+			}
+
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           flags.Builder,
@@ -119,6 +125,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				ProjectDescriptorBaseDir: filepath.Dir(actualDescriptorPath),
 				ProjectDescriptor:        descriptor,
 				CacheImage:               flags.CacheImage,
+				GroupID:                  gid,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -152,6 +159,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
 	cmd.Flags().StringSliceVarP(&buildFlags.AdditionalTags, "tag", "t", nil, "Additional tags to push the output image to."+multiValueHelp("tag"))
 	cmd.Flags().StringVar(&buildFlags.CacheImage, "cache-image", "", `Cache build layers in remote registry. Requires --publish`)
+	cmd.Flags().StringVar(&buildFlags.GroupID, "gid", "", "Set group '0' as the owner of the contents in '/workspace/' within the app image")
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
