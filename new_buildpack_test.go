@@ -19,13 +19,13 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestCreateBuildpack(t *testing.T) {
+func TestNewBuildpack(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "create_builder", testCreateBuildpack, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "new_buildpack", testNewBuildpack, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testCreateBuildpack(t *testing.T, when spec.G, it spec.S) {
+func testNewBuildpack(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject *pack.Client
 		tmpDir  string
@@ -34,16 +34,16 @@ func testCreateBuildpack(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
-		tmpDir, err = ioutil.TempDir("", "create-buildpack-test")
+		tmpDir, err = ioutil.TempDir("", "new-buildpack-test")
 		h.AssertNil(t, err)
 
 		subject, err = pack.NewClient()
 		h.AssertNil(t, err)
 	})
 
-	when("#CreateBuildpack", func() {
+	when("#NewBuildpack", func() {
 		it("should create bash scripts", func() {
-			err := subject.CreateBuildpack(context.TODO(), pack.CreateBuildpackOptions{
+			err := subject.NewBuildpack(context.TODO(), pack.NewBuildpackOptions{
 				Path: tmpDir,
 				ID:   "example/my-cnb",
 				Stacks: []dist.Stack{

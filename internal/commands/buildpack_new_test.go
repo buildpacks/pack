@@ -22,13 +22,13 @@ import (
 	ilogging "github.com/buildpacks/pack/internal/logging"
 )
 
-func TestBuildpackCreateCommand(t *testing.T) {
+func TestBuildpackNewCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "BuildpackCreateCommand", testBuildpackCreateCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "BuildpackNewCommand", testBuildpackNewCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testBuildpackCreateCommand(t *testing.T, when spec.G, it spec.S) {
+func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command        *cobra.Command
 		logger         *ilogging.LogWithWriters
@@ -47,16 +47,16 @@ func testBuildpackCreateCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 
-		command = commands.BuildpackCreate(logger, mockClient)
+		command = commands.BuildpackNew(logger, mockClient)
 	})
 
 	it.After(func() {
 		os.RemoveAll(tmpDir)
 	})
 
-	when("BuildpackCreate#Execute", func() {
+	when("BuildpackNew#Execute", func() {
 		it("uses the args to generate artifacts", func() {
-			mockClient.EXPECT().CreateBuildpack(gomock.Any(), pack.CreateBuildpackOptions{
+			mockClient.EXPECT().NewBuildpack(gomock.Any(), pack.NewBuildpackOptions{
 				ID:   "example/some-cnb",
 				Path: tmpDir,
 				Stacks: []dist.Stack{{

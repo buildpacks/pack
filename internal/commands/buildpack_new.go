@@ -12,8 +12,8 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-// BuildpackCreateFlags define flags provided to the BuildpackCreate command
-type BuildpackCreateFlags struct {
+// BuildpackNewFlags define flags provided to the BuildpackCreate command
+type BuildpackNewFlags struct {
 	Path     string
 	Language string
 	Stacks   []string
@@ -21,14 +21,14 @@ type BuildpackCreateFlags struct {
 
 // BuildpackCreator creates buildpacks
 type BuildpackCreator interface {
-	CreateBuildpack(ctx context.Context, options pack.CreateBuildpackOptions) error
+	NewBuildpack(ctx context.Context, options pack.NewBuildpackOptions) error
 }
 
-// BuildpackCreate generates the scaffolding of a buildpack
-func BuildpackCreate(logger logging.Logger, client BuildpackCreator) *cobra.Command {
-	var flags BuildpackCreateFlags
+// BuildpackNew generates the scaffolding of a buildpack
+func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command {
+	var flags BuildpackNewFlags
 	cmd := &cobra.Command{
-		Use:     "create <name>",
+		Use:     "new <name>",
 		Short:   "Creates basic scaffolding of a buildpack.",
 		Args:    cobra.ExactValidArgs(1),
 		Example: "pack buildpack create my-buildpack",
@@ -52,7 +52,7 @@ func BuildpackCreate(logger logging.Logger, client BuildpackCreator) *cobra.Comm
 			}
 
 			id := args[0]
-			if err := client.CreateBuildpack(cmd.Context(), pack.CreateBuildpackOptions{
+			if err := client.NewBuildpack(cmd.Context(), pack.NewBuildpackOptions{
 				ID:     id,
 				Path:   path,
 				Stacks: stacks,

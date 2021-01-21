@@ -17,7 +17,7 @@ func NewBuildpackCommand(logger logging.Logger, cfg config.Config, client PackCl
 
 	cmd.AddCommand(BuildpackPackage(logger, cfg, client, packageConfigReader))
 	if cfg.Experimental {
-		cmd.AddCommand(BuildpackCreate(logger, client))
+		cmd.AddCommand(BuildpackNew(logger, client))
 		cmd.AddCommand(BuildpackPull(logger, cfg, client))
 		cmd.AddCommand(BuildpackRegister(logger, cfg, client))
 		cmd.AddCommand(BuildpackYank(logger, cfg, client))

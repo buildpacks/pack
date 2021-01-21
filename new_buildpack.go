@@ -32,7 +32,7 @@ exit 0
 `
 )
 
-type CreateBuildpackOptions struct {
+type NewBuildpackOptions struct {
 	// The base directory to generate assets
 	Path string
 
@@ -43,7 +43,7 @@ type CreateBuildpackOptions struct {
 	Stacks []dist.Stack
 }
 
-func (c *Client) CreateBuildpack(ctx context.Context, opts CreateBuildpackOptions) error {
+func (c *Client) NewBuildpack(ctx context.Context, opts NewBuildpackOptions) error {
 	buildpackTOML := dist.BuildpackDescriptor{
 		API:    build.SupportedPlatformAPIVersions.Latest(),
 		Stacks: opts.Stacks,
