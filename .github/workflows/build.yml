@@ -34,7 +34,7 @@ jobs:
             pack_bin: pack
           - config: windows-lcow
             os: windows
-            runner: [self-hosted, windows]
+            runner: [self-hosted, windows, lcow]
             no_docker: "false"
             pack_bin: pack.exe
           - config: windows-wcow
