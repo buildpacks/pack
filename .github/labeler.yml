@@ -8,5 +8,5 @@ type/chore:
   - ./go.sum
 
 type/enhancement:
-  - any: ['./*.go', './**/*.go', '!./acceptance/**/*', '!./test*/**/*']
+  - any: ['./*.go', './**/*.go', '!./acceptance/**/*', '!./test*/**/*', '!./**/*_test.go']
     all: ['!.github/**/*']

@@ -30,7 +30,7 @@ jobs:
                   .catch(err => {throw "ERROR: " + err.message});
 
             if (milestone) {
-                await client.issues.update({
+                await github.issues.update({
                   owner: github.context.repo.owner,
                   repo: github.context.repo.repo,
                   issue_number: github.event.number,
