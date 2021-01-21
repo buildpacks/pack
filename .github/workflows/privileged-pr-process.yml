@@ -19,9 +19,9 @@ jobs:
         id: assets
         with:
           script: |
-            var milestone = await github.issues.listMilestones({
-                      owner: github.context.repo.owner,
-                      repo: github.context.repo.repo,
+            var milestone = await github.issues.listMilestonesForRepo({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
                       state: 'open',
                       sort: 'due_on',
                       direction: 'asc'
@@ -31,12 +31,12 @@ jobs:
 
             if (milestone) {
                 await github.issues.update({
-                  owner: github.context.repo.owner,
-                  repo: github.context.repo.repo,
-                  issue_number: github.event.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.number,
                   milestone: milestone.number,
                   });
-                core.setOutput('milestone', addMilestone);
+                core.setOutput('milestone', milestone.number);
               } else {
               console.log(`Milestone not found, Please create it first.`);
             }
