@@ -38,5 +38,5 @@ jobs:
                   });
                 core.setOutput('milestone', milestone.number);
               } else {
-              console.log(`Milestone not found, Please create it first.`);
+              console.log(`No milestone found. Please create one first.`);
             }
