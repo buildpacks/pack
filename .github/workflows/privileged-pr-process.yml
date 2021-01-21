@@ -1,0 +1,42 @@
+name: "Process Pull Request"
+# NOTE: This workflow is privileged, and shouldn't be used to checkout the repo or run any of the PR code
+# See more in: https://securitylab.github.com/research/github-actions-preventing-pwn-requests
+on:
+  - pull_request_target
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@main
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+  add-milestone:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add milestone
+        uses: actions/github-script@v1
+        id: assets
+        with:
+          script: |
+            var milestone = await github.issues.listMilestonesForRepo({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      state: 'open',
+                      sort: 'due_on',
+                      direction: 'asc'
+                   })
+                  .then(result => result.data[0])
+                  .catch(err => {throw "ERROR: " + err.message});
+
+            if (milestone) {
+                await github.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.number,
+                  milestone: milestone.number,
+                  });
+                core.setOutput('milestone', milestone.number);
+              } else {
+              console.log(`No milestone found. Please create one first.`);
+            }
