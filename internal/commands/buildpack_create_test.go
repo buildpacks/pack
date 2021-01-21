@@ -57,9 +57,8 @@ func testBuildpackCreateCommand(t *testing.T, when spec.G, it spec.S) {
 	when("BuildpackCreate#Execute", func() {
 		it("uses the args to generate artifacts", func() {
 			mockClient.EXPECT().CreateBuildpack(gomock.Any(), pack.CreateBuildpackOptions{
-				ID:       "example/some-cnb",
-				Language: "bash",
-				Path:     tmpDir,
+				ID:   "example/some-cnb",
+				Path: tmpDir,
 				Stacks: []dist.Stack{{
 					ID:     "io.buildpacks.stacks.bionic",
 					Mixins: []string{},
@@ -70,13 +69,6 @@ func testBuildpackCreateCommand(t *testing.T, when spec.G, it spec.S) {
 
 			err := command.Execute()
 			h.AssertNil(t, err)
-		})
-
-		it("rejects unknown languages", func() {
-			command.SetArgs([]string{"--path", tmpDir, "--language", "lua", "example/some-cnb"})
-
-			err := command.Execute()
-			h.AssertError(t, err, "\"lua\" is not a valid language choice")
 		})
 	})
 }

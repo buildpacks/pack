@@ -7,7 +7,6 @@ import (
 	"runtime"
 
 	"github.com/BurntSushi/toml"
-	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/dist"
@@ -15,12 +14,6 @@ import (
 )
 
 var (
-	BuildpackLanguages = map[string]interface{}{
-		"bash":   createBashBuildpack,
-		"go":     createGolangBuildpack,
-		"golang": createGolangBuildpack,
-	}
-
 	bashBinBuild = `
 #!/usr/bin/env bash
 
@@ -45,9 +38,6 @@ type CreateBuildpackOptions struct {
 
 	// The ID of the output buildpack artifact.
 	ID string
-
-	// The language to generate scaffolding for
-	Language string
 
 	// The stacks this buildpack will work with
 	Stacks []dist.Stack
@@ -77,12 +67,7 @@ func (c *Client) CreateBuildpack(ctx context.Context, opts CreateBuildpackOption
 		return err
 	}
 
-	createFunc := BuildpackLanguages[opts.Language]
-	if createFunc == nil {
-		return errors.Wrapf(err, "Unsupported language: %s", opts.Language)
-	}
-
-	return createFunc.(func(string, *Client) error)(opts.Path, c)
+	return createBashBuildpack(opts.Path, c)
 }
 
 func createBashBuildpack(path string, c *Client) error {
@@ -96,13 +81,6 @@ func createBashBuildpack(path string, c *Client) error {
 	}
 	c.logger.Infof("    %s  bin/build", style.Key("create"))
 
-	return nil
-}
-
-func createGolangBuildpack(path string, c *Client) error {
-	// TODO
-	// include libbuildpack dependency?
-	// should this shell out to some `go mod init` command first?
 	return nil
 }
 

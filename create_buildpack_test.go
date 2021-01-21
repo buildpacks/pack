@@ -44,9 +44,8 @@ func testCreateBuildpack(t *testing.T, when spec.G, it spec.S) {
 	when("#CreateBuildpack", func() {
 		it("should create bash scripts", func() {
 			err := subject.CreateBuildpack(context.TODO(), pack.CreateBuildpackOptions{
-				Path:     tmpDir,
-				Language: "bash",
-				ID:       "example/my-cnb",
+				Path: tmpDir,
+				ID:   "example/my-cnb",
 				Stacks: []dist.Stack{
 					{
 						ID:     "some-stack",
