@@ -17,7 +17,7 @@ var (
 	bashBinBuild = `
 #!/usr/bin/env bash
 
-set -eu
+set -euo pipefail
 
 layers_dir="$1"
 env_dir="$2/env"
