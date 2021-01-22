@@ -30,7 +30,7 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 		Use:     "new <name>",
 		Short:   "Creates basic scaffolding of a buildpack.",
 		Args:    cobra.ExactValidArgs(1),
-		Example: "pack buildpack create my-buildpack",
+		Example: "pack buildpack new sample/my-buildpack",
 		Long:    "buildpack create generates the basic scaffolding of a buildpack repository.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			path := flags.Path
