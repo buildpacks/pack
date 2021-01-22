@@ -66,7 +66,7 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 	}
 
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to generate the buildpack")
-	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", []string{"io.buildpacks.stacks.bionic"}, "Stack(s) this buildpack will be compatible with")
+	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", []string{"io.buildpacks.stacks.bionic"}, "Stack(s) this buildpack will be compatible with"+multiValueHelp("stack"))
 
 	AddHelpFlag(cmd, "package")
 	return cmd
