@@ -15,7 +15,6 @@ import (
 // BuildpackNewFlags define flags provided to the BuildpackCreate command
 type BuildpackNewFlags struct {
 	Path     string
-	Language string
 	Stacks   []string
 }
 
