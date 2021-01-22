@@ -98,9 +98,60 @@ jobs:
         with:
           name: pack-${{ matrix.os }}
           path: out/${{ env.PACK_BIN }}
-  release:
+  build-additional-archs:
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [ darwin-aarch64, arm64, armv7 ]
+        include:
+        - arch: aarch64
+          distro: ubuntu18.04
+          goarch: arm64
+          goarm: 7
+        - arch: aarch64
+          distro: ubuntu18.04
+          goarch: arm64
+          goarm: 7
+        - arch: armv7
+          distro: ubuntu18.04
+          goarch: arm
+          goarm: 7
     if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
     needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up go
+        uses: actions/setup-go@v2.1.3
+        with:
+          go-version: '1.14'
+      - name: Build
+        run: |
+          env GOARM=${{ matrix.goarm }} GOARCH=${{ matrix.goarch }} GOOS=linux make build
+        env:
+          PACK_BUILD: ${{ github.run_number }}
+      - name: Test artifacts
+        uses: uraimo/run-on-arch-action@v2.0.5
+        with:
+          arch: ${{ matrix.arch }}
+          distro: ${{ matrix.distro }}
+          githubToken: ${{ github.token }}
+          shell: /bin/sh
+          # Mount the artifacts directory as /artifacts in the container
+          dockerRunArgs: |
+            --volume "${PWD}/out:/out"
+
+          # Produce a binary artifact and place it in the mounted volume
+          run: |
+            /out/pack
+            echo "Ran pack"
+      - uses: actions/upload-artifact@v2
+        with:
+          name: pack-${{ matrix.arch }}
+          path: out/${{ env.PACK_BIN }}
+  release:
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    needs: build-additional-archs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
