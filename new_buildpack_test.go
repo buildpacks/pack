@@ -41,6 +41,10 @@ func testNewBuildpack(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 	})
 
+	it.After(func() {
+		h.AssertNil(t, os.RemoveAll(tmpDir))
+	})
+
 	when("#NewBuildpack", func() {
 		it("should create bash scripts", func() {
 			err := subject.NewBuildpack(context.TODO(), pack.NewBuildpackOptions{
@@ -68,6 +72,47 @@ func testNewBuildpack(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			assertBuildpackToml(t, tmpDir, "example/my-cnb")
+		})
+
+		when("files exist", func() {
+			it.Before(func() {
+				var err error
+
+				err = os.MkdirAll(filepath.Join(tmpDir, "bin"), 0755)
+				h.AssertNil(t, err)
+				err = ioutil.WriteFile(filepath.Join(tmpDir, "buildpack.toml"), []byte("expected value"), 0655)
+				h.AssertNil(t, err)
+				err = ioutil.WriteFile(filepath.Join(tmpDir, "bin", "build"), []byte("expected value"), 0755)
+				h.AssertNil(t, err)
+				err = ioutil.WriteFile(filepath.Join(tmpDir, "bin", "detect"), []byte("expected value"), 0755)
+				h.AssertNil(t, err)
+			})
+
+			it("should not clobber files that exist", func() {
+				err := subject.NewBuildpack(context.TODO(), pack.NewBuildpackOptions{
+					Path: tmpDir,
+					ID:   "example/my-cnb",
+					Stacks: []dist.Stack{
+						{
+							ID:     "some-stack",
+							Mixins: []string{"some-mixin"},
+						},
+					},
+				})
+				h.AssertNil(t, err)
+
+				content, err := ioutil.ReadFile(filepath.Join(tmpDir, "buildpack.toml"))
+				h.AssertNil(t, err)
+				h.AssertEq(t, content, []byte("expected value"))
+
+				content, err = ioutil.ReadFile(filepath.Join(tmpDir, "bin", "build"))
+				h.AssertNil(t, err)
+				h.AssertEq(t, content, []byte("expected value"))
+
+				content, err = ioutil.ReadFile(filepath.Join(tmpDir, "bin", "detect"))
+				h.AssertNil(t, err)
+				h.AssertEq(t, content, []byte("expected value"))
+			})
 		})
 	})
 }

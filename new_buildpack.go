@@ -2,9 +2,9 @@ package pack
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/BurntSushi/toml"
 
@@ -53,52 +53,51 @@ func (c *Client) NewBuildpack(ctx context.Context, opts NewBuildpackOptions) err
 		},
 	}
 
-	f, err := os.Create(filepath.Join(opts.Path, "buildpack.toml"))
-	if err != nil {
-		return err
-	}
-	if err := toml.NewEncoder(f).Encode(buildpackTOML); err != nil {
-		return err
-	}
-	defer f.Close()
-	c.logger.Infof("    %s  buildpack.toml", style.Key("create"))
-
-	if err := os.MkdirAll(filepath.Join(opts.Path, "bin"), 0755); err != nil {
-		return err
+	buildpackTOMLPath := filepath.Join(opts.Path, "buildpack.toml")
+	_, err := os.Stat(buildpackTOMLPath)
+	if os.IsNotExist(err) {
+		f, err := os.Create(buildpackTOMLPath)
+		if err != nil {
+			return err
+		}
+		if err := toml.NewEncoder(f).Encode(buildpackTOML); err != nil {
+			return err
+		}
+		defer f.Close()
+		c.logger.Infof("    %s  buildpack.toml", style.Key("create"))
 	}
 
 	return createBashBuildpack(opts.Path, c)
 }
 
 func createBashBuildpack(path string, c *Client) error {
-	if err := createBinScript(path, "build", bashBinBuild); err != nil {
+	if err := createBinScript(path, "build", bashBinBuild, c); err != nil {
 		return err
 	}
-	c.logger.Infof("    %s  bin/build", style.Key("create"))
 
-	if err := createBinScript(path, "detect", bashBinDetect); err != nil {
+	if err := createBinScript(path, "detect", bashBinDetect, c); err != nil {
 		return err
 	}
-	c.logger.Infof("    %s  bin/build", style.Key("create"))
 
 	return nil
 }
 
-func createBinScript(path, name, contents string) error {
-	bin := filepath.Join(path, "bin", name)
-	f, err := os.Create(bin)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	if _, err = f.WriteString(contents); err != nil {
-		return err
-	}
+func createBinScript(path, name, contents string, c *Client) error {
+	binDir := filepath.Join(path, "bin")
+	binFile := filepath.Join(binDir, name)
 
-	if runtime.GOOS != "windows" {
-		if err = os.Chmod(bin, 0755); err != nil {
+	_, err := os.Stat(binFile)
+	if os.IsNotExist(err) {
+		if err := os.MkdirAll(binDir, 0755); err != nil {
 			return err
 		}
+
+		err = ioutil.WriteFile(binFile, []byte(contents), 0755)
+		if err != nil {
+			return err
+		}
+
+		c.logger.Infof("    %s  bin/%s", style.Key("create"), name)
 	}
 	return nil
 }
