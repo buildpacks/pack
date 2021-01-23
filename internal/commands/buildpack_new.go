@@ -14,8 +14,8 @@ import (
 
 // BuildpackNewFlags define flags provided to the BuildpackCreate command
 type BuildpackNewFlags struct {
-	Path     string
-	Stacks   []string
+	Path   string
+	Stacks []string
 }
 
 // BuildpackCreator creates buildpacks
