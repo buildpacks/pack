@@ -27,7 +27,7 @@ type BuildpackCreator interface {
 func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command {
 	var flags BuildpackNewFlags
 	cmd := &cobra.Command{
-		Use:     "new <name>",
+		Use:     "new <id>",
 		Short:   "Creates basic scaffolding of a buildpack.",
 		Args:    cobra.ExactValidArgs(1),
 		Example: "pack buildpack new sample/my-buildpack",
