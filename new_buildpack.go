@@ -53,6 +53,10 @@ func (c *Client) NewBuildpack(ctx context.Context, opts NewBuildpackOptions) err
 		},
 	}
 
+	if err := os.MkdirAll(opts.Path, 0755); err != nil {
+		return err
+	}
+
 	buildpackTOMLPath := filepath.Join(opts.Path, "buildpack.toml")
 	_, err := os.Stat(buildpackTOMLPath)
 	if os.IsNotExist(err) {

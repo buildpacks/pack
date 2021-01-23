@@ -3,6 +3,8 @@ package commands
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -33,13 +35,21 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 		Example: "pack buildpack new sample/my-buildpack",
 		Long:    "buildpack create generates the basic scaffolding of a buildpack repository.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			path := flags.Path
+			id := args[0]
+			idParts := strings.Split(id, "/")
+			dirName := idParts[len(idParts)-1]
+			_, err := os.Stat("temp")
+			if !os.IsNotExist(err) {
+				return err
+			}
+
+			path := filepath.Join(flags.Path, dirName)
 			if len(path) == 0 {
 				cwd, err := os.Getwd()
 				if err != nil {
 					return err
 				}
-				path = cwd
+				path = filepath.Join(cwd, dirName)
 			}
 
 			var stacks []dist.Stack
@@ -49,8 +59,6 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 					Mixins: []string{},
 				})
 			}
-
-			id := args[0]
 			if err := client.NewBuildpack(cmd.Context(), pack.NewBuildpackOptions{
 				ID:     id,
 				Path:   path,

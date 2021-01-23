@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -58,7 +59,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 		it("uses the args to generate artifacts", func() {
 			mockClient.EXPECT().NewBuildpack(gomock.Any(), pack.NewBuildpackOptions{
 				ID:   "example/some-cnb",
-				Path: tmpDir,
+				Path: filepath.Join(tmpDir, "some-cnb"),
 				Stacks: []dist.Stack{{
 					ID:     "io.buildpacks.stacks.bionic",
 					Mixins: []string{},
