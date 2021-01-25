@@ -888,26 +888,22 @@ func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef 
 
 	// Remove tag, if it exists, from the image name
 	imgName := strings.TrimSuffix(imageRef.String(), imageRef.Identifier())
-	imgNameAndSha := fmt.Sprintf("%s@%s\n", imgName, parseShortDigestFromImageID(id))
+	imgNameAndSha := fmt.Sprintf("%s@%s\n", imgName, parseDigestFromImageID(id))
 
 	// Access the logger's Writer directly to bypass ReportSuccessfulQuietBuild mode
 	_, err = c.logger.Writer().Write([]byte(imgNameAndSha))
 	return err
 }
 
-func parseShortDigestFromImageID(id imgutil.Identifier) string {
-	var shortID string
+func parseDigestFromImageID(id imgutil.Identifier) string {
+	var digest string
 	switch v := id.(type) {
 	case local.IDIdentifier:
-		shortID = v.String()
+		digest = v.String()
 	case remote.DigestIdentifier:
-		shortID = v.Digest.DigestStr()
+		digest = v.Digest.DigestStr()
 	}
 
-	shortID = strings.TrimPrefix(shortID, "sha256:")
-	if len(shortID) > 12 {
-		shortID = shortID[0:12]
-	}
-
-	return fmt.Sprintf("sha256:%s", shortID)
+	digest = strings.TrimPrefix(digest, "sha256:")
+	return fmt.Sprintf("sha256:%s", digest)
 }

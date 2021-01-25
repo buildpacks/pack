@@ -230,7 +230,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						Publish: true,
 					}))
 
-					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "example.io/some/app@sha256:363c754893f0")
+					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "example.io/some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4")
 				})
 			})
 
@@ -255,7 +255,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						AppPath: filepath.Join("testdata", "some-app"),
 					}))
 
-					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "some/app@sha256:363c754893f0")
+					h.AssertEq(t, strings.TrimSpace(outBuf.String()), "some/app@sha256:363c754893f0efe22480b4359a5956cf3bd3ce22742fc576973c61348308c2e4")
 				})
 			})
 		})
