@@ -302,7 +302,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, outBuf.String(), "Image: ''")
 				h.AssertContains(t, outBuf.String(), "User:")
 				h.AssertContains(t, outBuf.String(), "Labels: 'map[author:pack]'")
-				h.AssertContainsMatch(t, outBuf.String(), `Binds: \'\S+:/layers \S+:/workspace\'`)
+				h.AssertContainsMatch(t, outBuf.String(), `Binds: \'\S+:\S+layers \S+:\S+workspace'`)
 				h.AssertContains(t, outBuf.String(), "Network Mode: ''")
 			})
 		})
