@@ -71,7 +71,7 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 
 	lifecycleExec.logger.Debug("Host Settings:")
 	lifecycleExec.logger.Debugf("  Binds: %s", style.Symbol(strings.Join(provider.hostConf.Binds, " ")))
-	lifecycleExec.logger.Debugf("  Network Mode: %s", style.Symbol(fmt.Sprintf("%s", provider.hostConf.NetworkMode)))
+	lifecycleExec.logger.Debugf("  Network Mode: %s", style.Symbol(string(provider.hostConf.NetworkMode)))
 	return provider
 }
 
