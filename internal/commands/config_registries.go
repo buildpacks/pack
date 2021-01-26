@@ -28,7 +28,7 @@ func ConfigRegistries(logger logging.Logger, cfg config.Config, cfgPath string) 
 	cmd := &cobra.Command{
 		Use:     "registries",
 		Aliases: []string{"registry", "registreis"},
-		Short:   prependExperimental("List, add and remove registries"),
+		Short:   "List, add and remove registries",
 		Long:    bpRegistryExplanation + "\nYou can use the attached commands to list, add, and remove registries from your config",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			listRegistries(args, logger, cfg)
@@ -38,14 +38,12 @@ func ConfigRegistries(logger logging.Logger, cfg config.Config, cfgPath string) 
 
 	listCmd := generateListCmd("registries", logger, cfg, listRegistries)
 	listCmd.Example = "pack config registries list"
-	listCmd.Short = prependExperimental(listCmd.Short)
 	listCmd.Long = bpRegistryExplanation + "List Registries saved in the pack config.\n\nShow the registries that are either added by default or have been explicitly added by using `pack config registries add`"
 	cmd.AddCommand(listCmd)
 
 	addCmd := generateAdd("registries", logger, cfg, cfgPath, addRegistry)
 	addCmd.Args = cobra.ExactArgs(2)
 	addCmd.Example = "pack config registries add my-registry https://github.com/buildpacks/my-registry"
-	addCmd.Short = prependExperimental(addCmd.Short)
 	addCmd.Long = bpRegistryExplanation + "Users can add registries from the config by using registries remove, and publish/yank buildpacks from it, as well as use those buildpacks when building applications."
 	addCmd.Flags().BoolVar(&setDefault, "default", false, "Set this buildpack registry as the default")
 	addCmd.Flags().StringVar(&registryType, "type", "github", "Type of buildpack registry [git|github]")
@@ -53,7 +51,6 @@ func ConfigRegistries(logger logging.Logger, cfg config.Config, cfgPath string) 
 
 	rmCmd := generateRemove("registries", logger, cfg, cfgPath, removeRegistry)
 	rmCmd.Example = "pack config registries remove myregistry"
-	rmCmd.Short = prependExperimental(rmCmd.Short)
 	rmCmd.Long = bpRegistryExplanation + "Users can remove registries from the config by using `pack config registries remove <registry>`"
 	cmd.AddCommand(rmCmd)
 
