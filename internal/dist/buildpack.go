@@ -9,8 +9,8 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/archive"
 )
 
 const AssumedBuildpackAPIVersion = "0.1"
