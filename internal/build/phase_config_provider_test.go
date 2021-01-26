@@ -3,7 +3,6 @@ package build_test
 import (
 	"bytes"
 	"math/rand"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -287,7 +286,16 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 				docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 				h.AssertNil(t, err)
-				lifecycleExec, err := CreateFakeLifecycleExecution(logger, docker, filepath.Join("testdata", "fake-app"), repoName)
+
+				defaultBuilder, err := fakes.NewFakeBuilder()
+				h.AssertNil(t, err)
+
+				opts := build.LifecycleOptions{
+					AppPath: "some-app-path",
+					Builder: defaultBuilder,
+				}
+
+				lifecycleExec, err := build.NewLifecycleExecution(logger, docker, opts)
 				h.AssertNil(t, err)
 
 				_ = build.NewPhaseConfigProvider(
@@ -298,8 +306,8 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertContains(t, outBuf.String(), "Running the 'some-name' on OS")
 				h.AssertContains(t, outBuf.String(), "Args: '/cnb/lifecycle/some-name'")
-				h.AssertContains(t, outBuf.String(), "System Envs: 'CNB_PLATFORM_API=0.4 HTTP_PROXY=some-http-proxy http_proxy=some-http-proxy HTTPS_PROXY=some-https-proxy https_proxy=some-https-proxy NO_PROXY=some-no-proxy no_proxy=some-no-proxy'")
-				h.AssertContains(t, outBuf.String(), "Image: ''")
+				h.AssertContains(t, outBuf.String(), "System Envs: 'CNB_PLATFORM_API=0.4'")
+				h.AssertContains(t, outBuf.String(), "Image: 'some-builder-name'")
 				h.AssertContains(t, outBuf.String(), "User:")
 				h.AssertContains(t, outBuf.String(), "Labels: 'map[author:pack]'")
 				h.AssertContainsMatch(t, outBuf.String(), `Binds: \'\S+:\S+layers \S+:\S+workspace'`)
