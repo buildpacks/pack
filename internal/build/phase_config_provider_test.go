@@ -1,19 +1,23 @@
 package build_test
 
 import (
+	"bytes"
 	"math/rand"
+	"path/filepath"
 	"testing"
 	"time"
 
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/strslice"
+	"github.com/docker/docker/client"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
+	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -273,6 +277,33 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 				_, isType = phaseConfigProvider.ErrorWriter().(*logging.PrefixWriter)
 				h.AssertEq(t, isType, true)
+			})
+		})
+
+		when("verbose", func() {
+			it("prints debug information about the phase", func() {
+				var outBuf bytes.Buffer
+				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+
+				docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+				h.AssertNil(t, err)
+				lifecycleExec, err := CreateFakeLifecycleExecution(logger, docker, filepath.Join("testdata", "fake-app"), repoName)
+				h.AssertNil(t, err)
+
+				_ = build.NewPhaseConfigProvider(
+					"some-name",
+					lifecycleExec,
+					build.WithRoot(),
+				)
+
+				h.AssertContains(t, outBuf.String(), "Running the 'some-name' on OS 'linux' with")
+				h.AssertContains(t, outBuf.String(), "Args: '/cnb/lifecycle/some-name'")
+				h.AssertContains(t, outBuf.String(), "System Envs: 'CNB_PLATFORM_API=0.4 HTTP_PROXY=some-http-proxy http_proxy=some-http-proxy HTTPS_PROXY=some-https-proxy https_proxy=some-https-proxy NO_PROXY=some-no-proxy no_proxy=some-no-proxy'")
+				h.AssertContains(t, outBuf.String(), "Image: ''")
+				h.AssertContains(t, outBuf.String(), "User: 'root'")
+				h.AssertContains(t, outBuf.String(), "Labels: 'map[author:pack]'")
+				h.AssertContainsMatch(t, outBuf.String(), `Binds: \'\S+:/layers \S+:/workspace\'`)
+				h.AssertContains(t, outBuf.String(), "Network Mode: ''")
 			})
 		})
 	})
