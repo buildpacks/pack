@@ -35,9 +35,9 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/archive"
 )
 
 func RandString(n int) string {

@@ -12,10 +12,10 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/archive"
 	blob2 "github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/archive"
 )
 
 // IsOCILayoutBlob checks whether a blob is in OCI layout format.

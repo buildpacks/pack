@@ -13,8 +13,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/archive"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

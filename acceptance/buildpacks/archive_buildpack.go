@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/pkg/archive"
 
 	"github.com/pkg/errors"
 )

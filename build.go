@@ -22,7 +22,6 @@ import (
 	ignore "github.com/sabhiram/go-gitignore"
 
 	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
@@ -35,6 +34,7 @@ import (
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/project"
 )
 
