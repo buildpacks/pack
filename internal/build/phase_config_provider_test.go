@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"math/rand"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -296,7 +297,11 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					build.WithRoot(),
 				)
 
-				h.AssertContains(t, outBuf.String(), "Running the 'some-name' on OS 'linux' with")
+				if runtime.GOOS == "windows" {
+					h.AssertContains(t, outBuf.String(), "Running the 'some-name' on OS 'windows'")
+				} else {
+					h.AssertContains(t, outBuf.String(), "Running the 'some-name' on OS 'linux'")
+				}
 				h.AssertContains(t, outBuf.String(), "Args: '/cnb/lifecycle/some-name'")
 				h.AssertContains(t, outBuf.String(), "System Envs: 'CNB_PLATFORM_API=0.4 HTTP_PROXY=some-http-proxy http_proxy=some-http-proxy HTTPS_PROXY=some-https-proxy https_proxy=some-https-proxy NO_PROXY=some-no-proxy no_proxy=some-no-proxy'")
 				h.AssertContains(t, outBuf.String(), "Image: ''")
