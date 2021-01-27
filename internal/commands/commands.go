@@ -78,10 +78,6 @@ func multiValueHelp(name string) string {
 	return fmt.Sprintf("\nRepeat for each %s in order,\n  or supply once by comma-separated list", name)
 }
 
-func prependExperimental(short string) string {
-	return fmt.Sprintf("(%s) %s", style.Warn("experimental"), short)
-}
-
 func getMirrors(config config.Config) map[string][]string {
 	mirrors := map[string][]string{}
 	for _, ri := range config.RunImages {

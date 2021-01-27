@@ -22,7 +22,7 @@ func BuildpackPull(logger logging.Logger, cfg config.Config, client PackClient) 
 	cmd := &cobra.Command{
 		Use:     "pull <uri>",
 		Args:    cobra.ExactArgs(1),
-		Short:   prependExperimental("Pull a buildpack from a registry and store it locally"),
+		Short:   "Pull a buildpack from a registry and store it locally",
 		Example: "pack buildpack pull example/my-buildpack@1.0.0",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			registry, err := config.GetRegistry(cfg, flags.BuildpackRegistry)

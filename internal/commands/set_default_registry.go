@@ -19,7 +19,7 @@ func SetDefaultRegistry(logger logging.Logger, cfg config.Config, cfgPath string
 		Use:     "set-default-registry <name>",
 		Args:    cobra.ExactArgs(1),
 		Hidden:  true,
-		Short:   prependExperimental("Set default registry"),
+		Short:   "Set default registry",
 		Example: "pack set-default-registry myregistry",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			deprecationWarning(logger, "set-default-registry", "config registries default")
