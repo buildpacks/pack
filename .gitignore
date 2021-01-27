@@ -1,6 +1,8 @@
 .pack/
 /pack
 out/
+benchmarks.test
+*.out
 
 # Jetbrains Goland
 .idea/
@@ -11,3 +13,4 @@ artifacts/
 
 # Travis unencrypted file
 .travis/key.pem
+
