@@ -263,6 +263,34 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
 				}
 			})
+
+			it("filter is only handed relevant section of the filepath", func() {
+				tarFile := filepath.Join(tmpDir, "some.tar")
+				fh, err := os.Create(tarFile)
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, func(path string) bool {
+					return !strings.Contains(path, "dir-to-tar")
+				})
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				tr := tar.NewReader(file)
+
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
+				verify.NextFile("/nested/dir/dir-in-archive/some-file.txt", "some-content", int64(os.ModePerm))
+				verify.NextDirectory("/nested/dir/dir-in-archive/sub-dir", int64(os.ModePerm))
+				if runtime.GOOS != "windows" {
+					verify.NextSymLink("/nested/dir/dir-in-archive/sub-dir/link-file", "../some-file.txt")
+				}
+			})
 		})
 
 		when("normalize mod time is false", func() {

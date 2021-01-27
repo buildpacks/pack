@@ -167,8 +167,15 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 // contents will be placed.
 func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) error {
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
-		if fileFilter != nil && !fileFilter(file) {
-			return nil
+		var relPath string
+		if fileFilter != nil {
+			relPath, err = filepath.Rel(srcDir, file)
+			if err != nil {
+				return err
+			}
+			if !fileFilter(relPath) {
+				return nil
+			}
 		}
 		if err != nil {
 			return err
@@ -197,10 +204,13 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 			}
 		}
 
-		relPath, err := filepath.Rel(srcDir, file)
-		if err != nil {
-			return err
-		} else if relPath == "." {
+		if relPath == "" {
+			relPath, err = filepath.Rel(srcDir, file)
+			if err != nil {
+				return err
+			}
+		}
+		if relPath == "." {
 			return nil
 		}
 
