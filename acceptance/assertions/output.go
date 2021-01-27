@@ -35,7 +35,7 @@ func (o OutputAssertionManager) ReportSuccessfulQuietBuild(name string) {
 	o.testObject.Helper()
 	o.testObject.Log("quiet mode")
 
-	o.assert.Matches(strings.TrimSpace(o.output), regexp.MustCompile(name+`@sha256:[\w]{12}`))
+	o.assert.Matches(strings.TrimSpace(o.output), regexp.MustCompile(name+`@sha256:[\w]{12,64}`))
 }
 
 func (o OutputAssertionManager) ReportsSuccessfulRebase(name string) {

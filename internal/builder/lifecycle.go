@@ -9,12 +9,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/pkg/archive"
 )
 
 // A snapshot of the latest tested lifecycle version values
 const (
-	DefaultLifecycleVersion    = "0.10.1"
+	DefaultLifecycleVersion    = "0.10.2"
 	DefaultBuildpackAPIVersion = "0.2"
 )
 

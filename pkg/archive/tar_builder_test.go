@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/pkg/archive"
 
 	h "github.com/buildpacks/pack/testhelpers"
 

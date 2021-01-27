@@ -12,7 +12,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/pkg/archive"
 )
 
 var gzipMagicHeader = []byte{'\x1f', '\x8b'}

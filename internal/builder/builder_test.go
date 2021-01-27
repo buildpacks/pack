@@ -19,13 +19,13 @@ import (
 	"github.com/sclevine/spec/report"
 
 	pubbldr "github.com/buildpacks/pack/builder"
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/builder/testmocks"
 	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/archive"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

@@ -18,9 +18,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/buildpack"
+	"github.com/buildpacks/pack/pkg/archive"
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
