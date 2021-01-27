@@ -23,7 +23,7 @@ func BuildpackYank(logger logging.Logger, cfg config.Config, client PackClient) 
 	cmd := &cobra.Command{
 		Use:     "yank <buildpack-id-and-version>",
 		Args:    cobra.ExactArgs(1),
-		Short:   prependExperimental("Yank a buildpack from a registry"),
+		Short:   "Yank a buildpack from a registry",
 		Example: "pack yank my-buildpack@0.0.1",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			buildpackIDVersion := args[0]

@@ -19,7 +19,7 @@ func RegisterBuildpack(logger logging.Logger, cfg config.Config, client PackClie
 		Use:     "register-buildpack <image>",
 		Hidden:  true,
 		Args:    cobra.ExactArgs(1),
-		Short:   prependExperimental("Register the buildpack to a registry"),
+		Short:   "Register the buildpack to a registry",
 		Example: "pack register-buildpack my-buildpack",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			deprecationWarning(logger, "register-buildpack", "buildpack register")

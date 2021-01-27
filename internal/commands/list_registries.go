@@ -13,7 +13,7 @@ func ListBuildpackRegistries(logger logging.Logger, cfg config.Config) *cobra.Co
 		Use:     "list-registries",
 		Args:    cobra.NoArgs,
 		Hidden:  true,
-		Short:   prependExperimental("List buildpack registries"),
+		Short:   "List buildpack registries",
 		Example: "pack list-registries",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			deprecationWarning(logger, "list-registries", "config registries list")
