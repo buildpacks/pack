@@ -60,7 +60,7 @@ jobs:
           echo "PACK_VERSION=${version}" >> $GITHUB_ENV
         shell: bash
       - name: Set up go
-        uses: actions/setup-go@v2.1.3
+        uses: actions/setup-go@v2
         with:
           go-version: '1.14'
       - name: Set up go env
@@ -99,55 +99,31 @@ jobs:
           name: pack-${{ matrix.os }}
           path: out/${{ env.PACK_BIN }}
   build-additional-archs:
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
     strategy:
       fail-fast: false
       matrix:
-        config: [ darwin-aarch64, arm64, armv7 ]
         include:
-        - arch: aarch64
-          distro: ubuntu18.04
-          goarch: arm64
-          goarm: 7
-        - arch: aarch64
-          distro: ubuntu18.04
-          goarch: arm64
-          goarm: 7
-        - arch: armv7
-          distro: ubuntu18.04
-          goarch: arm
-          goarm: 7
-    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+        - goarch: arm64
+          goos: darwin
+          name: macos-arm64
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Set up go
-        uses: actions/setup-go@v2.1.3
+        uses: actions/setup-go@v2
         with:
-          go-version: '1.14'
+          stable: 'false'
+          go-version: '1.16-beta1' # It looks like pre-releases need exact versioning
       - name: Build
         run: |
-          env GOARM=${{ matrix.goarm }} GOARCH=${{ matrix.goarch }} GOOS=linux make build
+          env GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} make build
         env:
           PACK_BUILD: ${{ github.run_number }}
-      - name: Test artifacts
-        uses: uraimo/run-on-arch-action@v2.0.5
-        with:
-          arch: ${{ matrix.arch }}
-          distro: ${{ matrix.distro }}
-          githubToken: ${{ github.token }}
-          shell: /bin/sh
-          # Mount the artifacts directory as /artifacts in the container
-          dockerRunArgs: |
-            --volume "${PWD}/out:/out"
-
-          # Produce a binary artifact and place it in the mounted volume
-          run: |
-            /out/pack
-            echo "Ran pack"
       - uses: actions/upload-artifact@v2
         with:
-          name: pack-${{ matrix.arch }}
+          name: pack-${{ matrix.name }}
           path: out/${{ env.PACK_BIN }}
   release:
     if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
@@ -180,6 +156,12 @@ jobs:
           chmod +x pack-macos/pack
           filename=pack-v${{ env.PACK_VERSION }}-macos.tgz
           tar -C pack-macos -vzcf $filename pack
+          shasum -a 256 $filename > $filename.sha256
+      - name: Package artifacts - macos-arm64
+        run: |
+          chmod +x pack-macos-arm64/pack
+          filename=pack-v${{ env.PACK_VERSION }}-macos-arm64.tgz
+          tar -C pack-macos-arm64 -vzcf $filename pack
           shasum -a 256 $filename > $filename.sha256
       - name: Package artifacts - linux
         run: |

@@ -53,6 +53,11 @@ jobs:
                 core.setOutput("macos_name", asset.name);
                 core.setOutput("macos_url", asset.browser_download_url);
               }
+
+              if (asset.name.endsWith("macos-arm64.tgz")) {
+                core.setOutput("macos_arm64_name", asset.name);
+                core.setOutput("macos_arm64_url", asset.browser_download_url);
+              }
             });
       - name: Generate asset checksums
         id: checksums
@@ -64,6 +69,10 @@ jobs:
           curl -sSL ${{ steps.assets.outputs.macos_url }} -o ${{ steps.assets.outputs.macos_name }}
           macos_sha256=$(sha256sum ${{ steps.assets.outputs.macos_name }} | cut -d ' ' -f1)
           echo "::set-output name=macos_sha256::$macos_sha256"
+
+          curl -sSL ${{ steps.assets.outputs.macos_arm64_url }} -o ${{ steps.assets.outputs.macos_arm64_name }}
+          macos_arm64_sha256=$(sha256sum ${{ steps.assets.outputs.macos_arm64_name }} | cut -d ' ' -f1)
+          echo "::set-output name=macos_arm64_sha256::macos_arm64_sha256"
       - name: Fill pack.rb
         uses: cschleiden/replace-tokens@v1
         with:
@@ -75,6 +84,8 @@ jobs:
           LINUX_SHA: ${{ steps.checksums.outputs.linux_sha256 }}
           MACOS_URL: ${{ steps.assets.outputs.macos_url }}
           MACOS_SHA: ${{ steps.checksums.outputs.macos_sha256 }}
+          MACOS_ARM64_URL: ${{ steps.assets.outputs.macos_arm64_url }}
+          MACOS_ARM64_SHA:  ${{ steps.checksums.outputs.macos_arm64_sha256 }}
       - run: cat homebrew-tap/Formula/pack.rb
       - name: Commit changes
         run: |
