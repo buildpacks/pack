@@ -2002,6 +2002,10 @@ func testAcceptance(
 								// Create test directories and files:
 								//
 								// ├── cookie.jar
+								// ├── other-cookie.jar
+								// ├── nested-cookie.jar
+								// ├── nested
+								// │   └── nested-cookie.jar
 								// ├── secrets
 								// │   ├── api_keys.json
 								// |   |── user_token
@@ -2009,11 +2013,23 @@ func testAcceptance(
 								// │   ├── mountain.jpg
 								// │   └── person.png
 								// └── test.sh
+
 								err = os.Mkdir(filepath.Join(tempAppDir, "secrets"), 0755)
 								assert.Nil(err)
 								err = ioutil.WriteFile(filepath.Join(tempAppDir, "secrets", "api_keys.json"), []byte("{}"), 0755)
 								assert.Nil(err)
 								err = ioutil.WriteFile(filepath.Join(tempAppDir, "secrets", "user_token"), []byte("token"), 0755)
+								assert.Nil(err)
+
+								err = os.Mkdir(filepath.Join(tempAppDir, "nested"), 0755)
+								assert.Nil(err)
+								err = ioutil.WriteFile(filepath.Join(tempAppDir,"nested", "nested-cookie.jar"), []byte("chocolate chip"), 0755)
+								assert.Nil(err)
+
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "other-cookie.jar"), []byte("chocolate chip"), 0755)
+								assert.Nil(err)
+
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "nested-cookie.jar"), []byte("chocolate chip"), 0755)
 								assert.Nil(err)
 
 								err = os.Mkdir(filepath.Join(tempAppDir, "media"), 0755)
@@ -2040,7 +2056,7 @@ name = "exclude test"
 [[project.licenses]]
 type = "MIT"
 [build]
-exclude = [ "*.sh", "secrets/", "media/metadata" ]
+exclude = [ "*.sh", "secrets/", "media/metadata", "/other-cookie.jar" ,"/nested-cookie.jar"]
 `
 								excludeDescriptorPath := filepath.Join(tempAppDir, "exclude.toml")
 								err := ioutil.WriteFile(excludeDescriptorPath, []byte(projectToml), 0755)
@@ -2056,8 +2072,10 @@ exclude = [ "*.sh", "secrets/", "media/metadata" ]
 								assert.NotContains(output, "api_keys.json")
 								assert.NotContains(output, "user_token")
 								assert.NotContains(output, "test.sh")
+								assert.NotContains(output, "other-cookie.jar")
 
 								assert.Contains(output, "cookie.jar")
+								assert.Contains(output, "nested-cookie.jar")
 								assert.Contains(output, "mountain.jpg")
 								assert.Contains(output, "person.png")
 							})
