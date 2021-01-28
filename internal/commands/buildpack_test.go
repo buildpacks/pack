@@ -44,22 +44,7 @@ func testBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, cmd.Execute())
 			output := outBuf.String()
 			h.AssertContains(t, output, "Interact with buildpacks")
-			h.AssertContains(t, output, "Usage:")
-			h.AssertContains(t, output, "package")
-			for _, command := range []string{"register", "yank", "pull"} {
-				h.AssertNotContains(t, output, command)
-			}
-		})
-
-		it("only shows experimental commands if in the config", func() {
-			cmd = commands.NewBuildpackCommand(logger, config.Config{Experimental: true}, mockClient, fakes.NewFakePackageConfigReader())
-			cmd.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
-			cmd.SetArgs([]string{})
-			h.AssertNil(t, cmd.Execute())
-			output := outBuf.String()
-			h.AssertContains(t, output, "Interact with buildpacks")
-			h.AssertContains(t, output, "Usage:")
-			for _, command := range []string{"package", "register", "yank", "pull"} {
+			for _, command := range []string{"Usage", "package", "register", "yank", "pull"} {
 				h.AssertContains(t, output, command)
 			}
 		})

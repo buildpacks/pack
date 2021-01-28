@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/daemon/names"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -107,6 +108,16 @@ func testCache(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			expected := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
 			h.AssertEq(t, subject.Name(), expected.Name())
+		})
+
+		it("includes human readable information", func() {
+			ref, err := name.ParseReference("myregistryhost:5000/fedora/httpd:version1.0", name.WeakValidation)
+			h.AssertNil(t, err)
+
+			subject := cache.NewVolumeCache(ref, "some-suffix", dockerClient)
+
+			h.AssertContains(t, subject.Name(), "fedora_httpd_version1.0")
+			h.AssertTrue(t, names.RestrictedNamePattern.MatchString(subject.Name()))
 		})
 	})
 

@@ -1989,7 +1989,7 @@ func testAcceptance(
 
 							it.Before(func() {
 								h.SkipUnless(t,
-									pack.SupportsFeature(invoke.ExcludeAndIncludeDescriptor),
+									pack.SupportsFeature(invoke.FixedExcludeAndIncludeDescriptor),
 									"pack --descriptor does NOT support 'exclude' and 'include' feature",
 								)
 
@@ -2023,7 +2023,7 @@ func testAcceptance(
 
 								err = os.Mkdir(filepath.Join(tempAppDir, "nested"), 0755)
 								assert.Nil(err)
-								err = ioutil.WriteFile(filepath.Join(tempAppDir,"nested", "nested-cookie.jar"), []byte("chocolate chip"), 0755)
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "nested", "nested-cookie.jar"), []byte("chocolate chip"), 0755)
 								assert.Nil(err)
 
 								err = ioutil.WriteFile(filepath.Join(tempAppDir, "other-cookie.jar"), []byte("chocolate chip"), 0755)
@@ -2087,7 +2087,7 @@ name = "include test"
 [[project.licenses]]
 type = "MIT"
 [build]
-include = [ "*.jar", "media/mountain.jpg", "media/person.png" ]
+include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 `
 								includeDescriptorPath := filepath.Join(tempAppDir, "include.toml")
 								err := ioutil.WriteFile(includeDescriptorPath, []byte(projectToml), 0755)

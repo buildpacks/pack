@@ -133,25 +133,22 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 
 func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Config) {
 	cmd.Flags().StringVarP(&buildFlags.AppPath, "path", "p", "", "Path to app dir or zip-formatted file (defaults to current working directory)")
-	cmd.Flags().StringVarP(&buildFlags.Builder, "builder", "B", cfg.DefaultBuilder, "Builder image")
-	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "r", cfg.DefaultRegistryName, "Buildpack Registry by name")
-	if !cfg.Experimental {
-		cmd.Flags().MarkHidden("buildpack-registry")
-	}
-	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish to registry")
-	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
-	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file.")
-	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed")
-	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
-	cmd.Flags().BoolVar(&buildFlags.TrustBuilder, "trust-builder", false, "Trust the provided builder\nAll lifecycle phases will be run in a single container (if supported by the lifecycle).")
 	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack to use. One of:\n  a buildpack by id and version in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  a packaged buildpack image name in the form of '<hostname>/<repo>[:<tag>]'"+multiValueHelp("buildpack"))
-	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
-	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
-	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<options>]'.\n- 'host path': Name of the volume or absolute directory path to mount.\n- 'target path': The path where the file or directory is available in the container.\n- 'options' (default \"ro\"): An optional comma separated list of mount options.\n    - \"ro\", volume contents are read-only.\n    - \"rw\", volume contents are readable and writeable.\n    - \"volume-opt=<key>=<value>\", can be specified more than once, takes a key-value pair consisting of the option name and its value."+multiValueHelp("volume"))
-	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
-	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
-	cmd.Flags().StringSliceVarP(&buildFlags.AdditionalTags, "tag", "t", nil, "Additional tags to push the output image to."+multiValueHelp("tag"))
+	cmd.Flags().StringVarP(&buildFlags.Builder, "builder", "B", cfg.DefaultBuilder, "Builder image")
 	cmd.Flags().StringVar(&buildFlags.CacheImage, "cache-image", "", `Cache build layers in remote registry. Requires --publish`)
+	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
+	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
+	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
+	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file."+multiValueHelp("env")+"\nNOTE: These are NOT available at image runtime.")
+	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed\nNOTE: These are NOT available at image runtime.\"")
+	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
+	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish to registry")
+	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
+	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "r", cfg.DefaultRegistryName, "Buildpack Registry by name")
+	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
+	cmd.Flags().StringSliceVarP(&buildFlags.AdditionalTags, "tag", "t", nil, "Additional tags to push the output image to."+multiValueHelp("tag"))
+	cmd.Flags().BoolVar(&buildFlags.TrustBuilder, "trust-builder", false, "Trust the provided builder\nAll lifecycle phases will be run in a single container (if supported by the lifecycle).")
+	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<options>]'.\n- 'host path': Name of the volume or absolute directory path to mount.\n- 'target path': The path where the file or directory is available in the container.\n- 'options' (default \"ro\"): An optional comma separated list of mount options.\n    - \"ro\", volume contents are read-only.\n    - \"rw\", volume contents are readable and writeable.\n    - \"volume-opt=<key>=<value>\", can be specified more than once, takes a key-value pair consisting of the option name and its value."+multiValueHelp("volume"))
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
