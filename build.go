@@ -668,7 +668,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				Version: version,
 			})
 		case buildpack.URILocator:
-			bp, err = paths.FilePathToURI(bp, opts.RelativeBaseDir)
+			bp, err = paths.FilePathToURI(bp, relativeBaseDir)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "making absolute: %s", style.Symbol(bp))
 			}

@@ -215,6 +215,7 @@ const (
 	BuilderTomlValidation Feature = iota
 	ExcludeAndIncludeDescriptor
 	FixedExcludeAndIncludeDescriptor
+	DescriptorWithBuildpacks
 	CreatorInPack
 	ReadWriteVolumeMounts
 	NoColorInBuildpacks
@@ -231,6 +232,9 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 		return i.laterThan("0.9.0")
 	},
 	FixedExcludeAndIncludeDescriptor: func(i *PackInvoker) bool {
+		return i.laterThan("0.16.0")
+	},
+	DescriptorWithBuildpacks: func(i *PackInvoker) bool {
 		return i.laterThan("0.16.0")
 	},
 	CreatorInPack: func(i *PackInvoker) bool {

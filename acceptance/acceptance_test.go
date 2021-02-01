@@ -1984,6 +1984,86 @@ func testAcceptance(
 
 					when("--descriptor", func() {
 
+						when("using a included buildpack", func() {
+							var tempAppDir, tempWorkingDir, origWorkingDir string
+							it.Before(func() {
+								h.SkipIf(t, runtime.GOOS == "windows", "buildpack directories not supported on windows")
+
+								h.SkipUnless(t,
+									pack.SupportsFeature(invoke.DescriptorWithBuildpacks),
+									"pack --descriptor does NOT support 'build.buildpacks' feature",
+								)
+
+								var err error
+								tempAppDir, err = ioutil.TempDir("", "descriptor-app")
+								assert.Nil(err)
+
+								tempWorkingDir, err = ioutil.TempDir("", "descriptor-app")
+								assert.Nil(err)
+
+								origWorkingDir, err = os.Getwd()
+								assert.Nil(err)
+
+								// Create test directories and files:
+								//
+								// ├── cookie.jar
+								// ├── descriptor-buildpack/...
+								// ├── media
+								// │   ├── mountain.jpg
+								// │   └── person.png
+								// └── test.sh
+								assert.Succeeds(os.Mkdir(filepath.Join(tempAppDir, "descriptor-buildpack"), os.ModePerm))
+								h.RecursiveCopy(t, filepath.Join(bpDir, "descriptor-buildpack"), filepath.Join(tempAppDir, "descriptor-buildpack"))
+
+								err = os.Mkdir(filepath.Join(tempAppDir, "media"), 0755)
+								assert.Nil(err)
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "media", "mountain.jpg"), []byte("fake image bytes"), 0755)
+								assert.Nil(err)
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "media", "person.png"), []byte("fake image bytes"), 0755)
+								assert.Nil(err)
+
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "cookie.jar"), []byte("chocolate chip"), 0755)
+								assert.Nil(err)
+								err = ioutil.WriteFile(filepath.Join(tempAppDir, "test.sh"), []byte("echo test"), 0755)
+								assert.Nil(err)
+
+								projectToml := `
+[project]
+name = "exclude test"
+[[project.licenses]]
+type = "MIT"
+[build]
+exclude = [ "*.sh", "media/person.png", "descriptor-buildpack" ]
+
+[[build.buildpacks]]
+uri = "descriptor-buildpack"
+`
+								excludeDescriptorPath := filepath.Join(tempAppDir, "project.toml")
+								err = ioutil.WriteFile(excludeDescriptorPath, []byte(projectToml), 0755)
+								assert.Nil(err)
+
+								// set working dir to be outside of the app we are building
+								assert.Succeeds(os.Chdir(tempWorkingDir))
+							})
+
+							it.After(func() {
+								os.RemoveAll(tempAppDir)
+								if origWorkingDir != "" {
+									assert.Succeeds(os.Chdir(origWorkingDir))
+								}
+							})
+							it("uses buildpack specified by descriptor", func() {
+								output := pack.RunSuccessfully(
+									"build",
+									repoName,
+									"-p", tempAppDir,
+								)
+								assert.NotContains(output, "person.png")
+								assert.NotContains(output, "test.sh")
+
+							})
+						})
+
 						when("exclude and include", func() {
 							var buildpackTgz, tempAppDir string
 
