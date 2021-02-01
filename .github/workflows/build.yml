@@ -114,8 +114,8 @@ jobs:
       - name: Set up go
         uses: actions/setup-go@v2
         with:
-          stable: 'false'
-          go-version: '1.16.0-beta1' # Pre-releases need exact versioning (https://github.com/actions/setup-go/issues/96)
+          stable: false
+          go-version: '1.16.0-rc1' # Pre-releases need exact versioning (https://github.com/actions/setup-go/issues/96)
       - name: Build
         run: |
           env GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} make build
