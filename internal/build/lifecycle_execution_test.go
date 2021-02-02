@@ -64,11 +64,12 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					api.MustParse("0.3"),
 					api.MustParse("0.4"),
 					api.MustParse("0.5"),
+					api.MustParse("0.6"),
 				}))
 				h.AssertNil(t, err)
 
 				lifecycleExec := newTestLifecycleExec(t, false, fakes.WithBuilder(fakeBuilder))
-				h.AssertEq(t, lifecycleExec.PlatformAPI().String(), "0.4")
+				h.AssertEq(t, lifecycleExec.PlatformAPI().String(), "0.6")
 			})
 		})
 
@@ -630,6 +631,24 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					h.AssertIncludeAllExpectedPatterns(t, configProvider.ContainerConfig().Cmd, []string{"-process-type", "web"})
 				})
 			})
+
+			when("platform >= 0.6", func() {
+				it("doesn't hint at default process type", func() {
+					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.6")}))
+					h.AssertNil(t, err)
+					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
+					fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+					err = lifecycle.Export(context.Background(), "test", "test", true, "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-process-type")
+				})
+			})
 		})
 
 		when("publish is false", func() {
@@ -765,6 +784,24 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
 					h.AssertIncludeAllExpectedPatterns(t, configProvider.ContainerConfig().Cmd, []string{"-process-type", "web"})
+				})
+			})
+
+			when("platform >= 0.6", func() {
+				it("doesn't hint at default process type", func() {
+					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.6")}))
+					h.AssertNil(t, err)
+					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
+					fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+					err = lifecycle.Export(context.Background(), "test", "test", false, "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-process-type")
 				})
 			})
 		})
@@ -1693,6 +1730,24 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					h.AssertIncludeAllExpectedPatterns(t, configProvider.ContainerConfig().Cmd, []string{"-process-type", "web"})
 				})
 			})
+
+			when("platform >= 0.6", func() {
+				it("doesn't hint at default process type", func() {
+					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.6")}))
+					h.AssertNil(t, err)
+					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
+					fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+					err = lifecycle.Export(context.Background(), "test", "test", true, "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-process-type")
+				})
+			})
 		})
 
 		when("publish is false", func() {
@@ -1861,6 +1916,24 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
 					h.AssertIncludeAllExpectedPatterns(t, configProvider.ContainerConfig().Cmd, []string{"-process-type", "web"})
+				})
+			})
+
+			when("platform >= 0.6", func() {
+				it("doesn't hint at default process type", func() {
+					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.6")}))
+					h.AssertNil(t, err)
+					lifecycle := newTestLifecycleExec(t, true, fakes.WithBuilder(fakeBuilder))
+					fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+					err = lifecycle.Export(context.Background(), "test", "test", false, "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-process-type")
 				})
 			})
 		})
