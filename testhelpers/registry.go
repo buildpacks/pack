@@ -263,6 +263,8 @@ func (rc *TestRegistryConfig) StopRegistry(t *testing.T) {
 	t.Helper()
 	err := dockerCli(t).ContainerKill(context.Background(), rc.runRegistryName, "SIGKILL")
 	AssertNil(t, err)
+	err = dockerCli(t).ContainerRemove(context.TODO(), rc.runRegistryName, dockertypes.ContainerRemoveOptions{Force: true})
+	AssertNil(t, err)
 
 	err = os.RemoveAll(rc.DockerConfigDir)
 	AssertNil(t, err)
