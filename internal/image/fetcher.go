@@ -161,7 +161,7 @@ func (w *colorizedWriter) Write(p []byte) (n int, err error) {
 		">":                 style.ProgressBar,
 	}
 	for pattern, colorize := range colorizers {
-		msg = strings.Replace(msg, pattern, colorize(pattern), -1)
+		msg = strings.ReplaceAll(msg, pattern, colorize(pattern))
 	}
 	return w.writer.Write([]byte(msg))
 }
