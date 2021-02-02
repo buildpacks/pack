@@ -41,7 +41,7 @@ import (
 const (
 	// The lifecycle image that will be used for the analysis, restore and export phases
 	// when using an untrusted builder.
-	lifecycleImageRepo                   = "buildpacksio/lifecycle"
+	LifecycleImageRepo                   = "buildpacksio/lifecycle"
 	minLifecycleVersionSupportingCreator = "0.7.4"
 	prevLifecycleVersionSupportingImage  = "0.6.1"
 	minLifecycleVersionSupportingImage   = "0.7.5"
@@ -317,7 +317,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		if lifecycleImageSupported(imgOS, lifecycleVersion) {
 			lifecycleImage, err := c.imageFetcher.Fetch(
 				ctx,
-				fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
+				fmt.Sprintf("%s:%s", LifecycleImageRepo, lifecycleVersion.String()),
 				true,
 				opts.PullPolicy,
 			)

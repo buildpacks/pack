@@ -5,7 +5,9 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -57,6 +59,10 @@ func NewInputConfigurationManager() (InputConfigurationManager, error) {
 		combos = defaultRunCombo
 	}
 
+	if lifecyclePath != "" && len(combos) == 1 && combos[0] == defaultRunCombo[0] {
+		combos[0].Lifecycle = Current
+	}
+
 	return InputConfigurationManager{
 		packPath:                 packPath,
 		previousPackPath:         previousPackPath,
@@ -79,12 +85,21 @@ func resolveAbsolutePaths(paths ...*string) error {
 			continue
 		}
 
-		absPath, err := filepath.Abs(*path)
-		if err != nil {
-			return errors.Wrapf(err, "getting absolute path for %s", *path)
+		// Manually expand ~ to home dir
+		if strings.HasPrefix(*path, "~/") {
+			usr, err := user.Current()
+			if err != nil {
+				return errors.Wrapf(err, "getting current user")
+			}
+			dir := usr.HomeDir
+			*path = filepath.Join(dir, (*path)[2:])
+		} else {
+			absPath, err := filepath.Abs(*path)
+			if err != nil {
+				return errors.Wrapf(err, "getting absolute path for %s", *path)
+			}
+			*path = absPath
 		}
-
-		*path = absPath
 	}
 
 	return nil
