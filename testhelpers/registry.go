@@ -254,19 +254,15 @@ func (rc *TestRegistryConfig) RmRegistry(t *testing.T) {
 	t.Helper()
 
 	id := ImageID(t, rc.registryContainerName)
-	err := DockerRmi(dockerCli(t), id)
-	AssertNil(t, err)
+	DockerRmi(dockerCli(t), id)
 }
 
 func (rc *TestRegistryConfig) StopRegistry(t *testing.T) {
 	t.Log("stop registry")
 	t.Helper()
-	err := dockerCli(t).ContainerKill(context.Background(), rc.runRegistryName, "SIGKILL")
-	AssertNil(t, err)
-	err = dockerCli(t).ContainerRemove(context.TODO(), rc.runRegistryName, dockertypes.ContainerRemoveOptions{Force: true})
-	AssertNil(t, err)
+	dockerCli(t).ContainerKill(context.Background(), rc.runRegistryName, "SIGKILL")
 
-	err = os.RemoveAll(rc.DockerConfigDir)
+	err := os.RemoveAll(rc.DockerConfigDir)
 	AssertNil(t, err)
 }
 
