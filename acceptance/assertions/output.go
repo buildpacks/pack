@@ -174,18 +174,23 @@ func (o OutputAssertionManager) IncludesPrefixedGoogleBuilder() {
 	o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`Google:\s+'%s'`, googleBuilder)))
 }
 
-const herokuBuilder = "heroku/buildpacks:18"
-
-func (o OutputAssertionManager) IncludesHerokuBuilder() {
-	o.testObject.Helper()
-
-	o.assert.Contains(o.output, herokuBuilder)
+var herokuBuilders = []string{
+	"heroku/buildpacks:18",
+	"heroku/buildpacks:20",
 }
 
-func (o OutputAssertionManager) IncludesPrefixedHerokuBuilder() {
+func (o OutputAssertionManager) IncludesHerokuBuilders() {
 	o.testObject.Helper()
 
-	o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`Heroku:\s+'%s'`, herokuBuilder)))
+	o.assert.ContainsAll(o.output, herokuBuilders...)
+}
+
+func (o OutputAssertionManager) IncludesPrefixedHerokuBuilders() {
+	o.testObject.Helper()
+
+	for _, builder := range herokuBuilders {
+		o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`Heroku:\s+'%s'`, builder)))
+	}
 }
 
 var paketoBuilders = []string{
