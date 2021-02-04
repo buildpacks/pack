@@ -1576,17 +1576,6 @@ func testAcceptance(
 								t.Fatalf("Expected to see image %s in %s", repo, contents)
 							}
 
-							assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
-							defer h.DockerRmi(dockerCli, repoName)
-
-							t.Log("app is runnable")
-							assertMockAppRunsWithOutput(t,
-								assert,
-								repoName,
-								"Launch Dep Contents",
-								"Cached Dep Contents",
-							)
-
 							t.Log("inspect-image")
 							output = pack.RunSuccessfully("inspect-image", repoName)
 
@@ -1650,6 +1639,17 @@ func testAcceptance(
 
 								format.compareFunc(output, expectedOutput)
 							}
+
+							assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+							defer h.DockerRmi(dockerCli, repoName)
+
+							t.Log("app is runnable")
+							assertMockAppRunsWithOutput(t,
+								assert,
+								repoName,
+								"Launch Dep Contents",
+								"Cached Dep Contents",
+							)
 						})
 
 						when("additional tags are specified with --tag", func() {

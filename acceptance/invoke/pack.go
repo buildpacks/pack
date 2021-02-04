@@ -63,6 +63,9 @@ func NewPackInvoker(
 }
 
 func (i *PackInvoker) Cleanup() {
+	if i == nil {
+		return
+	}
 	i.testObject.Helper()
 
 	err := os.RemoveAll(i.home)
