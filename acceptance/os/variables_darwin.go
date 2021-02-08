@@ -1,5 +1,5 @@
 // +build acceptance
-// +build darwin
+// +build darwin,amd64
 
 package os
 
