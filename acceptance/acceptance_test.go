@@ -32,6 +32,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	pack2 "github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/acceptance/assertions"
 	"github.com/buildpacks/pack/acceptance/buildpacks"
 	"github.com/buildpacks/pack/acceptance/config"
@@ -66,7 +67,7 @@ func TestAcceptance(t *testing.T) {
 	assert.Nil(err)
 
 	registryConfig = h.RunRegistry(t)
-	defer registryConfig.StopRegistry(t)
+	defer registryConfig.RmRegistry(t)
 
 	inputConfigManager, err := config.NewInputConfigurationManager()
 	assert.Nil(err)
@@ -153,7 +154,7 @@ func testWithoutSpecificBuilderRequirement(
 			assertOutput := assertions.NewOutputAssertionManager(t, output)
 			assertOutput.IncludesSuggestedBuildersHeading()
 			assertOutput.IncludesPrefixedGoogleBuilder()
-			assertOutput.IncludesPrefixedHerokuBuilder()
+			assertOutput.IncludesPrefixedHerokuBuilders()
 			assertOutput.IncludesPrefixedPaketoBuilders()
 		})
 	})
@@ -183,7 +184,7 @@ func testWithoutSpecificBuilderRequirement(
 
 				assertOutput := assertions.NewOutputAssertionManager(t, output)
 				assertOutput.IncludesTrustedBuildersHeading()
-				assertOutput.IncludesHerokuBuilder()
+				assertOutput.IncludesHerokuBuilders()
 				assertOutput.IncludesGoogleBuilder()
 				assertOutput.IncludesPaketoBuilders()
 				assert.NotContains(output, "has been deprecated")
@@ -220,7 +221,7 @@ func testWithoutSpecificBuilderRequirement(
 
 					assertOutput := assertions.NewOutputAssertionManager(t, output)
 					assertOutput.IncludesTrustedBuildersHeading()
-					assertOutput.IncludesHerokuBuilder()
+					assertOutput.IncludesHerokuBuilders()
 					assertOutput.IncludesGoogleBuilder()
 					assertOutput.IncludesPaketoBuilders()
 					assert.NotContains(output, "has been deprecated")
@@ -272,7 +273,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			assertOutput := assertions.NewOutputAssertionManager(t, output)
 			assertOutput.IncludesTrustedBuildersHeading()
-			assertOutput.IncludesHerokuBuilder()
+			assertOutput.IncludesHerokuBuilders()
 			assertOutput.IncludesGoogleBuilder()
 			assertOutput.IncludesPaketoBuilders()
 			assertOutput.IncludesDeprecationWarning()
@@ -631,7 +632,7 @@ func testWithoutSpecificBuilderRequirement(
 			assertOutput := assertions.NewOutputAssertionManager(t, output)
 			assertOutput.IncludesMessageToSetDefaultBuilder()
 			assertOutput.IncludesPrefixedGoogleBuilder()
-			assertOutput.IncludesPrefixedHerokuBuilder()
+			assertOutput.IncludesPrefixedHerokuBuilders()
 			assertOutput.IncludesPrefixedPaketoBuilders()
 		})
 	})
@@ -706,6 +707,7 @@ func testWithoutSpecificBuilderRequirement(
 							buildpacks.FolderSimpleLayers,
 						),
 					)
+					defer h.DockerRmi(dockerCli, packageImageName)
 
 					buildpackManager.PrepareBuildpacks(tmpDir, packageImage)
 
@@ -760,7 +762,11 @@ func testAcceptance(
 
 	when("stack is created", func() {
 		var (
-			runImageMirror string
+			runImageMirror  string
+			stackBaseImages = map[string][]string{
+				"linux":   {"ubuntu:bionic"},
+				"windows": {"mcr.microsoft.com/windows/nanoserver:1809", "golang:1.14-nanoserver-1809"},
+			}
 		)
 
 		it.Before(func() {
@@ -776,7 +782,11 @@ func testAcceptance(
 				})
 			assert.Nil(err)
 
+			baseStackNames := stackBaseImages[dockerHostOS()]
 			suiteManager.RegisterCleanUp("remove-stack-images", func() error {
+				for _, base := range baseStackNames {
+					h.DockerRmi(dockerCli, base)
+				}
 				return h.DockerRmi(dockerCli, runImage, buildImage, value)
 			})
 
@@ -868,6 +878,12 @@ func testAcceptance(
 							buildpackManager,
 							runImageMirror,
 						)
+
+						suiteManager.RegisterCleanUp("remove-lifecycle-"+lifecycle.Version(), func() error {
+							img, err := imgIDForRepoName(fmt.Sprintf("%s:%s", pack2.LifecycleImageRepo, lifecycle.Version()))
+							assert.Nil(err)
+							return h.DockerRmi(dockerCli, img)
+						})
 
 						assert.Nil(err)
 					})
@@ -2838,6 +2854,8 @@ func createComplexBuilder(t *testing.T,
 		),
 	)
 
+	defer h.DockerRmi(dockerCli, packageImageName, nestedLevelTwoBuildpackName, simpleLayersBuildpackName)
+
 	builderBuildpacks = append(
 		builderBuildpacks,
 		packageImageBuildpack,
@@ -2931,6 +2949,8 @@ func createBuilder(
 		packageTomlPath,
 		buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
 	)
+
+	defer h.DockerRmi(dockerCli, packageImageName)
 
 	builderBuildpacks = append(builderBuildpacks, packageImageBuildpack)
 
