@@ -29,12 +29,13 @@ var registryContainerNames = map[string]string{
 }
 
 type TestRegistryConfig struct {
-	runRegistryName string
-	RunRegistryHost string
-	RunRegistryPort string
-	DockerConfigDir string
-	username        string
-	password        string
+	runRegistryName       string
+	registryContainerName string
+	RunRegistryHost       string
+	RunRegistryPort       string
+	DockerConfigDir       string
+	username              string
+	password              string
 }
 
 func RegistryHost(host, port string) string {
@@ -82,16 +83,17 @@ func RunRegistry(t *testing.T) *TestRegistryConfig {
 	username := RandString(10)
 	password := RandString(10)
 
-	runRegistryHost, runRegistryPort := startRegistry(t, runRegistryName, username, password)
+	runRegistryHost, runRegistryPort, registryCtnrName := startRegistry(t, runRegistryName, username, password)
 	dockerConfigDir := setupDockerConfigWithAuth(t, username, password, runRegistryHost, runRegistryPort)
 
 	registryConfig := &TestRegistryConfig{
-		runRegistryName: runRegistryName,
-		RunRegistryHost: runRegistryHost,
-		RunRegistryPort: runRegistryPort,
-		DockerConfigDir: dockerConfigDir,
-		username:        username,
-		password:        password,
+		runRegistryName:       runRegistryName,
+		registryContainerName: registryCtnrName,
+		RunRegistryHost:       runRegistryHost,
+		RunRegistryPort:       runRegistryPort,
+		DockerConfigDir:       dockerConfigDir,
+		username:              username,
+		password:              password,
 	}
 
 	waitForRegistryToBeAvailable(t, registryConfig)
@@ -136,7 +138,7 @@ func (rc *TestRegistryConfig) Login(t *testing.T, username string, password stri
 	}, 100*time.Millisecond, 10*time.Second)
 }
 
-func startRegistry(t *testing.T, runRegistryName, username, password string) (string, string) {
+func startRegistry(t *testing.T, runRegistryName, username, password string) (string, string, string) {
 	ctx := context.Background()
 
 	daemonInfo, err := dockerCli(t).Info(ctx)
@@ -174,7 +176,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) (st
 
 	runRegistryHost := DockerHostname(t)
 
-	return runRegistryHost, runRegistryPort
+	return runRegistryHost, runRegistryPort, registryContainerName
 }
 
 func DockerHostname(t *testing.T) string {
@@ -245,13 +247,22 @@ func encodedUserPass(username string, password string) string {
 	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", username, password)))
 }
 
+func (rc *TestRegistryConfig) RmRegistry(t *testing.T) {
+	rc.StopRegistry(t)
+
+	t.Log("remove registry")
+	t.Helper()
+
+	id := ImageID(t, rc.registryContainerName)
+	DockerRmi(dockerCli(t), id)
+}
+
 func (rc *TestRegistryConfig) StopRegistry(t *testing.T) {
 	t.Log("stop registry")
 	t.Helper()
-	err := dockerCli(t).ContainerKill(context.Background(), rc.runRegistryName, "SIGKILL")
-	AssertNil(t, err)
+	dockerCli(t).ContainerKill(context.Background(), rc.runRegistryName, "SIGKILL")
 
-	err = os.RemoveAll(rc.DockerConfigDir)
+	err := os.RemoveAll(rc.DockerConfigDir)
 	AssertNil(t, err)
 }
 
