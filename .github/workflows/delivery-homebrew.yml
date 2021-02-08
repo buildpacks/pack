@@ -72,7 +72,7 @@ jobs:
 
           curl -sSL ${{ steps.assets.outputs.macos_arm64_url }} -o ${{ steps.assets.outputs.macos_arm64_name }}
           macos_arm64_sha256=$(sha256sum ${{ steps.assets.outputs.macos_arm64_name }} | cut -d ' ' -f1)
-          echo "::set-output name=macos_arm64_sha256::macos_arm64_sha256"
+          echo "::set-output name=macos_arm64_sha256::$macos_arm64_sha256"
       - name: Fill pack.rb
         uses: cschleiden/replace-tokens@v1
         with:
