@@ -24,8 +24,9 @@ const (
 	// log level to use when debug is true
 	verboseLevel = log.DebugLevel
 	// time format the out logging uses
-	timeFmt               = "2006/01/02 15:04:05.000000"
-	invalidFileDescriptor = ^(uintptr(0))
+	timeFmt = "2006/01/02 15:04:05.000000"
+	// InvalidFileDescriptor based on https://golang.org/src/os/file_unix.go?s=2183:2210#L57
+	InvalidFileDescriptor = ^(uintptr(0))
 )
 
 // LogWithWriters is a logger used with the pack CLI, allowing users to print logs for various levels, including Info, Debug and Error
@@ -133,7 +134,7 @@ func IsTerminal(w io.Writer) (uintptr, bool) {
 		return termFd, isTerm
 	}
 
-	return invalidFileDescriptor, false
+	return InvalidFileDescriptor, false
 }
 
 func formatLevel(ll log.Level) string {

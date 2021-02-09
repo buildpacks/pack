@@ -20,7 +20,7 @@ const (
 )
 
 func TestLogWriter(t *testing.T) {
-	spec.Run(t, "LogWriter", testLogWriter, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "LogWriter", testLogWriter, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testLogWriter(t *testing.T, when spec.G, it spec.S) {
@@ -66,10 +66,10 @@ func testLogWriter(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("out is just a Writer", func() {
-			it("returns 0", func() {
+			it("returns the invalid file descriptor", func() {
 				var out *bytes.Buffer
 				writer = ilogging.NewLogWriter(out, clockFunc, true)
-				h.AssertEq(t, int(writer.Fd()), -1)
+				h.AssertEq(t, writer.Fd(), ilogging.InvalidFileDescriptor)
 			})
 		})
 	})

@@ -60,7 +60,7 @@ func (tw *LogWriter) Fd() uintptr {
 		return file.Fd()
 	}
 
-	return invalidFileDescriptor
+	return InvalidFileDescriptor
 }
 
 // Remove all ANSI color information.
