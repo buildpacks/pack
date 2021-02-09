@@ -32,7 +32,6 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/src-d/go-git.v4"
 
-	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 
 	"github.com/buildpacks/pack/internal/stringset"
@@ -799,15 +798,6 @@ func AssertBuildpacksHaveDescriptors(t *testing.T, bps []dist.Buildpack, descrip
 		}
 		AssertTrue(t, found)
 	}
-}
-
-func ReadPackConfig(t *testing.T) config.Config {
-	path, err := config.DefaultConfigPath()
-	AssertNil(t, err)
-
-	cfg, err := config.Read(path)
-	AssertNil(t, err)
-	return cfg
 }
 
 func AssertGitHeadEq(t *testing.T, path1, path2 string) {

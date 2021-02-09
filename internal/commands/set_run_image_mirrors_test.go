@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/sclevine/spec"
@@ -28,21 +29,21 @@ func testSetRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 		outBuf       bytes.Buffer
 		cfg          config.Config
 		tempPackHome string
+		cfgPath      string
 	)
 
 	it.Before(func() {
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 		cfg = config.Config{}
-		command = commands.SetRunImagesMirrors(logger, cfg)
-
 		var err error
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
-		h.AssertNil(t, os.Setenv("PACK_HOME", tempPackHome))
+		cfgPath = filepath.Join(tempPackHome, "config.toml")
+
+		command = commands.SetRunImagesMirrors(logger, cfg, cfgPath)
 	})
 
 	it.After(func() {
-		h.AssertNil(t, os.Unsetenv("PACK_HOME"))
 		h.AssertNil(t, os.RemoveAll(tempPackHome))
 	})
 
@@ -74,7 +75,8 @@ func testSetRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 			it("adds them as mirrors to the config", func() {
 				command.SetArgs([]string{runImage, "-m", testMirror1, "-m", testMirror2})
 				h.AssertNil(t, command.Execute())
-				cfg := h.ReadPackConfig(t)
+				cfg, err := config.Read(cfgPath)
+				h.AssertNil(t, err)
 				h.AssertEq(t, cfg.RunImages, testRunImageCfg)
 			})
 		})
@@ -82,14 +84,15 @@ func testSetRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 		when("no mirrors are provided", func() {
 			it.Before(func() {
 				cfg.RunImages = testRunImageCfg
-				command = commands.SetRunImagesMirrors(logger, cfg)
+				command = commands.SetRunImagesMirrors(logger, cfg, cfgPath)
 			})
 
 			it("removes all mirrors for the run image", func() {
 				command.SetArgs([]string{runImage})
 				h.AssertNil(t, command.Execute())
 
-				cfg := h.ReadPackConfig(t)
+				cfg, err := config.Read(cfgPath)
+				h.AssertNil(t, err)
 				h.AssertEq(t, cfg.RunImages, []config.RunImage{{Image: runImage}})
 			})
 		})

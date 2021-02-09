@@ -38,17 +38,13 @@ func testTrustBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		var err error
 
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.TrustBuilder(logger, config.Config{})
-
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
-		h.AssertNil(t, os.Setenv("PACK_HOME", tempPackHome))
-
 		configPath = filepath.Join(tempPackHome, "config.toml")
+		command = commands.TrustBuilder(logger, config.Config{}, configPath)
 	})
 
 	it.After(func() {
-		h.AssertNil(t, os.Unsetenv("PACK_HOME"))
 		h.AssertNil(t, os.RemoveAll(tempPackHome))
 	})
 

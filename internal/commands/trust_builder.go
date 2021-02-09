@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
@@ -9,7 +8,7 @@ import (
 )
 
 // Deprecated: Use `config trusted-builders add` instead
-func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
+func TrustBuilder(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "trust-builder <builder-name>",
 		Args:    cobra.ExactArgs(1),
@@ -19,12 +18,7 @@ func TrustBuilder(logger logging.Logger, cfg config.Config) *cobra.Command {
 		Hidden:  true,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			deprecationWarning(logger, "trust-builder", "config trusted-builders add")
-			configPath, err := config.DefaultConfigPath()
-			if err != nil {
-				return errors.Wrap(err, "getting config path")
-			}
-
-			return addTrustedBuilder(args, logger, cfg, configPath)
+			return addTrustedBuilder(args, logger, cfg, cfgPath)
 		}),
 	}
 
