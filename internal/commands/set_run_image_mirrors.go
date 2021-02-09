@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
@@ -11,7 +10,7 @@ import (
 
 // Deprecated: Use `pack config run-image-mirrors add` instead
 // SetRunImagesMirrors sets run image mirros for a given run image
-func SetRunImagesMirrors(logger logging.Logger, cfg config.Config) *cobra.Command {
+func SetRunImagesMirrors(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	var mirrors []string
 
 	cmd := &cobra.Command{
@@ -24,11 +23,7 @@ func SetRunImagesMirrors(logger logging.Logger, cfg config.Config) *cobra.Comman
 			deprecationWarning(logger, "set-run-image-mirrors", "config run-image-mirrors")
 			runImage := args[0]
 			cfg = config.SetRunImageMirrors(cfg, runImage, mirrors)
-			configPath, err := config.DefaultConfigPath()
-			if err != nil {
-				return errors.Wrap(err, "getting config path")
-			}
-			if err := config.Write(cfg, configPath); err != nil {
+			if err := config.Write(cfg, cfgPath); err != nil {
 				return err
 			}
 

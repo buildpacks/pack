@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
@@ -12,7 +11,7 @@ import (
 )
 
 // Deprecated: Use `pack config default-builder`
-func SetDefaultBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+func SetDefaultBuilder(logger logging.Logger, cfg config.Config, cfgPath string, client PackClient) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "set-default-builder <builder-name>",
 		Hidden:  true,
@@ -49,11 +48,7 @@ func SetDefaultBuilder(logger logging.Logger, cfg config.Config, client PackClie
 			}
 
 			cfg.DefaultBuilder = imageName
-			configPath, err := config.DefaultConfigPath()
-			if err != nil {
-				return errors.Wrap(err, "getting config path")
-			}
-			if err := config.Write(cfg, configPath); err != nil {
+			if err := config.Write(cfg, cfgPath); err != nil {
 				return err
 			}
 			logger.Infof("Builder %s is now the default builder", style.Symbol(imageName))
