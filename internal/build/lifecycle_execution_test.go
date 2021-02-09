@@ -798,8 +798,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			h.AssertIncludeAllExpectedPatterns(t,
 				configProvider.ContainerConfig().Cmd,
 				[]string{"-log-level", "debug"},
-				[]string{"-app", "/workspace"},
-				[]string{"-platform", "/platform"},
 			)
 		})
 
@@ -1023,7 +1021,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertIncludeAllExpectedPatterns(t,
 					configProvider.ContainerConfig().Cmd,
 					[]string{"-log-level", "debug"},
-					[]string{"-layers", "/layers"},
 					[]string{expectedRepoName},
 				)
 			})
@@ -1141,7 +1138,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					configProvider.ContainerConfig().Cmd,
 					[]string{"-log-level", "debug"},
 					[]string{"-daemon"},
-					[]string{"-layers", "/layers"},
 					[]string{expectedRepoName},
 				)
 			})
@@ -1261,7 +1257,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				configProvider.ContainerConfig().Cmd,
 				[]string{"-log-level", "debug"},
 				[]string{"-cache-dir", "/cache"},
-				[]string{"-layers", "/layers"},
 			)
 		})
 
@@ -1354,9 +1349,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			h.AssertIncludeAllExpectedPatterns(t,
 				configProvider.ContainerConfig().Cmd,
 				[]string{"-log-level", "debug"},
-				[]string{"-layers", "/layers"},
-				[]string{"-app", "/workspace"},
-				[]string{"-platform", "/platform"},
 			)
 		})
 
@@ -1437,8 +1429,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				configProvider.ContainerConfig().Cmd,
 				[]string{"-log-level", "debug"},
 				[]string{"-cache-dir", "/cache"},
-				[]string{"-layers", "/layers"},
-				[]string{"-app", "/workspace"},
 				[]string{"-run-image", expectedRunImage},
 				[]string{expectedRepoName},
 			)
@@ -1464,8 +1454,6 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					configProvider.ContainerConfig().Cmd,
 					[]string{"-log-level", "debug"},
 					[]string{"-cache-dir", "/cache"},
-					[]string{"-layers", "/layers"},
-					[]string{"-app", "/workspace"},
 					[]string{"-run-image", expectedRunImage},
 					[]string{expectedRepoName, additionalTags[0], additionalTags[1]},
 				)

@@ -245,10 +245,7 @@ func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, vol
 		l,
 		WithLogPrefix("detector"),
 		WithArgs(
-			l.withLogLevel(
-				"-app", l.mountPaths.appDir(),
-				"-platform", l.mountPaths.platformDir(),
-			)...,
+			l.withLogLevel()...,
 		),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
@@ -283,7 +280,6 @@ func (l *LifecycleExecution) Restore(ctx context.Context, networkMode string, bu
 		WithArgs(
 			l.withLogLevel(
 				"-cache-dir", l.mountPaths.cacheDir(),
-				"-layers", l.mountPaths.layersDir(),
 			)...,
 		),
 		WithNetwork(networkMode),
@@ -307,7 +303,6 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, repoName, networkMode 
 
 func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish, clearCache bool, buildCache Cache, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	args := []string{
-		"-layers", l.mountPaths.layersDir(),
 		repoName,
 	}
 	if clearCache {
@@ -378,17 +373,11 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish, c
 }
 
 func (l *LifecycleExecution) Build(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
-	args := []string{
-		"-layers", l.mountPaths.layersDir(),
-		"-app", l.mountPaths.appDir(),
-		"-platform", l.mountPaths.platformDir(),
-	}
-
 	configProvider := NewPhaseConfigProvider(
 		"builder",
 		l,
 		WithLogPrefix("builder"),
-		WithArgs(l.withLogLevel(args...)...),
+		WithArgs(l.withLogLevel()...),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
 	)
@@ -410,9 +399,7 @@ func determineDefaultProcessType(platformAPI *api.Version, providedValue string)
 func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, networkMode string, buildCache, launchCache Cache, additionalTags []string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	flags := []string{
 		"-cache-dir", l.mountPaths.cacheDir(),
-		"-layers", l.mountPaths.layersDir(),
 		"-stack", l.mountPaths.stackPath(),
-		"-app", l.mountPaths.appDir(),
 		"-run-image", runImage,
 	}
 
