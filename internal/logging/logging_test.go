@@ -222,6 +222,13 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 		expected := "\n"
 		h.AssertEq(t, fOut(), expected)
 	})
+
+	when("IsTerminal", func() {
+		it("returns false for a pipe", func() {
+			_, isTerm := IsTerminal(logger.WriterForLevel(logging.InfoLevel))
+			h.AssertFalse(t, isTerm)
+		})
+	})
 }
 
 func assertLogWriterHasOut(t *testing.T, writer io.Writer, out io.Writer) {

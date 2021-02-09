@@ -3,7 +3,6 @@ package logging
 import (
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"sync"
 	"time"
@@ -57,15 +56,18 @@ func (tw *LogWriter) Fd() uintptr {
 	tw.Lock()
 	defer tw.Unlock()
 
-	file, ok := tw.out.(*os.File)
-	if ok {
+	if file, ok := tw.out.(hasDescriptor); ok {
 		return file.Fd()
 	}
 
-	return 0
+	return invalidFileDescriptor
 }
 
 // Remove all ANSI color information.
 func stripColor(b []byte) []byte {
 	return colorCodeMatcher.ReplaceAll(b, []byte(""))
+}
+
+type hasDescriptor interface {
+	Fd() uintptr
 }

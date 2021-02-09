@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
@@ -23,7 +24,8 @@ const (
 	// log level to use when debug is true
 	verboseLevel = log.DebugLevel
 	// time format the out logging uses
-	timeFmt = "2006/01/02 15:04:05.000000"
+	timeFmt               = "2006/01/02 15:04:05.000000"
+	invalidFileDescriptor = ^(uintptr(0))
 )
 
 // LogWithWriters is a logger used with the pack CLI, allowing users to print logs for various levels, including Info, Debug and Error
@@ -121,6 +123,17 @@ func (lw *LogWithWriters) WantVerbose(f bool) {
 // IsVerbose returns whether verbose logging is on
 func (lw *LogWithWriters) IsVerbose() bool {
 	return lw.Level == log.DebugLevel
+}
+
+// IsTerminal returns whether a writer is a terminal
+func IsTerminal(w io.Writer) (uintptr, bool) {
+	if f, ok := w.(hasDescriptor); ok {
+		termFd := f.Fd()
+		isTerm := terminal.IsTerminal(int(termFd))
+		return termFd, isTerm
+	}
+
+	return invalidFileDescriptor, false
 }
 
 func formatLevel(ll log.Level) string {

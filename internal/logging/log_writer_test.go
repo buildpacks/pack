@@ -69,7 +69,7 @@ func testLogWriter(t *testing.T, when spec.G, it spec.S) {
 			it("returns 0", func() {
 				var out *bytes.Buffer
 				writer = ilogging.NewLogWriter(out, clockFunc, true)
-				h.AssertEq(t, int(writer.Fd()), 0)
+				h.AssertEq(t, int(writer.Fd()), -1)
 			})
 		})
 	})
