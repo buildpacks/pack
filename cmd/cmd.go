@@ -47,7 +47,9 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 				}
 
 				_, canDisplayColor := ilogging.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
-				color.Disable(!canDisplayColor)
+				if !canDisplayColor {
+					color.Disable(true)
+				}
 
 				if flag, err := fs.GetBool("quiet"); err == nil {
 					logger.WantQuiet(flag)
