@@ -193,9 +193,16 @@ func (i *PackInvoker) Supports(command string) bool {
 	parts := strings.Split(command, " ")
 
 	var cmdParts = []string{"help"}
-	last := len(parts) - 1
-	cmdParts = append(cmdParts, parts[:last]...)
-	search := parts[last]
+	var search string
+
+	if len(parts) > 1 {
+		last := len(parts) - 1
+		cmdParts = append(cmdParts, parts[:last]...)
+		search = parts[last]
+	} else {
+		cmdParts = append(cmdParts, command)
+		search = command
+	}
 
 	output, err := i.baseCmd(cmdParts...).CombinedOutput()
 	i.assert.Nil(err)

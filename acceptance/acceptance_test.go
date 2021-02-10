@@ -370,7 +370,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			it.Before(func() {
 				var err error
-				tmpDir, err = ioutil.TempDir("", "inspect-buildpack-tests")
+				tmpDir, err = ioutil.TempDir("", "buildpack-inspect-tests")
 				assert.Nil(err)
 			})
 
@@ -379,7 +379,7 @@ func testWithoutSpecificBuilderRequirement(
 			})
 
 			when("buildpack archive", func() {
-				when("inspect-buildpack", func() {
+				when("inspect", func() {
 					it("succeeds", func() {
 
 						packageFileLocation := filepath.Join(
@@ -410,7 +410,7 @@ func testWithoutSpecificBuilderRequirement(
 							},
 						)
 
-						output := pack.RunSuccessfully("inspect-buildpack", packageFileLocation)
+						output := pack.RunSuccessfully("buildpack", "inspect", packageFileLocation)
 						assert.TrimmedEq(output, expectedOutput)
 					})
 				})
@@ -418,7 +418,7 @@ func testWithoutSpecificBuilderRequirement(
 			})
 
 			when("buildpack image", func() {
-				when("inspect-buildpack", func() {
+				when("inspect", func() {
 					it("succeeds", func() {
 						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
 						packageImageName := registryConfig.RepoName("buildpack-" + h.RandString(8))
@@ -445,7 +445,7 @@ func testWithoutSpecificBuilderRequirement(
 							},
 						)
 
-						output := pack.RunSuccessfully("inspect-buildpack", packageImageName)
+						output := pack.RunSuccessfully("buildpack", "inspect", packageImageName)
 						assert.TrimmedEq(output, expectedOutput)
 					})
 				})
@@ -867,7 +867,11 @@ func testAcceptance(
 						t.Log("cacher adds layers")
 						assert.Matches(output, regexp.MustCompile(`(?i)Adding cache layer 'simple/layers:cached-launch-layer'`))
 
-						t.Log("inspect-image")
+						t.Log("inspecting image")
+						inspectCmd := "inspect"
+						if !pack.Supports("inspect") {
+							inspectCmd = "inspect-image"
+						}
 
 						var (
 							webCommand      string
@@ -911,9 +915,9 @@ func testAcceptance(
 							},
 						}
 						for _, format := range formats {
-							t.Logf("inspect-image %s format", format.outputArg)
+							t.Logf("inspecting image %s format", format.outputArg)
 
-							output = pack.RunSuccessfully("inspect-image", repoName, "--output", format.outputArg)
+							output = pack.RunSuccessfully(inspectCmd, repoName, "--output", format.outputArg)
 
 							expectedOutput := pack.FixtureManager().TemplateFixture(
 								fmt.Sprintf("inspect_image_local_output.%s", format.extension),
@@ -1517,6 +1521,11 @@ func testAcceptance(
 								imageManager.PullImage(repoName, registryConfig.RegistryAuth())
 							}
 
+							cmdName := "inspect"
+							if !pack.Supports("inspect") {
+								cmdName = "inspect-image"
+							}
+
 							t.Log("inspect-image")
 							var (
 								webCommand      string
@@ -1559,9 +1568,9 @@ func testAcceptance(
 							}
 
 							for _, format := range formats {
-								t.Logf("inspect-image %s format", format.outputArg)
+								t.Logf("inspecting image %s format", format.outputArg)
 
-								output = pack.RunSuccessfully("inspect-image", repoName, "--output", format.outputArg)
+								output = pack.RunSuccessfully(cmdName, repoName, "--output", format.outputArg)
 
 								expectedOutput := pack.FixtureManager().TemplateFixture(
 									fmt.Sprintf("inspect_image_published_output.%s", format.extension),
@@ -1899,7 +1908,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 				})
 			})
 
-			when("inspect-builder", func() {
+			when("inspecting builder", func() {
 				when("inspecting a nested builder", func() {
 					it.Before(func() {
 						// create our nested builder
@@ -1942,7 +1951,12 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					})
 
 					it("displays nested Detection Order groups", func() {
-						output := pack.RunSuccessfully("inspect-builder", builderName)
+						var output string
+						if pack.Supports("builder inspect") {
+							output = pack.RunSuccessfully("builder", "inspect", builderName)
+						} else {
+							output = pack.RunSuccessfully("inspect-builder", builderName)
+						}
 
 						deprecatedBuildpackAPIs,
 							supportedBuildpackAPIs,
@@ -1975,7 +1989,12 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					it("provides nested detection output up to depth", func() {
 						depth := "1"
-						output := pack.RunSuccessfully("inspect-builder", "--depth", depth, builderName)
+						var output string
+						if pack.Supports("builder inspect") {
+							output = pack.RunSuccessfully("builder", "inspect", "--depth", depth, builderName)
+						} else {
+							output = pack.RunSuccessfully("inspect-builder", "--depth", depth, builderName)
+						}
 
 						deprecatedBuildpackAPIs,
 							supportedBuildpackAPIs,
@@ -2008,7 +2027,12 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("output format is toml", func() {
 						it("prints builder information in toml format", func() {
-							output := pack.RunSuccessfully("inspect-builder", builderName, "--output", "toml")
+							var output string
+							if pack.Supports("builder inspect") {
+								output = pack.RunSuccessfully("builder", "inspect", builderName, "--output", "toml")
+							} else {
+								output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "toml")
+							}
 
 							err := toml.NewDecoder(strings.NewReader(string(output))).Decode(&struct{}{})
 							assert.Nil(err)
@@ -2040,7 +2064,12 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("output format is yaml", func() {
 						it("prints builder information in yaml format", func() {
-							output := pack.RunSuccessfully("inspect-builder", builderName, "--output", "yaml")
+							var output string
+							if pack.Supports("builder inspect") {
+								output = pack.RunSuccessfully("builder", "inspect", builderName, "--output", "yaml")
+							} else {
+								output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "yaml")
+							}
 
 							err := yaml.Unmarshal([]byte(output), &struct{}{})
 							assert.Nil(err)
@@ -2072,7 +2101,12 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("output format is json", func() {
 						it("prints builder information in json format", func() {
-							output := pack.RunSuccessfully("inspect-builder", builderName, "--output", "json")
+							var output string
+							if pack.Supports("builder inspect") {
+								output = pack.RunSuccessfully("builder", "inspect", builderName, "--output", "json")
+							} else {
+								output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "json")
+							}
 
 							err := json.Unmarshal([]byte(output), &struct{}{})
 							assert.Nil(err)
@@ -2114,7 +2148,11 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					assertOutput := assertions.NewOutputAssertionManager(t, output)
 					assertOutput.ReportsSuccesfulRunImageMirrorsAdd("pack-test/run", "some-registry.com/pack-test/run1")
 
-					output = pack.RunSuccessfully("inspect-builder", builderName)
+					if pack.Supports("builder inspect") {
+						output = pack.RunSuccessfully("builder", "inspect", builderName)
+					} else {
+						output = pack.RunSuccessfully("inspect-builder", builderName)
+					}
 
 					deprecatedBuildpackAPIs,
 						supportedBuildpackAPIs,
@@ -2149,7 +2187,12 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
 					pack.JustRunSuccessfully("config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
 
-					output := pack.RunSuccessfully("inspect-builder", builderName)
+					var output string
+					if pack.Supports("builder inspect") {
+						output = pack.RunSuccessfully("builder", "inspect", builderName)
+					} else {
+						output = pack.RunSuccessfully("inspect-builder", builderName)
+					}
 
 					deprecatedBuildpackAPIs,
 						supportedBuildpackAPIs,
