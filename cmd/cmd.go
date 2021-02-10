@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	imagewriter "github.com/buildpacks/pack/internal/inspectimage/writer"
+	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -41,9 +42,15 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 		Short: "CLI for building apps using Cloud Native Buildpacks",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if fs := cmd.Flags(); fs != nil {
-				if flag, err := fs.GetBool("no-color"); err == nil {
+				if flag, err := fs.GetBool("no-color"); err == nil && flag {
 					color.Disable(flag)
 				}
+
+				_, canDisplayColor := ilogging.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
+				if !canDisplayColor {
+					color.Disable(true)
+				}
+
 				if flag, err := fs.GetBool("quiet"); err == nil {
 					logger.WantQuiet(flag)
 				}

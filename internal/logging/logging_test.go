@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -221,6 +222,20 @@ func testLogWithWriters(t *testing.T, when spec.G, it spec.S) {
 		logger.Info("")
 		expected := "\n"
 		h.AssertEq(t, fOut(), expected)
+	})
+
+	when("IsTerminal", func() {
+		it("returns false for a pipe", func() {
+			fd, isTerm := IsTerminal(logger.WriterForLevel(logging.InfoLevel))
+			h.AssertFalse(t, isTerm)
+			h.AssertNotEq(t, fd, InvalidFileDescriptor) //The mock writer is a pipe, and therefore has a file descriptor
+		})
+
+		it("returns InvalidFileDescriptor if passed a normal Writer", func() {
+			fd, isTerm := IsTerminal(&bytes.Buffer{})
+			h.AssertFalse(t, isTerm)
+			h.AssertEq(t, fd, InvalidFileDescriptor)
+		})
 	})
 }
 
