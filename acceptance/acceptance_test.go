@@ -432,18 +432,19 @@ func testWithoutSpecificBuilderRequirement(
 						)
 						defer imageManager.CleanupImages(packageImageName)
 
-					buildpackManager.PrepareBuildpacks(tmpDir, packageImage)
+						buildpackManager.PrepareBuildpacks(tmpDir, packageImage)
 
-					expectedOutput := pack.FixtureManager().TemplateFixture(
-						"inspect_buildpack_output.txt",
-						map[string]interface{}{
-							"buildpack_source": "LOCAL IMAGE",
-							"buildpack_name":   packageImageName,
-						},
-					)
+						expectedOutput := pack.FixtureManager().TemplateFixture(
+							"inspect_buildpack_output.txt",
+							map[string]interface{}{
+								"buildpack_source": "LOCAL IMAGE",
+								"buildpack_name":   packageImageName,
+							},
+						)
 
-					output := pack.RunSuccessfully("buildpack", "inspect", packageImageName)
-					assert.TrimmedEq(output, expectedOutput)
+						output := pack.RunSuccessfully("buildpack", "inspect", packageImageName)
+						assert.TrimmedEq(output, expectedOutput)
+					})
 				})
 			})
 		})

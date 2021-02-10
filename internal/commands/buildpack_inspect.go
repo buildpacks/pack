@@ -21,7 +21,7 @@ func BuildpackInspect(logger logging.Logger, cfg config.Config, client PackClien
 	var flags BuildpackInspectFlags
 	cmd := &cobra.Command{
 		Use:     "inspect <image-name>",
-		Args:    cobra.MaximumNArgs(1),
+		Args:    cobra.ExactArgs(1),
 		Short:   "Show information about a buildpack",
 		Example: "pack buildpack inspect cnbs/sample-package:hello-universe",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
