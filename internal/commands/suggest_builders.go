@@ -113,7 +113,7 @@ func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, bu
 	fmt.Fprintln(tw)
 
 	logging.Tip(logger, "Learn more about a specific builder with:")
-	logger.Info("\tpack inspect-builder <builder-image>")
+	logger.Info("\tpack builder inspect <builder-image>")
 }
 
 func getBuilderDescription(builder SuggestedBuilder, inspector BuilderInspector) string {

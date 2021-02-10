@@ -43,7 +43,7 @@ func testBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			output := outBuf.String()
 			h.AssertContains(t, output, "Interact with builders")
 			h.AssertContains(t, output, "Usage:")
-			for _, command := range []string{"create", "suggest"} {
+			for _, command := range []string{"create", "suggest", "inspect"} {
 				h.AssertContains(t, output, command)
 				h.AssertNotContains(t, output, command+"-builder")
 			}
