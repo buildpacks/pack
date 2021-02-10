@@ -31,7 +31,7 @@ func BuilderInspect(logger logging.Logger,
 		Aliases: []string{"inspect-builder"},
 		Short:   "Show information about a builder",
 		Example: "pack builder inspect cnbs/sample-builder:bionic",
-		Long:    "MENTION THAT NO ARG INSPECTS DEFAULT IF SET",
+		Long:    "Show information about the builder provided. If no argument is provided, it will inspect the default builder, if one has been set.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			imageName := cfg.DefaultBuilder
 			if len(args) >= 1 {
