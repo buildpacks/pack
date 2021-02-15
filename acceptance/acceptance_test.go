@@ -373,7 +373,8 @@ func testWithoutSpecificBuilderRequirement(
 					)
 
 					assert.NotNil(err)
-					assert.Contains(output, "reading config")
+					assertOutput := assertions.NewOutputAssertionManager(t, output)
+					assertOutput.ReportsReadingConfig()
 				})
 			})
 		})
@@ -499,15 +500,13 @@ func testWithoutSpecificBuilderRequirement(
 				assertOutput.IncludesHerokuBuilders()
 				assertOutput.IncludesGoogleBuilder()
 				assertOutput.IncludesPaketoBuilders()
-				assert.NotContains(output, "has been deprecated")
 			})
 
 			when("add", func() {
 				it("sets the builder as trusted in ~/.pack/config.toml", func() {
 					builderName := "some-builder" + h.RandString(10)
 
-					output := pack.RunSuccessfully("config", "trusted-builders", "add", builderName)
-					assert.NotContains(output, "has been deprecated")
+					pack.JustRunSuccessfully("config", "trusted-builders", "add", builderName)
 					assert.Contains(pack.ConfigFileContents(), builderName)
 				})
 			})
@@ -520,8 +519,7 @@ func testWithoutSpecificBuilderRequirement(
 
 					assert.Contains(pack.ConfigFileContents(), builderName)
 
-					output := pack.RunSuccessfully("config", "trusted-builders", "remove", builderName)
-					assert.NotContains(output, "has been deprecated")
+					pack.JustRunSuccessfully("config", "trusted-builders", "remove", builderName)
 
 					assert.NotContains(pack.ConfigFileContents(), builderName)
 				})
@@ -536,7 +534,6 @@ func testWithoutSpecificBuilderRequirement(
 					assertOutput.IncludesHerokuBuilders()
 					assertOutput.IncludesGoogleBuilder()
 					assertOutput.IncludesPaketoBuilders()
-					assert.NotContains(output, "has been deprecated")
 				})
 
 				it("shows a builder trusted by pack config trusted-builders add", func() {
@@ -703,7 +700,8 @@ func testAcceptance(
 					)
 
 					assert.NotNil(err)
-					assert.Contains(output, "invalid builder toml")
+					assertOutput := assertions.NewOutputAssertionManager(t, output)
+					assertOutput.ReportsInvalidBuilderToml()
 				})
 			})
 
@@ -2008,14 +2006,15 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							return h.DockerRmi(dockerCli, value)
 						})
 						builderName = value
+
+						output := pack.RunSuccessfully(
+							"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+						assertOutput := assertions.NewOutputAssertionManager(t, output)
+						assertOutput.ReportsSuccesfulRunImageMirrorsAdd("pack-test/run", "some-registry.com/pack-test/run1")
 					})
 
 					it("displays nested Detection Order groups", func() {
-						output := pack.RunSuccessfully(
-							"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
-						assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
-
-						output = pack.RunSuccessfully("inspect-builder", builderName)
+						output := pack.RunSuccessfully("inspect-builder", builderName)
 
 						deprecatedBuildpackAPIs,
 							supportedBuildpackAPIs,
@@ -2047,12 +2046,8 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					})
 
 					it("provides nested detection output up to depth", func() {
-						output := pack.RunSuccessfully(
-							"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
-						assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
-
 						depth := "1"
-						output = pack.RunSuccessfully("inspect-builder", "--depth", depth, builderName)
+						output := pack.RunSuccessfully("inspect-builder", "--depth", depth, builderName)
 
 						deprecatedBuildpackAPIs,
 							supportedBuildpackAPIs,
@@ -2085,12 +2080,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("output format is toml", func() {
 						it("prints builder information in toml format", func() {
-							output := pack.RunSuccessfully(
-								"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
-
-							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
-
-							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "toml")
+							output := pack.RunSuccessfully("inspect-builder", builderName, "--output", "toml")
 
 							err := toml.NewDecoder(strings.NewReader(string(output))).Decode(&struct{}{})
 							assert.Nil(err)
@@ -2122,12 +2112,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("output format is yaml", func() {
 						it("prints builder information in yaml format", func() {
-							output := pack.RunSuccessfully(
-								"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
-
-							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
-
-							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "yaml")
+							output := pack.RunSuccessfully("inspect-builder", builderName, "--output", "yaml")
 
 							err := yaml.Unmarshal([]byte(output), &struct{}{})
 							assert.Nil(err)
@@ -2159,12 +2144,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("output format is json", func() {
 						it("prints builder information in json format", func() {
-							output := pack.RunSuccessfully(
-								"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
-
-							assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
-
-							output = pack.RunSuccessfully("inspect-builder", builderName, "--output", "json")
+							output := pack.RunSuccessfully("inspect-builder", builderName, "--output", "json")
 
 							err := json.Unmarshal([]byte(output), &struct{}{})
 							assert.Nil(err)
@@ -2203,8 +2183,8 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					output := pack.RunSuccessfully(
 						"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1",
 					)
-
-					assert.Equal(output, "Run Image 'pack-test/run' configured with mirror 'some-registry.com/pack-test/run1'\n")
+					assertOutput := assertions.NewOutputAssertionManager(t, output)
+					assertOutput.ReportsSuccesfulRunImageMirrorsAdd("pack-test/run", "some-registry.com/pack-test/run1")
 
 					output = pack.RunSuccessfully("inspect-builder", builderName)
 

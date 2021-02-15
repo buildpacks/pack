@@ -218,3 +218,21 @@ func (o OutputAssertionManager) IncludesDeprecationWarning() {
 
 	o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`Warning: Command 'pack [\w-]+' has been deprecated, please use 'pack [\w-\s]+' instead`)))
 }
+
+func (o OutputAssertionManager) ReportsSuccesfulRunImageMirrorsAdd(image, mirror string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Run Image '%s' configured with mirror '%s'\n", image, mirror)
+}
+
+func (o OutputAssertionManager) ReportsReadingConfig() {
+	o.testObject.Helper()
+
+	o.assert.Contains(o.output, "reading config")
+}
+
+func (o OutputAssertionManager) ReportsInvalidBuilderToml() {
+	o.testObject.Helper()
+
+	o.assert.Contains(o.output, "invalid builder toml")
+}
