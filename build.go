@@ -628,7 +628,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 		relativeBaseDir = opts.ProjectDescriptorBaseDir
 
 		for _, bp := range opts.ProjectDescriptor.Build.Buildpacks {
-			if len(bp.URI) == 0 {
+			if bp.URI == "" {
 				declaredBPs = append(declaredBPs, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
 			} else {
 				declaredBPs = append(declaredBPs, bp.URI)
