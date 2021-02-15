@@ -147,28 +147,340 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
-	when("builder suggest", func() {
-		it("displays suggested builders", func() {
-			output := pack.RunSuccessfully("builder", "suggest")
+	when("build with default builders not set", func() {
+		it("informs the user", func() {
+			output, err := pack.Run(
+				"build", "some/image",
+				"-p", filepath.Join("testdata", "mock_app"),
+			)
 
+			assert.NotNil(err)
 			assertOutput := assertions.NewOutputAssertionManager(t, output)
-			assertOutput.IncludesSuggestedBuildersHeading()
+			assertOutput.IncludesMessageToSetDefaultBuilder()
 			assertOutput.IncludesPrefixedGoogleBuilder()
 			assertOutput.IncludesPrefixedHerokuBuilders()
 			assertOutput.IncludesPrefixedPaketoBuilders()
 		})
 	})
 
-	when("suggest-stacks", func() {
-		it("displays suggested stacks", func() {
-			output, err := pack.Run("suggest-stacks")
-			assert.NilWithMessage(err, fmt.Sprintf("suggest-stacks command failed with output %s", output))
+	when("buildpack", func() {
+		when("package", func() {
+			var (
+				tmpDir                         string
+				buildpackManager               buildpacks.BuildpackManager
+				simplePackageConfigFixtureName = "package.toml"
+			)
 
-			assertions.NewOutputAssertionManager(t, output).IncludesSuggestedStacksHeading()
+			it.Before(func() {
+				var err error
+				tmpDir, err = ioutil.TempDir("", "buildpack-package-tests")
+				assert.Nil(err)
+
+				buildpackManager = buildpacks.NewBuildpackManager(t, assert)
+				buildpackManager.PrepareBuildpacks(tmpDir, buildpacks.SimpleLayersParent, buildpacks.SimpleLayers)
+			})
+
+			it.After(func() {
+				assert.Nil(os.RemoveAll(tmpDir))
+			})
+
+			assertImageExistsLocally := func(name string) {
+				t.Helper()
+				_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), name)
+				assert.Nil(err)
+
+			}
+
+			generateAggregatePackageToml := func(buildpackURI, nestedPackageName, os string) string {
+				t.Helper()
+				packageTomlFile, err := ioutil.TempFile(tmpDir, "package_aggregate-*.toml")
+				assert.Nil(err)
+
+				pack.FixtureManager().TemplateFixtureToFile(
+					"package_aggregate.toml",
+					packageTomlFile,
+					map[string]interface{}{
+						"BuildpackURI": buildpackURI,
+						"PackageName":  nestedPackageName,
+						"OS":           os,
+					},
+				)
+
+				assert.Nil(packageTomlFile.Close())
+
+				return packageTomlFile.Name()
+			}
+
+			when("no --format is provided", func() {
+				it("creates the package as image", func() {
+					packageName := "test/package-" + h.RandString(10)
+					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
+
+					output := pack.RunSuccessfully("buildpack", "package", packageName, "-c", packageTomlPath)
+					assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(packageName)
+					defer h.DockerRmi(dockerCli, packageName)
+
+					assertImageExistsLocally(packageName)
+				})
+			})
+
+			when("--format image", func() {
+				it("creates the package", func() {
+					t.Log("package w/ only buildpacks")
+					nestedPackageName := "test/package-" + h.RandString(10)
+					packageName := "test/package-" + h.RandString(10)
+
+					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
+
+					packageBuildpack := buildpacks.NewPackageImage(
+						t,
+						pack,
+						packageName,
+						aggregatePackageToml,
+						buildpacks.WithRequiredBuildpacks(
+							buildpacks.SimpleLayersParent,
+							buildpacks.NewPackageImage(
+								t,
+								pack,
+								nestedPackageName,
+								packageTomlPath,
+								buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
+							),
+						),
+					)
+					buildpackManager.PrepareBuildpacks(tmpDir, packageBuildpack)
+					defer h.DockerRmi(dockerCli, nestedPackageName, packageName)
+
+					assertImageExistsLocally(nestedPackageName)
+					assertImageExistsLocally(packageName)
+				})
+
+				when("--publish", func() {
+					it("publishes image to registry", func() {
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
+						nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+
+						nestedPackage := buildpacks.NewPackageImage(
+							t,
+							pack,
+							nestedPackageName,
+							packageTomlPath,
+							buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
+							buildpacks.WithPublish(),
+						)
+						buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
+						defer h.DockerRmi(dockerCli, nestedPackageName)
+
+						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
+						packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+
+						output := pack.RunSuccessfully(
+							"buildpack", "package", packageName,
+							"-c", aggregatePackageToml,
+							"--publish",
+						)
+
+						defer h.DockerRmi(dockerCli, packageName)
+						assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
+
+						_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+						assert.ErrorContains(err, "No such image")
+
+						assert.Nil(h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
+
+						_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+						assert.Nil(err)
+					})
+				})
+
+				when("--pull-policy=never", func() {
+					it("should use local image", func() {
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
+						nestedPackageName := "test/package-" + h.RandString(10)
+						nestedPackage := buildpacks.NewPackageImage(
+							t,
+							pack,
+							nestedPackageName,
+							packageTomlPath,
+							buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
+						)
+						buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
+						defer h.DockerRmi(dockerCli, nestedPackageName)
+						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
+
+						packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+						defer h.DockerRmi(dockerCli, packageName)
+						pack.JustRunSuccessfully(
+							"buildpack", "package", packageName,
+							"-c", aggregatePackageToml,
+							"--pull-policy", pubcfg.PullNever.String())
+
+						_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
+						assert.Nil(err)
+
+					})
+
+					it("should not pull image from registry", func() {
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
+						nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+						nestedPackage := buildpacks.NewPackageImage(
+							t,
+							pack,
+							nestedPackageName,
+							packageTomlPath,
+							buildpacks.WithPublish(),
+							buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
+						)
+						buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
+						defer h.DockerRmi(dockerCli, nestedPackageName)
+						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
+
+						packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
+						defer h.DockerRmi(dockerCli, packageName)
+
+						output, err := pack.Run(
+							"buildpack", "package", packageName,
+							"-c", aggregatePackageToml,
+							"--pull-policy", pubcfg.PullNever.String(),
+						)
+
+						assert.NotNil(err)
+						assertions.NewOutputAssertionManager(t, output).ReportsImageNotExistingOnDaemon(nestedPackageName)
+					})
+				})
+			})
+
+			when("--format file", func() {
+				it("creates the package", func() {
+					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
+					destinationFile := filepath.Join(tmpDir, "package.cnb")
+					output := pack.RunSuccessfully(
+						"buildpack", "package", destinationFile,
+						"--format", "file",
+						"-c", packageTomlPath,
+					)
+					assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(destinationFile)
+					h.AssertTarball(t, destinationFile)
+				})
+			})
+
+			when("package.toml is invalid", func() {
+				it("displays an error", func() {
+					output, err := pack.Run(
+						"buildpack", "package", "some-package",
+						"-c", pack.FixtureManager().FixtureLocation("invalid_package.toml"),
+					)
+
+					assert.NotNil(err)
+					assert.Contains(output, "reading config")
+				})
+			})
+		})
+
+		when("inspect-buildpack", func() {
+			var tmpDir string
+
+			it.Before(func() {
+				var err error
+				tmpDir, err = ioutil.TempDir("", "inspect-buildpack-tests")
+				assert.Nil(err)
+			})
+
+			it.After(func() {
+				assert.Succeeds(os.RemoveAll(tmpDir))
+			})
+
+			when("buildpack archive", func() {
+				when("inspect-buildpack", func() {
+					it("succeeds", func() {
+
+						packageFileLocation := filepath.Join(
+							tmpDir,
+							fmt.Sprintf("buildpack-%s.cnb", h.RandString(8)),
+						)
+
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", dockerHostOS())
+
+						packageFile := buildpacks.NewPackageFile(
+							t,
+							pack,
+							packageFileLocation,
+							packageTomlPath,
+							buildpacks.WithRequiredBuildpacks(
+								buildpacks.FolderSimpleLayersParent,
+								buildpacks.FolderSimpleLayers,
+							),
+						)
+
+						buildpackManager.PrepareBuildpacks(tmpDir, packageFile)
+
+						expectedOutput := pack.FixtureManager().TemplateFixture(
+							"inspect_buildpack_output.txt",
+							map[string]interface{}{
+								"buildpack_source": "LOCAL ARCHIVE",
+								"buildpack_name":   packageFileLocation,
+							},
+						)
+
+						output := pack.RunSuccessfully("inspect-buildpack", packageFileLocation)
+						assert.TrimmedEq(output, expectedOutput)
+					})
+				})
+
+			})
+
+			when("buildpack image", func() {
+				when("inspect-buildpack", func() {
+					it("succeeds", func() {
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", dockerHostOS())
+						packageImageName := registryConfig.RepoName("buildpack-" + h.RandString(8))
+
+						packageImage := buildpacks.NewPackageImage(
+							t,
+							pack,
+							packageImageName,
+							packageTomlPath,
+							buildpacks.WithRequiredBuildpacks(
+								buildpacks.FolderSimpleLayersParent,
+								buildpacks.FolderSimpleLayers,
+							),
+						)
+						defer h.DockerRmi(dockerCli, packageImageName)
+
+						buildpackManager.PrepareBuildpacks(tmpDir, packageImage)
+
+						expectedOutput := pack.FixtureManager().TemplateFixture(
+							"inspect_buildpack_output.txt",
+							map[string]interface{}{
+								"buildpack_source": "LOCAL IMAGE",
+								"buildpack_name":   packageImageName,
+							},
+						)
+
+						output := pack.RunSuccessfully("inspect-buildpack", packageImageName)
+						assert.TrimmedEq(output, expectedOutput)
+					})
+				})
+			})
 		})
 	})
 
-	when("pack config", func() {
+	when("builder", func() {
+		when("suggest", func() {
+			it("displays suggested builders", func() {
+				output := pack.RunSuccessfully("builder", "suggest")
+
+				assertOutput := assertions.NewOutputAssertionManager(t, output)
+				assertOutput.IncludesSuggestedBuildersHeading()
+				assertOutput.IncludesPrefixedGoogleBuilder()
+				assertOutput.IncludesPrefixedHerokuBuilders()
+				assertOutput.IncludesPrefixedPaketoBuilders()
+			})
+		})
+	})
+
+	when("config", func() {
 		when("default-builder", func() {
 			it("sets the default builder in ~/.pack/config.toml", func() {
 				builderName := "paketobuildpacks/builder:base"
@@ -239,266 +551,13 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
-	when("trust-builder", func() {
-		it("sets the builder as trusted in ~/.pack/config.toml", func() {
-			builderName := "some-builder" + h.RandString(10)
+	when("stack", func() {
+		when("suggest", func() {
+			it("displays suggested stacks", func() {
+				output, err := pack.Run("stack", "suggest")
+				assert.Nil(err)
 
-			output := pack.RunSuccessfully("trust-builder", builderName)
-			assertOutput := assertions.NewOutputAssertionManager(t, output)
-			assertOutput.IncludesDeprecationWarning()
-
-			assert.Contains(pack.ConfigFileContents(), builderName)
-		})
-	})
-
-	when("untrust-builder", func() {
-		it("removes the previously trusted builder from ~/${PACK_HOME}/config.toml", func() {
-			builderName := "some-builder" + h.RandString(10)
-
-			pack.JustRunSuccessfully("trust-builder", builderName)
-
-			assert.Contains(pack.ConfigFileContents(), builderName)
-
-			output := pack.RunSuccessfully("untrust-builder", builderName)
-			assertOutput := assertions.NewOutputAssertionManager(t, output)
-			assertOutput.IncludesDeprecationWarning()
-
-			assert.NotContains(pack.ConfigFileContents(), builderName)
-		})
-	})
-
-	when("list-trusted-builders", func() {
-		it("shows default builders from pack suggest-builders", func() {
-			output := pack.RunSuccessfully("list-trusted-builders")
-
-			assertOutput := assertions.NewOutputAssertionManager(t, output)
-			assertOutput.IncludesTrustedBuildersHeading()
-			assertOutput.IncludesHerokuBuilders()
-			assertOutput.IncludesGoogleBuilder()
-			assertOutput.IncludesPaketoBuilders()
-			assertOutput.IncludesDeprecationWarning()
-		})
-
-		it("shows a builder trusted by pack trust-builder", func() {
-			builderName := "some-builder" + h.RandString(10)
-
-			pack.JustRunSuccessfully("trust-builder", builderName)
-
-			output := pack.RunSuccessfully("list-trusted-builders")
-			assert.Contains(output, builderName)
-		})
-	})
-
-	when("buildpack package", func() {
-		var (
-			tmpDir                         string
-			buildpackManager               buildpacks.BuildpackManager
-			simplePackageConfigFixtureName = "package.toml"
-		)
-
-		it.Before(func() {
-			var err error
-			tmpDir, err = ioutil.TempDir("", "buildpack-package-tests")
-			assert.Nil(err)
-
-			buildpackManager = buildpacks.NewBuildpackManager(t, assert)
-			buildpackManager.PrepareBuildpacks(tmpDir, buildpacks.SimpleLayersParent, buildpacks.SimpleLayers)
-		})
-
-		it.After(func() {
-			assert.Nil(os.RemoveAll(tmpDir))
-		})
-
-		assertImageExistsLocally := func(name string) {
-			t.Helper()
-			_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), name)
-			assert.Nil(err)
-
-		}
-
-		generateAggregatePackageToml := func(buildpackURI, nestedPackageName, os string) string {
-			t.Helper()
-			packageTomlFile, err := ioutil.TempFile(tmpDir, "package_aggregate-*.toml")
-			assert.Nil(err)
-
-			pack.FixtureManager().TemplateFixtureToFile(
-				"package_aggregate.toml",
-				packageTomlFile,
-				map[string]interface{}{
-					"BuildpackURI": buildpackURI,
-					"PackageName":  nestedPackageName,
-					"OS":           os,
-				},
-			)
-
-			assert.Nil(packageTomlFile.Close())
-
-			return packageTomlFile.Name()
-		}
-
-		when("no --format is provided", func() {
-			it("creates the package as image", func() {
-				packageName := "test/package-" + h.RandString(10)
-				packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
-
-				output := pack.RunSuccessfully("buildpack", "package", packageName, "-c", packageTomlPath)
-				assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(packageName)
-				defer h.DockerRmi(dockerCli, packageName)
-
-				assertImageExistsLocally(packageName)
-			})
-		})
-
-		when("--format image", func() {
-			it("creates the package", func() {
-				t.Log("package w/ only buildpacks")
-				nestedPackageName := "test/package-" + h.RandString(10)
-				packageName := "test/package-" + h.RandString(10)
-
-				packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
-				aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
-
-				packageBuildpack := buildpacks.NewPackageImage(
-					t,
-					pack,
-					packageName,
-					aggregatePackageToml,
-					buildpacks.WithRequiredBuildpacks(
-						buildpacks.SimpleLayersParent,
-						buildpacks.NewPackageImage(
-							t,
-							pack,
-							nestedPackageName,
-							packageTomlPath,
-							buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
-						),
-					),
-				)
-				buildpackManager.PrepareBuildpacks(tmpDir, packageBuildpack)
-				defer h.DockerRmi(dockerCli, nestedPackageName, packageName)
-
-				assertImageExistsLocally(nestedPackageName)
-				assertImageExistsLocally(packageName)
-			})
-
-			when("--publish", func() {
-				it("publishes image to registry", func() {
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
-					nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-
-					nestedPackage := buildpacks.NewPackageImage(
-						t,
-						pack,
-						nestedPackageName,
-						packageTomlPath,
-						buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
-						buildpacks.WithPublish(),
-					)
-					buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
-					defer h.DockerRmi(dockerCli, nestedPackageName)
-
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
-					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-
-					output := pack.RunSuccessfully(
-						"buildpack", "package", packageName,
-						"-c", aggregatePackageToml,
-						"--publish",
-					)
-
-					defer h.DockerRmi(dockerCli, packageName)
-					assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
-
-					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-					assert.ErrorContains(err, "No such image")
-
-					assert.Nil(h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
-
-					_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-					assert.Nil(err)
-				})
-			})
-
-			when("--pull-policy=never", func() {
-				it("should use local image", func() {
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
-					nestedPackageName := "test/package-" + h.RandString(10)
-					nestedPackage := buildpacks.NewPackageImage(
-						t,
-						pack,
-						nestedPackageName,
-						packageTomlPath,
-						buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
-					)
-					buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
-					defer h.DockerRmi(dockerCli, nestedPackageName)
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
-
-					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-					defer h.DockerRmi(dockerCli, packageName)
-					pack.JustRunSuccessfully(
-						"buildpack", "package", packageName,
-						"-c", aggregatePackageToml,
-						"--pull-policy", pubcfg.PullNever.String())
-
-					_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-					assert.Nil(err)
-
-				})
-
-				it("should not pull image from registry", func() {
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
-					nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-					nestedPackage := buildpacks.NewPackageImage(
-						t,
-						pack,
-						nestedPackageName,
-						packageTomlPath,
-						buildpacks.WithPublish(),
-						buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
-					)
-					buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
-					defer h.DockerRmi(dockerCli, nestedPackageName)
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
-
-					packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-					defer h.DockerRmi(dockerCli, packageName)
-
-					output, err := pack.Run(
-						"buildpack", "package", packageName,
-						"-c", aggregatePackageToml,
-						"--pull-policy", pubcfg.PullNever.String(),
-					)
-
-					assert.NotNil(err)
-					assertions.NewOutputAssertionManager(t, output).ReportsImageNotExistingOnDaemon(nestedPackageName)
-				})
-			})
-		})
-
-		when("--format file", func() {
-			it("creates the package", func() {
-				packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
-				destinationFile := filepath.Join(tmpDir, "package.cnb")
-				output := pack.RunSuccessfully(
-					"buildpack", "package", destinationFile,
-					"--format", "file",
-					"-c", packageTomlPath,
-				)
-				assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(destinationFile)
-				h.AssertTarball(t, destinationFile)
-			})
-		})
-
-		when("package.toml is invalid", func() {
-			it("displays an error", func() {
-				output, err := pack.Run(
-					"buildpack", "package", "some-package",
-					"-c", pack.FixtureManager().FixtureLocation("invalid_package.toml"),
-				)
-
-				assert.NotNil(err)
-				assert.Contains(output, "reading config")
+				assertions.NewOutputAssertionManager(t, output).IncludesSuggestedStacksHeading()
 			})
 		})
 	})
@@ -541,109 +600,6 @@ func testWithoutSpecificBuilderRequirement(
 					},
 				)
 				assert.Equal(output, expectedOutput)
-			})
-		})
-	})
-
-	when("build with default builders not set", func() {
-		it("informs the user", func() {
-			output, err := pack.Run(
-				"build", "some/image",
-				"-p", filepath.Join("testdata", "mock_app"),
-			)
-
-			assert.NotNil(err)
-			assertOutput := assertions.NewOutputAssertionManager(t, output)
-			assertOutput.IncludesMessageToSetDefaultBuilder()
-			assertOutput.IncludesPrefixedGoogleBuilder()
-			assertOutput.IncludesPrefixedHerokuBuilders()
-			assertOutput.IncludesPrefixedPaketoBuilders()
-		})
-	})
-
-	when("inspect-buildpack", func() {
-		var tmpDir string
-
-		it.Before(func() {
-			var err error
-			tmpDir, err = ioutil.TempDir("", "inspect-buildpack-tests")
-			assert.Nil(err)
-		})
-
-		it.After(func() {
-			assert.Succeeds(os.RemoveAll(tmpDir))
-		})
-
-		when("buildpack archive", func() {
-			when("inspect-buildpack", func() {
-				it("succeeds", func() {
-
-					packageFileLocation := filepath.Join(
-						tmpDir,
-						fmt.Sprintf("buildpack-%s.cnb", h.RandString(8)),
-					)
-
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", dockerHostOS())
-
-					packageFile := buildpacks.NewPackageFile(
-						t,
-						pack,
-						packageFileLocation,
-						packageTomlPath,
-						buildpacks.WithRequiredBuildpacks(
-							buildpacks.FolderSimpleLayersParent,
-							buildpacks.FolderSimpleLayers,
-						),
-					)
-
-					buildpackManager.PrepareBuildpacks(tmpDir, packageFile)
-
-					expectedOutput := pack.FixtureManager().TemplateFixture(
-						"inspect_buildpack_output.txt",
-						map[string]interface{}{
-							"buildpack_source": "LOCAL ARCHIVE",
-							"buildpack_name":   packageFileLocation,
-						},
-					)
-
-					output := pack.RunSuccessfully("inspect-buildpack", packageFileLocation)
-					assert.TrimmedEq(output, expectedOutput)
-				})
-			})
-
-		})
-
-		when("buildpack image", func() {
-			when("inspect-buildpack", func() {
-				it("succeeds", func() {
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", dockerHostOS())
-					packageImageName := registryConfig.RepoName("buildpack-" + h.RandString(8))
-
-					packageImage := buildpacks.NewPackageImage(
-						t,
-						pack,
-						packageImageName,
-						packageTomlPath,
-						buildpacks.WithRequiredBuildpacks(
-							buildpacks.FolderSimpleLayersParent,
-							buildpacks.FolderSimpleLayers,
-						),
-					)
-					defer h.DockerRmi(dockerCli, packageImageName)
-
-					buildpackManager.PrepareBuildpacks(tmpDir, packageImage)
-
-					expectedOutput := pack.FixtureManager().TemplateFixture(
-						"inspect_buildpack_output.txt",
-						map[string]interface{}{
-							"buildpack_source": "LOCAL IMAGE",
-							"buildpack_name":   packageImageName,
-						},
-					)
-
-					output := pack.RunSuccessfully("inspect-buildpack", packageImageName)
-					assert.TrimmedEq(output, expectedOutput)
-				})
 			})
 		})
 	})
