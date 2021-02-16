@@ -74,7 +74,7 @@ func (i *PackInvoker) cmd(name string, args ...string) *exec.Cmd {
 
 	cmdArgs := append([]string{name}, args...)
 	cmdArgs = append(cmdArgs, "--no-color")
-	if i.verbose && i.Supports("--verbose") {
+	if i.verbose {
 		cmdArgs = append(cmdArgs, "--verbose")
 	}
 
@@ -173,16 +173,7 @@ func (i *PackInvoker) Version() string {
 func (i *PackInvoker) EnableExperimental() {
 	i.testObject.Helper()
 
-	if i.Supports("config experimental") {
-		i.JustRunSuccessfully("config", "experimental", "true")
-	} else {
-		err := ioutil.WriteFile(
-			filepath.Join(i.home, "config.toml"),
-			[]byte("experimental=true"),
-			os.ModePerm,
-		)
-		i.assert.Nil(err)
-	}
+	i.JustRunSuccessfully("config", "experimental", "true")
 }
 
 // supports returns whether or not the executor's pack binary supports a
@@ -211,43 +202,7 @@ func (i *PackInvoker) Supports(command string) bool {
 
 type Feature int
 
-const (
-	BuilderTomlValidation Feature = iota
-	ExcludeAndIncludeDescriptor
-	CreatorInPack
-	ReadWriteVolumeMounts
-	NoColorInBuildpacks
-	QuietMode
-	InspectBuilderOutputFormat
-	OSInPackageTOML
-)
-
-var featureTests = map[Feature]func(i *PackInvoker) bool{
-	BuilderTomlValidation: func(i *PackInvoker) bool {
-		return i.laterThan("0.9.0")
-	},
-	ExcludeAndIncludeDescriptor: func(i *PackInvoker) bool {
-		return i.laterThan("0.9.0")
-	},
-	CreatorInPack: func(i *PackInvoker) bool {
-		return i.atLeast("0.10.0")
-	},
-	ReadWriteVolumeMounts: func(i *PackInvoker) bool {
-		return i.laterThan("0.12.0")
-	},
-	NoColorInBuildpacks: func(i *PackInvoker) bool {
-		return i.atLeast("0.12.0")
-	},
-	QuietMode: func(i *PackInvoker) bool {
-		return i.atLeast("0.13.2")
-	},
-	InspectBuilderOutputFormat: func(i *PackInvoker) bool {
-		return i.laterThan("0.14.2")
-	},
-	OSInPackageTOML: func(i *PackInvoker) bool {
-		return i.laterThan("0.15.0")
-	},
-}
+var featureTests = map[Feature]func(i *PackInvoker) bool{}
 
 func (i *PackInvoker) SupportsFeature(f Feature) bool {
 	return featureTests[f](i)

@@ -1,6 +1,7 @@
 package build_test
 
 import (
+	"bytes"
 	"math/rand"
 	"testing"
 	"time"
@@ -8,12 +9,14 @@ import (
 	ifakes "github.com/buildpacks/imgutil/fakes"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/strslice"
+	"github.com/docker/docker/client"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
+	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -273,6 +276,42 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 				_, isType = phaseConfigProvider.ErrorWriter().(*logging.PrefixWriter)
 				h.AssertEq(t, isType, true)
+			})
+		})
+
+		when("verbose", func() {
+			it("prints debug information about the phase", func() {
+				var outBuf bytes.Buffer
+				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+
+				docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+				h.AssertNil(t, err)
+
+				defaultBuilder, err := fakes.NewFakeBuilder()
+				h.AssertNil(t, err)
+
+				opts := build.LifecycleOptions{
+					AppPath: "some-app-path",
+					Builder: defaultBuilder,
+				}
+
+				lifecycleExec, err := build.NewLifecycleExecution(logger, docker, opts)
+				h.AssertNil(t, err)
+
+				_ = build.NewPhaseConfigProvider(
+					"some-name",
+					lifecycleExec,
+					build.WithRoot(),
+				)
+
+				h.AssertContains(t, outBuf.String(), "Running the 'some-name' on OS")
+				h.AssertContains(t, outBuf.String(), "Args: '/cnb/lifecycle/some-name'")
+				h.AssertContains(t, outBuf.String(), "System Envs: 'CNB_PLATFORM_API=0.4'")
+				h.AssertContains(t, outBuf.String(), "Image: 'some-builder-name'")
+				h.AssertContains(t, outBuf.String(), "User:")
+				h.AssertContains(t, outBuf.String(), "Labels: 'map[author:pack]'")
+				h.AssertContainsMatch(t, outBuf.String(), `Binds: \'\S+:\S+layers \S+:\S+workspace'`)
+				h.AssertContains(t, outBuf.String(), "Network Mode: ''")
 			})
 		})
 	})

@@ -66,14 +66,6 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContains(t, output, command)
 			}
 		})
-
-		it("doesn't print experimental commands if experimental not enabled", func() {
-			command = commands.NewConfigCommand(logger, config.Config{}, configPath, mockClient)
-			command.SetArgs([]string{})
-			h.AssertNil(t, command.Execute())
-			output := outBuf.String()
-			h.AssertNotContains(t, output, "registries")
-		})
 	})
 }
 

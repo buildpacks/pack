@@ -17,9 +17,9 @@ import (
 
 	"github.com/buildpacks/pack/internal/paths"
 
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
+	"github.com/buildpacks/pack/pkg/archive"
 )
 
 type ContainerOperation func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error

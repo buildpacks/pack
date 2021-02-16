@@ -61,6 +61,11 @@ Alternately, to run all tests:
 make test
 ```
 
+To run our full acceptance suite (including cross-compatibility for n-1 `pack` and `lifecycl`):
+```shell
+make acceptance-all
+```
+
 ### Tidy
 
 To format the code:
@@ -86,3 +91,17 @@ Runs various checks to ensure compliance:
 ```shell
 make prepare-for-pr
 ```
+
+### Acceptance Tests
+Some options users can provide to our acceptance tests are:
+
+| ENV_VAR      | Description                                                            | Default |
+|--------------|------------------------------------------------------------------------|---------|
+| ACCEPTANCE_SUITE_CONFIG        | A set of configurations for how to run the acceptance tests, describing the version of `pack` used for testing, the version of `pack` used to create the builders used in the test, and the version of `lifecycle` binaries used to test with Github |  `[{"pack": "current", "pack_create_builder": "current", "lifecycle": "default"}]'`     |
+| COMPILE_PACK_WITH_VERSION     | Tell `pack` what version to consider itself    | `dev`    |
+| GITHUB_TOKEN | A Github Token, used when downloading `pack` and `lifecycle` releases from Github during the test setup | "" |
+| PACK_PATH        | Path to a `pack` executable.  | A compiled version of the current branch      |
+| PREVIOUS_PACK_PATH     | Path to a `pack` executable, used to test compatibility with n-1 version of `pack`          | The most recent release from `pack`'s Github release    |
+| PREVIOUS_PACK_FIXTURES_PATH | Path to a set of fixtures, used to override the most up-to-date fixtures, in case of changed functionality  | `acceptance/testdata/pack_previous_fixtures_overrides`   |
+| LIFECYCLE_PATH        | Path to a `.tgz` file filled with a set of `lifecycle` binaries    | The Github release for the default version of lifecycle in `pack`  |
+| PREVIOUS_LIFECYCLE_PATH     |  Path to a `.tgz` file filled with a set of `lifecycle` binaries, used to test compatibility of `pack` with the n-1 version of the `lifecycle`    | The Github release for n-1 release of `lifecycle`     |

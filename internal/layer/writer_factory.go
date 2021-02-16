@@ -7,7 +7,7 @@ import (
 
 	ilayer "github.com/buildpacks/imgutil/layer"
 
-	"github.com/buildpacks/pack/internal/archive"
+	"github.com/buildpacks/pack/pkg/archive"
 )
 
 type WriterFactory struct {

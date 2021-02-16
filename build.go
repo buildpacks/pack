@@ -22,7 +22,6 @@ import (
 	ignore "github.com/sabhiram/go-gitignore"
 
 	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
@@ -35,13 +34,14 @@ import (
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/project"
 )
 
 const (
 	// The lifecycle image that will be used for the analysis, restore and export phases
 	// when using an untrusted builder.
-	lifecycleImageRepo                   = "buildpacksio/lifecycle"
+	LifecycleImageRepo                   = "buildpacksio/lifecycle"
 	minLifecycleVersionSupportingCreator = "0.7.4"
 	prevLifecycleVersionSupportingImage  = "0.6.1"
 	minLifecycleVersionSupportingImage   = "0.7.5"
@@ -317,7 +317,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		if lifecycleImageSupported(imgOS, lifecycleVersion) {
 			lifecycleImage, err := c.imageFetcher.Fetch(
 				ctx,
-				fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
+				fmt.Sprintf("%s:%s", LifecycleImageRepo, lifecycleVersion.String()),
 				true,
 				opts.PullPolicy,
 			)
@@ -668,7 +668,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				Version: version,
 			})
 		case buildpack.URILocator:
-			bp, err = paths.FilePathToURI(bp, opts.RelativeBaseDir)
+			bp, err = paths.FilePathToURI(bp, relativeBaseDir)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "making absolute: %s", style.Symbol(bp))
 			}
@@ -888,26 +888,22 @@ func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef 
 
 	// Remove tag, if it exists, from the image name
 	imgName := strings.TrimSuffix(imageRef.String(), imageRef.Identifier())
-	imgNameAndSha := fmt.Sprintf("%s@%s\n", imgName, parseShortDigestFromImageID(id))
+	imgNameAndSha := fmt.Sprintf("%s@%s\n", imgName, parseDigestFromImageID(id))
 
 	// Access the logger's Writer directly to bypass ReportSuccessfulQuietBuild mode
 	_, err = c.logger.Writer().Write([]byte(imgNameAndSha))
 	return err
 }
 
-func parseShortDigestFromImageID(id imgutil.Identifier) string {
-	var shortID string
+func parseDigestFromImageID(id imgutil.Identifier) string {
+	var digest string
 	switch v := id.(type) {
 	case local.IDIdentifier:
-		shortID = v.String()
+		digest = v.String()
 	case remote.DigestIdentifier:
-		shortID = v.Digest.DigestStr()
+		digest = v.Digest.DigestStr()
 	}
 
-	shortID = strings.TrimPrefix(shortID, "sha256:")
-	if len(shortID) > 12 {
-		shortID = shortID[0:12]
-	}
-
-	return fmt.Sprintf("sha256:%s", shortID)
+	digest = strings.TrimPrefix(digest, "sha256:")
+	return fmt.Sprintf("sha256:%s", digest)
 }

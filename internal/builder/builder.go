@@ -19,12 +19,12 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/builder"
-	"github.com/buildpacks/pack/internal/archive"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/archive"
 )
 
 const (

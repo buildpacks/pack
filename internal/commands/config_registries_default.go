@@ -17,7 +17,7 @@ func ConfigRegistriesDefault(logger logging.Logger, cfg config.Config, cfgPath s
 	cmd := &cobra.Command{
 		Use:     "default <name>",
 		Args:    cobra.MaximumNArgs(1),
-		Short:   prependExperimental("Set default registry"),
+		Short:   "Set default registry",
 		Example: "pack config registries default myregistry",
 		Long: bpRegistryExplanation + "\n\nYou can use this command to list, set, and unset a default registry, which will be used when looking for buildpacks:" +
 			"* To list your default registry, run `pack config registries default`.\n" +

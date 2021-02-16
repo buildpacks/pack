@@ -3,9 +3,11 @@ package build
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
 
+	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -59,6 +61,17 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 
 	provider.ctrConf.Cmd = append([]string{"/cnb/lifecycle/" + name}, provider.ctrConf.Cmd...)
 
+	lifecycleExec.logger.Debugf("Running the %s on OS %s with:", style.Symbol(provider.Name()), style.Symbol(provider.os))
+	lifecycleExec.logger.Debug("Container Settings:")
+	lifecycleExec.logger.Debugf("  Args: %s", style.Symbol(strings.Join(provider.ctrConf.Cmd, " ")))
+	lifecycleExec.logger.Debugf("  System Envs: %s", style.Symbol(strings.Join(provider.ctrConf.Env, " ")))
+	lifecycleExec.logger.Debugf("  Image: %s", style.Symbol(provider.ctrConf.Image))
+	lifecycleExec.logger.Debugf("  User: %s", style.Symbol(provider.ctrConf.User))
+	lifecycleExec.logger.Debugf("  Labels: %s", style.Symbol(fmt.Sprintf("%s", provider.ctrConf.Labels)))
+
+	lifecycleExec.logger.Debug("Host Settings:")
+	lifecycleExec.logger.Debugf("  Binds: %s", style.Symbol(strings.Join(provider.hostConf.Binds, " ")))
+	lifecycleExec.logger.Debugf("  Network Mode: %s", style.Symbol(string(provider.hostConf.NetworkMode)))
 	return provider
 }
 

@@ -35,7 +35,7 @@ func (o OutputAssertionManager) ReportSuccessfulQuietBuild(name string) {
 	o.testObject.Helper()
 	o.testObject.Log("quiet mode")
 
-	o.assert.Matches(strings.TrimSpace(o.output), regexp.MustCompile(name+`@sha256:[\w]{12}`))
+	o.assert.Matches(strings.TrimSpace(o.output), regexp.MustCompile(name+`@sha256:[\w]{12,64}`))
 }
 
 func (o OutputAssertionManager) ReportsSuccessfulRebase(name string) {
@@ -174,18 +174,23 @@ func (o OutputAssertionManager) IncludesPrefixedGoogleBuilder() {
 	o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`Google:\s+'%s'`, googleBuilder)))
 }
 
-const herokuBuilder = "heroku/buildpacks:18"
-
-func (o OutputAssertionManager) IncludesHerokuBuilder() {
-	o.testObject.Helper()
-
-	o.assert.Contains(o.output, herokuBuilder)
+var herokuBuilders = []string{
+	"heroku/buildpacks:18",
+	"heroku/buildpacks:20",
 }
 
-func (o OutputAssertionManager) IncludesPrefixedHerokuBuilder() {
+func (o OutputAssertionManager) IncludesHerokuBuilders() {
 	o.testObject.Helper()
 
-	o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`Heroku:\s+'%s'`, herokuBuilder)))
+	o.assert.ContainsAll(o.output, herokuBuilders...)
+}
+
+func (o OutputAssertionManager) IncludesPrefixedHerokuBuilders() {
+	o.testObject.Helper()
+
+	for _, builder := range herokuBuilders {
+		o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`Heroku:\s+'%s'`, builder)))
+	}
 }
 
 var paketoBuilders = []string{
@@ -212,4 +217,22 @@ func (o OutputAssertionManager) IncludesDeprecationWarning() {
 	o.testObject.Helper()
 
 	o.assert.Matches(o.output, regexp.MustCompile(fmt.Sprintf(`Warning: Command 'pack [\w-]+' has been deprecated, please use 'pack [\w-\s]+' instead`)))
+}
+
+func (o OutputAssertionManager) ReportsSuccesfulRunImageMirrorsAdd(image, mirror string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "Run Image '%s' configured with mirror '%s'\n", image, mirror)
+}
+
+func (o OutputAssertionManager) ReportsReadingConfig() {
+	o.testObject.Helper()
+
+	o.assert.Contains(o.output, "reading config")
+}
+
+func (o OutputAssertionManager) ReportsInvalidBuilderToml() {
+	o.testObject.Helper()
+
+	o.assert.Contains(o.output, "invalid builder toml")
 }

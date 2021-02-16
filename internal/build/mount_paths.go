@@ -47,7 +47,3 @@ func (m mountPaths) cacheDir() string {
 func (m mountPaths) launchCacheDir() string {
 	return m.join(m.volume, "launch-cache")
 }
-
-func (m mountPaths) platformDir() string {
-	return m.join(m.volume, "platform")
-}
