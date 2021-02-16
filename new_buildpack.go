@@ -8,7 +8,8 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/buildpacks/pack/internal/build"
+	"github.com/buildpacks/lifecycle/api"
+
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
 )
@@ -33,23 +34,34 @@ exit 0
 )
 
 type NewBuildpackOptions struct {
+	// api compat version of the output buildpack artifact.
+	API string
+
 	// The base directory to generate assets
 	Path string
 
 	// The ID of the output buildpack artifact.
 	ID string
 
+	// version of the output buildpack artifact.
+	Version string
+
 	// The stacks this buildpack will work with
 	Stacks []dist.Stack
 }
 
 func (c *Client) NewBuildpack(ctx context.Context, opts NewBuildpackOptions) error {
+	api, err := api.NewVersion(opts.API)
+	if err != nil {
+		return err
+	}
+
 	buildpackTOML := dist.BuildpackDescriptor{
-		API:    build.SupportedPlatformAPIVersions.Latest(),
+		API:    api,
 		Stacks: opts.Stacks,
 		Info: dist.BuildpackInfo{
 			ID:      opts.ID,
-			Version: "0.0.0",
+			Version: opts.Version,
 		},
 	}
 
@@ -58,7 +70,7 @@ func (c *Client) NewBuildpack(ctx context.Context, opts NewBuildpackOptions) err
 	}
 
 	buildpackTOMLPath := filepath.Join(opts.Path, "buildpack.toml")
-	_, err := os.Stat(buildpackTOMLPath)
+	_, err = os.Stat(buildpackTOMLPath)
 	if os.IsNotExist(err) {
 		f, err := os.Create(buildpackTOMLPath)
 		if err != nil {

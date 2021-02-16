@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/buildpacks/pack/internal/build"
+
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
@@ -16,8 +18,10 @@ import (
 
 // BuildpackNewFlags define flags provided to the BuildpackCreate command
 type BuildpackNewFlags struct {
-	Path   string
-	Stacks []string
+	API     string
+	Path    string
+	Stacks  []string
+	Version string
 }
 
 // BuildpackCreator creates buildpacks
@@ -59,10 +63,13 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 					Mixins: []string{},
 				})
 			}
+
 			if err := client.NewBuildpack(cmd.Context(), pack.NewBuildpackOptions{
-				ID:     id,
-				Path:   path,
-				Stacks: stacks,
+				API:     flags.API,
+				ID:      id,
+				Path:    path,
+				Stacks:  stacks,
+				Version: flags.Version,
 			}); err != nil {
 				return err
 			}
@@ -72,7 +79,9 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 		}),
 	}
 
+	cmd.Flags().StringVarP(&flags.Path, "api", "a", build.SupportedPlatformAPIVersions.Latest().String(), "API compatibility of the generate the buildpack")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to generate the buildpack")
+	cmd.Flags().StringVarP(&flags.Path, "version", "v", "1.0.0", "Version of the generated the buildpack")
 	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", []string{"io.buildpacks.stacks.bionic"}, "Stack(s) this buildpack will be compatible with"+multiValueHelp("stack"))
 
 	AddHelpFlag(cmd, "package")

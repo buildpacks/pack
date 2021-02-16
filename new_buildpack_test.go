@@ -48,8 +48,10 @@ func testNewBuildpack(t *testing.T, when spec.G, it spec.S) {
 	when("#NewBuildpack", func() {
 		it("should create bash scripts", func() {
 			err := subject.NewBuildpack(context.TODO(), pack.NewBuildpackOptions{
-				Path: tmpDir,
-				ID:   "example/my-cnb",
+				API:     "0.4",
+				Path:    tmpDir,
+				ID:      "example/my-cnb",
+				Version: "0.0.0",
 				Stacks: []dist.Stack{
 					{
 						ID:     "some-stack",
@@ -90,8 +92,10 @@ func testNewBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 			it("should not clobber files that exist", func() {
 				err := subject.NewBuildpack(context.TODO(), pack.NewBuildpackOptions{
-					Path: tmpDir,
-					ID:   "example/my-cnb",
+					API:     "0.4",
+					Path:    tmpDir,
+					ID:      "example/my-cnb",
+					Version: "0.0.0",
 					Stacks: []dist.Stack{
 						{
 							ID:     "some-stack",
