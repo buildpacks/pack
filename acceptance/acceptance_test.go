@@ -1669,6 +1669,9 @@ func testAcceptance(
 							t.Log("checking that registry has contents")
 							assertImage.CanBePulledFromRegistry(repoName)
 							if imageManager.HostOS() == "windows" {
+								// Cache images are automatically Linux container images, and therefore can't be pulled
+								// and inspected correctly on WCOW systems
+								//https://github.com/buildpacks/lifecycle/issues/529
 								imageManager.PullImage(cacheImageRef.Name(), registryConfig.RegistryAuth())
 							} else {
 								assertImage.CanBePulledFromRegistry(cacheImageRef.Name())
