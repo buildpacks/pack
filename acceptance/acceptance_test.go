@@ -21,14 +21,10 @@ import (
 	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/docker/go-connections/nat"
 	"github.com/ghodss/yaml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pelletier/go-toml"
-	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -36,6 +32,7 @@ import (
 	"github.com/buildpacks/pack/acceptance/buildpacks"
 	"github.com/buildpacks/pack/acceptance/config"
 	"github.com/buildpacks/pack/acceptance/invoke"
+	"github.com/buildpacks/pack/acceptance/managers"
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/cache"
 	internalConfig "github.com/buildpacks/pack/internal/config"
@@ -53,6 +50,8 @@ var (
 	dockerCli      client.CommonAPIClient
 	registryConfig *h.TestRegistryConfig
 	suiteManager   *SuiteManager
+	imageManager   managers.ImageManager
+	assertImage    assertions.ImageAssertionManager
 )
 
 func TestAcceptance(t *testing.T) {
@@ -66,8 +65,12 @@ func TestAcceptance(t *testing.T) {
 	dockerCli, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 	assert.Nil(err)
 
+	imageManager = managers.NewImageManager(t, dockerCli)
+
 	registryConfig = h.RunRegistry(t)
 	defer registryConfig.RmRegistry(t)
+
+	assertImage = assertions.NewImageAssertionManager(t, imageManager, registryConfig)
 
 	inputConfigManager, err := config.NewInputConfigurationManager()
 	assert.Nil(err)
@@ -184,13 +187,6 @@ func testWithoutSpecificBuilderRequirement(
 				assert.Nil(os.RemoveAll(tmpDir))
 			})
 
-			assertImageExistsLocally := func(name string) {
-				t.Helper()
-				_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), name)
-				assert.Nil(err)
-
-			}
-
 			generateAggregatePackageToml := func(buildpackURI, nestedPackageName, os string) string {
 				t.Helper()
 				packageTomlFile, err := ioutil.TempFile(tmpDir, "package_aggregate-*.toml")
@@ -214,13 +210,13 @@ func testWithoutSpecificBuilderRequirement(
 			when("no --format is provided", func() {
 				it("creates the package as image", func() {
 					packageName := "test/package-" + h.RandString(10)
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
+					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 
 					output := pack.RunSuccessfully("buildpack", "package", packageName, "-c", packageTomlPath)
 					assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(packageName)
-					defer h.DockerRmi(dockerCli, packageName)
+					defer imageManager.CleanupImages(packageName)
 
-					assertImageExistsLocally(packageName)
+					assertImage.ExistsLocally(packageName)
 				})
 			})
 
@@ -230,8 +226,8 @@ func testWithoutSpecificBuilderRequirement(
 					nestedPackageName := "test/package-" + h.RandString(10)
 					packageName := "test/package-" + h.RandString(10)
 
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
-					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
+					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+					aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
 
 					packageBuildpack := buildpacks.NewPackageImage(
 						t,
@@ -250,15 +246,15 @@ func testWithoutSpecificBuilderRequirement(
 						),
 					)
 					buildpackManager.PrepareBuildpacks(tmpDir, packageBuildpack)
-					defer h.DockerRmi(dockerCli, nestedPackageName, packageName)
+					defer imageManager.CleanupImages(nestedPackageName, packageName)
 
-					assertImageExistsLocally(nestedPackageName)
-					assertImageExistsLocally(packageName)
+					assertImage.ExistsLocally(nestedPackageName)
+					assertImage.ExistsLocally(packageName)
 				})
 
 				when("--publish", func() {
 					it("publishes image to registry", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
 						nestedPackage := buildpacks.NewPackageImage(
@@ -270,9 +266,8 @@ func testWithoutSpecificBuilderRequirement(
 							buildpacks.WithPublish(),
 						)
 						buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
-						defer h.DockerRmi(dockerCli, nestedPackageName)
 
-						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
+						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
 						packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 
 						output := pack.RunSuccessfully(
@@ -281,22 +276,17 @@ func testWithoutSpecificBuilderRequirement(
 							"--publish",
 						)
 
-						defer h.DockerRmi(dockerCli, packageName)
+						defer imageManager.CleanupImages(packageName)
 						assertions.NewOutputAssertionManager(t, output).ReportsPackagePublished(packageName)
 
-						_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-						assert.ErrorContains(err, "No such image")
-
-						assert.Nil(h.PullImageWithAuth(dockerCli, packageName, registryConfig.RegistryAuth()))
-
-						_, _, err = dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-						assert.Nil(err)
+						assertImage.NotExistsLocally(packageName)
+						assertImage.CanBePulledFromRegistry(packageName)
 					})
 				})
 
 				when("--pull-policy=never", func() {
 					it("should use local image", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						nestedPackageName := "test/package-" + h.RandString(10)
 						nestedPackage := buildpacks.NewPackageImage(
 							t,
@@ -306,23 +296,21 @@ func testWithoutSpecificBuilderRequirement(
 							buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
 						)
 						buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
-						defer h.DockerRmi(dockerCli, nestedPackageName)
-						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
+						defer imageManager.CleanupImages(nestedPackageName)
+						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
 
 						packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-						defer h.DockerRmi(dockerCli, packageName)
+						defer imageManager.CleanupImages(packageName)
 						pack.JustRunSuccessfully(
 							"buildpack", "package", packageName,
 							"-c", aggregatePackageToml,
 							"--pull-policy", pubcfg.PullNever.String())
 
-						_, _, err := dockerCli.ImageInspectWithRaw(context.Background(), packageName)
-						assert.Nil(err)
-
+						assertImage.ExistsLocally(packageName)
 					})
 
 					it("should not pull image from registry", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 						nestedPackageName := registryConfig.RepoName("test/package-" + h.RandString(10))
 						nestedPackage := buildpacks.NewPackageImage(
 							t,
@@ -333,11 +321,9 @@ func testWithoutSpecificBuilderRequirement(
 							buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
 						)
 						buildpackManager.PrepareBuildpacks(tmpDir, nestedPackage)
-						defer h.DockerRmi(dockerCli, nestedPackageName)
-						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, dockerHostOS())
+						aggregatePackageToml := generateAggregatePackageToml("simple-layers-parent-buildpack.tgz", nestedPackageName, imageManager.HostOS())
 
 						packageName := registryConfig.RepoName("test/package-" + h.RandString(10))
-						defer h.DockerRmi(dockerCli, packageName)
 
 						output, err := pack.Run(
 							"buildpack", "package", packageName,
@@ -353,7 +339,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			when("--format file", func() {
 				it("creates the package", func() {
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, dockerHostOS())
+					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
 					destinationFile := filepath.Join(tmpDir, "package.cnb")
 					output := pack.RunSuccessfully(
 						"buildpack", "package", destinationFile,
@@ -401,7 +387,7 @@ func testWithoutSpecificBuilderRequirement(
 							fmt.Sprintf("buildpack-%s.cnb", h.RandString(8)),
 						)
 
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", dockerHostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
 
 						packageFile := buildpacks.NewPackageFile(
 							t,
@@ -434,7 +420,7 @@ func testWithoutSpecificBuilderRequirement(
 			when("buildpack image", func() {
 				when("inspect-buildpack", func() {
 					it("succeeds", func() {
-						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", dockerHostOS())
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
 						packageImageName := registryConfig.RepoName("buildpack-" + h.RandString(8))
 
 						packageImage := buildpacks.NewPackageImage(
@@ -447,7 +433,7 @@ func testWithoutSpecificBuilderRequirement(
 								buildpacks.FolderSimpleLayers,
 							),
 						)
-						defer h.DockerRmi(dockerCli, packageImageName)
+						defer imageManager.CleanupImages(packageImageName)
 
 						buildpackManager.PrepareBuildpacks(tmpDir, packageImage)
 
@@ -657,12 +643,11 @@ func testAcceptance(
 				})
 			assert.Nil(err)
 
-			baseStackNames := stackBaseImages[dockerHostOS()]
+			baseStackNames := stackBaseImages[imageManager.HostOS()]
 			suiteManager.RegisterCleanUp("remove-stack-images", func() error {
-				for _, base := range baseStackNames {
-					h.DockerRmi(dockerCli, base)
-				}
-				return h.DockerRmi(dockerCli, runImage, buildImage, value)
+				imageManager.CleanupImages(baseStackNames...)
+				imageManager.CleanupImages(runImage, buildImage, value)
+				return nil
 			})
 
 			runImageMirror = value
@@ -684,7 +669,8 @@ func testAcceptance(
 				})
 				assert.Nil(err)
 				suiteManager.RegisterCleanUp("clean-"+key, func() error {
-					return h.DockerRmi(dockerCli, value)
+					imageManager.CleanupImages(value)
+					return nil
 				})
 
 				builderName = value
@@ -714,7 +700,7 @@ func testAcceptance(
 				})
 
 				it.After(func() {
-					h.DockerRmi(dockerCli, repoName)
+					imageManager.CleanupImages(repoName)
 					ref, err := name.ParseReference(repoName, name.WeakValidation)
 					assert.Nil(err)
 					cacheImage := cache.NewImageCache(ref, dockerCli)
@@ -739,16 +725,16 @@ func testAcceptance(
 						)
 
 						suiteManager.RegisterCleanUp("remove-lifecycle-"+lifecycle.Version(), func() error {
-							img, err := imgIDForRepoName(fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycle.Version()))
-							assert.Nil(err)
-							return h.DockerRmi(dockerCli, img)
+							img := imageManager.GetImageID(fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycle.Version()))
+							imageManager.CleanupImages(img)
+							return nil
 						})
 
 						assert.Nil(err)
 					})
 
 					it.After(func() {
-						h.DockerRmi(dockerCli, untrustedBuilderName)
+						imageManager.CleanupImages(untrustedBuilderName)
 					})
 
 					when("daemon", func() {
@@ -775,7 +761,7 @@ func testAcceptance(
 								"-B", untrustedBuilderName,
 								"--publish",
 							}
-							if dockerHostOS() != "windows" {
+							if imageManager.HostOS() != "windows" {
 								buildArgs = append(buildArgs, "--network", "host")
 							}
 
@@ -794,6 +780,9 @@ func testAcceptance(
 
 						it.Before(func() {
 							additionalRepoName = fmt.Sprintf("%s_additional", repoName)
+						})
+						it.After(func() {
+							imageManager.CleanupImages(additionalRepoName)
 						})
 						it("pushes image to additional tags", func() {
 							output := pack.RunSuccessfully(
@@ -823,12 +812,6 @@ func testAcceptance(
 							"-p", appPath,
 						)
 
-						imgId, err := imgIDForRepoName(repoName)
-						if err != nil {
-							t.Fatal(err)
-						}
-						defer h.DockerRmi(dockerCli, imgId)
-
 						assertOutput := assertions.NewOutputAssertionManager(t, output)
 
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
@@ -836,31 +819,21 @@ func testAcceptance(
 						assertOutput.ReportsSelectingRunImageMirror(runImageMirror)
 
 						t.Log("app is runnable")
-						assertMockAppRunsWithOutput(t, assert, repoName, "Launch Dep Contents", "Cached Dep Contents")
+						assertImage.RunsWithOutput(repoName, "Launch Dep Contents", "Cached Dep Contents")
 
 						t.Log("it uses the run image as a base image")
-						assertHasBase(t, assert, repoName, runImage)
+						assertImage.HasBaseImage(repoName, runImage)
 
 						t.Log("sets the run image metadata")
-						appMetadataLabel := imageLabel(t,
-							assert,
-							dockerCli,
-							repoName,
-							"io.buildpacks.lifecycle.metadata",
-						)
-						assert.Contains(appMetadataLabel, fmt.Sprintf(`"stack":{"runImage":{"image":"%s","mirrors":["%s"]}}}`, runImage, runImageMirror))
+						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"stack":{"runImage":{"image":"%s","mirrors":["%s"]}}}`, runImage, runImageMirror))
 
 						t.Log("registry is empty")
-						contents, err := registryConfig.RegistryCatalog()
-						assert.Nil(err)
-						if strings.Contains(contents, repo) {
-							t.Fatalf("Should not have published image without the '--publish' flag: got %s", contents)
-						}
+						assertImage.NotExistsInRegistry(repo)
 
 						t.Log("add a local mirror")
 						localRunImageMirror := registryConfig.RepoName("pack-test/run-mirror")
-						assert.Succeeds(dockerCli.ImageTag(context.TODO(), runImage, localRunImageMirror))
-						defer h.DockerRmi(dockerCli, localRunImageMirror)
+						imageManager.TagImage(runImage, localRunImageMirror)
+						defer imageManager.CleanupImages(localRunImageMirror)
 						pack.JustRunSuccessfully("config", "run-image-mirrors", "add", runImage, "-m", localRunImageMirror)
 
 						t.Log("rebuild")
@@ -868,14 +841,6 @@ func testAcceptance(
 							"build", repoName,
 							"-p", appPath,
 						)
-						assertOutput.ReportsSuccessfulImageBuild(repoName)
-
-						imgId, err = imgIDForRepoName(repoName)
-						if err != nil {
-							t.Fatal(err)
-						}
-						defer h.DockerRmi(dockerCli, imgId)
-
 						assertOutput = assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
 						assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
@@ -887,7 +852,7 @@ func testAcceptance(
 						assertLifecycleOutput.ReportsCacheReuse(cachedLaunchLayer)
 
 						t.Log("app is runnable")
-						assertMockAppRunsWithOutput(t, assert, repoName, "Launch Dep Contents", "Cached Dep Contents")
+						assertImage.RunsWithOutput(repoName, "Launch Dep Contents", "Cached Dep Contents")
 
 						t.Log("rebuild with --clear-cache")
 						output = pack.RunSuccessfully("build", repoName, "-p", appPath, "--clear-cache")
@@ -910,7 +875,7 @@ func testAcceptance(
 							helloArgs       []string
 							helloArgsPrefix string
 						)
-						if dockerHostOS() == "windows" {
+						if imageManager.HostOS() == "windows" {
 							webCommand = ".\\run"
 							helloCommand = "cmd"
 							helloArgs = []string{"/c", "echo hello world"}
@@ -975,14 +940,7 @@ func testAcceptance(
 
 							// --no-color is set as a default option in our tests, and doesn't need to be explicitly provided
 							output := pack.RunSuccessfully("build", repoName, "-p", appPath)
-							imgId, err := imgIDForRepoName(repoName)
-							if err != nil {
-								t.Fatal(err)
-							}
-							defer h.DockerRmi(dockerCli, imgId)
-
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
-
 							assertOutput.ReportsSuccessfulImageBuild(repoName)
 							assertOutput.WithoutColors()
 						})
@@ -996,12 +954,6 @@ func testAcceptance(
 							defer pack.SetVerbose(true)
 
 							output := pack.RunSuccessfully("build", repoName, "-p", appPath, "--quiet")
-							imgId, err := imgIDForRepoName(repoName)
-							if err != nil {
-								t.Fatal(err)
-							}
-							defer h.DockerRmi(dockerCli, imgId)
-
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
 							assertOutput.ReportSuccessfulQuietBuild(repoName)
 						})
@@ -1011,19 +963,13 @@ func testAcceptance(
 						appPath := filepath.Join("testdata", "mock_app.zip")
 						output := pack.RunSuccessfully("build", repoName, "-p", appPath)
 						assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
-
-						imgId, err := imgIDForRepoName(repoName)
-						if err != nil {
-							t.Fatal(err)
-						}
-						defer h.DockerRmi(dockerCli, imgId)
 					})
 
 					when("--network", func() {
 						var tmpDir string
 
 						it.Before(func() {
-							h.SkipIf(t, dockerHostOS() == "windows", "temporarily disabled on WCOW due to CI flakiness")
+							h.SkipIf(t, imageManager.HostOS() == "windows", "temporarily disabled on WCOW due to CI flakiness")
 
 							var err error
 							tmpDir, err = ioutil.TempDir("", "archive-buildpacks-")
@@ -1033,9 +979,8 @@ func testAcceptance(
 						})
 
 						it.After(func() {
-							h.SkipIf(t, dockerHostOS() == "windows", "temporarily disabled on WCOW due to CI flakiness")
+							h.SkipIf(t, imageManager.HostOS() == "windows", "temporarily disabled on WCOW due to CI flakiness")
 							assert.Succeeds(os.RemoveAll(tmpDir))
-							assert.Succeeds(h.DockerRmi(dockerCli, repoName))
 						})
 
 						when("the network mode is not provided", func() {
@@ -1091,7 +1036,7 @@ func testAcceptance(
 						it.Before(func() {
 							h.SkipIf(t, os.Getenv("DOCKER_HOST") != "", "cannot mount volume when DOCKER_HOST is set")
 
-							if dockerHostOS() == "windows" {
+							if imageManager.HostOS() == "windows" {
 								volumeRoot = `c:\`
 								slash = `\`
 							}
@@ -1116,7 +1061,6 @@ func testAcceptance(
 						})
 
 						it.After(func() {
-							_ = h.DockerRmi(dockerCli, repoName)
 							_ = os.RemoveAll(tmpDir)
 							_ = os.RemoveAll(tmpVolumeSrc)
 						})
@@ -1188,7 +1132,7 @@ func testAcceptance(
 								"-p", filepath.Join("testdata", "mock_app"),
 							)
 
-							assertMockAppLogs(t, assert, repoName, "hello world")
+							assertImage.RunsWithLogs(repoName, "hello world")
 						})
 					})
 
@@ -1210,8 +1154,7 @@ func testAcceptance(
 								assertOutput.ReportsSuccessfulImageBuild(repoName)
 
 								t.Log("app is runnable")
-								assertMockAppRunsWithOutput(t,
-									assert,
+								assertImage.RunsWithOutput(
 									repoName,
 									"Launch Dep Contents",
 									"Cached Dep Contents",
@@ -1290,14 +1233,14 @@ func testAcceptance(
 							)
 
 							it.After(func() {
-								_ = h.DockerRmi(dockerCli, packageImageName)
+								imageManager.CleanupImages(packageImageName)
 								_ = os.RemoveAll(tmpDir)
 							})
 
 							it("adds the buildpacks to the builder and runs them", func() {
 								packageImageName = registryConfig.RepoName("buildpack-" + h.RandString(8))
 
-								packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", dockerHostOS())
+								packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
 								packageImage := buildpacks.NewPackageImage(
 									t,
 									pack,
@@ -1349,7 +1292,7 @@ func testAcceptance(
 									fmt.Sprintf("buildpack-%s.cnb", h.RandString(8)),
 								)
 
-								packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", dockerHostOS())
+								packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package_for_build_cmd.toml", imageManager.HostOS())
 								packageFile := buildpacks.NewPackageFile(
 									t,
 									pack,
@@ -1439,8 +1382,7 @@ func testAcceptance(
 							)
 
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
-							assertMockAppRunsWithOutput(t,
-								assert,
+							assertImage.RunsWithOutput(
 								repoName,
 								"Env2 Layer Contents From Environment",
 								"Env1 Layer Contents From File",
@@ -1467,8 +1409,7 @@ func testAcceptance(
 							)
 
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
-							assertMockAppRunsWithOutput(t,
-								assert,
+							assertImage.RunsWithOutput(
 								repoName,
 								"Env2 Layer Contents From Environment",
 								"Env1 Layer Contents From Command Line",
@@ -1482,7 +1423,7 @@ func testAcceptance(
 						when("the run-image has the correct stack ID", func() {
 							it.Before(func() {
 								user := func() string {
-									if dockerHostOS() == "windows" {
+									if imageManager.HostOS() == "windows" {
 										return "ContainerAdministrator"
 									}
 
@@ -1498,7 +1439,7 @@ func testAcceptance(
 							})
 
 							it.After(func() {
-								h.DockerRmi(dockerCli, runImageName)
+								imageManager.CleanupImages(runImageName)
 							})
 
 							it("uses the run image as the base image", func() {
@@ -1512,15 +1453,14 @@ func testAcceptance(
 								assertOutput.ReportsPullingImage(runImageName)
 
 								t.Log("app is runnable")
-								assertMockAppRunsWithOutput(t,
-									assert,
+								assertImage.RunsWithOutput(
 									repoName,
 									"Launch Dep Contents",
 									"Cached Dep Contents",
 								)
 
 								t.Log("uses the run image as the base image")
-								assertHasBase(t, assert, repoName, runImageName)
+								assertImage.HasBaseImage(repoName, runImageName)
 							})
 						})
 
@@ -1535,7 +1475,7 @@ func testAcceptance(
 							})
 
 							it.After(func() {
-								h.DockerRmi(dockerCli, runImageName)
+								imageManager.CleanupImages(runImageName)
 							})
 
 							it("fails with a message", func() {
@@ -1562,7 +1502,7 @@ func testAcceptance(
 								"-p", filepath.Join("testdata", "mock_app"),
 								"--publish",
 							}
-							if dockerHostOS() != "windows" {
+							if imageManager.HostOS() != "windows" {
 								buildArgs = append(buildArgs, "--network", "host")
 							}
 
@@ -1570,16 +1510,11 @@ func testAcceptance(
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 							t.Log("checking that registry has contents")
-							contents, err := registryConfig.RegistryCatalog()
-							assert.Nil(err)
-							if !strings.Contains(contents, repo) {
-								t.Fatalf("Expected to see image %s in %s", repo, contents)
-							}
+							assertImage.ExistsInRegistryCatalog(repo)
 
-							// TODO: remove this condition after pack 0.18.0 is released
+							// TODO: remove this if block after pack 0.18.0 is released
 							if !pack.SupportsFeature(invoke.InspectRemoteImage) {
-								assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
-								defer h.DockerRmi(dockerCli, repoName)
+								imageManager.PullImage(repoName, registryConfig.RegistryAuth())
 							}
 
 							t.Log("inspect-image")
@@ -1589,7 +1524,7 @@ func testAcceptance(
 								helloArgs       []string
 								helloArgsPrefix string
 							)
-							if dockerHostOS() == "windows" {
+							if imageManager.HostOS() == "windows" {
 								webCommand = ".\\run"
 								helloCommand = "cmd"
 								helloArgs = []string{"/c", "echo hello world"}
@@ -1645,12 +1580,13 @@ func testAcceptance(
 								format.compareFunc(output, expectedOutput)
 							}
 
-							assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
-							defer h.DockerRmi(dockerCli, repoName)
+							// TODO: remove this if block after pack 0.18.0 is released
+							if pack.SupportsFeature(invoke.InspectRemoteImage) {
+								imageManager.PullImage(repoName, registryConfig.RegistryAuth())
+							}
 
 							t.Log("app is runnable")
-							assertMockAppRunsWithOutput(t,
-								assert,
+							assertImage.RunsWithOutput(
 								repoName,
 								"Launch Dep Contents",
 								"Cached Dep Contents",
@@ -1665,6 +1601,9 @@ func testAcceptance(
 								additionalRepo = fmt.Sprintf("%s_additional", repo)
 								additionalRepoName = fmt.Sprintf("%s_additional", repoName)
 							})
+							it.After(func() {
+								imageManager.CleanupImages(additionalRepoName)
+							})
 							it("creates additional tags on the registry", func() {
 								buildArgs := []string{
 									repoName,
@@ -1673,7 +1612,7 @@ func testAcceptance(
 									"--tag", additionalRepoName,
 								}
 
-								if dockerHostOS() != "windows" {
+								if imageManager.HostOS() != "windows" {
 									buildArgs = append(buildArgs, "--network", "host")
 								}
 
@@ -1681,26 +1620,14 @@ func testAcceptance(
 								assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 								t.Log("checking that registry has contents")
-								contents, err := registryConfig.RegistryCatalog()
-								assert.Nil(err)
+								assertImage.ExistsInRegistryCatalog(repo)
+								assertImage.ExistsInRegistryCatalog(additionalRepo)
 
-								if !strings.Contains(contents, repo) {
-									t.Fatalf("Expected to see image %s in %s", repo, contents)
-								}
-
-								if !strings.Contains(contents, additionalRepo) {
-									t.Fatalf("Expected to see image %s in %s", additionalRepo, contents)
-								}
-
-								assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
-								defer h.DockerRmi(dockerCli, repoName)
-
-								assert.Succeeds(h.PullImageWithAuth(dockerCli, additionalRepoName, registryConfig.RegistryAuth()))
-								defer h.DockerRmi(dockerCli, additionalRepoName)
+								imageManager.PullImage(repoName, registryConfig.RegistryAuth())
+								imageManager.PullImage(additionalRepoName, registryConfig.RegistryAuth())
 
 								t.Log("additional app is runnable")
-								assertMockAppRunsWithOutput(t,
-									assert,
+								assertImage.RunsWithOutput(
 									additionalRepoName,
 									"Launch Dep Contents",
 									"Cached Dep Contents",
@@ -1717,10 +1644,8 @@ func testAcceptance(
 
 					when("--cache-image", func() {
 						var cacheImageName string
-						var cacheImage string
 						it.Before(func() {
 							cacheImageName = fmt.Sprintf("%s-cache", repoName)
-							cacheImage = fmt.Sprintf("%s-cache", repo)
 						})
 
 						it("creates image and cache image on the registry", func() {
@@ -1731,7 +1656,7 @@ func testAcceptance(
 								"--cache-image",
 								cacheImageName,
 							}
-							if dockerHostOS() != "windows" {
+							if imageManager.HostOS() != "windows" {
 								buildArgs = append(buildArgs, "--network", "host")
 							}
 
@@ -1742,20 +1667,9 @@ func testAcceptance(
 							assert.Nil(err)
 
 							t.Log("checking that registry has contents")
-							contents, err := registryConfig.RegistryCatalog()
-							assert.Nil(err)
-							if !strings.Contains(contents, repo) {
-								t.Fatalf("Expected to see image %s in %s", repo, contents)
-							}
-
-							if !strings.Contains(contents, cacheImage) {
-								t.Fatalf("Expected to see image %s in %s", cacheImage, contents)
-							}
-
-							assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
-							assert.Succeeds(h.PullImageWithAuth(dockerCli, cacheImageRef.Name(), registryConfig.RegistryAuth()))
-							defer h.DockerRmi(dockerCli, repoName)
-							defer h.DockerRmi(dockerCli, cacheImageRef.Name())
+							assertImage.CanBePulledFromRegistry(repoName)
+							assertImage.CanBePulledFromRegistry(cacheImageRef.Name())
+							defer imageManager.CleanupImages(cacheImageRef.Name())
 						})
 					})
 
@@ -1981,7 +1895,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 				when("inspecting a nested builder", func() {
 					it.Before(func() {
 						// create our nested builder
-						h.SkipIf(t, dockerHostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+						h.SkipIf(t, imageManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
 
 						// create a task, handled by a 'task manager' which executes our pack commands during tests.
 						// looks like this is used to de-dup tasks
@@ -2008,7 +1922,8 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 						// register task to be run to 'clean up' a task
 						suiteManager.RegisterCleanUp("clean-"+key, func() error {
-							return h.DockerRmi(dockerCli, value)
+							imageManager.CleanupImages(value)
+							return nil
 						})
 						builderName = value
 
@@ -2270,7 +2185,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					buildRunImage = func(newRunImage, contents1, contents2 string) {
 						user := func() string {
-							if dockerHostOS() == "windows" {
+							if imageManager.HostOS() == "windows" {
 								return "ContainerAdministrator"
 							}
 
@@ -2295,8 +2210,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						"--pull-policy", pubcfg.PullNever.String(),
 					)
 					origID = h.ImageID(t, repoName)
-					assertMockAppRunsWithOutput(t,
-						assert,
+					assertImage.RunsWithOutput(
 						repoName,
 						"contents-before-1",
 						"contents-before-2",
@@ -2304,7 +2218,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 				})
 
 				it.After(func() {
-					h.DockerRmi(dockerCli, origID, repoName, runBefore)
+					imageManager.CleanupImages(origID, repoName, runBefore)
 					ref, err := name.ParseReference(repoName, name.WeakValidation)
 					assert.Nil(err)
 					buildCacheVolume := cache.NewVolumeCache(ref, "build", dockerCli)
@@ -2323,7 +2237,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it.After(func() {
-							assert.Succeeds(h.DockerRmi(dockerCli, runAfter))
+							imageManager.CleanupImages(runAfter)
 						})
 
 						it("uses provided run image", func() {
@@ -2334,8 +2248,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							)
 
 							assert.Contains(output, fmt.Sprintf("Successfully rebased image '%s'", repoName))
-							assertMockAppRunsWithOutput(t,
-								assert,
+							assertImage.RunsWithOutput(
 								repoName,
 								"contents-after-1",
 								"contents-after-2",
@@ -2353,7 +2266,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it.After(func() {
-							assert.Succeeds(h.DockerRmi(dockerCli, localRunImageMirror))
+							imageManager.CleanupImages(localRunImageMirror)
 						})
 
 						it("prefers the local mirror", func() {
@@ -2362,8 +2275,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
 							assertOutput.ReportsSelectingRunImageMirrorFromLocalConfig(localRunImageMirror)
 							assertOutput.ReportsSuccessfulRebase(repoName)
-							assertMockAppRunsWithOutput(t,
-								assert,
+							assertImage.RunsWithOutput(
 								repoName,
 								"local-mirror-after-1",
 								"local-mirror-after-2",
@@ -2374,7 +2286,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					when("image metadata has a mirror", func() {
 						it.Before(func() {
 							// clean up existing mirror first to avoid leaking images
-							assert.Succeeds(h.DockerRmi(dockerCli, runImageMirror))
+							imageManager.CleanupImages(runImageMirror)
 
 							buildRunImage(runImageMirror, "mirror-after-1", "mirror-after-2")
 						})
@@ -2385,8 +2297,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
 							assertOutput.ReportsSelectingRunImageMirror(runImageMirror)
 							assertOutput.ReportsSuccessfulRebase(repoName)
-							assertMockAppRunsWithOutput(t,
-								assert,
+							assertImage.RunsWithOutput(
 								repoName,
 								"mirror-after-1",
 								"mirror-after-2",
@@ -2410,16 +2321,15 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 
 						it.After(func() {
-							h.DockerRmi(dockerCli, runAfter)
+							imageManager.CleanupImages(runAfter)
 						})
 
 						it("uses provided run image", func() {
 							output := pack.RunSuccessfully("rebase", repoName, "--publish", "--run-image", runAfter)
 
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulRebase(repoName)
-							assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
-							assertMockAppRunsWithOutput(t,
-								assert,
+							assertImage.CanBePulledFromRegistry(repoName)
+							assertImage.RunsWithOutput(
 								repoName,
 								"contents-after-1",
 								"contents-after-2",
@@ -2523,7 +2433,7 @@ func createComplexBuilder(t *testing.T,
 		),
 	)
 
-	defer h.DockerRmi(dockerCli, packageImageName, nestedLevelTwoBuildpackName, simpleLayersBuildpackName)
+	defer imageManager.CleanupImages(packageImageName, nestedLevelTwoBuildpackName, simpleLayersBuildpackName)
 
 	builderBuildpacks = append(
 		builderBuildpacks,
@@ -2599,7 +2509,7 @@ func createBuilder(
 		buildpacks.ReadEnv,
 	}
 
-	packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package.toml", dockerHostOS())
+	packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, "package.toml", imageManager.HostOS())
 	packageImageName := registryConfig.RepoName("simple-layers-package-image-buildpack-" + h.RandString(8))
 
 	packageImageBuildpack := buildpacks.NewPackageImage(
@@ -2610,7 +2520,7 @@ func createBuilder(
 		buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayers),
 	)
 
-	defer h.DockerRmi(dockerCli, packageImageName)
+	defer imageManager.CleanupImages(packageImageName)
 
 	builderBuildpacks = append(builderBuildpacks, packageImageBuildpack)
 
@@ -2693,7 +2603,7 @@ func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror 
 	t.Helper()
 	t.Log("creating stack images...")
 
-	stackBaseDir := filepath.Join("testdata", "mock_stack", dockerHostOS())
+	stackBaseDir := filepath.Join("testdata", "mock_stack", imageManager.HostOS())
 
 	if err := createStackImage(dockerCli, runImage, filepath.Join(stackBaseDir, "run")); err != nil {
 		return err
@@ -2702,10 +2612,7 @@ func createStack(t *testing.T, dockerCli client.CommonAPIClient, runImageMirror 
 		return err
 	}
 
-	if err := dockerCli.ImageTag(context.Background(), runImage, runImageMirror); err != nil {
-		return err
-	}
-
+	imageManager.TagImage(runImage, runImageMirror)
 	if err := h.PushImage(dockerCli, runImageMirror, registryConfig); err != nil {
 		return err
 	}
@@ -2734,160 +2641,6 @@ func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir str
 	}
 
 	return res.Body.Close()
-}
-
-type logWriter struct {
-	t *testing.T
-}
-
-func (l logWriter) Write(p []byte) (n int, err error) {
-	l.t.Helper()
-	l.t.Log(strings.TrimRight(string(p), "\n"))
-	return len(p), nil
-}
-
-func assertMockAppRunsWithOutput(t *testing.T, assert h.AssertionManager, repoName string, expectedOutputs ...string) {
-	t.Helper()
-	containerName := "test-" + h.RandString(10)
-	ctrID := runDockerImageExposePort(t, assert, containerName, repoName)
-	defer dockerCli.ContainerKill(context.TODO(), containerName, "SIGKILL")
-	defer dockerCli.ContainerRemove(context.TODO(), containerName, dockertypes.ContainerRemoveOptions{Force: true})
-
-	logs, err := dockerCli.ContainerLogs(context.TODO(), ctrID, dockertypes.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Follow:     true,
-	})
-	assert.Nil(err)
-
-	copyErr := make(chan error)
-	go func() {
-		_, err := stdcopy.StdCopy(logWriter{t}, logWriter{t}, logs)
-		copyErr <- err
-	}()
-
-	launchPort := fetchHostPort(t, assert, containerName)
-	assertMockAppResponseContains(t, assert, launchPort, 10*time.Second, expectedOutputs...)
-}
-
-func assertMockAppLogs(t *testing.T, assert h.AssertionManager, repoName string, expectedOutputs ...string) {
-	t.Helper()
-	containerName := "test-" + h.RandString(10)
-	ctr, err := dockerCli.ContainerCreate(context.Background(), &container.Config{
-		Image: repoName,
-	}, nil, nil, nil, containerName)
-	assert.Nil(err)
-
-	var b bytes.Buffer
-	err = h.RunContainer(context.Background(), dockerCli, ctr.ID, &b, &b)
-	assert.Nil(err)
-
-	for _, expectedOutput := range expectedOutputs {
-		assert.Contains(b.String(), expectedOutput)
-	}
-}
-
-func assertMockAppResponseContains(t *testing.T, assert h.AssertionManager, launchPort string, timeout time.Duration, expectedOutputs ...string) {
-	t.Helper()
-	resp := waitForResponse(t, launchPort, timeout)
-	for _, expected := range expectedOutputs {
-		assert.Contains(resp, expected)
-	}
-}
-
-func assertHasBase(t *testing.T, assert h.AssertionManager, image, base string) {
-	t.Helper()
-	imageInspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), image)
-	assert.Nil(err)
-	baseInspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), base)
-	assert.Nil(err)
-	for i, layer := range baseInspect.RootFS.Layers {
-		assert.Equal(imageInspect.RootFS.Layers[i], layer)
-	}
-}
-
-func fetchHostPort(t *testing.T, assert h.AssertionManager, dockerID string) string {
-	t.Helper()
-
-	i, err := dockerCli.ContainerInspect(context.Background(), dockerID)
-	assert.Nil(err)
-	for _, port := range i.NetworkSettings.Ports {
-		for _, binding := range port {
-			return binding.HostPort
-		}
-	}
-
-	t.Fatalf("Failed to fetch host port for %s: no ports exposed", dockerID)
-	return ""
-}
-
-func imgIDForRepoName(repoName string) (string, error) {
-	inspect, _, err := dockerCli.ImageInspectWithRaw(context.TODO(), repoName)
-	if err != nil {
-		return "", errors.Wrapf(err, "could not get image ID for image '%s'", repoName)
-	}
-	return inspect.ID, nil
-}
-
-func runDockerImageExposePort(t *testing.T, assert h.AssertionManager, containerName, repoName string) string {
-	t.Helper()
-	ctx := context.Background()
-
-	ctr, err := dockerCli.ContainerCreate(ctx, &container.Config{
-		Image:        repoName,
-		ExposedPorts: map[nat.Port]struct{}{"8080/tcp": {}},
-		Healthcheck:  nil,
-	}, &container.HostConfig{
-		PortBindings: nat.PortMap{
-			"8080/tcp": []nat.PortBinding{{}},
-		},
-		AutoRemove: true,
-	}, nil, nil, containerName)
-	assert.Nil(err)
-
-	err = dockerCli.ContainerStart(ctx, ctr.ID, dockertypes.ContainerStartOptions{})
-	assert.Nil(err)
-	return ctr.ID
-}
-
-func waitForResponse(t *testing.T, port string, timeout time.Duration) string {
-	t.Helper()
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			resp, err := h.HTTPGetE("http://"+h.RegistryHost(h.DockerHostname(t), port), map[string]string{})
-			if err != nil {
-				break
-			}
-			return resp
-		case <-timer.C:
-			t.Fatalf("timeout waiting for response: %v", timeout)
-		}
-	}
-}
-
-func imageLabel(t *testing.T, assert h.AssertionManager, dockerCli client.CommonAPIClient, repoName, labelName string) string {
-	t.Helper()
-	inspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), repoName)
-	assert.Nil(err)
-	label, ok := inspect.Config.Labels[labelName]
-	if !ok {
-		t.Errorf("expected label %s to exist", labelName)
-	}
-	return label
-}
-
-func dockerHostOS() string {
-	daemonInfo, err := dockerCli.Info(context.TODO())
-	if err != nil {
-		panic(err.Error())
-	}
-	return daemonInfo.OSType
 }
 
 // taskKey creates a key from the prefix and all arguments to be unique

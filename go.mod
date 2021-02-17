@@ -35,6 +35,7 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
+	golang.org/dl v0.0.0-20210216195328-5eb6ea94c136 // indirect
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
 	golang.org/x/mod v0.4.1
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
