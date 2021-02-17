@@ -28,7 +28,6 @@ func NewImageAssertionManager(t *testing.T, imageManager managers.ImageManager, 
 
 func (a ImageAssertionManager) ExistsLocally(name string) {
 	a.testObject.Helper()
-
 	_, err := a.imageManager.Inspect(name)
 	a.assert.Nil(err)
 }

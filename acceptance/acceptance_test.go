@@ -1668,7 +1668,12 @@ func testAcceptance(
 
 							t.Log("checking that registry has contents")
 							assertImage.CanBePulledFromRegistry(repoName)
-							assertImage.CanBePulledFromRegistry(cacheImageRef.Name())
+							if imageManager.HostOS() == "windows" {
+								imageManager.PullImage(cacheImageRef.Name(), registryConfig.RegistryAuth())
+							} else {
+								assertImage.CanBePulledFromRegistry(cacheImageRef.Name())
+							}
+
 							defer imageManager.CleanupImages(cacheImageRef.Name())
 						})
 					})
