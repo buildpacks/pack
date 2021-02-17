@@ -80,7 +80,7 @@ func (c *Client) NewBuildpack(ctx context.Context, opts NewBuildpackOptions) err
 			return err
 		}
 		defer f.Close()
-		c.logger.Infof("    %s  buildpack.toml", style.Key("create"))
+		c.logger.Infof("    %s  buildpack.toml", style.Symbol("create"))
 	}
 
 	return createBashBuildpack(opts.Path, c)
@@ -113,7 +113,7 @@ func createBinScript(path, name, contents string, c *Client) error {
 			return err
 		}
 
-		c.logger.Infof("    %s  bin/%s", style.Key("create"), name)
+		c.logger.Infof("    %s  bin/%s", style.Symbol("create"), name)
 	}
 	return nil
 }
