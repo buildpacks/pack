@@ -8,17 +8,17 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/spf13/cobra"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/dist"
-	h "github.com/buildpacks/pack/testhelpers"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestBuildpackNewCommand(t *testing.T) {
