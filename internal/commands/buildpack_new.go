@@ -79,7 +79,7 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 		}),
 	}
 
-	cmd.Flags().StringVarP(&flags.Path, "api", "a", build.SupportedPlatformAPIVersions.Latest().String(), "API compatibility of the generate the buildpack")
+	cmd.Flags().StringVarP(&flags.API, "api", "a", build.SupportedPlatformAPIVersions.Latest().String(), "API compatibility of the generate the buildpack")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to generate the buildpack")
 	cmd.Flags().StringVarP(&flags.Path, "version", "v", "1.0.0", "Version of the generated the buildpack")
 	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", []string{"io.buildpacks.stacks.bionic"}, "Stack(s) this buildpack will be compatible with"+multiValueHelp("stack"))
