@@ -16,7 +16,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-// BuildpackNewFlags define flags provided to the BuildpackCreate command
+// BuildpackNewFlags define flags provided to the BuildpackNew command
 type BuildpackNewFlags struct {
 	API     string
 	Path    string
