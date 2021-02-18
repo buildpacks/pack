@@ -6,11 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/buildpacks/pack/internal/build"
-
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
