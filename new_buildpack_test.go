@@ -22,7 +22,7 @@ import (
 func TestNewBuildpack(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "new_buildpack", testNewBuildpack, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "NewBuildpack", testNewBuildpack, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testNewBuildpack(t *testing.T, when spec.G, it spec.S) {
