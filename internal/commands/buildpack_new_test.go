@@ -56,8 +56,10 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 	when("BuildpackNew#Execute", func() {
 		it("uses the args to generate artifacts", func() {
 			mockClient.EXPECT().NewBuildpack(gomock.Any(), pack.NewBuildpackOptions{
-				ID:   "example/some-cnb",
-				Path: filepath.Join(tmpDir, "some-cnb"),
+				API:     "0.4",
+				ID:      "example/some-cnb",
+				Path:    filepath.Join(tmpDir, "some-cnb"),
+				Version: "1.0.0",
 				Stacks: []dist.Stack{{
 					ID:     "io.buildpacks.stacks.bionic",
 					Mixins: []string{},
