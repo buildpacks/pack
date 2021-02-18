@@ -41,7 +41,7 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 			id := args[0]
 			idParts := strings.Split(id, "/")
 			dirName := idParts[len(idParts)-1]
-			_, err := os.Stat("temp")
+			_, err := os.Stat(dirName)
 			if !os.IsNotExist(err) {
 				return err
 			}
