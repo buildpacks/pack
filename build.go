@@ -701,7 +701,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				return fetchedBPs, order, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
 			}
 
-			mainBP, depBPs, err := DecomposeBuildpack(blob, imageOS)
+			mainBP, depBPs, err := decomposeBuildpack(blob, imageOS)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "extracting from %s", style.Symbol(bp))
 			}
@@ -756,8 +756,8 @@ func appendBuildpackToOrder(order dist.Order, bpInfo dist.BuildpackInfo) (newOrd
 	return newOrder
 }
 
-// DecomposeBuildpack decomposes a buildpack blob into the main builder (order buildpack) and it's dependencies buildpacks.
-func DecomposeBuildpack(blob blob.Blob, imageOS string) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
+// decomposeBuildpack decomposes a buildpack blob into the main builder (order buildpack) and it's dependencies buildpacks.
+func decomposeBuildpack(blob blob.Blob, imageOS string) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
 	isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
 	if err != nil {
 		return mainBP, depBPs, errors.Wrap(err, "inspecting buildpack blob")
