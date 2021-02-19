@@ -64,7 +64,7 @@ func TestDefaultLogger(t *testing.T) {
 			h.AssertMatch(t, w.String(), warnMatcher)
 		})
 
-		it("should format warb messages properly", func() {
+		it("should format warn messages properly", func() {
 			logger.Warnf("test%s", "foo")
 			h.AssertMatch(t, w.String(), warnMatcher)
 		})
