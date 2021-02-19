@@ -46,6 +46,18 @@ func testReportCommand(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, ioutil.WriteFile(packConfigPath, []byte(`
 default-builder-image = "some/image"
 experimental = true
+
+[[run-images]]
+  image = "super-secret-project/run"
+  mirrors = ["gcr.io/super-secret-project/run", "secret.io/super-secret-project/run"]
+
+[[trusted-builders]]
+  name = "super-secret-project/builder"
+
+[[registries]]
+  name = "secret-registry"
+  type = "github"
+  url = "https://github.com/super-secret-project/registry"
 `), 0666))
 
 		tempPackEmptyHome, err = ioutil.TempDir("", "")
@@ -61,21 +73,41 @@ experimental = true
 		when("config.toml is present", func() {
 			it("presents output", func() {
 				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), `default-builder-image = "[REDACTED]"`)
 				h.AssertContains(t, outBuf.String(), `experimental = true`)
 				h.AssertContains(t, outBuf.String(), `Version:  `+testVersion)
 
+				h.AssertContains(t, outBuf.String(), `default-builder-image = "[REDACTED]"`)
+				h.AssertContains(t, outBuf.String(), `name = "[REDACTED]"`)
+				h.AssertContains(t, outBuf.String(), `url = "[REDACTED]"`)
+				h.AssertContains(t, outBuf.String(), `image = "[REDACTED]"`)
+				h.AssertContains(t, outBuf.String(), `mirrors = ["[REDACTED]", "[REDACTED]"]`)
+
 				h.AssertNotContains(t, outBuf.String(), `default-builder-image = "some/image"`)
+				h.AssertNotContains(t, outBuf.String(), `image = "super-secret-project/run"`)
+				h.AssertNotContains(t, outBuf.String(), `mirrors = ["gcr.io/super-secret-project/run", "secret.io/super-secret-project/run"]`)
+				h.AssertNotContains(t, outBuf.String(), `name = "super-secret-project/builder"`)
+				h.AssertNotContains(t, outBuf.String(), `name = "secret-registry"`)
+				h.AssertNotContains(t, outBuf.String(), `url = "https://github.com/super-secret-project/registry"`)
 			})
 
 			it("doesn't sanitize output if explicit", func() {
 				command.SetArgs([]string{"-e"})
 				h.AssertNil(t, command.Execute())
-				h.AssertContains(t, outBuf.String(), `default-builder-image = "some/image"`)
 				h.AssertContains(t, outBuf.String(), `experimental = true`)
 				h.AssertContains(t, outBuf.String(), `Version:  `+testVersion)
 
 				h.AssertNotContains(t, outBuf.String(), `default-builder-image = "[REDACTED]"`)
+				h.AssertNotContains(t, outBuf.String(), `name = "[REDACTED]"`)
+				h.AssertNotContains(t, outBuf.String(), `url = "[REDACTED]"`)
+				h.AssertNotContains(t, outBuf.String(), `image = "[REDACTED]"`)
+				h.AssertNotContains(t, outBuf.String(), `mirrors = ["[REDACTED]", "[REDACTED]"]`)
+
+				h.AssertContains(t, outBuf.String(), `default-builder-image = "some/image"`)
+				h.AssertContains(t, outBuf.String(), `image = "super-secret-project/run"`)
+				h.AssertContains(t, outBuf.String(), `mirrors = ["gcr.io/super-secret-project/run", "secret.io/super-secret-project/run"]`)
+				h.AssertContains(t, outBuf.String(), `name = "super-secret-project/builder"`)
+				h.AssertContains(t, outBuf.String(), `name = "secret-registry"`)
+				h.AssertContains(t, outBuf.String(), `url = "https://github.com/super-secret-project/registry"`)
 			})
 		})
 
