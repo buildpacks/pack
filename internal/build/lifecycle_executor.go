@@ -58,6 +58,7 @@ type LifecycleOptions struct {
 	Publish            bool
 	TrustBuilder       bool
 	UseCreator         bool
+	DockerHost         string
 	CacheImage         string
 	HTTPProxy          string
 	HTTPSProxy         string

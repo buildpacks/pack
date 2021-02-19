@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -260,11 +263,64 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("#WithDaemonAccess", func() {
-				it("allows daemon access inside the container", func() {
-					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("daemon"), build.WithDaemonAccess())
-					phase := phaseFactory.New(configProvider)
-					assertRunSucceeds(t, phase, &outBuf, &errBuf)
-					h.AssertContains(t, outBuf.String(), "daemon test")
+				when("with standard docker socket", func() {
+					it("allows daemon access inside the container", func() {
+						configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("daemon"), build.WithDaemonAccess(""))
+						phase := phaseFactory.New(configProvider)
+						assertRunSucceeds(t, phase, &outBuf, &errBuf)
+						h.AssertContains(t, outBuf.String(), "daemon test")
+					})
+				})
+
+				when("with non standard docker socket", func() {
+					it.Before(func() {
+						h.SkipIf(t, runtime.GOOS != "linux", "Skipped on non-linux")
+					})
+					it("allows daemon access inside the container", func() {
+						tmp, err := ioutil.TempDir("", "testSocketDir")
+						if err != nil {
+							t.Fatal(err)
+						}
+						defer os.RemoveAll(tmp)
+
+						newName := filepath.Join(tmp, "docker.sock")
+						err = os.Symlink("/var/run/docker.sock", newName)
+						if err != nil {
+							t.Fatal(err)
+						}
+
+						configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("daemon"), build.WithDaemonAccess("unix://"+newName))
+						phase := phaseFactory.New(configProvider)
+						assertRunSucceeds(t, phase, &outBuf, &errBuf)
+						h.AssertContains(t, outBuf.String(), "daemon test")
+					})
+				})
+
+				when("with TCP docker-host", func() {
+					it.Before(func() {
+						h.SkipIf(t, runtime.GOOS != "linux", "Skipped on non-linux")
+					})
+					it("allows daemon access inside the container", func() {
+						forwardCtx, cancelForward := context.WithCancel(context.Background())
+						defer cancelForward()
+
+						portChan := make(chan int, 1)
+						forwardExited := make(chan struct{}, 1)
+						go func() {
+							forwardUnix2TCP(forwardCtx, t, portChan)
+							forwardExited <- struct{}{}
+						}()
+						dockerHost := fmt.Sprintf("tcp://127.0.0.1:%d", <-portChan)
+						configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec,
+							build.WithArgs("daemon"),
+							build.WithDaemonAccess(dockerHost),
+							build.WithNetwork("host"))
+						phase := phaseFactory.New(configProvider)
+						assertRunSucceeds(t, phase, &outBuf, &errBuf)
+						h.AssertContains(t, outBuf.String(), "daemon test")
+						cancelForward()
+						<-forwardExited
+					})
 				})
 			})
 
@@ -421,4 +477,63 @@ func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPI
 		HTTPSProxy: "some-https-proxy",
 		NoProxy:    "some-no-proxy",
 	})
+}
+
+// helper function to expose standard UNIX socket `/var/run/docker.sock` via TCP localhost:PORT
+// where PORT is picked automatically and returned via outPort parameter
+func forwardUnix2TCP(ctx context.Context, t *testing.T, outPort chan<- int) {
+	wg := sync.WaitGroup{}
+
+	forwardCon := func(tcpCon net.Conn) {
+		defer wg.Done()
+
+		defer tcpCon.Close()
+		go func() {
+			<-ctx.Done()
+			tcpCon.Close()
+		}()
+
+		unixCon, err := net.Dial("unix", "/var/run/docker.sock")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer unixCon.Close()
+		go func() {
+			<-ctx.Done()
+			unixCon.Close()
+		}()
+
+		go io.Copy(tcpCon, unixCon)
+		io.Copy(unixCon, tcpCon)
+	}
+
+	listener, err := net.Listen("tcp4", ":")
+	if err != nil {
+		t.Fatal(err)
+	}
+	outPort <- listener.Addr().(*net.TCPAddr).Port
+	defer listener.Close()
+	go func() {
+		<-ctx.Done()
+		listener.Close()
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			goto out
+		default:
+			c, err := listener.Accept()
+			if err != nil {
+				if ctx.Err() == context.Canceled {
+					goto out
+				} else {
+					t.Fatal(err)
+				}
+			}
+			wg.Add(1)
+			go forwardCon(c)
+		}
+	}
+out:
+	wg.Wait()
 }
