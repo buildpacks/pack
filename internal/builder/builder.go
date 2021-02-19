@@ -306,17 +306,17 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 			return err
 		}
 
-		if err := b.image.AddLayer(bpLayerTar); err != nil {
-			return errors.Wrapf(err,
-				"adding layer tar for buildpack %s",
-				style.Symbol(bp.Descriptor().Info.FullName()),
-			)
-		}
-
 		diffID, err := dist.LayerDiffID(bpLayerTar)
 		if err != nil {
 			return errors.Wrapf(err,
 				"getting content hashes for buildpack %s",
+				style.Symbol(bp.Descriptor().Info.FullName()),
+			)
+		}
+
+		if err := b.image.AddLayerWithDiffID(bpLayerTar, diffID.String()); err != nil {
+			return errors.Wrapf(err,
+				"adding layer tar for buildpack %s",
 				style.Symbol(bp.Descriptor().Info.FullName()),
 			)
 		}
