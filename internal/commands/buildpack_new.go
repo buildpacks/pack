@@ -47,7 +47,7 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 			}
 
 			path := filepath.Join(flags.Path, dirName)
-			if len(path) == 0 {
+			if len(flags.Path) == 0 {
 				cwd, err := os.Getwd()
 				if err != nil {
 					return err
