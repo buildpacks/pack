@@ -22,6 +22,7 @@ type BuildFlags struct {
 	Publish            bool
 	ClearCache         bool
 	TrustBuilder       bool
+	DockerHost         string
 	CacheImage         string
 	AppPath            string
 	Builder            string
@@ -107,6 +108,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Env:               env,
 				Image:             imageName,
 				Publish:           flags.Publish,
+				DockerHost:        flags.DockerHost,
 				PullPolicy:        pullPolicy,
 				ClearCache:        flags.ClearCache,
 				TrustBuilder:      trustBuilder,
@@ -143,6 +145,12 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed\nNOTE: These are NOT available at image runtime.\"")
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish to registry")
+	cmd.Flags().StringVar(&buildFlags.DockerHost, "docker-host", "",
+		`Address to docker daemon that will be exposed to the build container.
+If not set (or set to empty string) the standard socket location will be used.
+Special value 'inherit' may be used in which case DOCKER_HOST environment variable will be used.
+This option may set DOCKER_HOST environment variable for the build container if needed.
+`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
 	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "r", cfg.DefaultRegistryName, "Buildpack Registry by name")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")

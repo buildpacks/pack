@@ -3,6 +3,7 @@ package build
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -122,14 +123,32 @@ func WithBinds(binds ...string) PhaseConfigProviderOperation {
 	}
 }
 
-func WithDaemonAccess() PhaseConfigProviderOperation {
+func WithDaemonAccess(dockerHost string) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
 		WithRoot()(provider)
-		bind := "/var/run/docker.sock:/var/run/docker.sock"
-		if provider.os == "windows" {
-			bind = `\\.\pipe\docker_engine:\\.\pipe\docker_engine`
+		if dockerHost == "inherit" {
+			dockerHost = os.Getenv("DOCKER_HOST")
 		}
-		provider.hostConf.Binds = append(provider.hostConf.Binds, bind)
+		var bind string
+		if dockerHost == "" {
+			bind = "/var/run/docker.sock:/var/run/docker.sock"
+			if provider.os == "windows" {
+				bind = `\\.\pipe\docker_engine:\\.\pipe\docker_engine`
+			}
+		} else {
+			switch {
+			case strings.HasPrefix(dockerHost, "unix://"):
+				bind = fmt.Sprintf("%s:/var/run/docker.sock", strings.TrimPrefix(dockerHost, "unix://"))
+			case strings.HasPrefix(dockerHost, "npipe://") || strings.HasPrefix(dockerHost, `npipe:\\`):
+				sub := ([]rune(dockerHost))[8:]
+				bind = fmt.Sprintf(`%s:\\.\pipe\docker_engine`, string(sub))
+			default:
+				provider.ctrConf.Env = append(provider.ctrConf.Env, fmt.Sprintf(`DOCKER_HOST=%s`, dockerHost))
+			}
+		}
+		if bind != "" {
+			provider.hostConf.Binds = append(provider.hostConf.Binds, bind)
+		}
 	}
 }
 

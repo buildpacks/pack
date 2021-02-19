@@ -133,7 +133,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					phaseConfigProvider := build.NewPhaseConfigProvider(
 						"some-name",
 						lifecycle,
-						build.WithDaemonAccess(),
+						build.WithDaemonAccess(""),
 					)
 
 					h.AssertEq(t, phaseConfigProvider.ContainerConfig().User, "root")
@@ -152,7 +152,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					phaseConfigProvider := build.NewPhaseConfigProvider(
 						"some-name",
 						lifecycle,
-						build.WithDaemonAccess(),
+						build.WithDaemonAccess(""),
 					)
 
 					h.AssertEq(t, phaseConfigProvider.ContainerConfig().User, "ContainerAdministrator")

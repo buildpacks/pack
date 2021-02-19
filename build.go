@@ -90,6 +90,10 @@ type BuildOptions struct {
 	// built atop.
 	RunImage string
 
+	// Address of docker daemon exposed to build container
+	// e.g. tcp://example.com:1234, unix:///run/user/1000/podman/podman.sock
+	DockerHost string
+
 	// Used to determine a run-image mirror if Run Image is empty.
 	// Used in combination with Builder metadata to determine to the the 'best' mirror.
 	// 'best' is defined as:
@@ -284,6 +288,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		RunImage:           runImageName,
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
+		DockerHost:         opts.DockerHost,
 		UseCreator:         false,
 		TrustBuilder:       opts.TrustBuilder,
 		LifecycleImage:     ephemeralBuilder.Name(),
