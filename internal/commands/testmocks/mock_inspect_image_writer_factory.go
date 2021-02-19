@@ -5,9 +5,11 @@
 package testmocks
 
 import (
-	writer "github.com/buildpacks/pack/internal/inspectimage/writer"
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
+
+	writer "github.com/buildpacks/pack/internal/inspectimage/writer"
 )
 
 // MockInspectImageWriterFactory is a mock of InspectImageWriterFactory interface

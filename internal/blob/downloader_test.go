@@ -3,6 +3,8 @@ package blob_test
 import (
 	"compress/gzip"
 	"context"
+	"crypto/rand"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -38,7 +40,11 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			cacheDir, err = ioutil.TempDir("", "cache")
+			randPostfix := make([]byte, 4)
+			_, err := rand.Read(randPostfix)
+			h.AssertNil(t, err)
+
+			cacheDir, err = ioutil.TempDir("", fmt.Sprintf("cache-%x", randPostfix))
 			h.AssertNil(t, err)
 			subject = blob.NewDownloader(logging.New(ioutil.Discard), cacheDir)
 		})
@@ -137,25 +143,31 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 					assertBlob(t, b)
 				})
 			})
+		})
 
-			when("Options are used", func() {
-				when("RawDownload option", func() {
-					var tgz string
+		when("Options are used", func() {
+			when("RawDownload option", func() {
+				var tgz string
+				it.Before(func() {
+					tgz = h.CreateTGZ(t, filepath.Join("testdata", "blob"), "./", 0777)
+				})
+
+				it.After(func() {
+					os.Remove(tgz)
+				})
+				when("uri", func() {
+					var (
+						server *ghttp.Server
+						uri    string
+					)
 					it.Before(func() {
-						tgz = h.CreateTGZ(t, filepath.Join("testdata", "blob"), "./", 0777)
+						server = ghttp.NewServer()
 					})
-
 					it.After(func() {
-						os.Remove(tgz)
+						server.Close()
 					})
-					when("uri", func() {
-						var (
-							server *ghttp.Server
-							uri    string
-						)
-
+					when("valid uri", func() {
 						it.Before(func() {
-							server = ghttp.NewServer()
 							uri = server.URL() + "/downloader/somefile.tgz"
 
 							server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
@@ -167,9 +179,6 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 								w.WriteHeader(304)
 							})
 						})
-						it.After(func() {
-							server.Close()
-						})
 
 						it("downloads and reads URI contents as raw bytes", func() {
 							b, err := subject.Download(context.TODO(), uri, blob.RawDownload)
@@ -177,7 +186,6 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 
 							// validate by checking that blob contents are in gzip format.
 							assertBlob(t, b, hasGzip)
-
 						})
 
 						it("downloads and reads cached request as raw bytes", func() {
@@ -195,117 +203,123 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 
-					when("file", func() {
-						it("opens and reads raw bytes", func() {
-							absPath, err := filepath.Abs(tgz)
-							h.AssertNil(t, err)
+					when("uri is invalid", func() {
+						when("uri file is not found", func() {
+							it.Before(func() {
+								server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
+									w.WriteHeader(404)
+								})
+							})
 
-							b, err := subject.Download(context.TODO(), absPath, blob.RawDownload)
-							h.AssertNil(t, err)
-
-							// validate by checking that blob contents are in gzip format.
-							assertBlob(t, b, hasGzip)
+							it("should return error", func() {
+								uri = server.URL() + "/bad/download"
+								r, err := subject.Download(context.TODO(), uri)
+								h.AssertError(t, err, "could not download")
+								h.AssertError(t, err, "http status '404'")
+								fmt.Print(r)
+							})
 						})
 
-					})
-					when("followed by non-raw download", func() {
-						it("does not preform a second raw download", func() {
-							absPath, err := filepath.Abs(tgz)
-							h.AssertNil(t, err)
-
-							b, err := subject.Download(context.TODO(), absPath, blob.RawDownload)
-							h.AssertNil(t, err)
-
-							// validate by checking that blob contents are in gzip format.
-							assertBlob(t, b, hasGzip)
-
-							// second non-raw download
-							b, err = subject.Download(context.TODO(), absPath)
-							h.AssertNil(t, err)
-							assertBlob(t, b) //is not raw!
+						when("uri is unsupported", func() {
+							it("should return error", func() {
+								_, err := subject.Download(context.TODO(), "not-supported://file.tgz")
+								h.AssertError(t, err, "unsupported protocol 'not-supported'")
+							})
 						})
 					})
 				})
 
-				when("ValidateDownload option", func() {
-					when("file", func() {
-						var absPath string
-						it.Before(func() {
-							absPath, err = filepath.Abs(tgz)
-							h.AssertNil(t, err)
-						})
-						it("validates file sha256's match", func() {
-							_, err = subject.Download(context.TODO(), absPath, blob.ValidateDownload("f6d3b9d05f1a56deb4830eaf6529c91e92423f984bf5451f04765123e5ece6e6"))
-							h.AssertNil(t, err)
-						})
-						when("sh256 values do not match", func() {
-							it("returns an error", func() {
-								_, err = subject.Download(context.TODO(), absPath, blob.ValidateDownload("bad-sha256"))
-								h.AssertError(t, err, `validation failed, expected "sha256:bad-sha256", got "sha256:f6d3b9d05f1a56deb4830eaf6529c91e92423f984bf5451f04765123e5ece6e6"`)
-							})
-						})
+				when("file", func() {
+					it("opens and reads raw bytes", func() {
+						absPath, err := filepath.Abs(tgz)
+						h.AssertNil(t, err)
+
+						b, err := subject.Download(context.TODO(), absPath, blob.RawDownload)
+						h.AssertNil(t, err)
+
+						// validate by checking that blob contents are in gzip format.
+						assertBlob(t, b, hasGzip)
 					})
+				})
 
-					when("uri", func() {
-						var (
-							server *ghttp.Server
-							uri    string
-						)
+				when("followed by non-raw download", func() {
+					it("does not preform a second raw download", func() {
+						absPath, err := filepath.Abs(tgz)
+						h.AssertNil(t, err)
 
-						it.Before(func() {
-							server = ghttp.NewServer()
-							uri = server.URL() + "/downloader/somefile.tgz"
+						b, err := subject.Download(context.TODO(), absPath, blob.RawDownload)
+						h.AssertNil(t, err)
 
-							server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
-								w.Header().Add("ETag", "A")
-								http.ServeFile(w, r, tgz)
-							})
+						// validate by checking that blob contents are in gzip format.
+						assertBlob(t, b, hasGzip)
 
-							server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
-								w.WriteHeader(304)
-							})
-						})
-						it.After(func() {
-							server.Close()
-						})
-						it("validates file sha256's match", func() {
-							_, err := subject.Download(context.TODO(), uri, blob.ValidateDownload("f6d3b9d05f1a56deb4830eaf6529c91e92423f984bf5451f04765123e5ece6e6"))
-							h.AssertNil(t, err)
-						})
-						when("sha256 values to not match", func() {
-							it("returns an error", func() {
-								_, err := subject.Download(context.TODO(), uri, blob.ValidateDownload("bad-sha256"))
-								h.AssertError(t, err, `validation failed, expected "sha256:bad-sha256", got "sha256:f6d3b9d05f1a56deb4830eaf6529c91e92423f984bf5451f04765123e5ece6e6"`)
-							})
-						})
-					})
-					when("sha256 values do not match", func() {
-						when("uri", func() {
-
-						})
+						// second non-raw download
+						b, err = subject.Download(context.TODO(), absPath)
+						h.AssertNil(t, err)
+						assertBlob(t, b) //is not raw!
 					})
 				})
 			})
 
-			when("uri is invalid", func() {
-				when("uri file is not found", func() {
+			when("ValidateDownload option", func() {
+				var tgz string
+				it.Before(func() {
+					tgz = h.CreateTGZ(t, filepath.Join("testdata", "blob"), "./", 0777)
+				})
+				when("file", func() {
+					var absPath string
 					it.Before(func() {
-						server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
-							w.WriteHeader(404)
-						})
+						absPath, err = filepath.Abs(tgz)
+						h.AssertNil(t, err)
 					})
-
-					it("should return error", func() {
-						_, err := subject.Download(context.TODO(), uri)
-						h.AssertError(t, err, "could not download")
-						h.AssertError(t, err, "http status '404'")
+					it("validates file sha256's match", func() {
+						_, err = subject.Download(context.TODO(), absPath, blob.ValidateDownload("f6d3b9d05f1a56deb4830eaf6529c91e92423f984bf5451f04765123e5ece6e6"))
+						h.AssertNil(t, err)
+					})
+					when("sh256 values do not match", func() {
+						it("returns an error", func() {
+							_, err = subject.Download(context.TODO(), absPath, blob.ValidateDownload("bad-sha256"))
+							h.AssertError(t, err, `validation failed, expected "sha256:bad-sha256", got "sha256:f6d3b9d05f1a56deb4830eaf6529c91e92423f984bf5451f04765123e5ece6e6"`)
+						})
 					})
 				})
 
-				when("uri is unsupported", func() {
-					it("should return error", func() {
-						_, err := subject.Download(context.TODO(), "not-supported://file.tgz")
-						h.AssertError(t, err, "unsupported protocol 'not-supported'")
+				when("uri", func() {
+					var (
+						server *ghttp.Server
+						uri    string
+					)
+
+					it.Before(func() {
+						server = ghttp.NewServer()
+						uri = server.URL() + "/downloader/somefile.tgz"
+
+						server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
+							w.Header().Add("ETag", "A")
+							http.ServeFile(w, r, tgz)
+						})
+
+						server.AppendHandlers(func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(304)
+						})
+					})
+					it.After(func() {
+						server.Close()
+					})
+					it("validates file sha256's match", func() {
+						_, err := subject.Download(context.TODO(), uri, blob.ValidateDownload("f6d3b9d05f1a56deb4830eaf6529c91e92423f984bf5451f04765123e5ece6e6"))
+						h.AssertNil(t, err)
+					})
+					when("sha256 values to not match", func() {
+						it("returns an error", func() {
+							_, err := subject.Download(context.TODO(), uri, blob.ValidateDownload("bad-sha256"))
+							h.AssertError(t, err, `validation failed, expected "sha256:bad-sha256", got "sha256:f6d3b9d05f1a56deb4830eaf6529c91e92423f984bf5451f04765123e5ece6e6"`)
+						})
+					})
+				})
+				when("sha256 values do not match", func() {
+					when("uri", func() {
+
 					})
 				})
 			})

@@ -1,10 +1,10 @@
 package dist
 
 import (
-	"github.com/buildpacks/pack/internal/blob"
 	"sort"
-)
 
+	"github.com/buildpacks/pack/internal/blob"
+)
 
 type BlobAssetPair struct {
 	Blob     blob.Blob
@@ -13,7 +13,7 @@ type BlobAssetPair struct {
 
 func NewBlobAssetPair(b blob.Blob, aVal AssetValue) BlobAssetPair {
 	return BlobAssetPair{
-		Blob: b,
+		Blob:     b,
 		AssetVal: aVal,
 	}
 }

@@ -3,15 +3,17 @@ package pack
 import (
 	"context"
 	"fmt"
+
+	"github.com/google/go-containerregistry/pkg/name"
+
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/google/go-containerregistry/pkg/name"
 )
 
 type CreateAssetCacheOptions struct {
 	ImageName string
 	Assets    dist.Assets
-	Publish bool
+	Publish   bool
 }
 
 func (c *Client) CreateAssetCache(ctx context.Context, opts CreateAssetCacheOptions) error {
@@ -48,7 +50,7 @@ func (c *Client) downloadAssets(assets []dist.Asset) (dist.BlobMap, error) {
 		if err != nil {
 			return dist.BlobMap{}, err
 		}
-		result[asset.Sha256] = dist.NewBlobAssetPair(b,asset.ToAssetValue(""))
+		result[asset.Sha256] = dist.NewBlobAssetPair(b, asset.ToAssetValue(""))
 	}
 	return result, nil
 }

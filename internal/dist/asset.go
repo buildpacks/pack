@@ -38,7 +38,3 @@ func (a *Assets) ToIncompleteAssetMap() AssetMap {
 
 	return result
 }
-
-
-
-

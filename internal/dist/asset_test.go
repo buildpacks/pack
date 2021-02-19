@@ -1,10 +1,12 @@
 package dist_test
 
 import (
+	"testing"
+
+	"github.com/sclevine/spec"
+
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/testhelpers"
-	"github.com/sclevine/spec"
-	"testing"
 )
 
 func TestAsset(t *testing.T) {

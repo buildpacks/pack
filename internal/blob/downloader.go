@@ -4,13 +4,14 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 
 	"github.com/mitchellh/ioprogress"
 	"github.com/pkg/errors"
@@ -26,9 +27,9 @@ const (
 )
 
 type downloader struct {
-	logger       logging.Logger
-	baseCacheDir string
-	blobOptions []BlobOption
+	logger           logging.Logger
+	baseCacheDir     string
+	blobOptions      []Option
 	validationSha256 string
 }
 
@@ -64,8 +65,7 @@ func (d downloader) Download(ctx context.Context, pathOrURI string, options ...D
 			return nil, err
 		}
 
-
-		if err := validateBlobSha( NewBlob(path, d.blobOptions...),d.validationSha256); err != nil {
+		if err := validateBlobSha(NewBlob(path, d.blobOptions...), d.validationSha256); err != nil {
 			return nil, err
 		}
 		return NewBlob(path, d.blobOptions...), nil
@@ -73,7 +73,7 @@ func (d downloader) Download(ctx context.Context, pathOrURI string, options ...D
 
 	path := d.handleFile(pathOrURI)
 
-	if err := validateBlobSha( NewBlob(path, d.blobOptions...),d.validationSha256); err != nil {
+	if err := validateBlobSha(NewBlob(path, d.blobOptions...), d.validationSha256); err != nil {
 		return nil, err
 	}
 	return NewBlob(path, d.blobOptions...), nil
@@ -223,7 +223,8 @@ func validateBlobSha(b Blob, expectedSha256 string) error {
 	if err != nil {
 		return err
 	}
-	h,_, err := v1.SHA256(r)
+	defer r.Close()
+	h, _, err := v1.SHA256(r)
 	if err != nil {
 		return err
 	}

@@ -5,16 +5,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/pkg/archive"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/buildpacks/imgutil"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/pkg/archive"
 )
 
 const AssetCacheLayersLabel = "io.buildpacks.asset.layers"

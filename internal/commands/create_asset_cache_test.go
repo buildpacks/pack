@@ -3,7 +3,16 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
+	"testing"
+
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/golang/mock/gomock"
+	"github.com/heroku/color"
+	"github.com/pkg/errors"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+	"github.com/spf13/cobra"
+
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/commands"
@@ -14,13 +23,6 @@ import (
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/golang/mock/gomock"
-	"github.com/heroku/color"
-	"github.com/pkg/errors"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"github.com/spf13/cobra"
-	"testing"
 )
 
 func TestCreateAssetCache(t *testing.T) {
@@ -103,7 +105,6 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 		mockClient = testmocks.NewMockPackClient(mockController)
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 		command = commands.CreateAssetCache(logger, cfg, mockClient)
-
 	})
 
 	it.After(func() {
@@ -184,7 +185,6 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					assert.Nil(command.Execute())
 
 					assert.Equal(daemonValues, []bool{true})
-
 				})
 			})
 
@@ -325,7 +325,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 				mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 					ImageName: "some/asset-cache",
 					Assets:    []dist.Asset{firstAsset, secondAsset},
-					Publish: true,
+					Publish:   true,
 				})
 
 				assert.Succeeds(command.Execute())
@@ -420,13 +420,12 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
 						Assets:    []dist.Asset{firstAsset, secondAsset},
-						Publish: true,
+						Publish:   true,
 					}).Return(errors.New("asset-cache-creation-error"))
 
 					err := command.Execute()
 					assert.ErrorContains(err, "error, unable to create asset cache")
 					assert.ErrorContains(err, "asset-cache-creation-error")
-
 				})
 			})
 		})

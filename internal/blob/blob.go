@@ -18,21 +18,19 @@ type Blob interface {
 
 type blob struct {
 	path string
-	raw bool
-
+	raw  bool
 }
 
-type BlobOption func(*blob) *blob
+type Option func(*blob)
 
-func RawOption(b *blob) *blob {
+func RawOption(b *blob) {
 	b.raw = true
-	return b
 }
 
-func NewBlob(path string, opts ...BlobOption) Blob {
+func NewBlob(path string, opts ...Option) Blob {
 	result := &blob{path: path}
 	for _, opt := range opts {
-		result = opt(result)
+		opt(result)
 	}
 	return result
 }

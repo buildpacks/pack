@@ -100,7 +100,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 		rootCmd.AddCommand(commands.SetDefaultRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.RemoveRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, &packClient))
-		rootCmd.AddCommand(commands.CreateAssetCache(logger, cfg, &packClient))
+		rootCmd.AddCommand(commands.NewAssetCacheCommand(logger, cfg, &packClient))
 	}
 
 	packHome, err := config.PackHome()

@@ -2,18 +2,20 @@ package dist_test
 
 import (
 	"encoding/json"
-	"github.com/buildpacks/imgutil/fakes"
-	"github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/buildpacks/pack/testhelpers"
-	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/sclevine/spec"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/buildpacks/imgutil/fakes"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/sclevine/spec"
+
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/testhelpers"
 )
 
 func TestAssetCache(t *testing.T) {
@@ -43,15 +45,15 @@ first-asset-blob-contents.
 second-asset-blob-contents.
 `), os.ModePerm))
 		secondAssetBlob = blob.NewBlob(secondAssetBlobPath)
-
 	})
+
 	when("#Save", func() {
 		it("saves the cache", func() {
 			tag, err := name.NewTag("asset-cache-image")
 			assert.Nil(err)
 			fakeImage := fakes.NewImage("asset-cache-image", "some-top-level-sha", tag)
 			blobMap := dist.BlobMap{
-				"first-sha256":  dist.NewBlobAssetPair(firstAssetBlob, dist.AssetValue{
+				"first-sha256": dist.NewBlobAssetPair(firstAssetBlob, dist.AssetValue{
 					ID:      "first-asset",
 					Name:    "First Asset",
 					Stacks:  []string{"io.buildpacks.stacks.bionic"},
@@ -139,7 +141,7 @@ second-asset-blob-contents.
 				fakeImage := fakes.NewImage("asset-cache-image", "some-top-level-sha", tag)
 
 				blobMap := dist.BlobMap{
-					"first-sha256":  dist.NewBlobAssetPair(invalidBlob, dist.AssetValue{
+					"first-sha256": dist.NewBlobAssetPair(invalidBlob, dist.AssetValue{
 						ID:      "first-asset",
 						Name:    "First Asset",
 						Stacks:  []string{"io.buildpacks.stacks.bionic"},

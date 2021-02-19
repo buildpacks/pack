@@ -1,10 +1,12 @@
 package dist_test
 
 import (
+	"testing"
+
+	"github.com/sclevine/spec"
+
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/testhelpers"
-	"github.com/sclevine/spec"
-	"testing"
 )
 
 func TestAssetMap(t *testing.T) {
@@ -139,7 +141,6 @@ func testAssetMap(t *testing.T, when spec.G, it spec.S) {
 
 	when("AssetMap#Filter", func() {
 		it("filters out all but the sepecified keys", func() {
-
 			a := dist.AssetMap{
 				"A-sha256": dist.AssetValue{},
 				"B-sha256": dist.AssetValue{},

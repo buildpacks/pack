@@ -21,21 +21,21 @@ type AssetValue struct {
 
 func (a *AssetValue) ToAsset(sha256 string) Asset {
 	return Asset{
-		Sha256: sha256,
-		ID: a.ID,
-		Version: a.Version,
-		Name: a.Name,
-		URI: a.URI,
-		Licenses: a.Licenses,
+		Sha256:      sha256,
+		ID:          a.ID,
+		Version:     a.Version,
+		Name:        a.Name,
+		URI:         a.URI,
+		Licenses:    a.Licenses,
 		Description: a.Description,
-		Homepage: a.Homepage,
-		Stacks: a.Stacks,
-		Metadata: a.Metadata,
+		Homepage:    a.Homepage,
+		Stacks:      a.Stacks,
+		Metadata:    a.Metadata,
 	}
 }
 
 func (a *AssetMap) ToAssets() Assets {
-	result := make(Assets,0)
+	result := make(Assets, 0)
 	for hash, assetVal := range *a {
 		result = append(result, assetVal.ToAsset(hash))
 	}
@@ -47,7 +47,6 @@ func (a *AssetMap) ToAssets() Assets {
 
 	return result
 }
-
 
 func (a *AssetMap) Keys() []string {
 	result := make([]string, len(*a))
@@ -67,7 +66,7 @@ func (a *AssetMap) Filter(keepKeys []string) {
 	// both strings are sorted we can compare using indices
 	i := 0
 	j := 0
-	for ;j < len(allKeys); {
+	for j < len(allKeys) {
 		switch {
 		case i == len(keepKeys) || allKeys[j] < keepKeys[i]:
 			delete(*a, allKeys[j])
@@ -80,4 +79,3 @@ func (a *AssetMap) Filter(keepKeys []string) {
 		}
 	}
 }
-

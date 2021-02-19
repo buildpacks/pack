@@ -2,15 +2,17 @@ package commands
 
 import (
 	"fmt"
+	"sort"
+
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+
 	"github.com/buildpacks/pack"
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/logging"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
-	"sort"
 )
 
 type CreateAssetCacheFlags struct {
@@ -42,13 +44,12 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 	var flags CreateAssetCacheFlags
 
 	cmd := &cobra.Command{
-		Use:     "create-asset-cache cache-name",
+		Use:     "create cache-name",
 		Hidden:  false,
 		Args:    cobra.ExactArgs(1),
 		Short:   "Yank build an asset cache using the specified buildpack",
 		Example: "pack create-asset-cache /path/to/buildpack/root",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-
 			// pull policy should indicate preceedence of daemon flags
 			if err := validateAssetCacheFlags(&flags); err != nil {
 				return err
@@ -69,7 +70,6 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 
 			buildpackInfo, err := tryInspect(client, inspectOptions)
 			if err != nil {
-
 				return errors.New("buildpack not found")
 			}
 
@@ -80,7 +80,7 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 			if err := client.CreateAssetCache(cmd.Context(), pack.CreateAssetCacheOptions{
 				ImageName: args[0],
 				Assets:    assets,
-				Publish: flags.Publish,
+				Publish:   flags.Publish,
 			}); err != nil {
 				return errors.Wrap(err, "error, unable to create asset cache")
 			}
@@ -100,7 +100,7 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 }
 
 func tryInspect(c PackClient, inspectOptions []pack.InspectBuildpackOptions) (*pack.BuildpackInfo, error) {
-	var buildpackInfo *pack.BuildpackInfo = nil
+	var buildpackInfo *pack.BuildpackInfo
 	var err error
 	for _, inspectOption := range inspectOptions {
 		buildpackInfo, err = c.InspectBuildpack(inspectOption)
@@ -125,7 +125,6 @@ func validateAssetCacheFlags(flags *CreateAssetCacheFlags) error {
 }
 
 func getAssets(info *pack.BuildpackInfo) ([]dist.Asset, error) {
-
 	result := []dist.Asset{}
 	assetMap := map[string]dist.Asset{}
 
@@ -144,7 +143,7 @@ func getAssets(info *pack.BuildpackInfo) ([]dist.Asset, error) {
 	}
 
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].ID < result[j].ID
+		return result[i].Sha256 < result[j].Sha256
 	})
 
 	return result, nil

@@ -5,9 +5,10 @@
 package testmocks
 
 import (
-	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockPackage is a mock of Package interface

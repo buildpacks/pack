@@ -4,7 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/golang/mock/gomock"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/pkg/errors"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/dist"
@@ -13,16 +25,6 @@ import (
 	"github.com/buildpacks/pack/pkg/archive"
 	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/buildpacks/pack/testmocks"
-	"github.com/golang/mock/gomock"
-	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/pkg/errors"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
 )
 
 func TestCreateAssetCacheCommand(t *testing.T) {
@@ -66,8 +68,8 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 	when("#CreateAssetCache", func() {
 		when("using a local buildpackage", func() {
 			var (
-				firstAssetBlob    blob.Blob
-				secondAssetBlob   blob.Blob
+				firstAssetBlob  blob.Blob
+				secondAssetBlob blob.Blob
 			)
 
 			it.Before(func() {
@@ -94,9 +96,8 @@ second-asset-blob-contents.
 				mockDownloader.EXPECT().Download(gomock.Any(), "https://first-asset-uri", gomock.Any()).Return(firstAssetBlob, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), "https://second-asset-uri", gomock.Any()).Return(secondAssetBlob, nil)
 
-
 				assert.Succeeds(client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{
-					ImageName:        imageName,
+					ImageName: imageName,
 					Assets: []dist.Asset{
 						{
 							ID:      "first-asset",
@@ -136,20 +137,20 @@ second-asset-blob-contents.
 				var assetMap dist.AssetMap
 				assert.Succeeds(json.NewDecoder(strings.NewReader(layersLabel)).Decode(&assetMap))
 				assert.Equal(assetMap, dist.AssetMap{
-					"first-sha256": dist.AssetValue {
-						ID:      "first-asset",
-						Name:    "First Asset",
+					"first-sha256": dist.AssetValue{
+						ID:          "first-asset",
+						Name:        "First Asset",
 						LayerDiffID: "sha256:edde92682d3bc9b299b52a0af4a3934ae6742e0eb90bc7168e81af5ab6241722",
-						Stacks:  []string{"io.buildpacks.stacks.bionic"},
-						URI:     "https://first-asset-uri",
-						Version: "1.2.3",
+						Stacks:      []string{"io.buildpacks.stacks.bionic"},
+						URI:         "https://first-asset-uri",
+						Version:     "1.2.3",
 					}, "second-sha256": dist.AssetValue{
-						ID:      "second-asset",
-						Name:    "Second Asset",
+						ID:          "second-asset",
+						Name:        "Second Asset",
 						LayerDiffID: "sha256:46e2287266ceafd2cd4f580566f2b9f504f7b78d472bb3401de18f2410ad1614",
-						Stacks:  []string{"io.buildpacks.stacks.bionic"},
-						URI:     "https://second-asset-uri",
-						Version: "4.5.6",
+						Stacks:      []string{"io.buildpacks.stacks.bionic"},
+						URI:         "https://second-asset-uri",
+						Version:     "4.5.6",
 					},
 				})
 
@@ -163,7 +164,6 @@ second-asset-blob-contents.
 				_, b, err := archive.ReadTarEntry(firstLayerReader, "/cnb/assets/first-sha256")
 				assert.Nil(err)
 				assert.Contains(string(b), "first-asset-blob-contents.")
-
 
 				secondLayerName, err := fakeImage.FindLayerWithPath("/cnb/assets/second-sha256")
 				assert.Nil(err)
@@ -189,9 +189,9 @@ second-asset-blob-contents.
 					mockImageFactory.EXPECT().NewImage(imageName, false).Return(fakeImage, nil)
 
 					assert.Succeeds(client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{
-						ImageName:        imageName,
-						Assets: []dist.Asset{},
-						Publish: true,
+						ImageName: imageName,
+						Assets:    []dist.Asset{},
+						Publish:   true,
 					}))
 
 					assert.Equal(fakeImage.IsSaved(), true)
@@ -204,7 +204,7 @@ second-asset-blob-contents.
 				it("fails with an error message", func() {
 					imageName := "::::"
 					err := client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{
-						ImageName:        imageName,
+						ImageName: imageName,
 					})
 					assert.ErrorContains(err, "invalid asset cache image name: ")
 				})
@@ -215,7 +215,7 @@ second-asset-blob-contents.
 					mockImageFactory.EXPECT().NewImage(imageName, true).Return(nil, errors.New("image fetch error"))
 
 					err := client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{
-						ImageName:        imageName,
+						ImageName: imageName,
 					})
 
 					assert.ErrorContains(err, "unable to create asset cache image:")
@@ -232,9 +232,8 @@ second-asset-blob-contents.
 					mockImageFactory.EXPECT().NewImage(imageName, true).Return(fakeImage, nil)
 					mockDownloader.EXPECT().Download(gomock.Any(), "https://first-asset-uri", gomock.Any(), gomock.Any()).Return(nil, errors.New("blob download error"))
 
-
 					err = client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{
-						ImageName:        imageName,
+						ImageName: imageName,
 						Assets: []dist.Asset{
 							{
 								ID:      "first-asset",

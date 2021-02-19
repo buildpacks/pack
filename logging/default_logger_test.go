@@ -2,8 +2,9 @@ package logging_test
 
 import (
 	"bytes"
-	"github.com/buildpacks/pack/logging"
 	"testing"
+
+	"github.com/buildpacks/pack/logging"
 
 	"github.com/sclevine/spec"
 
