@@ -6,12 +6,6 @@ package testmocks
 
 import (
 	context "context"
-	io "io"
-	net "net"
-	http "net/http"
-	reflect "reflect"
-	time "time"
-
 	types "github.com/docker/docker/api/types"
 	container "github.com/docker/docker/api/types/container"
 	events "github.com/docker/docker/api/types/events"
@@ -23,6 +17,11 @@ import (
 	volume "github.com/docker/docker/api/types/volume"
 	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
+	io "io"
+	net "net"
+	http "net/http"
+	reflect "reflect"
+	time "time"
 )
 
 // MockCommonAPIClient is a mock of CommonAPIClient interface

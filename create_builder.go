@@ -269,7 +269,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 				return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
 			}
 
-			mainBP, depBPs, err = decomposeBuildpack(blob, imageOS)
+			mainBP, depBPs, err = DecomposeBuildpack(blob, imageOS)
 			if err != nil {
 				return errors.Wrapf(err, "extracting from %s", style.Symbol(b.URI))
 			}

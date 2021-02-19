@@ -462,13 +462,20 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("nested package", func() {
+		when.Focus("nested package", func() {
 			var (
 				nestedPackage     *fakes.Image
 				childDescriptor   dist.BuildpackDescriptor
 				packageDescriptor dist.BuildpackDescriptor
 				tmpDir            string
 				err               error
+				childAssets     =   dist.Assets{{
+					ID: "child-asset",
+					Name: "child-asset-name",
+					Sha256: "child-asset-sha256",
+					Stacks: []string{"some.stack.id"},
+					Version: "1.2.3",
+				}}
 			)
 
 			it.Before(func() {
@@ -476,6 +483,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					API:    api.MustParse("0.2"),
 					Info:   dist.BuildpackInfo{ID: "bp.nested", Version: "2.3.4"},
 					Stacks: []dist.Stack{{ID: "some.stack.id"}},
+					Assets: childAssets,
 				}
 
 				packageDescriptor = dist.BuildpackDescriptor{
@@ -800,6 +808,8 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 }
 
 func assertPackageBPFileHasBuildpacks(t *testing.T, path string, descriptors []dist.BuildpackDescriptor) {
+	t.Helper()
+
 	packageBlob := blob.NewBlob(path)
 	mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(packageBlob)
 	h.AssertNil(t, err)

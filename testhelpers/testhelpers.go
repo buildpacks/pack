@@ -787,6 +787,8 @@ func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
 }
 
 func AssertBuildpacksHaveDescriptors(t *testing.T, bps []dist.Buildpack, descriptors []dist.BuildpackDescriptor) {
+	t.Helper()
+
 	AssertEq(t, len(bps), len(descriptors))
 	for _, bp := range bps {
 		found := false

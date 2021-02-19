@@ -42,7 +42,7 @@ type ImageFetcher interface {
 type Downloader interface {
 	// Download collects both local and remote assets and provides a blob object
 	// used to read asset contents.
-	Download(ctx context.Context, pathOrURI string) (blob.Blob, error)
+	Download(ctx context.Context, pathOrURI string, options ...blob.DownloadOption) (blob.Blob, error)
 }
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_image_factory.go github.com/buildpacks/pack ImageFactory

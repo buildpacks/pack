@@ -103,7 +103,33 @@ const buildpackLayersTag = `{
             }
          ],
          "layerDiffID":"sha256:second-inner-buildpack-diff-id",
-         "homepage":"second-inner-buildpack-homepage"
+         "homepage":"second-inner-buildpack-homepage",
+		 "assets" : [
+           {
+			"sha256": "first-asset-sha256",
+			"id": "first-asset",
+			"version": "1.1.1",
+			"name": "First Asset",
+			"uri": "https://asset-location-url",
+			"licenses" : ["GPLv3"],
+			"description" : "first asset description",
+			"homepage" : "https://buildpacks.io",
+			"stacks": [
+				"io.buildpacks.stacks.bionic"
+			  ],
+			"metadata": {
+				"packaged-by": "buildpacks.io"
+			  }
+			},
+		  {
+			"sha256": "second-asset-sha256",
+			"id": "second-asset",
+			"version": "2.2.2",
+			"stacks": [
+				"io.buildpacks.stacks.bionic"
+			]
+		  }
+		]
       },
       "3.0.0":{
          "api":"0.2",
@@ -116,7 +142,17 @@ const buildpackLayersTag = `{
             }
          ],
          "layerDiffID":"sha256:third-inner-buildpack-diff-id",
-         "homepage":"third-inner-buildpack-homepage"
+         "homepage":"third-inner-buildpack-homepage",
+		 "assets": [
+			{
+			  "sha256": "third-asset-sha256",
+			  "id": "third-asset",
+			  "version": "3.3.3",
+			  "stacks": [
+				  "io.buildpacks.stacks.bionic"
+			  ]
+		    }
+		 ]
       }
    },
    "some/top-buildpack":{
@@ -194,6 +230,68 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		buildpackPath = filepath.Join(tmpDir, "buildpackTarFile.tar")
+		firstInnerBuildpackv1Order := dist.Order{
+			{
+				Group: []dist.BuildpackRef{
+					{
+						BuildpackInfo: dist.BuildpackInfo{
+							ID:      "some/first-inner-buildpack",
+							Version: "1.0.0",
+						},
+						Optional: false,
+					},
+					{
+						BuildpackInfo: dist.BuildpackInfo{
+							ID:      "some/second-inner-buildpack",
+							Version: "3.0.0",
+						},
+						Optional: false,
+					},
+				},
+			},
+			{
+				Group: []dist.BuildpackRef{
+					{
+						BuildpackInfo: dist.BuildpackInfo{
+							ID:      "some/second-inner-buildpack",
+							Version: "3.0.0",
+						},
+						Optional: false,
+					},
+				},
+			},
+		}
+		topBuildpackOrder := dist.Order{
+			{
+				Group: []dist.BuildpackRef{
+					{
+						BuildpackInfo: dist.BuildpackInfo{
+							ID:      "some/first-inner-buildpack",
+							Version: "1.0.0",
+						},
+						Optional: false,
+					},
+					{
+						BuildpackInfo: dist.BuildpackInfo{
+							ID:      "some/second-inner-buildpack",
+							Version: "2.0.0",
+						},
+						Optional: false,
+					},
+				},
+			},
+			{
+				Group: []dist.BuildpackRef{
+					{
+						BuildpackInfo: dist.BuildpackInfo{
+							ID:      "some/first-inner-buildpack",
+							Version: "1.0.0",
+						},
+						Optional: false,
+					},
+				},
+			},
+		}
 
 		expectedInfo = &pack.BuildpackInfo{
 			BuildpackMetadata: buildpackage.Metadata{
@@ -254,37 +352,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 							{ID: "io.buildpacks.stacks.first-stack"},
 							{ID: "io.buildpacks.stacks.second-stack"},
 						},
-						Order: dist.Order{
-							{
-								Group: []dist.BuildpackRef{
-									{
-										BuildpackInfo: dist.BuildpackInfo{
-											ID:      "some/first-inner-buildpack",
-											Version: "1.0.0",
-										},
-										Optional: false,
-									},
-									{
-										BuildpackInfo: dist.BuildpackInfo{
-											ID:      "some/second-inner-buildpack",
-											Version: "3.0.0",
-										},
-										Optional: false,
-									},
-								},
-							},
-							{
-								Group: []dist.BuildpackRef{
-									{
-										BuildpackInfo: dist.BuildpackInfo{
-											ID:      "some/second-inner-buildpack",
-											Version: "3.0.0",
-										},
-										Optional: false,
-									},
-								},
-							},
-						},
+						Order:       firstInnerBuildpackv1Order,
 						LayerDiffID: "sha256:first-inner-buildpack-diff-id",
 						Homepage:    "first-inner-buildpack-homepage",
 					},
@@ -298,6 +366,32 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 						},
 						LayerDiffID: "sha256:second-inner-buildpack-diff-id",
 						Homepage:    "second-inner-buildpack-homepage",
+						Assets: []dist.Asset{
+							{
+								Sha256:      "first-asset-sha256",
+								ID:          "first-asset",
+								Version:     "1.1.1",
+								Name:        "First Asset",
+								URI:         "https://asset-location-url",
+								Licenses:    []string{"GPLv3"},
+								Description: "first asset description",
+								Homepage:    "https://buildpacks.io",
+								Stacks: []string{
+									"io.buildpacks.stacks.bionic",
+								},
+								Metadata: map[string]interface{}{
+									"packaged-by": "buildpacks.io",
+								},
+							},
+							{
+								Sha256:  "second-asset-sha256",
+								ID:      "second-asset",
+								Version: "2.2.2",
+								Stacks: []string{
+									"io.buildpacks.stacks.bionic",
+								},
+							},
+						},
 					},
 					"3.0.0": {
 						API: apiVersion,
@@ -307,42 +401,20 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 						},
 						LayerDiffID: "sha256:third-inner-buildpack-diff-id",
 						Homepage:    "third-inner-buildpack-homepage",
+						Assets: []dist.Asset{
+							{
+								Sha256:  "third-asset-sha256",
+								ID:      "third-asset",
+								Version: "3.3.3",
+								Stacks:  []string{"io.buildpacks.stacks.bionic"},
+							},
+						},
 					},
 				},
 				"some/top-buildpack": {
 					"0.0.1": {
-						API: apiVersion,
-						Order: dist.Order{
-							{
-								Group: []dist.BuildpackRef{
-									{
-										BuildpackInfo: dist.BuildpackInfo{
-											ID:      "some/first-inner-buildpack",
-											Version: "1.0.0",
-										},
-										Optional: false,
-									},
-									{
-										BuildpackInfo: dist.BuildpackInfo{
-											ID:      "some/second-inner-buildpack",
-											Version: "2.0.0",
-										},
-										Optional: false,
-									},
-								},
-							},
-							{
-								Group: []dist.BuildpackRef{
-									{
-										BuildpackInfo: dist.BuildpackInfo{
-											ID:      "some/first-inner-buildpack",
-											Version: "1.0.0",
-										},
-										Optional: false,
-									},
-								},
-							},
-						},
+						API:         apiVersion,
+						Order:       topBuildpackOrder,
 						LayerDiffID: "sha256:top-buildpack-diff-id",
 						Homepage:    "top-buildpack-homepage",
 						Name:        "top",

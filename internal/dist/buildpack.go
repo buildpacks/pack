@@ -2,12 +2,11 @@ package dist
 
 import (
 	"archive/tar"
-	"io"
-	"path"
-
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/pkg/errors"
+	"io"
+	"path"
 
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"

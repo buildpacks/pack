@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 )
 
+//go:generate mockgen -package testmocks -destination testmocks/mockPackage.go github.com/buildpacks/pack/internal/buildpackage Package
 type Package interface {
 	Label(name string) (value string, err error)
 	GetLayer(diffID string) (io.ReadCloser, error)
@@ -49,6 +50,7 @@ func ExtractBuildpacks(pkg Package) (mainBP dist.Buildpack, depBPs []dist.Buildp
 				},
 				Stacks: bpInfo.Stacks,
 				Order:  bpInfo.Order,
+				Assets: bpInfo.Assets,
 			}
 
 			diffID := bpInfo.LayerDiffID // Allow use in closure
