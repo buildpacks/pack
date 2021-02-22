@@ -177,18 +177,15 @@ func WithLogPrefix(prefix string) PhaseConfigProviderOperation {
 func WithLifecycleProxy(lifecycleExec *LifecycleExecution) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
 		if lifecycleExec.opts.HTTPProxy != "" {
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTP_PROXY="+lifecycleExec.opts.HTTPProxy)
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "http_proxy="+lifecycleExec.opts.HTTPProxy)
+			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTP_PROXY="+lifecycleExec.opts.HTTPProxy, "http_proxy="+lifecycleExec.opts.HTTPProxy)
 		}
 
 		if lifecycleExec.opts.HTTPSProxy != "" {
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTPS_PROXY="+lifecycleExec.opts.HTTPSProxy)
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "https_proxy="+lifecycleExec.opts.HTTPSProxy)
+			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTPS_PROXY="+lifecycleExec.opts.HTTPSProxy, "https_proxy="+lifecycleExec.opts.HTTPSProxy)
 		}
 
 		if lifecycleExec.opts.NoProxy != "" {
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "NO_PROXY="+lifecycleExec.opts.NoProxy)
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "no_proxy="+lifecycleExec.opts.NoProxy)
+			provider.ctrConf.Env = append(provider.ctrConf.Env, "NO_PROXY="+lifecycleExec.opts.NoProxy, "no_proxy="+lifecycleExec.opts.NoProxy)
 		}
 	}
 }
