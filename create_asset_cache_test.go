@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
@@ -93,7 +94,10 @@ second-asset-blob-contents.
 				fakeImage = fakes.NewImage(imageName, "somesha256", imgRef)
 
 				mockImageFactory.EXPECT().NewImage(imageName, true).Return(fakeImage, nil)
-				mockDownloader.EXPECT().Download(gomock.Any(), "https://first-asset-uri", gomock.Any()).Return(firstAssetBlob, nil)
+				mockDownloader.EXPECT().Download(gomock.Any(), "https://first-asset-uri", gomock.Any()).Do(func(_ ...interface{}) {
+					time.Sleep(2 * time.Second)
+				}).Return(firstAssetBlob, nil)
+				mockDownloader.EXPECT().Download(gomock.Any(), "https://first-asset-replace-uri", gomock.Any()).Return(firstAssetBlob, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), "https://second-asset-uri", gomock.Any()).Return(secondAssetBlob, nil)
 
 				assert.Succeeds(client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{
@@ -105,6 +109,14 @@ second-asset-blob-contents.
 							Sha256:  "first-sha256",
 							Stacks:  []string{"io.buildpacks.stacks.bionic"},
 							URI:     "https://first-asset-uri",
+							Version: "1.2.3",
+						},
+						{
+							ID:      "first-asset-replace",
+							Name:    "First Asset Replace",
+							Sha256:  "first-sha256",
+							Stacks:  []string{"io.buildpacks.stacks.bionic"},
+							URI:     "https://first-asset-replace-uri",
 							Version: "1.2.3",
 						},
 						{
@@ -138,11 +150,11 @@ second-asset-blob-contents.
 				assert.Succeeds(json.NewDecoder(strings.NewReader(layersLabel)).Decode(&assetMap))
 				assert.Equal(assetMap, dist.AssetMap{
 					"first-sha256": dist.AssetValue{
-						ID:          "first-asset",
-						Name:        "First Asset",
+						ID:          "first-asset-replace",
+						Name:        "First Asset Replace",
 						LayerDiffID: "sha256:edde92682d3bc9b299b52a0af4a3934ae6742e0eb90bc7168e81af5ab6241722",
 						Stacks:      []string{"io.buildpacks.stacks.bionic"},
-						URI:         "https://first-asset-uri",
+						URI:         "https://first-asset-replace-uri",
 						Version:     "1.2.3",
 					}, "second-sha256": dist.AssetValue{
 						ID:          "second-asset",
