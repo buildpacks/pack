@@ -79,6 +79,25 @@ func (m PackFixtureManager) TemplateFixtureToFile(name string, destination *os.F
 	m.assert.Nil(err)
 }
 
+func (m PackFixtureManager) TemplateFile(file *os.File, data map[string]interface{}) {
+	m.testObject.Helper()
+
+	outputTemplate, err := ioutil.ReadAll(file)
+	m.assert.Nil(err)
+
+	_, err = file.Seek(0, 0)
+	m.assert.Nil(err)
+
+	err = file.Truncate(0)
+	m.assert.Nil(err)
+
+	str := m.fillTemplate(outputTemplate, data)
+	fmt.Printf("filled template for %s\n", file.Name())
+	fmt.Println(str)
+	_, err = io.WriteString(file, m.fillTemplate(outputTemplate, data))
+	m.assert.Nil(err)
+}
+
 func (m PackFixtureManager) fillTemplate(templateContents []byte, data map[string]interface{}) string {
 	tpl, err := template.New("").
 		Funcs(template.FuncMap{

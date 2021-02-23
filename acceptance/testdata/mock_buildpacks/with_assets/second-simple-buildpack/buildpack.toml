@@ -1,0 +1,26 @@
+api = "0.2"
+
+[buildpack]
+  id = "second-simple/asset-buildpack"
+  version = "second-simple-asset-buildpack-version"
+  name = "Second Simple Asset Buildpack Buildpack"
+
+[[stacks]]
+  id = "pack.test.stack"
+
+
+[[assets]]
+  id = "asset C"
+  sha256 = "339b5181dac7c2d01cbbd6fff90f541f0350864f03a02f05faf852baa2826064"
+  name = "C Asset"
+  stacks = ["pack.test.stack"]
+  uri = "{{ .assetCURI }}"
+  version = "1.3.5"
+
+[[assets]]
+  id = "asset B repeat"
+  name = "B Asset Repeat"
+  sha256 = "61eea2ec4053ca25b9bd5d7bebaba48ee5398569aa1da5bc3541cbab1d09b86b"
+  stacks = ["pack.test.stack"]
+  uri = "{{ .assetBURI }}"
+  version = "4.5.6"

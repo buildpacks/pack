@@ -614,6 +614,212 @@ func testWithoutSpecificBuilderRequirement(
 			})
 		})
 	})
+
+	when("asset cache", func() {
+		var tmpDir string
+		it.Before(func() {
+			var err error
+			tmpDir, err = ioutil.TempDir("", "asset-cache-testing")
+			assert.Nil(err)
+		})
+		it.After(func() {
+			os.RemoveAll(tmpDir)
+		})
+
+		it("creates reproducable asset cache image", func() {
+			buildpackManager = buildpacks.NewBuildpackManager(
+				t,
+				assert,
+				buildpacks.WithBuildpackSource(tmpDir),
+			)
+
+			templateMapping := map[string]interface{}{}
+			// resolve local assets to absolute paths
+			assetAPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetA.txt"))
+			assert.Nil(err)
+			assetAPath = cleanAbsPath(assetAPath)
+			assetBPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetB.txt"))
+			assert.Nil(err)
+			assetBPath = cleanAbsPath(assetBPath)
+			assetCPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetC.txt"))
+			assert.Nil(err)
+			assetCPath = cleanAbsPath(assetCPath)
+
+			templateMapping["assetAURI"] = assetAPath
+			templateMapping["assetBURI"] = assetBPath
+			templateMapping["assetCURI"] = assetCPath
+
+			simpleBuildpackRoot := filepath.Join(tmpDir, "simple-buildpack")
+			assert.Succeeds(os.Mkdir(simpleBuildpackRoot, os.ModePerm))
+
+			secondSimpleBuildpackRoot := filepath.Join(tmpDir, "second-simple-buildpack")
+			assert.Succeeds(os.Mkdir(secondSimpleBuildpackRoot, os.ModePerm))
+
+			nestedBuildpackRoot := filepath.Join(tmpDir, "nested-assets-buildpack")
+			assert.Succeeds(os.Mkdir(nestedBuildpackRoot, os.ModePerm))
+
+			h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", "simple-buildpack"), simpleBuildpackRoot)
+			h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", "second-simple-buildpack"), secondSimpleBuildpackRoot)
+			h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", "nested-assets-buildpack"), nestedBuildpackRoot)
+
+			simpleBuildpackTOML := filepath.Join(simpleBuildpackRoot, "buildpack.toml")
+			simpleBuildpackTOMLFile, err := os.OpenFile(simpleBuildpackTOML, os.O_CREATE|os.O_RDWR, os.ModePerm)
+			assert.Nil(err)
+
+			secondSimpleBuildpackTOML := filepath.Join(secondSimpleBuildpackRoot, "buildpack.toml")
+			secondSimpleBuildpackTOMLFile, err := os.OpenFile(secondSimpleBuildpackTOML, os.O_CREATE|os.O_RDWR, os.ModePerm)
+			assert.Nil(err)
+
+			// create asset buildpacks
+			simpleArchiveBuildpack := buildpacks.NewArchiveBuildpack("simple-buildpack")
+			secondSimpleArchiveBuildpack := buildpacks.NewArchiveBuildpack("second-simple-buildpack")
+			nestedArchiveBuildpack := buildpacks.NewArchiveBuildpack("nested-assets-buildpack")
+
+			// template buildpack assets
+			fixtureManager := pack.FixtureManager()
+			fixtureManager.TemplateFile(simpleBuildpackTOMLFile, templateMapping)
+			assert.Succeeds(simpleBuildpackTOMLFile.Close())
+
+			fixtureManager.TemplateFile(secondSimpleBuildpackTOMLFile, templateMapping)
+			assert.Succeeds(secondSimpleBuildpackTOMLFile.Close())
+
+			// template asset buildpacks using buildpack images
+
+			simpleBuildpackConfigFile, err := ioutil.TempFile(tmpDir, "simple_package.toml")
+			assert.Nil(err)
+			fixtureManager.TemplateFixtureToFile(
+				"generic_package.toml",
+				simpleBuildpackConfigFile,
+				map[string]interface{}{
+					"buildpack_uri": "simple-buildpack.tgz",
+					"OS":            dockerHostOS(),
+				},
+			)
+			err = simpleBuildpackConfigFile.Close()
+			assert.Nil(err)
+
+			secondBuildpackConfigFile, err := ioutil.TempFile(tmpDir, "second_package.toml")
+			assert.Nil(err)
+			fixtureManager.TemplateFixtureToFile(
+				"generic_package.toml",
+				secondBuildpackConfigFile,
+				map[string]interface{}{
+					"buildpack_uri": "second-simple-buildpack.tgz",
+					"OS":            dockerHostOS(),
+				},
+			)
+			err = secondBuildpackConfigFile.Close()
+			assert.Nil(err)
+
+			// buildpack image names
+			simpleBuildpackImageName := registryConfig.RepoName("simple-assets-buildpack-" + h.RandString(8))
+			secondSimpleBuildpackImageName := registryConfig.RepoName("second-simple-assets-buildpack-" + h.RandString(8))
+			nestedBuildpackImageName := registryConfig.RepoName("nested-assets-buildpack-" + h.RandString(8))
+
+			templateMapping["simple_buildpack"] = simpleBuildpackImageName
+			templateMapping["second_simple_buildpack"] = secondSimpleBuildpackImageName
+
+			nestedConfigFile, err := ioutil.TempFile(tmpDir, "nested_assets_buildpack_package.toml")
+			fixtureManager.TemplateFixtureToFile(
+				"nested_assets_buildpack_package.toml",
+				nestedConfigFile,
+				templateMapping,
+			)
+
+			assert.Succeeds(nestedConfigFile.Close())
+
+			packageImageBuildpack := buildpacks.NewPackageImage(
+				t,
+				pack,
+				nestedBuildpackImageName,
+				nestedConfigFile.Name(),
+				buildpacks.WithRequiredBuildpacks(
+					nestedArchiveBuildpack,
+					buildpacks.NewPackageImage(
+						t,
+						pack,
+						simpleBuildpackImageName,
+						simpleBuildpackConfigFile.Name(),
+						buildpacks.WithRequiredBuildpacks(simpleArchiveBuildpack),
+					),
+					buildpacks.NewPackageImage(
+						t,
+						pack,
+						secondSimpleBuildpackImageName,
+						secondBuildpackConfigFile.Name(),
+						buildpacks.WithRequiredBuildpacks(secondSimpleArchiveBuildpack),
+					),
+				),
+			)
+
+			buildpackManager.PrepareBuildpacks(tmpDir, packageImageBuildpack)
+			defer h.DockerRmi(dockerCli, simpleBuildpackImageName, secondSimpleBuildpackImageName, nestedBuildpackImageName)
+
+			assetCacheName := registryConfig.RepoName("some-asset-org/" + h.RandString(10))
+			pack.RunSuccessfully(
+				"asset-cache", "create",
+				assetCacheName,
+				"--buildpack", nestedBuildpackImageName,
+			)
+			defer h.DockerRmi(dockerCli, assetCacheName)
+
+			allAssetsBuildpackRoot := filepath.Join(tmpDir, "all-assets-buildpack")
+			assert.Succeeds(os.Mkdir(allAssetsBuildpackRoot, os.ModePerm))
+
+			h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", "all-assets-buildpack"), allAssetsBuildpackRoot)
+
+			allAssetsBuildpackTOML := filepath.Join(allAssetsBuildpackRoot, "buildpack.toml")
+			allAssetsBuildpackTOMLFile, err := os.OpenFile(allAssetsBuildpackTOML, os.O_CREATE|os.O_RDWR, os.ModePerm)
+			assert.Nil(err)
+
+			fixtureManager.TemplateFile(allAssetsBuildpackTOMLFile, templateMapping)
+			assert.Succeeds(allAssetsBuildpackTOMLFile.Close())
+
+			allAssetsBuildpackConfigFile, err := ioutil.TempFile(tmpDir, "all_assets_package.toml")
+			assert.Nil(err)
+			fixtureManager.TemplateFixtureToFile(
+				"generic_package.toml",
+				allAssetsBuildpackConfigFile,
+				map[string]interface{}{
+					"buildpack_uri": "all-assets-buildpack.tgz",
+					"OS":            dockerHostOS(),
+				},
+			)
+			err = allAssetsBuildpackConfigFile.Close()
+			assert.Nil(err)
+
+			allAssetsBuildpackImageName := registryConfig.RepoName("all-assets-buildpack-" + h.RandString(8))
+			allAssetsArchiveBuildpack := buildpacks.NewArchiveBuildpack("all-assets-buildpack")
+
+			allAssetsImageBuildpack := buildpacks.NewPackageImage(
+				t,
+				pack,
+				allAssetsBuildpackImageName,
+				allAssetsBuildpackConfigFile.Name(),
+				buildpacks.WithRequiredBuildpacks(
+					allAssetsArchiveBuildpack,
+				),
+			)
+
+			buildpackManager.PrepareBuildpacks(tmpDir, allAssetsImageBuildpack)
+			defer h.DockerRmi(dockerCli, allAssetsBuildpackImageName)
+
+			identicalAssetCacheName := registryConfig.RepoName("some-identical-asset-org/" + h.RandString(10))
+			pack.RunSuccessfully(
+				"asset-cache", "create",
+				identicalAssetCacheName,
+				"--buildpack", allAssetsBuildpackImageName,
+			)
+			defer h.DockerRmi(dockerCli, identicalAssetCacheName)
+
+			firstSha := imageSha(t, assert, dockerCli, assetCacheName)
+			secondSha := imageSha(t, assert, dockerCli, identicalAssetCacheName)
+			assert.Equal(firstSha, secondSha)
+
+			// now lets check the sha256 values of these two assets are the same
+		})
+	})
+
 }
 
 func testAcceptance(
@@ -2735,4 +2941,15 @@ type compareFormat struct {
 	extension   string
 	compareFunc func(string, string)
 	outputArg   string
+}
+
+func cleanAbsPath(path string) string {
+	return strings.ReplaceAll(path, `\`, `\\`)
+}
+
+func imageSha(t *testing.T, assert h.AssertionManager, dockerCli client.CommonAPIClient, repoName string) string {
+	t.Helper()
+	inspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), repoName)
+	assert.Nil(err)
+	return inspect.ID
 }

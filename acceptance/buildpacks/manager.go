@@ -25,6 +25,12 @@ func WithBuildpackAPIVersion(apiVersion string) func(b *BuildpackManager) {
 	}
 }
 
+func WithBuildpackSource(source string) func(b *BuildpackManager) {
+	return func(b *BuildpackManager) {
+		b.sourceDir = source
+	}
+}
+
 func NewBuildpackManager(t *testing.T, assert testhelpers.AssertionManager, modifiers ...BuildpackManagerModifier) BuildpackManager {
 	m := BuildpackManager{
 		testObject: t,
