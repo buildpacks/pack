@@ -20,6 +20,7 @@ type Config struct {
 	RunImages           []RunImage       `toml:"run-images"`
 	TrustedBuilders     []TrustedBuilder `toml:"trusted-builders,omitempty"`
 	Registries          []Registry       `toml:"registries,omitempty"`
+	LifecycleImage      string           `toml:"lifecycle-image,omitempty"`
 }
 
 type Registry struct {
@@ -125,3 +126,5 @@ func GetRegistry(cfg Config, registryName string) (Registry, error) {
 	}
 	return Registry{}, errors.Errorf("registry %s is not defined in your config file", style.Symbol(registryName))
 }
+
+const DefaultLifecycleImageRepo = "buildpacksio/lifecycle"

@@ -32,13 +32,13 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	pack2 "github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/acceptance/assertions"
 	"github.com/buildpacks/pack/acceptance/buildpacks"
 	"github.com/buildpacks/pack/acceptance/config"
 	"github.com/buildpacks/pack/acceptance/invoke"
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/cache"
+	internalConfig "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -739,7 +739,7 @@ func testAcceptance(
 						)
 
 						suiteManager.RegisterCleanUp("remove-lifecycle-"+lifecycle.Version(), func() error {
-							img, err := imgIDForRepoName(fmt.Sprintf("%s:%s", pack2.LifecycleImageRepo, lifecycle.Version()))
+							img, err := imgIDForRepoName(fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycle.Version()))
 							assert.Nil(err)
 							return h.DockerRmi(dockerCli, img)
 						})

@@ -350,6 +350,89 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("a valid lifecycle-image is provided", func() {
+			when("only the image repo is provided", func() {
+				it("uses the provided lifecycle-image and parses it correctly", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("index.docker.io/library/some-lifecycle-image:latest")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "some-lifecycle-image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("a custom image repo is provided", func() {
+				it("uses the provided lifecycle-image and parses it correctly", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("test.com/some-lifecycle-image:latest")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "test.com/some-lifecycle-image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("a custom image repo is provided with a tag", func() {
+				it("uses the provided lifecycle-image and parses it correctly", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("test.com/some-lifecycle-image:v1")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "test.com/some-lifecycle-image:v1"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("a custom image repo is provided with a digest", func() {
+				it("uses the provided lifecycle-image and parses it correctly", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("test.com/some-lifecycle-image@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "test.com/some-lifecycle-image@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+		})
+		when("an invalid lifecycle-image is provided", func() {
+			when("the repo name is invalid", func() {
+				it("returns a parse error", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), gomock.Any()).
+						Return(errors.New(""))
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "some-!nv@l!d-image"})
+					err := command.Execute()
+					h.AssertError(t, err, "could not parse reference: some-!nv@l!d-image")
+				})
+			})
+		})
+
+		when("a lifecycle-image is not provided", func() {
+			when("a lifecycle-image is set in the config", func() {
+				it("uses the lifecycle-image from the config after parsing it", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("index.docker.io/library/some-lifecycle-image:latest")).
+						Return(nil)
+
+					cfg := config.Config{LifecycleImage: "some-lifecycle-image"}
+					command := commands.Build(logger, cfg, mockClient)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"image", "--builder", "my-builder"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("a lifecycle-image is not set in the config", func() {
+				it("passes an empty lifecycle image and does not throw an error", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+		})
+
 		when("env vars are passed as flags", func() {
 			var (
 				tmpVar   = "tmpVar"
@@ -603,6 +686,15 @@ func EqBuildOptionsWithCacheImage(cacheImage string) gomock.Matcher {
 		description: fmt.Sprintf("CacheImage=%s", cacheImage),
 		equals: func(o pack.BuildOptions) bool {
 			return o.CacheImage == cacheImage
+		},
+	}
+}
+
+func EqBuildOptionsWithLifecycleImage(lifecycleImage string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("LifecycleImage=%s", lifecycleImage),
+		equals: func(o pack.BuildOptions) bool {
+			return o.LifecycleImage == lifecycleImage
 		},
 	}
 }
