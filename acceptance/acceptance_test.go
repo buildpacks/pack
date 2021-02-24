@@ -1576,9 +1576,13 @@ func testAcceptance(
 								t.Fatalf("Expected to see image %s in %s", repo, contents)
 							}
 
-							t.Log("inspect-image")
-							output = pack.RunSuccessfully("inspect-image", repoName)
+							// TODO: remove this condition after pack 0.17.2 is released
+							if !pack.SupportsFeature(invoke.InspectRemoteImage) {
+								assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+								defer h.DockerRmi(dockerCli, repoName)
+							}
 
+							t.Log("inspect-image")
 							var (
 								webCommand      string
 								helloCommand    string
@@ -1618,6 +1622,7 @@ func testAcceptance(
 									outputArg:   "toml",
 								},
 							}
+
 							for _, format := range formats {
 								t.Logf("inspect-image %s format", format.outputArg)
 
