@@ -45,6 +45,7 @@ local:
   buildpacks:
     id: test.bp.one.remote
     version: 1.0.0
+    homepage: https://some-homepage
 `
 		expectedRemoteOutput = `---
 remote:
@@ -60,6 +61,7 @@ remote:
   buildpacks:
     id: test.bp.one.remote
     version: 1.0.0
+    homepage: https://some-homepage
 `
 	)
 
@@ -92,7 +94,7 @@ remote:
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
 				}}}
 
 			localInfo = &pack.ImageInfo{
@@ -107,7 +109,7 @@ remote:
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
 				}},
 			}
 

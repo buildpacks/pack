@@ -29,7 +29,7 @@ func NewBOMDisplay(info *pack.ImageInfo) []BOMEntryDisplay {
 }
 
 func displayBOM(bom []lifecycle.BOMEntry) []BOMEntryDisplay {
-	result := []BOMEntryDisplay{}
+	var result []BOMEntryDisplay
 	for _, entry := range bom {
 		result = append(result, BOMEntryDisplay{
 			Name:     entry.Name,
@@ -38,8 +38,9 @@ func displayBOM(bom []lifecycle.BOMEntry) []BOMEntryDisplay {
 
 			Buildpack: dist.BuildpackRef{
 				BuildpackInfo: dist.BuildpackInfo{
-					ID:      entry.Buildpack.ID,
-					Version: entry.Buildpack.Version,
+					ID:       entry.Buildpack.ID,
+					Version:  entry.Buildpack.Version,
+					Homepage: entry.Buildpack.Homepage,
 				},
 				Optional: entry.Buildpack.Optional,
 			},

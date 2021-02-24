@@ -17,7 +17,7 @@ Run Images:
   {{.run_image_mirror}}
 
 Buildpacks:
-  ID                   VERSION
+  ID                   VERSION                      HOMEPAGE
   simple/layers        simple-layers-version
 
 Processes:

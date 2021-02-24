@@ -56,10 +56,12 @@ name = 'other-local-mirror'
 [[local_info.buildpacks]]
 id = 'test.bp.one.local'
 version = '1.0.0'
+homepage = 'https://some-homepage-one'
 
 [[local_info.buildpacks]]
 id = 'test.bp.two.local'
 version = '2.0.0'
+homepage = 'https://some-homepage-two'
 
 [[local_info.processes]]
 type = 'some-local-type'
@@ -108,10 +110,12 @@ name = 'other-remote-mirror'
 [[remote_info.buildpacks]]
 id = 'test.bp.one.remote'
 version = '1.0.0'
+homepage = 'https://some-homepage-one'
 
 [[remote_info.buildpacks]]
 id = 'test.bp.two.remote'
 version = '2.0.0'
+homepage = 'https://some-homepage-two'
 
 [[remote_info.processes]]
 type = 'some-remote-type'
@@ -151,8 +155,8 @@ args = [
 			remoteInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.remote",
 				Buildpacks: []lifecycle.GroupBuildpack{
-					{ID: "test.bp.one.remote", Version: "1.0.0"},
-					{ID: "test.bp.two.remote", Version: "2.0.0"},
+					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
 				Base: lifecycle.RunImageMetadata{
 					TopLayer:  "some-remote-top-layer",
@@ -181,7 +185,7 @@ args = [
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{
@@ -204,8 +208,8 @@ args = [
 			localInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.local",
 				Buildpacks: []lifecycle.GroupBuildpack{
-					{ID: "test.bp.one.local", Version: "1.0.0"},
-					{ID: "test.bp.two.local", Version: "2.0.0"},
+					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
 				Base: lifecycle.RunImageMetadata{
 					TopLayer:  "some-local-top-layer",
@@ -228,7 +232,7 @@ args = [
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{

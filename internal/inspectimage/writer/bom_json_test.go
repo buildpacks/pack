@@ -48,7 +48,8 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
       },
       "buildpacks": {
         "id": "test.bp.one.remote",
-        "version": "1.0.0"
+        "version": "1.0.0",
+		"homepage": "https://some-homepage"
       }
     }
   ]
@@ -70,7 +71,8 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
       },
       "buildpacks": {
         "id": "test.bp.one.remote",
-        "version": "1.0.0"
+        "version": "1.0.0",
+		"homepage": "https://some-homepage"
       }
     }
   ]
@@ -106,7 +108,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
 				}}}
 
 			localInfo = &pack.ImageInfo{
@@ -121,7 +123,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
 				}},
 			}
 

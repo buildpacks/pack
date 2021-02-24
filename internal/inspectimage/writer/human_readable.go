@@ -117,9 +117,9 @@ Run Images:
 var buildpacksTemplate = `
 Buildpacks:
 {{- if .Info.Buildpacks }}
-  ID	VERSION
+  ID	VERSION	HOMEPAGE
 {{- range $_, $b := .Info.Buildpacks }}
-  {{ $b.ID }}	{{ $b.Version }}
+  {{ $b.ID }}	{{ $b.Version }}	{{ $b.Homepage }}
 {{- end }}
 {{- else }}
   (buildpack metadata not present)

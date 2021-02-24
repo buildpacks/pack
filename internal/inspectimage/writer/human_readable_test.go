@@ -51,9 +51,9 @@ Run Images:
   other-remote-mirror
 
 Buildpacks:
-  ID                        VERSION
-  test.bp.one.remote        1.0.0
-  test.bp.two.remote        2.0.0
+  ID                        VERSION        HOMEPAGE
+  test.bp.one.remote        1.0.0          https://some-homepage-one
+  test.bp.two.remote        2.0.0          https://some-homepage-two
 
 Processes:
   TYPE                              SHELL        COMMAND                      ARGS
@@ -75,9 +75,9 @@ Run Images:
   other-local-mirror
 
 Buildpacks:
-  ID                       VERSION
-  test.bp.one.local        1.0.0
-  test.bp.two.local        2.0.0
+  ID                       VERSION        HOMEPAGE
+  test.bp.one.local        1.0.0          https://some-homepage-one
+  test.bp.two.local        2.0.0          https://some-homepage-two
 
 Processes:
   TYPE                             SHELL        COMMAND                     ARGS
@@ -99,8 +99,8 @@ Processes:
 			remoteInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.remote",
 				Buildpacks: []lifecycle.GroupBuildpack{
-					{ID: "test.bp.one.remote", Version: "1.0.0"},
-					{ID: "test.bp.two.remote", Version: "2.0.0"},
+					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
 				Base: lifecycle.RunImageMetadata{
 					TopLayer:  "some-remote-top-layer",
@@ -152,8 +152,8 @@ Processes:
 			localInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.local",
 				Buildpacks: []lifecycle.GroupBuildpack{
-					{ID: "test.bp.one.local", Version: "1.0.0"},
-					{ID: "test.bp.two.local", Version: "2.0.0"},
+					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
 				Base: lifecycle.RunImageMetadata{
 					TopLayer:  "some-local-top-layer",
