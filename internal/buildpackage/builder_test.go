@@ -5,14 +5,13 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/buildpacks/imgutil/layer"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
-
-	"github.com/buildpacks/imgutil/layer"
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
@@ -39,19 +38,23 @@ func TestPackageBuilder(t *testing.T) {
 func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController   *gomock.Controller
-		mockImageFactory *testmocks.MockImageFactory
-		subject          *buildpackage.PackageBuilder
+		mockImageFactory func(expectedImageOS string) *testmocks.MockImageFactory
 		tmpDir           string
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
-		mockImageFactory = testmocks.NewMockImageFactory(mockController)
 
-		fakePackageImage := fakes.NewImage("some/package", "", nil)
-		mockImageFactory.EXPECT().NewImage("some/package", true).Return(fakePackageImage, nil).AnyTimes()
+		mockImageFactory = func(expectedImageOS string) *testmocks.MockImageFactory {
+			imageFactory := testmocks.NewMockImageFactory(mockController)
 
-		subject = buildpackage.NewBuilder(mockImageFactory)
+			if expectedImageOS != "" {
+				fakePackageImage := fakes.NewImage("some/package", "", nil)
+				imageFactory.EXPECT().NewImage("some/package", true, expectedImageOS).Return(fakePackageImage, nil).MaxTimes(1)
+			}
+
+			return imageFactory
+		}
 
 		var err error
 		tmpDir, err = ioutil.TempDir("", "package_builder_tests")
@@ -64,346 +67,366 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("validation", func() {
-		for _, test := range []struct {
-			name string
-			fn   func() error
+		for _, _test := range []*struct {
+			name            string
+			expectedImageOS string
+			fn              func(*buildpackage.PackageBuilder) error
 		}{
-			{name: "SaveAsImage", fn: func() error {
-				_, err := subject.SaveAsImage("some/package", false, "linux")
+			{name: "SaveAsImage", expectedImageOS: "linux", fn: func(builder *buildpackage.PackageBuilder) error {
+				_, err := builder.SaveAsImage("some/package", false, "linux")
 				return err
 			}},
-			{name: "SaveAsImage", fn: func() error {
-				_, err := subject.SaveAsImage("some/package", false, "windows")
+			{name: "SaveAsImage", expectedImageOS: "windows", fn: func(builder *buildpackage.PackageBuilder) error {
+				_, err := builder.SaveAsImage("some/package", false, "windows")
 				return err
 			}},
-			{name: "SaveAsFile", fn: func() error {
-				return subject.SaveAsFile(path.Join(tmpDir, "package.cnb"), "windows")
+			{name: "SaveAsFile", expectedImageOS: "linux", fn: func(builder *buildpackage.PackageBuilder) error {
+				return builder.SaveAsFile(path.Join(tmpDir, "package.cnb"), "linux")
 			}},
-			{name: "SaveAsFile", fn: func() error {
-				return subject.SaveAsFile(path.Join(tmpDir, "package.cnb"), "linux")
+			{name: "SaveAsFile", expectedImageOS: "windows", fn: func(builder *buildpackage.PackageBuilder) error {
+				return builder.SaveAsFile(path.Join(tmpDir, "package.cnb"), "windows")
 			}},
 		} {
-			testFn := test.fn
-			when(test.name, func() {
-				when("validate buildpack", func() {
-					when("buildpack not set", func() {
-						it("returns error", func() {
-							err := testFn()
-							h.AssertError(t, err, "buildpack must be set")
+			// always use copies to avoid stale refs
+			testFn := _test.fn
+			expectedImageOS := _test.expectedImageOS
+			testName := _test.name
+			_test = nil
+
+			when(testName, func() {
+				when(expectedImageOS, func() {
+					when("validate buildpack", func() {
+						when("buildpack not set", func() {
+							it("returns error", func() {
+								builder := buildpackage.NewBuilder(mockImageFactory(expectedImageOS))
+								err := testFn(builder)
+								h.AssertError(t, err, "buildpack must be set")
+							})
 						})
-					})
 
-					when("there is a buildpack not referenced", func() {
-						it("should error", func() {
-							bp1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.1.id",
-									Version: "bp.1.version",
-								},
-								Stacks: []dist.Stack{{ID: "some.stack"}},
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.SetBuildpack(bp1)
-
-							bp2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API:    api.MustParse("0.2"),
-								Info:   dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
-								Stacks: []dist.Stack{{ID: "some.stack"}},
-								Order:  nil,
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.AddDependency(bp2)
-
-							err = testFn()
-							h.AssertError(t, err, "buildpack 'bp.2.id@bp.2.version' is not used by buildpack 'bp.1.id@bp.1.version'")
-						})
-					})
-
-					when("there is a referenced buildpack from main buildpack that is not present", func() {
-						it("should error", func() {
-							mainBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.1.id",
-									Version: "bp.1.version",
-								},
-								Order: dist.Order{{
-									Group: []dist.BuildpackRef{
-										{BuildpackInfo: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"}},
-										{BuildpackInfo: dist.BuildpackInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
+						when("there is a buildpack not referenced", func() {
+							it("should error", func() {
+								bp1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.1.id",
+										Version: "bp.1.version",
 									},
-								}},
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.SetBuildpack(mainBP)
+									Stacks: []dist.Stack{{ID: "some.stack"}},
+								}, 0644)
+								h.AssertNil(t, err)
 
-							presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API:    api.MustParse("0.2"),
-								Info:   dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"},
-								Stacks: []dist.Stack{{ID: "some.stack"}},
-								Order:  nil,
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.AddDependency(presentBP)
+								builder := buildpackage.NewBuilder(mockImageFactory(expectedImageOS))
+								builder.SetBuildpack(bp1)
 
-							err = testFn()
-							h.AssertError(t, err, "buildpack 'bp.1.id@bp.1.version' references buildpack 'bp.missing.id@bp.missing.version' which is not present")
+								bp2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API:    api.MustParse("0.2"),
+									Info:   dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
+									Stacks: []dist.Stack{{ID: "some.stack"}},
+									Order:  nil,
+								}, 0644)
+								h.AssertNil(t, err)
+								builder.AddDependency(bp2)
+
+								err = testFn(builder)
+								h.AssertError(t, err, "buildpack 'bp.2.id@bp.2.version' is not used by buildpack 'bp.1.id@bp.1.version'")
+							})
 						})
-					})
 
-					when("there is a referenced buildpack from dependency buildpack that is not present", func() {
-						it("should error", func() {
-							mainBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.1.id",
-									Version: "bp.1.version",
-								},
-								Order: dist.Order{{
-									Group: []dist.BuildpackRef{
-										{BuildpackInfo: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"}},
+						when("there is a referenced buildpack from main buildpack that is not present", func() {
+							it("should error", func() {
+								mainBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.1.id",
+										Version: "bp.1.version",
 									},
-								}},
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.SetBuildpack(mainBP)
-
-							presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API:  api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"},
-								Order: dist.Order{{
-									Group: []dist.BuildpackRef{
-										{BuildpackInfo: dist.BuildpackInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
-									},
-								}},
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.AddDependency(presentBP)
-
-							err = testFn()
-							h.AssertError(t, err, "buildpack 'bp.present.id@bp.present.version' references buildpack 'bp.missing.id@bp.missing.version' which is not present")
-						})
-					})
-				})
-
-				when("validate stacks", func() {
-					when("buildpack is meta-buildpack", func() {
-						it("should succeed", func() {
-							buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.1.id",
-									Version: "bp.1.version",
-								},
-								Stacks: nil,
-								Order: dist.Order{{
-									Group: []dist.BuildpackRef{
-										{BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
-									},
-								}},
-							}, 0644)
-							h.AssertNil(t, err)
-
-							subject.SetBuildpack(buildpack)
-
-							dependency, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.nested.id",
-									Version: "bp.nested.version",
-								},
-								Stacks: []dist.Stack{
-									{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
-								},
-								Order: nil,
-							}, 0644)
-							h.AssertNil(t, err)
-
-							subject.AddDependency(dependency)
-
-							err = testFn()
-							h.AssertNil(t, err)
-						})
-					})
-
-					when("dependencies don't have a common stack", func() {
-						it("should error", func() {
-							buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.1.id",
-									Version: "bp.1.version",
-								},
-								Order: dist.Order{{
-									Group: []dist.BuildpackRef{{
-										BuildpackInfo: dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
-										Optional:      false,
-									}, {
-										BuildpackInfo: dist.BuildpackInfo{ID: "bp.3.id", Version: "bp.3.version"},
-										Optional:      false,
+									Order: dist.Order{{
+										Group: []dist.BuildpackRef{
+											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"}},
+											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
+										},
 									}},
-								}},
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.SetBuildpack(buildpack)
+								}, 0644)
+								h.AssertNil(t, err)
 
-							dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.2.id",
-									Version: "bp.2.version",
-								},
-								Stacks: []dist.Stack{
-									{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
-									{ID: "stack.id.2", Mixins: []string{"Mixin-A"}},
-								},
-								Order: nil,
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.AddDependency(dependency1)
+								builder := buildpackage.NewBuilder(mockImageFactory(expectedImageOS))
+								builder.SetBuildpack(mainBP)
 
-							dependency2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.3.id",
-									Version: "bp.3.version",
-								},
-								Stacks: []dist.Stack{
-									{ID: "stack.id.3", Mixins: []string{"Mixin-A"}},
-								},
-								Order: nil,
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.AddDependency(dependency2)
+								presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API:    api.MustParse("0.2"),
+									Info:   dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"},
+									Stacks: []dist.Stack{{ID: "some.stack"}},
+									Order:  nil,
+								}, 0644)
+								h.AssertNil(t, err)
+								builder.AddDependency(presentBP)
 
-							_, err = subject.SaveAsImage("some/package", false, "linux")
-							h.AssertError(t, err, "no compatible stacks among provided buildpacks")
+								err = testFn(builder)
+								h.AssertError(t, err, "buildpack 'bp.1.id@bp.1.version' references buildpack 'bp.missing.id@bp.missing.version' which is not present")
+							})
 						})
-					})
 
-					when("dependency has stacks that aren't supported by buildpack", func() {
-						it("should only support common stacks", func() {
-							buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.1.id",
-									Version: "bp.1.version",
-								},
-								Order: dist.Order{{
-									Group: []dist.BuildpackRef{{
-										BuildpackInfo: dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
-										Optional:      false,
-									}, {
-										BuildpackInfo: dist.BuildpackInfo{ID: "bp.3.id", Version: "bp.3.version"},
-										Optional:      false,
-									}},
-								}},
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.SetBuildpack(buildpack)
-
-							dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.2.id",
-									Version: "bp.2.version",
-								},
-								Stacks: []dist.Stack{
-									{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
-									{ID: "stack.id.2", Mixins: []string{"Mixin-A"}},
-								},
-								Order: nil,
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.AddDependency(dependency1)
-
-							dependency2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.3.id",
-									Version: "bp.3.version",
-								},
-								Stacks: []dist.Stack{
-									{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
-								},
-								Order: nil,
-							}, 0644)
-							h.AssertNil(t, err)
-							subject.AddDependency(dependency2)
-
-							img, err := subject.SaveAsImage("some/package", false, "linux")
-							h.AssertNil(t, err)
-
-							metadata := buildpackage.Metadata{}
-							_, err = dist.GetLabel(img, "io.buildpacks.buildpackage.metadata", &metadata)
-							h.AssertNil(t, err)
-
-							h.AssertEq(t, metadata.Stacks, []dist.Stack{{ID: "stack.id.1", Mixins: []string{"Mixin-A"}}})
-						})
-					})
-
-					when("dependency is meta-buildpack", func() {
-						it("should succeed and compute common stacks", func() {
-							buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.1.id",
-									Version: "bp.1.version",
-								},
-								Stacks: nil,
-								Order: dist.Order{{
-									Group: []dist.BuildpackRef{
-										{BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
+						when("there is a referenced buildpack from dependency buildpack that is not present", func() {
+							it("should error", func() {
+								mainBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.1.id",
+										Version: "bp.1.version",
 									},
-								}},
-							}, 0644)
-							h.AssertNil(t, err)
+									Order: dist.Order{{
+										Group: []dist.BuildpackRef{
+											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"}},
+										},
+									}},
+								}, 0644)
+								h.AssertNil(t, err)
+								builder := buildpackage.NewBuilder(mockImageFactory(expectedImageOS))
+								builder.SetBuildpack(mainBP)
 
-							subject.SetBuildpack(buildpack)
+								presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API:  api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"},
+									Order: dist.Order{{
+										Group: []dist.BuildpackRef{
+											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
+										},
+									}},
+								}, 0644)
+								h.AssertNil(t, err)
+								builder.AddDependency(presentBP)
 
-							dependencyOrder, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.nested.id",
-									Version: "bp.nested.version",
-								},
-								Order: dist.Order{{
-									Group: []dist.BuildpackRef{
-										{BuildpackInfo: dist.BuildpackInfo{
-											ID:      "bp.nested.nested.id",
-											Version: "bp.nested.nested.version",
+								err = testFn(builder)
+								h.AssertError(t, err, "buildpack 'bp.present.id@bp.present.version' references buildpack 'bp.missing.id@bp.missing.version' which is not present")
+							})
+						})
+					})
+
+					when("validate stacks", func() {
+						when("buildpack is meta-buildpack", func() {
+							it("should succeed", func() {
+								buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.1.id",
+										Version: "bp.1.version",
+									},
+									Stacks: nil,
+									Order: dist.Order{{
+										Group: []dist.BuildpackRef{
+											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
+										},
+									}},
+								}, 0644)
+								h.AssertNil(t, err)
+
+								builder := buildpackage.NewBuilder(mockImageFactory(expectedImageOS))
+								builder.SetBuildpack(buildpack)
+
+								dependency, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.nested.id",
+										Version: "bp.nested.version",
+									},
+									Stacks: []dist.Stack{
+										{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
+									},
+									Order: nil,
+								}, 0644)
+								h.AssertNil(t, err)
+
+								builder.AddDependency(dependency)
+
+								err = testFn(builder)
+								h.AssertNil(t, err)
+							})
+						})
+
+						when("dependencies don't have a common stack", func() {
+							it("should error", func() {
+								buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.1.id",
+										Version: "bp.1.version",
+									},
+									Order: dist.Order{{
+										Group: []dist.BuildpackRef{{
+											BuildpackInfo: dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
+											Optional:      false,
+										}, {
+											BuildpackInfo: dist.BuildpackInfo{ID: "bp.3.id", Version: "bp.3.version"},
+											Optional:      false,
 										}},
+									}},
+								}, 0644)
+								h.AssertNil(t, err)
+
+								builder := buildpackage.NewBuilder(mockImageFactory(expectedImageOS))
+								builder.SetBuildpack(buildpack)
+
+								dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.2.id",
+										Version: "bp.2.version",
 									},
-								}},
-							}, 0644)
-							h.AssertNil(t, err)
+									Stacks: []dist.Stack{
+										{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
+										{ID: "stack.id.2", Mixins: []string{"Mixin-A"}},
+									},
+									Order: nil,
+								}, 0644)
+								h.AssertNil(t, err)
+								builder.AddDependency(dependency1)
 
-							subject.AddDependency(dependencyOrder)
+								dependency2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.3.id",
+										Version: "bp.3.version",
+									},
+									Stacks: []dist.Stack{
+										{ID: "stack.id.3", Mixins: []string{"Mixin-A"}},
+									},
+									Order: nil,
+								}, 0644)
+								h.AssertNil(t, err)
+								builder.AddDependency(dependency2)
 
-							dependencyNestedNested, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-								API: api.MustParse("0.2"),
-								Info: dist.BuildpackInfo{
-									ID:      "bp.nested.nested.id",
-									Version: "bp.nested.nested.version",
-								},
-								Stacks: []dist.Stack{
-									{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
-								},
-								Order: nil,
-							}, 0644)
-							h.AssertNil(t, err)
+								err = testFn(builder)
+								h.AssertError(t, err, "no compatible stacks among provided buildpacks")
+							})
+						})
 
-							subject.AddDependency(dependencyNestedNested)
+						when("dependency has stacks that aren't supported by buildpack", func() {
+							it("should only support common stacks", func() {
+								buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.1.id",
+										Version: "bp.1.version",
+									},
+									Order: dist.Order{{
+										Group: []dist.BuildpackRef{{
+											BuildpackInfo: dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
+											Optional:      false,
+										}, {
+											BuildpackInfo: dist.BuildpackInfo{ID: "bp.3.id", Version: "bp.3.version"},
+											Optional:      false,
+										}},
+									}},
+								}, 0644)
+								h.AssertNil(t, err)
 
-							img, err := subject.SaveAsImage("some/package", false, "linux")
-							h.AssertNil(t, err)
+								builder := buildpackage.NewBuilder(mockImageFactory(expectedImageOS))
+								builder.SetBuildpack(buildpack)
 
-							metadata := buildpackage.Metadata{}
-							_, err = dist.GetLabel(img, "io.buildpacks.buildpackage.metadata", &metadata)
-							h.AssertNil(t, err)
+								dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.2.id",
+										Version: "bp.2.version",
+									},
+									Stacks: []dist.Stack{
+										{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
+										{ID: "stack.id.2", Mixins: []string{"Mixin-A"}},
+									},
+									Order: nil,
+								}, 0644)
+								h.AssertNil(t, err)
+								builder.AddDependency(dependency1)
 
-							h.AssertEq(t, metadata.Stacks, []dist.Stack{{ID: "stack.id.1", Mixins: []string{"Mixin-A"}}})
+								dependency2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.3.id",
+										Version: "bp.3.version",
+									},
+									Stacks: []dist.Stack{
+										{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
+									},
+									Order: nil,
+								}, 0644)
+								h.AssertNil(t, err)
+								builder.AddDependency(dependency2)
+
+								img, err := builder.SaveAsImage("some/package", false, expectedImageOS)
+								h.AssertNil(t, err)
+
+								metadata := buildpackage.Metadata{}
+								_, err = dist.GetLabel(img, "io.buildpacks.buildpackage.metadata", &metadata)
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, metadata.Stacks, []dist.Stack{{ID: "stack.id.1", Mixins: []string{"Mixin-A"}}})
+							})
+						})
+
+						when("dependency is meta-buildpack", func() {
+							it("should succeed and compute common stacks", func() {
+								buildpack, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.1.id",
+										Version: "bp.1.version",
+									},
+									Stacks: nil,
+									Order: dist.Order{{
+										Group: []dist.BuildpackRef{
+											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
+										},
+									}},
+								}, 0644)
+								h.AssertNil(t, err)
+
+								builder := buildpackage.NewBuilder(mockImageFactory(expectedImageOS))
+								builder.SetBuildpack(buildpack)
+
+								dependencyOrder, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.nested.id",
+										Version: "bp.nested.version",
+									},
+									Order: dist.Order{{
+										Group: []dist.BuildpackRef{
+											{BuildpackInfo: dist.BuildpackInfo{
+												ID:      "bp.nested.nested.id",
+												Version: "bp.nested.nested.version",
+											}},
+										},
+									}},
+								}, 0644)
+								h.AssertNil(t, err)
+
+								builder.AddDependency(dependencyOrder)
+
+								dependencyNestedNested, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.nested.nested.id",
+										Version: "bp.nested.nested.version",
+									},
+									Stacks: []dist.Stack{
+										{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
+									},
+									Order: nil,
+								}, 0644)
+								h.AssertNil(t, err)
+
+								builder.AddDependency(dependencyNestedNested)
+
+								img, err := builder.SaveAsImage("some/package", false, expectedImageOS)
+								h.AssertNil(t, err)
+
+								metadata := buildpackage.Metadata{}
+								_, err = dist.GetLabel(img, "io.buildpacks.buildpackage.metadata", &metadata)
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, metadata.Stacks, []dist.Stack{{ID: "stack.id.1", Mixins: []string{"Mixin-A"}}})
+							})
 						})
 					})
 				})
@@ -437,9 +460,10 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			}, 0644)
 			h.AssertNil(t, err)
 
-			subject.SetBuildpack(buildpack1)
+			builder := buildpackage.NewBuilder(mockImageFactory("linux"))
+			builder.SetBuildpack(buildpack1)
 
-			packageImage, err := subject.SaveAsImage("some/package", false, "linux")
+			packageImage, err := builder.SaveAsImage("some/package", false, "linux")
 			h.AssertNil(t, err)
 
 			labelData, err := packageImage.Label("io.buildpacks.buildpackage.metadata")
@@ -472,9 +496,11 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Order:  nil,
 			}, 0644)
 			h.AssertNil(t, err)
-			subject.SetBuildpack(buildpack1)
 
-			packageImage, err := subject.SaveAsImage("some/package", false, "linux")
+			builder := buildpackage.NewBuilder(mockImageFactory("linux"))
+			builder.SetBuildpack(buildpack1)
+
+			packageImage, err := builder.SaveAsImage("some/package", false, "linux")
 			h.AssertNil(t, err)
 
 			var bpLayers dist.BuildpackLayers
@@ -494,9 +520,11 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Order:  nil,
 			}, 0644)
 			h.AssertNil(t, err)
-			subject.SetBuildpack(buildpack1)
 
-			packageImage, err := subject.SaveAsImage("some/package", false, "linux")
+			builder := buildpackage.NewBuilder(mockImageFactory("linux"))
+			builder.SetBuildpack(buildpack1)
+
+			packageImage, err := builder.SaveAsImage("some/package", false, "linux")
 			h.AssertNil(t, err)
 
 			buildpackExists := func(name, version string) {
@@ -526,7 +554,9 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			buildpackExists("bp.1.id", "bp.1.version")
 
 			fakePackageImage := packageImage.(*fakes.Image)
-			h.AssertEq(t, fakePackageImage.NumberOfAddedLayers(), 1)
+			osVal, err := fakePackageImage.OS()
+			h.AssertNil(t, err)
+			h.AssertEq(t, osVal, "linux")
 		})
 
 		it("adds baselayer + buildpack layers for windows", func() {
@@ -537,18 +567,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Order:  nil,
 			}, 0644)
 			h.AssertNil(t, err)
-			subject.SetBuildpack(buildpack1)
 
-			packageImage, err := subject.SaveAsImage("some/package", false, "windows")
+			builder := buildpackage.NewBuilder(mockImageFactory("windows"))
+			builder.SetBuildpack(buildpack1)
+
+			_, err = builder.SaveAsImage("some/package", false, "windows")
 			h.AssertNil(t, err)
-
-			fakePackageImage := packageImage.(*fakes.Image)
-
-			osVal, err := fakePackageImage.OS()
-			h.AssertNil(t, err)
-			h.AssertEq(t, osVal, "windows")
-
-			h.AssertEq(t, fakePackageImage.NumberOfAddedLayers(), 2)
 		})
 	})
 
@@ -561,10 +585,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Order:  nil,
 			}, 0644)
 			h.AssertNil(t, err)
-			subject.SetBuildpack(buildpack1)
+
+			builder := buildpackage.NewBuilder(mockImageFactory(""))
+			builder.SetBuildpack(buildpack1)
 
 			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
-			h.AssertNil(t, subject.SaveAsFile(outputFile, "linux"))
+			h.AssertNil(t, builder.SaveAsFile(outputFile, "linux"))
 
 			withContents := func(fn func(data []byte)) h.TarEntryAssertion {
 				return func(t *testing.T, header *tar.Header, data []byte) {
@@ -608,7 +634,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				}))
 		})
 
-		it("adds buildpack layers for linux", func() {
+		it("adds buildpack layers", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
 				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
@@ -616,10 +642,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Order:  nil,
 			}, 0644)
 			h.AssertNil(t, err)
-			subject.SetBuildpack(buildpack1)
+
+			builder := buildpackage.NewBuilder(mockImageFactory(""))
+			builder.SetBuildpack(buildpack1)
 
 			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
-			h.AssertNil(t, subject.SaveAsFile(outputFile, "linux"))
+			h.AssertNil(t, builder.SaveAsFile(outputFile, "linux"))
 
 			h.AssertOnTarEntry(t, outputFile, "/blobs",
 				h.IsDirectory(),
@@ -664,10 +692,12 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Order:  nil,
 			}, 0644)
 			h.AssertNil(t, err)
-			subject.SetBuildpack(buildpack1)
+
+			builder := buildpackage.NewBuilder(mockImageFactory(""))
+			builder.SetBuildpack(buildpack1)
 
 			outputFile := filepath.Join(tmpDir, fmt.Sprintf("package-%s.cnb", h.RandString(10)))
-			h.AssertNil(t, subject.SaveAsFile(outputFile, "windows"))
+			h.AssertNil(t, builder.SaveAsFile(outputFile, "windows"))
 
 			// Windows baselayer content is constant
 			expectedBaseLayerReader, err := layer.WindowsBaseLayer()

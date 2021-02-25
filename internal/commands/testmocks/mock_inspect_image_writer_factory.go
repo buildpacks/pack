@@ -7,35 +7,34 @@ package testmocks
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-
 	writer "github.com/buildpacks/pack/internal/inspectimage/writer"
+	gomock "github.com/golang/mock/gomock"
 )
 
-// MockInspectImageWriterFactory is a mock of InspectImageWriterFactory interface
+// MockInspectImageWriterFactory is a mock of InspectImageWriterFactory interface.
 type MockInspectImageWriterFactory struct {
 	ctrl     *gomock.Controller
 	recorder *MockInspectImageWriterFactoryMockRecorder
 }
 
-// MockInspectImageWriterFactoryMockRecorder is the mock recorder for MockInspectImageWriterFactory
+// MockInspectImageWriterFactoryMockRecorder is the mock recorder for MockInspectImageWriterFactory.
 type MockInspectImageWriterFactoryMockRecorder struct {
 	mock *MockInspectImageWriterFactory
 }
 
-// NewMockInspectImageWriterFactory creates a new mock instance
+// NewMockInspectImageWriterFactory creates a new mock instance.
 func NewMockInspectImageWriterFactory(ctrl *gomock.Controller) *MockInspectImageWriterFactory {
 	mock := &MockInspectImageWriterFactory{ctrl: ctrl}
 	mock.recorder = &MockInspectImageWriterFactoryMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockInspectImageWriterFactory) EXPECT() *MockInspectImageWriterFactoryMockRecorder {
 	return m.recorder
 }
 
-// Writer mocks base method
+// Writer mocks base method.
 func (m *MockInspectImageWriterFactory) Writer(arg0 string, arg1 bool) (writer.InspectImageWriter, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Writer", arg0, arg1)
@@ -44,7 +43,7 @@ func (m *MockInspectImageWriterFactory) Writer(arg0 string, arg1 bool) (writer.I
 	return ret0, ret1
 }
 
-// Writer indicates an expected call of Writer
+// Writer indicates an expected call of Writer.
 func (mr *MockInspectImageWriterFactoryMockRecorder) Writer(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Writer", reflect.TypeOf((*MockInspectImageWriterFactory)(nil).Writer), arg0, arg1)

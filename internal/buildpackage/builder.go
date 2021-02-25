@@ -3,7 +3,6 @@ package buildpackage
 import (
 	"archive/tar"
 	"compress/gzip"
-	"io"
 	"io/ioutil"
 	"os"
 
@@ -24,11 +23,10 @@ import (
 )
 
 type ImageFactory interface {
-	NewImage(repoName string, local bool) (imgutil.Image, error)
+	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
 }
 
 type WorkableImage interface {
-	SetOS(string) error
 	SetLabel(string, string) error
 	AddLayerWithDiffID(path, diffID string) error
 }
@@ -48,16 +46,6 @@ func (i *layoutImage) SetLabel(key string, val string) error {
 	}
 	config.Labels[key] = val
 	i.Image, err = mutate.Config(i.Image, config)
-	return err
-}
-
-func (i *layoutImage) SetOS(osVal string) error {
-	configFile, err := i.ConfigFile()
-	if err != nil {
-		return err
-	}
-	configFile.OS = osVal
-	i.Image, err = mutate.ConfigFile(i.Image, configFile)
 	return err
 }
 
@@ -93,22 +81,12 @@ func (b *PackageBuilder) AddDependency(buildpack dist.Buildpack) {
 	b.dependencies = append(b.dependencies, buildpack)
 }
 
-func (b *PackageBuilder) finalizeImage(image WorkableImage, imageOS, tmpDir string) error {
+func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error {
 	if err := dist.SetLabel(image, MetadataLabel, &Metadata{
 		BuildpackInfo: b.buildpack.Descriptor().Info,
 		Stacks:        b.resolvedStacks(),
 	}); err != nil {
 		return err
-	}
-
-	if err := image.SetOS(imageOS); err != nil {
-		return err
-	}
-
-	if imageOS == "windows" {
-		if err := addWindowsShimBaseLayer(image, tmpDir); err != nil {
-			return err
-		}
 	}
 
 	bpLayers := dist.BuildpackLayers{}
@@ -134,39 +112,6 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, imageOS, tmpDir stri
 	}
 
 	if err := dist.SetLabel(image, dist.BuildpackLayersLabel, bpLayers); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func addWindowsShimBaseLayer(image WorkableImage, tmpDir string) error {
-	baseLayerFile, err := ioutil.TempFile(tmpDir, "windows-baselayer")
-	if err != nil {
-		return err
-	}
-	defer baseLayerFile.Close()
-
-	baseLayer, err := layer.WindowsBaseLayer()
-	if err != nil {
-		return err
-	}
-
-	if _, err := io.Copy(baseLayerFile, baseLayer); err != nil {
-		return err
-	}
-
-	if err := baseLayerFile.Close(); err != nil {
-		return err
-	}
-
-	baseLayerPath := baseLayerFile.Name()
-	diffID, err := dist.LayerDiffID(baseLayerPath)
-	if err != nil {
-		return err
-	}
-
-	if err := image.AddLayerWithDiffID(baseLayerPath, diffID.String()); err != nil {
 		return err
 	}
 
@@ -209,8 +154,9 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 		return err
 	}
 
-	layoutImage := &layoutImage{
-		Image: empty.Image,
+	layoutImage, err := newLayoutImage(imageOS)
+	if err != nil {
+		return errors.Wrap(err, "creating layout image")
 	}
 
 	tmpDir, err := ioutil.TempDir("", "package-buildpack")
@@ -219,7 +165,8 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	if err := b.finalizeImage(layoutImage, imageOS, tmpDir); err != nil {
+
+	if err := b.finalizeImage(layoutImage, tmpDir); err != nil {
 		return err
 	}
 
@@ -249,12 +196,46 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 	return archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false, nil)
 }
 
+func newLayoutImage(imageOS string) (*layoutImage, error) {
+	i := empty.Image
+
+	configFile, err := i.ConfigFile()
+	if err != nil {
+		return nil, err
+	}
+
+	configFile.OS = imageOS
+	i, err = mutate.ConfigFile(i, configFile)
+	if err != nil {
+		return nil, err
+	}
+
+	if imageOS == "windows" {
+		baseLayerReader, err := layer.WindowsBaseLayer()
+		if err != nil {
+			return nil, err
+		}
+
+		baseLayer, err := tarball.LayerFromReader(baseLayerReader, tarball.WithCompressionLevel(gzip.DefaultCompression))
+		if err != nil {
+			return nil, err
+		}
+
+		i, err = mutate.AppendLayers(i, baseLayer)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &layoutImage{Image: i}, nil
+}
+
 func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS string) (imgutil.Image, error) {
 	if err := b.validate(); err != nil {
 		return nil, err
 	}
 
-	image, err := b.imageFactory.NewImage(repoName, !publish)
+	image, err := b.imageFactory.NewImage(repoName, !publish, imageOS)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating image")
 	}
@@ -265,7 +246,7 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS stri
 	}
 	defer os.RemoveAll(tmpDir)
 
-	if err := b.finalizeImage(image, imageOS, tmpDir); err != nil {
+	if err := b.finalizeImage(image, tmpDir); err != nil {
 		return nil, err
 	}
 
