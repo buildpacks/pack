@@ -26,7 +26,7 @@ const AssetHashAlgorithm = "sha256"
 type AssetCacheImage struct {
 	Map              BlobMap
 	img              imgutil.Image
-	tarWriterFactory *layer.WriterFactory // TODO -Dan- should thi
+	tarWriterFactory *layer.WriterFactory
 }
 
 func NewAssetCacheImage(img imgutil.Image, m BlobMap, w *layer.WriterFactory) AssetCacheImage {

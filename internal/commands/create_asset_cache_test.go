@@ -113,7 +113,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 
 	when("#CreateAssetCache", func() {
 		when("buildpack image", func() {
-			when("pull-policy = always", func() {
+			when("image-preference = prefer-remote", func() {
 				it("looks for remote image first then local image", func() {
 					buildpackLocator = "some-image-org/some-image-name:latest"
 					daemonValues := []bool{}
@@ -147,7 +147,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					command.SetArgs([]string{
 						"some/asset-cache",
 						"--buildpack", buildpackLocator,
-						"--pull-policy", "always",
+						"--image-preference", "prefer-remote",
 					})
 
 					assert.Nil(command.Execute())
@@ -155,8 +155,8 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					assert.Equal(daemonValues, []bool{false, true})
 				})
 			})
-			when("pull-policy = never", func() {
-				it("only looks up only a local image", func() {
+			when("image-preference = only-local", func() {
+				it("looks up only a local image", func() {
 					buildpackLocator = "some-image-org/some-image-name:latest"
 
 					daemonValues := []bool{}
@@ -181,7 +181,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					command.SetArgs([]string{
 						"some/asset-cache",
 						"--buildpack", buildpackLocator,
-						"--pull-policy", "never",
+						"--image-preference", "only-local",
 					})
 
 					assert.Nil(command.Execute())
@@ -190,7 +190,42 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			when("pull-policy = if-not-present", func() {
+			when("image-preference = only-remote", func() {
+				it("looks up only a remote image", func() {
+					buildpackLocator = "some-image-org/some-image-name:latest"
+
+					daemonValues := []bool{}
+					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+						BuildpackName: buildpackLocator,
+						Daemon:        false,
+						Registry:      "default-reg",
+					}).Do(func(_ interface{}) {
+						daemonValues = append(daemonValues, true)
+					}).Return(&pack.BuildpackInfo{
+						BuildpackMetadata: buildpackage.Metadata{},
+						Buildpacks:        []dist.BuildpackInfo{firstBuildpack},
+						BuildpackLayers:   buildpackLayers,
+					}, nil)
+
+					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
+						ImageName: "some/asset-cache",
+						Assets:    []dist.Asset{firstAsset},
+						OS:        "linux",
+					})
+
+					command.SetArgs([]string{
+						"some/asset-cache",
+						"--buildpack", buildpackLocator,
+						"--image-preference", "only-remote",
+					})
+
+					assert.Nil(command.Execute())
+
+					assert.Equal(daemonValues, []bool{true})
+				})
+			})
+
+			when("image-preference = prefer-local", func() {
 				it("looks for local image first then remote image", func() {
 					buildpackLocator = "some-image-org/some-image-name:latest"
 					daemonValues := []bool{}
@@ -223,7 +258,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					command.SetArgs([]string{
 						"some/asset-cache",
 						"--buildpack", buildpackLocator,
-						"--pull-policy", "if-not-present",
+						"--image-preference", "prefer-local",
 					})
 
 					assert.Nil(command.Execute())
@@ -370,6 +405,16 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("failure cases", func() {
+			when("invalid asset cache image name is used", func() {
+				it("errors with a informative message", func() {
+					command.SetArgs([]string{
+						"::::",
+						"--buildpack", "some-locator",
+					})
+					err := command.Execute()
+					assert.ErrorContains(err, `unable to parse cache image name`)
+				})
+			})
 			when("no --buildpack flag is specified", func() {
 				it("errors with a informative message", func() {
 					command.SetArgs([]string{"error/asset-cache-error"})
@@ -377,16 +422,16 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					assert.ErrorContains(err, "must specify a buildpack locator using the --buildpack flag")
 				})
 			})
-			when("unknown pull policy", func() {
+			when("unknown image-preference", func() {
 				it("errors with informative message", func() {
 					command.SetArgs([]string{
 						"some/asset-cache",
 						"--buildpack", "some-locator",
-						"--pull-policy", "boopdoop",
+						"--image-preference", "boopdoop",
 					})
 
 					err := command.Execute()
-					assert.ErrorContains(err, "parsing pull policy")
+					assert.ErrorContains(err, `unknown image preference: "boopdoop"`)
 				})
 			})
 			when("unknown os option", func() {
@@ -398,7 +443,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					err := command.Execute()
-					assert.ErrorContains(err, "unknown os type: schwindodos")
+					assert.ErrorContains(err, `unknown os type: "schwindodos"`)
 				})
 			})
 

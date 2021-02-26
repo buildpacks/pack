@@ -3,10 +3,9 @@ package pack
 import (
 	"context"
 	"fmt"
+	pubcfg "github.com/buildpacks/pack/config"
 	"io/ioutil"
 	"strings"
-
-	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/buildpackage"
@@ -24,17 +23,12 @@ type CreateAssetCacheOptions struct {
 }
 
 func (c *Client) CreateAssetCache(ctx context.Context, opts CreateAssetCacheOptions) error {
-	validOpts, err := validateConfig(opts)
-	if err != nil {
-		return err
-	}
-
-	img, err := c.imageFactory.NewImage(validOpts.ImageName, !opts.Publish)
+	img, err := c.imageFactory.NewImage(opts.ImageName, !opts.Publish)
 	if err != nil {
 		return fmt.Errorf("unable to create asset cache image: %q", err)
 	}
-	if opts.OS == "windows" {
-		err := img.SetOS("windows")
+	if opts.OS == pubcfg.WindowsOS {
+		err := img.SetOS(pubcfg.WindowsOS)
 		if err != nil {
 			panic(err)
 		}
@@ -145,12 +139,3 @@ func downloadWorker(downloader Downloader, jobs <-chan downloadJob, results chan
 	}
 }
 
-func validateConfig(cfg CreateAssetCacheOptions) (CreateAssetCacheOptions, error) {
-	tag, err := name.NewTag(cfg.ImageName, name.WeakValidation)
-	if err != nil {
-		return CreateAssetCacheOptions{}, fmt.Errorf("invalid asset cache image name: %q", err)
-	}
-	return CreateAssetCacheOptions{
-		ImageName: tag.String(),
-	}, nil
-}

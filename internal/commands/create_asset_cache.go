@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/google/go-containerregistry/pkg/name"
 	"sort"
 
 	"github.com/pkg/errors"
@@ -15,42 +16,20 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-// TODO -Dan- there is a clean way to do this....
-func ValidateOS(os string) error {
-	switch os {
-	case "linux":
-		return nil
-	case "windows":
-		return nil
-	default:
-		return fmt.Errorf("unknown os type: %s", os)
-	}
-}
-
 type CreateAssetCacheFlags struct {
 	BuildpackLocator string
 	PullPolicy       pubcfg.PullPolicy
 	Publish          bool
 	Registry         string
-	Policy           string
+	ImagePreference  string
 	OS               string
 }
 
-var inspectOptionsMapping = map[pubcfg.PullPolicy][]pack.InspectBuildpackOptions{
-	pubcfg.PullNever: {
-		{
-			Daemon: true,
-		}},
-	pubcfg.PullAlways: {{
-		Daemon: false,
-	}, {
-		Daemon: true,
-	}},
-	pubcfg.PullIfNotPresent: {{
-		Daemon: true,
-	}, {
-		Daemon: false,
-	}},
+var inspectOptionsMapping = map[string][]pack.InspectBuildpackOptions{
+	pubcfg.LocalImagePreference: {{Daemon: true}, {Daemon: false}},
+	pubcfg.RemoteImagePreference: {{Daemon: false}, {Daemon: true}},
+	pubcfg.OnlyLocalImage: {{Daemon: true}},
+	pubcfg.OnlyRemoteImage: {{Daemon: false}},
 }
 
 func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
@@ -63,29 +42,22 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 		Short:   "create an asset cache",
 		Example: "pack create-asset-cache /path/to/buildpack/root",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			// pull policy should indicate preceedence of daemon flags
-			if err := validateAssetCacheFlags(&flags); err != nil {
+			if err := validateAssetCacheFlags(flags); err != nil {
 				return err
 			}
-
-			stringPolicy := flags.Policy
-			pullPolicy, err := pubcfg.ParsePullPolicy(stringPolicy)
+			cacheImageName, err := validateCacheImageName(args[0])
 			if err != nil {
-				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
-			}
-
-			if err = ValidateOS(flags.OS); err != nil {
 				return err
 			}
 
 			// assume that inspectOptionsMapping contains all valid pull policies
-			inspectOptions := inspectOptionsMapping[pullPolicy]
+			inspectOptions := inspectOptionsMapping[flags.ImagePreference]
 			for k := range inspectOptions {
 				inspectOptions[k].Registry = flags.Registry
 				inspectOptions[k].BuildpackName = flags.BuildpackLocator
 			}
 
-			buildpackInfo, err := tryInspect(client, inspectOptions)
+			buildpackInfo, err := inspectBuildpack(client, inspectOptions)
 			if err != nil {
 				return errors.New("buildpack not found")
 			}
@@ -95,7 +67,7 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 				errors.Wrap(err, "error fetching buildpack assets")
 			}
 			if err := client.CreateAssetCache(cmd.Context(), pack.CreateAssetCacheOptions{
-				ImageName: args[0],
+				ImageName: cacheImageName.String(),
 				Assets:    assets,
 				Publish:   flags.Publish,
 				OS:        flags.OS,
@@ -108,17 +80,17 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 	}
 
 	cmd.Flags().StringVarP(&flags.BuildpackLocator, "buildpack", "b", "", "Buildpack Locator")
-	cmd.Flags().StringVar(&flags.Policy, "pull-policy", cfg.PullPolicy, "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
+	cmd.Flags().StringVar(&flags.ImagePreference, "image-preference", pubcfg.LocalImagePreference, "Image Preference to use Accepted values are prefer-local, prefer-remote, only-local, and only-remote. The default is prefer-loca")
 	cmd.Flags().StringVarP(&flags.Registry, "buildpack-registry", "R", cfg.DefaultRegistryName, "Buildpack Registry by name")
 	cmd.Flags().StringVarP(&flags.BuildpackLocator, "config", "c", "", "optional asset-cache.toml to filter assets in the resulting asset cache")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
-	cmd.Flags().StringVar(&flags.OS, "os", "linux", "cache image os type")
+	cmd.Flags().StringVar(&flags.OS, "os", pubcfg.LinuxOS, "cache image os type")
 
 	AddHelpFlag(cmd, "create-asset-cache")
 	return cmd
 }
 
-func tryInspect(c PackClient, inspectOptions []pack.InspectBuildpackOptions) (*pack.BuildpackInfo, error) {
+func inspectBuildpack(c PackClient, inspectOptions []pack.InspectBuildpackOptions) (*pack.BuildpackInfo, error) {
 	var buildpackInfo *pack.BuildpackInfo
 	var err error
 	for _, inspectOption := range inspectOptions {
@@ -136,13 +108,30 @@ func tryInspect(c PackClient, inspectOptions []pack.InspectBuildpackOptions) (*p
 	return nil, image.ErrNotFound
 }
 
-func validateAssetCacheFlags(flags *CreateAssetCacheFlags) error {
+func validateAssetCacheFlags(flags CreateAssetCacheFlags) error {
 	if flags.BuildpackLocator == "" {
 		return errors.New("must specify a buildpack locator using the --buildpack flag")
 	}
+	if err := pubcfg.ValidateOS(flags.OS); err != nil {
+		return err
+	}
+	if err := pubcfg.ValidateImagePreference(flags.ImagePreference); err != nil {
+		return err
+	}
+
 	return nil
 }
 
+func validateCacheImageName(imgName string) (name.Tag, error) {
+	tag, err := name.NewTag(imgName, name.WeakValidation)
+	if err != nil {
+		return name.Tag{}, errors.Wrap(err, "unable to parse cache image name")
+	}
+	return tag, nil
+}
+
+// TODO -Dan- this should support getting info from a buildpack.toml file
+//    this will require more changes to InspectBuildpack (returns a Buildpack.Descriptor not just dist.BuildpackInfo)
 func getAssets(info *pack.BuildpackInfo) ([]dist.Asset, error) {
 	result := []dist.Asset{}
 	assetMap := map[string]dist.Asset{}

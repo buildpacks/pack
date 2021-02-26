@@ -243,16 +243,6 @@ second-asset-blob-contents.
 		})
 
 		when("failure cases", func() {
-			when("invalid image name", func() {
-				it("fails with an error message", func() {
-					imageName := "::::"
-					err := client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{
-						ImageName: imageName,
-						OS: "linux",
-					})
-					assert.ErrorContains(err, "invalid asset cache image name: ")
-				})
-			})
 			when("unable to create a new image", func() {
 				it("fails with an error message", func() {
 					imageName := "some-example-image"
