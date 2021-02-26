@@ -6,3 +6,6 @@ image = "{{.simple_buildpack}}"
 
 [[dependencies]]
 image = "{{.second_simple_buildpack}}"
+
+[platform]
+os = "{{ .OS }}"

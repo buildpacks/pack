@@ -209,6 +209,35 @@ second-asset-blob-contents.
 					assert.Equal(fakeImage.IsSaved(), true)
 				})
 			})
+
+			when("windows", func() {
+				// TODO: -Dan- skip unless windows
+				it.Focus("creates a windows cache image", func() {
+					imageName := "test-windwos-cache-image"
+					imgRef, err := name.NewTag(imageName)
+					assert.Nil(err)
+
+					fakeImage = fakes.NewImage(imageName, "somesha256", imgRef)
+
+					mockImageFactory.EXPECT().NewImage(imageName, false).Return(fakeImage, nil)
+
+					assert.Succeeds(client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{
+						ImageName: imageName,
+						Assets:    []dist.Asset{},
+						Publish:   true,
+						OS:        "windows",
+					}))
+
+					assert.Equal(fakeImage.IsSaved(), true)
+
+					// check that windows image is properly set up
+					imgOS, err := fakeImage.OS()
+					assert.Nil(err)
+					assert.Equal(imgOS, "windows")
+
+					assert.Equal(fakeImage.NumberOfAddedLayers(), 1)
+				})
+			})
 		})
 
 		when("failure cases", func() {

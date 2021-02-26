@@ -2,6 +2,7 @@ package dist_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/testhelpers"
 )
@@ -76,7 +78,10 @@ second-asset-blob-contents.
 				}),
 			}
 
-			subject := dist.NewAssetCacheImage(fakeImage, blobMap)
+			tarWriterFactory, err := layer.NewWriterFactory("linux")
+			assert.Nil(err)
+
+			subject := dist.NewAssetCacheImage(fakeImage, blobMap, tarWriterFactory)
 			assert.Succeeds(subject.Save())
 
 			assert.Equal(fakeImage.IsSaved(), true)
@@ -94,14 +99,14 @@ second-asset-blob-contents.
 				"first-sha256": dist.AssetValue{
 					ID:          "first-asset",
 					Name:        "First Asset",
-					LayerDiffID: "sha256:edde92682d3bc9b299b52a0af4a3934ae6742e0eb90bc7168e81af5ab6241722",
+					LayerDiffID: "sha256:268dd0ebfea28592faa58771c467a3ad1a0f169b10a2f575f3d1080bab5a06d2",
 					Stacks:      []string{"io.buildpacks.stacks.bionic"},
 					URI:         "https://first-asset-uri",
 					Version:     "1.2.3",
 				}, "second-sha256": dist.AssetValue{
 					ID:          "second-asset",
 					Name:        "Second Asset",
-					LayerDiffID: "sha256:46e2287266ceafd2cd4f580566f2b9f504f7b78d472bb3401de18f2410ad1614",
+					LayerDiffID: "sha256:02698069f5d4415f04fb0037428f99b50d0d3dd9a59836dde261b7ef17823049",
 					Stacks:      []string{"io.buildpacks.stacks.bionic"},
 					URI:         "https://second-asset-uri",
 					Version:     "4.5.6",
@@ -112,7 +117,7 @@ second-asset-blob-contents.
 			assert.Nil(err)
 			assert.NotEqual(firstLayerName, "")
 
-			firstLayerReader, err := fakeImage.GetLayer("sha256:edde92682d3bc9b299b52a0af4a3934ae6742e0eb90bc7168e81af5ab6241722")
+			firstLayerReader, err := fakeImage.GetLayer("sha256:268dd0ebfea28592faa58771c467a3ad1a0f169b10a2f575f3d1080bab5a06d2")
 			assert.Nil(err)
 
 			_, b, err := archive.ReadTarEntry(firstLayerReader, "/cnb/assets/first-sha256")
@@ -124,12 +129,77 @@ second-asset-blob-contents.
 
 			assert.NotEqual(secondLayerName, "")
 
-			secondLayerReader, err := fakeImage.GetLayer("sha256:46e2287266ceafd2cd4f580566f2b9f504f7b78d472bb3401de18f2410ad1614")
+			secondLayerReader, err := fakeImage.GetLayer("sha256:02698069f5d4415f04fb0037428f99b50d0d3dd9a59836dde261b7ef17823049")
 			assert.Nil(err)
 
 			_, b, err = archive.ReadTarEntry(secondLayerReader, "/cnb/assets/second-sha256")
 			assert.Nil(err)
 			assert.Contains(string(b), "second-asset-blob-contents.")
+		})
+
+		when("windows", func() {
+			it.Before(func() {
+				it.Before(func() {
+					var err error
+					tmpDir, err = ioutil.TempDir("", "create-asset-cache-command-test")
+					assert.Nil(err)
+
+					firstAssetBlobPath := filepath.Join(tmpDir, "firstAssetBlob")
+					assert.Succeeds(ioutil.WriteFile(firstAssetBlobPath, []byte(`
+			first-asset-blob-contents.
+			`), os.ModePerm))
+					firstAssetBlob = blob.NewBlob(firstAssetBlobPath)
+				})
+			})
+			it("saves a windows based cache image", func() {
+				tag, err := name.NewTag("windows-asset-cache-image")
+				assert.Nil(err)
+				fakeImage := fakes.NewImage("windows-asset-cache-image", "some-top-level-sha", tag)
+
+				blobMap := dist.BlobMap{
+					"first-sha256": dist.NewBlobAssetPair(firstAssetBlob, dist.AssetValue{
+						ID:      "first-asset",
+						Name:    "First Asset",
+						Stacks:  []string{"io.buildpacks.stacks.windows"},
+						URI:     "https://first-asset-uri",
+						Version: "1.2.3",
+					}),
+				}
+
+				windowsWriterFactory, err := layer.NewWriterFactory("windows")
+				assert.Nil(err)
+
+				subject := dist.NewAssetCacheImage(fakeImage, blobMap, windowsWriterFactory)
+
+				assert.Succeeds(subject.Save())
+				assert.Equal(fakeImage.IsSaved(), true)
+
+				layersLabel, err := fakeImage.Label(dist.AssetCacheLayersLabel)
+				assert.Nil(err)
+
+				var assetMetadata dist.AssetMap
+				assert.Succeeds(json.NewDecoder(strings.NewReader(layersLabel)).Decode(&assetMetadata))
+				assert.Equal(assetMetadata, dist.AssetMap{
+					"first-sha256": dist.AssetValue{
+						ID:          "first-asset",
+						Name:        "First Asset",
+						LayerDiffID: "sha256:8896d17ea5e9fd048fc77b0f3b0423ea95ea5137536e623e839b93d90216b0bd",
+						Stacks:      []string{"io.buildpacks.stacks.windows"},
+						URI:         "https://first-asset-uri",
+						Version:     "1.2.3",
+					},
+				})
+
+				fmt.Printf("%#v\n", fakeImage)
+				assert.Equal(fakeImage.NumberOfAddedLayers(), 1)
+
+				firstLayerReader, err := fakeImage.GetLayer("sha256:8896d17ea5e9fd048fc77b0f3b0423ea95ea5137536e623e839b93d90216b0bd")
+				assert.Nil(err)
+
+				_, b, err := archive.ReadTarEntry(firstLayerReader, "Files/cnb/assets/first-sha256")
+				assert.Nil(err)
+				assert.Contains(string(b), "first-asset-blob-contents.")
+			})
 		})
 	})
 	when("failure cases", func() {
@@ -150,7 +220,10 @@ second-asset-blob-contents.
 					}),
 				}
 
-				subject := dist.NewAssetCacheImage(fakeImage, blobMap)
+				tarWriterFactory, err := layer.NewWriterFactory("linux")
+				assert.Nil(err)
+
+				subject := dist.NewAssetCacheImage(fakeImage, blobMap, tarWriterFactory)
 				err = subject.Save()
 
 				assert.ErrorContains(err, `unable to open blob for asset "first-sha256"`)

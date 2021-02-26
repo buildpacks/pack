@@ -3,12 +3,15 @@ package pack
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/layer"
 )
 
 const assetDownloadWorkers = 4
@@ -17,6 +20,7 @@ type CreateAssetCacheOptions struct {
 	ImageName string
 	Assets    dist.Assets
 	Publish   bool
+	OS        string
 }
 
 func (c *Client) CreateAssetCache(ctx context.Context, opts CreateAssetCacheOptions) error {
@@ -29,16 +33,35 @@ func (c *Client) CreateAssetCache(ctx context.Context, opts CreateAssetCacheOpti
 	if err != nil {
 		return fmt.Errorf("unable to create asset cache image: %q", err)
 	}
+	if opts.OS == "windows" {
+		err := img.SetOS("windows")
+		if err != nil {
+			panic(err)
+		}
+		windowsTmpDir, err := ioutil.TempDir("", "windows-base-layer")
+		if err != nil {
+			panic(err)
+		}
+		err = buildpackage.AddWindowsShimBaseLayer(img, windowsTmpDir)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	blobMap, err := c.downloadAssets(opts.Assets)
 	if err != nil {
 		return err
 	}
 
+	// TODO -Dan- Do we use these results???
 	assetMap := opts.Assets.ToIncompleteAssetMap()
 	assetMap.Filter(blobMap.Keys())
 
-	assetCacheImage := dist.NewAssetCacheImage(img, blobMap)
+	tarWriterFactory, err := layer.NewWriterFactory(opts.OS)
+	if err != nil {
+		panic(err)
+	}
+	assetCacheImage := dist.NewAssetCacheImage(img, blobMap, tarWriterFactory)
 	return assetCacheImage.Save()
 }
 

@@ -60,6 +60,7 @@ func (a *AssetMap) Keys() []string {
 	return result
 }
 
+// TODO: -Dan- return a filtered list
 func (a *AssetMap) Filter(keepKeys []string) {
 	allKeys := a.Keys()
 	sort.Strings(keepKeys)

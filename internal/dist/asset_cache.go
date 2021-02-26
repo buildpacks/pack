@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/pkg/archive"
 )
 
@@ -23,16 +24,21 @@ const AssetCacheLayersLabel = "io.buildpacks.asset.layers"
 const AssetHashAlgorithm = "sha256"
 
 type AssetCacheImage struct {
-	Map BlobMap
-	img imgutil.Image
+	Map              BlobMap
+	img              imgutil.Image
+	tarWriterFactory *layer.WriterFactory // TODO -Dan- should thi
 }
 
-func NewAssetCacheImage(img imgutil.Image, m BlobMap) AssetCacheImage {
+func NewAssetCacheImage(img imgutil.Image, m BlobMap, w *layer.WriterFactory) AssetCacheImage {
 	return AssetCacheImage{
-		img: img,
-		Map: m,
+		img:              img,
+		Map:              m,
+		tarWriterFactory: w,
 	}
 }
+
+// TODO -make a service that writes blobs & metadata onto image.
+// Image can take care of saving.
 
 func (a *AssetCacheImage) Save() error {
 	tmpDir, err := ioutil.TempDir("", "create-asset-scratch")
@@ -82,7 +88,7 @@ func (a *AssetCacheImage) addBlobLayer(b blob.Blob, blobSha256 string, layerPath
 	}
 
 	w := io.MultiWriter(dstTar, hash)
-	tw := tar.NewWriter(w)
+	tw := a.tarWriterFactory.NewWriter(w)
 	if err = toAssetTar(tw, blobSha256, b); err != nil {
 		return "", err
 	}
@@ -98,7 +104,7 @@ func toAssetTar(tw archive.TarWriter, blobSha string, blob Blob) error {
 
 	if err := tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
-		Name:     path.Join("cnb"),
+		Name:     path.Join("/cnb"),
 		Mode:     0755,
 		ModTime:  ts,
 	}); err != nil {
@@ -107,7 +113,7 @@ func toAssetTar(tw archive.TarWriter, blobSha string, blob Blob) error {
 
 	if err := tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
-		Name:     path.Join("cnb", "assets"),
+		Name:     path.Join("/cnb", "assets"),
 		Mode:     0755,
 		ModTime:  ts,
 	}); err != nil {

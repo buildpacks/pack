@@ -141,6 +141,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
 						Assets:    []dist.Asset{firstAsset},
+						OS:        "linux",
 					})
 
 					command.SetArgs([]string{
@@ -174,6 +175,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
 						Assets:    []dist.Asset{firstAsset},
+						OS:        "linux",
 					})
 
 					command.SetArgs([]string{
@@ -215,6 +217,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
 						Assets:    []dist.Asset{firstAsset},
+						OS:        "linux",
 					})
 
 					command.SetArgs([]string{
@@ -257,6 +260,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 							ImageName: "some/asset-cache",
 							Assets:    []dist.Asset{firstAsset, secondAsset},
+							OS:        "linux",
 						})
 
 						assert.Nil(command.Execute())
@@ -292,6 +296,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
 						Assets:    []dist.Asset{firstAsset, secondAsset},
+						OS:        "linux",
 					})
 
 					assert.Nil(command.Execute())
@@ -326,6 +331,38 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					ImageName: "some/asset-cache",
 					Assets:    []dist.Asset{firstAsset, secondAsset},
 					Publish:   true,
+					OS:        "linux",
+				})
+
+				assert.Succeeds(command.Execute())
+			})
+		})
+
+		when("--os windows", func() {
+			it("succeeds", func() {
+				buildpackLocator = "some-windows-buildpack"
+				command.SetArgs([]string{
+					"some/asset-cache",
+					"--buildpack", buildpackLocator,
+					"--os", "windows",
+				})
+
+				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					BuildpackName: buildpackLocator,
+					Daemon:        true,
+					Registry:      "default-reg",
+				}).Return(
+					&pack.BuildpackInfo{
+						BuildpackMetadata: buildpackage.Metadata{},
+						Buildpacks:        []dist.BuildpackInfo{firstBuildpack, secondBuildpack},
+						BuildpackLayers:   buildpackLayers,
+					},
+					nil,
+				)
+				mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
+					ImageName: "some/asset-cache",
+					Assets:    []dist.Asset{firstAsset, secondAsset},
+					OS:        "windows",
 				})
 
 				assert.Succeeds(command.Execute())
@@ -350,6 +387,18 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 
 					err := command.Execute()
 					assert.ErrorContains(err, "parsing pull policy")
+				})
+			})
+			when("unknown os option", func() {
+				it("errors with an informative message", func() {
+					command.SetArgs([]string{
+						"some/asset-cache",
+						"--buildpack", "some-locator",
+						"--os", "schwindodos",
+					})
+
+					err := command.Execute()
+					assert.ErrorContains(err, "unknown os type: schwindodos")
 				})
 			})
 
@@ -421,6 +470,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						ImageName: "some/asset-cache",
 						Assets:    []dist.Asset{firstAsset, secondAsset},
 						Publish:   true,
+						OS:        "linux",
 					}).Return(errors.New("asset-cache-creation-error"))
 
 					err := command.Execute()

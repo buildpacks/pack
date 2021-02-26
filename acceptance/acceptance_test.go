@@ -718,6 +718,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			templateMapping["simple_buildpack"] = simpleBuildpackImageName
 			templateMapping["second_simple_buildpack"] = secondSimpleBuildpackImageName
+			templateMapping["OS"] = dockerHostOS()
 
 			nestedConfigFile, err := ioutil.TempFile(tmpDir, "nested_assets_buildpack_package.toml")
 			fixtureManager.TemplateFixtureToFile(
@@ -760,6 +761,7 @@ func testWithoutSpecificBuilderRequirement(
 				"asset-cache", "create",
 				assetCacheName,
 				"--buildpack", nestedBuildpackImageName,
+				"--os", dockerHostOS(),
 			)
 			defer h.DockerRmi(dockerCli, assetCacheName)
 
@@ -809,6 +811,7 @@ func testWithoutSpecificBuilderRequirement(
 				"asset-cache", "create",
 				identicalAssetCacheName,
 				"--buildpack", allAssetsBuildpackImageName,
+				"--os", dockerHostOS(),
 			)
 			defer h.DockerRmi(dockerCli, identicalAssetCacheName)
 

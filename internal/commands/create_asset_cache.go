@@ -15,12 +15,25 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
+// TODO -Dan- there is a clean way to do this....
+func ValidateOS(os string) error {
+	switch os {
+	case "linux":
+		return nil
+	case "windows":
+		return nil
+	default:
+		return fmt.Errorf("unknown os type: %s", os)
+	}
+}
+
 type CreateAssetCacheFlags struct {
 	BuildpackLocator string
 	PullPolicy       pubcfg.PullPolicy
 	Publish          bool
 	Registry         string
 	Policy           string
+	OS               string
 }
 
 var inspectOptionsMapping = map[pubcfg.PullPolicy][]pack.InspectBuildpackOptions{
@@ -47,7 +60,7 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 		Use:     "create cache-name",
 		Hidden:  false,
 		Args:    cobra.ExactArgs(1),
-		Short:   "Yank build an asset cache using the specified buildpack",
+		Short:   "create an asset cache",
 		Example: "pack create-asset-cache /path/to/buildpack/root",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			// pull policy should indicate preceedence of daemon flags
@@ -59,6 +72,10 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 			pullPolicy, err := pubcfg.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
+			}
+
+			if err = ValidateOS(flags.OS); err != nil {
+				return err
 			}
 
 			// assume that inspectOptionsMapping contains all valid pull policies
@@ -81,6 +98,7 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 				ImageName: args[0],
 				Assets:    assets,
 				Publish:   flags.Publish,
+				OS:        flags.OS,
 			}); err != nil {
 				return errors.Wrap(err, "error, unable to create asset cache")
 			}
@@ -94,6 +112,7 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 	cmd.Flags().StringVarP(&flags.Registry, "buildpack-registry", "R", cfg.DefaultRegistryName, "Buildpack Registry by name")
 	cmd.Flags().StringVarP(&flags.BuildpackLocator, "config", "c", "", "optional asset-cache.toml to filter assets in the resulting asset cache")
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
+	cmd.Flags().StringVar(&flags.OS, "os", "linux", "cache image os type")
 
 	AddHelpFlag(cmd, "create-asset-cache")
 	return cmd

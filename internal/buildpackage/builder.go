@@ -106,7 +106,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, imageOS, tmpDir stri
 	}
 
 	if imageOS == "windows" {
-		if err := addWindowsShimBaseLayer(image, tmpDir); err != nil {
+		if err := AddWindowsShimBaseLayer(image, tmpDir); err != nil {
 			return err
 		}
 	}
@@ -140,7 +140,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, imageOS, tmpDir stri
 	return nil
 }
 
-func addWindowsShimBaseLayer(image WorkableImage, tmpDir string) error {
+func AddWindowsShimBaseLayer(image WorkableImage, tmpDir string) error {
 	baseLayerFile, err := ioutil.TempFile(tmpDir, "windows-baselayer")
 	if err != nil {
 		return err
