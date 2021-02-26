@@ -462,7 +462,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when.Focus("nested package", func() {
+		when("nested package", func() {
 			var (
 				nestedPackage     *fakes.Image
 				childDescriptor   dist.BuildpackDescriptor

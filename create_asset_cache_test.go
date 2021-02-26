@@ -135,6 +135,7 @@ second-asset-blob-contents.
 							Version: "7.8.9",
 						},
 					},
+					OS: "linux",
 				}))
 
 				assert.Equal(fakeImage.IsSaved(), true)
@@ -152,14 +153,14 @@ second-asset-blob-contents.
 					"first-sha256": dist.AssetValue{
 						ID:          "first-asset-replace",
 						Name:        "First Asset Replace",
-						LayerDiffID: "sha256:edde92682d3bc9b299b52a0af4a3934ae6742e0eb90bc7168e81af5ab6241722",
+						LayerDiffID: "sha256:268dd0ebfea28592faa58771c467a3ad1a0f169b10a2f575f3d1080bab5a06d2",
 						Stacks:      []string{"io.buildpacks.stacks.bionic"},
 						URI:         "https://first-asset-replace-uri",
 						Version:     "1.2.3",
 					}, "second-sha256": dist.AssetValue{
 						ID:          "second-asset",
 						Name:        "Second Asset",
-						LayerDiffID: "sha256:46e2287266ceafd2cd4f580566f2b9f504f7b78d472bb3401de18f2410ad1614",
+						LayerDiffID: "sha256:02698069f5d4415f04fb0037428f99b50d0d3dd9a59836dde261b7ef17823049",
 						Stacks:      []string{"io.buildpacks.stacks.bionic"},
 						URI:         "https://second-asset-uri",
 						Version:     "4.5.6",
@@ -170,7 +171,7 @@ second-asset-blob-contents.
 				assert.Nil(err)
 				assert.NotEqual(firstLayerName, "")
 
-				firstLayerReader, err := fakeImage.GetLayer("sha256:edde92682d3bc9b299b52a0af4a3934ae6742e0eb90bc7168e81af5ab6241722")
+				firstLayerReader, err := fakeImage.GetLayer("sha256:268dd0ebfea28592faa58771c467a3ad1a0f169b10a2f575f3d1080bab5a06d2")
 				assert.Nil(err)
 
 				_, b, err := archive.ReadTarEntry(firstLayerReader, "/cnb/assets/first-sha256")
@@ -182,7 +183,7 @@ second-asset-blob-contents.
 
 				assert.NotEqual(secondLayerName, "")
 
-				secondLayerReader, err := fakeImage.GetLayer("sha256:46e2287266ceafd2cd4f580566f2b9f504f7b78d472bb3401de18f2410ad1614")
+				secondLayerReader, err := fakeImage.GetLayer("sha256:02698069f5d4415f04fb0037428f99b50d0d3dd9a59836dde261b7ef17823049")
 				assert.Nil(err)
 
 				_, b, err = archive.ReadTarEntry(secondLayerReader, "/cnb/assets/second-sha256")
@@ -204,6 +205,7 @@ second-asset-blob-contents.
 						ImageName: imageName,
 						Assets:    []dist.Asset{},
 						Publish:   true,
+						OS: "linux",
 					}))
 
 					assert.Equal(fakeImage.IsSaved(), true)
@@ -212,7 +214,7 @@ second-asset-blob-contents.
 
 			when("windows", func() {
 				// TODO: -Dan- skip unless windows
-				it.Focus("creates a windows cache image", func() {
+				it("creates a windows cache image", func() {
 					imageName := "test-windwos-cache-image"
 					imgRef, err := name.NewTag(imageName)
 					assert.Nil(err)
@@ -246,6 +248,7 @@ second-asset-blob-contents.
 					imageName := "::::"
 					err := client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{
 						ImageName: imageName,
+						OS: "linux",
 					})
 					assert.ErrorContains(err, "invalid asset cache image name: ")
 				})
@@ -257,6 +260,7 @@ second-asset-blob-contents.
 
 					err := client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{
 						ImageName: imageName,
+						OS: "linux",
 					})
 
 					assert.ErrorContains(err, "unable to create asset cache image:")
@@ -285,6 +289,7 @@ second-asset-blob-contents.
 								Version: "1.2.3",
 							},
 						},
+						OS: "linux",
 					})
 
 					assert.ErrorContains(err, "blob download error")
