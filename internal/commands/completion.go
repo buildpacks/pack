@@ -25,6 +25,10 @@ var shellExtensions = map[string]completionFunc{
 		p := filepath.Join(packHome, "completion.fish")
 		return p, cmd.GenFishCompletionFile(p, true)
 	},
+	"powershell": func(packHome string, cmd *cobra.Command) (path string, err error) {
+		p := filepath.Join(packHome, "completion.ps1")
+		return p, cmd.GenPowerShellCompletionFile(p)
+	},
 	"zsh": func(packHome string, cmd *cobra.Command) (path string, err error) {
 		p := filepath.Join(packHome, "completion.zsh")
 		return p, cmd.GenZshCompletionFile(p)
@@ -46,9 +50,15 @@ To configure your fish shell to load completions for each session, add the follo
 
 	source (pack completion --shell fish)
 
+To configure your powershell to load completions for each session, add the following to your '$Home\[My ]Documents\PowerShell\
+Microsoft.PowerShell_profile.ps1':
+
+	. $(pack completion --shell powershell)
+
 To configure your zsh shell to load completions for each session, add the following to your '.zshrc':
 
 	. $(pack completion --shell zsh)
+
   
 	`,
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
@@ -71,6 +81,6 @@ To configure your zsh shell to load completions for each session, add the follow
 		}),
 	}
 
-	completionCmd.Flags().StringVarP(&flags.Shell, "shell", "s", "bash", "Generates completion file for [bash|fish|zsh]")
+	completionCmd.Flags().StringVarP(&flags.Shell, "shell", "s", "bash", "Generates completion file for [bash|fish|powershell|zsh]")
 	return completionCmd
 }
