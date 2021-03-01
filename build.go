@@ -27,6 +27,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
+	internalConfig "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/paths"
@@ -39,9 +40,6 @@ import (
 )
 
 const (
-	// The lifecycle image that will be used for the analysis, restore and export phases
-	// when using an untrusted builder.
-	LifecycleImageRepo                   = "buildpacksio/lifecycle"
 	minLifecycleVersionSupportingCreator = "0.7.4"
 	prevLifecycleVersionSupportingImage  = "0.6.1"
 	minLifecycleVersionSupportingImage   = "0.7.5"
@@ -153,6 +151,10 @@ type BuildOptions struct {
 
 	// ProjectDescriptor describes the project and any configuration specific to the project
 	ProjectDescriptor project.Descriptor
+
+	// The lifecycle image that will be used for the analysis, restore and export phases
+	// when using an untrusted builder.
+	LifecycleImage string
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -320,9 +322,13 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	if !opts.TrustBuilder {
 		if lifecycleImageSupported(imgOS, lifecycleVersion) {
+			lifecycleImageName := opts.LifecycleImage
+			if lifecycleImageName == "" {
+				lifecycleImageName = fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycleVersion.String())
+			}
 			lifecycleImage, err := c.imageFetcher.Fetch(
 				ctx,
-				fmt.Sprintf("%s:%s", LifecycleImageRepo, lifecycleVersion.String()),
+				lifecycleImageName,
 				true,
 				opts.PullPolicy,
 			)
