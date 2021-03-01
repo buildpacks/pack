@@ -4,7 +4,7 @@ import "fmt"
 
 const (
 	WindowsOS = "windows"
-	LinuxOS = "linux"
+	LinuxOS   = "linux"
 )
 
 func ValidateOS(os string) error {
@@ -17,4 +17,3 @@ func ValidateOS(os string) error {
 		return fmt.Errorf("unknown os type: %q", os)
 	}
 }
-

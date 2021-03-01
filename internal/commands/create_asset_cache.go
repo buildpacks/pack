@@ -2,8 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"github.com/google/go-containerregistry/pkg/name"
 	"sort"
+
+	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -26,10 +27,10 @@ type CreateAssetCacheFlags struct {
 }
 
 var inspectOptionsMapping = map[string][]pack.InspectBuildpackOptions{
-	pubcfg.LocalImagePreference: {{Daemon: true}, {Daemon: false}},
+	pubcfg.LocalImagePreference:  {{Daemon: true}, {Daemon: false}},
 	pubcfg.RemoteImagePreference: {{Daemon: false}, {Daemon: true}},
-	pubcfg.OnlyLocalImage: {{Daemon: true}},
-	pubcfg.OnlyRemoteImage: {{Daemon: false}},
+	pubcfg.OnlyLocalImage:        {{Daemon: true}},
+	pubcfg.OnlyRemoteImage:       {{Daemon: false}},
 }
 
 func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {

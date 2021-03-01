@@ -11,6 +11,8 @@ import (
 	"path"
 	"path/filepath"
 
+	pubcfg "github.com/buildpacks/pack/config"
+
 	"github.com/buildpacks/imgutil"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/pkg/errors"
@@ -23,56 +25,76 @@ import (
 const AssetCacheLayersLabel = "io.buildpacks.asset.layers"
 const AssetHashAlgorithm = "sha256"
 
-type AssetCacheImage struct {
-	Map              BlobMap
-	img              imgutil.Image
-	tarWriterFactory *layer.WriterFactory
+type BlobAssetPair struct {
+	Blob  blob.Blob
+	Asset Asset
 }
 
-func NewAssetCacheImage(img imgutil.Image, m BlobMap, w *layer.WriterFactory) AssetCacheImage {
-	return AssetCacheImage{
-		img:              img,
-		Map:              m,
-		tarWriterFactory: w,
+type AssetCacheImage struct {
+	imgutil.Image
+	layerWriterFactory *layer.WriterFactory
+	assetsAndBlobs     []BlobAssetPair
+}
+
+func NewAssetCacheImage(img imgutil.Image, layerWriterFactory *layer.WriterFactory) (*AssetCacheImage, error) {
+	return &AssetCacheImage{
+		Image:              img,
+		layerWriterFactory: layerWriterFactory,
+	}, nil
+}
+
+// TODO -Dan- Document that ordering of pairs matters here,
+//   if two elements share a sha256 value, the last one will win
+//   asset.Sha256 values should be unique.
+func (a *AssetCacheImage) AddAssetLayers(pairs ...BlobAssetPair) {
+	for _, p := range pairs {
+		switch p.Blob {
+		case nil:
+			continue
+		default:
+			a.assetsAndBlobs = append(a.assetsAndBlobs, p)
+		}
 	}
 }
 
-// TODO -make a service that writes blobs & metadata onto image.
-// Image can take care of saving.
-
-func (a *AssetCacheImage) Save() error {
+func (a *AssetCacheImage) Save(additionalNames ...string) error {
+	metadata := AssetMap{}
 	tmpDir, err := ioutil.TempDir("", "create-asset-scratch")
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpDir)
+	imgOS, err := a.OS()
+	if err != nil {
+		return errors.Wrap(err, "unable to get asset cache image os")
+	}
 
-	metadata := AssetMap{}
-	for _, key := range a.Map.Keys() {
-		assetBlobPair := a.Map[key]
-		if assetBlobPair.Blob == nil {
-			continue
-		}
-		diffID, err := a.addBlobLayer(assetBlobPair.Blob, key, filepath.Join(tmpDir, key))
+	if imgOS == pubcfg.WindowsOS {
+		err = AddWindowsShimBaseLayer(a, tmpDir)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "unable to write windows base layer")
 		}
-		assetBlobPair.AssetVal.LayerDiffID = diffID
-		metadata[key] = assetBlobPair.AssetVal
+	}
+
+	for _, pair := range a.assetsAndBlobs {
+		diffID, err := a.addBlobLayer(pair.Blob, pair.Asset.Sha256, filepath.Join(tmpDir, pair.Asset.Sha256))
+		if err != nil {
+			return errors.Wrapf(err, "unable to add asset blob %q to layer", pair.Asset.Sha256)
+		}
+		metadata[pair.Asset.Sha256] = pair.Asset.ToAssetValue(diffID)
 	}
 
 	assetLabelBuf := bytes.NewBuffer(nil)
 	err = json.NewEncoder(assetLabelBuf).Encode(metadata)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "unable to encode asset cache metadata as json")
 	}
 
-	err = a.img.SetLabel(AssetCacheLayersLabel, assetLabelBuf.String())
+	err = a.SetLabel(AssetCacheLayersLabel, assetLabelBuf.String())
 	if err != nil {
-		return err
+		return errors.Wrap(err, "unable to set asset cache label")
 	}
 
-	return a.img.Save()
+	return a.Image.Save(additionalNames...)
 }
 
 func (a *AssetCacheImage) addBlobLayer(b blob.Blob, blobSha256 string, layerPath string) (diffID string, err error) {
@@ -88,11 +110,11 @@ func (a *AssetCacheImage) addBlobLayer(b blob.Blob, blobSha256 string, layerPath
 	}
 
 	w := io.MultiWriter(dstTar, hash)
-	tw := a.tarWriterFactory.NewWriter(w)
+	tw := a.layerWriterFactory.NewWriter(w)
 	if err = toAssetTar(tw, blobSha256, b); err != nil {
 		return "", err
 	}
-	if err = a.img.AddLayer(layerPath); err != nil {
+	if err = a.AddLayer(layerPath); err != nil {
 		return "", err
 	}
 

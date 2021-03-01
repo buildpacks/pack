@@ -27,8 +27,11 @@ const (
 )
 
 type downloader struct {
-	logger           logging.Logger
-	baseCacheDir     string
+	logger       logging.Logger
+	baseCacheDir string
+}
+
+type downloadSettings struct {
 	blobOptions      []Option
 	validationSha256 string
 }
@@ -40,12 +43,14 @@ func NewDownloader(logger logging.Logger, baseCacheDir string) downloader { //no
 	}
 }
 
-type DownloadOption func(*downloader)
+type DownloadOption func(*downloadSettings)
 
 func (d downloader) Download(ctx context.Context, pathOrURI string, options ...DownloadOption) (Blob, error) {
+	settings := &downloadSettings{}
 	for _, option := range options {
-		option(&d)
+		option(settings)
 	}
+
 	if paths.IsURI(pathOrURI) {
 		parsedURL, err := url.Parse(pathOrURI)
 		if err != nil {
@@ -65,31 +70,31 @@ func (d downloader) Download(ctx context.Context, pathOrURI string, options ...D
 			return nil, err
 		}
 
-		if err := validateBlobSha(NewBlob(path, d.blobOptions...), d.validationSha256); err != nil {
+		if err := validateBlobSha(NewBlob(path, settings.blobOptions...), settings.validationSha256); err != nil {
 			return nil, err
 		}
-		return NewBlob(path, d.blobOptions...), nil
+		return NewBlob(path, settings.blobOptions...), nil
 	}
 
 	path := d.handleFile(pathOrURI)
 
-	if err := validateBlobSha(NewBlob(path, d.blobOptions...), d.validationSha256); err != nil {
+	if err := validateBlobSha(NewBlob(path, settings.blobOptions...), settings.validationSha256); err != nil {
 		return nil, err
 	}
-	return NewBlob(path, d.blobOptions...), nil
+	return NewBlob(path, settings.blobOptions...), nil
 }
 
 //
 // Download Options
 //
 
-func RawDownload(d *downloader) {
-	d.blobOptions = append(d.blobOptions, RawOption)
+func RawDownload(s *downloadSettings) {
+	s.blobOptions = append(s.blobOptions, RawOption)
 }
 
 func ValidateDownload(sha256 string) DownloadOption {
-	return func(d *downloader) {
-		d.validationSha256 = fmt.Sprintf("sha256:%s", sha256)
+	return func(s *downloadSettings) {
+		s.validationSha256 = fmt.Sprintf("sha256:%s", sha256)
 	}
 }
 

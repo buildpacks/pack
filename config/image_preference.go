@@ -3,11 +3,10 @@ package config
 import "fmt"
 
 const (
-	LocalImagePreference = "prefer-local"
+	LocalImagePreference  = "prefer-local"
 	RemoteImagePreference = "prefer-remote"
-	OnlyLocalImage = "only-local"
-	OnlyRemoteImage = "only-remote"
-
+	OnlyLocalImage        = "only-local"
+	OnlyRemoteImage       = "only-remote"
 )
 
 func ValidateImagePreference(os string) error {

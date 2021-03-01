@@ -205,7 +205,7 @@ second-asset-blob-contents.
 						ImageName: imageName,
 						Assets:    []dist.Asset{},
 						Publish:   true,
-						OS: "linux",
+						OS:        "linux",
 					}))
 
 					assert.Equal(fakeImage.IsSaved(), true)
@@ -213,7 +213,6 @@ second-asset-blob-contents.
 			})
 
 			when("windows", func() {
-				// TODO: -Dan- skip unless windows
 				it("creates a windows cache image", func() {
 					imageName := "test-windwos-cache-image"
 					imgRef, err := name.NewTag(imageName)
@@ -250,7 +249,7 @@ second-asset-blob-contents.
 
 					err := client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{
 						ImageName: imageName,
-						OS: "linux",
+						OS:        "linux",
 					})
 
 					assert.ErrorContains(err, "unable to create asset cache image:")
@@ -264,7 +263,7 @@ second-asset-blob-contents.
 
 					fakeImage = fakes.NewImage(imageName, "somesha256", imgRef)
 
-					mockImageFactory.EXPECT().NewImage(imageName, true).Return(fakeImage, nil)
+					mockImageFactory.EXPECT().NewImage(imgRef.String(), true).Return(fakeImage, nil)
 					mockDownloader.EXPECT().Download(gomock.Any(), "https://first-asset-uri", gomock.Any(), gomock.Any()).Return(nil, errors.New("blob download error"))
 
 					err = client.CreateAssetCache(context.Background(), pack.CreateAssetCacheOptions{

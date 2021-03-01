@@ -2,6 +2,10 @@ package dist
 
 import (
 	"encoding/json"
+	"io"
+	"io/ioutil"
+
+	"github.com/buildpacks/imgutil/layer"
 
 	"github.com/pkg/errors"
 
@@ -39,4 +43,43 @@ func GetLabel(labeled Labeled, label string, obj interface{}) (ok bool, err erro
 		return true, nil
 	}
 	return false, nil
+}
+
+type WorkableImage interface {
+	SetOS(string) error
+	SetLabel(string, string) error
+	AddLayerWithDiffID(path, diffID string) error
+}
+
+func AddWindowsShimBaseLayer(image WorkableImage, tmpDir string) error {
+	baseLayerFile, err := ioutil.TempFile(tmpDir, "windows-baselayer")
+	if err != nil {
+		return err
+	}
+	defer baseLayerFile.Close()
+
+	baseLayer, err := layer.WindowsBaseLayer()
+	if err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(baseLayerFile, baseLayer); err != nil {
+		return err
+	}
+
+	if err := baseLayerFile.Close(); err != nil {
+		return err
+	}
+
+	baseLayerPath := baseLayerFile.Name()
+	diffID, err := LayerDiffID(baseLayerPath)
+	if err != nil {
+		return err
+	}
+
+	if err := image.AddLayerWithDiffID(baseLayerPath, diffID.String()); err != nil {
+		return err
+	}
+
+	return nil
 }

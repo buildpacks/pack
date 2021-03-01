@@ -1,10 +1,12 @@
 package config_test
 
 import (
+	"testing"
+
+	"github.com/sclevine/spec"
+
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/testhelpers"
-	"github.com/sclevine/spec"
-	"testing"
 )
 
 func TestImagePreference(t *testing.T) {

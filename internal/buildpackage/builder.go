@@ -3,11 +3,8 @@ package buildpackage
 import (
 	"archive/tar"
 	"compress/gzip"
-	"io"
 	"io/ioutil"
 	"os"
-
-	"github.com/buildpacks/imgutil/layer"
 
 	"github.com/buildpacks/imgutil"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -106,7 +103,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, imageOS, tmpDir stri
 	}
 
 	if imageOS == "windows" {
-		if err := AddWindowsShimBaseLayer(image, tmpDir); err != nil {
+		if err := dist.AddWindowsShimBaseLayer(image, tmpDir); err != nil {
 			return err
 		}
 	}
@@ -134,39 +131,6 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, imageOS, tmpDir stri
 	}
 
 	if err := dist.SetLabel(image, dist.BuildpackLayersLabel, bpLayers); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func AddWindowsShimBaseLayer(image WorkableImage, tmpDir string) error {
-	baseLayerFile, err := ioutil.TempFile(tmpDir, "windows-baselayer")
-	if err != nil {
-		return err
-	}
-	defer baseLayerFile.Close()
-
-	baseLayer, err := layer.WindowsBaseLayer()
-	if err != nil {
-		return err
-	}
-
-	if _, err := io.Copy(baseLayerFile, baseLayer); err != nil {
-		return err
-	}
-
-	if err := baseLayerFile.Close(); err != nil {
-		return err
-	}
-
-	baseLayerPath := baseLayerFile.Name()
-	diffID, err := dist.LayerDiffID(baseLayerPath)
-	if err != nil {
-		return err
-	}
-
-	if err := image.AddLayerWithDiffID(baseLayerPath, diffID.String()); err != nil {
 		return err
 	}
 
