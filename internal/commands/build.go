@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/name"
+
 	pubcfg "github.com/buildpacks/pack/config"
 
 	"github.com/pkg/errors"
@@ -32,6 +34,7 @@ type BuildFlags struct {
 	Network            string
 	DescriptorPath     string
 	DefaultProcessType string
+	LifecycleImage     string
 	Env                []string
 	EnvFiles           []string
 	Buildpacks         []string
@@ -97,7 +100,14 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
-
+			var lifecycleImage string
+			if flags.LifecycleImage != "" {
+				ref, err := name.ParseReference(flags.LifecycleImage)
+				if err != nil {
+					return errors.Wrapf(err, "parsing lifecycle image %s", flags.LifecycleImage)
+				}
+				lifecycleImage = ref.Name()
+			}
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           flags.Builder,
@@ -121,6 +131,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				ProjectDescriptorBaseDir: filepath.Dir(actualDescriptorPath),
 				ProjectDescriptor:        descriptor,
 				CacheImage:               flags.CacheImage,
+				LifecycleImage:           lifecycleImage,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -151,6 +162,7 @@ If not set (or set to empty string) the standard socket location will be used.
 Special value 'inherit' may be used in which case DOCKER_HOST environment variable will be used.
 This option may set DOCKER_HOST environment variable for the build container if needed.
 `)
+	cmd.Flags().StringVar(&buildFlags.LifecycleImage, "lifecycle-image", cfg.LifecycleImage, `Custom lifecycle image to use for analysis, restore, and export when builder is untrusted.`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
 	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "r", cfg.DefaultRegistryName, "Buildpack Registry by name")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
