@@ -56,6 +56,7 @@ func writeImageInfo(
 ) error {
 	imgTpl := template.Must(template.New("runImages").
 		Funcs(template.FuncMap{"StringsJoin": strings.Join}).
+		Funcs(template.FuncMap{"DashOrValue": dashOrValue}).
 		Parse(runImagesTemplate))
 	imgTpl = template.Must(imgTpl.New("buildpacks").
 		Parse(buildpacksTemplate))
@@ -79,6 +80,14 @@ func writeImageInfo(
 		logger.Info(remoteOutput.String())
 	}
 	return nil
+}
+
+func dashOrValue(str string) string {
+	if str == "" {
+		return "-"
+	}
+
+	return str
 }
 
 func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template) (*bytes.Buffer, error) {
@@ -119,7 +128,7 @@ Buildpacks:
 {{- if .Info.Buildpacks }}
   ID	VERSION	HOMEPAGE
 {{- range $_, $b := .Info.Buildpacks }}
-  {{ $b.ID }}	{{ $b.Version }}	{{ $b.Homepage }}
+  {{ $b.ID }}	{{ $b.Version }}	{{ DashOrValue $b.Homepage }}
 {{- end }}
 {{- else }}
   (buildpack metadata not present)

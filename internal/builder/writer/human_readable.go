@@ -283,29 +283,38 @@ func buildpacksOutput(buildpacks []dist.BuildpackInfo, builderName string) (stri
 		return fmt.Sprintf("%s  %s\n", output, none), warnings, nil
 	}
 
-	tabWriterBuf := bytes.Buffer{}
-	spaceStrippingWriter := &trailingSpaceStrippingWriter{
-		output: &tabWriterBuf,
-	}
+	var (
+		tabWriterBuf         = bytes.Buffer{}
+		spaceStrippingWriter = &trailingSpaceStrippingWriter{
+			output: &tabWriterBuf,
+		}
+		buildpacksTabWriter = tabwriter.NewWriter(spaceStrippingWriter, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
+		dashOrValue         = func(str string) string {
+			if str == "" {
+				return "-"
+			}
+			return str
+		}
+	)
 
-	buildpacksTabWriter := tabwriter.NewWriter(spaceStrippingWriter, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
 	_, err := fmt.Fprint(buildpacksTabWriter, "  ID\tVERSION\tHOMEPAGE\n")
 	if err != nil {
 		return "", []string{}, fmt.Errorf("writing to tab writer: %w", err)
 	}
+
 	for _, b := range buildpacks {
-		_, err = fmt.Fprintf(buildpacksTabWriter, "  %s\t%s\t%s\n", b.ID, b.Version, b.Homepage)
+		_, err = fmt.Fprintf(buildpacksTabWriter, "  %s\t%s\t%s\n", b.ID, b.Version, dashOrValue(b.Homepage))
 		if err != nil {
 			return "", []string{}, fmt.Errorf("writing to tab writer: %w", err)
 		}
 	}
+
 	err = buildpacksTabWriter.Flush()
 	if err != nil {
 		return "", []string{}, fmt.Errorf("flushing tab writer: %w", err)
 	}
 
 	output += tabWriterBuf.String()
-
 	return output, []string{}, nil
 }
 
