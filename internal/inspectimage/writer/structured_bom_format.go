@@ -3,10 +3,11 @@ package writer
 import (
 	"fmt"
 
+	"github.com/buildpacks/pack/internal/style"
+
 	"github.com/buildpacks/pack/internal/inspectimage"
 
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -23,23 +24,28 @@ func (w *StructuredBOMFormat) Print(
 	if local == nil && remote == nil {
 		return fmt.Errorf("unable to find image '%s' locally or remotely", generalInfo.Name)
 	}
-	if localErr != nil {
-		return fmt.Errorf("preparing BOM output for %s: %w", style.Symbol(generalInfo.Name), localErr)
-	}
-
-	if remoteErr != nil {
-		return fmt.Errorf("preparing BOM output for %s: %w", style.Symbol(generalInfo.Name), remoteErr)
+	if localErr != nil && remoteErr != nil {
+		return fmt.Errorf("preparing BOM output for %s: local :%s remote: %s", style.Symbol(generalInfo.Name), localErr, remoteErr)
 	}
 
 	out, err := w.MarshalFunc(inspectimage.BOMDisplay{
-		Remote: inspectimage.NewBOMDisplay(remote),
-		Local:  inspectimage.NewBOMDisplay(local),
+		Remote:    inspectimage.NewBOMDisplay(remote),
+		Local:     inspectimage.NewBOMDisplay(local),
+		RemoteErr: errorString(remoteErr),
+		LocalErr:  errorString(localErr),
 	})
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	_, err = logger.Writer().Write(out)
 	return err
+}
+
+func errorString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
