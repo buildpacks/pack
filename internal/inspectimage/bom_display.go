@@ -38,9 +38,8 @@ func displayBOM(bom []lifecycle.BOMEntry) []BOMEntryDisplay {
 
 			Buildpack: dist.BuildpackRef{
 				BuildpackInfo: dist.BuildpackInfo{
-					ID:       entry.Buildpack.ID,
-					Version:  entry.Buildpack.Version,
-					Homepage: entry.Buildpack.Homepage,
+					ID:      entry.Buildpack.ID,
+					Version: entry.Buildpack.Version,
 				},
 				Optional: entry.Buildpack.Optional,
 			},

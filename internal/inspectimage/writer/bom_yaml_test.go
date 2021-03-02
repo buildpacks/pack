@@ -45,7 +45,6 @@ local:
   buildpacks:
     id: test.bp.one.remote
     version: 1.0.0
-    homepage: https://some-homepage
 `
 		expectedRemoteOutput = `---
 remote:
@@ -61,7 +60,6 @@ remote:
   buildpacks:
     id: test.bp.one.remote
     version: 1.0.0
-    homepage: https://some-homepage
 `
 	)
 

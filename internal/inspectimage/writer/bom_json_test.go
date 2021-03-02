@@ -48,8 +48,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
       },
       "buildpacks": {
         "id": "test.bp.one.remote",
-        "version": "1.0.0",
-		"homepage": "https://some-homepage"
+        "version": "1.0.0"
       }
     }
   ]
@@ -71,8 +70,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
       },
       "buildpacks": {
         "id": "test.bp.one.remote",
-        "version": "1.0.0",
-		"homepage": "https://some-homepage"
+        "version": "1.0.0"
       }
     }
   ]
