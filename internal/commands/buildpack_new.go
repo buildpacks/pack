@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,8 +57,7 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 
 			_, err := os.Stat(path)
 			if !os.IsNotExist(err) {
-				logger.Errorf("Directory already exists! (%s)", path)
-				return errors.New("directory exists")
+				return errors.New(fmt.Sprintf("Directory exists! (%s)", path))
 			}
 
 			var stacks []dist.Stack
