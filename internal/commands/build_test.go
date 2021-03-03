@@ -56,9 +56,10 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 	when("#BuildCommand", func() {
 		when("no builder is specified", func() {
 			it("returns a soft error", func() {
-				mockClient.EXPECT().InspectBuilder(gomock.Any(), false).Return(&pack.BuilderInfo{
-					Description: "",
-				}, nil).AnyTimes()
+				mockClient.EXPECT().
+					InspectBuilder(gomock.Any(), false).
+					Return(&pack.BuilderInfo{Description: ""}, nil).
+					AnyTimes()
 
 				command.SetArgs([]string{"image"})
 				err := command.Execute()
@@ -329,10 +330,6 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		when("a cache-image passed", func() {
 			when("--publish is not used", func() {
 				it("errors", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithCacheImage("some-cache-image")).
-						Return(nil)
-
 					command.SetArgs([]string{"--builder", "my-builder", "image", "--cache-image", "some-cache-image"})
 					err := command.Execute()
 					h.AssertError(t, err, "cache-image flag requires the publish flag")
@@ -395,10 +392,6 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		when("an invalid lifecycle-image is provided", func() {
 			when("the repo name is invalid", func() {
 				it("returns a parse error", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), gomock.Any()).
-						Return(errors.New(""))
-
 					command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "some-!nv@l!d-image"})
 					err := command.Execute()
 					h.AssertError(t, err, "could not parse reference: some-!nv@l!d-image")
@@ -475,9 +468,6 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		when("user specifies an invalid project descriptor file", func() {
 			it("should show an error", func() {
 				projectTomlPath := "/incorrect/path/to/project.toml"
-				mockClient.EXPECT().
-					Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
-					Return(nil)
 
 				command.SetArgs([]string{"--builder", "my-builder", "--descriptor", projectTomlPath, "image"})
 				h.AssertNotNil(t, command.Execute())
@@ -545,10 +535,6 @@ version = "1.0"
 				})
 
 				it("should fail to build", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
-						Return(nil)
-
 					command.SetArgs([]string{"--builder", "my-builder", "--descriptor", projectTomlPath, "image"})
 					h.AssertNotNil(t, command.Execute())
 				})
