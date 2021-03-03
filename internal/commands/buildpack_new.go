@@ -46,13 +46,15 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 				return err
 			}
 
-			path := filepath.Join(flags.Path, dirName)
+			var path string
 			if len(flags.Path) == 0 {
 				cwd, err := os.Getwd()
 				if err != nil {
 					return err
 				}
 				path = filepath.Join(cwd, dirName)
+			} else {
+				path = flags.Path
 			}
 
 			var stacks []dist.Stack
