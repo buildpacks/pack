@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
@@ -41,10 +42,6 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 			id := args[0]
 			idParts := strings.Split(id, "/")
 			dirName := idParts[len(idParts)-1]
-			_, err := os.Stat(dirName)
-			if !os.IsNotExist(err) {
-				return err
-			}
 
 			var path string
 			if len(flags.Path) == 0 {
@@ -55,6 +52,12 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 				path = filepath.Join(cwd, dirName)
 			} else {
 				path = flags.Path
+			}
+
+			_, err := os.Stat(path)
+			if !os.IsNotExist(err) {
+				logger.Errorf("Directory already exists! (%s)", path)
+				return errors.New("directory exists")
 			}
 
 			var stacks []dist.Stack

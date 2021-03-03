@@ -2,6 +2,8 @@ package commands_test
 
 import (
 	"bytes"
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/dist"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,10 +15,8 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
-	"github.com/buildpacks/pack/internal/dist"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -66,10 +66,20 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 				}},
 			}).Return(nil).MaxTimes(1)
 
-			command.SetArgs([]string{"--path", tmpDir, "example/some-cnb"})
+			path := filepath.Join(tmpDir, "some-cnb")
+			command.SetArgs([]string{"--path", path, "example/some-cnb"})
 
 			err := command.Execute()
 			h.AssertNil(t, err)
+		})
+
+		it("stops if the directory already exists", func() {
+			err := os.MkdirAll(tmpDir, 0600)
+			h.AssertNil(t, err)
+
+			command.SetArgs([]string{"--path", tmpDir, "example/some-cnb"})
+			err = command.Execute()
+			h.AssertNotNil(t, err)
 		})
 	})
 }
