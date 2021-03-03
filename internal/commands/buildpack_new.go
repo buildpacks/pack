@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
@@ -57,7 +56,7 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 
 			_, err := os.Stat(path)
 			if !os.IsNotExist(err) {
-				return errors.New(fmt.Sprintf("Directory exists! (%s)", path))
+				return fmt.Errorf("directory %s exists", style.Symbol(path))
 			}
 
 			var stacks []dist.Stack

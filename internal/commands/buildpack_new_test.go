@@ -81,7 +81,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 			command.SetArgs([]string{"--path", tmpDir, "example/some-cnb"})
 			err = command.Execute()
 			h.AssertNotNil(t, err)
-			h.AssertContains(t, outBuf.String(), "ERROR: Directory exists")
+			h.AssertContains(t, outBuf.String(), "ERROR: directory")
 		})
 	})
 }
