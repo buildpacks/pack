@@ -2,12 +2,13 @@ package commands_test
 
 import (
 	"bytes"
-	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/dist"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/dist"
 
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
