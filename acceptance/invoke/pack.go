@@ -63,6 +63,9 @@ func NewPackInvoker(
 }
 
 func (i *PackInvoker) Cleanup() {
+	if i == nil {
+		return
+	}
 	i.testObject.Helper()
 
 	err := os.RemoveAll(i.home)
@@ -202,7 +205,15 @@ func (i *PackInvoker) Supports(command string) bool {
 
 type Feature int
 
-var featureTests = map[Feature]func(i *PackInvoker) bool{}
+const (
+	InspectRemoteImage = iota
+)
+
+var featureTests = map[Feature]func(i *PackInvoker) bool{
+	InspectRemoteImage: func(i *PackInvoker) bool {
+		return i.laterThan("0.17.0")
+	},
+}
 
 func (i *PackInvoker) SupportsFeature(f Feature) bool {
 	return featureTests[f](i)
