@@ -1576,20 +1576,13 @@ func testAcceptance(
 								t.Fatalf("Expected to see image %s in %s", repo, contents)
 							}
 
-							assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
-							defer h.DockerRmi(dockerCli, repoName)
-
-							t.Log("app is runnable")
-							assertMockAppRunsWithOutput(t,
-								assert,
-								repoName,
-								"Launch Dep Contents",
-								"Cached Dep Contents",
-							)
+							// TODO: remove this condition after pack 0.18.0 is released
+							if !pack.SupportsFeature(invoke.InspectRemoteImage) {
+								assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+								defer h.DockerRmi(dockerCli, repoName)
+							}
 
 							t.Log("inspect-image")
-							output = pack.RunSuccessfully("inspect-image", repoName)
-
 							var (
 								webCommand      string
 								helloCommand    string
@@ -1629,6 +1622,7 @@ func testAcceptance(
 									outputArg:   "toml",
 								},
 							}
+
 							for _, format := range formats {
 								t.Logf("inspect-image %s format", format.outputArg)
 
@@ -1650,6 +1644,17 @@ func testAcceptance(
 
 								format.compareFunc(output, expectedOutput)
 							}
+
+							assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
+							defer h.DockerRmi(dockerCli, repoName)
+
+							t.Log("app is runnable")
+							assertMockAppRunsWithOutput(t,
+								assert,
+								repoName,
+								"Launch Dep Contents",
+								"Cached Dep Contents",
+							)
 						})
 
 						when("additional tags are specified with --tag", func() {
