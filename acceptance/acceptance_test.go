@@ -1576,7 +1576,7 @@ func testAcceptance(
 								t.Fatalf("Expected to see image %s in %s", repo, contents)
 							}
 
-							// TODO: remove this condition after pack 0.17.2 is released
+							// TODO: remove this condition after pack 0.18.0 is released
 							if !pack.SupportsFeature(invoke.InspectRemoteImage) {
 								assert.Succeeds(h.PullImageWithAuth(dockerCli, repoName, registryConfig.RegistryAuth()))
 								defer h.DockerRmi(dockerCli, repoName)
