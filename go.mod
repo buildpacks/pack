@@ -15,7 +15,7 @@ require (
 	github.com/golang/mock v1.5.0
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.4
-	github.com/google/go-containerregistry v0.4.0
+	github.com/google/go-containerregistry v0.4.1
 	github.com/google/go-github/v30 v30.1.0
 	github.com/heroku/color v0.0.6
 	github.com/mattn/go-colorable v0.1.8 // indirect
