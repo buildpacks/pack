@@ -69,8 +69,8 @@ func (b BuildpackInfo) Match(o BuildpackInfo) bool {
 }
 
 type Stack struct {
-	ID     string   `json:"id"`
-	Mixins []string `json:"mixins,omitempty"`
+	ID     string   `json:"id" toml:"id"`
+	Mixins []string `json:"mixins,omitempty" toml:"mixins,omitempty"`
 }
 
 // BuildpackFromBlob constructs a buildpack from a blob. It is assumed that the buildpack
