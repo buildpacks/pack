@@ -4,13 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/buildpacks/pack/config"
-
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
 )
@@ -137,12 +136,11 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 			defaultProcessType = defaultProcess
 		}
 	} else {
-		inspect, _, err := c.docker.ImageInspectWithRaw(context.TODO(), name)
+		entrypoint, err := img.Entrypoint()
 		if err != nil {
-			return nil, errors.Wrap(err, "reading image")
+			return nil, errors.Wrap(err, "reading entrypoint")
 		}
 
-		entrypoint := inspect.Config.Entrypoint
 		if len(entrypoint) > 0 && entrypoint[0] != launcherEntrypoint && entrypoint[0] != windowsLauncherEntrypoint {
 			process := entrypoint[0]
 			if strings.HasPrefix(process, windowsPrefix) {

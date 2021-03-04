@@ -1,29 +1,7 @@
 ---
 image_name: "{{.image_name}}"
+local_info: null
 remote_info:
-  stack: pack.test.stack
-  base_image:
-    top_layer: "{{.base_image_top_layer}}"
-    reference: "{{.base_image_ref}}"
-  run_images:
-    - name: pack-test/run
-    - name: "{{.run_image_mirror}}"
-  buildpacks:
-    - id: simple/layers
-      version: simple-layers-version
-  processes:
-    - type: web
-      shell: bash
-      command: "{{( StringsEscapeBackslash .web_command )}}"
-      default: true
-      args:
-        - '8080'
-    - type: hello
-      shell: ''
-      command: "{{.hello_command}}"
-      default: false
-      args: [ {{ ( StringsJoin (StringsDoubleQuote .hello_args) "," ) }} ]
-local_info:
   stack: pack.test.stack
   base_image:
     top_layer: "{{.base_image_top_layer}}"

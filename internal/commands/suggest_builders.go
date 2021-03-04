@@ -95,14 +95,15 @@ func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, bu
 	descriptions := make([]string, len(builders))
 
 	var wg sync.WaitGroup
-	for i, builder := range builders {
-		wg.Add(1)
+	wg.Add(len(builders))
 
-		go func(i int, builder SuggestedBuilder) {
+	for i, builder := range builders {
+		go func(w *sync.WaitGroup, i int, builder SuggestedBuilder) {
 			descriptions[i] = getBuilderDescription(builder, inspector)
-			wg.Done()
-		}(i, builder)
+			w.Done()
+		}(&wg, i, builder)
 	}
+
 	wg.Wait()
 
 	tw := tabwriter.NewWriter(logger.Writer(), 10, 10, 5, ' ', tabwriter.TabIndent)
