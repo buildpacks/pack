@@ -41,7 +41,7 @@ func (im ImageManager) CleanupImages(imageNames ...string) {
 	}
 }
 
-func (im ImageManager) Inspect(image string) (dockertypes.ImageInspect, error) {
+func (im ImageManager) InspectLocal(image string) (dockertypes.ImageInspect, error) {
 	im.testObject.Helper()
 	inspect, _, err := im.dockerCli.ImageInspectWithRaw(context.Background(), image)
 	return inspect, err
@@ -49,7 +49,7 @@ func (im ImageManager) Inspect(image string) (dockertypes.ImageInspect, error) {
 
 func (im ImageManager) GetImageID(image string) string {
 	im.testObject.Helper()
-	inspect, err := im.Inspect(image)
+	inspect, err := im.InspectLocal(image)
 	im.assert.Nil(err)
 	return inspect.ID
 }

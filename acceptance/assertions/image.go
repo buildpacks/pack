@@ -28,21 +28,21 @@ func NewImageAssertionManager(t *testing.T, imageManager managers.ImageManager, 
 
 func (a ImageAssertionManager) ExistsLocally(name string) {
 	a.testObject.Helper()
-	_, err := a.imageManager.Inspect(name)
+	_, err := a.imageManager.InspectLocal(name)
 	a.assert.Nil(err)
 }
 
 func (a ImageAssertionManager) NotExistsLocally(name string) {
 	a.testObject.Helper()
-	_, err := a.imageManager.Inspect(name)
+	_, err := a.imageManager.InspectLocal(name)
 	a.assert.ErrorContains(err, "No such image")
 }
 
 func (a ImageAssertionManager) HasBaseImage(image, base string) {
 	a.testObject.Helper()
-	imageInspect, err := a.imageManager.Inspect(image)
+	imageInspect, err := a.imageManager.InspectLocal(image)
 	a.assert.Nil(err)
-	baseInspect, err := a.imageManager.Inspect(base)
+	baseInspect, err := a.imageManager.InspectLocal(base)
 	a.assert.Nil(err)
 	for i, layer := range baseInspect.RootFS.Layers {
 		a.assert.Equal(imageInspect.RootFS.Layers[i], layer)
@@ -51,7 +51,7 @@ func (a ImageAssertionManager) HasBaseImage(image, base string) {
 
 func (a ImageAssertionManager) HasLabelWithData(image, label, data string) {
 	a.testObject.Helper()
-	inspect, err := a.imageManager.Inspect(image)
+	inspect, err := a.imageManager.InspectLocal(image)
 	a.assert.Nil(err)
 	label, ok := inspect.Config.Labels[label]
 	a.assert.TrueWithMessage(ok, fmt.Sprintf("expected label %s to exist", label))
