@@ -8,6 +8,8 @@ import (
 	"text/tabwriter"
 	"text/template"
 
+	strs "github.com/buildpacks/pack/internal/strings"
+
 	"github.com/buildpacks/pack/internal/dist"
 
 	"github.com/pkg/errors"
@@ -177,15 +179,7 @@ func determinePrefix(name string, locator buildpack.LocatorType, daemon bool) st
 }
 
 func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
-	var (
-		buf         = &bytes.Buffer{}
-		dashOrValue = func(str string) string {
-			if str == "" {
-				return "-"
-			}
-			return str
-		}
-	)
+	buf := &bytes.Buffer{}
 
 	tabWriter := new(tabwriter.Writer).Init(buf, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
 	if _, err := fmt.Fprint(tabWriter, "  ID\tVERSION\tHOMEPAGE\n"); err != nil {
@@ -193,7 +187,7 @@ func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 	}
 
 	for _, bp := range bps {
-		if _, err := fmt.Fprintf(tabWriter, "  %s\t%s\t%s\n", bp.ID, bp.Version, dashOrValue(bp.Homepage)); err != nil {
+		if _, err := fmt.Fprintf(tabWriter, "  %s\t%s\t%s\n", bp.ID, bp.Version, strs.ValueOrDefault(bp.Homepage, "-")); err != nil {
 			return "", err
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/pack/internal/inspectimage"
 
 	"github.com/buildpacks/pack"
+	strs "github.com/buildpacks/pack/internal/strings"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -56,7 +57,7 @@ func writeImageInfo(
 ) error {
 	imgTpl := template.Must(template.New("runImages").
 		Funcs(template.FuncMap{"StringsJoin": strings.Join}).
-		Funcs(template.FuncMap{"DashOrValue": dashOrValue}).
+		Funcs(template.FuncMap{"StringsValueOrDefault": strs.ValueOrDefault}).
 		Parse(runImagesTemplate))
 	imgTpl = template.Must(imgTpl.New("buildpacks").
 		Parse(buildpacksTemplate))
@@ -80,14 +81,6 @@ func writeImageInfo(
 		logger.Info(remoteOutput.String())
 	}
 	return nil
-}
-
-func dashOrValue(str string) string {
-	if str == "" {
-		return "-"
-	}
-
-	return str
 }
 
 func inspectImageOutput(info *inspectimage.InfoDisplay, tpl *template.Template) (*bytes.Buffer, error) {
@@ -128,7 +121,7 @@ Buildpacks:
 {{- if .Info.Buildpacks }}
   ID	VERSION	HOMEPAGE
 {{- range $_, $b := .Info.Buildpacks }}
-  {{ $b.ID }}	{{ $b.Version }}	{{ DashOrValue $b.Homepage }}
+  {{ $b.ID }}	{{ $b.Version }}	{{ StringsValueOrDefault $b.Homepage "-" }}
 {{- end }}
 {{- else }}
   (buildpack metadata not present)

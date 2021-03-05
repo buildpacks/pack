@@ -8,6 +8,8 @@ import (
 	"text/tabwriter"
 	"text/template"
 
+	strs "github.com/buildpacks/pack/internal/strings"
+
 	"github.com/buildpacks/pack/internal/style"
 
 	"github.com/buildpacks/pack/internal/dist"
@@ -289,12 +291,6 @@ func buildpacksOutput(buildpacks []dist.BuildpackInfo, builderName string) (stri
 			output: &tabWriterBuf,
 		}
 		buildpacksTabWriter = tabwriter.NewWriter(spaceStrippingWriter, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
-		dashOrValue         = func(str string) string {
-			if str == "" {
-				return "-"
-			}
-			return str
-		}
 	)
 
 	_, err := fmt.Fprint(buildpacksTabWriter, "  ID\tVERSION\tHOMEPAGE\n")
@@ -303,7 +299,7 @@ func buildpacksOutput(buildpacks []dist.BuildpackInfo, builderName string) (stri
 	}
 
 	for _, b := range buildpacks {
-		_, err = fmt.Fprintf(buildpacksTabWriter, "  %s\t%s\t%s\n", b.ID, b.Version, dashOrValue(b.Homepage))
+		_, err = fmt.Fprintf(buildpacksTabWriter, "  %s\t%s\t%s\n", b.ID, b.Version, strs.ValueOrDefault(b.Homepage, "-"))
 		if err != nil {
 			return "", []string{}, fmt.Errorf("writing to tab writer: %w", err)
 		}
