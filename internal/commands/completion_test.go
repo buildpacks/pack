@@ -73,6 +73,7 @@ func testCompletionCommand(t *testing.T, when spec.G, it spec.S) {
 		}{
 			{shell: "bash", extension: ".sh"},
 			{shell: "fish", extension: ".fish"},
+			{shell: "powershell", extension: ".ps1"},
 			{shell: "zsh", extension: ".zsh"},
 		} {
 			shell := test.shell
