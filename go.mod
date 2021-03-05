@@ -14,7 +14,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/mock v1.5.0
 	github.com/golang/protobuf v1.4.3 // indirect
-	github.com/google/go-cmp v0.5.4
+	github.com/google/go-cmp v0.5.5
 	github.com/google/go-containerregistry v0.4.1
 	github.com/google/go-github/v30 v30.1.0
 	github.com/heroku/color v0.0.6
@@ -35,7 +35,6 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
-	golang.org/dl v0.0.0-20210216195328-5eb6ea94c136 // indirect
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
 	golang.org/x/mod v0.4.1
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
