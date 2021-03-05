@@ -82,6 +82,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	rootCmd.AddCommand(commands.InspectBuildpack(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient, builderwriter.NewFactory()))
+
 	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, cfgPath, &packClient))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg, cfgPath))
 	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
@@ -91,12 +92,15 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
 	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, &packClient, buildpackage.NewConfigReader()))
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
-	rootCmd.AddCommand(commands.AddBuildpackRegistry(logger, cfg, cfgPath))
-	rootCmd.AddCommand(commands.ListBuildpackRegistries(logger, cfg))
-	rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, &packClient))
-	rootCmd.AddCommand(commands.SetDefaultRegistry(logger, cfg, cfgPath))
-	rootCmd.AddCommand(commands.RemoveRegistry(logger, cfg, cfgPath))
-	rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, &packClient))
+
+	if cfg.Experimental {
+		rootCmd.AddCommand(commands.AddBuildpackRegistry(logger, cfg, cfgPath))
+		rootCmd.AddCommand(commands.ListBuildpackRegistries(logger, cfg))
+		rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, &packClient))
+		rootCmd.AddCommand(commands.SetDefaultRegistry(logger, cfg, cfgPath))
+		rootCmd.AddCommand(commands.RemoveRegistry(logger, cfg, cfgPath))
+		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, &packClient))
+	}
 
 	packHome, err := config.PackHome()
 	if err != nil {
