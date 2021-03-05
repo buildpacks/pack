@@ -28,13 +28,92 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestInspectBuildpackCommand(t *testing.T) {
+const complexOutputSection = `Stacks:
+  ID: io.buildpacks.stacks.first-stack
+    Mixins:
+      (omitted)
+  ID: io.buildpacks.stacks.second-stack
+    Mixins:
+      (omitted)
+
+Buildpacks:
+  ID                                 VERSION        HOMEPAGE
+  some/first-inner-buildpack         1.0.0          first-inner-buildpack-homepage
+  some/second-inner-buildpack        2.0.0          second-inner-buildpack-homepage
+  some/third-inner-buildpack         3.0.0          third-inner-buildpack-homepage
+  some/top-buildpack                 0.0.1          top-buildpack-homepage
+
+Detection Order:
+ └ Group #1:
+    └ some/top-buildpack@0.0.1
+       ├ Group #1:
+       │  ├ some/first-inner-buildpack@1.0.0
+       │  │  ├ Group #1:
+       │  │  │  ├ some/first-inner-buildpack@1.0.0    [cyclic]
+       │  │  │  └ some/third-inner-buildpack@3.0.0
+       │  │  └ Group #2:
+       │  │     └ some/third-inner-buildpack@3.0.0
+       │  └ some/second-inner-buildpack@2.0.0
+       └ Group #2:
+          └ some/first-inner-buildpack@1.0.0
+             ├ Group #1:
+             │  ├ some/first-inner-buildpack@1.0.0    [cyclic]
+             │  └ some/third-inner-buildpack@3.0.0
+             └ Group #2:
+                └ some/third-inner-buildpack@3.0.0`
+
+const simpleOutputSection = `Stacks:
+  ID: io.buildpacks.stacks.first-stack
+    Mixins:
+      (omitted)
+  ID: io.buildpacks.stacks.second-stack
+    Mixins:
+      (omitted)
+
+Buildpacks:
+  ID                           VERSION        HOMEPAGE
+  some/single-buildpack        0.0.1          single-buildpack-homepage
+
+Detection Order:
+ └ Group #1:
+    └ some/single-buildpack@0.0.1`
+
+const inspectOutputTemplate = `Inspecting buildpack: '%s'
+
+%s
+
+%s
+`
+
+const depthOutputSection = `
+Detection Order:
+ └ Group #1:
+    └ some/top-buildpack@0.0.1
+       ├ Group #1:
+       │  ├ some/first-inner-buildpack@1.0.0
+       │  └ some/second-inner-buildpack@2.0.0
+       └ Group #2:
+          └ some/first-inner-buildpack@1.0.0`
+
+const simpleMixinOutputSection = `
+  ID: io.buildpacks.stacks.first-stack
+    Mixins:
+      mixin1
+      mixin2
+      build:mixin3
+      build:mixin4
+  ID: io.buildpacks.stacks.second-stack
+    Mixins:
+      mixin1
+      mixin2`
+
+func TestBuildpackInspectCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "InspectBuildpackCommand", testInspectBuildpackCommand, spec.Sequential(), spec.Report(report.Terminal{}))
+	spec.Run(t, "BuildpackInspectCommand", testBuildpackInspectCommand, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
-func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
+func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 	apiVersion, err := api.NewVersion("0.2")
 	if err != nil {
 		t.Fail()
@@ -58,7 +137,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 
 		cfg = config.Config{
-			DefaultRegistry: "default-registry",
+			DefaultRegistryName: "default-registry",
 		}
 
 		complexInfo = &pack.BuildpackInfo{
@@ -263,10 +342,10 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			},
 		}
 
-		command = commands.InspectBuildpack(logger, cfg, mockClient)
+		command = commands.BuildpackInspect(logger, cfg, mockClient)
 	})
 
-	when("InpectBuildpack", func() {
+	when("BuildpackInspect", func() {
 		when("inspecting an image", func() {
 			when("both remote and local image are present", func() {
 				it.Before(func() {
@@ -303,6 +382,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.AssertTrimmedContains(outBuf.String(), remoteOutputSection)
 				})
 			})
+
 			when("only a local image is present", func() {
 				it.Before(func() {
 					complexInfo.Location = buildpack.PackageLocator
@@ -333,6 +413,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.AssertTrimmedContains(outBuf.String(), expectedOutput)
 				})
 			})
+
 			when("only a remote image is present", func() {
 				it.Before(func() {
 					complexInfo.Location = buildpack.PackageLocator
@@ -369,6 +450,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				simpleInfo.Location = buildpack.URILocator
 			})
+
 			when("uri is a local path", func() {
 				it.Before(func() {
 					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
@@ -377,6 +459,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 						Registry:      "default-registry",
 					}).Return(simpleInfo, nil)
 				})
+
 				it("succeeds", func() {
 					command.SetArgs([]string{"/path/to/test/buildpack"})
 					assert.Nil(command.Execute())
@@ -389,6 +472,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.TrimmedEq(outBuf.String(), expectedOutput)
 				})
 			})
+
 			when("uri is a http or https location", func() {
 				it.Before(func() {
 					simpleInfo.Location = buildpack.URILocator
@@ -421,6 +505,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				simpleInfo.Location = buildpack.RegistryLocator
 			})
+
 			when("using the default registry", func() {
 				it.Before(func() {
 					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
@@ -441,6 +526,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.TrimmedEq(outBuf.String(), expectedOutput)
 				})
 			})
+
 			when("using a user provided registry", func() {
 				it.Before(func() {
 					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
@@ -474,6 +560,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					Registry:      "default-registry",
 				}).Return(complexInfo, nil)
 			})
+
 			it("displays detection order to specified depth", func() {
 				command.SetArgs([]string{"/other/path/to/test/buildpack", "-d", "2"})
 				assert.Nil(command.Execute())
@@ -492,6 +579,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				Registry:      "default-registry",
 			}).Return(simpleInfo, nil)
 		})
+
 		it("displays all mixins", func() {
 			command.SetArgs([]string{"/another/path/to/test/buildpack", "-v"})
 			assert.Nil(command.Execute())
@@ -515,6 +603,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					Registry:      "default-registry",
 				}).Return(&pack.BuildpackInfo{}, errors.Wrap(image.ErrNotFound, "unable to inspect remote failure-case/buildpack"))
 			})
+
 			it("errors", func() {
 				command.SetArgs([]string{"failure-case/buildpack"})
 				err := command.Execute()
@@ -552,6 +641,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					Registry:      "default-registry",
 				}).Return(&pack.BuildpackInfo{}, errors.Wrap(image.ErrNotFound, "error inspecting remote archive"))
 			})
+
 			it("errors", func() {
 				command.SetArgs([]string{"image-failure-case/buildpack"})
 				err := command.Execute()

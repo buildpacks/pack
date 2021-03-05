@@ -22,7 +22,6 @@ import (
 	"github.com/buildpacks/pack/internal/buildpackage"
 
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -66,17 +65,13 @@ const (
 	writerFlags        = 0
 )
 
-type InspectBuildpackFlags struct {
-	Depth    int
-	Registry string
-	Verbose  bool
-}
-
-func InspectBuildpack(logger logging.Logger, cfg *config.Config, client PackClient) *cobra.Command {
-	var flags InspectBuildpackFlags
+// Deprecated: Use buildpack inspect instead.
+func InspectBuildpack(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+	var flags BuildpackInspectFlags
 	cmd := &cobra.Command{
 		Use:     "inspect-buildpack <image-name>",
 		Args:    cobra.RangeArgs(1, 4),
+		Hidden:  true,
 		Short:   "Show information about a buildpack",
 		Example: "pack inspect-buildpack cnbs/sample-package:hello-universe",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
@@ -87,27 +82,7 @@ func InspectBuildpack(logger logging.Logger, cfg *config.Config, client PackClie
 				registry = cfg.DefaultRegistry
 			}
 
-			logger.Infof("Inspecting buildpack: %s\n", style.Symbol(buildpackName))
-
-			inspectedBuildpacksOutput, err := inspectAllBuildpacks(
-				client,
-				flags,
-				pack.InspectBuildpackOptions{
-					BuildpackName: buildpackName,
-					Daemon:        true,
-					Registry:      registry,
-				},
-				pack.InspectBuildpackOptions{
-					BuildpackName: buildpackName,
-					Daemon:        false,
-					Registry:      registry,
-				})
-			if err != nil {
-				return fmt.Errorf("error writing buildpack output: %q", err)
-			}
-
-			logger.Info(inspectedBuildpacksOutput)
-			return nil
+			return buildpackInspect(logger, buildpackName, registry, flags, cfg, client)
 		}),
 	}
 	cmd.Flags().IntVarP(&flags.Depth, "depth", "d", -1, "Max depth to display for Detection Order.\nOmission of this flag or values < 0 will display the entire tree.")
@@ -117,7 +92,7 @@ func InspectBuildpack(logger logging.Logger, cfg *config.Config, client PackClie
 	return cmd
 }
 
-func inspectAllBuildpacks(client PackClient, flags InspectBuildpackFlags, options ...pack.InspectBuildpackOptions) (string, error) {
+func inspectAllBuildpacks(client PackClient, flags BuildpackInspectFlags, options ...pack.InspectBuildpackOptions) (string, error) {
 	buf := bytes.NewBuffer(nil)
 	skipCount := 0
 	for _, option := range options {
@@ -151,7 +126,7 @@ func inspectAllBuildpacks(client PackClient, flags InspectBuildpackFlags, option
 	return buf.String(), nil
 }
 
-func inspectBuildpackOutput(info *pack.BuildpackInfo, prefix string, flags InspectBuildpackFlags) (output []byte, err error) {
+func inspectBuildpackOutput(info *pack.BuildpackInfo, prefix string, flags BuildpackInspectFlags) (output []byte, err error) {
 	tpl := template.Must(template.New("inspect-buildpack").Parse(inspectBuildpackTemplate))
 	bpOutput, err := buildpacksOutput(info.Buildpacks)
 	if err != nil {

@@ -44,7 +44,7 @@ func testBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, cmd.Execute())
 			output := outBuf.String()
 			h.AssertContains(t, output, "Interact with buildpacks")
-			for _, command := range []string{"Usage", "package", "register", "yank", "pull"} {
+			for _, command := range []string{"Usage", "package", "register", "yank", "pull", "inspect"} {
 				h.AssertContains(t, output, command)
 			}
 		})

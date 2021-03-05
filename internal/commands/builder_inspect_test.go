@@ -6,25 +6,64 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/api"
+
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/builder/writer"
+
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestInspectBuilderCommand(t *testing.T) {
+var (
+	minimalLifecycleDescriptor = builder.LifecycleDescriptor{
+		Info: builder.LifecycleInfo{Version: builder.VersionMustParse("3.4")},
+		API: builder.LifecycleAPI{
+			BuildpackVersion: api.MustParse("1.2"),
+			PlatformVersion:  api.MustParse("2.3"),
+		},
+	}
+
+	expectedLocalRunImages = []config.RunImage{
+		{Image: "some/run-image", Mirrors: []string{"first/local", "second/local"}},
+	}
+	expectedLocalInfo = &pack.BuilderInfo{
+		Description: "test-local-builder",
+		Stack:       "local-stack",
+		RunImage:    "local/image",
+		Lifecycle:   minimalLifecycleDescriptor,
+	}
+	expectedRemoteInfo = &pack.BuilderInfo{
+		Description: "test-remote-builder",
+		Stack:       "remote-stack",
+		RunImage:    "remote/image",
+		Lifecycle:   minimalLifecycleDescriptor,
+	}
+	expectedLocalDisplay  = "Sample output for local builder"
+	expectedRemoteDisplay = "Sample output for remote builder"
+	expectedBuilderInfo   = writer.SharedBuilderInfo{
+		Name:      "default/builder",
+		Trusted:   false,
+		IsDefault: true,
+	}
+)
+
+func TestBuilderInspectCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "InspectBuilderCommand", testInspectBuilderCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "BuilderInspectCommand", testBuilderInspectCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
+func testBuilderInspectCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		logger logging.Logger
 		outBuf bytes.Buffer
@@ -39,7 +78,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 	})
 
-	when("InspectBuilder", func() {
+	when("BuilderInspect", func() {
 		var (
 			assert = h.NewAssertionManager(t)
 		)
@@ -49,7 +88,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			builderWriter := newDefaultBuilderWriter()
 			builderWriterFactory := newWriterFactory(returnsForWriter(builderWriter))
 
-			command := commands.InspectBuilder(logger, cfg, builderInspector, builderWriterFactory)
+			command := commands.BuilderInspect(logger, cfg, builderInspector, builderWriterFactory)
 			command.SetArgs([]string{})
 			err := command.Execute()
 			assert.Nil(err)
@@ -69,7 +108,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			it("passes that image name to the inspector", func() {
 				builderInspector := newDefaultBuilderInspector()
 				writer := newDefaultBuilderWriter()
-				command := commands.InspectBuilder(logger, cfg, builderInspector, newWriterFactory(returnsForWriter(writer)))
+				command := commands.BuilderInspect(logger, cfg, builderInspector, newWriterFactory(returnsForWriter(writer)))
 				command.SetArgs([]string{"some/image"})
 
 				err := command.Execute()
@@ -84,7 +123,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		when("depth flag is provided", func() {
 			it("passes a modifier to the builder inspector", func() {
 				builderInspector := newDefaultBuilderInspector()
-				command := commands.InspectBuilder(logger, cfg, builderInspector, newDefaultWriterFactory())
+				command := commands.BuilderInspect(logger, cfg, builderInspector, newDefaultWriterFactory())
 				command.SetArgs([]string{"--depth", "5"})
 
 				err := command.Execute()
@@ -98,7 +137,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		when("output type is set to json", func() {
 			it("passes json to the writer factory", func() {
 				writerFactory := newDefaultWriterFactory()
-				command := commands.InspectBuilder(logger, cfg, newDefaultBuilderInspector(), writerFactory)
+				command := commands.BuilderInspect(logger, cfg, newDefaultBuilderInspector(), writerFactory)
 				command.SetArgs([]string{"--output", "json"})
 
 				err := command.Execute()
@@ -111,7 +150,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 		when("output type is set to toml using the shorthand flag", func() {
 			it("passes toml to the writer factory", func() {
 				writerFactory := newDefaultWriterFactory()
-				command := commands.InspectBuilder(logger, cfg, newDefaultBuilderInspector(), writerFactory)
+				command := commands.BuilderInspect(logger, cfg, newDefaultBuilderInspector(), writerFactory)
 				command.SetArgs([]string{"-o", "toml"})
 
 				err := command.Execute()
@@ -129,7 +168,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				builderWriter := newDefaultBuilderWriter()
 				builderWriterFactory := newWriterFactory(returnsForWriter(builderWriter))
 
-				command := commands.InspectBuilder(logger, cfg, builderInspector, builderWriterFactory)
+				command := commands.BuilderInspect(logger, cfg, builderInspector, builderWriterFactory)
 				command.SetArgs([]string{})
 				err := command.Execute()
 				assert.Nil(err)
@@ -146,7 +185,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				builderWriter := newDefaultBuilderWriter()
 				builderWriterFactory := newWriterFactory(returnsForWriter(builderWriter))
 
-				command := commands.InspectBuilder(logger, cfg, builderInspector, builderWriterFactory)
+				command := commands.BuilderInspect(logger, cfg, builderInspector, builderWriterFactory)
 				command.SetArgs([]string{})
 				err := command.Execute()
 				assert.Nil(err)
@@ -162,7 +201,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				}
 				writer := newDefaultBuilderWriter()
 
-				command := commands.InspectBuilder(
+				command := commands.BuilderInspect(
 					logger,
 					cfg,
 					newDefaultBuilderInspector(),
@@ -182,7 +221,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				cfg.DefaultBuilder = "the/default-builder"
 				writer := newDefaultBuilderWriter()
 
-				command := commands.InspectBuilder(
+				command := commands.BuilderInspect(
 					logger,
 					cfg,
 					newDefaultBuilderInspector(),
@@ -201,7 +240,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			it("suggests builders and returns a soft error", func() {
 				cfg.DefaultBuilder = ""
 
-				command := commands.InspectBuilder(logger, cfg, newDefaultBuilderInspector(), newDefaultWriterFactory())
+				command := commands.BuilderInspect(logger, cfg, newDefaultBuilderInspector(), newDefaultWriterFactory())
 				command.SetArgs([]string{})
 
 				err := command.Execute()
@@ -226,7 +265,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				baseError := errors.New("couldn't write builder")
 
 				builderWriter := newBuilderWriter(errorsForPrint(baseError))
-				command := commands.InspectBuilder(
+				command := commands.BuilderInspect(
 					logger,
 					cfg,
 					newDefaultBuilderInspector(),
@@ -244,7 +283,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				baseError := errors.New("invalid output format")
 
 				writerFactory := newWriterFactory(errorsForWriter(baseError))
-				command := commands.InspectBuilder(logger, cfg, newDefaultBuilderInspector(), writerFactory)
+				command := commands.BuilderInspect(logger, cfg, newDefaultBuilderInspector(), writerFactory)
 				command.SetArgs([]string{})
 
 				err := command.Execute()
@@ -252,4 +291,90 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
+}
+
+func newDefaultBuilderInspector() *fakes.FakeBuilderInspector {
+	return &fakes.FakeBuilderInspector{
+		InfoForLocal:  expectedLocalInfo,
+		InfoForRemote: expectedRemoteInfo,
+	}
+}
+
+func newDefaultBuilderWriter() *fakes.FakeBuilderWriter {
+	return &fakes.FakeBuilderWriter{
+		PrintForLocal:  expectedLocalDisplay,
+		PrintForRemote: expectedRemoteDisplay,
+	}
+}
+
+func newDefaultWriterFactory() *fakes.FakeBuilderWriterFactory {
+	return &fakes.FakeBuilderWriterFactory{
+		ReturnForWriter: newDefaultBuilderWriter(),
+	}
+}
+
+type BuilderWriterModifier func(w *fakes.FakeBuilderWriter)
+
+func errorsForPrint(err error) BuilderWriterModifier {
+	return func(w *fakes.FakeBuilderWriter) {
+		w.ErrorForPrint = err
+	}
+}
+
+func newBuilderWriter(modifiers ...BuilderWriterModifier) *fakes.FakeBuilderWriter {
+	w := newDefaultBuilderWriter()
+
+	for _, mod := range modifiers {
+		mod(w)
+	}
+
+	return w
+}
+
+type WriterFactoryModifier func(f *fakes.FakeBuilderWriterFactory)
+
+func returnsForWriter(writer writer.BuilderWriter) WriterFactoryModifier {
+	return func(f *fakes.FakeBuilderWriterFactory) {
+		f.ReturnForWriter = writer
+	}
+}
+
+func errorsForWriter(err error) WriterFactoryModifier {
+	return func(f *fakes.FakeBuilderWriterFactory) {
+		f.ErrorForWriter = err
+	}
+}
+
+func newWriterFactory(modifiers ...WriterFactoryModifier) *fakes.FakeBuilderWriterFactory {
+	f := newDefaultWriterFactory()
+
+	for _, mod := range modifiers {
+		mod(f)
+	}
+
+	return f
+}
+
+type BuilderInspectorModifier func(i *fakes.FakeBuilderInspector)
+
+func errorsForLocal(err error) BuilderInspectorModifier {
+	return func(i *fakes.FakeBuilderInspector) {
+		i.ErrorForLocal = err
+	}
+}
+
+func errorsForRemote(err error) BuilderInspectorModifier {
+	return func(i *fakes.FakeBuilderInspector) {
+		i.ErrorForRemote = err
+	}
+}
+
+func newBuilderInspector(modifiers ...BuilderInspectorModifier) *fakes.FakeBuilderInspector {
+	i := newDefaultBuilderInspector()
+
+	for _, mod := range modifiers {
+		mod(i)
+	}
+
+	return i
 }

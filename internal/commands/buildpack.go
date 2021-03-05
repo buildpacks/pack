@@ -15,6 +15,7 @@ func NewBuildpackCommand(logger logging.Logger, cfg config.Config, client PackCl
 		RunE:    nil,
 	}
 
+	cmd.AddCommand(BuildpackInspect(logger, cfg, client))
 	cmd.AddCommand(BuildpackPackage(logger, cfg, client, packageConfigReader))
 	cmd.AddCommand(BuildpackNew(logger, client))
 	cmd.AddCommand(BuildpackPull(logger, cfg, client))
