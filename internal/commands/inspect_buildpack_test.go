@@ -363,6 +363,36 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.AssertTrimmedContains(outBuf.String(), expectedOutput)
 				})
 			})
+			when("local docker daemon is not running", func() {
+				it.Before(func() {
+					complexInfo.Location = buildpack.PackageLocator
+					simpleInfo.Location = buildpack.PackageLocator
+
+					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+						BuildpackName: "only-remote-test/buildpack",
+						Daemon:        false,
+						Registry:      "default-registry",
+					}).Return(complexInfo, nil)
+
+					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+						BuildpackName: "only-remote-test/buildpack",
+						Daemon:        true,
+						Registry:      "default-registry",
+					}).Return(nil, errors.New("the docker daemon is not running"))
+				})
+
+				it("displays output for remote image", func() {
+					command.SetArgs([]string{"only-remote-test/buildpack"})
+					assert.Nil(command.Execute())
+
+					expectedOutput := fmt.Sprintf(inspectOutputTemplate,
+						"only-remote-test/buildpack",
+						"REMOTE IMAGE:",
+						complexOutputSection)
+
+					assert.AssertTrimmedContains(outBuf.String(), expectedOutput)
+				})
+			})
 		})
 
 		when("inspecting a buildpack uri", func() {
@@ -557,7 +587,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				err := command.Execute()
 
 				assert.Error(err)
-				assert.Contains(err.Error(), "error writing buildpack output: \"no buildpacks found\"")
+				assert.Contains(err.Error(), "error writing buildpack output: \"error inspecting local archive: not found, error inspecting remote archive: not found\"")
 			})
 		})
 
@@ -566,6 +596,12 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
 					BuildpackName: "urn:cnb:registry:registry-failure/buildpack",
 					Daemon:        true,
+					Registry:      "some-registry",
+				}).Return(&pack.BuildpackInfo{}, errors.New("error inspecting registry image"))
+
+				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					BuildpackName: "urn:cnb:registry:registry-failure/buildpack",
+					Daemon:        false,
 					Registry:      "some-registry",
 				}).Return(&pack.BuildpackInfo{}, errors.New("error inspecting registry image"))
 			})

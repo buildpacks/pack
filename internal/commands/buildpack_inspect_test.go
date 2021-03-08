@@ -647,7 +647,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 				err := command.Execute()
 
 				assert.Error(err)
-				assert.Contains(err.Error(), "error writing buildpack output: \"no buildpacks found\"")
+				assert.Contains(err.Error(), "error writing buildpack output: \"error inspecting local archive: not found, error inspecting remote archive: not found\"")
 			})
 		})
 
@@ -656,6 +656,12 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
 					BuildpackName: "urn:cnb:registry:registry-failure/buildpack",
 					Daemon:        true,
+					Registry:      "some-registry",
+				}).Return(&pack.BuildpackInfo{}, errors.New("error inspecting registry image"))
+
+				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					BuildpackName: "urn:cnb:registry:registry-failure/buildpack",
+					Daemon:        false,
 					Registry:      "some-registry",
 				}).Return(&pack.BuildpackInfo{}, errors.New("error inspecting registry image"))
 			})
