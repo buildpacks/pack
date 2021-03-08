@@ -3,6 +3,7 @@ package commands_test
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/heroku/color"
@@ -87,6 +88,22 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, receivedOptions.Config, myConfig)
 			})
 
+			when("there is a path flag", func() {
+				it("returns an error saying that it cannot be used with the config flag", func() {
+					myConfig := pubbldpkg.Config{
+						Buildpack: dist.BuildpackURI{URI: "test"},
+					}
+
+					cmd := packageCommand(
+						withBuildpackPackager(fakeBuildpackPackager),
+						withPackageConfigReader(fakes.NewFakePackageConfigReader(whereReadReturns(myConfig, nil))),
+						withPath(".."),
+					)
+					err := cmd.Execute()
+					h.AssertError(t, err, "--config and --path cannot be used together")
+				})
+			})
+
 			when("pull-policy", func() {
 				var pullPolicyArgs = []string{
 					"some-image-name",
@@ -147,13 +164,25 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("no config path is specified", func() {
-			it("creates a default config", func() {
-				cmd := packageCommand(withBuildpackPackager(fakeBuildpackPackager))
-				cmd.SetArgs([]string{"some-name"})
-				h.AssertNil(t, cmd.Execute())
+			when("no path is specified", func() {
+				it("creates a default config with the uri set to the current working directory", func() {
+					cmd := packageCommand(withBuildpackPackager(fakeBuildpackPackager))
+					cmd.SetArgs([]string{"some-name"})
+					h.AssertNil(t, cmd.Execute())
 
-				receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-				h.AssertEq(t, receivedOptions.Config.Buildpack.URI, ".")
+					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
+					h.AssertEq(t, receivedOptions.Config.Buildpack.URI, ".")
+				})
+			})
+			when("a path is specified", func() {
+				it("creates a default config with the appropriate path", func() {
+					cmd := packageCommand(withBuildpackPackager(fakeBuildpackPackager))
+					cmd.SetArgs([]string{"some-name", "-p", ".."})
+					h.AssertNil(t, cmd.Execute())
+					bpPath, _ := filepath.Abs("..")
+					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
+					h.AssertEq(t, receivedOptions.Config.Buildpack.URI, bpPath)
+				})
 			})
 		})
 	})
@@ -223,6 +252,7 @@ type packageCommandConfig struct {
 	clientConfig        config.Config
 	imageName           string
 	configPath          string
+	path                string
 }
 
 type packageCommandOption func(config *packageCommandConfig)
@@ -242,7 +272,7 @@ func packageCommand(ops ...packageCommandOption) *cobra.Command {
 	}
 
 	cmd := commands.BuildpackPackage(config.logger, config.clientConfig, config.buildpackPackager, config.packageConfigReader)
-	cmd.SetArgs([]string{config.imageName, "--config", config.configPath})
+	cmd.SetArgs([]string{config.imageName, "--config", config.configPath, "-p", config.path})
 
 	return cmd
 }
@@ -268,6 +298,12 @@ func withBuildpackPackager(creator *fakes.FakeBuildpackPackager) packageCommandO
 func withImageName(name string) packageCommandOption {
 	return func(config *packageCommandConfig) {
 		config.imageName = name
+	}
+}
+
+func withPath(name string) packageCommandOption {
+	return func(config *packageCommandConfig) {
+		config.path = name
 	}
 }
 
