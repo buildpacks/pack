@@ -29,7 +29,7 @@ func NewBOMDisplay(info *pack.ImageInfo) []BOMEntryDisplay {
 }
 
 func displayBOM(bom []lifecycle.BOMEntry) []BOMEntryDisplay {
-	result := []BOMEntryDisplay{}
+	var result []BOMEntryDisplay
 	for _, entry := range bom {
 		result = append(result, BOMEntryDisplay{
 			Name:     entry.Name,

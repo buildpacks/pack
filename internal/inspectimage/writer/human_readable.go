@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/pack/internal/inspectimage"
 
 	"github.com/buildpacks/pack"
+	strs "github.com/buildpacks/pack/internal/strings"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -56,6 +57,7 @@ func writeImageInfo(
 ) error {
 	imgTpl := template.Must(template.New("runImages").
 		Funcs(template.FuncMap{"StringsJoin": strings.Join}).
+		Funcs(template.FuncMap{"StringsValueOrDefault": strs.ValueOrDefault}).
 		Parse(runImagesTemplate))
 	imgTpl = template.Must(imgTpl.New("buildpacks").
 		Parse(buildpacksTemplate))
@@ -117,9 +119,9 @@ Run Images:
 var buildpacksTemplate = `
 Buildpacks:
 {{- if .Info.Buildpacks }}
-  ID	VERSION
+  ID	VERSION	HOMEPAGE
 {{- range $_, $b := .Info.Buildpacks }}
-  {{ $b.ID }}	{{ $b.Version }}
+  {{ $b.ID }}	{{ $b.Version }}	{{ StringsValueOrDefault $b.Homepage "-" }}
 {{- end }}
 {{- else }}
   (buildpack metadata not present)
