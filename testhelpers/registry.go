@@ -170,13 +170,37 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) (st
 
 	err = dockerCli(t).ContainerStart(ctx, ctr.ID, dockertypes.ContainerStartOptions{})
 	AssertNil(t, err)
-	inspect, err := dockerCli(t).ContainerInspect(context.TODO(), ctr.ID)
+
+	runRegistryPort, err := waitForPortBinding(t, ctr.ID, "5000/tcp", 30*time.Second)
 	AssertNil(t, err)
-	runRegistryPort := inspect.NetworkSettings.Ports["5000/tcp"][0].HostPort
 
 	runRegistryHost := DockerHostname(t)
-
 	return runRegistryHost, runRegistryPort, registryContainerName
+}
+
+func waitForPortBinding(t *testing.T, containerID, portSpec string, duration time.Duration) (binding string, err error) {
+	t.Helper()
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	timer := time.NewTimer(duration)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			inspect, err := dockerCli(t).ContainerInspect(context.TODO(), containerID)
+			if err != nil {
+				return "", err
+			}
+
+			portBindings := inspect.NetworkSettings.Ports[nat.Port(portSpec)]
+			if len(portBindings) > 0 {
+				return portBindings[0].HostPort, nil
+			}
+		case <-timer.C:
+			t.Fatalf("timeout waiting for port binding: %v", duration)
+		}
+	}
 }
 
 func DockerHostname(t *testing.T) string {
