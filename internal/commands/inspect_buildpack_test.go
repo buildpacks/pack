@@ -233,6 +233,10 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					Version:  "0.0.1",
 					Homepage: "single-buildpack-homepage",
 				},
+				{
+					ID:      "some/buildpack-no-homepage",
+					Version: "0.0.2",
+				},
 			},
 			Order: dist.Order{
 				{
@@ -266,7 +270,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		command = commands.InspectBuildpack(logger, cfg, mockClient)
 	})
 
-	when("InpectBuildpack", func() {
+	when("InspectBuildpack", func() {
 		when("inspecting an image", func() {
 			when("both remote and local image are present", func() {
 				it.Before(func() {

@@ -33,9 +33,9 @@ Run Images:
 Buildpacks:
   ID                    VERSION                             HOMEPAGE
   noop.buildpack        noop.buildpack.later-version        http://geocities.com/cool-bp
-  noop.buildpack        noop.buildpack.version
-  read/env              read-env-version
-  simple/layers         simple-layers-version
+  noop.buildpack        noop.buildpack.version              -
+  read/env              read-env-version                    -
+  simple/layers         simple-layers-version               -
 
 Detection Order:
  └ Group #1:
@@ -75,9 +75,9 @@ Run Images:
 Buildpacks:
   ID                    VERSION                             HOMEPAGE
   noop.buildpack        noop.buildpack.later-version        http://geocities.com/cool-bp
-  noop.buildpack        noop.buildpack.version
-  read/env              read-env-version
-  simple/layers         simple-layers-version
+  noop.buildpack        noop.buildpack.version              -
+  read/env              read-env-version                    -
+  simple/layers         simple-layers-version               -
 
 Detection Order:
  └ Group #1:

@@ -71,8 +71,9 @@ const simpleOutputSection = `Stacks:
       (omitted)
 
 Buildpacks:
-  ID                           VERSION        HOMEPAGE
-  some/single-buildpack        0.0.1          single-buildpack-homepage
+  ID                                VERSION        HOMEPAGE
+  some/single-buildpack             0.0.1          single-buildpack-homepage
+  some/buildpack-no-homepage        0.0.2          -
 
 Detection Order:
  └ Group #1:
@@ -311,6 +312,10 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 					ID:       "some/single-buildpack",
 					Version:  "0.0.1",
 					Homepage: "single-buildpack-homepage",
+				},
+				{
+					ID:      "some/buildpack-no-homepage",
+					Version: "0.0.2",
 				},
 			},
 			Order: dist.Order{

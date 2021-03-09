@@ -91,7 +91,7 @@ func displayBase(base lifecycle.RunImageMetadata) BaseDisplay {
 
 func displayMirrors(info *pack.ImageInfo, generalInfo GeneralInfo) []RunImageMirrorDisplay {
 	// add all user configured run images, then add run images provided by info
-	result := []RunImageMirrorDisplay{}
+	var result []RunImageMirrorDisplay
 	if info == nil {
 		return result
 	}
@@ -127,18 +127,19 @@ func displayMirrors(info *pack.ImageInfo, generalInfo GeneralInfo) []RunImageMir
 }
 
 func displayBuildpacks(buildpacks []lifecycle.GroupBuildpack) []dist.BuildpackInfo {
-	result := []dist.BuildpackInfo{}
+	var result []dist.BuildpackInfo
 	for _, buildpack := range buildpacks {
 		result = append(result, dist.BuildpackInfo{
-			ID:      buildpack.ID,
-			Version: buildpack.Version,
+			ID:       buildpack.ID,
+			Version:  buildpack.Version,
+			Homepage: buildpack.Homepage,
 		})
 	}
 	return result
 }
 
 func displayProcesses(details pack.ProcessDetails) []ProcessDisplay {
-	result := []ProcessDisplay{}
+	var result []ProcessDisplay
 	detailsArray := details.OtherProcesses
 	if details.DefaultProcess != nil {
 		result = append(result, convertToDisplay(*details.DefaultProcess, true))
