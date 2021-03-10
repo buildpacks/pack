@@ -41,10 +41,11 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, client Buildpack
 		Use:     "package <name> --config <config-path>",
 		Short:   "Package a buildpack in OCI format.",
 		Args:    cobra.ExactValidArgs(1),
-		Example: "pack buildpack package my-buildpack --config ./package.toml",
+		Example: "pack buildpack package my-buildpack --config ./package.toml\npack buildpack package my-buildpack.cnb --config ./package.toml --f file",
 		Long: "buildpack package allows users to package (a) buildpack(s) into OCI format, which can then to be hosted in " +
-			"image repositories. You can also package a number of buildpacks together, to enable easier distribution of " +
-			"a set of buildpacks. Packaged buildpacks can be used as inputs to `pack build` (using the `--buildpack` flag), " +
+			"image repositories or persisted on disk as a '.cnb' file. You can also package a number of buildpacks " +
+			"together, to enable easier distribution of a set of buildpacks. " +
+			"Packaged buildpacks can be used as inputs to `pack build` (using the `--buildpack` flag), " +
 			"and they can be included in the configs used in `pack builder create` and `pack buildpack package`. For more " +
 			"on how to package a buildpack, see: https://buildpacks.io/docs/buildpack-author-guide/package-a-buildpack/.",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
@@ -76,6 +77,15 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, client Buildpack
 			}
 
 			name := args[0]
+			if flags.Format == pack.FormatFile {
+				switch ext := filepath.Ext(name); ext {
+				case pack.CNBExtension:
+				case "":
+					name += pack.CNBExtension
+				default:
+					logger.Warnf("%s is not a valid extension for a packaged buildpack. Packaged buildpacks must have a %s extension", style.Symbol(ext), style.Symbol(pack.CNBExtension))
+				}
+			}
 			if err := client.PackageBuildpack(cmd.Context(), pack.PackageBuildpackOptions{
 				RelativeBaseDir: relativeBaseDir,
 				Name:            name,
