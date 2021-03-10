@@ -14,8 +14,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/image"
-
 	"github.com/buildpacks/pack/internal/buildpack"
 
 	"github.com/spf13/cobra"
@@ -96,15 +94,12 @@ func InspectBuildpack(logger logging.Logger, cfg config.Config, client PackClien
 
 func inspectAllBuildpacks(client PackClient, flags BuildpackInspectFlags, options ...pack.InspectBuildpackOptions) (string, error) {
 	buf := bytes.NewBuffer(nil)
-	skipCount := 0
+	errArray := []error{}
 	for _, option := range options {
 		nextResult, err := client.InspectBuildpack(option)
 		if err != nil {
-			if errors.Is(err, image.ErrNotFound) {
-				skipCount++
-				continue
-			}
-			return "", err
+			errArray = append(errArray, err)
+			continue
 		}
 
 		prefix := determinePrefix(option.BuildpackName, nextResult.Location, option.Daemon)
@@ -122,8 +117,8 @@ func inspectAllBuildpacks(client PackClient, flags BuildpackInspectFlags, option
 			return buf.String(), nil
 		}
 	}
-	if skipCount == len(options) {
-		return "", errors.New("no buildpacks found")
+	if len(errArray) == len(options) {
+		return "", joinErrors(errArray)
 	}
 	return buf.String(), nil
 }
@@ -310,4 +305,13 @@ func displayBuildpack(w io.Writer, prefix string, entry dist.BuildpackRef, visit
 
 	_, err := fmt.Fprintf(w, "%s%s%s\t%s%s\n", prefix, treePrefix, bpRef, optional, visitedStatus)
 	return err
+}
+
+func joinErrors(errs []error) error {
+	errStrings := make([]string, len(errs))
+	for idx, err := range errs {
+		errStrings[idx] = err.Error()
+	}
+
+	return errors.New(strings.Join(errStrings, ", "))
 }

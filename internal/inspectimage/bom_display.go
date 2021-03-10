@@ -10,8 +10,8 @@ import (
 type BOMDisplay struct {
 	Remote    []BOMEntryDisplay `json:"remote" yaml:"remote"`
 	Local     []BOMEntryDisplay `json:"local" yaml:"local"`
-	RemoteErr string            `json:"remoteError,omitempty" yaml:"remoteError,omitempty"`
-	LocalErr  string            `json:"localError,omitempty" yaml:"localError,omitempty"`
+	RemoteErr string            `json:"remote_error,omitempty" yaml:"remoteError,omitempty"`
+	LocalErr  string            `json:"local_error,omitempty" yaml:"localError,omitempty"`
 }
 
 type BOMEntryDisplay struct {
