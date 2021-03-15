@@ -130,7 +130,7 @@ func WithDaemonAccess(dockerHost string) PhaseConfigProviderOperation {
 			dockerHost = os.Getenv("DOCKER_HOST")
 		}
 		var bind string
-		if dockerHost == "" {
+		if dockerHost == "host-socket" {
 			bind = "/var/run/docker.sock:/var/run/docker.sock"
 			if provider.os == "windows" {
 				bind = `\\.\pipe\docker_engine:\\.\pipe\docker_engine`

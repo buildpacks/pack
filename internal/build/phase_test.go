@@ -265,7 +265,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 			when("#WithDaemonAccess", func() {
 				when("with standard docker socket", func() {
 					it("allows daemon access inside the container", func() {
-						configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("daemon"), build.WithDaemonAccess(""))
+						configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("daemon"), build.WithDaemonAccess("host-socket"))
 						phase := phaseFactory.New(configProvider)
 						assertRunSucceeds(t, phase, &outBuf, &errBuf)
 						h.AssertContains(t, outBuf.String(), "daemon test")
