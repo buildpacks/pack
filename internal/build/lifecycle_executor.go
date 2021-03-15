@@ -49,25 +49,25 @@ func init() {
 }
 
 type LifecycleOptions struct {
-	AppPath            string
-	Image              name.Reference
-	Builder            Builder
-	LifecycleImage     string
-	RunImage           string
-	ClearCache         bool
-	Publish            bool
-	TrustBuilder       bool
-	UseCreator         bool
-	DockerHost         string
-	CacheImage         string
-	HTTPProxy          string
-	HTTPSProxy         string
-	NoProxy            string
-	Network            string
-	AdditionalTags     []string
-	Volumes            []string
-	DefaultProcessType string
-	FileFilter         func(string) bool
+	AppPath             string
+	Image               name.Reference
+	Builder             Builder
+	RunImage            string
+	ClearCache          bool
+	Publish             bool
+	TrustBuilder        bool
+	UseCreator          bool
+	CacheImage          string
+	LifecycleImage      string
+	LifecycleDockerHost string
+	HTTPProxy           string
+	HTTPSProxy          string
+	NoProxy             string
+	Network             string
+	AdditionalTags      []string
+	Volumes             []string
+	DefaultProcessType  string
+	FileFilter          func(string) bool
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker client.CommonAPIClient) *LifecycleExecutor {

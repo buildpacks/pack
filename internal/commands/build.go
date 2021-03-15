@@ -21,25 +21,25 @@ import (
 )
 
 type BuildFlags struct {
-	Publish            bool
-	ClearCache         bool
-	TrustBuilder       bool
-	DockerHost         string
-	CacheImage         string
-	AppPath            string
-	Builder            string
-	Registry           string
-	RunImage           string
-	Policy             string
-	Network            string
-	DescriptorPath     string
-	DefaultProcessType string
-	LifecycleImage     string
-	Env                []string
-	EnvFiles           []string
-	Buildpacks         []string
-	Volumes            []string
-	AdditionalTags     []string
+	Publish             bool
+	ClearCache          bool
+	TrustBuilder        bool
+	CacheImage          string
+	AppPath             string
+	Builder             string
+	Registry            string
+	RunImage            string
+	Policy              string
+	Network             string
+	DescriptorPath      string
+	DefaultProcessType  string
+	LifecycleImage      string
+	LifecycleDockerHost string
+	Env                 []string
+	EnvFiles            []string
+	Buildpacks          []string
+	Volumes             []string
+	AdditionalTags      []string
 }
 
 // Build an image from source code
@@ -118,7 +118,6 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Env:               env,
 				Image:             imageName,
 				Publish:           flags.Publish,
-				DockerHost:        flags.DockerHost,
 				PullPolicy:        pullPolicy,
 				ClearCache:        flags.ClearCache,
 				TrustBuilder:      trustBuilder,
@@ -132,6 +131,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				ProjectDescriptor:        descriptor,
 				CacheImage:               flags.CacheImage,
 				LifecycleImage:           lifecycleImage,
+				LifecycleDockerHost:      flags.LifecycleDockerHost,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -156,13 +156,13 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed\nNOTE: These are NOT available at image runtime.\"")
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish to registry")
-	cmd.Flags().StringVar(&buildFlags.DockerHost, "docker-host", "host-socket",
-		`Address to docker daemon that will be exposed to the build container.
-If not set (or set to 'host-socket') the standard socket location will be used.
-Special value 'inherit' may be used in which case DOCKER_HOST environment variable will be used.
-This option may set DOCKER_HOST environment variable for the build container if needed.
-`)
 	cmd.Flags().StringVar(&buildFlags.LifecycleImage, "lifecycle-image", cfg.LifecycleImage, `Custom lifecycle image to use for analysis, restore, and export when builder is untrusted.`)
+	cmd.Flags().StringVar(&buildFlags.LifecycleDockerHost, "lifecycle-docker-host", "host-socket",
+		`Address to docker daemon to expose for lifecycle in the build container.
+Default value 'host-socket' will bind-mount the daemon socket from the host daemon.
+Special value 'inherit' will use the DOCKER_HOST environment variable from pack.
+Otherwise, values will be passed through to the DOCKER_HOST environment variable for the build container.
+`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
 	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "r", cfg.DefaultRegistryName, "Buildpack Registry by name")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
@@ -183,6 +183,10 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 
 	if flags.CacheImage != "" && !flags.Publish {
 		return errors.New("cache-image flag requires the publish flag")
+	}
+
+	if flags.LifecycleDockerHost != "host-socket" && flags.Publish {
+		return errors.New("lifecycle-docker-host is not allowed when publishing to registry")
 	}
 
 	return nil

@@ -88,9 +88,9 @@ type BuildOptions struct {
 	// built atop.
 	RunImage string
 
-	// Address of docker daemon exposed to build container
-	// e.g. tcp://example.com:1234, unix:///run/user/1000/podman/podman.sock
-	DockerHost string
+	// Address of docker daemon exposed to lifecycle in the build container
+	// e.g. host-socket, inherit, tcp://example.com:1234, unix:///run/user/1000/podman/podman.sock
+	LifecycleDockerHost string
 
 	// Used to determine a run-image mirror if Run Image is empty.
 	// Used in combination with Builder metadata to determine to the the 'best' mirror.
@@ -284,25 +284,25 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	lifecycleOpts := build.LifecycleOptions{
-		AppPath:            appPath,
-		Image:              imageRef,
-		Builder:            ephemeralBuilder,
-		RunImage:           runImageName,
-		ClearCache:         opts.ClearCache,
-		Publish:            opts.Publish,
-		DockerHost:         opts.DockerHost,
-		UseCreator:         false,
-		TrustBuilder:       opts.TrustBuilder,
-		LifecycleImage:     ephemeralBuilder.Name(),
-		HTTPProxy:          proxyConfig.HTTPProxy,
-		HTTPSProxy:         proxyConfig.HTTPSProxy,
-		NoProxy:            proxyConfig.NoProxy,
-		Network:            opts.ContainerConfig.Network,
-		AdditionalTags:     opts.AdditionalTags,
-		Volumes:            processedVolumes,
-		DefaultProcessType: opts.DefaultProcessType,
-		FileFilter:         fileFilter,
-		CacheImage:         opts.CacheImage,
+		AppPath:             appPath,
+		Image:               imageRef,
+		Builder:             ephemeralBuilder,
+		RunImage:            runImageName,
+		ClearCache:          opts.ClearCache,
+		Publish:             opts.Publish,
+		UseCreator:          false,
+		TrustBuilder:        opts.TrustBuilder,
+		HTTPProxy:           proxyConfig.HTTPProxy,
+		HTTPSProxy:          proxyConfig.HTTPSProxy,
+		NoProxy:             proxyConfig.NoProxy,
+		Network:             opts.ContainerConfig.Network,
+		AdditionalTags:      opts.AdditionalTags,
+		Volumes:             processedVolumes,
+		DefaultProcessType:  opts.DefaultProcessType,
+		FileFilter:          fileFilter,
+		CacheImage:          opts.CacheImage,
+		LifecycleImage:      ephemeralBuilder.Name(),
+		LifecycleDockerHost: opts.LifecycleDockerHost,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version

@@ -296,7 +296,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				when("with TCP docker-host", func() {
+				when("with TCP lifecycle-docker-host", func() {
 					it.Before(func() {
 						h.SkipIf(t, runtime.GOOS != "linux", "Skipped on non-linux")
 					})
@@ -379,6 +379,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 						build.WithArgs("registry", repoName),
 						build.WithRegistryAccess(authConfig),
 						build.WithNetwork("host"),
+						build.WithDaemonAccess("host-socket"),
 					)
 					phase := phaseFactory.New(configProvider)
 					assertRunSucceeds(t, phase, &outBuf, &errBuf)

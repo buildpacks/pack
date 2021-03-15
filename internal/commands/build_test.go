@@ -347,6 +347,36 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("a lifecycle-docker-host is given", func() {
+			when("--publish is used", func() {
+				it("errors", func() {
+					command.SetArgs([]string{"--lifecycle-docker-host", "unix://foo", "--publish", "--builder", "my-builder", "image"})
+					err := command.Execute()
+					h.AssertError(t, err, "lifecycle-docker-host is not allowed when publishing to registry")
+				})
+			})
+			when("--publish is not used", func() {
+				it("sets the host", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleDockerHost("unix://foo")).
+						Return(nil)
+
+					command.SetArgs([]string{"--lifecycle-docker-host", "unix://foo", "--builder", "my-builder", "image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("unset", func() {
+				it("sets the default host option", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleDockerHost("host-socket")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+		})
+
 		when("a valid lifecycle-image is provided", func() {
 			when("only the image repo is provided", func() {
 				it("uses the provided lifecycle-image and parses it correctly", func() {
@@ -745,6 +775,15 @@ func EqBuildOptionsWithEnv(env map[string]string) gomock.Matcher {
 				}
 			}
 			return true
+		},
+	}
+}
+
+func EqBuildOptionsWithLifecycleDockerHost(lifecycleDockerHost string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("LifecycleDockerHost=%s", lifecycleDockerHost),
+		equals: func(o pack.BuildOptions) bool {
+			return reflect.DeepEqual(o.LifecycleDockerHost, lifecycleDockerHost)
 		},
 	}
 }

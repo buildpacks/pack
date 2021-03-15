@@ -548,7 +548,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
 			})
 
-			it("configures the phase with daemon access with tcp docker-host", func() {
+			it("configures the phase with daemon access with tcp lifecycle-docker-host", func() {
 				lifecycle := newTestLifecycleExec(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
@@ -563,7 +563,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "DOCKER_HOST=tcp://localhost:1234")
 			})
 
-			it("configures the phase with daemon access with alternative unix socket docker-host", func() {
+			it("configures the phase with daemon access with alternative unix socket lifecycle-docker-host", func() {
 				lifecycle := newTestLifecycleExec(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
@@ -577,7 +577,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/home/user/docker.sock:/var/run/docker.sock")
 			})
 
-			it("configures the phase with daemon access with alternative windows pipe docker-host", func() {
+			it("configures the phase with daemon access with alternative windows pipe lifecycle-docker-host", func() {
 				lifecycle := newTestLifecycleExec(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
@@ -608,7 +608,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						os.Unsetenv("DOCKER_HOST")
 					}
 				})
-				it("configures the phase with daemon access with inherited docker-host", func() {
+				it("configures the phase with daemon access with inherited lifecycle-docker-host", func() {
 					lifecycle := newTestLifecycleExec(t, false)
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
@@ -623,7 +623,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 
-			it("configures the phase with daemon access with docker-host with unknown protocol", func() {
+			it("configures the phase with daemon access with lifecycle-docker-host with unknown protocol", func() {
 				lifecycle := newTestLifecycleExec(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 				err := lifecycle.Create(context.Background(), false, `withoutprotocol`, false, "test", "test", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
@@ -1041,7 +1041,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
 			})
 
-			it("configures the phase with daemon access with TCP docker-host", func() {
+			it("configures the phase with daemon access with TCP lifecycle-docker-host", func() {
 				lifecycle := newTestLifecycleExec(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 
@@ -1667,7 +1667,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
 			})
 
-			it("configures the phase with daemon access with tcp docker-host", func() {
+			it("configures the phase with daemon access with tcp lifecycle-docker-host", func() {
 				lifecycle := newTestLifecycleExec(t, false)
 				fakePhaseFactory := fakes.NewFakePhaseFactory()
 

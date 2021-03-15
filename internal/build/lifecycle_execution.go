@@ -132,7 +132,7 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 
 		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, l.opts.Image.String(), l.opts.Network, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, buildCache, phaseFactory); err != nil {
+		if err := l.Analyze(ctx, l.opts.Image.String(), l.opts.Network, l.opts.Publish, l.opts.LifecycleDockerHost, l.opts.ClearCache, buildCache, phaseFactory); err != nil {
 			return err
 		}
 
@@ -150,10 +150,10 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
-		return l.Export(ctx, l.opts.Image.String(), l.opts.RunImage, l.opts.Publish, l.opts.DockerHost, l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, phaseFactory)
+		return l.Export(ctx, l.opts.Image.String(), l.opts.RunImage, l.opts.Publish, l.opts.LifecycleDockerHost, l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, phaseFactory)
 	}
 
-	return l.Create(ctx, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.RunImage, l.opts.Image.String(), l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, l.opts.Volumes, phaseFactory)
+	return l.Create(ctx, l.opts.Publish, l.opts.LifecycleDockerHost, l.opts.ClearCache, l.opts.RunImage, l.opts.Image.String(), l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, l.opts.Volumes, phaseFactory)
 }
 
 func (l *LifecycleExecution) Cleanup() error {
