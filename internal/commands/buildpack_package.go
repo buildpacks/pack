@@ -22,6 +22,7 @@ type BuildpackPackageFlags struct {
 	Publish           bool
 	Policy            string
 	BuildpackRegistry string
+	Path              string
 }
 
 // BuildpackPackager packages buildpacks
@@ -61,8 +62,14 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, client Buildpack
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}
-
 			bpPackageCfg := pubbldpkg.DefaultConfig()
+			var bpPath string
+			if flags.Path != "" {
+				if bpPath, err = filepath.Abs(flags.Path); err != nil {
+					return errors.Wrap(err, "resolving buildpack path")
+				}
+				bpPackageCfg.Buildpack.URI = bpPath
+			}
 			relativeBaseDir := ""
 			if flags.PackageTomlPath != "" {
 				bpPackageCfg, err = packageConfigReader.Read(flags.PackageTomlPath)
@@ -75,7 +82,6 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, client Buildpack
 					return errors.Wrap(err, "getting absolute path for config")
 				}
 			}
-
 			name := args[0]
 			if flags.Format == pack.FormatFile {
 				switch ext := filepath.Ext(name); ext {
@@ -108,10 +114,11 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, client Buildpack
 		}),
 	}
 
-	cmd.Flags().StringVarP(&flags.PackageTomlPath, "config", "c", "", "Path to package TOML config (required)")
+	cmd.Flags().StringVarP(&flags.PackageTomlPath, "config", "c", "", "Path to package TOML config")
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "", `Format to save package as ("image" or "file")`)
 	cmd.Flags().BoolVar(&flags.Publish, "publish", false, `Publish to registry (applies to "--format=image" only)`)
 	cmd.Flags().StringVar(&flags.Policy, "pull-policy", "", "Pull policy to use. Accepted values are always, never, and if-not-present. The default is always")
+	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to the Buildpack that needs to be packaged")
 	cmd.Flags().StringVarP(&flags.BuildpackRegistry, "buildpack-registry", "r", "", "Buildpack Registry name")
 
 	AddHelpFlag(cmd, "package")
@@ -121,6 +128,9 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, client Buildpack
 func validateBuildpackPackageFlags(p *BuildpackPackageFlags) error {
 	if p.Publish && p.Policy == pubcfg.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
+	}
+	if p.PackageTomlPath != "" && p.Path != "" {
+		return errors.Errorf("--config and --path cannot be used together. Please specify the relative path to the Buildpack directory in the package config file.")
 	}
 
 	return nil
