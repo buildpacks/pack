@@ -405,7 +405,7 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 				continue
 			}
 
-			logger.Warnf(
+			logger.Debugf(
 				`buildpack %s already exists on builder and will be overwritten
   - existing diffID: %s
   - new diffID: %s`,
@@ -422,7 +422,7 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 				continue
 			}
 
-			logger.Warnf(
+			logger.Debugf(
 				`buildpack %s was previously defined with different contents
   - previous diffID: %s
   - using diffID: %s`,
