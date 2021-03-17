@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/pkg/errors"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
@@ -712,6 +714,34 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 
 						h.AssertEq(t, newSha256, fmt.Sprintf("%x", hsh.Sum(nil)))
+					})
+				})
+			})
+
+			when("error adding buildpacks to builder", func() {
+				when("unable to convert buildpack to layer tar", func() {
+					var bp1v1Err dist.Buildpack
+					it.Before(func() {
+						var err error
+						bp1v1Err, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+							API: api.MustParse("0.2"),
+							Info: dist.BuildpackInfo{
+								ID:      "buildpack-1-id",
+								Version: "buildpack-1-version-1",
+							},
+							Stacks: []dist.Stack{{
+								ID:     "some.stack.id",
+								Mixins: []string{"mixinX", "mixinY"},
+							}},
+						}, 0644, ifakes.WithOpenError(errors.New("unable to open buildpack")))
+						h.AssertNil(t, err)
+					})
+					it("errors", func() {
+						subject.AddBuildpack(bp1v1Err)
+
+						err := subject.Save(logger, builder.CreatorMetadata{})
+
+						h.AssertError(t, err, "unable to open buildpack")
 					})
 				})
 			})

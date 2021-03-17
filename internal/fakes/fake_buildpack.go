@@ -21,6 +21,7 @@ type fakeBuildpack struct {
 type fakeBuildpackConfig struct {
 	// maping of extrafilename to stringified contents
 	ExtraFiles map[string]string
+	OpenError  error
 }
 
 func newFakeBuildpackConfig() *fakeBuildpackConfig {
@@ -32,6 +33,12 @@ type FakeBuildpackOption func(*fakeBuildpackConfig)
 func WithExtraBuildpackContents(filename, contents string) FakeBuildpackOption {
 	return func(f *fakeBuildpackConfig) {
 		f.ExtraFiles[filename] = contents
+	}
+}
+
+func WithOpenError(err error) FakeBuildpackOption {
+	return func(f *fakeBuildpackConfig) {
+		f.OpenError = err
 	}
 }
 
@@ -61,6 +68,10 @@ func (b *fakeBuildpack) Open() (io.ReadCloser, error) {
 	fConfig := newFakeBuildpackConfig()
 	for _, option := range b.options {
 		option(fConfig)
+	}
+
+	if fConfig.OpenError != nil {
+		return nil, fConfig.OpenError
 	}
 
 	buf := &bytes.Buffer{}

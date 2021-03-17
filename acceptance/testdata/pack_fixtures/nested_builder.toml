@@ -11,10 +11,9 @@
   # noop-buildpack-2 has the same id but a different version compared to noop-buildpack
   uri = "noop-buildpack-2.tgz"
 
-
-{{- if .simple_layers_buildpack}}
+{{- if .simple_layers_buildpack_different_sha}}
 [[buildpacks]]
-  image = "{{.simple_layers_buildpack}}"
+  image = "{{.simple_layers_buildpack_different_sha}}"
   version = "simple-layers-version"
 {{- end}}
 
