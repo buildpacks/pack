@@ -685,10 +685,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						h.AssertEq(t, baseImage.IsSaved(), true)
 
-						// Expect 6 layers from the following locations:
+						// Expect 5 layers from the following locations:
 						//  - 1 from defaultDirsLayer
 						//  - 1 from lifecycleLayer
-						//  - 2 from buildpacks
+						//  - 1 from buildpacks
 						//  - 1 from orderLayer
 						//  - 1 from stackLayer
 						h.AssertEq(t, baseImage.NumberOfAddedLayers(), 5)
@@ -714,6 +714,39 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 
 						h.AssertEq(t, newSha256, fmt.Sprintf("%x", hsh.Sum(nil)))
+					})
+				})
+
+				when("adding buildpack that already exists on the image", func() {
+					it("skips adding buildpack that already exists", func() {
+						logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+						diffID := "4dc0072c61fc2bd7118bbc93a432eae0012082de094455cf0a9fed20e3c44789"
+						bpLayer := dist.BuildpackLayers{
+							"buildpack-1-id": map[string]dist.BuildpackLayerInfo{
+								"buildpack-1-version-1": dist.BuildpackLayerInfo{
+									API:         api.MustParse("0.2"),
+									Stacks:      nil,
+									Order:       nil,
+									LayerDiffID: fmt.Sprintf("sha256:%s", diffID),
+									Homepage:    "",
+								},
+							},
+						}
+						bpLayerString, err := json.Marshal(bpLayer)
+						h.AssertNil(t, err)
+
+						h.AssertNil(t, baseImage.SetLabel(
+							dist.BuildpackLayersLabel,
+							string(bpLayerString),
+						))
+
+						subject.AddBuildpack(bp1v1)
+						err = subject.Save(logger, builder.CreatorMetadata{})
+						h.AssertNil(t, err)
+
+						fmt.Println(outBuf.String())
+						expectedLog := "Buildpack 'buildpack-1-id@buildpack-1-version-1' already exists on builder with same contents, skipping..."
+						h.AssertContains(t, outBuf.String(), expectedLog)
 					})
 				})
 			})
