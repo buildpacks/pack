@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"path"
 	"path/filepath"
 	"testing"
@@ -73,7 +72,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		h.AssertNil(t, os.RemoveAll(tmpDir))
+		//h.AssertNil(t, os.RemoveAll(tmpDir))
 		mockController.Finish()
 	})
 
@@ -621,7 +620,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								// buildpackage metadata
 								h.ContentContains(`"io.buildpacks.buildpackage.metadata":"{\"id\":\"bp.1.id\",\"version\":\"bp.1.version\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}]}"`),
 								// buildpack layers metadata
-								h.ContentContains(`"io.buildpacks.buildpack.layers":"{\"bp.1.id\":{\"bp.1.version\":{\"api\":\"0.2\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}],\"layerDiffID\":\"sha256:bcd3ab9c5622042e9c8bfdff4c9d10cfd4dcdc9effc531cd1792c0d71f6e33b9\",\"assets\":[{\"sha256\":\"asset.1.sha\",\"id\":\"bp.1.asset.1\",\"version\":\"1.1.1\",\"uri\":\"asset.1.uri\",\"stacks\":[\"stack.id.1\",\"stack.id.2\"]},{\"sha256\":\"asset.2.sha\",\"id\":\"bp.1.asset.2\",\"version\":\"2.2.2\",\"uri\":\"asset.2.uri\",\"stacks\":[\"stack.id.1\",\"stack.id.2\"]}]}}}"`),
+								h.ContentContains(`"io.buildpacks.buildpack.layers":"{\"bp.1.id\":{\"bp.1.version\":{\"api\":\"0.2\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}],\"layerDiffID\":\"sha256:1fbb57aa3f88a0fdd3b0da00f8939ed679b35f2db459437c50fc4abb79d78087\",\"assets\":[{\"sha256\":\"asset.1.sha\",\"id\":\"bp.1.asset.1\",\"version\":\"1.1.1\",\"uri\":\"asset.1.uri\",\"stacks\":[\"stack.id.1\",\"stack.id.2\"]},{\"sha256\":\"asset.2.sha\",\"id\":\"bp.1.asset.2\",\"version\":\"2.2.2\",\"uri\":\"asset.2.uri\",\"stacks\":[\"stack.id.1\",\"stack.id.2\"]}]}}}"`),
 								// image os
 								h.ContentContains(`"os":"linux"`),
 							)

@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/golang/mock/gomock"
@@ -94,9 +93,6 @@ second-asset-blob-contents.
 				fakeImage = fakes.NewImage(imageName, "somesha256", imgRef)
 
 				mockImageFactory.EXPECT().NewImage(imageName, true).Return(fakeImage, nil)
-				mockDownloader.EXPECT().Download(gomock.Any(), "https://first-asset-uri", gomock.Any()).Do(func(_ ...interface{}) {
-					time.Sleep(2 * time.Second)
-				}).Return(firstAssetBlob, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), "https://first-asset-replace-uri", gomock.Any()).Return(firstAssetBlob, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), "https://second-asset-uri", gomock.Any()).Return(secondAssetBlob, nil)
 

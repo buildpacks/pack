@@ -36,7 +36,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 		mockImageFetcher *testmocks.MockImageFetcher
 		mockDockerClient *testmocks.MockCommonAPIClient
 		mockController   *gomock.Controller
-		mockImage        *testmocks.MockImage
+		mockImage        *testmocks.SimpleMockImage
 		out              bytes.Buffer
 	)
 
@@ -49,7 +49,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 		subject, err = NewClient(WithLogger(logging.NewLogWithWriters(&out, &out)), WithFetcher(mockImageFetcher), WithDockerClient(mockDockerClient))
 		h.AssertNil(t, err)
 
-		mockImage = testmocks.NewImage("some/image", "", nil)
+		mockImage = testmocks.NewSimpleImage("some/image", "", nil)
 		h.AssertNil(t, mockImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
 		h.AssertNil(t, mockImage.SetLabel(
 			"io.buildpacks.lifecycle.metadata",

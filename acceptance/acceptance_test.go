@@ -2956,3 +2956,11 @@ func imageSha(t *testing.T, assert h.AssertionManager, dockerCli client.CommonAP
 	assert.Nil(err)
 	return inspect.ID
 }
+
+func dockerHostOS() string {
+	daemonInfo, err := dockerCli.Info(context.TODO())
+	if err != nil {
+		panic(err.Error())
+	}
+	return daemonInfo.OSType
+}
