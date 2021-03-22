@@ -72,6 +72,18 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				logger.Debugf("Using project descriptor located at %s", style.Symbol(actualDescriptorPath))
 			}
 
+			builder := flags.Builder
+			// We only override the builder to the one in the project descriptor
+			// if it was not explicitly set by the user
+			if !cmd.Flags().Changed("builder") && descriptor.Build.Builder != "" {
+				builder = descriptor.Build.Builder
+			}
+
+			if builder == "" {
+				suggestSettingBuilder(logger, packClient)
+				return pack.NewSoftError()
+			}
+
 			buildpacks := flags.Buildpacks
 
 			env, err := parseEnv(flags.EnvFiles, flags.Env)
@@ -79,11 +91,11 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				return err
 			}
 
-			trustBuilder := isTrustedBuilder(cfg, flags.Builder) || flags.TrustBuilder
+			trustBuilder := isTrustedBuilder(cfg, builder) || flags.TrustBuilder
 			if trustBuilder {
-				logger.Debugf("Builder %s is trusted", style.Symbol(flags.Builder))
+				logger.Debugf("Builder %s is trusted", style.Symbol(builder))
 			} else {
-				logger.Debugf("Builder %s is untrusted", style.Symbol(flags.Builder))
+				logger.Debugf("Builder %s is untrusted", style.Symbol(builder))
 				logger.Debug("As a result, the phases of the lifecycle which require root access will be run in separate trusted ephemeral containers.")
 				logger.Debug("For more information, see https://medium.com/buildpacks/faster-more-secure-builds-with-pack-0-11-0-4d0c633ca619")
 			}
@@ -110,7 +122,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			}
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
 				AppPath:           flags.AppPath,
-				Builder:           flags.Builder,
+				Builder:           builder,
 				Registry:          flags.Registry,
 				AdditionalMirrors: getMirrors(cfg),
 				AdditionalTags:    flags.AdditionalTags,
@@ -172,11 +184,6 @@ This option may set DOCKER_HOST environment variable for the build container if 
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
-	if flags.Builder == "" {
-		suggestSettingBuilder(logger, packClient)
-		return pack.NewSoftError()
-	}
-
 	if flags.Registry != "" && !cfg.Experimental {
 		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
 	}
