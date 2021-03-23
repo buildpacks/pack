@@ -54,19 +54,39 @@ jobs:
           git config --global core.eol lf
           git config --global core.symlinks true
       - uses: actions/checkout@v2
-      - name: Derive pack version from branch name
+      - name: Derive pack version from branch name Unix
+        if: runner.os != 'Windows'
         run: |
           [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
           echo "PACK_VERSION=${version}" >> $GITHUB_ENV
         shell: bash
+      - name: Derive pack version from branch name Windows
+        if: runner.os == 'Windows'
+        run: |
+          if ($Env:GITHUB_REF -match '^refs\/heads\/release/(.*)$') {
+            $refmatch=$Matches[1]
+            echo "PACK_VERSION=${refmatch}" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          }
+          else {
+            echo "PACK_VERSION=0.0.0" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          }
+        shell: powershell
       - name: Set up go
         uses: actions/setup-go@v2
         with:
           go-version: '1.14'
-      - name: Set up go env
+      - name: Set up go env for Unix
+        if: runner.os != 'Windows'
         run: |
           echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
           echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Set up go env for Windows
+        if: runner.os == 'Windows'
+        run: |
+          echo "GOPATH=$(go env GOPATH)"| Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+          echo "$(go env GOPATH)\bin" | Out-File -FilePath $Env:GITHUB_PATH -Encoding utf8 -Append
+        shell: powershell
       - name: Verify
         run: make verify
       - name: Test
@@ -89,10 +109,20 @@ jobs:
         if: matrix.os == 'windows'
         run: |
           codecov.exe -f ./out/tests/coverage-unit.txt -v --flag os_windows
-      - name: Build
-        run: make build
+      - name: Build Unix
+        if: runner.os != 'Windows'
+        run: |
+          make build
         env:
           PACK_BUILD: ${{ github.run_number }}
+        shell: bash
+      - name: Build Windows
+        if: runner.os == 'Windows'
+        run: |
+          make build
+        env:
+          PACK_BUILD: ${{ github.run_number }}
+        shell: powershell
       - uses: actions/upload-artifact@v2
         if: matrix.config != 'windows-wcow'
         with:
@@ -115,10 +145,11 @@ jobs:
         uses: actions/setup-go@v2
         with:
           stable: false
-          go-version: '1.16.0-rc1' # Pre-releases need exact versioning (https://github.com/actions/setup-go/issues/96)
+          go-version: '1.16.2'
       - name: Build
         run: |
-          env GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} make build
+          [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
+          env PACK_VERSION=${version} GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} make build
         env:
           PACK_BUILD: ${{ github.run_number }}
       - uses: actions/upload-artifact@v2
