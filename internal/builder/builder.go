@@ -242,11 +242,15 @@ func (b *Builder) SetDescription(description string) {
 }
 
 // SetStack sets the stack of the builder
-func (b *Builder) SetStack(stackConfig builder.StackConfig) {
+func (b *Builder) SetStack(stackConfig builder.StackConfig, buildMixins []string) {
 	b.metadata.Stack = StackMetadata{
 		RunImage: RunImageMetadata{
 			Image:   stackConfig.RunImage,
 			Mirrors: stackConfig.RunImageMirrors,
+		},
+		BuildImage: BuildImageMetadata{
+			StackID: stackConfig.ID,
+			Mixins: buildMixins,
 		},
 	}
 }

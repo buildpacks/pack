@@ -288,6 +288,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			it("should warn when the run image cannot be found", func() {
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, config.PullAlways).Return(fakeBuildImage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", true, config.PullAlways).Return(fakeBuildImage, nil)
 
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", false, config.PullAlways).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))
 				mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", true, config.PullAlways).Return(nil, errors.Wrap(image.ErrNotFound, "yikes"))

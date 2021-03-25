@@ -1010,9 +1010,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		when("#SetStack", func() {
 			it.Before(func() {
 				subject.SetStack(pubbldr.StackConfig{
+					ID:              "some-stack",
 					RunImage:        "some/run",
 					RunImageMirrors: []string{"some/mirror", "other/mirror"},
-				})
+					BuildImage:      "some/build",
+				}, []string{"none"})
 				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 			})
@@ -1024,6 +1026,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.ContentEquals(`[run-image]
   image = "some/run"
   mirrors = ["some/mirror", "other/mirror"]
+
+[build-image]
+  mixins = ["none"]
+  stack-id = "some-stack"
 `),
 					h.HasModTime(archive.NormalizedDateTime),
 				)
