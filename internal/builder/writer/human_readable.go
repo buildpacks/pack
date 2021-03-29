@@ -293,13 +293,13 @@ func buildpacksOutput(buildpacks []dist.BuildpackInfo, builderName string) (stri
 		buildpacksTabWriter = tabwriter.NewWriter(spaceStrippingWriter, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
 	)
 
-	_, err := fmt.Fprint(buildpacksTabWriter, "  ID\tVERSION\tHOMEPAGE\n")
+	_, err := fmt.Fprint(buildpacksTabWriter, "  ID\tNAME\tVERSION\tHOMEPAGE\n")
 	if err != nil {
 		return "", []string{}, fmt.Errorf("writing to tab writer: %w", err)
 	}
 
 	for _, b := range buildpacks {
-		_, err = fmt.Fprintf(buildpacksTabWriter, "  %s\t%s\t%s\n", b.ID, b.Version, strs.ValueOrDefault(b.Homepage, "-"))
+		_, err = fmt.Fprintf(buildpacksTabWriter, "  %s\t%s\t%s\t%s\n", b.ID, strs.ValueOrDefault(b.Name, "-"), b.Version, strs.ValueOrDefault(b.Homepage, "-"))
 		if err != nil {
 			return "", []string{}, fmt.Errorf("writing to tab writer: %w", err)
 		}

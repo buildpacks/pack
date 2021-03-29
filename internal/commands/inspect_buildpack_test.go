@@ -93,6 +93,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					ID:       "some/top-buildpack",
 					Version:  "0.0.1",
 					Homepage: "top-buildpack-homepage",
+					Name:     "top",
 				},
 			},
 			Order: dist.Order{
@@ -232,6 +233,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					ID:       "some/single-buildpack",
 					Version:  "0.0.1",
 					Homepage: "single-buildpack-homepage",
+					Name:     "some",
 				},
 				{
 					ID:      "some/buildpack-no-homepage",

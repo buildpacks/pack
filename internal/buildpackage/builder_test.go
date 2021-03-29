@@ -418,6 +418,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Info: dist.BuildpackInfo{
 					ID:          "bp.1.id",
 					Version:     "bp.1.version",
+					Name:        "One",
 					Description: "some description",
 					Homepage:    "https://example.com/homepage",
 					Keywords:    []string{"some-keyword"},
@@ -453,6 +454,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, md.Stacks[1].ID, "stack.id.2")
 			h.AssertEq(t, md.Keywords[0], "some-keyword")
 			h.AssertEq(t, md.Homepage, "https://example.com/homepage")
+			h.AssertEq(t, md.Name, "One")
 			h.AssertEq(t, md.Description, "some description")
 			h.AssertEq(t, md.Licenses[0].Type, "MIT")
 			h.AssertEq(t, md.Licenses[0].URI, "https://example.com/license")

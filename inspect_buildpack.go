@@ -143,6 +143,7 @@ func extractBuildpacks(layersMd dist.BuildpackLayers) []dist.BuildpackInfo {
 		for version, layerInfo := range buildpackMap {
 			bp := dist.BuildpackInfo{
 				ID:       buildpackID,
+				Name:     layerInfo.Name,
 				Version:  version,
 				Homepage: layerInfo.Homepage,
 			}
