@@ -15,8 +15,7 @@ import (
 )
 
 var (
-	bashBinBuild = `
-#!/usr/bin/env bash
+	bashBinBuild = `#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -26,8 +25,7 @@ plan_path="$3"
 
 exit 0
 `
-	bashBinDetect = `
-#!/usr/bin/env bash
+	bashBinDetect = `#!/usr/bin/env bash
 
 exit 0
 `
