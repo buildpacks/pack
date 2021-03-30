@@ -68,7 +68,6 @@ func (m PackFixtureManager) TemplateVersionedFixture(
 	templateData map[string]interface{},
 ) string {
 	m.testObject.Helper()
-
 	outputTemplate, err := ioutil.ReadFile(m.VersionedFixtureOrFallbackLocation(versionedPattern, version, fallback))
 	m.assert.Nil(err)
 
