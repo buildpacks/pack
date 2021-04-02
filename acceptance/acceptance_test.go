@@ -338,16 +338,47 @@ func testWithoutSpecificBuilderRequirement(
 			})
 
 			when("--format file", func() {
-				it("creates the package", func() {
-					packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
-					destinationFile := filepath.Join(tmpDir, "package.cnb")
-					output := pack.RunSuccessfully(
-						"buildpack", "package", destinationFile,
-						"--format", "file",
-						"-c", packageTomlPath,
-					)
-					assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(destinationFile)
-					h.AssertTarball(t, destinationFile)
+				when("the file extension is .cnb", func() {
+					it("creates the package with the same extension", func() {
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+						destinationFile := filepath.Join(tmpDir, "package.cnb")
+						output := pack.RunSuccessfully(
+							"buildpack", "package", destinationFile,
+							"--format", "file",
+							"-c", packageTomlPath,
+						)
+						assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(destinationFile)
+						h.AssertTarball(t, destinationFile)
+					})
+				})
+				when("the file extension is empty", func() {
+					it("creates the package with a .cnb extension", func() {
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+						destinationFile := filepath.Join(tmpDir, "package")
+						expectedFile := filepath.Join(tmpDir, "package.cnb")
+						output := pack.RunSuccessfully(
+							"buildpack", "package", destinationFile,
+							"--format", "file",
+							"-c", packageTomlPath,
+						)
+						assertions.NewOutputAssertionManager(t, output).ReportsPackageCreation(expectedFile)
+						h.AssertTarball(t, expectedFile)
+					})
+				})
+				when("the file extension is not .cnb", func() {
+					it("creates the package with the given extension but shows a warning", func() {
+						packageTomlPath := generatePackageTomlWithOS(t, assert, pack, tmpDir, simplePackageConfigFixtureName, imageManager.HostOS())
+						destinationFile := filepath.Join(tmpDir, "package.tar.gz")
+						output := pack.RunSuccessfully(
+							"buildpack", "package", destinationFile,
+							"--format", "file",
+							"-c", packageTomlPath,
+						)
+						assertOutput := assertions.NewOutputAssertionManager(t, output)
+						assertOutput.ReportsPackageCreation(destinationFile)
+						assertOutput.ReportsInvalidExtension(".gz")
+						h.AssertTarball(t, destinationFile)
+					})
 				})
 			})
 

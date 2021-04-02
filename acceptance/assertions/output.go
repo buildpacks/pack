@@ -112,6 +112,12 @@ func (o OutputAssertionManager) ReportsPackageCreation(name string) {
 	o.assert.ContainsF(o.output, "Successfully created package '%s'", name)
 }
 
+func (o OutputAssertionManager) ReportsInvalidExtension(extension string) {
+	o.testObject.Helper()
+
+	o.assert.ContainsF(o.output, "'%s' is not a valid extension for a packaged buildpack. Packaged buildpacks must have a '.cnb' extension", extension)
+}
+
 func (o OutputAssertionManager) ReportsPackagePublished(name string) {
 	o.testObject.Helper()
 
