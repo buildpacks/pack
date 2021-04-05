@@ -88,6 +88,40 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, receivedOptions.Config, myConfig)
 			})
 
+			when("file format", func() {
+				when("extension is .cnb", func() {
+					it("does not modify the name", func() {
+						cmd := packageCommand(withBuildpackPackager(fakeBuildpackPackager))
+						cmd.SetArgs([]string{"test.cnb", "-f", "file"})
+						h.AssertNil(t, cmd.Execute())
+
+						receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
+						h.AssertEq(t, receivedOptions.Name, "test.cnb")
+					})
+				})
+				when("extension is empty", func() {
+					it("appends .cnb to the name", func() {
+						cmd := packageCommand(withBuildpackPackager(fakeBuildpackPackager))
+						cmd.SetArgs([]string{"test", "-f", "file"})
+						h.AssertNil(t, cmd.Execute())
+
+						receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
+						h.AssertEq(t, receivedOptions.Name, "test.cnb")
+					})
+				})
+				when("extension is something other than .cnb", func() {
+					it("does not modify the name but shows a warning", func() {
+						cmd := packageCommand(withBuildpackPackager(fakeBuildpackPackager), withLogger(logger))
+						cmd.SetArgs([]string{"test.tar.gz", "-f", "file"})
+						h.AssertNil(t, cmd.Execute())
+
+						receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
+						h.AssertEq(t, receivedOptions.Name, "test.tar.gz")
+						h.AssertContains(t, outBuf.String(), "'.gz' is not a valid extension for a packaged buildpack. Packaged buildpacks must have a '.cnb' extension")
+					})
+				})
+			})
+
 			when("there is a path flag", func() {
 				it("returns an error saying that it cannot be used with the config flag", func() {
 					myConfig := pubbldpkg.Config{

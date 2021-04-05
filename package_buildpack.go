@@ -22,6 +22,9 @@ const (
 
 	// Packaging indicator that format of output will be a file on the host filesystem.
 	FormatFile = "file"
+
+	// CNBExtension is the file extension for a cloud native buildpack tar archive
+	CNBExtension = ".cnb"
 )
 
 // PackageBuildpackOptions is a configuration object used to define
