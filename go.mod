@@ -5,8 +5,8 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Microsoft/hcsshim v0.8.10 // indirect
 	github.com/apex/log v1.9.0
-	github.com/buildpacks/imgutil v0.0.0-20210209163614-30601e371ce3
-	github.com/buildpacks/lifecycle v0.10.2
+	github.com/buildpacks/imgutil v0.0.0-20210323214708-5a2568dd25b6
+	github.com/buildpacks/lifecycle v0.11.1
 	github.com/containerd/containerd v1.4.1 // indirect
 	github.com/containerd/continuity v0.0.0-20200107194136-26c1120b8d41 // indirect
 	github.com/docker/docker v20.10.0-beta1.0.20201110211921-af34b94a78a1+incompatible
@@ -40,7 +40,6 @@ require (
 	golang.org/x/sys v0.0.0-20210220050731-9a76102bfb43 // indirect
 	google.golang.org/genproto v0.0.0-20201022181438-0ff5f38871d5 // indirect
 	google.golang.org/grpc v1.33.1 // indirect
-	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 )
