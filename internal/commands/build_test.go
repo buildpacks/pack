@@ -517,7 +517,48 @@ version = "1.0"
 					h.AssertNil(t, command.Execute())
 				})
 			})
+			when("file has a builder specified", func() {
+				var projectTomlPath string
 
+				it.Before(func() {
+					projectToml, err := ioutil.TempFile("", "project.toml")
+					h.AssertNil(t, err)
+					defer projectToml.Close()
+
+					projectToml.WriteString(`
+[project]
+name = "Sample"
+
+[build]
+builder = "my-builder"
+`)
+					projectTomlPath = projectToml.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(projectTomlPath))
+				})
+				when("a builder is not explicitly passed by the user", func() {
+					it("should build an image with configuration in descriptor", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithBuilder("my-builder")).
+							Return(nil)
+
+						command.SetArgs([]string{"--descriptor", projectTomlPath, "image"})
+						h.AssertNil(t, command.Execute())
+					})
+				})
+				when("a builder is explicitly passed by the user", func() {
+					it("should build an image with the passed builder flag", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithBuilder("flag-builder")).
+							Return(nil)
+
+						command.SetArgs([]string{"--builder", "flag-builder", "--descriptor", projectTomlPath, "image"})
+						h.AssertNil(t, command.Execute())
+					})
+				})
+			})
 			when("file is invalid", func() {
 				var projectTomlPath string
 
@@ -690,6 +731,15 @@ func EqBuildOptionsWithNetwork(network string) gomock.Matcher {
 		description: fmt.Sprintf("Network=%s", network),
 		equals: func(o pack.BuildOptions) bool {
 			return o.ContainerConfig.Network == network
+		},
+	}
+}
+
+func EqBuildOptionsWithBuilder(builder string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Builder=%s", builder),
+		equals: func(o pack.BuildOptions) bool {
+			return o.Builder == builder
 		},
 	}
 }
