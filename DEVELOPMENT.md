@@ -105,3 +105,4 @@ Some options users can provide to our acceptance tests are:
 | PREVIOUS_PACK_FIXTURES_PATH | Path to a set of fixtures, used to override the most up-to-date fixtures, in case of changed functionality  | `acceptance/testdata/pack_previous_fixtures_overrides`   |
 | LIFECYCLE_PATH        | Path to a `.tgz` file filled with a set of `lifecycle` binaries    | The Github release for the default version of lifecycle in `pack`  |
 | PREVIOUS_LIFECYCLE_PATH     |  Path to a `.tgz` file filled with a set of `lifecycle` binaries, used to test compatibility of `pack` with the n-1 version of the `lifecycle`    | The Github release for n-1 release of `lifecycle`     |
+| LIFECYCLE_IMAGE        | Image reference to be used in untrusted builder workflows    | buildpacksio/lifecycle:<lifecycle version>  |
