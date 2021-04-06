@@ -41,6 +41,7 @@ import (
 const buildpackageMetadataTag = `{
   "id": "some/top-buildpack",
   "version": "0.0.1",
+  "name": "top",
   "homepage": "top-buildpack-homepage",
   "stacks": [
     {
@@ -144,7 +145,8 @@ const buildpackLayersTag = `{
             }
          ],
          "layerDiffID":"sha256:top-buildpack-diff-id",
-         "homepage":"top-buildpack-homepage"
+         "homepage":"top-buildpack-homepage",
+		 "name": "top"
       }
    }
 }`
@@ -198,6 +200,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 				BuildpackInfo: dist.BuildpackInfo{
 					ID:       "some/top-buildpack",
 					Version:  "0.0.1",
+					Name:     "top",
 					Homepage: "top-buildpack-homepage",
 				},
 				Stacks: []dist.Stack{
@@ -224,6 +227,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 				{
 					ID:       "some/top-buildpack",
 					Version:  "0.0.1",
+					Name:     "top",
 					Homepage: "top-buildpack-homepage",
 				},
 			},
@@ -234,6 +238,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 							BuildpackInfo: dist.BuildpackInfo{
 								ID:       "some/top-buildpack",
 								Version:  "0.0.1",
+								Name:     "top",
 								Homepage: "top-buildpack-homepage",
 							},
 							Optional: false,
@@ -340,6 +345,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 						},
 						LayerDiffID: "sha256:top-buildpack-diff-id",
 						Homepage:    "top-buildpack-homepage",
+						Name:        "top",
 					},
 				},
 			},

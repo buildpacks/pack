@@ -50,6 +50,7 @@ type BuildpackLayerInfo struct {
 	Order       Order        `json:"order,omitempty"`
 	LayerDiffID string       `json:"layerDiffID"`
 	Homepage    string       `json:"homepage,omitempty"`
+	Name        string       `json:"name,omitempty"`
 }
 
 func (b BuildpackLayers) Get(id, version string) (BuildpackLayerInfo, bool) {
@@ -78,5 +79,6 @@ func AddBuildpackToLayersMD(layerMD BuildpackLayers, descriptor BuildpackDescrip
 		Order:       descriptor.Order,
 		LayerDiffID: diffID,
 		Homepage:    bpInfo.Homepage,
+		Name:        bpInfo.Name,
 	}
 }

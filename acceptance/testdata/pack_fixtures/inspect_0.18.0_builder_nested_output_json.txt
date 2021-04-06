@@ -42,18 +42,15 @@
     "buildpacks": [
       {
         "id": "noop.buildpack",
-        "name": "NOOP Buildpack",
         "version": "noop.buildpack.later-version",
         "homepage": "http://geocities.com/cool-bp"
       },
       {
         "id": "noop.buildpack",
-        "name": "NOOP Buildpack",
         "version": "noop.buildpack.version"
       },
       {
         "id": "read/env",
-        "name": "Read Env Buildpack",
         "version": "read-env-version"
       },
       {
@@ -136,18 +133,15 @@
     "buildpacks": [
       {
         "id": "noop.buildpack",
-        "name": "NOOP Buildpack",
         "version": "noop.buildpack.later-version",
         "homepage": "http://geocities.com/cool-bp"
       },
       {
         "id": "noop.buildpack",
-        "name": "NOOP Buildpack",
         "version": "noop.buildpack.version"
       },
       {
         "id": "read/env",
-        "name": "Read Env Buildpack",
         "version": "read-env-version"
       },
       {

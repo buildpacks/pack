@@ -8,9 +8,9 @@ Stacks:
       (none)
 
 Buildpacks:
-  ID                          VERSION                             HOMEPAGE
-  simple/layers               simple-layers-version               -
-  simple/layers/parent        simple-layers-parent-version        -
+  ID                          NAME                                  VERSION                             HOMEPAGE
+  simple/layers               Simple Layers Buildpack               simple-layers-version               -
+  simple/layers/parent        Simple Layers Parent Buildpack        simple-layers-parent-version        -
 
 Detection Order:
  └ Group #1:
