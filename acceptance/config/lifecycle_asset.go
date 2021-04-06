@@ -10,17 +10,20 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 
 	"github.com/buildpacks/pack/internal/builder"
+	internalConfig "github.com/buildpacks/pack/internal/config"
 )
 
 type LifecycleAsset struct {
 	path       string
 	descriptor builder.LifecycleDescriptor
+	image      string
 }
 
 func (a AssetManager) NewLifecycleAsset(kind ComboValue) LifecycleAsset {
 	return LifecycleAsset{
 		path:       a.LifecyclePath(kind),
 		descriptor: a.LifecycleDescriptor(kind),
+		image:      a.LifecycleImage(kind),
 	}
 }
 
@@ -46,6 +49,13 @@ func (l *LifecycleAsset) HasLocation() bool {
 
 func (l *LifecycleAsset) EscapedPath() string {
 	return strings.ReplaceAll(l.path, `\`, `\\`)
+}
+
+func (l *LifecycleAsset) Image() string {
+	if l.image != "" {
+		return l.image
+	}
+	return fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, l.Version())
 }
 
 func earliestVersion(versions []*api.Version) *api.Version {

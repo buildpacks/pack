@@ -35,7 +35,6 @@ import (
 	"github.com/buildpacks/pack/acceptance/managers"
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/cache"
-	internalConfig "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -772,6 +771,7 @@ func testAcceptance(
 				it.Before(func() {
 					repo = "some-org/" + h.RandString(10)
 					repoName = registryConfig.RepoName(repo)
+					pack.JustRunSuccessfully("config", "lifecycle-image", lifecycle.Image())
 				})
 
 				it.After(func() {
@@ -799,8 +799,8 @@ func testAcceptance(
 							runImageMirror,
 						)
 
-						suiteManager.RegisterCleanUp("remove-lifecycle-"+lifecycle.Version(), func() error {
-							img := imageManager.GetImageID(fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycle.Version()))
+						suiteManager.RegisterCleanUp("remove-lifecycle-"+lifecycle.Image(), func() error {
+							img := imageManager.GetImageID(lifecycle.Image())
 							imageManager.CleanupImages(img)
 							return nil
 						})

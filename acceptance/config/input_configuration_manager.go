@@ -18,6 +18,7 @@ const (
 	envPreviousPackFixturesPath = "PREVIOUS_PACK_FIXTURES_PATH"
 	envLifecyclePath            = "LIFECYCLE_PATH"
 	envPreviousLifecyclePath    = "PREVIOUS_LIFECYCLE_PATH"
+	envLifecycleImage           = "LIFECYCLE_IMAGE"
 	envGitHubToken              = "GITHUB_TOKEN"
 	envAcceptanceSuiteConfig    = "ACCEPTANCE_SUITE_CONFIG"
 	envCompilePackWithVersion   = "COMPILE_PACK_WITH_VERSION"
@@ -29,6 +30,7 @@ type InputConfigurationManager struct {
 	previousPackFixturesPath string
 	lifecyclePath            string
 	previousLifecyclePath    string
+	lifecycleImage           string
 	compilePackWithVersion   string
 	githubToken              string
 	combinations             ComboSet
@@ -40,6 +42,7 @@ func NewInputConfigurationManager() (InputConfigurationManager, error) {
 	previousPackFixturesPath := os.Getenv(envPreviousPackFixturesPath)
 	lifecyclePath := os.Getenv(envLifecyclePath)
 	previousLifecyclePath := os.Getenv(envPreviousLifecyclePath)
+	lifecycleImage := os.Getenv(envLifecycleImage)
 	compilePackWithVersion := os.Getenv(envCompilePackWithVersion)
 	githubToken := os.Getenv(envGitHubToken)
 
@@ -69,6 +72,7 @@ func NewInputConfigurationManager() (InputConfigurationManager, error) {
 		previousPackFixturesPath: previousPackFixturesPath,
 		lifecyclePath:            lifecyclePath,
 		previousLifecyclePath:    previousLifecyclePath,
+		lifecycleImage:           lifecycleImage,
 		compilePackWithVersion:   compilePackWithVersion,
 		githubToken:              githubToken,
 		combinations:             combos,

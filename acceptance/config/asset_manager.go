@@ -39,6 +39,7 @@ type AssetManager struct {
 	previousLifecyclePath       string
 	previousLifecycleDescriptor builder.LifecycleDescriptor
 	defaultLifecycleDescriptor  builder.LifecycleDescriptor
+	lifecycleImage              string
 	testObject                  *testing.T
 }
 
@@ -99,6 +100,7 @@ func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig 
 		previousLifecyclePath:       convergedPreviousLifecyclePath,
 		previousLifecycleDescriptor: convergedPreviousLifecycleDescriptor,
 		defaultLifecycleDescriptor:  convergedDefaultLifecycleDescriptor,
+		lifecycleImage:              inputConfig.lifecycleImage,
 		testObject:                  t,
 	}
 }
@@ -150,6 +152,22 @@ func (a AssetManager) LifecycleDescriptor(kind ComboValue) builder.LifecycleDesc
 
 	a.testObject.Fatalf("lifecycle kind must be previous, current or default was %s", kind)
 	return builder.LifecycleDescriptor{} // Unreachable
+}
+
+func (a AssetManager) LifecycleImage(kind ComboValue) string {
+	a.testObject.Helper()
+
+	switch kind {
+	case Current:
+		return a.lifecycleImage
+	case Previous:
+		return ""
+	case DefaultKind:
+		return a.lifecycleImage
+	}
+
+	a.testObject.Fatalf("lifecycle kind must be previous, current or default was %s", kind)
+	return "" // Unreachable
 }
 
 type assetManagerBuilder struct {
