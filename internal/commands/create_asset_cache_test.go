@@ -2,7 +2,6 @@ package commands_test
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/buildpacks/lifecycle/api"
@@ -122,7 +121,6 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						Daemon:        false,
 						Registry:      "default-reg",
 					}).Do(func(_ interface{}) {
-						fmt.Println("in do function")
 						daemonValues = append(daemonValues, false)
 					}).Return(nil, image.ErrNotFound)
 
@@ -142,6 +140,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						ImageName: "some/asset-cache",
 						Assets:    []dist.Asset{firstAsset},
 						OS:        "linux",
+						Format:    "image",
 					})
 
 					command.SetArgs([]string{
@@ -176,6 +175,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						ImageName: "some/asset-cache",
 						Assets:    []dist.Asset{firstAsset},
 						OS:        "linux",
+						Format:    "image",
 					})
 
 					command.SetArgs([]string{
@@ -211,6 +211,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						ImageName: "some/asset-cache",
 						Assets:    []dist.Asset{firstAsset},
 						OS:        "linux",
+						Format:    "image",
 					})
 
 					command.SetArgs([]string{
@@ -253,6 +254,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						ImageName: "some/asset-cache",
 						Assets:    []dist.Asset{firstAsset},
 						OS:        "linux",
+						Format:    "image",
 					})
 
 					command.SetArgs([]string{
@@ -296,6 +298,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 							ImageName: "some/asset-cache",
 							Assets:    []dist.Asset{firstAsset, secondAsset},
 							OS:        "linux",
+							Format:    "image",
 						})
 
 						assert.Nil(command.Execute())
@@ -332,6 +335,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						ImageName: "some/asset-cache",
 						Assets:    []dist.Asset{firstAsset, secondAsset},
 						OS:        "linux",
+						Format:    "image",
 					})
 
 					assert.Nil(command.Execute())
@@ -367,9 +371,87 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					Assets:    []dist.Asset{firstAsset, secondAsset},
 					Publish:   true,
 					OS:        "linux",
+					Format:    "image",
 				})
 
 				assert.Succeeds(command.Execute())
+			})
+		})
+
+		when("--format", func() {
+			it.Before(func() {
+				buildpackLocator = "some-image-org/some-image-name:latest"
+
+				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					BuildpackName: buildpackLocator,
+					Daemon:        true,
+					Registry:      "default-reg",
+				}).Return(
+					&pack.BuildpackInfo{
+						BuildpackMetadata: buildpackage.Metadata{},
+						Buildpacks:        []dist.BuildpackInfo{firstBuildpack, secondBuildpack},
+						BuildpackLayers:   buildpackLayers,
+					},
+					nil,
+				)
+			})
+			when("no format option is passed", func() {
+				it("default 'image' format is used", func() {
+					command.SetArgs([]string{
+						"some/asset-cache",
+						"--buildpack", buildpackLocator,
+					})
+
+					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
+						ImageName: "some/asset-cache",
+						Assets:    []dist.Asset{firstAsset, secondAsset},
+						Publish:   false,
+						OS:        "linux",
+						Format:    "image",
+					})
+
+					assert.Succeeds(command.Execute())
+				})
+			})
+
+			when("image format is passed", func() {
+				it("sets the appropriate CreateAssetCache option", func() {
+					command.SetArgs([]string{
+						"some/asset-cache",
+						"--buildpack", buildpackLocator,
+						"--format", "image",
+					})
+
+					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
+						ImageName: "some/asset-cache",
+						Assets:    []dist.Asset{firstAsset, secondAsset},
+						Publish:   false,
+						OS:        "linux",
+						Format:    "image",
+					})
+
+					assert.Succeeds(command.Execute())
+				})
+			})
+
+			when("file format is passed", func() {
+				it("sets the appropriate CreateAssetCache option", func() {
+					command.SetArgs([]string{
+						"some/asset-cache",
+						"--buildpack", buildpackLocator,
+						"--format", "file",
+					})
+
+					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
+						ImageName: "some/asset-cache",
+						Assets:    []dist.Asset{firstAsset, secondAsset},
+						Publish:   false,
+						OS:        "linux",
+						Format:    "file",
+					})
+
+					assert.Succeeds(command.Execute())
+				})
 			})
 		})
 
@@ -398,6 +480,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					ImageName: "some/asset-cache",
 					Assets:    []dist.Asset{firstAsset, secondAsset},
 					OS:        "windows",
+					Format:    "image",
 				})
 
 				assert.Succeeds(command.Execute())
@@ -516,11 +599,25 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						Assets:    []dist.Asset{firstAsset, secondAsset},
 						Publish:   true,
 						OS:        "linux",
+						Format:    "image",
 					}).Return(errors.New("asset-cache-creation-error"))
 
 					err := command.Execute()
 					assert.ErrorContains(err, "error, unable to create asset cache")
 					assert.ErrorContains(err, "asset-cache-creation-error")
+				})
+			})
+			when("invalid format is specified", func() {
+				it("errors with a informative message", func() {
+					command.SetArgs([]string{
+						"some/asset-cache",
+						"--buildpack", "some-image-org/some-image-name:latest",
+						"--format", "frisbee",
+					})
+
+					err := command.Execute()
+
+					assert.ErrorContains(err, `unknown format type: "frisbee"`)
 				})
 			})
 		})

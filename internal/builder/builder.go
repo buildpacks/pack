@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
+	"github.com/buildpacks/pack/internal/asset"
 	"io"
 	"io/ioutil"
 	"os"
@@ -47,11 +48,41 @@ const (
 	EnvGID = "CNB_GROUP_ID"
 )
 
+//go:generate mockgen -package testmocks -destination testmocks/mock_asset_layer_writer.go github.com/buildpacks/pack/internal/builder AssetLayerWriter
+type AssetLayerWriter interface {
+	Open() error
+	Close() error
+	Write(w asset.Writable) error
+	AddAssetBlobs(aBlobs ...asset.Blob)
+	AssetMetadata() dist.AssetMap
+}
+
+//go:generate mockgen -package testmocks -destination testmocks/mock_asset_layer_reader.go github.com/buildpacks/pack/internal/builder AssetLayerReader
+type AssetLayerReader interface {
+	Read(rd asset.Readable) ([]asset.Blob, dist.AssetMap, error)
+}
+
+type BuilderOption func(builder *Builder)
+
+func WithAssetLayerWriter(writer AssetLayerWriter) BuilderOption {
+	return func(b *Builder) {
+		b.assetLayerWriter = writer
+	}
+}
+
+func WithAssetLayerReader(reader AssetLayerReader) BuilderOption {
+	return func(b *Builder) {
+		b.assetLayerReader = reader
+	}
+}
+
 // Builder represents a pack builder, used to build images
 type Builder struct {
 	baseImageName        string
 	image                imgutil.Image
 	layerWriterFactory   archive.TarWriterFactory
+	assetLayerWriter     AssetLayerWriter
+	assetLayerReader     AssetLayerReader
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
 	additionalBuildpacks []dist.Buildpack
@@ -62,6 +93,7 @@ type Builder struct {
 	StackID              string
 	replaceOrder         bool
 	order                dist.Order
+	options              []BuilderOption
 }
 
 type orderTOML struct {
@@ -69,26 +101,28 @@ type orderTOML struct {
 }
 
 // FromImage constructs a builder from a builder image
-func FromImage(img imgutil.Image) (*Builder, error) {
+func FromImage(img imgutil.Image, options ...BuilderOption) (*Builder, error) {
 	var metadata Metadata
 	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
 		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
 	} else if !ok {
 		return nil, fmt.Errorf("builder %s missing label %s -- try recreating builder", style.Symbol(img.Name()), style.Symbol(metadataLabel))
 	}
-	return constructBuilder(img, "", metadata)
+
+	return constructBuilder(img, "", metadata, options...)
 }
 
 // New constructs a new builder from a base image
-func New(baseImage imgutil.Image, name string) (*Builder, error) {
+func New(baseImage imgutil.Image, name string, options ...BuilderOption) (*Builder, error) {
 	var metadata Metadata
 	if _, err := dist.GetLabel(baseImage, metadataLabel, &metadata); err != nil {
 		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
 	}
-	return constructBuilder(baseImage, name, metadata)
+
+	return constructBuilder(baseImage, name, metadata, options...)
 }
 
-func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Builder, error) {
+func constructBuilder(img imgutil.Image, newName string, metadata Metadata, options ...BuilderOption) (*Builder, error) {
 	imageOS, err := img.OS()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting image OS")
@@ -97,15 +131,26 @@ func constructBuilder(img imgutil.Image, newName string, metadata Metadata) (*Bu
 	if err != nil {
 		return nil, err
 	}
-
 	bldr := &Builder{
 		baseImageName:       img.Name(),
 		image:               img,
 		layerWriterFactory:  layerWriterFactory,
 		metadata:            metadata,
+		assetLayerWriter:    asset.NewLayerWriter(layerWriterFactory),
+		assetLayerReader:    asset.NewReader(),
 		lifecycleDescriptor: constructLifecycleDescriptor(metadata),
 		env:                 map[string]string{},
 	}
+
+	for _, option := range options {
+		option(bldr)
+	}
+
+	assetBlobs, _, err := bldr.assetLayerReader.Read(bldr.image)
+	if err != nil {
+		return bldr, errors.Wrap(err, "unable to open asset layer reader")
+	}
+	bldr.assetLayerWriter.AddAssetBlobs(assetBlobs...)
 
 	if err := addImgLabelsToBuildr(bldr); err != nil {
 		return nil, errors.Wrap(err, "adding image labels to builder")
@@ -171,6 +216,10 @@ func (b *Builder) Buildpacks() []dist.BuildpackInfo {
 	return b.metadata.Buildpacks
 }
 
+func (b *Builder) AssetMetadata() dist.AssetMap {
+	return b.assetLayerWriter.AssetMetadata()
+}
+
 // CreatedBy returns metadata around the creation of the builder
 func (b *Builder) CreatedBy() CreatorMetadata {
 	return b.metadata.CreatedBy
@@ -217,6 +266,18 @@ func (b *Builder) GID() int {
 func (b *Builder) AddBuildpack(bp dist.Buildpack) {
 	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
 	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().Info)
+}
+
+func (b *Builder) AddAssetImages(assetImages ...asset.Readable) error {
+	for _, img := range assetImages {
+		layerBlobs, _, err := b.assetLayerReader.Read(img)
+		if err != nil {
+			return errors.Wrap(err, "unable to open asset image for reading")
+		}
+		b.assetLayerWriter.AddAssetBlobs(layerBlobs...)
+	}
+
+	return nil
 }
 
 // SetLifecycle sets the lifecycle of the builder
@@ -371,6 +432,18 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		return errors.Wrap(err, "adding env layer")
 	}
 
+	if b.assetLayerWriter != nil {
+		err = b.assetLayerWriter.Open()
+		if err != nil {
+			return errors.Wrapf(err, "unable to open asset layer writer")
+		}
+		defer b.assetLayerWriter.Close()
+		err = b.assetLayerWriter.Write(b.image)
+		if err != nil {
+			return errors.Wrapf(err, "error writing asset layers" )
+		}
+	}
+
 	if creatorMetadata.Name == "" {
 		creatorMetadata.Name = packName
 	}
@@ -391,8 +464,6 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 	return b.image.Save()
 }
-
-// Helpers
 
 func processOrder(buildpacks []dist.BuildpackInfo, order dist.Order) (dist.Order, error) {
 	resolvedOrder := dist.Order{}

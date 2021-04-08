@@ -2,6 +2,7 @@ package blob_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -69,7 +70,7 @@ func testDownloadManager(t *testing.T, when spec.G, it spec.S) {
 			firstJobDup := blob.DownloadJob{URI: "https://first-asset-duplicate", Sha256: "first-asset-sha256"}
 			jobs := []blob.DownloadJob{firstJob, secondJob, thirdJob, firstJobDup}
 
-			results, err := subject.DownloadAndValidate(jobs...)
+			results, err := subject.DownloadAndValidate(context.Background(), jobs...)
 			assert.Nil(err)
 
 			assert.Equal(len(results), 4)
@@ -88,7 +89,7 @@ func testDownloadManager(t *testing.T, when spec.G, it spec.S) {
 					subject := blob.NewDownloadManager(mockDownloader, workerCount)
 					mockDownloader.EXPECT().Download(gomock.Any(), "https://first-asset", gomock.Any()).Return(nil, errors.New("download error"))
 
-					_, err := subject.DownloadAndValidate(blob.DownloadJob{URI: "https://first-asset", Sha256: "first-asset-sha256"})
+					_, err := subject.DownloadAndValidate(context.Background(), blob.DownloadJob{URI: "https://first-asset", Sha256: "first-asset-sha256"})
 					assert.ErrorContains(err, `the following errors occurred during download: "download error"`)
 				})
 			})

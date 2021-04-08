@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	pubcfg "github.com/buildpacks/pack/config"
@@ -134,6 +135,17 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					Return(nil)
 
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--network", "my-network"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("--asset-cache is used", func() {
+			it("passes asset caches to client", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithAssetCache("first-asset", "second-asset")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--asset-cache", "first-asset", "--asset-cache", "second-asset"})
 				h.AssertNil(t, command.Execute())
 			})
 		})
@@ -713,6 +725,23 @@ func EqBuildOptionsWithCacheImage(cacheImage string) gomock.Matcher {
 		description: fmt.Sprintf("CacheImage=%s", cacheImage),
 		equals: func(o pack.BuildOptions) bool {
 			return o.CacheImage == cacheImage
+		},
+	}
+}
+
+func EqBuildOptionsWithAssetCache(assetCaches ...string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("AssetCaches=[%s]", strings.Join(assetCaches, ", ")),
+		equals: func(o pack.BuildOptions) bool {
+			if len(o.AssetCaches) != len(assetCaches) {
+				return false
+			}
+			for idx := 0; idx < len(assetCaches); idx++ {
+				if o.AssetCaches[idx] != assetCaches[idx] {
+					return false
+				}
+			}
+			return true
 		},
 	}
 }

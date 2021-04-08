@@ -66,12 +66,22 @@ func testClient(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#WithFetcher", func() {
-		it("uses image factory provided", func() {
+		it("uses fetcher provided", func() {
 			mockController := gomock.NewController(t)
 			mockFetcher := testmocks.NewMockImageFetcher(mockController)
 			cl, err := NewClient(WithFetcher(mockFetcher))
 			h.AssertNil(t, err)
 			h.AssertSameInstance(t, cl.imageFetcher, mockFetcher)
+		})
+	})
+
+	when("#WithAssestFetcher", func() {
+		it("uses assetFetcher provided", func() {
+			mockController := gomock.NewController(t)
+			mockAssetFetcher := testmocks.NewMockAssetFetcher(mockController)
+			cl, err := NewClient(WithAssetFetcher(mockAssetFetcher))
+			h.AssertNil(t, err)
+			h.AssertSameInstance(t, cl.assetFetcher, mockAssetFetcher)
 		})
 	})
 

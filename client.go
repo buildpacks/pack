@@ -2,13 +2,13 @@ package pack
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/pack/internal/asset"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
+	"os"
+	"path/filepath"
 
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
@@ -47,6 +47,14 @@ type Downloader interface {
 	Download(ctx context.Context, pathOrURI string, options ...blob.DownloadOption) (blob.Blob, error)
 }
 
+//go:generate mockgen -package testmocks -destination testmocks/mock_asset_fetcher.go github.com/buildpacks/pack AssetFetcher
+
+
+// TODO -Dan- Document
+type AssetFetcher interface {
+	FetchAssets(assetNameList []string, options ...asset.AssetFetcherOptions) ([]asset.Readable, error)
+}
+
 //go:generate mockgen -package testmocks -destination testmocks/mock_image_factory.go github.com/buildpacks/pack ImageFactory
 
 // ImageFactory is an interface representing the ability to create a new OCI image.
@@ -56,12 +64,15 @@ type ImageFactory interface {
 	NewImage(repoName string, local bool) (imgutil.Image, error)
 }
 
+
+
 // Client is an orchestration object, it contains all parameters needed to
 // build an app image using Cloud Native Buildpacks.
 // All settings on this object should be changed through ClientOption functions.
 type Client struct {
 	logger            logging.Logger
 	imageFetcher      ImageFetcher
+	assetFetcher      AssetFetcher
 	downloader        Downloader
 	lifecycleExecutor LifecycleExecutor
 	docker            dockerClient.CommonAPIClient
@@ -92,6 +103,14 @@ func WithImageFactory(f ImageFactory) ClientOption {
 func WithFetcher(f ImageFetcher) ClientOption {
 	return func(c *Client) {
 		c.imageFetcher = f
+	}
+}
+
+// WithFetcher supply your own Fetcher.
+// A Fetcher retrieves both local and remote images to make them available.
+func WithAssetFetcher(af AssetFetcher) ClientOption {
+	return func(c *Client) {
+		c.assetFetcher = af
 	}
 }
 
@@ -163,6 +182,13 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 
 	if client.imageFactory == nil {
 		client.imageFactory = image.NewFactory(client.docker, authn.DefaultKeychain)
+	}
+
+	if client.assetFetcher == nil {
+		localAssetFetcher := asset.NewLocalFileFetcher()
+		imageAssetFetcher := asset.NewImageFetcher(client.imageFetcher)
+		uriAssetFetcher := asset.NewAssetURLFetcher(client.downloader, localAssetFetcher)
+		client.assetFetcher = asset.NewFetcher(localAssetFetcher, uriAssetFetcher, imageAssetFetcher)
 	}
 
 	client.lifecycleExecutor = build.NewLifecycleExecutor(client.logger, client.docker)

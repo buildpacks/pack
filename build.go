@@ -3,6 +3,8 @@ package pack
 import (
 	"context"
 	"fmt"
+	"github.com/buildpacks/pack/internal/asset"
+	"github.com/buildpacks/pack/internal/ocipackage"
 	"math/rand"
 	"net/url"
 	"os"
@@ -108,6 +110,10 @@ type BuildOptions struct {
 	// Option only valid if Publish is true
 	// Create an additional image that contains cache=true layers and push it to the registry.
 	CacheImage string
+
+	// Option used to specify cache images that will be added during build
+	// buildpacks will be able to access these assets if they need to during build
+	AssetCaches []string
 
 	// Option passed directly to the lifecycle.
 	// If true, publishes Image directly to a registry.
@@ -234,6 +240,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
+	fetchedAssets, err := c.assetFetcher.FetchAssets(opts.AssetCaches, asset.WithPullPolicy(opts.PullPolicy), asset.WithContext(ctx))
+	if err != nil {
+		return fmt.Errorf("unable to fetch asset caches: %q", err)
+	}
+
 	if err := c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil {
 		return errors.Wrap(err, "validating stack mixins")
 	}
@@ -247,7 +258,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		buildEnvs[k] = v
 	}
 
-	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs)
+	ephemeralBuilder, err := c.createEphemeralBuilder(rawBuilderImage, buildEnvs, order, fetchedBPs, fetchedAssets)
 	if err != nil {
 		return err
 	}
@@ -758,7 +769,7 @@ func appendBuildpackToOrder(order dist.Order, bpInfo dist.BuildpackInfo) (newOrd
 
 // decomposeBuildpack decomposes a buildpack blob into the main builder (order buildpack) and it's dependencies buildpacks.
 func decomposeBuildpack(blob blob.Blob, imageOS string) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
-	isOCILayout, err := buildpackage.IsOCILayoutBlob(blob)
+	isOCILayout, err := ocipackage.IsOCILayoutBlob(blob)
 	if err != nil {
 		return mainBP, depBPs, errors.Wrap(err, "inspecting buildpack blob")
 	}
@@ -814,7 +825,7 @@ func ensureBPSupport(bpPath string) (err error) {
 	return nil
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []dist.Buildpack) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []dist.Buildpack, assetImages []asset.Readable) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {
@@ -832,9 +843,15 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 		bldr.SetOrder(order)
 	}
 
+	err = bldr.AddAssetImages(assetImages...)
+	if err != nil {
+		return bldr, errors.Wrapf(err, "unable to add asset images to builder")
+	}
+
 	if err := bldr.Save(c.logger, builder.CreatorMetadata{Version: Version}); err != nil {
 		return nil, err
 	}
+
 	return bldr, nil
 }
 
@@ -901,7 +918,7 @@ func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef 
 	imgName := strings.TrimSuffix(imageRef.String(), imageRef.Identifier())
 	imgNameAndSha := fmt.Sprintf("%s@%s\n", imgName, parseDigestFromImageID(id))
 
-	// Access the logger's Writer directly to bypass ReportSuccessfulQuietBuild mode
+	// Access the logger's layerWriter directly to bypass ReportSuccessfulQuietBuild mode
 	_, err = c.logger.Writer().Write([]byte(imgNameAndSha))
 	return err
 }

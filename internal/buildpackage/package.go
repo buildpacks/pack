@@ -1,6 +1,7 @@
 package buildpackage
 
 import (
+	"github.com/buildpacks/pack/internal/ocipackage"
 	"io"
 
 	"github.com/pkg/errors"
@@ -77,6 +78,16 @@ func ExtractBuildpacks(pkg Package) (mainBP dist.Buildpack, depBPs []dist.Buildp
 	}
 
 	return mainBP, depBPs, nil
+}
+
+// BuildpackFromOCILayoutBlob constructs buildpacks from a blob in OCI layout format.
+func BuildpacksFromOCILayoutBlob(blob dist.Blob) (mainBP dist.Buildpack, dependencies []dist.Buildpack, err error) {
+	layoutPackage, err := ocipackage.NewOCILayoutPackage(blob)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return ExtractBuildpacks(layoutPackage)
 }
 
 type openerBlob struct {

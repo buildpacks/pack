@@ -3,7 +3,10 @@ package builder_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/buildpacks/pack/internal/asset"
+	fakes3 "github.com/buildpacks/pack/internal/asset/fakes"
 	"io/ioutil"
 	"os"
 	"path"
@@ -37,22 +40,26 @@ func TestBuilder(t *testing.T) {
 
 func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	var (
-		baseImage      *fakes.Image
-		subject        *builder.Builder
-		mockController *gomock.Controller
-		mockLifecycle  *testmocks.MockLifecycle
-		bp1v1          dist.Buildpack
-		bp1v2          dist.Buildpack
-		bp2v1          dist.Buildpack
-		bpOrder        dist.Buildpack
-		outBuf         bytes.Buffer
-		logger         logging.Logger
+		baseImage            *fakes.Image
+		subject              *builder.Builder
+		mockController       *gomock.Controller
+		mockLifecycle        *testmocks.MockLifecycle
+		mockAssetLayerWriter *testmocks.MockAssetLayerWriter
+		mockAssetLayerReader *testmocks.MockAssetLayerReader
+		bp1v1                dist.Buildpack
+		bp1v2                dist.Buildpack
+		bp2v1                dist.Buildpack
+		bpOrder              dist.Buildpack
+		outBuf               bytes.Buffer
+		logger               logging.Logger
 	)
 
 	it.Before(func() {
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
 		baseImage = fakes.NewImage("base/image", "", nil)
 		mockController = gomock.NewController(t)
+		mockAssetLayerWriter = testmocks.NewMockAssetLayerWriter(mockController)
+		mockAssetLayerReader = testmocks.NewMockAssetLayerReader(mockController)
 
 		lifecycleTarReader := archive.ReadDirAsTar(
 			filepath.Join("testdata", "lifecycle", "platform-0.4"),
@@ -151,6 +158,35 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("#New", func() {
+			when("Assets exists on base image", func() {
+				it.Before(func() {
+					h.AssertNil(t, baseImage.SetEnv("CNB_USER_ID", "1234"))
+					h.AssertNil(t, baseImage.SetEnv("CNB_GROUP_ID", "4321"))
+					h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some-id"))
+				})
+				it("adds assets to the new builder", func() {
+					fakeAssetBlob := fakes3.NewFakeAssetBlob("first asset contents", dist.Asset{
+						ID:       "first-asset",
+						Version:  "1.1.1",
+						Name:     "First Asset",
+						Stacks:   []string{"io.buildpacks.stack.id"},
+						Metadata: nil,
+					})
+					mockAssetLayerReader.EXPECT().Read(baseImage).Return([]asset.Blob{fakeAssetBlob}, dist.AssetMap{}, nil)
+					mockAssetLayerWriter.EXPECT().AddAssetBlobs(fakeAssetBlob)
+					_, err := builder.New(baseImage, "test-builder-image", builder.WithAssetLayerWriter(mockAssetLayerWriter), builder.WithAssetLayerReader(mockAssetLayerReader))
+					h.AssertNil(t, err)
+				})
+
+				when("unable to read assets from base image", func() {
+					it("errors with a helpful message", func() {
+						mockAssetLayerReader.EXPECT().Read(baseImage).Return([]asset.Blob{}, dist.AssetMap{}, errors.New("open failed"))
+						_, err := builder.New(baseImage, "test-builder-image", builder.WithAssetLayerWriter(mockAssetLayerWriter), builder.WithAssetLayerReader(mockAssetLayerReader))
+						h.AssertError(t, err,"unable to open asset layer reader")
+					})
+				})
+			})
+
 			when("metadata isn't valid", func() {
 				it("returns an error", func() {
 					h.AssertNil(t, baseImage.SetLabel(
@@ -158,7 +194,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						`{"something-random": ,}`,
 					))
 
-					_, err := builder.FromImage(baseImage)
+					_, err := builder.New(baseImage, "some/builder")
 					h.AssertError(t, err, "getting label")
 				})
 			})
@@ -630,6 +666,44 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertError(t, err, "getting label io.buildpacks.buildpack.layers")
 				})
 			})
+
+			when("adding assets to image", func() {
+				it.Before(func() {
+					var err error
+					mockAssetLayerReader.EXPECT().Read(baseImage)
+					mockAssetLayerWriter.EXPECT().AddAssetBlobs()
+					subject, err = builder.New(baseImage, "some/builder", builder.WithAssetLayerWriter(mockAssetLayerWriter), builder.WithAssetLayerReader(mockAssetLayerReader))
+					h.AssertNil(t, err)
+				})
+				when("writing asset images succeeds", func() {
+					it("succeeds", func() {
+						mockAssetLayerWriter.EXPECT().Open()
+						mockAssetLayerWriter.EXPECT().Write(gomock.Any())
+						mockAssetLayerWriter.EXPECT().Close()
+
+						err := subject.Save(logger, builder.CreatorMetadata{})
+						h.AssertNil(t, err)
+					})
+				})
+				when("fails to write asset layers", func() {
+					it("errors with helpful message", func() {
+						mockAssetLayerWriter.EXPECT().Open()
+						mockAssetLayerWriter.EXPECT().Write(gomock.Any()).Return(errors.New("big bad error"))
+						mockAssetLayerWriter.EXPECT().Close()
+
+						err := subject.Save(logger, builder.CreatorMetadata{})
+						h.AssertError(t, err, `error writing asset layers: big bad error`)
+					})
+				})
+				when("unable to open asset layer writer", func() {
+					it("errors with a helpful message", func() {
+						mockAssetLayerWriter.EXPECT().Open().Return(errors.New("big bad error"))
+
+						err := subject.Save(logger, builder.CreatorMetadata{})
+						h.AssertError(t, err, `unable to open asset layer writer: big bad error`)
+					})
+				})
+			})
 		})
 
 		when("#SetLifecycle", func() {
@@ -710,6 +784,92 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, metadata.Lifecycle.APIs.Buildpack.Supported.AsStrings(), []string{"0.2", "0.3", "0.4"})
 				h.AssertEq(t, metadata.Lifecycle.APIs.Platform.Deprecated.AsStrings(), []string{"0.2"})
 				h.AssertEq(t, metadata.Lifecycle.APIs.Platform.Supported.AsStrings(), []string{"0.3", "0.4"})
+			})
+		})
+
+		when("#AddAssetImages", func() {
+			var (
+				firstAsset = dist.Asset{
+					ID:      "first-asset",
+					Name:    "First Asset",
+					Sha256:  "first-sha256",
+					Stacks:  []string{"io.buildpacks.stacks.bionic"},
+					URI:     "https://first-asset-uri",
+					Version: "1.2.3",
+				}
+
+				secondAsset = dist.Asset{
+					ID:      "second-asset",
+					Name:    "Second Asset",
+					Sha256:  "second-sha256",
+					Stacks:  []string{"io.buildpacks.stacks.bionic"},
+					URI:     "https://second-asset-uri",
+					Version: "4.5.6",
+				}
+
+				thirdAsset = dist.Asset{
+					ID:      "third-asset",
+					Name:    "Third Asset",
+					Sha256:  "third-sha256",
+					Stacks:  []string{"io.buildpacks.stacks.bionic"},
+					URI:     "https://third-asset-uri",
+					Version: "7.8.9",
+				}
+			)
+			it.Before(func() {
+				var err error
+				mockAssetLayerReader.EXPECT().Read(baseImage)
+				mockAssetLayerWriter.EXPECT().AddAssetBlobs()
+				subject, err = builder.New(baseImage,
+					"some/builder",
+					builder.WithAssetLayerWriter(mockAssetLayerWriter),
+					builder.WithAssetLayerReader(mockAssetLayerReader),
+				)
+				h.AssertNil(t, err)
+			})
+			it("adds asset layers as image layers", func() {
+				firstAssetImage := fakes.NewImage("first-fake-asset-image", "", nil)
+				firstAssetImageBlob1 := fakes3.NewFakeAssetBlob("first-asset-blob", firstAsset)
+				firstAssetImageBlob2 := fakes3.NewFakeAssetBlob("second-asset-blob", secondAsset)
+				firstAssetImageMD := dist.AssetMap{
+					firstAsset.Sha256:  firstAsset.ToAssetValue("first-asset-diffID"),
+					secondAsset.Sha256: secondAsset.ToAssetValue("second-asset-diffID"),
+					thirdAsset.Sha256:  thirdAsset.ToAssetValue("third-asset-diffID"),
+				}
+
+				secondAssetImage := fakes.NewImage("second-fake-asset-image", "", nil)
+				secondAssetImageBlob1 := fakes3.NewFakeAssetBlob("third-asset-blob", thirdAsset)
+				secondAssetImageMD := dist.AssetMap{
+					thirdAsset.Sha256: thirdAsset.ToAssetValue("third-asset-diffID"),
+				}
+
+				mockAssetLayerReader.EXPECT().Read(firstAssetImage).
+					Return(
+						[]asset.Blob{firstAssetImageBlob1, firstAssetImageBlob2},
+						firstAssetImageMD,
+						nil,
+					)
+				mockAssetLayerReader.EXPECT().Read(secondAssetImage).
+					Return(
+						[]asset.Blob{secondAssetImageBlob1},
+						secondAssetImageMD,
+						nil,
+					)
+
+				mockAssetLayerWriter.EXPECT().AddAssetBlobs(firstAssetImageBlob1, firstAssetImageBlob2)
+				mockAssetLayerWriter.EXPECT().AddAssetBlobs(secondAssetImageBlob1)
+
+				h.AssertNil(t, subject.AddAssetImages(firstAssetImage, secondAssetImage))
+			})
+			when("unable to read assets from image", func() {
+				it("errors with a helpful message", func() {
+					firstAssetImage := fakes.NewImage("first-fake-asset-image", "", nil)
+
+					mockAssetLayerReader.EXPECT().Read(firstAssetImage).Return([]asset.Blob{}, dist.AssetMap{}, errors.New("error opening asset image"))
+					err := subject.AddAssetImages(firstAssetImage)
+
+					h.AssertError(t, err, "unable to open asset image for reading")
+				})
 			})
 		})
 
@@ -1108,6 +1268,20 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, order[0].Group[1].ID, "buildpack-2-id")
 				h.AssertEq(t, order[0].Group[1].Version, "buildpack-2-version-1")
 				h.AssertEq(t, order[0].Group[1].Optional, true)
+			})
+
+			it("gets assets from image", func() {
+				fakeAssetBlob := fakes3.NewFakeAssetBlob("first asset contents", dist.Asset{
+					ID:       "first-asset",
+					Version:  "1.1.1",
+					Name:     "First Asset",
+					Stacks:   []string{"io.buildpacks.stack.id"},
+					Metadata: nil,
+				})
+				mockAssetLayerReader.EXPECT().Read(builderImage).Return([]asset.Blob{fakeAssetBlob}, dist.AssetMap{}, nil)
+				mockAssetLayerWriter.EXPECT().AddAssetBlobs(fakeAssetBlob)
+				_, err := builder.FromImage(builderImage, builder.WithAssetLayerWriter(mockAssetLayerWriter), builder.WithAssetLayerReader(mockAssetLayerReader))
+				h.AssertNil(t, err)
 			})
 
 			it("gets mixins from image", func() {

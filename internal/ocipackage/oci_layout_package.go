@@ -1,4 +1,4 @@
-package buildpackage
+package ocipackage
 
 import (
 	"archive/tar"
@@ -38,31 +38,22 @@ func IsOCILayoutBlob(blob blob2.Blob) (bool, error) {
 	return true, nil
 }
 
-// BuildpackFromOCILayoutBlob constructs buildpacks from a blob in OCI layout format.
-func BuildpacksFromOCILayoutBlob(blob dist.Blob) (mainBP dist.Buildpack, dependencies []dist.Buildpack, err error) {
-	layoutPackage, err := newOCILayoutPackage(blob)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return ExtractBuildpacks(layoutPackage)
-}
-
 func ConfigFromOCILayoutBlob(blob dist.Blob) (config v1.ImageConfig, err error) {
-	layoutPackage, err := newOCILayoutPackage(blob)
+	layoutPackage, err := NewOCILayoutPackage(blob)
 	if err != nil {
 		return v1.ImageConfig{}, err
 	}
 	return layoutPackage.imageInfo.Config, nil
 }
 
-type ociLayoutPackage struct {
+type OciLayoutPackage struct {
 	imageInfo v1.Image
 	manifest  v1.Manifest
 	blob      dist.Blob
 }
 
-func newOCILayoutPackage(blob dist.Blob) (*ociLayoutPackage, error) {
+
+func NewOCILayoutPackage(blob dist.Blob) (*OciLayoutPackage, error) {
 	index := &v1.Index{}
 
 	if err := unmarshalJSONFromBlob(blob, "/index.json", index); err != nil {
@@ -91,28 +82,29 @@ func newOCILayoutPackage(blob dist.Blob) (*ociLayoutPackage, error) {
 		return nil, err
 	}
 
-	layersLabel := imageInfo.Config.Labels[dist.BuildpackLayersLabel]
-	if layersLabel == "" {
-		return nil, errors.Errorf("label %s not found", style.Symbol(dist.BuildpackLayersLabel))
-	}
+	// TODO -Dan- remove testing around this.
+	//layersLabel := imageInfo.Config.Labels[dist.BuildpackLayersLabel]
+	//if layersLabel == "" {
+	//	return nil, errors.Errorf("label %s not found", style.Symbol(dist.BuildpackLayersLabel))
+	//}
+	//
+	//bpLayers := dist.BuildpackLayers{}
+	//if err := json.Unmarshal([]byte(layersLabel), &bpLayers); err != nil {
+	//	return nil, errors.Wrap(err, "unmarshaling layers label")
+	//}
 
-	bpLayers := dist.BuildpackLayers{}
-	if err := json.Unmarshal([]byte(layersLabel), &bpLayers); err != nil {
-		return nil, errors.Wrap(err, "unmarshaling layers label")
-	}
-
-	return &ociLayoutPackage{
+	return &OciLayoutPackage{
 		imageInfo: *imageInfo,
 		manifest:  *manifest,
 		blob:      blob,
 	}, nil
 }
 
-func (o *ociLayoutPackage) Label(name string) (value string, err error) {
+func (o *OciLayoutPackage) Label(name string) (value string, err error) {
 	return o.imageInfo.Config.Labels[name], nil
 }
 
-func (o *ociLayoutPackage) GetLayer(diffID string) (io.ReadCloser, error) {
+func (o *OciLayoutPackage) GetLayer(diffID string) (io.ReadCloser, error) {
 	index := -1
 	for i, dID := range o.imageInfo.RootFS.DiffIDs {
 		if dID.String() == diffID {

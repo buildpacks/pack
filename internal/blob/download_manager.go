@@ -34,15 +34,15 @@ type DownloadResult struct {
 }
 
 // TODO -Dan- parallel downloads should cleanly exit with Ctrl-C
-// TODO -Dan- parallel download output is a bit messed up.
+// TODO -Dan- parallel download output could look better
 // existing behavior is a bit dangerous and can poison the cache.
-func (dm *DownloadManager) DownloadAndValidate(jobs ...DownloadJob) (map[DownloadJob]DownloadResult, error) {
+func (dm *DownloadManager) DownloadAndValidate(ctx context.Context, jobs ...DownloadJob) (map[DownloadJob]DownloadResult, error) {
 	resultMap := make(map[DownloadJob]DownloadResult)
 	results := make(chan DownloadResult, len(jobs))
 	jobQueue := make(chan DownloadJob, len(jobs))
 
 	for workerCount := 0; workerCount < dm.workerCount; workerCount++ {
-		go downloadWorker(dm.downloader, jobQueue, results)
+		go downloadWorker(ctx, dm.downloader, jobQueue, results)
 	}
 
 	for _, job := range jobs {
@@ -77,12 +77,12 @@ func errorJoin(elems []error, sep string) string {
 	return strings.Join(strArr, sep)
 }
 
-func downloadWorker(downloader Downloader, jobs <-chan DownloadJob, results chan<- DownloadResult) {
+func downloadWorker(ctx context.Context, downloader Downloader, jobs <-chan DownloadJob, results chan<- DownloadResult) {
 	for j := range jobs {
 		var b Blob = nil
 		var err error
 		if j.URI != "" {
-			b, err = downloader.Download(context.Background(), j.URI, RawDownload, ValidateDownload(j.Sha256))
+			b, err = downloader.Download(ctx, j.URI, RawDownload, ValidateDownload(j.Sha256))
 		}
 		results <- DownloadResult{
 			Blob:        b,

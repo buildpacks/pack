@@ -2,6 +2,8 @@ package pack
 
 import (
 	"context"
+	"github.com/buildpacks/pack/internal/asset"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"sort"
 
 	"github.com/buildpacks/imgutil"
@@ -19,33 +21,43 @@ type CreateAssetCacheOptions struct {
 	Assets    dist.Assets
 	Publish   bool
 	OS        string
+	Format    string
+}
+
+type AssetCache interface {
+	Save(additionalNames ...string) error
+	AddAssetBlobs(pairs ...asset.Blob)
 }
 
 func (c *Client) CreateAssetCache(ctx context.Context, opts CreateAssetCacheOptions) error {
-	img, err := newImageWithOS(opts.ImageName, opts.OS, !opts.Publish, c.imageFactory)
+	var assetCache AssetCache
+	tarWriterFactory, err := layer.NewWriterFactory(opts.OS)
 	if err != nil {
-		return errors.Wrap(err, "unable to create asset cache image")
+		return errors.Wrap(err, "unable to create layer tar writer")
 	}
-
+	assetLayerWriter := asset.NewLayerWriter(tarWriterFactory)
+	switch {
+	case opts.Format == FormatFile:
+		eImg := empty.Image
+		assetCache = asset.NewFile(opts.ImageName, opts.OS, eImg, assetLayerWriter)
+	default:
+		img, err := newImageWithOS(opts.ImageName, opts.OS, !opts.Publish, c.imageFactory)
+		if err != nil {
+			return errors.Wrap(err, "unable to create asset cache base image")
+		}
+		assetCache = asset.NewImage(img, assetLayerWriter)
+	}
 	downloadManager := blob.NewDownloadManager(c.downloader, downloadWorkerCount)
 
 	assets := simplifyAssets(opts.Assets)
-	downloadResults, err := downloadManager.DownloadAndValidate(assetToDownloadJob(assets)...)
+	downloadJobs := assetToDownloadJob(assets)
+	downloadResults, err := downloadManager.DownloadAndValidate(ctx, downloadJobs...)
 	if err != nil {
 		return errors.Wrap(err, "unable to download assets")
 	}
 
-	tarWriterFactory, err := layer.NewWriterFactory(opts.OS)
-	if err != nil {
-		panic(err)
-	}
-	assetCacheImage, err := dist.NewAssetCacheImage(img, tarWriterFactory)
-	if err != nil {
-		panic(err)
-	}
-
-	addAssetsToImage(assetCacheImage, assets, downloadResults)
-	return assetCacheImage.Save()
+	addAssetsToImage(assetCache, assets, downloadResults)
+	return assetCache.Save()
 }
 
 func newImageWithOS(imgName, os string, local bool, imgFactory ImageFactory) (imgutil.Image, error) {
@@ -91,15 +103,12 @@ func simplifyAssets(assets dist.Assets) dist.Assets {
 }
 
 // this method mutates the given assetImg
-func addAssetsToImage(assetImg *dist.AssetCacheImage, assets dist.Assets, downloadMap map[blob.DownloadJob]blob.DownloadResult) {
-	for _, asset := range assets {
-		b, ok := downloadMap[blob.DownloadJob{URI: asset.URI, Sha256: asset.Sha256}]
-		if !ok {
+func addAssetsToImage(assetImg AssetCache, assets dist.Assets, downloadMap map[blob.DownloadJob]blob.DownloadResult) {
+	for _, curAsset := range assets {
+		b, ok := downloadMap[blob.DownloadJob{URI: curAsset.URI, Sha256: curAsset.Sha256}]
+		if !ok || b.Blob == nil{
 			continue
 		}
-		assetImg.AddAssetLayers(dist.BlobAssetPair{
-			Blob:  b.Blob,
-			Asset: asset,
-		})
+		assetImg.AddAssetBlobs(asset.FromRawBlob(curAsset, b.Blob))
 	}
 }

@@ -24,6 +24,7 @@ type CreateAssetCacheFlags struct {
 	Registry         string
 	ImagePreference  string
 	OS               string
+	Format           string
 }
 
 var inspectOptionsMapping = map[string][]pack.InspectBuildpackOptions{
@@ -72,6 +73,7 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 				Assets:    assets,
 				Publish:   flags.Publish,
 				OS:        flags.OS,
+				Format: flags.Format,
 			}); err != nil {
 				return errors.Wrap(err, "error, unable to create asset cache")
 			}
@@ -80,6 +82,7 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 		}),
 	}
 
+	cmd.Flags().StringVarP(&flags.Format, "format", "f", "image", `Format to save package as ("image" or "file")`)
 	cmd.Flags().StringVarP(&flags.BuildpackLocator, "buildpack", "b", "", "Buildpack Locator")
 	cmd.Flags().StringVar(&flags.ImagePreference, "image-preference", pubcfg.LocalImagePreference, "Image Preference to use Accepted values are prefer-local, prefer-remote, only-local, and only-remote. The default is prefer-loca")
 	cmd.Flags().StringVarP(&flags.Registry, "buildpack-registry", "R", cfg.DefaultRegistryName, "Buildpack Registry by name")
@@ -117,6 +120,9 @@ func validateAssetCacheFlags(flags CreateAssetCacheFlags) error {
 		return err
 	}
 	if err := pubcfg.ValidateImagePreference(flags.ImagePreference); err != nil {
+		return err
+	}
+	if err := pubcfg.ValidateFormat(flags.Format); err != nil {
 		return err
 	}
 

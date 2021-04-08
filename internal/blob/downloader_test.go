@@ -213,10 +213,9 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 
 							it("should return error", func() {
 								uri = server.URL() + "/bad/download"
-								r, err := subject.Download(context.TODO(), uri)
+								_, err := subject.Download(context.TODO(), uri)
 								h.AssertError(t, err, "could not download")
 								h.AssertError(t, err, "http status '404'")
-								fmt.Print(r)
 							})
 						})
 

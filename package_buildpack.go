@@ -2,6 +2,7 @@ package pack
 
 import (
 	"context"
+	"github.com/buildpacks/pack/internal/ocipackage"
 
 	"github.com/pkg/errors"
 
@@ -117,7 +118,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 					return err
 				}
 
-				isOCILayout, err := buildpackage.IsOCILayoutBlob(depBlob)
+				isOCILayout, err := ocipackage.IsOCILayoutBlob(depBlob)
 				if err != nil {
 					return errors.Wrap(err, "inspecting buildpack blob")
 				}

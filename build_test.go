@@ -6,6 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/buildpacks/pack/testmocks"
+	"github.com/golang/mock/gomock"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -55,7 +57,9 @@ func TestBuild(t *testing.T) {
 func testBuild(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject                      *Client
+		mockController               *gomock.Controller
 		fakeImageFetcher             *ifakes.FakeImageFetcher
+		fakeAssetFetcher             *testmocks.MockAssetFetcher
 		fakeLifecycle                *ifakes.FakeLifecycle
 		defaultBuilderStackID        = "some.stack.id"
 		defaultWindowsBuilderStackID = "some.windows.stack.id"
@@ -77,8 +81,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
+		mockController = gomock.NewController(t)
 		fakeImageFetcher = ifakes.NewFakeImageFetcher()
 		fakeLifecycle = &ifakes.FakeLifecycle{}
+		fakeAssetFetcher = testmocks.NewMockAssetFetcher(mockController)
 
 		tmpDir, err = ioutil.TempDir("", "build-test")
 		h.AssertNil(t, err)
@@ -125,6 +131,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		subject = &Client{
 			logger:            logger,
 			imageFetcher:      fakeImageFetcher,
+			assetFetcher:      fakeAssetFetcher,
 			downloader:        blob.NewDownloader(logger, dlCacheDir),
 			lifecycleExecutor: fakeLifecycle,
 			docker:            docker,
@@ -141,6 +148,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Build", func() {
+		it.Before(func() {
+			fakeAssetFetcher.EXPECT().FetchAssets(nil, gomock.Any()).AnyTimes()
+		})
 		when("Image option", func() {
 			it("is required", func() {
 				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
