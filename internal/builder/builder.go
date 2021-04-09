@@ -45,6 +45,14 @@ const (
 
 	EnvUID = "CNB_USER_ID"
 	EnvGID = "CNB_GROUP_ID"
+
+	BuildpackOnBuilderMessage = `buildpack %s already exists on builder and will be overwritten
+  - existing diffID: %s
+  - new diffID: %s`
+
+	BuildpackPreviouslyDefinedMessage = `buildpack %s was previously defined with different contents and will be overwritten
+  - previous diffID: %s
+  - using diffID: %s`
 )
 
 // Builder represents a pack builder, used to build images
@@ -405,14 +413,7 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 				continue
 			}
 
-			logger.Debugf(
-				`buildpack %s already exists on builder and will be overwritten
-  - existing diffID: %s
-  - new diffID: %s`,
-				style.Symbol(bpInfo.FullName()),
-				style.Symbol(existingBPInfo.LayerDiffID),
-				style.Symbol(diffID.String()),
-			)
+			logger.Debugf(BuildpackOnBuilderMessage, style.Symbol(bpInfo.FullName()), style.Symbol(existingBPInfo.LayerDiffID), style.Symbol(diffID.String()))
 		}
 
 		// check against other buildpacks to be added
@@ -422,14 +423,7 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 				continue
 			}
 
-			logger.Debugf(
-				`buildpack %s was previously defined with different contents
-  - previous diffID: %s
-  - using diffID: %s`,
-				style.Symbol(bpInfo.FullName()),
-				style.Symbol(otherAdditionalBP.diffID),
-				style.Symbol(diffID.String()),
-			)
+			logger.Debugf(BuildpackPreviouslyDefinedMessage, style.Symbol(bpInfo.FullName()), style.Symbol(otherAdditionalBP.diffID), style.Symbol(diffID.String()))
 		}
 
 		// note: if same id@version is in additionalBuildpacks, last one wins (see warnings above)

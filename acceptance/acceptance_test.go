@@ -688,8 +688,7 @@ func testAcceptance(
 							createBuilderPackConfig.FixturePaths()...,
 						)...,
 					)
-					// run task on taskmanager and save output, in case there are future calls to the same task
-					// likely all our changes need to go on the createBuilderPack.
+
 					value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
 						return createComplexBuilder(
 							t,
@@ -716,17 +715,7 @@ func testAcceptance(
 				})
 				when("builder has duplicate buildpacks", func() {
 					it("buildpack layers have no duplication", func() {
-						out, _, err := dockerCli.ImageInspectWithRaw(context.Background(), builderName)
-						assert.Nil(err)
-
-						layerSet := map[string]interface{}{}
-						for _, layer := range out.RootFS.Layers {
-							_, ok := layerSet[layer]
-							if ok {
-								t.Fatalf("duplicate layer found in builder %s", layer)
-							}
-							layerSet[layer] = true
-						}
+						assertImage.DoesNotHaveDuplicateLayers(builderName)
 					})
 				})
 			})

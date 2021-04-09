@@ -698,7 +698,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							newSha256 = "eaed4a1617bba5738ae5672f6aefda8add7abb2f8630c75dc97a6232879d4ae4"
 						}
 
-						h.AssertContains(t, outBuf.String(), fmt.Sprintf(`buildpack 'buildpack-1-id@buildpack-1-version-1' was previously defined with different contents
+						h.AssertContains(t, outBuf.String(), fmt.Sprintf(`buildpack 'buildpack-1-id@buildpack-1-version-1' was previously defined with different contents and will be overwritten
   - previous diffID: 'sha256:%s'
   - using diffID: 'sha256:%s'`, oldSha256, newSha256))
 
