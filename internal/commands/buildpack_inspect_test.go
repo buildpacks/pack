@@ -37,11 +37,11 @@ const complexOutputSection = `Stacks:
       (omitted)
 
 Buildpacks:
-  ID                                 VERSION        HOMEPAGE
-  some/first-inner-buildpack         1.0.0          first-inner-buildpack-homepage
-  some/second-inner-buildpack        2.0.0          second-inner-buildpack-homepage
-  some/third-inner-buildpack         3.0.0          third-inner-buildpack-homepage
-  some/top-buildpack                 0.0.1          top-buildpack-homepage
+  ID                                 NAME        VERSION        HOMEPAGE
+  some/first-inner-buildpack         -           1.0.0          first-inner-buildpack-homepage
+  some/second-inner-buildpack        -           2.0.0          second-inner-buildpack-homepage
+  some/third-inner-buildpack         -           3.0.0          third-inner-buildpack-homepage
+  some/top-buildpack                 top         0.0.1          top-buildpack-homepage
 
 Detection Order:
  └ Group #1:
@@ -71,9 +71,9 @@ const simpleOutputSection = `Stacks:
       (omitted)
 
 Buildpacks:
-  ID                                VERSION        HOMEPAGE
-  some/single-buildpack             0.0.1          single-buildpack-homepage
-  some/buildpack-no-homepage        0.0.2          -
+  ID                                NAME        VERSION        HOMEPAGE
+  some/single-buildpack             some        0.0.1          single-buildpack-homepage
+  some/buildpack-no-homepage        -           0.0.2          -
 
 Detection Order:
  └ Group #1:
@@ -147,6 +147,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 					ID:       "some/top-buildpack",
 					Version:  "0.0.1",
 					Homepage: "top-buildpack-homepage",
+					Name:     "top",
 				},
 				Stacks: []dist.Stack{
 					{ID: "io.buildpacks.stacks.first-stack", Mixins: []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"}},
@@ -173,6 +174,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 					ID:       "some/top-buildpack",
 					Version:  "0.0.1",
 					Homepage: "top-buildpack-homepage",
+					Name:     "top",
 				},
 			},
 			Order: dist.Order{
@@ -183,6 +185,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 								ID:       "some/top-buildpack",
 								Version:  "0.0.1",
 								Homepage: "top-buildpack-homepage",
+								Name:     "top",
 							},
 							Optional: false,
 						},
@@ -290,6 +293,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 						},
 						LayerDiffID: "sha256:top-buildpack-diff-id",
 						Homepage:    "top-buildpack-homepage",
+						Name:        "top",
 					},
 				},
 			},
@@ -301,6 +305,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 					ID:       "some/single-buildpack",
 					Version:  "0.0.1",
 					Homepage: "single-homepage-homepace",
+					Name:     "some",
 				},
 				Stacks: []dist.Stack{
 					{ID: "io.buildpacks.stacks.first-stack", Mixins: []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"}},
@@ -311,6 +316,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 				{
 					ID:       "some/single-buildpack",
 					Version:  "0.0.1",
+					Name:     "some",
 					Homepage: "single-buildpack-homepage",
 				},
 				{
@@ -342,6 +348,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 						},
 						LayerDiffID: "sha256:single-buildpack-diff-id",
 						Homepage:    "single-buildpack-homepage",
+						Name:        "some",
 					},
 				},
 			},

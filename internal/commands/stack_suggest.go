@@ -27,6 +27,13 @@ var suggestedStacks = []suggestedStack{
 		RunImage:    "heroku/pack:18",
 	},
 	{
+		ID:          "heroku-20",
+		Description: "The official Heroku stack based on Ubuntu 20.04",
+		Maintainer:  "Heroku",
+		BuildImage:  "heroku/pack:20-build",
+		RunImage:    "heroku/pack:20",
+	},
+	{
 		ID:          "io.buildpacks.stacks.bionic",
 		Description: "A minimal Paketo stack based on Ubuntu 18.04",
 		Maintainer:  "Paketo Project",

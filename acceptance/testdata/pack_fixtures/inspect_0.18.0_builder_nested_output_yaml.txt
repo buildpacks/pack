@@ -28,14 +28,11 @@ remote_info:
         - name: {{.run_image_mirror}}
     buildpacks:
         - id: noop.buildpack
-          name: NOOP Buildpack
           version: noop.buildpack.later-version
           homepage: http://geocities.com/cool-bp
         - id: noop.buildpack
-          name: NOOP Buildpack
           version: noop.buildpack.version
         - id: read/env
-          name: Read Env Buildpack
           version: read-env-version
         - id: simple/layers
           version: simple-layers-version
@@ -81,14 +78,11 @@ local_info:
         - name: {{.run_image_mirror}}
     buildpacks:
         - id: noop.buildpack
-          name: NOOP Buildpack
           version: noop.buildpack.later-version
           homepage: http://geocities.com/cool-bp
         - id: noop.buildpack
-          name: NOOP Buildpack
           version: noop.buildpack.version
         - id: read/env
-          name: Read Env Buildpack
           version: read-env-version
         - id: simple/layers
           version: simple-layers-version

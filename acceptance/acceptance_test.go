@@ -2041,7 +2041,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 							"inspect_%s_builder_nested_output.txt",
-							createBuilderPack.Version(),
+							createBuilderPack.SanitizedVersion(),
 							"inspect_builder_nested_output.txt",
 							map[string]interface{}{
 								"builder_name":              builderName,
@@ -2079,7 +2079,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 							"inspect_%s_builder_nested_depth_2_output.txt",
-							createBuilderPack.Version(),
+							createBuilderPack.SanitizedVersion(),
 							"inspect_builder_nested_depth_2_output.txt",
 							map[string]interface{}{
 								"builder_name":              builderName,
@@ -2120,7 +2120,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 								"inspect_%s_builder_nested_output_toml.txt",
-								createBuilderPack.Version(),
+								createBuilderPack.SanitizedVersion(),
 								"inspect_builder_nested_output_toml.txt",
 								map[string]interface{}{
 									"builder_name":              builderName,
@@ -2157,7 +2157,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 								"inspect_%s_builder_nested_output_yaml.txt",
-								createBuilderPack.Version(),
+								createBuilderPack.SanitizedVersion(),
 								"inspect_builder_nested_output_yaml.txt",
 								map[string]interface{}{
 									"builder_name":              builderName,
@@ -2198,7 +2198,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 								"inspect_%s_builder_nested_output_json.txt",
-								createBuilderPack.Version(),
+								createBuilderPack.SanitizedVersion(),
 								"inspect_builder_nested_output_json.txt",
 								map[string]interface{}{
 									"builder_name":              builderName,
@@ -2237,7 +2237,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 						"inspect_%s_builder_output.txt",
-						createBuilderPack.Version(),
+						createBuilderPack.SanitizedVersion(),
 						"inspect_builder_output.txt",
 						map[string]interface{}{
 							"builder_name":              builderName,
@@ -2277,7 +2277,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 						"inspect_%s_builder_output.txt",
-						createBuilderPack.Version(),
+						createBuilderPack.SanitizedVersion(),
 						"inspect_builder_output.txt",
 						map[string]interface{}{
 							"builder_name":              builderName,

@@ -126,7 +126,8 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 	{
       "id": "test.bp.one",
 	  "version": "test.bp.one.version",
-	  "homepage": "http://geocities.com/cool-bp"
+	  "homepage": "http://geocities.com/cool-bp",
+	  "name": "one"
     },
 	{
       "id": "test.bp.two",
@@ -197,7 +198,8 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
         }
       ],
       "layerDiffID": "sha256:test.bp.one.sha256",
-	  "homepage": "http://geocities.com/cool-bp"
+	  "homepage": "http://geocities.com/cool-bp",
+	  "name": "one"
     }
   },
  "test.bp.two": {
@@ -230,6 +232,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 								{
 									ID:       "test.bp.one",
 									Version:  "test.bp.one.version",
+									Name:     "one",
 									Homepage: "http://geocities.com/cool-bp",
 								},
 								{
@@ -298,6 +301,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 										},
 										LayerDiffID: "sha256:test.bp.one.sha256",
 										Homepage:    "http://geocities.com/cool-bp",
+										Name:        "one",
 									},
 								},
 								"test.bp.two": {

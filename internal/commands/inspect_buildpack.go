@@ -177,12 +177,12 @@ func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 	buf := &bytes.Buffer{}
 
 	tabWriter := new(tabwriter.Writer).Init(buf, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
-	if _, err := fmt.Fprint(tabWriter, "  ID\tVERSION\tHOMEPAGE\n"); err != nil {
+	if _, err := fmt.Fprint(tabWriter, "  ID\tNAME\tVERSION\tHOMEPAGE\n"); err != nil {
 		return "", err
 	}
 
 	for _, bp := range bps {
-		if _, err := fmt.Fprintf(tabWriter, "  %s\t%s\t%s\n", bp.ID, bp.Version, strs.ValueOrDefault(bp.Homepage, "-")); err != nil {
+		if _, err := fmt.Fprintf(tabWriter, "  %s\t%s\t%s\t%s\n", bp.ID, strs.ValueOrDefault(bp.Name, "-"), bp.Version, strs.ValueOrDefault(bp.Homepage, "-")); err != nil {
 			return "", err
 		}
 	}

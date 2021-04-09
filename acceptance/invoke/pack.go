@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -167,10 +168,14 @@ func (c *InterruptCmd) Wait() error {
 
 func (i *PackInvoker) Version() string {
 	i.testObject.Helper()
+	return strings.TrimSpace(i.RunSuccessfully("version"))
+}
 
-	output := i.RunSuccessfully("version")
-
-	return strings.TrimSpace(output)
+func (i *PackInvoker) SanitizedVersion() string {
+	i.testObject.Helper()
+	// Sanitizing any git commit sha and build number from the version output
+	re := regexp.MustCompile(`\d+\.\d+\.\d+`)
+	return re.FindString(strings.TrimSpace(i.RunSuccessfully("version")))
 }
 
 func (i *PackInvoker) EnableExperimental() {
