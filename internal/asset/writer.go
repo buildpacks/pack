@@ -75,14 +75,13 @@ func (lw *layerWriter) Close() error {
 	return nil
 }
 
-// When commenting note that this does NOT do ANY form of zipping, it expects all assets to already
-// be zipped into appropriate layers...
 func (lw *layerWriter) Write(w Writable) error {
 	if lw.tmpDir == "" {
 		return errors.New("layerWriter must be opened before writing")
 	}
 
 	for _, aBlob := range lw.blobs {
+		aBlob := aBlob // force copy operation
 		// TODO -Dan- handle cases of 128+ layers on image.
 		layerFileName := filepath.Join(lw.tmpDir, aBlob.AssetDescriptor().Sha256)
 		descriptor := aBlob.AssetDescriptor()

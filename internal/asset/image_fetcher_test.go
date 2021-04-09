@@ -25,7 +25,7 @@ func testAssetFetcher(t *testing.T, when spec.G, it spec.S) {
 		assert         = testhelpers.NewAssertionManager(t)
 		mockController *gomock.Controller
 		mockFetcher    *testmocks.MockImageFetcher
-		subject        asset.AssetImageFetcher
+		subject        asset.ImageFetcher
 	)
 	it.Before(func() {
 		mockController = gomock.NewController(t)

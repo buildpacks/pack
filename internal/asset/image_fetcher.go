@@ -14,18 +14,18 @@ type ImgFetcher interface {
 	Fetch(ctx context.Context, name string, daemon bool, pullPolicy pubcfg.PullPolicy) (imgutil.Image, error)
 }
 
-type AssetImageFetcher struct {
+type ImageFetcher struct {
 	ImgFetcher
 }
 
-func NewImageFetcher(imageFetcher ImgFetcher) AssetImageFetcher {
-	return AssetImageFetcher{
+func NewImageFetcher(imageFetcher ImgFetcher) ImageFetcher {
+	return ImageFetcher{
 		ImgFetcher: imageFetcher,
 	}
 }
 
 // TODO allow for smooth cancels via ctrl+c when downloading (need to add a context in)
-func (af AssetImageFetcher) FetchImageAssets(ctx context.Context, pullPolicy pubcfg.PullPolicy, imageNames ...string) ([]imgutil.Image, error) {
+func (af ImageFetcher) FetchImageAssets(ctx context.Context, pullPolicy pubcfg.PullPolicy, imageNames ...string) ([]imgutil.Image, error) {
 	result := []imgutil.Image{}
 	for _, imageName := range imageNames {
 		img, err := af.ImgFetcher.Fetch(ctx, imageName, true, pullPolicy)

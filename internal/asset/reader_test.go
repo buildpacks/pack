@@ -83,6 +83,7 @@ func testReader(t *testing.T, when spec.G, it spec.S) {
 					"third-sha256":  thirdAsset.ToAssetValue("third-diffID"),
 				}
 				lw, err := layer.NewWriterFactory("linux")
+				assert.Nil(err)
 
 				firstAssetBlob, err := fakes3.NewFakeAssetBlobTar("first layer contents", firstAsset, lw)
 				assert.Nil(err)

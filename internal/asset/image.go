@@ -33,7 +33,6 @@ func NewImage(img imgutil.Image, assetLayerWriter LayerWriter) *Image {
 }
 
 func (a *Image) Save(additionalNames ...string) error {
-
 	tmpDir, err := ioutil.TempDir("", "create-asset-base-dir-scratch")
 	if err != nil {
 		return err

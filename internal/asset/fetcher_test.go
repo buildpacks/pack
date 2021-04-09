@@ -30,17 +30,17 @@ func TestFetcher(t *testing.T) {
 func testFetcher(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController   *gomock.Controller
-		mockFileFetcher  *testmocks.MockFileFetcher
-		mockURIFetcher   *testmocks.MockURIFetcher
-		mockImageFetcher *testmocks.MockImageFetcher
+		mockFileFetcher  *testmocks.MockFileCacheFetcher
+		mockURIFetcher   *testmocks.MockURICacheFetcher
+		mockImageFetcher *testmocks.MockImageCacheFetcher
 		subject          asset.Fetcher
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
-		mockFileFetcher = testmocks.NewMockFileFetcher(mockController)
-		mockURIFetcher = testmocks.NewMockURIFetcher(mockController)
-		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
+		mockFileFetcher = testmocks.NewMockFileCacheFetcher(mockController)
+		mockURIFetcher = testmocks.NewMockURICacheFetcher(mockController)
+		mockImageFetcher = testmocks.NewMockImageCacheFetcher(mockController)
 		subject = asset.NewFetcher(mockFileFetcher, mockURIFetcher, mockImageFetcher)
 	})
 
@@ -68,8 +68,8 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, len(actualAssets), 1)
 				assertSameAssetLayers(t, actualAssets[0], fakeImage)
-
 			})
+
 			when("WithPullPolicy Option", func() {
 				it("fetches asset with provided pull policy", func() {
 					assetName := "some-org/some-repo"

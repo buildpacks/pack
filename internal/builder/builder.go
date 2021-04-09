@@ -63,15 +63,15 @@ type AssetLayerReader interface {
 	Read(rd asset.Readable) ([]asset.Blob, dist.AssetMap, error)
 }
 
-type BuilderOption func(builder *Builder)
+type Option func(builder *Builder)
 
-func WithAssetLayerWriter(writer AssetLayerWriter) BuilderOption {
+func WithAssetLayerWriter(writer AssetLayerWriter) Option {
 	return func(b *Builder) {
 		b.assetLayerWriter = writer
 	}
 }
 
-func WithAssetLayerReader(reader AssetLayerReader) BuilderOption {
+func WithAssetLayerReader(reader AssetLayerReader) Option {
 	return func(b *Builder) {
 		b.assetLayerReader = reader
 	}
@@ -94,7 +94,6 @@ type Builder struct {
 	StackID              string
 	replaceOrder         bool
 	order                dist.Order
-	options              []BuilderOption
 }
 
 type orderTOML struct {
@@ -102,7 +101,7 @@ type orderTOML struct {
 }
 
 // FromImage constructs a builder from a builder image
-func FromImage(img imgutil.Image, options ...BuilderOption) (*Builder, error) {
+func FromImage(img imgutil.Image, options ...Option) (*Builder, error) {
 	var metadata Metadata
 	if ok, err := dist.GetLabel(img, metadataLabel, &metadata); err != nil {
 		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
@@ -114,7 +113,7 @@ func FromImage(img imgutil.Image, options ...BuilderOption) (*Builder, error) {
 }
 
 // New constructs a new builder from a base image
-func New(baseImage imgutil.Image, name string, options ...BuilderOption) (*Builder, error) {
+func New(baseImage imgutil.Image, name string, options ...Option) (*Builder, error) {
 	var metadata Metadata
 	if _, err := dist.GetLabel(baseImage, metadataLabel, &metadata); err != nil {
 		return nil, errors.Wrapf(err, "getting label %s", metadataLabel)
@@ -123,7 +122,7 @@ func New(baseImage imgutil.Image, name string, options ...BuilderOption) (*Build
 	return constructBuilder(baseImage, name, metadata, options...)
 }
 
-func constructBuilder(img imgutil.Image, newName string, metadata Metadata, options ...BuilderOption) (*Builder, error) {
+func constructBuilder(img imgutil.Image, newName string, metadata Metadata, options ...Option) (*Builder, error) {
 	imageOS, err := img.OS()
 	if err != nil {
 		return nil, errors.Wrap(err, "getting image OS")

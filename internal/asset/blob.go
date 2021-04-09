@@ -20,55 +20,26 @@ type Blob interface {
 	Open() (io.ReadCloser, error)
 }
 
-type assetBlob struct {
+type ABlob struct {
 	openFn     func() (io.ReadCloser, error)
 	size       int64
 	descriptor dist.Asset
 }
 
-func (b assetBlob) Open() (io.ReadCloser, error) {
+func (b ABlob) Open() (io.ReadCloser, error) {
 	return b.openFn()
 }
 
-func (b assetBlob) Size() int64 {
+func (b ABlob) Size() int64 {
 	return b.size
 }
 
-func (b assetBlob) AssetDescriptor() dist.Asset {
+func (b ABlob) AssetDescriptor() dist.Asset {
 	return b.descriptor
 }
 
-// Ways we want to be able to make these blobs,
-// 1) from a random blob for an asset we just downloaded
-//func FromRawBlobOLD(asset dist.Asset, b blob.Blob, wf *layer.WriterFactory) *assetBlob {
-//	result := &assetBlob{openFn: func() (io.ReadCloser, error) {
-//		return archive.GenerateTarWithWriter(
-//			func(tw archive.TarWriter) error {
-//				return toAssetTar(tw, asset.Sha256, b)
-//			},
-//			wf,
-//		), nil
-//	},
-//		descriptor: asset,
-//	}
-//	// get size of resulting asset
-//	r, err := result.Open()
-//	if err != nil {
-//		// TODO -Dan- handle error
-//		panic(err)
-//	}
-//	w, err := io.Copy(ioutil.Discard, r)
-//	if err != nil {
-//		// TODO -Dan- handle error
-//		panic(err)
-//	}
-//	result.size = w
-//
-//	return result
-//}
-
-func FromRawBlob(asset dist.Asset, b blob.Blob) *assetBlob {
-	result := assetBlob{
+func FromRawBlob(asset dist.Asset, b blob.Blob) *ABlob {
+	result := ABlob{
 		openFn:     b.Open,
 		size:       0,
 		descriptor: asset,
@@ -88,7 +59,7 @@ func FromRawBlob(asset dist.Asset, b blob.Blob) *assetBlob {
 	return &result
 }
 
-func ExtractFromLayer(asset dist.Asset, layerBlob blob.Blob) (*assetBlob, error) {
+func ExtractFromLayer(asset dist.Asset, layerBlob blob.Blob) (*ABlob, error) {
 	r, err := layerBlob.Open()
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to open blob for extraction")
@@ -100,7 +71,7 @@ func ExtractFromLayer(asset dist.Asset, layerBlob blob.Blob) (*assetBlob, error)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to find asset with sha256: %q in blob", asset.Sha256)
 	}
-	return FromRawBlob(asset, &assetBlob{
+	return FromRawBlob(asset, &ABlob{
 		openFn: func() (io.ReadCloser, error) {
 			return ioutil.NopCloser(bytes.NewBuffer(assetBytes)), nil
 		},

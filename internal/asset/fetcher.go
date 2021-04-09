@@ -11,23 +11,23 @@ import (
 	"github.com/buildpacks/pack/internal/ocipackage"
 )
 
-//go:generate mockgen -package testmocks -destination testmocks/mock_image_fetcher.go github.com/buildpacks/pack/internal/asset ImageFetcher
-type ImageFetcher interface {
+//go:generate mockgen -package testmocks -destination testmocks/mock_image_fetcher.go github.com/buildpacks/pack/internal/asset ImageCacheFetcher
+type ImageCacheFetcher interface {
 	FetchImageAssets(ctx context.Context, pullPolicy pubcfg.PullPolicy, imageNames ...string) ([]imgutil.Image, error)
 }
 
-//go:generate mockgen -package testmocks -destination testmocks/mock_uri_fetcher.go github.com/buildpacks/pack/internal/asset URIFetcher
-type URIFetcher interface {
+//go:generate mockgen -package testmocks -destination testmocks/mock_uri_fetcher.go github.com/buildpacks/pack/internal/asset URICacheFetcher
+type URICacheFetcher interface {
 	FetchURIAssets(ctx context.Context, fileAssets ...string) ([]*ocipackage.OciLayoutPackage, error)
 }
 
 type Fetcher struct {
-	assetFileFetcher  FileFetcher
-	assetURIFetcher   URIFetcher
-	assetImageFetcher ImageFetcher
+	assetFileFetcher  FileCacheFetcher
+	assetURIFetcher   URICacheFetcher
+	assetImageFetcher ImageCacheFetcher
 }
 
-func NewFetcher(assetFileFetcher FileFetcher, assetURIFetcher URIFetcher, assetImageFetcher ImageFetcher) Fetcher {
+func NewFetcher(assetFileFetcher FileCacheFetcher, assetURIFetcher URICacheFetcher, assetImageFetcher ImageCacheFetcher) Fetcher {
 	return Fetcher{
 		assetFileFetcher:  assetFileFetcher,
 		assetURIFetcher:   assetURIFetcher,
@@ -111,9 +111,9 @@ func (a Fetcher) FetchAssets(assetNameList []string, options ...FetcherOptions) 
 	return result, nil
 }
 
-func castOCIToReadable(OCIAssets []*ocipackage.OciLayoutPackage) []Readable {
+func castOCIToReadable(ociAssets []*ocipackage.OciLayoutPackage) []Readable {
 	result := []Readable{}
-	for _, pkg := range OCIAssets {
+	for _, pkg := range ociAssets {
 		result = append(result, Readable(pkg))
 	}
 

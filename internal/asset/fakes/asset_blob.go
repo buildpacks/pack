@@ -79,7 +79,6 @@ func NewFakeAssetBlobTar(rawContents string, asset dist.Asset, factory archive.T
 	}
 
 	return NewFakeAssetBlob(buf.String(), asset), nil
-
 }
 
 func (f FakeAssetBlob) Open() (io.ReadCloser, error) {

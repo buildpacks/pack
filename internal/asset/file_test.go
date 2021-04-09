@@ -71,7 +71,6 @@ func testAssetCacheFile(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			firstAssetBlob = fakes.NewFakeAssetBlob("first layer contents", firstAsset)
 			secondAssetBlob = fakes.NewFakeAssetBlob("second layer contents", secondAsset)
-
 		})
 		it("adds asset layers to the LayerWriter", func() {
 			mockLayerWriter.EXPECT().AddAssetBlobs(firstAssetBlob, secondAssetBlob)
@@ -80,7 +79,7 @@ func testAssetCacheFile(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	// This is difficult to test due to the underlying usage of v1.Images
-	// these are inaccessable and replaced rather than mutated over their lifetimes...
+	// these are inaccessible and replaced rather than mutated over their lifetimes...
 	when("#Save", func() {
 		var tmpDir string
 		it.Before(func() {

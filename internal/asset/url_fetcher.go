@@ -15,24 +15,24 @@ type Downloader interface {
 	Download(ctx context.Context, pathOrURI string, options ...blob.DownloadOption) (blob.Blob, error)
 }
 
-//go:generate mockgen -package testmocks -destination testmocks/mock_file_fetcher.go github.com/buildpacks/pack/internal/asset FileFetcher
-type FileFetcher interface {
+//go:generate mockgen -package testmocks -destination testmocks/mock_file_fetcher.go github.com/buildpacks/pack/internal/asset FileCacheFetcher
+type FileCacheFetcher interface {
 	FetchFileAssets(ctx context.Context, workingDir string, fileAssets ...string) ([]*ocipackage.OciLayoutPackage, error)
 }
 
-type AssetURIFetcher struct {
+type URIFetcher struct {
 	Downloader
-	localFileFetcher FileFetcher
+	localFileFetcher FileCacheFetcher
 }
 
-func NewAssetURLFetcher(downloader Downloader, localFileFetcher FileFetcher) AssetURIFetcher {
-	return AssetURIFetcher{
+func NewAssetURLFetcher(downloader Downloader, localFileFetcher FileCacheFetcher) URIFetcher {
+	return URIFetcher{
 		Downloader:       downloader,
 		localFileFetcher: localFileFetcher,
 	}
 }
 
-func (a AssetURIFetcher) FetchURIAssets(ctx context.Context, uriAssets ...string) ([]*ocipackage.OciLayoutPackage, error) {
+func (a URIFetcher) FetchURIAssets(ctx context.Context, uriAssets ...string) ([]*ocipackage.OciLayoutPackage, error) {
 	result := []*ocipackage.OciLayoutPackage{}
 	for _, assetFile := range uriAssets {
 		uri, err := url.Parse(assetFile)

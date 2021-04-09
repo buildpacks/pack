@@ -71,7 +71,8 @@ func testLayerWriter(t *testing.T, when spec.G, it spec.S) {
 		it("adds asset layers and layer metadata", func() {
 			subject.AddAssetBlobs(firstAssetBlob, secondAssetBlob, thirdAssetBlob)
 			err := subject.Open()
-			//defer subject.Close()
+			defer subject.Close()
+			h.AssertNil(t, err)
 
 			err = subject.Write(baseImage)
 			h.AssertNil(t, err)
@@ -162,7 +163,6 @@ func testLayerWriter(t *testing.T, when spec.G, it spec.S) {
 			it("errors with a helpful message", func() {
 				err := subject.Close()
 				h.AssertError(t, err, "unable to close writer: writer is not open")
-
 			})
 		})
 		when("unable to write Layers to Writable", func() {

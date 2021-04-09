@@ -26,8 +26,8 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController     *gomock.Controller
 		mockDownloader     *testmocks.MockDownloader
-		mockFileFetcher    *testmocks.MockFileFetcher
-		subject            asset.AssetURIFetcher
+		mockFileFetcher    *testmocks.MockFileCacheFetcher
+		subject            asset.URIFetcher
 		expectedAssetCache *ocipackage.OciLayoutPackage
 		assert             = h.NewAssertionManager(t)
 
@@ -36,7 +36,7 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockDownloader = testmocks.NewMockDownloader(mockController)
-		mockFileFetcher = testmocks.NewMockFileFetcher(mockController)
+		mockFileFetcher = testmocks.NewMockFileCacheFetcher(mockController)
 		subject = asset.NewAssetURLFetcher(mockDownloader, mockFileFetcher)
 
 		var err error

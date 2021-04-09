@@ -36,7 +36,6 @@ func testBlob(t *testing.T, when spec.G, it spec.S) {
 	})
 	when("FromRawBlob", func() {
 		it("successfully creates a readable asset blob", func() {
-
 			fakeBlob := fakes.NewFakeBlob("blob contents")
 			fakeAsset := dist.Asset{
 				Sha256:  "some-sha256",
@@ -67,6 +66,7 @@ func testBlob(t *testing.T, when spec.G, it spec.S) {
 				Stacks:  []string{"io.buildpacks.stacks.bionic"},
 			}
 			subject, err := asset.ExtractFromLayer(fakeAsset, layerBlob)
+			assert.Nil(err)
 
 			subjectReader, err := subject.Open()
 			assert.Nil(err)
@@ -106,7 +106,6 @@ func testBlob(t *testing.T, when spec.G, it spec.S) {
 					_, err = asset.ExtractFromLayer(dist.Asset{Sha256: "help I lost my sha"}, mockBlob)
 
 					assert.ErrorContains(err, `unable to find asset with sha256: "help I lost my sha" in blob`)
-
 				})
 			})
 		})
