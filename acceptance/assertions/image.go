@@ -100,3 +100,19 @@ func (a ImageAssertionManager) NotExistsInRegistry(name string) {
 		"Didn't expect to see image %s in the registry",
 	)
 }
+
+func (a ImageAssertionManager) DoesNotHaveDuplicateLayers(name string) {
+	a.testObject.Helper()
+
+	out, err := a.imageManager.InspectLocal(name)
+	a.assert.Nil(err)
+
+	layerSet := map[string]interface{}{}
+	for _, layer := range out.RootFS.Layers {
+		_, ok := layerSet[layer]
+		if ok {
+			a.testObject.Fatalf("duplicate layer found in builder %s", layer)
+		}
+		layerSet[layer] = true
+	}
+}

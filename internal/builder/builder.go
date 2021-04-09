@@ -45,6 +45,14 @@ const (
 
 	EnvUID = "CNB_USER_ID"
 	EnvGID = "CNB_GROUP_ID"
+
+	BuildpackOnBuilderMessage = `buildpack %s already exists on builder and will be overwritten
+  - existing diffID: %s
+  - new diffID: %s`
+
+	BuildpackPreviouslyDefinedMessage = `buildpack %s was previously defined with different contents and will be overwritten
+  - previous diffID: %s
+  - using diffID: %s`
 )
 
 // Builder represents a pack builder, used to build images
@@ -300,36 +308,9 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		return errors.Wrapf(err, "getting label %s", dist.BuildpackLayersLabel)
 	}
 
-	for _, bp := range b.additionalBuildpacks {
-		bpLayerTar, err := dist.BuildpackToLayerTar(tmpDir, bp)
-		if err != nil {
-			return err
-		}
-
-		diffID, err := dist.LayerDiffID(bpLayerTar)
-		if err != nil {
-			return errors.Wrapf(err,
-				"getting content hashes for buildpack %s",
-				style.Symbol(bp.Descriptor().Info.FullName()),
-			)
-		}
-
-		if err := b.image.AddLayerWithDiffID(bpLayerTar, diffID.String()); err != nil {
-			return errors.Wrapf(err,
-				"adding layer tar for buildpack %s",
-				style.Symbol(bp.Descriptor().Info.FullName()),
-			)
-		}
-
-		bpInfo := bp.Descriptor().Info
-		if _, ok := bpLayers[bpInfo.ID][bpInfo.Version]; ok {
-			logger.Debugf(
-				"buildpack %s already exists on builder and will be overwritten",
-				style.Symbol(bpInfo.FullName()),
-			)
-		}
-
-		dist.AddBuildpackToLayersMD(bpLayers, bp.Descriptor(), diffID.String())
+	err = addBuildpacks(logger, tmpDir, b.image, b.additionalBuildpacks, bpLayers)
+	if err != nil {
+		return err
 	}
 
 	if err := dist.SetLabel(b.image, dist.BuildpackLayersLabel, bpLayers); err != nil {
@@ -393,6 +374,80 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 }
 
 // Helpers
+
+func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, additionalBuildpacks []dist.Buildpack, bpLayers dist.BuildpackLayers) error {
+	type buildpackToAdd struct {
+		tarPath   string
+		diffID    string
+		buildpack dist.Buildpack
+	}
+
+	buildpacksToAdd := map[string]buildpackToAdd{}
+	for i, bp := range additionalBuildpacks {
+		// create buildpack directory
+		bpTmpDir := filepath.Join(tmpDir, strconv.Itoa(i))
+		if err := os.MkdirAll(bpTmpDir, os.ModePerm); err != nil {
+			return errors.Wrap(err, "creating buildpack temp dir")
+		}
+
+		// create tar file
+		bpLayerTar, err := dist.BuildpackToLayerTar(bpTmpDir, bp)
+		if err != nil {
+			return err
+		}
+
+		// generate diff id
+		diffID, err := dist.LayerDiffID(bpLayerTar)
+		if err != nil {
+			return errors.Wrapf(err,
+				"getting content hashes for buildpack %s",
+				style.Symbol(bp.Descriptor().Info.FullName()),
+			)
+		}
+
+		bpInfo := bp.Descriptor().Info
+		// check against builder layers
+		if existingBPInfo, ok := bpLayers[bpInfo.ID][bpInfo.Version]; ok {
+			if existingBPInfo.LayerDiffID == diffID.String() {
+				logger.Debugf("Buildpack %s already exists on builder with same contents, skipping...", style.Symbol(bpInfo.FullName()))
+				continue
+			}
+
+			logger.Debugf(BuildpackOnBuilderMessage, style.Symbol(bpInfo.FullName()), style.Symbol(existingBPInfo.LayerDiffID), style.Symbol(diffID.String()))
+		}
+
+		// check against other buildpacks to be added
+		if otherAdditionalBP, ok := buildpacksToAdd[bp.Descriptor().Info.FullName()]; ok {
+			if otherAdditionalBP.diffID == diffID.String() {
+				logger.Debugf("Buildpack %s with same contents is already being added, skipping...", style.Symbol(bpInfo.FullName()))
+				continue
+			}
+
+			logger.Debugf(BuildpackPreviouslyDefinedMessage, style.Symbol(bpInfo.FullName()), style.Symbol(otherAdditionalBP.diffID), style.Symbol(diffID.String()))
+		}
+
+		// note: if same id@version is in additionalBuildpacks, last one wins (see warnings above)
+		buildpacksToAdd[bp.Descriptor().Info.FullName()] = buildpackToAdd{
+			tarPath:   bpLayerTar,
+			diffID:    diffID.String(),
+			buildpack: bp,
+		}
+	}
+
+	for _, bp := range buildpacksToAdd {
+		logger.Debugf("Adding buildpack %s (diffID=%s)", style.Symbol(bp.buildpack.Descriptor().Info.FullName()), bp.diffID)
+		if err := image.AddLayerWithDiffID(bp.tarPath, bp.diffID); err != nil {
+			return errors.Wrapf(err,
+				"adding layer tar for buildpack %s",
+				style.Symbol(bp.buildpack.Descriptor().Info.FullName()),
+			)
+		}
+
+		dist.AddBuildpackToLayersMD(bpLayers, bp.buildpack.Descriptor(), bp.diffID)
+	}
+
+	return nil
+}
 
 func processOrder(buildpacks []dist.BuildpackInfo, order dist.Order) (dist.Order, error) {
 	resolvedOrder := dist.Order{}

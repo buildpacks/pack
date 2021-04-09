@@ -83,6 +83,7 @@ func (p PackageImage) Prepare(sourceDir, _ string) error {
 		packArgs = append(packArgs, "--publish")
 	}
 
+	p.testObject.Log("packaging image: ", p.name)
 	output := p.pack.RunSuccessfully("buildpack", append([]string{"package"}, packArgs...)...)
 	assertOutput := assertions.NewOutputAssertionManager(p.testObject, output)
 	if p.publish {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 
@@ -14,6 +15,31 @@ import (
 type fakeBuildpack struct {
 	descriptor dist.BuildpackDescriptor
 	chmod      int64
+	options    []FakeBuildpackOption
+}
+
+type fakeBuildpackConfig struct {
+	// maping of extrafilename to stringified contents
+	ExtraFiles map[string]string
+	OpenError  error
+}
+
+func newFakeBuildpackConfig() *fakeBuildpackConfig {
+	return &fakeBuildpackConfig{ExtraFiles: map[string]string{}}
+}
+
+type FakeBuildpackOption func(*fakeBuildpackConfig)
+
+func WithExtraBuildpackContents(filename, contents string) FakeBuildpackOption {
+	return func(f *fakeBuildpackConfig) {
+		f.ExtraFiles[filename] = contents
+	}
+}
+
+func WithOpenError(err error) FakeBuildpackOption {
+	return func(f *fakeBuildpackConfig) {
+		f.OpenError = err
+	}
 }
 
 // NewFakeBuildpack creates a fake buildpacks with contents:
@@ -26,10 +52,11 @@ type fakeBuildpack struct {
 //  	build-contents
 // 	\_ /cnbs/buildpacks/{ID}/{version}/bin/detect
 //  	detect-contents
-func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64) (dist.Buildpack, error) {
+func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options ...FakeBuildpackOption) (dist.Buildpack, error) {
 	return &fakeBuildpack{
 		descriptor: descriptor,
 		chmod:      chmod,
+		options:    options,
 	}, nil
 }
 
@@ -38,6 +65,15 @@ func (b *fakeBuildpack) Descriptor() dist.BuildpackDescriptor {
 }
 
 func (b *fakeBuildpack) Open() (io.ReadCloser, error) {
+	fConfig := newFakeBuildpackConfig()
+	for _, option := range b.options {
+		option(fConfig)
+	}
+
+	if fConfig.OpenError != nil {
+		return nil, fConfig.OpenError
+	}
+
 	buf := &bytes.Buffer{}
 	if err := toml.NewEncoder(buf).Encode(b.descriptor); err != nil {
 		return nil, err
@@ -54,6 +90,10 @@ func (b *fakeBuildpack) Open() (io.ReadCloser, error) {
 		tarBuilder.AddDir(bpDir+"/bin", b.chmod, ts)
 		tarBuilder.AddFile(bpDir+"/bin/build", b.chmod, ts, []byte("build-contents"))
 		tarBuilder.AddFile(bpDir+"/bin/detect", b.chmod, ts, []byte("detect-contents"))
+	}
+
+	for extraFilename, extraContents := range fConfig.ExtraFiles {
+		tarBuilder.AddFile(filepath.Join(bpDir, extraFilename), b.chmod, ts, []byte(extraContents))
 	}
 
 	return tarBuilder.Reader(archive.DefaultTarWriterFactory()), nil

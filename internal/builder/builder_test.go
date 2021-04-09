@@ -2,13 +2,18 @@ package builder_test
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/pkg/errors"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
@@ -628,6 +633,149 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					err := subject.Save(logger, builder.CreatorMetadata{})
 					h.AssertError(t, err, "getting label io.buildpacks.buildpack.layers")
+				})
+			})
+
+			when("saving with duplicated buildpacks", func() {
+				it("adds a single buildpack to the builder image", func() {
+					subject.AddBuildpack(bp1v1)
+					subject.AddBuildpack(bp2v1)
+					subject.AddBuildpack(bp1v1)
+
+					err := subject.Save(logger, builder.CreatorMetadata{})
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, baseImage.IsSaved(), true)
+
+					// Expect 6 layers from the following locations:
+					//  - 1 from defaultDirsLayer
+					//  - 1 from lifecycleLayer
+					//  - 2 from buildpacks
+					//  - 1 from orderLayer
+					//  - 1 from stackLayer
+					h.AssertEq(t, baseImage.NumberOfAddedLayers(), 6)
+				})
+
+				when("duplicated buildpack, has different contents", func() {
+					var bp1v1Alt dist.Buildpack
+					it.Before(func() {
+						var err error
+						bp1v1Alt, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+							API: api.MustParse("0.2"),
+							Info: dist.BuildpackInfo{
+								ID:      "buildpack-1-id",
+								Version: "buildpack-1-version-1",
+							},
+							Stacks: []dist.Stack{{
+								ID:     "some.stack.id",
+								Mixins: []string{"mixinX", "mixinY"},
+							}},
+						}, 0644, ifakes.WithExtraBuildpackContents("coolbeans", "a file cool as beans"))
+						h.AssertNil(t, err)
+					})
+
+					it("uses the last buildpack", func() {
+						logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+
+						subject.AddBuildpack(bp1v1)
+						subject.AddBuildpack(bp1v1Alt)
+
+						err := subject.Save(logger, builder.CreatorMetadata{})
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, baseImage.IsSaved(), true)
+
+						// Expect 5 layers from the following locations:
+						//  - 1 from defaultDirsLayer
+						//  - 1 from lifecycleLayer
+						//  - 1 from buildpacks
+						//  - 1 from orderLayer
+						//  - 1 from stackLayer
+						h.AssertEq(t, baseImage.NumberOfAddedLayers(), 5)
+						oldSha256 := "4dc0072c61fc2bd7118bbc93a432eae0012082de094455cf0a9fed20e3c44789"
+						newSha256 := "29cb2bce4c2350f0e86f3dd30fa3810beb409b910126a18651de750f457fedfb"
+						if runtime.GOOS == "windows" {
+							newSha256 = "eaed4a1617bba5738ae5672f6aefda8add7abb2f8630c75dc97a6232879d4ae4"
+						}
+
+						h.AssertContains(t, outBuf.String(), fmt.Sprintf(`buildpack 'buildpack-1-id@buildpack-1-version-1' was previously defined with different contents and will be overwritten
+  - previous diffID: 'sha256:%s'
+  - using diffID: 'sha256:%s'`, oldSha256, newSha256))
+
+						layer, err := baseImage.FindLayerWithPath(filepath.Join("/cnb", "buildpacks", "buildpack-1-id", "buildpack-1-version-1", "coolbeans"))
+						h.AssertNil(t, err)
+
+						bpLayer, err := os.Open(layer)
+						h.AssertNil(t, err)
+						defer bpLayer.Close()
+
+						hsh := sha256.New()
+						_, err = io.Copy(hsh, bpLayer)
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, newSha256, fmt.Sprintf("%x", hsh.Sum(nil)))
+					})
+				})
+
+				when("adding buildpack that already exists on the image", func() {
+					it("skips adding buildpack that already exists", func() {
+						logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+						diffID := "4dc0072c61fc2bd7118bbc93a432eae0012082de094455cf0a9fed20e3c44789"
+						bpLayer := dist.BuildpackLayers{
+							"buildpack-1-id": map[string]dist.BuildpackLayerInfo{
+								"buildpack-1-version-1": dist.BuildpackLayerInfo{
+									API:         api.MustParse("0.2"),
+									Stacks:      nil,
+									Order:       nil,
+									LayerDiffID: fmt.Sprintf("sha256:%s", diffID),
+									Homepage:    "",
+								},
+							},
+						}
+						bpLayerString, err := json.Marshal(bpLayer)
+						h.AssertNil(t, err)
+
+						h.AssertNil(t, baseImage.SetLabel(
+							dist.BuildpackLayersLabel,
+							string(bpLayerString),
+						))
+
+						subject.AddBuildpack(bp1v1)
+						err = subject.Save(logger, builder.CreatorMetadata{})
+						h.AssertNil(t, err)
+
+						fmt.Println(outBuf.String())
+						expectedLog := "Buildpack 'buildpack-1-id@buildpack-1-version-1' already exists on builder with same contents, skipping..."
+						h.AssertContains(t, outBuf.String(), expectedLog)
+					})
+				})
+			})
+
+			when("error adding buildpacks to builder", func() {
+				when("unable to convert buildpack to layer tar", func() {
+					var bp1v1Err dist.Buildpack
+					it.Before(func() {
+						var err error
+						bp1v1Err, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+							API: api.MustParse("0.2"),
+							Info: dist.BuildpackInfo{
+								ID:      "buildpack-1-id",
+								Version: "buildpack-1-version-1",
+							},
+							Stacks: []dist.Stack{{
+								ID:     "some.stack.id",
+								Mixins: []string{"mixinX", "mixinY"},
+							}},
+						}, 0644, ifakes.WithOpenError(errors.New("unable to open buildpack")))
+						h.AssertNil(t, err)
+					})
+					it("errors", func() {
+						subject.AddBuildpack(bp1v1Err)
+
+						err := subject.Save(logger, builder.CreatorMetadata{})
+
+						h.AssertError(t, err, "unable to open buildpack")
+					})
 				})
 			})
 		})
