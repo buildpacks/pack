@@ -7,9 +7,9 @@ import (
 )
 
 type FakeReadable struct {
-	layers        []string
-	layersMap     map[string]string
-	labels        map[string]string
+	layers    []string
+	layersMap map[string]string
+	labels    map[string]string
 }
 
 func NewFakeReadable() *FakeReadable {

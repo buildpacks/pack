@@ -1,8 +1,9 @@
 package buildpackage
 
 import (
-	"github.com/buildpacks/pack/internal/ocipackage"
 	"io"
+
+	"github.com/buildpacks/pack/internal/ocipackage"
 
 	"github.com/pkg/errors"
 

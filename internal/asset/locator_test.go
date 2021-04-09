@@ -1,14 +1,16 @@
 package asset_test
 
 import (
-	"github.com/buildpacks/pack/internal/asset"
-	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/internal/asset"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestLocator(t *testing.T) {

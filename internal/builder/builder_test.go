@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/buildpacks/pack/internal/asset"
-	fakes3 "github.com/buildpacks/pack/internal/asset/fakes"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
+
+	"github.com/buildpacks/pack/internal/asset"
+	fakes3 "github.com/buildpacks/pack/internal/asset/fakes"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
@@ -182,7 +183,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					it("errors with a helpful message", func() {
 						mockAssetLayerReader.EXPECT().Read(baseImage).Return([]asset.Blob{}, dist.AssetMap{}, errors.New("open failed"))
 						_, err := builder.New(baseImage, "test-builder-image", builder.WithAssetLayerWriter(mockAssetLayerWriter), builder.WithAssetLayerReader(mockAssetLayerReader))
-						h.AssertError(t, err,"unable to open asset layer reader")
+						h.AssertError(t, err, "unable to open asset layer reader")
 					})
 				})
 			})

@@ -3,7 +3,9 @@ package asset
 import (
 	"context"
 	"fmt"
+
 	"github.com/buildpacks/imgutil"
+
 	pubcfg "github.com/buildpacks/pack/config"
 )
 

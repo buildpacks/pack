@@ -73,7 +73,7 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 				Assets:    assets,
 				Publish:   flags.Publish,
 				OS:        flags.OS,
-				Format: flags.Format,
+				Format:    flags.Format,
 			}); err != nil {
 				return errors.Wrap(err, "error, unable to create asset cache")
 			}

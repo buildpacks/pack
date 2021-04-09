@@ -3,15 +3,17 @@ package asset_test
 import (
 	"context"
 	"errors"
+	"testing"
+
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/golang/mock/gomock"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/asset"
 	"github.com/buildpacks/pack/testhelpers"
 	"github.com/buildpacks/pack/testmocks"
-	"github.com/golang/mock/gomock"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"testing"
 )
 
 func TestAssetFetcher(t *testing.T) {

@@ -2,8 +2,18 @@ package asset_test
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/asset"
 	"github.com/buildpacks/pack/internal/asset/testmocks"
@@ -11,14 +21,6 @@ import (
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/ocipackage"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/golang/mock/gomock"
-	"github.com/pkg/errors"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 func TestFetcher(t *testing.T) {
@@ -223,8 +225,7 @@ func newFakeAssetImage(layerContents, tmpDir string) (*fakes.Image, error) {
 	}
 
 	fakeLayer := filepath.Join(tmpDir, layerContents)
-	if err := ioutil.WriteFile(fakeLayer, []byte(layerContents), os.ModePerm)
-		err != nil {
+	if err := ioutil.WriteFile(fakeLayer, []byte(layerContents), os.ModePerm); err != nil {
 		return nil, err
 	}
 

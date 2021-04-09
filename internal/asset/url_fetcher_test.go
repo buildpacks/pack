@@ -4,16 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"testing"
+
+	"github.com/golang/mock/gomock"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	"github.com/buildpacks/pack/internal/asset"
 	"github.com/buildpacks/pack/internal/asset/testmocks"
 	blob2 "github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/ocipackage"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/golang/mock/gomock"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"path/filepath"
-	"testing"
 )
 
 func TestURLFetcher(t *testing.T) {

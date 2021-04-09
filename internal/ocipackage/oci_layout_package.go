@@ -52,7 +52,6 @@ type OciLayoutPackage struct {
 	blob      dist.Blob
 }
 
-
 func NewOCILayoutPackage(blob dist.Blob) (*OciLayoutPackage, error) {
 	index := &v1.Index{}
 

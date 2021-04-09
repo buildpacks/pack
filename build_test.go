@@ -6,8 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/buildpacks/pack/testmocks"
-	"github.com/golang/mock/gomock"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -18,6 +16,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/golang/mock/gomock"
+
+	"github.com/buildpacks/pack/testmocks"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"

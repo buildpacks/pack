@@ -2,13 +2,15 @@ package asset_test
 
 import (
 	"errors"
+	"testing"
+
+	"github.com/golang/mock/gomock"
+
 	"github.com/buildpacks/pack/internal/asset"
 	fakes2 "github.com/buildpacks/pack/internal/asset/fakes"
 	"github.com/buildpacks/pack/internal/asset/testmocks"
 	"github.com/buildpacks/pack/internal/dist"
 	testmocks2 "github.com/buildpacks/pack/testmocks"
-	"github.com/golang/mock/gomock"
-	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
 
@@ -103,14 +105,14 @@ func testAssetCacheImage(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			mockImage = testmocks2.NewMockImage(mockController)
 		})
-		when("unable to get image OS" ,func() {
+		when("unable to get image OS", func() {
 			it("errors with a helpful message", func() {
 				subject = asset.NewImage(mockImage, mockLayerWriter)
 
 				mockImage.EXPECT().OS().Return("", errors.New("error getting OS"))
 
 				err := subject.Save()
-				assert.ErrorContains(err,"unable to get asset cache image os")
+				assert.ErrorContains(err, "unable to get asset cache image os")
 			})
 		})
 
@@ -122,13 +124,13 @@ func testAssetCacheImage(t *testing.T, when spec.G, it spec.S) {
 				mockLayerWriter.EXPECT().Open().Return(errors.New("asset writer error"))
 
 				err := subject.Save()
-				assert.ErrorContains(err,"unable to open asset writer")
+				assert.ErrorContains(err, "unable to open asset writer")
 			})
 		})
 
 		when("adding windows base layer", func() {
 			when("writing base layer fails", func() {
-				it("errors with helpful message" ,func() {
+				it("errors with helpful message", func() {
 					windowsBaseLayerDiffID := "sha256:067833dadeca9180bb71a211248cbc0f6ada05499bfdef07dfb04e2eb96e7c82"
 					subject = asset.NewImage(mockImage, mockLayerWriter)
 					mockImage.EXPECT().OS().Return("windows", nil)
@@ -147,7 +149,6 @@ func testAssetCacheImage(t *testing.T, when spec.G, it spec.S) {
 				mockLayerWriter.EXPECT().Open()
 				mockLayerWriter.EXPECT().Write(subject).Return(errors.New("error writing asset layers"))
 				mockLayerWriter.EXPECT().Close()
-
 
 				err := subject.Save()
 				assert.ErrorContains(err, "unable to write asset layers to image")

@@ -3,17 +3,19 @@ package asset
 import (
 	"archive/tar"
 	"compress/gzip"
-	pubcfg "github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/pkg/archive"
+	"io/ioutil"
+	"os"
+
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/pkg/errors"
-	"io/ioutil"
-	"os"
+
+	pubcfg "github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/archive"
 )
 
 // TODO: much of this implementation should be replaced when imgutil can save

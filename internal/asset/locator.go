@@ -1,8 +1,9 @@
 package asset
 
 import (
-	"github.com/buildpacks/pack/internal/paths"
 	"github.com/google/go-containerregistry/pkg/name"
+
+	"github.com/buildpacks/pack/internal/paths"
 )
 
 type LocatorType int
@@ -48,4 +49,3 @@ func isLocalFile(path, relativeBaseDir string) bool {
 	_, result := localFile(path, relativeBaseDir)
 	return result
 }
-

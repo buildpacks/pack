@@ -5,9 +5,11 @@
 package testmocks
 
 import (
-	asset "github.com/buildpacks/pack/internal/asset"
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
+
+	asset "github.com/buildpacks/pack/internal/asset"
 )
 
 // MockAssetFetcher is a mock of AssetFetcher interface
@@ -34,7 +36,7 @@ func (m *MockAssetFetcher) EXPECT() *MockAssetFetcherMockRecorder {
 }
 
 // FetchAssets mocks base method
-func (m *MockAssetFetcher) FetchAssets(arg0 []string, arg1 ...asset.AssetFetcherOptions) ([]asset.Readable, error) {
+func (m *MockAssetFetcher) FetchAssets(arg0 []string, arg1 ...asset.FetcherOptions) ([]asset.Readable, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0}
 	for _, a := range arg1 {

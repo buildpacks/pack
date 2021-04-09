@@ -6,14 +6,16 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/archive"
 )
 
 //go:generate mockgen -package testmocks -destination testmocks/layer_writer.go github.com/buildpacks/pack/internal/asset LayerWriter
@@ -26,16 +28,16 @@ type LayerWriter interface {
 }
 
 type layerWriter struct {
-	tmpDir string
-	blobs []Blob
-	metadata dist.AssetMap
+	tmpDir        string
+	blobs         []Blob
+	metadata      dist.AssetMap
 	writerFactory archive.TarWriterFactory
 }
 
 func NewLayerWriter(writerFactory archive.TarWriterFactory) LayerWriter {
 	return &layerWriter{
-		blobs: []Blob{},
-		metadata: dist.AssetMap{},
+		blobs:         []Blob{},
+		metadata:      dist.AssetMap{},
 		writerFactory: writerFactory,
 	}
 }
@@ -93,7 +95,7 @@ func (lw *layerWriter) Write(w Writable) error {
 		if err != nil {
 			return errors.Wrapf(err, "unable to create asset layer file")
 		}
-		err = w.AddLayerWithDiffID(layerFileName, "sha256:" + layerDiffID)
+		err = w.AddLayerWithDiffID(layerFileName, "sha256:"+layerDiffID)
 		if err != nil {
 			return errors.Wrapf(err, "unable to write layer")
 		}

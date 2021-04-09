@@ -1,9 +1,10 @@
 package asset
 
 import (
+	"io/ioutil"
+
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/dist"
-	"io/ioutil"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
@@ -27,7 +28,7 @@ type Image struct {
 func NewImage(img imgutil.Image, assetLayerWriter LayerWriter) *Image {
 	return &Image{
 		writer: assetLayerWriter,
-		Image:       img,
+		Image:  img,
 	}
 }
 

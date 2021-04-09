@@ -2,20 +2,22 @@ package asset_test
 
 import (
 	"errors"
-	"github.com/buildpacks/pack/internal/asset"
-	"github.com/buildpacks/pack/internal/asset/fakes"
-	"github.com/buildpacks/pack/internal/asset/testmocks"
-	"github.com/buildpacks/pack/internal/dist"
-	h "github.com/buildpacks/pack/testhelpers"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"testing"
+
+	"github.com/buildpacks/pack/internal/asset"
+	"github.com/buildpacks/pack/internal/asset/fakes"
+	"github.com/buildpacks/pack/internal/asset/testmocks"
+	"github.com/buildpacks/pack/internal/dist"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestAssetCacheFile(t *testing.T) {
@@ -98,7 +100,7 @@ func testAssetCacheFile(t *testing.T, when spec.G, it spec.S) {
 				mockLayerWriter.EXPECT().Write(subject)
 				mockLayerWriter.EXPECT().Close()
 
-				assert.Succeeds(subject.Save(filepath.Join(tmpDir, "first-name"),filepath.Join(tmpDir, "second-name")))
+				assert.Succeeds(subject.Save(filepath.Join(tmpDir, "first-name"), filepath.Join(tmpDir, "second-name")))
 			})
 		})
 		when("OS is windows", func() {

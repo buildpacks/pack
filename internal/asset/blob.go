@@ -2,15 +2,16 @@ package asset
 
 import (
 	"bytes"
-	"github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"path/filepath"
-)
 
+	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/archive"
+)
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_blob.go github.com/buildpacks/pack/internal/asset Blob
 type Blob interface {
@@ -66,7 +67,6 @@ func (b assetBlob) AssetDescriptor() dist.Asset {
 //	return result
 //}
 
-
 func FromRawBlob(asset dist.Asset, b blob.Blob) *assetBlob {
 	result := assetBlob{
 		openFn:     b.Open,
@@ -87,7 +87,6 @@ func FromRawBlob(asset dist.Asset, b blob.Blob) *assetBlob {
 
 	return &result
 }
-
 
 func ExtractFromLayer(asset dist.Asset, layerBlob blob.Blob) (*assetBlob, error) {
 	r, err := layerBlob.Open()

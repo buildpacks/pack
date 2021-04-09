@@ -6,7 +6,7 @@ import (
 
 type Wrapper struct {
 	Func func(string) (io.ReadCloser, error)
-	Arg string
+	Arg  string
 }
 
 func (w Wrapper) Open() (io.ReadCloser, error) {

@@ -4,7 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"testing"
+
 	"github.com/buildpacks/imgutil/fakes"
+	"github.com/golang/mock/gomock"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	"github.com/buildpacks/pack/internal/asset"
 	fakes3 "github.com/buildpacks/pack/internal/asset/fakes"
 	testmocks2 "github.com/buildpacks/pack/internal/asset/testmocks"
@@ -12,10 +18,6 @@ import (
 	"github.com/buildpacks/pack/internal/layer"
 	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/buildpacks/pack/testmocks"
-	"github.com/golang/mock/gomock"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"testing"
 )
 
 func TestLayerWriter(t *testing.T) {
@@ -25,8 +27,8 @@ func TestLayerWriter(t *testing.T) {
 func testLayerWriter(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController *gomock.Controller
-		baseImage  *fakes.Image
-		firstAsset = dist.Asset{
+		baseImage      *fakes.Image
+		firstAsset     = dist.Asset{
 			Sha256:  "first-sha256",
 			ID:      "first-asset",
 			Version: "1.1.1",
@@ -47,12 +49,11 @@ func testLayerWriter(t *testing.T, when spec.G, it spec.S) {
 			Name:    "Third Asset",
 			Stacks:  []string{"stack1", "stack2"},
 		}
-		firstAssetBlob asset.Blob
+		firstAssetBlob  asset.Blob
 		secondAssetBlob asset.Blob
-		thirdAssetBlob asset.Blob
+		thirdAssetBlob  asset.Blob
 
-
-		subject     asset.LayerWriter
+		subject asset.LayerWriter
 	)
 	it.Before(func() {
 		mockController = gomock.NewController(t)
@@ -154,13 +155,13 @@ func testLayerWriter(t *testing.T, when spec.G, it spec.S) {
 			})
 			it("errors with a helpful message", func() {
 				err := subject.Open()
-				h.AssertError(t, err,"unable to open writer: writer already open")
+				h.AssertError(t, err, "unable to open writer: writer already open")
 			})
 		})
 		when("closing without unopened writer", func() {
 			it("errors with a helpful message", func() {
 				err := subject.Close()
-				h.AssertError(t, err,"unable to close writer: writer is not open")
+				h.AssertError(t, err, "unable to close writer: writer is not open")
 
 			})
 		})
@@ -177,7 +178,7 @@ func testLayerWriter(t *testing.T, when spec.G, it spec.S) {
 
 				subject.AddAssetBlobs(firstAssetBlob)
 				err := subject.Write(mockImage)
-				h.AssertError(t, err,"unable to write layer")
+				h.AssertError(t, err, "unable to write layer")
 			})
 		})
 

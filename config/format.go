@@ -3,8 +3,8 @@ package config
 import "fmt"
 
 const (
-	FileFormat = "file"
-	ImageFormat   = "image"
+	FileFormat  = "file"
+	ImageFormat = "image"
 )
 
 func ValidateFormat(format string) error {

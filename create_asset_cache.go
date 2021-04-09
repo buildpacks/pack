@@ -2,9 +2,11 @@ package pack
 
 import (
 	"context"
-	"github.com/buildpacks/pack/internal/asset"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"sort"
+
+	"github.com/google/go-containerregistry/pkg/v1/empty"
+
+	"github.com/buildpacks/pack/internal/asset"
 
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
@@ -106,7 +108,7 @@ func simplifyAssets(assets dist.Assets) dist.Assets {
 func addAssetsToImage(assetImg AssetCache, assets dist.Assets, downloadMap map[blob.DownloadJob]blob.DownloadResult) {
 	for _, curAsset := range assets {
 		b, ok := downloadMap[blob.DownloadJob{URI: curAsset.URI, Sha256: curAsset.Sha256}]
-		if !ok || b.Blob == nil{
+		if !ok || b.Blob == nil {
 			continue
 		}
 		assetImg.AddAssetBlobs(asset.FromRawBlob(curAsset, b.Blob))

@@ -6,9 +6,11 @@ package testmocks
 
 import (
 	context "context"
-	ocipackage "github.com/buildpacks/pack/internal/ocipackage"
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
+
+	ocipackage "github.com/buildpacks/pack/internal/ocipackage"
 )
 
 // MockFileFetcher is a mock of FileFetcher interface

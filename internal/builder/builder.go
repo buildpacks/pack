@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"fmt"
-	"github.com/buildpacks/pack/internal/asset"
 	"io"
 	"io/ioutil"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/buildpacks/pack/internal/asset"
 
 	"github.com/BurntSushi/toml"
 	"github.com/buildpacks/imgutil"
@@ -440,7 +441,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		defer b.assetLayerWriter.Close()
 		err = b.assetLayerWriter.Write(b.image)
 		if err != nil {
-			return errors.Wrapf(err, "error writing asset layers" )
+			return errors.Wrapf(err, "error writing asset layers")
 		}
 	}
 

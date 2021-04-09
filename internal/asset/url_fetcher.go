@@ -3,10 +3,11 @@ package asset
 import (
 	"context"
 	"fmt"
+	"net/url"
+
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/ocipackage"
 	"github.com/buildpacks/pack/internal/paths"
-	"net/url"
 )
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_downloader.go github.com/buildpacks/pack/internal/asset Downloader
@@ -26,7 +27,7 @@ type AssetURIFetcher struct {
 
 func NewAssetURLFetcher(downloader Downloader, localFileFetcher FileFetcher) AssetURIFetcher {
 	return AssetURIFetcher{
-		Downloader: downloader,
+		Downloader:       downloader,
 		localFileFetcher: localFileFetcher,
 	}
 }
@@ -52,12 +53,12 @@ func (a AssetURIFetcher) FetchURIAssets(ctx context.Context, uriAssets ...string
 			result = append(result, p)
 		case "file":
 			assetFilePath, err := paths.URIToFilePath(uri.String())
-			if err  != nil {
-				return result,fmt.Errorf("unable to get asset filepath: %q", err)
+			if err != nil {
+				return result, fmt.Errorf("unable to get asset filepath: %q", err)
 			}
 			assetsFromFile, err := a.localFileFetcher.FetchFileAssets(ctx, "", assetFilePath)
 			if err != nil {
-				return result,fmt.Errorf("unable to fetch local file asset: %q", err)
+				return result, fmt.Errorf("unable to fetch local file asset: %q", err)
 			}
 
 			result = append(result, assetsFromFile...)

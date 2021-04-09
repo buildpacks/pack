@@ -1,11 +1,13 @@
 package asset
 
 import (
-	"github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/internal/dist"
-	"github.com/pkg/errors"
 	"io"
 	"sort"
+
+	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/dist"
 )
 
 type Reader struct{}

@@ -3,15 +3,17 @@ package asset
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/buildpacks/imgutil"
+
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/ocipackage"
-	"os"
 )
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_image_fetcher.go github.com/buildpacks/pack/internal/asset ImageFetcher
 type ImageFetcher interface {
-	FetchImageAssets(ctx context.Context, pullPolicy pubcfg.PullPolicy, imageNames...string) ([]imgutil.Image, error)
+	FetchImageAssets(ctx context.Context, pullPolicy pubcfg.PullPolicy, imageNames ...string) ([]imgutil.Image, error)
 }
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_uri_fetcher.go github.com/buildpacks/pack/internal/asset URIFetcher
@@ -33,48 +35,48 @@ func NewFetcher(assetFileFetcher FileFetcher, assetURIFetcher URIFetcher, assetI
 	}
 }
 
-type AssetFetcherConfig struct {
+type FetcherConfig struct {
 	ctx             context.Context
 	imagePullPolicy pubcfg.PullPolicy
-	workingDir    string
+	workingDir      string
 }
 
-func DefaultAssetFetcherConfig() (AssetFetcherConfig, error) {
+func DefaultFetcherConfig() (FetcherConfig, error) {
 	wd, err := os.Getwd()
 	if err != nil {
-		return AssetFetcherConfig{}, fmt.Errorf("unable to create asset fetcher config: %q", err)
+		return FetcherConfig{}, fmt.Errorf("unable to create asset fetcher config: %q", err)
 	}
-	return AssetFetcherConfig{
+	return FetcherConfig{
 		ctx:             context.Background(),
 		imagePullPolicy: pubcfg.PullIfNotPresent,
-		workingDir:    wd,
+		workingDir:      wd,
 	}, nil
 }
 
-type AssetFetcherOptions func(*AssetFetcherConfig)
+type FetcherOptions func(*FetcherConfig)
 
-func WithPullPolicy(policy pubcfg.PullPolicy) AssetFetcherOptions {
-	return func(cfg *AssetFetcherConfig) {
+func WithPullPolicy(policy pubcfg.PullPolicy) FetcherOptions {
+	return func(cfg *FetcherConfig) {
 		cfg.imagePullPolicy = policy
 	}
 }
 
-func WithContext(ctx context.Context) AssetFetcherOptions {
-	return func (cfg *AssetFetcherConfig) {
+func WithContext(ctx context.Context) FetcherOptions {
+	return func(cfg *FetcherConfig) {
 		cfg.ctx = ctx
 	}
 }
 
-func WithWorkingDir(workingDir string) AssetFetcherOptions {
-	return func (cfg *AssetFetcherConfig) {
+func WithWorkingDir(workingDir string) FetcherOptions {
+	return func(cfg *FetcherConfig) {
 		cfg.workingDir = workingDir
 	}
 }
 
-func (a Fetcher) FetchAssets(assetNameList []string, options ...AssetFetcherOptions) ([]Readable, error) {
+func (a Fetcher) FetchAssets(assetNameList []string, options ...FetcherOptions) ([]Readable, error) {
 	result := []Readable{}
 
-	cfg, err := DefaultAssetFetcherConfig()
+	cfg, err := DefaultFetcherConfig()
 	if err != nil {
 		return []Readable{}, err
 	}

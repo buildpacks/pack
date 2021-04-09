@@ -3,19 +3,21 @@ package asset_test
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"os"
+	"testing"
+
+	"github.com/docker/docker/pkg/archive"
+	"github.com/golang/mock/gomock"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	"github.com/buildpacks/pack/internal/asset"
 	fakes3 "github.com/buildpacks/pack/internal/asset/fakes"
 	"github.com/buildpacks/pack/internal/asset/testmocks"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/layer"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/docker/docker/pkg/archive"
-	"github.com/golang/mock/gomock"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
-	"io/ioutil"
-	"os"
-	"testing"
 )
 
 func TestReader(t *testing.T) {

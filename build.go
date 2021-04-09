@@ -3,8 +3,6 @@ package pack
 import (
 	"context"
 	"fmt"
-	"github.com/buildpacks/pack/internal/asset"
-	"github.com/buildpacks/pack/internal/ocipackage"
 	"math/rand"
 	"net/url"
 	"os"
@@ -12,6 +10,9 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/buildpacks/pack/internal/asset"
+	"github.com/buildpacks/pack/internal/ocipackage"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"

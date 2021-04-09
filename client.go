@@ -2,13 +2,15 @@ package pack
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+
 	"github.com/buildpacks/imgutil"
-	"github.com/buildpacks/pack/internal/asset"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
-	"os"
-	"path/filepath"
+
+	"github.com/buildpacks/pack/internal/asset"
 
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
@@ -49,10 +51,9 @@ type Downloader interface {
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_asset_fetcher.go github.com/buildpacks/pack AssetFetcher
 
-
 // TODO -Dan- Document
 type AssetFetcher interface {
-	FetchAssets(assetNameList []string, options ...asset.AssetFetcherOptions) ([]asset.Readable, error)
+	FetchAssets(assetNameList []string, options ...asset.FetcherOptions) ([]asset.Readable, error)
 }
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_image_factory.go github.com/buildpacks/pack ImageFactory
@@ -63,8 +64,6 @@ type ImageFactory interface {
 	// can be written either locally or to a registry.
 	NewImage(repoName string, local bool) (imgutil.Image, error)
 }
-
-
 
 // Client is an orchestration object, it contains all parameters needed to
 // build an app image using Cloud Native Buildpacks.

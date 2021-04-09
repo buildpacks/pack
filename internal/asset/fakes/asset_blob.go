@@ -3,16 +3,16 @@ package fakes
 import (
 	"archive/tar"
 	"bytes"
-	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"path"
 	"strings"
+
+	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/archive"
 )
-
-
 
 type FakeBlob struct {
 	Contents string
@@ -29,14 +29,14 @@ func (f FakeBlob) Open() (io.ReadCloser, error) {
 }
 
 type FakeAssetBlob struct {
-	Asset dist.Asset
+	Asset    dist.Asset
 	Contents string
 }
 
 func NewFakeAssetBlob(contents string, asset dist.Asset) FakeAssetBlob {
 	return FakeAssetBlob{
 		Contents: contents,
-		Asset: asset,
+		Asset:    asset,
 	}
 }
 

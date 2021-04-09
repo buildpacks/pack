@@ -3,13 +3,14 @@ package asset
 import (
 	"context"
 	"fmt"
-	blob2 "github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/internal/ocipackage"
 	"os"
 	"path/filepath"
+
+	blob2 "github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/ocipackage"
 )
 
-type LocalFileFetcher struct {}
+type LocalFileFetcher struct{}
 
 func NewLocalFileFetcher() LocalFileFetcher {
 	return LocalFileFetcher{}
@@ -46,5 +47,3 @@ func localFile(path, relativeBaseDir string) (string, bool) {
 
 	return "", false
 }
-
-

@@ -3,8 +3,9 @@ package pack
 import (
 	"context"
 	"fmt"
-	"github.com/buildpacks/pack/internal/ocipackage"
 	"sort"
+
+	"github.com/buildpacks/pack/internal/ocipackage"
 
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 

@@ -2,9 +2,10 @@ package ocipackage_test
 
 import (
 	"fmt"
-	"github.com/buildpacks/pack/internal/ocipackage"
 	"path/filepath"
 	"testing"
+
+	"github.com/buildpacks/pack/internal/ocipackage"
 
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"

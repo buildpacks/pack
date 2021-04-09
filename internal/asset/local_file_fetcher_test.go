@@ -3,18 +3,20 @@ package asset_test
 import (
 	"context"
 	"encoding/json"
-	"github.com/buildpacks/pack/internal/asset"
-	blob2 "github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/ocipackage"
-	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/pack/internal/asset"
+	blob2 "github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/ocipackage"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestLocalFileFetcher(t *testing.T) {

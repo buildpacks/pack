@@ -3,6 +3,7 @@ package pack
 import (
 	"context"
 	"fmt"
+
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/asset"
 
@@ -207,7 +208,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 	return lifecycle, nil
 }
 
-func (c *Client) addAssetsToBuilder(ctx context.Context,opts CreateBuilderOptions, bldr *builder.Builder) error {
+func (c *Client) addAssetsToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
 	for _, assetCache := range opts.Config.Assets.Caches {
 		var fetchLocation string
 		switch {
