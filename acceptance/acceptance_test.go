@@ -913,6 +913,53 @@ func testAcceptance(
 				builderName = value
 			})
 
+			when("complex builder", func() {
+				it.Before(func() {
+					// create our nested builder
+					h.SkipIf(t, imageManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+					h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.BuilderNoDuplicateLayers), "bug fixed in 0.18.0")
+
+					// create a task, handled by a 'task manager' which executes our pack commands during tests.
+					// looks like this is used to de-dup tasks
+					key := taskKey(
+						"create-complex-builder",
+						append(
+							[]string{runImageMirror, createBuilderPackConfig.Path(), lifecycle.Identifier()},
+							createBuilderPackConfig.FixturePaths()...,
+						)...,
+					)
+
+					value, err := suiteManager.RunTaskOnceString(key, func() (string, error) {
+						return createComplexBuilder(
+							t,
+							assert,
+							createBuilderPack,
+							lifecycle,
+							buildpackManager,
+							runImageMirror,
+						)
+					})
+					assert.Nil(err)
+
+					// register task to be run to 'clean up' a task
+					suiteManager.RegisterCleanUp("clean-"+key, func() error {
+						imageManager.CleanupImages(value)
+						return nil
+					})
+					builderName = value
+
+					output := pack.RunSuccessfully(
+						"config", "run-image-mirrors", "add", "pack-test/run", "--mirror", "some-registry.com/pack-test/run1")
+					assertOutput := assertions.NewOutputAssertionManager(t, output)
+					assertOutput.ReportsSuccesfulRunImageMirrorsAdd("pack-test/run", "some-registry.com/pack-test/run1")
+				})
+				when("builder has duplicate buildpacks", func() {
+					it("buildpack layers have no duplication", func() {
+						assertImage.DoesNotHaveDuplicateLayers(builderName)
+					})
+				})
+			})
+
 			when("builder.toml is invalid", func() {
 				it("displays an error", func() {
 					builderConfigPath := createBuilderPack.FixtureManager().FixtureLocation("invalid_builder.toml")
@@ -2150,6 +2197,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					it.Before(func() {
 						// create our nested builder
 						h.SkipIf(t, imageManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+						h.SkipIf(t, !pack.SupportsFeature(invoke.BuilderNoDuplicateLayers), "bug fixed in 0.18.0")
 
 						// create a task, handled by a 'task manager' which executes our pack commands during tests.
 						// looks like this is used to de-dup tasks
@@ -2666,12 +2714,14 @@ func createComplexBuilder(t *testing.T,
 	packageImageName := registryConfig.RepoName("nested-level-1-buildpack-" + h.RandString(8))
 	nestedLevelTwoBuildpackName := registryConfig.RepoName("nested-level-2-buildpack-" + h.RandString(8))
 	simpleLayersBuildpackName := registryConfig.RepoName("simple-layers-buildpack-" + h.RandString(8))
+	simpleLayersBuildpackDifferentShaName := registryConfig.RepoName("simple-layers-buildpack-different-name-" + h.RandString(8))
 
 	templateMapping["package_id"] = "simple/nested-level-1"
 	templateMapping["package_image_name"] = packageImageName
 	templateMapping["nested_level_1_buildpack"] = packageImageName
 	templateMapping["nested_level_2_buildpack"] = nestedLevelTwoBuildpackName
 	templateMapping["simple_layers_buildpack"] = simpleLayersBuildpackName
+	templateMapping["simple_layers_buildpack_different_sha"] = simpleLayersBuildpackDifferentShaName
 
 	fixtureManager := pack.FixtureManager()
 
@@ -2692,6 +2742,7 @@ func createComplexBuilder(t *testing.T,
 		nestedLevelTwoConfigFile,
 		templateMapping,
 	)
+
 	err = nestedLevelTwoConfigFile.Close()
 	assert.Nil(err)
 
@@ -2721,11 +2772,20 @@ func createComplexBuilder(t *testing.T,
 		),
 	)
 
-	defer imageManager.CleanupImages(packageImageName, nestedLevelTwoBuildpackName, simpleLayersBuildpackName)
+	simpleLayersDifferentShaBuildpack := buildpacks.NewPackageImage(
+		t,
+		pack,
+		simpleLayersBuildpackDifferentShaName,
+		fixtureManager.FixtureLocation("simple-layers-buildpack-different-sha_package.toml"),
+		buildpacks.WithRequiredBuildpacks(buildpacks.SimpleLayersDifferentSha),
+	)
+
+	defer imageManager.CleanupImages(packageImageName, nestedLevelTwoBuildpackName, simpleLayersBuildpackName, simpleLayersBuildpackDifferentShaName)
 
 	builderBuildpacks = append(
 		builderBuildpacks,
 		packageImageBuildpack,
+		simpleLayersDifferentShaBuildpack,
 	)
 
 	buildpackManager.PrepareBuildpacks(tmpDir, builderBuildpacks...)

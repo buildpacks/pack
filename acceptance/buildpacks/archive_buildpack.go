@@ -90,16 +90,17 @@ func (a archiveBuildpack) createTgz(sourceDir string) (string, error) {
 }
 
 var (
-	SimpleLayersParent  = &archiveBuildpack{name: "simple-layers-parent-buildpack"}
-	SimpleLayers        = &archiveBuildpack{name: "simple-layers-buildpack"}
-	InternetCapable     = &archiveBuildpack{name: "internet-capable-buildpack"}
-	ReadVolume          = &archiveBuildpack{name: "read-volume-buildpack"}
-	ReadWriteVolume     = &archiveBuildpack{name: "read-write-volume-buildpack"}
-	ArchiveNotInBuilder = &archiveBuildpack{name: "not-in-builder-buildpack"}
-	Noop                = &archiveBuildpack{name: "noop-buildpack"}
-	Noop2               = &archiveBuildpack{name: "noop-buildpack-2"}
-	OtherStack          = &archiveBuildpack{name: "other-stack-buildpack"}
-	ReadEnv             = &archiveBuildpack{name: "read-env-buildpack"}
-	NestedLevelOne      = &archiveBuildpack{name: "nested-level-1-buildpack"}
-	NestedLevelTwo      = &archiveBuildpack{name: "nested-level-2-buildpack"}
+	SimpleLayersParent       = &archiveBuildpack{name: "simple-layers-parent-buildpack"}
+	SimpleLayers             = &archiveBuildpack{name: "simple-layers-buildpack"}
+	SimpleLayersDifferentSha = &archiveBuildpack{name: "simple-layers-buildpack-different-sha"}
+	InternetCapable          = &archiveBuildpack{name: "internet-capable-buildpack"}
+	ReadVolume               = &archiveBuildpack{name: "read-volume-buildpack"}
+	ReadWriteVolume          = &archiveBuildpack{name: "read-write-volume-buildpack"}
+	ArchiveNotInBuilder      = &archiveBuildpack{name: "not-in-builder-buildpack"}
+	Noop                     = &archiveBuildpack{name: "noop-buildpack"}
+	Noop2                    = &archiveBuildpack{name: "noop-buildpack-2"}
+	OtherStack               = &archiveBuildpack{name: "other-stack-buildpack"}
+	ReadEnv                  = &archiveBuildpack{name: "read-env-buildpack"}
+	NestedLevelOne           = &archiveBuildpack{name: "nested-level-1-buildpack"}
+	NestedLevelTwo           = &archiveBuildpack{name: "nested-level-2-buildpack"}
 )
