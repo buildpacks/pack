@@ -3,7 +3,7 @@ package asset_test
 import (
 	"context"
 	"errors"
-	"fmt"
+	"github.com/buildpacks/pack/internal/paths"
 	"path/filepath"
 	"testing"
 
@@ -81,7 +81,10 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 				absPath, err := filepath.Abs(filepath.Join("testdata", "fake-asset-cache.tar"))
 				assert.Nil(err)
 
-				assetURI := fmt.Sprintf("file://%s", absPath)
+				assetURI, err := paths.FilePathToURI(filepath.Join("testdata", "fake-asset-cache.tar"), ".")
+				assert.Nil(err)
+
+
 				mockFileFetcher.EXPECT().FetchFileAssets(gomock.Any(), gomock.Any(), absPath).
 					Return([]*ocipackage.OciLayoutPackage{expectedAssetCache}, nil)
 
@@ -118,12 +121,16 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 			})
 			when("file asset is unable to be opened", func() {
 				it("errors with helpful message", func() {
-					assetPath := filepath.Join("/some","file")
-					assetURI := fmt.Sprintf("file://%s", assetPath)
+					assetPath, err := filepath.Abs(filepath.Join("/some", "file"))
+					assert.Nil(err)
+
+					assetURI, err := paths.FilePathToURI(assetPath, "")
+					assert.Nil(err)
+
 					mockFileFetcher.EXPECT().FetchFileAssets(gomock.Any(), gomock.Any(), assetPath).
 						Return(nil, errors.New("unable to open file"))
 
-					_, err := subject.FetchURIAssets(context.Background(), assetURI)
+					_, err = subject.FetchURIAssets(context.Background(), assetURI)
 					assert.ErrorContains(err, `unable to fetch local file asset: "unable to open file"`)
 				})
 			})
