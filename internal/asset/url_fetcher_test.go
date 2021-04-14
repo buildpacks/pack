@@ -78,7 +78,7 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 		})
 		when("url uses 'file' scheme", func() {
 			it("opens local file asset", func() {
-				absPath, err := filepath.Abs("testdata/fake-asset-cache.tar")
+				absPath, err := filepath.Abs(filepath.Join("testdata", "fake-asset-cache.tar"))
 				assert.Nil(err)
 
 				assetURI := fmt.Sprintf("file://%s", absPath)
@@ -116,10 +116,11 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 					assert.ErrorContains(err, `unable to download asset: "error downloading asset"`)
 				})
 			})
-			when("file asset is able to be opened", func() {
+			when("file asset is unable to be opened", func() {
 				it("errors with helpful message", func() {
-					assetURI := "file:///some/file"
-					mockFileFetcher.EXPECT().FetchFileAssets(gomock.Any(), gomock.Any(), "/some/file").
+					assetPath := filepath.Join("/some","file")
+					assetURI := fmt.Sprintf("file://%s", assetPath)
+					mockFileFetcher.EXPECT().FetchFileAssets(gomock.Any(), gomock.Any(), assetPath).
 						Return(nil, errors.New("unable to open file"))
 
 					_, err := subject.FetchURIAssets(context.Background(), assetURI)

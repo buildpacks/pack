@@ -43,6 +43,8 @@ func NewFakeAssetBlob(contents string, asset dist.Asset) FakeAssetBlob {
 func NewFakeAssetBlobTar(rawContents string, asset dist.Asset, factory archive.TarWriterFactory) (FakeAssetBlob, error) {
 	buf := bytes.NewBuffer(nil)
 	tw := factory.NewWriter(buf)
+	defer tw.Close()
+
 	ts := archive.NormalizedDateTime
 
 	if err := tw.WriteHeader(&tar.Header{

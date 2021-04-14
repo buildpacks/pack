@@ -58,7 +58,11 @@ func (c *Client) CreateAssetCache(ctx context.Context, opts CreateAssetCacheOpti
 		return errors.Wrap(err, "unable to download assets")
 	}
 
-	addAssetsToImage(assetCache, assets, downloadResults)
+	err = addAssetsToImage(assetCache, assets, downloadResults)
+	if err != nil {
+		// TODO -Dan- handle error
+		panic(err)
+	}
 	return assetCache.Save()
 }
 
@@ -105,12 +109,18 @@ func simplifyAssets(assets dist.Assets) dist.Assets {
 }
 
 // this method mutates the given assetImg
-func addAssetsToImage(assetImg AssetCache, assets dist.Assets, downloadMap map[blob.DownloadJob]blob.DownloadResult) {
+func addAssetsToImage(assetImg AssetCache, assets dist.Assets, downloadMap map[blob.DownloadJob]blob.DownloadResult) error {
 	for _, curAsset := range assets {
 		b, ok := downloadMap[blob.DownloadJob{URI: curAsset.URI, Sha256: curAsset.Sha256}]
 		if !ok || b.Blob == nil {
 			continue
 		}
-		assetImg.AddAssetBlobs(asset.FromRawBlob(curAsset, b.Blob))
+		aBlob, err := asset.FromRawBlob(curAsset, b.Blob)
+		if err != nil {
+			// TODO -Dan- handle error
+			panic(err)
+		}
+		assetImg.AddAssetBlobs(aBlob)
 	}
+	return nil
 }

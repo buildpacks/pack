@@ -44,7 +44,8 @@ func testBlob(t *testing.T, when spec.G, it spec.S) {
 				Name:    "Some Fake Asset Name",
 				Stacks:  []string{"first-stack", "second-stack"},
 			}
-			subject := asset.FromRawBlob(fakeAsset, fakeBlob)
+			subject, err := asset.FromRawBlob(fakeAsset, fakeBlob)
+			assert.Nil(err)
 
 			EqualBlobContents(t, subject, fakeBlob)
 
@@ -55,31 +56,45 @@ func testBlob(t *testing.T, when spec.G, it spec.S) {
 
 	when("ExtractFromLayer", func() {
 		var layerBlob dist.Blob
-		it.Before(func() {
-			layerBlob = blob.NewBlob(filepath.Join("testdata", "fake-asset-layer.tar"))
+		when("linux layer tar", func() {
+			it.Before(func() {
+				layerBlob = blob.NewBlob(filepath.Join("testdata", "fake-asset-layer.tar"))
+			})
+			it("creates a readable asset blob", func() {
+				fakeAsset := dist.Asset{
+					Sha256:  "71415dc9d46dd5722974eb79c14510dc1c0038dd3613afc85e911336b5b11c43",
+					ID:      "some-fake-asset",
+					Version: "1.2.3",
+					Stacks:  []string{"io.buildpacks.stacks.bionic"},
+				}
+				subject, err := asset.ExtractFromLayer(fakeAsset, layerBlob)
+				assert.Nil(err)
+
+				subjectReader, err := subject.Open()
+				assert.Nil(err)
+
+				contents, err := ioutil.ReadAll(subjectReader)
+				assert.Nil(err)
+
+				assert.Equal(string(contents), "fake asset with some contents\n")
+			})
 		})
-		it("creates a readable asset blob", func() {
-			fakeAsset := dist.Asset{
-				Sha256:  "71415dc9d46dd5722974eb79c14510dc1c0038dd3613afc85e911336b5b11c43",
-				ID:      "some-fake-asset",
-				Version: "1.2.3",
-				Stacks:  []string{"io.buildpacks.stacks.bionic"},
-			}
-			subject, err := asset.ExtractFromLayer(fakeAsset, layerBlob)
-			assert.Nil(err)
-
-			subjectReader, err := subject.Open()
-			assert.Nil(err)
-
-			contents, err := ioutil.ReadAll(subjectReader)
-			assert.Nil(err)
-
-			assert.Equal(string(contents), "fake asset with some contents\n")
-		})
+		//when("windows layer", func() {
+		//	it("creates readable asset blob", func() {
+		//
+		//	})
+		//})
 	})
 
 	when("error cases", func() {
 		when("#ExtractFromLayer", func() {
+			when("assetSha contains invalid characters", func() {
+				it("errors with a helpful message", func() {
+					_, err := asset.ExtractFromLayer(dist.Asset{Sha256: "????"}, mockBlob)
+
+					assert.ErrorContains(err, "unable to create asset search regex")
+				})
+			})
 			when("unable to open blob", func() {
 				it("errors with a helpful message", func() {
 					mockBlob.EXPECT().Open().Return(nil, errors.New("opening error"))
@@ -103,9 +118,9 @@ func testBlob(t *testing.T, when spec.G, it spec.S) {
 					assert.Nil(err)
 
 					mockBlob.EXPECT().Open().Return(emptyArchive, nil)
-					_, err = asset.ExtractFromLayer(dist.Asset{Sha256: "help I lost my sha"}, mockBlob)
+					_, err = asset.ExtractFromLayer(dist.Asset{Sha256: "HelpILostMySha"}, mockBlob)
 
-					assert.ErrorContains(err, `unable to find asset with sha256: "help I lost my sha" in blob`)
+					assert.ErrorContains(err, `unable to find singular asset in blob`)
 				})
 			})
 		})

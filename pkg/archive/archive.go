@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/docker/docker/pkg/ioutils"
@@ -161,6 +162,32 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 	}
 
 	return nil, nil, errors.Wrapf(ErrEntryNotExist, "could not find entry path '%s'", entryPath)
+}
+
+func ReadMatchingTarEntries(rc io.Reader, entryRegex *regexp.Regexp) (map[*tar.Header][]byte, error) {
+	result := map[*tar.Header][]byte{}
+
+	tr := tar.NewReader(rc)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return result, errors.Wrap(err, "failed to get next tar entry")
+		}
+
+		if entryRegex.MatchString(path.Clean(header.Name)) {
+			buf, err := ioutil.ReadAll(tr)
+			if err != nil {
+				// TODO -Dan- handle error
+				panic("bad bad error")
+			}
+			//return result, errors.Wrapf(err, "failed to read contents of '%s'", entryPath)
+			result[header] = buf
+		}
+	}
+	return result, nil
 }
 
 // WriteDirToTar writes the contents of a directory to a tar writer. `basePath` is the "location" in the tar the

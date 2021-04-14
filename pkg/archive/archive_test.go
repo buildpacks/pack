@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -156,6 +157,77 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				reader := strings.NewReader("abcde")
 				_, _, err := archive.ReadTarEntry(reader, "file1")
 				h.AssertError(t, err, "get next tar entry")
+			})
+		})
+	})
+
+	when("#ReadMatchingTarEntries", func() {
+		var (
+			err     error
+			tarFile *os.File
+		)
+		it.Before(func() {
+			tarFile, err = ioutil.TempFile(tmpDir, "file.tgz")
+			h.AssertNil(t, err)
+		})
+
+		it.After(func() {
+			_ = tarFile.Close()
+		})
+
+		when("tgz has abs path matching regex", func() {
+			it.Before(func() {
+				err = archive.CreateSingleFileTar(tarFile.Name(), "./file11", "file-11 content")
+				h.AssertNil(t, err)
+			})
+
+			it("returns the file contents that match regex", func() {
+				testRe := regexp.MustCompile("file1+")
+				matchMap, err := archive.ReadMatchingTarEntries(tarFile, testRe)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, len(matchMap), 1)
+				for _, contents := range matchMap {
+					h.AssertEq(t, string(contents), "file-11 content")
+				}
+			})
+			it("omits files that do not match regex", func() {
+				testRe := regexp.MustCompile("file7")
+				matchMap, err := archive.ReadMatchingTarEntries(tarFile, testRe)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, len(matchMap), 0)
+			})
+		})
+		when("tgz has local path ./path", func() {
+			it.Before(func() {
+				err = archive.CreateSingleFileTar(tarFile.Name(), "file22", "file-22 content")
+				h.AssertNil(t, err)
+			})
+			it("returns the file contents that match regex", func() {
+				testRe := regexp.MustCompile("file2+")
+				matchMap, err := archive.ReadMatchingTarEntries(tarFile, testRe)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, len(matchMap), 1)
+				for _, contents := range matchMap {
+					h.AssertEq(t, string(contents), "file-22 content")
+				}
+			})
+		})
+		when("reader isn't tar", func() {
+			it("errors with helpful message", func() {
+				testRe := regexp.MustCompile("file1+")
+
+				reader := strings.NewReader("abcde")
+				_, err := archive.ReadMatchingTarEntries(reader, testRe)
+				h.AssertError(t, err, "get next tar entry")
+			})
+		})
+
+		when("regex is nil", func() {
+			it("errors with helpful message", func() {
+
 			})
 		})
 	})

@@ -2,11 +2,11 @@ package asset
 
 import (
 	"bytes"
+	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
-	"path/filepath"
-
-	"github.com/pkg/errors"
+	"regexp"
 
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/dist"
@@ -38,7 +38,7 @@ func (b ABlob) AssetDescriptor() dist.Asset {
 	return b.descriptor
 }
 
-func FromRawBlob(asset dist.Asset, b blob.Blob) *ABlob {
+func FromRawBlob(asset dist.Asset, b blob.Blob) (*ABlob, error) {
 	result := ABlob{
 		openFn:     b.Open,
 		size:       0,
@@ -46,34 +46,48 @@ func FromRawBlob(asset dist.Asset, b blob.Blob) *ABlob {
 	}
 	r, err := result.Open()
 	if err != nil {
-		// TODO -Dan- handle error
-		panic(err)
+		return nil, err
 	}
 	w, err := io.Copy(ioutil.Discard, r)
 	if err != nil {
-		// TODO -Dan- handle error
-		panic(err)
+		return nil, err
 	}
 	result.size = w
 
-	return &result
+	return &result, nil
 }
 
 func ExtractFromLayer(asset dist.Asset, layerBlob blob.Blob) (*ABlob, error) {
-	r, err := layerBlob.Open()
+	pathRegex, err := regexp.Compile(fmt.Sprintf(`(Files)?/cnb/assets/%s`, asset.Sha256))
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to open blob for extraction")
+		return nil, errors.Wrap(err, "unable to create asset search regex")
 	}
 
-	// TODO -Dan- watch out for int32 max size assetBytes here (around 2GB),
-	//   rework this using readers to avoid this problem.
-	_, assetBytes, err := archive.ReadTarEntry(r, filepath.Join("/cnb", "assets", asset.Sha256))
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to find asset with sha256: %q in blob", asset.Sha256)
-	}
 	return FromRawBlob(asset, &ABlob{
 		openFn: func() (io.ReadCloser, error) {
-			return ioutil.NopCloser(bytes.NewBuffer(assetBytes)), nil
+			return getSingleTarEntry(layerBlob, pathRegex)
 		},
-	}), nil
+	})
+}
+
+func getSingleTarEntry(layerBlob blob.Blob, pathRegex *regexp.Regexp) (io.ReadCloser, error) {
+	r, err := layerBlob.Open()
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to open blob for extraction")
+	}
+
+	readerMap, err := archive.ReadMatchingTarEntries(r, pathRegex)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to extract single tar entry")
+	}
+	switch len(readerMap){
+	case 1:
+		for _, assetBytes := range readerMap {
+			return ioutil.NopCloser(bytes.NewReader(assetBytes)), nil
+		}
+	default:
+		return nil, errors.New(`unable to find singular asset in blob`)
+	}
+
+	return nil,nil // impossible to get here.
 }

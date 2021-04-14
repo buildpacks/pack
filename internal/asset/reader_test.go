@@ -3,6 +3,7 @@ package asset_test
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -74,57 +75,63 @@ func testReader(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 		when("Readable object has asset blobs and metadata", func() {
-			it("returns blobs and metadata", func() {
-				subject = asset.NewReader()
-
-				md := dist.AssetMap{
+			var (
+				firstAssetBlob  fakes3.FakeAssetBlob
+				secondAssetBlob fakes3.FakeAssetBlob
+				thirdAssetBlob  fakes3.FakeAssetBlob
+				md              = dist.AssetMap{
 					"first-sha256":  firstAsset.ToAssetValue("first-diffID"),
 					"second-sha256": secondAsset.ToAssetValue("second-diffID"),
 					"third-sha256":  thirdAsset.ToAssetValue("third-diffID"),
 				}
-				lw, err := layer.NewWriterFactory("linux")
-				assert.Nil(err)
+			)
 
-				firstAssetBlob, err := fakes3.NewFakeAssetBlobTar("first layer contents", firstAsset, lw)
-				assert.Nil(err)
+			when("linux asset blobs", func() {
+				it.Before(func() {
+					lw, err := layer.NewWriterFactory("linux")
+					assert.Nil(err)
 
-				firstAssetReader, err := firstAssetBlob.Open()
-				assert.Nil(err)
+					firstAssetBlob, err = fakes3.NewFakeAssetBlobTar("first layer contents", firstAsset, lw)
+					assert.Nil(err)
 
-				secondAssetBlob, err := fakes3.NewFakeAssetBlobTar("second layer contents", secondAsset, lw)
-				assert.Nil(err)
+					secondAssetBlob, err = fakes3.NewFakeAssetBlobTar("second layer contents", secondAsset, lw)
+					assert.Nil(err)
 
-				secondAssetReader, err := secondAssetBlob.Open()
-				assert.Nil(err)
+					thirdAssetBlob, err = fakes3.NewFakeAssetBlobTar("third layer contents", thirdAsset, lw)
+					assert.Nil(err)
+				})
+				it("returns blobs and metadata", func() {
+					subject = asset.NewReader()
 
-				thirdAssetBlob, err := fakes3.NewFakeAssetBlobTar("third layer contents", thirdAsset, lw)
-				assert.Nil(err)
+					mdBytes, err := json.Marshal(md)
+					assert.Nil(err)
 
-				thirdAssetReader, err := thirdAssetBlob.Open()
-				assert.Nil(err)
+					mockReadable.EXPECT().Label("io.buildpacks.asset.layers").Return(string(mdBytes), nil)
+					mockReadable.EXPECT().GetLayer("first-diffID").DoAndReturn(func(_ string) (io.ReadCloser, error) {
+						return firstAssetBlob.Open()
+					}).MinTimes(1)
+					mockReadable.EXPECT().GetLayer("second-diffID").DoAndReturn(func(_ string) (io.ReadCloser, error) {
+						return secondAssetBlob.Open()
+					}).MinTimes(1)
+					mockReadable.EXPECT().GetLayer("third-diffID").DoAndReturn(func(_ string) (io.ReadCloser, error) {
+						return thirdAssetBlob.Open()
+					}).MinTimes(1)
 
-				mdBytes, err := json.Marshal(md)
-				assert.Nil(err)
+					blobs, metadata, err := subject.Read(mockReadable)
+					assert.Nil(err)
 
-				mockReadable.EXPECT().Label("io.buildpacks.asset.layers").Return(string(mdBytes), nil)
-				mockReadable.EXPECT().GetLayer("first-diffID").Return(firstAssetReader, nil)
-				mockReadable.EXPECT().GetLayer("second-diffID").Return(secondAssetReader, nil)
-				mockReadable.EXPECT().GetLayer("third-diffID").Return(thirdAssetReader, nil)
+					assert.Equal(metadata, md)
 
-				blobs, metadata, err := subject.Read(mockReadable)
-				assert.Nil(err)
+					assert.Equal(len(blobs), 3)
+					assert.Equal(blobs[0].AssetDescriptor(), firstAssetBlob.AssetDescriptor())
+					AssertBlobContents(t, blobs[0], "first layer contents")
 
-				assert.Equal(metadata, md)
+					assert.Equal(blobs[1].AssetDescriptor(), secondAssetBlob.AssetDescriptor())
+					AssertBlobContents(t, blobs[1], "second layer contents")
 
-				assert.Equal(len(blobs), 3)
-				assert.Equal(blobs[0].AssetDescriptor(), firstAssetBlob.AssetDescriptor())
-				AssertBlobContents(t, blobs[0], "first layer contents")
-
-				assert.Equal(blobs[1].AssetDescriptor(), secondAssetBlob.AssetDescriptor())
-				AssertBlobContents(t, blobs[1], "second layer contents")
-
-				assert.Equal(blobs[2].AssetDescriptor(), thirdAssetBlob.AssetDescriptor())
-				AssertBlobContents(t, blobs[2], "third layer contents")
+					assert.Equal(blobs[2].AssetDescriptor(), thirdAssetBlob.AssetDescriptor())
+					AssertBlobContents(t, blobs[2], "third layer contents")
+				})
 			})
 		})
 	})
@@ -172,6 +179,8 @@ func testReader(t *testing.T, when spec.G, it spec.S) {
 }
 
 func AssertBlobContents(t *testing.T, actual dist.Blob, expectedContents string) {
+	t.Helper()
+
 	actualReader, err := actual.Open()
 	h.AssertNil(t, err)
 	actualContents, err := ioutil.ReadAll(actualReader)
