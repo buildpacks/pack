@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+echo "---> Build: Simple Asset Layers Buildpack"
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+launch_dir=$1
+
+## makes a launch layer
+echo "making launch layer"
+
+# Add color line, to test for --no-color
+echo "Color: [0mStyled"
+
+mkdir "$launch_dir/launch-layer"
+echo "Launch Dep Contents" > "$launch_dir/launch-layer/launch-dep"
+ln -snf "$launch_dir/launch-layer" launch-deps
+echo "launch = true" > "$launch_dir/launch-layer.toml"
+
+ls /cnb/assets
+## checks if assetsA is available
+if [[ -f "/cnb/assets/797b3f6bf2b2c10a8299d51dfdbcfed329d3c133fdc7e695beddbe8f70b49da9" ]]; then
+  echo "Asset A exists!"
+  cat "/cnb/assets/797b3f6bf2b2c10a8299d51dfdbcfed329d3c133fdc7e695beddbe8f70b49da9"
+  printf "\n"
+fi
+
+if [[ -f "/cnb/assets/61eea2ec4053ca25b9bd5d7bebaba48ee5398569aa1da5bc3541cbab1d09b86b" ]]; then
+  echo "Asset B exists!"
+  cat "/cnb/assets/61eea2ec4053ca25b9bd5d7bebaba48ee5398569aa1da5bc3541cbab1d09b86b"
+  printf "\n"
+fi
+
+## makes a cached launch layer
+if [[ ! -f "$launch_dir/cached-launch-layer.toml" ]]; then
+    echo "making cached launch layer"
+    mkdir "$launch_dir/cached-launch-layer"
+    echo "Cached Dep Contents" > "$launch_dir/cached-launch-layer/cached-dep"
+    ln -snf "$launch_dir/cached-launch-layer" cached-deps
+    echo "launch = true" > "$launch_dir/cached-launch-layer.toml"
+    echo "cache = true" >> "$launch_dir/cached-launch-layer.toml"
+else
+  echo "reusing cached launch layer"
+  ln -snf "$launch_dir/cached-launch-layer" cached-deps
+fi
+
+## adds a process
+cat <<EOF > "$launch_dir/launch.toml"
+[[processes]]
+  type = "web"
+  command = "./run"
+  args = ["8080"]
+
+[[processes]]
+  type = "hello"
+  command = "echo"
+  args = ["hello", "world"]
+  direct = true
+EOF
+
+echo "---> Done"

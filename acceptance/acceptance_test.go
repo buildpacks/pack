@@ -616,17 +616,24 @@ func testWithoutSpecificBuilderRequirement(
 	})
 
 	when("asset cache", func() {
-		var tmpDir string
+		var (
+			tmpDir   string
+			repo     string
+			repoName string
+		)
 		it.Before(func() {
 			var err error
 			tmpDir, err = ioutil.TempDir("", "asset-cache-testing")
 			assert.Nil(err)
+			repo = "some-org/" + h.RandString(10)
+			repoName = registryConfig.RepoName(repo)
 		})
 		it.After(func() {
 			os.RemoveAll(tmpDir)
+			imageManager.CleanupImages(repoName)
 		})
 
-		it("creates reproducable asset cache image", func() {
+		it("creates reproducable asset cache", func() {
 			buildpackManager = buildpacks.NewBuildpackManager(
 				t,
 				assert,
@@ -818,8 +825,6 @@ func testWithoutSpecificBuilderRequirement(
 			firstSha := imageSha(t, assert, dockerCli, assetCacheName)
 			secondSha := imageSha(t, assert, dockerCli, identicalAssetCacheName)
 			assert.Equal(firstSha, secondSha)
-
-			// now lets check the sha256 values of these two assets are the same
 		})
 	})
 
@@ -1421,6 +1426,133 @@ func testAcceptance(
 							)
 
 							assertImage.RunsWithLogs(repoName, "hello world")
+						})
+					})
+
+					when("--asset-cache", func() {
+						var (
+							tmpDir string
+						)
+						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.AssetPackages), "requires asset package capabilities")
+							h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.AssetPackages), "requires asset package capabilities")
+
+
+							var err error
+							tmpDir, err = ioutil.TempDir("", "asset-cache-testing")
+							assert.Nil(err)
+							repo = "some-org/" + h.RandString(10)
+							repoName = registryConfig.RepoName(repo)
+						})
+						it.After(func() {
+							os.RemoveAll(tmpDir)
+							imageManager.CleanupImages(repoName)
+						})
+						it("adds assets to build and allows buildpacks to access them", func() {
+							buildpackManager = buildpacks.NewBuildpackManager(
+								t,
+								assert,
+								buildpacks.WithBuildpackSource(tmpDir),
+							)
+
+							templateMapping := map[string]interface{}{}
+							// resolve local assets to absolute paths
+							assetAPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetA.txt"))
+							assert.Nil(err)
+							assetAPath = cleanAbsPath(assetAPath)
+							assetBPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetB.txt"))
+							assert.Nil(err)
+							assetBPath = cleanAbsPath(assetBPath)
+
+							templateMapping["assetAURI"] = assetAPath
+							templateMapping["assetBURI"] = assetBPath
+
+							simpleBuildpackRoot := filepath.Join(tmpDir, "simple-buildpack")
+							assert.Succeeds(os.Mkdir(simpleBuildpackRoot, os.ModePerm))
+
+							h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", "simple-buildpack"), simpleBuildpackRoot)
+
+							simpleBuildpackTOML := filepath.Join(simpleBuildpackRoot, "buildpack.toml")
+							simpleBuildpackTOMLFile, err := os.OpenFile(simpleBuildpackTOML, os.O_CREATE|os.O_RDWR, os.ModePerm)
+							assert.Nil(err)
+
+							// create asset buildpacks
+							simpleArchiveBuildpack := buildpacks.NewArchiveBuildpack("simple-buildpack")
+
+							// template buildpack assets
+							fixtureManager := pack.FixtureManager()
+							fixtureManager.TemplateFile(simpleBuildpackTOMLFile, templateMapping)
+							assert.Succeeds(simpleBuildpackTOMLFile.Close())
+
+							simpleBuildpackConfigFile, err := ioutil.TempFile(tmpDir, "simple_package.toml")
+							assert.Nil(err)
+							fixtureManager.TemplateFixtureToFile(
+								"generic_package.toml",
+								simpleBuildpackConfigFile,
+								map[string]interface{}{
+									"buildpack_uri": "simple-buildpack.tgz",
+									"OS":            dockerHostOS(),
+								},
+							)
+							err = simpleBuildpackConfigFile.Close()
+							assert.Nil(err)
+
+							// buildpack image names
+							simpleBuildpackImageName := registryConfig.RepoName("simple-assets-buildpack-" + h.RandString(8))
+
+							templateMapping["simple_buildpack"] = simpleBuildpackImageName
+							templateMapping["OS"] = dockerHostOS()
+
+							packageImageBuildpack := buildpacks.NewPackageImage(
+								t,
+								pack,
+								simpleBuildpackImageName,
+								simpleBuildpackConfigFile.Name(),
+								buildpacks.WithRequiredBuildpacks(simpleArchiveBuildpack),
+							)
+
+							buildpackManager.PrepareBuildpacks(tmpDir, packageImageBuildpack)
+							defer h.DockerRmi(dockerCli, simpleBuildpackImageName)
+
+							assetCacheName := registryConfig.RepoName("some-asset-org/" + h.RandString(10))
+							pack.RunSuccessfully(
+								"asset-cache", "create",
+								assetCacheName,
+								"--buildpack", simpleBuildpackImageName,
+								"--os", dockerHostOS(),
+							)
+							defer h.DockerRmi(dockerCli, assetCacheName)
+
+							// Successfully builds app image using asset cache
+							output := pack.RunSuccessfully(
+								"build", repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--buildpack", simpleBuildpackImageName,
+								"--asset-cache", assetCacheName,
+							)
+
+							assertOutput := assertions.NewOutputAssertionManager(t, output)
+
+							assertTestAppOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+							assertTestAppOutput.ReportsBuildStep("Simple Asset Layers Buildpack")
+
+							// check that our buildpack can see Asset A
+							assert.Contains(output, "Asset A exists!")
+							// check that we echo out the content
+							assert.Contains(output, "A pretty cool asset Ayyyy.")
+
+							// check that our buildpack can see Asset B
+							assert.Contains(output, "Asset B exists!")
+							assert.Contains(output,"Just another asset.")
+
+							assertOutput.ReportsSuccessfulImageBuild(repoName)
+
+							t.Log("app is runnable")
+							assertImage.RunsWithOutput(
+								repoName,
+								"Launch Dep Contents",
+								"Cached Dep Contents",
+							)
 						})
 					})
 
@@ -2244,9 +2376,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						}
 
 						deprecatedBuildpackAPIs,
-							supportedBuildpackAPIs,
-							deprecatedPlatformAPIs,
-							supportedPlatformAPIs := lifecycle.OutputForAPIs()
+						supportedBuildpackAPIs,
+						deprecatedPlatformAPIs,
+						supportedPlatformAPIs := lifecycle.OutputForAPIs()
 
 						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 							"inspect_%s_builder_nested_output.txt",
@@ -2282,9 +2414,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						}
 
 						deprecatedBuildpackAPIs,
-							supportedBuildpackAPIs,
-							deprecatedPlatformAPIs,
-							supportedPlatformAPIs := lifecycle.OutputForAPIs()
+						supportedBuildpackAPIs,
+						deprecatedPlatformAPIs,
+						supportedPlatformAPIs := lifecycle.OutputForAPIs()
 
 						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 							"inspect_%s_builder_nested_depth_2_output.txt",
@@ -2323,9 +2455,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							assert.Nil(err)
 
 							deprecatedBuildpackAPIs,
-								supportedBuildpackAPIs,
-								deprecatedPlatformAPIs,
-								supportedPlatformAPIs := lifecycle.TOMLOutputForAPIs()
+							supportedBuildpackAPIs,
+							deprecatedPlatformAPIs,
+							supportedPlatformAPIs := lifecycle.TOMLOutputForAPIs()
 
 							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 								"inspect_%s_builder_nested_output_toml.txt",
@@ -2360,9 +2492,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							assert.Nil(err)
 
 							deprecatedBuildpackAPIs,
-								supportedBuildpackAPIs,
-								deprecatedPlatformAPIs,
-								supportedPlatformAPIs := lifecycle.YAMLOutputForAPIs(14)
+							supportedBuildpackAPIs,
+							deprecatedPlatformAPIs,
+							supportedPlatformAPIs := lifecycle.YAMLOutputForAPIs(14)
 
 							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 								"inspect_%s_builder_nested_output_yaml.txt",
@@ -2401,9 +2533,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							assert.Nil(err)
 
 							deprecatedBuildpackAPIs,
-								supportedBuildpackAPIs,
-								deprecatedPlatformAPIs,
-								supportedPlatformAPIs := lifecycle.JSONOutputForAPIs(8)
+							supportedBuildpackAPIs,
+							deprecatedPlatformAPIs,
+							supportedPlatformAPIs := lifecycle.JSONOutputForAPIs(8)
 
 							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 								"inspect_%s_builder_nested_output_json.txt",
@@ -2440,9 +2572,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					}
 
 					deprecatedBuildpackAPIs,
-						supportedBuildpackAPIs,
-						deprecatedPlatformAPIs,
-						supportedPlatformAPIs := lifecycle.OutputForAPIs()
+					supportedBuildpackAPIs,
+					deprecatedPlatformAPIs,
+					supportedPlatformAPIs := lifecycle.OutputForAPIs()
 
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 						"inspect_%s_builder_output.txt",
@@ -2480,9 +2612,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					}
 
 					deprecatedBuildpackAPIs,
-						supportedBuildpackAPIs,
-						deprecatedPlatformAPIs,
-						supportedPlatformAPIs := lifecycle.OutputForAPIs()
+					supportedBuildpackAPIs,
+					deprecatedPlatformAPIs,
+					supportedPlatformAPIs := lifecycle.OutputForAPIs()
 
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 						"inspect_%s_builder_output.txt",
