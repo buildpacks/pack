@@ -1437,7 +1437,6 @@ func testAcceptance(
 							h.SkipIf(t, !pack.SupportsFeature(invoke.AssetPackages), "requires asset package capabilities")
 							h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.AssetPackages), "requires asset package capabilities")
 
-
 							var err error
 							tmpDir, err = ioutil.TempDir("", "asset-cache-testing")
 							assert.Nil(err)
@@ -1543,7 +1542,7 @@ func testAcceptance(
 
 							// check that our buildpack can see Asset B
 							assert.Contains(output, "Asset B exists!")
-							assert.Contains(output,"Just another asset.")
+							assert.Contains(output, "Just another asset.")
 
 							assertOutput.ReportsSuccessfulImageBuild(repoName)
 
@@ -2376,9 +2375,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						}
 
 						deprecatedBuildpackAPIs,
-						supportedBuildpackAPIs,
-						deprecatedPlatformAPIs,
-						supportedPlatformAPIs := lifecycle.OutputForAPIs()
+							supportedBuildpackAPIs,
+							deprecatedPlatformAPIs,
+							supportedPlatformAPIs := lifecycle.OutputForAPIs()
 
 						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 							"inspect_%s_builder_nested_output.txt",
@@ -2414,9 +2413,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						}
 
 						deprecatedBuildpackAPIs,
-						supportedBuildpackAPIs,
-						deprecatedPlatformAPIs,
-						supportedPlatformAPIs := lifecycle.OutputForAPIs()
+							supportedBuildpackAPIs,
+							deprecatedPlatformAPIs,
+							supportedPlatformAPIs := lifecycle.OutputForAPIs()
 
 						expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 							"inspect_%s_builder_nested_depth_2_output.txt",
@@ -2455,9 +2454,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							assert.Nil(err)
 
 							deprecatedBuildpackAPIs,
-							supportedBuildpackAPIs,
-							deprecatedPlatformAPIs,
-							supportedPlatformAPIs := lifecycle.TOMLOutputForAPIs()
+								supportedBuildpackAPIs,
+								deprecatedPlatformAPIs,
+								supportedPlatformAPIs := lifecycle.TOMLOutputForAPIs()
 
 							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 								"inspect_%s_builder_nested_output_toml.txt",
@@ -2492,9 +2491,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							assert.Nil(err)
 
 							deprecatedBuildpackAPIs,
-							supportedBuildpackAPIs,
-							deprecatedPlatformAPIs,
-							supportedPlatformAPIs := lifecycle.YAMLOutputForAPIs(14)
+								supportedBuildpackAPIs,
+								deprecatedPlatformAPIs,
+								supportedPlatformAPIs := lifecycle.YAMLOutputForAPIs(14)
 
 							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 								"inspect_%s_builder_nested_output_yaml.txt",
@@ -2533,9 +2532,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							assert.Nil(err)
 
 							deprecatedBuildpackAPIs,
-							supportedBuildpackAPIs,
-							deprecatedPlatformAPIs,
-							supportedPlatformAPIs := lifecycle.JSONOutputForAPIs(8)
+								supportedBuildpackAPIs,
+								deprecatedPlatformAPIs,
+								supportedPlatformAPIs := lifecycle.JSONOutputForAPIs(8)
 
 							expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 								"inspect_%s_builder_nested_output_json.txt",
@@ -2572,9 +2571,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					}
 
 					deprecatedBuildpackAPIs,
-					supportedBuildpackAPIs,
-					deprecatedPlatformAPIs,
-					supportedPlatformAPIs := lifecycle.OutputForAPIs()
+						supportedBuildpackAPIs,
+						deprecatedPlatformAPIs,
+						supportedPlatformAPIs := lifecycle.OutputForAPIs()
 
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 						"inspect_%s_builder_output.txt",
@@ -2612,9 +2611,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					}
 
 					deprecatedBuildpackAPIs,
-					supportedBuildpackAPIs,
-					deprecatedPlatformAPIs,
-					supportedPlatformAPIs := lifecycle.OutputForAPIs()
+						supportedBuildpackAPIs,
+						deprecatedPlatformAPIs,
+						supportedPlatformAPIs := lifecycle.OutputForAPIs()
 
 					expectedOutput := pack.FixtureManager().TemplateVersionedFixture(
 						"inspect_%s_builder_output.txt",
