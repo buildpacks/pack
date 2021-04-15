@@ -3,9 +3,10 @@ package asset_test
 import (
 	"context"
 	"errors"
-	"github.com/buildpacks/pack/internal/paths"
 	"path/filepath"
 	"testing"
+
+	"github.com/buildpacks/pack/internal/paths"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
@@ -83,7 +84,6 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 
 				assetURI, err := paths.FilePathToURI(filepath.Join("testdata", "fake-asset-cache.tar"), ".")
 				assert.Nil(err)
-
 
 				mockFileFetcher.EXPECT().FetchFileAssets(gomock.Any(), gomock.Any(), absPath).
 					Return([]*ocipackage.OciLayoutPackage{expectedAssetCache}, nil)

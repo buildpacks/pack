@@ -3,10 +3,11 @@ package asset
 import (
 	"bytes"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"regexp"
+
+	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/dist"
@@ -80,7 +81,7 @@ func getSingleTarEntry(layerBlob blob.Blob, pathRegex *regexp.Regexp) (io.ReadCl
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to extract single tar entry")
 	}
-	switch len(readerMap){
+	switch len(readerMap) {
 	case 1:
 		for _, assetBytes := range readerMap {
 			return ioutil.NopCloser(bytes.NewReader(assetBytes)), nil
@@ -89,5 +90,5 @@ func getSingleTarEntry(layerBlob blob.Blob, pathRegex *regexp.Regexp) (io.ReadCl
 		return nil, errors.New(`unable to find singular asset in blob`)
 	}
 
-	return nil,nil // impossible to get here.
+	return nil, nil // impossible to get here.
 }
