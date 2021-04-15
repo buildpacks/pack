@@ -23,14 +23,15 @@ if not exist %launch_dir%\cached-launch-layer.toml (
     mklink /j cached-deps %launch_dir%\cached-launch-layer
 )
 
+:: check if assets are locally available
 if exist "/cnb/assets/797b3f6bf2b2c10a8299d51dfdbcfed329d3c133fdc7e695beddbe8f70b49da9" (
   echo "Asset A exists!"
-  type "/cnb/assets/797b3f6bf2b2c10a8299d51dfdbcfed329d3c133fdc7e695beddbe8f70b49da9"
+  type \cnb\assets\797b3f6bf2b2c10a8299d51dfdbcfed329d3c133fdc7e695beddbe8f70b49da9
 )
 
 if exist "/cnb/assets/61eea2ec4053ca25b9bd5d7bebaba48ee5398569aa1da5bc3541cbab1d09b86b" (
   echo "Asset B exists!"
-  type "/cnb/assets/61eea2ec4053ca25b9bd5d7bebaba48ee5398569aa1da5bc3541cbab1d09b86b"
+  type \cnb\assets\61eea2ec4053ca25b9bd5d7bebaba48ee5398569aa1da5bc3541cbab1d09b86b
 )
 
 :: adds a process

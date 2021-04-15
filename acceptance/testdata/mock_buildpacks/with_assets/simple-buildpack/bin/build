@@ -19,7 +19,6 @@ echo "Launch Dep Contents" > "$launch_dir/launch-layer/launch-dep"
 ln -snf "$launch_dir/launch-layer" launch-deps
 echo "launch = true" > "$launch_dir/launch-layer.toml"
 
-ls /cnb/assets
 ## checks if assetsA is available
 if [[ -f "/cnb/assets/797b3f6bf2b2c10a8299d51dfdbcfed329d3c133fdc7e695beddbe8f70b49da9" ]]; then
   echo "Asset A exists!"
