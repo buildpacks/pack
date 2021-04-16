@@ -1,0 +1,24 @@
+[[buildpacks]]
+image = "{{.simple_buildpack_with_assets}}"
+
+[lifecycle]
+{{- if .lifecycle_uri}}
+uri = "{{.lifecycle_uri}}"
+{{- end}}
+{{- if .lifecycle_version}}
+version = "{{.lifecycle_version}}"
+{{- end}}
+
+[[order]]
+[[order.group]]
+id = "simple/asset-buildpack"
+
+[stack]
+id = "pack.test.stack"
+build-image = "pack-test/build"
+run-image = "pack-test/run"
+run-image-mirrors = ["{{.run_image_mirror}}"]
+
+[assets]
+  [[assets.cache]]
+    image = "{{.asset_cache_image_name}}"

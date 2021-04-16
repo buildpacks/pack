@@ -965,6 +965,64 @@ func testAcceptance(
 				})
 			})
 
+			when("builder with assets", func() {
+				// assets added through buildpacks
+				var (
+					tmpDir      string
+					builderName string
+					repo        string
+					repoName    string
+				)
+				it.Before(func() {
+					h.SkipIf(t, !pack.SupportsFeature(invoke.AssetPackages), "requires asset package capabilities")
+					h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.AssetPackages), "requires asset package capabilities")
+
+					var err error
+					tmpDir, err = ioutil.TempDir("", "asset-cache-testing")
+					assert.Nil(err)
+					repo = "some-org/" + h.RandString(10)
+					repoName = registryConfig.RepoName(repo)
+
+					builderName, err = createBuilderWithAssets(t, assert, pack, lifecycle, runImageMirror, tmpDir)
+					assert.Nil(err)
+				})
+				it.After(func() {
+					os.RemoveAll(tmpDir)
+					imageManager.CleanupImages(repoName, builderName)
+				})
+				it("can build using contained assets", func() {
+					output := pack.RunSuccessfully(
+						"build", repoName,
+						"-p", filepath.Join("testdata", "mock_app"),
+						"--builder", builderName,
+						"-v",
+					)
+
+					assertOutput := assertions.NewOutputAssertionManager(t, output)
+
+					assertTestAppOutput := assertions.NewTestBuildpackOutputAssertionManager(t, output)
+					assertTestAppOutput.ReportsBuildStep("Simple Asset Layers Buildpack")
+
+					// check that our buildpack can see Asset A
+					assert.Contains(output, "Asset A exists!")
+					// check that we echo out the content
+					assert.Contains(output, "A pretty cool asset Ayyyy.")
+
+					// check that our buildpack can see Asset B
+					assert.Contains(output, "Asset B exists!")
+					assert.Contains(output, "Just another asset.")
+
+					assertOutput.ReportsSuccessfulImageBuild(repoName)
+
+					t.Log("app is runnable")
+					assertImage.RunsWithOutput(
+						repoName,
+						"Launch Dep Contents",
+						"Cached Dep Contents",
+					)
+				})
+			})
+
 			when("builder.toml is invalid", func() {
 				it("displays an error", func() {
 					builderConfigPath := createBuilderPack.FixtureManager().FixtureLocation("invalid_builder.toml")
@@ -2944,6 +3002,137 @@ func createComplexBuilder(t *testing.T,
 	if err != nil {
 		return "", err
 	}
+
+	// NAME BUILDER
+	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
+
+	// CREATE BUILDER
+	output := pack.RunSuccessfully(
+		"builder", "create", bldr,
+		"-c", builderConfigFile.Name(),
+		"--no-color",
+	)
+
+	assert.Contains(output, fmt.Sprintf("Successfully created builder image '%s'", bldr))
+	assert.Succeeds(h.PushImage(dockerCli, bldr, registryConfig))
+
+	return bldr, nil
+}
+
+func createBuilderWithAssets(
+	t *testing.T,
+	assert h.AssertionManager,
+	pack *invoke.PackInvoker,
+	lifecycle config.LifecycleAsset,
+	runImageMirror string,
+	tmpDir string,
+) (string, error) {
+	buildpackManager := buildpacks.NewBuildpackManager(
+		t,
+		assert,
+		buildpacks.WithBuildpackSource(tmpDir),
+	)
+
+	templateMapping := map[string]interface{}{}
+
+	// resolve local assets to absolute paths
+	assetAPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetA.txt"))
+	assert.Nil(err)
+	assetAPath = cleanAbsPath(assetAPath)
+	assetBPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetB.txt"))
+	assert.Nil(err)
+	assetBPath = cleanAbsPath(assetBPath)
+
+	templateMapping["assetAURI"] = assetAPath
+	templateMapping["assetBURI"] = assetBPath
+
+	simpleBuildpackRoot := filepath.Join(tmpDir, "simple-buildpack")
+	assert.Succeeds(os.Mkdir(simpleBuildpackRoot, os.ModePerm))
+
+	h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", "simple-buildpack"), simpleBuildpackRoot)
+
+	simpleBuildpackTOML := filepath.Join(simpleBuildpackRoot, "buildpack.toml")
+	simpleBuildpackTOMLFile, err := os.OpenFile(simpleBuildpackTOML, os.O_CREATE|os.O_RDWR, os.ModePerm)
+	assert.Nil(err)
+
+	// create asset buildpacks
+	simpleArchiveBuildpack := buildpacks.NewArchiveBuildpack("simple-buildpack")
+
+	// template buildpack assets
+	fixtureManager := pack.FixtureManager()
+	fixtureManager.TemplateFile(simpleBuildpackTOMLFile, templateMapping)
+	assert.Succeeds(simpleBuildpackTOMLFile.Close())
+
+	simpleBuildpackConfigFile, err := ioutil.TempFile(tmpDir, "simple_package.toml")
+	assert.Nil(err)
+	fixtureManager.TemplateFixtureToFile(
+		"generic_package.toml",
+		simpleBuildpackConfigFile,
+		map[string]interface{}{
+			"buildpack_uri": "simple-buildpack.tgz",
+			"OS":            dockerHostOS(),
+		},
+	)
+	err = simpleBuildpackConfigFile.Close()
+	assert.Nil(err)
+
+	// buildpack image names
+	simpleBuildpackImageName := registryConfig.RepoName("simple-assets-buildpack-" + h.RandString(8))
+
+	templateMapping["simple_buildpack_with_assets"] = simpleBuildpackImageName
+	templateMapping["OS"] = dockerHostOS()
+
+	packageImageBuildpack := buildpacks.NewPackageImage(
+		t,
+		pack,
+		simpleBuildpackImageName,
+		simpleBuildpackConfigFile.Name(),
+		buildpacks.WithRequiredBuildpacks(simpleArchiveBuildpack),
+	)
+
+	buildpackManager.PrepareBuildpacks(tmpDir, packageImageBuildpack)
+	defer h.DockerRmi(dockerCli, simpleBuildpackImageName)
+
+	assetCacheName := registryConfig.RepoName("some-asset-org/" + h.RandString(10))
+	pack.RunSuccessfully(
+		"asset-cache", "create",
+		assetCacheName,
+		"--buildpack", simpleBuildpackImageName,
+		"--os", dockerHostOS(),
+	)
+	defer h.DockerRmi(dockerCli, assetCacheName)
+
+	templateMapping["asset_cache_image_name"] = assetCacheName
+
+	// ADD lifecycle
+	var lifecycleURI string
+	var lifecycleVersion string
+	if lifecycle.HasLocation() {
+		lifecycleURI = lifecycle.EscapedPath()
+		t.Logf("adding lifecycle path '%s' to builder config", lifecycleURI)
+		templateMapping["lifecycle_uri"] = lifecycleURI
+	} else {
+		lifecycleVersion = lifecycle.Version()
+		t.Logf("adding lifecycle version '%s' to builder config", lifecycleVersion)
+		templateMapping["lifecycle_version"] = lifecycleVersion
+	}
+
+	templateMapping["run_image_mirror"] = runImageMirror
+
+	// RENDER builder.toml
+	configFileName := "builder_with_assets.toml"
+
+	builderConfigFile, err := ioutil.TempFile(tmpDir, "builder-with-assets.toml")
+	assert.Nil(err)
+
+	pack.FixtureManager().TemplateFixtureToFile(
+		configFileName,
+		builderConfigFile,
+		templateMapping,
+	)
+
+	err = builderConfigFile.Close()
+	assert.Nil(err)
 
 	// NAME BUILDER
 	bldr := registryConfig.RepoName("test/builder-" + h.RandString(10))
