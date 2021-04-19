@@ -31,7 +31,7 @@ type BuildpackConfig struct {
 	dist.ImageOrURI
 }
 
-// TODO -Dan- test thes changes!!!
+// TODO -Dan- test these changes!!!
 
 type Assets struct {
 	Caches []Cache `toml:"cache"`

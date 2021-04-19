@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	testmocks2 "github.com/buildpacks/pack/internal/asset/testmocks"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -393,6 +394,28 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				assert.ErrorContains(err, "unable to download assets")
+			})
+		})
+		when("unable to add assets to final image", func() {
+			var mockBlob *testmocks2.MockBlob
+			it.Before(func() {
+				mockBlob = testmocks2.NewMockBlob(mockController)
+			})
+			it("errors with a helpful message", func() {
+				ctx := context.TODO()
+
+				mockDownloader.EXPECT().Download(gomock.Any(), firstAsset.URI, gomock.Any(), gomock.Any()).Return(mockBlob, nil)
+				mockBlob.EXPECT().Open().Return(nil, errors.New("open blob error"))
+				imagePath := filepath.Join(tmpDir, "test-cache")
+				err := client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
+					ImageName: imagePath,
+					Assets:    []dist.Asset{firstAsset},
+					Publish:   false,
+					OS:        "linux",
+					Format:    "file",
+				})
+
+				assert.ErrorContains(err, "unable to add asset blobs to assets package")
 			})
 		})
 	})

@@ -3,6 +3,7 @@ package asset
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
 
@@ -24,8 +25,7 @@ func (af LocalFileFetcher) FetchFileAssets(ctx context.Context, workingDir strin
 		case ok:
 			p, err := ocipackage.NewOCILayoutPackage(blob2.NewBlob(assetPath, blob2.RawOption))
 			if err != nil {
-				// TODO -Dan- handle error
-				panic(err)
+				return []*ocipackage.OciLayoutPackage{}, errors.Wrap(err, "unable to read asset as OCI blob")
 			}
 			result = append(result, p)
 		default:

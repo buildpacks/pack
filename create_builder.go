@@ -60,8 +60,7 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 
 	if err := c.addAssetsToBuilder(ctx, opts, bldr); err != nil {
-		// TODO -Dan- handle error
-		panic(err)
+		return errors.Wrap(err, "failed to add assets to builder")
 	}
 
 	bldr.SetOrder(opts.Config.Order)
@@ -219,14 +218,12 @@ func (c *Client) addAssetsToBuilder(ctx context.Context, opts CreateBuilderOptio
 		}
 		readableAsset, err := c.assetFetcher.FetchAssets([]string{fetchLocation}, asset.WithPullPolicy(opts.PullPolicy), asset.WithContext(ctx))
 		if err != nil {
-			// TODO -Dan- handle error
-			panic(err)
+			return errors.Wrap(err, "unable to fetch specified asset packages")
 		}
 
 		err = bldr.AddAssetImages(readableAsset...)
 		if err != nil {
-			// TODO -Dan- handler error
-			panic(err)
+			return errors.Wrap(err, "unable add specified asset packages to builder")
 		}
 	}
 	return nil

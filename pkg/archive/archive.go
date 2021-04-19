@@ -180,10 +180,8 @@ func ReadMatchingTarEntries(rc io.Reader, entryRegex *regexp.Regexp) (map[*tar.H
 		if entryRegex.MatchString(path.Clean(header.Name)) {
 			buf, err := ioutil.ReadAll(tr)
 			if err != nil {
-				// TODO -Dan- handle error
-				panic("bad bad error")
+				return result, errors.Wrapf(err, "unable to read tar with name %s", header.Name)
 			}
-			//return result, errors.Wrapf(err, "failed to read contents of '%s'", entryPath)
 			result[header] = buf
 		}
 	}

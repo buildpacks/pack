@@ -61,7 +61,7 @@ func (c *Client) CreateAssetCache(ctx context.Context, opts CreateAssetCacheOpti
 	err = addAssetsToImage(assetCache, assets, downloadResults)
 	if err != nil {
 		// TODO -Dan- handle error
-		panic(err)
+		return errors.Wrapf(err, "unable to add asset blobs to assets package")
 	}
 	return assetCache.Save()
 }
@@ -117,8 +117,7 @@ func addAssetsToImage(assetImg AssetCache, assets dist.Assets, downloadMap map[b
 		}
 		aBlob, err := asset.FromRawBlob(curAsset, b.Blob)
 		if err != nil {
-			// TODO -Dan- handle error
-			panic(err)
+			return err
 		}
 		assetImg.AddAssetBlobs(aBlob)
 	}

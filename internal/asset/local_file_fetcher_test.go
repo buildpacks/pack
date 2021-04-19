@@ -83,6 +83,24 @@ func testLocalFileFetcher(t *testing.T, when spec.G, it spec.S) {
 				assert.ErrorContains(err, `unable to fetch file asset "::::"`)
 			})
 		})
+		when("local file is not in OCI layout format", func() {
+
+			it.Before(func() {
+				var err error
+				tmpFile, err = ioutil.TempFile("","test-local-file-fetcher-not-oci")
+				assert.Nil(err)
+
+				_, err = tmpFile.Write([]byte("some random contents"))
+				assert.Nil(err)
+
+				_, err = tmpFile.Seek(0,0)
+				assert.Nil(err)
+			})
+			it("errors with a helpful message", func() {
+				_, err := subject.FetchFileAssets(context.Background(), "", tmpFile.Name())
+				assert.ErrorContains(err, "unable to read asset as OCI blob")
+			})
+		})
 	})
 }
 

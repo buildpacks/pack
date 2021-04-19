@@ -134,6 +134,21 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 					assert.ErrorContains(err, `unable to fetch local file asset: "unable to open file"`)
 				})
 			})
+			when("unable to open asset as OCI package", func() {
+				var mockBlob *testmocks.MockBlob
+				it.Before(func() {
+					mockBlob = testmocks.NewMockBlob(mockController)
+				})
+				it("errors with a helpful message", func() {
+					assetURI := "http://asset/uri"
+					mockDownloader.EXPECT().Download(gomock.Any(), assetURI, gomock.Any()).
+						Return(mockBlob, nil)
+					mockBlob.EXPECT().Open().Return(nil, errors.New("open blob error"))
+
+					_, err := subject.FetchURIAssets(context.Background(), assetURI)
+					assert.ErrorContains(err, "error opening asset package in OCI format")
+				})
+			})
 		})
 	})
 }

@@ -224,12 +224,6 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				h.AssertError(t, err, "get next tar entry")
 			})
 		})
-
-		when("regex is nil", func() {
-			it("errors with helpful message", func() {
-
-			})
-		})
 	})
 
 	when("#CreateSingleFileTarReader", func() {

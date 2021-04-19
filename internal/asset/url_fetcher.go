@@ -3,6 +3,7 @@ package asset
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"net/url"
 
 	"github.com/buildpacks/pack/internal/blob"
@@ -46,9 +47,8 @@ func (a URIFetcher) FetchURIAssets(ctx context.Context, uriAssets ...string) ([]
 				return result, fmt.Errorf("unable to download asset: %q", err)
 			}
 			p, err := ocipackage.NewOCILayoutPackage(assetBlob)
-			if err != nil {
-				// TODO -Dan- handle error
-				panic(err)
+			if err != nil { // TODO -Dan- handle error
+				return result, errors.Wrap(err, "error opening asset package in OCI format")
 			}
 			result = append(result, p)
 		case "file":

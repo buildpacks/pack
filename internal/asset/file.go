@@ -53,7 +53,7 @@ func (a *File) Save(additionalNames ...string) error {
 	if a.os == pubcfg.WindowsOS {
 		if err := dist.AddWindowsShimBaseLayer(a, tmpDir); err != nil {
 			// TODO -Dan- handle error
-			panic(err)
+			return errors.Wrapf(err, "unable to add windows base layer")
 		}
 	}
 
