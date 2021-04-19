@@ -10,18 +10,18 @@ import (
 )
 
 // TODO: -Dan- make me private
-// ImgFetcher is an interface representing the ability to fetch local and images.
-type ImgFetcher interface {
+// imageFetcher is an interface representing the ability to fetch local and images.
+type imageFetcher interface {
 	Fetch(ctx context.Context, name string, daemon bool, pullPolicy pubcfg.PullPolicy) (imgutil.Image, error)
 }
 
 type PackageImageFetcher struct {
-	ImgFetcher
+	imageFetcher
 }
 
-func NewPackageImageFetcher(imageFetcher ImgFetcher) PackageImageFetcher {
+func NewPackageImageFetcher(imageFetcher imageFetcher) PackageImageFetcher {
 	return PackageImageFetcher{
-		ImgFetcher: imageFetcher,
+		imageFetcher: imageFetcher,
 	}
 }
 
@@ -29,7 +29,7 @@ func NewPackageImageFetcher(imageFetcher ImgFetcher) PackageImageFetcher {
 func (af PackageImageFetcher) FetchImageAssets(ctx context.Context, pullPolicy pubcfg.PullPolicy, imageNames ...string) ([]imgutil.Image, error) {
 	result := []imgutil.Image{}
 	for _, imageName := range imageNames {
-		img, err := af.ImgFetcher.Fetch(ctx, imageName, true, pullPolicy)
+		img, err := af.imageFetcher.Fetch(ctx, imageName, true, pullPolicy)
 		if err != nil {
 			return result, fmt.Errorf("unable to fetch asset image: %q", err)
 		}
