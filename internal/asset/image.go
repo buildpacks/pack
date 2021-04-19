@@ -17,7 +17,7 @@ const AssetHashAlgorithm = "sha256"
 
 type BlobAssetPair struct {
 	Blob  blob.Blob
-	Asset dist.Asset
+	Asset dist.AssetInfo
 }
 
 type Image struct {

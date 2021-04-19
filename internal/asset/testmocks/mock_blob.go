@@ -37,10 +37,10 @@ func (m *MockBlob) EXPECT() *MockBlobMockRecorder {
 }
 
 // AssetDescriptor mocks base method
-func (m *MockBlob) AssetDescriptor() dist.Asset {
+func (m *MockBlob) AssetDescriptor() dist.AssetInfo {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AssetDescriptor")
-	ret0, _ := ret[0].(dist.Asset)
+	ret0, _ := ret[0].(dist.AssetInfo)
 	return ret0
 }
 

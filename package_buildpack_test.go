@@ -469,7 +469,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 				packageDescriptor dist.BuildpackDescriptor
 				tmpDir            string
 				err               error
-				childAssets       = dist.Assets{{
+				childAssets       = []dist.AssetInfo{{
 					ID:      "child-asset",
 					Name:    "child-asset-name",
 					Sha256:  "child-asset-sha256",

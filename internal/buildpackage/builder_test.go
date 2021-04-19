@@ -41,14 +41,14 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockImageFactory *testmocks.MockImageFactory
 		subject          *buildpackage.PackageBuilder
 		tmpDir           string
-		firstAsset       = dist.Asset{
+		firstAsset       = dist.AssetInfo{
 			ID:      "bp.1.asset.1",
 			Sha256:  "asset.1.sha",
 			URI:     "asset.1.uri",
 			Stacks:  []string{"stack.id.1", "stack.id.2"},
 			Version: "1.1.1",
 		}
-		secondAsset = dist.Asset{
+		secondAsset = dist.AssetInfo{
 			ID:      "bp.1.asset.2",
 			Sha256:  "asset.2.sha",
 			URI:     "asset.2.uri",
@@ -483,7 +483,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
 				Order:  nil,
-				Assets: []dist.Asset{firstAsset, secondAsset},
+				Assets: []dist.AssetInfo{firstAsset, secondAsset},
 			}, 0644)
 			h.AssertNil(t, err)
 			subject.SetBuildpack(buildpack1)
@@ -578,7 +578,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
 				Order:  nil,
-				Assets: []dist.Asset{firstAsset, secondAsset},
+				Assets: []dist.AssetInfo{firstAsset, secondAsset},
 			}, 0644)
 			h.AssertNil(t, err)
 			subject.SetBuildpack(buildpack1)

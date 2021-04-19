@@ -17,9 +17,9 @@ func testAsset(t *testing.T, when spec.G, it spec.S) {
 	var (
 		assert = testhelpers.NewAssertionManager(t)
 	)
-	when("Asset#ToAssetValue", func() {
-		it("converts Asset to AssetValue", func() {
-			a := dist.Asset{
+	when("AssetInfo#ToAssetValue", func() {
+		it("converts AssetInfo to AssetValue", func() {
+			a := dist.AssetInfo{
 				Sha256:      "sha256",
 				ID:          "id",
 				Version:     "version",

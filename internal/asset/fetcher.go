@@ -8,7 +8,7 @@ import (
 	"github.com/buildpacks/imgutil"
 
 	pubcfg "github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/internal/ocipackage"
+	"github.com/buildpacks/pack/internal/oci"
 )
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_image_fetcher.go github.com/buildpacks/pack/internal/asset ImageCacheFetcher
@@ -18,16 +18,16 @@ type ImageCacheFetcher interface {
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_uri_fetcher.go github.com/buildpacks/pack/internal/asset URICacheFetcher
 type URICacheFetcher interface {
-	FetchURIAssets(ctx context.Context, fileAssets ...string) ([]*ocipackage.OciLayoutPackage, error)
+	FetchURIAssets(ctx context.Context, fileAssets ...string) ([]*oci.LayoutPackage, error)
 }
 
 type Fetcher struct {
-	assetFileFetcher  FileCacheFetcher
+	assetFileFetcher  FileFetcher
 	assetURIFetcher   URICacheFetcher
 	assetImageFetcher ImageCacheFetcher
 }
 
-func NewFetcher(assetFileFetcher FileCacheFetcher, assetURIFetcher URICacheFetcher, assetImageFetcher ImageCacheFetcher) Fetcher {
+func NewFetcher(assetFileFetcher FileFetcher, assetURIFetcher URICacheFetcher, assetImageFetcher ImageCacheFetcher) Fetcher {
 	return Fetcher{
 		assetFileFetcher:  assetFileFetcher,
 		assetURIFetcher:   assetURIFetcher,
@@ -87,7 +87,7 @@ func (a Fetcher) FetchAssets(assetNameList []string, options ...FetcherOptions) 
 	for _, assetName := range assetNameList {
 		locator := GetLocatorType(assetName, cfg.workingDir)
 		var assets []Readable
-		var OCIAssets []*ocipackage.OciLayoutPackage
+		var OCIAssets []*oci.LayoutPackage
 		var imgAssets []imgutil.Image
 		switch locator {
 		case URILocator:
@@ -111,7 +111,7 @@ func (a Fetcher) FetchAssets(assetNameList []string, options ...FetcherOptions) 
 	return result, nil
 }
 
-func castOCIToReadable(ociAssets []*ocipackage.OciLayoutPackage) []Readable {
+func castOCIToReadable(ociAssets []*oci.LayoutPackage) []Readable {
 	result := []Readable{}
 	for _, pkg := range ociAssets {
 		result = append(result, Readable(pkg))

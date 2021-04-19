@@ -9,28 +9,28 @@ import (
 	"github.com/pkg/errors"
 
 	blob2 "github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/internal/ocipackage"
+	"github.com/buildpacks/pack/internal/oci"
 )
 
-type LocalFileFetcher struct{}
+type PackageFileFetcher struct{}
 
-func NewLocalFileFetcher() LocalFileFetcher {
-	return LocalFileFetcher{}
+func NewPackageFileFetcher() PackageFileFetcher {
+	return PackageFileFetcher{}
 }
 
-func (af LocalFileFetcher) FetchFileAssets(ctx context.Context, workingDir string, fileAssets ...string) ([]*ocipackage.OciLayoutPackage, error) {
-	result := []*ocipackage.OciLayoutPackage{}
+func (af PackageFileFetcher) FetchFileAssets(ctx context.Context, workingDir string, fileAssets ...string) ([]*oci.LayoutPackage, error) {
+	result := []*oci.LayoutPackage{}
 	for _, assetFile := range fileAssets {
 		assetPath, ok := localFile(assetFile, workingDir)
 		switch {
 		case ok:
-			p, err := ocipackage.NewOCILayoutPackage(blob2.NewBlob(assetPath, blob2.RawOption))
+			p, err := oci.NewLayoutPackage(blob2.NewBlob(assetPath, blob2.RawOption))
 			if err != nil {
-				return []*ocipackage.OciLayoutPackage{}, errors.Wrap(err, "unable to read asset as OCI blob")
+				return []*oci.LayoutPackage{}, errors.Wrap(err, "unable to read asset as OCI blob")
 			}
 			result = append(result, p)
 		default:
-			return []*ocipackage.OciLayoutPackage{}, fmt.Errorf("unable to fetch file asset %q", assetFile)
+			return []*oci.LayoutPackage{}, fmt.Errorf("unable to fetch file asset %q", assetFile)
 		}
 	}
 

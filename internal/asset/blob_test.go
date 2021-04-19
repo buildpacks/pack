@@ -37,11 +37,11 @@ func testBlob(t *testing.T, when spec.G, it spec.S) {
 	when("FromRawBlob", func() {
 		it("successfully creates a readable asset blob", func() {
 			fakeBlob := fakes.NewFakeBlob("blob contents")
-			fakeAsset := dist.Asset{
+			fakeAsset := dist.AssetInfo{
 				Sha256:  "some-sha256",
 				ID:      "some-id",
 				Version: "1.2.3",
-				Name:    "Some Fake Asset Name",
+				Name:    "Some Fake AssetInfo Name",
 				Stacks:  []string{"first-stack", "second-stack"},
 			}
 			subject, err := asset.FromRawBlob(fakeAsset, fakeBlob)
@@ -61,7 +61,7 @@ func testBlob(t *testing.T, when spec.G, it spec.S) {
 				layerBlob = blob.NewBlob(filepath.Join("testdata", "fake-asset-layer.tar"))
 			})
 			it("creates a readable asset blob", func() {
-				fakeAsset := dist.Asset{
+				fakeAsset := dist.AssetInfo{
 					Sha256:  "71415dc9d46dd5722974eb79c14510dc1c0038dd3613afc85e911336b5b11c43",
 					ID:      "some-fake-asset",
 					Version: "1.2.3",
@@ -90,7 +90,7 @@ func testBlob(t *testing.T, when spec.G, it spec.S) {
 		when("#ExtractFromLayer", func() {
 			when("assetSha contains invalid characters", func() {
 				it("errors with a helpful message", func() {
-					_, err := asset.ExtractFromLayer(dist.Asset{Sha256: "????"}, mockBlob)
+					_, err := asset.ExtractFromLayer(dist.AssetInfo{Sha256: "????"}, mockBlob)
 
 					assert.ErrorContains(err, "unable to create asset search regex")
 				})
@@ -98,7 +98,7 @@ func testBlob(t *testing.T, when spec.G, it spec.S) {
 			when("unable to open blob", func() {
 				it("errors with a helpful message", func() {
 					mockBlob.EXPECT().Open().Return(nil, errors.New("opening error"))
-					_, err := asset.ExtractFromLayer(dist.Asset{}, mockBlob)
+					_, err := asset.ExtractFromLayer(dist.AssetInfo{}, mockBlob)
 
 					assert.ErrorContains(err, "unable to open blob for extraction")
 				})
@@ -118,7 +118,7 @@ func testBlob(t *testing.T, when spec.G, it spec.S) {
 					assert.Nil(err)
 
 					mockBlob.EXPECT().Open().Return(emptyArchive, nil)
-					_, err = asset.ExtractFromLayer(dist.Asset{Sha256: "HelpILostMySha"}, mockBlob)
+					_, err = asset.ExtractFromLayer(dist.AssetInfo{Sha256: "HelpILostMySha"}, mockBlob)
 
 					assert.ErrorContains(err, `unable to find singular asset in blob`)
 				})

@@ -20,7 +20,7 @@ const downloadWorkerCount = 4
 
 type CreateAssetCacheOptions struct {
 	ImageName string
-	Assets    dist.Assets
+	Assets    []dist.AssetInfo
 	Publish   bool
 	OS        string
 	Format    string
@@ -76,7 +76,7 @@ func newImageWithOS(imgName, os string, local bool, imgFactory ImageFactory) (im
 	return img, nil
 }
 
-func assetToDownloadJob(assetList []dist.Asset) []blob.DownloadJob {
+func assetToDownloadJob(assetList []dist.AssetInfo) []blob.DownloadJob {
 	result := []blob.DownloadJob{}
 	for _, asset := range assetList {
 		result = append(result, blob.DownloadJob{URI: asset.URI, Sha256: asset.Sha256})
@@ -87,8 +87,8 @@ func assetToDownloadJob(assetList []dist.Asset) []blob.DownloadJob {
 
 // simplifyAssets sorts assets by Sha256, and if multiple assets have the same
 // sha256 value, we keep only the last one in the assets array.
-func simplifyAssets(assets dist.Assets) dist.Assets {
-	result := dist.Assets{}
+func simplifyAssets(assets []dist.AssetInfo) []dist.AssetInfo {
+	result := []dist.AssetInfo{}
 	sort.SliceStable(assets, func(i, j int) bool {
 		return assets[i].Sha256 < assets[j].Sha256
 	})
@@ -108,7 +108,7 @@ func simplifyAssets(assets dist.Assets) dist.Assets {
 }
 
 // this method mutates the given assetImg
-func addAssetsToImage(assetImg AssetCache, assets dist.Assets, downloadMap map[blob.DownloadJob]blob.DownloadResult) error {
+func addAssetsToImage(assetImg AssetCache, assets []dist.AssetInfo, downloadMap map[blob.DownloadJob]blob.DownloadResult) error {
 	for _, curAsset := range assets {
 		b, ok := downloadMap[blob.DownloadJob{URI: curAsset.URI, Sha256: curAsset.Sha256}]
 		if !ok || b.Blob == nil {

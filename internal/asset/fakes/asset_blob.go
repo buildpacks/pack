@@ -29,18 +29,18 @@ func (f FakeBlob) Open() (io.ReadCloser, error) {
 }
 
 type FakeAssetBlob struct {
-	Asset    dist.Asset
+	Asset    dist.AssetInfo
 	Contents string
 }
 
-func NewFakeAssetBlob(contents string, asset dist.Asset) FakeAssetBlob {
+func NewFakeAssetBlob(contents string, asset dist.AssetInfo) FakeAssetBlob {
 	return FakeAssetBlob{
 		Contents: contents,
 		Asset:    asset,
 	}
 }
 
-func NewFakeAssetBlobTar(rawContents string, asset dist.Asset, factory archive.TarWriterFactory) (FakeAssetBlob, error) {
+func NewFakeAssetBlobTar(rawContents string, asset dist.AssetInfo, factory archive.TarWriterFactory) (FakeAssetBlob, error) {
 	buf := bytes.NewBuffer(nil)
 	tw := factory.NewWriter(buf)
 	defer tw.Close()
@@ -91,6 +91,6 @@ func (f FakeAssetBlob) Size() int64 {
 	return int64(len(f.Contents))
 }
 
-func (f FakeAssetBlob) AssetDescriptor() dist.Asset {
+func (f FakeAssetBlob) AssetDescriptor() dist.AssetInfo {
 	return f.Asset
 }

@@ -28,25 +28,25 @@ func testLayerWriter(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController *gomock.Controller
 		baseImage      *fakes.Image
-		firstAsset     = dist.Asset{
+		firstAsset     = dist.AssetInfo{
 			Sha256:  "first-sha256",
 			ID:      "first-asset",
 			Version: "1.1.1",
-			Name:    "First Asset",
+			Name:    "First AssetInfo",
 			Stacks:  []string{"stack1", "stack2"},
 		}
-		secondAsset = dist.Asset{
+		secondAsset = dist.AssetInfo{
 			Sha256:  "second-sha256",
 			ID:      "second-asset",
 			Version: "2.2.2",
-			Name:    "Second Asset",
+			Name:    "Second AssetInfo",
 			Stacks:  []string{"stack1", "stack2"},
 		}
-		thirdAsset = dist.Asset{
+		thirdAsset = dist.AssetInfo{
 			Sha256:  "third-sha256",
 			ID:      "third-asset",
 			Version: "3.3.3",
-			Name:    "Third Asset",
+			Name:    "Third AssetInfo",
 			Stacks:  []string{"stack1", "stack2"},
 		}
 		firstAssetBlob  asset.Blob
@@ -91,21 +91,21 @@ func testLayerWriter(t *testing.T, when spec.G, it spec.S) {
 				"first-sha256": dist.AssetValue{
 					ID:          "first-asset",
 					Version:     "1.1.1",
-					Name:        "First Asset",
+					Name:        "First AssetInfo",
 					LayerDiffID: "sha256:a4862301135f9226bb817638e448911b47798ec58a36a147c51176b5337ff92b",
 					Stacks:      []string{"stack1", "stack2"},
 				},
 				"second-sha256": dist.AssetValue{
 					ID:          "second-asset",
 					Version:     "2.2.2",
-					Name:        "Second Asset",
+					Name:        "Second AssetInfo",
 					LayerDiffID: "sha256:77a3e5c96a61c35e4c56c080cd851b1a558c6f7877b6bcf67aaf97a59aeb2171",
 					Stacks:      []string{"stack1", "stack2"},
 				},
 				"third-sha256": dist.AssetValue{
 					ID:          "third-asset",
 					Version:     "3.3.3",
-					Name:        "Third Asset",
+					Name:        "Third AssetInfo",
 					LayerDiffID: "sha256:f9e6914d8f71a425ecb9168da71685b1a77a81e838d950bf4f4825e36b88605d",
 					Stacks:      []string{"stack1", "stack2"},
 				},
@@ -121,19 +121,19 @@ func testLayerWriter(t *testing.T, when spec.G, it spec.S) {
 				"first-sha256": dist.AssetValue{
 					ID:      "first-asset",
 					Version: "1.1.1",
-					Name:    "First Asset",
+					Name:    "First AssetInfo",
 					Stacks:  []string{"stack1", "stack2"},
 				},
 				"second-sha256": dist.AssetValue{
 					ID:      "second-asset",
 					Version: "2.2.2",
-					Name:    "Second Asset",
+					Name:    "Second AssetInfo",
 					Stacks:  []string{"stack1", "stack2"},
 				},
 				"third-sha256": dist.AssetValue{
 					ID:      "third-asset",
 					Version: "3.3.3",
-					Name:    "Third Asset",
+					Name:    "Third AssetInfo",
 					Stacks:  []string{"stack1", "stack2"},
 				},
 			})

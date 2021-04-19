@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/buildpacks/pack/internal/ocipackage"
+	"github.com/buildpacks/pack/internal/oci"
 
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
@@ -101,7 +101,7 @@ func metadataFromArchive(downloader Downloader, path string) (buildpackMd buildp
 		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("unable to download archive: %q", err)
 	}
 
-	config, err := ocipackage.ConfigFromOCILayoutBlob(imgBlob)
+	config, err := oci.ConfigFromLayoutBlob(imgBlob)
 	if err != nil {
 		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("unable to fetch config from buildpack blob: %q", err)
 	}

@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/buildpacks/pack/internal/asset"
-	"github.com/buildpacks/pack/internal/ocipackage"
+	"github.com/buildpacks/pack/internal/oci"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
@@ -770,7 +770,7 @@ func appendBuildpackToOrder(order dist.Order, bpInfo dist.BuildpackInfo) (newOrd
 
 // decomposeBuildpack decomposes a buildpack blob into the main builder (order buildpack) and it's dependencies buildpacks.
 func decomposeBuildpack(blob blob.Blob, imageOS string) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
-	isOCILayout, err := ocipackage.IsOCILayoutBlob(blob)
+	isOCILayout, err := oci.IsLayoutBlob(blob)
 	if err != nil {
 		return mainBP, depBPs, errors.Wrap(err, "inspecting buildpack blob")
 	}

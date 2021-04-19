@@ -10,7 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	ocipackage "github.com/buildpacks/pack/internal/ocipackage"
+	oci "github.com/buildpacks/pack/internal/oci"
 )
 
 // MockFileCacheFetcher is a mock of FileCacheFetcher interface
@@ -37,14 +37,14 @@ func (m *MockFileCacheFetcher) EXPECT() *MockFileCacheFetcherMockRecorder {
 }
 
 // FetchFileAssets mocks base method
-func (m *MockFileCacheFetcher) FetchFileAssets(arg0 context.Context, arg1 string, arg2 ...string) ([]*ocipackage.OciLayoutPackage, error) {
+func (m *MockFileCacheFetcher) FetchFileAssets(arg0 context.Context, arg1 string, arg2 ...string) ([]*oci.LayoutPackage, error) {
 	m.ctrl.T.Helper()
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "FetchFileAssets", varargs...)
-	ret0, _ := ret[0].([]*ocipackage.OciLayoutPackage)
+	ret0, _ := ret[0].([]*oci.LayoutPackage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

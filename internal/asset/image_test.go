@@ -26,18 +26,18 @@ func TestAssetCacheImage(t *testing.T) {
 func testAssetCacheImage(t *testing.T, when spec.G, it spec.S) {
 	var (
 		assert     = h.NewAssertionManager(t)
-		firstAsset = dist.Asset{
+		firstAsset = dist.AssetInfo{
 			Sha256:  "first-sha256",
 			ID:      "first-asset",
 			Version: "1.1.1",
-			Name:    "First Asset",
+			Name:    "First AssetInfo",
 			Stacks:  []string{"stack1", "stack2"},
 		}
-		secondAsset = dist.Asset{
+		secondAsset = dist.AssetInfo{
 			Sha256:  "second-sha256",
 			ID:      "second-asset",
 			Version: "2.2.2",
-			Name:    "Second Asset",
+			Name:    "Second AssetInfo",
 			Stacks:  []string{"stack1", "stack2"},
 		}
 

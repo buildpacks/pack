@@ -42,18 +42,18 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 		assert           = h.NewAssertionManager(t)
 		apiVersion       = api.MustParse("1.2")
 
-		firstAsset = dist.Asset{
+		firstAsset = dist.AssetInfo{
 			ID:      "first-asset",
-			Name:    "First Asset",
+			Name:    "First AssetInfo",
 			Sha256:  "first-sha256",
 			Stacks:  []string{"io.buildpacks.stacks.bionic"},
 			URI:     "https://first-asset-uri",
 			Version: "1.2.3",
 		}
 
-		secondAsset = dist.Asset{
+		secondAsset = dist.AssetInfo{
 			ID:      "second-asset",
-			Name:    "Second Asset",
+			Name:    "Second AssetInfo",
 			Sha256:  "second-sha256",
 			Stacks:  []string{"io.buildpacks.stacks.bionic"},
 			URI:     "https://second-asset-uri",
@@ -78,7 +78,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					Order:       nil,
 					LayerDiffID: "",
 					Homepage:    "",
-					Assets:      []dist.Asset{firstAsset},
+					Assets:      []dist.AssetInfo{firstAsset},
 				},
 			},
 			"buildpackB": map[string]dist.BuildpackLayerInfo{
@@ -88,7 +88,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					Order:       nil,
 					LayerDiffID: "",
 					Homepage:    "",
-					Assets:      []dist.Asset{secondAsset},
+					Assets:      []dist.AssetInfo{secondAsset},
 				},
 			},
 		}
@@ -138,7 +138,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
-						Assets:    []dist.Asset{firstAsset},
+						Assets:    []dist.AssetInfo{firstAsset},
 						OS:        "linux",
 						Format:    "image",
 					})
@@ -173,7 +173,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
-						Assets:    []dist.Asset{firstAsset},
+						Assets:    []dist.AssetInfo{firstAsset},
 						OS:        "linux",
 						Format:    "image",
 					})
@@ -209,7 +209,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
-						Assets:    []dist.Asset{firstAsset},
+						Assets:    []dist.AssetInfo{firstAsset},
 						OS:        "linux",
 						Format:    "image",
 					})
@@ -252,7 +252,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
-						Assets:    []dist.Asset{firstAsset},
+						Assets:    []dist.AssetInfo{firstAsset},
 						OS:        "linux",
 						Format:    "image",
 					})
@@ -296,7 +296,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						)
 						mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 							ImageName: "some/asset-cache",
-							Assets:    []dist.Asset{firstAsset, secondAsset},
+							Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 							OS:        "linux",
 							Format:    "image",
 						})
@@ -333,7 +333,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					)
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
-						Assets:    []dist.Asset{firstAsset, secondAsset},
+						Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 						OS:        "linux",
 						Format:    "image",
 					})
@@ -368,7 +368,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 				)
 				mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 					ImageName: "some/asset-cache",
-					Assets:    []dist.Asset{firstAsset, secondAsset},
+					Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 					Publish:   true,
 					OS:        "linux",
 					Format:    "image",
@@ -404,7 +404,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
-						Assets:    []dist.Asset{firstAsset, secondAsset},
+						Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 						Publish:   false,
 						OS:        "linux",
 						Format:    "image",
@@ -424,7 +424,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
-						Assets:    []dist.Asset{firstAsset, secondAsset},
+						Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 						Publish:   false,
 						OS:        "linux",
 						Format:    "image",
@@ -444,7 +444,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
-						Assets:    []dist.Asset{firstAsset, secondAsset},
+						Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 						Publish:   false,
 						OS:        "linux",
 						Format:    "file",
@@ -478,7 +478,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 				)
 				mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 					ImageName: "some/asset-cache",
-					Assets:    []dist.Asset{firstAsset, secondAsset},
+					Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 					OS:        "windows",
 					Format:    "image",
 				})
@@ -596,7 +596,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					)
 					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
 						ImageName: "some/asset-cache",
-						Assets:    []dist.Asset{firstAsset, secondAsset},
+						Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 						Publish:   true,
 						OS:        "linux",
 						Format:    "image",

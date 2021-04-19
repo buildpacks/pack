@@ -19,7 +19,7 @@ import (
 	fakes2 "github.com/buildpacks/pack/internal/asset/fakes"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/ocipackage"
+	"github.com/buildpacks/pack/internal/oci"
 	"github.com/buildpacks/pack/pkg/archive"
 
 	"github.com/golang/mock/gomock"
@@ -51,32 +51,32 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 		out    bytes.Buffer
 		tmpDir string
 
-		firstAsset = dist.Asset{ID: "first-asset",
-			Name:    "First Asset",
+		firstAsset = dist.AssetInfo{ID: "first-asset",
+			Name:    "First AssetInfo",
 			Sha256:  "first-sha256",
 			Stacks:  []string{"io.buildpacks.stacks.bionic"},
 			URI:     "https://first-asset-uri",
 			Version: "1.2.3",
 		}
-		firstAssetReplace = dist.Asset{
+		firstAssetReplace = dist.AssetInfo{
 			ID:      "first-asset-replace",
-			Name:    "First Asset Replace",
+			Name:    "First AssetInfo Replace",
 			Sha256:  "first-sha256",
 			Stacks:  []string{"io.buildpacks.stacks.bionic"},
 			URI:     "https://first-asset-replace-uri",
 			Version: "1.2.3",
 		}
-		secondAsset = dist.Asset{
+		secondAsset = dist.AssetInfo{
 			ID:      "second-asset",
-			Name:    "Second Asset",
+			Name:    "Second AssetInfo",
 			Sha256:  "second-sha256",
 			Stacks:  []string{"io.buildpacks.stacks.bionic"},
 			URI:     "https://second-asset-uri",
 			Version: "4.5.6",
 		}
-		thirdAsset = dist.Asset{
+		thirdAsset = dist.AssetInfo{
 			ID:      "third-asset",
-			Name:    "Third Asset",
+			Name:    "Third AssetInfo",
 			Sha256:  "third-sha256",
 			Stacks:  []string{"io.buildpacks.stacks.bionic"},
 			Version: "7.8.9",
@@ -120,7 +120,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				imagePath := filepath.Join(tmpDir, "test-cache")
 				assert.Succeeds(client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
 					ImageName: imagePath,
-					Assets:    []dist.Asset{firstAsset, secondAsset, thirdAsset},
+					Assets:    []dist.AssetInfo{firstAsset, secondAsset, thirdAsset},
 					Publish:   false,
 					OS:        "linux",
 					Format:    "file",
@@ -128,7 +128,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 
 				// verify contents of asset image
 				testCacheBlob := blob.NewBlob(filepath.Join(imagePath))
-				pkg, err := ocipackage.NewOCILayoutPackage(testCacheBlob)
+				pkg, err := oci.NewLayoutPackage(testCacheBlob)
 				assert.Nil(err)
 
 				mdJSON, err := pkg.Label("io.buildpacks.asset.layers")
@@ -139,14 +139,14 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				assert.Equal(md, dist.AssetMap{
 					"first-sha256": dist.AssetValue{
 						ID:          "first-asset",
-						Name:        "First Asset",
+						Name:        "First AssetInfo",
 						LayerDiffID: "sha256:ac4ae299af0610acf496c05bc740de64222eb110d6aaf0c12916ebdefb83a54f",
 						Stacks:      []string{"io.buildpacks.stacks.bionic"},
 						URI:         "https://first-asset-uri",
 						Version:     "1.2.3",
 					}, "second-sha256": dist.AssetValue{
 						ID:          "second-asset",
-						Name:        "Second Asset",
+						Name:        "Second AssetInfo",
 						LayerDiffID: "sha256:85bbbc8202dcbe8b5b7d6a5cffbd0da8faa59d5c406c6bcc3a1156f4e58b2c6a",
 						Stacks:      []string{"io.buildpacks.stacks.bionic"},
 						URI:         "https://second-asset-uri",
@@ -177,7 +177,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 
 				assert.Succeeds(client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
 					ImageName: imgRef.Name(),
-					Assets:    []dist.Asset{firstAsset, secondAsset, thirdAsset},
+					Assets:    []dist.AssetInfo{firstAsset, secondAsset, thirdAsset},
 					Publish:   false,
 					OS:        "linux",
 					Format:    "image",
@@ -192,14 +192,14 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				assert.Equal(md, dist.AssetMap{
 					"first-sha256": dist.AssetValue{
 						ID:          "first-asset",
-						Name:        "First Asset",
+						Name:        "First AssetInfo",
 						LayerDiffID: "sha256:ac4ae299af0610acf496c05bc740de64222eb110d6aaf0c12916ebdefb83a54f",
 						Stacks:      []string{"io.buildpacks.stacks.bionic"},
 						URI:         "https://first-asset-uri",
 						Version:     "1.2.3",
 					}, "second-sha256": dist.AssetValue{
 						ID:          "second-asset",
-						Name:        "Second Asset",
+						Name:        "Second AssetInfo",
 						LayerDiffID: "sha256:85bbbc8202dcbe8b5b7d6a5cffbd0da8faa59d5c406c6bcc3a1156f4e58b2c6a",
 						Stacks:      []string{"io.buildpacks.stacks.bionic"},
 						URI:         "https://second-asset-uri",
@@ -235,7 +235,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 
 					assert.Succeeds(client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
 						ImageName: imgRef.Name(),
-						Assets:    []dist.Asset{firstAsset},
+						Assets:    []dist.AssetInfo{firstAsset},
 						Publish:   false,
 						OS:        "windows",
 						Format:    "image",
@@ -248,7 +248,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.Equal(md, dist.AssetMap{
 						"first-sha256": dist.AssetValue{
 							ID:          "first-asset",
-							Name:        "First Asset",
+							Name:        "First AssetInfo",
 							LayerDiffID: "sha256:c552b5f9e912a7dc2a0cff4fe41001a867dd6a7d52e363247445ddf0c46784c7",
 							Stacks:      []string{"io.buildpacks.stacks.bionic"},
 							URI:         "https://first-asset-uri",
@@ -283,7 +283,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 
 				assert.Succeeds(client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
 					ImageName: imgRef.Name(),
-					Assets:    []dist.Asset{firstAsset},
+					Assets:    []dist.AssetInfo{firstAsset},
 					Publish:   true,
 					OS:        "windows",
 					Format:    "image",
@@ -304,7 +304,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 
 				assert.Succeeds(client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
 					ImageName: imgRef.Name(),
-					Assets:    []dist.Asset{firstAsset, firstAssetReplace},
+					Assets:    []dist.AssetInfo{firstAsset, firstAssetReplace},
 					Publish:   false,
 					OS:        "linux",
 					Format:    "image",
@@ -317,7 +317,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				assert.Equal(md, dist.AssetMap{
 					"first-sha256": dist.AssetValue{
 						ID:          "first-asset-replace",
-						Name:        "First Asset Replace",
+						Name:        "First AssetInfo Replace",
 						Stacks:      []string{"io.buildpacks.stacks.bionic"},
 						LayerDiffID: "sha256:3b3d445d01df824e1ce27a6573270eeaa0c85f1b3335ec1aad85d6126193fb41",
 						URI:         "https://first-asset-replace-uri",
@@ -343,7 +343,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				ctx := context.TODO()
 				err := client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
 					ImageName: "fail-image-ref",
-					Assets:    []dist.Asset{},
+					Assets:    []dist.AssetInfo{},
 					Publish:   false,
 					OS:        "unknown-os",
 					Format:    "image",
@@ -358,7 +358,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				mockImageFactory.EXPECT().NewImage(imgName, true).Return(nil, errors.New("image create error"))
 				err := client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
 					ImageName: imgName,
-					Assets:    []dist.Asset{},
+					Assets:    []dist.AssetInfo{},
 					Publish:   false,
 					OS:        "linux",
 					Format:    "image",
@@ -388,7 +388,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				mockImageFactory.EXPECT().NewImage(imgName, true).Return(fakeImage, nil)
 				err := client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
 					ImageName: imgName,
-					Assets:    []dist.Asset{firstAsset},
+					Assets:    []dist.AssetInfo{firstAsset},
 					Publish:   false,
 					OS:        "linux",
 					Format:    "image",
@@ -410,7 +410,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				imagePath := filepath.Join(tmpDir, "test-cache")
 				err := client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
 					ImageName: imagePath,
-					Assets:    []dist.Asset{firstAsset},
+					Assets:    []dist.AssetInfo{firstAsset},
 					Publish:   false,
 					OS:        "linux",
 					Format:    "file",

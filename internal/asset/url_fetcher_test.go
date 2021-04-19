@@ -15,7 +15,7 @@ import (
 	"github.com/buildpacks/pack/internal/asset"
 	"github.com/buildpacks/pack/internal/asset/testmocks"
 	blob2 "github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/internal/ocipackage"
+	"github.com/buildpacks/pack/internal/oci"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -28,8 +28,8 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 		mockController     *gomock.Controller
 		mockDownloader     *testmocks.MockDownloader
 		mockFileFetcher    *testmocks.MockFileCacheFetcher
-		subject            asset.URIFetcher
-		expectedAssetCache *ocipackage.OciLayoutPackage
+		subject            asset.PackageURLFetcher
+		expectedAssetCache *oci.LayoutPackage
 		assert             = h.NewAssertionManager(t)
 
 		expectedCacheBlob blob2.Blob
@@ -38,10 +38,10 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockDownloader = testmocks.NewMockDownloader(mockController)
 		mockFileFetcher = testmocks.NewMockFileCacheFetcher(mockController)
-		subject = asset.NewAssetURLFetcher(mockDownloader, mockFileFetcher)
+		subject = asset.NewPackageURLFetcher(mockDownloader, mockFileFetcher)
 
 		var err error
-		expectedAssetCache, err = ocipackage.NewOCILayoutPackage(blob2.NewBlob(
+		expectedAssetCache, err = oci.NewLayoutPackage(blob2.NewBlob(
 			filepath.Join("testdata", "fake-asset-cache.tar"), blob2.RawOption),
 		)
 		assert.Nil(err)
@@ -86,7 +86,7 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 				assert.Nil(err)
 
 				mockFileFetcher.EXPECT().FetchFileAssets(gomock.Any(), gomock.Any(), absPath).
-					Return([]*ocipackage.OciLayoutPackage{expectedAssetCache}, nil)
+					Return([]*oci.LayoutPackage{expectedAssetCache}, nil)
 
 				ociAssets, err := subject.FetchURIAssets(context.Background(), assetURI)
 				assert.Nil(err)

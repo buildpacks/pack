@@ -1,10 +1,9 @@
 package dist
 
-type Assets []Asset
 type AssetMap map[string]AssetValue
 
 // TODO -Dan- rename this AssetInfo
-type Asset struct {
+type AssetInfo struct {
 	Sha256      string                 `toml:"sha256" json:"sha256,omitempty"`
 	ID          string                 `toml:"id" json:"id"`
 	Version     string                 `toml:"version" json:"version"`
@@ -30,7 +29,7 @@ type AssetValue struct {
 	Metadata    map[string]interface{} `toml:"metadata" json:"metadata,omitempty"`
 }
 
-func (a *Asset) ToAssetValue(layerDiffID string) AssetValue {
+func (a *AssetInfo) ToAssetValue(layerDiffID string) AssetValue {
 	return AssetValue{
 		ID:          a.ID,
 		Version:     a.Version,
@@ -45,8 +44,8 @@ func (a *Asset) ToAssetValue(layerDiffID string) AssetValue {
 	}
 }
 
-func (a *AssetValue) ToAsset(sha256 string) Asset {
-	return Asset{
+func (a *AssetValue) ToAsset(sha256 string) AssetInfo {
+	return AssetInfo{
 		ID:          a.ID,
 		Version:     a.Version,
 		Name:        a.Name,

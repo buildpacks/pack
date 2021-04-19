@@ -1,3 +1,5 @@
+// Package asset provides primitives for writing, and reading assets from
+// a variety of formats.
 package asset
 
 import (
@@ -15,32 +17,40 @@ import (
 )
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_blob.go github.com/buildpacks/pack/internal/asset Blob
+// Blob is an interface to both the descriptive info and underlying data for
+// an asset.
 type Blob interface {
-	AssetDescriptor() dist.Asset
+	AssetDescriptor() dist.AssetInfo
 	Size() int64
 	Open() (io.ReadCloser, error)
 }
 
-type ABlob struct {
+// Singular blob is a concrete implementation of Blob
+type SingularBlob struct {
 	openFn     func() (io.ReadCloser, error)
 	size       int64
-	descriptor dist.Asset
+	descriptor dist.AssetInfo
 }
 
-func (b ABlob) Open() (io.ReadCloser, error) {
+// Open returns a ReadCloser to contents of an asset.
+func (b SingularBlob) Open() (io.ReadCloser, error) {
 	return b.openFn()
 }
 
-func (b ABlob) Size() int64 {
+// Size returns the number of bytes in an asset.
+func (b SingularBlob) Size() int64 {
 	return b.size
 }
 
-func (b ABlob) AssetDescriptor() dist.Asset {
+// AssetDescriptor returns a descriptive struct with metadata about an asset.
+func (b SingularBlob) AssetDescriptor() dist.AssetInfo {
 	return b.descriptor
 }
 
-func FromRawBlob(asset dist.Asset, b blob.Blob) (*ABlob, error) {
-	result := ABlob{
+// FromRawBlob takes metadata about an asset, and a blob that contains asset contents,
+// and wraps them together giving us back a SingularBlob.
+func FromRawBlob(asset dist.AssetInfo, b blob.Blob) (*SingularBlob, error) {
+	result := SingularBlob{
 		openFn:     b.Open,
 		size:       0,
 		descriptor: asset,
@@ -58,13 +68,15 @@ func FromRawBlob(asset dist.Asset, b blob.Blob) (*ABlob, error) {
 	return &result, nil
 }
 
-func ExtractFromLayer(asset dist.Asset, layerBlob blob.Blob) (*ABlob, error) {
+// ExtractFromLayers takes metadata about an asset, and layer from an Asset Package (note,
+// a single layer may contain multiple assets) and searches the layer for the specified asset.
+func ExtractFromLayer(asset dist.AssetInfo, layerBlob blob.Blob) (*SingularBlob, error) {
 	pathRegex, err := regexp.Compile(fmt.Sprintf(`(Files)?/cnb/assets/%s`, asset.Sha256))
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to create asset search regex")
 	}
 
-	return FromRawBlob(asset, &ABlob{
+	return FromRawBlob(asset, &SingularBlob{
 		openFn: func() (io.ReadCloser, error) {
 			return getSingleTarEntry(layerBlob, pathRegex)
 		},

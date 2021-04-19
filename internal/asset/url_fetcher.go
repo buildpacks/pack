@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/internal/ocipackage"
+	"github.com/buildpacks/pack/internal/oci"
 	"github.com/buildpacks/pack/internal/paths"
 )
 
@@ -18,24 +18,24 @@ type Downloader interface {
 }
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_file_fetcher.go github.com/buildpacks/pack/internal/asset FileCacheFetcher
-type FileCacheFetcher interface {
-	FetchFileAssets(ctx context.Context, workingDir string, fileAssets ...string) ([]*ocipackage.OciLayoutPackage, error)
+type FileFetcher interface {
+	FetchFileAssets(ctx context.Context, workingDir string, fileAssets ...string) ([]*oci.LayoutPackage, error)
 }
 
-type URIFetcher struct {
+type PackageURLFetcher struct {
 	Downloader
-	localFileFetcher FileCacheFetcher
+	localFileFetcher FileFetcher
 }
 
-func NewAssetURLFetcher(downloader Downloader, localFileFetcher FileCacheFetcher) URIFetcher {
-	return URIFetcher{
+func NewPackageURLFetcher(downloader Downloader, localFileFetcher FileFetcher) PackageURLFetcher {
+	return PackageURLFetcher{
 		Downloader:       downloader,
 		localFileFetcher: localFileFetcher,
 	}
 }
 
-func (a URIFetcher) FetchURIAssets(ctx context.Context, uriAssets ...string) ([]*ocipackage.OciLayoutPackage, error) {
-	result := []*ocipackage.OciLayoutPackage{}
+func (a PackageURLFetcher) FetchURIAssets(ctx context.Context, uriAssets ...string) ([]*oci.LayoutPackage, error) {
+	result := []*oci.LayoutPackage{}
 	for _, assetFile := range uriAssets {
 		uri, err := url.Parse(assetFile)
 		if err != nil {
@@ -47,7 +47,7 @@ func (a URIFetcher) FetchURIAssets(ctx context.Context, uriAssets ...string) ([]
 			if err != nil {
 				return result, fmt.Errorf("unable to download asset: %q", err)
 			}
-			p, err := ocipackage.NewOCILayoutPackage(assetBlob)
+			p, err := oci.NewLayoutPackage(assetBlob)
 			if err != nil {
 				return result, errors.Wrap(err, "error opening asset package in OCI format")
 			}

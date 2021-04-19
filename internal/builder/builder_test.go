@@ -169,10 +169,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, baseImage.SetLabel("io.buildpacks.stack.id", "some-id"))
 				})
 				it("adds assets to the new builder", func() {
-					fakeAssetBlob := fakes3.NewFakeAssetBlob("first asset contents", dist.Asset{
+					fakeAssetBlob := fakes3.NewFakeAssetBlob("first asset contents", dist.AssetInfo{
 						ID:       "first-asset",
 						Version:  "1.1.1",
-						Name:     "First Asset",
+						Name:     "First AssetInfo",
 						Stacks:   []string{"io.buildpacks.stack.id"},
 						Metadata: nil,
 					})
@@ -936,27 +936,27 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		when("#AddAssetImages", func() {
 			var (
-				firstAsset = dist.Asset{
+				firstAsset = dist.AssetInfo{
 					ID:      "first-asset",
-					Name:    "First Asset",
+					Name:    "First AssetInfo",
 					Sha256:  "first-sha256",
 					Stacks:  []string{"io.buildpacks.stacks.bionic"},
 					URI:     "https://first-asset-uri",
 					Version: "1.2.3",
 				}
 
-				secondAsset = dist.Asset{
+				secondAsset = dist.AssetInfo{
 					ID:      "second-asset",
-					Name:    "Second Asset",
+					Name:    "Second AssetInfo",
 					Sha256:  "second-sha256",
 					Stacks:  []string{"io.buildpacks.stacks.bionic"},
 					URI:     "https://second-asset-uri",
 					Version: "4.5.6",
 				}
 
-				thirdAsset = dist.Asset{
+				thirdAsset = dist.AssetInfo{
 					ID:      "third-asset",
-					Name:    "Third Asset",
+					Name:    "Third AssetInfo",
 					Sha256:  "third-sha256",
 					Stacks:  []string{"io.buildpacks.stacks.bionic"},
 					URI:     "https://third-asset-uri",
@@ -1418,10 +1418,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("gets assets from image", func() {
-				fakeAssetBlob := fakes3.NewFakeAssetBlob("first asset contents", dist.Asset{
+				fakeAssetBlob := fakes3.NewFakeAssetBlob("first asset contents", dist.AssetInfo{
 					ID:       "first-asset",
 					Version:  "1.1.1",
-					Name:     "First Asset",
+					Name:     "First AssetInfo",
 					Stacks:   []string{"io.buildpacks.stack.id"},
 					Metadata: nil,
 				})

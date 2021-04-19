@@ -25,12 +25,12 @@ func testAssetFetcher(t *testing.T, when spec.G, it spec.S) {
 		assert         = testhelpers.NewAssertionManager(t)
 		mockController *gomock.Controller
 		mockFetcher    *testmocks.MockImageFetcher
-		subject        asset.ImageFetcher
+		subject        asset.PackageImageFetcher
 	)
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockFetcher = testmocks.NewMockImageFetcher(mockController)
-		subject = asset.NewImageFetcher(mockFetcher)
+		subject = asset.NewPackageImageFetcher(mockFetcher)
 	})
 	when("fetching asset cache images", func() {
 		var (
@@ -60,7 +60,7 @@ func testAssetFetcher(t *testing.T, when spec.G, it spec.S) {
 	when("failure cases", func() {
 		when("unable to fetch image", func() {
 			it.Before(func() {
-				subject = asset.NewImageFetcher(mockFetcher)
+				subject = asset.NewPackageImageFetcher(mockFetcher)
 			})
 			it("errors with a helpful message", func() {
 				mockFetcher.EXPECT().Fetch(gomock.Any(), "errorImage", true, pubcfg.PullIfNotPresent).Return(nil, errors.New("a bad error"))

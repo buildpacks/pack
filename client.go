@@ -183,9 +183,9 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	}
 
 	if client.assetFetcher == nil {
-		localAssetFetcher := asset.NewLocalFileFetcher()
-		imageAssetFetcher := asset.NewImageFetcher(client.imageFetcher)
-		uriAssetFetcher := asset.NewAssetURLFetcher(client.downloader, localAssetFetcher)
+		localAssetFetcher := asset.NewPackageFileFetcher()
+		imageAssetFetcher := asset.NewPackageImageFetcher(client.imageFetcher)
+		uriAssetFetcher := asset.NewPackageURLFetcher(client.downloader, localAssetFetcher)
 		client.assetFetcher = asset.NewFetcher(localAssetFetcher, uriAssetFetcher, imageAssetFetcher)
 	}
 

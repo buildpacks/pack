@@ -109,7 +109,7 @@ const buildpackLayersTag = `{
 			"sha256": "first-asset-sha256",
 			"id": "first-asset",
 			"version": "1.1.1",
-			"name": "First Asset",
+			"name": "First AssetInfo",
 			"uri": "https://asset-location-url",
 			"licenses" : ["GPLv3"],
 			"description" : "first asset description",
@@ -366,12 +366,12 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 						},
 						LayerDiffID: "sha256:second-inner-buildpack-diff-id",
 						Homepage:    "second-inner-buildpack-homepage",
-						Assets: []dist.Asset{
+						Assets: []dist.AssetInfo{
 							{
 								Sha256:      "first-asset-sha256",
 								ID:          "first-asset",
 								Version:     "1.1.1",
-								Name:        "First Asset",
+								Name:        "First AssetInfo",
 								URI:         "https://asset-location-url",
 								Licenses:    []string{"GPLv3"},
 								Description: "first asset description",
@@ -401,7 +401,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 						},
 						LayerDiffID: "sha256:third-inner-buildpack-diff-id",
 						Homepage:    "third-inner-buildpack-homepage",
-						Assets: []dist.Asset{
+						Assets: []dist.AssetInfo{
 							{
 								Sha256:  "third-asset-sha256",
 								ID:      "third-asset",

@@ -51,7 +51,7 @@ type BuildpackLayerInfo struct {
 	LayerDiffID string       `json:"layerDiffID"`
 	Homepage    string       `json:"homepage,omitempty"`
 	Name        string       `json:"name,omitempty"`
-	Assets      []Asset      `json:"assets,omitempty"`
+	Assets      []AssetInfo  `json:"assets,omitempty"`
 }
 
 func (b BuildpackLayers) Get(id, version string) (BuildpackLayerInfo, bool) {

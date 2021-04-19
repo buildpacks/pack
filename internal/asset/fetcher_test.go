@@ -19,7 +19,7 @@ import (
 	"github.com/buildpacks/pack/internal/asset/testmocks"
 	blob2 "github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/ocipackage"
+	"github.com/buildpacks/pack/internal/oci"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -90,14 +90,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 		when("fetching file asset", func() {
 			var (
-				expectedAssetCache *ocipackage.OciLayoutPackage
+				expectedAssetCache *oci.LayoutPackage
 				assetPath          string
 			)
 
 			it.Before(func() {
 				var err error
 				assetPath = filepath.Join("testdata", "fake-asset-cache.tar")
-				expectedAssetCache, err = ocipackage.NewOCILayoutPackage(blob2.NewBlob(
+				expectedAssetCache, err = oci.NewLayoutPackage(blob2.NewBlob(
 					assetPath, blob2.RawOption),
 				)
 				h.AssertNil(t, err)
@@ -108,7 +108,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					mockFileFetcher.EXPECT().FetchFileAssets(gomock.Any(), gomock.Any(), absAssetPath).
-						Return([]*ocipackage.OciLayoutPackage{expectedAssetCache}, nil)
+						Return([]*oci.LayoutPackage{expectedAssetCache}, nil)
 
 					actualAssets, err := subject.FetchAssets([]string{absAssetPath})
 					h.AssertNil(t, err)
@@ -124,7 +124,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					mockFileFetcher.EXPECT().FetchFileAssets(gomock.Any(), cwd, assetPath).
-						Return([]*ocipackage.OciLayoutPackage{expectedAssetCache}, nil)
+						Return([]*oci.LayoutPackage{expectedAssetCache}, nil)
 
 					actualAssets, err := subject.FetchAssets([]string{assetPath}, asset.WithWorkingDir(cwd))
 					h.AssertNil(t, err)
@@ -141,7 +141,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						fileName := filepath.Base(absAssetPath)
 						otherWorkingDir := filepath.Dir(absAssetPath)
 						mockFileFetcher.EXPECT().FetchFileAssets(gomock.Any(), otherWorkingDir, fileName).
-							Return([]*ocipackage.OciLayoutPackage{expectedAssetCache}, nil)
+							Return([]*oci.LayoutPackage{expectedAssetCache}, nil)
 
 						actualAssets, err := subject.FetchAssets([]string{fileName}, asset.WithWorkingDir(otherWorkingDir))
 						h.AssertNil(t, err)
@@ -157,12 +157,12 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 		when("fetching uri assets", func() {
 			var (
 				assetPath          string
-				expectedAssetCache *ocipackage.OciLayoutPackage
+				expectedAssetCache *oci.LayoutPackage
 			)
 			it.Before(func() {
 				var err error
 				assetPath = filepath.Join("testdata", "fake-asset-cache.tar")
-				expectedAssetCache, err = ocipackage.NewOCILayoutPackage(blob2.NewBlob(
+				expectedAssetCache, err = oci.NewLayoutPackage(blob2.NewBlob(
 					assetPath, blob2.RawOption),
 				)
 				h.AssertNil(t, err)
@@ -170,7 +170,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 			it("uses the URI fetcher for all schemes", func() {
 				assetName := "scheme:///some/asset"
 				mockURIFetcher.EXPECT().FetchURIAssets(gomock.Any(), assetName).
-					Return([]*ocipackage.OciLayoutPackage{expectedAssetCache}, nil)
+					Return([]*oci.LayoutPackage{expectedAssetCache}, nil)
 
 				actualAssets, err := subject.FetchAssets([]string{assetName})
 				h.AssertNil(t, err)
@@ -194,7 +194,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 			it("errors with helpful message", func() {
 				assetName := "scheme:///some/asset"
 				mockURIFetcher.EXPECT().FetchURIAssets(gomock.Any(), assetName).
-					Return([]*ocipackage.OciLayoutPackage{}, errors.New("bad bad error"))
+					Return([]*oci.LayoutPackage{}, errors.New("bad bad error"))
 
 				_, err := subject.FetchAssets([]string{assetName})
 				h.AssertError(t, err, `unable to fetch asset of type "URILocator": bad bad error`)

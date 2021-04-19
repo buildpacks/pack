@@ -15,30 +15,30 @@ import (
 	"github.com/buildpacks/pack/internal/asset"
 	blob2 "github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/ocipackage"
+	"github.com/buildpacks/pack/internal/oci"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestLocalFileFetcher(t *testing.T) {
-	spec.Run(t, "LocalFileFetcher", testLocalFileFetcher, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "PackageFileFetcher", testLocalFileFetcher, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testLocalFileFetcher(t *testing.T, when spec.G, it spec.S) {
 	var (
-		subject            asset.LocalFileFetcher
+		subject            asset.PackageFileFetcher
 		assert             = h.NewAssertionManager(t)
-		expectedAssetCache *ocipackage.OciLayoutPackage
+		expectedAssetCache *oci.LayoutPackage
 		tmpFile            *os.File
 	)
 	it.Before(func() {
 		var err error
-		subject = asset.NewLocalFileFetcher()
+		subject = asset.NewPackageFileFetcher()
 
 		testFile := filepath.Join("testdata", "fake-asset-cache.tar")
 		testfd, err := os.Open(testFile)
 		assert.Nil(err)
 
-		expectedAssetCache, err = ocipackage.NewOCILayoutPackage(blob2.NewBlob(
+		expectedAssetCache, err = oci.NewLayoutPackage(blob2.NewBlob(
 			filepath.Join("testdata", "fake-asset-cache.tar"), blob2.RawOption),
 		)
 		assert.Nil(err)

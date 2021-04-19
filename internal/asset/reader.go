@@ -43,7 +43,7 @@ func (r Reader) Read(rd Readable) ([]Blob, dist.AssetMap, error) {
 					Func: rd.GetLayer,
 					Arg:  asset.LayerDiffID,
 				},
-				Assets: []dist.Asset{asset.ToAsset(sha256)},
+				Assets: []dist.AssetInfo{asset.ToAsset(sha256)},
 			}
 		}
 	}
@@ -66,5 +66,5 @@ func (r Reader) Read(rd Readable) ([]Blob, dist.AssetMap, error) {
 
 type multiAssetLayer struct {
 	blob.Blob
-	Assets []dist.Asset
+	Assets []dist.AssetInfo
 }

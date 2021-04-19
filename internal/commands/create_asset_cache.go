@@ -137,14 +137,14 @@ func validateCacheImageName(imgName string) (name.Tag, error) {
 	return tag, nil
 }
 
-func getAssets(info *pack.BuildpackInfo) ([]dist.Asset, error) {
-	result := []dist.Asset{}
-	assetMap := map[string]dist.Asset{}
+func getAssets(info *pack.BuildpackInfo) ([]dist.AssetInfo, error) {
+	result := []dist.AssetInfo{}
+	assetMap := map[string]dist.AssetInfo{}
 
 	for _, bp := range info.Buildpacks {
 		layer, ok := info.BuildpackLayers[bp.ID][bp.Version]
 		if !ok {
-			return []dist.Asset{}, fmt.Errorf("unable to find metadata for buildpack %s, %s", bp.ID, bp.Version)
+			return []dist.AssetInfo{}, fmt.Errorf("unable to find metadata for buildpack %s, %s", bp.ID, bp.Version)
 		}
 		for _, asset := range layer.Assets {
 			assetMap[asset.Sha256] = asset
