@@ -3,9 +3,10 @@ package asset
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 
 	blob2 "github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/ocipackage"

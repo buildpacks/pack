@@ -81,17 +81,6 @@ func NewOCILayoutPackage(blob dist.Blob) (*OciLayoutPackage, error) {
 		return nil, err
 	}
 
-	// TODO -Dan- remove testing around this.
-	//layersLabel := imageInfo.Config.Labels[dist.BuildpackLayersLabel]
-	//if layersLabel == "" {
-	//	return nil, errors.Errorf("label %s not found", style.Symbol(dist.BuildpackLayersLabel))
-	//}
-	//
-	//bpLayers := dist.BuildpackLayers{}
-	//if err := json.Unmarshal([]byte(layersLabel), &bpLayers); err != nil {
-	//	return nil, errors.Wrap(err, "unmarshaling layers label")
-	//}
-
 	return &OciLayoutPackage{
 		imageInfo: *imageInfo,
 		manifest:  *manifest,

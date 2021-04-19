@@ -55,6 +55,12 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 [[order]]
 [[order.group]]
   id = "buildpack/1"
+
+[assets]
+[[assets.cache]]
+  uri = "some-asset-file-uri"
+[[assets.cache]]
+  image = "some-asset-image-tag"
 `), 0666))
 			})
 
@@ -77,6 +83,8 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, builderConfig.Buildpacks[2].ImageName, "")
 
 				h.AssertEq(t, builderConfig.Order[0].Group[0].ID, "buildpack/1")
+				h.AssertEq(t, builderConfig.Assets.Caches[0].URI, "some-asset-file-uri")
+				h.AssertEq(t, builderConfig.Assets.Caches[1].ImageName, "some-asset-image-tag")
 			})
 		})
 

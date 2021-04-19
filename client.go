@@ -51,7 +51,6 @@ type Downloader interface {
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_asset_fetcher.go github.com/buildpacks/pack AssetFetcher
 
-// TODO -Dan- Document
 type AssetFetcher interface {
 	FetchAssets(assetNameList []string, options ...asset.FetcherOptions) ([]asset.Readable, error)
 }

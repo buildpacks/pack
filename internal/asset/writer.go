@@ -47,7 +47,6 @@ type Writable interface {
 	SetLabel(string, string) error
 }
 
-// TODO -Dan- give open some options
 func (lw *layerWriter) Open() error {
 	if lw.tmpDir != "" {
 		return errors.New("unable to open writer: writer already open")
@@ -85,7 +84,6 @@ func (lw *layerWriter) Write(w Writable) error {
 		// TODO -Dan- handle cases of 128+ layers on image.
 		layerFileName := filepath.Join(lw.tmpDir, aBlob.AssetDescriptor().Sha256)
 		descriptor := aBlob.AssetDescriptor()
-		// TODO -Dan- handle multiple assets per layer
 		assetLayerReader := archive.GenerateTarWithWriter(func(tw archive.TarWriter) error {
 			return toAssetTar(tw, descriptor.Sha256, aBlob)
 		}, lw.writerFactory)
@@ -101,7 +99,6 @@ func (lw *layerWriter) Write(w Writable) error {
 
 		m, ok := lw.metadata[descriptor.Sha256]
 		if !ok {
-			// TODO -Dan- handle this case
 			return fmt.Errorf("unknown sha256 asset value %s", descriptor.Sha256)
 		}
 		m.LayerDiffID = "sha256:" + layerDiffID
@@ -111,10 +108,11 @@ func (lw *layerWriter) Write(w Writable) error {
 	return dist.SetLabel(w, LayersLabel, lw.metadata)
 }
 
+// could do this more efficiently, if we over-write blobs that share sh256 values
+// in the lw.blobs array.
 func (lw *layerWriter) AddAssetBlobs(aBlobs ...Blob) {
 	lw.blobs = append(lw.blobs, aBlobs...)
 	for _, b := range aBlobs {
-		// TODO -Dan- handle over-writes
 		descriptor := b.AssetDescriptor()
 		assetMetadata := descriptor
 		lw.metadata[descriptor.Sha256] = assetMetadata.ToAssetValue("")

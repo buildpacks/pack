@@ -48,7 +48,6 @@ func (r Reader) Read(rd Readable) ([]Blob, dist.AssetMap, error) {
 		}
 	}
 
-	// TODO -Dan- need to iterate over in a consistent order here
 	for _, assetLayer := range diffIDMap {
 		for _, asset := range assetLayer.Assets {
 			aBlob, err := ExtractFromLayer(asset, assetLayer.Blob)

@@ -84,16 +84,15 @@ func testLocalFileFetcher(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 		when("local file is not in OCI layout format", func() {
-
 			it.Before(func() {
 				var err error
-				tmpFile, err = ioutil.TempFile("","test-local-file-fetcher-not-oci")
+				tmpFile, err = ioutil.TempFile("", "test-local-file-fetcher-not-oci")
 				assert.Nil(err)
 
 				_, err = tmpFile.Write([]byte("some random contents"))
 				assert.Nil(err)
 
-				_, err = tmpFile.Seek(0,0)
+				_, err = tmpFile.Seek(0, 0)
 				assert.Nil(err)
 			})
 			it("errors with a helpful message", func() {

@@ -137,8 +137,6 @@ func validateCacheImageName(imgName string) (name.Tag, error) {
 	return tag, nil
 }
 
-// TODO -Dan- this should support getting info from a buildpack.toml file
-//    this will require more changes to InspectBuildpack (returns a Buildpack.Descriptor not just dist.BuildpackInfo)
 func getAssets(info *pack.BuildpackInfo) ([]dist.Asset, error) {
 	result := []dist.Asset{}
 	assetMap := map[string]dist.Asset{}

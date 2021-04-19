@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	testmocks2 "github.com/buildpacks/pack/internal/asset/testmocks"
 	"io"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
+
+	testmocks2 "github.com/buildpacks/pack/internal/asset/testmocks"
 
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/google/go-containerregistry/pkg/name"

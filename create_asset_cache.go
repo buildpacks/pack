@@ -60,7 +60,6 @@ func (c *Client) CreateAssetCache(ctx context.Context, opts CreateAssetCacheOpti
 
 	err = addAssetsToImage(assetCache, assets, downloadResults)
 	if err != nil {
-		// TODO -Dan- handle error
 		return errors.Wrapf(err, "unable to add asset blobs to assets package")
 	}
 	return assetCache.Save()
