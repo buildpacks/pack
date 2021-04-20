@@ -12,12 +12,20 @@ import (
 	"github.com/buildpacks/pack/internal/oci"
 )
 
+// PackageFileFetcher is an implementation of FileFetcher, it provides methods to
+// fetch OCI Layout files from the filesystem
 type PackageFileFetcher struct{}
 
+// NewPackageFileFetcher is a constructor and should be used to create new instances of
+// PackageFileFetcher
 func NewPackageFileFetcher() PackageFileFetcher {
 	return PackageFileFetcher{}
 }
 
+// FetchFileAssets talks a list of paths and a working directory,
+// each path may be local or absolute, it the path is local it
+// is resolved to a absolute path using workingDir.
+// we then attemp to read each path as an OCI LayoutPackage and return it.
 func (af PackageFileFetcher) FetchFileAssets(ctx context.Context, workingDir string, fileAssets ...string) ([]*oci.LayoutPackage, error) {
 	result := []*oci.LayoutPackage{}
 	for _, assetFile := range fileAssets {

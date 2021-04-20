@@ -27,19 +27,19 @@ func testLocalFileFetcher(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject            asset.PackageFileFetcher
 		assert             = h.NewAssertionManager(t)
-		expectedAssetCache *oci.LayoutPackage
+		expectedAssetPackage *oci.LayoutPackage
 		tmpFile            *os.File
 	)
 	it.Before(func() {
 		var err error
 		subject = asset.NewPackageFileFetcher()
 
-		testFile := filepath.Join("testdata", "fake-asset-cache.tar")
+		testFile := filepath.Join("testdata", "fake-asset-package.tar")
 		testfd, err := os.Open(testFile)
 		assert.Nil(err)
 
-		expectedAssetCache, err = oci.NewLayoutPackage(blob2.NewBlob(
-			filepath.Join("testdata", "fake-asset-cache.tar"), blob2.RawOption),
+		expectedAssetPackage, err = oci.NewLayoutPackage(blob2.NewBlob(
+			filepath.Join("testdata", "fake-asset-package.tar"), blob2.RawOption),
 		)
 		assert.Nil(err)
 
@@ -59,7 +59,7 @@ func testLocalFileFetcher(t *testing.T, when spec.G, it spec.S) {
 
 			assert.Equal(len(ociAssets), 1)
 
-			assertSameAssetLayers(t, ociAssets[0], expectedAssetCache)
+			assertSameAssetLayers(t, ociAssets[0], expectedAssetPackage)
 		})
 	})
 	when("using a local path", func() {
@@ -71,7 +71,7 @@ func testLocalFileFetcher(t *testing.T, when spec.G, it spec.S) {
 
 			assert.Equal(len(ociAssets), 1)
 
-			assertSameAssetLayers(t, ociAssets[0], expectedAssetCache)
+			assertSameAssetLayers(t, ociAssets[0], expectedAssetPackage)
 		})
 	})
 

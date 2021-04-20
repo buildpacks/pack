@@ -18,33 +18,28 @@ import (
 	"github.com/buildpacks/pack/pkg/archive"
 )
 
-// TODO: much of this implementation should be replaced when imgutil can save
-//   images as archives.
-type SaveableCacheImage interface {
-	dist.WorkableImage
-	Save(assetWriter layerWriter, additionalName ...string) error
-}
-
+// NewFile is a constructor that should be used to create new File objects
 func NewFile(path, os string, rawImg v1.Image, writer LayerWriter) *File {
 	return &File{
 		writer:         writer,
 		path:           path,
 		os:             os,
-		assetsAndBlobs: []BlobAssetPair{},
 		Image:          rawImg,
 	}
 }
 
+// File contains internals needed to write an asset packages as a OCI image tarball.
 type File struct {
 	writer         LayerWriter
 	path           string
 	os             string
-	assetsAndBlobs []BlobAssetPair
 	v1.Image
 }
 
+// Save writes an OCI image as a tarball at the path used in the NewFile constructor
+// as well as each additional name.
 func (a *File) Save(additionalNames ...string) error {
-	tmpDir, err := ioutil.TempDir("", "create-asset-cache")
+	tmpDir, err := ioutil.TempDir("", "create-asset-package")
 	if err != nil {
 		return err
 	}
@@ -99,10 +94,16 @@ func (a *File) Save(additionalNames ...string) error {
 	return nil
 }
 
-func (a *File) AddAssetBlobs(layerBlobs ...Blob) {
-	a.writer.AddAssetBlobs(layerBlobs...)
+// AddAssetBlobs takes a list of blobs and adds them to the File.
+// Note each of these blobs must be 'openable' when Save is called.
+func (a *File) AddAssetBlobs(assetBlobs ...Blob) {
+	a.writer.AddAssetBlobs(assetBlobs...)
 }
 
+// SetOS sets the operating system type for the image.
+// valid inputs at this time are:
+// - windows
+// - linux
 func (a *File) SetOS(osVal string) error {
 	a.os = osVal
 	configFile, err := a.ConfigFile()
@@ -114,6 +115,8 @@ func (a *File) SetOS(osVal string) error {
 	return err
 }
 
+// AddLayerWithDiffID adds a OCI layer tar file at path to our File object.
+// Note path must be valid when Save is called.
 func (a *File) AddLayerWithDiffID(path, _ string) error {
 	tarLayer, err := tarball.LayerFromFile(path, tarball.WithCompressionLevel(gzip.DefaultCompression))
 	if err != nil {
@@ -126,6 +129,7 @@ func (a *File) AddLayerWithDiffID(path, _ string) error {
 	return nil
 }
 
+// SetLabel adds a key and associated val to the OCI Label on the outside of an image.
 func (a *File) SetLabel(key string, val string) error {
 	configFile, err := a.ConfigFile()
 	if err != nil {

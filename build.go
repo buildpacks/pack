@@ -54,7 +54,7 @@ const (
 //
 //  Detection:         /cnb/lifecycle/detector
 //  Analysis:          /cnb/lifecycle/analyzer
-//  Cache Restoration: /cnb/lifecycle/restorer
+//  Package Restoration: /cnb/lifecycle/restorer
 //  Build:             /cnb/lifecycle/builder
 //  Export:            /cnb/lifecycle/exporter
 //
@@ -112,9 +112,9 @@ type BuildOptions struct {
 	// Create an additional image that contains cache=true layers and push it to the registry.
 	CacheImage string
 
-	// Option used to specify cache images that will be added during build
+	// Option used to specify asset images that will be added during build
 	// buildpacks will be able to access these assets if they need to during build
-	AssetCaches []string
+	AssetPackages []string
 
 	// Option passed directly to the lifecycle.
 	// If true, publishes Image directly to a registry.
@@ -241,9 +241,9 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedAssets, err := c.assetFetcher.FetchAssets(opts.AssetCaches, asset.WithPullPolicy(opts.PullPolicy), asset.WithContext(ctx))
+	fetchedAssets, err := c.assetFetcher.FetchAssets(opts.AssetPackages, asset.WithPullPolicy(opts.PullPolicy), asset.WithContext(ctx))
 	if err != nil {
-		return fmt.Errorf("unable to fetch asset caches: %q", err)
+		return fmt.Errorf("unable to fetch asset packages: %q", err)
 	}
 
 	if err := c.validateMixins(fetchedBPs, bldr, runImageName, runMixins); err != nil {

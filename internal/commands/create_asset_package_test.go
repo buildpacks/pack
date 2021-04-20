@@ -24,13 +24,13 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestCreateAssetCache(t *testing.T) {
+func TestCreateAssetPackage(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "CreateAssetCache", testCreateAssetCache, spec.Random(), spec.Report(report.Terminal{}))
+	spec.Run(t, "CreateAssetPackage", testCreateAssetPackage, spec.Random(), spec.Report(report.Terminal{}))
 }
 
-func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
+func testCreateAssetPackage(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command          *cobra.Command
 		logger           logging.Logger
@@ -103,14 +103,14 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.CreateAssetCache(logger, cfg, mockClient)
+		command = commands.CreateAssetPackage(logger, cfg, mockClient)
 	})
 
 	it.After(func() {
 		mockController.Finish()
 	})
 
-	when("#CreateAssetCache", func() {
+	when("#CreateAssetPackage", func() {
 		when("buildpack image", func() {
 			when("image-preference = prefer-remote", func() {
 				it("looks for remote image first then local image", func() {
@@ -136,15 +136,15 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						BuildpackLayers:   buildpackLayers,
 					}, nil)
 
-					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-						ImageName: "some/asset-cache",
+					mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+						ImageName: "some/asset-package",
 						Assets:    []dist.AssetInfo{firstAsset},
 						OS:        "linux",
 						Format:    "image",
 					})
 
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", buildpackLocator,
 						"--image-preference", "prefer-remote",
 					})
@@ -171,15 +171,15 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						BuildpackLayers:   buildpackLayers,
 					}, nil)
 
-					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-						ImageName: "some/asset-cache",
+					mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+						ImageName: "some/asset-package",
 						Assets:    []dist.AssetInfo{firstAsset},
 						OS:        "linux",
 						Format:    "image",
 					})
 
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", buildpackLocator,
 						"--image-preference", "only-local",
 					})
@@ -207,15 +207,15 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						BuildpackLayers:   buildpackLayers,
 					}, nil)
 
-					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-						ImageName: "some/asset-cache",
+					mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+						ImageName: "some/asset-package",
 						Assets:    []dist.AssetInfo{firstAsset},
 						OS:        "linux",
 						Format:    "image",
 					})
 
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", buildpackLocator,
 						"--image-preference", "only-remote",
 					})
@@ -250,15 +250,15 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						BuildpackLayers:   buildpackLayers,
 					}, nil)
 
-					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-						ImageName: "some/asset-cache",
+					mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+						ImageName: "some/asset-package",
 						Assets:    []dist.AssetInfo{firstAsset},
 						OS:        "linux",
 						Format:    "image",
 					})
 
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", buildpackLocator,
 						"--image-preference", "prefer-local",
 					})
@@ -276,9 +276,9 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					it.Before(func() {
 						buildpackLocator = "some-local-locator"
 					})
-					it("succeeds and creates a local asset cache", func() {
+					it("succeeds and creates a local asset package", func() {
 						command.SetArgs([]string{
-							"some/asset-cache",
+							"some/asset-package",
 							"--buildpack", buildpackLocator,
 						})
 
@@ -294,8 +294,8 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 							},
 							nil,
 						)
-						mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-							ImageName: "some/asset-cache",
+						mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+							ImageName: "some/asset-package",
 							Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 							OS:        "linux",
 							Format:    "image",
@@ -314,7 +314,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 			when("passing in registry", func() {
 				it("over-rides default registry", func() {
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", buildpackLocator,
 						"--buildpack-registry", "some-other-registry",
 					})
@@ -331,8 +331,8 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						},
 						nil,
 					)
-					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-						ImageName: "some/asset-cache",
+					mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+						ImageName: "some/asset-package",
 						Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 						OS:        "linux",
 						Format:    "image",
@@ -349,7 +349,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 			})
 			it("publishes resulting cache image", func() {
 				command.SetArgs([]string{
-					"some/asset-cache",
+					"some/asset-package",
 					"--buildpack", buildpackLocator,
 					"--publish",
 				})
@@ -366,8 +366,8 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					},
 					nil,
 				)
-				mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-					ImageName: "some/asset-cache",
+				mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+					ImageName: "some/asset-package",
 					Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 					Publish:   true,
 					OS:        "linux",
@@ -398,12 +398,12 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 			when("no format option is passed", func() {
 				it("default 'image' format is used", func() {
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", buildpackLocator,
 					})
 
-					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-						ImageName: "some/asset-cache",
+					mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+						ImageName: "some/asset-package",
 						Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 						Publish:   false,
 						OS:        "linux",
@@ -415,15 +415,15 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("image format is passed", func() {
-				it("sets the appropriate CreateAssetCache option", func() {
+				it("sets the appropriate CreateAssetPackage option", func() {
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", buildpackLocator,
 						"--format", "image",
 					})
 
-					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-						ImageName: "some/asset-cache",
+					mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+						ImageName: "some/asset-package",
 						Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 						Publish:   false,
 						OS:        "linux",
@@ -435,15 +435,15 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("file format is passed", func() {
-				it("sets the appropriate CreateAssetCache option", func() {
+				it("sets the appropriate CreateAssetPackage option", func() {
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", buildpackLocator,
 						"--format", "file",
 					})
 
-					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-						ImageName: "some/asset-cache",
+					mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+						ImageName: "some/asset-package",
 						Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 						Publish:   false,
 						OS:        "linux",
@@ -459,7 +459,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 			it("succeeds", func() {
 				buildpackLocator = "some-windows-buildpack"
 				command.SetArgs([]string{
-					"some/asset-cache",
+					"some/asset-package",
 					"--buildpack", buildpackLocator,
 					"--os", "windows",
 				})
@@ -476,8 +476,8 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					},
 					nil,
 				)
-				mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-					ImageName: "some/asset-cache",
+				mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+					ImageName: "some/asset-package",
 					Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 					OS:        "windows",
 					Format:    "image",
@@ -488,7 +488,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("failure cases", func() {
-			when("invalid asset cache image name is used", func() {
+			when("invalid asset package image name is used", func() {
 				it("errors with a informative message", func() {
 					command.SetArgs([]string{
 						"::::",
@@ -500,7 +500,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 			})
 			when("no --buildpack flag is specified", func() {
 				it("errors with a informative message", func() {
-					command.SetArgs([]string{"error/asset-cache-error"})
+					command.SetArgs([]string{"error/asset-package-error"})
 					err := command.Execute()
 					assert.ErrorContains(err, "must specify a buildpack locator using the --buildpack flag")
 				})
@@ -508,7 +508,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 			when("unknown image-preference", func() {
 				it("errors with informative message", func() {
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", "some-locator",
 						"--image-preference", "boopdoop",
 					})
@@ -520,7 +520,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 			when("unknown os option", func() {
 				it("errors with an informative message", func() {
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", "some-locator",
 						"--os", "schwindodos",
 					})
@@ -540,7 +540,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					}).Return(nil, errors.New("does not exist"))
 
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", buildpackLocator,
 					})
 
@@ -564,7 +564,7 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					}).Return(nil, image.ErrNotFound)
 
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", buildpackLocator,
 					})
 
@@ -572,12 +572,12 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 					assert.ErrorContains(err, "buildpack not found")
 				})
 			})
-			when("CreateAssetCache fails", func() {
+			when("CreateAssetPackage fails", func() {
 				it("errors with informative message", func() {
 					buildpackLocator = "some-image-org/some-non-exitant-image:latest"
 
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", buildpackLocator,
 						"--publish",
 					})
@@ -594,23 +594,23 @@ func testCreateAssetCache(t *testing.T, when spec.G, it spec.S) {
 						},
 						nil,
 					)
-					mockClient.EXPECT().CreateAssetCache(gomock.Any(), pack.CreateAssetCacheOptions{
-						ImageName: "some/asset-cache",
+					mockClient.EXPECT().CreateAssetPackage(gomock.Any(), pack.CreateAssetPackageOptions{
+						ImageName: "some/asset-package",
 						Assets:    []dist.AssetInfo{firstAsset, secondAsset},
 						Publish:   true,
 						OS:        "linux",
 						Format:    "image",
-					}).Return(errors.New("asset-cache-creation-error"))
+					}).Return(errors.New("asset-package-creation-error"))
 
 					err := command.Execute()
-					assert.ErrorContains(err, "error, unable to create asset cache")
-					assert.ErrorContains(err, "asset-cache-creation-error")
+					assert.ErrorContains(err, "error, unable to create asset package")
+					assert.ErrorContains(err, "asset-package-creation-error")
 				})
 			})
 			when("invalid format is specified", func() {
 				it("errors with a informative message", func() {
 					command.SetArgs([]string{
-						"some/asset-cache",
+						"some/asset-package",
 						"--buildpack", "some-image-org/some-image-name:latest",
 						"--format", "frisbee",
 					})

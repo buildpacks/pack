@@ -5,12 +5,10 @@
 package testmocks
 
 import (
+	dist "github.com/buildpacks/pack/internal/dist"
+	gomock "github.com/golang/mock/gomock"
 	io "io"
 	reflect "reflect"
-
-	gomock "github.com/golang/mock/gomock"
-
-	dist "github.com/buildpacks/pack/internal/dist"
 )
 
 // MockBlob is a mock of Blob interface

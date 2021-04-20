@@ -6,15 +6,21 @@ import (
 	"github.com/buildpacks/pack/internal/paths"
 )
 
+// LocatorType represents the different locations an image may be retrieved from
 type LocatorType int
 
 const (
+	// InvalidLocator represents an unknown or un-parsable locator type
 	InvalidLocator LocatorType = iota
+	// URI locator paths represent a file://, http:// or https:// URI
 	URILocator
+	// FilepathLocator represents a local file path (this may be relative)
 	FilepathLocator
+	// ImageLocator represents a valid image that may be expanded to <org>/<repo>:<tag>
 	ImageLocator
 )
 
+// String represents each locator as a printable string
 func (l LocatorType) String() string {
 	return []string{
 		"InvalidLocator",
@@ -24,6 +30,7 @@ func (l LocatorType) String() string {
 	}[l]
 }
 
+// GetLocatorType parses a locator and returns the LocatorType
 func GetLocatorType(locator string, relativeBaseDir string) LocatorType {
 	switch {
 	case paths.IsURI(locator):

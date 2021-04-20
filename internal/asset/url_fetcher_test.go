@@ -27,73 +27,73 @@ func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController     *gomock.Controller
 		mockDownloader     *testmocks.MockDownloader
-		mockFileFetcher    *testmocks.MockFileCacheFetcher
-		subject            asset.PackageURLFetcher
-		expectedAssetCache *oci.LayoutPackage
+		mockFileFetcher    *testmocks.MockFileFetcher
+		subject            asset.PackageURIFetcher
+		expectedAssetPackage *oci.LayoutPackage
 		assert             = h.NewAssertionManager(t)
 
-		expectedCacheBlob blob2.Blob
+		expectedPackageBlob blob2.Blob
 	)
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockDownloader = testmocks.NewMockDownloader(mockController)
-		mockFileFetcher = testmocks.NewMockFileCacheFetcher(mockController)
-		subject = asset.NewPackageURLFetcher(mockDownloader, mockFileFetcher)
+		mockFileFetcher = testmocks.NewMockFileFetcher(mockController)
+		subject = asset.NewPackageURIFetcher(mockDownloader, mockFileFetcher)
 
 		var err error
-		expectedAssetCache, err = oci.NewLayoutPackage(blob2.NewBlob(
-			filepath.Join("testdata", "fake-asset-cache.tar"), blob2.RawOption),
+		expectedAssetPackage, err = oci.NewLayoutPackage(blob2.NewBlob(
+			filepath.Join("testdata", "fake-asset-package.tar"), blob2.RawOption),
 		)
 		assert.Nil(err)
 
-		expectedCacheBlob = blob2.NewBlob("testdata/fake-asset-cache.tar", blob2.RawOption)
+		expectedPackageBlob = blob2.NewBlob("testdata/fake-asset-package.tar", blob2.RawOption)
 	})
 	when("#FetchURIAssets", func() {
 		when("url uses 'http' scheme", func() {
 			it("downloads asset", func() {
 				assetURI := "http://asset/uri"
 				mockDownloader.EXPECT().Download(gomock.Any(), assetURI, gomock.Any()).
-					Return(expectedCacheBlob, nil)
+					Return(expectedPackageBlob, nil)
 
 				ociAssets, err := subject.FetchURIAssets(context.Background(), assetURI)
 				assert.Nil(err)
 
 				assert.Equal(len(ociAssets), 1)
 
-				assertSameAssetLayers(t, ociAssets[0], expectedAssetCache)
+				assertSameAssetLayers(t, ociAssets[0], expectedAssetPackage)
 			})
 		})
 		when("url uses 'https' scheme", func() {
 			it("downloads asset", func() {
 				assetURI := "https://asset/uri"
 				mockDownloader.EXPECT().Download(gomock.Any(), assetURI, gomock.Any()).
-					Return(expectedCacheBlob, nil)
+					Return(expectedPackageBlob, nil)
 
 				ociAssets, err := subject.FetchURIAssets(context.Background(), assetURI)
 				assert.Nil(err)
 
 				assert.Equal(len(ociAssets), 1)
 
-				assertSameAssetLayers(t, ociAssets[0], expectedAssetCache)
+				assertSameAssetLayers(t, ociAssets[0], expectedAssetPackage)
 			})
 		})
 		when("url uses 'file' scheme", func() {
 			it("opens local file asset", func() {
-				absPath, err := filepath.Abs(filepath.Join("testdata", "fake-asset-cache.tar"))
+				absPath, err := filepath.Abs(filepath.Join("testdata", "fake-asset-package.tar"))
 				assert.Nil(err)
 
-				assetURI, err := paths.FilePathToURI(filepath.Join("testdata", "fake-asset-cache.tar"), ".")
+				assetURI, err := paths.FilePathToURI(filepath.Join("testdata", "fake-asset-package.tar"), ".")
 				assert.Nil(err)
 
 				mockFileFetcher.EXPECT().FetchFileAssets(gomock.Any(), gomock.Any(), absPath).
-					Return([]*oci.LayoutPackage{expectedAssetCache}, nil)
+					Return([]*oci.LayoutPackage{expectedAssetPackage}, nil)
 
 				ociAssets, err := subject.FetchURIAssets(context.Background(), assetURI)
 				assert.Nil(err)
 
 				assert.Equal(len(ociAssets), 1)
 
-				assertSameAssetLayers(t, ociAssets[0], expectedAssetCache)
+				assertSameAssetLayers(t, ociAssets[0], expectedAssetPackage)
 			})
 		})
 		when("error cases", func() {

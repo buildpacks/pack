@@ -615,7 +615,7 @@ func testWithoutSpecificBuilderRequirement(
 		})
 	})
 
-	when("asset cache", func() {
+	when("asset package", func() {
 		var (
 			tmpDir   string
 			repo     string
@@ -623,7 +623,7 @@ func testWithoutSpecificBuilderRequirement(
 		)
 		it.Before(func() {
 			var err error
-			tmpDir, err = ioutil.TempDir("", "asset-cache-testing")
+			tmpDir, err = ioutil.TempDir("", "asset-package-testing")
 			assert.Nil(err)
 			repo = "some-org/" + h.RandString(10)
 			repoName = registryConfig.RepoName(repo)
@@ -633,7 +633,7 @@ func testWithoutSpecificBuilderRequirement(
 			imageManager.CleanupImages(repoName)
 		})
 
-		it("creates reproducable asset cache", func() {
+		it("creates reproducable asset package", func() {
 			buildpackManager = buildpacks.NewBuildpackManager(
 				t,
 				assert,
@@ -763,14 +763,14 @@ func testWithoutSpecificBuilderRequirement(
 			buildpackManager.PrepareBuildpacks(tmpDir, packageImageBuildpack)
 			defer h.DockerRmi(dockerCli, simpleBuildpackImageName, secondSimpleBuildpackImageName, nestedBuildpackImageName)
 
-			assetCacheName := registryConfig.RepoName("some-asset-org/" + h.RandString(10))
+			assetPackageName := registryConfig.RepoName("some-asset-org/" + h.RandString(10))
 			pack.RunSuccessfully(
-				"asset-cache", "create",
-				assetCacheName,
+				"asset-package", "create",
+				assetPackageName,
 				"--buildpack", nestedBuildpackImageName,
 				"--os", dockerHostOS(),
 			)
-			defer h.DockerRmi(dockerCli, assetCacheName)
+			defer h.DockerRmi(dockerCli, assetPackageName)
 
 			allAssetsBuildpackRoot := filepath.Join(tmpDir, "all-assets-buildpack")
 			assert.Succeeds(os.Mkdir(allAssetsBuildpackRoot, os.ModePerm))
@@ -815,14 +815,14 @@ func testWithoutSpecificBuilderRequirement(
 
 			identicalAssetCacheName := registryConfig.RepoName("some-identical-asset-org/" + h.RandString(10))
 			pack.RunSuccessfully(
-				"asset-cache", "create",
+				"asset-package", "create",
 				identicalAssetCacheName,
 				"--buildpack", allAssetsBuildpackImageName,
 				"--os", dockerHostOS(),
 			)
 			defer h.DockerRmi(dockerCli, identicalAssetCacheName)
 
-			firstSha := imageSha(t, assert, dockerCli, assetCacheName)
+			firstSha := imageSha(t, assert, dockerCli, assetPackageName)
 			secondSha := imageSha(t, assert, dockerCli, identicalAssetCacheName)
 			assert.Equal(firstSha, secondSha)
 		})
@@ -978,7 +978,7 @@ func testAcceptance(
 					h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.AssetPackages), "requires asset package capabilities")
 
 					var err error
-					tmpDir, err = ioutil.TempDir("", "asset-cache-testing")
+					tmpDir, err = ioutil.TempDir("", "asset-package-testing")
 					assert.Nil(err)
 					repo = "some-org/" + h.RandString(10)
 					repoName = registryConfig.RepoName(repo)
@@ -1487,7 +1487,7 @@ func testAcceptance(
 						})
 					})
 
-					when("--asset-cache", func() {
+					when("--asset-package", func() {
 						var (
 							tmpDir string
 						)
@@ -1496,7 +1496,7 @@ func testAcceptance(
 							h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.AssetPackages), "requires asset package capabilities")
 
 							var err error
-							tmpDir, err = ioutil.TempDir("", "asset-cache-testing")
+							tmpDir, err = ioutil.TempDir("", "asset-package-testing")
 							assert.Nil(err)
 							repo = "some-org/" + h.RandString(10)
 							repoName = registryConfig.RepoName(repo)
@@ -1571,21 +1571,21 @@ func testAcceptance(
 							buildpackManager.PrepareBuildpacks(tmpDir, packageImageBuildpack)
 							defer h.DockerRmi(dockerCli, simpleBuildpackImageName)
 
-							assetCacheName := registryConfig.RepoName("some-asset-org/" + h.RandString(10))
+							assetPackageName := registryConfig.RepoName("some-asset-org/" + h.RandString(10))
 							pack.RunSuccessfully(
-								"asset-cache", "create",
-								assetCacheName,
+								"asset-package", "create",
+								assetPackageName,
 								"--buildpack", simpleBuildpackImageName,
 								"--os", dockerHostOS(),
 							)
-							defer h.DockerRmi(dockerCli, assetCacheName)
+							defer h.DockerRmi(dockerCli, assetPackageName)
 
-							// Successfully builds app image using asset cache
+							// Successfully builds app image using asset package
 							output := pack.RunSuccessfully(
 								"build", repoName,
 								"-p", filepath.Join("testdata", "mock_app"),
 								"--buildpack", simpleBuildpackImageName,
-								"--asset-cache", assetCacheName,
+								"--asset-package", assetPackageName,
 							)
 
 							assertOutput := assertions.NewOutputAssertionManager(t, output)
@@ -3093,16 +3093,16 @@ func createBuilderWithAssets(
 	buildpackManager.PrepareBuildpacks(tmpDir, packageImageBuildpack)
 	defer h.DockerRmi(dockerCli, simpleBuildpackImageName)
 
-	assetCacheName := registryConfig.RepoName("some-asset-org/" + h.RandString(10))
+	assetPackageName := registryConfig.RepoName("some-asset-org/" + h.RandString(10))
 	pack.RunSuccessfully(
-		"asset-cache", "create",
-		assetCacheName,
+		"asset-package", "create",
+		assetPackageName,
 		"--buildpack", simpleBuildpackImageName,
 		"--os", dockerHostOS(),
 	)
-	defer h.DockerRmi(dockerCli, assetCacheName)
+	defer h.DockerRmi(dockerCli, assetPackageName)
 
-	templateMapping["asset_cache_image_name"] = assetCacheName
+	templateMapping["asset_package_image_name"] = assetPackageName
 
 	// ADD lifecycle
 	var lifecycleURI string

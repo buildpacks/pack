@@ -20,5 +20,5 @@ run-image = "pack-test/run"
 run-image-mirrors = ["{{.run_image_mirror}}"]
 
 [assets]
-  [[assets.cache]]
-    image = "{{.asset_cache_image_name}}"
+  [[assets.package]]
+    image = "{{.asset_package_image_name}}"

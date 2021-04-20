@@ -19,6 +19,8 @@ import (
 )
 
 //go:generate mockgen -package testmocks -destination testmocks/layer_writer.go github.com/buildpacks/pack/internal/asset LayerWriter
+
+// LayerWriter provides an interface used to write layers into a Writable Image
 type LayerWriter interface {
 	Open() error
 	Close() error
@@ -27,27 +29,36 @@ type LayerWriter interface {
 	AssetMetadata() dist.AssetMap
 }
 
-type layerWriter struct {
+// AssetWriter is a concrete implementation of the LayerWriter interface
+// it is used to group assets into layers, then write these layers into an
+// image.
+type AssetWriter struct {
 	tmpDir        string
 	blobs         []Blob
 	metadata      dist.AssetMap
 	writerFactory archive.TarWriterFactory
 }
 
+// NewLayerWriter is a constructor and should be used to create instances
+// that implement LayerWriter for asset packages.
 func NewLayerWriter(writerFactory archive.TarWriterFactory) LayerWriter {
-	return &layerWriter{
+	return &AssetWriter{
 		blobs:         []Blob{},
 		metadata:      dist.AssetMap{},
 		writerFactory: writerFactory,
 	}
 }
 
+// Writable represents the minimum interface needed to write layers into
+// an image
 type Writable interface {
 	AddLayerWithDiffID(path, diffID string) error
 	SetLabel(string, string) error
 }
 
-func (lw *layerWriter) Open() error {
+// Open allocates resources needed to keep track the layers
+// that will be written into an image
+func (lw *AssetWriter) Open() error {
 	if lw.tmpDir != "" {
 		return errors.New("unable to open writer: writer already open")
 	}
@@ -61,7 +72,8 @@ func (lw *layerWriter) Open() error {
 	return nil
 }
 
-func (lw *layerWriter) Close() error {
+// Open deallocates resources claimed by Open
+func (lw *AssetWriter) Close() error {
 	if lw.tmpDir == "" {
 		return errors.New("unable to close writer: writer is not open")
 	}
@@ -74,9 +86,12 @@ func (lw *layerWriter) Close() error {
 	return nil
 }
 
-func (lw *layerWriter) Write(w Writable) error {
+// Write adds asset layers into the Writable image
+// Open must be called before this operation
+// please remember to Close the AssetWriter, when this operation is finished.
+func (lw *AssetWriter) Write(w Writable) error {
 	if lw.tmpDir == "" {
-		return errors.New("layerWriter must be opened before writing")
+		return errors.New("AssetWriter must be opened before writing")
 	}
 
 	for _, aBlob := range lw.blobs {
@@ -110,7 +125,7 @@ func (lw *layerWriter) Write(w Writable) error {
 
 // could do this more efficiently, if we over-write blobs that share sh256 values
 // in the lw.blobs array.
-func (lw *layerWriter) AddAssetBlobs(aBlobs ...Blob) {
+func (lw *AssetWriter) AddAssetBlobs(aBlobs ...Blob) {
 	lw.blobs = append(lw.blobs, aBlobs...)
 	for _, b := range aBlobs {
 		descriptor := b.AssetDescriptor()
@@ -119,7 +134,7 @@ func (lw *layerWriter) AddAssetBlobs(aBlobs ...Blob) {
 	}
 }
 
-func (lw *layerWriter) AssetMetadata() dist.AssetMap {
+func (lw *AssetWriter) AssetMetadata() dist.AssetMap {
 	return lw.metadata
 }
 
@@ -151,7 +166,7 @@ func toAssetTar(tw archive.TarWriter, blobSha string, blob dist.Blob) error {
 		Mode:     0755,
 		ModTime:  ts,
 	}); err != nil {
-		return errors.Wrapf(err, "writing asset-cache /cnb dir header")
+		return errors.Wrapf(err, "writing asset package /cnb dir header")
 	}
 
 	if err := tw.WriteHeader(&tar.Header{
@@ -160,7 +175,7 @@ func toAssetTar(tw archive.TarWriter, blobSha string, blob dist.Blob) error {
 		Mode:     0755,
 		ModTime:  ts,
 	}); err != nil {
-		return errors.Wrapf(err, "writing asset-cache /cnb/asset dir header")
+		return errors.Wrapf(err, "writing asset package /cnb/asset dir header")
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -182,7 +197,7 @@ func toAssetTar(tw archive.TarWriter, blobSha string, blob dist.Blob) error {
 		Size:     int64(buf.Len()),
 		ModTime:  ts,
 	}); err != nil {
-		return errors.Wrapf(err, "writing asset-cache /cnb/asset/%s file", blobSha)
+		return errors.Wrapf(err, "writing asset package /cnb/asset/%s file", blobSha)
 	}
 
 	_, err = tw.Write(buf.Bytes())

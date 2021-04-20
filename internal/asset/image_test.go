@@ -19,11 +19,11 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestAssetCacheImage(t *testing.T) {
-	spec.Run(t, "TestAssetCache", testAssetCacheImage)
+func TestAssetPackageImage(t *testing.T) {
+	spec.Run(t, "TestAssetPackage", testAssetPackageImage)
 }
 
-func testAssetCacheImage(t *testing.T, when spec.G, it spec.S) {
+func testAssetPackageImage(t *testing.T, when spec.G, it spec.S) {
 	var (
 		assert     = h.NewAssertionManager(t)
 		firstAsset = dist.AssetInfo{
@@ -112,7 +112,7 @@ func testAssetCacheImage(t *testing.T, when spec.G, it spec.S) {
 				mockImage.EXPECT().OS().Return("", errors.New("error getting OS"))
 
 				err := subject.Save()
-				assert.ErrorContains(err, "unable to get asset cache image os")
+				assert.ErrorContains(err, "unable to get asset package os")
 			})
 		})
 

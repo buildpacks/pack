@@ -5,11 +5,9 @@
 package testmocks
 
 import (
-	reflect "reflect"
-
-	gomock "github.com/golang/mock/gomock"
-
 	asset "github.com/buildpacks/pack/internal/asset"
+	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // MockAssetFetcher is a mock of AssetFetcher interface

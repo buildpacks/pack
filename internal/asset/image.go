@@ -8,23 +8,18 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
-
-	"github.com/buildpacks/pack/internal/blob"
 )
 
 const LayersLabel = "io.buildpacks.asset.layers"
-const AssetHashAlgorithm = "sha256"
 
-type BlobAssetPair struct {
-	Blob  blob.Blob
-	Asset dist.AssetInfo
-}
-
+// Image contains internals needed to write an asset package as an OCI image
+// to either the docker daemon or a OCI registry.
 type Image struct {
 	writer LayerWriter
 	imgutil.Image
 }
 
+// NewImage is a constructor, and how instances of Image should be created.
 func NewImage(img imgutil.Image, assetLayerWriter LayerWriter) *Image {
 	return &Image{
 		writer: assetLayerWriter,
@@ -32,6 +27,10 @@ func NewImage(img imgutil.Image, assetLayerWriter LayerWriter) *Image {
 	}
 }
 
+// Save writes an asset package as an OCI image to the following locations:
+// - tag on the 'img' used in the NewImage constructor
+// - each additionalName
+// Note that additionalNames must all be valid OCI image tag names.
 func (a *Image) Save(additionalNames ...string) error {
 	tmpDir, err := ioutil.TempDir("", "create-asset-base-dir-scratch")
 	if err != nil {
@@ -39,7 +38,7 @@ func (a *Image) Save(additionalNames ...string) error {
 	}
 	imgOS, err := a.OS()
 	if err != nil {
-		return errors.Wrap(err, "unable to get asset cache image os")
+		return errors.Wrap(err, "unable to get asset package os")
 	}
 
 	if imgOS == pubcfg.WindowsOS {
@@ -62,6 +61,8 @@ func (a *Image) Save(additionalNames ...string) error {
 	return a.Image.Save(additionalNames...)
 }
 
-func (a *Image) AddAssetBlobs(layerBlobs ...Blob) {
-	a.writer.AddAssetBlobs(layerBlobs...)
+// AddAssetBlobs adds a list of assetBlobs to the image.
+// Note each of these blobs must be 'openable' when Save is called.
+func (a *Image) AddAssetBlobs(assetBlob ...Blob) {
+	a.writer.AddAssetBlobs(assetBlob...)
 }

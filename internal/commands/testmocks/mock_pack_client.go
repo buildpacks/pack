@@ -6,11 +6,9 @@ package testmocks
 
 import (
 	context "context"
-	reflect "reflect"
-
-	gomock "github.com/golang/mock/gomock"
-
 	pack "github.com/buildpacks/pack"
+	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // MockPackClient is a mock of PackClient interface
@@ -50,18 +48,18 @@ func (mr *MockPackClientMockRecorder) Build(arg0, arg1 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockPackClient)(nil).Build), arg0, arg1)
 }
 
-// CreateAssetCache mocks base method
-func (m *MockPackClient) CreateAssetCache(arg0 context.Context, arg1 pack.CreateAssetCacheOptions) error {
+// CreateAssetPackage mocks base method
+func (m *MockPackClient) CreateAssetPackage(arg0 context.Context, arg1 pack.CreateAssetPackageOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateAssetCache", arg0, arg1)
+	ret := m.ctrl.Call(m, "CreateAssetPackage", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// CreateAssetCache indicates an expected call of CreateAssetCache
-func (mr *MockPackClientMockRecorder) CreateAssetCache(arg0, arg1 interface{}) *gomock.Call {
+// CreateAssetPackage indicates an expected call of CreateAssetPackage
+func (mr *MockPackClientMockRecorder) CreateAssetPackage(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAssetCache", reflect.TypeOf((*MockPackClient)(nil).CreateAssetCache), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAssetPackage", reflect.TypeOf((*MockPackClient)(nil).CreateAssetPackage), arg0, arg1)
 }
 
 // CreateBuilder mocks base method

@@ -32,10 +32,10 @@ type BuildpackConfig struct {
 }
 
 type Assets struct {
-	Caches []Cache `toml:"cache"`
+	Packages []Package `toml:"package"`
 }
 
-type Cache struct {
+type Package struct {
 	AssetImageOrURI
 }
 

@@ -10,19 +10,29 @@ import (
 	"github.com/buildpacks/pack/internal/dist"
 )
 
-type Reader struct{}
+// AssetReader provides internals needed to read individual assets out
+// of an asset package.
+type AssetReader struct{}
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_readable.go github.com/buildpacks/pack/internal/asset Readable
+
+// Readable represents the minimum interface an image like object must have
+// in order for assets to be read out of it.
 type Readable interface {
 	Label(string) (string, error)
 	GetLayer(diffID string) (io.ReadCloser, error)
 }
 
-func NewReader() Reader {
-	return Reader{}
+// NewReader is the constructor method
+// this should be used to create new instances AssetReader structs.
+func NewReader() AssetReader {
+	return AssetReader{}
 }
 
-func (r Reader) Read(rd Readable) ([]Blob, dist.AssetMap, error) {
+// Read takes a reable object and reads all assets out of it using
+// the "io.buildpacks.asset.layers" image label.
+// it returns an ordered list of assets and the metadata.
+func (r AssetReader) Read(rd Readable) ([]Blob, dist.AssetMap, error) {
 	md := dist.AssetMap{}
 	var blobs []Blob
 	if found, err := dist.GetLabel(rd, LayersLabel, &md); err != nil {
@@ -39,7 +49,7 @@ func (r Reader) Read(rd Readable) ([]Blob, dist.AssetMap, error) {
 			diffIDMap[asset.LayerDiffID] = a
 		} else {
 			diffIDMap[asset.LayerDiffID] = multiAssetLayer{
-				Blob: Wrapper{
+				Blob: wrapper{
 					Func: rd.GetLayer,
 					Arg:  asset.LayerDiffID,
 				},

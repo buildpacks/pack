@@ -139,13 +139,13 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("--asset-cache is used", func() {
-			it("passes asset caches to client", func() {
+		when("--asset-package is used", func() {
+			it("passes asset packages to client", func() {
 				mockClient.EXPECT().
-					Build(gomock.Any(), EqBuildOptionsWithAssetCache("first-asset", "second-asset")).
+					Build(gomock.Any(), EqBuildOptionsWithAssetPackage("first-asset", "second-asset")).
 					Return(nil)
 
-				command.SetArgs([]string{"image", "--builder", "my-builder", "--asset-cache", "first-asset", "--asset-cache", "second-asset"})
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--asset-package", "first-asset", "--asset-package", "second-asset"})
 				h.AssertNil(t, command.Execute())
 			})
 		})
@@ -729,15 +729,15 @@ func EqBuildOptionsWithCacheImage(cacheImage string) gomock.Matcher {
 	}
 }
 
-func EqBuildOptionsWithAssetCache(assetCaches ...string) gomock.Matcher {
+func EqBuildOptionsWithAssetPackage(assetPackages ...string) gomock.Matcher {
 	return buildOptionsMatcher{
-		description: fmt.Sprintf("AssetCaches=[%s]", strings.Join(assetCaches, ", ")),
+		description: fmt.Sprintf("AssetPackages=[%s]", strings.Join(assetPackages, ", ")),
 		equals: func(o pack.BuildOptions) bool {
-			if len(o.AssetCaches) != len(assetCaches) {
+			if len(o.AssetPackages) != len(assetPackages) {
 				return false
 			}
-			for idx := 0; idx < len(assetCaches); idx++ {
-				if o.AssetCaches[idx] != assetCaches[idx] {
+			for idx := 0; idx < len(assetPackages); idx++ {
+				if o.AssetPackages[idx] != assetPackages[idx] {
 					return false
 				}
 			}

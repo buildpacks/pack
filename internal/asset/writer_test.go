@@ -21,7 +21,7 @@ import (
 )
 
 func TestLayerWriter(t *testing.T) {
-	spec.Run(t, "layerWriter", testLayerWriter, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "AssetWriter", testLayerWriter, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testLayerWriter(t *testing.T, when spec.G, it spec.S) {
@@ -144,7 +144,7 @@ func testLayerWriter(t *testing.T, when spec.G, it spec.S) {
 		when("writing before opening LayerWriter", func() {
 			it("errors with a helpful message", func() {
 				err := subject.Write(baseImage)
-				h.AssertError(t, err, "layerWriter must be opened before writing")
+				h.AssertError(t, err, "AssetWriter must be opened before writing")
 			})
 		})
 		when("multiple calls to Open", func() {

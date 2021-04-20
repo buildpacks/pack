@@ -50,7 +50,7 @@ type Downloader interface {
 }
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_asset_fetcher.go github.com/buildpacks/pack AssetFetcher
-
+// AssetFetcher is an interface for fetching Asset Packages from a variety of sources.
 type AssetFetcher interface {
 	FetchAssets(assetNameList []string, options ...asset.FetcherOptions) ([]asset.Readable, error)
 }
@@ -185,7 +185,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	if client.assetFetcher == nil {
 		localAssetFetcher := asset.NewPackageFileFetcher()
 		imageAssetFetcher := asset.NewPackageImageFetcher(client.imageFetcher)
-		uriAssetFetcher := asset.NewPackageURLFetcher(client.downloader, localAssetFetcher)
+		uriAssetFetcher := asset.NewPackageURIFetcher(client.downloader, localAssetFetcher)
 		client.assetFetcher = asset.NewFetcher(localAssetFetcher, uriAssetFetcher, imageAssetFetcher)
 	}
 

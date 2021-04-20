@@ -30,17 +30,17 @@ func TestFetcher(t *testing.T) {
 func testFetcher(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController   *gomock.Controller
-		mockFileFetcher  *testmocks.MockFileCacheFetcher
-		mockURIFetcher   *testmocks.MockURICacheFetcher
-		mockImageFetcher *testmocks.MockImageCacheFetcher
+		mockFileFetcher  *testmocks.MockFileFetcher
+		mockURIFetcher   *testmocks.MockURIFetcher
+		mockImageFetcher *testmocks.MockImageFetcher
 		subject          asset.Fetcher
 	)
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
-		mockFileFetcher = testmocks.NewMockFileCacheFetcher(mockController)
-		mockURIFetcher = testmocks.NewMockURICacheFetcher(mockController)
-		mockImageFetcher = testmocks.NewMockImageCacheFetcher(mockController)
+		mockFileFetcher = testmocks.NewMockFileFetcher(mockController)
+		mockURIFetcher = testmocks.NewMockURIFetcher(mockController)
+		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 		subject = asset.NewFetcher(mockFileFetcher, mockURIFetcher, mockImageFetcher)
 	})
 
@@ -96,7 +96,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				var err error
-				assetPath = filepath.Join("testdata", "fake-asset-cache.tar")
+				assetPath = filepath.Join("testdata", "fake-asset-package.tar")
 				expectedAssetCache, err = oci.NewLayoutPackage(blob2.NewBlob(
 					assetPath, blob2.RawOption),
 				)
@@ -161,7 +161,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 			)
 			it.Before(func() {
 				var err error
-				assetPath = filepath.Join("testdata", "fake-asset-cache.tar")
+				assetPath = filepath.Join("testdata", "fake-asset-package.tar")
 				expectedAssetCache, err = oci.NewLayoutPackage(blob2.NewBlob(
 					assetPath, blob2.RawOption),
 				)

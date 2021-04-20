@@ -102,23 +102,23 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 		)
 		assert.Nil(err)
 
-		tmpDir, err = ioutil.TempDir("", "create-asset-cache-command-test")
+		tmpDir, err = ioutil.TempDir("", "create-asset-package-command-test")
 		assert.Nil(err)
 
 		firstAssetBlob = fakes2.NewFakeBlob("first asset contents")
 		firstAssetReplaceBlob = fakes2.NewFakeBlob("first replace asset contents")
 		secondAssetBlob = fakes2.NewFakeBlob("second asset contents")
 	})
-	when("#CreateAssetCache", func() {
+	when("#CreateAssetPackage", func() {
 		when("output format is file", func() {
-			it("writes asset cache as a file", func() {
+			it("writes asset package as a file", func() {
 				ctx := context.TODO()
 
 				mockDownloader.EXPECT().Download(gomock.Any(), firstAsset.URI, gomock.Any(), gomock.Any()).Return(firstAssetBlob, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), secondAsset.URI, gomock.Any(), gomock.Any()).Return(secondAssetBlob, nil)
 
 				imagePath := filepath.Join(tmpDir, "test-cache")
-				assert.Succeeds(client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
+				assert.Succeeds(client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
 					ImageName: imagePath,
 					Assets:    []dist.AssetInfo{firstAsset, secondAsset, thirdAsset},
 					Publish:   false,
@@ -164,7 +164,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 		when("output format is an image", func() {
-			it("writes asset cache as an image", func() {
+			it("writes asset package as an image", func() {
 				ctx := context.TODO()
 				imageName := "test-cache-image"
 				imgRef, err := name.NewTag(imageName)
@@ -175,7 +175,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				mockDownloader.EXPECT().Download(gomock.Any(), firstAsset.URI, gomock.Any(), gomock.Any()).Return(firstAssetBlob, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), secondAsset.URI, gomock.Any(), gomock.Any()).Return(secondAssetBlob, nil)
 
-				assert.Succeeds(client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
+				assert.Succeeds(client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
 					ImageName: imgRef.Name(),
 					Assets:    []dist.AssetInfo{firstAsset, secondAsset, thirdAsset},
 					Publish:   false,
@@ -233,7 +233,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 					mockImageFactory.EXPECT().NewImage(imgRef.Name(), true).Return(fakeImage, nil)
 					mockDownloader.EXPECT().Download(gomock.Any(), firstAsset.URI, gomock.Any(), gomock.Any()).Return(firstAssetBlob, nil)
 
-					assert.Succeeds(client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
+					assert.Succeeds(client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
 						ImageName: imgRef.Name(),
 						Assets:    []dist.AssetInfo{firstAsset},
 						Publish:   false,
@@ -281,7 +281,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				mockImageFactory.EXPECT().NewImage(imgRef.Name(), false).Return(fakeImage, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), firstAsset.URI, gomock.Any(), gomock.Any()).Return(firstAssetBlob, nil)
 
-				assert.Succeeds(client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
+				assert.Succeeds(client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
 					ImageName: imgRef.Name(),
 					Assets:    []dist.AssetInfo{firstAsset},
 					Publish:   true,
@@ -302,7 +302,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				mockImageFactory.EXPECT().NewImage(imgRef.Name(), true).Return(fakeImage, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), firstAssetReplace.URI, gomock.Any(), gomock.Any()).Return(firstAssetReplaceBlob, nil)
 
-				assert.Succeeds(client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
+				assert.Succeeds(client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
 					ImageName: imgRef.Name(),
 					Assets:    []dist.AssetInfo{firstAsset, firstAssetReplace},
 					Publish:   false,
@@ -341,7 +341,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 		when("passed an unknown OS", func() {
 			it("errors with a helpful message", func() {
 				ctx := context.TODO()
-				err := client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
+				err := client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
 					ImageName: "fail-image-ref",
 					Assets:    []dist.AssetInfo{},
 					Publish:   false,
@@ -356,7 +356,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				ctx := context.TODO()
 				imgName := "fail-image-ref"
 				mockImageFactory.EXPECT().NewImage(imgName, true).Return(nil, errors.New("image create error"))
-				err := client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
+				err := client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
 					ImageName: imgName,
 					Assets:    []dist.AssetInfo{},
 					Publish:   false,
@@ -364,7 +364,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 					Format:    "image",
 				})
 
-				assert.ErrorContains(err, "unable to create asset cache base image")
+				assert.ErrorContains(err, "unable to create asset package base image")
 			})
 		})
 
@@ -386,7 +386,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 
 				fakeImage := fakes.NewImage(imgName, "", nil)
 				mockImageFactory.EXPECT().NewImage(imgName, true).Return(fakeImage, nil)
-				err := client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
+				err := client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
 					ImageName: imgName,
 					Assets:    []dist.AssetInfo{firstAsset},
 					Publish:   false,
@@ -408,7 +408,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				mockDownloader.EXPECT().Download(gomock.Any(), firstAsset.URI, gomock.Any(), gomock.Any()).Return(mockBlob, nil)
 				mockBlob.EXPECT().Open().Return(nil, errors.New("open blob error"))
 				imagePath := filepath.Join(tmpDir, "test-cache")
-				err := client.CreateAssetCache(ctx, pack.CreateAssetCacheOptions{
+				err := client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
 					ImageName: imagePath,
 					Assets:    []dist.AssetInfo{firstAsset},
 					Publish:   false,

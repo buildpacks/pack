@@ -20,11 +20,11 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-func TestAssetCacheFile(t *testing.T) {
-	spec.Run(t, "File", testAssetCacheFile, spec.Parallel(), spec.Report(report.Terminal{}))
+func TestAssetPackageFile(t *testing.T) {
+	spec.Run(t, "File", testAssetPackageFile, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
-func testAssetCacheFile(t *testing.T, when spec.G, it spec.S) {
+func testAssetPackageFile(t *testing.T, when spec.G, it spec.S) {
 	var (
 		tmpFile  *os.File
 		rawImage v1.Image
@@ -40,7 +40,7 @@ func testAssetCacheFile(t *testing.T, when spec.G, it spec.S) {
 		mockLayerWriter = testmocks.NewMockLayerWriter(mockController)
 
 		var err error
-		tmpFile, err = ioutil.TempFile("", "test-asset-cache-file")
+		tmpFile, err = ioutil.TempFile("", "test-asset-package-file")
 		assert.Nil(err)
 
 		rawImage = empty.Image
@@ -84,7 +84,7 @@ func testAssetCacheFile(t *testing.T, when spec.G, it spec.S) {
 		var tmpDir string
 		it.Before(func() {
 			var err error
-			tmpDir, err = ioutil.TempDir("", "test-asset-cache-file")
+			tmpDir, err = ioutil.TempDir("", "test-asset-package-file")
 			assert.Nil(err)
 		})
 		it.After(func() {

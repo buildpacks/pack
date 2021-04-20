@@ -5,12 +5,10 @@
 package testmocks
 
 import (
-	reflect "reflect"
-
-	gomock "github.com/golang/mock/gomock"
-
 	asset "github.com/buildpacks/pack/internal/asset"
 	dist "github.com/buildpacks/pack/internal/dist"
+	gomock "github.com/golang/mock/gomock"
+	reflect "reflect"
 )
 
 // MockAssetLayerReader is a mock of AssetLayerReader interface

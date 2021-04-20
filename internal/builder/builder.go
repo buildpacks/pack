@@ -276,6 +276,7 @@ func (b *Builder) AddBuildpack(bp dist.Buildpack) {
 	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().Info)
 }
 
+// AddAssetImages adds all assets from every assetImage to the builder.
 func (b *Builder) AddAssetImages(assetImages ...asset.Readable) error {
 	for _, img := range assetImages {
 		layerBlobs, _, err := b.assetLayerReader.Read(img)

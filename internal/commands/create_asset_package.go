@@ -17,7 +17,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-type CreateAssetCacheFlags struct {
+type CreateAssetPackageFlags struct {
 	BuildpackLocator string
 	PullPolicy       pubcfg.PullPolicy
 	Publish          bool
@@ -34,20 +34,23 @@ var inspectOptionsMapping = map[string][]pack.InspectBuildpackOptions{
 	pubcfg.OnlyRemoteImage:       {{Daemon: false}},
 }
 
-func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
-	var flags CreateAssetCacheFlags
+// CreateAssetPackage creates an OCI image containing assets, called an Asset Package
+// from the specified buildpacks. This image may added to both builders and individual runs
+// of 'pack build ...' and allow buildpacks access to the contained assets.
+func CreateAssetPackage(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+	var flags CreateAssetPackageFlags
 
 	cmd := &cobra.Command{
-		Use:     "create cache-name",
+		Use:     "create <asset-package-name>",
 		Hidden:  false,
 		Args:    cobra.ExactArgs(1),
-		Short:   "create an asset cache",
-		Example: "pack create-asset-cache /path/to/buildpack/root",
+		Short:   "create an asset package",
+		Example: "pack asset-package create /path/to/buildpack/root",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
-			if err := validateAssetCacheFlags(flags); err != nil {
+			if err := validateAssetPackageFlags(flags); err != nil {
 				return err
 			}
-			cacheImageName, err := validateCacheImageName(args[0])
+			cacheImageName, err := validatePackageImageName(args[0])
 			if err != nil {
 				return err
 			}
@@ -68,14 +71,14 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 			if err != nil {
 				errors.Wrap(err, "error fetching buildpack assets")
 			}
-			if err := client.CreateAssetCache(cmd.Context(), pack.CreateAssetCacheOptions{
+			if err := client.CreateAssetPackage(cmd.Context(), pack.CreateAssetPackageOptions{
 				ImageName: cacheImageName.String(),
 				Assets:    assets,
 				Publish:   flags.Publish,
 				OS:        flags.OS,
 				Format:    flags.Format,
 			}); err != nil {
-				return errors.Wrap(err, "error, unable to create asset cache")
+				return errors.Wrap(err, "error, unable to create asset package")
 			}
 
 			return nil
@@ -84,13 +87,18 @@ func CreateAssetCache(logger logging.Logger, cfg config.Config, client PackClien
 
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "image", `Format to save package as ("image" or "file")`)
 	cmd.Flags().StringVarP(&flags.BuildpackLocator, "buildpack", "b", "", "Buildpack Locator")
-	cmd.Flags().StringVar(&flags.ImagePreference, "image-preference", pubcfg.LocalImagePreference, "Image Preference to use Accepted values are prefer-local, prefer-remote, only-local, and only-remote. The default is prefer-loca")
+	cmd.Flags().StringVar(&flags.ImagePreference, "image-preference", pubcfg.LocalImagePreference, `prefered location to look for buildpack images.
+Accepted values are:
+- only-remote
+- prefer-remote
+- only-local
+- prefer-local`)
 	cmd.Flags().StringVarP(&flags.Registry, "buildpack-registry", "R", cfg.DefaultRegistryName, "Buildpack Registry by name")
-	cmd.Flags().StringVarP(&flags.BuildpackLocator, "config", "c", "", "optional asset-cache.toml to filter assets in the resulting asset cache")
-	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to registry")
+	cmd.Flags().StringVarP(&flags.BuildpackLocator, "config", "c", "", "optional asset-package.toml to filter assets in the resulting asset package")
+	cmd.Flags().BoolVar(&flags.Publish, "publish", false, "Publish to image registry")
 	cmd.Flags().StringVar(&flags.OS, "os", pubcfg.LinuxOS, "cache image os type")
 
-	AddHelpFlag(cmd, "create-asset-cache")
+	AddHelpFlag(cmd, "create")
 	return cmd
 }
 
@@ -112,7 +120,7 @@ func inspectBuildpack(c PackClient, inspectOptions []pack.InspectBuildpackOption
 	return nil, image.ErrNotFound
 }
 
-func validateAssetCacheFlags(flags CreateAssetCacheFlags) error {
+func validateAssetPackageFlags(flags CreateAssetPackageFlags) error {
 	if flags.BuildpackLocator == "" {
 		return errors.New("must specify a buildpack locator using the --buildpack flag")
 	}
@@ -129,7 +137,7 @@ func validateAssetCacheFlags(flags CreateAssetCacheFlags) error {
 	return nil
 }
 
-func validateCacheImageName(imgName string) (name.Tag, error) {
+func validatePackageImageName(imgName string) (name.Tag, error) {
 	tag, err := name.NewTag(imgName, name.WeakValidation)
 	if err != nil {
 		return name.Tag{}, errors.Wrap(err, "unable to parse cache image name")

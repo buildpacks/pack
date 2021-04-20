@@ -54,7 +54,7 @@ func testReader(t *testing.T, when spec.G, it spec.S) {
 			Stacks:  []string{"stack1", "stack2"},
 		}
 
-		subject asset.Reader
+		subject asset.AssetReader
 	)
 	it.Before(func() {
 		mockController = gomock.NewController(t)

@@ -9,16 +9,17 @@ import (
 	pubcfg "github.com/buildpacks/pack/config"
 )
 
-// TODO: -Dan- make me private
-// imageFetcher is an interface representing the ability to fetch local and images.
 type imageFetcher interface {
 	Fetch(ctx context.Context, name string, daemon bool, pullPolicy pubcfg.PullPolicy) (imgutil.Image, error)
 }
 
+// PackageImageFetcher holds internal state needed to fetch remote or local images.
 type PackageImageFetcher struct {
 	imageFetcher
 }
 
+// NewPackageImageFetcher is the constructor for new PackageImageFetchers
+// this should be used to initialize new objects.
 func NewPackageImageFetcher(imageFetcher imageFetcher) PackageImageFetcher {
 	return PackageImageFetcher{
 		imageFetcher: imageFetcher,
@@ -26,6 +27,9 @@ func NewPackageImageFetcher(imageFetcher imageFetcher) PackageImageFetcher {
 }
 
 // TODO allow for smooth cancels via ctrl+c when downloading (need to add a context in)
+
+// FetchImageAssets fetches a list of images using the provided ctx and pullPolicy
+// configuration.
 func (af PackageImageFetcher) FetchImageAssets(ctx context.Context, pullPolicy pubcfg.PullPolicy, imageNames ...string) ([]imgutil.Image, error) {
 	result := []imgutil.Image{}
 	for _, imageName := range imageNames {

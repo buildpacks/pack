@@ -32,7 +32,7 @@ func testAssetFetcher(t *testing.T, when spec.G, it spec.S) {
 		mockFetcher = testmocks.NewMockImageFetcher(mockController)
 		subject = asset.NewPackageImageFetcher(mockFetcher)
 	})
-	when("fetching asset cache images", func() {
+	when("fetching asset package images", func() {
 		var (
 			assetAImage = fakes.NewImage("assetAImage", "", nil)
 			assetBImage = fakes.NewImage("assetBImage", "", nil)

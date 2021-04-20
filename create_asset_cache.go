@@ -18,21 +18,36 @@ import (
 
 const downloadWorkerCount = 4
 
-type CreateAssetCacheOptions struct {
+// CreateAssetPackageOptions is a configuration object passed to CreateAssetPackage
+type CreateAssetPackageOptions struct {
+	// Name of the output image, this may be a local filepath, or valid OCI image name
 	ImageName string
+	// List of Assets to appear in the final asset package.
+	// assets with no URL will be omitted.
 	Assets    []dist.AssetInfo
+	// publish resulting asset cache to registry.
+	// option only used when Format = "image".
 	Publish   bool
+	// OS type for the image, valid options are:
+	// - windows
+	// - linux
 	OS        string
+	// Format to write output Asset Package, valid options are:
+	// - file
+	// - image
 	Format    string
 }
 
-type AssetCache interface {
+// Minimum interface needed to successfully write an Asset Package in some format.
+type AssetPackage interface {
 	Save(additionalNames ...string) error
 	AddAssetBlobs(pairs ...asset.Blob)
 }
 
-func (c *Client) CreateAssetCache(ctx context.Context, opts CreateAssetCacheOptions) error {
-	var assetCache AssetCache
+// CreateAssetPackage writes a new Asset Package image using options specified in opts.
+// This image can be used to add assets to builds.
+func (c *Client) CreateAssetPackage(ctx context.Context, opts CreateAssetPackageOptions) error {
+	var assetPackage AssetPackage
 	tarWriterFactory, err := layer.NewWriterFactory(opts.OS)
 	if err != nil {
 		return errors.Wrap(err, "unable to create layer tar writer")
@@ -41,13 +56,13 @@ func (c *Client) CreateAssetCache(ctx context.Context, opts CreateAssetCacheOpti
 	switch {
 	case opts.Format == FormatFile:
 		eImg := empty.Image
-		assetCache = asset.NewFile(opts.ImageName, opts.OS, eImg, assetLayerWriter)
+		assetPackage = asset.NewFile(opts.ImageName, opts.OS, eImg, assetLayerWriter)
 	default:
 		img, err := newImageWithOS(opts.ImageName, opts.OS, !opts.Publish, c.imageFactory)
 		if err != nil {
-			return errors.Wrap(err, "unable to create asset cache base image")
+			return errors.Wrap(err, "unable to create asset package base image")
 		}
-		assetCache = asset.NewImage(img, assetLayerWriter)
+		assetPackage = asset.NewImage(img, assetLayerWriter)
 	}
 	downloadManager := blob.NewDownloadManager(c.downloader, downloadWorkerCount)
 
@@ -58,11 +73,11 @@ func (c *Client) CreateAssetCache(ctx context.Context, opts CreateAssetCacheOpti
 		return errors.Wrap(err, "unable to download assets")
 	}
 
-	err = addAssetsToImage(assetCache, assets, downloadResults)
+	err = addAssetsToImage(assetPackage, assets, downloadResults)
 	if err != nil {
 		return errors.Wrapf(err, "unable to add asset blobs to assets package")
 	}
-	return assetCache.Save()
+	return assetPackage.Save()
 }
 
 func newImageWithOS(imgName, os string, local bool, imgFactory ImageFactory) (imgutil.Image, error) {
@@ -108,7 +123,7 @@ func simplifyAssets(assets []dist.AssetInfo) []dist.AssetInfo {
 }
 
 // this method mutates the given assetImg
-func addAssetsToImage(assetImg AssetCache, assets []dist.AssetInfo, downloadMap map[blob.DownloadJob]blob.DownloadResult) error {
+func addAssetsToImage(assetImg AssetPackage, assets []dist.AssetInfo, downloadMap map[blob.DownloadJob]blob.DownloadResult) error {
 	for _, curAsset := range assets {
 		b, ok := downloadMap[blob.DownloadJob{URI: curAsset.URI, Sha256: curAsset.Sha256}]
 		if !ok || b.Blob == nil {

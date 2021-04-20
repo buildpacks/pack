@@ -208,13 +208,13 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 }
 
 func (c *Client) addAssetsToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
-	for _, assetCache := range opts.Config.Assets.Caches {
+	for _, assetPackage := range opts.Config.Assets.Packages {
 		var fetchLocation string
 		switch {
-		case assetCache.ImageName != "":
-			fetchLocation = assetCache.ImageName
-		case assetCache.URI != "":
-			fetchLocation = assetCache.URI
+		case assetPackage.ImageName != "":
+			fetchLocation = assetPackage.ImageName
+		case assetPackage.URI != "":
+			fetchLocation = assetPackage.URI
 		}
 		readableAsset, err := c.assetFetcher.FetchAssets([]string{fetchLocation}, asset.WithPullPolicy(opts.PullPolicy), asset.WithContext(ctx))
 		if err != nil {
