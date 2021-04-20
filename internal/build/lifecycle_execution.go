@@ -56,7 +56,7 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 		platformAPI:  latestSupportedPlatformAPI,
 		opts:         opts,
 		os:           osType,
-		mountPaths:   mountPathsForOS(osType),
+		mountPaths:   mountPathsForOS(osType, opts.Workspace),
 	}
 
 	return exec, nil

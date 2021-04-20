@@ -5,18 +5,24 @@ import "strings"
 type mountPaths struct {
 	volume    string
 	separator string
+	workspace string
 }
 
-func mountPathsForOS(os string) mountPaths {
+func mountPathsForOS(os, workspace string) mountPaths {
+	if workspace == "" {
+		workspace = "workspace"
+	}
 	if os == "windows" {
 		return mountPaths{
 			volume:    `c:`,
 			separator: `\`,
+			workspace: workspace,
 		}
 	}
 	return mountPaths{
 		volume:    "",
 		separator: "/",
+		workspace: workspace,
 	}
 }
 
@@ -33,7 +39,7 @@ func (m mountPaths) stackPath() string {
 }
 
 func (m mountPaths) appDirName() string {
-	return "workspace"
+	return m.workspace
 }
 
 func (m mountPaths) appDir() string {
