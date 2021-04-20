@@ -29,10 +29,10 @@ type LayerWriter interface {
 	AssetMetadata() dist.AssetMap
 }
 
-// AssetWriter is a concrete implementation of the LayerWriter interface
+// Writer is a concrete implementation of the LayerWriter interface
 // it is used to group assets into layers, then write these layers into an
 // image.
-type AssetWriter struct {
+type Writer struct {
 	tmpDir        string
 	blobs         []Blob
 	metadata      dist.AssetMap
@@ -42,7 +42,7 @@ type AssetWriter struct {
 // NewLayerWriter is a constructor and should be used to create instances
 // that implement LayerWriter for asset packages.
 func NewLayerWriter(writerFactory archive.TarWriterFactory) LayerWriter {
-	return &AssetWriter{
+	return &Writer{
 		blobs:         []Blob{},
 		metadata:      dist.AssetMap{},
 		writerFactory: writerFactory,
@@ -58,7 +58,7 @@ type Writable interface {
 
 // Open allocates resources needed to keep track the layers
 // that will be written into an image
-func (lw *AssetWriter) Open() error {
+func (lw *Writer) Open() error {
 	if lw.tmpDir != "" {
 		return errors.New("unable to open writer: writer already open")
 	}
@@ -73,7 +73,7 @@ func (lw *AssetWriter) Open() error {
 }
 
 // Open deallocates resources claimed by Open
-func (lw *AssetWriter) Close() error {
+func (lw *Writer) Close() error {
 	if lw.tmpDir == "" {
 		return errors.New("unable to close writer: writer is not open")
 	}
@@ -88,10 +88,10 @@ func (lw *AssetWriter) Close() error {
 
 // Write adds asset layers into the Writable image
 // Open must be called before this operation
-// please remember to Close the AssetWriter, when this operation is finished.
-func (lw *AssetWriter) Write(w Writable) error {
+// please remember to Close the Writer, when this operation is finished.
+func (lw *Writer) Write(w Writable) error {
 	if lw.tmpDir == "" {
-		return errors.New("AssetWriter must be opened before writing")
+		return errors.New("Writer must be opened before writing")
 	}
 
 	for _, aBlob := range lw.blobs {
@@ -125,7 +125,7 @@ func (lw *AssetWriter) Write(w Writable) error {
 
 // could do this more efficiently, if we over-write blobs that share sh256 values
 // in the lw.blobs array.
-func (lw *AssetWriter) AddAssetBlobs(aBlobs ...Blob) {
+func (lw *Writer) AddAssetBlobs(aBlobs ...Blob) {
 	lw.blobs = append(lw.blobs, aBlobs...)
 	for _, b := range aBlobs {
 		descriptor := b.AssetDescriptor()
@@ -134,7 +134,7 @@ func (lw *AssetWriter) AddAssetBlobs(aBlobs ...Blob) {
 	}
 }
 
-func (lw *AssetWriter) AssetMetadata() dist.AssetMap {
+func (lw *Writer) AssetMetadata() dist.AssetMap {
 	return lw.metadata
 }
 

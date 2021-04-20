@@ -87,7 +87,7 @@ func CreateAssetPackage(logger logging.Logger, cfg config.Config, client PackCli
 
 	cmd.Flags().StringVarP(&flags.Format, "format", "f", "image", `Format to save package as ("image" or "file")`)
 	cmd.Flags().StringVarP(&flags.BuildpackLocator, "buildpack", "b", "", "Buildpack Locator")
-	cmd.Flags().StringVar(&flags.ImagePreference, "image-preference", pubcfg.LocalImagePreference, `prefered location to look for buildpack images.
+	cmd.Flags().StringVar(&flags.ImagePreference, "image-preference", pubcfg.LocalImagePreference, `preferred location to look for buildpack images.
 Accepted values are:
 - only-remote
 - prefer-remote

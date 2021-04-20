@@ -24,18 +24,18 @@ type CreateAssetPackageOptions struct {
 	ImageName string
 	// List of Assets to appear in the final asset package.
 	// assets with no URL will be omitted.
-	Assets    []dist.AssetInfo
+	Assets []dist.AssetInfo
 	// publish resulting asset cache to registry.
 	// option only used when Format = "image".
-	Publish   bool
+	Publish bool
 	// OS type for the image, valid options are:
 	// - windows
 	// - linux
-	OS        string
+	OS string
 	// Format to write output Asset Package, valid options are:
 	// - file
 	// - image
-	Format    string
+	Format string
 }
 
 // Minimum interface needed to successfully write an Asset Package in some format.

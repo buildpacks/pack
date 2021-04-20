@@ -25,12 +25,12 @@ func TestURLFetcher(t *testing.T) {
 
 func testURLFetcher(t *testing.T, when spec.G, it spec.S) {
 	var (
-		mockController     *gomock.Controller
-		mockDownloader     *testmocks.MockDownloader
-		mockFileFetcher    *testmocks.MockFileFetcher
-		subject            asset.PackageURIFetcher
+		mockController       *gomock.Controller
+		mockDownloader       *testmocks.MockDownloader
+		mockFileFetcher      *testmocks.MockFileFetcher
+		subject              asset.PackageURIFetcher
 		expectedAssetPackage *oci.LayoutPackage
-		assert             = h.NewAssertionManager(t)
+		assert               = h.NewAssertionManager(t)
 
 		expectedPackageBlob blob2.Blob
 	)

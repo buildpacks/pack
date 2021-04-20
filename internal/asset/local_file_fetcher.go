@@ -25,7 +25,7 @@ func NewPackageFileFetcher() PackageFileFetcher {
 // FetchFileAssets talks a list of paths and a working directory,
 // each path may be local or absolute, it the path is local it
 // is resolved to a absolute path using workingDir.
-// we then attemp to read each path as an OCI LayoutPackage and return it.
+// we then attempt to read each path as an OCI LayoutPackage and return it.
 func (af PackageFileFetcher) FetchFileAssets(ctx context.Context, workingDir string, fileAssets ...string) ([]*oci.LayoutPackage, error) {
 	result := []*oci.LayoutPackage{}
 	for _, assetFile := range fileAssets {

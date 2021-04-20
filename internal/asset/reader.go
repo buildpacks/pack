@@ -10,9 +10,9 @@ import (
 	"github.com/buildpacks/pack/internal/dist"
 )
 
-// AssetReader provides internals needed to read individual assets out
+// Reader provides internals needed to read individual assets out
 // of an asset package.
-type AssetReader struct{}
+type Reader struct{}
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_readable.go github.com/buildpacks/pack/internal/asset Readable
 
@@ -24,15 +24,15 @@ type Readable interface {
 }
 
 // NewReader is the constructor method
-// this should be used to create new instances AssetReader structs.
-func NewReader() AssetReader {
-	return AssetReader{}
+// this should be used to create new instances Reader structs.
+func NewReader() Reader {
+	return Reader{}
 }
 
 // Read takes a reable object and reads all assets out of it using
 // the "io.buildpacks.asset.layers" image label.
 // it returns an ordered list of assets and the metadata.
-func (r AssetReader) Read(rd Readable) ([]Blob, dist.AssetMap, error) {
+func (r Reader) Read(rd Readable) ([]Blob, dist.AssetMap, error) {
 	md := dist.AssetMap{}
 	var blobs []Blob
 	if found, err := dist.GetLabel(rd, LayersLabel, &md); err != nil {

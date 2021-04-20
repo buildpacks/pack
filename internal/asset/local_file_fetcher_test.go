@@ -25,10 +25,10 @@ func TestLocalFileFetcher(t *testing.T) {
 
 func testLocalFileFetcher(t *testing.T, when spec.G, it spec.S) {
 	var (
-		subject            asset.PackageFileFetcher
-		assert             = h.NewAssertionManager(t)
+		subject              asset.PackageFileFetcher
+		assert               = h.NewAssertionManager(t)
 		expectedAssetPackage *oci.LayoutPackage
-		tmpFile            *os.File
+		tmpFile              *os.File
 	)
 	it.Before(func() {
 		var err error

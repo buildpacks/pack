@@ -6,10 +6,12 @@ package testmocks
 
 import (
 	context "context"
-	imgutil "github.com/buildpacks/imgutil"
-	config "github.com/buildpacks/pack/config"
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	imgutil "github.com/buildpacks/imgutil"
+	gomock "github.com/golang/mock/gomock"
+
+	config "github.com/buildpacks/pack/config"
 )
 
 // MockImageFetcher is a mock of ImageFetcher interface

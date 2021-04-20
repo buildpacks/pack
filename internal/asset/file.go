@@ -21,18 +21,18 @@ import (
 // NewFile is a constructor that should be used to create new File objects
 func NewFile(path, os string, rawImg v1.Image, writer LayerWriter) *File {
 	return &File{
-		writer:         writer,
-		path:           path,
-		os:             os,
-		Image:          rawImg,
+		writer: writer,
+		path:   path,
+		os:     os,
+		Image:  rawImg,
 	}
 }
 
 // File contains internals needed to write an asset packages as a OCI image tarball.
 type File struct {
-	writer         LayerWriter
-	path           string
-	os             string
+	writer LayerWriter
+	path   string
+	os     string
 	v1.Image
 }
 

@@ -12,11 +12,11 @@ import (
 )
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_image_fetcher.go github.com/buildpacks/pack/internal/asset ImageFetcher
-// ImageFetcher is implemented by Fetcher which allows work with remote and local images, 
+// ImageFetcher is implemented by Fetcher which allows work with remote and local images,
 // as well as control when images are used locally vs pulled remotely.
 type ImageFetcher interface {
-	
-	// FetchImageAssets returns a list of images that were retrieved either from the local 
+
+	// FetchImageAssets returns a list of images that were retrieved either from the local
 	// Docker Daemon, or a remote registry. Preference about when images are pulled can be controlled using
 	// pullPolicy.
 	FetchImageAssets(ctx context.Context, pullPolicy pubcfg.PullPolicy, imageNames ...string) ([]imgutil.Image, error)
