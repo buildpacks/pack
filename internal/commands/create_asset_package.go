@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/buildpacks/lifecycle/api"
 	"sort"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -16,6 +17,8 @@ import (
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/logging"
 )
+
+const RequiredBuildpackAPIForAssets = "0.8"
 
 type CreateAssetPackageFlags struct {
 	BuildpackLocator string
@@ -69,7 +72,7 @@ func CreateAssetPackage(logger logging.Logger, cfg config.Config, client PackCli
 
 			assets, err := getAssets(buildpackInfo)
 			if err != nil {
-				errors.Wrap(err, "error fetching buildpack assets")
+				return errors.Wrap(err, "error fetching buildpack assets")
 			}
 			if err := client.CreateAssetPackage(cmd.Context(), pack.CreateAssetPackageOptions{
 				ImageName: cacheImageName.String(),
@@ -154,6 +157,11 @@ func getAssets(info *pack.BuildpackInfo) ([]dist.AssetInfo, error) {
 		if !ok {
 			return []dist.AssetInfo{}, fmt.Errorf("unable to find metadata for buildpack %s, %s", bp.ID, bp.Version)
 		}
+
+		if err := validateAPIAllowsAssets(layer); err != nil {
+			return []dist.AssetInfo{}, err
+		}
+
 		for _, asset := range layer.Assets {
 			assetMap[asset.Sha256] = asset
 		}
@@ -168,4 +176,12 @@ func getAssets(info *pack.BuildpackInfo) ([]dist.AssetInfo, error) {
 	})
 
 	return result, nil
+}
+
+func validateAPIAllowsAssets(layer dist.BuildpackLayerInfo) error {
+	if len(layer.Assets) > 0 && layer.API.Compare(api.MustParse(RequiredBuildpackAPIForAssets)) < 0 {
+		return fmt.Errorf("creating asset packages requires buildpack API >= 0.8, got: %s", layer.API.String())
+	}
+
+	return nil
 }

@@ -488,8 +488,49 @@ func testCreateAssetPackage(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("failure cases", func() {
+			when("buildpack uses api < 0.8", func() {
+				it("errors with an informative message", func() {
+					buildpackLocator = "some-locator"
+					command.SetArgs([]string{
+						"some/asset-package",
+						"--buildpack", buildpackLocator,
+					})
+
+
+					oldAPIBuildpack := dist.BuildpackInfo{
+						ID:      "old-api",
+						Version: "1.2.3",
+					}
+					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+						BuildpackName: buildpackLocator,
+						Daemon:        true,
+						Registry:      "default-reg",
+					}).Return(
+						&pack.BuildpackInfo{
+							BuildpackMetadata: buildpackage.Metadata{},
+							Buildpacks: []dist.BuildpackInfo{oldAPIBuildpack},
+							BuildpackLayers: dist.BuildpackLayers{
+								"old-api": map[string]dist.BuildpackLayerInfo{
+									"1.2.3": {
+										API:         api.MustParse("0.7"),
+										Stacks:      nil,
+										Order:       nil,
+										LayerDiffID: "",
+										Homepage:    "",
+										Assets:      []dist.AssetInfo{{
+											Sha256: "some-sha256",
+										}},
+									},
+								}},
+						}, nil,
+					)
+
+					err := command.Execute()
+					assert.ErrorContains(err, "creating asset packages requires buildpack API >= 0.8, got: 0.7")
+				})
+			})
 			when("invalid asset package image name is used", func() {
-				it("errors with a informative message", func() {
+				it("errors with an informative message", func() {
 					command.SetArgs([]string{
 						"::::",
 						"--buildpack", "some-locator",
