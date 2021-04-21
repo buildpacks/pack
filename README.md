@@ -5,7 +5,8 @@
 [![codecov](https://codecov.io/gh/buildpacks/pack/branch/main/graph/badge.svg)](https://codecov.io/gh/buildpacks/pack)
 [![GoDoc](https://godoc.org/github.com/buildpacks/pack?status.svg)](https://godoc.org/github.com/buildpacks/pack)
 [![GitHub license](https://img.shields.io/github/license/buildpacks/pack)](https://github.com/buildpacks/pack/blob/main/LICENSE)
-[![Slack](https://slack.buildpacks.io/badge.svg)](https://slack.buildpacks.io/)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/4748/badge)](https://bestpractices.coreinfrastructure.org/projects/4748)
+[![Slack](https://img.shields.io/badge/slack-join-ff69b4.svg?logo=slack)](https://slack.buildpacks.io/)
 
 `pack` makes it easy for...
 - [**App Developers**][app-dev] to use buildpacks to convert code into runnable images.
