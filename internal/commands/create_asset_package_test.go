@@ -496,7 +496,6 @@ func testCreateAssetPackage(t *testing.T, when spec.G, it spec.S) {
 						"--buildpack", buildpackLocator,
 					})
 
-
 					oldAPIBuildpack := dist.BuildpackInfo{
 						ID:      "old-api",
 						Version: "1.2.3",
@@ -508,7 +507,7 @@ func testCreateAssetPackage(t *testing.T, when spec.G, it spec.S) {
 					}).Return(
 						&pack.BuildpackInfo{
 							BuildpackMetadata: buildpackage.Metadata{},
-							Buildpacks: []dist.BuildpackInfo{oldAPIBuildpack},
+							Buildpacks:        []dist.BuildpackInfo{oldAPIBuildpack},
 							BuildpackLayers: dist.BuildpackLayers{
 								"old-api": map[string]dist.BuildpackLayerInfo{
 									"1.2.3": {
@@ -517,7 +516,7 @@ func testCreateAssetPackage(t *testing.T, when spec.G, it spec.S) {
 										Order:       nil,
 										LayerDiffID: "",
 										Homepage:    "",
-										Assets:      []dist.AssetInfo{{
+										Assets: []dist.AssetInfo{{
 											Sha256: "some-sha256",
 										}},
 									},

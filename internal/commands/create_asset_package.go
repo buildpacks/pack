@@ -2,8 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"github.com/buildpacks/lifecycle/api"
 	"sort"
+
+	"github.com/buildpacks/lifecycle/api"
 
 	"github.com/google/go-containerregistry/pkg/name"
 
@@ -148,6 +149,14 @@ func validatePackageImageName(imgName string) (name.Tag, error) {
 	return tag, nil
 }
 
+func validateAPIAllowsAssets(layer dist.BuildpackLayerInfo) error {
+	if len(layer.Assets) > 0 && layer.API.Compare(api.MustParse(RequiredBuildpackAPIForAssets)) < 0 {
+		return fmt.Errorf("creating asset packages requires buildpack API >= 0.8, got: %s", layer.API.String())
+	}
+
+	return nil
+}
+
 func getAssets(info *pack.BuildpackInfo) ([]dist.AssetInfo, error) {
 	result := []dist.AssetInfo{}
 	assetMap := map[string]dist.AssetInfo{}
@@ -176,12 +185,4 @@ func getAssets(info *pack.BuildpackInfo) ([]dist.AssetInfo, error) {
 	})
 
 	return result, nil
-}
-
-func validateAPIAllowsAssets(layer dist.BuildpackLayerInfo) error {
-	if len(layer.Assets) > 0 && layer.API.Compare(api.MustParse(RequiredBuildpackAPIForAssets)) < 0 {
-		return fmt.Errorf("creating asset packages requires buildpack API >= 0.8, got: %s", layer.API.String())
-	}
-
-	return nil
 }
