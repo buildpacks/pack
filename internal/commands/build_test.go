@@ -140,6 +140,11 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("--asset-package is used", func() {
+			it.Before(func() {
+				// TODO: remove when asset packages are no longer experimental
+				cfg.Experimental = true
+				command = commands.Build(logger, cfg, mockClient)
+			})
 			it("passes asset packages to client", func() {
 				mockClient.EXPECT().
 					Build(gomock.Any(), EqBuildOptionsWithAssetPackage("first-asset", "second-asset")).

@@ -1,4 +1,4 @@
-api = "0.2"
+api = "0.8"
 
 [buildpack]
   id = "all-assets/asset-buildpack"
