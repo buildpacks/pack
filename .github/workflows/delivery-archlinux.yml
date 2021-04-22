@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Determine version
-        uses: actions/github-script@v3
+        uses: actions/github-script@v4.0.1
         id: version
         with:
           result-encoding: string
@@ -76,7 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Determine version
-        uses: actions/github-script@v3
+        uses: actions/github-script@v4.0.1
         id: version
         with:
           result-encoding: string
@@ -95,7 +95,7 @@ jobs:
           mkdir -p ${{ env.PACKAGE_NAME }}/
           cp .github/workflows/delivery/archlinux/${{ env.PACKAGE_NAME }}/PKGBUILD ${{ env.PACKAGE_NAME }}/PKGBUILD
       - name: Lookup assets
-        uses: actions/github-script@v1
+        uses: actions/github-script@v4.0.1
         id: assets
         with:
           script: |

@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Add milestone
-        uses: actions/github-script@v1
+        uses: actions/github-script@v4.0.1
         id: assets
         with:
           script: |

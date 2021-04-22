@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Determine version
-        uses: actions/github-script@v3
+        uses: actions/github-script@v4.0.1
         id: version
         with:
           result-encoding: string
