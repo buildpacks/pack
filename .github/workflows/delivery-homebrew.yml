@@ -20,7 +20,7 @@ jobs:
         with:
           repository: buildpack/homebrew-tap
           path: homebrew-tap
-          token: ${{ secrets.BOT_TOKEN }}
+          token: ${{ secrets.PLATFORM_GITHUB_TOKEN }}
       - name: Copy pack.rb
         run: cp .github/workflows/delivery/homebrew/pack.rb homebrew-tap/Formula/pack.rb
       - name: Lookup assets
