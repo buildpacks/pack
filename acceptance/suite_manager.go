@@ -1,3 +1,5 @@
+// +build acceptance
+
 package acceptance
 
 type SuiteManager struct {

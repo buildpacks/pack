@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/name"
+
 	pubcfg "github.com/buildpacks/pack/config"
 
 	"github.com/pkg/errors"
@@ -22,6 +24,7 @@ type BuildFlags struct {
 	Publish            bool
 	ClearCache         bool
 	TrustBuilder       bool
+	DockerHost         string
 	CacheImage         string
 	AppPath            string
 	Builder            string
@@ -31,6 +34,7 @@ type BuildFlags struct {
 	Network            string
 	DescriptorPath     string
 	DefaultProcessType string
+	LifecycleImage     string
 	Env                []string
 	EnvFiles           []string
 	Buildpacks         []string
@@ -68,6 +72,18 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				logger.Debugf("Using project descriptor located at %s", style.Symbol(actualDescriptorPath))
 			}
 
+			builder := flags.Builder
+			// We only override the builder to the one in the project descriptor
+			// if it was not explicitly set by the user
+			if !cmd.Flags().Changed("builder") && descriptor.Build.Builder != "" {
+				builder = descriptor.Build.Builder
+			}
+
+			if builder == "" {
+				suggestSettingBuilder(logger, packClient)
+				return pack.NewSoftError()
+			}
+
 			buildpacks := flags.Buildpacks
 
 			env, err := parseEnv(flags.EnvFiles, flags.Env)
@@ -75,11 +91,11 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				return err
 			}
 
-			trustBuilder := isTrustedBuilder(cfg, flags.Builder) || flags.TrustBuilder
+			trustBuilder := isTrustedBuilder(cfg, builder) || flags.TrustBuilder
 			if trustBuilder {
-				logger.Debugf("Builder %s is trusted", style.Symbol(flags.Builder))
+				logger.Debugf("Builder %s is trusted", style.Symbol(builder))
 			} else {
-				logger.Debugf("Builder %s is untrusted", style.Symbol(flags.Builder))
+				logger.Debugf("Builder %s is untrusted", style.Symbol(builder))
 				logger.Debug("As a result, the phases of the lifecycle which require root access will be run in separate trusted ephemeral containers.")
 				logger.Debug("For more information, see https://medium.com/buildpacks/faster-more-secure-builds-with-pack-0-11-0-4d0c633ca619")
 			}
@@ -96,10 +112,17 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
-
+			var lifecycleImage string
+			if flags.LifecycleImage != "" {
+				ref, err := name.ParseReference(flags.LifecycleImage)
+				if err != nil {
+					return errors.Wrapf(err, "parsing lifecycle image %s", flags.LifecycleImage)
+				}
+				lifecycleImage = ref.Name()
+			}
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
 				AppPath:           flags.AppPath,
-				Builder:           flags.Builder,
+				Builder:           builder,
 				Registry:          flags.Registry,
 				AdditionalMirrors: getMirrors(cfg),
 				AdditionalTags:    flags.AdditionalTags,
@@ -107,6 +130,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Env:               env,
 				Image:             imageName,
 				Publish:           flags.Publish,
+				DockerHost:        flags.DockerHost,
 				PullPolicy:        pullPolicy,
 				ClearCache:        flags.ClearCache,
 				TrustBuilder:      trustBuilder,
@@ -119,6 +143,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				ProjectDescriptorBaseDir: filepath.Dir(actualDescriptorPath),
 				ProjectDescriptor:        descriptor,
 				CacheImage:               flags.CacheImage,
+				LifecycleImage:           lifecycleImage,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -143,6 +168,13 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringArrayVar(&buildFlags.EnvFiles, "env-file", []string{}, "Build-time environment variables file\nOne variable per line, of the form 'VAR=VALUE' or 'VAR'\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed\nNOTE: These are NOT available at image runtime.\"")
 	cmd.Flags().StringVar(&buildFlags.Network, "network", "", "Connect detect and build containers to network")
 	cmd.Flags().BoolVar(&buildFlags.Publish, "publish", false, "Publish to registry")
+	cmd.Flags().StringVar(&buildFlags.DockerHost, "docker-host", "",
+		`Address to docker daemon that will be exposed to the build container.
+If not set (or set to empty string) the standard socket location will be used.
+Special value 'inherit' may be used in which case DOCKER_HOST environment variable will be used.
+This option may set DOCKER_HOST environment variable for the build container if needed.
+`)
+	cmd.Flags().StringVar(&buildFlags.LifecycleImage, "lifecycle-image", cfg.LifecycleImage, `Custom lifecycle image to use for analysis, restore, and export when builder is untrusted.`)
 	cmd.Flags().StringVar(&buildFlags.Policy, "pull-policy", "", `Pull policy to use. Accepted values are always, never, and if-not-present. (default "always")`)
 	cmd.Flags().StringVarP(&buildFlags.Registry, "buildpack-registry", "r", cfg.DefaultRegistryName, "Buildpack Registry by name")
 	cmd.Flags().StringVar(&buildFlags.RunImage, "run-image", "", "Run image (defaults to default stack's run image)")
@@ -152,11 +184,6 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
-	if flags.Builder == "" {
-		suggestSettingBuilder(logger, packClient)
-		return pack.NewSoftError()
-	}
-
 	if flags.Registry != "" && !cfg.Experimental {
 		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
 	}

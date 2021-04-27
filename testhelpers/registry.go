@@ -29,12 +29,13 @@ var registryContainerNames = map[string]string{
 }
 
 type TestRegistryConfig struct {
-	runRegistryName string
-	RunRegistryHost string
-	RunRegistryPort string
-	DockerConfigDir string
-	username        string
-	password        string
+	runRegistryName       string
+	registryContainerName string
+	RunRegistryHost       string
+	RunRegistryPort       string
+	DockerConfigDir       string
+	username              string
+	password              string
 }
 
 func RegistryHost(host, port string) string {
@@ -82,16 +83,17 @@ func RunRegistry(t *testing.T) *TestRegistryConfig {
 	username := RandString(10)
 	password := RandString(10)
 
-	runRegistryHost, runRegistryPort := startRegistry(t, runRegistryName, username, password)
+	runRegistryHost, runRegistryPort, registryCtnrName := startRegistry(t, runRegistryName, username, password)
 	dockerConfigDir := setupDockerConfigWithAuth(t, username, password, runRegistryHost, runRegistryPort)
 
 	registryConfig := &TestRegistryConfig{
-		runRegistryName: runRegistryName,
-		RunRegistryHost: runRegistryHost,
-		RunRegistryPort: runRegistryPort,
-		DockerConfigDir: dockerConfigDir,
-		username:        username,
-		password:        password,
+		runRegistryName:       runRegistryName,
+		registryContainerName: registryCtnrName,
+		RunRegistryHost:       runRegistryHost,
+		RunRegistryPort:       runRegistryPort,
+		DockerConfigDir:       dockerConfigDir,
+		username:              username,
+		password:              password,
 	}
 
 	waitForRegistryToBeAvailable(t, registryConfig)
@@ -136,7 +138,7 @@ func (rc *TestRegistryConfig) Login(t *testing.T, username string, password stri
 	}, 100*time.Millisecond, 10*time.Second)
 }
 
-func startRegistry(t *testing.T, runRegistryName, username, password string) (string, string) {
+func startRegistry(t *testing.T, runRegistryName, username, password string) (string, string, string) {
 	ctx := context.Background()
 
 	daemonInfo, err := dockerCli(t).Info(ctx)
@@ -168,13 +170,37 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) (st
 
 	err = dockerCli(t).ContainerStart(ctx, ctr.ID, dockertypes.ContainerStartOptions{})
 	AssertNil(t, err)
-	inspect, err := dockerCli(t).ContainerInspect(context.TODO(), ctr.ID)
+
+	runRegistryPort, err := waitForPortBinding(t, ctr.ID, "5000/tcp", 30*time.Second)
 	AssertNil(t, err)
-	runRegistryPort := inspect.NetworkSettings.Ports["5000/tcp"][0].HostPort
 
 	runRegistryHost := DockerHostname(t)
+	return runRegistryHost, runRegistryPort, registryContainerName
+}
 
-	return runRegistryHost, runRegistryPort
+func waitForPortBinding(t *testing.T, containerID, portSpec string, duration time.Duration) (binding string, err error) {
+	t.Helper()
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	timer := time.NewTimer(duration)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			inspect, err := dockerCli(t).ContainerInspect(context.TODO(), containerID)
+			if err != nil {
+				return "", err
+			}
+
+			portBindings := inspect.NetworkSettings.Ports[nat.Port(portSpec)]
+			if len(portBindings) > 0 {
+				return portBindings[0].HostPort, nil
+			}
+		case <-timer.C:
+			t.Fatalf("timeout waiting for port binding: %v", duration)
+		}
+	}
 }
 
 func DockerHostname(t *testing.T) string {
@@ -245,13 +271,22 @@ func encodedUserPass(username string, password string) string {
 	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", username, password)))
 }
 
+func (rc *TestRegistryConfig) RmRegistry(t *testing.T) {
+	rc.StopRegistry(t)
+
+	t.Log("remove registry")
+	t.Helper()
+
+	id := ImageID(t, rc.registryContainerName)
+	DockerRmi(dockerCli(t), id)
+}
+
 func (rc *TestRegistryConfig) StopRegistry(t *testing.T) {
 	t.Log("stop registry")
 	t.Helper()
-	err := dockerCli(t).ContainerKill(context.Background(), rc.runRegistryName, "SIGKILL")
-	AssertNil(t, err)
+	dockerCli(t).ContainerKill(context.Background(), rc.runRegistryName, "SIGKILL")
 
-	err = os.RemoveAll(rc.DockerConfigDir)
+	err := os.RemoveAll(rc.DockerConfigDir)
 	AssertNil(t, err)
 }
 

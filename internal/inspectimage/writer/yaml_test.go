@@ -46,9 +46,11 @@ local_info:
   - name: some-local-mirror
   - name: other-local-mirror
   buildpacks:
-  - id: test.bp.one.local
+  - homepage: https://some-homepage-one
+    id: test.bp.one.local
     version: 1.0.0
-  - id: test.bp.two.local
+  - homepage: https://some-homepage-two
+    id: test.bp.two.local
     version: 2.0.0
   processes:
   - type: some-local-type
@@ -81,9 +83,11 @@ remote_info:
   - name: some-remote-mirror
   - name: other-remote-mirror
   buildpacks:
-  - id: test.bp.one.remote
+  - homepage: https://some-homepage-one
+    id: test.bp.one.remote
     version: 1.0.0
-  - id: test.bp.two.remote
+  - homepage: https://some-homepage-two
+    id: test.bp.two.remote
     version: 2.0.0
   processes:
   - type: some-remote-type
@@ -119,8 +123,8 @@ remote_info:
 			remoteInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.remote",
 				Buildpacks: []lifecycle.GroupBuildpack{
-					{ID: "test.bp.one.remote", Version: "1.0.0"},
-					{ID: "test.bp.two.remote", Version: "2.0.0"},
+					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
 				Base: lifecycle.RunImageMetadata{
 					TopLayer:  "some-remote-top-layer",
@@ -149,7 +153,7 @@ remote_info:
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{
@@ -172,8 +176,8 @@ remote_info:
 			localInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.local",
 				Buildpacks: []lifecycle.GroupBuildpack{
-					{ID: "test.bp.one.local", Version: "1.0.0"},
-					{ID: "test.bp.two.local", Version: "2.0.0"},
+					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
 				Base: lifecycle.RunImageMetadata{
 					TopLayer:  "some-local-top-layer",
@@ -196,7 +200,7 @@ remote_info:
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{

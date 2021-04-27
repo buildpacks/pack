@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -39,21 +40,18 @@ func testSetDefaultBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		var err error
-
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
-		command = commands.SetDefaultBuilder(logger, config.Config{}, mockClient)
 
+		var err error
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
-		h.AssertNil(t, os.Setenv("PACK_HOME", tempPackHome))
+		command = commands.SetDefaultBuilder(logger, config.Config{}, filepath.Join(tempPackHome, "config.toml"), mockClient)
 	})
 
 	it.After(func() {
 		mockController.Finish()
-		h.AssertNil(t, os.Unsetenv("PACK_HOME"))
 		h.AssertNil(t, os.RemoveAll(tempPackHome))
 	})
 

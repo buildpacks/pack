@@ -242,4 +242,19 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 			h.AssertError(t, err, "registry 'missing' is not defined in your config file")
 		})
 	})
+	when("#DefaultConfigPath", func() {
+		it.Before(func() {
+			h.AssertNil(t, os.Setenv("PACK_HOME", tmpDir))
+		})
+
+		it.After(func() {
+			h.AssertNil(t, os.Unsetenv("PACK_HOME"))
+		})
+
+		it("returns config path", func() {
+			cfgPath, err := config.DefaultConfigPath()
+			h.AssertNil(t, err)
+			h.AssertEq(t, cfgPath, filepath.Join(tmpDir, "config.toml"))
+		})
+	})
 }

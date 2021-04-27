@@ -174,15 +174,7 @@ func (l *LifecycleAsset) JSONOutputForAPIs(baseIndentationWidth int) (
 
 type LifecycleFeature int
 
-const (
-	CreatorInLifecycle LifecycleFeature = iota
-)
-
-var lifecycleFeatureTests = map[LifecycleFeature]func(l *LifecycleAsset) bool{
-	CreatorInLifecycle: func(l *LifecycleAsset) bool {
-		return l.atLeast074()
-	},
-}
+var lifecycleFeatureTests = map[LifecycleFeature]func(l *LifecycleAsset) bool{}
 
 func (l *LifecycleAsset) SupportsFeature(f LifecycleFeature) bool {
 	return lifecycleFeatureTests[f](l)

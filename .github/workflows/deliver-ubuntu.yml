@@ -25,12 +25,15 @@ jobs:
             - target: xenial
               runner: ubuntu-16.04
               image: docker://ubuntu:16.04
+              i386-go-version: 1.13
             - target: bionic
               runner: ubuntu-18.04
               image: docker://ubuntu:18.04
+              i386-go-version: 1.15
             - target: focal
               runner: ubuntu-20.04
               image: docker://ubuntu:20.04
+              i386-go-version: none
       name: create-ppa
       runs-on:  ${{ matrix.runner }}
 
@@ -71,6 +74,7 @@ jobs:
               tokenSuffix: '}}'
             env:
               ARCH: "any"
+              I386_GO_VERSION: ${{matrix.i386-go-version}}
               PACKAGE_NAME: "pack-cli"
               UBUNTU_VERSION:  ${{ matrix.target }}
               HOMEPAGE: "https://buildpacks.io"

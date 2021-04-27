@@ -11,25 +11,18 @@ import (
 	"github.com/buildpacks/pack/logging"
 )
 
-type BuilderInspector interface {
-	InspectBuilder(name string, daemon bool, modifiers ...pack.BuilderInspectionModifier) (*pack.BuilderInfo, error)
-}
-
-type InspectBuilderFlags struct {
-	Depth        int
-	OutputFormat string
-}
-
+// Deprecated: Use builder inspect instead.
 func InspectBuilder(
 	logger logging.Logger,
 	cfg config.Config,
 	inspector BuilderInspector,
 	writerFactory writer.BuilderWriterFactory,
 ) *cobra.Command {
-	var flags InspectBuilderFlags
+	var flags BuilderInspectFlags
 	cmd := &cobra.Command{
 		Use:     "inspect-builder <builder-image-name>",
 		Args:    cobra.MaximumNArgs(2),
+		Hidden:  true,
 		Short:   "Show information about a builder",
 		Example: "pack inspect-builder cnbs/sample-builder:bionic",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
@@ -43,20 +36,7 @@ func InspectBuilder(
 				return pack.NewSoftError()
 			}
 
-			builderInfo := writer.SharedBuilderInfo{
-				Name:      imageName,
-				IsDefault: imageName == cfg.DefaultBuilder,
-				Trusted:   isTrustedBuilder(cfg, imageName),
-			}
-
-			localInfo, localErr := inspector.InspectBuilder(imageName, true, pack.WithDetectionOrderDepth(flags.Depth))
-			remoteInfo, remoteErr := inspector.InspectBuilder(imageName, false, pack.WithDetectionOrderDepth(flags.Depth))
-
-			writer, err := writerFactory.Writer(flags.OutputFormat)
-			if err != nil {
-				return err
-			}
-			return writer.Print(logger, cfg.RunImages, localInfo, remoteInfo, localErr, remoteErr, builderInfo)
+			return inspectBuilder(logger, imageName, flags, cfg, inspector, writerFactory)
 		}),
 	}
 	cmd.Flags().IntVarP(&flags.Depth, "depth", "d", builder.OrderDetectionMaxDepth, "Max depth to display for Detection Order.\nOmission of this flag or values < 0 will display the entire tree.")

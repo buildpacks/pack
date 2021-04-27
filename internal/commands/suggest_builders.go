@@ -30,6 +30,11 @@ var suggestedBuilders = []SuggestedBuilder{
 		DefaultDescription: "heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP",
 	},
 	{
+		Vendor:             "Heroku",
+		Image:              "heroku/buildpacks:20",
+		DefaultDescription: "heroku-20 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP",
+	},
+	{
 		Vendor:             "Paketo Buildpacks",
 		Image:              "paketobuildpacks/builder:base",
 		DefaultDescription: "Small base image with buildpacks for Java, Node.js, Golang, & .NET Core",
@@ -90,14 +95,15 @@ func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, bu
 	descriptions := make([]string, len(builders))
 
 	var wg sync.WaitGroup
-	for i, builder := range builders {
-		wg.Add(1)
+	wg.Add(len(builders))
 
-		go func(i int, builder SuggestedBuilder) {
+	for i, builder := range builders {
+		go func(w *sync.WaitGroup, i int, builder SuggestedBuilder) {
 			descriptions[i] = getBuilderDescription(builder, inspector)
-			wg.Done()
-		}(i, builder)
+			w.Done()
+		}(&wg, i, builder)
 	}
+
 	wg.Wait()
 
 	tw := tabwriter.NewWriter(logger.Writer(), 10, 10, 5, ' ', tabwriter.TabIndent)
@@ -107,7 +113,7 @@ func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, bu
 	fmt.Fprintln(tw)
 
 	logging.Tip(logger, "Learn more about a specific builder with:")
-	logger.Info("\tpack inspect-builder <builder-image>")
+	logger.Info("\tpack builder inspect <builder-image>")
 }
 
 func getBuilderDescription(builder SuggestedBuilder, inspector BuilderInspector) string {

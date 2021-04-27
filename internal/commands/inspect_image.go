@@ -29,10 +29,11 @@ func InspectImage(
 ) *cobra.Command {
 	var flags InspectImageFlags
 	cmd := &cobra.Command{
-		Use:     "inspect-image <image-name>",
+		Use:     "inspect <image-name>",
 		Args:    cobra.ExactArgs(1),
-		Short:   "Show information about a built image",
-		Example: "pack inspect-image buildpacksio/pack",
+		Aliases: []string{"inspect-image"},
+		Short:   "Show information about a built app image",
+		Example: "pack inspect buildpacksio/pack",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			img := args[0]
 
@@ -55,7 +56,7 @@ func InspectImage(
 			return nil
 		}),
 	}
-	AddHelpFlag(cmd, "inspect-image")
+	AddHelpFlag(cmd, "inspect")
 	cmd.Flags().BoolVar(&flags.BOM, "bom", false, "print bill of materials")
 	cmd.Flags().StringVarP(&flags.OutputFormat, "output", "o", "human-readable", "Output format to display builder detail (json, yaml, toml, human-readable).\nOmission of this flag will display as human-readable.")
 	return cmd

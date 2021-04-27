@@ -8,11 +8,11 @@ import (
 	"text/tabwriter"
 	"text/template"
 
+	strs "github.com/buildpacks/pack/internal/strings"
+
 	"github.com/buildpacks/pack/internal/dist"
 
 	"github.com/pkg/errors"
-
-	"github.com/buildpacks/pack/internal/image"
 
 	"github.com/buildpacks/pack/internal/buildpack"
 
@@ -22,7 +22,6 @@ import (
 	"github.com/buildpacks/pack/internal/buildpackage"
 
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -66,17 +65,13 @@ const (
 	writerFlags        = 0
 )
 
-type InspectBuildpackFlags struct {
-	Depth    int
-	Registry string
-	Verbose  bool
-}
-
-func InspectBuildpack(logger logging.Logger, cfg *config.Config, client PackClient) *cobra.Command {
-	var flags InspectBuildpackFlags
+// Deprecated: Use buildpack inspect instead.
+func InspectBuildpack(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+	var flags BuildpackInspectFlags
 	cmd := &cobra.Command{
 		Use:     "inspect-buildpack <image-name>",
 		Args:    cobra.RangeArgs(1, 4),
+		Hidden:  true,
 		Short:   "Show information about a buildpack",
 		Example: "pack inspect-buildpack cnbs/sample-package:hello-universe",
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
@@ -87,27 +82,7 @@ func InspectBuildpack(logger logging.Logger, cfg *config.Config, client PackClie
 				registry = cfg.DefaultRegistry
 			}
 
-			logger.Infof("Inspecting buildpack: %s\n", style.Symbol(buildpackName))
-
-			inspectedBuildpacksOutput, err := inspectAllBuildpacks(
-				client,
-				flags,
-				pack.InspectBuildpackOptions{
-					BuildpackName: buildpackName,
-					Daemon:        true,
-					Registry:      registry,
-				},
-				pack.InspectBuildpackOptions{
-					BuildpackName: buildpackName,
-					Daemon:        false,
-					Registry:      registry,
-				})
-			if err != nil {
-				return fmt.Errorf("error writing buildpack output: %q", err)
-			}
-
-			logger.Info(inspectedBuildpacksOutput)
-			return nil
+			return buildpackInspect(logger, buildpackName, registry, flags, cfg, client)
 		}),
 	}
 	cmd.Flags().IntVarP(&flags.Depth, "depth", "d", -1, "Max depth to display for Detection Order.\nOmission of this flag or values < 0 will display the entire tree.")
@@ -117,17 +92,14 @@ func InspectBuildpack(logger logging.Logger, cfg *config.Config, client PackClie
 	return cmd
 }
 
-func inspectAllBuildpacks(client PackClient, flags InspectBuildpackFlags, options ...pack.InspectBuildpackOptions) (string, error) {
+func inspectAllBuildpacks(client PackClient, flags BuildpackInspectFlags, options ...pack.InspectBuildpackOptions) (string, error) {
 	buf := bytes.NewBuffer(nil)
-	skipCount := 0
+	errArray := []error{}
 	for _, option := range options {
 		nextResult, err := client.InspectBuildpack(option)
 		if err != nil {
-			if errors.Is(err, image.ErrNotFound) {
-				skipCount++
-				continue
-			}
-			return "", err
+			errArray = append(errArray, err)
+			continue
 		}
 
 		prefix := determinePrefix(option.BuildpackName, nextResult.Location, option.Daemon)
@@ -145,13 +117,13 @@ func inspectAllBuildpacks(client PackClient, flags InspectBuildpackFlags, option
 			return buf.String(), nil
 		}
 	}
-	if skipCount == len(options) {
-		return "", errors.New("no buildpacks found")
+	if len(errArray) == len(options) {
+		return "", joinErrors(errArray)
 	}
 	return buf.String(), nil
 }
 
-func inspectBuildpackOutput(info *pack.BuildpackInfo, prefix string, flags InspectBuildpackFlags) (output []byte, err error) {
+func inspectBuildpackOutput(info *pack.BuildpackInfo, prefix string, flags BuildpackInspectFlags) (output []byte, err error) {
 	tpl := template.Must(template.New("inspect-buildpack").Parse(inspectBuildpackTemplate))
 	bpOutput, err := buildpacksOutput(info.Buildpacks)
 	if err != nil {
@@ -203,13 +175,14 @@ func determinePrefix(name string, locator buildpack.LocatorType, daemon bool) st
 
 func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 	buf := &bytes.Buffer{}
+
 	tabWriter := new(tabwriter.Writer).Init(buf, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)
-	if _, err := fmt.Fprint(tabWriter, "  ID\tVERSION\tHOMEPAGE\n"); err != nil {
+	if _, err := fmt.Fprint(tabWriter, "  ID\tNAME\tVERSION\tHOMEPAGE\n"); err != nil {
 		return "", err
 	}
 
 	for _, bp := range bps {
-		if _, err := fmt.Fprintf(tabWriter, "  %s\t%s\t%s\n", bp.ID, bp.Version, bp.Homepage); err != nil {
+		if _, err := fmt.Fprintf(tabWriter, "  %s\t%s\t%s\t%s\n", bp.ID, strs.ValueOrDefault(bp.Name, "-"), bp.Version, strs.ValueOrDefault(bp.Homepage, "-")); err != nil {
 			return "", err
 		}
 	}
@@ -332,4 +305,13 @@ func displayBuildpack(w io.Writer, prefix string, entry dist.BuildpackRef, visit
 
 	_, err := fmt.Fprintf(w, "%s%s%s\t%s%s\n", prefix, treePrefix, bpRef, optional, visitedStatus)
 	return err
+}
+
+func joinErrors(errs []error) error {
+	errStrings := make([]string, len(errs))
+	for idx, err := range errs {
+		errStrings[idx] = err.Error()
+	}
+
+	return errors.New(strings.Join(errStrings, ", "))
 }

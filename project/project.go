@@ -25,6 +25,7 @@ type Build struct {
 	Exclude    []string    `toml:"exclude"`
 	Buildpacks []Buildpack `toml:"buildpacks"`
 	Env        []EnvVar    `toml:"env"`
+	Builder    string      `toml:"builder"`
 }
 
 type Project struct {

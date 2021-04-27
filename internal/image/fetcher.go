@@ -7,8 +7,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/buildpacks/pack/config"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
@@ -18,8 +16,9 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh/terminal"
 
+	"github.com/buildpacks/pack/config"
+	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -99,7 +98,7 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
 	}
 
 	writer := logging.GetWriterForLevel(f.logger, logging.InfoLevel)
-	termFd, isTerm := isTerminal(writer)
+	termFd, isTerm := ilogging.IsTerminal(writer)
 
 	err = jsonmessage.DisplayJSONMessagesStream(rc, &colorizedWriter{writer}, termFd, isTerm, nil)
 	if err != nil {
@@ -107,20 +106,6 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
 	}
 
 	return rc.Close()
-}
-
-func isTerminal(w io.Writer) (uintptr, bool) {
-	type descriptor interface {
-		Fd() uintptr
-	}
-
-	if f, ok := w.(descriptor); ok {
-		termFd := f.Fd()
-		isTerm := terminal.IsTerminal(int(termFd))
-		return termFd, isTerm
-	}
-
-	return 0, false
 }
 
 func registryAuth(ref string) (string, error) {

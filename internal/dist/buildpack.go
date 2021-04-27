@@ -41,6 +41,7 @@ type Buildpack interface {
 
 type BuildpackInfo struct {
 	ID          string    `toml:"id,omitempty" json:"id,omitempty" yaml:"id,omitempty"`
+	Name        string    `toml:"name,omitempty" json:"name,omitempty" yaml:"name,omitempty"`
 	Version     string    `toml:"version,omitempty" json:"version,omitempty" yaml:"version,omitempty"`
 	Description string    `toml:"description,omitempty" json:"description,omitempty" yaml:"description,omitempty"`
 	Homepage    string    `toml:"homepage,omitempty" json:"homepage,omitempty" yaml:"homepage,omitempty"`
@@ -69,8 +70,8 @@ func (b BuildpackInfo) Match(o BuildpackInfo) bool {
 }
 
 type Stack struct {
-	ID     string   `json:"id"`
-	Mixins []string `json:"mixins,omitempty"`
+	ID     string   `json:"id" toml:"id"`
+	Mixins []string `json:"mixins,omitempty" toml:"mixins,omitempty"`
 }
 
 // BuildpackFromBlob constructs a buildpack from a blob. It is assumed that the buildpack

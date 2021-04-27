@@ -8,8 +8,10 @@ import (
 )
 
 type BOMDisplay struct {
-	Remote []BOMEntryDisplay `json:"remote" yaml:"remote"`
-	Local  []BOMEntryDisplay `json:"local" yaml:"local"`
+	Remote    []BOMEntryDisplay `json:"remote" yaml:"remote"`
+	Local     []BOMEntryDisplay `json:"local" yaml:"local"`
+	RemoteErr string            `json:"remote_error,omitempty" yaml:"remoteError,omitempty"`
+	LocalErr  string            `json:"local_error,omitempty" yaml:"localError,omitempty"`
 }
 
 type BOMEntryDisplay struct {
@@ -27,7 +29,7 @@ func NewBOMDisplay(info *pack.ImageInfo) []BOMEntryDisplay {
 }
 
 func displayBOM(bom []lifecycle.BOMEntry) []BOMEntryDisplay {
-	result := []BOMEntryDisplay{}
+	var result []BOMEntryDisplay
 	for _, entry := range bom {
 		result = append(result, BOMEntryDisplay{
 			Name:     entry.Name,

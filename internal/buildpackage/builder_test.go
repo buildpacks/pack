@@ -418,6 +418,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Info: dist.BuildpackInfo{
 					ID:          "bp.1.id",
 					Version:     "bp.1.version",
+					Name:        "One",
 					Description: "some description",
 					Homepage:    "https://example.com/homepage",
 					Keywords:    []string{"some-keyword"},
@@ -453,6 +454,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, md.Stacks[1].ID, "stack.id.2")
 			h.AssertEq(t, md.Keywords[0], "some-keyword")
 			h.AssertEq(t, md.Homepage, "https://example.com/homepage")
+			h.AssertEq(t, md.Name, "One")
 			h.AssertEq(t, md.Description, "some description")
 			h.AssertEq(t, md.Licenses[0].Type, "MIT")
 			h.AssertEq(t, md.Licenses[0].URI, "https://example.com/license")
@@ -598,7 +600,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								// buildpackage metadata
 								h.ContentContains(`"io.buildpacks.buildpackage.metadata":"{\"id\":\"bp.1.id\",\"version\":\"bp.1.version\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}]}"`),
 								// buildpack layers metadata
-								h.ContentContains(`"io.buildpacks.buildpack.layers":"{\"bp.1.id\":{\"bp.1.version\":{\"api\":\"0.2\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}],\"layerDiffID\":\"sha256:a10862daec7a8a62fd04cc5d4520fdb80d4d5c07a3c146fb604a9c23c22fd5b0\"}}}"`),
+								h.ContentContains(`"io.buildpacks.buildpack.layers":"{\"bp.1.id\":{\"bp.1.version\":{\"api\":\"0.2\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}],\"layerDiffID\":\"sha256:9fa0bb03eebdd0f8e4b6d6f50471b44be83dba750624dfce15dac45975c5707b\"}}`),
 								// image os
 								h.ContentContains(`"os":"linux"`),
 							)

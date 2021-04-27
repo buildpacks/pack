@@ -6,61 +6,22 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/builder/writer"
-
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
-
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/commands"
-	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-var (
-	minimalLifecycleDescriptor = builder.LifecycleDescriptor{
-		Info: builder.LifecycleInfo{Version: builder.VersionMustParse("3.4")},
-		API: builder.LifecycleAPI{
-			BuildpackVersion: api.MustParse("1.2"),
-			PlatformVersion:  api.MustParse("2.3"),
-		},
-	}
-
-	expectedLocalRunImages = []config.RunImage{
-		{Image: "some/run-image", Mirrors: []string{"first/local", "second/local"}},
-	}
-	expectedLocalInfo = &pack.BuilderInfo{
-		Description: "test-local-builder",
-		Stack:       "local-stack",
-		RunImage:    "local/image",
-		Lifecycle:   minimalLifecycleDescriptor,
-	}
-	expectedRemoteInfo = &pack.BuilderInfo{
-		Description: "test-remote-builder",
-		Stack:       "remote-stack",
-		RunImage:    "remote/image",
-		Lifecycle:   minimalLifecycleDescriptor,
-	}
-	expectedLocalDisplay  = "Sample output for local builder"
-	expectedRemoteDisplay = "Sample output for remote builder"
-	expectedBuilderInfo   = writer.SharedBuilderInfo{
-		Name:      "default/builder",
-		Trusted:   false,
-		IsDefault: true,
-	}
-)
-
 func TestInspectBuilderCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "Commands", testInspectBuilderCommand, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "InspectBuilderCommand", testInspectBuilderCommand, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
@@ -256,6 +217,7 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 				assert.Matches(outBuf.String(), regexp.MustCompile(`Paketo Buildpacks:\s+'paketobuildpacks/builder:base'`))
 				assert.Matches(outBuf.String(), regexp.MustCompile(`Paketo Buildpacks:\s+'paketobuildpacks/builder:full'`))
 				assert.Matches(outBuf.String(), regexp.MustCompile(`Heroku:\s+'heroku/buildpacks:18'`))
+				assert.Matches(outBuf.String(), regexp.MustCompile(`Heroku:\s+'heroku/buildpacks:20'`))
 			})
 		})
 
@@ -290,90 +252,4 @@ func testInspectBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-func newDefaultBuilderInspector() *fakes.FakeBuilderInspector {
-	return &fakes.FakeBuilderInspector{
-		InfoForLocal:  expectedLocalInfo,
-		InfoForRemote: expectedRemoteInfo,
-	}
-}
-
-func newDefaultBuilderWriter() *fakes.FakeBuilderWriter {
-	return &fakes.FakeBuilderWriter{
-		PrintForLocal:  expectedLocalDisplay,
-		PrintForRemote: expectedRemoteDisplay,
-	}
-}
-
-func newDefaultWriterFactory() *fakes.FakeBuilderWriterFactory {
-	return &fakes.FakeBuilderWriterFactory{
-		ReturnForWriter: newDefaultBuilderWriter(),
-	}
-}
-
-type BuilderWriterModifier func(w *fakes.FakeBuilderWriter)
-
-func errorsForPrint(err error) BuilderWriterModifier {
-	return func(w *fakes.FakeBuilderWriter) {
-		w.ErrorForPrint = err
-	}
-}
-
-func newBuilderWriter(modifiers ...BuilderWriterModifier) *fakes.FakeBuilderWriter {
-	w := newDefaultBuilderWriter()
-
-	for _, mod := range modifiers {
-		mod(w)
-	}
-
-	return w
-}
-
-type WriterFactoryModifier func(f *fakes.FakeBuilderWriterFactory)
-
-func returnsForWriter(writer writer.BuilderWriter) WriterFactoryModifier {
-	return func(f *fakes.FakeBuilderWriterFactory) {
-		f.ReturnForWriter = writer
-	}
-}
-
-func errorsForWriter(err error) WriterFactoryModifier {
-	return func(f *fakes.FakeBuilderWriterFactory) {
-		f.ErrorForWriter = err
-	}
-}
-
-func newWriterFactory(modifiers ...WriterFactoryModifier) *fakes.FakeBuilderWriterFactory {
-	f := newDefaultWriterFactory()
-
-	for _, mod := range modifiers {
-		mod(f)
-	}
-
-	return f
-}
-
-type BuilderInspectorModifier func(i *fakes.FakeBuilderInspector)
-
-func errorsForLocal(err error) BuilderInspectorModifier {
-	return func(i *fakes.FakeBuilderInspector) {
-		i.ErrorForLocal = err
-	}
-}
-
-func errorsForRemote(err error) BuilderInspectorModifier {
-	return func(i *fakes.FakeBuilderInspector) {
-		i.ErrorForRemote = err
-	}
-}
-
-func newBuilderInspector(modifiers ...BuilderInspectorModifier) *fakes.FakeBuilderInspector {
-	i := newDefaultBuilderInspector()
-
-	for _, mod := range modifiers {
-		mod(i)
-	}
-
-	return i
 }

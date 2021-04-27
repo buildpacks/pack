@@ -27,6 +27,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
+	internalConfig "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/paths"
@@ -39,9 +40,6 @@ import (
 )
 
 const (
-	// The lifecycle image that will be used for the analysis, restore and export phases
-	// when using an untrusted builder.
-	lifecycleImageRepo                   = "buildpacksio/lifecycle"
 	minLifecycleVersionSupportingCreator = "0.7.4"
 	prevLifecycleVersionSupportingImage  = "0.6.1"
 	minLifecycleVersionSupportingImage   = "0.7.5"
@@ -89,6 +87,10 @@ type BuildOptions struct {
 	// Specify the run image the Image will be
 	// built atop.
 	RunImage string
+
+	// Address of docker daemon exposed to build container
+	// e.g. tcp://example.com:1234, unix:///run/user/1000/podman/podman.sock
+	DockerHost string
 
 	// Used to determine a run-image mirror if Run Image is empty.
 	// Used in combination with Builder metadata to determine to the the 'best' mirror.
@@ -149,6 +151,10 @@ type BuildOptions struct {
 
 	// ProjectDescriptor describes the project and any configuration specific to the project
 	ProjectDescriptor project.Descriptor
+
+	// The lifecycle image that will be used for the analysis, restore and export phases
+	// when using an untrusted builder.
+	LifecycleImage string
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -284,6 +290,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		RunImage:           runImageName,
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
+		DockerHost:         opts.DockerHost,
 		UseCreator:         false,
 		TrustBuilder:       opts.TrustBuilder,
 		LifecycleImage:     ephemeralBuilder.Name(),
@@ -315,9 +322,13 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	if !opts.TrustBuilder {
 		if lifecycleImageSupported(imgOS, lifecycleVersion) {
+			lifecycleImageName := opts.LifecycleImage
+			if lifecycleImageName == "" {
+				lifecycleImageName = fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycleVersion.String())
+			}
 			lifecycleImage, err := c.imageFetcher.Fetch(
 				ctx,
-				fmt.Sprintf("%s:%s", lifecycleImageRepo, lifecycleVersion.String()),
+				lifecycleImageName,
 				true,
 				opts.PullPolicy,
 			)
@@ -628,7 +639,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 		relativeBaseDir = opts.ProjectDescriptorBaseDir
 
 		for _, bp := range opts.ProjectDescriptor.Build.Buildpacks {
-			if len(bp.URI) == 0 {
+			if bp.URI == "" {
 				declaredBPs = append(declaredBPs, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
 			} else {
 				declaredBPs = append(declaredBPs, bp.URI)

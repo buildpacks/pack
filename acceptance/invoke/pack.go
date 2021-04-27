@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -63,6 +64,9 @@ func NewPackInvoker(
 }
 
 func (i *PackInvoker) Cleanup() {
+	if i == nil {
+		return
+	}
 	i.testObject.Helper()
 
 	err := os.RemoveAll(i.home)
@@ -74,7 +78,7 @@ func (i *PackInvoker) cmd(name string, args ...string) *exec.Cmd {
 
 	cmdArgs := append([]string{name}, args...)
 	cmdArgs = append(cmdArgs, "--no-color")
-	if i.verbose && i.Supports("--verbose") {
+	if i.verbose {
 		cmdArgs = append(cmdArgs, "--verbose")
 	}
 
@@ -164,25 +168,20 @@ func (c *InterruptCmd) Wait() error {
 
 func (i *PackInvoker) Version() string {
 	i.testObject.Helper()
+	return strings.TrimSpace(i.RunSuccessfully("version"))
+}
 
-	output := i.RunSuccessfully("version")
-
-	return strings.TrimSpace(output)
+func (i *PackInvoker) SanitizedVersion() string {
+	i.testObject.Helper()
+	// Sanitizing any git commit sha and build number from the version output
+	re := regexp.MustCompile(`\d+\.\d+\.\d+`)
+	return re.FindString(strings.TrimSpace(i.RunSuccessfully("version")))
 }
 
 func (i *PackInvoker) EnableExperimental() {
 	i.testObject.Helper()
 
-	if i.Supports("config experimental") {
-		i.JustRunSuccessfully("config", "experimental", "true")
-	} else {
-		err := ioutil.WriteFile(
-			filepath.Join(i.home, "config.toml"),
-			[]byte("experimental=true"),
-			os.ModePerm,
-		)
-		i.assert.Nil(err)
-	}
+	i.JustRunSuccessfully("config", "experimental", "true")
 }
 
 // supports returns whether or not the executor's pack binary supports a
@@ -199,9 +198,16 @@ func (i *PackInvoker) Supports(command string) bool {
 	parts := strings.Split(command, " ")
 
 	var cmdParts = []string{"help"}
-	last := len(parts) - 1
-	cmdParts = append(cmdParts, parts[:last]...)
-	search := parts[last]
+	var search string
+
+	if len(parts) > 1 {
+		last := len(parts) - 1
+		cmdParts = append(cmdParts, parts[:last]...)
+		search = parts[last]
+	} else {
+		cmdParts = append(cmdParts, command)
+		search = command
+	}
 
 	output, err := i.baseCmd(cmdParts...).CombinedOutput()
 	i.assert.Nil(err)
@@ -212,48 +218,16 @@ func (i *PackInvoker) Supports(command string) bool {
 type Feature int
 
 const (
-	BuilderTomlValidation Feature = iota
-	ExcludeAndIncludeDescriptor
-	FixedExcludeAndIncludeDescriptor
-	DescriptorWithBuildpacks
-	CreatorInPack
-	ReadWriteVolumeMounts
-	NoColorInBuildpacks
-	QuietMode
-	InspectBuilderOutputFormat
-	OSInPackageTOML
+	InspectRemoteImage = iota
+	BuilderNoDuplicateLayers
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
-	BuilderTomlValidation: func(i *PackInvoker) bool {
-		return i.laterThan("0.9.0")
+	InspectRemoteImage: func(i *PackInvoker) bool {
+		return i.laterThan("0.17.0")
 	},
-	ExcludeAndIncludeDescriptor: func(i *PackInvoker) bool {
-		return i.laterThan("0.9.0")
-	},
-	FixedExcludeAndIncludeDescriptor: func(i *PackInvoker) bool {
-		return i.laterThan("0.16.0")
-	},
-	DescriptorWithBuildpacks: func(i *PackInvoker) bool {
-		return i.laterThan("0.16.0")
-	},
-	CreatorInPack: func(i *PackInvoker) bool {
-		return i.atLeast("0.10.0")
-	},
-	ReadWriteVolumeMounts: func(i *PackInvoker) bool {
-		return i.laterThan("0.12.0")
-	},
-	NoColorInBuildpacks: func(i *PackInvoker) bool {
-		return i.atLeast("0.12.0")
-	},
-	QuietMode: func(i *PackInvoker) bool {
-		return i.atLeast("0.13.2")
-	},
-	InspectBuilderOutputFormat: func(i *PackInvoker) bool {
-		return i.laterThan("0.14.2")
-	},
-	OSInPackageTOML: func(i *PackInvoker) bool {
-		return i.laterThan("0.15.0")
+	BuilderNoDuplicateLayers: func(i *PackInvoker) bool {
+		return i.laterThan("0.18.0")
 	},
 }
 

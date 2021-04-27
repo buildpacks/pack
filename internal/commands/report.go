@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"regexp"
 	"runtime"
 	"strings"
 	"text/template"
@@ -82,8 +83,19 @@ Config:
 }
 
 func sanitize(line string) string {
-	if strings.HasPrefix(line, "default-builder-image") {
-		return `default-builder-image = "[REDACTED]"`
+	re := regexp.MustCompile(`"(.*?)"`)
+	redactedString := `"[REDACTED]"`
+	sensitiveFields := []string{
+		"default-builder-image",
+		"image",
+		"mirrors",
+		"name",
+		"url",
+	}
+	for _, field := range sensitiveFields {
+		if strings.HasPrefix(strings.TrimSpace(line), field) {
+			return re.ReplaceAllString(line, redactedString)
+		}
 	}
 
 	return line

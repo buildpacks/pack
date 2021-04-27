@@ -28,89 +28,10 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-const complexOutputSection = `Stacks:
-  ID: io.buildpacks.stacks.first-stack
-    Mixins:
-      (omitted)
-  ID: io.buildpacks.stacks.second-stack
-    Mixins:
-      (omitted)
-
-Buildpacks:
-  ID                                 VERSION        HOMEPAGE
-  some/first-inner-buildpack         1.0.0          first-inner-buildpack-homepage
-  some/second-inner-buildpack        2.0.0          second-inner-buildpack-homepage
-  some/third-inner-buildpack         3.0.0          third-inner-buildpack-homepage
-  some/top-buildpack                 0.0.1          top-buildpack-homepage
-
-Detection Order:
- └ Group #1:
-    └ some/top-buildpack@0.0.1
-       ├ Group #1:
-       │  ├ some/first-inner-buildpack@1.0.0
-       │  │  ├ Group #1:
-       │  │  │  ├ some/first-inner-buildpack@1.0.0    [cyclic]
-       │  │  │  └ some/third-inner-buildpack@3.0.0
-       │  │  └ Group #2:
-       │  │     └ some/third-inner-buildpack@3.0.0
-       │  └ some/second-inner-buildpack@2.0.0
-       └ Group #2:
-          └ some/first-inner-buildpack@1.0.0
-             ├ Group #1:
-             │  ├ some/first-inner-buildpack@1.0.0    [cyclic]
-             │  └ some/third-inner-buildpack@3.0.0
-             └ Group #2:
-                └ some/third-inner-buildpack@3.0.0`
-
-const simpleOutputSection = `Stacks:
-  ID: io.buildpacks.stacks.first-stack
-    Mixins:
-      (omitted)
-  ID: io.buildpacks.stacks.second-stack
-    Mixins:
-      (omitted)
-
-Buildpacks:
-  ID                           VERSION        HOMEPAGE
-  some/single-buildpack        0.0.1          single-buildpack-homepage
-
-Detection Order:
- └ Group #1:
-    └ some/single-buildpack@0.0.1`
-
-const inspectOutputTemplate = `Inspecting buildpack: '%s'
-
-%s
-
-%s
-`
-
-const depthOutputSection = `
-Detection Order:
- └ Group #1:
-    └ some/top-buildpack@0.0.1
-       ├ Group #1:
-       │  ├ some/first-inner-buildpack@1.0.0
-       │  └ some/second-inner-buildpack@2.0.0
-       └ Group #2:
-          └ some/first-inner-buildpack@1.0.0`
-
-const simpleMixinOutputSection = `
-  ID: io.buildpacks.stacks.first-stack
-    Mixins:
-      mixin1
-      mixin2
-      build:mixin3
-      build:mixin4
-  ID: io.buildpacks.stacks.second-stack
-    Mixins:
-      mixin1
-      mixin2`
-
 func TestInspectBuildpackCommand(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "Commands", testInspectBuildpackCommand, spec.Sequential(), spec.Report(report.Terminal{}))
+	spec.Run(t, "InspectBuildpackCommand", testInspectBuildpackCommand, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
@@ -172,6 +93,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					ID:       "some/top-buildpack",
 					Version:  "0.0.1",
 					Homepage: "top-buildpack-homepage",
+					Name:     "top",
 				},
 			},
 			Order: dist.Order{
@@ -311,6 +233,11 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					ID:       "some/single-buildpack",
 					Version:  "0.0.1",
 					Homepage: "single-buildpack-homepage",
+					Name:     "some",
+				},
+				{
+					ID:      "some/buildpack-no-homepage",
+					Version: "0.0.2",
 				},
 			},
 			Order: dist.Order{
@@ -342,10 +269,10 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			},
 		}
 
-		command = commands.InspectBuildpack(logger, &cfg, mockClient)
+		command = commands.InspectBuildpack(logger, cfg, mockClient)
 	})
 
-	when("InpectBuildpack", func() {
+	when("InspectBuildpack", func() {
 		when("inspecting an image", func() {
 			when("both remote and local image are present", func() {
 				it.Before(func() {
@@ -428,6 +355,36 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 						Daemon:        true,
 						Registry:      "default-registry",
 					}).Return(nil, errors.Wrap(image.ErrNotFound, "remote image not found!"))
+				})
+
+				it("displays output for remote image", func() {
+					command.SetArgs([]string{"only-remote-test/buildpack"})
+					assert.Nil(command.Execute())
+
+					expectedOutput := fmt.Sprintf(inspectOutputTemplate,
+						"only-remote-test/buildpack",
+						"REMOTE IMAGE:",
+						complexOutputSection)
+
+					assert.AssertTrimmedContains(outBuf.String(), expectedOutput)
+				})
+			})
+			when("local docker daemon is not running", func() {
+				it.Before(func() {
+					complexInfo.Location = buildpack.PackageLocator
+					simpleInfo.Location = buildpack.PackageLocator
+
+					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+						BuildpackName: "only-remote-test/buildpack",
+						Daemon:        false,
+						Registry:      "default-registry",
+					}).Return(complexInfo, nil)
+
+					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+						BuildpackName: "only-remote-test/buildpack",
+						Daemon:        true,
+						Registry:      "default-registry",
+					}).Return(nil, errors.New("the docker daemon is not running"))
 				})
 
 				it("displays output for remote image", func() {
@@ -636,7 +593,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				err := command.Execute()
 
 				assert.Error(err)
-				assert.Contains(err.Error(), "error writing buildpack output: \"no buildpacks found\"")
+				assert.Contains(err.Error(), "error writing buildpack output: \"error inspecting local archive: not found, error inspecting remote archive: not found\"")
 			})
 		})
 
@@ -645,6 +602,12 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
 					BuildpackName: "urn:cnb:registry:registry-failure/buildpack",
 					Daemon:        true,
+					Registry:      "some-registry",
+				}).Return(&pack.BuildpackInfo{}, errors.New("error inspecting registry image"))
+
+				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					BuildpackName: "urn:cnb:registry:registry-failure/buildpack",
+					Daemon:        false,
 					Registry:      "some-registry",
 				}).Return(&pack.BuildpackInfo{}, errors.New("error inspecting registry image"))
 			})

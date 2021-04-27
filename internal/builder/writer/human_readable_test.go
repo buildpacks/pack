@@ -67,12 +67,12 @@ Run Images:
   second/default
 
 Buildpacks:
-  ID                     VERSION                        HOMEPAGE
-  test.top.nested        test.top.nested.version
-  test.nested                                           http://geocities.com/top-bp
-  test.bp.one            test.bp.one.version            http://geocities.com/cool-bp
-  test.bp.two            test.bp.two.version
-  test.bp.three          test.bp.three.version
+  ID                     NAME        VERSION                        HOMEPAGE
+  test.top.nested        -           test.top.nested.version        -
+  test.nested            -                                          http://geocities.com/top-bp
+  test.bp.one            -           test.bp.one.version            http://geocities.com/cool-bp
+  test.bp.two            -           test.bp.two.version            -
+  test.bp.three          -           test.bp.three.version          -
 
 Detection Order:
  ├ Group #1:
@@ -120,12 +120,12 @@ Run Images:
   second/local-default
 
 Buildpacks:
-  ID                     VERSION                        HOMEPAGE
-  test.top.nested        test.top.nested.version
-  test.nested                                           http://geocities.com/top-bp
-  test.bp.one            test.bp.one.version            http://geocities.com/cool-bp
-  test.bp.two            test.bp.two.version
-  test.bp.three          test.bp.three.version
+  ID                     NAME        VERSION                        HOMEPAGE
+  test.top.nested        -           test.top.nested.version        -
+  test.nested            -                                          http://geocities.com/top-bp
+  test.bp.one            -           test.bp.one.version            http://geocities.com/cool-bp
+  test.bp.two            -           test.bp.two.version            -
+  test.bp.three          -           test.bp.three.version          -
 
 Detection Order:
  ├ Group #1:

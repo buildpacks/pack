@@ -28,7 +28,7 @@ func Example_build() {
 	// randomly select a builder to use from among the following
 	builderList := []string{
 		"gcr.io/buildpacks/builder:v1",
-		"heroku/buildpacks:18",
+		"heroku/buildpacks:20",
 		"gcr.io/paketo-buildpacks/builder:base",
 	}
 

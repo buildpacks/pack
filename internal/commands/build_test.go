@@ -56,9 +56,10 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 	when("#BuildCommand", func() {
 		when("no builder is specified", func() {
 			it("returns a soft error", func() {
-				mockClient.EXPECT().InspectBuilder(gomock.Any(), false).Return(&pack.BuilderInfo{
-					Description: "",
-				}, nil).AnyTimes()
+				mockClient.EXPECT().
+					InspectBuilder(gomock.Any(), false).
+					Return(&pack.BuilderInfo{Description: ""}, nil).
+					AnyTimes()
 
 				command.SetArgs([]string{"image"})
 				err := command.Execute()
@@ -329,10 +330,6 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		when("a cache-image passed", func() {
 			when("--publish is not used", func() {
 				it("errors", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithCacheImage("some-cache-image")).
-						Return(nil)
-
 					command.SetArgs([]string{"--builder", "my-builder", "image", "--cache-image", "some-cache-image"})
 					err := command.Execute()
 					h.AssertError(t, err, "cache-image flag requires the publish flag")
@@ -345,6 +342,85 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					command.SetArgs([]string{"--builder", "my-builder", "image", "--cache-image", "some-cache-image", "--publish"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+		})
+
+		when("a valid lifecycle-image is provided", func() {
+			when("only the image repo is provided", func() {
+				it("uses the provided lifecycle-image and parses it correctly", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("index.docker.io/library/some-lifecycle-image:latest")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "some-lifecycle-image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("a custom image repo is provided", func() {
+				it("uses the provided lifecycle-image and parses it correctly", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("test.com/some-lifecycle-image:latest")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "test.com/some-lifecycle-image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("a custom image repo is provided with a tag", func() {
+				it("uses the provided lifecycle-image and parses it correctly", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("test.com/some-lifecycle-image:v1")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "test.com/some-lifecycle-image:v1"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("a custom image repo is provided with a digest", func() {
+				it("uses the provided lifecycle-image and parses it correctly", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("test.com/some-lifecycle-image@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "test.com/some-lifecycle-image@sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+		})
+		when("an invalid lifecycle-image is provided", func() {
+			when("the repo name is invalid", func() {
+				it("returns a parse error", func() {
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--lifecycle-image", "some-!nv@l!d-image"})
+					err := command.Execute()
+					h.AssertError(t, err, "could not parse reference: some-!nv@l!d-image")
+				})
+			})
+		})
+
+		when("a lifecycle-image is not provided", func() {
+			when("a lifecycle-image is set in the config", func() {
+				it("uses the lifecycle-image from the config after parsing it", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("index.docker.io/library/some-lifecycle-image:latest")).
+						Return(nil)
+
+					cfg := config.Config{LifecycleImage: "some-lifecycle-image"}
+					command := commands.Build(logger, cfg, mockClient)
+
+					logger.WantVerbose(true)
+					command.SetArgs([]string{"image", "--builder", "my-builder"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+			when("a lifecycle-image is not set in the config", func() {
+				it("passes an empty lifecycle image and does not throw an error", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithLifecycleImage("")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image"})
 					h.AssertNil(t, command.Execute())
 				})
 			})
@@ -392,9 +468,6 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		when("user specifies an invalid project descriptor file", func() {
 			it("should show an error", func() {
 				projectTomlPath := "/incorrect/path/to/project.toml"
-				mockClient.EXPECT().
-					Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
-					Return(nil)
 
 				command.SetArgs([]string{"--builder", "my-builder", "--descriptor", projectTomlPath, "image"})
 				h.AssertNotNil(t, command.Execute())
@@ -444,7 +517,48 @@ version = "1.0"
 					h.AssertNil(t, command.Execute())
 				})
 			})
+			when("file has a builder specified", func() {
+				var projectTomlPath string
 
+				it.Before(func() {
+					projectToml, err := ioutil.TempFile("", "project.toml")
+					h.AssertNil(t, err)
+					defer projectToml.Close()
+
+					projectToml.WriteString(`
+[project]
+name = "Sample"
+
+[build]
+builder = "my-builder"
+`)
+					projectTomlPath = projectToml.Name()
+				})
+
+				it.After(func() {
+					h.AssertNil(t, os.RemoveAll(projectTomlPath))
+				})
+				when("a builder is not explicitly passed by the user", func() {
+					it("should build an image with configuration in descriptor", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithBuilder("my-builder")).
+							Return(nil)
+
+						command.SetArgs([]string{"--descriptor", projectTomlPath, "image"})
+						h.AssertNil(t, command.Execute())
+					})
+				})
+				when("a builder is explicitly passed by the user", func() {
+					it("should build an image with the passed builder flag", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithBuilder("flag-builder")).
+							Return(nil)
+
+						command.SetArgs([]string{"--builder", "flag-builder", "--descriptor", projectTomlPath, "image"})
+						h.AssertNil(t, command.Execute())
+					})
+				})
+			})
 			when("file is invalid", func() {
 				var projectTomlPath string
 
@@ -462,10 +576,6 @@ version = "1.0"
 				})
 
 				it("should fail to build", func() {
-					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithImage("my-builder", "image")).
-						Return(nil)
-
 					command.SetArgs([]string{"--builder", "my-builder", "--descriptor", projectTomlPath, "image"})
 					h.AssertNotNil(t, command.Execute())
 				})
@@ -607,11 +717,29 @@ func EqBuildOptionsWithCacheImage(cacheImage string) gomock.Matcher {
 	}
 }
 
+func EqBuildOptionsWithLifecycleImage(lifecycleImage string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("LifecycleImage=%s", lifecycleImage),
+		equals: func(o pack.BuildOptions) bool {
+			return o.LifecycleImage == lifecycleImage
+		},
+	}
+}
+
 func EqBuildOptionsWithNetwork(network string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Network=%s", network),
 		equals: func(o pack.BuildOptions) bool {
 			return o.ContainerConfig.Network == network
+		},
+	}
+}
+
+func EqBuildOptionsWithBuilder(builder string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Builder=%s", builder),
+		equals: func(o pack.BuildOptions) bool {
+			return o.Builder == builder
 		},
 	}
 }

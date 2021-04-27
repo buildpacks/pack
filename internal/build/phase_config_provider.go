@@ -3,6 +3,7 @@ package build
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -122,14 +123,32 @@ func WithBinds(binds ...string) PhaseConfigProviderOperation {
 	}
 }
 
-func WithDaemonAccess() PhaseConfigProviderOperation {
+func WithDaemonAccess(dockerHost string) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
 		WithRoot()(provider)
-		bind := "/var/run/docker.sock:/var/run/docker.sock"
-		if provider.os == "windows" {
-			bind = `\\.\pipe\docker_engine:\\.\pipe\docker_engine`
+		if dockerHost == "inherit" {
+			dockerHost = os.Getenv("DOCKER_HOST")
 		}
-		provider.hostConf.Binds = append(provider.hostConf.Binds, bind)
+		var bind string
+		if dockerHost == "" {
+			bind = "/var/run/docker.sock:/var/run/docker.sock"
+			if provider.os == "windows" {
+				bind = `\\.\pipe\docker_engine:\\.\pipe\docker_engine`
+			}
+		} else {
+			switch {
+			case strings.HasPrefix(dockerHost, "unix://"):
+				bind = fmt.Sprintf("%s:/var/run/docker.sock", strings.TrimPrefix(dockerHost, "unix://"))
+			case strings.HasPrefix(dockerHost, "npipe://") || strings.HasPrefix(dockerHost, `npipe:\\`):
+				sub := ([]rune(dockerHost))[8:]
+				bind = fmt.Sprintf(`%s:\\.\pipe\docker_engine`, string(sub))
+			default:
+				provider.ctrConf.Env = append(provider.ctrConf.Env, fmt.Sprintf(`DOCKER_HOST=%s`, dockerHost))
+			}
+		}
+		if bind != "" {
+			provider.hostConf.Binds = append(provider.hostConf.Binds, bind)
+		}
 	}
 }
 
@@ -158,18 +177,15 @@ func WithLogPrefix(prefix string) PhaseConfigProviderOperation {
 func WithLifecycleProxy(lifecycleExec *LifecycleExecution) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
 		if lifecycleExec.opts.HTTPProxy != "" {
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTP_PROXY="+lifecycleExec.opts.HTTPProxy)
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "http_proxy="+lifecycleExec.opts.HTTPProxy)
+			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTP_PROXY="+lifecycleExec.opts.HTTPProxy, "http_proxy="+lifecycleExec.opts.HTTPProxy)
 		}
 
 		if lifecycleExec.opts.HTTPSProxy != "" {
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTPS_PROXY="+lifecycleExec.opts.HTTPSProxy)
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "https_proxy="+lifecycleExec.opts.HTTPSProxy)
+			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTPS_PROXY="+lifecycleExec.opts.HTTPSProxy, "https_proxy="+lifecycleExec.opts.HTTPSProxy)
 		}
 
 		if lifecycleExec.opts.NoProxy != "" {
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "NO_PROXY="+lifecycleExec.opts.NoProxy)
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "no_proxy="+lifecycleExec.opts.NoProxy)
+			provider.ctrConf.Env = append(provider.ctrConf.Env, "NO_PROXY="+lifecycleExec.opts.NoProxy, "no_proxy="+lifecycleExec.opts.NoProxy)
 		}
 	}
 }

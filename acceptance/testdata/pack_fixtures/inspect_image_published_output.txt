@@ -13,8 +13,8 @@ Run Images:
   {{.run_image_mirror}}
 
 Buildpacks:
-  ID                   VERSION
-  simple/layers        simple-layers-version
+  ID                   VERSION                      HOMEPAGE
+  simple/layers        simple-layers-version        -
 
 Processes:
   TYPE                 SHELL        COMMAND        ARGS
@@ -22,22 +22,4 @@ Processes:
   hello                             {{.hello_command}}           {{ .hello_args_prefix }}{{ StringsJoin .hello_args " "}}
 
 LOCAL:
-
-Stack: pack.test.stack
-
-Base Image:
-  Reference: {{.base_image_ref}}
-  Top Layer: {{.base_image_top_layer}}
-
-Run Images:
-  pack-test/run
-  {{.run_image_mirror}}
-
-Buildpacks:
-  ID                   VERSION
-  simple/layers        simple-layers-version
-
-Processes:
-  TYPE                 SHELL        COMMAND        ARGS
-  web (default)        bash         {{.web_command}}          8080
-  hello                             {{.hello_command}}           {{ .hello_args_prefix }}{{ StringsJoin .hello_args " "}}
+(not present)
