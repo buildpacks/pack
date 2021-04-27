@@ -141,6 +141,17 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#Build", func() {
+		when("Workspace option", func() {
+			it("uses the specified dir", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Workspace: "app",
+					Builder: defaultBuilderName,
+					Image:   "example.com/some/repo:tag",
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.Workspace, "app")
+			})
+		})
+
 		when("Image option", func() {
 			it("is required", func() {
 				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
