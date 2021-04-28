@@ -63,6 +63,9 @@ func (c *Client) NewBuildpack(ctx context.Context, opts NewBuildpackOptions) err
 		},
 	}
 
+	// The following line's comment is for gosec, it will ignore rule 301 in this case
+	// G301: Expect directory permissions to be 0750 or less
+	/* #nosec G301 */
 	if err := os.MkdirAll(opts.Path, 0755); err != nil {
 		return err
 	}
@@ -102,6 +105,9 @@ func createBinScript(path, name, contents string, c *Client) error {
 
 	_, err := os.Stat(binFile)
 	if os.IsNotExist(err) {
+		// The following line's comment is for gosec, it will ignore rule 301 in this case
+		// G301: Expect directory permissions to be 0750 or less
+		/* #nosec G301 */
 		if err := os.MkdirAll(binDir, 0755); err != nil {
 			return err
 		}
