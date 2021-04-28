@@ -1,6 +1,9 @@
 package build
 
-import "strings"
+import (
+	"path"
+	"strings"
+)
 
 type mountPaths struct {
 	volume    string
@@ -39,7 +42,7 @@ func (m mountPaths) stackPath() string {
 }
 
 func (m mountPaths) appDirName() string {
-	return m.separator + m.workspace
+	return path.Join(m.separator, m.workspace)
 }
 
 func (m mountPaths) appDir() string {
