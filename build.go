@@ -156,7 +156,7 @@ type BuildOptions struct {
 	// when using an untrusted builder.
 	LifecycleImage string
 
-	// The location at with to mount the AppDir in the build image.
+	// The location at which to mount the AppDir in the build image.
 	Workspace string
 }
 

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -135,6 +136,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 				lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
 				h.AssertNil(t, err)
+				h.AssertEq(t, filepath.Base(lifecycle.AppDir()), "workspace")
 
 				err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
 					return fakePhaseFactory
@@ -198,19 +200,12 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 				lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
 				h.AssertNil(t, err)
+				h.AssertEq(t, filepath.Base(lifecycle.AppDir()), "app")
 
 				err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
 					return fakePhaseFactory
 				})
 				h.AssertNil(t, err)
-
-				h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 1)
-
-				for _, entry := range fakePhaseFactory.NewCalledWithProvider {
-					if entry.Name() == "creator" {
-						h.AssertSliceContains(t, entry.ContainerConfig().Cmd, "/some/image")
-					}
-				}
 			})
 		})
 
