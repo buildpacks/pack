@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Determine version
-        uses: actions/github-script@v3
+        uses: actions/github-script@v4.0.2
         id: version
         with:
           result-encoding: string
