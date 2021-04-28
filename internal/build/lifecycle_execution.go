@@ -193,7 +193,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 
 	opts := []PhaseConfigProviderOperation{
 		WithFlags(l.withLogLevel(flags...)...),
-		WithArgs("-app", l.mountPaths.appDirName(), repoName),
+		WithArgs("-app", l.mountPaths.appDir(), repoName),
 		WithNetwork(networkMode),
 		cacheOpts,
 		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.opts.FileFilter)),
@@ -225,7 +225,7 @@ func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, vol
 		l,
 		WithLogPrefix("detector"),
 		WithArgs(
-			l.withLogLevel("-app", l.mountPaths.appDirName())...,
+			l.withLogLevel("-app", l.mountPaths.appDir())...,
 		),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
@@ -357,7 +357,7 @@ func (l *LifecycleExecution) Build(ctx context.Context, networkMode string, volu
 		"builder",
 		l,
 		WithLogPrefix("builder"),
-		WithArgs(l.withLogLevel("-app", l.mountPaths.appDirName())...),
+		WithArgs(l.withLogLevel("-app", l.mountPaths.appDir())...),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
 	)
