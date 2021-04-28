@@ -90,6 +90,10 @@ func (l *LifecycleExecution) AppPath() string {
 	return l.opts.AppPath
 }
 
+func (l LifecycleExecution) AppDir() string {
+	return l.mountPaths.appDir()
+}
+
 func (l *LifecycleExecution) AppVolume() string {
 	return l.appVolume
 }
