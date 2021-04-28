@@ -111,7 +111,9 @@ func createBinScript(path, name, contents string, c *Client) error {
 		if err := os.MkdirAll(binDir, 0755); err != nil {
 			return err
 		}
-
+		// The following line's comment is for gosec, it will ignore rule 306 in this case
+		// G306: Expect WriteFile permissions to be 0600 or less
+		/* #nosec G306 */
 		err = ioutil.WriteFile(binFile, []byte(contents), 0755)
 		if err != nil {
 			return err
