@@ -56,7 +56,7 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 		platformAPI:  latestSupportedPlatformAPI,
 		opts:         opts,
 		os:           osType,
-		mountPaths:   mountPathsForOS(osType),
+		mountPaths:   mountPathsForOS(osType, opts.Workspace),
 	}
 
 	return exec, nil
@@ -88,6 +88,10 @@ func (l *LifecycleExecution) Builder() Builder {
 
 func (l *LifecycleExecution) AppPath() string {
 	return l.opts.AppPath
+}
+
+func (l LifecycleExecution) AppDir() string {
+	return l.mountPaths.appDir()
 }
 
 func (l *LifecycleExecution) AppVolume() string {

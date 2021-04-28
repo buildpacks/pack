@@ -155,6 +155,9 @@ type BuildOptions struct {
 	// The lifecycle image that will be used for the analysis, restore and export phases
 	// when using an untrusted builder.
 	LifecycleImage string
+
+	// The location at which to mount the AppDir in the build image.
+	Workspace string
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -303,6 +306,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		DefaultProcessType: opts.DefaultProcessType,
 		FileFilter:         fileFilter,
 		CacheImage:         opts.CacheImage,
+		Workspace:          opts.Workspace,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version

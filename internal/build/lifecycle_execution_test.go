@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -135,6 +136,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 				lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
 				h.AssertNil(t, err)
+				h.AssertEq(t, filepath.Base(lifecycle.AppDir()), "workspace")
 
 				err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
 					return fakePhaseFactory
@@ -180,6 +182,30 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						h.AssertSliceContains(t, entry.ContainerConfig().Cmd, "/some/image")
 					}
 				}
+			})
+		})
+
+		when("Run with workspace dir", func() {
+			it("succeeds", func() {
+				opts := build.LifecycleOptions{
+					Publish:      false,
+					ClearCache:   false,
+					RunImage:     "test",
+					Image:        imageName,
+					Builder:      fakeBuilder,
+					TrustBuilder: false,
+					Workspace:    "app",
+					UseCreator:   true,
+				}
+
+				lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+				h.AssertNil(t, err)
+				h.AssertEq(t, filepath.Base(lifecycle.AppDir()), "app")
+
+				err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+					return fakePhaseFactory
+				})
+				h.AssertNil(t, err)
 			})
 		})
 
