@@ -39,7 +39,7 @@ func (m mountPaths) stackPath() string {
 }
 
 func (m mountPaths) appDirName() string {
-	return m.workspace
+	return m.separator + m.workspace
 }
 
 func (m mountPaths) appDir() string {
