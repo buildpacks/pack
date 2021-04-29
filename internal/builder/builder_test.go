@@ -61,7 +61,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		lifecycleTarReader := archive.ReadDirAsTar(
 			filepath.Join("testdata", "lifecycle", "platform-0.4"),
-			".", 0, 0, 0755, true, nil,
+			".", 0, 0, 0755, true, false, nil,
 		)
 
 		descriptorContents, err := ioutil.ReadFile(filepath.Join("testdata", "lifecycle", "platform-0.4", "lifecycle.toml"))

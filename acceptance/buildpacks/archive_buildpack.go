@@ -74,6 +74,7 @@ func (a archiveBuildpack) createTgz(sourceDir string) (string, error) {
 		defaultGid,
 		defaultMode,
 		true,
+		false,
 		nil,
 	)
 	if err != nil {

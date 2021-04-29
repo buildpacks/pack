@@ -150,6 +150,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 							lifecycleExec.Builder().UID(),
 							lifecycleExec.Builder().GID(),
 							osType,
+							false,
 							nil,
 						),
 					),
@@ -225,7 +226,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 							lifecycleExec,
 							build.WithArgs("read", "/workspace/fake-app-file"),
 							build.WithContainerOperations(
-								build.CopyDir(lifecycleExec.AppPath(), "/workspace", 0, 0, osType, nil),
+								build.CopyDir(lifecycleExec.AppPath(), "/workspace", 0, 0, osType, false, nil),
 							),
 						))
 						h.AssertNil(t, err)
@@ -437,7 +438,7 @@ func assertAppModTimePreserved(t *testing.T, lifecycle *build.LifecycleExecution
 		lifecycle,
 		build.WithArgs("read", "/workspace/fake-app-file"),
 		build.WithContainerOperations(
-			build.CopyDir(lifecycle.AppPath(), "/workspace", 0, 0, osType, nil),
+			build.CopyDir(lifecycle.AppPath(), "/workspace", 0, 0, osType, false, nil),
 		),
 	))
 	assertRunSucceeds(t, readPhase, outBuf, errBuf)

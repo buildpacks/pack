@@ -86,7 +86,7 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, nil)
+			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, false, nil)
 
 			var outBuf, errBuf bytes.Buffer
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
@@ -124,6 +124,54 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			}
 		})
 
+		when("includeRoot", func() {
+			it("copies root dir with new GID, UID and permissions", func() {
+				containerDir := "/some-vol"
+				if osType == "windows" {
+					containerDir = `c:\some-vol`
+				}
+
+				ctrCmd := []string{"ls", "-al", "/"}
+				if osType == "windows" {
+					ctrCmd = []string{"cmd", "/c", `dir /q c:`}
+				}
+
+				ctx := context.Background()
+				ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
+				h.AssertNil(t, err)
+				defer cleanupContainer(ctx, ctr.ID)
+
+				copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, true, nil)
+
+				var outBuf, errBuf bytes.Buffer
+				err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
+				h.AssertNil(t, err)
+
+				err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, errBuf.String(), "")
+				if osType == "windows" {
+					// Expected WCOW results
+					h.AssertContainsMatch(t, strings.ReplaceAll(outBuf.String(), "\r", ""), `
+(.*)    <DIR>          ...                    some-vol
+`)
+				} else {
+					if runtime.GOOS == "windows" {
+						// Expected LCOW results
+						h.AssertContainsMatch(t, outBuf.String(), `
+drwxrwxrwx    2 123      456 (.*) some-vol
+`)
+					} else {
+						// Expected results
+						h.AssertContainsMatch(t, outBuf.String(), `
+drwsrwsrwt    2 123      456 (.*) some-vol
+`)
+					}
+				}
+			})
+		})
+
 		it("writes contents ignoring from file filter", func() {
 			containerDir := "/some-vol"
 			if osType == "windows" {
@@ -140,7 +188,7 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, func(filename string) bool {
+			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, false, func(filename string) bool {
 				return filepath.Base(filename) != "file-to-ignore"
 			})
 
@@ -172,7 +220,7 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app.zip"), containerDir, 123, 456, osType, nil)
+			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app.zip"), containerDir, 123, 456, osType, false, nil)
 
 			var outBuf, errBuf bytes.Buffer
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)

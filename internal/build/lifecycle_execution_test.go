@@ -151,6 +151,37 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					}
 				}
 			})
+			when("Run with workspace dir", func() {
+				it("succeeds", func() {
+					opts := build.LifecycleOptions{
+						Publish:      false,
+						ClearCache:   false,
+						RunImage:     "test",
+						Image:        imageName,
+						Builder:      fakeBuilder,
+						TrustBuilder: true,
+						Workspace:    "app",
+						UseCreator:   true,
+					}
+
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					h.AssertNil(t, err)
+
+					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+						return fakePhaseFactory
+					})
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 1)
+
+					for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+						if entry.Name() == "creator" {
+							h.AssertSliceContainsInOrder(t, entry.ContainerConfig().Cmd, "-app", "/app")
+							h.AssertSliceContains(t, entry.ContainerConfig().Cmd, "/some/image")
+						}
+					}
+				})
+			})
 		})
 		when("Run without using creator", func() {
 			it("succeeds", func() {
@@ -183,29 +214,40 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					}
 				}
 			})
-		})
+			when("Run with workspace dir", func() {
+				it("succeeds", func() {
+					opts := build.LifecycleOptions{
+						Publish:      false,
+						ClearCache:   false,
+						RunImage:     "test",
+						Image:        imageName,
+						Builder:      fakeBuilder,
+						TrustBuilder: false,
+						Workspace:    "app",
+						UseCreator:   false,
+					}
 
-		when("Run with workspace dir", func() {
-			it("succeeds", func() {
-				opts := build.LifecycleOptions{
-					Publish:      false,
-					ClearCache:   false,
-					RunImage:     "test",
-					Image:        imageName,
-					Builder:      fakeBuilder,
-					TrustBuilder: false,
-					Workspace:    "app",
-					UseCreator:   true,
-				}
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					h.AssertNil(t, err)
+					h.AssertEq(t, filepath.Base(lifecycle.AppDir()), "app")
 
-				lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
-				h.AssertNil(t, err)
-				h.AssertEq(t, filepath.Base(lifecycle.AppDir()), "app")
+					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+						return fakePhaseFactory
+					})
+					h.AssertNil(t, err)
 
-				err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
-					return fakePhaseFactory
+					h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+
+					appCount := 0
+					for _, entry := range fakePhaseFactory.NewCalledWithProvider {
+						switch entry.Name() {
+						case "detector", "builder", "exporter":
+							h.AssertSliceContainsInOrder(t, entry.ContainerConfig().Cmd, "-app", "/app")
+							appCount++
+						}
+					}
+					h.AssertEq(t, appCount, 3)
 				})
-				h.AssertNil(t, err)
 			})
 		})
 
