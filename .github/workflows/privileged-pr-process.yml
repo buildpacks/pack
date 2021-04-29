@@ -19,7 +19,7 @@ jobs:
         id: assets
         with:
           script: |
-            var milestone = await github.issues.listMilestonesForRepo({
+            var milestone = await github.issues.listMilestones({
                       owner: context.repo.owner,
                       repo: context.repo.repo,
                       state: 'open',
