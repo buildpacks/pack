@@ -547,12 +547,7 @@ func CopyFileE(src, dst string) error {
 	}
 
 	modifiedtime := time.Time{}
-	err = os.Chtimes(dst, modifiedtime, modifiedtime)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return os.Chtimes(dst, modifiedtime, modifiedtime)
 }
 
 func RecursiveCopy(t *testing.T, src, dst string) {
@@ -592,12 +587,8 @@ func RecursiveCopyE(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	err = os.Chmod(dst, 0775)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return os.Chmod(dst, 0775)
 }
 
 func RequireDocker(t *testing.T) {
