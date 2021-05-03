@@ -2,8 +2,8 @@ package pack
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -842,10 +842,15 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 	return bldr, nil
 }
 
+// Returns a string iwith lowercase a-z, of length n
 func randString(n int) string {
 	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
 	for i := range b {
-		b[i] = 'a' + byte(rand.Intn(26))
+		b[i] = 'a' + (b[i] % 26)
 	}
 	return string(b)
 }
