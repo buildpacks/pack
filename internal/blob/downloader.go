@@ -90,7 +90,7 @@ func (d *downloader) handleHTTP(ctx context.Context, uri string) (string, error)
 
 	etag := ""
 	if etagExists {
-		bytes, err := ioutil.ReadFile(etagFile)
+		bytes, err := ioutil.ReadFile(filepath.Clean(etagFile))
 		if err != nil {
 			return "", err
 		}

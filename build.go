@@ -544,7 +544,7 @@ func (c *Client) processAppPath(appPath string) (string, error) {
 	}
 
 	if !fi.IsDir() {
-		fh, err := os.Open(resolvedAppPath)
+		fh, err := os.Open(filepath.Clean(resolvedAppPath))
 		if err != nil {
 			return "", errors.Wrap(err, "read file")
 		}
