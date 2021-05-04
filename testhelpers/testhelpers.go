@@ -681,7 +681,7 @@ func writeTAR(t *testing.T, srcDir, tarDir string, mode int64, w io.Writer) {
 
 func RecursiveCopyNow(t *testing.T, src, dst string) {
 	t.Helper()
-	err := os.MkdirAll(dst, 0755)
+	err := os.MkdirAll(dst, 0750)
 	AssertNil(t, err)
 
 	fis, err := ioutil.ReadDir(src)
