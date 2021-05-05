@@ -167,7 +167,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("read", "/workspace/fake-app-file"))
 				readPhase2 := phaseFactory.New(configProvider)
 				err := readPhase2.Run(context.TODO())
-				readPhase2.Cleanup()
+				h.AssertNil(t, readPhase2.Cleanup())
 				h.AssertNotNil(t, err)
 				h.AssertContains(t, outBuf.String(), "failed to read file")
 			})
@@ -335,7 +335,8 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			when("#WithBinds", func() {
 				it.After(func() {
-					docker.VolumeRemove(context.TODO(), "some-volume", true)
+					err := docker.VolumeRemove(context.TODO(), "some-volume", true)
+					h.AssertNil(t, err)
 				})
 
 				it("mounts volumes inside container", func() {
@@ -450,7 +451,7 @@ func assertAppModTimePreserved(t *testing.T, lifecycle *build.LifecycleExecution
 func assertRunSucceeds(t *testing.T, phase build.RunnerCleaner, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
 	t.Helper()
 	if err := phase.Run(context.TODO()); err != nil {
-		phase.Cleanup()
+		h.AssertNil(t, phase.Cleanup())
 		t.Fatalf("Failed to run phase: %s\nstdout:\n%s\nstderr:\n%s\n", err, outBuf.String(), errBuf.String())
 	}
 	phase.Cleanup()

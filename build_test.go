@@ -132,12 +132,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		defaultBuilderImage.Cleanup()
-		fakeDefaultRunImage.Cleanup()
-		fakeMirror1.Cleanup()
-		fakeMirror2.Cleanup()
+		h.AssertNil(t, defaultBuilderImage.Cleanup())
+		h.AssertNil(t, fakeDefaultRunImage.Cleanup())
+		h.AssertNil(t, fakeMirror1.Cleanup())
+		h.AssertNil(t, fakeMirror2.Cleanup())
 		os.RemoveAll(tmpDir)
-		fakeLifecycleImage.Cleanup()
+		h.AssertNil(t, fakeLifecycleImage.Cleanup())
 	})
 
 	when("#Build", func() {
@@ -226,8 +226,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					remoteRunImage.Cleanup()
-					builderWithoutLifecycleImageOrCreator.Cleanup()
+					h.AssertNil(t, remoteRunImage.Cleanup())
+					h.AssertNil(t, builderWithoutLifecycleImageOrCreator.Cleanup())
 					h.AssertNil(t, builtImage.Cleanup())
 				})
 
@@ -254,7 +254,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					builtImage.Cleanup()
+					h.AssertNil(t, builtImage.Cleanup())
 				})
 
 				it("only prints app name and sha", func() {
@@ -462,8 +462,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					customBuilderImage.Cleanup()
-					fakeRunImage.Cleanup()
+					h.AssertNil(t, customBuilderImage.Cleanup())
+					h.AssertNil(t, fakeRunImage.Cleanup())
 				})
 
 				it("it uses the provided builder", func() {
@@ -489,7 +489,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				fakeRunImage.Cleanup()
+				h.AssertNil(t, fakeRunImage.Cleanup())
 			})
 
 			when("run image stack matches the builder stack", func() {
@@ -588,8 +588,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it.After(func() {
-						fakeLocalMirror.Cleanup()
-						fakeLocalMirror1.Cleanup()
+						h.AssertNil(t, fakeLocalMirror.Cleanup())
+						h.AssertNil(t, fakeLocalMirror1.Cleanup())
 					})
 
 					when("Publish is true", func() {
