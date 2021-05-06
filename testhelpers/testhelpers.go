@@ -259,6 +259,15 @@ func AssertMatch(t *testing.T, actual string, expected string) {
 	}
 }
 
+// AssertNilE checks for nil value, if not nil it sets test as failed without stopping execution.
+func AssertNilE(t *testing.T, actual interface{}) {
+	t.Helper()
+	if !isNil(actual) {
+		t.Errorf("Expected nil: %s", actual)
+	}
+}
+
+// AssertNil checks for nil value, if not nil it fails the test and stops execution immediately.
 func AssertNil(t *testing.T, actual interface{}) {
 	t.Helper()
 	if !isNil(actual) {
