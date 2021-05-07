@@ -10,10 +10,17 @@ import (
 	"github.com/buildpacks/pack/internal/dist"
 )
 
+type Script struct {
+	API    string `toml:"api"`
+	Inline string `toml:"inline"`
+	Shell  string `toml:"shell"`
+}
+
 type Buildpack struct {
 	ID      string `toml:"id"`
 	Version string `toml:"version"`
 	URI     string `toml:"uri"`
+	Script  Script `toml:"script"`
 }
 
 type EnvVar struct {

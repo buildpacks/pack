@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -235,7 +236,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Image(), bldr.Buildpacks(), bldr.Order(), opts)
+	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Image(), bldr.Buildpacks(), bldr.Order(), bldr.StackID, opts)
 	if err != nil {
 		return err
 	}
@@ -645,7 +646,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, opts BuildOptions) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
 	registry := opts.Registry
@@ -657,10 +658,24 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 		relativeBaseDir = opts.ProjectDescriptorBaseDir
 
 		for _, bp := range opts.ProjectDescriptor.Build.Buildpacks {
-			if bp.URI == "" {
+			switch {
+			case bp.ID != "" && bp.Script.Inline != "":
+				if bp.Script.API == "" {
+					return nil, nil, errors.New("Missing API version for inline buildpack")
+				}
+
+				pathToInlineBuildpack, err := createInlineBuildpack(bp, stackID)
+				if err != nil {
+					return nil, nil, errors.Wrap(err, "Could not create temporary inline buildpack")
+				}
+				println(pathToInlineBuildpack)
+				declaredBPs = append(declaredBPs, pathToInlineBuildpack)
+			case bp.URI == "":
 				declaredBPs = append(declaredBPs, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
-			} else {
+			case bp.Version != "":
 				declaredBPs = append(declaredBPs, bp.URI)
+			default:
+				return nil, nil, errors.New("Invalid buildpack defined in project descriptor")
 			}
 		}
 	}
@@ -904,4 +919,40 @@ func parseDigestFromImageID(id imgutil.Identifier) string {
 
 	digest = strings.TrimPrefix(digest, "sha256:")
 	return fmt.Sprintf("sha256:%s", digest)
+}
+
+func createInlineBuildpack(bp project.Buildpack, stackID string) (string, error) {
+	pathToInlineBuilpack, err := ioutil.TempDir("", "inline-cnb")
+	if err != nil {
+		return pathToInlineBuilpack, err
+	}
+
+	if err = createBuildpackTOML(pathToInlineBuilpack, bp.ID, "0.0.0", bp.Script.API, []dist.Stack{{ID: stackID}}, nil); err != nil {
+		return pathToInlineBuilpack, err
+	}
+
+	shell := bp.Script.Shell
+	if shell == "" {
+		shell = "bash"
+	}
+
+	binBuild := fmt.Sprintf(`#!/usr/bin/env %s
+
+%s
+`, shell, bp.Script.Inline)
+
+	binDetect := fmt.Sprintf(`#!/usr/bin/env %s
+
+exit 0
+`, shell)
+
+	if err = createBinScript(pathToInlineBuilpack, "build", binBuild, nil); err != nil {
+		return pathToInlineBuilpack, err
+	}
+
+	if err = createBinScript(pathToInlineBuilpack, "detect", binDetect, nil); err != nil {
+		return pathToInlineBuilpack, err
+	}
+
+	return pathToInlineBuilpack, nil
 }
