@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
@@ -638,43 +637,20 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("windows", func() {
-			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
-			})
+		it("supports directory buildpacks", func() {
+			prepareFetcherWithBuildImage()
+			prepareFetcherWithRunImages()
+			opts.RelativeBaseDir = ""
+			directoryPath := "testdata/buildpack"
+			opts.Config.Buildpacks[0].URI = directoryPath
 
-			it("disallows directory-based buildpacks", func() {
-				prepareFetcherWithBuildImage()
-				prepareFetcherWithRunImages()
-				opts.RelativeBaseDir = ""
-				opts.Config.Buildpacks[0].URI = `testdata\buildpack`
+			absURI, err := paths.FilePathToURI(directoryPath, "")
+			h.AssertNil(t, err)
 
-				err := subject.CreateBuilder(context.TODO(), opts)
-				h.AssertError(t, err, `testdata/buildpack`)
-				h.AssertError(t, err, "directory-based buildpacks are not currently supported on Windows")
-			})
-		})
+			mockDownloader.EXPECT().Download(gomock.Any(), absURI).Return(blob.NewBlob(directoryPath), nil).AnyTimes()
 
-		when("is posix", func() {
-			it.Before(func() {
-				h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
-			})
-
-			it("supports directory buildpacks", func() {
-				prepareFetcherWithBuildImage()
-				prepareFetcherWithRunImages()
-				opts.RelativeBaseDir = ""
-				directoryPath := "testdata/buildpack"
-				opts.Config.Buildpacks[0].URI = directoryPath
-
-				absURI, err := paths.FilePathToURI(directoryPath, "")
-				h.AssertNil(t, err)
-
-				mockDownloader.EXPECT().Download(gomock.Any(), absURI).Return(blob.NewBlob(directoryPath), nil).AnyTimes()
-
-				err = subject.CreateBuilder(context.TODO(), opts)
-				h.AssertNil(t, err)
-			})
+			err = subject.CreateBuilder(context.TODO(), opts)
+			h.AssertNil(t, err)
 		})
 
 		when("invalid buildpack URI", func() {
