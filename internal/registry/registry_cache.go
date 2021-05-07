@@ -286,7 +286,7 @@ func (r *Cache) writeEntry(b Buildpack) (string, error) {
 		}
 	}
 
-	f, err := os.OpenFile(index, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	f, err := os.OpenFile(index, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating buildpack file: %s/%s", ns, name)
 	}
