@@ -1383,8 +1383,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							ProjectDescriptor: project.Descriptor{
 								Build: project.Build{
 									Buildpacks: []project.Buildpack{{
-										ID:      "my/inline",
-										Version: "1.0.0",
+										ID:      "buildpack.1.id",
+										Version: "buildpack.1.version",
 										Script: project.Script{
 											Inline: "touch foo.txt",
 										},
@@ -1400,13 +1400,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						h.AssertNil(t, err)
 						h.AssertEq(t, bldr.Order(), dist.Order{
 							{Group: []dist.BuildpackRef{
-								{BuildpackInfo: dist.BuildpackInfo{ID: "my/inline", Version: "1.0.0"}},
+								{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}},
 							}},
 						})
 						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
 							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
 							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
-							{ID: "my/inline", Version: "1.0.0"},
 						})
 					})
 				})
