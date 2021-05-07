@@ -1302,6 +1302,48 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							{ID: "my/inline", Version: "0.0.0"},
 						})
 					})
+
+					it("fails if there is no API", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: project.Descriptor{
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										ID: "my/inline",
+										Script: project.Script{
+											Inline: "touch foo.txt",
+										},
+									}},
+								},
+							},
+							ProjectDescriptorBaseDir: tmpDir,
+						})
+
+						h.AssertEq(t, "Missing API version for inline buildpack", err.Error())
+					})
+
+					it("fails if there is no ID", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: project.Descriptor{
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										Script: project.Script{
+											API:    "0.4",
+											Inline: "touch foo.txt",
+										},
+									}},
+								},
+							},
+							ProjectDescriptorBaseDir: tmpDir,
+						})
+
+						h.AssertEq(t, "Invalid buildpack defined in project descriptor", err.Error())
+					})
 				})
 
 				when("buildpack is from a registry", func() {
