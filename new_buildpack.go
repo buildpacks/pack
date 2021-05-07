@@ -49,7 +49,10 @@ type NewBuildpackOptions struct {
 }
 
 func (c *Client) NewBuildpack(ctx context.Context, opts NewBuildpackOptions) error {
-	createBuildpackTOML(opts.Path, opts.ID, opts.Version, opts.API, opts.Stacks, nil)
+	err := createBuildpackTOML(opts.Path, opts.ID, opts.Version, opts.API, opts.Stacks, c)
+	if err != nil {
+		return err
+	}
 	return createBashBuildpack(opts.Path, c)
 }
 
