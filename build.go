@@ -659,7 +659,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 
 		for _, bp := range opts.ProjectDescriptor.Build.Buildpacks {
 			switch {
-			case bp.ID != "" && bp.Script.Inline != "":
+			case bp.ID != "" && bp.Script.Inline != "" && bp.Version == "" && bp.URI == "":
 				if bp.Script.API == "" {
 					return nil, nil, errors.New("Missing API version for inline buildpack")
 				}
