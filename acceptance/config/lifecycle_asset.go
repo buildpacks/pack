@@ -10,7 +10,6 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 
 	"github.com/buildpacks/pack/internal/builder"
-	internalConfig "github.com/buildpacks/pack/internal/config"
 )
 
 type LifecycleAsset struct {
@@ -52,10 +51,7 @@ func (l *LifecycleAsset) EscapedPath() string {
 }
 
 func (l *LifecycleAsset) Image() string {
-	if l.image != "" {
-		return l.image
-	}
-	return fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, l.Version())
+	return l.image
 }
 
 func earliestVersion(versions []*api.Version) *api.Version {
