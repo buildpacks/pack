@@ -28,7 +28,7 @@ func main() {
 		}
 
 		for _, path := range paths {
-			contents, err := ioutil.ReadFile(path)
+			contents, err := ioutil.ReadFile(filepath.Clean(path))
 			if err != nil {
 				panic(err.Error())
 			}
