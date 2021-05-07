@@ -798,14 +798,13 @@ func testAcceptance(
 							buildpackManager,
 							runImageMirror,
 						)
+						assert.Nil(err)
 
 						suiteManager.RegisterCleanUp("remove-lifecycle-"+lifecycle.Image(), func() error {
 							img := imageManager.GetImageID(lifecycle.Image())
 							imageManager.CleanupImages(img)
 							return nil
 						})
-
-						assert.Nil(err)
 					})
 
 					it.After(func() {

@@ -37,11 +37,11 @@ type AssetManager struct {
 	githubAssetFetcher          *GithubAssetFetcher
 	lifecyclePath               string
 	lifecycleDescriptor         builder.LifecycleDescriptor
+	lifecycleImage              string
 	previousLifecyclePath       string
 	previousLifecycleDescriptor builder.LifecycleDescriptor
-	defaultLifecycleDescriptor  builder.LifecycleDescriptor
-	lifecycleImage              string
 	previousLifecycleImage      string
+	defaultLifecycleDescriptor  builder.LifecycleDescriptor
 	testObject                  *testing.T
 }
 
@@ -53,8 +53,10 @@ func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig 
 		convergedPreviousPackPath            string
 		convergedPreviousPackFixturesPaths   []string
 		convergedCurrentLifecyclePath        string
+		convergedCurrentLifecycleImage       string
 		convergedCurrentLifecycleDescriptor  builder.LifecycleDescriptor
 		convergedPreviousLifecyclePath       string
+		convergedPreviousLifecycleImage      string
 		convergedPreviousLifecycleDescriptor builder.LifecycleDescriptor
 		convergedDefaultLifecycleDescriptor  builder.LifecycleDescriptor
 	)
@@ -81,11 +83,11 @@ func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig 
 	}
 
 	if inputConfig.combinations.requiresCurrentLifecycle() {
-		convergedCurrentLifecyclePath, convergedCurrentLifecycleDescriptor = assetBuilder.ensureCurrentLifecycle()
+		convergedCurrentLifecyclePath, convergedCurrentLifecycleImage, convergedCurrentLifecycleDescriptor = assetBuilder.ensureCurrentLifecycle()
 	}
 
 	if inputConfig.combinations.requiresPreviousLifecycle() {
-		convergedPreviousLifecyclePath, convergedPreviousLifecycleDescriptor = assetBuilder.ensurePreviousLifecycle()
+		convergedPreviousLifecyclePath, convergedPreviousLifecycleImage, convergedPreviousLifecycleDescriptor = assetBuilder.ensurePreviousLifecycle()
 	}
 
 	if inputConfig.combinations.requiresDefaultLifecycle() {
@@ -98,12 +100,12 @@ func ConvergedAssetManager(t *testing.T, assert h.AssertionManager, inputConfig 
 		previousPackPath:            convergedPreviousPackPath,
 		previousPackFixturesPaths:   convergedPreviousPackFixturesPaths,
 		lifecyclePath:               convergedCurrentLifecyclePath,
+		lifecycleImage:              convergedCurrentLifecycleImage,
 		lifecycleDescriptor:         convergedCurrentLifecycleDescriptor,
 		previousLifecyclePath:       convergedPreviousLifecyclePath,
+		previousLifecycleImage:      convergedPreviousLifecycleImage,
 		previousLifecycleDescriptor: convergedPreviousLifecycleDescriptor,
 		defaultLifecycleDescriptor:  convergedDefaultLifecycleDescriptor,
-		lifecycleImage:              inputConfig.lifecycleImage,
-		previousLifecycleImage:      inputConfig.previousLifecycleImage,
 		testObject:                  t,
 	}
 }
@@ -256,7 +258,7 @@ func (b assetManagerBuilder) ensurePreviousPackFixtures() string {
 	return fixturesDir
 }
 
-func (b assetManagerBuilder) ensureCurrentLifecycle() (string, builder.LifecycleDescriptor) {
+func (b assetManagerBuilder) ensureCurrentLifecycle() (string, string, builder.LifecycleDescriptor) {
 	b.testObject.Helper()
 
 	lifecyclePath := b.inputConfig.lifecyclePath
@@ -276,10 +278,18 @@ func (b assetManagerBuilder) ensureCurrentLifecycle() (string, builder.Lifecycle
 	lifecycle, err := builder.NewLifecycle(blob.NewBlob(lifecyclePath))
 	b.assert.Nil(err)
 
-	return lifecyclePath, lifecycle.Descriptor()
+	lifecycleImage := b.inputConfig.lifecycleImage
+
+	if lifecycleImage == "" {
+		lifecycleImage = fmt.Sprintf("%s:%s", config.DefaultLifecycleImageRepo, lifecycle.Descriptor().Info.Version)
+
+		b.testObject.Logf("using %s for current lifecycle image", lifecycleImage)
+	}
+
+	return lifecyclePath, lifecycleImage, lifecycle.Descriptor()
 }
 
-func (b assetManagerBuilder) ensurePreviousLifecycle() (string, builder.LifecycleDescriptor) {
+func (b assetManagerBuilder) ensurePreviousLifecycle() (string, string, builder.LifecycleDescriptor) {
 	b.testObject.Helper()
 
 	previousLifecyclePath := b.inputConfig.previousLifecyclePath
@@ -299,7 +309,15 @@ func (b assetManagerBuilder) ensurePreviousLifecycle() (string, builder.Lifecycl
 	lifecycle, err := builder.NewLifecycle(blob.NewBlob(previousLifecyclePath))
 	b.assert.Nil(err)
 
-	return previousLifecyclePath, lifecycle.Descriptor()
+	previousLifecycleImage := b.inputConfig.previousLifecycleImage
+
+	if previousLifecycleImage == "" {
+		previousLifecycleImage = fmt.Sprintf("%s:%s", config.DefaultLifecycleImageRepo, lifecycle.Descriptor().Info.Version)
+
+		b.testObject.Logf("using %s for previous lifecycle image", previousLifecycleImage)
+	}
+
+	return previousLifecyclePath, previousLifecycleImage, lifecycle.Descriptor()
 }
 
 func (b assetManagerBuilder) downloadLifecycle(version string) string {
