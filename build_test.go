@@ -1231,6 +1231,36 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
 						})
 					})
+
+					it("adds the buildpack form the project descriptor", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: project.Descriptor{
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										URI: server.URL(),
+									}},
+								},
+							},
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.FromImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.Order(), dist.Order{
+							{Group: []dist.BuildpackRef{
+								{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
+							}},
+						})
+						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+						})
+					})
 				})
 
 				when("added buildpack's mixins are not satisfied", func() {
