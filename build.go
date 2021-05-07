@@ -670,10 +670,10 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				}
 				println(pathToInlineBuildpack)
 				declaredBPs = append(declaredBPs, pathToInlineBuildpack)
-			case bp.URI == "":
-				declaredBPs = append(declaredBPs, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
-			case bp.Version != "":
+			case bp.URI != "":
 				declaredBPs = append(declaredBPs, bp.URI)
+			case bp.ID != "" && bp.Version != "":
+				declaredBPs = append(declaredBPs, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
 			default:
 				return nil, nil, errors.New("Invalid buildpack defined in project descriptor")
 			}
