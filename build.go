@@ -668,7 +668,6 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				if err != nil {
 					return nil, nil, errors.Wrap(err, "Could not create temporary inline buildpack")
 				}
-				println(pathToInlineBuildpack)
 				declaredBPs = append(declaredBPs, pathToInlineBuildpack)
 			case bp.URI != "":
 				declaredBPs = append(declaredBPs, bp.URI)
