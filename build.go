@@ -932,15 +932,15 @@ func createInlineBuildpack(bp project.Buildpack, stackID string) (string, error)
 
 	shell := bp.Script.Shell
 	if shell == "" {
-		shell = "bash"
+		shell = "/bin/sh"
 	}
 
-	binBuild := fmt.Sprintf(`#!/usr/bin/env %s
+	binBuild := fmt.Sprintf(`#!%s
 
 %s
 `, shell, bp.Script.Inline)
 
-	binDetect := fmt.Sprintf(`#!/usr/bin/env %s
+	binDetect := fmt.Sprintf(`#!%s
 
 exit 0
 `, shell)
