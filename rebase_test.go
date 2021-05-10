@@ -59,9 +59,9 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it.After(func() {
-			h.AssertNil(t, fakeAppImage.Cleanup())
-			h.AssertNil(t, fakeRunImage.Cleanup())
-			h.AssertNil(t, fakeRunImageMirror.Cleanup())
+			h.AssertNilE(t, fakeAppImage.Cleanup())
+			h.AssertNilE(t, fakeRunImage.Cleanup())
+			h.AssertNilE(t, fakeRunImageMirror.Cleanup())
 		})
 
 		when("#Rebase", func() {
@@ -76,7 +76,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it.After(func() {
-						h.AssertNil(t, fakeCustomRunImage.Cleanup())
+						h.AssertNilE(t, fakeCustomRunImage.Cleanup())
 					})
 
 					it("uses the run image provided by the user", func() {
@@ -132,7 +132,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it.After(func() {
-							h.AssertNil(t, fakeLocalMirror.Cleanup())
+							h.AssertNilE(t, fakeLocalMirror.Cleanup())
 						})
 
 						it("chooses a matching local mirror first", func() {
@@ -172,7 +172,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					h.AssertNil(t, fakeRemoteRunImage.Cleanup())
+					h.AssertNilE(t, fakeRemoteRunImage.Cleanup())
 				})
 
 				when("is false", func() {
