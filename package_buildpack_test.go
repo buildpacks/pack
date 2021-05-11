@@ -729,9 +729,12 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNotNil(t, registryFixture)
 
 					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
-					packageImage.AddLayerWithDiffID("testdata/empty-file", "sha256:xxx")
-					packageImage.SetLabel("io.buildpacks.buildpackage.metadata", `{"id":"example/foo", "version":"1.1.0", "stacks":[{"id":"some.stack.id"}]}`)
-					packageImage.SetLabel("io.buildpacks.buildpack.layers", `{"example/foo":{"1.1.0":{"api": "0.2", "layerDiffID":"sha256:xxx", "stacks":[{"id":"some.stack.id"}]}}}`)
+					err = packageImage.AddLayerWithDiffID("testdata/empty-file", "sha256:xxx")
+					h.AssertNil(t, err)
+					err = packageImage.SetLabel("io.buildpacks.buildpackage.metadata", `{"id":"example/foo", "version":"1.1.0", "stacks":[{"id":"some.stack.id"}]}`)
+					h.AssertNil(t, err)
+					err = packageImage.SetLabel("io.buildpacks.buildpack.layers", `{"example/foo":{"1.1.0":{"api": "0.2", "layerDiffID":"sha256:xxx", "stacks":[{"id":"some.stack.id"}]}}}`)
+					h.AssertNil(t, err)
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), true, pubcfg.PullAlways).Return(packageImage, nil)
 
 					packHome := filepath.Join(tmpDir, "packHome")
