@@ -352,12 +352,18 @@ func cleanupContainer(ctx context.Context, ctrID string) {
 	}
 
 	// remove container
-	ctrClient.ContainerRemove(ctx, ctrID, types.ContainerRemoveOptions{})
+	err = ctrClient.ContainerRemove(ctx, ctrID, types.ContainerRemoveOptions{})
+	if err != nil {
+		return
+	}
 
 	// remove volumes
 	for _, m := range inspect.Mounts {
 		if m.Type == mount.TypeVolume {
-			ctrClient.VolumeRemove(ctx, m.Name, true)
+			err = ctrClient.VolumeRemove(ctx, m.Name, true)
+			if err != nil {
+				return
+			}
 		}
 	}
 }
