@@ -1150,103 +1150,40 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, os.Remove(buildpackTgz))
 				})
 
-				when("is windows", func() {
-					it.Before(func() {
-						h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
+				it("buildpacks are added to ephemeral builder", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						ClearCache: true,
+						Buildpacks: []string{
+							"buildpack.1.id@buildpack.1.version",
+							"buildpack.2.id@buildpack.2.version",
+							filepath.Join("testdata", "buildpack"),
+							buildpackTgz,
+						},
 					})
 
-					it("disallows directory-based buildpacks", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:      "some/app",
-							Builder:    defaultBuilderName,
-							ClearCache: true,
-							Buildpacks: []string{
-								"buildpack.1.id@buildpack.1.version",
-								filepath.Join("testdata", "buildpack"),
-							},
-						})
-
-						h.AssertError(t, err, "directory-based buildpacks are not currently supported on Windows")
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+					bldr, err := builder.FromImage(defaultBuilderImage)
+					h.AssertNil(t, err)
+					buildpack1Info := dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}
+					buildpack2Info := dist.BuildpackInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}
+					dirBuildpackInfo := dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"}
+					tgzBuildpackInfo := dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}
+					h.AssertEq(t, bldr.Order(), dist.Order{
+						{Group: []dist.BuildpackRef{
+							{BuildpackInfo: buildpack1Info},
+							{BuildpackInfo: buildpack2Info},
+							{BuildpackInfo: dirBuildpackInfo},
+							{BuildpackInfo: tgzBuildpackInfo},
+						}},
 					})
-
-					it("buildpacks are added to ephemeral builder", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:      "some/app",
-							Builder:    defaultBuilderName,
-							ClearCache: true,
-							Buildpacks: []string{
-								"buildpack.1.id@buildpack.1.version",
-								buildpackTgz,
-							},
-						})
-
-						h.AssertNil(t, err)
-						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage)
-						h.AssertNil(t, err)
-						h.AssertEq(t, bldr.Order(), dist.Order{
-							{Group: []dist.BuildpackRef{
-								{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}},
-								{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
-							}},
-						})
-						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
-							{
-								ID:      "buildpack.1.id",
-								Version: "buildpack.1.version",
-							},
-							{
-								ID:      "buildpack.2.id",
-								Version: "buildpack.2.version",
-							},
-							{
-								ID:      "some-other-buildpack-id",
-								Version: "some-other-buildpack-version",
-							},
-						})
-					})
-				})
-
-				when("is posix", func() {
-					it.Before(func() {
-						h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
-					})
-
-					it("buildpacks are added to ephemeral builder", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:      "some/app",
-							Builder:    defaultBuilderName,
-							ClearCache: true,
-							Buildpacks: []string{
-								"buildpack.1.id@buildpack.1.version",
-								"buildpack.2.id@buildpack.2.version",
-								filepath.Join("testdata", "buildpack"),
-								buildpackTgz,
-							},
-						})
-
-						h.AssertNil(t, err)
-						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage)
-						h.AssertNil(t, err)
-						buildpack1Info := dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}
-						buildpack2Info := dist.BuildpackInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}
-						dirBuildpackInfo := dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"}
-						tgzBuildpackInfo := dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}
-						h.AssertEq(t, bldr.Order(), dist.Order{
-							{Group: []dist.BuildpackRef{
-								{BuildpackInfo: buildpack1Info},
-								{BuildpackInfo: buildpack2Info},
-								{BuildpackInfo: dirBuildpackInfo},
-								{BuildpackInfo: tgzBuildpackInfo},
-							}},
-						})
-						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
-							buildpack1Info,
-							buildpack2Info,
-							dirBuildpackInfo,
-							tgzBuildpackInfo,
-						})
+					h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+						buildpack1Info,
+						buildpack2Info,
+						dirBuildpackInfo,
+						tgzBuildpackInfo,
 					})
 				})
 

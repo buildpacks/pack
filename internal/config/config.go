@@ -92,7 +92,7 @@ func Write(cfg Config, path string) error {
 }
 
 func MkdirAll(path string) error {
-	return os.MkdirAll(path, 0777)
+	return os.MkdirAll(path, 0750)
 }
 
 func SetRunImageMirrors(cfg Config, image string, mirrors []string) Config {

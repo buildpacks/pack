@@ -259,6 +259,15 @@ func AssertMatch(t *testing.T, actual string, expected string) {
 	}
 }
 
+// AssertNilE checks for nil value, if not nil it sets test as failed without stopping execution.
+func AssertNilE(t *testing.T, actual interface{}) {
+	t.Helper()
+	if !isNil(actual) {
+		t.Errorf("Expected nil: %s", actual)
+	}
+}
+
+// AssertNil checks for nil value, if not nil it fails the test and stops execution immediately.
 func AssertNil(t *testing.T, actual interface{}) {
 	t.Helper()
 	if !isNil(actual) {
@@ -547,12 +556,7 @@ func CopyFileE(src, dst string) error {
 	}
 
 	modifiedtime := time.Time{}
-	err = os.Chtimes(dst, modifiedtime, modifiedtime)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return os.Chtimes(dst, modifiedtime, modifiedtime)
 }
 
 func RecursiveCopy(t *testing.T, src, dst string) {
@@ -592,12 +596,8 @@ func RecursiveCopyE(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	err = os.Chmod(dst, 0775)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return os.Chmod(dst, 0775)
 }
 
 func RequireDocker(t *testing.T) {
@@ -690,7 +690,7 @@ func writeTAR(t *testing.T, srcDir, tarDir string, mode int64, w io.Writer) {
 
 func RecursiveCopyNow(t *testing.T, src, dst string) {
 	t.Helper()
-	err := os.MkdirAll(dst, 0755)
+	err := os.MkdirAll(dst, 0750)
 	AssertNil(t, err)
 
 	fis, err := ioutil.ReadDir(src)
