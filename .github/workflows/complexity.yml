@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'release/**'
+      - action_test_branch
   pull_request:
     paths-ignore:
       - '**.md'
@@ -19,10 +20,16 @@ jobs:
   visualize:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Visualize
-        id: viz
-        uses: dwillist/complex-viz-action@main
-        with:
-          gist_token: ${{secrets.GIST_TOKEN}}
+    - uses: actions/checkout@v2
+      name: Checkout
+    - uses: dwillist/complex-viz-action@main
+      name: "Create Complexity Visualization Gist"
+      id: create_svg_gist
+      with:
+        gist_token: ${{secrets.GIST_TOKEN}}
+    - uses: marocchino/sticky-pull-request-comment@v2
+      name: Sticky Comment
+      with:
+        message: |
+          Complexity output:
+          ![content](${{ steps.create_svg_gist.outputs.response }})
