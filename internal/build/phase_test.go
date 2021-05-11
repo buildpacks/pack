@@ -451,10 +451,10 @@ func assertAppModTimePreserved(t *testing.T, lifecycle *build.LifecycleExecution
 func assertRunSucceeds(t *testing.T, phase build.RunnerCleaner, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
 	t.Helper()
 	if err := phase.Run(context.TODO()); err != nil {
-		h.AssertNil(t, phase.Cleanup())
+		h.AssertNilE(t, phase.Cleanup())
 		t.Fatalf("Failed to run phase: %s\nstdout:\n%s\nstderr:\n%s\n", err, outBuf.String(), errBuf.String())
 	}
-	phase.Cleanup()
+	h.AssertNilE(t, phase.Cleanup())
 }
 
 func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, appDir string, repoName string) (*build.LifecycleExecution, error) {
