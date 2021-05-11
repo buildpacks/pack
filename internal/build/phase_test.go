@@ -94,7 +94,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		h.AssertNil(t, lifecycleExec.Cleanup())
+		h.AssertNilE(t, lifecycleExec.Cleanup())
 	})
 
 	when("Phase", func() {
@@ -212,7 +212,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it.After(func() {
-						h.AssertNil(t, os.RemoveAll(tmpFakeAppDir))
+						h.AssertNilE(t, os.RemoveAll(tmpFakeAppDir))
 					})
 
 					it("returns an error", func() {
@@ -335,8 +335,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			when("#WithBinds", func() {
 				it.After(func() {
-					err := docker.VolumeRemove(context.TODO(), "some-volume", true)
-					h.AssertNil(t, err)
+					h.AssertNilE(t, docker.VolumeRemove(context.TODO(), "some-volume", true))
 				})
 
 				it("mounts volumes inside container", func() {
@@ -365,7 +364,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					if registry != nil {
 						registry.StopRegistry(t)
 					}
-					h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
+					h.AssertNilE(t, os.Unsetenv("DOCKER_CONFIG"))
 				})
 
 				it("provides auth for registry in the container", func() {

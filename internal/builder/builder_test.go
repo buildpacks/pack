@@ -136,7 +136,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		h.AssertNil(t, baseImage.Cleanup())
+		h.AssertNilE(t, baseImage.Cleanup())
 		mockController.Finish()
 	})
 
@@ -266,7 +266,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it.After(func() {
-			h.AssertNil(t, baseImage.Cleanup())
+			h.AssertNilE(t, baseImage.Cleanup())
 		})
 
 		when("#Save", func() {
