@@ -161,7 +161,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) (st
 	}, &dockercontainer.HostConfig{
 		AutoRemove: true,
 		PortBindings: nat.PortMap{
-			"5000/tcp": []nat.PortBinding{{}},
+			"5000/tcp": []nat.PortBinding{{HostPort: "0"}},
 		},
 	}, nil, nil, runRegistryName)
 	AssertNil(t, err)
