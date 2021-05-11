@@ -15,12 +15,14 @@ import (
 type LifecycleAsset struct {
 	path       string
 	descriptor builder.LifecycleDescriptor
+	image      string
 }
 
 func (a AssetManager) NewLifecycleAsset(kind ComboValue) LifecycleAsset {
 	return LifecycleAsset{
 		path:       a.LifecyclePath(kind),
 		descriptor: a.LifecycleDescriptor(kind),
+		image:      a.LifecycleImage(kind),
 	}
 }
 
@@ -46,6 +48,10 @@ func (l *LifecycleAsset) HasLocation() bool {
 
 func (l *LifecycleAsset) EscapedPath() string {
 	return strings.ReplaceAll(l.path, `\`, `\\`)
+}
+
+func (l *LifecycleAsset) Image() string {
+	return l.image
 }
 
 func earliestVersion(versions []*api.Version) *api.Version {

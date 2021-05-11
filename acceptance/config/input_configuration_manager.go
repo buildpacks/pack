@@ -13,14 +13,16 @@ import (
 )
 
 const (
-	envPackPath                 = "PACK_PATH"
-	envPreviousPackPath         = "PREVIOUS_PACK_PATH"
-	envPreviousPackFixturesPath = "PREVIOUS_PACK_FIXTURES_PATH"
-	envLifecyclePath            = "LIFECYCLE_PATH"
-	envPreviousLifecyclePath    = "PREVIOUS_LIFECYCLE_PATH"
-	envGitHubToken              = "GITHUB_TOKEN"
 	envAcceptanceSuiteConfig    = "ACCEPTANCE_SUITE_CONFIG"
 	envCompilePackWithVersion   = "COMPILE_PACK_WITH_VERSION"
+	envGitHubToken              = "GITHUB_TOKEN"
+	envLifecycleImage           = "LIFECYCLE_IMAGE"
+	envLifecyclePath            = "LIFECYCLE_PATH"
+	envPackPath                 = "PACK_PATH"
+	envPreviousLifecycleImage   = "PREVIOUS_LIFECYCLE_IMAGE"
+	envPreviousLifecyclePath    = "PREVIOUS_LIFECYCLE_PATH"
+	envPreviousPackFixturesPath = "PREVIOUS_PACK_FIXTURES_PATH"
+	envPreviousPackPath         = "PREVIOUS_PACK_PATH"
 )
 
 type InputConfigurationManager struct {
@@ -29,6 +31,8 @@ type InputConfigurationManager struct {
 	previousPackFixturesPath string
 	lifecyclePath            string
 	previousLifecyclePath    string
+	lifecycleImage           string
+	previousLifecycleImage   string
 	compilePackWithVersion   string
 	githubToken              string
 	combinations             ComboSet
@@ -40,8 +44,6 @@ func NewInputConfigurationManager() (InputConfigurationManager, error) {
 	previousPackFixturesPath := os.Getenv(envPreviousPackFixturesPath)
 	lifecyclePath := os.Getenv(envLifecyclePath)
 	previousLifecyclePath := os.Getenv(envPreviousLifecyclePath)
-	compilePackWithVersion := os.Getenv(envCompilePackWithVersion)
-	githubToken := os.Getenv(envGitHubToken)
 
 	err := resolveAbsolutePaths(&packPath, &previousPackPath, &previousPackFixturesPath, &lifecyclePath, &previousLifecyclePath)
 	if err != nil {
@@ -69,8 +71,10 @@ func NewInputConfigurationManager() (InputConfigurationManager, error) {
 		previousPackFixturesPath: previousPackFixturesPath,
 		lifecyclePath:            lifecyclePath,
 		previousLifecyclePath:    previousLifecyclePath,
-		compilePackWithVersion:   compilePackWithVersion,
-		githubToken:              githubToken,
+		lifecycleImage:           os.Getenv(envLifecycleImage),
+		previousLifecycleImage:   os.Getenv(envPreviousLifecycleImage),
+		compilePackWithVersion:   os.Getenv(envCompilePackWithVersion),
+		githubToken:              os.Getenv(envGitHubToken),
 		combinations:             combos,
 	}, nil
 }
