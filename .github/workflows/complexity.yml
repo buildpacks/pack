@@ -1,0 +1,28 @@
+name: complexity
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'resources/**'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+    branches:
+      - main
+      - 'release/**'
+
+jobs:
+  visualize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Visualize
+        id: viz
+        uses: dwillist/complex-viz-action@main
+        with:
+          gist_token: ${{secrets.GIST_TOKEN}}
