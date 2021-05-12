@@ -94,7 +94,7 @@ jobs:
           TEST_COVERAGE: 1
         run: make test
       - name: Upload Coverage
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v1.5.0
         with:
           file: ./out/tests/coverage-unit.txt
           flags: unit,os_${{ matrix.os }}
