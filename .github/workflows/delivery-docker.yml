@@ -55,7 +55,7 @@ jobs:
       - name: Determine App Name
         run: 'echo "IMG_NAME=${{ env.USERNAME }}/${{ env.IMG_NAME }}" >> $GITHUB_ENV'
       - name: Pack Build/Publish
-        uses: dfreilich/pack-action@v1
+        uses: dfreilich/pack-action@v1.20
         with:
           args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} --path $(pwd)/ --builder ${{ env.BUILDER }} --publish'
           username: ${{ secrets.DOCKER_USERNAME }}
