@@ -4,10 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 
@@ -690,11 +688,6 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 
 			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(bp))
 
-			err := ensureBPSupport(bp)
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "checking support")
-			}
-
 			blob, err := c.downloader.Download(ctx, bp)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
@@ -785,37 +778,6 @@ func decomposeBuildpack(blob blob.Blob, imageOS string) (mainBP dist.Buildpack, 
 	}
 
 	return mainBP, depBPs, nil
-}
-
-func ensureBPSupport(bpPath string) (err error) {
-	p := bpPath
-	if paths.IsURI(bpPath) {
-		var u *url.URL
-		u, err = url.Parse(bpPath)
-		if err != nil {
-			return err
-		}
-
-		if u.Scheme == "file" {
-			p, err = paths.URIToFilePath(bpPath)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	if runtime.GOOS == "windows" && !paths.IsURI(p) {
-		isDir, err := paths.IsDir(p)
-		if err != nil {
-			return err
-		}
-
-		if isDir {
-			return fmt.Errorf("buildpack %s: directory-based buildpacks are not currently supported on Windows", style.Symbol(bpPath))
-		}
-	}
-
-	return nil
 }
 
 func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []dist.Buildpack) (*builder.Builder, error) {

@@ -91,8 +91,8 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 	when("pulling from a docker registry", func() {
 		it("should fetch the image", func() {
 			packageImage := fakes.NewImage("example.com/some/package:1.0.0", "", nil)
-			packageImage.SetLabel("io.buildpacks.buildpackage.metadata", `{}`)
-			packageImage.SetLabel("io.buildpacks.buildpack.layers", `{}`)
+			h.AssertNil(t, packageImage.SetLabel("io.buildpacks.buildpackage.metadata", `{}`))
+			h.AssertNil(t, packageImage.SetLabel("io.buildpacks.buildpack.layers", `{}`))
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), true, config.PullAlways).Return(packageImage, nil)
 
 			h.AssertNil(t, subject.PullBuildpack(context.TODO(), pack.PullBuildpackOptions{

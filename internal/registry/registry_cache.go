@@ -266,7 +266,7 @@ func (r *Cache) writeEntry(b Buildpack) (string, error) {
 	}
 
 	if _, err := os.Stat(index); os.IsNotExist(err) {
-		if err := os.MkdirAll(filepath.Dir(index), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(index), 0750); err != nil {
 			return "", errors.Wrapf(err, "creating directory structure for: %s/%s", ns, name)
 		}
 	} else {
@@ -286,7 +286,7 @@ func (r *Cache) writeEntry(b Buildpack) (string, error) {
 		}
 	}
 
-	f, err := os.OpenFile(filepath.Clean(index), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0600)
+	f, err := os.OpenFile(filepath.Clean(index), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating buildpack file: %s/%s", ns, name)
 	}
