@@ -2,7 +2,7 @@ package build
 
 import (
 	"context"
-	"math/rand"
+	"crypto/rand"
 	"time"
 
 	"github.com/buildpacks/pack/internal/cache"

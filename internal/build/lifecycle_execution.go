@@ -3,7 +3,7 @@ package build
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"crypto/rand"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
