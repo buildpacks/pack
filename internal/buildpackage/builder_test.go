@@ -59,7 +59,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		h.AssertNil(t, os.RemoveAll(tmpDir))
+		h.AssertNilE(t, os.RemoveAll(tmpDir))
 		mockController.Finish()
 	})
 

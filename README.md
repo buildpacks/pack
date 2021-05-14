@@ -7,6 +7,7 @@
 [![GitHub license](https://img.shields.io/github/license/buildpacks/pack)](https://github.com/buildpacks/pack/blob/main/LICENSE)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/4748/badge)](https://bestpractices.coreinfrastructure.org/projects/4748)
 [![Slack](https://img.shields.io/badge/slack-join-ff69b4.svg?logo=slack)](https://slack.buildpacks.io/)
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/buildpacks/pack)
 
 `pack` makes it easy for...
 - [**App Developers**][app-dev] to use buildpacks to convert code into runnable images.

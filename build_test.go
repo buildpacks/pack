@@ -132,15 +132,26 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		defaultBuilderImage.Cleanup()
-		fakeDefaultRunImage.Cleanup()
-		fakeMirror1.Cleanup()
-		fakeMirror2.Cleanup()
+		h.AssertNilE(t, defaultBuilderImage.Cleanup())
+		h.AssertNilE(t, fakeDefaultRunImage.Cleanup())
+		h.AssertNilE(t, fakeMirror1.Cleanup())
+		h.AssertNilE(t, fakeMirror2.Cleanup())
 		os.RemoveAll(tmpDir)
-		fakeLifecycleImage.Cleanup()
+		h.AssertNilE(t, fakeLifecycleImage.Cleanup())
 	})
 
 	when("#Build", func() {
+		when("Workspace option", func() {
+			it("uses the specified dir", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Workspace: "app",
+					Builder:   defaultBuilderName,
+					Image:     "example.com/some/repo:tag",
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.Workspace, "app")
+			})
+		})
+
 		when("Image option", func() {
 			it("is required", func() {
 				h.AssertError(t, subject.Build(context.TODO(), BuildOptions{
@@ -215,9 +226,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					remoteRunImage.Cleanup()
-					builderWithoutLifecycleImageOrCreator.Cleanup()
-					h.AssertNil(t, builtImage.Cleanup())
+					h.AssertNilE(t, remoteRunImage.Cleanup())
+					h.AssertNilE(t, builderWithoutLifecycleImageOrCreator.Cleanup())
+					h.AssertNilE(t, builtImage.Cleanup())
 				})
 
 				it("only prints app name and sha", func() {
@@ -243,7 +254,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					builtImage.Cleanup()
+					h.AssertNilE(t, builtImage.Cleanup())
 				})
 
 				it("only prints app name and sha", func() {
@@ -451,8 +462,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					customBuilderImage.Cleanup()
-					fakeRunImage.Cleanup()
+					h.AssertNilE(t, customBuilderImage.Cleanup())
+					h.AssertNilE(t, fakeRunImage.Cleanup())
 				})
 
 				it("it uses the provided builder", func() {
@@ -478,7 +489,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				fakeRunImage.Cleanup()
+				h.AssertNilE(t, fakeRunImage.Cleanup())
 			})
 
 			when("run image stack matches the builder stack", func() {
@@ -577,8 +588,8 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it.After(func() {
-						fakeLocalMirror.Cleanup()
-						fakeLocalMirror1.Cleanup()
+						h.AssertNilE(t, fakeLocalMirror.Cleanup())
+						h.AssertNilE(t, fakeLocalMirror1.Cleanup())
 					})
 
 					when("Publish is true", func() {
@@ -1136,106 +1147,43 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it.After(func() {
-					h.AssertNil(t, os.Remove(buildpackTgz))
+					h.AssertNilE(t, os.Remove(buildpackTgz))
 				})
 
-				when("is windows", func() {
-					it.Before(func() {
-						h.SkipIf(t, runtime.GOOS != "windows", "Skipped on non-windows")
+				it("buildpacks are added to ephemeral builder", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:      "some/app",
+						Builder:    defaultBuilderName,
+						ClearCache: true,
+						Buildpacks: []string{
+							"buildpack.1.id@buildpack.1.version",
+							"buildpack.2.id@buildpack.2.version",
+							filepath.Join("testdata", "buildpack"),
+							buildpackTgz,
+						},
 					})
 
-					it("disallows directory-based buildpacks", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:      "some/app",
-							Builder:    defaultBuilderName,
-							ClearCache: true,
-							Buildpacks: []string{
-								"buildpack.1.id@buildpack.1.version",
-								filepath.Join("testdata", "buildpack"),
-							},
-						})
-
-						h.AssertError(t, err, "directory-based buildpacks are not currently supported on Windows")
+					h.AssertNil(t, err)
+					h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+					bldr, err := builder.FromImage(defaultBuilderImage)
+					h.AssertNil(t, err)
+					buildpack1Info := dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}
+					buildpack2Info := dist.BuildpackInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}
+					dirBuildpackInfo := dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"}
+					tgzBuildpackInfo := dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}
+					h.AssertEq(t, bldr.Order(), dist.Order{
+						{Group: []dist.BuildpackRef{
+							{BuildpackInfo: buildpack1Info},
+							{BuildpackInfo: buildpack2Info},
+							{BuildpackInfo: dirBuildpackInfo},
+							{BuildpackInfo: tgzBuildpackInfo},
+						}},
 					})
-
-					it("buildpacks are added to ephemeral builder", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:      "some/app",
-							Builder:    defaultBuilderName,
-							ClearCache: true,
-							Buildpacks: []string{
-								"buildpack.1.id@buildpack.1.version",
-								buildpackTgz,
-							},
-						})
-
-						h.AssertNil(t, err)
-						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage)
-						h.AssertNil(t, err)
-						h.AssertEq(t, bldr.Order(), dist.Order{
-							{Group: []dist.BuildpackRef{
-								{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}},
-								{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
-							}},
-						})
-						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
-							{
-								ID:      "buildpack.1.id",
-								Version: "buildpack.1.version",
-							},
-							{
-								ID:      "buildpack.2.id",
-								Version: "buildpack.2.version",
-							},
-							{
-								ID:      "some-other-buildpack-id",
-								Version: "some-other-buildpack-version",
-							},
-						})
-					})
-				})
-
-				when("is posix", func() {
-					it.Before(func() {
-						h.SkipIf(t, runtime.GOOS == "windows", "Skipped on windows")
-					})
-
-					it("buildpacks are added to ephemeral builder", func() {
-						err := subject.Build(context.TODO(), BuildOptions{
-							Image:      "some/app",
-							Builder:    defaultBuilderName,
-							ClearCache: true,
-							Buildpacks: []string{
-								"buildpack.1.id@buildpack.1.version",
-								"buildpack.2.id@buildpack.2.version",
-								filepath.Join("testdata", "buildpack"),
-								buildpackTgz,
-							},
-						})
-
-						h.AssertNil(t, err)
-						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
-						bldr, err := builder.FromImage(defaultBuilderImage)
-						h.AssertNil(t, err)
-						buildpack1Info := dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}
-						buildpack2Info := dist.BuildpackInfo{ID: "buildpack.2.id", Version: "buildpack.2.version"}
-						dirBuildpackInfo := dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"}
-						tgzBuildpackInfo := dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}
-						h.AssertEq(t, bldr.Order(), dist.Order{
-							{Group: []dist.BuildpackRef{
-								{BuildpackInfo: buildpack1Info},
-								{BuildpackInfo: buildpack2Info},
-								{BuildpackInfo: dirBuildpackInfo},
-								{BuildpackInfo: tgzBuildpackInfo},
-							}},
-						})
-						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
-							buildpack1Info,
-							buildpack2Info,
-							dirBuildpackInfo,
-							tgzBuildpackInfo,
-						})
+					h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+						buildpack1Info,
+						buildpack2Info,
+						dirBuildpackInfo,
+						tgzBuildpackInfo,
 					})
 				})
 
@@ -1383,8 +1331,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					it.After(func() {
 						os.Unsetenv("PACK_HOME")
-						err := os.RemoveAll(tmpDir)
-						h.AssertNil(t, err)
+						h.AssertNil(t, os.RemoveAll(tmpDir))
 					})
 
 					it("all buildpacks are added to ephemeral builder", func() {
@@ -1696,9 +1643,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it.After(func() {
-						h.AssertNil(t, os.Unsetenv("HTTP_PROXY"))
-						h.AssertNil(t, os.Unsetenv("HTTPS_PROXY"))
-						h.AssertNil(t, os.Unsetenv("NO_PROXY"))
+						h.AssertNilE(t, os.Unsetenv("HTTP_PROXY"))
+						h.AssertNilE(t, os.Unsetenv("HTTPS_PROXY"))
+						h.AssertNilE(t, os.Unsetenv("NO_PROXY"))
 					})
 
 					it("defaults to the *_PROXY environment variables", func() {

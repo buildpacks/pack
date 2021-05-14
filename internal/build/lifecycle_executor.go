@@ -70,6 +70,7 @@ type LifecycleOptions struct {
 	Volumes            []string
 	DefaultProcessType string
 	FileFilter         func(string) bool
+	Workspace          string
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker client.CommonAPIClient) *LifecycleExecutor {
