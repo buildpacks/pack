@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/buildpacks/lifecycle/buildpack"
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/buildpacks/pack/internal/inspectimage"
 
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -100,23 +102,23 @@ Processes:
 
 			remoteInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.remote",
-				Buildpacks: []lifecycle.GroupBuildpack{
+				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 					{ID: "test.bp.three.remote", Version: "3.0.0"},
 				},
-				Base: lifecycle.RunImageMetadata{
+				Base: platform.RunImageMetadata{
 					TopLayer:  "some-remote-top-layer",
 					Reference: "some-remote-run-image-reference",
 				},
-				Stack: lifecycle.StackMetadata{
-					RunImage: lifecycle.StackRunImageMetadata{
+				Stack: platform.StackMetadata{
+					RunImage: platform.StackRunImageMetadata{
 						Image:   "some-remote-run-image",
 						Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
 					},
 				},
-				BOM: []lifecycle.BOMEntry{{
-					Require: lifecycle.Require{
+				BOM: []buildpack.BOMEntry{{
+					Require: buildpack.Require{
 						Name:    "name-1",
 						Version: "version-1",
 						Metadata: map[string]interface{}{
@@ -132,7 +134,7 @@ Processes:
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{
@@ -154,23 +156,23 @@ Processes:
 
 			localInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.local",
-				Buildpacks: []lifecycle.GroupBuildpack{
+				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 					{ID: "test.bp.three.local", Version: "3.0.0"},
 				},
-				Base: lifecycle.RunImageMetadata{
+				Base: platform.RunImageMetadata{
 					TopLayer:  "some-local-top-layer",
 					Reference: "some-local-run-image-reference",
 				},
-				Stack: lifecycle.StackMetadata{
-					RunImage: lifecycle.StackRunImageMetadata{
+				Stack: platform.StackMetadata{
+					RunImage: platform.StackRunImageMetadata{
 						Image:   "some-local-run-image",
 						Mirrors: []string{"some-local-mirror", "other-local-mirror"},
 					},
 				},
-				BOM: []lifecycle.BOMEntry{{
-					Require: lifecycle.Require{
+				BOM: []buildpack.BOMEntry{{
+					Require: buildpack.Require{
 						Name:    "name-1",
 						Version: "version-1",
 						Metadata: map[string]interface{}{
@@ -180,7 +182,7 @@ Processes:
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
+					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{
@@ -297,7 +299,7 @@ Processes:
 
 			when("buildpack metadata is missing", func() {
 				it.Before(func() {
-					remoteInfo.Buildpacks = []lifecycle.GroupBuildpack{}
+					remoteInfo.Buildpacks = []buildpack.GroupBuildpack{}
 				})
 				it("displays a message indicating missing metadata", func() {
 					sharedImageInfo := inspectimage.GeneralInfo{
@@ -317,7 +319,7 @@ Processes:
 
 			when("there are no run images", func() {
 				it.Before(func() {
-					remoteInfo.Stack = lifecycle.StackMetadata{}
+					remoteInfo.Stack = platform.StackMetadata{}
 				})
 				it("displays a message indicating missing run images", func() {
 					sharedImageInfo := inspectimage.GeneralInfo{

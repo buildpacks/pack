@@ -1,7 +1,7 @@
 package inspectimage
 
 import (
-	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/buildpack"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/dist"
@@ -28,7 +28,7 @@ func NewBOMDisplay(info *pack.ImageInfo) []BOMEntryDisplay {
 	return displayBOM(info.BOM)
 }
 
-func displayBOM(bom []lifecycle.BOMEntry) []BOMEntryDisplay {
+func displayBOM(bom []buildpack.BOMEntry) []BOMEntryDisplay {
 	var result []BOMEntryDisplay
 	for _, entry := range bom {
 		result = append(result, BOMEntryDisplay{

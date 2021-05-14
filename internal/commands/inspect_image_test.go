@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/inspectimage"
+	"github.com/buildpacks/lifecycle/platform"
 
-	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/pack/internal/inspectimage"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands/fakes"
@@ -36,18 +36,18 @@ var (
 	expectedLocalImageInfo = &pack.ImageInfo{
 		StackID:    "local.image.stack",
 		Buildpacks: nil,
-		Base:       lifecycle.RunImageMetadata{},
+		Base:       platform.RunImageMetadata{},
 		BOM:        nil,
-		Stack:      lifecycle.StackMetadata{},
+		Stack:      platform.StackMetadata{},
 		Processes:  pack.ProcessDetails{},
 	}
 
 	expectedRemoteImageInfo = &pack.ImageInfo{
 		StackID:    "remote.image.stack",
 		Buildpacks: nil,
-		Base:       lifecycle.RunImageMetadata{},
+		Base:       platform.RunImageMetadata{},
 		BOM:        nil,
-		Stack:      lifecycle.StackMetadata{},
+		Stack:      platform.StackMetadata{},
 		Processes:  pack.ProcessDetails{},
 	}
 )
