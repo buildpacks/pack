@@ -170,7 +170,7 @@ func (r *Cache) Initialize() error {
 func (r *Cache) CreateCache() error {
 	r.logger.Debugf("Creating registry cache for %s/%s", r.url.Host, r.url.Path)
 
-	root, err := ioutil.TempDir("", "registry")
+	root, err := ioutil.TempDir(filepath.Dir(r.Root), "registry")
 	if err != nil {
 		return err
 	}
