@@ -43,6 +43,7 @@ func RegistryHost(host, port string) string {
 }
 
 func CreateRegistryFixture(t *testing.T, tmpDir, fixturePath string) string {
+	t.Helper()
 	// copy fixture to temp dir
 	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
 

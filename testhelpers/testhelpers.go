@@ -597,7 +597,7 @@ func RecursiveCopyE(src, dst string) error {
 		return err
 	}
 
-	return os.Chmod(dst, 0600)
+	return os.Chmod(dst, 0775)
 }
 
 func RequireDocker(t *testing.T) {
@@ -706,7 +706,7 @@ func RecursiveCopyNow(t *testing.T, src, dst string) {
 			modifiedTime := time.Now().Local()
 			err = os.Chtimes(filepath.Join(dst, fi.Name()), modifiedTime, modifiedTime)
 			AssertNil(t, err)
-			err = os.Chmod(filepath.Join(dst, fi.Name()), 0600)
+			err = os.Chmod(filepath.Join(dst, fi.Name()), 0664)
 			AssertNil(t, err)
 		}
 		if fi.IsDir() {
@@ -718,7 +718,7 @@ func RecursiveCopyNow(t *testing.T, src, dst string) {
 	modifiedTime := time.Now().Local()
 	err = os.Chtimes(dst, modifiedTime, modifiedTime)
 	AssertNil(t, err)
-	err = os.Chmod(dst, 0600)
+	err = os.Chmod(dst, 0775)
 	AssertNil(t, err)
 }
 
