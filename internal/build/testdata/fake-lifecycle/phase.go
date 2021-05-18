@@ -102,7 +102,7 @@ func testRegistryAccess(repoName string) {
 
 func testRead(filename string) {
 	fmt.Println("read test")
-	contents, err := ioutil.ReadFile(filename)
+	contents, err := ioutil.ReadFile(filepath.Clean(filename))
 	if err != nil {
 		fmt.Printf("failed to read file '%s'\n", filename)
 		os.Exit(1)

@@ -34,7 +34,7 @@ func BuildpackToLayerTar(dest string, bp Buildpack) (string, error) {
 }
 
 func LayerDiffID(layerTarPath string) (v1.Hash, error) {
-	fh, err := os.Open(layerTarPath)
+	fh, err := os.Open(filepath.Clean(layerTarPath))
 	if err != nil {
 		return v1.Hash{}, errors.Wrap(err, "opening tar file")
 	}
