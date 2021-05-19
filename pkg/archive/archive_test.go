@@ -55,7 +55,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("returns a TarReader of the dir", func() {
-			rc := archive.ReadDirAsTar(src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, nil)
+			rc := archive.ReadDirAsTar(src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, false, nil)
 
 			tr := tar.NewReader(rc)
 			verify := h.NewTarVerifier(t, tr, 1234, 2345)
@@ -67,9 +67,17 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, rc.Close())
 			}
 		})
+		when("includeRoot", func() {
+			it("includes a modified root entry", func() {
+				rc := archive.ReadDirAsTar(src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, true, nil)
+				tr := tar.NewReader(rc)
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
+				verify.NextDirectory("/nested/dir/dir-in-archive", int64(os.ModePerm))
+			})
+		})
 
 		it("returns error if closed multiple times", func() {
-			rc := archive.ReadDirAsTar(src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, func(s string) bool { return false })
+			rc := archive.ReadDirAsTar(src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, false, func(s string) bool { return false })
 			tr := tar.NewReader(rc)
 			verify := h.NewTarVerifier(t, tr, 1234, 2345)
 			verify.NoMoreFilesExist()
@@ -189,7 +197,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, nil)
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, false, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -209,6 +217,29 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("includeRoot is true", func() {
+			it("sets metadata on base dest file", func() {
+				fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+
+				tw := tar.NewWriter(fh)
+
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, true, nil)
+				h.AssertNil(t, err)
+				h.AssertNil(t, tw.Close())
+				h.AssertNil(t, fh.Close())
+
+				file, err := os.Open(filepath.Join(tmpDir, "some.tar"))
+				h.AssertNil(t, err)
+				defer file.Close()
+
+				tr := tar.NewReader(file)
+
+				verify := h.NewTarVerifier(t, tr, 1234, 2345)
+				verify.NextDirectory("/nested/dir/dir-in-archive", int64(os.ModePerm))
+			})
+		})
+
 		when("mode is set to -1", func() {
 			it("writes a tar to the dest dir with preexisting file mode", func() {
 				fh, err := os.Create(filepath.Join(tmpDir, "some.tar"))
@@ -216,7 +247,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true, nil)
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, -1, true, false, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -244,7 +275,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, func(path string) bool {
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, false, func(path string) bool {
 					return !strings.Contains(path, "some-file.txt")
 				})
 				h.AssertNil(t, err)
@@ -271,7 +302,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, func(path string) bool {
+				err = archive.WriteDirToTar(tw, src, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, false, func(path string) bool {
 					return !strings.Contains(path, "dir-to-tar")
 				})
 				h.AssertNil(t, err)
@@ -301,7 +332,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/foo", 1234, 2345, 0777, false, nil)
+				err = archive.WriteDirToTar(tw, src, "/foo", 1234, 2345, 0777, false, false, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -320,7 +351,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 				tw := tar.NewWriter(fh)
 
-				err = archive.WriteDirToTar(tw, src, "/foo", 1234, 2345, 0777, true, nil)
+				err = archive.WriteDirToTar(tw, src, "/foo", 1234, 2345, 0777, true, false, nil)
 				h.AssertNil(t, err)
 				h.AssertNil(t, tw.Close())
 				h.AssertNil(t, fh.Close())
@@ -367,7 +398,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 
 					tw := tar.NewWriter(fh)
 
-					err = archive.WriteDirToTar(tw, tmpSrcDir, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, nil)
+					err = archive.WriteDirToTar(tw, tmpSrcDir, "/nested/dir/dir-in-archive", 1234, 2345, 0777, true, false, nil)
 					h.AssertNil(t, err)
 					h.AssertNil(t, tw.Close())
 					h.AssertNil(t, fh.Close())

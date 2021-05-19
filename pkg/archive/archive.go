@@ -42,9 +42,9 @@ func (defaultTarWriterFactory) NewWriter(w io.Writer) TarWriter {
 	return tar.NewWriter(w)
 }
 
-func ReadDirAsTar(srcDir, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) io.ReadCloser {
+func ReadDirAsTar(srcDir, basePath string, uid, gid int, mode int64, normalizeModTime, includeRoot bool, fileFilter func(string) bool) io.ReadCloser {
 	return GenerateTar(func(tw TarWriter) error {
-		return WriteDirToTar(tw, srcDir, basePath, uid, gid, mode, normalizeModTime, fileFilter)
+		return WriteDirToTar(tw, srcDir, basePath, uid, gid, mode, normalizeModTime, includeRoot, fileFilter)
 	})
 }
 
@@ -164,8 +164,20 @@ func ReadTarEntry(rc io.Reader, entryPath string) (*tar.Header, []byte, error) {
 }
 
 // WriteDirToTar writes the contents of a directory to a tar writer. `basePath` is the "location" in the tar the
-// contents will be placed.
-func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int64, normalizeModTime bool, fileFilter func(string) bool) error {
+// contents will be placed. The includeRoot param sets the permissions and metadata on the root file.
+func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int64, normalizeModTime, includeRoot bool, fileFilter func(string) bool) error {
+	if includeRoot {
+		rootHeader := &tar.Header{
+			Typeflag: tar.TypeDir,
+			Name:     basePath,
+			Mode:     mode,
+		}
+		finalizeHeader(rootHeader, uid, gid, mode, normalizeModTime)
+		if err := tw.WriteHeader(rootHeader); err != nil {
+			return err
+		}
+	}
+
 	return filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
 		var relPath string
 		if fileFilter != nil {
