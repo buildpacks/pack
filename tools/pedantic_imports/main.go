@@ -66,7 +66,7 @@ func isIgnoredDir(name string) bool {
 }
 
 func checkImports(path, basePackage string) ([]string, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}

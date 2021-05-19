@@ -3,6 +3,7 @@ package builder
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -55,7 +56,7 @@ type LifecycleConfig struct {
 // ReadConfig reads a builder configuration from the file path provided and returns the
 // configuration along with any warnings encountered while parsing
 func ReadConfig(path string) (config Config, warnings []string, err error) {
-	file, err := os.Open(path)
+	file, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		return Config{}, nil, errors.Wrap(err, "opening config file")
 	}

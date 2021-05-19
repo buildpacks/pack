@@ -61,7 +61,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		lifecycleTarReader := archive.ReadDirAsTar(
 			filepath.Join("testdata", "lifecycle", "platform-0.4"),
-			".", 0, 0, 0755, true, nil,
+			".", 0, 0, 0755, true, false, nil,
 		)
 
 		descriptorContents, err := ioutil.ReadFile(filepath.Join("testdata", "lifecycle", "platform-0.4", "lifecycle.toml"))
@@ -136,7 +136,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		baseImage.Cleanup()
+		h.AssertNilE(t, baseImage.Cleanup())
 		mockController.Finish()
 	})
 
@@ -266,7 +266,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it.After(func() {
-			baseImage.Cleanup()
+			h.AssertNilE(t, baseImage.Cleanup())
 		})
 
 		when("#Save", func() {
@@ -405,7 +405,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 
 				h.AssertNil(t, baseImage.AddLayer(layerFile))
-				baseImage.Save()
+				h.AssertNil(t, baseImage.Save())
 
 				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
