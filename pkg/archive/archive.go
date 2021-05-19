@@ -234,7 +234,7 @@ func WriteDirToTar(tw TarWriter, srcDir, basePath string, uid, gid int, mode int
 		}
 
 		if fi.Mode().IsRegular() {
-			f, err := os.Open(file)
+			f, err := os.Open(filepath.Clean(file))
 			if err != nil {
 				return err
 			}
