@@ -4,11 +4,10 @@ import (
 	"context"
 	"strings"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/config"

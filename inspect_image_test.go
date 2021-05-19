@@ -7,20 +7,17 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/buildpacks/lifecycle/platform"
-
-	"github.com/buildpacks/pack/internal/logging"
-
-	"github.com/buildpacks/pack/config"
-
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/buildpacks/pack/testmocks"
 )

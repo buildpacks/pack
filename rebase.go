@@ -3,15 +3,12 @@ package pack
 import (
 	"context"
 
-	"github.com/buildpacks/lifecycle/api"
-
-	"github.com/buildpacks/lifecycle/platform"
-
-	"github.com/buildpacks/pack/config"
-
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
@@ -82,7 +79,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	}
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
-	rebaser := &lifecycle.Rebaser{Logger: c.logger, PlatformAPI: api.Platform.Latest()}
+	rebaser := &lifecycle.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest()}
 	_, err = rebaser.Rebase(appImage, baseImage, nil)
 	if err != nil {
 		return err
