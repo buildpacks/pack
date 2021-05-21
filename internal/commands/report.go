@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -56,7 +57,7 @@ Config:
 {{ .Config -}}`))
 
 	configData := ""
-	if data, err := ioutil.ReadFile(cfgPath); err != nil {
+	if data, err := ioutil.ReadFile(filepath.Clean(cfgPath)); err != nil {
 		configData = fmt.Sprintf("(no config file found at %s)", cfgPath)
 	} else {
 		var padded strings.Builder

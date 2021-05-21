@@ -7,9 +7,10 @@ import (
 	"io"
 	"strings"
 
+	"github.com/buildpacks/imgutil/remote"
+
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
-	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -38,39 +39,28 @@ func NewFetcher(logger logging.Logger, docker client.CommonAPIClient) *Fetcher {
 var ErrNotFound = errors.New("not found")
 
 func (f *Fetcher) Fetch(ctx context.Context, name string, daemon bool, pullPolicy config.PullPolicy) (imgutil.Image, error) {
-	if daemon {
-		if pullPolicy == config.PullNever {
-			return f.fetchDaemonImage(name)
-		} else if pullPolicy == config.PullIfNotPresent {
-			img, err := f.fetchDaemonImage(name)
-			if err == nil || !errors.Is(err, ErrNotFound) {
-				return img, err
-			}
+	if !daemon {
+		return f.fetchRemoteImage(name)
+	}
+
+	switch pullPolicy {
+	case config.PullNever:
+		img, err := f.fetchDaemonImage(name)
+		return img, err
+	case config.PullIfNotPresent:
+		img, err := f.fetchDaemonImage(name)
+		if err == nil || !errors.Is(err, ErrNotFound) {
+			return img, err
 		}
 	}
 
-	image, err := remote.NewImage(name, authn.DefaultKeychain, remote.FromBaseImage(name))
-	if err != nil {
+	f.logger.Debugf("Pulling image %s", style.Symbol(name))
+	err := f.pullImage(ctx, name)
+	if err != nil && !errors.Is(err, ErrNotFound) {
 		return nil, err
 	}
 
-	remoteFound := image.Found()
-
-	if daemon {
-		if remoteFound {
-			f.logger.Debugf("Pulling image %s", style.Symbol(name))
-			if err := f.pullImage(ctx, name); err != nil {
-				return nil, err
-			}
-		}
-		return f.fetchDaemonImage(name)
-	}
-
-	if !remoteFound {
-		return nil, errors.Wrapf(ErrNotFound, "image %s does not exist in registry", style.Symbol(name))
-	}
-
-	return image, nil
+	return f.fetchDaemonImage(name)
 }
 
 func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
@@ -82,6 +72,20 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 	if !image.Found() {
 		return nil, errors.Wrapf(ErrNotFound, "image %s does not exist on the daemon", style.Symbol(name))
 	}
+
+	return image, nil
+}
+
+func (f *Fetcher) fetchRemoteImage(name string) (imgutil.Image, error) {
+	image, err := remote.NewImage(name, authn.DefaultKeychain, remote.FromBaseImage(name))
+	if err != nil {
+		return nil, err
+	}
+
+	if !image.Found() {
+		return nil, errors.Wrapf(ErrNotFound, "image %s does not exist in registry", style.Symbol(name))
+	}
+
 	return image, nil
 }
 
@@ -90,10 +94,13 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
 	if err != nil {
 		return err
 	}
-	rc, err := f.docker.ImagePull(ctx, imageID, types.ImagePullOptions{
-		RegistryAuth: regAuth,
-	})
+
+	rc, err := f.docker.ImagePull(ctx, imageID, types.ImagePullOptions{RegistryAuth: regAuth})
 	if err != nil {
+		if client.IsErrNotFound(err) {
+			return errors.Wrapf(ErrNotFound, "image %s does not exist on the daemon", style.Symbol(imageID))
+		}
+
 		return err
 	}
 

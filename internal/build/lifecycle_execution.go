@@ -173,6 +173,7 @@ func (l *LifecycleExecution) Cleanup() error {
 
 func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHost string, clearCache bool, runImage, repoName, networkMode string, buildCache, launchCache Cache, additionalTags, volumes []string, phaseFactory PhaseFactory) error {
 	flags := addTags([]string{
+		"-app", l.mountPaths.appDir(),
 		"-cache-dir", l.mountPaths.cacheDir(),
 		"-run-image", runImage,
 	}, additionalTags)
@@ -200,7 +201,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		WithArgs(repoName),
 		WithNetwork(networkMode),
 		cacheOpts,
-		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.opts.FileFilter)),
+		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter)),
 	}
 
 	if publish {
@@ -224,6 +225,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 }
 
 func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
+	flags := []string{"-app", l.mountPaths.appDir()}
 	configProvider := NewPhaseConfigProvider(
 		"detector",
 		l,
@@ -235,8 +237,9 @@ func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, vol
 		WithBinds(volumes...),
 		WithContainerOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
-			CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.opts.FileFilter),
+			CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter),
 		),
+		WithFlags(flags...),
 	)
 
 	detect := phaseFactory.New(configProvider)
@@ -357,6 +360,7 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 }
 
 func (l *LifecycleExecution) Build(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
+	flags := []string{"-app", l.mountPaths.appDir()}
 	configProvider := NewPhaseConfigProvider(
 		"builder",
 		l,
@@ -364,6 +368,7 @@ func (l *LifecycleExecution) Build(ctx context.Context, networkMode string, volu
 		WithArgs(l.withLogLevel()...),
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
+		WithFlags(flags...),
 	)
 
 	build := phaseFactory.New(configProvider)
@@ -383,6 +388,7 @@ func determineDefaultProcessType(platformAPI *api.Version, providedValue string)
 
 func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, dockerHost, networkMode string, buildCache, launchCache Cache, additionalTags []string, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	flags := []string{
+		"-app", l.mountPaths.appDir(),
 		"-cache-dir", l.mountPaths.cacheDir(),
 		"-stack", l.mountPaths.stackPath(),
 		"-run-image", runImage,

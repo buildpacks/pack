@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ type TarEntryAssertion func(t *testing.T, header *tar.Header, data []byte)
 func AssertOnTarEntry(t *testing.T, tarPath, entryPath string, assertFns ...TarEntryAssertion) {
 	t.Helper()
 
-	tarFile, err := os.Open(tarPath)
+	tarFile, err := os.Open(filepath.Clean(tarPath))
 	AssertNil(t, err)
 	defer tarFile.Close()
 
