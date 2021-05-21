@@ -2191,6 +2191,62 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("GID option", func() {
+			when("gid is set and override is false", func() {
+				it("gid override must be false", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Workspace:       "app",
+						Builder:         defaultBuilderName,
+						Image:           "example.com/some/repo:tag",
+						GroupID:         0,
+						OverrideGroupID: false,
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.OverrideGID, false)
+					h.AssertEq(t, fakeLifecycle.Opts.GID, 0)
+				})
+			})
+
+			when("gid is set and override is true", func() {
+				it("gid override must be true", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Workspace:       "app",
+						Builder:         defaultBuilderName,
+						Image:           "example.com/some/repo:tag",
+						GroupID:         1,
+						OverrideGroupID: true,
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.OverrideGID, true)
+					h.AssertEq(t, fakeLifecycle.Opts.GID, 1)
+				})
+			})
+
+			when("gid is negative and override is true", func() {
+				it("should thrown error", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Workspace:       "app",
+						Builder:         defaultBuilderName,
+						Image:           "example.com/some/repo:tag",
+						GroupID:         -1,
+						OverrideGroupID: true,
+					})
+					h.AssertError(t, err, "gid flag must be in the range of 0-2147483647")
+				})
+			})
+
+			when("gid is negative and override is false", func() {
+				it("should thrown error", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Workspace:       "app",
+						Builder:         defaultBuilderName,
+						Image:           "example.com/some/repo:tag",
+						GroupID:         -1,
+						OverrideGroupID: false,
+					})
+					h.AssertError(t, err, "gid flag must be in the range of 0-2147483647")
+				})
+			})
+		})
 	})
 }
 

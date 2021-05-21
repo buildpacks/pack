@@ -58,6 +58,7 @@ type LifecycleOptions struct {
 	Publish            bool
 	TrustBuilder       bool
 	UseCreator         bool
+	OverrideGID        bool
 	DockerHost         string
 	CacheImage         string
 	HTTPProxy          string
@@ -69,6 +70,7 @@ type LifecycleOptions struct {
 	DefaultProcessType string
 	FileFilter         func(string) bool
 	Workspace          string
+	GID                int
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker client.CommonAPIClient) *LifecycleExecutor {

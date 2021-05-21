@@ -714,6 +714,50 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("override GID", func() {
+			when("override GID is true", func() {
+				it("configures the phase with the expected arguments", func() {
+					verboseLifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OverrideGID = true
+						options.GID = 0
+					})
+					fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+					err := verboseLifecycle.Create(context.Background(), false, "", true, "test", "test", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertEq(t, configProvider.Name(), "creator")
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-gid"},
+					)
+				})
+			})
+			when("override GID is false", func() {
+				it("gid is not added to the expected arguments", func() {
+					verboseLifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OverrideGID = false
+						options.GID = 0
+					})
+					fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+					err := verboseLifecycle.Create(context.Background(), false, "", true, "test", "test", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertEq(t, configProvider.Name(), "creator")
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-gid")
+				})
+			})
+		})
 	})
 
 	when("#Detect", func() {
@@ -1134,6 +1178,51 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBind)
 			})
 		})
+
+		when("override GID", func() {
+			var (
+				lifecycle        *build.LifecycleExecution
+				fakePhaseFactory *fakes.FakePhaseFactory
+			)
+			fakePhase := &fakes.FakePhase{}
+			fakePhaseFactory = fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
+
+			when("override GID is true", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OverrideGID = true
+						options.GID = 0
+					})
+				})
+				it("", func() {
+					err := lifecycle.Analyze(context.Background(), "test", "test", false, "", false, fakeCache, fakePhaseFactory)
+					h.AssertNil(t, err)
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-gid"},
+					)
+				})
+			})
+			when("override GID is false", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OverrideGID = false
+						options.GID = 0
+					})
+				})
+				it("", func() {
+					err := lifecycle.Analyze(context.Background(), "test", "test", false, "", false, fakeCache, fakePhaseFactory)
+					h.AssertNil(t, err)
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-gid")
+				})
+			})
+		})
 	})
 
 	when("#Restore", func() {
@@ -1250,6 +1339,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
 			h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBind)
 		})
+
 		when("using cache image", func() {
 			var (
 				lifecycle        *build.LifecycleExecution
@@ -1276,6 +1366,51 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					configProvider.ContainerConfig().Cmd,
 					[]string{"-cache-image", "some-cache-image"},
 				)
+			})
+		})
+
+		when("override GID", func() {
+			var (
+				lifecycle        *build.LifecycleExecution
+				fakePhaseFactory *fakes.FakePhaseFactory
+			)
+			fakePhase := &fakes.FakePhase{}
+			fakePhaseFactory = fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
+
+			when("override GID is true", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OverrideGID = true
+						options.GID = 0
+					})
+				})
+				it("", func() {
+					err := lifecycle.Restore(context.Background(), "test", fakeCache, fakePhaseFactory)
+					h.AssertNil(t, err)
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-gid"},
+					)
+				})
+			})
+			when("override GID is false", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OverrideGID = false
+						options.GID = 0
+					})
+				})
+				it("", func() {
+					err := lifecycle.Restore(context.Background(), "test", fakeCache, fakePhaseFactory)
+					h.AssertNil(t, err)
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-gid")
+				})
 			})
 		})
 	})
@@ -1825,6 +1960,51 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
 					h.AssertIncludeAllExpectedPatterns(t, configProvider.ContainerConfig().Cmd, []string{"-process-type", "web"})
+				})
+			})
+		})
+
+		when("override GID", func() {
+			var (
+				lifecycle        *build.LifecycleExecution
+				fakePhaseFactory *fakes.FakePhaseFactory
+			)
+			fakePhase := &fakes.FakePhase{}
+			fakePhaseFactory = fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
+
+			when("override GID is true", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OverrideGID = true
+						options.GID = 0
+					})
+				})
+				it("", func() {
+					err := lifecycle.Export(context.Background(), "test", "test", false, "", "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertIncludeAllExpectedPatterns(t,
+						configProvider.ContainerConfig().Cmd,
+						[]string{"-gid"},
+					)
+				})
+			})
+			when("override GID is false", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OverrideGID = false
+						options.GID = 0
+					})
+				})
+				it("", func() {
+					err := lifecycle.Export(context.Background(), "test", "test", false, "", "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-gid")
 				})
 			})
 		})
