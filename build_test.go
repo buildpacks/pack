@@ -2192,58 +2192,40 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("GID option", func() {
-			when("gid is set and override is false", func() {
-				it("gid override must be false", func() {
+		when("gid option", func() {
+			when("gid is equal to zero", func() {
+				it("gid is passthroughs to lifecycle", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Workspace:       "app",
 						Builder:         defaultBuilderName,
 						Image:           "example.com/some/repo:tag",
 						GroupID:         0,
-						OverrideGroupID: false,
 					}))
-					h.AssertEq(t, fakeLifecycle.Opts.OverrideGID, false)
 					h.AssertEq(t, fakeLifecycle.Opts.GID, 0)
 				})
 			})
 
-			when("gid is set and override is true", func() {
-				it("gid override must be true", func() {
+			when("gid is less than zero", func() {
+				it("gid is passthroughs to lifecycle", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Workspace:       "app",
 						Builder:         defaultBuilderName,
 						Image:           "example.com/some/repo:tag",
-						GroupID:         1,
-						OverrideGroupID: true,
+						GroupID:         -1,
 					}))
-					h.AssertEq(t, fakeLifecycle.Opts.OverrideGID, true)
-					h.AssertEq(t, fakeLifecycle.Opts.GID, 1)
+					h.AssertEq(t, fakeLifecycle.Opts.GID, -1)
 				})
 			})
 
-			when("gid is negative and override is true", func() {
-				it("should thrown error", func() {
-					err := subject.Build(context.TODO(), BuildOptions{
+			when("gid is greater than zero", func() {
+				it("gid is passthroughs to lifecycle", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Workspace:       "app",
 						Builder:         defaultBuilderName,
 						Image:           "example.com/some/repo:tag",
-						GroupID:         -1,
-						OverrideGroupID: true,
-					})
-					h.AssertError(t, err, "gid flag must be in the range of 0-2147483647")
-				})
-			})
-
-			when("gid is negative and override is false", func() {
-				it("should thrown error", func() {
-					err := subject.Build(context.TODO(), BuildOptions{
-						Workspace:       "app",
-						Builder:         defaultBuilderName,
-						Image:           "example.com/some/repo:tag",
-						GroupID:         -1,
-						OverrideGroupID: false,
-					})
-					h.AssertError(t, err, "gid flag must be in the range of 0-2147483647")
+						GroupID:         2,
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.GID, 2)
 				})
 			})
 		})

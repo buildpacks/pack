@@ -716,10 +716,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("override GID", func() {
-			when("override GID is true", func() {
+			when("override GID is provided", func() {
 				it("configures the phase with the expected arguments", func() {
 					verboseLifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.OverrideGID = true
 						options.GID = 0
 					})
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
@@ -738,10 +737,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					)
 				})
 			})
-			when("override GID is false", func() {
+			when("override GID is not provided", func() {
 				it("gid is not added to the expected arguments", func() {
 					verboseLifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.OverrideGID = false
 						options.GID = 0
 					})
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
@@ -1187,14 +1185,13 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory = fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
-			when("override GID is true", func() {
+			when("override GID is provided", func() {
 				it.Before(func() {
 					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.OverrideGID = true
 						options.GID = 0
 					})
 				})
-				it("", func() {
+				it("configures the phase with the expected arguments", func() {
 					err := lifecycle.Analyze(context.Background(), "test", "test", false, "", false, fakeCache, fakePhaseFactory)
 					h.AssertNil(t, err)
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1206,14 +1203,13 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					)
 				})
 			})
-			when("override GID is false", func() {
+			when("override GID is not provided", func() {
 				it.Before(func() {
 					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.OverrideGID = false
 						options.GID = 0
 					})
 				})
-				it("", func() {
+				it("gid is not added to the expected arguments", func() {
 					err := lifecycle.Analyze(context.Background(), "test", "test", false, "", false, fakeCache, fakePhaseFactory)
 					h.AssertNil(t, err)
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1377,14 +1373,13 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory = fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
-			when("override GID is true", func() {
+			when("override GID is provided", func() {
 				it.Before(func() {
 					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.OverrideGID = true
 						options.GID = 0
 					})
 				})
-				it("", func() {
+				it("configures the phase with the expected arguments", func() {
 					err := lifecycle.Restore(context.Background(), "test", fakeCache, fakePhaseFactory)
 					h.AssertNil(t, err)
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1396,14 +1391,13 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					)
 				})
 			})
-			when("override GID is false", func() {
+			when("override GID is not provided", func() {
 				it.Before(func() {
 					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.OverrideGID = false
 						options.GID = 0
 					})
 				})
-				it("", func() {
+				it("gid is not added to the expected arguments", func() {
 					err := lifecycle.Restore(context.Background(), "test", fakeCache, fakePhaseFactory)
 					h.AssertNil(t, err)
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1972,14 +1966,13 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory = fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
-			when("override GID is true", func() {
+			when("override GID is provided", func() {
 				it.Before(func() {
 					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.OverrideGID = true
 						options.GID = 0
 					})
 				})
-				it("", func() {
+				it("configures the phase with the expected arguments", func() {
 					err := lifecycle.Export(context.Background(), "test", "test", false, "", "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
 					h.AssertNil(t, err)
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
@@ -1991,14 +1984,13 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					)
 				})
 			})
-			when("override GID is false", func() {
+			when("override GID is not provided", func() {
 				it.Before(func() {
 					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.OverrideGID = false
-						options.GID = 0
+						options.GID = -1
 					})
 				})
-				it("", func() {
+				it("gid is not added to the expected arguments", func() {
 					err := lifecycle.Export(context.Background(), "test", "test", false, "", "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
 					h.AssertNil(t, err)
 					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1

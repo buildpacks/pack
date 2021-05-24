@@ -834,7 +834,7 @@ func EqBuildOptionsWithOverrideGroupID(override bool, gid int) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("override=%t and GID=%d", override, gid),
 		equals: func(o pack.BuildOptions) bool {
-			return o.OverrideGroupID == override && o.GroupID == gid
+			return o.GroupID == gid
 		},
 	}
 }

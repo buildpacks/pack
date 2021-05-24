@@ -182,7 +182,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		flags = append(flags, "-skip-restore")
 	}
 
-	if l.opts.OverrideGID {
+	if l.opts.GID >= 0 {
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 
@@ -258,7 +258,7 @@ func (l *LifecycleExecution) Restore(ctx context.Context, networkMode string, bu
 	case cache.Volume:
 		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
-	if l.opts.OverrideGID {
+	if l.opts.GID >= 0 {
 		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
 	}
 
@@ -314,7 +314,7 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
 
-	if l.opts.OverrideGID {
+	if l.opts.GID >= 0 {
 		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
 	}
 
@@ -403,7 +403,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 	if processType != "" {
 		flags = append(flags, "-process-type", processType)
 	}
-	if l.opts.OverrideGID {
+	if l.opts.GID >= 0 {
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 
