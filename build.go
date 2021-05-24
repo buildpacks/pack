@@ -2,12 +2,10 @@ package pack
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
-	"net/url"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 
@@ -54,7 +52,7 @@ const (
 //
 //  Detection:         /cnb/lifecycle/detector
 //  Analysis:          /cnb/lifecycle/analyzer
-//  Package Restoration: /cnb/lifecycle/restorer
+//  Cache Restoration: /cnb/lifecycle/restorer
 //  Build:             /cnb/lifecycle/builder
 //  Export:            /cnb/lifecycle/exporter
 //
@@ -162,6 +160,9 @@ type BuildOptions struct {
 	// The lifecycle image that will be used for the analysis, restore and export phases
 	// when using an untrusted builder.
 	LifecycleImage string
+
+	// The location at which to mount the AppDir in the build image.
+	Workspace string
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -315,6 +316,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		DefaultProcessType: opts.DefaultProcessType,
 		FileFilter:         fileFilter,
 		CacheImage:         opts.CacheImage,
+		Workspace:          opts.Workspace,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
@@ -552,7 +554,7 @@ func (c *Client) processAppPath(appPath string) (string, error) {
 	}
 
 	if !fi.IsDir() {
-		fh, err := os.Open(resolvedAppPath)
+		fh, err := os.Open(filepath.Clean(resolvedAppPath))
 		if err != nil {
 			return "", errors.Wrap(err, "read file")
 		}
@@ -698,11 +700,6 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 
 			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(bp))
 
-			err := ensureBPSupport(bp)
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "checking support")
-			}
-
 			blob, err := c.downloader.Download(ctx, bp)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
@@ -795,38 +792,7 @@ func decomposeBuildpack(blob blob.Blob, imageOS string) (mainBP dist.Buildpack, 
 	return mainBP, depBPs, nil
 }
 
-func ensureBPSupport(bpPath string) (err error) {
-	p := bpPath
-	if paths.IsURI(bpPath) {
-		var u *url.URL
-		u, err = url.Parse(bpPath)
-		if err != nil {
-			return err
-		}
-
-		if u.Scheme == "file" {
-			p, err = paths.URIToFilePath(bpPath)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	if runtime.GOOS == "windows" && !paths.IsURI(p) {
-		isDir, err := paths.IsDir(p)
-		if err != nil {
-			return err
-		}
-
-		if isDir {
-			return fmt.Errorf("buildpack %s: directory-based buildpacks are not currently supported on Windows", style.Symbol(bpPath))
-		}
-	}
-
-	return nil
-}
-
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []dist.Buildpack, assetImages []asset.Readable) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []dist.Buildpack) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {
@@ -856,10 +822,15 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 	return bldr, nil
 }
 
+// Returns a string iwith lowercase a-z, of length n
 func randString(n int) string {
 	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
 	for i := range b {
-		b[i] = 'a' + byte(rand.Intn(26))
+		b[i] = 'a' + (b[i] % 26)
 	}
 	return string(b)
 }

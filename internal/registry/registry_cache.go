@@ -170,7 +170,7 @@ func (r *Cache) Initialize() error {
 func (r *Cache) CreateCache() error {
 	r.logger.Debugf("Creating registry cache for %s/%s", r.url.Host, r.url.Path)
 
-	root, err := ioutil.TempDir("", "registry")
+	root, err := ioutil.TempDir(filepath.Dir(r.Root), "registry")
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func (r *Cache) writeEntry(b Buildpack) (string, error) {
 	}
 
 	if _, err := os.Stat(index); os.IsNotExist(err) {
-		if err := os.MkdirAll(filepath.Dir(index), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(index), 0750); err != nil {
 			return "", errors.Wrapf(err, "creating directory structure for: %s/%s", ns, name)
 		}
 	} else {
@@ -286,7 +286,7 @@ func (r *Cache) writeEntry(b Buildpack) (string, error) {
 		}
 	}
 
-	f, err := os.OpenFile(index, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	f, err := os.OpenFile(filepath.Clean(index), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return "", errors.Wrapf(err, "creating buildpack file: %s/%s", ns, name)
 	}
@@ -320,7 +320,7 @@ func (r *Cache) readEntry(ns, name string) (Entry, error) {
 		return Entry{}, errors.Wrapf(err, "finding buildpack: %s/%s", ns, name)
 	}
 
-	file, err := os.Open(index)
+	file, err := os.Open(filepath.Clean(index))
 	if err != nil {
 		return Entry{}, errors.Wrapf(err, "opening index for buildpack: %s/%s", ns, name)
 	}

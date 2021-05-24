@@ -15,11 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Add milestone
-        uses: actions/github-script@v1
+        uses: actions/github-script@v4.0.2
         id: assets
         with:
           script: |
-            var milestone = await github.issues.listMilestonesForRepo({
+            var milestone = await github.issues.listMilestones({
                       owner: context.repo.owner,
                       repo: context.repo.repo,
                       state: 'open',

@@ -94,7 +94,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	it.After(func() {
-		h.AssertNil(t, lifecycleExec.Cleanup())
+		h.AssertNilE(t, lifecycleExec.Cleanup())
 	})
 
 	when("Phase", func() {
@@ -150,6 +150,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 							lifecycleExec.Builder().UID(),
 							lifecycleExec.Builder().GID(),
 							osType,
+							false,
 							nil,
 						),
 					),
@@ -167,7 +168,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				configProvider = build.NewPhaseConfigProvider(phaseName, lifecycleExec, build.WithArgs("read", "/workspace/fake-app-file"))
 				readPhase2 := phaseFactory.New(configProvider)
 				err := readPhase2.Run(context.TODO())
-				readPhase2.Cleanup()
+				h.AssertNil(t, readPhase2.Cleanup())
 				h.AssertNotNil(t, err)
 				h.AssertContains(t, outBuf.String(), "failed to read file")
 			})
@@ -212,7 +213,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it.After(func() {
-						h.AssertNil(t, os.RemoveAll(tmpFakeAppDir))
+						h.AssertNilE(t, os.RemoveAll(tmpFakeAppDir))
 					})
 
 					it("returns an error", func() {
@@ -225,7 +226,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 							lifecycleExec,
 							build.WithArgs("read", "/workspace/fake-app-file"),
 							build.WithContainerOperations(
-								build.CopyDir(lifecycleExec.AppPath(), "/workspace", 0, 0, osType, nil),
+								build.CopyDir(lifecycleExec.AppPath(), "/workspace", 0, 0, osType, false, nil),
 							),
 						))
 						h.AssertNil(t, err)
@@ -335,7 +336,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 
 			when("#WithBinds", func() {
 				it.After(func() {
-					docker.VolumeRemove(context.TODO(), "some-volume", true)
+					h.AssertNilE(t, docker.VolumeRemove(context.TODO(), "some-volume", true))
 				})
 
 				it("mounts volumes inside container", func() {
@@ -364,7 +365,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					if registry != nil {
 						registry.StopRegistry(t)
 					}
-					h.AssertNil(t, os.Unsetenv("DOCKER_CONFIG"))
+					h.AssertNilE(t, os.Unsetenv("DOCKER_CONFIG"))
 				})
 
 				it("provides auth for registry in the container", func() {
@@ -437,7 +438,7 @@ func assertAppModTimePreserved(t *testing.T, lifecycle *build.LifecycleExecution
 		lifecycle,
 		build.WithArgs("read", "/workspace/fake-app-file"),
 		build.WithContainerOperations(
-			build.CopyDir(lifecycle.AppPath(), "/workspace", 0, 0, osType, nil),
+			build.CopyDir(lifecycle.AppPath(), "/workspace", 0, 0, osType, false, nil),
 		),
 	))
 	assertRunSucceeds(t, readPhase, outBuf, errBuf)
@@ -450,10 +451,10 @@ func assertAppModTimePreserved(t *testing.T, lifecycle *build.LifecycleExecution
 func assertRunSucceeds(t *testing.T, phase build.RunnerCleaner, outBuf *bytes.Buffer, errBuf *bytes.Buffer) {
 	t.Helper()
 	if err := phase.Run(context.TODO()); err != nil {
-		phase.Cleanup()
+		h.AssertNilE(t, phase.Cleanup())
 		t.Fatalf("Failed to run phase: %s\nstdout:\n%s\nstderr:\n%s\n", err, outBuf.String(), errBuf.String())
 	}
-	phase.Cleanup()
+	h.AssertNilE(t, phase.Cleanup())
 }
 
 func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, appDir string, repoName string) (*build.LifecycleExecution, error) {

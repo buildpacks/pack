@@ -259,6 +259,15 @@ func AssertMatch(t *testing.T, actual string, expected string) {
 	}
 }
 
+// AssertNilE checks for nil value, if not nil it sets test as failed without stopping execution.
+func AssertNilE(t *testing.T, actual interface{}) {
+	t.Helper()
+	if !isNil(actual) {
+		t.Errorf("Expected nil: %s", actual)
+	}
+}
+
+// AssertNil checks for nil value, if not nil it fails the test and stops execution immediately.
 func AssertNil(t *testing.T, actual interface{}) {
 	t.Helper()
 	if !isNil(actual) {
@@ -275,7 +284,7 @@ func AssertNotNil(t *testing.T, actual interface{}) {
 
 func AssertTarball(t *testing.T, path string) {
 	t.Helper()
-	f, err := os.Open(path)
+	f, err := os.Open(filepath.Clean(path))
 	AssertNil(t, err)
 	defer f.Close()
 
@@ -348,7 +357,7 @@ func CreateImage(t *testing.T, dockerCli client.CommonAPIClient, repoName, docke
 func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName string, dir string) {
 	t.Helper()
 
-	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, nil)
+	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, false, nil)
 	resp, err := dockerCli.ImageBuild(context.Background(), buildContext, dockertypes.ImageBuildOptions{
 		Tags:           []string{repoName},
 		Remove:         true,
@@ -529,13 +538,13 @@ func CopyFileE(src, dst string) error {
 		return err
 	}
 
-	srcFile, err := os.Open(src)
+	srcFile, err := os.Open(filepath.Clean(src))
 	if err != nil {
 		return err
 	}
 	defer srcFile.Close()
 
-	dstFile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fi.Mode())
+	dstFile, err := os.OpenFile(filepath.Clean(dst), os.O_RDWR|os.O_CREATE|os.O_TRUNC, fi.Mode())
 	if err != nil {
 		return err
 	}
@@ -547,12 +556,7 @@ func CopyFileE(src, dst string) error {
 	}
 
 	modifiedtime := time.Time{}
-	err = os.Chtimes(dst, modifiedtime, modifiedtime)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return os.Chtimes(dst, modifiedtime, modifiedtime)
 }
 
 func RecursiveCopy(t *testing.T, src, dst string) {
@@ -592,12 +596,8 @@ func RecursiveCopyE(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	err = os.Chmod(dst, 0775)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return os.Chmod(dst, 0775)
 }
 
 func RequireDocker(t *testing.T) {
@@ -684,20 +684,20 @@ func writeTAR(t *testing.T, srcDir, tarDir string, mode int64, w io.Writer) {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
 
-	err := archive.WriteDirToTar(tw, srcDir, tarDir, 0, 0, mode, true, nil)
+	err := archive.WriteDirToTar(tw, srcDir, tarDir, 0, 0, mode, true, false, nil)
 	AssertNil(t, err)
 }
 
 func RecursiveCopyNow(t *testing.T, src, dst string) {
 	t.Helper()
-	err := os.MkdirAll(dst, 0755)
+	err := os.MkdirAll(dst, 0750)
 	AssertNil(t, err)
 
 	fis, err := ioutil.ReadDir(src)
 	AssertNil(t, err)
 	for _, fi := range fis {
 		if fi.Mode().IsRegular() {
-			srcFile, err := os.Open(filepath.Join(src, fi.Name()))
+			srcFile, err := os.Open(filepath.Join(filepath.Clean(src), fi.Name()))
 			AssertNil(t, err)
 			dstFile, err := os.Create(filepath.Join(dst, fi.Name()))
 			AssertNil(t, err)
@@ -733,7 +733,7 @@ func AssertTarFileContents(t *testing.T, tarfile, path, expected string) {
 
 func tarFileContents(t *testing.T, tarfile, path string) (exist bool, contents string) {
 	t.Helper()
-	r, err := os.Open(tarfile)
+	r, err := os.Open(filepath.Clean(tarfile))
 	AssertNil(t, err)
 	defer r.Close()
 
@@ -766,7 +766,7 @@ func AssertTarHasFile(t *testing.T, tarFile, path string) {
 func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
 	t.Helper()
 
-	r, err := os.Open(tarFile)
+	r, err := os.Open(filepath.Clean(tarFile))
 	AssertNil(t, err)
 	defer r.Close()
 

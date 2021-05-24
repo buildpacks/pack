@@ -281,11 +281,6 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 
 			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(b.URI))
 
-			err = ensureBPSupport(b.URI)
-			if err != nil {
-				return err
-			}
-
 			blob, err := c.downloader.Download(ctx, b.URI)
 			if err != nil {
 				return errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(b.URI))

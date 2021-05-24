@@ -210,7 +210,7 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 	tw := tar.NewWriter(outputFile)
 	defer tw.Close()
 
-	return archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, nil)
+	return archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false, nil)
 }
 
 func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS string) (imgutil.Image, error) {

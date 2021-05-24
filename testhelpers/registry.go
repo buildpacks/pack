@@ -43,6 +43,7 @@ func RegistryHost(host, port string) string {
 }
 
 func CreateRegistryFixture(t *testing.T, tmpDir, fixturePath string) string {
+	t.Helper()
 	// copy fixture to temp dir
 	registryFixtureCopy := filepath.Join(tmpDir, "registryCopy")
 
@@ -161,7 +162,7 @@ func startRegistry(t *testing.T, runRegistryName, username, password string) (st
 	}, &dockercontainer.HostConfig{
 		AutoRemove: true,
 		PortBindings: nat.PortMap{
-			"5000/tcp": []nat.PortBinding{{}},
+			"5000/tcp": []nat.PortBinding{{HostPort: "0"}},
 		},
 	}, nil, nil, runRegistryName)
 	AssertNil(t, err)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 
@@ -76,5 +77,5 @@ func (f *fakePackage) GetLayer(diffID string) (io.ReadCloser, error) {
 		return nil, errors.New("no layer found")
 	}
 
-	return os.Open(tarFile)
+	return os.Open(filepath.Clean(tarFile))
 }

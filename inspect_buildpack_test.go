@@ -724,5 +724,5 @@ func writeBuildpackArchive(buildpackPath, tmpDir string, assert h.AssertionManag
 	tw := tar.NewWriter(buildpackWriter)
 	defer tw.Close()
 
-	assert.Nil(archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, nil))
+	assert.Nil(archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false, nil))
 }
