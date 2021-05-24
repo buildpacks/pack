@@ -2195,10 +2195,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		when("gid option", func() {
 			it("gid is passthroughs to lifecycle", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-					Workspace:       "app",
-					Builder:         defaultBuilderName,
-					Image:           "example.com/some/repo:tag",
-					GroupID:         2,
+					Workspace: "app",
+					Builder:   defaultBuilderName,
+					Image:     "example.com/some/repo:tag",
+					GroupID:   2,
 				}))
 				h.AssertEq(t, fakeLifecycle.Opts.GID, 2)
 			})

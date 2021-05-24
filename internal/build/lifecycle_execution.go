@@ -22,7 +22,7 @@ import (
 
 const (
 	defaultProcessType = "web"
-	overrideGID = 0
+	overrideGID        = 0
 )
 
 type LifecycleExecution struct {
