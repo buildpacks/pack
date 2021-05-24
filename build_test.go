@@ -2193,40 +2193,14 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("gid option", func() {
-			when("gid is equal to zero", func() {
-				it("gid is passthroughs to lifecycle", func() {
-					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-						Workspace:       "app",
-						Builder:         defaultBuilderName,
-						Image:           "example.com/some/repo:tag",
-						GroupID:         0,
-					}))
-					h.AssertEq(t, fakeLifecycle.Opts.GID, 0)
-				})
-			})
-
-			when("gid is less than zero", func() {
-				it("gid is passthroughs to lifecycle", func() {
-					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-						Workspace:       "app",
-						Builder:         defaultBuilderName,
-						Image:           "example.com/some/repo:tag",
-						GroupID:         -1,
-					}))
-					h.AssertEq(t, fakeLifecycle.Opts.GID, -1)
-				})
-			})
-
-			when("gid is greater than zero", func() {
-				it("gid is passthroughs to lifecycle", func() {
-					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
-						Workspace:       "app",
-						Builder:         defaultBuilderName,
-						Image:           "example.com/some/repo:tag",
-						GroupID:         2,
-					}))
-					h.AssertEq(t, fakeLifecycle.Opts.GID, 2)
-				})
+			it("gid is passthroughs to lifecycle", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Workspace:       "app",
+					Builder:         defaultBuilderName,
+					Image:           "example.com/some/repo:tag",
+					GroupID:         2,
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.GID, 2)
 			})
 		})
 	})

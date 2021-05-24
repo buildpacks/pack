@@ -719,7 +719,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			when("override GID is provided", func() {
 				it("configures the phase with the expected arguments", func() {
 					verboseLifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.GID = 0
+						options.GID = 2
 					})
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
@@ -733,14 +733,14 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, configProvider.Name(), "creator")
 					h.AssertIncludeAllExpectedPatterns(t,
 						configProvider.ContainerConfig().Cmd,
-						[]string{"-gid"},
+						[]string{"-gid", "2"},
 					)
 				})
 			})
 			when("override GID is not provided", func() {
 				it("gid is not added to the expected arguments", func() {
 					verboseLifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.GID = 0
+						options.GID = -1
 					})
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
@@ -891,7 +891,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				fakeCache.ReturnForType = cache.Image
 				fakeCache.ReturnForName = "some-cache-image"
 
-				lifecycle = newTestLifecycleExec(t, false)
+				lifecycle = newTestLifecycleExec(t, false, func(options *build.LifecycleOptions) {
+					options.GID = -1
+				})
 				fakePhaseFactory = fakes.NewFakePhaseFactory()
 			})
 			it("configures the phase with a build cache images", func() {
@@ -1036,7 +1038,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("configures the phase with a build cache images", func() {
-					lifecycle := newTestLifecycleExec(t, false)
+					lifecycle := newTestLifecycleExec(t, false, func(options *build.LifecycleOptions) {
+						options.GID = -1
+					})
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 					expectedRepoName := "some-repo-name"
 
@@ -1188,7 +1192,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			when("override GID is provided", func() {
 				it.Before(func() {
 					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.GID = 0
+						options.GID = 2
 					})
 				})
 				it("configures the phase with the expected arguments", func() {
@@ -1199,14 +1203,14 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
 					h.AssertIncludeAllExpectedPatterns(t,
 						configProvider.ContainerConfig().Cmd,
-						[]string{"-gid"},
+						[]string{"-gid", "2"},
 					)
 				})
 			})
 			when("override GID is not provided", func() {
 				it.Before(func() {
 					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.GID = 0
+						options.GID = -1
 					})
 				})
 				it("gid is not added to the expected arguments", func() {
@@ -1346,7 +1350,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				fakeCache.ReturnForType = cache.Image
 				fakeCache.ReturnForName = "some-cache-image"
 
-				lifecycle = newTestLifecycleExec(t, false)
+				lifecycle = newTestLifecycleExec(t, false, func(options *build.LifecycleOptions) {
+					options.GID = -1
+				})
 				fakePhaseFactory = fakes.NewFakePhaseFactory()
 			})
 			it("configures the phase with a cache image", func() {
@@ -1376,7 +1382,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			when("override GID is provided", func() {
 				it.Before(func() {
 					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.GID = 0
+						options.GID = 2
 					})
 				})
 				it("configures the phase with the expected arguments", func() {
@@ -1387,14 +1393,14 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
 					h.AssertIncludeAllExpectedPatterns(t,
 						configProvider.ContainerConfig().Cmd,
-						[]string{"-gid"},
+						[]string{"-gid", "2"},
 					)
 				})
 			})
 			when("override GID is not provided", func() {
 				it.Before(func() {
 					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.GID = 0
+						options.GID = -1
 					})
 				})
 				it("gid is not added to the expected arguments", func() {
@@ -1969,7 +1975,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			when("override GID is provided", func() {
 				it.Before(func() {
 					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.GID = 0
+						options.GID = 2
 					})
 				})
 				it("configures the phase with the expected arguments", func() {
@@ -1980,7 +1986,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
 					h.AssertIncludeAllExpectedPatterns(t,
 						configProvider.ContainerConfig().Cmd,
-						[]string{"-gid"},
+						[]string{"-gid", "2"},
 					)
 				})
 			})
