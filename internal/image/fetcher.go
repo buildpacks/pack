@@ -44,14 +44,14 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, daemon bool, pullPolic
 		} else if pullPolicy == config.PullIfNotPresent {
 			img, err := f.fetchDaemonImage(name)
 			if err == nil || !errors.Is(err, ErrNotFound) {
-				return img, err
+				return img, errors.Wrap(err, "first daemon case")
 			}
 		}
 	}
 
 	image, err := remote.NewImage(name, authn.DefaultKeychain, remote.FromBaseImage(name))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed making new image")
 	}
 
 	remoteFound := image.Found()
@@ -60,7 +60,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, daemon bool, pullPolic
 		if remoteFound {
 			f.logger.Debugf("Pulling image %s", style.Symbol(name))
 			if err := f.pullImage(ctx, name); err != nil {
-				return nil, err
+				return nil, errors.Wrap(err, "pulling image failed")
 			}
 		}
 		return f.fetchDaemonImage(name)

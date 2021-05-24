@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"github.com/buildpacks/pack/internal/image"
 	"os"
 	"path/filepath"
 	"sort"
@@ -156,6 +157,9 @@ type BuildOptions struct {
 
 	// The location at which to mount the AppDir in the build image.
 	Workspace string
+
+	// a registry all image pulls should be executed against.
+	PullProxy string
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -192,6 +196,9 @@ type ContainerConfig struct {
 // If any configuration is deemed invalid, or if any lifecycle phases fail,
 // an error will be returned and no image produced.
 func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
+	if opts.PullProxy != "" {
+		c.imageFetcher = image.NewProxiedFetcher(opts.PullProxy, c.imageFetcher)
+	}
 	imageRef, err := c.parseTagReference(opts.Image)
 	if err != nil {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.Image)
@@ -219,7 +226,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "invalid builder %s", style.Symbol(opts.Builder))
 	}
 
-	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), builderRef.Context().RegistryStr(), bldr.Stack(), opts.AdditionalMirrors, opts.Publish)
+	runImageName := c.resolveRunImage(opts.RunImage, imageRef.Context().RegistryStr(), builderRef.Context().RegistryStr(), opts.PullProxy, bldr.Stack(), opts.AdditionalMirrors, opts.Publish)
 	runImage, err := c.validateRunImage(ctx, runImageName, opts.PullPolicy, opts.Publish, bldr.StackID)
 	if err != nil {
 		return errors.Wrapf(err, "invalid run-image '%s'", runImageName)
@@ -284,9 +291,17 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
+	prevImage := imageRef
+	if opts.PullProxy != "" {
+		prevImage, err = image.ProxyImage(opts.PullProxy, imageRef.Name())
+		if err != nil {
+			return errors.Wrapf(err, "error configuring proxy to pull image")
+		}
+	}
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:            appPath,
 		Image:              imageRef,
+		PreviousImage: 		prevImage,
 		Builder:            ephemeralBuilder,
 		RunImage:           runImageName,
 		ClearCache:         opts.ClearCache,
@@ -707,6 +722,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.PackageLocator:
 			imageName := buildpack.ParsePackageLocator(bp)
+			// TODO -Dan- this also uses imagefetcher for image pulls.
 			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, publish, pullPolicy)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(bp))
@@ -725,6 +741,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
 			}
 
+			// TODO -Dan- this again uses the imagefetcher
 			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, publish, pullPolicy)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "extracting from registry %s", style.Symbol(bp))

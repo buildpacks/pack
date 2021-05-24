@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -61,9 +62,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		defaultWindowsBuilderStackID = "some.windows.stack.id"
 		defaultBuilderImage          *fakes.Image
 		defaultWindowsBuilderImage   *fakes.Image
+		proxyHost                    = "index.proxy.io/proxy_prefix"
 		defaultBuilderName           = "example.com/default/builder:tag"
+		proxiedBuilderName           = proxyHost + "/default/builder:tag"
 		defaultWindowsBuilderName    = "example.com/windows-default/builder:tag"
 		defaultRunImageName          = "default/run"
+		proxiedRunImage              = proxyHost + "/" + defaultRunImageName
 		defaultWindowsRunImageName   = "default/win-run"
 		fakeDefaultRunImage          *fakes.Image
 		fakeDefaultWindowsRunImage   *fakes.Image
@@ -87,6 +91,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, defaultBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 		fakeImageFetcher.LocalImages[defaultBuilderImage.Name()] = defaultBuilderImage
 
+		proxiedBuilderTag, err := name.NewTag(proxiedBuilderName, name.WeakValidation)
+		h.AssertNil(t, err)
+		fakeImageFetcher.LocalImages[proxiedBuilderTag.Name()] = defaultBuilderImage
+
 		defaultWindowsBuilderImage = newFakeBuilderImage(t, tmpDir, defaultWindowsBuilderName, defaultWindowsBuilderStackID, defaultWindowsRunImageName, builder.DefaultLifecycleVersion, newWindowsImage)
 		h.AssertNil(t, defaultWindowsBuilderImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "build:mixinB", "mixinX", "build:mixinY"]`))
 		fakeImageFetcher.LocalImages[defaultWindowsBuilderImage.Name()] = defaultWindowsBuilderImage
@@ -101,6 +109,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, fakeDefaultRunImage.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "run:mixinC", "mixinX", "run:mixinZ"]`))
 		fakeImageFetcher.LocalImages[fakeDefaultRunImage.Name()] = fakeDefaultRunImage
 
+		proxiedRunImageTag, err := name.NewTag(proxiedRunImage, name.WeakValidation)
+		h.AssertNil(t, err)
+		fakeImageFetcher.LocalImages[proxiedRunImageTag.Name()] = fakeDefaultRunImage
+		fakeImageFetcher.RemoteImages[proxiedRunImageTag.Name()] = fakeDefaultRunImage
+
+
 		fakeMirror1 = newLinuxImage("registry1.example.com/run/mirror", "", nil)
 		h.AssertNil(t, fakeMirror1.SetLabel("io.buildpacks.stack.id", defaultBuilderStackID))
 		h.AssertNil(t, fakeMirror1.SetLabel("io.buildpacks.stack.mixins", `["mixinA", "mixinX", "run:mixinZ"]`))
@@ -113,6 +127,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 		fakeLifecycleImage = newLinuxImage(fmt.Sprintf("%s:%s", cfg.DefaultLifecycleImageRepo, builder.DefaultLifecycleVersion), "", nil)
 		fakeImageFetcher.LocalImages[fakeLifecycleImage.Name()] = fakeLifecycleImage
+
+		proxiedLifecycle := fmt.Sprintf("%s/%s", proxyHost, fakeLifecycleImage.Name())
+		fakeImageFetcher.LocalImages[proxiedLifecycle] = fakeLifecycleImage
 
 		docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 		h.AssertNil(t, err)
@@ -560,6 +577,17 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								}))
 								h.AssertEq(t, fakeLifecycle.Opts.RunImage, "default/run")
 							})
+
+							when("--pull-proxy is specified", func() {
+								it("uses a proxied run image", func() {
+									h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+										Image:     testImg,
+										Builder:   defaultBuilderName,
+										PullProxy: proxyHost,
+									}))
+									h.AssertEq(t, fakeLifecycle.Opts.RunImage, path.Join(proxyHost, defaultRunImageName + ":latest"))
+								})
+							})
 						}
 					})
 				})
@@ -611,6 +639,36 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								h.AssertEq(t, fakeLifecycle.Opts.RunImage, runImg)
 							})
 						}
+						when("--pull-proxy is specified", func() {
+							var testRegistry = "registry1.example.com"
+							it.Before(func() {
+								fakeImageFetcher.RemoteImages[path.Join(proxyHost, "local", "mirror:latest")] = fakeDefaultRunImage
+							})
+							when("publishing to a mirrored registry", func() {
+								it("uses a mirrored run image", func() {
+									h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+										Image:             testRegistry + "/some/app",
+										Builder:           defaultBuilderName,
+										AdditionalMirrors: mirrors,
+										PullProxy:         proxyHost,
+										Publish:           true,
+									}))
+									h.AssertEq(t, fakeLifecycle.Opts.RunImage, "registry1.example.com/local/mirror")
+								})
+							})
+
+							when("publishing to un-mirrored registry", func() {
+								it("uses proxied run image", func() {
+									h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+										Image:     "gcr.io/some/app",
+										Builder:   defaultBuilderName,
+										PullProxy: proxyHost,
+										Publish:           true,
+									}))
+									h.AssertContains(t, fakeLifecycle.Opts.RunImage, path.Join(proxyHost, defaultRunImageName))
+								})
+							})
+						})
 					})
 
 					when("Publish is false", func() {

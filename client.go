@@ -2,13 +2,12 @@ package pack
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-
 	"github.com/buildpacks/imgutil"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
+	"os"
+	"path/filepath"
 
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"

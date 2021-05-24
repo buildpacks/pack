@@ -3,6 +3,7 @@ package pack
 import (
 	"errors"
 	"fmt"
+	"github.com/buildpacks/pack/internal/image"
 
 	"github.com/google/go-containerregistry/pkg/name"
 
@@ -28,19 +29,24 @@ func (c *Client) parseTagReference(imageName string) (name.Reference, error) {
 	return ref, nil
 }
 
-func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, stackInfo builder.StackMetadata, additionalMirrors map[string][]string, publish bool) string {
+func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry, pullProxy string, stackInfo builder.StackMetadata, additionalMirrors map[string][]string, publish bool) string {
 	if runImage != "" {
 		c.logger.Debugf("Using provided run-image %s", style.Symbol(runImage))
 		return runImage
 	}
 
-	preferredRegistry := bldrRegistry
-	if publish || bldrRegistry == "" {
-		preferredRegistry = imgRegistry
-	}
+	//preferredRegistry := bldrRegistry
+	//if publish || bldrRegistry == "" {
+	//	preferredRegistry = imgRegistry
+	//} else if pullProxy != "" {
+	//	preferredRegistry = pullProxy
+	//}
 
 	runImageName := getBestRunMirror(
-		preferredRegistry,
+		publish,
+		bldrRegistry,
+		imgRegistry,
+		pullProxy,
 		stackInfo.RunImage.Image,
 		stackInfo.RunImage.Mirrors,
 		additionalMirrors[stackInfo.RunImage.Image],
@@ -107,21 +113,44 @@ func contains(slc []string, v string) bool {
 	return false
 }
 
-func getBestRunMirror(registry string, runImage string, mirrors []string, preferredMirrors []string) string {
+func getBestRunMirror(publish bool, bldrRegistry, imgRegistry, pullProxy, runImage string, mirrors []string, preferredMirrors []string) string {
+	preferredRegistry := bldrRegistry
+	if publish || bldrRegistry == "" {
+		preferredRegistry = imgRegistry
+	}
+
 	runImageList := append(preferredMirrors, append([]string{runImage}, mirrors...)...)
 	for _, img := range runImageList {
 		ref, err := name.ParseReference(img, name.WeakValidation)
 		if err != nil {
 			continue
 		}
-		if ref.Context().RegistryStr() == registry {
+		if ref.Context().RegistryStr() == preferredRegistry {
+			if (preferredRegistry != imgRegistry || preferredRegistry == "") && pullProxy != "" {
+				imgTag, err :=  image.ProxyImage(pullProxy, img)
+				if err != nil {
+					// TODO -Dan- handle
+					panic(err)
+				}
+				return imgTag.Name()
+			}
 			return img
 		}
 	}
 
+	result := runImage
 	if len(preferredMirrors) > 0 {
-		return preferredMirrors[0]
+		result = preferredMirrors[0]
 	}
 
-	return runImage
+	if pullProxy == "" {
+		return result
+	}
+	resultTag, err := image.ProxyImage(pullProxy, result)
+	if err != nil {
+		// TODO -Dan- Fix this
+		panic(err)
+	}
+
+	return resultTag.Name()
 }

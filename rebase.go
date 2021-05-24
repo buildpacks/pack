@@ -59,6 +59,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		opts.RunImage,
 		imageRef.Context().RegistryStr(),
 		"",
+		"", // TODO: -Dan- add pull proxy
 		builder.StackMetadata{
 			RunImage: builder.RunImageMetadata{
 				Image:   md.Stack.RunImage.Image,

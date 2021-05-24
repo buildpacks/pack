@@ -48,9 +48,12 @@ func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 }
 
+// TODO -Dan- Need an option for previousImage here. So that our proxy can pull from a different location
+//   than it pushes to.
 type LifecycleOptions struct {
 	AppPath            string
 	Image              name.Reference
+	PreviousImage       name.Reference
 	Builder            Builder
 	LifecycleImage     string
 	RunImage           string
