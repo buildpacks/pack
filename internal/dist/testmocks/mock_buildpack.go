@@ -8,8 +8,9 @@ import (
 	io "io"
 	reflect "reflect"
 
-	dist "github.com/buildpacks/pack/internal/dist"
 	gomock "github.com/golang/mock/gomock"
+
+	dist "github.com/buildpacks/pack/internal/dist"
 )
 
 // MockBuildpack is a mock of Buildpack interface.

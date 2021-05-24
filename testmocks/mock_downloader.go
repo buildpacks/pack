@@ -8,8 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
-	blob "github.com/buildpacks/pack/internal/blob"
 	gomock "github.com/golang/mock/gomock"
+
+	blob "github.com/buildpacks/pack/internal/blob"
 )
 
 // MockDownloader is a mock of Downloader interface.

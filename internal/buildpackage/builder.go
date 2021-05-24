@@ -165,7 +165,6 @@ func (b *PackageBuilder) SaveAsFile(path, imageOS string) error {
 	}
 	defer os.RemoveAll(tmpDir)
 
-
 	if err := b.finalizeImage(layoutImage, tmpDir); err != nil {
 		return err
 	}
