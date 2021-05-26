@@ -683,7 +683,7 @@ builder = "my-builder"
 			when("--gid is a valid value", func() {
 				it("override build option should be set to true", func() {
 					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithOverrideGroupID(true, 1)).
+						Build(gomock.Any(), EqBuildOptionsWithOverrideGroupID(1)).
 						Return(nil)
 
 					command.SetArgs([]string{"--builder", "my-builder", "image", "--gid", "1"})
@@ -702,7 +702,7 @@ builder = "my-builder"
 		when("gid flag is not provided", func() {
 			it("override build option should be set to false", func() {
 				mockClient.EXPECT().
-					Build(gomock.Any(), EqBuildOptionsWithOverrideGroupID(false, 0)).
+					Build(gomock.Any(), EqBuildOptionsWithOverrideGroupID(-1)).
 					Return(nil)
 
 				command.SetArgs([]string{"--builder", "my-builder", "image"})
@@ -830,9 +830,9 @@ func EqBuildOptionsWithEnv(env map[string]string) gomock.Matcher {
 	}
 }
 
-func EqBuildOptionsWithOverrideGroupID(override bool, gid int) gomock.Matcher {
+func EqBuildOptionsWithOverrideGroupID(gid int) gomock.Matcher {
 	return buildOptionsMatcher{
-		description: fmt.Sprintf("override=%t and GID=%d", override, gid),
+		description: fmt.Sprintf("GID=%d", gid),
 		equals: func(o pack.BuildOptions) bool {
 			return o.GroupID == gid
 		},
