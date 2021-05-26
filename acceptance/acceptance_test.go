@@ -2762,7 +2762,7 @@ func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir str
 	defaultFilterFunc := func(file string) bool { return true }
 
 	ctx := context.Background()
-	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, defaultFilterFunc)
+	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, false, defaultFilterFunc)
 
 	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
 		Tags:        []string{repoName},

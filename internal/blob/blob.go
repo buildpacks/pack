@@ -31,7 +31,7 @@ func (b blob) Open() (r io.ReadCloser, err error) {
 		return nil, errors.Wrapf(err, "read blob at path '%s'", b.path)
 	}
 	if fi.IsDir() {
-		return archive.ReadDirAsTar(b.path, ".", 0, 0, -1, true, nil), nil
+		return archive.ReadDirAsTar(b.path, ".", 0, 0, -1, true, false, nil), nil
 	}
 
 	fh, err := os.Open(b.path)
