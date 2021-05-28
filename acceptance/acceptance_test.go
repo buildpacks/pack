@@ -632,24 +632,24 @@ func testWithoutSpecificBuilderRequirement(
 			imageManager.CleanupImages(repoName)
 		})
 
-		it("creates reproducable asset package", func() {
+		it("creates reproducible asset package", func() {
 			buildpackManager = buildpacks.NewBuildpackManager(
 				t,
 				assert,
 				buildpacks.WithBuildpackSource(tmpDir),
 			)
-
+			
 			templateMapping := map[string]interface{}{}
 			// resolve local assets to absolute paths
 			assetAPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetA.txt"))
 			assert.Nil(err)
-			assetAPath = cleanAbsPath(assetAPath)
+			assetAPath = h.CleanAbsPath(assetAPath)
 			assetBPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetB.txt"))
 			assert.Nil(err)
-			assetBPath = cleanAbsPath(assetBPath)
+			assetBPath = h.CleanAbsPath(assetBPath)
 			assetCPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetC.txt"))
 			assert.Nil(err)
-			assetCPath = cleanAbsPath(assetCPath)
+			assetCPath = h.CleanAbsPath(assetCPath)
 
 			templateMapping["assetAURI"] = assetAPath
 			templateMapping["assetBURI"] = assetBPath
@@ -698,7 +698,7 @@ func testWithoutSpecificBuilderRequirement(
 				simpleBuildpackConfigFile,
 				map[string]interface{}{
 					"buildpack_uri": "simple-buildpack.tgz",
-					"OS":            dockerHostOS(),
+					"OS":            imageManager.HostOS(),
 				},
 			)
 			err = simpleBuildpackConfigFile.Close()
@@ -711,7 +711,7 @@ func testWithoutSpecificBuilderRequirement(
 				secondBuildpackConfigFile,
 				map[string]interface{}{
 					"buildpack_uri": "second-simple-buildpack.tgz",
-					"OS":            dockerHostOS(),
+					"OS":            imageManager.HostOS(),
 				},
 			)
 			err = secondBuildpackConfigFile.Close()
@@ -724,7 +724,7 @@ func testWithoutSpecificBuilderRequirement(
 
 			templateMapping["simple_buildpack"] = simpleBuildpackImageName
 			templateMapping["second_simple_buildpack"] = secondSimpleBuildpackImageName
-			templateMapping["OS"] = dockerHostOS()
+			templateMapping["OS"] = imageManager.HostOS()
 
 			nestedConfigFile, err := ioutil.TempFile(tmpDir, "nested_assets_buildpack_package.toml")
 			fixtureManager.TemplateFixtureToFile(
@@ -767,7 +767,7 @@ func testWithoutSpecificBuilderRequirement(
 				"asset-package", "create",
 				assetPackageName,
 				"--buildpack", nestedBuildpackImageName,
-				"--os", dockerHostOS(),
+				"--os", imageManager.HostOS(),
 			)
 			defer h.DockerRmi(dockerCli, assetPackageName)
 
@@ -790,7 +790,7 @@ func testWithoutSpecificBuilderRequirement(
 				allAssetsBuildpackConfigFile,
 				map[string]interface{}{
 					"buildpack_uri": "all-assets-buildpack.tgz",
-					"OS":            dockerHostOS(),
+					"OS":            imageManager.HostOS(),
 				},
 			)
 			err = allAssetsBuildpackConfigFile.Close()
@@ -817,12 +817,12 @@ func testWithoutSpecificBuilderRequirement(
 				"asset-package", "create",
 				identicalAssetCacheName,
 				"--buildpack", allAssetsBuildpackImageName,
-				"--os", dockerHostOS(),
+				"--os", imageManager.HostOS(),
 			)
 			defer h.DockerRmi(dockerCli, identicalAssetCacheName)
 
-			firstSha := imageSha(t, assert, dockerCli, assetPackageName)
-			secondSha := imageSha(t, assert, dockerCli, identicalAssetCacheName)
+			firstSha := imageManager.GetImageID(assetPackageName)
+			secondSha := imageManager.GetImageID(identicalAssetCacheName)
 			assert.Equal(firstSha, secondSha)
 		})
 	})
@@ -1515,10 +1515,10 @@ func testAcceptance(
 							// resolve local assets to absolute paths
 							assetAPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetA.txt"))
 							assert.Nil(err)
-							assetAPath = cleanAbsPath(assetAPath)
+							assetAPath = h.CleanAbsPath(assetAPath)
 							assetBPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetB.txt"))
 							assert.Nil(err)
-							assetBPath = cleanAbsPath(assetBPath)
+							assetBPath = h.CleanAbsPath(assetBPath)
 
 							templateMapping["assetAURI"] = assetAPath
 							templateMapping["assetBURI"] = assetBPath
@@ -1547,7 +1547,7 @@ func testAcceptance(
 								simpleBuildpackConfigFile,
 								map[string]interface{}{
 									"buildpack_uri": "simple-buildpack.tgz",
-									"OS":            dockerHostOS(),
+									"OS":            imageManager.HostOS(),
 								},
 							)
 							err = simpleBuildpackConfigFile.Close()
@@ -1557,7 +1557,7 @@ func testAcceptance(
 							simpleBuildpackImageName := registryConfig.RepoName("simple-assets-buildpack-" + h.RandString(8))
 
 							templateMapping["simple_buildpack"] = simpleBuildpackImageName
-							templateMapping["OS"] = dockerHostOS()
+							templateMapping["OS"] = imageManager.HostOS()
 
 							packageImageBuildpack := buildpacks.NewPackageImage(
 								t,
@@ -1575,7 +1575,7 @@ func testAcceptance(
 								"asset-package", "create",
 								assetPackageName,
 								"--buildpack", simpleBuildpackImageName,
-								"--os", dockerHostOS(),
+								"--os", imageManager.HostOS(),
 							)
 							defer h.DockerRmi(dockerCli, assetPackageName)
 
@@ -3037,10 +3037,10 @@ func createBuilderWithAssets(
 	// resolve local assets to absolute paths
 	assetAPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetA.txt"))
 	assert.Nil(err)
-	assetAPath = cleanAbsPath(assetAPath)
+	assetAPath = h.CleanAbsPath(assetAPath)
 	assetBPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetB.txt"))
 	assert.Nil(err)
-	assetBPath = cleanAbsPath(assetBPath)
+	assetBPath = h.CleanAbsPath(assetBPath)
 
 	templateMapping["assetAURI"] = assetAPath
 	templateMapping["assetBURI"] = assetBPath
@@ -3069,7 +3069,7 @@ func createBuilderWithAssets(
 		simpleBuildpackConfigFile,
 		map[string]interface{}{
 			"buildpack_uri": "simple-buildpack.tgz",
-			"OS":            dockerHostOS(),
+			"OS":            imageManager.HostOS(),
 		},
 	)
 	err = simpleBuildpackConfigFile.Close()
@@ -3079,7 +3079,7 @@ func createBuilderWithAssets(
 	simpleBuildpackImageName := registryConfig.RepoName("simple-assets-buildpack-" + h.RandString(8))
 
 	templateMapping["simple_buildpack_with_assets"] = simpleBuildpackImageName
-	templateMapping["OS"] = dockerHostOS()
+	templateMapping["OS"] = imageManager.HostOS()
 
 	packageImageBuildpack := buildpacks.NewPackageImage(
 		t,
@@ -3097,7 +3097,7 @@ func createBuilderWithAssets(
 		"asset-package", "create",
 		assetPackageName,
 		"--buildpack", simpleBuildpackImageName,
-		"--os", dockerHostOS(),
+		"--os", imageManager.HostOS(),
 	)
 	defer h.DockerRmi(dockerCli, assetPackageName)
 
@@ -3323,23 +3323,4 @@ type compareFormat struct {
 	extension   string
 	compareFunc func(string, string)
 	outputArg   string
-}
-
-func cleanAbsPath(path string) string {
-	return strings.ReplaceAll(path, `\`, `\\`)
-}
-
-func imageSha(t *testing.T, assert h.AssertionManager, dockerCli client.CommonAPIClient, repoName string) string {
-	t.Helper()
-	inspect, _, err := dockerCli.ImageInspectWithRaw(context.Background(), repoName)
-	assert.Nil(err)
-	return inspect.ID
-}
-
-func dockerHostOS() string {
-	daemonInfo, err := dockerCli.Info(context.TODO())
-	if err != nil {
-		panic(err.Error())
-	}
-	return daemonInfo.OSType
 }

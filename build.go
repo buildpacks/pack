@@ -792,7 +792,7 @@ func decomposeBuildpack(blob blob.Blob, imageOS string) (mainBP dist.Buildpack, 
 	return mainBP, depBPs, nil
 }
 
-func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []dist.Buildpack) (*builder.Builder, error) {
+func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[string]string, order dist.Order, buildpacks []dist.Buildpack, assetImages []asset.Readable) (*builder.Builder, error) {
 	origBuilderName := rawBuilderImage.Name()
 	bldr, err := builder.New(rawBuilderImage, fmt.Sprintf("pack.local/builder/%x:latest", randString(10)))
 	if err != nil {

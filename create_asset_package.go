@@ -122,9 +122,10 @@ func simplifyAssets(assets []dist.AssetInfo) []dist.AssetInfo {
 	return result
 }
 
-// this method mutates the given assetImg
-func addAssetsToImage(assetImg AssetPackage, assets []dist.AssetInfo, downloadMap map[blob.DownloadJob]blob.DownloadResult) error {
-	for _, curAsset := range assets {
+// addAssetsToImage takes a list of assets in assetList, checks to see if they have a corresponding blob in
+// the download map and if so adds the blob to our assetImg.
+func addAssetsToImage(assetImg AssetPackage, assetList []dist.AssetInfo, downloadMap map[blob.DownloadJob]blob.DownloadResult) error {
+	for _, curAsset := range assetList {
 		b, ok := downloadMap[blob.DownloadJob{URI: curAsset.URI, Sha256: curAsset.Sha256}]
 		if !ok || b.Blob == nil {
 			continue

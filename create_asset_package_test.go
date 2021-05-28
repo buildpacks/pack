@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -20,8 +19,6 @@ import (
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/oci"
-	"github.com/buildpacks/pack/pkg/archive"
-
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
@@ -156,11 +153,11 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 
 				firstLayer, err := pkg.GetLayer(md[firstAsset.Sha256].LayerDiffID)
 				assert.Nil(err)
-				assertLayerHasFileWithContents(t, firstLayer, fmt.Sprintf("/cnb/assets/%s", firstAsset.Sha256), "first asset contents")
+				h.AssertOnTarReaderEntry(t, firstLayer, fmt.Sprintf("/cnb/assets/%s", firstAsset.Sha256), h.ContentContains("first asset contents"))
 
 				secondLayer, err := pkg.GetLayer(md[secondAsset.Sha256].LayerDiffID)
 				assert.Nil(err)
-				assertLayerHasFileWithContents(t, secondLayer, fmt.Sprintf("/cnb/assets/%s", secondAsset.Sha256), "second asset contents")
+				h.AssertOnTarReaderEntry(t, secondLayer, fmt.Sprintf("/cnb/assets/%s", secondAsset.Sha256), h.ContentContains("second asset contents"))
 			})
 		})
 		when("output format is an image", func() {
@@ -215,11 +212,11 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 
 				firstLayer, err := fakeImage.GetLayer(md[firstAsset.Sha256].LayerDiffID)
 				assert.Nil(err)
-				assertLayerHasFileWithContents(t, firstLayer, fmt.Sprintf("/cnb/assets/%s", firstAsset.Sha256), "first asset contents")
+				h.AssertOnTarReaderEntry(t, firstLayer, fmt.Sprintf("/cnb/assets/%s", firstAsset.Sha256), h.ContentContains("first asset contents"))
 
 				secondLayer, err := fakeImage.GetLayer(md[secondAsset.Sha256].LayerDiffID)
 				assert.Nil(err)
-				assertLayerHasFileWithContents(t, secondLayer, fmt.Sprintf("/cnb/assets/%s", secondAsset.Sha256), "second asset contents")
+				h.AssertOnTarReaderEntry(t, secondLayer, fmt.Sprintf("/cnb/assets/%s", secondAsset.Sha256), h.ContentContains("second asset contents"))
 			})
 
 			when("os is windows", func() {
@@ -266,7 +263,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 
 					firstLayer, err := fakeImage.GetLayer(md[firstAsset.Sha256].LayerDiffID)
 					assert.Nil(err)
-					assertLayerHasFileWithContents(t, firstLayer, fmt.Sprintf("Files/cnb/assets/%s", firstAsset.Sha256), "first asset contents")
+					h.AssertOnTarReaderEntry(t, firstLayer, fmt.Sprintf("Files/cnb/assets/%s", firstAsset.Sha256), h.ContentContains("first asset contents"))
 				})
 			})
 		})
@@ -332,7 +329,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 
 				firstLayer, err := fakeImage.GetLayer(md[firstAssetReplace.Sha256].LayerDiffID)
 				assert.Nil(err)
-				assertLayerHasFileWithContents(t, firstLayer, fmt.Sprintf("/cnb/assets/%s", firstAssetReplace.Sha256), "first replace asset contents")
+				h.AssertOnTarReaderEntry(t, firstLayer, fmt.Sprintf("/cnb/assets/%s", firstAssetReplace.Sha256), h.ContentContains("first replace asset contents"))
 			})
 		})
 	})
@@ -420,12 +417,4 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-}
-
-func assertLayerHasFileWithContents(t *testing.T, rc io.ReadCloser, path, expectedContents string) {
-	t.Helper()
-
-	_, actualContents, err := archive.ReadTarEntry(rc, path)
-	h.AssertNil(t, err)
-	h.AssertEq(t, string(actualContents), expectedContents)
 }

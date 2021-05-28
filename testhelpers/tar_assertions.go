@@ -35,6 +35,15 @@ func AssertOnTarEntry(t *testing.T, tarPath, entryPath string, assertFns ...TarE
 	}
 }
 
+func AssertOnTarReaderEntry(t *testing.T, tarReader io.Reader, entryPath string, assertFns ...TarEntryAssertion) {
+	header, data, err := readTarFileEntry(tarReader, entryPath)
+	AssertNil(t, err)
+
+	for _, fn := range assertFns {
+		fn(t, header, data)
+	}
+}
+
 func AssertOnNestedTar(nestedEntryPath string, assertions ...TarEntryAssertion) TarEntryAssertion {
 	return func(t *testing.T, _ *tar.Header, data []byte) {
 		t.Helper()

@@ -47,6 +47,10 @@ func RandString(n int) string {
 	return string(b)
 }
 
+func CleanAbsPath(path string) string {
+	return strings.ReplaceAll(path, `\`, `\\`)
+}
+
 // Assert deep equality (and provide useful difference as a test failure)
 func AssertEq(t *testing.T, actual, expected interface{}) {
 	t.Helper()
