@@ -51,7 +51,7 @@ type Downloader interface {
 type ImageFactory interface {
 	// NewImage initializes an image object with required settings so that it
 	// can be written either locally or to a registry.
-	NewImage(repoName string, local bool) (imgutil.Image, error)
+	NewImage(repoName string, local bool, imageOS string) (imgutil.Image, error)
 }
 
 // Client is an orchestration object, it contains all parameters needed to

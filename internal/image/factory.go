@@ -20,10 +20,12 @@ func NewFactory(dockerClient client.CommonAPIClient, keychain authn.Keychain) *D
 	}
 }
 
-func (f *DefaultImageFactory) NewImage(repoName string, daemon bool) (imgutil.Image, error) {
+func (f *DefaultImageFactory) NewImage(repoName string, daemon bool, imageOS string) (imgutil.Image, error) {
+	platform := imgutil.Platform{OS: imageOS}
+
 	if daemon {
-		return local.NewImage(repoName, f.dockerClient)
+		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform))
 	}
 
-	return remote.NewImage(repoName, f.keychain)
+	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
 }

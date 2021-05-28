@@ -7,10 +7,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/buildpacks/imgutil/remote"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"

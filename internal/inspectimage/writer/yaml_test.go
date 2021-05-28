@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/inspectimage"
-
-	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -122,22 +122,22 @@ remote_info:
 
 			remoteInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.remote",
-				Buildpacks: []lifecycle.GroupBuildpack{
+				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.remote", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
-				Base: lifecycle.RunImageMetadata{
+				Base: platform.RunImageMetadata{
 					TopLayer:  "some-remote-top-layer",
 					Reference: "some-remote-run-image-reference",
 				},
-				Stack: lifecycle.StackMetadata{
-					RunImage: lifecycle.StackRunImageMetadata{
+				Stack: platform.StackMetadata{
+					RunImage: platform.StackRunImageMetadata{
 						Image:   "some-remote-run-image",
 						Mirrors: []string{"some-remote-mirror", "other-remote-mirror"},
 					},
 				},
-				BOM: []lifecycle.BOMEntry{{
-					Require: lifecycle.Require{
+				BOM: []buildpack.BOMEntry{{
+					Require: buildpack.Require{
 						Name:    "name-1",
 						Version: "version-1",
 						Metadata: map[string]interface{}{
@@ -153,7 +153,7 @@ remote_info:
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{
@@ -175,22 +175,22 @@ remote_info:
 
 			localInfo = &pack.ImageInfo{
 				StackID: "test.stack.id.local",
-				Buildpacks: []lifecycle.GroupBuildpack{
+				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 					{ID: "test.bp.two.local", Version: "2.0.0", Homepage: "https://some-homepage-two"},
 				},
-				Base: lifecycle.RunImageMetadata{
+				Base: platform.RunImageMetadata{
 					TopLayer:  "some-local-top-layer",
 					Reference: "some-local-run-image-reference",
 				},
-				Stack: lifecycle.StackMetadata{
-					RunImage: lifecycle.StackRunImageMetadata{
+				Stack: platform.StackMetadata{
+					RunImage: platform.StackRunImageMetadata{
 						Image:   "some-local-run-image",
 						Mirrors: []string{"some-local-mirror", "other-local-mirror"},
 					},
 				},
-				BOM: []lifecycle.BOMEntry{{
-					Require: lifecycle.Require{
+				BOM: []buildpack.BOMEntry{{
+					Require: buildpack.Require{
 						Name:    "name-1",
 						Version: "version-1",
 						Metadata: map[string]interface{}{
@@ -200,7 +200,7 @@ remote_info:
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
+					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
 				Processes: pack.ProcessDetails{
 					DefaultProcess: &launch.Process{

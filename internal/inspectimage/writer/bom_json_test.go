@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/inspectimage"
-
-	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -89,8 +88,8 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 			}
 
 			remoteInfo = &pack.ImageInfo{
-				BOM: []lifecycle.BOMEntry{{
-					Require: lifecycle.Require{
+				BOM: []buildpack.BOMEntry{{
+					Require: buildpack.Require{
 						Name:    "name-1",
 						Version: "version-1",
 						Metadata: map[string]interface{}{
@@ -106,12 +105,12 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
+					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
 				}}}
 
 			localInfo = &pack.ImageInfo{
-				BOM: []lifecycle.BOMEntry{{
-					Require: lifecycle.Require{
+				BOM: []buildpack.BOMEntry{{
+					Require: buildpack.Require{
 						Name:    "name-1",
 						Version: "version-1",
 						Metadata: map[string]interface{}{
@@ -121,7 +120,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					},
-					Buildpack: lifecycle.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
+					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
 				}},
 			}
 

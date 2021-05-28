@@ -170,7 +170,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		var createPackage = func(imageName string) *fakes.Image {
 			packageImage := fakes.NewImage(imageName, "", nil)
-			mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
+			mockImageFactory.EXPECT().NewImage(packageImage.Name(), false, "linux").Return(packageImage, nil)
 
 			h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 				Name: packageImage.Name(),
@@ -901,7 +901,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			when("package image lives in docker registry", func() {
 				it.Before(func() {
 					packageImage = fakes.NewImage("docker.io/some/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false).Return(packageImage, nil)
+					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false, "linux").Return(packageImage, nil)
 
 					bpd := dist.BuildpackDescriptor{
 						API:    api.MustParse("0.3"),
