@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/buildpacks/pack/acceptance/assets"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -619,6 +620,7 @@ func testWithoutSpecificBuilderRequirement(
 			tmpDir   string
 			repo     string
 			repoName string
+			assetManager assets.Manager
 		)
 		it.Before(func() {
 			var err error
@@ -626,6 +628,8 @@ func testWithoutSpecificBuilderRequirement(
 			assert.Nil(err)
 			repo = "some-org/" + h.RandString(10)
 			repoName = registryConfig.RepoName(repo)
+
+			assetManager = assets.NewManager(t, filepath.Join("testdata", "mock_assets"))
 		})
 		it.After(func() {
 			os.RemoveAll(tmpDir)
@@ -638,185 +642,124 @@ func testWithoutSpecificBuilderRequirement(
 				assert,
 				buildpacks.WithBuildpackSource(tmpDir),
 			)
-			
+
 			templateMapping := map[string]interface{}{}
-			// resolve local assets to absolute paths
-			assetAPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetA.txt"))
-			assert.Nil(err)
-			assetAPath = h.CleanAbsPath(assetAPath)
-			assetBPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetB.txt"))
-			assert.Nil(err)
-			assetBPath = h.CleanAbsPath(assetBPath)
-			assetCPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetC.txt"))
-			assert.Nil(err)
-			assetCPath = h.CleanAbsPath(assetCPath)
 
-			templateMapping["assetAURI"] = assetAPath
-			templateMapping["assetBURI"] = assetBPath
-			templateMapping["assetCURI"] = assetCPath
-
-			simpleBuildpackRoot := filepath.Join(tmpDir, "simple-buildpack")
-			assert.Succeeds(os.Mkdir(simpleBuildpackRoot, os.ModePerm))
-
-			secondSimpleBuildpackRoot := filepath.Join(tmpDir, "second-simple-buildpack")
-			assert.Succeeds(os.Mkdir(secondSimpleBuildpackRoot, os.ModePerm))
-
-			nestedBuildpackRoot := filepath.Join(tmpDir, "nested-assets-buildpack")
-			assert.Succeeds(os.Mkdir(nestedBuildpackRoot, os.ModePerm))
-
-			h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", "simple-buildpack"), simpleBuildpackRoot)
-			h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", "second-simple-buildpack"), secondSimpleBuildpackRoot)
-			h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", "nested-assets-buildpack"), nestedBuildpackRoot)
-
-			simpleBuildpackTOML := filepath.Join(simpleBuildpackRoot, "buildpack.toml")
-			simpleBuildpackTOMLFile, err := os.OpenFile(simpleBuildpackTOML, os.O_CREATE|os.O_RDWR, os.ModePerm)
-			assert.Nil(err)
-
-			secondSimpleBuildpackTOML := filepath.Join(secondSimpleBuildpackRoot, "buildpack.toml")
-			secondSimpleBuildpackTOMLFile, err := os.OpenFile(secondSimpleBuildpackTOML, os.O_CREATE|os.O_RDWR, os.ModePerm)
-			assert.Nil(err)
-
-			// create asset buildpacks
-			simpleArchiveBuildpack := buildpacks.NewArchiveBuildpack("simple-buildpack")
-			secondSimpleArchiveBuildpack := buildpacks.NewArchiveBuildpack("second-simple-buildpack")
-			nestedArchiveBuildpack := buildpacks.NewArchiveBuildpack("nested-assets-buildpack")
-
-			// template buildpack assets
-			fixtureManager := pack.FixtureManager()
-			fixtureManager.TemplateFile(simpleBuildpackTOMLFile, templateMapping)
-			assert.Succeeds(simpleBuildpackTOMLFile.Close())
-
-			fixtureManager.TemplateFile(secondSimpleBuildpackTOMLFile, templateMapping)
-			assert.Succeeds(secondSimpleBuildpackTOMLFile.Close())
-
-			// template asset buildpacks using buildpack images
-
-			simpleBuildpackConfigFile, err := ioutil.TempFile(tmpDir, "simple_package.toml")
-			assert.Nil(err)
-			fixtureManager.TemplateFixtureToFile(
-				"generic_package.toml",
-				simpleBuildpackConfigFile,
-				map[string]interface{}{
-					"buildpack_uri": "simple-buildpack.tgz",
-					"OS":            imageManager.HostOS(),
-				},
-			)
-			err = simpleBuildpackConfigFile.Close()
-			assert.Nil(err)
-
-			secondBuildpackConfigFile, err := ioutil.TempFile(tmpDir, "second_package.toml")
-			assert.Nil(err)
-			fixtureManager.TemplateFixtureToFile(
-				"generic_package.toml",
-				secondBuildpackConfigFile,
-				map[string]interface{}{
-					"buildpack_uri": "second-simple-buildpack.tgz",
-					"OS":            imageManager.HostOS(),
-				},
-			)
-			err = secondBuildpackConfigFile.Close()
-			assert.Nil(err)
-
-			// buildpack image names
-			simpleBuildpackImageName := registryConfig.RepoName("simple-assets-buildpack-" + h.RandString(8))
-			secondSimpleBuildpackImageName := registryConfig.RepoName("second-simple-assets-buildpack-" + h.RandString(8))
-			nestedBuildpackImageName := registryConfig.RepoName("nested-assets-buildpack-" + h.RandString(8))
-
-			templateMapping["simple_buildpack"] = simpleBuildpackImageName
-			templateMapping["second_simple_buildpack"] = secondSimpleBuildpackImageName
+			templateMapping["assetAURI"] = assetManager.GetAssetWithFileName("assetA.txt")
+			templateMapping["assetBURI"] = assetManager.GetAssetWithFileName("assetB.txt")
+			templateMapping["assetCURI"] = assetManager.GetAssetWithFileName("assetC.txt")
 			templateMapping["OS"] = imageManager.HostOS()
 
-			nestedConfigFile, err := ioutil.TempFile(tmpDir, "nested_assets_buildpack_package.toml")
-			fixtureManager.TemplateFixtureToFile(
-				"nested_assets_buildpack_package.toml",
-				nestedConfigFile,
-				templateMapping,
-			)
+			// map of buildpack name to archived buildpack
+			archivedBuildpacks := map[string]buildpacks.TestBuildpack{}
 
-			assert.Succeeds(nestedConfigFile.Close())
+			// map of buildpack names to config files
+			buildpackConfigFiles := map[string]*os.File{}
+			// map of buildpack names to image names.
+			buildpackImageNames := map[string]string{}
+
+			fixtureManager := pack.FixtureManager()
+
+			buildpackNames := []string{"simple-buildpack", "second-simple-buildpack", "nested-assets-buildpack", "all-assets-buildpack"}
+			namesToConfigFiles := map[string]string {
+				"simple-buildpack": "generic_package.toml",
+				"second-simple-buildpack": "generic_package.toml",
+				"nested-assets-buildpack": "nested_assets_buildpack_package.toml",
+				"all-assets-buildpack": "generic_package.toml",
+
+			}
+			for _, buildpackName := range buildpackNames {
+				buildpackRoot := filepath.Join(tmpDir, buildpackName)
+				assert.Succeeds(os.Mkdir(buildpackRoot, os.ModePerm))
+
+				h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", buildpackName), buildpackRoot)
+
+				buildpackTOML := filepath.Join(buildpackRoot, "buildpack.toml")
+				buildpackTOMLFile, err := os.OpenFile(buildpackTOML, os.O_CREATE|os.O_RDWR, os.ModePerm)
+				assert.Nil(err)
+
+				archivedBuildpacks[buildpackName] = buildpacks.NewArchiveBuildpack(buildpackName)
+				fixtureManager.TemplateFile(buildpackTOMLFile, templateMapping)
+				assert.Succeeds(buildpackTOMLFile.Close())
+
+				buildpackConfigFile, err := ioutil.TempFile(tmpDir, buildpackName + "_package.toml")
+				assert.Nil(err)
+
+				buildpackConfigFiles[buildpackName] = buildpackConfigFile
+
+				fixtureManager.TemplateFixtureToFile(
+					namesToConfigFiles[buildpackName],
+					buildpackConfigFiles[buildpackName],
+					mergeMaps(templateMapping, map[string]interface{}{
+						"buildpack_uri": buildpackName + ".tgz",
+						"OS":            imageManager.HostOS(),
+					}),
+				)
+				err = buildpackConfigFiles[buildpackName].Close()
+				assert.Nil(err)
+
+				buildpackImageNames[buildpackName] = registryConfig.RepoName(buildpackName + "-with-assets" + h.RandString(8))
+				templateMapping[strings.ReplaceAll(buildpackName, "-", "_")] = buildpackImageNames[buildpackName]
+			}
 
 			packageImageBuildpack := buildpacks.NewPackageImage(
 				t,
 				pack,
-				nestedBuildpackImageName,
-				nestedConfigFile.Name(),
+				buildpackImageNames["nested-assets-buildpack"],
+				buildpackConfigFiles["nested-assets-buildpack"].Name(),
 				buildpacks.WithRequiredBuildpacks(
-					nestedArchiveBuildpack,
+					archivedBuildpacks["nested-assets-buildpack"],
 					buildpacks.NewPackageImage(
 						t,
 						pack,
-						simpleBuildpackImageName,
-						simpleBuildpackConfigFile.Name(),
-						buildpacks.WithRequiredBuildpacks(simpleArchiveBuildpack),
+						buildpackImageNames["simple-buildpack"],
+						buildpackConfigFiles["simple-buildpack"].Name(),
+						buildpacks.WithRequiredBuildpacks(archivedBuildpacks["simple-buildpack"]),
 					),
 					buildpacks.NewPackageImage(
 						t,
 						pack,
-						secondSimpleBuildpackImageName,
-						secondBuildpackConfigFile.Name(),
-						buildpacks.WithRequiredBuildpacks(secondSimpleArchiveBuildpack),
+						buildpackImageNames["second-simple-buildpack"],
+						buildpackConfigFiles["second-simple-buildpack"].Name(),
+						buildpacks.WithRequiredBuildpacks(archivedBuildpacks["second-simple-buildpack"]),
 					),
 				),
 			)
 
 			buildpackManager.PrepareBuildpacks(tmpDir, packageImageBuildpack)
-			defer h.DockerRmi(dockerCli, simpleBuildpackImageName, secondSimpleBuildpackImageName, nestedBuildpackImageName)
+			defer h.DockerRmi(dockerCli,
+				buildpackImageNames["simple-buildpack"],
+				buildpackImageNames["second-simple-buildpack"],
+				buildpackImageNames["nested-assets-buildpack"],
+			)
 
 			assetPackageName := registryConfig.RepoName("some-asset-org/" + h.RandString(10))
 			pack.RunSuccessfully(
 				"asset-package", "create",
 				assetPackageName,
-				"--buildpack", nestedBuildpackImageName,
+				"--buildpack", buildpackImageNames["nested-assets-buildpack"],
 				"--os", imageManager.HostOS(),
 			)
 			defer h.DockerRmi(dockerCli, assetPackageName)
 
-			allAssetsBuildpackRoot := filepath.Join(tmpDir, "all-assets-buildpack")
-			assert.Succeeds(os.Mkdir(allAssetsBuildpackRoot, os.ModePerm))
-
-			h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", "all-assets-buildpack"), allAssetsBuildpackRoot)
-
-			allAssetsBuildpackTOML := filepath.Join(allAssetsBuildpackRoot, "buildpack.toml")
-			allAssetsBuildpackTOMLFile, err := os.OpenFile(allAssetsBuildpackTOML, os.O_CREATE|os.O_RDWR, os.ModePerm)
-			assert.Nil(err)
-
-			fixtureManager.TemplateFile(allAssetsBuildpackTOMLFile, templateMapping)
-			assert.Succeeds(allAssetsBuildpackTOMLFile.Close())
-
-			allAssetsBuildpackConfigFile, err := ioutil.TempFile(tmpDir, "all_assets_package.toml")
-			assert.Nil(err)
-			fixtureManager.TemplateFixtureToFile(
-				"generic_package.toml",
-				allAssetsBuildpackConfigFile,
-				map[string]interface{}{
-					"buildpack_uri": "all-assets-buildpack.tgz",
-					"OS":            imageManager.HostOS(),
-				},
-			)
-			err = allAssetsBuildpackConfigFile.Close()
-			assert.Nil(err)
-
-			allAssetsBuildpackImageName := registryConfig.RepoName("all-assets-buildpack-" + h.RandString(8))
-			allAssetsArchiveBuildpack := buildpacks.NewArchiveBuildpack("all-assets-buildpack")
-
 			allAssetsImageBuildpack := buildpacks.NewPackageImage(
 				t,
 				pack,
-				allAssetsBuildpackImageName,
-				allAssetsBuildpackConfigFile.Name(),
+				buildpackImageNames["all-assets-buildpack"],
+				buildpackConfigFiles["all-assets-buildpack"].Name(),
 				buildpacks.WithRequiredBuildpacks(
-					allAssetsArchiveBuildpack,
+					archivedBuildpacks["all-assets-buildpack"],
 				),
 			)
 
 			buildpackManager.PrepareBuildpacks(tmpDir, allAssetsImageBuildpack)
-			defer h.DockerRmi(dockerCli, allAssetsBuildpackImageName)
+			defer h.DockerRmi(dockerCli, buildpackImageNames["all-assets-buildpack"])
 
 			identicalAssetCacheName := registryConfig.RepoName("some-identical-asset-org/" + h.RandString(10))
 			pack.RunSuccessfully(
 				"asset-package", "create",
 				identicalAssetCacheName,
-				"--buildpack", allAssetsBuildpackImageName,
+				"--buildpack", buildpackImageNames["all-assets-buildpack"],
 				"--os", imageManager.HostOS(),
 			)
 			defer h.DockerRmi(dockerCli, identicalAssetCacheName)
@@ -1489,6 +1432,7 @@ func testAcceptance(
 					when("--asset-package", func() {
 						var (
 							tmpDir string
+							assetManager assets.Manager
 						)
 						it.Before(func() {
 							h.SkipIf(t, !pack.SupportsFeature(invoke.AssetPackages), "requires asset package capabilities")
@@ -1499,37 +1443,32 @@ func testAcceptance(
 							assert.Nil(err)
 							repo = "some-org/" + h.RandString(10)
 							repoName = registryConfig.RepoName(repo)
-						})
-						it.After(func() {
-							os.RemoveAll(tmpDir)
-							imageManager.CleanupImages(repoName)
-						})
-						it("adds assets to build and allows buildpacks to access them", func() {
+
+							assetManager = assets.NewManager(t, filepath.Join("testdata", "mock-assets"))
 							buildpackManager = buildpacks.NewBuildpackManager(
 								t,
 								assert,
 								buildpacks.WithBuildpackSource(tmpDir),
 							)
 
-							templateMapping := map[string]interface{}{}
-							// resolve local assets to absolute paths
-							assetAPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetA.txt"))
-							assert.Nil(err)
-							assetAPath = h.CleanAbsPath(assetAPath)
-							assetBPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", "assetB.txt"))
-							assert.Nil(err)
-							assetBPath = h.CleanAbsPath(assetBPath)
 
-							templateMapping["assetAURI"] = assetAPath
-							templateMapping["assetBURI"] = assetBPath
+						})
+						it.After(func() {
+							os.RemoveAll(tmpDir)
+							imageManager.CleanupImages(repoName)
+						})
+						it("adds assets to build and allows buildpacks to access them", func() {
+
+							templateMapping := map[string]interface{}{}
+							templateMapping["assetAURI"] = assetManager.GetAssetWithFileName("assetA.txt")
+							templateMapping["assetBURI"] = assetManager.GetAssetWithFileName("assetB.txt")
 
 							simpleBuildpackRoot := filepath.Join(tmpDir, "simple-buildpack")
 							assert.Succeeds(os.Mkdir(simpleBuildpackRoot, os.ModePerm))
 
 							h.RecursiveCopy(t, filepath.Join("testdata", "mock_buildpacks", "with_assets", "simple-buildpack"), simpleBuildpackRoot)
 
-							simpleBuildpackTOML := filepath.Join(simpleBuildpackRoot, "buildpack.toml")
-							simpleBuildpackTOMLFile, err := os.OpenFile(simpleBuildpackTOML, os.O_CREATE|os.O_RDWR, os.ModePerm)
+							simpleBuildpackTOMLFile, err := os.OpenFile(filepath.Join(simpleBuildpackRoot, "buildpack.toml"), os.O_CREATE|os.O_RDWR, os.ModePerm)
 							assert.Nil(err)
 
 							// create asset buildpacks
@@ -3323,4 +3262,17 @@ type compareFormat struct {
 	extension   string
 	compareFunc func(string, string)
 	outputArg   string
+}
+
+func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
+	result := map[string]interface{}{}
+	for key, value := range a {
+		result[key] = value
+	}
+
+	for key, value := range b {
+		result[key] = value
+	}
+
+	return result
 }

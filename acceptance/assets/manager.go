@@ -1,54 +1,30 @@
 package assets
 
 import (
-	"errors"
-	"github.com/buildpacks/pack/acceptance/buildpacks"
 	"github.com/buildpacks/pack/testhelpers"
-	"io/ioutil"
-	"os"
+	"path/filepath"
 	"testing"
 )
 
-type AssetManager struct {
-	BpManager buildpacks.BuildpackManager
-	TemplateAssets map[string]TestAsset
-	OS string
-	dest string
+type Manager struct {
+	sourceDir string
+	testObject *testing.T
+	assert testhelpers.AssertionManager
 }
 
-type TestAsset struct {
-	path string
-}
-
-func NewAssetManager(t *testing.T, bpSource, OS string) AssetManager {
-	return AssetManager{
-		BpManager:      buildpacks.NewBuildpackManager(
-			t,
-			testhelpers.NewAssertionManager(t),
-			buildpacks.WithBuildpackSource(bpSource),
-		),
-		TemplateAssets: nil,
+func NewManager(t *testing.T, sourceDir string) Manager {
+	return Manager{
+		sourceDir:  sourceDir,
+		testObject: t,
+		assert:     testhelpers.NewAssertionManager(t),
 	}
 }
 
-func (am *AssetManager) Open() (err error) {
-	am.dest, err = ioutil.TempDir("", "asset-manager-")
-	if err != nil {
-		return err
-	}
+func (a Manager) GetAssetWithFileName(assetName string) string {
+	a.testObject.Helper()
 
-	return nil
-}
+	assetPath, err := filepath.Abs(filepath.Join("testdata", "mock_assets", assetName))
+	a.assert.Nil(err)
 
-func (am *AssetManager) Close() (err error) {
-	if am.dest == "" {
-		return errors.New("closing unopened AssetManager")
-	}
-
-	if err = os.RemoveAll(am.dest); err != nil {
-		return err
-	}
-
-	am.dest = ""
-	return nil
+	return testhelpers.CleanAbsPath(assetPath)
 }
