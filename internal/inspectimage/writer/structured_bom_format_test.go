@@ -6,20 +6,16 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/buildpacks/lifecycle"
-
-	"github.com/buildpacks/pack/internal/dist"
-
-	"github.com/buildpacks/pack/internal/inspectimage"
-
-	"github.com/buildpacks/pack/internal/inspectimage/writer"
-
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/inspectimage"
+	"github.com/buildpacks/pack/internal/inspectimage/writer"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -46,16 +42,16 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 			outBuf = bytes.NewBuffer(nil)
 			logger = ilogging.NewLogWithWriters(outBuf, outBuf)
 			remoteInfo = &pack.ImageInfo{
-				BOM: []lifecycle.BOMEntry{
+				BOM: []buildpack.BOMEntry{
 					{
-						Require: lifecycle.Require{
+						Require: buildpack.Require{
 							Name:    "remote-require",
 							Version: "1.2.3",
 							Metadata: map[string]interface{}{
 								"cool-remote": "beans",
 							},
 						},
-						Buildpack: lifecycle.GroupBuildpack{
+						Buildpack: buildpack.GroupBuildpack{
 							ID:      "remote-buildpack",
 							Version: "remote-buildpack-version",
 						},
@@ -63,16 +59,16 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 			localInfo = &pack.ImageInfo{
-				BOM: []lifecycle.BOMEntry{
+				BOM: []buildpack.BOMEntry{
 					{
-						Require: lifecycle.Require{
+						Require: buildpack.Require{
 							Name:    "local-require",
 							Version: "4.5.6",
 							Metadata: map[string]interface{}{
 								"cool-local": "beans",
 							},
 						},
-						Buildpack: lifecycle.GroupBuildpack{
+						Buildpack: buildpack.GroupBuildpack{
 							ID:      "local-buildpack",
 							Version: "local-buildpack-version",
 						},

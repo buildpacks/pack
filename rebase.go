@@ -3,11 +3,12 @@ package pack
 import (
 	"context"
 
-	"github.com/buildpacks/pack/config"
-
 	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
@@ -48,11 +49,11 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return err
 	}
 
-	var md lifecycle.LayersMetadataCompat
-	if ok, err := dist.GetLabel(appImage, lifecycle.LayerMetadataLabel, &md); err != nil {
+	var md platform.LayersMetadataCompat
+	if ok, err := dist.GetLabel(appImage, platform.LayerMetadataLabel, &md); err != nil {
 		return err
 	} else if !ok {
-		return errors.Errorf("could not find label %s on image", style.Symbol(lifecycle.LayerMetadataLabel))
+		return errors.Errorf("could not find label %s on image", style.Symbol(platform.LayerMetadataLabel))
 	}
 
 	runImageName := c.resolveRunImage(
@@ -78,7 +79,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 	}
 
 	c.logger.Infof("Rebasing %s on run image %s", style.Symbol(appImage.Name()), style.Symbol(baseImage.Name()))
-	rebaser := &lifecycle.Rebaser{Logger: c.logger}
+	rebaser := &lifecycle.Rebaser{Logger: c.logger, PlatformAPI: build.SupportedPlatformAPIVersions.Latest()}
 	_, err = rebaser.Rebase(appImage, baseImage, nil)
 	if err != nil {
 		return err

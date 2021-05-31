@@ -5,24 +5,21 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/inspectimage"
-
-	"github.com/buildpacks/lifecycle"
-
-	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/commands/fakes"
-	"github.com/buildpacks/pack/internal/config"
-	h "github.com/buildpacks/pack/testhelpers"
-
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
+	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/inspectimage"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 var (
@@ -36,18 +33,18 @@ var (
 	expectedLocalImageInfo = &pack.ImageInfo{
 		StackID:    "local.image.stack",
 		Buildpacks: nil,
-		Base:       lifecycle.RunImageMetadata{},
+		Base:       platform.RunImageMetadata{},
 		BOM:        nil,
-		Stack:      lifecycle.StackMetadata{},
+		Stack:      platform.StackMetadata{},
 		Processes:  pack.ProcessDetails{},
 	}
 
 	expectedRemoteImageInfo = &pack.ImageInfo{
 		StackID:    "remote.image.stack",
 		Buildpacks: nil,
-		Base:       lifecycle.RunImageMetadata{},
+		Base:       platform.RunImageMetadata{},
 		BOM:        nil,
-		Stack:      lifecycle.StackMetadata{},
+		Stack:      platform.StackMetadata{},
 		Processes:  pack.ProcessDetails{},
 	}
 )

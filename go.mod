@@ -5,15 +5,15 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Microsoft/hcsshim v0.8.10 // indirect
 	github.com/apex/log v1.9.0
-	github.com/buildpacks/imgutil v0.0.0-20210209163614-30601e371ce3
-	github.com/buildpacks/lifecycle v0.10.2
+	github.com/buildpacks/imgutil v0.0.0-20210510154637-009f91f52918
+	github.com/buildpacks/lifecycle v0.11.3
 	github.com/containerd/containerd v1.4.1 // indirect
 	github.com/containerd/continuity v0.0.0-20200107194136-26c1120b8d41 // indirect
-	github.com/docker/docker v20.10.0-beta1.0.20201110211921-af34b94a78a1+incompatible
+	github.com/docker/docker v20.10.6+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/mock v1.5.0
-	github.com/google/go-cmp v0.5.5
+	github.com/google/go-cmp v0.5.6
 	github.com/google/go-containerregistry v0.5.1
 	github.com/google/go-github/v30 v30.1.0
 	github.com/heroku/color v0.0.6
@@ -21,7 +21,7 @@ require (
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
 	github.com/moby/sys/mount v0.2.0 // indirect
 	github.com/moby/term v0.0.0-20201110203204-bea5bbe245bf // indirect
-	github.com/onsi/gomega v1.12.0
+	github.com/onsi/gomega v1.13.0
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/opencontainers/selinux v1.6.0 // indirect
