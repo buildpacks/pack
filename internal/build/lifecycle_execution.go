@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/auth"
@@ -21,6 +22,7 @@ import (
 
 const (
 	defaultProcessType = "web"
+	overrideGID        = 0
 )
 
 type LifecycleExecution struct {
@@ -182,6 +184,10 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		flags = append(flags, "-skip-restore")
 	}
 
+	if l.opts.GID >= overrideGID {
+		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
+	}
+
 	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
 	if processType != "" {
 		flags = append(flags, "-process-type", processType)
@@ -256,6 +262,9 @@ func (l *LifecycleExecution) Restore(ctx context.Context, networkMode string, bu
 	case cache.Volume:
 		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
+	if l.opts.GID >= overrideGID {
+		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
+	}
 
 	configProvider := NewPhaseConfigProvider(
 		"restorer",
@@ -307,6 +316,10 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 		}
 	case cache.Volume:
 		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
+	}
+
+	if l.opts.GID >= overrideGID {
+		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
 	}
 
 	if publish {
@@ -396,6 +409,9 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
 	if processType != "" {
 		flags = append(flags, "-process-type", processType)
+	}
+	if l.opts.GID >= overrideGID {
+		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 
 	cacheOpt := NullOp()
