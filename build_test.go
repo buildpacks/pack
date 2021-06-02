@@ -1614,7 +1614,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.PullPolicy, config.PullNever)
 
-					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.10.2"]
+					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.11.3"]
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.PullPolicy, config.PullNever)
 				})
@@ -2201,6 +2201,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						}
 					})
 				})
+			})
+		})
+
+		when("gid option", func() {
+			it("gid is passthroughs to lifecycle", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Workspace: "app",
+					Builder:   defaultBuilderName,
+					Image:     "example.com/some/repo:tag",
+					GroupID:   2,
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.GID, 2)
 			})
 		})
 	})

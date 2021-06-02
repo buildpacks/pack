@@ -5,8 +5,9 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
-	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/config"
@@ -22,7 +23,7 @@ type ImageInfo struct {
 
 	// List of buildpacks that passed detection, ran their build
 	// phases and made a contribution to this image.
-	Buildpacks []lifecycle.GroupBuildpack
+	Buildpacks []buildpack.GroupBuildpack
 
 	// Base includes two references to the run image,
 	// - the Run Image ID,
@@ -38,15 +39,15 @@ type ImageInfo struct {
 	// the first 1 to k layers all belong to the run image,
 	// the last k+1 to n layers are added by buildpacks.
 	// the sum of all of these is our app image.
-	Base lifecycle.RunImageMetadata
+	Base platform.RunImageMetadata
 
 	// BOM or Bill of materials, contains dependency and
 	// version information provided by each buildpack.
-	BOM []lifecycle.BOMEntry
+	BOM []buildpack.BOMEntry
 
 	// Stack includes the run image name, and a list of image mirrors,
 	// where the run image is hosted.
-	Stack lifecycle.StackMetadata
+	Stack platform.StackMetadata
 
 	// Processes lists all processes contributed by buildpacks.
 	Processes ProcessDetails
@@ -64,8 +65,8 @@ type ProcessDetails struct {
 
 // Deserialize just the subset of fields we need to avoid breaking changes
 type layersMetadata struct {
-	RunImage lifecycle.RunImageMetadata `json:"runImage" toml:"run-image"`
-	Stack    lifecycle.StackMetadata    `json:"stack" toml:"stack"`
+	RunImage platform.RunImageMetadata `json:"runImage" toml:"run-image"`
+	Stack    platform.StackMetadata    `json:"stack" toml:"stack"`
 }
 
 const (
@@ -94,12 +95,12 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 	}
 
 	var layersMd layersMetadata
-	if _, err := dist.GetLabel(img, lifecycle.LayerMetadataLabel, &layersMd); err != nil {
+	if _, err := dist.GetLabel(img, platform.LayerMetadataLabel, &layersMd); err != nil {
 		return nil, err
 	}
 
-	var buildMD lifecycle.BuildMetadata
-	if _, err := dist.GetLabel(img, lifecycle.BuildMetadataLabel, &buildMD); err != nil {
+	var buildMD platform.BuildMetadata
+	if _, err := dist.GetLabel(img, platform.BuildMetadataLabel, &buildMD); err != nil {
 		return nil, err
 	}
 
@@ -110,7 +111,7 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		layersMd.RunImage.Reference = ""
 	}
 
-	stackID, err := img.Label(lifecycle.StackIDLabel)
+	stackID, err := img.Label(platform.StackIDLabel)
 	if err != nil {
 		return nil, err
 	}

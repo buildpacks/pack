@@ -1,8 +1,9 @@
 package inspectimage
 
 import (
-	"github.com/buildpacks/lifecycle"
+	"github.com/buildpacks/lifecycle/buildpack"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
@@ -82,7 +83,7 @@ func getConfigMirrors(info *pack.ImageInfo, imageMirrors []config.RunImage) []st
 	return nil
 }
 
-func displayBase(base lifecycle.RunImageMetadata) BaseDisplay {
+func displayBase(base platform.RunImageMetadata) BaseDisplay {
 	return BaseDisplay{
 		TopLayer:  base.TopLayer,
 		Reference: base.Reference,
@@ -126,7 +127,7 @@ func displayMirrors(info *pack.ImageInfo, generalInfo GeneralInfo) []RunImageMir
 	return result
 }
 
-func displayBuildpacks(buildpacks []lifecycle.GroupBuildpack) []dist.BuildpackInfo {
+func displayBuildpacks(buildpacks []buildpack.GroupBuildpack) []dist.BuildpackInfo {
 	var result []dist.BuildpackInfo
 	for _, buildpack := range buildpacks {
 		result = append(result, dist.BuildpackInfo{

@@ -182,7 +182,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					fakeImage := fakes.NewImage("basic/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true).Return(fakeImage, nil)
+					mockImageFactory.EXPECT().NewImage(fakeImage.Name(), true, daemonOS).Return(fakeImage, nil)
 
 					fakeBlob := blob.NewBlob(filepath.Join("testdata", "empty-file"))
 					bpURL := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
@@ -201,10 +201,6 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						},
 						PullPolicy: pubcfg.PullNever,
 					}))
-
-					actualImageOS, err := fakeImage.OS()
-					h.AssertNil(t, err)
-					h.AssertEq(t, actualImageOS, daemonOS)
 				}
 			})
 
@@ -254,7 +250,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 			it.Before(func() {
 				nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
+				mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, "linux").Return(nestedPackage, nil)
 
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 
@@ -283,13 +279,13 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 			shouldCreateLocalPackage := func() imgutil.Image {
 				img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(img.Name(), true).Return(img, nil)
+				mockImageFactory.EXPECT().NewImage(img.Name(), true, "linux").Return(img, nil)
 				return img
 			}
 
 			shouldCreateRemotePackage := func() *fakes.Image {
 				img := fakes.NewImage("some/package-"+h.RandString(12), "", nil)
-				mockImageFactory.EXPECT().NewImage(img.Name(), false).Return(img, nil)
+				mockImageFactory.EXPECT().NewImage(img.Name(), false, "linux").Return(img, nil)
 				return img
 			}
 
@@ -508,7 +504,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			when("dependencies are packaged buildpack image", func() {
 				it.Before(func() {
 					nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
+					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, "linux").Return(nestedPackage, nil)
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: nestedPackage.Name(),
@@ -623,7 +619,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					}}})
 
 					nestedPackage = fakes.NewImage("nested/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false).Return(nestedPackage, nil)
+					mockImageFactory.EXPECT().NewImage(nestedPackage.Name(), false, "linux").Return(nestedPackage, nil)
 
 					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
 						Name: nestedPackage.Name(),

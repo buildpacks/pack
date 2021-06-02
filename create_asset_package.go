@@ -81,11 +81,8 @@ func (c *Client) CreateAssetPackage(ctx context.Context, opts CreateAssetPackage
 }
 
 func newImageWithOS(imgName, os string, local bool, imgFactory ImageFactory) (imgutil.Image, error) {
-	img, err := imgFactory.NewImage(imgName, local)
+	img, err := imgFactory.NewImage(imgName, local, os)
 	if err != nil {
-		return nil, err
-	}
-	if err := img.SetOS(os); err != nil {
 		return nil, err
 	}
 	return img, nil

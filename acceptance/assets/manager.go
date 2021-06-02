@@ -1,15 +1,16 @@
 package assets
 
 import (
-	"github.com/buildpacks/pack/testhelpers"
 	"path/filepath"
 	"testing"
+
+	"github.com/buildpacks/pack/testhelpers"
 )
 
 type Manager struct {
-	sourceDir string
+	sourceDir  string
 	testObject *testing.T
-	assert testhelpers.AssertionManager
+	assert     testhelpers.AssertionManager
 }
 
 func NewManager(t *testing.T, sourceDir string) Manager {

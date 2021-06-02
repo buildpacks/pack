@@ -42,6 +42,7 @@ type BuildFlags struct {
 	AdditionalTags     []string
 	AssetPackages      []string
 	Workspace          string
+	GID                int
 }
 
 // Build an image from source code
@@ -122,6 +123,10 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				}
 				lifecycleImage = ref.Name()
 			}
+			var gid = -1
+			if cmd.Flags().Changed("gid") {
+				gid = flags.GID
+			}
 			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           builder,
@@ -148,6 +153,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Workspace:                flags.Workspace,
 				AssetPackages:            flags.AssetPackages,
 				LifecycleImage:           lifecycleImage,
+				GroupID:                  gid,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -189,6 +195,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	if cfg.Experimental {
 		cmd.Flags().StringArrayVar(&buildFlags.AssetPackages, "asset-package", nil, "add asset package to a build")
 	}
+	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
@@ -200,6 +207,9 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 		return errors.New("cache-image flag requires the publish flag")
 	}
 
+	if flags.GID < 0 {
+		return errors.New("gid flag must be in the range of 0-2147483647")
+	}
 	return nil
 }
 

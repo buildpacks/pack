@@ -86,7 +86,7 @@ func (a *File) Save(additionalNames ...string) error {
 		tw := tar.NewWriter(outputFile)
 		defer tw.Close()
 
-		err = archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false,nil, )
+		err = archive.WriteDirToTar(tw, layoutDir, "/", 0, 0, 0755, true, false, nil)
 		if err != nil {
 			return errors.Wrapf(err, "error writing image asset image to file")
 		}

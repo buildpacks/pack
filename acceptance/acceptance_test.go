@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/buildpacks/pack/acceptance/assets"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -20,6 +19,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/buildpacks/pack/acceptance/assets"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -617,9 +618,9 @@ func testWithoutSpecificBuilderRequirement(
 
 	when("asset package", func() {
 		var (
-			tmpDir   string
-			repo     string
-			repoName string
+			tmpDir       string
+			repo         string
+			repoName     string
 			assetManager assets.Manager
 		)
 		it.Before(func() {
@@ -661,12 +662,11 @@ func testWithoutSpecificBuilderRequirement(
 			fixtureManager := pack.FixtureManager()
 
 			buildpackNames := []string{"simple-buildpack", "second-simple-buildpack", "nested-assets-buildpack", "all-assets-buildpack"}
-			namesToConfigFiles := map[string]string {
-				"simple-buildpack": "generic_package.toml",
+			namesToConfigFiles := map[string]string{
+				"simple-buildpack":        "generic_package.toml",
 				"second-simple-buildpack": "generic_package.toml",
 				"nested-assets-buildpack": "nested_assets_buildpack_package.toml",
-				"all-assets-buildpack": "generic_package.toml",
-
+				"all-assets-buildpack":    "generic_package.toml",
 			}
 			for _, buildpackName := range buildpackNames {
 				buildpackRoot := filepath.Join(tmpDir, buildpackName)
@@ -682,7 +682,7 @@ func testWithoutSpecificBuilderRequirement(
 				fixtureManager.TemplateFile(buildpackTOMLFile, templateMapping)
 				assert.Succeeds(buildpackTOMLFile.Close())
 
-				buildpackConfigFile, err := ioutil.TempFile(tmpDir, buildpackName + "_package.toml")
+				buildpackConfigFile, err := ioutil.TempFile(tmpDir, buildpackName+"_package.toml")
 				assert.Nil(err)
 
 				buildpackConfigFiles[buildpackName] = buildpackConfigFile
@@ -1431,7 +1431,7 @@ func testAcceptance(
 
 					when("--asset-package", func() {
 						var (
-							tmpDir string
+							tmpDir       string
 							assetManager assets.Manager
 						)
 						it.Before(func() {
@@ -1450,7 +1450,6 @@ func testAcceptance(
 								assert,
 								buildpacks.WithBuildpackSource(tmpDir),
 							)
-
 
 						})
 						it.After(func() {

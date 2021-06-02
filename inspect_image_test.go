@@ -7,19 +7,17 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/logging"
-
-	"github.com/buildpacks/pack/config"
-
 	"github.com/buildpacks/imgutil/fakes"
-	"github.com/buildpacks/lifecycle"
 	"github.com/buildpacks/lifecycle/launch"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/buildpacks/pack/testmocks"
 )
@@ -134,8 +132,8 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					info, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Stack,
-						lifecycle.StackMetadata{
-							RunImage: lifecycle.StackRunImageMetadata{
+						platform.StackMetadata{
+							RunImage: platform.StackRunImageMetadata{
 								Image: "some-run-image",
 								Mirrors: []string{
 									"some-mirror",
@@ -150,7 +148,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					info, err := subject.InspectImage("some/image", useDaemon)
 					h.AssertNil(t, err)
 					h.AssertEq(t, info.Base,
-						lifecycle.RunImageMetadata{
+						platform.RunImageMetadata{
 							TopLayer:  "some-top-layer",
 							Reference: "some-run-image-reference",
 						},
@@ -617,7 +615,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 			info, err := subject.InspectImage("old/image", true)
 			h.AssertNil(t, err)
 			h.AssertEq(t, info.Base,
-				lifecycle.RunImageMetadata{
+				platform.RunImageMetadata{
 					TopLayer:  "some-top-layer",
 					Reference: "",
 				},

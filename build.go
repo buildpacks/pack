@@ -163,6 +163,9 @@ type BuildOptions struct {
 
 	// The location at which to mount the AppDir in the build image.
 	Workspace string
+
+	// User's group id used to build the image
+	GroupID int
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -317,6 +320,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		FileFilter:         fileFilter,
 		CacheImage:         opts.CacheImage,
 		Workspace:          opts.Workspace,
+		GID:                opts.GroupID,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version

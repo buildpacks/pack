@@ -15,13 +15,14 @@ import (
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/google/go-containerregistry/pkg/name"
 
+	"github.com/golang/mock/gomock"
+	"github.com/sclevine/spec"
+	"github.com/sclevine/spec/report"
+
 	fakes2 "github.com/buildpacks/pack/internal/asset/fakes"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/oci"
-	"github.com/golang/mock/gomock"
-	"github.com/sclevine/spec"
-	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack"
 	ilogging "github.com/buildpacks/pack/internal/logging"
@@ -168,7 +169,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				assert.Nil(err)
 
 				fakeImage := fakes.NewImage(imgRef.Name(), "", nil)
-				mockImageFactory.EXPECT().NewImage(imgRef.Name(), true).Return(fakeImage, nil)
+				mockImageFactory.EXPECT().NewImage(imgRef.Name(), true, "linux").Return(fakeImage, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), firstAsset.URI, gomock.Any(), gomock.Any()).Return(firstAssetBlob, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), secondAsset.URI, gomock.Any(), gomock.Any()).Return(secondAssetBlob, nil)
 
@@ -227,7 +228,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 					assert.Nil(err)
 
 					fakeImage := fakes.NewImage(imgRef.Name(), "", nil)
-					mockImageFactory.EXPECT().NewImage(imgRef.Name(), true).Return(fakeImage, nil)
+					mockImageFactory.EXPECT().NewImage(imgRef.Name(), true, "windows").Return(fakeImage, nil)
 					mockDownloader.EXPECT().Download(gomock.Any(), firstAsset.URI, gomock.Any(), gomock.Any()).Return(firstAssetBlob, nil)
 
 					assert.Succeeds(client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
@@ -255,11 +256,8 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 
 					assert.Equal(fakeImage.IsSaved(), true)
 
-					os, err := fakeImage.OS()
-					assert.Nil(err)
-					assert.Equal(os, "windows")
-
-					assert.Equal(fakeImage.NumberOfAddedLayers(), 2)
+					// windows layer will be added by image factory
+					assert.Equal(fakeImage.NumberOfAddedLayers(), 1)
 
 					firstLayer, err := fakeImage.GetLayer(md[firstAsset.Sha256].LayerDiffID)
 					assert.Nil(err)
@@ -275,7 +273,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				assert.Nil(err)
 
 				fakeImage := fakes.NewImage(imgRef.Name(), "", nil)
-				mockImageFactory.EXPECT().NewImage(imgRef.Name(), false).Return(fakeImage, nil)
+				mockImageFactory.EXPECT().NewImage(imgRef.Name(), false, "windows").Return(fakeImage, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), firstAsset.URI, gomock.Any(), gomock.Any()).Return(firstAssetBlob, nil)
 
 				assert.Succeeds(client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
@@ -296,7 +294,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				assert.Nil(err)
 
 				fakeImage := fakes.NewImage(imgRef.Name(), "", nil)
-				mockImageFactory.EXPECT().NewImage(imgRef.Name(), true).Return(fakeImage, nil)
+				mockImageFactory.EXPECT().NewImage(imgRef.Name(), true, "linux").Return(fakeImage, nil)
 				mockDownloader.EXPECT().Download(gomock.Any(), firstAssetReplace.URI, gomock.Any(), gomock.Any()).Return(firstAssetReplaceBlob, nil)
 
 				assert.Succeeds(client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
@@ -352,7 +350,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 			it("errors with a helpful message", func() {
 				ctx := context.TODO()
 				imgName := "fail-image-ref"
-				mockImageFactory.EXPECT().NewImage(imgName, true).Return(nil, errors.New("image create error"))
+				mockImageFactory.EXPECT().NewImage(imgName, true, "linux").Return(nil, errors.New("image create error"))
 				err := client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
 					ImageName: imgName,
 					Assets:    []dist.AssetInfo{},
@@ -382,7 +380,7 @@ func testCreateAssetCacheCommand(t *testing.T, when spec.G, it spec.S) {
 				imgName := "fail-image-ref"
 
 				fakeImage := fakes.NewImage(imgName, "", nil)
-				mockImageFactory.EXPECT().NewImage(imgName, true).Return(fakeImage, nil)
+				mockImageFactory.EXPECT().NewImage(imgName, true, "linux").Return(fakeImage, nil)
 				err := client.CreateAssetPackage(ctx, pack.CreateAssetPackageOptions{
 					ImageName: imgName,
 					Assets:    []dist.AssetInfo{firstAsset},
