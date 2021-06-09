@@ -322,6 +322,13 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
 	}
 
+	if l.opts.Images != nil {
+		if len(l.opts.Images) != 2 {
+			return nil, errors.New("'-previous-image' takes two arguments, a previous image and a reference image")
+		}
+		l.opts.LifecycleImage = l.opts.Images[0]
+	}
+
 	if publish {
 		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
 		if err != nil {

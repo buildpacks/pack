@@ -42,6 +42,7 @@ type BuildFlags struct {
 	AdditionalTags     []string
 	Workspace          string
 	GID                int
+	Images             []string
 }
 
 // Build an image from source code
@@ -152,6 +153,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				Workspace:                flags.Workspace,
 				LifecycleImage:           lifecycleImage,
 				GroupID:                  gid,
+				Images:                   flags.Images,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -191,6 +193,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<options>]'.\n- 'host path': Name of the volume or absolute directory path to mount.\n- 'target path': The path where the file or directory is available in the container.\n- 'options' (default \"ro\"): An optional comma separated list of mount options.\n    - \"ro\", volume contents are read-only.\n    - \"rw\", volume contents are readable and writeable.\n    - \"volume-opt=<key>=<value>\", can be specified more than once, takes a key-value pair consisting of the option name and its value."+multiValueHelp("volume"))
 	cmd.Flags().StringVar(&buildFlags.Workspace, "workspace", "", "Location at which to mount the app dir in the build image")
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
+	cmd.Flags().StringArrayVar(&buildFlags.Images, "previous-image", nil, "Set previous image to a particular tag reference, digest reference, or image ID, in the form '<previous-image> <image>'")
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {

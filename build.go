@@ -162,6 +162,11 @@ type BuildOptions struct {
 
 	// User's group id used to build the image
 	GroupID int
+
+	// Slice of two images
+	// 1. A previous image to set to a particular tag reference, digest reference, or image ID;
+	// 2. The image to refer to
+	Images []string
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -317,6 +322,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		CacheImage:         opts.CacheImage,
 		Workspace:          opts.Workspace,
 		GID:                opts.GroupID,
+		Images:             opts.Images,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
