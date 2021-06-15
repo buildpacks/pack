@@ -390,7 +390,8 @@ func (l *LifecycleExecution) Build(ctx context.Context, networkMode string, volu
 }
 
 func determineDefaultProcessType(platformAPI *api.Version, providedValue string) string {
-	shouldSetForceDefault := platformAPI.Compare(api.MustParse("0.4")) >= 0
+	shouldSetForceDefault := platformAPI.Compare(api.MustParse("0.4")) >= 0 &&
+		platformAPI.Compare(api.MustParse("0.6")) < 0
 	if providedValue == "" && shouldSetForceDefault {
 		return defaultProcessType
 	}

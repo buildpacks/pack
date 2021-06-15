@@ -11,10 +11,10 @@ import (
 // This example shows the basic usage of the package: Create a client,
 // call a configuration object, call the client's Build function.
 func Example_build() {
-	//create a context object
+	// create a context object
 	context := context.Background()
 
-	//initialize a pack client
+	// initialize a pack client
 	client, err := pack.NewClient()
 	if err != nil {
 		panic(err)
