@@ -20,7 +20,7 @@ type BuildpackDescriptor struct {
 }
 
 func (b *BuildpackDescriptor) EscapedID() string {
-	return strings.Replace(b.Info.ID, "/", "_", -1)
+	return strings.ReplaceAll(b.Info.ID, "/", "_")
 }
 
 func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins []string, validateRunStageMixins bool) error {

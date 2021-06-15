@@ -90,14 +90,14 @@ func FilterReservedNames(p string) string {
 		"prn": "p_r_n",
 	}
 	for k, v := range reservedNameConversions {
-		p = strings.Replace(p, k, v, -1)
+		p = strings.ReplaceAll(p, k, v)
 	}
 
 	return p
 }
 
-//WindowsDir is equivalent to path.Dir or filepath.Dir but always for Windows paths
-//reproduced because Windows implementation is not exported
+// WindowsDir is equivalent to path.Dir or filepath.Dir but always for Windows paths
+// reproduced because Windows implementation is not exported
 func WindowsDir(p string) string {
 	pathElements := strings.Split(p, `\`)
 
@@ -106,16 +106,16 @@ func WindowsDir(p string) string {
 	return dirName
 }
 
-//WindowsBasename is equivalent to path.Basename or filepath.Basename but always for Windows paths
-//reproduced because Windows implementation is not exported
+// WindowsBasename is equivalent to path.Basename or filepath.Basename but always for Windows paths
+// reproduced because Windows implementation is not exported
 func WindowsBasename(p string) string {
 	pathElements := strings.Split(p, `\`)
 
 	return pathElements[len(pathElements)-1]
 }
 
-//WindowsToSlash is equivalent to path.ToSlash or filepath.ToSlash but always for Windows paths
-//reproduced because Windows implementation is not exported
+// WindowsToSlash is equivalent to path.ToSlash or filepath.ToSlash but always for Windows paths
+// reproduced because Windows implementation is not exported
 func WindowsToSlash(p string) string {
 	slashPath := strings.ReplaceAll(p, `\`, "/") // convert slashes
 	if len(slashPath) < 2 {
@@ -125,8 +125,8 @@ func WindowsToSlash(p string) string {
 	return slashPath[2:] // strip volume
 }
 
-//WindowsPathSID returns the appropriate SID for a given UID and GID
-//This the basic logic for path permissions in Pack and Lifecycle
+// WindowsPathSID returns the appropriate SID for a given UID and GID
+// This the basic logic for path permissions in Pack and Lifecycle
 func WindowsPathSID(uid, gid int) string {
 	if uid == 0 && gid == 0 {
 		return "S-1-5-32-544" // BUILTIN\Administrators
