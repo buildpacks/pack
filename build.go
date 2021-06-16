@@ -29,6 +29,7 @@ import (
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/layer"
+	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/stringset"
@@ -284,6 +285,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 
 	fileFilter, err := getFileFilter(opts.ProjectDescriptor)
+	if err != nil {
+		return err
+	}
+
+	runImageName, err = pname.TranslateRegistry(runImageName, c.registryMirrors)
 	if err != nil {
 		return err
 	}
