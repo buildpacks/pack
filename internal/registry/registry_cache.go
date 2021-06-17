@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -187,7 +188,15 @@ func (r *Cache) CreateCache() error {
 		return err
 	}
 
-	return os.Rename(w.Filesystem.Root(), r.Root)
+	err = os.Rename(w.Filesystem.Root(), r.Root)
+	if err != nil {
+		// If pack is run concurrently, this action might have already occured
+		if strings.Contains(err.Error(), "file exists") {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func (r *Cache) validateCache() error {
