@@ -839,6 +839,24 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("-previous-image is used", func() {
+			it("passes previous-image to creator", func() {
+				lifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+					options.PreviousImage = "previous-image"
+				})
+				fakePhaseFactory := fakes.NewFakePhaseFactory()
+				err := lifecycle.Create(context.Background(), false, "", false, "test", "test", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+				h.AssertNotEq(t, lastCallIndex, -1)
+
+				configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+				h.AssertEq(t, configProvider.Name(), "creator")
+				h.AssertIncludeAllExpectedPatterns(t, configProvider.ContainerConfig().Cmd, []string{"-previous-image", "previous-image"})
+			})
+		})
 	})
 
 	when("#Detect", func() {
@@ -1307,7 +1325,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		// getting false pass
+		// doesn't cover edge case where --publish is used
 		when("-previous-image is used", func() {
 			var (
 				lifecycle        *build.LifecycleExecution
@@ -1316,43 +1334,23 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			fakePhase := &fakes.FakePhase{}
 			fakePhaseFactory = fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
 
-			// doesn't cover edge case where --publish is used
-
-			when("2 images are provided as arguments", func() {
-				it("passes <previous-image> to analyzer", func() {
-					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-						options.Images = []string{"previous-image", "image"}
-					})
-					// fakePhaseFactory := fakes.NewFakePhaseFactory()
-
-					err := lifecycle.Analyze(context.Background(), "test", "test", false, "", false, fakeCache, fakePhaseFactory)
-					h.AssertNil(t, err)
-
-					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
-					h.AssertNotEq(t, lastCallIndex, -1)
-
-					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
-					h.AssertEq(t, configProvider.Name(), "analyzer")
-					h.AssertEq(t, configProvider.ContainerConfig().Image, "previous-image")
+			it.Before(func() {
+				lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+					options.PreviousImage = "previous-image"
 				})
 			})
 
-			// when("insufficient arguments are provided", func() {
-			// 	lifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-			// 		options.Images = []string{}
-			// 	})
-			// 	fakePhaseFactory := fakes.NewFakePhaseFactory()
+			it("passes previous-image to analyzer", func() {
+				err := lifecycle.Analyze(context.Background(), "test", "test", false, "", false, fakeCache, fakePhaseFactory)
+				h.AssertNil(t, err)
 
-			// 	err := lifecycle.Analyze(context.Background(), "test", "test", false, "", false, fakeCache, fakePhaseFactory)
-			// 	h.AssertNil(t, err)
+				lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+				h.AssertNotEq(t, lastCallIndex, -1)
 
-			// 	lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
-			// 	h.AssertNotEq(t, lastCallIndex, -1)
-
-			// 	configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
-			// 	h.AssertEq(t, configProvider.Name(), "analyzer")
-			// 	h.AssertEq(t, configProvider.ContainerConfig().Image, "previous-image")
-			// })
+				configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+				h.AssertEq(t, configProvider.Name(), "analyzer")
+				h.AssertEq(t, configProvider.ContainerConfig().Image, "previous-image")
+			})
 		})
 	})
 

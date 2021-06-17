@@ -188,6 +188,10 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 
+	if l.opts.PreviousImage != "" {
+		flags = append(flags, "-previous-image", l.opts.PreviousImage)
+	}
+
 	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
 	if processType != "" {
 		flags = append(flags, "-process-type", processType)
@@ -322,11 +326,8 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
 	}
 
-	if l.opts.Images != nil {
-		if len(l.opts.Images) != 2 {
-			return nil, errors.New("'-previous-image' takes two arguments, a previous image and a reference image")
-		}
-		l.opts.LifecycleImage = l.opts.Images[0]
+	if l.opts.PreviousImage != "" {
+		l.opts.LifecycleImage = l.opts.PreviousImage
 	}
 
 	if publish {
