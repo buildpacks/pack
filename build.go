@@ -949,7 +949,7 @@ exit 0
 		return pathToInlineBuilpack, err
 	}
 
-	if err = createBinScript(pathToInlineBuilpack, "build.bat", binBuild, nil); err != nil {
+	if err = createBinScript(pathToInlineBuilpack, "build.bat", bp.Script.Inline, nil); err != nil {
 		return pathToInlineBuilpack, err
 	}
 
@@ -957,7 +957,7 @@ exit 0
 		return pathToInlineBuilpack, err
 	}
 
-	if err = createBinScript(pathToInlineBuilpack, "detect.bat", binDetect, nil); err != nil {
+	if err = createBinScript(pathToInlineBuilpack, "detect.bat", bp.Script.Inline, nil); err != nil {
 		return pathToInlineBuilpack, err
 	}
 
