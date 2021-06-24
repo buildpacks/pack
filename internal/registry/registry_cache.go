@@ -190,7 +190,7 @@ func (r *Cache) CreateCache() error {
 	err = os.Rename(w.Filesystem.Root(), r.Root)
 	if err != nil {
 		if err == os.ErrExist {
-			// If pack is run concurrently, this action might have already occured
+			// If pack is run concurrently, this action might have already occurred
 			return nil
 		}
 		return err
