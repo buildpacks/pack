@@ -1232,7 +1232,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 
-					it("adds the buildpack form the project descriptor", func() {
+					it("adds the buildpack from the project descriptor", func() {
 						err := subject.Build(context.TODO(), BuildOptions{
 							Image:      "some/app",
 							Builder:    defaultBuilderName,
