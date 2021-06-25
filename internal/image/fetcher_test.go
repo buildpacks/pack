@@ -211,6 +211,13 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						})
 					})
 				})
+
+				when("image platform is specified", func() {
+					it("passes the platform argument to the daemon", func() {
+						_, err := fetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullAlways, Platform: "some-unsupported-platform"})
+						h.AssertError(t, err, "unknown operating system or architecture")
+					})
+				})
 			})
 
 			when("PullIfNotPresent", func() {
@@ -308,6 +315,13 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 							_, err := fetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullIfNotPresent})
 							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
 						})
+					})
+				})
+
+				when("image platform is specified", func() {
+					it("passes the platform argument to the daemon", func() {
+						_, err := fetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullIfNotPresent, Platform: "some-unsupported-platform"})
+						h.AssertError(t, err, "unknown operating system or architecture")
 					})
 				})
 			})

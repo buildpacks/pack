@@ -62,7 +62,7 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	}
 
 	f.logger.Debugf("Pulling image %s", style.Symbol(name))
-	err := f.pullImage(ctx, name)
+	err := f.pullImage(ctx, name, options.Platform)
 	if err != nil && !errors.Is(err, ErrNotFound) {
 		return nil, err
 	}
@@ -96,13 +96,13 @@ func (f *Fetcher) fetchRemoteImage(name string) (imgutil.Image, error) {
 	return image, nil
 }
 
-func (f *Fetcher) pullImage(ctx context.Context, imageID string) error {
+func (f *Fetcher) pullImage(ctx context.Context, imageID string, platform string) error {
 	regAuth, err := registryAuth(imageID)
 	if err != nil {
 		return err
 	}
 
-	rc, err := f.docker.ImagePull(ctx, imageID, types.ImagePullOptions{RegistryAuth: regAuth})
+	rc, err := f.docker.ImagePull(ctx, imageID, types.ImagePullOptions{RegistryAuth: regAuth, Platform: platform})
 	if err != nil {
 		if client.IsErrNotFound(err) {
 			return errors.Wrapf(ErrNotFound, "image %s does not exist on the daemon", style.Symbol(imageID))

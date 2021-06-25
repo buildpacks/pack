@@ -333,10 +333,16 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			if lifecycleImageName == "" {
 				lifecycleImageName = fmt.Sprintf("%s:%s", internalConfig.DefaultLifecycleImageRepo, lifecycleVersion.String())
 			}
+
+			imgArch, err := rawBuilderImage.Architecture()
+			if err != nil {
+				return errors.Wrapf(err, "getting builder architecture")
+			}
+
 			lifecycleImage, err := c.imageFetcher.Fetch(
 				ctx,
 				lifecycleImageName,
-				image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy},
+				image.FetchOptions{Daemon: true, PullPolicy: opts.PullPolicy, Platform: fmt.Sprintf("%s/%s", imgOS, imgArch)},
 			)
 			if err != nil {
 				return errors.Wrap(err, "fetching lifecycle image")

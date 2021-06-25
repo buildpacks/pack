@@ -389,6 +389,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
 		when("an invalid lifecycle-image is provided", func() {
 			when("the repo name is invalid", func() {
 				it("returns a parse error", func() {

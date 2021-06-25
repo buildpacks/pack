@@ -1439,6 +1439,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
 							h.AssertEq(t, args.Daemon, true)
 							h.AssertEq(t, args.PullPolicy, config.PullAlways)
+							h.AssertEq(t, args.Platform, "linux/amd64")
 						})
 					})
 
@@ -1522,6 +1523,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
 							h.AssertEq(t, args.Daemon, true)
 							h.AssertEq(t, args.PullPolicy, config.PullAlways)
+							h.AssertEq(t, args.Platform, "linux/amd64")
 						})
 
 						it("suggests that being untrusted may be the root of a failure", func() {
@@ -1605,6 +1607,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.11.3"]
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.PullPolicy, config.PullNever)
+					h.AssertEq(t, args.Platform, "linux/amd64")
 				})
 			})
 

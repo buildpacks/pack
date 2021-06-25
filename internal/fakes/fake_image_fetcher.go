@@ -14,6 +14,7 @@ import (
 type FetchArgs struct {
 	Daemon     bool
 	PullPolicy config.PullPolicy
+	Platform   string
 }
 
 type FakeImageFetcher struct {
@@ -31,7 +32,7 @@ func NewFakeImageFetcher() *FakeImageFetcher {
 }
 
 func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error) {
-	f.FetchCalls[name] = &FetchArgs{Daemon: options.Daemon, PullPolicy: options.PullPolicy}
+	f.FetchCalls[name] = &FetchArgs{Daemon: options.Daemon, PullPolicy: options.PullPolicy, Platform: options.Platform}
 
 	ri, remoteFound := f.RemoteImages[name]
 
