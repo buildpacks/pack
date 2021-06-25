@@ -59,9 +59,30 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 	}
 
 	bldr.SetOrder(opts.Config.Order)
-	bldr.SetStack(opts.Config.Stack)
+
+	buildMixins, err := c.readBuildImageMixins(ctx, opts.Config.Stack.BuildImage, opts)
+	if err != nil {
+		return errors.Wrap(err, "failed to read mixins from build image")
+	}
+	bldr.SetStack(opts.Config.Stack, buildMixins)
 
 	return bldr.Save(c.logger, builder.CreatorMetadata{Version: Version})
+}
+
+func (c *Client) readBuildImageMixins(ctx context.Context, buildImage string, opts CreateBuilderOptions) ([]string, error) {
+	img, err := c.imageFetcher.Fetch(ctx, buildImage, true, opts.PullPolicy)
+	if err != nil {
+		if errors.Cause(err) != image.ErrNotFound {
+			return []string{}, errors.Wrap(err, "failed to fetch image")
+		}
+	}
+
+	mixins, err := img.Label("io.buildpacks.stack.mixins")
+	if err != nil {
+		return []string{}, nil
+	}
+
+	return []string{mixins}, nil
 }
 
 func (c *Client) validateConfig(ctx context.Context, opts CreateBuilderOptions) error {

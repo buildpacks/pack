@@ -27,10 +27,16 @@ type LifecycleMetadata struct {
 }
 
 type StackMetadata struct {
-	RunImage RunImageMetadata `json:"runImage" toml:"run-image"`
+	RunImage   RunImageMetadata   `json:"runImage" toml:"run-image"`
+	BuildImage BuildImageMetadata `json:"buildImage" toml:"build-image"`
 }
 
 type RunImageMetadata struct {
 	Image   string   `json:"image" toml:"image"`
 	Mirrors []string `json:"mirrors" toml:"mirrors"`
+}
+
+type BuildImageMetadata struct {
+	Mixins  []string `json:"mixins" toml:"mixins"`
+	StackID string   `json:"stack-id" toml:"stack-id"`
 }
