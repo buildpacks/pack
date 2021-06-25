@@ -220,6 +220,7 @@ type Feature int
 const (
 	InspectRemoteImage = iota
 	BuilderNoDuplicateLayers
+	AssetPackages
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -228,6 +229,9 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	},
 	BuilderNoDuplicateLayers: func(i *PackInvoker) bool {
 		return i.laterThan("0.18.0")
+	},
+	AssetPackages: func(i *PackInvoker) bool {
+		return i.laterThan("0.18.1")
 	},
 }
 

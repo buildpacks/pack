@@ -3,12 +3,15 @@ package buildpackage
 import (
 	"io"
 
+	"github.com/buildpacks/pack/internal/oci"
+
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
 )
 
+//go:generate mockgen -package testmocks -destination testmocks/mockPackage.go github.com/buildpacks/pack/internal/buildpackage Package
 type Package interface {
 	Label(name string) (value string, err error)
 	GetLayer(diffID string) (io.ReadCloser, error)
@@ -49,6 +52,7 @@ func ExtractBuildpacks(pkg Package) (mainBP dist.Buildpack, depBPs []dist.Buildp
 				},
 				Stacks: bpInfo.Stacks,
 				Order:  bpInfo.Order,
+				Assets: bpInfo.Assets,
 			}
 
 			diffID := bpInfo.LayerDiffID // Allow use in closure
@@ -75,6 +79,16 @@ func ExtractBuildpacks(pkg Package) (mainBP dist.Buildpack, depBPs []dist.Buildp
 	}
 
 	return mainBP, depBPs, nil
+}
+
+// BuildpackFromOCILayoutBlob constructs buildpacks from a blob in OCI layout format.
+func BuildpacksFromOCILayoutBlob(blob dist.Blob) (mainBP dist.Buildpack, dependencies []dist.Buildpack, err error) {
+	layoutPackage, err := oci.NewLayoutPackage(blob)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return ExtractBuildpacks(layoutPackage)
 }
 
 type openerBlob struct {

@@ -10,6 +10,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack/internal/asset"
+
 	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
@@ -17,6 +19,8 @@ import (
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/logging"
 )
+
+//go:generate mockgen -package testmocks -destination testmocks/mock_image.go github.com/buildpacks/imgutil Image
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_docker_client.go github.com/docker/docker/client CommonAPIClient
 
@@ -42,7 +46,13 @@ type ImageFetcher interface {
 type Downloader interface {
 	// Download collects both local and remote assets and provides a blob object
 	// used to read asset contents.
-	Download(ctx context.Context, pathOrURI string) (blob.Blob, error)
+	Download(ctx context.Context, pathOrURI string, options ...blob.DownloadOption) (blob.Blob, error)
+}
+
+//go:generate mockgen -package testmocks -destination testmocks/mock_asset_fetcher.go github.com/buildpacks/pack AssetFetcher
+// AssetFetcher is an interface for fetching Asset Packages from a variety of sources.
+type AssetFetcher interface {
+	FetchAssets(assetNameList []string, options ...asset.FetcherOptions) ([]asset.Readable, error)
 }
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_image_factory.go github.com/buildpacks/pack ImageFactory
@@ -60,6 +70,7 @@ type ImageFactory interface {
 type Client struct {
 	logger            logging.Logger
 	imageFetcher      ImageFetcher
+	assetFetcher      AssetFetcher
 	downloader        Downloader
 	lifecycleExecutor LifecycleExecutor
 	docker            dockerClient.CommonAPIClient
@@ -90,6 +101,14 @@ func WithImageFactory(f ImageFactory) ClientOption {
 func WithFetcher(f ImageFetcher) ClientOption {
 	return func(c *Client) {
 		c.imageFetcher = f
+	}
+}
+
+// WithFetcher supply your own Fetcher.
+// A Fetcher retrieves both local and remote images to make them available.
+func WithAssetFetcher(af AssetFetcher) ClientOption {
+	return func(c *Client) {
+		c.assetFetcher = af
 	}
 }
 
@@ -161,6 +180,13 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 
 	if client.imageFactory == nil {
 		client.imageFactory = image.NewFactory(client.docker, authn.DefaultKeychain)
+	}
+
+	if client.assetFetcher == nil {
+		localAssetFetcher := asset.NewPackageFileFetcher()
+		imageAssetFetcher := asset.NewPackageImageFetcher(client.imageFetcher)
+		uriAssetFetcher := asset.NewPackageURIFetcher(client.downloader, localAssetFetcher)
+		client.assetFetcher = asset.NewFetcher(localAssetFetcher, uriAssetFetcher, imageAssetFetcher)
 	}
 
 	client.lifecycleExecutor = build.NewLifecycleExecutor(client.logger, client.docker)

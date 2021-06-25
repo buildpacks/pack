@@ -1,5 +1,3 @@
-// +build acceptance
-
 package buildpacks
 
 import (
@@ -22,6 +20,12 @@ type BuildpackManagerModifier func(b *BuildpackManager)
 func WithBuildpackAPIVersion(apiVersion string) func(b *BuildpackManager) {
 	return func(b *BuildpackManager) {
 		b.sourceDir = filepath.Join("testdata", "mock_buildpacks", apiVersion)
+	}
+}
+
+func WithBuildpackSource(source string) func(b *BuildpackManager) {
+	return func(b *BuildpackManager) {
+		b.sourceDir = source
 	}
 }
 

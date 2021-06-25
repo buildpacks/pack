@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	pubcfg "github.com/buildpacks/pack/config"
@@ -134,6 +135,22 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 					Return(nil)
 
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--network", "my-network"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("--asset-package is used", func() {
+			it.Before(func() {
+				// TODO: remove when asset packages are no longer experimental
+				cfg.Experimental = true
+				command = commands.Build(logger, cfg, mockClient)
+			})
+			it("passes asset packages to client", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithAssetPackage("first-asset", "second-asset")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--asset-package", "first-asset", "--asset-package", "second-asset"})
 				h.AssertNil(t, command.Execute())
 			})
 		})
@@ -744,6 +761,23 @@ func EqBuildOptionsWithCacheImage(cacheImage string) gomock.Matcher {
 		description: fmt.Sprintf("CacheImage=%s", cacheImage),
 		equals: func(o pack.BuildOptions) bool {
 			return o.CacheImage == cacheImage
+		},
+	}
+}
+
+func EqBuildOptionsWithAssetPackage(assetPackages ...string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("AssetPackages=[%s]", strings.Join(assetPackages, ", ")),
+		equals: func(o pack.BuildOptions) bool {
+			if len(o.AssetPackages) != len(assetPackages) {
+				return false
+			}
+			for idx := 0; idx < len(assetPackages); idx++ {
+				if o.AssetPackages[idx] != assetPackages[idx] {
+					return false
+				}
+			}
+			return true
 		},
 	}
 }

@@ -1,0 +1,25 @@
+api = "0.2"
+
+[buildpack]
+  id = "simple/asset-buildpack"
+  version = "simple-asset-buildpack-version"
+  name = "Simple Asset Buildpack Buildpack"
+
+[[stacks]]
+  id = "pack.test.stack"
+
+[[assets]]
+  id = "asset A"
+  sha256 = "797b3f6bf2b2c10a8299d51dfdbcfed329d3c133fdc7e695beddbe8f70b49da9"
+  name = "A Asset"
+  stacks = ["pack.test.stack"]
+  uri = "{{ .assetAURI }}"
+  version = "1.2.3"
+
+[[assets]]
+  id = "asset B"
+  name = "B Asset"
+  sha256 = "61eea2ec4053ca25b9bd5d7bebaba48ee5398569aa1da5bc3541cbab1d09b86b"
+  stacks = ["pack.test.stack"]
+  uri = "{{ .assetBURI }}"
+  version = "4.5.6"

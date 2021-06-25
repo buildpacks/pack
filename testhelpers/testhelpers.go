@@ -47,6 +47,10 @@ func RandString(n int) string {
 	return string(b)
 }
 
+func CleanAbsPath(path string) string {
+	return strings.ReplaceAll(path, `\`, `\\`)
+}
+
 // Assert deep equality (and provide useful difference as a test failure)
 func AssertEq(t *testing.T, actual, expected interface{}) {
 	t.Helper()
@@ -787,6 +791,8 @@ func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
 }
 
 func AssertBuildpacksHaveDescriptors(t *testing.T, bps []dist.Buildpack, descriptors []dist.BuildpackDescriptor) {
+	t.Helper()
+
 	AssertEq(t, len(bps), len(descriptors))
 	for _, bp := range bps {
 		found := false

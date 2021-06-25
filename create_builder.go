@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/asset"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
@@ -56,6 +57,10 @@ func (c *Client) CreateBuilder(ctx context.Context, opts CreateBuilderOptions) e
 
 	if err := c.addBuildpacksToBuilder(ctx, opts, bldr); err != nil {
 		return errors.Wrap(err, "failed to add buildpacks to builder")
+	}
+
+	if err := c.addAssetsToBuilder(ctx, opts, bldr); err != nil {
+		return errors.Wrap(err, "failed to add assets to builder")
 	}
 
 	bldr.SetOrder(opts.Config.Order)
@@ -200,6 +205,28 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 	}
 
 	return lifecycle, nil
+}
+
+func (c *Client) addAssetsToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {
+	for _, assetPackage := range opts.Config.Assets.Packages {
+		var fetchLocation string
+		switch {
+		case assetPackage.ImageName != "":
+			fetchLocation = assetPackage.ImageName
+		case assetPackage.URI != "":
+			fetchLocation = assetPackage.URI
+		}
+		readableAsset, err := c.assetFetcher.FetchAssets([]string{fetchLocation}, asset.WithPullPolicy(opts.PullPolicy), asset.WithContext(ctx))
+		if err != nil {
+			return errors.Wrap(err, "unable to fetch specified asset packages")
+		}
+
+		err = bldr.AddAssetImages(readableAsset...)
+		if err != nil {
+			return errors.Wrap(err, "unable add specified asset packages to builder")
+		}
+	}
+	return nil
 }
 
 func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderOptions, bldr *builder.Builder) error {

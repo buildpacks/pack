@@ -20,6 +20,7 @@ type Config struct {
 	Order       dist.Order          `toml:"order"`
 	Stack       StackConfig         `toml:"stack"`
 	Lifecycle   LifecycleConfig     `toml:"lifecycle"`
+	Assets      Assets              `toml:"assets"`
 }
 
 // BuildpackCollection is a list of BuildpackConfigs
@@ -29,6 +30,23 @@ type BuildpackCollection []BuildpackConfig
 type BuildpackConfig struct {
 	dist.BuildpackInfo
 	dist.ImageOrURI
+}
+
+type Assets struct {
+	Packages []Package `toml:"package"`
+}
+
+type Package struct {
+	AssetImageOrURI
+}
+
+type AssetImageOrURI struct {
+	AssetURI
+	dist.ImageRef
+}
+
+type AssetURI struct {
+	URI string `toml:"uri"`
 }
 
 func (c *BuildpackConfig) DisplayString() string {

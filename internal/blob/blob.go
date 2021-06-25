@@ -18,10 +18,21 @@ type Blob interface {
 
 type blob struct {
 	path string
+	raw  bool
 }
 
-func NewBlob(path string) Blob {
-	return &blob{path: path}
+type Option func(*blob)
+
+func RawOption(b *blob) {
+	b.raw = true
+}
+
+func NewBlob(path string, opts ...Option) Blob {
+	result := &blob{path: path}
+	for _, opt := range opts {
+		opt(result)
+	}
+	return result
 }
 
 // Open returns an io.ReadCloser whose contents are in tar archive format
@@ -43,6 +54,9 @@ func (b blob) Open() (r io.ReadCloser, err error) {
 			fh.Close()
 		}
 	}()
+	if b.raw {
+		return fh, nil
+	}
 
 	if ok, err := isGZip(fh); err != nil {
 		return nil, errors.Wrap(err, "check header")

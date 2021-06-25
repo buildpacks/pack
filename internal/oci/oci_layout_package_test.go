@@ -1,9 +1,11 @@
-package buildpackage_test
+package oci_test
 
 import (
 	"fmt"
 	"path/filepath"
 	"testing"
+
+	"github.com/buildpacks/pack/internal/oci"
 
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
@@ -58,10 +60,10 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
-	when("#IsOCILayoutBlob", func() {
+	when("#IsLayoutBlob", func() {
 		when("is an OCI layout blob", func() {
 			it("returns true", func() {
-				isOCILayoutBlob, err := buildpackage.IsOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
+				isOCILayoutBlob, err := oci.IsLayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 				h.AssertNil(t, err)
 				h.AssertEq(t, isOCILayoutBlob, true)
 			})
@@ -80,7 +82,7 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 				}, 0755)
 				h.AssertNil(t, err)
 
-				isOCILayoutBlob, err := buildpackage.IsOCILayoutBlob(buildpackBlob)
+				isOCILayoutBlob, err := oci.IsLayoutBlob(buildpackBlob)
 				h.AssertNil(t, err)
 				h.AssertEq(t, isOCILayoutBlob, false)
 			})

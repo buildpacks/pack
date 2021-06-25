@@ -1,0 +1,14 @@
+api = "0.2"
+
+[buildpack]
+  id = "simple/nested"
+  version = "nested-version"
+  name = "Nested Asset Buildpack"
+
+[[order]]
+  [[order.group]]
+    id = "simple/asset-buildpack"
+    version = "simple-asset-buildpack-version"
+  [[order.group]]
+    id = "second-simple/asset-buildpack"
+    version = "second-simple-asset-buildpack-version"

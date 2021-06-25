@@ -40,6 +40,20 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		mockController   *gomock.Controller
 		mockImageFactory func(expectedImageOS string) *testmocks.MockImageFactory
 		tmpDir           string
+		firstAsset       = dist.AssetInfo{
+			ID:      "bp.1.asset.1",
+			Sha256:  "asset.1.sha",
+			URI:     "asset.1.uri",
+			Stacks:  []string{"stack.id.1", "stack.id.2"},
+			Version: "1.1.1",
+		}
+		secondAsset = dist.AssetInfo{
+			ID:      "bp.1.asset.2",
+			Sha256:  "asset.2.sha",
+			URI:     "asset.2.uri",
+			Stacks:  []string{"stack.id.1", "stack.id.2"},
+			Version: "2.2.2",
+		}
 	)
 
 	it.Before(func() {
@@ -494,6 +508,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
 				Order:  nil,
+				Assets: []dist.AssetInfo{firstAsset, secondAsset},
 			}, 0644)
 			h.AssertNil(t, err)
 
@@ -510,6 +525,11 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 			bp1Info, ok1 := bpLayers["bp.1.id"]["bp.1.version"]
 			h.AssertEq(t, ok1, true)
 			h.AssertEq(t, bp1Info.Stacks, []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}})
+
+			bp1Assets := bp1Info.Assets
+			h.AssertEq(t, len(bp1Assets), 2)
+			h.AssertEq(t, bp1Assets[0], firstAsset)
+			h.AssertEq(t, bp1Assets[1], secondAsset)
 		})
 
 		it("adds buildpack layers for linux", func() {
@@ -583,6 +603,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
 				Order:  nil,
+				Assets: []dist.AssetInfo{firstAsset, secondAsset},
 			}, 0644)
 			h.AssertNil(t, err)
 
@@ -626,7 +647,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 								// buildpackage metadata
 								h.ContentContains(`"io.buildpacks.buildpackage.metadata":"{\"id\":\"bp.1.id\",\"version\":\"bp.1.version\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}]}"`),
 								// buildpack layers metadata
-								h.ContentContains(`"io.buildpacks.buildpack.layers":"{\"bp.1.id\":{\"bp.1.version\":{\"api\":\"0.2\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}],\"layerDiffID\":\"sha256:9fa0bb03eebdd0f8e4b6d6f50471b44be83dba750624dfce15dac45975c5707b\"}}`),
+								h.ContentContains(`"io.buildpacks.buildpack.layers":"{\"bp.1.id\":{\"bp.1.version\":{\"api\":\"0.2\",\"stacks\":[{\"id\":\"stack.id.1\"},{\"id\":\"stack.id.2\"}],\"layerDiffID\":\"sha256:1fbb57aa3f88a0fdd3b0da00f8939ed679b35f2db459437c50fc4abb79d78087\",\"assets\":[{\"sha256\":\"asset.1.sha\",\"id\":\"bp.1.asset.1\",\"version\":\"1.1.1\",\"uri\":\"asset.1.uri\",\"stacks\":[\"stack.id.1\",\"stack.id.2\"]},{\"sha256\":\"asset.2.sha\",\"id\":\"bp.1.asset.2\",\"version\":\"2.2.2\",\"uri\":\"asset.2.uri\",\"stacks\":[\"stack.id.1\",\"stack.id.2\"]}]}}}"`),
 								// image os
 								h.ContentContains(`"os":"linux"`),
 							)

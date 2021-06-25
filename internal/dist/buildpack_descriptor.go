@@ -16,6 +16,7 @@ type BuildpackDescriptor struct {
 	Info   BuildpackInfo `toml:"buildpack"`
 	Stacks []Stack       `toml:"stacks"`
 	Order  Order         `toml:"order"`
+	Assets []AssetInfo   `toml:"assets"`
 }
 
 func (b *BuildpackDescriptor) EscapedID() string {

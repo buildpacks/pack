@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+
 	"github.com/mitchellh/ioprogress"
 	"github.com/pkg/errors"
 
@@ -29,14 +31,26 @@ type downloader struct {
 	baseCacheDir string
 }
 
-func NewDownloader(logger logging.Logger, baseCacheDir string) *downloader { //nolint:golint,gosimple
-	return &downloader{
+type downloadSettings struct {
+	blobOptions      []Option
+	validationSha256 string
+}
+
+func NewDownloader(logger logging.Logger, baseCacheDir string) downloader { //nolint:golint,gosimple
+	return downloader{
 		logger:       logger,
 		baseCacheDir: baseCacheDir,
 	}
 }
 
-func (d *downloader) Download(ctx context.Context, pathOrURI string) (Blob, error) {
+type DownloadOption func(*downloadSettings)
+
+func (d downloader) Download(ctx context.Context, pathOrURI string, options ...DownloadOption) (Blob, error) {
+	settings := &downloadSettings{}
+	for _, option := range options {
+		option(settings)
+	}
+
 	if paths.IsURI(pathOrURI) {
 		parsedURL, err := url.Parse(pathOrURI)
 		if err != nil {
@@ -56,15 +70,35 @@ func (d *downloader) Download(ctx context.Context, pathOrURI string) (Blob, erro
 			return nil, err
 		}
 
-		return &blob{path: path}, nil
+		if err := validateBlobSha(NewBlob(path, settings.blobOptions...), settings.validationSha256); err != nil {
+			return nil, err
+		}
+		return NewBlob(path, settings.blobOptions...), nil
 	}
 
 	path := d.handleFile(pathOrURI)
 
-	return &blob{path: path}, nil
+	if err := validateBlobSha(NewBlob(path, settings.blobOptions...), settings.validationSha256); err != nil {
+		return nil, err
+	}
+	return NewBlob(path, settings.blobOptions...), nil
 }
 
-func (d *downloader) handleFile(path string) string {
+//
+// Download Options
+//
+
+func RawDownload(s *downloadSettings) {
+	s.blobOptions = append(s.blobOptions, RawOption)
+}
+
+func ValidateDownload(sha256 string) DownloadOption {
+	return func(s *downloadSettings) {
+		s.validationSha256 = fmt.Sprintf("sha256:%s", sha256)
+	}
+}
+
+func (d downloader) handleFile(path string) string {
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return ""
@@ -73,7 +107,7 @@ func (d *downloader) handleFile(path string) string {
 	return path
 }
 
-func (d *downloader) handleHTTP(ctx context.Context, uri string) (string, error) {
+func (d downloader) handleHTTP(ctx context.Context, uri string) (string, error) {
 	cacheDir := d.versionedCacheDir()
 
 	if err := os.MkdirAll(cacheDir, 0750); err != nil {
@@ -123,7 +157,7 @@ func (d *downloader) handleHTTP(ctx context.Context, uri string) (string, error)
 	return cachePath, nil
 }
 
-func (d *downloader) downloadAsStream(ctx context.Context, uri string, etag string) (io.ReadCloser, string, error) {
+func (d downloader) downloadAsStream(ctx context.Context, uri string, etag string) (io.ReadCloser, string, error) {
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		return nil, "", err
@@ -171,7 +205,7 @@ type progressReader struct {
 	io.Closer
 }
 
-func (d *downloader) versionedCacheDir() string {
+func (d downloader) versionedCacheDir() string {
 	return filepath.Join(d.baseCacheDir, cacheDirPrefix+cacheVersion)
 }
 
@@ -184,4 +218,25 @@ func fileExists(file string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func validateBlobSha(b Blob, expectedSha256 string) error {
+	if expectedSha256 == "" {
+		return nil
+	}
+	r, err := b.Open()
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+	h, _, err := v1.SHA256(r)
+	if err != nil {
+		return err
+	}
+
+	if expectedSha256 != h.String() {
+		return fmt.Errorf("sha256 validation failed, expected %q, got %q", expectedSha256, h.String())
+	}
+
+	return nil
 }

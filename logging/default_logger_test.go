@@ -1,8 +1,10 @@
-package logging
+package logging_test
 
 import (
 	"bytes"
 	"testing"
+
+	"github.com/buildpacks/pack/logging"
 
 	"github.com/sclevine/spec"
 
@@ -19,10 +21,10 @@ const (
 func TestDefaultLogger(t *testing.T) {
 	spec.Run(t, "DefaultLogger", func(t *testing.T, when spec.G, it spec.S) {
 		var w bytes.Buffer
-		var logger Logger
+		var logger logging.Logger
 
 		it.Before(func() {
-			logger = New(&w)
+			logger = logging.New(&w)
 		})
 
 		it.After(func() {

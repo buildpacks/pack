@@ -40,6 +40,7 @@ type BuildFlags struct {
 	Buildpacks         []string
 	Volumes            []string
 	AdditionalTags     []string
+	AssetPackages      []string
 	Workspace          string
 	GID                int
 }
@@ -150,6 +151,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				ProjectDescriptor:        descriptor,
 				CacheImage:               flags.CacheImage,
 				Workspace:                flags.Workspace,
+				AssetPackages:            flags.AssetPackages,
 				LifecycleImage:           lifecycleImage,
 				GroupID:                  gid,
 			}); err != nil {
@@ -190,6 +192,9 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().BoolVar(&buildFlags.TrustBuilder, "trust-builder", false, "Trust the provided builder\nAll lifecycle phases will be run in a single container (if supported by the lifecycle).")
 	cmd.Flags().StringArrayVar(&buildFlags.Volumes, "volume", nil, "Mount host volume into the build container, in the form '<host path>:<target path>[:<options>]'.\n- 'host path': Name of the volume or absolute directory path to mount.\n- 'target path': The path where the file or directory is available in the container.\n- 'options' (default \"ro\"): An optional comma separated list of mount options.\n    - \"ro\", volume contents are read-only.\n    - \"rw\", volume contents are readable and writeable.\n    - \"volume-opt=<key>=<value>\", can be specified more than once, takes a key-value pair consisting of the option name and its value."+multiValueHelp("volume"))
 	cmd.Flags().StringVar(&buildFlags.Workspace, "workspace", "", "Location at which to mount the app dir in the build image")
+	if cfg.Experimental {
+		cmd.Flags().StringArrayVar(&buildFlags.AssetPackages, "asset-package", nil, "add asset package to a build")
+	}
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
 }
 

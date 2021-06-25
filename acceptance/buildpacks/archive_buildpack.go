@@ -22,6 +22,12 @@ const (
 	defaultMode     = 0755
 )
 
+func NewArchiveBuildpack(name string) archiveBuildpack {
+	return archiveBuildpack{
+		name: name,
+	}
+}
+
 type archiveBuildpack struct {
 	name string
 }

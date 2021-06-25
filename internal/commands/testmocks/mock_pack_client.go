@@ -50,7 +50,21 @@ func (mr *MockPackClientMockRecorder) Build(arg0, arg1 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Build", reflect.TypeOf((*MockPackClient)(nil).Build), arg0, arg1)
 }
 
-// CreateBuilder mocks base method.
+// CreateAssetPackage mocks base method.
+func (m *MockPackClient) CreateAssetPackage(arg0 context.Context, arg1 pack.CreateAssetPackageOptions) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateAssetPackage", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateAssetPackage indicates an expected call of CreateAssetPackage
+func (mr *MockPackClientMockRecorder) CreateAssetPackage(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAssetPackage", reflect.TypeOf((*MockPackClient)(nil).CreateAssetPackage), arg0, arg1)
+}
+
+// CreateBuilder mocks base method
 func (m *MockPackClient) CreateBuilder(arg0 context.Context, arg1 pack.CreateBuilderOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateBuilder", arg0, arg1)
