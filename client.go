@@ -10,7 +10,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/config"
@@ -33,7 +32,7 @@ type ImageFetcher interface {
 	// These PullPolicies that these interact with the daemon argument.
 	// PullIfNotPresent and daemon = false, gives us the same behavior as PullAlways.
 	// There is a single invalid configuration, PullNever and daemon = false, this will always fail.
-	Fetch(ctx context.Context, name string, daemon bool, pullPolicy pubcfg.PullPolicy) (imgutil.Image, error)
+	Fetch(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error)
 }
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_downloader.go github.com/buildpacks/pack Downloader

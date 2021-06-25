@@ -28,6 +28,14 @@ type Fetcher struct {
 	logger logging.Logger
 }
 
+type FetchOptions struct {
+	//TODO: would love to reverse (Daemon bool) to (Remote bool)
+	//      so that "false" becomes the default, when omitted
+	Daemon     bool
+	Platform   string
+	PullPolicy config.PullPolicy
+}
+
 func NewFetcher(logger logging.Logger, docker client.CommonAPIClient) *Fetcher {
 	return &Fetcher{
 		logger: logger,
@@ -37,12 +45,12 @@ func NewFetcher(logger logging.Logger, docker client.CommonAPIClient) *Fetcher {
 
 var ErrNotFound = errors.New("not found")
 
-func (f *Fetcher) Fetch(ctx context.Context, name string, daemon bool, pullPolicy config.PullPolicy) (imgutil.Image, error) {
-	if !daemon {
+func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) (imgutil.Image, error) {
+	if !options.Daemon {
 		return f.fetchRemoteImage(name)
 	}
 
-	switch pullPolicy {
+	switch options.PullPolicy {
 	case config.PullNever:
 		img, err := f.fetchDaemonImage(name)
 		return img, err

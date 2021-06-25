@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/style"
 )
 
@@ -44,7 +45,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.Wrapf(err, "invalid image name '%s'", opts.RepoName)
 	}
 
-	appImage, err := c.imageFetcher.Fetch(ctx, opts.RepoName, !opts.Publish, opts.PullPolicy)
+	appImage, err := c.imageFetcher.Fetch(ctx, opts.RepoName, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
 	if err != nil {
 		return err
 	}
@@ -73,7 +74,7 @@ func (c *Client) Rebase(ctx context.Context, opts RebaseOptions) error {
 		return errors.New("run image must be specified")
 	}
 
-	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, !opts.Publish, opts.PullPolicy)
+	baseImage, err := c.imageFetcher.Fetch(ctx, runImageName, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
 	if err != nil {
 		return err
 	}

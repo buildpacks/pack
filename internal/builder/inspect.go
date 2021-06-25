@@ -7,10 +7,9 @@ import (
 	"strings"
 
 	pubbldr "github.com/buildpacks/pack/builder"
-
-	"github.com/buildpacks/pack/internal/dist"
-
 	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/image"
 )
 
 type Info struct {
@@ -31,7 +30,7 @@ type Inspectable interface {
 }
 
 type InspectableFetcher interface {
-	Fetch(ctx context.Context, name string, daemon bool, pullPolicy config.PullPolicy) (Inspectable, error)
+	Fetch(ctx context.Context, name string, options image.FetchOptions) (Inspectable, error)
 }
 
 type LabelManagerFactory interface {
@@ -65,7 +64,7 @@ func NewInspector(fetcher InspectableFetcher, factory LabelManagerFactory, calcu
 }
 
 func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (Info, error) {
-	inspectable, err := i.imageFetcher.Fetch(context.Background(), name, daemon, config.PullNever)
+	inspectable, err := i.imageFetcher.Fetch(context.Background(), name, image.FetchOptions{Daemon: daemon, PullPolicy: config.PullNever})
 	if err != nil {
 		return Info{}, fmt.Errorf("fetching builder image: %w", err)
 	}
