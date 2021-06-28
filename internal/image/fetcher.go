@@ -29,8 +29,6 @@ type Fetcher struct {
 }
 
 type FetchOptions struct {
-	//TODO: would love to reverse (Daemon bool) to (Remote bool)
-	//      so that "false" becomes the default, when omitted
 	Daemon     bool
 	Platform   string
 	PullPolicy config.PullPolicy
