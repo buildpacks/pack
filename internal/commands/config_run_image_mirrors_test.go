@@ -121,7 +121,7 @@ func testConfigRunImageMirrorsCommand(t *testing.T, when spec.G, it spec.S) {
 				cfg, err := config.Read(configPath)
 				h.AssertNil(t, err)
 				h.AssertEq(t, cfg, testCfg)
-				//This ensures that there are no dups
+				// This ensures that there are no dups
 				h.AssertEq(t, len(cfg.RunImages[0].Mirrors), 2)
 			})
 		})

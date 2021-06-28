@@ -21,6 +21,8 @@ var (
 	SupportedPlatformAPIVersions = builder.APISet{
 		api.MustParse("0.3"),
 		api.MustParse("0.4"),
+		api.MustParse("0.5"),
+		api.MustParse("0.6"),
 	}
 )
 

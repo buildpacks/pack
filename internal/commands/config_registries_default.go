@@ -39,7 +39,7 @@ func ConfigRegistriesDefault(logger logging.Logger, cfg config.Config, cfgPath s
 				}
 				logger.Infof("Successfully unset default registry %s", style.Symbol(oldRegistry))
 				logger.Infof("Default registry has been set to %s", style.Symbol(config.OfficialRegistryName))
-			case len(args) == 0: //list
+			case len(args) == 0: // list
 				if cfg.DefaultRegistryName == "" {
 					cfg.DefaultRegistryName = config.OfficialRegistryName
 				}
