@@ -16,9 +16,10 @@ var registryMirror string
 
 func ConfigRegistryMirrors(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "registry-mirrors",
-		Short: "List, add and remove registry mirrors",
-		Args:  cobra.MaximumNArgs(3),
+		Use:     "registry-mirrors",
+		Short:   "List, add and remove OCI registry mirrors",
+		Aliases: []string{"registry-mirror"},
+		Args:    cobra.MaximumNArgs(3),
 		RunE: logError(logger, func(cmd *cobra.Command, args []string) error {
 			listRegistryMirrors(args, logger, cfg)
 			return nil
@@ -34,7 +35,7 @@ func ConfigRegistryMirrors(logger logging.Logger, cfg config.Config, cfgPath str
 	addCmd := generateAdd("mirror for a registry", logger, cfg, cfgPath, addRegistryMirror)
 	addCmd.Use = "add <registry> [-m <mirror...]"
 	addCmd.Long = "Set mirror for a given registry."
-	addCmd.Example = "pack config registry-mirrors add index.docker.io --mirror 10.0.0.1"
+	addCmd.Example = "pack config registry-mirrors add index.docker.io --mirror 10.0.0.1\npack config registry-mirrors add '*' --mirror 10.0.0.1"
 	addCmd.Flags().StringVarP(&registryMirror, "mirror", "m", "", "Registry mirror")
 	cmd.AddCommand(addCmd)
 

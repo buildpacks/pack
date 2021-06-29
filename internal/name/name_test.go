@@ -50,5 +50,18 @@ func testTranslateRegistry(t *testing.T, when spec.G, it spec.S) {
 			assert.Nil(err)
 			assert.Equal(output, expected)
 		})
+
+		it("prefers the wildcard mirror translation", func() {
+			input := "index.docker.io/my/buildpack:0.1"
+			expected := "10.0.0.2/my/buildpack:0.1"
+			registryMirrors := map[string]string{
+				"index.docker.io": "10.0.0.1",
+				"*":               "10.0.0.2",
+			}
+
+			output, err := name.TranslateRegistry(input, registryMirrors)
+			assert.Nil(err)
+			assert.Equal(output, expected)
+		})
 	})
 }

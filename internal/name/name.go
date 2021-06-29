@@ -17,7 +17,7 @@ func TranslateRegistry(name string, registryMirrors map[string]string) (string, 
 	}
 
 	srcContext := srcRef.Context()
-	registryMirror, ok := registryMirrors[srcContext.RegistryStr()]
+	registryMirror, ok := getMirror(srcContext, registryMirrors)
 	if !ok {
 		return name, nil
 	}
@@ -29,4 +29,14 @@ func TranslateRegistry(name string, registryMirrors map[string]string) (string, 
 	}
 
 	return refName, nil
+}
+
+func getMirror(repo gname.Repository, registryMirrors map[string]string) (string, bool) {
+	mirror, ok := registryMirrors["*"]
+	if ok {
+		return mirror, ok
+	}
+
+	mirror, ok = registryMirrors[repo.RegistryStr()]
+	return mirror, ok
 }
