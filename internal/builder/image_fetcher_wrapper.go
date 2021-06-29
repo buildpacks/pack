@@ -5,14 +5,14 @@ import (
 
 	"github.com/buildpacks/imgutil"
 
-	pubcfg "github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/internal/image"
 )
 
 type ImageFetcher interface {
 	// Fetch fetches an image by resolving it both remotely and locally depending on provided parameters.
 	// If daemon is true, it will look return a `local.Image`. Pull, applicable only when daemon is true, will
 	// attempt to pull a remote image first.
-	Fetch(ctx context.Context, name string, daemon bool, pullPolicy pubcfg.PullPolicy) (imgutil.Image, error)
+	Fetch(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error)
 }
 
 type ImageFetcherWrapper struct {
@@ -28,8 +28,7 @@ func NewImageFetcherWrapper(fetcher ImageFetcher) *ImageFetcherWrapper {
 func (w *ImageFetcherWrapper) Fetch(
 	ctx context.Context,
 	name string,
-	daemon bool,
-	pullPolicy pubcfg.PullPolicy,
+	options image.FetchOptions,
 ) (Inspectable, error) {
-	return w.fetcher.Fetch(ctx, name, daemon, pullPolicy)
+	return w.fetcher.Fetch(ctx, name, options)
 }

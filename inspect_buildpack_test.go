@@ -382,8 +382,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 				mockImageFetcher.EXPECT().Fetch(
 					gomock.Any(),
 					"example.com/some/package@sha256:8c27fe111c11b722081701dfed3bd55e039b9ce92865473cf4cdfa918071c566",
-					false,
-					config.PullNever).Return(buildpackImage, nil)
+					image.FetchOptions{Daemon: false, PullPolicy: config.PullNever}).Return(buildpackImage, nil)
 			})
 
 			it.After(func() {
@@ -430,9 +429,9 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 					it.Before(func() {
 						expectedInfo.Location = buildpack.PackageLocator
 						if useDaemon {
-							mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/buildpack", true, config.PullNever).Return(buildpackImage, nil)
+							mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/buildpack", image.FetchOptions{Daemon: true, PullPolicy: config.PullNever}).Return(buildpackImage, nil)
 						} else {
-							mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/buildpack", false, config.PullNever).Return(buildpackImage, nil)
+							mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/buildpack", image.FetchOptions{Daemon: false, PullPolicy: config.PullNever}).Return(buildpackImage, nil)
 						}
 					})
 
@@ -466,7 +465,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 		when("buildpack image", func() {
 			when("unable to fetch buildpack image", func() {
 				it.Before(func() {
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "missing/buildpack", true, config.PullNever).Return(nil, errors.Wrapf(image.ErrNotFound, "big bad error"))
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "missing/buildpack", image.FetchOptions{Daemon: true, PullPolicy: config.PullNever}).Return(nil, errors.Wrapf(image.ErrNotFound, "big bad error"))
 				})
 				it("returns an ErrNotFound error", func() {
 					inspectOptions := pack.InspectBuildpackOptions{
@@ -482,7 +481,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					fakeImage := fakes.NewImage("empty", "", nil)
 					h.AssertNil(t, fakeImage.SetLabel(dist.BuildpackLayersLabel, ":::"))
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "missing-metadata/buildpack", true, config.PullNever).Return(fakeImage, nil)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), "missing-metadata/buildpack", image.FetchOptions{Daemon: true, PullPolicy: config.PullNever}).Return(fakeImage, nil)
 				})
 				it("returns an error", func() {
 					inspectOptions := pack.InspectBuildpackOptions{
@@ -604,8 +603,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 					mockImageFetcher.EXPECT().Fetch(
 						gomock.Any(),
 						"example.com/some/package@sha256:2560f05307e8de9d830f144d09556e19dd1eb7d928aee900ed02208ae9727e7a",
-						false,
-						config.PullNever).Return(nil, image.ErrNotFound)
+						image.FetchOptions{Daemon: false, PullPolicy: config.PullNever}).Return(nil, image.ErrNotFound)
 				})
 				it("returns an untyped error", func() {
 					registryBuildpack := "urn:cnb:registry:example/foo"

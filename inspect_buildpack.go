@@ -7,12 +7,12 @@ import (
 
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"github.com/buildpacks/pack/internal/style"
-
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/internal/style"
 )
 
 type BuildpackInfo struct {
@@ -109,7 +109,7 @@ func metadataFromArchive(downloader Downloader, path string) (buildpackMd buildp
 
 func metadataFromImage(client *Client, name string, daemon bool) (buildpackMd buildpackage.Metadata, layersMd dist.BuildpackLayers, err error) {
 	imageName := buildpack.ParsePackageLocator(name)
-	img, err := client.imageFetcher.Fetch(context.Background(), imageName, daemon, config.PullNever)
+	img, err := client.imageFetcher.Fetch(context.Background(), imageName, image.FetchOptions{Daemon: daemon, PullPolicy: config.PullNever})
 	if err != nil {
 		return buildpackage.Metadata{}, dist.BuildpackLayers{}, err
 	}

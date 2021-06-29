@@ -9,6 +9,7 @@ import (
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/style"
 )
 
@@ -34,7 +35,7 @@ func (c *Client) PullBuildpack(ctx context.Context, opts PullBuildpackOptions) e
 		imageName := buildpack.ParsePackageLocator(opts.URI)
 		c.logger.Debugf("Pulling buildpack from image: %s", imageName)
 
-		_, err = c.imageFetcher.Fetch(ctx, imageName, true, config.PullAlways)
+		_, err = c.imageFetcher.Fetch(ctx, imageName, image.FetchOptions{Daemon: true, PullPolicy: config.PullAlways})
 		if err != nil {
 			return errors.Wrapf(err, "fetching image %s", style.Symbol(opts.URI))
 		}
@@ -51,7 +52,7 @@ func (c *Client) PullBuildpack(ctx context.Context, opts PullBuildpackOptions) e
 			return errors.Wrapf(err, "locating in registry %s", style.Symbol(opts.URI))
 		}
 
-		_, err = c.imageFetcher.Fetch(ctx, registryBp.Address, true, config.PullAlways)
+		_, err = c.imageFetcher.Fetch(ctx, registryBp.Address, image.FetchOptions{Daemon: true, PullPolicy: config.PullAlways})
 		if err != nil {
 			return errors.Wrapf(err, "fetching image %s", style.Symbol(opts.URI))
 		}

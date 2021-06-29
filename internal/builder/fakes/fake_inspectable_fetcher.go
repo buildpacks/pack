@@ -5,6 +5,7 @@ import (
 
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/image"
 )
 
 type FakeInspectableFetcher struct {
@@ -18,12 +19,12 @@ type FakeInspectableFetcher struct {
 	ReceivedPullPolicy config.PullPolicy
 }
 
-func (f *FakeInspectableFetcher) Fetch(ctx context.Context, name string, daemon bool, pullPolicy config.PullPolicy) (builder.Inspectable, error) {
+func (f *FakeInspectableFetcher) Fetch(ctx context.Context, name string, options image.FetchOptions) (builder.Inspectable, error) {
 	f.CallCount++
 
 	f.ReceivedName = name
-	f.ReceivedDaemon = daemon
-	f.ReceivedPullPolicy = pullPolicy
+	f.ReceivedDaemon = options.Daemon
+	f.ReceivedPullPolicy = options.PullPolicy
 
 	return f.InspectableToReturn, f.ErrorToReturn
 }

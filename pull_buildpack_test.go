@@ -9,16 +9,15 @@ import (
 	"testing"
 
 	"github.com/buildpacks/imgutil/fakes"
-
+	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/golang/mock/gomock"
-
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/config"
 	cfg "github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/registry"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -93,7 +92,7 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 			packageImage := fakes.NewImage("example.com/some/package:1.0.0", "", nil)
 			h.AssertNil(t, packageImage.SetLabel("io.buildpacks.buildpackage.metadata", `{}`))
 			h.AssertNil(t, packageImage.SetLabel("io.buildpacks.buildpack.layers", `{}`))
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), true, config.PullAlways).Return(packageImage, nil)
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: config.PullAlways}).Return(packageImage, nil)
 
 			h.AssertNil(t, subject.PullBuildpack(context.TODO(), pack.PullBuildpackOptions{
 				URI: "example.com/some/package:1.0.0",
@@ -123,7 +122,7 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 			packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
 			packageImage.SetLabel("io.buildpacks.buildpackage.metadata", `{}`)
 			packageImage.SetLabel("io.buildpacks.buildpack.layers", `{}`)
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), true, config.PullAlways).Return(packageImage, nil)
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: config.PullAlways}).Return(packageImage, nil)
 
 			packHome := filepath.Join(tmpDir, "packHome")
 			h.AssertNil(t, os.Setenv("PACK_HOME", packHome))

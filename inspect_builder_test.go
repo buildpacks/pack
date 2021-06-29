@@ -71,9 +71,9 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 			when(fmt.Sprintf("daemon is %t", useDaemon), func() {
 				it.Before(func() {
 					if useDaemon {
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, config.PullNever).Return(builderImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", image.FetchOptions{Daemon: true, PullPolicy: config.PullNever}).Return(builderImage, nil)
 					} else {
-						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", false, config.PullNever).Return(builderImage, nil)
+						mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", image.FetchOptions{Daemon: false, PullPolicy: config.PullNever}).Return(builderImage, nil)
 					}
 				})
 
@@ -406,7 +406,7 @@ func testInspectBuilder(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			notFoundImage := fakes.NewImage("", "", nil)
 			notFoundImage.Delete()
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", true, config.PullNever).Return(nil, errors.Wrap(image.ErrNotFound, "some-error"))
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/builder", image.FetchOptions{Daemon: true, PullPolicy: config.PullNever}).Return(nil, errors.Wrap(image.ErrNotFound, "some-error"))
 		})
 
 		it("return nil metadata", func() {

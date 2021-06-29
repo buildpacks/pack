@@ -270,11 +270,11 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			shouldFetchNestedPackage := func(demon bool, pull pubcfg.PullPolicy) {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nestedPackage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: demon, PullPolicy: pull}).Return(nestedPackage, nil)
 			}
 
 			shouldNotFindNestedPackageWhenCallingImageFetcherWith := func(demon bool, pull pubcfg.PullPolicy) {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), demon, pull).Return(nil, image.ErrNotFound)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: demon, PullPolicy: pull}).Return(nil, image.ErrNotFound)
 			}
 
 			shouldCreateLocalPackage := func() imgutil.Image {
@@ -395,7 +395,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 		when("nested package is not a valid package", func() {
 			it("should error", func() {
 				notPackageImage := fakes.NewImage("not/package", "", nil)
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), true, pubcfg.PullAlways).Return(notPackageImage, nil)
+				mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullAlways}).Return(notPackageImage, nil)
 
 				mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 
@@ -508,7 +508,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						PullPolicy: pubcfg.PullAlways,
 					}))
 
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, pubcfg.PullAlways).Return(nestedPackage, nil)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullAlways}).Return(nestedPackage, nil)
 				})
 
 				it("should pull and use local nested package image", func() {
@@ -623,7 +623,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 						PullPolicy: pubcfg.PullAlways,
 					}))
 
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), true, pubcfg.PullAlways).Return(nestedPackage, nil)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), nestedPackage.Name(), image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullAlways}).Return(nestedPackage, nil)
 				})
 
 				it("should include both of them", func() {
@@ -731,7 +731,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					err = packageImage.SetLabel("io.buildpacks.buildpack.layers", `{"example/foo":{"1.1.0":{"api": "0.2", "layerDiffID":"sha256:xxx", "stacks":[{"id":"some.stack.id"}]}}}`)
 					h.AssertNil(t, err)
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), true, pubcfg.PullAlways).Return(packageImage, nil)
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullAlways}).Return(packageImage, nil)
 
 					packHome := filepath.Join(tmpDir, "packHome")
 					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
