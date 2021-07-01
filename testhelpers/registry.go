@@ -207,11 +207,14 @@ func waitForPortBinding(t *testing.T, containerID, portSpec string, duration tim
 func DockerHostname(t *testing.T) string {
 	dockerCli := dockerCli(t)
 
+	// try to use docker cli's daemon host
 	daemonHost := dockerCli.DaemonHost()
 	u, err := url.Parse(daemonHost)
 	if err != nil {
 		t.Fatalf("unable to parse URI client.DaemonHost: %s", err)
 	}
+
+	var daemonInfo dockertypes.Info
 
 	switch u.Scheme {
 	// DOCKER_HOST is usually remote so always use its hostname/IP
@@ -222,7 +225,7 @@ func DockerHostname(t *testing.T) string {
 	// if DOCKER_HOST is non-tcp, we assume that we are
 	// talking to the daemon over a local pipe.
 	default:
-		daemonInfo, err := dockerCli.Info(context.TODO())
+		daemonInfo, err = dockerCli.Info(context.TODO())
 		if err != nil {
 			t.Fatalf("unable to fetch client.DockerInfo: %s", err)
 		}
@@ -232,17 +235,60 @@ func DockerHostname(t *testing.T) string {
 			// Note: pack appears to not support /etc/hosts-based insecure-registries
 			addrs, err := net.LookupHost("host.docker.internal")
 			if err != nil {
-				t.Fatalf("unknown address response: %+v %s", addrs, err)
+				break
 			}
 			if len(addrs) != 1 {
-				t.Fatalf("ambiguous address response: %v", addrs)
+				break
 			}
 			return addrs[0]
 		}
+	}
 
-		// Linux can use --network=host so always use "localhost"
+	// query daemon for insecure-registry network ranges
+	var insecureRegistryNets []*net.IPNet
+	for _, ipnet := range daemonInfo.RegistryConfig.InsecureRegistryCIDRs {
+		insecureRegistryNets = append(insecureRegistryNets, (*net.IPNet)(ipnet))
+	}
+
+	// search for non-loopback interface IPs contained by a insecure-registry range
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		t.Fatalf("unable to fetch interfaces: %s", err)
+	}
+	for _, i := range ifaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			t.Fatalf("unable to fetch interface address: %s", err)
+		}
+
+		for _, addr := range addrs {
+			var interfaceIP net.IP
+			switch interfaceAddr := addr.(type) {
+			case *net.IPAddr:
+				interfaceIP = interfaceAddr.IP
+			case *net.IPNet:
+				interfaceIP = interfaceAddr.IP
+			}
+
+			// ignore blanks and loopbacks
+			if interfaceIP == nil || interfaceIP.IsLoopback() {
+				continue
+			}
+
+			// return first matching interface IP
+			for _, regNet := range insecureRegistryNets {
+				if regNet.Contains(interfaceIP) {
+					return interfaceIP.String()
+				}
+			}
+		}
+
+		// Fallback to localhost, only works for Linux using --network=host
 		return "localhost"
 	}
+
+	t.Fatal("unable to determine hostname")
+	return "" // unreachable
 }
 
 func generateHtpasswd(t *testing.T, username string, password string) io.ReadCloser {
