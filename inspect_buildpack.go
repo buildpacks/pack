@@ -8,10 +8,10 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/image"
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/style"
 )
 

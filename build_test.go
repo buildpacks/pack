@@ -31,8 +31,8 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/blob"
 	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpackage"

@@ -10,7 +10,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 
-	blob "github.com/buildpacks/pack/internal/blob"
+	blob "github.com/buildpacks/pack/blob"
 )
 
 // MockDownloader is a mock of Downloader interface.

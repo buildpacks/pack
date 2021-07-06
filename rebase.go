@@ -8,10 +8,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/image"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/style"
 )
 

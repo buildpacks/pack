@@ -16,7 +16,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/image"
 	"github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/buildpacks/pack/testmocks"

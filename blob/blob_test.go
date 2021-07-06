@@ -8,7 +8,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/blob"
+	"github.com/buildpacks/pack/blob"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

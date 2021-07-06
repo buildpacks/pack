@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/image"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"

@@ -12,11 +12,10 @@ import (
 	"github.com/pkg/errors"
 
 	pubbldr "github.com/buildpacks/pack/builder"
+	"github.com/buildpacks/pack/image"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/buildpack"
-	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 )
@@ -227,13 +226,10 @@ func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBu
 	case buildpack.PackageLocator:
 		imageName := buildpack.ParsePackageLocator(buildpackURI)
 		opts.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
-
-		// TODO: use extractPackagedBuildpacks
-		pkg, err := opts.imageFetcher.Fetch(ctx, imageName, opts.fetchOptions)
+		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, imageName, opts.imageFetcher, opts.fetchOptions)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(buildpackURI))
 		}
-		mainBP, depBPs, err = buildpackage.ExtractBuildpacks(pkg)
 	case buildpack.RegistryLocator:
 		opts.logger.Debugf("Downloading buildpack from registry: %s", style.Symbol(buildpackURI))
 		registry, err := (*Client)(nil).getRegistry(opts.logger, opts.registryName)
@@ -245,11 +241,8 @@ func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBu
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "locating in registry %s", style.Symbol(buildpackURI))
 		}
-		pkg, err := opts.imageFetcher.Fetch(ctx, registryBp.Address, opts.fetchOptions)
-		if err != nil {
-			return nil, nil, err
-		}
-		mainBP, depBPs, err = buildpackage.ExtractBuildpacks(pkg)
+
+		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, registryBp.Address, opts.imageFetcher, opts.fetchOptions)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(buildpackURI))
 		}
