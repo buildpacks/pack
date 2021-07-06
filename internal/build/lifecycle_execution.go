@@ -189,6 +189,22 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 	}
 
 	if l.opts.PreviousImage != "" {
+		image, err := name.ParseReference(l.opts.Image.Name(), name.WeakValidation)
+		if err != nil {
+			return fmt.Errorf("invalid image name: %s", err)
+		}
+		prevImage, err := name.ParseReference(l.opts.PreviousImage, name.WeakValidation)
+		if err != nil {
+			return fmt.Errorf("invalid previous image name: %s", err)
+		}
+		if publish {
+			if image.Context().RegistryStr() != prevImage.Context().RegistryStr() {
+				return fmt.Errorf(`when --publish is used, <previous-image> must be in the same image registry as <image>
+                image registry = %s
+                previous-image registry = %s`, image.Context().RegistryStr(), prevImage.Context().RegistryStr())
+			}
+		}
+
 		flags = append(flags, "-previous-image", l.opts.PreviousImage)
 	}
 
@@ -324,10 +340,6 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 
 	if l.opts.GID >= overrideGID {
 		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
-	}
-
-	if l.opts.PreviousImage != "" {
-		l.opts.LifecycleImage = l.opts.PreviousImage
 	}
 
 	if publish {
