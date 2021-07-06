@@ -212,12 +212,21 @@ type DownloadBuildpackOptions struct {
 	logger          logging.Logger
 	imageFetcher    ImageFetcher
 	fetchOptions    image.FetchOptions
+	imageName       string
 }
 
 func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBuildpackOptions) (dist.Buildpack, []dist.Buildpack, error) {
-	locatorType, err := buildpack.GetLocatorType(buildpackURI, opts.relativeBaseDir, []dist.BuildpackInfo{})
-	if err != nil {
-		return nil, nil, err
+	var err error
+	var locatorType buildpack.LocatorType
+	if buildpackURI == "" && opts.imageName != "" {
+		opts.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
+		buildpackURI = opts.imageName
+		locatorType = buildpack.PackageLocator
+	} else {
+		locatorType, err = buildpack.GetLocatorType(buildpackURI, opts.relativeBaseDir, []dist.BuildpackInfo{})
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	var mainBP dist.Buildpack
@@ -273,19 +282,6 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 	for _, b := range opts.Config.Buildpacks {
 		c.logger.Debugf("Looking up buildpack %s", style.Symbol(b.DisplayString()))
 
-		var err error
-		// var locatorType buildpack.LocatorType
-		if b.URI == "" && b.ImageName != "" {
-			c.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
-			b.URI = b.ImageName
-			// locatorType = buildpack.PackageLocator
-		} /*else {
-			locatorType, err = buildpack.GetLocatorType(b.URI, opts.RelativeBaseDir, []dist.BuildpackInfo{})
-			if err != nil {
-				return err
-			}
-		}*/
-
 		imageOS, err := bldr.Image().OS()
 		if err != nil {
 			return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
@@ -299,6 +295,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 			downloader:      c.downloader,
 			imageFetcher:    c.imageFetcher,
 			fetchOptions:    image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy},
+			imageName:       b.ImageName,
 		})
 
 		err = validateBuildpack(mainBP, b.URI, b.ID, b.Version)
