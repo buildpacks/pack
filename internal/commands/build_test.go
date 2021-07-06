@@ -710,6 +710,40 @@ builder = "my-builder"
 				h.AssertNil(t, command.Execute())
 			})
 		})
+
+		when("previous-image flag is provided", func() {
+			when("--publish is false", func() {
+				it("previous-image should be passed to creator", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithPreviousImage("previous-image")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--previous-image", "previous-image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("--publish is true", func() {
+				when("image and previous-image are in same registry", func() {
+					it("succeeds", func() {
+						mockClient.EXPECT().
+							Build(gomock.Any(), EqBuildOptionsWithPreviousImage("index.docker.io/some/previous:latest")).
+							Return(nil)
+
+						command.SetArgs([]string{"--builder", "my-builder", "index.docker.io/some/image:latest", "--previous-image", "index.docker.io/some/previous:latest", "--publish"})
+						h.AssertNil(t, command.Execute())
+					})
+				})
+
+				// when("image and previous-image are not in same registry", func() {
+				// 	it("fails", func() {
+				// 		command.SetArgs([]string{"--builder", "my-builder", "index.docker.io/some/image:latest", "--previous-image", "example.io/some/previous-image", "--publish"})
+				// 		err := command.Execute()
+				// 		h.AssertError(t, err, "image and previous-image should be in the same registry when --publish is true")
+				// 	})
+				// })
+			})
+		})
 	})
 }
 
@@ -836,6 +870,15 @@ func EqBuildOptionsWithOverrideGroupID(gid int) gomock.Matcher {
 		description: fmt.Sprintf("GID=%d", gid),
 		equals: func(o pack.BuildOptions) bool {
 			return o.GroupID == gid
+		},
+	}
+}
+
+func EqBuildOptionsWithPreviousImage(prevImage string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("Previous image=%s", prevImage),
+		equals: func(o pack.BuildOptions) bool {
+			return o.PreviousImage == prevImage
 		},
 	}
 }
