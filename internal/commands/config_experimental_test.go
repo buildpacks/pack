@@ -94,8 +94,8 @@ func testConfigExperimental(t *testing.T, when spec.G, it spec.S) {
 			it("returns error if invalid value provided", func() {
 				cmd.SetArgs([]string{"disable-me"})
 				h.AssertError(t, cmd.Execute(), fmt.Sprintf("invalid value %s provided", style.Symbol("disable-me")))
-				//output := outBuf.String()
-				//h.AssertContains(t, output, "Experimental features disabled.")
+				// output := outBuf.String()
+				// h.AssertContains(t, output, "Experimental features disabled.")
 				cfg, err := config.Read(configPath)
 				h.AssertNil(t, err)
 				h.AssertEq(t, cfg.Experimental, false)

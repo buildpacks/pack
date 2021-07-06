@@ -93,7 +93,7 @@ func copyDirWindows(ctx context.Context, ctrClient client.CommonAPIClient, conta
 				"cmd",
 				"/c",
 
-				//xcopy args
+				// xcopy args
 				// e - recursively create subdirectories
 				// h - copy hidden and system files
 				// b - copy symlinks, do not dereference
@@ -185,10 +185,10 @@ func createReader(src, dst string, uid, gid int, includeRoot bool, fileFilter fu
 	return archive.ReadZipAsTar(src, dst, uid, gid, -1, false, fileFilter), nil
 }
 
-//EnsureVolumeAccess grants full access permissions to volumes for UID/GID-based user
-//When UID/GID are 0 it grants explicit full access to BUILTIN\Administrators and any other UID/GID grants full access to BUILTIN\Users
-//Changing permissions on volumes through stopped containers does not work on Docker for Windows so we start the container and make change using icacls
-//See: https://github.com/moby/moby/issues/40771
+// EnsureVolumeAccess grants full access permissions to volumes for UID/GID-based user
+// When UID/GID are 0 it grants explicit full access to BUILTIN\Administrators and any other UID/GID grants full access to BUILTIN\Users
+// Changing permissions on volumes through stopped containers does not work on Docker for Windows so we start the container and make change using icacls
+// See: https://github.com/moby/moby/issues/40771
 func EnsureVolumeAccess(uid, gid int, os string, volumeNames ...string) ContainerOperation {
 	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
 		if os != "windows" {
@@ -210,7 +210,7 @@ func EnsureVolumeAccess(uid, gid int, os string, volumeNames ...string) Containe
 				cmd += "&&"
 			}
 
-			//icacls args
+			// icacls args
 			// /grant - add new permissions instead of replacing
 			// (OI) - object inherit
 			// (CI) - container inherit
