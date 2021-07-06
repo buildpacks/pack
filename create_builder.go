@@ -205,25 +205,25 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 
 // TODO: Any way to reduce the number of options here?
 type DownloadBuildpackOptions struct {
-	registryName    string
-	relativeBaseDir string
-	imageOS         string
-	downloader      Downloader
-	logger          logging.Logger
-	imageFetcher    ImageFetcher
-	fetchOptions    image.FetchOptions
-	imageName       string
+	RegistryName    string
+	RelativeBaseDir string
+	ImageOS         string
+	Downloader      Downloader
+	Logger          logging.Logger
+	ImageFetcher    ImageFetcher
+	FetchOptions    image.FetchOptions
+	ImageName       string
 }
 
 func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBuildpackOptions) (dist.Buildpack, []dist.Buildpack, error) {
 	var err error
 	var locatorType buildpack.LocatorType
-	if buildpackURI == "" && opts.imageName != "" {
-		opts.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
-		buildpackURI = opts.imageName
+	if buildpackURI == "" && opts.ImageName != "" {
+		opts.Logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
+		buildpackURI = opts.ImageName
 		locatorType = buildpack.PackageLocator
 	} else {
-		locatorType, err = buildpack.GetLocatorType(buildpackURI, opts.relativeBaseDir, []dist.BuildpackInfo{})
+		locatorType, err = buildpack.GetLocatorType(buildpackURI, opts.RelativeBaseDir, []dist.BuildpackInfo{})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -234,16 +234,16 @@ func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBu
 	switch locatorType {
 	case buildpack.PackageLocator:
 		imageName := buildpack.ParsePackageLocator(buildpackURI)
-		opts.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
-		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, imageName, opts.imageFetcher, opts.fetchOptions)
+		opts.Logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
+		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, imageName, opts.ImageFetcher, opts.FetchOptions)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(buildpackURI))
 		}
 	case buildpack.RegistryLocator:
-		opts.logger.Debugf("Downloading buildpack from registry: %s", style.Symbol(buildpackURI))
-		registry, err := (*Client)(nil).getRegistry(opts.logger, opts.registryName)
+		opts.Logger.Debugf("Downloading buildpack from registry: %s", style.Symbol(buildpackURI))
+		registry, err := (*Client)(nil).getRegistry(opts.Logger, opts.RegistryName)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "invalid registry '%s'", opts.registryName)
+			return nil, nil, errors.Wrapf(err, "invalid registry '%s'", opts.RegistryName)
 		}
 
 		registryBp, err := registry.LocateBuildpack(buildpackURI)
@@ -251,24 +251,24 @@ func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBu
 			return nil, nil, errors.Wrapf(err, "locating in registry %s", style.Symbol(buildpackURI))
 		}
 
-		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, registryBp.Address, opts.imageFetcher, opts.fetchOptions)
+		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, registryBp.Address, opts.ImageFetcher, opts.FetchOptions)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(buildpackURI))
 		}
 	case buildpack.URILocator:
-		buildpackURI, err = paths.FilePathToURI(buildpackURI, opts.relativeBaseDir)
+		buildpackURI, err = paths.FilePathToURI(buildpackURI, opts.RelativeBaseDir)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "making absolute: %s", style.Symbol(buildpackURI))
 		}
 
-		opts.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(buildpackURI))
+		opts.Logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(buildpackURI))
 
-		blob, err := opts.downloader.Download(ctx, buildpackURI)
+		blob, err := opts.Downloader.Download(ctx, buildpackURI)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(buildpackURI))
 		}
 
-		mainBP, depBPs, err = decomposeBuildpack(blob, opts.imageOS)
+		mainBP, depBPs, err = decomposeBuildpack(blob, opts.ImageOS)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from %s", style.Symbol(buildpackURI))
 		}
@@ -288,14 +288,14 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 		}
 
 		mainBP, depBPs, err := DownloadBuildpack(ctx, b.URI, DownloadBuildpackOptions{
-			registryName:    opts.Registry,
-			imageOS:         imageOS,
-			relativeBaseDir: opts.RelativeBaseDir,
-			logger:          c.logger,
-			downloader:      c.downloader,
-			imageFetcher:    c.imageFetcher,
-			fetchOptions:    image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy},
-			imageName:       b.ImageName,
+			RegistryName:    opts.Registry,
+			ImageOS:         imageOS,
+			RelativeBaseDir: opts.RelativeBaseDir,
+			Logger:          c.logger,
+			Downloader:      c.downloader,
+			ImageFetcher:    c.imageFetcher,
+			FetchOptions:    image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy},
+			ImageName:       b.ImageName,
 		})
 
 		err = validateBuildpack(mainBP, b.URI, b.ID, b.Version)
