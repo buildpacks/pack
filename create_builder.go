@@ -203,16 +203,22 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 	return lifecycle, nil
 }
 
-// TODO: Any way to reduce the number of options here?
 type DownloadBuildpackOptions struct {
-	RegistryName    string
+	RegistryName string
+
+	// The base directory to use to resolve relative assets
 	RelativeBaseDir string
-	ImageOS         string
-	Downloader      Downloader
-	Logger          logging.Logger
-	ImageFetcher    ImageFetcher
-	FetchOptions    image.FetchOptions
-	ImageName       string
+
+	// The OS of the builder image
+	ImageOS string
+
+	Downloader   Downloader
+	Logger       logging.Logger
+	ImageFetcher ImageFetcher
+	FetchOptions image.FetchOptions
+
+	// Deprecated, the older alternative to buildpack URI
+	ImageName string
 }
 
 func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBuildpackOptions) (dist.Buildpack, []dist.Buildpack, error) {
@@ -274,7 +280,6 @@ func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBu
 		}
 	default:
 		return nil, nil, fmt.Errorf("error reading %s: invalid locator: %s", buildpackURI, locatorType)
-
 	}
 	return mainBP, depBPs, nil
 }
@@ -297,6 +302,9 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 			FetchOptions:    image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy},
 			ImageName:       b.ImageName,
 		})
+		if err != nil {
+			return errors.Wrap(err, "downloading buildpack")
+		}
 
 		err = validateBuildpack(mainBP, b.URI, b.ID, b.Version)
 		if err != nil {
