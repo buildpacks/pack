@@ -63,7 +63,7 @@ func NewFetcher(logger logging.Logger, docker client.CommonAPIClient, opts ...Fe
 var ErrNotFound = errors.New("not found")
 
 func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) (imgutil.Image, error) {
-	name, err := pname.TranslateRegistry(name, f.registryMirrors)
+	name, err := pname.TranslateRegistry(name, f.registryMirrors, f.logger)
 	if err != nil {
 		return nil, err
 	}

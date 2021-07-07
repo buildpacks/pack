@@ -4,9 +4,12 @@ import (
 	"fmt"
 
 	gname "github.com/google/go-containerregistry/pkg/name"
+
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/logging"
 )
 
-func TranslateRegistry(name string, registryMirrors map[string]string) (string, error) {
+func TranslateRegistry(name string, registryMirrors map[string]string, logger logging.Logger) (string, error) {
 	if registryMirrors == nil {
 		return name, nil
 	}
@@ -28,6 +31,7 @@ func TranslateRegistry(name string, registryMirrors map[string]string) (string, 
 		return "", err
 	}
 
+	logger.Infof("Using mirror %s for %s", style.Symbol(refName), name)
 	return refName, nil
 }
 

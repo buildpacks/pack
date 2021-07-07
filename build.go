@@ -289,7 +289,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	runImageName, err = pname.TranslateRegistry(runImageName, c.registryMirrors)
+	runImageName, err = pname.TranslateRegistry(runImageName, c.registryMirrors, c.logger)
 	if err != nil {
 		return err
 	}
