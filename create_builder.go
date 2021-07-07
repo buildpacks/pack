@@ -247,12 +247,12 @@ func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBu
 		}
 	case buildpack.RegistryLocator:
 		opts.Logger.Debugf("Downloading buildpack from registry: %s", style.Symbol(buildpackURI))
-		registry, err := (*Client)(nil).getRegistry(opts.Logger, opts.RegistryName)
+		registryCache, err := (*Client)(nil).getRegistry(opts.Logger, opts.RegistryName)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid registry '%s'", opts.RegistryName)
 		}
 
-		registryBp, err := registry.LocateBuildpack(buildpackURI)
+		registryBp, err := registryCache.LocateBuildpack(buildpackURI)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "locating in registry %s", style.Symbol(buildpackURI))
 		}
