@@ -31,6 +31,8 @@ type Build struct {
 
 type Project struct {
 	Name     string         `toml:"name"`
+	Version  string         `toml:"version"`
+	SourceURL string        `toml:"source-url"`
 	Licenses []dist.License `toml:"licenses"`
 }
 
