@@ -19,11 +19,11 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/blob"
 	pubbldr "github.com/buildpacks/pack/builder"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/image"
+	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	cfg "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"

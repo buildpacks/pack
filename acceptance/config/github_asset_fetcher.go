@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
-	"github.com/buildpacks/pack/blob"
+	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/logging"
 )
 

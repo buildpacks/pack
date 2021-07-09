@@ -10,7 +10,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/blob"
+	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/image"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/config"
