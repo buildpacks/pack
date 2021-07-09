@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/logging"
 
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
@@ -204,6 +203,7 @@ func (c *Client) fetchLifecycle(ctx context.Context, config pubbldr.LifecycleCon
 }
 
 type DownloadBuildpackOptions struct {
+	// Buildpack registry name. Defines where all registry buildpacks will be pulled from.
 	RegistryName string
 
 	// The base directory to use to resolve relative assets
@@ -212,20 +212,17 @@ type DownloadBuildpackOptions struct {
 	// The OS of the builder image
 	ImageOS string
 
-	Downloader   Downloader
-	Logger       logging.Logger
-	ImageFetcher ImageFetcher
 	FetchOptions image.FetchOptions
 
 	// Deprecated, the older alternative to buildpack URI
 	ImageName string
 }
 
-func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBuildpackOptions) (dist.Buildpack, []dist.Buildpack, error) {
+func (c *Client) DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBuildpackOptions) (dist.Buildpack, []dist.Buildpack, error) {
 	var err error
 	var locatorType buildpack.LocatorType
 	if buildpackURI == "" && opts.ImageName != "" {
-		opts.Logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
+		c.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
 		buildpackURI = opts.ImageName
 		locatorType = buildpack.PackageLocator
 	} else {
@@ -240,14 +237,14 @@ func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBu
 	switch locatorType {
 	case buildpack.PackageLocator:
 		imageName := buildpack.ParsePackageLocator(buildpackURI)
-		opts.Logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
-		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, imageName, opts.ImageFetcher, opts.FetchOptions)
+		c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
+		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, opts.FetchOptions)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(buildpackURI))
 		}
 	case buildpack.RegistryLocator:
-		opts.Logger.Debugf("Downloading buildpack from registry: %s", style.Symbol(buildpackURI))
-		registryCache, err := (*Client)(nil).getRegistry(opts.Logger, opts.RegistryName)
+		c.logger.Debugf("Downloading buildpack from registry: %s", style.Symbol(buildpackURI))
+		registryCache, err := c.getRegistry(c.logger, opts.RegistryName)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "invalid registry '%s'", opts.RegistryName)
 		}
@@ -257,7 +254,7 @@ func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBu
 			return nil, nil, errors.Wrapf(err, "locating in registry %s", style.Symbol(buildpackURI))
 		}
 
-		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, registryBp.Address, opts.ImageFetcher, opts.FetchOptions)
+		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, opts.FetchOptions)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(buildpackURI))
 		}
@@ -267,9 +264,9 @@ func DownloadBuildpack(ctx context.Context, buildpackURI string, opts DownloadBu
 			return nil, nil, errors.Wrapf(err, "making absolute: %s", style.Symbol(buildpackURI))
 		}
 
-		opts.Logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(buildpackURI))
+		c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(buildpackURI))
 
-		blob, err := opts.Downloader.Download(ctx, buildpackURI)
+		blob, err := c.downloader.Download(ctx, buildpackURI)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(buildpackURI))
 		}
@@ -292,13 +289,10 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 			return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
 		}
 
-		mainBP, depBPs, err := DownloadBuildpack(ctx, b.URI, DownloadBuildpackOptions{
+		mainBP, depBPs, err := c.DownloadBuildpack(ctx, b.URI, DownloadBuildpackOptions{
 			RegistryName:    opts.Registry,
 			ImageOS:         imageOS,
 			RelativeBaseDir: opts.RelativeBaseDir,
-			Logger:          c.logger,
-			Downloader:      c.downloader,
-			ImageFetcher:    c.imageFetcher,
 			FetchOptions:    image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy},
 			ImageName:       b.ImageName,
 		})
