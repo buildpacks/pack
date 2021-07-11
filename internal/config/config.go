@@ -12,15 +12,16 @@ import (
 
 type Config struct {
 	// Deprecated: Use DefaultRegistryName instead. See https://github.com/buildpacks/pack/issues/747.
-	DefaultRegistry     string           `toml:"default-registry-url,omitempty"`
-	DefaultRegistryName string           `toml:"default-registry,omitempty"`
-	DefaultBuilder      string           `toml:"default-builder-image,omitempty"`
-	PullPolicy          string           `toml:"pull-policy,omitempty"`
-	Experimental        bool             `toml:"experimental,omitempty"`
-	RunImages           []RunImage       `toml:"run-images"`
-	TrustedBuilders     []TrustedBuilder `toml:"trusted-builders,omitempty"`
-	Registries          []Registry       `toml:"registries,omitempty"`
-	LifecycleImage      string           `toml:"lifecycle-image,omitempty"`
+	DefaultRegistry     string            `toml:"default-registry-url,omitempty"`
+	DefaultRegistryName string            `toml:"default-registry,omitempty"`
+	DefaultBuilder      string            `toml:"default-builder-image,omitempty"`
+	PullPolicy          string            `toml:"pull-policy,omitempty"`
+	Experimental        bool              `toml:"experimental,omitempty"`
+	RunImages           []RunImage        `toml:"run-images"`
+	TrustedBuilders     []TrustedBuilder  `toml:"trusted-builders,omitempty"`
+	Registries          []Registry        `toml:"registries,omitempty"`
+	LifecycleImage      string            `toml:"lifecycle-image,omitempty"`
+	RegistryMirrors     map[string]string `toml:"registry-mirrors,omitempty"`
 }
 
 type Registry struct {

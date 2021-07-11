@@ -110,4 +110,16 @@ func testClient(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, cl.experimental, true)
 		})
 	})
+
+	when("#WithRegistryMirror", func() {
+		it("uses registry mirrors provided", func() {
+			registryMirrors := map[string]string{
+				"index.docker.io": "10.0.0.1",
+			}
+
+			cl, err := NewClient(WithRegistryMirrors(registryMirrors))
+			h.AssertNil(t, err)
+			h.AssertEq(t, cl.registryMirrors, registryMirrors)
+		})
+	})
 }

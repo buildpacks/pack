@@ -46,6 +46,7 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, subject.DefaultBuilder, "")
 				h.AssertEq(t, len(subject.RunImages), 0)
 				h.AssertEq(t, subject.Experimental, false)
+				h.AssertEq(t, len(subject.RegistryMirrors), 0)
 			})
 		})
 	})
@@ -68,7 +69,11 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 					TrustedBuilders: []config.TrustedBuilder{
 						{Name: "some-trusted-builder"},
 					},
+					RegistryMirrors: map[string]string{
+						"index.docker.io": "10.0.0.1",
+					},
 				}, configPath))
+
 				b, err := ioutil.ReadFile(configPath)
 				h.AssertNil(t, err)
 				h.AssertContains(t, string(b), `default-builder-image = "some/builder"`)
@@ -82,6 +87,9 @@ func testConfig(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertContains(t, string(b), `[[trusted-builders]]
   name = "some-trusted-builder"`)
+
+				h.AssertContains(t, string(b), `[registry-mirrors]
+  "index.docker.io" = "10.0.0.1"`)
 			})
 		})
 

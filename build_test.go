@@ -2206,6 +2206,20 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, fakeLifecycle.Opts.GID, 2)
 			})
 		})
+
+		when("RegistryMirrors option", func() {
+			it("translates run image before passing to lifecycle", func() {
+				subject.registryMirrors = map[string]string{
+					"index.docker.io": "10.0.0.1",
+				}
+
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Builder: defaultBuilderName,
+					Image:   "example.com/some/repo:tag",
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.RunImage, "10.0.0.1/default/run:latest")
+			})
+		})
 	})
 }
 
