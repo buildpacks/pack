@@ -427,6 +427,33 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("env vars allow to use quotes in value", func() {
+			it("sets flag variables", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
+						"KEY1": `VALUE"`,
+					})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--env", `KEY1="VALUE"""`})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("env vars are passed as coma separated flag", func() {
+			it("sets flag variables", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
+						"KEY1": "VALUE1",
+						"KEY2": "VALUE2,VALUE3",
+					})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--env", `KEY1=VALUE1,KEY2="VALUE2,VALUE3"`})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
 		when("env vars are passed as flags", func() {
 			var (
 				tmpVar   = "tmpVar"
