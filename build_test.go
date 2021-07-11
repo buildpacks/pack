@@ -42,6 +42,7 @@ import (
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	rg "github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/project"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -1230,6 +1231,36 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
 						})
 					})
+
+					it("adds the buildpack from the project descriptor", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: project.Descriptor{
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										URI: server.URL(),
+									}},
+								},
+							},
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.FromImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.Order(), dist.Order{
+							{Group: []dist.BuildpackRef{
+								{BuildpackInfo: dist.BuildpackInfo{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"}},
+							}},
+						})
+						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+							{ID: "some-other-buildpack-id", Version: "some-other-buildpack-version"},
+						})
+					})
 				})
 
 				when("added buildpack's mixins are not satisfied", func() {
@@ -1248,6 +1279,134 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						h.AssertError(t, err, "validating stack mixins: buildpack 'some-other-buildpack-id@some-other-buildpack-version' requires missing mixin(s): build:mixinB, mixinA, run:mixinC")
+					})
+				})
+
+				when("buildpack is inline", func() {
+					var (
+						tmpDir string
+					)
+
+					it.Before(func() {
+						var err error
+						tmpDir, err = ioutil.TempDir("", "project-desc")
+						h.AssertNil(t, err)
+					})
+
+					it.After(func() {
+						err := os.RemoveAll(tmpDir)
+						h.AssertNil(t, err)
+					})
+
+					it("all buildpacks are added to ephemeral builder", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: project.Descriptor{
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										ID: "my/inline",
+										Script: project.Script{
+											API:    "0.4",
+											Inline: "touch foo.txt",
+										},
+									}},
+								},
+							},
+							ProjectDescriptorBaseDir: tmpDir,
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.FromImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.Order(), dist.Order{
+							{Group: []dist.BuildpackRef{
+								{BuildpackInfo: dist.BuildpackInfo{ID: "my/inline", Version: "0.0.0"}},
+							}},
+						})
+						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+							{ID: "my/inline", Version: "0.0.0"},
+						})
+					})
+
+					it("fails if there is no API", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: project.Descriptor{
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										ID: "my/inline",
+										Script: project.Script{
+											Inline: "touch foo.txt",
+										},
+									}},
+								},
+							},
+							ProjectDescriptorBaseDir: tmpDir,
+						})
+
+						h.AssertEq(t, "Missing API version for inline buildpack", err.Error())
+					})
+
+					it("fails if there is no ID", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: project.Descriptor{
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										Script: project.Script{
+											API:    "0.4",
+											Inline: "touch foo.txt",
+										},
+									}},
+								},
+							},
+							ProjectDescriptorBaseDir: tmpDir,
+						})
+
+						h.AssertEq(t, "Invalid buildpack defined in project descriptor", err.Error())
+					})
+
+					it("ignores script if there is an id and version", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: project.Descriptor{
+								Build: project.Build{
+									Buildpacks: []project.Buildpack{{
+										ID:      "buildpack.1.id",
+										Version: "buildpack.1.version",
+										Script: project.Script{
+											Inline: "touch foo.txt",
+										},
+									}},
+								},
+							},
+							ProjectDescriptorBaseDir: tmpDir,
+						})
+
+						h.AssertNil(t, err)
+						h.AssertEq(t, fakeLifecycle.Opts.Builder.Name(), defaultBuilderImage.Name())
+						bldr, err := builder.FromImage(defaultBuilderImage)
+						h.AssertNil(t, err)
+						h.AssertEq(t, bldr.Order(), dist.Order{
+							{Group: []dist.BuildpackRef{
+								{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack.1.id", Version: "buildpack.1.version"}},
+							}},
+						})
+						h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{
+							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
+							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
+						})
 					})
 				})
 

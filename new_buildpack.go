@@ -49,41 +49,10 @@ type NewBuildpackOptions struct {
 }
 
 func (c *Client) NewBuildpack(ctx context.Context, opts NewBuildpackOptions) error {
-	api, err := api.NewVersion(opts.API)
+	err := createBuildpackTOML(opts.Path, opts.ID, opts.Version, opts.API, opts.Stacks, c)
 	if err != nil {
 		return err
 	}
-
-	buildpackTOML := dist.BuildpackDescriptor{
-		API:    api,
-		Stacks: opts.Stacks,
-		Info: dist.BuildpackInfo{
-			ID:      opts.ID,
-			Version: opts.Version,
-		},
-	}
-
-	// The following line's comment is for gosec, it will ignore rule 301 in this case
-	// G301: Expect directory permissions to be 0750 or less
-	/* #nosec G301 */
-	if err := os.MkdirAll(opts.Path, 0755); err != nil {
-		return err
-	}
-
-	buildpackTOMLPath := filepath.Join(opts.Path, "buildpack.toml")
-	_, err = os.Stat(buildpackTOMLPath)
-	if os.IsNotExist(err) {
-		f, err := os.Create(buildpackTOMLPath)
-		if err != nil {
-			return err
-		}
-		if err := toml.NewEncoder(f).Encode(buildpackTOML); err != nil {
-			return err
-		}
-		defer f.Close()
-		c.logger.Infof("    %s  buildpack.toml", style.Symbol("create"))
-	}
-
 	return createBashBuildpack(opts.Path, c)
 }
 
@@ -119,7 +88,50 @@ func createBinScript(path, name, contents string, c *Client) error {
 			return err
 		}
 
-		c.logger.Infof("    %s  bin/%s", style.Symbol("create"), name)
+		if c != nil {
+			c.logger.Infof("    %s  bin/%s", style.Symbol("create"), name)
+		}
 	}
+	return nil
+}
+
+func createBuildpackTOML(path, id, version, apiStr string, stacks []dist.Stack, c *Client) error {
+	api, err := api.NewVersion(apiStr)
+	if err != nil {
+		return err
+	}
+
+	buildpackTOML := dist.BuildpackDescriptor{
+		API:    api,
+		Stacks: stacks,
+		Info: dist.BuildpackInfo{
+			ID:      id,
+			Version: version,
+		},
+	}
+
+	// The following line's comment is for gosec, it will ignore rule 301 in this case
+	// G301: Expect directory permissions to be 0750 or less
+	/* #nosec G301 */
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return err
+	}
+
+	buildpackTOMLPath := filepath.Join(path, "buildpack.toml")
+	_, err = os.Stat(buildpackTOMLPath)
+	if os.IsNotExist(err) {
+		f, err := os.Create(buildpackTOMLPath)
+		if err != nil {
+			return err
+		}
+		if err := toml.NewEncoder(f).Encode(buildpackTOML); err != nil {
+			return err
+		}
+		defer f.Close()
+		if c != nil {
+			c.logger.Infof("    %s  buildpack.toml", style.Symbol("create"))
+		}
+	}
+
 	return nil
 }
