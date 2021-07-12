@@ -39,6 +39,7 @@ type Fetcher struct {
 	docker          client.CommonAPIClient
 	logger          logging.Logger
 	registryMirrors map[string]string
+	writer          io.Writer
 }
 
 type FetchOptions struct {

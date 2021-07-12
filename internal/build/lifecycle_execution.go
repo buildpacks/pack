@@ -3,6 +3,9 @@ package build
 import (
 	"context"
 	"fmt"
+	"github.com/buildpacks/pack/internal/screen"
+	"github.com/rivo/tview"
+	"io/ioutil"
 	"math/rand"
 	"strconv"
 
@@ -34,6 +37,7 @@ type LifecycleExecution struct {
 	os           string
 	mountPaths   mountPaths
 	opts         LifecycleOptions
+	app          *tview.Application
 }
 
 func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, opts LifecycleOptions) (*LifecycleExecution, error) {
@@ -59,6 +63,10 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 		opts:         opts,
 		os:           osType,
 		mountPaths:   mountPathsForOS(osType, opts.Workspace),
+	}
+
+	if opts.Interactive {
+		exec.app = tview.NewApplication()
 	}
 
 	return exec, nil
@@ -131,9 +139,14 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 
 	launchCache := cache.NewVolumeCache(l.opts.Image, "launch", l.docker)
 
+	if l.opts.Interactive {
+		l.logger = logging.New(ioutil.Discard)
+		go l.app.Run()
+	}
+
 	if !l.opts.UseCreator {
 		l.logger.Info(style.Step("DETECTING"))
-		if err := l.Detect(ctx, l.opts.Network, l.opts.Volumes, phaseFactory); err != nil {
+		if err := l.Detect(ctx, l.opts.Network, l.opts.Volumes, phaseFactory, l.opts.Interactive); err != nil {
 			return err
 		}
 
@@ -230,7 +243,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 	return create.Run(ctx)
 }
 
-func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, volumes []string, phaseFactory PhaseFactory, interactive bool) error {
 	flags := []string{"-app", l.mountPaths.appDir()}
 	configProvider := NewPhaseConfigProvider(
 		"detector",
@@ -250,6 +263,13 @@ func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, vol
 
 	detect := phaseFactory.New(configProvider)
 	defer detect.Cleanup()
+
+	if interactive {
+		scr := screen.NewDetect(l.app)
+		defer scr.Stop()
+		scr.Start()
+	}
+
 	return detect.Run(ctx)
 }
 

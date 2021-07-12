@@ -162,6 +162,9 @@ type BuildOptions struct {
 
 	// User's group id used to build the image
 	GroupID int
+
+	// TODO:
+	Interactive bool
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -317,6 +320,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		CacheImage:         opts.CacheImage,
 		Workspace:          opts.Workspace,
 		GID:                opts.GroupID,
+		Interactive:        opts.Interactive,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
