@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 
+	pcontainer "github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -28,6 +29,7 @@ type PhaseConfigProvider struct {
 	containerOps []ContainerOperation
 	infoWriter   io.Writer
 	errorWriter  io.Writer
+	handler      pcontainer.Handler
 }
 
 func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops ...PhaseConfigProviderOperation) *PhaseConfigProvider {
@@ -73,6 +75,11 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	lifecycleExec.logger.Debug("Host Settings:")
 	lifecycleExec.logger.Debugf("  Binds: %s", style.Symbol(strings.Join(provider.hostConf.Binds, " ")))
 	lifecycleExec.logger.Debugf("  Network Mode: %s", style.Symbol(string(provider.hostConf.NetworkMode)))
+
+	if lifecycleExec.opts.Interactive {
+		provider.handler = lifecycleExec.opts.Termui.Handler()
+	}
+
 	return provider
 }
 
@@ -86,6 +93,10 @@ func (p *PhaseConfigProvider) ContainerOps() []ContainerOperation {
 
 func (p *PhaseConfigProvider) HostConfig() *container.HostConfig {
 	return p.hostConf
+}
+
+func (p *PhaseConfigProvider) Handler() pcontainer.Handler {
+	return p.handler
 }
 
 func (p *PhaseConfigProvider) Name() string {

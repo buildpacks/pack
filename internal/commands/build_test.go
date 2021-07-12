@@ -780,6 +780,15 @@ builder = "my-builder"
 				})
 			})
 		})
+
+		when("interactive flag is provided but experimental isn't set in the config", func() {
+			it("errors with a descriptive message", func() {
+				command.SetArgs([]string{"image", "--interactive"})
+				err := command.Execute()
+				h.AssertNotNil(t, err)
+				h.AssertError(t, err, "Interactive mode is currently experimental.")
+			})
+		})
 	})
 }
 

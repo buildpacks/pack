@@ -29,6 +29,7 @@ func (m *DefaultPhaseFactory) New(provider *PhaseConfigProvider) RunnerCleaner {
 		docker:       m.lifecycleExec.docker,
 		infoWriter:   provider.InfoWriter(),
 		errorWriter:  provider.ErrorWriter(),
+		handler:      provider.handler,
 		uid:          m.lifecycleExec.opts.Builder.UID(),
 		gid:          m.lifecycleExec.opts.Builder.GID(),
 		appPath:      m.lifecycleExec.opts.AppPath,

@@ -12,7 +12,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Run(ctx context.Context, docker client.CommonAPIClient, ctrID string, out, errOut io.Writer) error {
+type Handler func(bodyChan <-chan dcontainer.ContainerWaitOKBody, errChan <-chan error, reader io.Reader) error
+
+func RunWithHandler(ctx context.Context, docker client.CommonAPIClient, ctrID string, handler Handler) error {
 	bodyChan, errChan := docker.ContainerWait(ctx, ctrID, dcontainer.WaitConditionNextExit)
 
 	resp, err := docker.ContainerAttach(ctx, ctrID, types.ContainerAttachOptions{
@@ -29,25 +31,31 @@ func Run(ctx context.Context, docker client.CommonAPIClient, ctrID string, out, 
 		return errors.Wrap(err, "container start")
 	}
 
-	copyErr := make(chan error)
-	go func() {
-		_, err := stdcopy.StdCopy(out, errOut, resp.Reader)
-		defer optionallyCloseWriter(out)
-		defer optionallyCloseWriter(errOut)
+	return handler(bodyChan, errChan, resp.Reader)
+}
 
-		copyErr <- err
-	}()
+func DefaultHandler(out, errOut io.Writer) Handler {
+	return func(bodyChan <-chan dcontainer.ContainerWaitOKBody, errChan <-chan error, reader io.Reader) error {
+		copyErr := make(chan error)
+		go func() {
+			_, err := stdcopy.StdCopy(out, errOut, reader)
+			defer optionallyCloseWriter(out)
+			defer optionallyCloseWriter(errOut)
 
-	select {
-	case body := <-bodyChan:
-		if body.StatusCode != 0 {
-			return fmt.Errorf("failed with status code: %d", body.StatusCode)
+			copyErr <- err
+		}()
+
+		select {
+		case body := <-bodyChan:
+			if body.StatusCode != 0 {
+				return fmt.Errorf("failed with status code: %d", body.StatusCode)
+			}
+		case err := <-errChan:
+			return err
 		}
-	case err := <-errChan:
-		return err
-	}
 
-	return <-copyErr
+		return <-copyErr
+	}
 }
 
 func optionallyCloseWriter(writer io.Writer) error {

@@ -92,7 +92,7 @@ func testContainerOps(t *testing.T, when spec.G, it spec.S) {
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(&outBuf, &errBuf))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, errBuf.String(), "")
@@ -147,7 +147,7 @@ lrwxrwxrwx    1 123      456 (.*) fake-app-symlink -> fake-app-file
 				err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 				h.AssertNil(t, err)
 
-				err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+				err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(&outBuf, &errBuf))
 				h.AssertNil(t, err)
 
 				h.AssertEq(t, errBuf.String(), "")
@@ -196,7 +196,7 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(&outBuf, &errBuf))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, errBuf.String(), "")
@@ -226,7 +226,7 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			err = copyDirOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(&outBuf, &errBuf))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, errBuf.String(), "")
@@ -276,7 +276,7 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(&outBuf, &errBuf))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, errBuf.String(), "")
@@ -319,7 +319,7 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(&outBuf, &errBuf))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, errBuf.String(), "")
@@ -364,7 +364,7 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(&outBuf, &errBuf))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, errBuf.String(), "")
@@ -409,7 +409,7 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
-			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(&outBuf, &errBuf))
 			h.AssertEq(t, errBuf.String(), "")
 			h.AssertNil(t, err)
 
@@ -458,7 +458,7 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			initVolumeOp := build.EnsureVolumeAccess(123, 456, osType, ctrVolumes[0], ctrVolumes[0])
 			err = initVolumeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
-			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(&outBuf, &errBuf))
 			h.AssertNil(t, err)
 
 			h.AssertEq(t, errBuf.String(), "")

@@ -2,6 +2,7 @@ package build_test
 
 import (
 	"bytes"
+	"io"
 	"math/rand"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
 	"github.com/heroku/color"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -75,6 +77,20 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
 
 				h.AssertEq(t, phaseConfigProvider.HostConfig().Isolation, container.IsolationProcess)
+			})
+		})
+
+		when("building with interactive mode", func() {
+			it("returns a phase config provider with interactive args", func() {
+				handler := func(bodyChan <-chan container.ContainerWaitOKBody, errChan <-chan error, reader io.Reader) error {
+					return errors.New("i was called")
+				}
+
+				fakeTermui := fakes.NewFakeTermui(handler)
+				lifecycle := newTestLifecycleExec(t, false, fakes.WithTermui(fakeTermui))
+				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
+
+				h.AssertError(t, phaseConfigProvider.Handler()(nil, nil, nil), "i was called")
 			})
 		})
 

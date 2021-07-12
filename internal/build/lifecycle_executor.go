@@ -5,8 +5,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/buildpacks/pack/internal/cache"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/buildpacks/lifecycle/platform"
@@ -14,6 +12,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/cache"
+	"github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -47,6 +47,11 @@ type Cache interface {
 	Type() cache.Type
 }
 
+type Termui interface {
+	Run(funk func()) error
+	Handler() container.Handler
+}
+
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 }
@@ -63,6 +68,8 @@ type LifecycleOptions struct {
 	Publish            bool
 	TrustBuilder       bool
 	UseCreator         bool
+	Interactive        bool
+	Termui             Termui
 	DockerHost         string
 	CacheImage         string
 	HTTPProxy          string
@@ -87,6 +94,14 @@ func (l *LifecycleExecutor) Execute(ctx context.Context, opts LifecycleOptions) 
 	if err != nil {
 		return err
 	}
-	defer lifecycleExec.Cleanup()
-	return lifecycleExec.Run(ctx, NewDefaultPhaseFactory)
+
+	if !opts.Interactive {
+		defer lifecycleExec.Cleanup()
+		return lifecycleExec.Run(ctx, NewDefaultPhaseFactory)
+	}
+
+	return opts.Termui.Run(func() {
+		defer lifecycleExec.Cleanup()
+		lifecycleExec.Run(ctx, NewDefaultPhaseFactory)
+	})
 }
