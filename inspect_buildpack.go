@@ -8,10 +8,10 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/image"
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/style"
 )
 
@@ -69,7 +69,7 @@ func (c *Client) InspectBuildpack(opts InspectBuildpackOptions) (*BuildpackInfo,
 }
 
 func metadataFromRegistry(client *Client, name, registry string) (buildpackMd buildpackage.Metadata, layersMd dist.BuildpackLayers, err error) {
-	registryCache, err := client.getRegistry(client.logger, registry)
+	registryCache, err := getRegistry(client.logger, registry)
 	if err != nil {
 		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("invalid registry %s: %q", registry, err)
 	}

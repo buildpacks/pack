@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/image"
 	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/image"
 )
 
 type FakeInspectableFetcher struct {

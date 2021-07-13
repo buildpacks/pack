@@ -16,8 +16,8 @@ import (
 
 	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/image"
 	cfg "github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/registry"
 	h "github.com/buildpacks/pack/testhelpers"

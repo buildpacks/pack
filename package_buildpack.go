@@ -7,7 +7,6 @@ import (
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/image"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
@@ -99,7 +98,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 		if dep.ImageName != "" {
 			c.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
-			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
+			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, !opts.Publish, opts.PullPolicy)
 			if err != nil {
 				return err
 			}
@@ -140,14 +139,14 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 			case buildpack.PackageLocator:
 				imageName := buildpack.ParsePackageLocator(dep.URI)
 				c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
-				mainBP, deps, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
+				mainBP, deps, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, !opts.Publish, opts.PullPolicy)
 				if err != nil {
 					return err
 				}
 
 				depBPs = append([]dist.Buildpack{mainBP}, deps...)
 			case buildpack.RegistryLocator:
-				registryCache, err := c.getRegistry(c.logger, opts.Registry)
+				registryCache, err := getRegistry(c.logger, opts.Registry)
 				if err != nil {
 					return errors.Wrapf(err, "invalid registry '%s'", opts.Registry)
 				}
@@ -157,7 +156,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 					return errors.Wrapf(err, "locating in registry %s", style.Symbol(dep.URI))
 				}
 
-				mainBP, deps, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
+				mainBP, deps, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, !opts.Publish, opts.PullPolicy)
 				if err != nil {
 					return errors.Wrapf(err, "extracting from registry %s", style.Symbol(dep.URI))
 				}

@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/pack/image"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/registry"
 )
 
@@ -78,7 +78,7 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 
 		return cmd.Start()
 	} else if opts.Type == "git" {
-		registryCache, err := c.getRegistry(c.logger, opts.Name)
+		registryCache, err := getRegistry(c.logger, opts.Name)
 		if err != nil {
 			return err
 		}

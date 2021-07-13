@@ -11,8 +11,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/image"
 	cfg "github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/image"
 
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
