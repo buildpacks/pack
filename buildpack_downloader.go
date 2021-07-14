@@ -7,6 +7,7 @@ import (
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
@@ -65,7 +66,7 @@ func (c *buildpackDownloader) Download(ctx context.Context, buildpackURI string,
 	case buildpack.PackageLocator:
 		imageName := buildpack.ParsePackageLocator(buildpackURI)
 		c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
-		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, opts.Daemon, opts.PullPolicy)
+		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, image.FetchOptions{Daemon: opts.Daemon, PullPolicy: opts.PullPolicy})
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(buildpackURI))
 		}
@@ -81,7 +82,7 @@ func (c *buildpackDownloader) Download(ctx context.Context, buildpackURI string,
 			return nil, nil, errors.Wrapf(err, "locating in registry %s", style.Symbol(buildpackURI))
 		}
 
-		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, opts.Daemon, opts.PullPolicy)
+		mainBP, depBPs, err = extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, image.FetchOptions{Daemon: opts.Daemon, PullPolicy: opts.PullPolicy})
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "extracting from registry %s", style.Symbol(buildpackURI))
 		}

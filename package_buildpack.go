@@ -11,6 +11,7 @@ import (
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
@@ -98,7 +99,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 		if dep.ImageName != "" {
 			c.logger.Warn("The 'image' key is deprecated. Use 'uri=\"docker://...\"' instead.")
-			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, !opts.Publish, opts.PullPolicy)
+			mainBP, deps, err := extractPackagedBuildpacks(ctx, dep.ImageName, c.imageFetcher, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
 			if err != nil {
 				return err
 			}
@@ -139,7 +140,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 			case buildpack.PackageLocator:
 				imageName := buildpack.ParsePackageLocator(dep.URI)
 				c.logger.Debugf("Downloading buildpack from image: %s", style.Symbol(imageName))
-				mainBP, deps, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, !opts.Publish, opts.PullPolicy)
+				mainBP, deps, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
 				if err != nil {
 					return err
 				}
@@ -156,7 +157,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 					return errors.Wrapf(err, "locating in registry %s", style.Symbol(dep.URI))
 				}
 
-				mainBP, deps, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, !opts.Publish, opts.PullPolicy)
+				mainBP, deps, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, image.FetchOptions{Daemon: !opts.Publish, PullPolicy: opts.PullPolicy})
 				if err != nil {
 					return errors.Wrapf(err, "extracting from registry %s", style.Symbol(dep.URI))
 				}
