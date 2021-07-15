@@ -15,6 +15,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/pack/internal/paths"
 
 	"github.com/buildpacks/pack/internal/builder"
@@ -38,6 +39,7 @@ func CopyDir(src, dst string, uid, gid int, os string, includeRoot bool, fileFil
 			return errors.Wrapf(err, "create tar archive from '%s'", src)
 		}
 		defer reader.Close()
+		
 
 		if os == "windows" {
 			return copyDirWindows(ctx, ctrClient, containerID, reader, dst, stdout, stderr)
@@ -136,6 +138,54 @@ func findMount(info types.ContainerJSON, dst string) (types.MountPoint, error) {
 		}
 	}
 	return types.MountPoint{}, fmt.Errorf("no matching mount found for %s", dst)
+}
+
+//WriteProjectMetadata
+func WriteProjectMetadata(p string, metadata platform.ProjectMetadata) {
+	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
+		buf := &bytes.Buffer{}
+		err := toml.NewEncoder(buf).Encode(stack)
+		if err != nil {
+			return errors.Wrap(err, "marshaling stack metadata")
+		}
+
+		tarBuilder := archive.TarBuilder{}
+
+		tarPath := dstPath
+		if os == "windows" {
+			tarPath = paths.WindowsToSlash(dstPath)
+		}
+
+		tarBuilder.AddFile(tarPath, 0755, archive.NormalizedDateTime, buf.Bytes())
+		reader := tarBuilder.Reader(archive.DefaultTarWriterFactory())
+		defer reader.Close()
+
+		if os == "windows" {
+			dirName := paths.WindowsDir(dstPath)
+			return copyDirWindows(ctx, ctrClient, containerID, reader, dirName, stdout, stderr)
+		}
+
+		return ctrClient.CopyToContainer(ctx, containerID, "/", reader, types.CopyToContainerOptions{})
+	}
+}
+
+func createReader(src, dst string, uid, gid int, includeRoot bool, fileFilter func(string) bool) (io.ReadCloser, error) {
+	fi, err := os.Stat(src)
+	if err != nil {
+		return nil, err
+	}
+
+	if fi.IsDir() {
+		var mode int64 = -1
+		if runtime.GOOS == "windows" {
+			mode = 0777
+		}
+
+		return archive.ReadDirAsTar(src, dst, uid, gid, mode, false, includeRoot, fileFilter), nil
+	}
+
+	return archive.ReadZipAsTar(src, dst, uid, gid, -1, false, fileFilter), nil
+}
 }
 
 // WriteStackToml writes a `stack.toml` based on the StackMetadata provided to the destination path.

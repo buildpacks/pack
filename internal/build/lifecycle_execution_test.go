@@ -1777,6 +1777,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, len(configProvider.ContainerOps()), 1)
 				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteProjectMetadata")
 			})
 
 			it("configures the phase with default process type", func() {
@@ -2011,6 +2012,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, len(configProvider.ContainerOps()), 1)
 				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteProjectMetadata")
 			})
 
 			it("configures the phase with default process type", func() {

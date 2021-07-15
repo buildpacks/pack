@@ -56,7 +56,7 @@ func AssertEq(t *testing.T, actual, expected interface{}) {
 }
 
 func AssertFunctionName(t *testing.T, fn interface{}, expected string) {
-	t.Helper()
+t.Helper()
 	name := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
 	if name == "" {
 		t.Fatalf("Unable to retrieve function name for %#v. Is it a function?", fn)
