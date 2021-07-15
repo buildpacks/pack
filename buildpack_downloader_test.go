@@ -278,7 +278,6 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info.ID, "some.pkg.bp")
-
 				})
 			})
 
@@ -309,7 +308,6 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info.ID, "some.pkg.bp")
-
 				})
 			})
 
@@ -328,7 +326,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 		when("package lives on filesystem", func() {
-			it("should succesfully retrieve package from absolute path", func() {
+			it("should successfully retrieve package from absolute path", func() {
 				buildpackPath := filepath.Join("testdata", "buildpack")
 				buildpackURI, _ := paths.FilePathToURI(buildpackPath, "")
 				mockDownloader.EXPECT().Download(gomock.Any(), buildpackURI).Return(blob.NewBlob(buildpackPath), nil).AnyTimes()
@@ -336,7 +334,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, err)
 				h.AssertEq(t, mainBP.Descriptor().Info.ID, "bp.one")
 			})
-			it("should succesfully retrieve package from relative path", func() {
+			it("should successfully retrieve package from relative path", func() {
 				buildpackPath := filepath.Join("testdata", "buildpack")
 				buildpackURI, _ := paths.FilePathToURI(buildpackPath, "")
 				mockDownloader.EXPECT().Download(gomock.Any(), buildpackURI).Return(blob.NewBlob(buildpackPath), nil).AnyTimes()
@@ -443,7 +441,6 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						"extracting from registry")
 				})
 			})
-
 			when("buildpack URI is an invalid locator", func() {
 				it("errors", func() {
 					_, _, err := subject.BuildpackDownloader.Download(context.TODO(), "nonsense string here", buildpackDownloadOptions)
@@ -453,5 +450,4 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 	})
-
 }
