@@ -330,6 +330,91 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 		})
 	})
 
+	when("#WriteProjectMetadata", func() {
+		it("writes file", func() {
+			containerDir := "/layers-vol"
+			containerPath := "/layers-vol/project-metadata.toml"
+			if osType == "windows" {
+				containerDir = `c:\layers-vol`
+				containerPath = `c:\layers-vol\project-metadata.toml`
+			}
+
+			ctrCmd := []string{"ls", "-al", "/layers-vol/project-metadata.toml"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `dir /q /n c:\layers-vol\project-metadata.toml`}
+			}
+			ctx := context.Background()
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
+			h.AssertNil(t, err)
+			defer cleanupContainer(ctx, ctr.ID)
+
+			writeOp := build.WriteProjectMetadata(p string, metadata platform.ProjectMetadata{
+				RunImage: builder.RunImageMetadata{
+					Image: "image-1",
+					Mirrors: []string{
+						"mirror-1",
+						"mirror-2",
+					},
+				},
+			}, osType)
+
+			var outBuf, errBuf bytes.Buffer
+			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
+			h.AssertNil(t, err)
+
+			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, errBuf.String(), "")
+			if osType == "windows" {
+				h.AssertContains(t, outBuf.String(), `01/01/1980  12:00 AM                69 ...                    stack.toml`)
+			} else {
+				h.AssertContains(t, outBuf.String(), `-rwxr-xr-x    1 root     root            69 Jan  1  1980 /layers-vol/project-metadata.toml`)
+			}
+		})
+
+		it("has expected contents", func() {
+			containerDir := "/layers-vol"
+			containerPath := "/layers-vol/projectmetadata.toml"
+			if osType == "windows" {
+				containerDir = `c:\layers-vol`
+				containerPath = `c:\layers-vol\project-metadata.toml`
+			}
+
+			ctrCmd := []string{"cat", "/layers-vol/project-metadata.toml"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `type c:\layers-vol\project-metadata.toml`}
+			}
+
+			ctx := context.Background()
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
+			h.AssertNil(t, err)
+			defer cleanupContainer(ctx, ctr.ID)
+
+			writeOp := build.WriteProjectMetadata(p string, metadata platform.ProjectMetadata{
+				RunImage: builder.RunImageMetadata{
+					Image: "image-1",
+					Mirrors: []string{
+						"mirror-1",
+						"mirror-2",
+					},
+				},
+			}, osType)
+
+			var outBuf, errBuf bytes.Buffer
+			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
+			h.AssertNil(t, err)
+
+			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			h.AssertNil(t, err)
+
+			h.AssertEq(t, errBuf.String(), "")
+			h.AssertContains(t, outBuf.String(), `[run-image]
+  image = "image-1"
+  mirrors = ["mirror-1", "mirror-2"]
+`)
+		})
+	})
 	when("#EnsureVolumeAccess", func() {
 		it("changes owner of volume", func() {
 			h.SkipIf(t, osType != "windows", "no-op for linux")
