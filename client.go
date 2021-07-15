@@ -74,6 +74,7 @@ type Client struct {
 	imageFactory        ImageFactory
 	BuildpackDownloader BuildpackDownloader
 	experimental        bool
+	registryMirrors     map[string]string
 }
 
 // ClientOption is a type of function that mutate settings on the client.
@@ -141,6 +142,13 @@ func WithExperimental(experimental bool) ClientOption {
 	}
 }
 
+// WithRegistryMirrors sets mirrors to pull images from.
+func WithRegistryMirrors(registryMirrors map[string]string) ClientOption {
+	return func(c *Client) {
+		c.registryMirrors = registryMirrors
+	}
+}
+
 // NewClient allocates and returns a Client configured with the specified options.
 func NewClient(opts ...ClientOption) (*Client, error) {
 	var client Client
@@ -173,7 +181,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	}
 
 	if client.imageFetcher == nil {
-		client.imageFetcher = image.NewFetcher(client.logger, client.docker)
+		client.imageFetcher = image.NewFetcher(client.logger, client.docker, image.WithRegistryMirrors(client.registryMirrors))
 	}
 
 	if client.imageFactory == nil {

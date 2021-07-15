@@ -133,7 +133,7 @@ func initConfig() (config.Config, string, error) {
 }
 
 func initClient(logger logging.Logger, cfg config.Config) (pack.Client, error) {
-	client, err := pack.NewClient(pack.WithLogger(logger), pack.WithExperimental(cfg.Experimental))
+	client, err := pack.NewClient(pack.WithLogger(logger), pack.WithExperimental(cfg.Experimental), pack.WithRegistryMirrors(cfg.RegistryMirrors))
 	if err != nil {
 		return pack.Client{}, err
 	}
