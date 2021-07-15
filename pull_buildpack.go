@@ -41,7 +41,7 @@ func (c *Client) PullBuildpack(ctx context.Context, opts PullBuildpackOptions) e
 		}
 	case buildpack.RegistryLocator:
 		c.logger.Debugf("Pulling buildpack from registry: %s", style.Symbol(opts.URI))
-		registryCache, err := c.getRegistry(c.logger, opts.RegistryName)
+		registryCache, err := getRegistry(c.logger, opts.RegistryName)
 
 		if err != nil {
 			return errors.Wrapf(err, "invalid registry '%s'", opts.RegistryName)

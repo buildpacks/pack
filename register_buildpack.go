@@ -78,7 +78,7 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 
 		return cmd.Start()
 	} else if opts.Type == "git" {
-		registryCache, err := c.getRegistry(c.logger, opts.Name)
+		registryCache, err := getRegistry(c.logger, opts.Name)
 		if err != nil {
 			return err
 		}

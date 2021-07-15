@@ -24,7 +24,7 @@ import (
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
-	cfg "github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/image"
@@ -32,6 +32,7 @@ import (
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/archive"
 	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/buildpacks/pack/testmocks"
 )
@@ -45,20 +46,43 @@ func TestCreateBuilder(t *testing.T) {
 func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#CreateBuilder", func() {
 		var (
-			mockController     *gomock.Controller
-			mockDownloader     *testmocks.MockDownloader
-			mockImageFactory   *testmocks.MockImageFactory
-			mockImageFetcher   *testmocks.MockImageFetcher
-			mockDockerClient   *testmocks.MockCommonAPIClient
-			fakeBuildImage     *fakes.Image
-			fakeRunImage       *fakes.Image
-			fakeRunImageMirror *fakes.Image
-			opts               pack.CreateBuilderOptions
-			subject            *pack.Client
-			logger             logging.Logger
-			out                bytes.Buffer
-			tmpDir             string
+			mockController          *gomock.Controller
+			mockDownloader          *testmocks.MockDownloader
+			mockBuildpackDownloader *pack.MockBuildpackDownloader
+			mockImageFactory        *testmocks.MockImageFactory
+			mockImageFetcher        *testmocks.MockImageFetcher
+			mockDockerClient        *testmocks.MockCommonAPIClient
+			fakeBuildImage          *fakes.Image
+			fakeRunImage            *fakes.Image
+			fakeRunImageMirror      *fakes.Image
+			opts                    pack.CreateBuilderOptions
+			subject                 *pack.Client
+			logger                  logging.Logger
+			out                     bytes.Buffer
+			tmpDir                  string
 		)
+		var prepareFetcherWithRunImages = func() {
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", gomock.Any()).Return(fakeRunImage, nil).AnyTimes()
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", gomock.Any()).Return(fakeRunImageMirror, nil).AnyTimes()
+		}
+
+		var prepareFetcherWithBuildImage = func() {
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeBuildImage, nil)
+		}
+
+		var createBuildpack = func(descriptor dist.BuildpackDescriptor) dist.Buildpack {
+			buildpack, err := ifakes.NewFakeBuildpack(descriptor, 0644)
+			h.AssertNil(t, err)
+			return buildpack
+		}
+		var shouldCallBuildpackDownloaderWith = func(uri string, buildpackDownloadOptions pack.BuildpackDownloadOptions) {
+			buildpack := createBuildpack(dist.BuildpackDescriptor{
+				API:    api.MustParse("0.3"),
+				Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
+				Stacks: []dist.Stack{{ID: "some.stack.id"}},
+			})
+			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), uri, gomock.Any()).Return(buildpack, nil, nil)
+		}
 
 		it.Before(func() {
 			logger = ilogging.NewLogWithWriters(&out, &out, ilogging.WithVerbose())
@@ -67,6 +91,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 			mockImageFactory = testmocks.NewMockImageFactory(mockController)
 			mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
+			mockBuildpackDownloader = pack.NewMockBuildpackDownloader(mockController)
 
 			fakeBuildImage = fakes.NewImage("some/build-image", "", nil)
 			h.AssertNil(t, fakeBuildImage.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
@@ -80,18 +105,25 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			fakeRunImageMirror = fakes.NewImage("localhost:5000/some/run-image", "", nil)
 			h.AssertNil(t, fakeRunImageMirror.SetLabel("io.buildpacks.stack.id", "some.stack.id"))
 
-			mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
+			exampleBuildpackBlob := blob.NewBlob(filepath.Join("testdata", "buildpack"))
+			mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz").Return(exampleBuildpackBlob, nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "some/buildpack/dir").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle-platform-0-1").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle-platform-0.1")), nil).AnyTimes()
 
+			var buildpack dist.Buildpack
 			var err error
+			buildpack, err = dist.BuildpackFromRootBlob(exampleBuildpackBlob, archive.DefaultTarWriterFactory())
+			h.AssertNil(t, err)
+			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz", gomock.Any()).Return(buildpack, nil, nil).AnyTimes()
+
 			subject, err = pack.NewClient(
 				pack.WithLogger(logger),
 				pack.WithDownloader(mockDownloader),
 				pack.WithImageFactory(mockImageFactory),
 				pack.WithFetcher(mockImageFetcher),
 				pack.WithDockerClient(mockDockerClient),
+				pack.WithBuildpackDownloader(mockBuildpackDownloader),
 			)
 			h.AssertNil(t, err)
 
@@ -138,15 +170,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, os.RemoveAll(tmpDir))
 		})
 
-		var prepareFetcherWithRunImages = func() {
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/run-image", gomock.Any()).Return(fakeRunImage, nil).AnyTimes()
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "localhost:5000/some/run-image", gomock.Any()).Return(fakeRunImageMirror, nil).AnyTimes()
-		}
-
-		var prepareFetcherWithBuildImage = func() {
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeBuildImage, nil)
-		}
-
 		var successfullyCreateBuilder = func() *builder.Builder {
 			t.Helper()
 
@@ -158,34 +181,6 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 
 			return bldr
-		}
-
-		var createBuildpack = func(descriptor dist.BuildpackDescriptor) string {
-			bp, err := ifakes.NewFakeBuildpackBlob(descriptor, 0644)
-			h.AssertNil(t, err)
-			url := fmt.Sprintf("https://example.com/bp.%s.tgz", h.RandString(12))
-			mockDownloader.EXPECT().Download(gomock.Any(), url).Return(bp, nil).AnyTimes()
-			return url
-		}
-
-		var createPackage = func(imageName string) *fakes.Image {
-			packageImage := fakes.NewImage(imageName, "", nil)
-			mockImageFactory.EXPECT().NewImage(packageImage.Name(), false, "linux").Return(packageImage, nil)
-
-			h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-				Name: packageImage.Name(),
-				Config: pubbldpkg.Config{
-					Platform: dist.Platform{OS: "linux"},
-					Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
-						API:    api.MustParse("0.3"),
-						Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
-						Stacks: []dist.Stack{{ID: "some.stack.id"}},
-					})},
-				},
-				Publish: true,
-			}))
-
-			return packageImage
 		}
 
 		when("validating the builder config", func() {
@@ -629,7 +624,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				prepareFetcherWithBuildImage()
 				prepareFetcherWithRunImages()
 				opts.Config.Buildpacks[0].URI = "https://example.fake/bp-one-with-api-4.tgz"
-				mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz").Return(blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4")), nil).AnyTimes()
+
+				buildpackBlob := blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4"))
+				buildpack, err := dist.BuildpackFromRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
+				h.AssertNil(t, err)
+				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).Return(buildpack, nil, nil)
+
 				bldr := successfullyCreateBuilder()
 
 				h.AssertEq(t, bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated.AsStrings(), []string{"0.2", "0.3"})
@@ -644,132 +644,13 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			directoryPath := "testdata/buildpack"
 			opts.Config.Buildpacks[0].URI = directoryPath
 
-			absURI, err := paths.FilePathToURI(directoryPath, "")
+			buildpackBlob := blob.NewBlob(directoryPath)
+			buildpack, err := dist.BuildpackFromRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
 			h.AssertNil(t, err)
-
-			mockDownloader.EXPECT().Download(gomock.Any(), absURI).Return(blob.NewBlob(directoryPath), nil).AnyTimes()
+			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), directoryPath, gomock.Any()).Return(buildpack, nil, nil)
 
 			err = subject.CreateBuilder(context.TODO(), opts)
 			h.AssertNil(t, err)
-		})
-
-		when("invalid buildpack URI", func() {
-			when("buildpack URI is from=builder:fake", func() {
-				it("errors", func() {
-					prepareFetcherWithBuildImage()
-					prepareFetcherWithRunImages()
-					opts.Config.Buildpacks[0].URI = "from=builder:fake"
-
-					err := subject.CreateBuilder(context.TODO(), opts)
-					h.AssertError(t, err, "'from=builder:fake' is not a valid identifier")
-				})
-			})
-
-			when("buildpack URI is from=builder", func() {
-				it("errors", func() {
-					prepareFetcherWithBuildImage()
-					prepareFetcherWithRunImages()
-					opts.Config.Buildpacks[0].URI = "from=builder"
-
-					err := subject.CreateBuilder(context.TODO(), opts)
-					h.AssertError(t, err,
-						"invalid locator: FromBuilderLocator")
-				})
-			})
-
-			when("buildpack URI is invalid registry", func() {
-				it("errors", func() {
-					prepareFetcherWithBuildImage()
-					prepareFetcherWithRunImages()
-					opts.Registry = "://bad-url"
-					opts.Config.Buildpacks[0].URI = "urn:cnb:registry:fake"
-
-					err := subject.CreateBuilder(context.TODO(), opts)
-					h.AssertError(t, err,
-						"invalid registry")
-				})
-			})
-
-			when("buildpack is missing from registry", func() {
-				var configPath string
-				var registryFixture string
-
-				it("errors", func() {
-					prepareFetcherWithBuildImage()
-					prepareFetcherWithRunImages()
-
-					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
-
-					packHome := filepath.Join(tmpDir, "packHome")
-					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
-
-					configPath = filepath.Join(packHome, "config.toml")
-					h.AssertNil(t, cfg.Write(cfg.Config{
-						Registries: []cfg.Registry{
-							{
-								Name: "some-registry",
-								Type: "github",
-								URL:  registryFixture,
-							},
-						},
-					}, configPath))
-					opts.Config.Buildpacks[0].URI = "urn:cnb:registry:fake"
-
-					opts.Registry = "some-registry"
-
-					err := subject.CreateBuilder(context.TODO(), opts)
-					h.AssertError(t, err,
-						"locating in registry")
-				})
-			})
-
-			when("can't download image from registry", func() {
-				var configPath string
-				var registryFixture string
-
-				it("errors", func() {
-					prepareFetcherWithBuildImage()
-					prepareFetcherWithRunImages()
-
-					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
-					opts.Config.Buildpacks[0].URI = "urn:cnb:registry:example/foo@1.1.0"
-
-					packHome := filepath.Join(tmpDir, "packHome")
-					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
-
-					configPath = filepath.Join(packHome, "config.toml")
-					h.AssertNil(t, cfg.Write(cfg.Config{
-						Registries: []cfg.Registry{
-							{
-								Name: "some-registry",
-								Type: "github",
-								URL:  registryFixture,
-							},
-						},
-					}, configPath))
-
-					opts.Registry = "some-registry"
-
-					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: config.PullAlways}).Return(nil, errors.New("failed to pull"))
-
-					err := subject.CreateBuilder(context.TODO(), opts)
-					h.AssertError(t, err,
-						"extracting from registry")
-				})
-			})
-
-			when("buildpack URI is an invalid locator", func() {
-				it("errors", func() {
-					prepareFetcherWithBuildImage()
-					prepareFetcherWithRunImages()
-					opts.Config.Buildpacks[0].URI = "nonsense string here"
-
-					err := subject.CreateBuilder(context.TODO(), opts)
-					h.AssertError(t, err,
-						"invalid locator: InvalidLocator")
-				})
-			})
 		})
 
 		when("package file", func() {
@@ -780,7 +661,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					return path, absPath
 				}
 
-				cnbFile, cnbFileURI := fileURI(filepath.Join(tmpDir, "bp_one1.cnb"))
+				cnbFile, _ := fileURI(filepath.Join(tmpDir, "bp_one1.cnb"))
 				buildpackPath, buildpackPathURI := fileURI(filepath.Join("testdata", "buildpack"))
 				mockDownloader.EXPECT().Download(gomock.Any(), buildpackPathURI).Return(blob.NewBlob(buildpackPath), nil)
 
@@ -793,7 +674,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Format: "file",
 				}))
 
-				mockDownloader.EXPECT().Download(gomock.Any(), cnbFileURI).Return(blob.NewBlob(cnbFile), nil).AnyTimes()
+				buildpack, _, err := buildpackage.BuildpacksFromOCILayoutBlob(blob.NewBlob(cnbFile))
+				h.AssertNil(t, err)
+				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), cnbFile, gomock.Any()).Return(buildpack, nil, nil).AnyTimes()
 				opts.Config.Buildpacks = []pubbldr.BuildpackConfig{{
 					ImageOrURI: dist.ImageOrURI{BuildpackURI: dist.BuildpackURI{URI: cnbFile}},
 				}}
@@ -821,63 +704,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("packages", func() {
-			var (
-				packageImage *fakes.Image
-			)
-
-			shouldFetchPackageImageWith := func(demon bool, pull config.PullPolicy) {
-				mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: demon, PullPolicy: pull}).Return(packageImage, nil)
-			}
-
 			when("package image lives in cnb registry", func() {
-				var (
-					tmpDir          string
-					registryFixture string
-					packHome        string
-				)
-
-				it.Before(func() {
-					var err error
-					tmpDir, err = ioutil.TempDir("", "registry")
-					h.AssertNil(t, err)
-
-					packHome = filepath.Join(tmpDir, ".pack")
-					err = os.MkdirAll(packHome, 0755)
-					h.AssertNil(t, err)
-					os.Setenv("PACK_HOME", packHome)
-
-					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
-
-					packageImage = createPackage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7")
-				})
-
-				it.After(func() {
-					os.Unsetenv("PACK_HOME")
-					err := os.RemoveAll(tmpDir)
-					h.AssertNil(t, err)
-				})
-
 				when("publish=false and pull-policy=always", func() {
-					var configPath string
-
-					it("should pull and use local package image", func() {
+					it("should call BuildpackDownloader with the proper argumentss", func() {
 						prepareFetcherWithBuildImage()
 						prepareFetcherWithRunImages()
 						opts.BuilderName = "some/builder"
-
-						packHome := filepath.Join(tmpDir, "packHome")
-						h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
-						configPath = filepath.Join(packHome, "config.toml")
-						h.AssertNil(t, cfg.Write(cfg.Config{
-							Registries: []cfg.Registry{
-								{
-									Name: "some-registry",
-									Type: "github",
-									URL:  registryFixture,
-								},
-							},
-						}, configPath))
-
 						opts.Publish = false
 						opts.PullPolicy = config.PullAlways
 						opts.Registry = "some-registry"
@@ -892,194 +724,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						)
 
-						shouldFetchPackageImageWith(true, config.PullAlways)
+						shouldCallBuildpackDownloaderWith("urn:cnb:registry:example/foo@1.1.0", pack.BuildpackDownloadOptions{Daemon: true, PullPolicy: config.PullAlways, RegistryName: "some-"})
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
 					})
-				})
-			})
-
-			when("package image lives in docker registry", func() {
-				it.Before(func() {
-					packageImage = fakes.NewImage("docker.io/some/package-"+h.RandString(12), "", nil)
-					mockImageFactory.EXPECT().NewImage(packageImage.Name(), false, "linux").Return(packageImage, nil)
-
-					bpd := dist.BuildpackDescriptor{
-						API:    api.MustParse("0.3"),
-						Info:   dist.BuildpackInfo{ID: "some.pkg.bp", Version: "2.3.4", Homepage: "http://meta.buildpack"},
-						Stacks: []dist.Stack{{ID: "some.stack.id"}},
-					}
-
-					h.AssertNil(t, subject.PackageBuildpack(context.TODO(), pack.PackageBuildpackOptions{
-						Name: packageImage.Name(),
-						Config: pubbldpkg.Config{
-							Platform:  dist.Platform{OS: "linux"},
-							Buildpack: dist.BuildpackURI{URI: createBuildpack(bpd)},
-						},
-						Publish:    true,
-						PullPolicy: config.PullAlways,
-					}))
-				})
-
-				prepareFetcherWithMissingPackageImage := func() {
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), gomock.Any()).Return(nil, image.ErrNotFound)
-				}
-
-				when("image key is provided", func() {
-					it("should succeed", func() {
-						prepareFetcherWithBuildImage()
-						prepareFetcherWithRunImages()
-
-						packageImage = createPackage("some/package:tag")
-
-						opts.BuilderName = "some/builder"
-						opts.Publish = false
-						opts.PullPolicy = config.PullAlways
-						opts.Config.Buildpacks = append(
-							opts.Config.Buildpacks,
-							pubbldr.BuildpackConfig{
-								ImageOrURI: dist.ImageOrURI{
-									ImageRef: dist.ImageRef{ImageName: "some/package:tag"},
-								},
-							},
-						)
-
-						shouldFetchPackageImageWith(true, config.PullAlways)
-						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
-					})
-				})
-
-				when("publish=false and pull-policy=always", func() {
-					it("should pull and use local package image", func() {
-						prepareFetcherWithBuildImage()
-						prepareFetcherWithRunImages()
-						opts.BuilderName = "some/builder"
-
-						opts.Publish = false
-						opts.PullPolicy = config.PullAlways
-						opts.Config.Buildpacks = append(
-							opts.Config.Buildpacks,
-							pubbldr.BuildpackConfig{
-								ImageOrURI: dist.ImageOrURI{
-									ImageRef: dist.ImageRef{ImageName: packageImage.Name()},
-								},
-							},
-						)
-
-						shouldFetchPackageImageWith(true, config.PullAlways)
-						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
-					})
-				})
-
-				when("publish=true and pull-policy=always", func() {
-					it("should use remote package image", func() {
-						prepareFetcherWithBuildImage()
-						prepareFetcherWithRunImages()
-						opts.BuilderName = "some/builder"
-
-						opts.Publish = true
-						opts.PullPolicy = config.PullAlways
-						opts.Config.Buildpacks = append(
-							opts.Config.Buildpacks,
-							pubbldr.BuildpackConfig{
-								ImageOrURI: dist.ImageOrURI{
-									ImageRef: dist.ImageRef{ImageName: packageImage.Name()},
-								},
-							},
-						)
-
-						shouldFetchPackageImageWith(false, config.PullAlways)
-						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
-					})
-				})
-
-				when("publish=true and pull-policy=always", func() {
-					it("should use remote package URI", func() {
-						prepareFetcherWithBuildImage()
-						prepareFetcherWithRunImages()
-						opts.BuilderName = "some/builder"
-
-						opts.Publish = true
-						opts.PullPolicy = config.PullAlways
-						opts.Config.Buildpacks = append(
-							opts.Config.Buildpacks,
-							pubbldr.BuildpackConfig{
-								ImageOrURI: dist.ImageOrURI{
-									BuildpackURI: dist.BuildpackURI{URI: packageImage.Name()},
-								},
-							},
-						)
-
-						shouldFetchPackageImageWith(false, config.PullAlways)
-						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
-					})
-				})
-
-				when("publish=true and pull-policy=never", func() {
-					it("should push to registry and not pull package image", func() {
-						prepareFetcherWithBuildImage()
-						prepareFetcherWithRunImages()
-						opts.BuilderName = "some/builder"
-
-						opts.Publish = true
-						opts.PullPolicy = config.PullNever
-						opts.Config.Buildpacks = append(
-							opts.Config.Buildpacks,
-							pubbldr.BuildpackConfig{
-								ImageOrURI: dist.ImageOrURI{
-									ImageRef: dist.ImageRef{ImageName: packageImage.Name()},
-								},
-							},
-						)
-
-						shouldFetchPackageImageWith(false, config.PullNever)
-						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
-					})
-				})
-
-				when("publish=false pull-policy=never and there is no local package image", func() {
-					it("should fail without trying to retrieve package image from registry", func() {
-						prepareFetcherWithBuildImage()
-						prepareFetcherWithRunImages()
-						opts.BuilderName = "some/builder"
-
-						opts.Publish = false
-						opts.PullPolicy = config.PullNever
-						opts.Config.Buildpacks = append(
-							opts.Config.Buildpacks,
-							pubbldr.BuildpackConfig{
-								ImageOrURI: dist.ImageOrURI{
-									ImageRef: dist.ImageRef{ImageName: packageImage.Name()},
-								},
-							},
-						)
-
-						prepareFetcherWithMissingPackageImage()
-
-						h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "not found")
-					})
-				})
-			})
-
-			when("package image is not a valid package", func() {
-				it("should error", func() {
-					prepareFetcherWithBuildImage()
-					prepareFetcherWithRunImages()
-					opts.BuilderName = "some/builder"
-
-					notPackageImage := fakes.NewImage("docker.io/not/package", "", nil)
-					opts.Config.Buildpacks = append(
-						opts.Config.Buildpacks,
-						pubbldr.BuildpackConfig{
-							ImageOrURI: dist.ImageOrURI{
-								ImageRef: dist.ImageRef{ImageName: notPackageImage.Name()},
-							},
-						},
-					)
-
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), notPackageImage.Name(), gomock.Any()).Return(notPackageImage, nil)
-					h.AssertNil(t, notPackageImage.SetLabel("io.buildpacks.buildpack.layers", ""))
-
-					h.AssertError(t, subject.CreateBuilder(context.TODO(), opts), "extracting buildpacks from 'docker.io/not/package': could not find label 'io.buildpacks.buildpackage.metadata'")
 				})
 			})
 		})

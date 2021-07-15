@@ -69,7 +69,7 @@ func (c *Client) InspectBuildpack(opts InspectBuildpackOptions) (*BuildpackInfo,
 }
 
 func metadataFromRegistry(client *Client, name, registry string) (buildpackMd buildpackage.Metadata, layersMd dist.BuildpackLayers, err error) {
-	registryCache, err := client.getRegistry(client.logger, registry)
+	registryCache, err := getRegistry(client.logger, registry)
 	if err != nil {
 		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("invalid registry %s: %q", registry, err)
 	}
