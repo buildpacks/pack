@@ -10,6 +10,7 @@ import (
 	"github.com/buildpacks/lifecycle/auth"
 	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/distribution/metadata"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -439,7 +440,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		WithNetwork(networkMode),
 		cacheOpt,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
-		WithContainerOperations(WriteProjectMetadata(p string,plplatform.ProjectMetadata{})),
+		//WithContainerOperations(WriteProjectMetadata(l.mountPaths.stackPath(), l.opts.Builder.LifecycleDescriptor().APIs.Platform.Supported.Latest().Major, l.os)),
 	}
 
 	if publish {

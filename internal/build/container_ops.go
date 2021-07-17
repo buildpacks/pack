@@ -141,19 +141,19 @@ func findMount(info types.ContainerJSON, dst string) (types.MountPoint, error) {
 }
 
 //WriteProjectMetadata
-func WriteProjectMetadata(p string, metadata platform.ProjectMetadata) {
+func WriteProjectMetadata(p string, metadata platform.ProjectMetadata,os string) ContainerOperation {
 	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
 		buf := &bytes.Buffer{}
-		err := toml.NewEncoder(buf).Encode(stack)
+		err := toml.NewEncoder(buf).Encode(metadata)
 		if err != nil {
-			return errors.Wrap(err, "marshaling stack metadata")
+			return errors.Wrap(err, "marshaling project metadata")
 		}
 
 		tarBuilder := archive.TarBuilder{}
 
-		tarPath := dstPath
+		tarPath := p
 		if os == "windows" {
-			tarPath = paths.WindowsToSlash(dstPath)
+			tarPath = paths.WindowsToSlash(p)
 		}
 
 		tarBuilder.AddFile(tarPath, 0755, archive.NormalizedDateTime, buf.Bytes())
@@ -161,7 +161,7 @@ func WriteProjectMetadata(p string, metadata platform.ProjectMetadata) {
 		defer reader.Close()
 
 		if os == "windows" {
-			dirName := paths.WindowsDir(dstPath)
+			dirName := paths.WindowsDir(p)
 			return copyDirWindows(ctx, ctrClient, containerID, reader, dirName, stdout, stderr)
 		}
 
@@ -169,24 +169,24 @@ func WriteProjectMetadata(p string, metadata platform.ProjectMetadata) {
 	}
 }
 
-func createReader(src, dst string, uid, gid int, includeRoot bool, fileFilter func(string) bool) (io.ReadCloser, error) {
-	fi, err := os.Stat(src)
-	if err != nil {
-		return nil, err
-	}
+// func createReader(src, dst string, uid, gid int, includeRoot bool, fileFilter func(string) bool) (io.ReadCloser, error) {
+// 	fi, err := os.Stat(src)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if fi.IsDir() {
-		var mode int64 = -1
-		if runtime.GOOS == "windows" {
-			mode = 0777
-		}
+// 	if fi.IsDir() {
+// 		var mode int64 = -1
+// 		if runtime.GOOS == "windows" {
+// 			mode = 0777
+// 		}
 
-		return archive.ReadDirAsTar(src, dst, uid, gid, mode, false, includeRoot, fileFilter), nil
-	}
+// 		return archive.ReadDirAsTar(src, dst, uid, gid, mode, false, includeRoot, fileFilter), nil
+// 	}
 
-	return archive.ReadZipAsTar(src, dst, uid, gid, -1, false, fileFilter), nil
-}
-}
+// 	return archive.ReadZipAsTar(src, dst, uid, gid, -1, false, fileFilter), nil
+// }
+
 
 // WriteStackToml writes a `stack.toml` based on the StackMetadata provided to the destination path.
 func WriteStackToml(dstPath string, stack builder.StackMetadata, os string) ContainerOperation {

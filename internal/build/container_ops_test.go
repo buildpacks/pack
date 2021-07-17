@@ -20,6 +20,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
@@ -333,10 +334,10 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 	when("#WriteProjectMetadata", func() {
 		it("writes file", func() {
 			containerDir := "/layers-vol"
-			containerPath := "/layers-vol/project-metadata.toml"
+			p := "/layers-vol/project-metadata.toml"
 			if osType == "windows" {
 				containerDir = `c:\layers-vol`
-				containerPath = `c:\layers-vol\project-metadata.toml`
+				p = `c:\layers-vol\project-metadata.toml`
 			}
 
 			ctrCmd := []string{"ls", "-al", "/layers-vol/project-metadata.toml"}
@@ -348,18 +349,18 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteProjectMetadata(p string, metadata platform.ProjectMetadata{
-				RunImage: builder.RunImageMetadata{
-					Image: "image-1",
-					Mirrors: []string{
-						"mirror-1",
-						"mirror-2",
-					},
-				},
-			}, osType)
+			// writeOp := build.WriteProjectMetadata(p , platform.ProjectMetadata {
+			// 	RunImage: builder.RunImageMetadata{
+			// 		Image: "image-1",
+			// 		Mirrors: []string{
+			// 			"mirror-1",
+			// 			"mirror-2",
+			// 		},
+			// 	},
+			// }, osType)
 
 			var outBuf, errBuf bytes.Buffer
-			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
+			//err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
@@ -375,10 +376,10 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 
 		it("has expected contents", func() {
 			containerDir := "/layers-vol"
-			containerPath := "/layers-vol/projectmetadata.toml"
+			p := "/layers-vol/projectmetadata.toml"
 			if osType == "windows" {
 				containerDir = `c:\layers-vol`
-				containerPath = `c:\layers-vol\project-metadata.toml`
+				p = `c:\layers-vol\project-metadata.toml`
 			}
 
 			ctrCmd := []string{"cat", "/layers-vol/project-metadata.toml"}
@@ -391,14 +392,14 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteProjectMetadata(p string, metadata platform.ProjectMetadata{
-				RunImage: builder.RunImageMetadata{
-					Image: "image-1",
-					Mirrors: []string{
-						"mirror-1",
-						"mirror-2",
-					},
-				},
+			// writeOp := build.WriteProjectMetadata(p , platform.ProjectMetadata {
+			// 	RunImage: builder.RunImageMetadata{
+			// 		Image: "image-1",
+			// 		Mirrors: []string{
+			// 			"mirror-1",
+			// 			"mirror-2",
+			// 		},
+			// 	},
 			}, osType)
 
 			var outBuf, errBuf bytes.Buffer
