@@ -349,18 +349,18 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			// writeOp := build.WriteProjectMetadata(p , platform.ProjectMetadata {
-			// 	RunImage: builder.RunImageMetadata{
-			// 		Image: "image-1",
-			// 		Mirrors: []string{
-			// 			"mirror-1",
-			// 			"mirror-2",
-			// 		},
-			// 	},
-			// }, osType)
+			writeOp := build.WriteProjectMetadata(p , platform.ProjectMetadata {
+				Source: platform.ProjectSource {
+					Type: "project",
+					Version: "1.0.2",
+					Metadata:[]string {
+							"url": "https://github.com/buildpacks/pack",
+					},
+				},
+			}, osType)
 
 			var outBuf, errBuf bytes.Buffer
-			//err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
+			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
@@ -392,14 +392,15 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			// writeOp := build.WriteProjectMetadata(p , platform.ProjectMetadata {
-			// 	RunImage: builder.RunImageMetadata{
-			// 		Image: "image-1",
-			// 		Mirrors: []string{
-			// 			"mirror-1",
-			// 			"mirror-2",
-			// 		},
-			// 	},
+			writeOp := build.WriteProjectMetadata(p , platform.ProjectMetadata {
+				Source: platform.ProjectSource {
+					Type: "project",
+					Version: "1.0.2",
+					Metadata:[]string {
+							"url": "https://github.com/buildpacks/pack",
+					},
+				},
+					},
 			}, osType)
 
 			var outBuf, errBuf bytes.Buffer
