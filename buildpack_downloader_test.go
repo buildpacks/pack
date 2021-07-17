@@ -36,7 +36,7 @@ import (
 func TestBuildpackDownloader(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "BuildpackDownloader", testBuildpackDownloader, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "BuildpackDownloader", testBuildpackDownloader, spec.Report(report.Terminal{}))
 }
 func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 	var (
@@ -102,12 +102,31 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 		mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 
 		tmpDir, err = ioutil.TempDir("", "buildpack-downloader-test")
+
+		packHome := filepath.Join(tmpDir, ".pack")
+		err = os.MkdirAll(packHome, 0755)
+		h.AssertNil(t, err)
+		os.Setenv("PACK_HOME", packHome)
+		t.Logf("%v pack home here %v", t.Name(), packHome)
+		registryFixture := h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
+		configPath := filepath.Join(packHome, "config.toml")
+		h.AssertNil(t, cfg.Write(cfg.Config{
+			Registries: []cfg.Registry{
+				{
+					Name: "some-registry",
+					Type: "github",
+					URL:  registryFixture,
+				},
+			},
+		}, configPath))
+
 		h.AssertNil(t, err)
 	})
 
 	it.After(func() {
 		mockController.Finish()
 		h.AssertNil(t, os.RemoveAll(tmpDir))
+		os.Unsetenv("PACK_HOME")
 	})
 
 	when("#DownloadBuildpack", func() {
@@ -121,46 +140,13 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 
 		var buildpackDownloadOptions pack.BuildpackDownloadOptions = pack.BuildpackDownloadOptions{ImageOS: "linux"}
 		when("package image lives in cnb registry", func() {
-			var (
-				registryFixture string
-				packHome        string
-				tmpDir          string
-			)
 			it.Before(func() {
-				var err error
-				tmpDir, err = ioutil.TempDir("", "registry")
-				h.AssertNil(t, err)
-
-				packHome = filepath.Join(tmpDir, ".pack")
-				err = os.MkdirAll(packHome, 0755)
-				h.AssertNil(t, err)
-				os.Setenv("PACK_HOME", packHome)
-
-				registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
-
 				packageImage = createPackage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7")
 			})
-			it.After(func() {
-				os.Unsetenv("PACK_HOME")
-				err := os.RemoveAll(tmpDir)
-				h.AssertNil(t, err)
-			})
 			when("daemon=true and pull-policy=always", func() {
-				var configPath string
 
 				it("should pull and use local package image", func() {
-					packHome := filepath.Join(tmpDir, "packHome")
-					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
-					configPath = filepath.Join(packHome, "config.toml")
-					h.AssertNil(t, cfg.Write(cfg.Config{
-						Registries: []cfg.Registry{
-							{
-								Name: "some-registry",
-								Type: "github",
-								URL:  registryFixture,
-							},
-						},
-					}, configPath))
+
 					buildpackDownloadOptions = pack.BuildpackDownloadOptions{
 						RegistryName: "some-registry",
 						ImageOS:      "linux",
@@ -175,22 +161,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 			when("ambigious URI provided", func() {
-				var configPath string
-
 				it("should find package in registry", func() {
-					packHome := filepath.Join(tmpDir, "packHome")
-					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
-					configPath = filepath.Join(packHome, "config.toml")
-					h.AssertNil(t, cfg.Write(cfg.Config{
-						Registries: []cfg.Registry{
-							{
-								Name: "some-registry",
-								Type: "github",
-								URL:  registryFixture,
-							},
-						},
-					}, configPath))
-
 					buildpackDownloadOptions = pack.BuildpackDownloadOptions{
 						RegistryName: "some-registry",
 						ImageOS:      "linux",
@@ -385,25 +356,8 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("buildpack is missing from registry", func() {
-				var configPath string
-				var registryFixture string
 
 				it("errors", func() {
-					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
-
-					packHome := filepath.Join(tmpDir, "packHome")
-					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
-
-					configPath = filepath.Join(packHome, "config.toml")
-					h.AssertNil(t, cfg.Write(cfg.Config{
-						Registries: []cfg.Registry{
-							{
-								Name: "some-registry",
-								Type: "github",
-								URL:  registryFixture,
-							},
-						},
-					}, configPath))
 
 					buildpackDownloadOptions.RegistryName = "some-registry"
 					_, _, err := subject.BuildpackDownloader.Download(context.TODO(), "urn:cnb:registry:fake", buildpackDownloadOptions)
@@ -413,24 +367,8 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("can't download image from registry", func() {
-				var configPath string
-				var registryFixture string
 
 				it("errors", func() {
-					registryFixture = h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
-					packHome := filepath.Join(tmpDir, "packHome")
-					h.AssertNil(t, os.Setenv("PACK_HOME", packHome))
-
-					configPath = filepath.Join(packHome, "config.toml")
-					h.AssertNil(t, cfg.Write(cfg.Config{
-						Registries: []cfg.Registry{
-							{
-								Name: "some-registry",
-								Type: "github",
-								URL:  registryFixture,
-							},
-						},
-					}, configPath))
 
 					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: false, PullPolicy: config.PullAlways}).Return(nil, errors.New("failed to pull"))
