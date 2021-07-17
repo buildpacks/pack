@@ -9,11 +9,11 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/pack/logging"
 )
 
@@ -34,16 +34,6 @@ type Builder interface {
 	LifecycleDescriptor() builder.LifecycleDescriptor
 	Stack() builder.StackMetadata
 	Image() imgutil.Image
-}
-
-type ProjectMetadata struct {
-	Source *ProjectSource `toml:"source" json:"source,omitempty"`
-}
-
-type ProjectSource struct {
-	Type     string                 `toml:"type" json:"type,omitempty"`
-	Version  map[string]interface{} `toml:"version" json:"version,omitempty"`
-	Metadata map[string]interface{} `toml:"metadata" json:"metadata,omitempty"`
 }
 
 type LifecycleExecutor struct {
@@ -67,7 +57,7 @@ type LifecycleOptions struct {
 	Builder            Builder
 	LifecycleImage     string
 	RunImage           string
-	platform           ProjectMetadata             
+	ProjectMetadata    platform.ProjectMetadata
 	ClearCache         bool
 	Publish            bool
 	TrustBuilder       bool

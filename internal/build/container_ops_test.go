@@ -349,12 +349,14 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteProjectMetadata(p , platform.ProjectMetadata {
-				Source: platform.ProjectSource {
-					Type: "project",
-					Version: "1.0.2",
-					Metadata:[]string {
-							"url": "https://github.com/buildpacks/pack",
+			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
+				Source: &platform.ProjectSource{
+					Type:    "project",
+					Version: map[string]interface{}{
+						// TODO: Format this
+					},
+					Metadata: map[string]interface{}{
+						"url": "https://github.com/buildpacks/pack",
 					},
 				},
 			}, osType)
@@ -392,15 +394,16 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 			defer cleanupContainer(ctx, ctr.ID)
 
-			writeOp := build.WriteProjectMetadata(p , platform.ProjectMetadata {
-				Source: platform.ProjectSource {
-					Type: "project",
-					Version: "1.0.2",
-					Metadata:[]string {
-							"url": "https://github.com/buildpacks/pack",
+			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
+				Source: &platform.ProjectSource{
+					Type:    "project",
+					Version: map[string]interface{}{
+						// TODO: Format this
+					},
+					Metadata: map[string]interface{}{
+						"url": "https://github.com/buildpacks/pack",
 					},
 				},
-					},
 			}, osType)
 
 			var outBuf, errBuf bytes.Buffer
