@@ -30,6 +30,8 @@ func testProject(t *testing.T, when spec.G, it spec.S) {
 			projectToml := `
 [project]
 name = "gallant"
+source-url = "git@github.com:buildpacks/pack.git"
+version = "v0.18.1-2-g83484845"
 [[project.licenses]]
 type = "MIT"
 [build]
@@ -62,7 +64,18 @@ pipeline = "Lucerne"
 				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
 					expected, projectDescriptor.Project.Name)
 			}
+			expected = "v0.18.1-2-g83484845"
+			if projectDescriptor.Project.Version != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Project.Version)
 
+			}
+			expected = "git@github.com:buildpacks/pack.git"
+			if projectDescriptor.Project.SourceURL != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Project.SourceURL)
+
+			}
 			expected = "example/lua"
 			if projectDescriptor.Build.Buildpacks[0].ID != expected {
 				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
