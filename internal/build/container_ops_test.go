@@ -21,6 +21,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
@@ -351,9 +352,9 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 
 			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
 				Source: &platform.ProjectSource{
-					Type:    "project",
+					Type: "project",
 					Version: map[string]interface{}{
-						// TODO: Format this
+						"declared": "1.0.2",
 					},
 					Metadata: map[string]interface{}{
 						"url": "https://github.com/buildpacks/pack",
@@ -396,9 +397,9 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 
 			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
 				Source: &platform.ProjectSource{
-					Type:    "project",
+					Type: "project",
 					Version: map[string]interface{}{
-						// TODO: Format this
+						"declared": "1.0.2",
 					},
 					Metadata: map[string]interface{}{
 						"url": "https://github.com/buildpacks/pack",

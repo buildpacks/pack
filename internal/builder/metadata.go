@@ -12,7 +12,7 @@ type Metadata struct {
 	Stack       StackMetadata        `json:"stack"`
 	Lifecycle   LifecycleMetadata    `json:"lifecycle"`
 	CreatedBy   CreatorMetadata      `json:"createdBy"`
-	Project     ProjectMetadata    `json:"source,omitempty"`
+	Project     ProjectMetadata      `json:"source,omitempty"`
 }
 
 type CreatorMetadata struct {

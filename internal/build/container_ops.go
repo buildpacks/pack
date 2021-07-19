@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/buildpacks/pack/internal/paths"
 
 	"github.com/buildpacks/pack/internal/builder"
@@ -39,7 +40,6 @@ func CopyDir(src, dst string, uid, gid int, os string, includeRoot bool, fileFil
 			return errors.Wrapf(err, "create tar archive from '%s'", src)
 		}
 		defer reader.Close()
-		
 
 		if os == "windows" {
 			return copyDirWindows(ctx, ctrClient, containerID, reader, dst, stdout, stderr)
@@ -141,7 +141,7 @@ func findMount(info types.ContainerJSON, dst string) (types.MountPoint, error) {
 }
 
 //WriteProjectMetadata
-func WriteProjectMetadata(p string, metadata platform.ProjectMetadata,os string) ContainerOperation {
+func WriteProjectMetadata(p string, metadata platform.ProjectMetadata, os string) ContainerOperation {
 	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
 		buf := &bytes.Buffer{}
 		err := toml.NewEncoder(buf).Encode(metadata)
@@ -186,7 +186,6 @@ func WriteProjectMetadata(p string, metadata platform.ProjectMetadata,os string)
 
 // 	return archive.ReadZipAsTar(src, dst, uid, gid, -1, false, fileFilter), nil
 // }
-
 
 // WriteStackToml writes a `stack.toml` based on the StackMetadata provided to the destination path.
 func WriteStackToml(dstPath string, stack builder.StackMetadata, os string) ContainerOperation {
