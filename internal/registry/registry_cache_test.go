@@ -189,6 +189,10 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 				err = registryCache.Refresh()
 				h.AssertError(t, err, "initializing")
 			})
+
+			it.After(func() {
+				h.AssertNil(t, os.RemoveAll(filepath.Join(registryCache.Root, registryCache.RegistryDir)))
+			})
 		})
 	})
 
@@ -210,6 +214,10 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 			it("fails to create registry cache", func() {
 				err = registryCache.Initialize()
 				h.AssertError(t, err, "creating registry cache")
+			})
+
+			it.After(func() {
+				h.AssertNil(t, os.RemoveAll(filepath.Join(registryCache.Root, registryCache.RegistryDir)))
 			})
 
 			when("url is empty string", func() {
