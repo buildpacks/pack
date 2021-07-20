@@ -438,7 +438,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		WithNetwork(networkMode),
 		cacheOpt,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
-		WithContainerOperations(WriteProjectMetadata(l.mountPaths.stackPath(), l.opts.ProjectMetadata, l.os)),
+		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
 	}
 
 	if publish {
