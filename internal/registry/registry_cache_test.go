@@ -217,7 +217,7 @@ func testRegistryCache(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it.After(func() {
-				h.AssertNil(t, os.RemoveAll(filepath.Join(registryCache.Root, registryCache.RegistryDir)))
+				h.AssertNil(t, os.RemoveAll(registryCache.RegistryDir))
 			})
 
 			when("url is empty string", func() {
