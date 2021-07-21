@@ -5,7 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
@@ -17,8 +16,8 @@ var (
 	Version = "0.0.0"
 )
 
-func extractPackagedBuildpacks(ctx context.Context, pkgImageRef string, fetcher ImageFetcher, publish bool, pullPolicy config.PullPolicy) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
-	pkgImage, err := fetcher.Fetch(ctx, pkgImageRef, image.FetchOptions{Daemon: !publish, PullPolicy: pullPolicy})
+func extractPackagedBuildpacks(ctx context.Context, pkgImageRef string, fetcher ImageFetcher, fetchOptions image.FetchOptions) (mainBP dist.Buildpack, depBPs []dist.Buildpack, err error) {
+	pkgImage, err := fetcher.Fetch(ctx, pkgImageRef, fetchOptions)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching image")
 	}

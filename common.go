@@ -57,7 +57,7 @@ func (c *Client) resolveRunImage(runImage, imgRegistry, bldrRegistry string, sta
 	return runImageName
 }
 
-func (c *Client) getRegistry(logger logging.Logger, registryName string) (registry.Cache, error) {
+func getRegistry(logger logging.Logger, registryName string) (registry.Cache, error) {
 	home, err := config.PackHome()
 	if err != nil {
 		return registry.Cache{}, err
