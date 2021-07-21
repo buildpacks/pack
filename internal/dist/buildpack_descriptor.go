@@ -52,7 +52,7 @@ func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins 
 
 func (b *BuildpackDescriptor) findMixinsForStack(stackID string) ([]string, error) {
 	for _, s := range b.Stacks {
-		if s.ID == stackID {
+		if s.ID == stackID || s.ID == "*" {
 			return s.Mixins, nil
 		}
 	}
