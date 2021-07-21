@@ -31,7 +31,6 @@ import (
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/layer"
 	pname "github.com/buildpacks/pack/internal/name"
-	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
@@ -710,60 +709,23 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				ID:      id,
 				Version: version,
 			})
-		case buildpack.URILocator:
-			bp, err = paths.FilePathToURI(bp, relativeBaseDir)
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "making absolute: %s", style.Symbol(bp))
-			}
-
-			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(bp))
-
-			blob, err := c.downloader.Download(ctx, bp)
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
-			}
-
+		default:
 			imageOS, err := builderImage.OS()
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
 			}
-
-			mainBP, depBPs, err := decomposeBuildpack(blob, imageOS)
+			mainBP, depBPs, err := c.BuildpackDownloader.Download(ctx, bp, BuildpackDownloadOptions{
+				RegistryName:    registry,
+				ImageOS:         imageOS,
+				RelativeBaseDir: opts.RelativeBaseDir,
+				Daemon:          !publish,
+				PullPolicy:      pullPolicy,
+			})
 			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "extracting from %s", style.Symbol(bp))
+				return fetchedBPs, order, errors.Wrap(err, "downloading buildpack")
 			}
-
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
-		case buildpack.PackageLocator:
-			imageName := buildpack.ParsePackageLocator(bp)
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, image.FetchOptions{Daemon: !publish, PullPolicy: pullPolicy})
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(bp))
-			}
-
-			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
-			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
-		case buildpack.RegistryLocator:
-			registryCache, err := getRegistry(c.logger, registry)
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "invalid registry '%s'", registry)
-			}
-
-			registryBp, err := registryCache.LocateBuildpack(bp)
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
-			}
-
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, image.FetchOptions{Daemon: !publish, PullPolicy: pullPolicy})
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "extracting from registry %s", style.Symbol(bp))
-			}
-
-			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
-			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
-		default:
-			return nil, nil, fmt.Errorf("invalid buildpack string %s", style.Symbol(bp))
 		}
 	}
 
