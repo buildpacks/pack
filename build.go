@@ -717,7 +717,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			mainBP, depBPs, err := c.BuildpackDownloader.Download(ctx, bp, BuildpackDownloadOptions{
 				RegistryName:    registry,
 				ImageOS:         imageOS,
-				RelativeBaseDir: opts.RelativeBaseDir,
+				RelativeBaseDir: relativeBaseDir,
 				Daemon:          !publish,
 				PullPolicy:      pullPolicy,
 			})
