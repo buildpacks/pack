@@ -102,6 +102,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 		mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 
 		tmpDir, err = ioutil.TempDir("", "buildpack-downloader-test")
+		h.AssertNil(t, err)
 
 		packHome := filepath.Join(tmpDir, ".pack")
 		err = os.MkdirAll(packHome, 0755)
@@ -144,9 +145,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 				packageImage = createPackage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7")
 			})
 			when("daemon=true and pull-policy=always", func() {
-
 				it("should pull and use local package image", func() {
-
 					buildpackDownloadOptions = pack.BuildpackDownloadOptions{
 						RegistryName: "some-registry",
 						ImageOS:      "linux",
@@ -356,9 +355,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("buildpack is missing from registry", func() {
-
 				it("errors", func() {
-
 					buildpackDownloadOptions.RegistryName = "some-registry"
 					_, _, err := subject.BuildpackDownloader.Download(context.TODO(), "urn:cnb:registry:fake", buildpackDownloadOptions)
 					h.AssertError(t, err,
@@ -367,9 +364,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			when("can't download image from registry", func() {
-
 				it("errors", func() {
-
 					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
 					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: false, PullPolicy: config.PullAlways}).Return(nil, errors.New("failed to pull"))
 
