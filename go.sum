@@ -83,8 +83,8 @@ github.com/bgentry/speakeasy v0.1.0/go.mod h1:+zsyZBPWlz7T6j88CTgSN5bM796AkVf0kB
 github.com/bketelsen/crypt v0.0.4/go.mod h1:aI6NrJ0pMGgvZKL1iVgXLnfIFJtfV+bKCoqOes/6LfM=
 github.com/buildpacks/imgutil v0.0.0-20210510154637-009f91f52918 h1:SzI5Uwnus3g/HQCFri+svWNiht4y8+jE2+QR8kzLPps=
 github.com/buildpacks/imgutil v0.0.0-20210510154637-009f91f52918/go.mod h1:ZQdcfsoyeqJvSdnUcCiS3Njhj0SZgBllJBnx5ojmgaQ=
-github.com/buildpacks/lifecycle v0.11.3 h1:FyvtzNxNjnBAdujzUiSpiCap3x+NzrqokGj69PiYvGk=
-github.com/buildpacks/lifecycle v0.11.3/go.mod h1:4anPUHYqREC3oh3qqKZwt7wqWR866E7BvtIxRE8xGLE=
+github.com/buildpacks/lifecycle v0.11.4 h1:N7wS8kAgr2D+DoRgYb/1JUhBuzzgzLKYdCFDckzJl/s=
+github.com/buildpacks/lifecycle v0.11.4/go.mod h1:4anPUHYqREC3oh3qqKZwt7wqWR866E7BvtIxRE8xGLE=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=

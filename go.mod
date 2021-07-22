@@ -6,7 +6,7 @@ require (
 	github.com/Microsoft/hcsshim v0.8.10 // indirect
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20210510154637-009f91f52918
-	github.com/buildpacks/lifecycle v0.11.3
+	github.com/buildpacks/lifecycle v0.11.4
 	github.com/containerd/containerd v1.4.1 // indirect
 	github.com/containerd/continuity v0.0.0-20200107194136-26c1120b8d41 // indirect
 	github.com/docker/docker v20.10.7+incompatible
