@@ -559,13 +559,7 @@ func (c *Client) processAppPath(appPath string) (string, error) {
 	}
 
 	if !fi.IsDir() {
-		fh, err := os.Open(filepath.Clean(resolvedAppPath))
-		if err != nil {
-			return "", errors.Wrap(err, "read file")
-		}
-		defer fh.Close()
-
-		isZip, err := archive.IsZip(fh)
+		isZip, err := archive.IsZip(filepath.Clean(resolvedAppPath))
 		if err != nil {
 			return "", errors.Wrap(err, "check zip")
 		}
