@@ -69,14 +69,12 @@ pipeline = "Lucerne"
 			if projectDescriptor.Project.Version != expected {
 				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
 					expected, projectDescriptor.Project.Version)
-
-			}
+				}
 			expected = "https://github.com/buildpacks/pack"
 			if projectDescriptor.Project.SourceURL != expected {
 				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
 					expected, projectDescriptor.Project.SourceURL)
-
-			}
+				}
 
 			expected = "example/lua"
 			if projectDescriptor.Build.Buildpacks[0].ID != expected {
