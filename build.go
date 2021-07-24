@@ -19,6 +19,8 @@ import (
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
@@ -291,6 +293,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:            appPath,
 		Image:              imageRef,
+		ProjectMetadata:    platform.ProjectMetadata{},
 		Builder:            ephemeralBuilder,
 		RunImage:           runImageName,
 		ClearCache:         opts.ClearCache,
