@@ -209,7 +209,6 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		cacheOpts,
 		WithContainerOperations(CopyDir(l.opts.ProjectPath, l.mountPaths.projectPath(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter)),
 		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter)),
-		
 	}
 
 	if publish {
