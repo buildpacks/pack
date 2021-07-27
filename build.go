@@ -290,18 +290,27 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
+	version:= opts.ProjectDescriptor.Project.Version
+	sourceUrl:= opts.ProjectDescriptor.Project.SourceURL
+
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:            appPath,
 		Image:              imageRef,
-		ProjectMetadata:    platform.ProjectMetadata{},
 		Builder:            ephemeralBuilder,
+		LifecycleImage:     ephemeralBuilder.Name(),
 		RunImage:           runImageName,
+		ProjectMetadata:    platform.ProjectMetadata{Source: &platform.ProjectSource{
+			Type:     "project",
+			Version:  map[string]interface{}{"declared": version},
+			Metadata: map[string]interface{}{"url": sourceUrl},
+		}},
+		ProjectPath:        "",
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
-		DockerHost:         opts.DockerHost,
-		UseCreator:         false,
 		TrustBuilder:       opts.TrustBuilder,
-		LifecycleImage:     ephemeralBuilder.Name(),
+		UseCreator:         false,
+		DockerHost:         opts.DockerHost,
+		CacheImage:         opts.CacheImage,
 		HTTPProxy:          proxyConfig.HTTPProxy,
 		HTTPSProxy:         proxyConfig.HTTPSProxy,
 		NoProxy:            proxyConfig.NoProxy,
@@ -310,7 +319,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Volumes:            processedVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
 		FileFilter:         fileFilter,
-		CacheImage:         opts.CacheImage,
 		Workspace:          opts.Workspace,
 		GID:                opts.GroupID,
 	}

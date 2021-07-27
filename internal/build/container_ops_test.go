@@ -371,15 +371,15 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 
 			h.AssertEq(t, errBuf.String(), "")
 			if osType == "windows" {
-				h.AssertContains(t, outBuf.String(), `01/01/1980  12:00 AM                69 ...                    stack.toml`)
+				h.AssertContains(t, outBuf.String(), `01/01/1980  12:00 AM                137 ...                    project-metadata.toml`)
 			} else {
-				h.AssertContains(t, outBuf.String(), `-rwxr-xr-x    1 root     root            69 Jan  1  1980 /layers-vol/project-metadata.toml`)
+				h.AssertContains(t, outBuf.String(), `-rwxr-xr-x    1 root     root           137 Jan  1  1980 /layers-vol/project-metadata.toml`)
 			}
 		})
 
 		it("has expected contents", func() {
 			containerDir := "/layers-vol"
-			p := "/layers-vol/projectmetadata.toml"
+			p := "/layers-vol/project-metadata.toml"
 			if osType == "windows" {
 				containerDir = `c:\layers-vol`
 				p = `c:\layers-vol\project-metadata.toml`
@@ -412,12 +412,16 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			h.AssertNil(t, err)
 
 			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
+			h.AssertEq(t, errBuf.String(), "")
 			h.AssertNil(t, err)
 
-			h.AssertEq(t, errBuf.String(), "")
-			h.AssertContains(t, outBuf.String(), `[run-image]
-  image = "image-1"
-  mirrors = ["mirror-1", "mirror-2"]
+			
+			h.AssertContains(t, outBuf.String(), `[source]
+  type = "project"
+  [source.version]
+    declared = "1.0.2"
+  [source.metadata]
+    url = "https://github.com/buildpacks/pack"
 `)
 		})
 	})
