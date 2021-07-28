@@ -5,12 +5,15 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	"github.com/buildpacks/lifecycle/api"
 
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -26,7 +29,93 @@ func TestProject(t *testing.T) {
 
 func testProject(t *testing.T, when spec.G, it spec.S) {
 	when("#ReadProjectDescriptor", func() {
-		it("should parse a valid project.toml file", func() {
+		it("should parse a valid v0.2 project.toml file", func() {
+			projectToml := `
+[_]
+name = "gallant 0.2"
+schema-version="0.2"
+[[_.licenses]]
+type = "MIT"
+[_.metadata]
+pipeline = "Lucerne"
+[io.buildpacks]
+exclude = [ "*.jar" ]
+[[io.buildpacks.group]]
+id = "example/lua"
+version = "1.0"
+[[io.buildpacks.group]]
+uri = "https://example.com/buildpack"
+[[io.buildpacks.env.build]]
+name = "JAVA_OPTS"
+value = "-Xmx300m"
+`
+			tmpProjectToml, err := createTmpProjectTomlFile(projectToml)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			projectDescriptor, err := ReadProjectDescriptor(tmpProjectToml.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var expected string
+
+			expected = "gallant 0.2"
+			if projectDescriptor.Project.Name != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Project.Name)
+			}
+
+			expectedVersion := api.MustParse("0.2")
+			if !reflect.DeepEqual(expectedVersion, projectDescriptor.SchemaVersion) {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expectedVersion, projectDescriptor.SchemaVersion)
+			}
+
+			expected = "example/lua"
+			if projectDescriptor.Build.Buildpacks[0].ID != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Buildpacks[0].ID)
+			}
+
+			expected = "1.0"
+			if projectDescriptor.Build.Buildpacks[0].Version != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Buildpacks[0].Version)
+			}
+
+			expected = "https://example.com/buildpack"
+			if projectDescriptor.Build.Buildpacks[1].URI != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Buildpacks[1].URI)
+			}
+
+			expected = "JAVA_OPTS"
+			if projectDescriptor.Build.Env[0].Name != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Env[0].Name)
+			}
+
+			expected = "-Xmx300m"
+			if projectDescriptor.Build.Env[0].Value != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Build.Env[0].Value)
+			}
+
+			expected = "MIT"
+			if projectDescriptor.Project.Licenses[0].Type != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Project.Licenses[0].Type)
+			}
+
+			expected = "Lucerne"
+			if projectDescriptor.Metadata["pipeline"] != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Metadata["pipeline"])
+			}
+		})
+		it("should parse a valid v0.1 project.toml file", func() {
 			projectToml := `
 [project]
 name = "gallant"
@@ -61,6 +150,12 @@ pipeline = "Lucerne"
 			if projectDescriptor.Project.Name != expected {
 				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
 					expected, projectDescriptor.Project.Name)
+			}
+
+			expectedVersion := api.MustParse("0.1")
+			if !reflect.DeepEqual(expectedVersion, projectDescriptor.SchemaVersion) {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expectedVersion, projectDescriptor.SchemaVersion)
 			}
 
 			expected = "example/lua"
