@@ -42,6 +42,7 @@ func ReadProjectDescriptor(pathToFile string) (common.Descriptor, error) {
 	var schema common.ProjectDescriptorSchema
 	var ok bool
 	if versionDescriptor.Project.Version == "" {
+		// _.schema-version does not exist in 0.1
 		schema = supportedSchemas["0.1"]
 	} else {
 		if _, err := api.NewVersion(versionDescriptor.Project.Version); err != nil {
