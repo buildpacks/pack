@@ -188,11 +188,17 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 
+	if l.opts.Image == nil {
+		return errors.New("image can't be nil")
+	}
+
+	// validate image name
+	image, err := name.ParseReference(l.opts.Image.Name(), name.WeakValidation)
+	if err != nil {
+		return fmt.Errorf("invalid image name: %s", err)
+	}
+
 	if l.opts.PreviousImage != "" {
-		image, err := name.ParseReference(l.opts.Image.Name(), name.WeakValidation)
-		if err != nil {
-			return fmt.Errorf("invalid image name: %s", err)
-		}
 		prevImage, err := name.ParseReference(l.opts.PreviousImage, name.WeakValidation)
 		if err != nil {
 			return fmt.Errorf("invalid previous image name: %s", err)

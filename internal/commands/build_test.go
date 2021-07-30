@@ -734,14 +734,6 @@ builder = "my-builder"
 						h.AssertNil(t, command.Execute())
 					})
 				})
-
-				// when("image and previous-image are not in same registry", func() {
-				// 	it("fails", func() {
-				// 		command.SetArgs([]string{"--builder", "my-builder", "index.docker.io/some/image:latest", "--previous-image", "example.io/some/previous-image", "--publish"})
-				// 		err := command.Execute()
-				// 		h.AssertError(t, err, "image and previous-image should be in the same registry when --publish is true")
-				// 	})
-				// })
 			})
 		})
 	})
