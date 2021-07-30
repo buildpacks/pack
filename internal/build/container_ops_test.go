@@ -20,12 +20,11 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
 	h "github.com/buildpacks/pack/testhelpers"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 // TestContainerOperations are integration tests for the container operations against a docker daemon

@@ -15,13 +15,12 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/buildpacks/pack/internal/paths"
 
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 type ContainerOperation func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error
@@ -168,24 +167,6 @@ func WriteProjectMetadata(p string, metadata platform.ProjectMetadata, os string
 		return ctrClient.CopyToContainer(ctx, containerID, "/", reader, types.CopyToContainerOptions{})
 	}
 }
-
-// func createReader(src, dst string, uid, gid int, includeRoot bool, fileFilter func(string) bool) (io.ReadCloser, error) {
-// 	fi, err := os.Stat(src)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	if fi.IsDir() {
-// 		var mode int64 = -1
-// 		if runtime.GOOS == "windows" {
-// 			mode = 0777
-// 		}
-
-// 		return archive.ReadDirAsTar(src, dst, uid, gid, mode, false, includeRoot, fileFilter), nil
-// 	}
-
-// 	return archive.ReadZipAsTar(src, dst, uid, gid, -1, false, fileFilter), nil
-// }
 
 // WriteStackToml writes a `stack.toml` based on the StackMetadata provided to the destination path.
 func WriteStackToml(dstPath string, stack builder.StackMetadata, os string) ContainerOperation {

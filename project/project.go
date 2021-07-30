@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	//"github.com/docker/docker/api/types/versions"
+
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/lifecycle/platform"
+	//"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/pack/internal/dist"
 )
 
@@ -42,10 +42,6 @@ type Descriptor struct {
 	Project  Project                `toml:"project"`
 	Build    Build                  `toml:"build"`
 	Metadata map[string]interface{} `toml:"metadata"`
-}
-
-func (d *Descriptor) ProjectMetadata() platform.ProjectMetadata {
-	return platform.ProjectMetadata{}
 }
 
 func ReadProjectDescriptor(pathToFile string) (Descriptor, error) {
