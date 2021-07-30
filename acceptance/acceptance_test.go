@@ -43,9 +43,6 @@ import (
 const (
 	runImage   = "pack-test/run"
 	buildImage = "pack-test/build"
-	version    = "1.0.2"
-	Type       = "project"
-	metadata   = "https://github.com/buildpacks/pack"
 )
 
 var (
