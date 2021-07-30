@@ -20,11 +20,12 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/lifecycle/platform"
+
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/buildpacks/lifecycle/platform"
 )
 
 // TestContainerOperations are integration tests for the container operations against a docker daemon
@@ -414,7 +415,6 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 			h.AssertEq(t, errBuf.String(), "")
 			h.AssertNil(t, err)
 
-			
 			h.AssertContains(t, outBuf.String(), `[source]
   type = "project"
   [source.version]

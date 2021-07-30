@@ -292,23 +292,23 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	version:= opts.ProjectDescriptor.Project.Version
-	sourceUrl:= opts.ProjectDescriptor.Project.SourceURL
+	version := opts.ProjectDescriptor.Project.Version
+	sourceURL := opts.ProjectDescriptor.Project.SourceURL
 	runImageName, err = pname.TranslateRegistry(runImageName, c.registryMirrors, c.logger)
 	if err != nil {
 		return err
 	}
 
 	lifecycleOpts := build.LifecycleOptions{
-		AppPath:            appPath,
-		Image:              imageRef,
-		Builder:            ephemeralBuilder,
-		LifecycleImage:     ephemeralBuilder.Name(),
-		RunImage:           runImageName,
-		ProjectMetadata:    platform.ProjectMetadata{Source: &platform.ProjectSource{
+		AppPath:        appPath,
+		Image:          imageRef,
+		Builder:        ephemeralBuilder,
+		LifecycleImage: ephemeralBuilder.Name(),
+		RunImage:       runImageName,
+		ProjectMetadata: platform.ProjectMetadata{Source: &platform.ProjectSource{
 			Type:     "project",
 			Version:  map[string]interface{}{"declared": version},
-			Metadata: map[string]interface{}{"url": sourceUrl},
+			Metadata: map[string]interface{}{"url": sourceURL},
 		}},
 		ProjectPath:        "",
 		ClearCache:         opts.ClearCache,
