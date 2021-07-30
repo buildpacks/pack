@@ -822,7 +822,7 @@ func testAcceptance(
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-							assertOutput.IncludesLifecycleImageTag()
+							assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
 							assertOutput.IncludesSeparatePhases()
 						})
 					})
@@ -844,7 +844,7 @@ func testAcceptance(
 							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
 
 							assertOutput := assertions.NewLifecycleOutputAssertionManager(t, output)
-							assertOutput.IncludesLifecycleImageTag()
+							assertOutput.IncludesLifecycleImageTag(lifecycle.Image())
 							assertOutput.IncludesSeparatePhases()
 						})
 					})

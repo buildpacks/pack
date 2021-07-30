@@ -69,8 +69,8 @@ func (l LifecycleOutputAssertionManager) IncludesSeparatePhases() {
 	l.assert.ContainsAll(l.output, "[detector]", "[analyzer]", "[builder]", "[exporter]")
 }
 
-func (l LifecycleOutputAssertionManager) IncludesLifecycleImageTag() {
+func (l LifecycleOutputAssertionManager) IncludesLifecycleImageTag(tag string) {
 	l.testObject.Helper()
 
-	l.assert.Contains(l.output, "buildpacksio/lifecycle")
+	l.assert.Contains(l.output, tag)
 }

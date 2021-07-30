@@ -36,6 +36,22 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", providedMixins, false))
 			})
 
+			it("works with wildcard stack", func() {
+				bp := dist.BuildpackDescriptor{
+					Info: dist.BuildpackInfo{
+						ID:      "some.buildpack.id",
+						Version: "some.buildpack.version",
+					},
+					Stacks: []dist.Stack{{
+						ID:     "*",
+						Mixins: []string{"mixinA", "build:mixinB", "run:mixinD"},
+					}},
+				}
+
+				providedMixins := []string{"mixinA", "build:mixinB", "mixinC"}
+				h.AssertNil(t, bp.EnsureStackSupport("some.stack.id", providedMixins, false))
+			})
+
 			it("returns an error with any missing (and non-ignored) mixins", func() {
 				bp := dist.BuildpackDescriptor{
 					Info: dist.BuildpackInfo{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -31,6 +32,7 @@ import (
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/layer"
+	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/stringset"
@@ -236,7 +238,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Image(), bldr.Buildpacks(), bldr.Order(), opts)
+	fetchedBPs, order, err := c.processBuildpacks(ctx, bldr.Image(), bldr.Buildpacks(), bldr.Order(), bldr.StackID, opts)
 	if err != nil {
 		return err
 	}
@@ -292,6 +294,10 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	version:= opts.ProjectDescriptor.Project.Version
 	sourceUrl:= opts.ProjectDescriptor.Project.SourceURL
+	runImageName, err = pname.TranslateRegistry(runImageName, c.registryMirrors, c.logger)
+	if err != nil {
+		return err
+	}
 
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:            appPath,
@@ -650,7 +656,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, opts BuildOptions) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []dist.Buildpack, order dist.Order, err error) {
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
 	registry := opts.Registry
@@ -662,10 +668,23 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 		relativeBaseDir = opts.ProjectDescriptorBaseDir
 
 		for _, bp := range opts.ProjectDescriptor.Build.Buildpacks {
-			if bp.URI == "" {
-				declaredBPs = append(declaredBPs, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
-			} else {
+			switch {
+			case bp.ID != "" && bp.Script.Inline != "" && bp.Version == "" && bp.URI == "":
+				if bp.Script.API == "" {
+					return nil, nil, errors.New("Missing API version for inline buildpack")
+				}
+
+				pathToInlineBuildpack, err := createInlineBuildpack(bp, stackID)
+				if err != nil {
+					return nil, nil, errors.Wrap(err, "Could not create temporary inline buildpack")
+				}
+				declaredBPs = append(declaredBPs, pathToInlineBuildpack)
+			case bp.URI != "":
 				declaredBPs = append(declaredBPs, bp.URI)
+			case bp.ID != "" && bp.Version != "":
+				declaredBPs = append(declaredBPs, fmt.Sprintf("%s@%s", bp.ID, bp.Version))
+			default:
+				return nil, nil, errors.New("Invalid buildpack defined in project descriptor")
 			}
 		}
 	}
@@ -728,7 +747,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.PackageLocator:
 			imageName := buildpack.ParsePackageLocator(bp)
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, publish, pullPolicy)
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, image.FetchOptions{Daemon: !publish, PullPolicy: pullPolicy})
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(bp))
 			}
@@ -736,7 +755,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
 		case buildpack.RegistryLocator:
-			registryCache, err := c.getRegistry(c.logger, registry)
+			registryCache, err := getRegistry(c.logger, registry)
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "invalid registry '%s'", registry)
 			}
@@ -746,7 +765,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
 			}
 
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, publish, pullPolicy)
+			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, image.FetchOptions{Daemon: !publish, PullPolicy: pullPolicy})
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "extracting from registry %s", style.Symbol(bp))
 			}
@@ -909,4 +928,48 @@ func parseDigestFromImageID(id imgutil.Identifier) string {
 
 	digest = strings.TrimPrefix(digest, "sha256:")
 	return fmt.Sprintf("sha256:%s", digest)
+}
+
+func createInlineBuildpack(bp project.Buildpack, stackID string) (string, error) {
+	pathToInlineBuilpack, err := ioutil.TempDir("", "inline-cnb")
+	if err != nil {
+		return pathToInlineBuilpack, err
+	}
+
+	if err = createBuildpackTOML(pathToInlineBuilpack, bp.ID, "0.0.0", bp.Script.API, []dist.Stack{{ID: stackID}}, nil); err != nil {
+		return pathToInlineBuilpack, err
+	}
+
+	shell := bp.Script.Shell
+	if shell == "" {
+		shell = "/bin/sh"
+	}
+
+	binBuild := fmt.Sprintf(`#!%s
+
+%s
+`, shell, bp.Script.Inline)
+
+	binDetect := fmt.Sprintf(`#!%s
+
+exit 0
+`, shell)
+
+	if err = createBinScript(pathToInlineBuilpack, "build", binBuild, nil); err != nil {
+		return pathToInlineBuilpack, err
+	}
+
+	if err = createBinScript(pathToInlineBuilpack, "build.bat", bp.Script.Inline, nil); err != nil {
+		return pathToInlineBuilpack, err
+	}
+
+	if err = createBinScript(pathToInlineBuilpack, "detect", binDetect, nil); err != nil {
+		return pathToInlineBuilpack, err
+	}
+
+	if err = createBinScript(pathToInlineBuilpack, "detect.bat", bp.Script.Inline, nil); err != nil {
+		return pathToInlineBuilpack, err
+	}
+
+	return pathToInlineBuilpack, nil
 }
