@@ -902,7 +902,7 @@ func testAcceptance(
 						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"stack":{"runImage":{"image":"%s","mirrors":["%s"]}}}`, runImage, runImageMirror))
 
 						t.Log("sets the source metadata")
-						assertImage.HasLabelWithData(repoName, "io.buildpacks.project.metadata", `{"source":{"type":"project","version":{"declared":"1.0.2"},"metadata":{"url":"https://github.com/buildpacks/pack"}}}`)
+						assertImage.HasLabelWithData(repoName, "io.buildpacks.project.metadata", `{"source":{"type":"project","version":{"declared":"1.0.2"},"metadata":{"url":"https://github.com/buildpacks/pack"}}'}`)
 
 						t.Log("registry is empty")
 						assertImage.NotExistsInRegistry(repo)
