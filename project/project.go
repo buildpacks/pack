@@ -5,10 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-
 	"github.com/pkg/errors"
 
-	//"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/pack/internal/dist"
 )
 

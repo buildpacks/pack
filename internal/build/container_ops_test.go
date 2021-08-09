@@ -11,16 +11,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/mount"
-
 	dcontainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"

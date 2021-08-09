@@ -14,13 +14,12 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
-
-	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"

@@ -10,17 +10,15 @@ import (
 	"runtime"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/paths"
-
-	"github.com/buildpacks/lifecycle/platform"
-
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/archive"
 )
 
