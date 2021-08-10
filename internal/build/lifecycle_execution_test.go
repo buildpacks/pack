@@ -840,21 +840,22 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("image is invalid", func() {
-			it("errors", func() {
-				var imageName name.Tag
-				imageName, err := name.NewTag("/x/y/?!z", name.WeakValidation)
-				h.AssertError(t, err, "repository can only contain the runes `abcdefghijklmnopqrstuvwxyz0123456789_-./`")
-				lifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
-					options.Image = imageName
-				})
-				fakePhaseFactory := fakes.NewFakePhaseFactory()
-				err = lifecycle.Create(context.Background(), false, "", false, "test", "test", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
-				h.AssertError(t, err, "invalid image name")
-			})
-		})
-
 		when("-previous-image is used", func() {
+			when("image is invalid", func() {
+				it("errors", func() {
+					var imageName name.Tag
+					imageName, err := name.NewTag("/x/y/?!z", name.WeakValidation)
+					h.AssertError(t, err, "repository can only contain the runes `abcdefghijklmnopqrstuvwxyz0123456789_-./`")
+					lifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.Image = imageName
+						options.PreviousImage = "previous-image"
+					})
+					fakePhaseFactory := fakes.NewFakePhaseFactory()
+					err = lifecycle.Create(context.Background(), false, "", false, "test", "test", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+					h.AssertError(t, err, "invalid image name")
+				})
+			})
+
 			when("previous-image is invalid", func() {
 				it("errors", func() {
 					var imageName name.Tag
