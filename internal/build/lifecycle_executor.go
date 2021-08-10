@@ -14,6 +14,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/lifecycle/platform"
 )
 
 var (
@@ -56,6 +57,8 @@ type LifecycleOptions struct {
 	Builder            Builder
 	LifecycleImage     string
 	RunImage           string
+	ProjectMetadata    platform.ProjectMetadata
+	ProjectPath        string
 	ClearCache         bool
 	Publish            bool
 	TrustBuilder       bool
