@@ -30,7 +30,7 @@ require (
 	github.com/sabhiram/go-gitignore v0.0.0-20201211074657-223ce5d391b0
 	github.com/sclevine/spec v1.4.0
 	github.com/sergi/go-diff v1.1.0 // indirect
-	github.com/sirupsen/logrus v1.7.0 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/cobra v1.2.1
 	github.com/willf/bitset v1.1.11 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
