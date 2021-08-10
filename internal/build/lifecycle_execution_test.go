@@ -1868,8 +1868,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 
-				h.AssertEq(t, len(configProvider.ContainerOps()), 1)
+				h.AssertEq(t, len(configProvider.ContainerOps()), 2)
 				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[1], "WriteProjectMetadata")
 			})
 
 			it("configures the phase with default process type", func() {
@@ -2102,8 +2103,9 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
 				h.AssertSliceContains(t, configProvider.HostConfig().Binds, expectedBinds...)
 
-				h.AssertEq(t, len(configProvider.ContainerOps()), 1)
+				h.AssertEq(t, len(configProvider.ContainerOps()), 2)
 				h.AssertFunctionName(t, configProvider.ContainerOps()[0], "WriteStackToml")
+				h.AssertFunctionName(t, configProvider.ContainerOps()[1], "WriteProjectMetadata")
 			})
 
 			it("configures the phase with default process type", func() {
