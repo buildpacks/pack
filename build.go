@@ -14,6 +14,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -162,6 +163,9 @@ type BuildOptions struct {
 
 	// User's group id used to build the image
 	GroupID int
+
+	// A previous image to set to a particular tag reference, digest reference, or (when performing a daemon build) image ID;
+	PreviousImage string
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -290,22 +294,31 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
+	version := opts.ProjectDescriptor.Project.Version
+	sourceURL := opts.ProjectDescriptor.Project.SourceURL
 	runImageName, err = pname.TranslateRegistry(runImageName, c.registryMirrors, c.logger)
 	if err != nil {
 		return err
 	}
 
 	lifecycleOpts := build.LifecycleOptions{
-		AppPath:            appPath,
-		Image:              imageRef,
-		Builder:            ephemeralBuilder,
-		RunImage:           runImageName,
+		AppPath:        appPath,
+		Image:          imageRef,
+		Builder:        ephemeralBuilder,
+		LifecycleImage: ephemeralBuilder.Name(),
+		RunImage:       runImageName,
+		ProjectMetadata: platform.ProjectMetadata{Source: &platform.ProjectSource{
+			Type:     "project",
+			Version:  map[string]interface{}{"declared": version},
+			Metadata: map[string]interface{}{"url": sourceURL},
+		}},
+		ProjectPath:        "",
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
-		DockerHost:         opts.DockerHost,
-		UseCreator:         false,
 		TrustBuilder:       opts.TrustBuilder,
-		LifecycleImage:     ephemeralBuilder.Name(),
+		UseCreator:         false,
+		DockerHost:         opts.DockerHost,
+		CacheImage:         opts.CacheImage,
 		HTTPProxy:          proxyConfig.HTTPProxy,
 		HTTPSProxy:         proxyConfig.HTTPSProxy,
 		NoProxy:            proxyConfig.NoProxy,
@@ -314,9 +327,9 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Volumes:            processedVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
 		FileFilter:         fileFilter,
-		CacheImage:         opts.CacheImage,
 		Workspace:          opts.Workspace,
 		GID:                opts.GroupID,
+		PreviousImage:      opts.PreviousImage,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
