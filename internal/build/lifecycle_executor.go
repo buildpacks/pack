@@ -9,6 +9,7 @@ import (
 
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 
@@ -56,6 +57,8 @@ type LifecycleOptions struct {
 	Builder            Builder
 	LifecycleImage     string
 	RunImage           string
+	ProjectMetadata    platform.ProjectMetadata
+	ProjectPath        string
 	ClearCache         bool
 	Publish            bool
 	TrustBuilder       bool
@@ -72,6 +75,7 @@ type LifecycleOptions struct {
 	FileFilter         func(string) bool
 	Workspace          string
 	GID                int
+	PreviousImage      string
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker client.CommonAPIClient) *LifecycleExecutor {

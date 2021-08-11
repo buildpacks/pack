@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/buildpacks/pack/config"
-
 	"github.com/Masterminds/semver"
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
 	pubbldr "github.com/buildpacks/pack/builder"
+	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/image"
