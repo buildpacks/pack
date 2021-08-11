@@ -427,6 +427,33 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
+		when("env vars allow to use quotes in value", func() {
+			it("sets flag variables", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
+						"KEY1": `VALUE"`,
+					})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--env", `KEY1="VALUE"""`})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
+		when("env vars are passed as coma separated flag", func() {
+			it("sets flag variables", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithEnv(map[string]string{
+						"KEY1": "VALUE1",
+						"KEY2": "VALUE2,VALUE3",
+					})).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--env", `KEY1=VALUE1,KEY2="VALUE2,VALUE3"`})
+				h.AssertNil(t, command.Execute())
+			})
+		})
+
 		when("env vars are passed as flags", func() {
 			var (
 				tmpVar   = "tmpVar"
@@ -451,6 +478,20 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--env", "KEY=VALUE", "--env", tmpVar})
 				h.AssertNil(t, command.Execute())
+			})
+		})
+		when("env formatting is invalid as regexp does not match from start", func() {
+			it("returns a parse error", func() {
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--env", `KEY="VALUE"invalid,KEY2=VALUE`})
+				err := command.Execute()
+				h.AssertError(t, err, `failed to parse env line 'KEY="VALUE"invalid,KEY2=VALUE': invalid syntax between 0 and 19`)
+			})
+		})
+		when("env formatting is invalid as regexp does not match at all", func() {
+			it("returns a parse error", func() {
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--env", "="})
+				err := command.Execute()
+				h.AssertError(t, err, `failed to parse env line '=': invalid syntax between 0 and 1`)
 			})
 		})
 
