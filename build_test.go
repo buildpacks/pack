@@ -2382,6 +2382,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, fakeLifecycle.Opts.RunImage, "10.0.0.1/default/run:latest")
 			})
 		})
+
+		when("previous-image option", func() {
+			it("previous-image is passed to lifecycle", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Workspace:     "app",
+					Builder:       defaultBuilderName,
+					Image:         "example.com/some/repo:tag",
+					PreviousImage: "example.com/some/new:tag",
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.PreviousImage, "example.com/some/new:tag")
+			})
+		})
 	})
 }
 

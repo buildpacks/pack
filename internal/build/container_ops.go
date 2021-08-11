@@ -10,15 +10,15 @@ import (
 	"runtime"
 
 	"github.com/BurntSushi/toml"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/paths"
-
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
+	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/archive"
 )
 
@@ -136,6 +136,35 @@ func findMount(info types.ContainerJSON, dst string) (types.MountPoint, error) {
 		}
 	}
 	return types.MountPoint{}, fmt.Errorf("no matching mount found for %s", dst)
+}
+
+//WriteProjectMetadata
+func WriteProjectMetadata(p string, metadata platform.ProjectMetadata, os string) ContainerOperation {
+	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
+		buf := &bytes.Buffer{}
+		err := toml.NewEncoder(buf).Encode(metadata)
+		if err != nil {
+			return errors.Wrap(err, "marshaling project metadata")
+		}
+
+		tarBuilder := archive.TarBuilder{}
+
+		tarPath := p
+		if os == "windows" {
+			tarPath = paths.WindowsToSlash(p)
+		}
+
+		tarBuilder.AddFile(tarPath, 0755, archive.NormalizedDateTime, buf.Bytes())
+		reader := tarBuilder.Reader(archive.DefaultTarWriterFactory())
+		defer reader.Close()
+
+		if os == "windows" {
+			dirName := paths.WindowsDir(p)
+			return copyDirWindows(ctx, ctrClient, containerID, reader, dirName, stdout, stderr)
+		}
+
+		return ctrClient.CopyToContainer(ctx, containerID, "/", reader, types.CopyToContainerOptions{})
+	}
 }
 
 // WriteStackToml writes a `stack.toml` based on the StackMetadata provided to the destination path.
