@@ -369,7 +369,7 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 
 			h.AssertEq(t, errBuf.String(), "")
 			if osType == "windows" {
-				h.AssertContains(t, outBuf.String(), `01/01/1980  12:00 AM                137 ...                    project-metadata.toml`)
+				h.AssertContains(t, outBuf.String(), `01/01/1980  12:00 AM               137 ...                    project-metadata.toml`)
 			} else {
 				h.AssertContains(t, outBuf.String(), `-rwxr-xr-x    1 root     root           137 Jan  1  1980 /layers-vol/project-metadata.toml`)
 			}
