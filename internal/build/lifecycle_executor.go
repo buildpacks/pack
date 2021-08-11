@@ -75,6 +75,7 @@ type LifecycleOptions struct {
 	FileFilter         func(string) bool
 	Workspace          string
 	GID                int
+	PreviousImage      string
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker client.CommonAPIClient) *LifecycleExecutor {

@@ -163,6 +163,9 @@ type BuildOptions struct {
 
 	// User's group id used to build the image
 	GroupID int
+
+	// A previous image to set to a particular tag reference, digest reference, or (when performing a daemon build) image ID;
+	PreviousImage string
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -326,6 +329,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		FileFilter:         fileFilter,
 		Workspace:          opts.Workspace,
 		GID:                opts.GroupID,
+		PreviousImage:      opts.PreviousImage,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
