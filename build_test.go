@@ -123,12 +123,15 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		dlCacheDir, err := ioutil.TempDir(tmpDir, "dl-cache")
 		h.AssertNil(t, err)
 
+		downloader := blob.NewDownloader(logger, dlCacheDir)
+		buildpackDownloader := NewBuildpackDownloader(logger, fakeImageFetcher, downloader)
 		subject = &Client{
-			logger:            logger,
-			imageFetcher:      fakeImageFetcher,
-			downloader:        blob.NewDownloader(logger, dlCacheDir),
-			lifecycleExecutor: fakeLifecycle,
-			docker:            docker,
+			logger:              logger,
+			imageFetcher:        fakeImageFetcher,
+			downloader:          downloader,
+			lifecycleExecutor:   fakeLifecycle,
+			docker:              docker,
+			BuildpackDownloader: buildpackDownloader,
 		}
 	})
 
@@ -1136,7 +1139,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					ClearCache: true,
 					Buildpacks: []string{"missing.bp@version"},
 				}),
-					"invalid buildpack string 'missing.bp@version'",
+					"downloading buildpack: error reading missing.bp@version: invalid locator: InvalidLocator",
 				)
 			})
 
