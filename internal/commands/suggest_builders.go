@@ -118,7 +118,7 @@ func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, bu
 
 func getBuilderDescription(builder SuggestedBuilder, inspector BuilderInspector) string {
 	info, err := inspector.InspectBuilder(builder.Image, false)
-	if err == nil && info.Description != "" {
+	if err == nil && info != nil && info.Description != "" {
 		return info.Description
 	}
 
