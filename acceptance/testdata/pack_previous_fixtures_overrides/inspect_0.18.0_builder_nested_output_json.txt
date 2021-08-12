@@ -42,33 +42,27 @@
     "buildpacks": [
       {
         "id": "noop.buildpack",
-        "name": "NOOP Buildpack",
         "version": "noop.buildpack.later-version",
         "homepage": "http://geocities.com/cool-bp"
       },
       {
         "id": "noop.buildpack",
-        "name": "NOOP Buildpack",
         "version": "noop.buildpack.version"
       },
       {
         "id": "read/env",
-        "name": "Read Env Buildpack",
         "version": "read-env-version"
       },
       {
         "id": "simple/layers",
-        "name": "Simple Layers Buildpack",
         "version": "simple-layers-version"
       },
       {
         "id": "simple/nested-level-1",
-        "name": "Nested Level One Buildpack",
         "version": "nested-l1-version"
       },
       {
         "id": "simple/nested-level-2",
-        "name": "Nested Level Two Buildpack",
         "version": "nested-l2-version"
       }
     ],
@@ -139,33 +133,27 @@
     "buildpacks": [
       {
         "id": "noop.buildpack",
-        "name": "NOOP Buildpack",
         "version": "noop.buildpack.later-version",
         "homepage": "http://geocities.com/cool-bp"
       },
       {
         "id": "noop.buildpack",
-        "name": "NOOP Buildpack",
         "version": "noop.buildpack.version"
       },
       {
         "id": "read/env",
-        "name": "Read Env Buildpack",
         "version": "read-env-version"
       },
       {
         "id": "simple/layers",
-        "name": "Simple Layers Buildpack",
         "version": "simple-layers-version"
       },
       {
         "id": "simple/nested-level-1",
-        "name": "Nested Level One Buildpack",
         "version": "nested-l1-version"
       },
       {
         "id": "simple/nested-level-2",
-        "name": "Nested Level Two Buildpack",
         "version": "nested-l2-version"
       }
     ],

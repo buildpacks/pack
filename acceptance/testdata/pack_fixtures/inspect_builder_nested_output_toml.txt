@@ -51,14 +51,17 @@ default = false
 
   [[remote_info.buildpacks]]
     id = "simple/layers"
+    name = "Simple Layers Buildpack"
     version = "simple-layers-version"
 
   [[remote_info.buildpacks]]
     id = "simple/nested-level-1"
+    name = "Nested Level One Buildpack"
     version = "nested-l1-version"
 
   [[remote_info.buildpacks]]
     id = "simple/nested-level-2"
+    name = "Nested Level Two Buildpack"
     version = "nested-l2-version"
 
   [[remote_info.detection_order]]
@@ -128,14 +131,17 @@ default = false
 
   [[local_info.buildpacks]]
     id = "simple/layers"
+    name = "Simple Layers Buildpack"
     version = "simple-layers-version"
 
   [[local_info.buildpacks]]
     id = "simple/nested-level-1"
+    name = "Nested Level One Buildpack"
     version = "nested-l1-version"
 
   [[local_info.buildpacks]]
     id = "simple/nested-level-2"
+    name = "Nested Level Two Buildpack"
     version = "nested-l2-version"
 
   [[local_info.detection_order]]
