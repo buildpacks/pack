@@ -91,6 +91,9 @@ func TestAcceptance(t *testing.T) {
 	}
 
 	for _, combo := range inputConfigManager.Combinations() {
+		// see https://github.com/golang/go/wiki/CommonMistakes#using-reference-to-loop-iterator-variable
+		combo := combo
+
 		t.Logf(`setting up run combination %s: %s`,
 			style.Symbol(combo.String()),
 			combo.Describe(assetsConfig),
