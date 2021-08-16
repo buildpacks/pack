@@ -4,7 +4,6 @@ package archive // import "github.com/buildpacks/pack/pkg/archive"
 import (
 	"archive/tar"
 	"archive/zip"
-	"bytes"
 	"io"
 	"io/ioutil"
 	"os"
@@ -368,14 +367,16 @@ func NormalizeHeader(header *tar.Header, normalizeModTime bool) {
 }
 
 // IsZip detects whether or not a File is a zip directory
-func IsZip(file io.Reader) (bool, error) {
-	b := make([]byte, 4)
-	_, err := file.Read(b)
-	if err != nil && err != io.EOF {
-		return false, err
-	} else if err == io.EOF {
-		return false, nil
-	}
+func IsZip(path string) (bool, error) {
+	r, err := zip.OpenReader(path)
 
-	return bytes.Equal(b, []byte("\x50\x4B\x03\x04")), nil
+	switch {
+	case err == nil:
+		r.Close()
+		return true, nil
+	case err == zip.ErrFormat:
+		return false, nil
+	default:
+		return false, err
+	}
 }

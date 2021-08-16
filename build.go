@@ -14,6 +14,7 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/volume/mounts"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -31,7 +32,6 @@ import (
 	"github.com/buildpacks/pack/internal/image"
 	"github.com/buildpacks/pack/internal/layer"
 	pname "github.com/buildpacks/pack/internal/name"
-	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
@@ -162,6 +162,9 @@ type BuildOptions struct {
 
 	// User's group id used to build the image
 	GroupID int
+
+	// A previous image to set to a particular tag reference, digest reference, or (when performing a daemon build) image ID;
+	PreviousImage string
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -290,22 +293,31 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
+	version := opts.ProjectDescriptor.Project.Version
+	sourceURL := opts.ProjectDescriptor.Project.SourceURL
 	runImageName, err = pname.TranslateRegistry(runImageName, c.registryMirrors, c.logger)
 	if err != nil {
 		return err
 	}
 
 	lifecycleOpts := build.LifecycleOptions{
-		AppPath:            appPath,
-		Image:              imageRef,
-		Builder:            ephemeralBuilder,
-		RunImage:           runImageName,
+		AppPath:        appPath,
+		Image:          imageRef,
+		Builder:        ephemeralBuilder,
+		LifecycleImage: ephemeralBuilder.Name(),
+		RunImage:       runImageName,
+		ProjectMetadata: platform.ProjectMetadata{Source: &platform.ProjectSource{
+			Type:     "project",
+			Version:  map[string]interface{}{"declared": version},
+			Metadata: map[string]interface{}{"url": sourceURL},
+		}},
+		ProjectPath:        "",
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
-		DockerHost:         opts.DockerHost,
-		UseCreator:         false,
 		TrustBuilder:       opts.TrustBuilder,
-		LifecycleImage:     ephemeralBuilder.Name(),
+		UseCreator:         false,
+		DockerHost:         opts.DockerHost,
+		CacheImage:         opts.CacheImage,
 		HTTPProxy:          proxyConfig.HTTPProxy,
 		HTTPSProxy:         proxyConfig.HTTPSProxy,
 		NoProxy:            proxyConfig.NoProxy,
@@ -314,9 +326,9 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Volumes:            processedVolumes,
 		DefaultProcessType: opts.DefaultProcessType,
 		FileFilter:         fileFilter,
-		CacheImage:         opts.CacheImage,
 		Workspace:          opts.Workspace,
 		GID:                opts.GroupID,
+		PreviousImage:      opts.PreviousImage,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
@@ -559,13 +571,7 @@ func (c *Client) processAppPath(appPath string) (string, error) {
 	}
 
 	if !fi.IsDir() {
-		fh, err := os.Open(filepath.Clean(resolvedAppPath))
-		if err != nil {
-			return "", errors.Wrap(err, "read file")
-		}
-		defer fh.Close()
-
-		isZip, err := archive.IsZip(fh)
+		isZip, err := archive.IsZip(filepath.Clean(resolvedAppPath))
 		if err != nil {
 			return "", errors.Wrap(err, "check zip")
 		}
@@ -710,60 +716,23 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				ID:      id,
 				Version: version,
 			})
-		case buildpack.URILocator:
-			bp, err = paths.FilePathToURI(bp, relativeBaseDir)
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "making absolute: %s", style.Symbol(bp))
-			}
-
-			c.logger.Debugf("Downloading buildpack from URI: %s", style.Symbol(bp))
-
-			blob, err := c.downloader.Download(ctx, bp)
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "downloading buildpack from %s", style.Symbol(bp))
-			}
-
+		default:
 			imageOS, err := builderImage.OS()
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
 			}
-
-			mainBP, depBPs, err := decomposeBuildpack(blob, imageOS)
+			mainBP, depBPs, err := c.BuildpackDownloader.Download(ctx, bp, BuildpackDownloadOptions{
+				RegistryName:    registry,
+				ImageOS:         imageOS,
+				RelativeBaseDir: relativeBaseDir,
+				Daemon:          !publish,
+				PullPolicy:      pullPolicy,
+			})
 			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "extracting from %s", style.Symbol(bp))
+				return fetchedBPs, order, errors.Wrap(err, "downloading buildpack")
 			}
-
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
 			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
-		case buildpack.PackageLocator:
-			imageName := buildpack.ParsePackageLocator(bp)
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, imageName, c.imageFetcher, image.FetchOptions{Daemon: !publish, PullPolicy: pullPolicy})
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "creating from buildpackage %s", style.Symbol(bp))
-			}
-
-			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
-			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
-		case buildpack.RegistryLocator:
-			registryCache, err := getRegistry(c.logger, registry)
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "invalid registry '%s'", registry)
-			}
-
-			registryBp, err := registryCache.LocateBuildpack(bp)
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "locating in registry %s", style.Symbol(bp))
-			}
-
-			mainBP, depBPs, err := extractPackagedBuildpacks(ctx, registryBp.Address, c.imageFetcher, image.FetchOptions{Daemon: !publish, PullPolicy: pullPolicy})
-			if err != nil {
-				return fetchedBPs, order, errors.Wrapf(err, "extracting from registry %s", style.Symbol(bp))
-			}
-
-			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
-			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
-		default:
-			return nil, nil, fmt.Errorf("invalid buildpack string %s", style.Symbol(bp))
 		}
 	}
 
