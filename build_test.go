@@ -123,12 +123,15 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		dlCacheDir, err := ioutil.TempDir(tmpDir, "dl-cache")
 		h.AssertNil(t, err)
 
+		downloader := blob.NewDownloader(logger, dlCacheDir)
+		buildpackDownloader := NewBuildpackDownloader(logger, fakeImageFetcher, downloader)
 		subject = &Client{
-			logger:            logger,
-			imageFetcher:      fakeImageFetcher,
-			downloader:        blob.NewDownloader(logger, dlCacheDir),
-			lifecycleExecutor: fakeLifecycle,
-			docker:            docker,
+			logger:              logger,
+			imageFetcher:        fakeImageFetcher,
+			downloader:          downloader,
+			lifecycleExecutor:   fakeLifecycle,
+			docker:              docker,
+			BuildpackDownloader: buildpackDownloader,
 		}
 	})
 
@@ -1136,7 +1139,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					ClearCache: true,
 					Buildpacks: []string{"missing.bp@version"},
 				}),
-					"invalid buildpack string 'missing.bp@version'",
+					"downloading buildpack: error reading missing.bp@version: invalid locator: InvalidLocator",
 				)
 			})
 
@@ -2377,6 +2380,18 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					Image:   "example.com/some/repo:tag",
 				}))
 				h.AssertEq(t, fakeLifecycle.Opts.RunImage, "10.0.0.1/default/run:latest")
+			})
+		})
+
+		when("previous-image option", func() {
+			it("previous-image is passed to lifecycle", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Workspace:     "app",
+					Builder:       defaultBuilderName,
+					Image:         "example.com/some/repo:tag",
+					PreviousImage: "example.com/some/new:tag",
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.PreviousImage, "example.com/some/new:tag")
 			})
 		})
 	})

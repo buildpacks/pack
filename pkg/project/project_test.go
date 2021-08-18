@@ -118,6 +118,8 @@ value = "-Xmx300m"
 			projectToml := `
 [project]
 name = "gallant"
+version = "1.0.2"
+source-url = "https://github.com/buildpacks/pack"
 [[project.licenses]]
 type = "MIT"
 [build]
@@ -155,6 +157,18 @@ pipeline = "Lucerne"
 			if !reflect.DeepEqual(expectedVersion, projectDescriptor.SchemaVersion) {
 				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
 					expectedVersion, projectDescriptor.SchemaVersion)
+			}
+
+			expected = "1.0.2"
+			if projectDescriptor.Project.Version != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Project.Version)
+			}
+
+			expected = "https://github.com/buildpacks/pack"
+			if projectDescriptor.Project.SourceURL != expected {
+				t.Fatalf("Expected\n-----\n%#v\n-----\nbut got\n-----\n%#v\n",
+					expected, projectDescriptor.Project.SourceURL)
 			}
 
 			expected = "example/lua"

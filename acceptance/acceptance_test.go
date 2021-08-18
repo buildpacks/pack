@@ -91,6 +91,9 @@ func TestAcceptance(t *testing.T) {
 	}
 
 	for _, combo := range inputConfigManager.Combinations() {
+		// see https://github.com/golang/go/wiki/CommonMistakes#using-reference-to-loop-iterator-variable
+		combo := combo
+
 		t.Logf(`setting up run combination %s: %s`,
 			style.Symbol(combo.String()),
 			combo.Describe(assetsConfig),
@@ -900,6 +903,11 @@ func testAcceptance(
 
 						t.Log("sets the run image metadata")
 						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"stack":{"runImage":{"image":"%s","mirrors":["%s"]}}}`, runImage, runImageMirror))
+
+						t.Log("sets the source metadata")
+						if pack.SupportsFeature(invoke.SourceMetadataFromProjectTOML) {
+							assertImage.HasLabelWithData(repoName, "io.buildpacks.project.metadata", (`{"source":{"type":"project","version":{"declared":"1.0.2"},"metadata":{"url":"https://github.com/buildpacks/pack"}}}`))
+						}
 
 						t.Log("registry is empty")
 						assertImage.NotExistsInRegistry(repo)

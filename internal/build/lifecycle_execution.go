@@ -188,6 +188,31 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
 
+	if l.opts.PreviousImage != "" {
+		if l.opts.Image == nil {
+			return errors.New("image can't be nil")
+		}
+
+		image, err := name.ParseReference(l.opts.Image.Name(), name.WeakValidation)
+		if err != nil {
+			return fmt.Errorf("invalid image name: %s", err)
+		}
+
+		prevImage, err := name.ParseReference(l.opts.PreviousImage, name.WeakValidation)
+		if err != nil {
+			return fmt.Errorf("invalid previous image name: %s", err)
+		}
+		if publish {
+			if image.Context().RegistryStr() != prevImage.Context().RegistryStr() {
+				return fmt.Errorf(`when --publish is used, <previous-image> must be in the same image registry as <image>
+                image registry = %s
+                previous-image registry = %s`, image.Context().RegistryStr(), prevImage.Context().RegistryStr())
+			}
+		}
+
+		flags = append(flags, "-previous-image", l.opts.PreviousImage)
+	}
+
 	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
 	if processType != "" {
 		flags = append(flags, "-process-type", processType)
@@ -207,6 +232,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		WithArgs(repoName),
 		WithNetwork(networkMode),
 		cacheOpts,
+		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
 		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter)),
 	}
 
@@ -438,6 +464,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		WithNetwork(networkMode),
 		cacheOpt,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
+		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
 	}
 
 	if publish {

@@ -574,12 +574,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		when("file is a zip file", func() {
 			it("returns true", func() {
 				path := filepath.Join("testdata", "zip-to-tar.zip")
-
-				file, err := os.Open(path)
-				h.AssertNil(t, err)
-				defer file.Close()
-
-				isZip, err := archive.IsZip(file)
+				isZip, err := archive.IsZip(path)
 				h.AssertNil(t, err)
 				h.AssertTrue(t, isZip)
 			})
@@ -588,12 +583,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 		when("file is a jar file", func() {
 			it("returns true", func() {
 				path := filepath.Join("testdata", "jar-file.jar")
-
-				file, err := os.Open(path)
-				h.AssertNil(t, err)
-				defer file.Close()
-
-				isZip, err := archive.IsZip(file)
+				isZip, err := archive.IsZip(path)
 				h.AssertNil(t, err)
 				h.AssertTrue(t, isZip)
 			})
@@ -609,7 +599,7 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 					err = ioutil.WriteFile(file.Name(), []byte("content"), os.ModePerm)
 					h.AssertNil(t, err)
 
-					isZip, err := archive.IsZip(file)
+					isZip, err := archive.IsZip(file.Name())
 					h.AssertNil(t, err)
 					h.AssertFalse(t, isZip)
 				})
@@ -621,23 +611,10 @@ func testArchive(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					defer file.Close()
 
-					isZip, err := archive.IsZip(file)
+					isZip, err := archive.IsZip(file.Name())
 					h.AssertNil(t, err)
 					h.AssertFalse(t, isZip)
 				})
-			})
-		})
-
-		when("reader is closed", func() {
-			it("returns error", func() {
-				file, err := ioutil.TempFile(tmpDir, "file.txt")
-				h.AssertNil(t, err)
-				err = file.Close()
-				h.AssertNil(t, err)
-
-				isZip, err := archive.IsZip(file)
-				h.AssertError(t, err, os.ErrClosed.Error())
-				h.AssertFalse(t, isZip)
 			})
 		})
 	})
