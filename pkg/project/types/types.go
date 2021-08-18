@@ -1,9 +1,7 @@
-package common
+package types
 
 import (
 	"github.com/buildpacks/lifecycle/api"
-
-	"github.com/buildpacks/pack/internal/dist"
 )
 
 type Script struct {
@@ -11,6 +9,7 @@ type Script struct {
 	Inline string `toml:"inline"`
 	Shell  string `toml:"shell"`
 }
+
 type Buildpack struct {
 	ID      string `toml:"id"`
 	Version string `toml:"version"`
@@ -32,8 +31,13 @@ type Build struct {
 }
 
 type Project struct {
-	Name     string         `toml:"name"`
-	Licenses []dist.License `toml:"licenses"`
+	Name     string    `toml:"name"`
+	Licenses []License `toml:"licenses"`
+}
+
+type License struct {
+	Type string `toml:"type"`
+	URI  string `toml:"uri"`
 }
 
 type Descriptor struct {
@@ -41,8 +45,4 @@ type Descriptor struct {
 	Build         Build                  `toml:"build"`
 	Metadata      map[string]interface{} `toml:"metadata"`
 	SchemaVersion *api.Version
-}
-
-type ProjectDescriptorSchema interface {
-	DescriptorFromToml(projectTomlContents string) (Descriptor, error)
 }

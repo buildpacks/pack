@@ -17,8 +17,8 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
-	"github.com/buildpacks/pack/project"
-	projectCommon "github.com/buildpacks/pack/project/common"
+	"github.com/buildpacks/pack/pkg/project"
+	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 )
 
 type BuildFlags struct {
@@ -254,7 +254,7 @@ func addEnvVar(env map[string]string, item string) map[string]string {
 	return env
 }
 
-func parseProjectToml(appPath, descriptorPath string) (projectCommon.Descriptor, string, error) {
+func parseProjectToml(appPath, descriptorPath string) (projectTypes.Descriptor, string, error) {
 	actualPath := descriptorPath
 	computePath := descriptorPath == ""
 
@@ -264,9 +264,9 @@ func parseProjectToml(appPath, descriptorPath string) (projectCommon.Descriptor,
 
 	if _, err := os.Stat(actualPath); err != nil {
 		if computePath {
-			return projectCommon.Descriptor{}, "", nil
+			return projectTypes.Descriptor{}, "", nil
 		}
-		return projectCommon.Descriptor{}, "", errors.Wrap(err, "stat project descriptor")
+		return projectTypes.Descriptor{}, "", errors.Wrap(err, "stat project descriptor")
 	}
 
 	descriptor, err := project.ReadProjectDescriptor(actualPath)

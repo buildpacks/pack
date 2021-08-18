@@ -10,10 +10,6 @@ import (
 	"testing"
 
 	"github.com/buildpacks/lifecycle/api"
-
-	pubcfg "github.com/buildpacks/pack/config"
-	projectCommon "github.com/buildpacks/pack/project/common"
-
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
 	"github.com/pkg/errors"
@@ -22,10 +18,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack"
+	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -503,12 +501,12 @@ version = "1.0"
 
 				it("should build an image with configuration in descriptor", func() {
 					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(projectCommon.Descriptor{
-							Project: projectCommon.Project{
+						Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(projectTypes.Descriptor{
+							Project: projectTypes.Project{
 								Name: "Sample",
 							},
-							Build: projectCommon.Build{
-								Buildpacks: []projectCommon.Buildpack{{
+							Build: projectTypes.Build{
+								Buildpacks: []projectTypes.Buildpack{{
 									ID:      "example/lua",
 									Version: "1.0",
 								}},
@@ -597,16 +595,16 @@ builder = "my-builder"
 
 					it("should use project.toml in source repo", func() {
 						mockClient.EXPECT().
-							Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(projectCommon.Descriptor{
-								Project: projectCommon.Project{
+							Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(projectTypes.Descriptor{
+								Project: projectTypes.Project{
 									Name: "Sample",
 								},
-								Build: projectCommon.Build{
-									Buildpacks: []projectCommon.Buildpack{{
+								Build: projectTypes.Build{
+									Buildpacks: []projectTypes.Buildpack{{
 										ID:      "example/lua",
 										Version: "1.0",
 									}},
-									Env: []projectCommon.EnvVar{{
+									Env: []projectTypes.EnvVar{{
 										Name:  "KEY1",
 										Value: "VALUE1",
 									}},
@@ -641,16 +639,16 @@ builder = "my-builder"
 
 					it("should use specified descriptor", func() {
 						mockClient.EXPECT().
-							Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(projectCommon.Descriptor{
-								Project: projectCommon.Project{
+							Build(gomock.Any(), EqBuildOptionsWithProjectDescriptor(projectTypes.Descriptor{
+								Project: projectTypes.Project{
 									Name: "Sample",
 								},
-								Build: projectCommon.Build{
-									Buildpacks: []projectCommon.Buildpack{{
+								Build: projectTypes.Build{
+									Buildpacks: []projectTypes.Buildpack{{
 										ID:      "example/lua",
 										Version: "1.0",
 									}},
-									Env: []projectCommon.EnvVar{{
+									Env: []projectTypes.EnvVar{{
 										Name:  "KEY1",
 										Value: "VALUE1",
 									}},
@@ -808,7 +806,7 @@ func EqBuildOptionsWithAdditionalTags(additionalTags []string) gomock.Matcher {
 	}
 }
 
-func EqBuildOptionsWithProjectDescriptor(descriptor projectCommon.Descriptor) gomock.Matcher {
+func EqBuildOptionsWithProjectDescriptor(descriptor projectTypes.Descriptor) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Descriptor=%s", descriptor),
 		equals: func(o pack.BuildOptions) bool {

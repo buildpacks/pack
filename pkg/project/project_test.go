@@ -9,11 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-
-	"github.com/buildpacks/lifecycle/api"
 
 	h "github.com/buildpacks/pack/testhelpers"
 )

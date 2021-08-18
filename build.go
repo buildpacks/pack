@@ -37,7 +37,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
-	projectCommon "github.com/buildpacks/pack/project/common"
+	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 )
 
 const (
@@ -151,7 +151,7 @@ type BuildOptions struct {
 	ProjectDescriptorBaseDir string
 
 	// ProjectDescriptor describes the project and any configuration specific to the project
-	ProjectDescriptor projectCommon.Descriptor
+	ProjectDescriptor projectTypes.Descriptor
 
 	// The lifecycle image that will be used for the analysis, restore and export phases
 	// when using an untrusted builder.
@@ -368,7 +368,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
 }
 
-func getFileFilter(descriptor projectCommon.Descriptor) (func(string) bool, error) {
+func getFileFilter(descriptor projectTypes.Descriptor) (func(string) bool, error) {
 	if len(descriptor.Build.Exclude) > 0 {
 		excludes := ignore.CompileIgnoreLines(descriptor.Build.Exclude...)
 		return func(fileName string) bool {
@@ -920,7 +920,7 @@ func parseDigestFromImageID(id imgutil.Identifier) string {
 	return fmt.Sprintf("sha256:%s", digest)
 }
 
-func createInlineBuildpack(bp projectCommon.Buildpack, stackID string) (string, error) {
+func createInlineBuildpack(bp projectTypes.Buildpack, stackID string) (string, error) {
 	pathToInlineBuilpack, err := ioutil.TempDir("", "inline-cnb")
 	if err != nil {
 		return pathToInlineBuilpack, err
