@@ -24,7 +24,7 @@ jobs:
       - name: Copy pack.rb
         run: cp .github/workflows/delivery/homebrew/pack.rb homebrew-tap/Formula/pack.rb
       - name: Lookup assets
-        uses: actions/github-script@v4.0.2
+        uses: actions/github-script@v4.1
         id: assets
         with:
           script: |
