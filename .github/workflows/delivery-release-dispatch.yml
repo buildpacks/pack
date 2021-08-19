@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        repo: ['buildpacks/docs', 'buildpacks/samples']
+        repo: ['buildpacks/docs', 'buildpacks/samples', 'buildpacks/pack-orb', 'buildpacks/github-actions']
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
