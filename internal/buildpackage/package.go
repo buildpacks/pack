@@ -46,6 +46,7 @@ func ExtractBuildpacks(pkg Package) (mainBP dist.Buildpack, depBPs []dist.Buildp
 					ID:       bpID,
 					Version:  bpVersion,
 					Homepage: bpInfo.Homepage,
+					Name:     bpInfo.Name,
 				},
 				Stacks: bpInfo.Stacks,
 				Order:  bpInfo.Order,

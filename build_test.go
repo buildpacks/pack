@@ -42,7 +42,7 @@ import (
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	rg "github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/project"
+	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -1240,9 +1240,9 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Image:      "some/app",
 							Builder:    defaultBuilderName,
 							ClearCache: true,
-							ProjectDescriptor: project.Descriptor{
-								Build: project.Build{
-									Buildpacks: []project.Buildpack{{
+							ProjectDescriptor: projectTypes.Descriptor{
+								Build: projectTypes.Build{
+									Buildpacks: []projectTypes.Buildpack{{
 										URI: server.URL(),
 									}},
 								},
@@ -1306,11 +1306,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Image:      "some/app",
 							Builder:    defaultBuilderName,
 							ClearCache: true,
-							ProjectDescriptor: project.Descriptor{
-								Build: project.Build{
-									Buildpacks: []project.Buildpack{{
+							ProjectDescriptor: projectTypes.Descriptor{
+								Build: projectTypes.Build{
+									Buildpacks: []projectTypes.Buildpack{{
 										ID: "my/inline",
-										Script: project.Script{
+										Script: projectTypes.Script{
 											API:    "0.4",
 											Inline: "touch foo.txt",
 										},
@@ -1341,11 +1341,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Image:      "some/app",
 							Builder:    defaultBuilderName,
 							ClearCache: true,
-							ProjectDescriptor: project.Descriptor{
-								Build: project.Build{
-									Buildpacks: []project.Buildpack{{
+							ProjectDescriptor: projectTypes.Descriptor{
+								Build: projectTypes.Build{
+									Buildpacks: []projectTypes.Buildpack{{
 										ID: "my/inline",
-										Script: project.Script{
+										Script: projectTypes.Script{
 											Inline: "touch foo.txt",
 										},
 									}},
@@ -1362,10 +1362,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Image:      "some/app",
 							Builder:    defaultBuilderName,
 							ClearCache: true,
-							ProjectDescriptor: project.Descriptor{
-								Build: project.Build{
-									Buildpacks: []project.Buildpack{{
-										Script: project.Script{
+							ProjectDescriptor: projectTypes.Descriptor{
+								Build: projectTypes.Build{
+									Buildpacks: []projectTypes.Buildpack{{
+										Script: projectTypes.Script{
 											API:    "0.4",
 											Inline: "touch foo.txt",
 										},
@@ -1383,12 +1383,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							Image:      "some/app",
 							Builder:    defaultBuilderName,
 							ClearCache: true,
-							ProjectDescriptor: project.Descriptor{
-								Build: project.Build{
-									Buildpacks: []project.Buildpack{{
+							ProjectDescriptor: projectTypes.Descriptor{
+								Build: projectTypes.Build{
+									Buildpacks: []projectTypes.Buildpack{{
 										ID:      "buildpack.1.id",
 										Version: "buildpack.1.version",
-										Script: project.Script{
+										Script: projectTypes.Script{
 											Inline: "touch foo.txt",
 										},
 									}},
