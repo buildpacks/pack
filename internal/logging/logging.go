@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
@@ -130,7 +130,7 @@ func (lw *LogWithWriters) IsVerbose() bool {
 func IsTerminal(w io.Writer) (uintptr, bool) {
 	if f, ok := w.(hasDescriptor); ok {
 		termFd := f.Fd()
-		isTerm := terminal.IsTerminal(int(termFd))
+		isTerm := term.IsTerminal(int(termFd))
 		return termFd, isTerm
 	}
 
