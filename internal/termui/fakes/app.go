@@ -7,11 +7,14 @@ import (
 type App struct {
 	SetRootCallCount int
 	DrawCallCount    int
-	RunCallCount     int
+
+	doneChan chan bool
 }
 
 func NewApp() *App {
-	return &App{}
+	return &App{
+		doneChan: make(chan bool, 1),
+	}
 }
 
 func (a *App) SetRoot(root tview.Primitive, fullscreen bool) *tview.Application {
@@ -25,6 +28,10 @@ func (a *App) Draw() *tview.Application {
 }
 
 func (a *App) Run() error {
-	a.RunCallCount++
+	<-a.doneChan
 	return nil
+}
+
+func (a *App) StopRunning() {
+	a.doneChan <- true
 }

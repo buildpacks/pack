@@ -31,11 +31,13 @@ type page interface {
 type Termui struct {
 	app         app
 	currentPage page
+	textChan    chan string
 }
 
 func NewTermui() *Termui {
 	return &Termui{
-		app: tview.NewApplication(),
+		app:      tview.NewApplication(),
+		textChan: make(chan string, 10),
 	}
 }
 
@@ -43,9 +45,26 @@ func NewTermui() *Termui {
 // and the passed in function in the background
 func (s *Termui) Run(funk func()) error {
 	go funk()
+	go s.handle()
+	defer s.stop()
 
 	s.currentPage = NewDetect(s.app)
 	return s.app.Run()
+}
+
+func (s *Termui) stop() {
+	close(s.textChan)
+}
+
+func (s *Termui) handle() {
+	for txt := range s.textChan {
+		switch {
+		case strings.Contains(txt, "===> ANALYZING"):
+			s.currentPage.Stop()
+		default:
+			// no-op
+		}
+	}
 }
 
 func (s *Termui) Handler() container.Handler {
@@ -84,14 +103,7 @@ func (s *Termui) Handler() container.Handler {
 					return nil
 				}
 
-				text := scanner.Text()
-
-				switch {
-				case strings.Contains(text, "===> ANALYZING"):
-					s.currentPage.Stop()
-				default:
-					// no-op
-				}
+				s.textChan <- scanner.Text()
 			}
 		}
 	}

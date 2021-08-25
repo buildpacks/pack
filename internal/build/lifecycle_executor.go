@@ -48,6 +48,8 @@ type Cache interface {
 }
 
 type Termui interface {
+	logging.Logger
+
 	Run(funk func()) error
 	Handler() container.Handler
 }

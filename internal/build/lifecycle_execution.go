@@ -61,6 +61,10 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 		mountPaths:   mountPathsForOS(osType, opts.Workspace),
 	}
 
+	if opts.Interactive {
+		exec.logger = opts.Termui
+	}
+
 	return exec, nil
 }
 

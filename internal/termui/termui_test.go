@@ -22,23 +22,60 @@ func TestScreen(t *testing.T) {
 
 func testTermui(t *testing.T, when spec.G, it spec.S) {
 	var (
-		assert = h.NewAssertionManager(t)
+		assert             = h.NewAssertionManager(t)
+		eventuallyInterval = 500 * time.Millisecond
+		eventuallyDuration = 5 * time.Second
 	)
 
 	it("performs the lifecycle", func() {
 		var (
 			fakeApp             = fakes.NewApp()
-			s                   = Termui{app: fakeApp}
+			s                   = Termui{app: fakeApp, textChan: make(chan string, 10)}
 			r, w                = io.Pipe()
 			fakeDockerStdWriter = fakes.NewDockerStdWriter(w)
 		)
 
-		defer w.Close()
-		s.Run(func() {})
+		defer func() {
+			w.Close()
+			fakeApp.StopRunning()
+		}()
+		go s.Run(func() {})
 		go s.Handler()(nil, nil, r)
-		assert.Equal(fakeApp.RunCallCount, 1)
 
-		time.Sleep(time.Second)
+		h.Eventually(t, func() bool {
+			return fakeApp.SetRootCallCount == 1
+		}, eventuallyInterval, eventuallyDuration)
+
+		currentPage, ok := s.currentPage.(*Detect)
+		assert.TrueWithMessage(ok, fmt.Sprintf("expected %T to be assignable to type `*screen.Detect`", s.currentPage))
+		assert.TrueWithMessage(fakeApp.DrawCallCount > 0, "expect app.Draw() to be called")
+		h.Eventually(t, func() bool {
+			return strings.Contains(currentPage.textView.GetText(false), "Detecting")
+		}, eventuallyInterval, eventuallyDuration)
+
+		fakeDockerStdWriter.WriteStdoutln(`===> ANALYZING`)
+		h.Eventually(t, func() bool {
+			return strings.Contains(currentPage.textView.GetText(false), "Detected!")
+		}, eventuallyInterval, eventuallyDuration)
+	})
+
+	it("performs the lifecycle (when the builder is untrusted)", func() {
+		var (
+			fakeApp = fakes.NewApp()
+			s       = Termui{app: fakeApp, textChan: make(chan string, 10)}
+			r, w    = io.Pipe()
+		)
+
+		defer func() {
+			w.Close()
+			fakeApp.StopRunning()
+		}()
+		go s.Run(func() {})
+		go s.Handler()(nil, nil, r)
+
+		h.Eventually(t, func() bool {
+			return fakeApp.SetRootCallCount == 1
+		}, eventuallyInterval, eventuallyDuration)
 
 		assert.Equal(fakeApp.SetRootCallCount, 1)
 		currentPage, ok := s.currentPage.(*Detect)
@@ -46,12 +83,12 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 		assert.TrueWithMessage(fakeApp.DrawCallCount > 0, "expect app.Draw() to be called")
 		h.Eventually(t, func() bool {
 			return strings.Contains(currentPage.textView.GetText(false), "Detecting")
-		}, 500*time.Millisecond, 2*time.Second)
+		}, eventuallyInterval, eventuallyDuration)
 
-		fakeDockerStdWriter.WriteStdoutln(`===> ANALYZING`)
+		s.Info(`===> ANALYZING`)
 		h.Eventually(t, func() bool {
 			return strings.Contains(currentPage.textView.GetText(false), "Detected!")
-		}, 500*time.Millisecond, 2*time.Second)
+		}, eventuallyInterval, eventuallyDuration)
 	})
 
 	// TODO: change to show errors on-screen
