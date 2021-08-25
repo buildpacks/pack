@@ -21,7 +21,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/build"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -330,107 +329,6 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 `)
 		})
 	})
-
-
-	when("#WriteProjectMetadata", func() {
-		it("writes file", func() {
-			containerDir := "/layers-vol"
-			p := "/layers-vol/project-metadata.toml"
-			if osType == "windows" {
-				containerDir = `c:\layers-vol`
-				p = `c:\layers-vol\project-metadata.toml`
-			}
-
-			ctrCmd := []string{"ls", "-al", "/layers-vol/project-metadata.toml"}
-			if osType == "windows" {
-				ctrCmd = []string{"cmd", "/c", `dir /q /n c:\layers-vol\project-metadata.toml`}
-			}
-			ctx := context.Background()
-			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
-			h.AssertNil(t, err)
-			defer cleanupContainer(ctx, ctr.ID)
-
-			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
-				Source: &platform.ProjectSource{
-					Type: "project",
-					Version: map[string]interface{}{
-						"commit": "8348484564e6aa0699de0ee78c258e88240eb0b5",
-						"describe": "v0.18.1-2-g83484845",
-					},
-					Metadata: map[string]interface{}{
-						"refs": ["main"],
-						"url": "https://github.com/buildpacks/pack",
-					},
-				},
-			}, osType)
-
-			var outBuf, errBuf bytes.Buffer
-			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
-			h.AssertNil(t, err)
-
-			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
-			h.AssertNil(t, err)
-
-			h.AssertEq(t, errBuf.String(), "")
-			if osType == "windows" {
-				h.AssertContains(t, outBuf.String(), `01/01/1980  12:00 AM                137 ...                    project-metadata.toml`)
-			} else {
-				h.AssertContains(t, outBuf.String(), `-rwxr-xr-x    1 root     root           137 Jan  1  1980 /layers-vol/project-metadata.toml`)
-			}
-		})
-
-		it("has expected contents", func() {
-			containerDir := "/layers-vol"
-			p := "/layers-vol/project-metadata.toml"
-			if osType == "windows" {
-				containerDir = `c:\layers-vol`
-				p = `c:\layers-vol\project-metadata.toml`
-			}
-
-			ctrCmd := []string{"cat", "/layers-vol/project-metadata.toml"}
-			if osType == "windows" {
-				ctrCmd = []string{"cmd", "/c", `type c:\layers-vol\project-metadata.toml`}
-			}
-
-			ctx := context.Background()
-			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
-			h.AssertNil(t, err)
-			defer cleanupContainer(ctx, ctr.ID)
-
-			writeOp := build.WriteProjectMetadata(p, platform.ProjectMetadata{
-				Source: &platform.ProjectSource{
-					Type: "project",
-					Version: map[string]interface{}{
-						"commit": "8348484564e6aa0699de0ee78c258e88240eb0b5",
-						"describe": "v0.18.1-2-g83484845",
-					},
-					Metadata: map[string]interface{}{
-						"refs": ["main"],
-						"url": "git@github.com:buildpacks/pack.git",
-					},
-				},
-			}, osType)
-
-			var outBuf, errBuf bytes.Buffer
-			err = writeOp(ctrClient, ctx, ctr.ID, &outBuf, &errBuf)
-			h.AssertNil(t, err)
-
-			err = container.Run(ctx, ctrClient, ctr.ID, &outBuf, &errBuf)
-			h.AssertEq(t, errBuf.String(), "")
-			h.AssertNil(t, err)
-
-			h.AssertContains(t, outBuf.String(), `[source]
-  type = "project"
-  [source.version]
-	commit = "8348484564e6aa0699de0ee78c258e88240eb0b5"
-	describe = "v0.18.1-2-g83484845"
-  [source.metadata]
-    url = "git@github.com:buildpacks/pack.git"
-	refs = ["main"]
-`)
-		})
-	})
-
 
 	when("#EnsureVolumeAccess", func() {
 		it("changes owner of volume", func() {

@@ -21,7 +21,6 @@ import (
 	ignore "github.com/sabhiram/go-gitignore"
 
 	"github.com/buildpacks/pack/config"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
@@ -296,11 +295,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	describe := opts.ProjectDescriptor.Project.describe
-	commit := opts.ProjectDescriptor.Project.commit
-	refs := opts.ProjectDescriptor.Project.refs
-	sourceURL := opts.ProjectDescriptor.Project.SourceURL
-
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:            appPath,
 		Image:              imageRef,
@@ -312,12 +306,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		UseCreator:         false,
 		TrustBuilder:       opts.TrustBuilder,
 		LifecycleImage:     ephemeralBuilder.Name(),
-		ProjectMetadata: platform.ProjectMetadata{Source: &platform.ProjectSource{
-			Type:     "git",
-			Version:  map[string]interface{}{"describe": desrcibe,"commit":commit},
-			Metadata: map[string]interface{}{"refs":refs,"url": sourceURL},
-		}},
-		ProjectPath:        "",
 		HTTPProxy:          proxyConfig.HTTPProxy,
 		HTTPSProxy:         proxyConfig.HTTPSProxy,
 		NoProxy:            proxyConfig.NoProxy,

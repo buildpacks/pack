@@ -207,7 +207,6 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		WithArgs(repoName),
 		WithNetwork(networkMode),
 		cacheOpts,
-		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
 		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter)),
 	}
 
@@ -439,7 +438,6 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		WithNetwork(networkMode),
 		cacheOpt,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
-		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
 	}
 
 	if publish {

@@ -18,7 +18,6 @@ import (
 	"github.com/buildpacks/pack/internal/paths"
 
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/lifecycle/platform"
 	"github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/pkg/archive"
 )
@@ -138,16 +137,6 @@ func findMount(info types.ContainerJSON, dst string) (types.MountPoint, error) {
 	}
 	return types.MountPoint{}, fmt.Errorf("no matching mount found for %s", dst)
 }
-
-//WriteProjectMetadata
-func WriteProjectMetadata(p string, metadata platform.ProjectMetadata, os string) ContainerOperation {
-	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
-		buf := &bytes.Buffer{}
-		err := toml.NewEncoder(buf).Encode(metadata)
-		if err != nil {
-			return errors.Wrap(err, "marshaling project metadata")
-		}
-
 
 // WriteStackToml writes a `stack.toml` based on the StackMetadata provided to the destination path.
 func WriteStackToml(dstPath string, stack builder.StackMetadata, os string) ContainerOperation {
