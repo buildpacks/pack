@@ -120,12 +120,14 @@ func copyDirWindows(ctx context.Context, ctrClient client.CommonAPIClient, conta
 		return errors.Wrap(err, "copy app to container")
 	}
 
-	return container.Run(
+	return container.RunWithHandler(
 		ctx,
 		ctrClient,
 		ctr.ID,
-		ioutil.Discard, // Suppress xcopy output
-		stderr,
+		container.DefaultHandler(
+			ioutil.Discard, // Suppress xcopy output
+			stderr,
+		),
 	)
 }
 
@@ -268,12 +270,14 @@ func EnsureVolumeAccess(uid, gid int, os string, volumeNames ...string) Containe
 		}
 		defer ctrClient.ContainerRemove(context.Background(), ctr.ID, types.ContainerRemoveOptions{Force: true})
 
-		return container.Run(
+		return container.RunWithHandler(
 			ctx,
 			ctrClient,
 			ctr.ID,
-			ioutil.Discard, // Suppress icacls output
-			stderr,
+			container.DefaultHandler(
+				ioutil.Discard, // Suppress icacls output
+				stderr,
+			),
 		)
 	}
 }

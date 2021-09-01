@@ -8,6 +8,7 @@ require (
 	github.com/buildpacks/lifecycle v0.11.4
 	github.com/docker/docker v20.10.8+incompatible
 	github.com/docker/go-connections v0.4.0
+	github.com/gdamore/tcell/v2 v2.3.3
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.6
@@ -22,6 +23,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/pelletier/go-toml v1.9.3
 	github.com/pkg/errors v0.9.1
+	github.com/rivo/tview v0.0.0-20210624165335-29d673af0ce2
 	github.com/sabhiram/go-gitignore v0.0.0-20201211074657-223ce5d391b0
 	github.com/sclevine/spec v1.4.0
 	github.com/sergi/go-diff v1.1.0 // indirect

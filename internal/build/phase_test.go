@@ -19,6 +19,7 @@ import (
 
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/lifecycle/auth"
+	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
+	"github.com/buildpacks/pack/internal/container"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
@@ -136,6 +138,25 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				readPhase := phaseFactory.New(configProvider)
 				assertRunSucceeds(t, readPhase, &outBuf, &errBuf)
 				h.AssertContains(t, outBuf.String(), "file contents: test-app")
+			})
+
+			it("runs the phase with provided handlers", func() {
+				var actual string
+				var handler container.Handler = func(bodyChan <-chan dcontainer.ContainerWaitOKBody, errChan <-chan error, reader io.Reader) error {
+					data, _ := ioutil.ReadAll(reader)
+					actual = string(data)
+					return nil
+				}
+
+				var err error
+				lifecycleExec, err = CreateFakeLifecycleExecution(logger, docker, filepath.Join("testdata", "fake-app"), repoName, handler)
+				h.AssertNil(t, err)
+				phaseFactory = build.NewDefaultPhaseFactory(lifecycleExec)
+
+				configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec)
+				phase := phaseFactory.New(configProvider)
+				assertRunSucceeds(t, phase, nil, nil)
+				h.AssertContains(t, actual, "running some-lifecycle-phase")
 			})
 
 			it("copies the app into the app volume", func() {
@@ -457,7 +478,7 @@ func assertRunSucceeds(t *testing.T, phase build.RunnerCleaner, outBuf *bytes.Bu
 	h.AssertNilE(t, phase.Cleanup())
 }
 
-func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, appDir string, repoName string) (*build.LifecycleExecution, error) {
+func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, appDir string, repoName string, handler ...container.Handler) (*build.LifecycleExecution, error) {
 	builderImage, err := local.NewImage(repoName, docker, local.FromBaseImage(repoName))
 	if err != nil {
 		return nil, err
@@ -471,12 +492,24 @@ func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPI
 		return nil, err
 	}
 
+	var (
+		interactive bool
+		termui      build.Termui
+	)
+
+	if len(handler) != 0 {
+		interactive = true
+		termui = fakes.NewFakeTermui(handler[0])
+	}
+
 	return build.NewLifecycleExecution(logger, docker, build.LifecycleOptions{
-		AppPath:    appDir,
-		Builder:    fakeBuilder,
-		HTTPProxy:  "some-http-proxy",
-		HTTPSProxy: "some-https-proxy",
-		NoProxy:    "some-no-proxy",
+		AppPath:     appDir,
+		Builder:     fakeBuilder,
+		HTTPProxy:   "some-http-proxy",
+		HTTPSProxy:  "some-https-proxy",
+		NoProxy:     "some-no-proxy",
+		Interactive: interactive,
+		Termui:      termui,
 	})
 }
 

@@ -17,6 +17,7 @@ type Phase struct {
 	infoWriter   io.Writer
 	errorWriter  io.Writer
 	docker       client.CommonAPIClient
+	handler      container.Handler
 	ctrConf      *dcontainer.Config
 	hostConf     *dcontainer.HostConfig
 	ctr          dcontainer.ContainerCreateCreatedBody
@@ -39,12 +40,16 @@ func (p *Phase) Run(ctx context.Context) error {
 		}
 	}
 
-	return container.Run(
+	handler := container.DefaultHandler(p.infoWriter, p.errorWriter)
+	if p.handler != nil {
+		handler = p.handler
+	}
+
+	return container.RunWithHandler(
 		ctx,
 		p.docker,
 		p.ctr.ID,
-		p.infoWriter,
-		p.errorWriter,
+		handler,
 	)
 }
 

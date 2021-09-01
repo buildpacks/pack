@@ -35,6 +35,7 @@ import (
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/internal/termui"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
@@ -124,6 +125,9 @@ type BuildOptions struct {
 	// This places registry credentials on the builder's build image.
 	// Only trust builders from reputable sources.
 	TrustBuilder bool
+
+	// Launch a terminal UI to depict the build process
+	Interactive bool
 
 	// List of buildpack images or archives to add to a builder.
 	// These buildpacks may overwrite those on the builder if they
@@ -329,6 +333,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Workspace:          opts.Workspace,
 		GID:                opts.GroupID,
 		PreviousImage:      opts.PreviousImage,
+		Interactive:        opts.Interactive,
+		Termui:             termui.NewTermui(),
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
