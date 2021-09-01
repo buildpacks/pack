@@ -239,6 +239,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          target_commitish: ${{ github.sha }}
           tag_name: v${{ env.PACK_VERSION }}
           name: pack v${{ env.PACK_VERSION }}
           draft: true
