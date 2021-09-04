@@ -8,48 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	bldr "github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
-
-type SuggestedBuilder struct {
-	Vendor             string
-	Image              string
-	DefaultDescription string
-}
-
-var suggestedBuilders = []SuggestedBuilder{
-	{
-		Vendor:             "Google",
-		Image:              "gcr.io/buildpacks/builder:v1",
-		DefaultDescription: "GCP Builder for all runtimes",
-	},
-	{
-		Vendor:             "Heroku",
-		Image:              "heroku/buildpacks:18",
-		DefaultDescription: "heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP",
-	},
-	{
-		Vendor:             "Heroku",
-		Image:              "heroku/buildpacks:20",
-		DefaultDescription: "heroku-20 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP",
-	},
-	{
-		Vendor:             "Paketo Buildpacks",
-		Image:              "paketobuildpacks/builder:base",
-		DefaultDescription: "Small base image with buildpacks for Java, Node.js, Golang, & .NET Core",
-	},
-	{
-		Vendor:             "Paketo Buildpacks",
-		Image:              "paketobuildpacks/builder:full",
-		DefaultDescription: "Larger base image with buildpacks for Java, Node.js, Golang, .NET Core, & PHP",
-	},
-	{
-		Vendor:             "Paketo Buildpacks",
-		Image:              "paketobuildpacks/builder:tiny",
-		DefaultDescription: "Tiny base image (bionic build image, distroless run image) with buildpacks for Golang",
-	},
-}
 
 // Deprecated: Use `builder suggest` instead.
 func SuggestBuilders(logger logging.Logger, inspector BuilderInspector) *cobra.Command {
@@ -77,10 +39,10 @@ func suggestSettingBuilder(logger logging.Logger, inspector BuilderInspector) {
 }
 
 func suggestBuilders(logger logging.Logger, client BuilderInspector) {
-	WriteSuggestedBuilder(logger, client, suggestedBuilders)
+	WriteSuggestedBuilder(logger, client, bldr.SuggestedBuilders)
 }
 
-func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, builders []SuggestedBuilder) {
+func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, builders []bldr.SuggestedBuilder) {
 	sort.Slice(builders, func(i, j int) bool {
 		if builders[i].Vendor == builders[j].Vendor {
 			return builders[i].Image < builders[j].Image
@@ -98,7 +60,7 @@ func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, bu
 	wg.Add(len(builders))
 
 	for i, builder := range builders {
-		go func(w *sync.WaitGroup, i int, builder SuggestedBuilder) {
+		go func(w *sync.WaitGroup, i int, builder bldr.SuggestedBuilder) {
 			descriptions[i] = getBuilderDescription(builder, inspector)
 			w.Done()
 		}(&wg, i, builder)
@@ -116,7 +78,7 @@ func WriteSuggestedBuilder(logger logging.Logger, inspector BuilderInspector, bu
 	logger.Info("\tpack builder inspect <builder-image>")
 }
 
-func getBuilderDescription(builder SuggestedBuilder, inspector BuilderInspector) string {
+func getBuilderDescription(builder bldr.SuggestedBuilder, inspector BuilderInspector) string {
 	info, err := inspector.InspectBuilder(builder.Image, false)
 	if err == nil && info != nil && info.Description != "" {
 		return info.Description
@@ -126,7 +88,7 @@ func getBuilderDescription(builder SuggestedBuilder, inspector BuilderInspector)
 }
 
 func isSuggestedBuilder(builder string) bool {
-	for _, sugBuilder := range suggestedBuilders {
+	for _, sugBuilder := range bldr.SuggestedBuilders {
 		if builder == sugBuilder.Image {
 			return true
 		}

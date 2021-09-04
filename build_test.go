@@ -1659,7 +1659,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Image:        "some/app",
 								Builder:      defaultBuilderName,
 								Publish:      true,
-								TrustBuilder: false,
+								TrustBuilder: func() bool { return false },
 							}))
 							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
 							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, fakeLifecycleImage.Name())
@@ -1677,7 +1677,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Image:        "some/app",
 								Builder:      builderWithoutLifecycleImageOrCreator.Name(),
 								Publish:      true,
-								TrustBuilder: false,
+								TrustBuilder: func() bool { return false },
 							}))
 						})
 					})
@@ -1690,7 +1690,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Image:        "some/app",
 								Builder:      defaultBuilderName,
 								Publish:      true,
-								TrustBuilder: true,
+								TrustBuilder: func() bool { return true },
 							}))
 							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, true)
 
@@ -1706,7 +1706,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Image:        "some/app",
 								Builder:      builderWithoutLifecycleImageOrCreator.Name(),
 								Publish:      true,
-								TrustBuilder: true,
+								TrustBuilder: func() bool { return true },
 							}))
 							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
 							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, builderWithoutLifecycleImageOrCreator.Name())
@@ -1743,7 +1743,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Image:        "some/app",
 								Builder:      defaultBuilderName,
 								Publish:      false,
-								TrustBuilder: false,
+								TrustBuilder: func() bool { return false },
 							}))
 							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
 							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, fakeLifecycleImage.Name())
@@ -1760,7 +1760,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Image:        "some/app",
 								Builder:      defaultBuilderName,
 								Publish:      false,
-								TrustBuilder: false,
+								TrustBuilder: func() bool { return false },
 							})
 
 							h.AssertError(t, err, "may be the result of using an untrusted builder")
@@ -1773,7 +1773,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Image:        "some/app",
 								Builder:      builderWithoutLifecycleImageOrCreator.Name(),
 								Publish:      false,
-								TrustBuilder: false,
+								TrustBuilder: func() bool { return false },
 							}))
 						})
 					})
@@ -1786,7 +1786,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Image:        "some/app",
 								Builder:      defaultBuilderName,
 								Publish:      false,
-								TrustBuilder: true,
+								TrustBuilder: func() bool { return true },
 							}))
 							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, true)
 
@@ -1802,7 +1802,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								Image:        "some/app",
 								Builder:      builderWithoutLifecycleImageOrCreator.Name(),
 								Publish:      false,
-								TrustBuilder: true,
+								TrustBuilder: func() bool { return true },
 							}))
 							h.AssertEq(t, fakeLifecycle.Opts.UseCreator, false)
 							h.AssertEq(t, fakeLifecycle.Opts.LifecycleImage, builderWithoutLifecycleImageOrCreator.Name())
@@ -2291,7 +2291,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							ContainerConfig: ContainerConfig{
 								Volumes: []string{volume},
 							},
-							TrustBuilder: true,
+							TrustBuilder: func() bool { return true },
 						})
 						expected := []string{
 							fmt.Sprintf("%s:/x:ro", strings.ToLower(dir)),
@@ -2309,7 +2309,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								ContainerConfig: ContainerConfig{
 									Volumes: []string{"/a:/x:invalid"},
 								},
-								TrustBuilder: true,
+								TrustBuilder: func() bool { return true },
 							})
 							h.AssertError(t, err, `platform volume "/a:/x:invalid" has invalid format: invalid volume specification: '/a:/x:invalid'`)
 						})
@@ -2323,7 +2323,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								ContainerConfig: ContainerConfig{
 									Volumes: []string{":::"},
 								},
-								TrustBuilder: true,
+								TrustBuilder: func() bool { return true },
 							})
 							h.AssertError(t, err, `platform volume ":::" has invalid format: invalid volume specification: ':::'`)
 						})
@@ -2341,7 +2341,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									ContainerConfig: ContainerConfig{
 										Volumes: []string{fmt.Sprintf("c:/Users:%s", p)},
 									},
-									TrustBuilder: true,
+									TrustBuilder: func() bool { return true },
 								})
 
 								h.AssertNil(t, err)
@@ -2360,7 +2360,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							ContainerConfig: ContainerConfig{
 								Volumes: []string{volume},
 							},
-							TrustBuilder: true,
+							TrustBuilder: func() bool { return true },
 						})
 						expected := []string{
 							fmt.Sprintf("%s:c:\\x:ro", strings.ToLower(dir)),
@@ -2378,7 +2378,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								ContainerConfig: ContainerConfig{
 									Volumes: []string{"/a:/x:invalid"},
 								},
-								TrustBuilder: true,
+								TrustBuilder: func() bool { return true },
 							})
 							h.AssertError(t, err, `platform volume "/a:/x:invalid" has invalid format: invalid volume specification: '/a:/x:invalid'`)
 						})
@@ -2393,7 +2393,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 								ContainerConfig: ContainerConfig{
 									Volumes: []string{":::"},
 								},
-								TrustBuilder: true,
+								TrustBuilder: func() bool { return true },
 							})
 							h.AssertError(t, err, `platform volume ":::" has invalid format: invalid volume specification: ':::'`)
 						})
@@ -2411,7 +2411,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 									ContainerConfig: ContainerConfig{
 										Volumes: []string{fmt.Sprintf("c:/Users:%s", p)},
 									},
-									TrustBuilder: true,
+									TrustBuilder: func() bool { return true },
 								})
 
 								h.AssertNil(t, err)

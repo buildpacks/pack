@@ -67,6 +67,8 @@ type LifecycleExecutor interface {
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
 }
 
+type IsTrustedBuilder func() bool
+
 // BuildOptions defines configuration settings for a Build.
 type BuildOptions struct {
 	// The base directory to use to resolve relative assets
@@ -120,12 +122,6 @@ type BuildOptions struct {
 	// Clear the build cache from previous builds.
 	ClearCache bool
 
-	// TrustBuilder when true optimizes builds by running
-	// all lifecycle phases in a single container.
-	// This places registry credentials on the builder's build image.
-	// Only trust builders from reputable sources.
-	TrustBuilder bool
-
 	// Launch a terminal UI to depict the build process
 	Interactive bool
 
@@ -169,6 +165,12 @@ type BuildOptions struct {
 
 	// A previous image to set to a particular tag reference, digest reference, or (when performing a daemon build) image ID;
 	PreviousImage string
+
+	// TrustBuilder when true optimizes builds by running
+	// all lifecycle phases in a single container.
+	// This places registry credentials on the builder's build image.
+	// Only trust builders from reputable sources.
+	TrustBuilder IsTrustedBuilder
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -315,6 +317,23 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		}
 	}
 
+	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
+	if opts.TrustBuilder == nil {
+		for _, sugBuilder := range builder.SuggestedBuilders {
+			if opts.Builder == sugBuilder.Image {
+				opts.TrustBuilder = func() bool {
+					return true
+				}
+				break
+			}
+		}
+		opts.TrustBuilder = func() bool {
+			return false
+		}
+	}
+
+	trustBuilder := opts.TrustBuilder()
+
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:            appPath,
 		Image:              imageRef,
@@ -324,7 +343,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		ProjectMetadata:    projectMetadata,
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
-		TrustBuilder:       opts.TrustBuilder,
+		TrustBuilder:       trustBuilder,
 		UseCreator:         false,
 		DockerHost:         opts.DockerHost,
 		CacheImage:         opts.CacheImage,
@@ -348,7 +367,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	// have bugs that make using the creator problematic.
 	lifecycleSupportsCreator := !lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingCreator))
 
-	if lifecycleSupportsCreator && opts.TrustBuilder {
+	if lifecycleSupportsCreator && trustBuilder {
 		lifecycleOpts.UseCreator = true
 		// no need to fetch a lifecycle image, it won't be used
 		if err := c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
@@ -358,7 +377,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
 	}
 
-	if !opts.TrustBuilder {
+	if !trustBuilder {
 		if lifecycleImageSupported(imgOS, lifecycleVersion) {
 			lifecycleImageName := opts.LifecycleImage
 			if lifecycleImageName == "" {
