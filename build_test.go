@@ -23,6 +23,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
@@ -30,6 +31,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+	"golang.org/x/crypto/openpgp"
 
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
@@ -44,6 +46,11 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 	h "github.com/buildpacks/pack/testhelpers"
+	rmc "gopkg.in/src-d/go-git.v4/config"
+	"gopkg.in/src-d/go-git.v4"
+	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
 func TestBuild(t *testing.T) {
@@ -276,6 +283,91 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("AppDir option", func() {
+			when.Focus("is a git repository", func() {
+				var (
+					testAppDir string
+					commits = "8348484564e6aa0699de0ee78c258e88240eb0b5"
+					describe = "v0.18.1-2-g83484845"
+					refs = []string{"main"}
+					url = "git@github.com:buildpacks/pack.git"
+				)
+				it.Before(func() {
+					// create a temp app project with git
+					// tempDir, err := ioutil.TempDir("", "gitdirectory")
+    				// h.AssertNil(t,err)
+    				// testAppDir=tempDir
+
+					// git library to initialize git in testAppDir
+					repo, _ := git.Init(memory.NewStorage(), nil)
+
+					// creating new remote
+					repo.CreateRemote(&rmc.RemoteConfig{
+						Name: "example",
+						URLs: []string{"https://github.com/git-fixtures/basic.git"},
+					})
+
+					// getting the work tree after init
+					work, _ := repo.Worktree()
+					
+					// create a commit
+					commit, _ := work.Commit("example go-git commit", &git.CommitOptions{
+						Author: &object.Signature{
+							Name:  "Haimantika Mitra",
+							Email: "haimantikamitra@gmail.com",
+							When:  time.Now(),
+						},
+					})
+				
+					// create a tag
+					myHash := plumbing.Hash{}
+
+					repo.CreateTag("new name tag", myHash, &git.CreateTagOptions{
+						Tagger:  &object.Signature{
+							Name:  "Haimantika Mitra",
+							Email: "haimantikamitra@gmail.com",
+							When:  time.Now(),
+						},
+						Message: "my new tag",
+						SignKey: &openpgp.Entity{},
+					} )
+
+					// get the commit
+					obj, _ := repo.CommitObject(commit)
+					fmt.Println(obj)
+
+					// get tag
+					tag, _ := repo.TagObject(myHash)
+					fmt.Println(tag)
+					// get branch
+					branch, _ := repo.Head()
+					fmt.Println(branch)
+
+					// get remote urls
+					remoteList, _ := repo.Remotes()
+					for _, remoteName := range remoteList {
+						fmt.Println(remoteName)
+					}
+				})
+
+				it("produced project metadata", func() {
+					// assert lifecycle option for project metadata
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: defaultBuilderName,
+						AppPath: testAppDir,
+					}))
+
+					h.AssertEq(t, fakeLifecycle.Opts.ProjectMetadata, platform.ProjectMetadata{
+						Source: &platform.ProjectSource{
+							Type:     "git",
+							Version:  map[string]interface{}{"commit":commits,"describe": describe},
+							Metadata: map[string]interface{}{"refs":refs,"url":url},
+						},
+
+					})
+
+				})
+			})
 			it("defaults to the current working directory", func() {
 				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 					Image:   "some/app",
