@@ -319,6 +319,9 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
 	if opts.TrustBuilder == nil {
+		opts.TrustBuilder = func() bool {
+			return false
+		}
 		for _, sugBuilder := range builder.SuggestedBuilders {
 			if opts.Builder == sugBuilder.Image {
 				opts.TrustBuilder = func() bool {
@@ -327,12 +330,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				break
 			}
 		}
-		opts.TrustBuilder = func() bool {
-			return false
-		}
 	}
-
-	trustBuilder := opts.TrustBuilder()
 
 	lifecycleOpts := build.LifecycleOptions{
 		AppPath:            appPath,
@@ -343,7 +341,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		ProjectMetadata:    projectMetadata,
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
-		TrustBuilder:       trustBuilder,
+		TrustBuilder:       opts.TrustBuilder(),
 		UseCreator:         false,
 		DockerHost:         opts.DockerHost,
 		CacheImage:         opts.CacheImage,
@@ -367,7 +365,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	// have bugs that make using the creator problematic.
 	lifecycleSupportsCreator := !lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingCreator))
 
-	if lifecycleSupportsCreator && trustBuilder {
+	if lifecycleSupportsCreator && opts.TrustBuilder() {
 		lifecycleOpts.UseCreator = true
 		// no need to fetch a lifecycle image, it won't be used
 		if err := c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
@@ -377,7 +375,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
 	}
 
-	if !trustBuilder {
+	if !opts.TrustBuilder() {
 		if lifecycleImageSupported(imgOS, lifecycleVersion) {
 			lifecycleImageName := opts.LifecycleImage
 			if lifecycleImageName == "" {
