@@ -5,14 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
+	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
+	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/termui/fakes"
+	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -29,49 +33,140 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 
 	it("performs the lifecycle", func() {
 		var (
+			fakeBuild           = make(chan bool, 1)
+			fakeBodyChan        = make(chan dcontainer.ContainerWaitOKBody, 1)
 			fakeApp             = fakes.NewApp()
-			s                   = Termui{app: fakeApp, textChan: make(chan string, 10)}
 			r, w                = io.Pipe()
 			fakeDockerStdWriter = fakes.NewDockerStdWriter(w)
+
+			fakeBuilder = fakes.NewBuilder("some/basename",
+				[]dist.BuildpackInfo{
+					{ID: "some/buildpack-1", Version: "0.0.1", Homepage: "https://some/buildpack-1"},
+					{ID: "some/buildpack-2", Version: "0.0.2", Homepage: "https://some/buildpack-2"},
+				},
+				builder.LifecycleDescriptor{Info: builder.LifecycleInfo{
+					Version: builder.VersionMustParse("0.0.1"),
+				}},
+				builder.StackMetadata{
+					RunImage: builder.RunImageMetadata{
+						Image: "some/run-image",
+					},
+				},
+			)
+
+			s = &Termui{
+				appName:       "some/app-name",
+				bldr:          fakeBuilder,
+				runImageName:  "some/run-image-name",
+				app:           fakeApp,
+				buildpackChan: make(chan dist.BuildpackInfo, 10),
+				textChan:      make(chan string, 10),
+			}
 		)
 
 		defer func() {
+			fakeBodyChan <- dcontainer.ContainerWaitOKBody{StatusCode: 0}
+			fakeBuild <- true
 			w.Close()
 			fakeApp.StopRunning()
 		}()
-		go s.Run(func() {})
-		go s.Handler()(nil, nil, r)
+		go s.Run(func() { <-fakeBuild })
+		go s.Handler()(fakeBodyChan, nil, r)
 
 		h.Eventually(t, func() bool {
 			return fakeApp.SetRootCallCount == 1
 		}, eventuallyInterval, eventuallyDuration)
 
-		currentPage, ok := s.currentPage.(*Detect)
+		detectPage, ok := s.currentPage.(*Detect)
 		assert.TrueWithMessage(ok, fmt.Sprintf("expected %T to be assignable to type `*screen.Detect`", s.currentPage))
 		assert.TrueWithMessage(fakeApp.DrawCallCount > 0, "expect app.Draw() to be called")
 		h.Eventually(t, func() bool {
-			return strings.Contains(currentPage.textView.GetText(false), "Detecting")
+			return strings.Contains(detectPage.textView.GetText(true), "Detecting")
 		}, eventuallyInterval, eventuallyDuration)
 
+		fakeDockerStdWriter.WriteStdoutln(`1 of 2 buildpacks participating`)
+		fakeDockerStdWriter.WriteStdoutln(`some/buildpack-1 0.0.1`)
 		fakeDockerStdWriter.WriteStdoutln(`===> ANALYZING`)
 		h.Eventually(t, func() bool {
-			return strings.Contains(currentPage.textView.GetText(false), "Detected!")
+			return strings.Contains(detectPage.textView.GetText(true), "Detected!")
+		}, eventuallyInterval, eventuallyDuration)
+
+		h.Eventually(t, func() bool {
+			_, ok := s.currentPage.(*Dashboard)
+			return ok
+		}, eventuallyInterval, eventuallyDuration)
+		assert.Equal(fakeApp.SetRootCallCount, 2)
+
+		dashboardPage, ok := s.currentPage.(*Dashboard)
+		assert.TrueWithMessage(ok, fmt.Sprintf("expected %T to be assignable to type `*screen.Dashboard`", s.currentPage))
+		assert.Equal(dashboardPage.planList.GetItemCount(), 1)
+		buildpackName, buildpackDescription := dashboardPage.planList.GetItemText(0)
+		assert.Equal(buildpackName, "some/buildpack-1@0.0.1")
+		assert.Equal(buildpackDescription, "https://some/buildpack-1")
+
+		assert.Matches(dashboardPage.appTree.GetRoot().GetText(), regexp.MustCompile(`app: .*some/app-name`))
+		assert.Matches(dashboardPage.appTree.GetRoot().GetChildren()[0].GetText(), regexp.MustCompile(`run: .*some/run-image-name`))
+		assert.Matches(dashboardPage.builderTree.GetRoot().GetText(), regexp.MustCompile(`builder: .*some/basename`))
+		assert.Matches(dashboardPage.builderTree.GetRoot().GetChildren()[0].GetText(), regexp.MustCompile(`lifecycle: .*0.0.1`))
+		assert.Matches(dashboardPage.builderTree.GetRoot().GetChildren()[1].GetText(), regexp.MustCompile(`run: .*some/run-image`))
+		assert.Matches(dashboardPage.builderTree.GetRoot().GetChildren()[2].GetText(), regexp.MustCompile(`buildpacks`))
+
+		fakeDockerStdWriter.WriteStdoutln(`some-build-logs`)
+		h.Eventually(t, func() bool {
+			return strings.Contains(dashboardPage.logsView.GetText(true), "some-build-logs")
+		}, eventuallyInterval, eventuallyDuration)
+
+		//finish build
+		fakeBodyChan <- dcontainer.ContainerWaitOKBody{StatusCode: 0}
+		w.Close()
+		time.Sleep(500 * time.Millisecond)
+		fakeBuild <- true
+		h.Eventually(t, func() bool {
+			return strings.Contains(dashboardPage.logsView.GetText(true), "BUILD SUCCEEDED")
 		}, eventuallyInterval, eventuallyDuration)
 	})
 
 	it("performs the lifecycle (when the builder is untrusted)", func() {
 		var (
-			fakeApp = fakes.NewApp()
-			s       = Termui{app: fakeApp, textChan: make(chan string, 10)}
-			r, w    = io.Pipe()
+			fakeBuild           = make(chan bool, 1)
+			fakeBodyChan        = make(chan dcontainer.ContainerWaitOKBody, 1)
+			fakeApp             = fakes.NewApp()
+			r, w                = io.Pipe()
+			fakeDockerStdWriter = fakes.NewDockerStdWriter(w)
+
+			fakeBuilder = fakes.NewBuilder("some/basename",
+				[]dist.BuildpackInfo{
+					{ID: "some/buildpack-1", Version: "0.0.1", Homepage: "https://some/buildpack-1"},
+					{ID: "some/buildpack-2", Version: "0.0.2", Homepage: "https://some/buildpack-2"},
+				},
+				builder.LifecycleDescriptor{Info: builder.LifecycleInfo{
+					Version: builder.VersionMustParse("0.0.1"),
+				}},
+				builder.StackMetadata{
+					RunImage: builder.RunImageMetadata{
+						Image: "some/run-image",
+					},
+				},
+			)
+
+			s = &Termui{
+				appName:       "some/app-name",
+				bldr:          fakeBuilder,
+				runImageName:  "some/run-image-name",
+				app:           fakeApp,
+				buildpackChan: make(chan dist.BuildpackInfo, 10),
+				textChan:      make(chan string, 10),
+			}
 		)
 
 		defer func() {
+			fakeBodyChan <- dcontainer.ContainerWaitOKBody{StatusCode: 0}
+			fakeBuild <- true
 			w.Close()
 			fakeApp.StopRunning()
 		}()
-		go s.Run(func() {})
-		go s.Handler()(nil, nil, r)
+		go s.Run(func() { <-fakeBuild })
+		go s.Handler()(fakeBodyChan, nil, r)
 
 		h.Eventually(t, func() bool {
 			return fakeApp.SetRootCallCount == 1
@@ -82,12 +177,35 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 		assert.TrueWithMessage(ok, fmt.Sprintf("expected %T to be assignable to type `*screen.Detect`", s.currentPage))
 		assert.TrueWithMessage(fakeApp.DrawCallCount > 0, "expect app.Draw() to be called")
 		h.Eventually(t, func() bool {
-			return strings.Contains(currentPage.textView.GetText(false), "Detecting")
+			return strings.Contains(currentPage.textView.GetText(true), "Detecting")
 		}, eventuallyInterval, eventuallyDuration)
 
 		s.Info(`===> ANALYZING`)
 		h.Eventually(t, func() bool {
-			return strings.Contains(currentPage.textView.GetText(false), "Detected!")
+			return strings.Contains(currentPage.textView.GetText(true), "Detected!")
+		}, eventuallyInterval, eventuallyDuration)
+
+		h.Eventually(t, func() bool {
+			_, ok := s.currentPage.(*Dashboard)
+			return ok
+		}, eventuallyInterval, eventuallyDuration)
+		assert.Equal(fakeApp.SetRootCallCount, 2)
+
+		dashboardPage, ok := s.currentPage.(*Dashboard)
+		assert.TrueWithMessage(ok, fmt.Sprintf("expected %T to be assignable to type `*screen.Dashboard`", s.currentPage))
+
+		fakeDockerStdWriter.WriteStdoutln(`some-build-logs`)
+		h.Eventually(t, func() bool {
+			return strings.Contains(dashboardPage.logsView.GetText(true), "some-build-logs")
+		}, eventuallyInterval, eventuallyDuration)
+
+		//finish build
+		fakeBodyChan <- dcontainer.ContainerWaitOKBody{StatusCode: 1}
+		w.Close()
+		time.Sleep(500 * time.Millisecond)
+		fakeBuild <- true
+		h.Eventually(t, func() bool {
+			return strings.Contains(dashboardPage.logsView.GetText(true), "BUILD FAILED")
 		}, eventuallyInterval, eventuallyDuration)
 	})
 
