@@ -67,7 +67,7 @@ type LifecycleExecutor interface {
 	Execute(ctx context.Context, opts build.LifecycleOptions) error
 }
 
-type IsTrustedBuilder func() bool
+type IsTrustedBuilder func(string) bool
 
 // BuildOptions defines configuration settings for a Build.
 type BuildOptions struct {
@@ -317,19 +317,18 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		}
 	}
 
-	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
-	if opts.TrustBuilder == nil {
-		opts.TrustBuilder = func() bool {
-			return false
-		}
-		for _, sugBuilder := range builder.SuggestedBuilders {
-			if opts.Builder == sugBuilder.Image {
-				opts.TrustBuilder = func() bool {
-					return true
-				}
-				break
+	IsSuggestedBuilderFunc := func(b string) bool {
+		for _, suggestedBuilder := range builder.SuggestedBuilders {
+			if b == suggestedBuilder.Image {
+				return true
 			}
 		}
+		return false
+	}
+
+	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
+	if opts.TrustBuilder == nil {
+		opts.TrustBuilder = IsSuggestedBuilderFunc
 	}
 
 	lifecycleOpts := build.LifecycleOptions{
@@ -341,7 +340,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		ProjectMetadata:    projectMetadata,
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
-		TrustBuilder:       opts.TrustBuilder(),
+		TrustBuilder:       opts.TrustBuilder(opts.Builder),
 		UseCreator:         false,
 		DockerHost:         opts.DockerHost,
 		CacheImage:         opts.CacheImage,
@@ -365,7 +364,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	// have bugs that make using the creator problematic.
 	lifecycleSupportsCreator := !lifecycleVersion.LessThan(semver.MustParse(minLifecycleVersionSupportingCreator))
 
-	if lifecycleSupportsCreator && opts.TrustBuilder() {
+	if lifecycleSupportsCreator && opts.TrustBuilder(opts.Builder) {
 		lifecycleOpts.UseCreator = true
 		// no need to fetch a lifecycle image, it won't be used
 		if err := c.lifecycleExecutor.Execute(ctx, lifecycleOpts); err != nil {
@@ -375,7 +374,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return c.logImageNameAndSha(ctx, opts.Publish, imageRef)
 	}
 
-	if !opts.TrustBuilder() {
+	if !opts.TrustBuilder(opts.Builder) {
 		if lifecycleImageSupported(imgOS, lifecycleVersion) {
 			lifecycleImageName := opts.LifecycleImage
 			if lifecycleImageName == "" {

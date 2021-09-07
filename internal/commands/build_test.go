@@ -818,7 +818,7 @@ func EqBuildOptionsWithTrustedBuilder(trustBuilder bool) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Trust Builder=%t", trustBuilder),
 		equals: func(o pack.BuildOptions) bool {
-			return o.TrustBuilder()
+			return o.TrustBuilder(o.Builder)
 		},
 	}
 }

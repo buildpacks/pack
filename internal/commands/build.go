@@ -142,7 +142,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				DockerHost:        flags.DockerHost,
 				PullPolicy:        pullPolicy,
 				ClearCache:        flags.ClearCache,
-				TrustBuilder: func() bool {
+				TrustBuilder: func(string) bool {
 					return trustBuilder
 				},
 				Buildpacks: buildpacks,
