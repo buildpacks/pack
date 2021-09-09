@@ -21,6 +21,8 @@ import (
 	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-gitignore"
 
+	"gopkg.in/src-d/go-git.v4"
+
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
@@ -296,7 +298,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if err != nil {
 		return err
 	}
-
+	// TODO make a method for project descriptor and check how we call here and then do the same for git
 	version := opts.ProjectDescriptor.Project.Version
 	sourceURL := opts.ProjectDescriptor.Project.SourceURL
 	runImageName, err = pname.TranslateRegistry(runImageName, c.registryMirrors, c.logger)
@@ -304,17 +306,36 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return err
 	}
 
-	lifecycleOpts := build.LifecycleOptions{
-		AppPath:        appPath,
-		Image:          imageRef,
-		Builder:        ephemeralBuilder,
-		LifecycleImage: ephemeralBuilder.Name(),
-		RunImage:       runImageName,
-		ProjectMetadata: platform.ProjectMetadata{Source: &platform.ProjectSource{
+	var (
+		MetadataObj platform.ProjectSource
+	)
+	r, error := git.PlainOpen(appPath)
+	if error != nil {
+		MetadataObj = platform.ProjectSource{
 			Type:     "project",
 			Version:  map[string]interface{}{"declared": version},
-			Metadata: map[string]interface{}{"url": sourceURL},
-		}},
+			Metadata: map[string]interface{}{"url": sourceURL}}
+	} else {
+		hashCommit, _ := r.Head()
+		tagObj, _ := r.TagObject(hashCommit.Hash())
+		// tagsObj, _ := r.Tags()
+		branchName := strings.Split(string(hashCommit.Name()), "/")[2]
+		// Conversion of the refs to array
+		// refs := make([] map[string]interface{} ,tagsObj, branchName)
+
+		MetadataObj = platform.ProjectSource{
+			Type:     "git",
+			Version:  map[string]interface{}{"commit": hashCommit.Hash(), "describe": tagObj},
+			Metadata: map[string]interface{}{"refs": branchName, "url": appPath}}
+	}
+
+	lifecycleOpts := build.LifecycleOptions{
+		AppPath:            appPath,
+		Image:              imageRef,
+		Builder:            ephemeralBuilder,
+		LifecycleImage:     ephemeralBuilder.Name(),
+		RunImage:           runImageName,
+		ProjectMetadata:    platform.ProjectMetadata{Source: &MetadataObj},
 		ProjectPath:        "",
 		ClearCache:         opts.ClearCache,
 		Publish:            opts.Publish,
@@ -336,7 +357,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Interactive:        opts.Interactive,
 		Termui:             termui.NewTermui(),
 	}
-
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
 	// Technically the creator is supported as of platform API version 0.3 (lifecycle version 0.7.0+) but earlier versions
 	// have bugs that make using the creator problematic.
