@@ -33,6 +33,8 @@ import (
 	"github.com/sclevine/spec/report"
 	"golang.org/x/crypto/openpgp"
 
+	memfs "gopkg.in/src-d/go-billy.v4/memfs"
+
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
@@ -299,13 +301,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					testAppDir = tempDir
 
 					// git library to initialize git in testAppDir
-					testAppDir, _ := git.Init(memory.NewStorage(), nil)
+					fs := memfs.New()
+					storer := memory.NewStorage()
+					testAppDir, _ := git.Init(storer, fs)
 
-					//creating new remote
-					// testAppDir.CreateRemote(&rmc.RemoteConfig{
-					// 	Name: "example",
-					// 	URLs: []string{"git@github.com:buildpacks/pack.git"},
-					// })
+					// make a file
+					// file, _ := ioutil.TempFile("testAppDir", "prefix")
+					// h.AssertNil(t, err)
 
 					// getting the work tree after init
 					work, _ := testAppDir.Worktree()
