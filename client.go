@@ -149,6 +149,8 @@ func WithRegistryMirrors(registryMirrors map[string]string) ClientOption {
 	}
 }
 
+const DockerAPIVersion = "1.38"
+
 // NewClient allocates and returns a Client configured with the specified options.
 func NewClient(opts ...ClientOption) (*Client, error) {
 	var client Client
@@ -165,7 +167,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 		var err error
 		client.docker, err = dockerClient.NewClientWithOpts(
 			dockerClient.FromEnv,
-			dockerClient.WithVersion("1.38"),
+			dockerClient.WithVersion(DockerAPIVersion),
 		)
 		if err != nil {
 			return nil, errors.Wrap(err, "creating docker client")
