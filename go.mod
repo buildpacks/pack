@@ -21,7 +21,7 @@ require (
 	github.com/moby/term v0.0.0-20201110203204-bea5bbe245bf // indirect
 	github.com/onsi/gomega v1.16.0
 	github.com/opencontainers/image-spec v1.0.1
-	github.com/pelletier/go-toml v1.9.3
+	github.com/pelletier/go-toml v1.9.4
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20210624165335-29d673af0ce2
 	github.com/sabhiram/go-gitignore v0.0.0-20201211074657-223ce5d391b0
