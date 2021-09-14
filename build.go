@@ -305,11 +305,12 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	if err != nil {
 		return err
 	}
-
 	var (
 		MetadataObj platform.ProjectSource
 	)
+
 	r, error := git.PlainOpen(appPath)
+
 	if error != nil {
 		MetadataObj = platform.ProjectSource{
 			Type:     "project",
@@ -318,6 +319,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	} else {
 		hashCommit, _ := r.Head()
 		tagObj, _ := r.TagObject(hashCommit.Hash())
+
 		// tagsObj, _ := r.Tags()
 		branchName := strings.Split(string(hashCommit.Name()), "/")[2]
 		// Conversion of the refs to array

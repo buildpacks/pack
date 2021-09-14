@@ -33,8 +33,6 @@ import (
 	"github.com/sclevine/spec/report"
 	"golang.org/x/crypto/openpgp"
 
-	memfs "gopkg.in/src-d/go-billy.v4/memfs"
-
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/build"
@@ -53,7 +51,6 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
-	"gopkg.in/src-d/go-git.v4/storage/memory"
 )
 
 func TestBuild(t *testing.T) {
@@ -286,7 +283,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("AppDir option", func() {
-			when.Focus("is a git repository", func() {
+			when("is a git repository", func() {
 				var (
 					testAppDir string
 					commits    = "8348484564e6aa0699de0ee78c258e88240eb0b5"
@@ -300,17 +297,12 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 					testAppDir = tempDir
 
+					git.PlainInit(testAppDir, false)
+					testAppDir, _ := git.PlainOpen(testAppDir)
 					// git library to initialize git in testAppDir
-					fs := memfs.New()
-					storer := memory.NewStorage()
-					testAppDir, _ := git.Init(storer, fs)
 
-					// make a file
-					// file, _ := ioutil.TempFile("testAppDir", "prefix")
-					// h.AssertNil(t, err)
-
-					// getting the work tree after init
 					work, _ := testAppDir.Worktree()
+					h.AssertNil(t, err)
 
 					// create a commit
 					commit, _ := work.Commit("example go-git commit", &git.CommitOptions{
@@ -334,22 +326,22 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						SignKey: &openpgp.Entity{},
 					})
 
-					// get the commit
-					obj, _ := testAppDir.CommitObject(commit)
-					fmt.Println(obj)
-
-					// get tag
-					tag, _ := testAppDir.TagObject(myHash)
-					fmt.Println(tag)
-					// get branch
-					branch, _ := testAppDir.Head()
-					fmt.Println(branch)
-
-					// get remote urls
-					remoteList, _ := testAppDir.Remotes()
-					for _, remoteName := range remoteList {
-						fmt.Println(remoteName)
-					}
+						// get the commit
+						obj, _ := testAppDir.CommitObject(commit)
+						fmt.Println("the commit inside test",obj)
+	
+						// get tag
+						tag, _ := testAppDir.TagObject(myHash)
+						fmt.Println("the tag inside test",tag)
+						// get branch
+						branch, _ := testAppDir.Head()
+						fmt.Println("the branch inside test",branch)
+	
+						// get remote urls
+						remoteList, _ := testAppDir.Remotes()
+						for _, remoteName := range remoteList {
+							fmt.Println("the remotes",remoteName)
+						}
 				})
 
 				it("produced project metadata", func() {
