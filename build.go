@@ -327,8 +327,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 
 		MetadataObj = platform.ProjectSource{
 			Type:     "git",
-			Version:  map[string]interface{}{"commit": hashCommit.Hash(), "describe": tagObj},
-			Metadata: map[string]interface{}{"refs": branchName, "url": appPath}}
+			Version:  map[string]interface{}{"commit": hashCommit.Hash().String(), "describe": tagObj},
+			Metadata: map[string]interface{}{"refs": []string{branchName}, "url": appPath}}
 	}
 
 	lifecycleOpts := build.LifecycleOptions{

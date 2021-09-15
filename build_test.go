@@ -31,7 +31,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
-	"golang.org/x/crypto/openpgp"
+
+	//"golang.org/x/crypto/openpgp"
 
 	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/blob"
@@ -49,8 +50,9 @@ import (
 
 	//rmc "gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4"
-	"gopkg.in/src-d/go-git.v4/plumbing"
+	//"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	"gopkg.in/src-d/go-git.v4/plumbing"
 )
 
 func TestBuild(t *testing.T) {
@@ -286,10 +288,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			when("is a git repository", func() {
 				var (
 					testAppDir string
-					commits    = "8348484564e6aa0699de0ee78c258e88240eb0b5"
-					describe   = "v0.18.1-2-g83484845"
-					refs       = []string{"main"}
-					url        = "git@github.com:buildpacks/pack.git"
+					commit plumbing.Hash
+					describe plumbing.Reference
+					refs       = []string{"master"}
+					url = os.TempDir()
 				)
 				it.Before(func() {
 					//create a temp app project with git
@@ -298,41 +300,56 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					testAppDir = tempDir
 
 					git.PlainInit(testAppDir, false)
-					testAppDir, _ := git.PlainOpen(testAppDir)
+					testAppDir, err := git.PlainOpen(testAppDir)
+					h.AssertNil(t, err)
 					// git library to initialize git in testAppDir
 
-					work, _ := testAppDir.Worktree()
+					work, err := testAppDir.Worktree()
 					h.AssertNil(t, err)
 
 					// create a commit
-					commit, _ := work.Commit("example go-git commit", &git.CommitOptions{
+					commit, err = work.Commit("example go-git commit", &git.CommitOptions{
 						Author: &object.Signature{
 							Name:  "Haimantika Mitra",
 							Email: "haimantikamitra@gmail.com",
 							When:  time.Now(),
 						},
 					})
+					h.AssertNil(t, err)
 
 					// create a tag
-					myHash := plumbing.Hash{}
+					// head,err := testAppDir.Head()
+					// h.AssertNil(t, err)
 
-					testAppDir.CreateTag("new name tag", myHash, &git.CreateTagOptions{
+					// fmt.Println("[DEBUG] commit hash", commit.String())
+					// fmt.Println("[DEBUG] head hash", head.Hash().String())
+					//myHash := plumbing.NewHash(commit.String())
+
+					_, err = testAppDir.CreateTag("new name tag", commit, &git.CreateTagOptions{
 						Tagger: &object.Signature{
 							Name:  "Haimantika Mitra",
 							Email: "haimantikamitra@gmail.com",
 							When:  time.Now(),
 						},
 						Message: "my new tag",
-						SignKey: &openpgp.Entity{},
+						//SignKey: &openpgp.Entity{},
 					})
+					h.AssertNil(t, err)
 
 						// get the commit
-						obj, _ := testAppDir.CommitObject(commit)
+						obj, err := testAppDir.CommitObject(commit)
+						h.AssertNil(t, err)
 						fmt.Println("the commit inside test",obj)
 	
 						// get tag
-						tag, _ := testAppDir.TagObject(myHash)
-						fmt.Println("the tag inside test",tag)
+						tags, err := testAppDir.Tags()
+						h.AssertNil(t, err)
+						tags.ForEach(func(t *plumbing.Reference) error {
+							fmt.Println("the tag inside test",t)
+							return nil
+						})
+						//fmt.Println("the tag inside test",tag)
+
 						// get branch
 						branch, _ := testAppDir.Head()
 						fmt.Println("the branch inside test",branch)
@@ -355,7 +372,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, fakeLifecycle.Opts.ProjectMetadata, platform.ProjectMetadata{
 						Source: &platform.ProjectSource{
 							Type:     "git",
-							Version:  map[string]interface{}{"commit": commits, "describe": describe},
+							Version:  map[string]interface{}{"commit": commit.String(), "describe": describe.String()},
 							Metadata: map[string]interface{}{"refs": refs, "url": url},
 						},
 					})
