@@ -23,6 +23,7 @@ import (
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/lifecycle/api"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/heroku/color"
@@ -1520,6 +1521,71 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							{ID: "buildpack.1.id", Version: "buildpack.1.version"},
 							{ID: "buildpack.2.id", Version: "buildpack.2.version"},
 							{ID: "example/foo", Version: "1.0.0"},
+						})
+					})
+				})
+			})
+		})
+
+		when("ProjectDescriptor", func() {
+			when("project metadata", func() {
+				when("not experimental", func() {
+					it("does not set project source", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: projectTypes.Descriptor{
+								Project: projectTypes.Project{
+									Version:   "1.2.3",
+									SourceURL: "https://example.com",
+								},
+							},
+						})
+
+						h.AssertNil(t, err)
+						h.AssertNil(t, fakeLifecycle.Opts.ProjectMetadata.Source)
+					})
+				})
+
+				when("is experimental", func() {
+					it.Before(func() {
+						subject.experimental = true
+					})
+
+					when("missing information", func() {
+						it("does not set project source", func() {
+							err := subject.Build(context.TODO(), BuildOptions{
+								Image:             "some/app",
+								Builder:           defaultBuilderName,
+								ClearCache:        true,
+								ProjectDescriptor: projectTypes.Descriptor{},
+							})
+
+							h.AssertNil(t, err)
+							h.AssertNil(t, fakeLifecycle.Opts.ProjectMetadata.Source)
+						})
+					})
+
+					it("sets project source", func() {
+						err := subject.Build(context.TODO(), BuildOptions{
+							Image:      "some/app",
+							Builder:    defaultBuilderName,
+							ClearCache: true,
+							ProjectDescriptor: projectTypes.Descriptor{
+								Project: projectTypes.Project{
+									Version:   "1.2.3",
+									SourceURL: "https://example.com",
+								},
+							},
+						})
+
+						h.AssertNil(t, err)
+						h.AssertNotNil(t, fakeLifecycle.Opts.ProjectMetadata.Source)
+						h.AssertEq(t, fakeLifecycle.Opts.ProjectMetadata.Source, &platform.ProjectSource{
+							Type:     "project",
+							Version:  map[string]interface{}{"declared": "1.2.3"},
+							Metadata: map[string]interface{}{"url": "https://example.com"},
 						})
 					})
 				})
