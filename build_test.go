@@ -51,8 +51,8 @@ import (
 	//rmc "gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4"
 	//"gopkg.in/src-d/go-git.v4/plumbing"
-	"gopkg.in/src-d/go-git.v4/plumbing/object"
 	"gopkg.in/src-d/go-git.v4/plumbing"
+	"gopkg.in/src-d/go-git.v4/plumbing/object"
 )
 
 func TestBuild(t *testing.T) {
@@ -288,10 +288,10 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			when("is a git repository", func() {
 				var (
 					testAppDir string
-					commit plumbing.Hash
-					describe plumbing.Reference
+					commit     plumbing.Hash
+					describe   plumbing.ReferenceName
 					refs       = []string{"master"}
-					url = os.TempDir()
+					url        = os.TempDir()
 				)
 				it.Before(func() {
 					//create a temp app project with git
@@ -336,29 +336,29 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					})
 					h.AssertNil(t, err)
 
-						// get the commit
-						obj, err := testAppDir.CommitObject(commit)
-						h.AssertNil(t, err)
-						fmt.Println("the commit inside test",obj)
-	
-						// get tag
-						tags, err := testAppDir.Tags()
-						h.AssertNil(t, err)
-						tags.ForEach(func(t *plumbing.Reference) error {
-							fmt.Println("the tag inside test",t)
-							return nil
-						})
-						//fmt.Println("the tag inside test",tag)
+					// get the commit
+					obj, err := testAppDir.CommitObject(commit)
+					h.AssertNil(t, err)
+					fmt.Println("the commit inside test", obj)
 
-						// get branch
-						branch, _ := testAppDir.Head()
-						fmt.Println("the branch inside test",branch)
-	
-						// get remote urls
-						remoteList, _ := testAppDir.Remotes()
-						for _, remoteName := range remoteList {
-							fmt.Println("the remotes",remoteName)
-						}
+					// get tag
+					tags, err := testAppDir.Tags()
+					h.AssertNil(t, err)
+					tags.ForEach(func(t *plumbing.Reference) error {
+						fmt.Println("the tag inside test", t)
+						return nil
+					})
+
+					// get branch
+					branch, _ := testAppDir.Head()
+
+					fmt.Println("the branch inside test", branch)
+
+					// get remote urls
+					remoteList, _ := testAppDir.Remotes()
+					for _, remoteName := range remoteList {
+						fmt.Println("the remotes", remoteName)
+					}
 				})
 
 				it("produced project metadata", func() {
