@@ -12,7 +12,6 @@ type Metadata struct {
 	Stack       StackMetadata        `json:"stack"`
 	Lifecycle   LifecycleMetadata    `json:"lifecycle"`
 	CreatedBy   CreatorMetadata      `json:"createdBy"`
-	Project     ProjectMetadata      `json:"source,omitempty"`
 }
 
 type CreatorMetadata struct {
@@ -29,16 +28,6 @@ type LifecycleMetadata struct {
 
 type StackMetadata struct {
 	RunImage RunImageMetadata `json:"runImage" toml:"run-image"`
-}
-
-type ProjectMetadata struct {
-	Source ProjectSource `json:"source,omitempty" toml:"source"`
-}
-
-type ProjectSource struct {
-	Type     string                 `toml:"type" json:"type,omitempty"`
-	Version  map[string]interface{} `toml:"version" json:"version,omitempty"`
-	Metadata map[string]interface{} `toml:"metadata" json:"metadata,omitempty"`
 }
 
 type RunImageMetadata struct {
