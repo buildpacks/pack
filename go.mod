@@ -8,7 +8,7 @@ require (
 	github.com/buildpacks/lifecycle v0.11.4
 	github.com/docker/docker v20.10.8+incompatible
 	github.com/docker/go-connections v0.4.0
-	github.com/gdamore/tcell/v2 v2.3.3
+	github.com/gdamore/tcell/v2 v2.4.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.6
