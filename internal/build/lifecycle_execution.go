@@ -33,7 +33,7 @@ type LifecycleExecution struct {
 	appVolume    string
 	os           string
 	mountPaths   mountPaths
-	opts         LifecycleOptions
+	Opts         LifecycleOptions
 }
 
 func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, opts LifecycleOptions) (*LifecycleExecution, error) {
@@ -56,7 +56,7 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 		layersVolume: paths.FilterReservedNames("pack-layers-" + randString(10)),
 		appVolume:    paths.FilterReservedNames("pack-app-" + randString(10)),
 		platformAPI:  latestSupportedPlatformAPI,
-		opts:         opts,
+		Opts:         opts,
 		os:           osType,
 		mountPaths:   mountPathsForOS(osType, opts.Workspace),
 	}
@@ -89,11 +89,11 @@ func randString(n int) string {
 }
 
 func (l *LifecycleExecution) Builder() Builder {
-	return l.opts.Builder
+	return l.Opts.Builder
 }
 
 func (l *LifecycleExecution) AppPath() string {
-	return l.opts.AppPath
+	return l.Opts.AppPath
 }
 
 func (l LifecycleExecution) AppDir() string {
@@ -115,55 +115,55 @@ func (l *LifecycleExecution) PlatformAPI() *api.Version {
 func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
 	phaseFactory := phaseFactoryCreator(l)
 	var buildCache Cache
-	if l.opts.CacheImage != "" {
-		cacheImage, err := name.ParseReference(l.opts.CacheImage, name.WeakValidation)
+	if l.Opts.CacheImage != "" {
+		cacheImage, err := name.ParseReference(l.Opts.CacheImage, name.WeakValidation)
 		if err != nil {
 			return fmt.Errorf("invalid cache image name: %s", err)
 		}
 		buildCache = cache.NewImageCache(cacheImage, l.docker)
 	} else {
-		buildCache = cache.NewVolumeCache(l.opts.Image, "build", l.docker)
+		buildCache = cache.NewVolumeCache(l.Opts.Image, "build", l.docker)
 	}
 
 	l.logger.Debugf("Using build cache volume %s", style.Symbol(buildCache.Name()))
-	if l.opts.ClearCache {
+	if l.Opts.ClearCache {
 		if err := buildCache.Clear(ctx); err != nil {
 			return errors.Wrap(err, "clearing build cache")
 		}
 		l.logger.Debugf("Build cache %s cleared", style.Symbol(buildCache.Name()))
 	}
 
-	launchCache := cache.NewVolumeCache(l.opts.Image, "launch", l.docker)
+	launchCache := cache.NewVolumeCache(l.Opts.Image, "launch", l.docker)
 
-	if !l.opts.UseCreator {
+	if !l.Opts.UseCreator {
 		l.logger.Info(style.Step("DETECTING"))
-		if err := l.Detect(ctx, l.opts.Network, l.opts.Volumes, phaseFactory); err != nil {
+		if err := l.Detect(ctx, l.Opts.Network, l.Opts.Volumes, phaseFactory); err != nil {
 			return err
 		}
 
 		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, l.opts.Image.String(), l.opts.Network, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, buildCache, phaseFactory); err != nil {
+		if err := l.Analyze(ctx, l.Opts.Image.String(), l.Opts.Network, l.Opts.Publish, l.Opts.DockerHost, l.Opts.ClearCache, buildCache, phaseFactory); err != nil {
 			return err
 		}
 
 		l.logger.Info(style.Step("RESTORING"))
-		if l.opts.ClearCache {
+		if l.Opts.ClearCache {
 			l.logger.Info("Skipping 'restore' due to clearing cache")
-		} else if err := l.Restore(ctx, l.opts.Network, buildCache, phaseFactory); err != nil {
+		} else if err := l.Restore(ctx, l.Opts.Network, buildCache, phaseFactory); err != nil {
 			return err
 		}
 
 		l.logger.Info(style.Step("BUILDING"))
 
-		if err := l.Build(ctx, l.opts.Network, l.opts.Volumes, phaseFactory); err != nil {
+		if err := l.Build(ctx, l.Opts.Network, l.Opts.Volumes, phaseFactory); err != nil {
 			return err
 		}
 
 		l.logger.Info(style.Step("EXPORTING"))
-		return l.Export(ctx, l.opts.Image.String(), l.opts.RunImage, l.opts.Publish, l.opts.DockerHost, l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, phaseFactory)
+		return l.Export(ctx, l.Opts.Image.String(), l.Opts.RunImage, l.Opts.Publish, l.Opts.DockerHost, l.Opts.Network, buildCache, launchCache, l.Opts.AdditionalTags, phaseFactory)
 	}
 
-	return l.Create(ctx, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.RunImage, l.opts.Image.String(), l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, l.opts.Volumes, phaseFactory)
+	return l.Create(ctx, l.Opts.Publish, l.Opts.DockerHost, l.Opts.ClearCache, l.Opts.RunImage, l.Opts.Image.String(), l.Opts.Network, buildCache, launchCache, l.Opts.AdditionalTags, l.Opts.Volumes, phaseFactory)
 }
 
 func (l *LifecycleExecution) Cleanup() error {
@@ -188,21 +188,21 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		flags = append(flags, "-skip-restore")
 	}
 
-	if l.opts.GID >= overrideGID {
-		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
+	if l.Opts.GID >= overrideGID {
+		flags = append(flags, "-gid", strconv.Itoa(l.Opts.GID))
 	}
 
-	if l.opts.PreviousImage != "" {
-		if l.opts.Image == nil {
+	if l.Opts.PreviousImage != "" {
+		if l.Opts.Image == nil {
 			return errors.New("image can't be nil")
 		}
 
-		image, err := name.ParseReference(l.opts.Image.Name(), name.WeakValidation)
+		image, err := name.ParseReference(l.Opts.Image.Name(), name.WeakValidation)
 		if err != nil {
 			return fmt.Errorf("invalid image name: %s", err)
 		}
 
-		prevImage, err := name.ParseReference(l.opts.PreviousImage, name.WeakValidation)
+		prevImage, err := name.ParseReference(l.Opts.PreviousImage, name.WeakValidation)
 		if err != nil {
 			return fmt.Errorf("invalid previous image name: %s", err)
 		}
@@ -214,10 +214,10 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 			}
 		}
 
-		flags = append(flags, "-previous-image", l.opts.PreviousImage)
+		flags = append(flags, "-previous-image", l.Opts.PreviousImage)
 	}
 
-	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
+	processType := determineDefaultProcessType(l.platformAPI, l.Opts.DefaultProcessType)
 	if processType != "" {
 		flags = append(flags, "-process-type", processType)
 	}
@@ -236,8 +236,8 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		WithArgs(repoName),
 		WithNetwork(networkMode),
 		cacheOpts,
-		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
-		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter)),
+		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.Opts.ProjectMetadata, l.os)),
+		WithContainerOperations(CopyDir(l.Opts.AppPath, l.mountPaths.appDir(), l.Opts.Builder.UID(), l.Opts.Builder.GID(), l.os, true, l.Opts.FileFilter)),
 	}
 
 	if publish {
@@ -272,8 +272,8 @@ func (l *LifecycleExecution) Detect(ctx context.Context, networkMode string, vol
 		WithNetwork(networkMode),
 		WithBinds(volumes...),
 		WithContainerOperations(
-			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
-			CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter),
+			EnsureVolumeAccess(l.Opts.Builder.UID(), l.Opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
+			CopyDir(l.Opts.AppPath, l.mountPaths.appDir(), l.Opts.Builder.UID(), l.Opts.Builder.GID(), l.os, true, l.Opts.FileFilter),
 		),
 		WithFlags(flags...),
 	)
@@ -292,16 +292,16 @@ func (l *LifecycleExecution) Restore(ctx context.Context, networkMode string, bu
 	case cache.Volume:
 		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
-	if l.opts.GID >= overrideGID {
-		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
+	if l.Opts.GID >= overrideGID {
+		flagsOpt = WithFlags("-gid", strconv.Itoa(l.Opts.GID))
 	}
 
 	configProvider := NewPhaseConfigProvider(
 		"restorer",
 		l,
 		WithLogPrefix("restorer"),
-		WithImage(l.opts.LifecycleImage),
-		WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.opts.Builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID())),
+		WithImage(l.Opts.LifecycleImage),
+		WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.Opts.Builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.Opts.Builder.GID())),
 		WithRoot(), // remove after platform API 0.2 is no longer supported
 		WithArgs(
 			l.withLogLevel(
@@ -348,21 +348,21 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
 
-	if l.opts.GID >= overrideGID {
-		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
+	if l.Opts.GID >= overrideGID {
+		flagsOpt = WithFlags("-gid", strconv.Itoa(l.Opts.GID))
 	}
 
-	if l.opts.PreviousImage != "" {
-		if l.opts.Image == nil {
+	if l.Opts.PreviousImage != "" {
+		if l.Opts.Image == nil {
 			return nil, errors.New("image can't be nil")
 		}
 
-		image, err := name.ParseReference(l.opts.Image.Name(), name.WeakValidation)
+		image, err := name.ParseReference(l.Opts.Image.Name(), name.WeakValidation)
 		if err != nil {
 			return nil, fmt.Errorf("invalid image name: %s", err)
 		}
 
-		prevImage, err := name.ParseReference(l.opts.PreviousImage, name.WeakValidation)
+		prevImage, err := name.ParseReference(l.Opts.PreviousImage, name.WeakValidation)
 		if err != nil {
 			return nil, fmt.Errorf("invalid previous image name: %s", err)
 		}
@@ -374,7 +374,7 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 			}
 		}
 
-		args = append(args, l.opts.PreviousImage)
+		l.Opts.Image = prevImage
 	}
 
 	if publish {
@@ -387,8 +387,8 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 			"analyzer",
 			l,
 			WithLogPrefix("analyzer"),
-			WithImage(l.opts.LifecycleImage),
-			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.opts.Builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID())),
+			WithImage(l.Opts.LifecycleImage),
+			WithEnv(fmt.Sprintf("%s=%d", builder.EnvUID, l.Opts.Builder.UID()), fmt.Sprintf("%s=%d", builder.EnvGID, l.Opts.Builder.GID())),
 			WithRegistryAccess(authConfig),
 			WithRoot(),
 			WithArgs(l.withLogLevel(args...)...),
@@ -405,10 +405,10 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 		"analyzer",
 		l,
 		WithLogPrefix("analyzer"),
-		WithImage(l.opts.LifecycleImage),
+		WithImage(l.Opts.LifecycleImage),
 		WithEnv(
-			fmt.Sprintf("%s=%d", builder.EnvUID, l.opts.Builder.UID()),
-			fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID()),
+			fmt.Sprintf("%s=%d", builder.EnvUID, l.Opts.Builder.UID()),
+			fmt.Sprintf("%s=%d", builder.EnvGID, l.Opts.Builder.GID()),
 		),
 		WithDaemonAccess(dockerHost),
 		WithArgs(
@@ -462,12 +462,12 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		"-run-image", runImage,
 	}
 
-	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
+	processType := determineDefaultProcessType(l.platformAPI, l.Opts.DefaultProcessType)
 	if processType != "" {
 		flags = append(flags, "-process-type", processType)
 	}
-	if l.opts.GID >= overrideGID {
-		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
+	if l.Opts.GID >= overrideGID {
+		flags = append(flags, "-gid", strconv.Itoa(l.Opts.GID))
 	}
 
 	cacheOpt := NullOp()
@@ -480,10 +480,10 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 
 	opts := []PhaseConfigProviderOperation{
 		WithLogPrefix("exporter"),
-		WithImage(l.opts.LifecycleImage),
+		WithImage(l.Opts.LifecycleImage),
 		WithEnv(
-			fmt.Sprintf("%s=%d", builder.EnvUID, l.opts.Builder.UID()),
-			fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID()),
+			fmt.Sprintf("%s=%d", builder.EnvUID, l.Opts.Builder.UID()),
+			fmt.Sprintf("%s=%d", builder.EnvGID, l.Opts.Builder.GID()),
 		),
 		WithFlags(
 			l.withLogLevel(flags...)...,
@@ -492,8 +492,8 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		WithRoot(),
 		WithNetwork(networkMode),
 		cacheOpt,
-		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
-		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
+		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.Opts.Builder.Stack(), l.os)),
+		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.Opts.ProjectMetadata, l.os)),
 	}
 
 	if publish {
