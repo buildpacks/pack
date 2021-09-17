@@ -714,9 +714,33 @@ builder = "my-builder"
 			})
 		})
 
-		when("previous-image flag is provided", func() {
+		when.Focus("previous-image flag is provided", func() {
+			when("image is invalid", func() {
+				it("error must be thrown", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithPreviousImage("previous-image")).
+						Return(errors.New(""))
+
+					command.SetArgs([]string{"--builder", "my-builder", "/x@/y/?!z", "--previous-image", "previous-image"})
+					err := command.Execute()
+					h.AssertError(t, err, "failed to build")
+				})
+			})
+
+			when("previous-image is invalid", func() {
+				it("error must be thrown", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithPreviousImage("%%%")).
+						Return(errors.New(""))
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--previous-image", "%%%"})
+					err := command.Execute()
+					h.AssertError(t, err, "failed to build")
+				})
+			})
+
 			when("--publish is false", func() {
-				it("previous-image should be passed to creator", func() {
+				it("previous-image should be passed to builder", func() {
 					mockClient.EXPECT().
 						Build(gomock.Any(), EqBuildOptionsWithPreviousImage("previous-image")).
 						Return(nil)
@@ -728,7 +752,7 @@ builder = "my-builder"
 
 			when("--publish is true", func() {
 				when("image and previous-image are in same registry", func() {
-					it("succeeds", func() {
+					it("previous-image should be passed to builder", func() {
 						mockClient.EXPECT().
 							Build(gomock.Any(), EqBuildOptionsWithPreviousImage("index.docker.io/some/previous:latest")).
 							Return(nil)
