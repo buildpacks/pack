@@ -13,18 +13,19 @@ import (
 )
 
 type Phase struct {
-	name         string
-	infoWriter   io.Writer
-	errorWriter  io.Writer
-	docker       client.CommonAPIClient
-	handler      container.Handler
-	ctrConf      *dcontainer.Config
-	hostConf     *dcontainer.HostConfig
-	ctr          dcontainer.ContainerCreateCreatedBody
-	uid, gid     int
-	appPath      string
-	containerOps []ContainerOperation
-	fileFilter   func(string) bool
+	name                string
+	infoWriter          io.Writer
+	errorWriter         io.Writer
+	docker              client.CommonAPIClient
+	handler             container.Handler
+	ctrConf             *dcontainer.Config
+	hostConf            *dcontainer.HostConfig
+	ctr                 dcontainer.ContainerCreateCreatedBody
+	uid, gid            int
+	appPath             string
+	containerOps        []ContainerOperation
+	postContainerRunOps []ContainerOperation
+	fileFilter          func(string) bool
 }
 
 func (p *Phase) Run(ctx context.Context) error {
@@ -45,12 +46,22 @@ func (p *Phase) Run(ctx context.Context) error {
 		handler = p.handler
 	}
 
-	return container.RunWithHandler(
+	err = container.RunWithHandler(
 		ctx,
 		p.docker,
 		p.ctr.ID,
-		handler,
-	)
+		handler)
+	if err != nil {
+		return err
+	}
+
+	for _, containerOp := range p.postContainerRunOps {
+		if err := containerOp(p.docker, ctx, p.ctr.ID, p.infoWriter, p.errorWriter); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (p *Phase) Cleanup() error {

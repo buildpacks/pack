@@ -2,6 +2,7 @@ package build
 
 import (
 	"context"
+	"io"
 	"math/rand"
 	"time"
 
@@ -54,6 +55,7 @@ type Termui interface {
 
 	Run(funk func()) error
 	Handler() container.Handler
+	ReadLayers(reader io.ReadCloser) error
 }
 
 func init() {

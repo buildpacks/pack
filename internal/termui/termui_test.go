@@ -1,16 +1,19 @@
 package termui
 
 import (
+	"archive/tar"
 	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	dcontainer "github.com/docker/docker/api/types/container"
+	"github.com/rivo/tview"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -61,6 +64,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 				app:           fakeApp,
 				buildpackChan: make(chan dist.BuildpackInfo, 10),
 				textChan:      make(chan string, 10),
+				nodes:         map[string]*tview.TreeNode{},
 			}
 		)
 
@@ -115,6 +119,25 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 		h.Eventually(t, func() bool {
 			return strings.Contains(dashboardPage.logsView.GetText(true), "some-build-logs")
 		}, eventuallyInterval, eventuallyDuration)
+
+		//extract /layers from build and provide to termui
+		f, err := os.Open("./testdata/fake-layers.tar")
+		h.AssertNil(t, err)
+		h.AssertNil(t, s.ReadLayers(f))
+
+		bpChildren1 := dashboardPage.nodes["layers/some_buildpack-1"].GetChildren()
+		h.AssertEq(t, len(bpChildren1), 1)
+		h.AssertEq(t, bpChildren1[0].GetText(), "some-file-1.txt")
+		h.AssertFalse(t, bpChildren1[0].GetReference().(*tar.Header).FileInfo().IsDir())
+
+		bpChildren2 := dashboardPage.nodes["layers/some_buildpack-2"].GetChildren()
+		h.AssertEq(t, len(bpChildren2), 1)
+		h.AssertEq(t, bpChildren2[0].GetText(), "some-dir")
+		h.AssertTrue(t, bpChildren2[0].GetReference().(*tar.Header).FileInfo().IsDir())
+
+		h.AssertEq(t, len(bpChildren2[0].GetChildren()), 1)
+		h.AssertEq(t, bpChildren2[0].GetChildren()[0].GetText(), "some-file-2.txt")
+		h.AssertFalse(t, bpChildren2[0].GetChildren()[0].GetReference().(*tar.Header).FileInfo().IsDir())
 
 		//finish build
 		fakeBodyChan <- dcontainer.ContainerWaitOKBody{StatusCode: 0}

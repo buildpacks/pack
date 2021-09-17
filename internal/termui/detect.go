@@ -46,6 +46,13 @@ func (d *Detect) Stop() {
 	d.doneChan <- true
 }
 
+func (d *Detect) SetNodes(map[string]*tview.TreeNode) {
+	// no-op
+	// This method is a side effect of the ill-fitting 'page interface'
+	// Trying to create a cleaner interface between the main termui controller
+	// and child pages like this one is currently a work-in-progress
+}
+
 func (d *Detect) start() {
 	var (
 		i        = 0

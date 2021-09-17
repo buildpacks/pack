@@ -9,6 +9,7 @@ require (
 	github.com/docker/cli v20.10.11+incompatible
 	github.com/docker/docker v20.10.11+incompatible
 	github.com/docker/go-connections v0.4.0
+	github.com/dustin/go-humanize v1.0.0
 	github.com/gdamore/tcell/v2 v2.4.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/mock v1.6.0
