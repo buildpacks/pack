@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
@@ -47,12 +46,6 @@ type BuildFlags struct {
 	GID                int
 	PreviousImage      string
 }
-
-// Matches `KEY=VALUE` or `KEY` separated by a coma.
-// Any value may be quoted (that is, enclosed within double-quote characters).
-// Values with embedded commas or double-quote characters must be quoted.
-// Each of the embedded double-quote characters must be represented by a pair of double-quote characters.
-var envTokenExp = regexp.MustCompile(`([^=,]+)(?:=(?:([^,"]*)|"((?:[^"]|"")*)"))?(?:,|$)`)
 
 // Build an image from source code
 func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cobra.Command {
@@ -243,14 +236,8 @@ func parseEnv(envFiles []string, envVars []string) (map[string]string, error) {
 			env[k] = v
 		}
 	}
-	for _, envVarLine := range envVars {
-		envVarEntries, err := parseEnvLine(envVarLine)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse env line '%s'", envVarLine)
-		}
-		for k, v := range envVarEntries {
-			env[k] = v
-		}
+	for _, envVar := range envVars {
+		env = addEnvVar(env, envVar)
 	}
 	return env, nil
 }
@@ -267,29 +254,6 @@ func parseEnvFile(filename string) (map[string]string, error) {
 			continue
 		}
 		out = addEnvVar(out, line)
-	}
-	return out, nil
-}
-
-func parseEnvLine(envLine string) (map[string]string, error) {
-	out := make(map[string]string)
-	previousIndex := 0
-	for _, matchIndexes := range envTokenExp.FindAllStringSubmatchIndex(envLine, -1) {
-		if previousIndex != matchIndexes[0] {
-			return nil, errors.Errorf("invalid syntax between %d and %d", previousIndex, matchIndexes[1])
-		}
-		key := envLine[matchIndexes[2]:matchIndexes[3]]
-		value := os.Getenv(key)
-		for _, group := range []int{4, 6} {
-			if matchIndexes[group] > 0 {
-				value = envLine[matchIndexes[group]:matchIndexes[group+1]]
-			}
-		}
-		out[key] = strings.ReplaceAll(value, `""`, `"`)
-		previousIndex = matchIndexes[1]
-	}
-	if previousIndex != len(envLine) {
-		return nil, errors.Errorf("invalid syntax between %d and %d", previousIndex, len(envLine))
 	}
 	return out, nil
 }
