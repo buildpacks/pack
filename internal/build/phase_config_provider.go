@@ -42,7 +42,7 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 		errorWriter: logging.GetWriterForLevel(lifecycleExec.logger, logging.ErrorLevel),
 	}
 
-	provider.ctrConf.Image = lifecycleExec.Opts.Builder.Name()
+	provider.ctrConf.Image = lifecycleExec.opts.Builder.Name()
 	provider.ctrConf.Labels = map[string]string{"author": "pack"}
 
 	if lifecycleExec.os == "windows" {
@@ -76,8 +76,8 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	lifecycleExec.logger.Debugf("  Binds: %s", style.Symbol(strings.Join(provider.hostConf.Binds, " ")))
 	lifecycleExec.logger.Debugf("  Network Mode: %s", style.Symbol(string(provider.hostConf.NetworkMode)))
 
-	if lifecycleExec.Opts.Interactive {
-		provider.handler = lifecycleExec.Opts.Termui.Handler()
+	if lifecycleExec.opts.Interactive {
+		provider.handler = lifecycleExec.opts.Termui.Handler()
 	}
 
 	return provider
@@ -187,16 +187,16 @@ func WithLogPrefix(prefix string) PhaseConfigProviderOperation {
 
 func WithLifecycleProxy(lifecycleExec *LifecycleExecution) PhaseConfigProviderOperation {
 	return func(provider *PhaseConfigProvider) {
-		if lifecycleExec.Opts.HTTPProxy != "" {
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTP_PROXY="+lifecycleExec.Opts.HTTPProxy, "http_proxy="+lifecycleExec.Opts.HTTPProxy)
+		if lifecycleExec.opts.HTTPProxy != "" {
+			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTP_PROXY="+lifecycleExec.opts.HTTPProxy, "http_proxy="+lifecycleExec.opts.HTTPProxy)
 		}
 
-		if lifecycleExec.Opts.HTTPSProxy != "" {
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTPS_PROXY="+lifecycleExec.Opts.HTTPSProxy, "https_proxy="+lifecycleExec.Opts.HTTPSProxy)
+		if lifecycleExec.opts.HTTPSProxy != "" {
+			provider.ctrConf.Env = append(provider.ctrConf.Env, "HTTPS_PROXY="+lifecycleExec.opts.HTTPSProxy, "https_proxy="+lifecycleExec.opts.HTTPSProxy)
 		}
 
-		if lifecycleExec.Opts.NoProxy != "" {
-			provider.ctrConf.Env = append(provider.ctrConf.Env, "NO_PROXY="+lifecycleExec.Opts.NoProxy, "no_proxy="+lifecycleExec.Opts.NoProxy)
+		if lifecycleExec.opts.NoProxy != "" {
+			provider.ctrConf.Env = append(provider.ctrConf.Env, "NO_PROXY="+lifecycleExec.opts.NoProxy, "no_proxy="+lifecycleExec.opts.NoProxy)
 		}
 	}
 }

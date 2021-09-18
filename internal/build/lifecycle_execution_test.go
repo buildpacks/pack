@@ -1441,7 +1441,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						options.PreviousImage = "previous-image"
 						options.Image = imageName
 					})
-					prevImage, err := name.ParseReference(lifecycle.Opts.PreviousImage, name.WeakValidation)
+					prevImage, err := name.ParseReference(lifecycle.PrevImageName(), name.WeakValidation)
 					h.AssertNil(t, err)
 
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
@@ -1453,7 +1453,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
 					h.AssertEq(t, configProvider.Name(), "analyzer")
-					h.AssertEq(t, lifecycle.Opts.Image.Name(), prevImage.Name())
+					h.AssertEq(t, lifecycle.ImageName().Name(), prevImage.Name())
 				})
 			})
 
@@ -1467,7 +1467,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 							options.PreviousImage = "index.docker.io/some/previous:latest"
 							options.Image = imageName
 						})
-						prevImage, err := name.ParseReference(lifecycle.Opts.PreviousImage, name.WeakValidation)
+						prevImage, err := name.ParseReference(lifecycle.PrevImageName(), name.WeakValidation)
 						h.AssertNil(t, err)
 
 						fakePhaseFactory := fakes.NewFakePhaseFactory()
@@ -1479,7 +1479,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 						configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
 						h.AssertEq(t, configProvider.Name(), "analyzer")
-						h.AssertEq(t, lifecycle.Opts.Image.Name(), prevImage.Name())
+						h.AssertEq(t, lifecycle.ImageName().Name(), prevImage.Name())
 					})
 				})
 

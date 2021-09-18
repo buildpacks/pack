@@ -30,10 +30,10 @@ func (m *DefaultPhaseFactory) New(provider *PhaseConfigProvider) RunnerCleaner {
 		infoWriter:   provider.InfoWriter(),
 		errorWriter:  provider.ErrorWriter(),
 		handler:      provider.handler,
-		uid:          m.lifecycleExec.Opts.Builder.UID(),
-		gid:          m.lifecycleExec.Opts.Builder.GID(),
-		appPath:      m.lifecycleExec.Opts.AppPath,
+		uid:          m.lifecycleExec.opts.Builder.UID(),
+		gid:          m.lifecycleExec.opts.Builder.GID(),
+		appPath:      m.lifecycleExec.opts.AppPath,
 		containerOps: provider.containerOps,
-		fileFilter:   m.lifecycleExec.Opts.FileFilter,
+		fileFilter:   m.lifecycleExec.opts.FileFilter,
 	}
 }
