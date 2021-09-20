@@ -24,6 +24,7 @@ type BuildFlags struct {
 	ClearCache         bool
 	TrustBuilder       bool
 	Interactive        bool
+	UseLayout          bool
 	DockerHost         string
 	CacheImage         string
 	AppPath            string
@@ -157,6 +158,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				GroupID:                  gid,
 				PreviousImage:            flags.PreviousImage,
 				Interactive:              flags.Interactive,
+				UseLayout:                flags.UseLayout,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -198,6 +200,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
 	cmd.Flags().StringVar(&buildFlags.PreviousImage, "previous-image", "", "Set previous image to a particular tag reference, digest reference, or (when performing a daemon build) image ID")
 	cmd.Flags().BoolVar(&buildFlags.Interactive, "interactive", false, "Launch a terminal UI to depict the build process")
+	cmd.Flags().BoolVar(&buildFlags.UseLayout, "layout", false, "export to OIC layout")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("interactive")
 	}

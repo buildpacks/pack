@@ -70,6 +70,7 @@ type LifecycleOptions struct {
 	TrustBuilder       bool
 	UseCreator         bool
 	Interactive        bool
+	UseLayout          bool
 	Termui             Termui
 	DockerHost         string
 	CacheImage         string

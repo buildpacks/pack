@@ -121,6 +121,9 @@ type BuildOptions struct {
 	// Launch a terminal UI to depict the build process
 	Interactive bool
 
+	// Export to OIC layout
+	UseLayout bool
+
 	// List of buildpack images or archives to add to a builder.
 	// These buildpacks may overwrite those on the builder if they
 	// share both an ID and Version with a buildpack on the builder.
@@ -353,6 +356,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		PreviousImage:      opts.PreviousImage,
 		Interactive:        opts.Interactive,
 		Termui:             termui.NewTermui(),
+		UseLayout:          opts.UseLayout,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
