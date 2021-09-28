@@ -60,7 +60,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Pack Build/Publish
-        uses: dfreilich/pack-action@v2.0.6
+        uses: dfreilich/pack-action@v2.0.12
         with:
           args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} --builder ${{ env.BUILDER }} --publish'
       - name: Tag Image as Latest
