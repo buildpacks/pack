@@ -202,6 +202,15 @@ type ContainerConfig struct {
 	Volumes []string
 }
 
+var IsSuggestedBuilderFunc = func(b string) bool {
+	for _, suggestedBuilder := range builder.SuggestedBuilders {
+		if b == suggestedBuilder.Image {
+			return true
+		}
+	}
+	return false
+}
+
 // Build configures settings for the build container(s) and lifecycle.
 // It then invokes the lifecycle to build an app image.
 // If any configuration is deemed invalid, or if any lifecycle phases fail,
@@ -315,15 +324,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				Metadata: map[string]interface{}{"url": sourceURL},
 			}
 		}
-	}
-
-	IsSuggestedBuilderFunc := func(b string) bool {
-		for _, suggestedBuilder := range builder.SuggestedBuilders {
-			if b == suggestedBuilder.Image {
-				return true
-			}
-		}
-		return false
 	}
 
 	// Default mode: if the TrustBuilder option is not set, trust the suggested builders.
