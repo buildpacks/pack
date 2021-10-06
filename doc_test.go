@@ -40,7 +40,7 @@ func Example_build() {
 		Image:        "pack-lib-test-image:0.0.1",
 		Builder:      randomBuilder,
 		AppPath:      appPath,
-		TrustBuilder: true,
+		TrustBuilder: func(string) bool { return true },
 	}
 
 	fmt.Println("building application image")

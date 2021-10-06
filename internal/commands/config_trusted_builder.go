@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	bldr "github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
@@ -101,7 +102,7 @@ func listTrustedBuilders(args []string, logger logging.Logger, cfg config.Config
 	logger.Info("Trusted Builders:")
 
 	var trustedBuilders []string
-	for _, builder := range suggestedBuilders {
+	for _, builder := range bldr.SuggestedBuilders {
 		trustedBuilders = append(trustedBuilders, builder.Image)
 	}
 
