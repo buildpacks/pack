@@ -100,7 +100,7 @@ jobs:
         with:
           script: |
             let tag_name = "v${{ env.PACK_VERSION }}";
-            var release = context.payload.release || await github.repos.listReleases(context.repo)
+            var release = context.payload.release || await github.rest.repos.listReleases(context.repo)
                   .then(result => result.data.find(r => r.tag_name === tag_name))
                   .catch(err => {throw "ERROR: " + err.message});
 
