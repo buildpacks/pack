@@ -160,6 +160,7 @@ func WithDaemonAccess(dockerHost string) PhaseConfigProviderOperation {
 		if bind != "" {
 			provider.hostConf.Binds = append(provider.hostConf.Binds, bind)
 		}
+		provider.hostConf.SecurityOpt = []string{"label=disable"}
 	}
 }
 
