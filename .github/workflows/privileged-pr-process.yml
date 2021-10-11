@@ -19,7 +19,7 @@ jobs:
         id: assets
         with:
           script: |
-            var milestone = await github.issues.listMilestones({
+            var milestone = await github.rest.issues.listMilestones({
                       owner: context.repo.owner,
                       repo: context.repo.repo,
                       state: 'open',
@@ -30,7 +30,7 @@ jobs:
                   .catch(err => {throw "ERROR: " + err.message});
 
             if (milestone) {
-                await github.issues.update({
+                await github.rest.issues.update({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: context.payload.number,
