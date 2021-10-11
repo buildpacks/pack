@@ -154,6 +154,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertEq(t, phaseConfigProvider.ContainerConfig().User, "root")
 					h.AssertSliceContains(t, phaseConfigProvider.HostConfig().Binds, "/var/run/docker.sock:/var/run/docker.sock")
+					h.AssertSliceContains(t, phaseConfigProvider.HostConfig().SecurityOpt, "label=disable")
 				})
 			})
 
@@ -173,6 +174,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 					h.AssertEq(t, phaseConfigProvider.ContainerConfig().User, "ContainerAdministrator")
 					h.AssertSliceContains(t, phaseConfigProvider.HostConfig().Binds, `\\.\pipe\docker_engine:\\.\pipe\docker_engine`)
+					h.AssertSliceContains(t, phaseConfigProvider.HostConfig().SecurityOpt, "label=disable")
 				})
 			})
 		})
