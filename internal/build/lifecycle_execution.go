@@ -50,15 +50,10 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 		return nil, err
 	}
 
-	layersVolumeName := paths.FilterReservedNames("pack-layers-" + randString(10))
-	if opts.UseLayout {
-		layersVolumeName = paths.FilterReservedNames("pack-layers-" + opts.Image.String())
-	}
-
 	exec := &LifecycleExecution{
 		logger:       logger,
 		docker:       docker,
-		layersVolume: layersVolumeName,
+		layersVolume: paths.FilterReservedNames("pack-layers-" + randString(10)),
 		appVolume:    paths.FilterReservedNames("pack-app-" + randString(10)),
 		platformAPI:  latestSupportedPlatformAPI,
 		opts:         opts,
@@ -135,7 +130,6 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 		buildCache = cache.NewImageCache(cacheImage, l.docker)
 	} else {
-		l.logger.Debugf("Creating a new cache volumne for image %s", l.opts.Image.Name())
 		buildCache = cache.NewVolumeCache(l.opts.Image, "build", l.docker)
 	}
 
@@ -177,17 +171,13 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		return l.Export(ctx, l.opts.Image.String(), l.opts.RunImage, l.opts.Publish, l.opts.DockerHost, l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, phaseFactory)
 	}
 
-	return l.Create(ctx, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.UseLayout, l.opts.RunImage, l.opts.Image.String(), l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, l.opts.Volumes, phaseFactory)
+	return l.Create(ctx, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.RunImage, l.opts.Image.String(), l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, l.opts.Volumes, phaseFactory)
 }
 
 func (l *LifecycleExecution) Cleanup() error {
 	var reterr error
-	if !l.opts.UseLayout {
-		if err := l.docker.VolumeRemove(context.Background(), l.layersVolume, true); err != nil {
-			reterr = errors.Wrapf(err, "failed to clean up layers volume %s", l.layersVolume)
-		}
-	} else {
-		l.logger.Debugf("Skipping volume %s clean up because -layer flag is enabled", l.layersVolume)
+	if err := l.docker.VolumeRemove(context.Background(), l.layersVolume, true); err != nil {
+		reterr = errors.Wrapf(err, "failed to clean up layers volume %s", l.layersVolume)
 	}
 	if err := l.docker.VolumeRemove(context.Background(), l.appVolume, true); err != nil {
 		reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.appVolume)
@@ -195,7 +185,7 @@ func (l *LifecycleExecution) Cleanup() error {
 	return reterr
 }
 
-func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHost string, clearCache, useLayout bool, runImage, repoName, networkMode string, buildCache, launchCache Cache, additionalTags, volumes []string, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHost string, clearCache bool, runImage, repoName, networkMode string, buildCache, launchCache Cache, additionalTags, volumes []string, phaseFactory PhaseFactory) error {
 	flags := addTags([]string{
 		"-app", l.mountPaths.appDir(),
 		"-cache-dir", l.mountPaths.cacheDir(),
@@ -204,10 +194,6 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 
 	if clearCache {
 		flags = append(flags, "-skip-restore")
-	}
-
-	if useLayout {
-		flags = append(flags, "-layout")
 	}
 
 	if l.opts.GID >= overrideGID {
@@ -253,6 +239,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		cacheOpts = WithBinds(append(volumes, fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))...)
 	}
 
+	flags, layoutOpt, layoutEnv := l.configureLayout(flags)
 	opts := []PhaseConfigProviderOperation{
 		WithFlags(l.withLogLevel(flags...)...),
 		WithArgs(repoName),
@@ -260,6 +247,8 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		cacheOpts,
 		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
 		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter)),
+		layoutOpt,
+		layoutEnv,
 	}
 
 	if publish {
@@ -402,6 +391,7 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 	if l.opts.UseLayout {
 		flagsOpt = WithFlags("-layout")
 	}
+	_, layoutOpt, layoutEnv := l.configureLayout([]string{})
 
 	if publish {
 		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
@@ -448,6 +438,8 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 		flagsOpt,
 		WithNetwork(networkMode),
 		cacheOpt,
+		layoutOpt,
+		layoutEnv,
 	)
 
 	return phaseFactory.New(configProvider), nil
@@ -495,9 +487,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 	if l.opts.GID >= overrideGID {
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
-	if l.opts.UseLayout {
-		flags = append(flags, "-layout")
-	}
+
 	cacheOpt := NullOp()
 	switch buildCache.Type() {
 	case cache.Image:
@@ -505,7 +495,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 	case cache.Volume:
 		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
-
+	flags, layoutOpt, layoutEnv := l.configureLayout(flags)
 	opts := []PhaseConfigProviderOperation{
 		WithLogPrefix("exporter"),
 		WithImage(l.opts.LifecycleImage),
@@ -522,6 +512,8 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		cacheOpt,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
 		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
+		layoutOpt,
+		layoutEnv,
 	}
 
 	if publish {
@@ -572,4 +564,16 @@ func addTags(flags, additionalTags []string) []string {
 		flags = append(flags, "-tag", tag)
 	}
 	return flags
+}
+
+func (l *LifecycleExecution) configureLayout(flags []string) ([]string, PhaseConfigProviderOperation, PhaseConfigProviderOperation) {
+	layoutOpt := NullOp()
+	layoutEnv := NullOp()
+
+	if l.opts.UseLayout {
+		flags = append(flags, "-layout")
+		layoutOpt = WithBinds(fmt.Sprintf("%s:%s:%s", l.opts.OCIPath, l.mountPaths.ociDir(), "rw"))
+		layoutEnv = WithEnv(fmt.Sprintf("%s=%s", builder.EnvLayoutDir, l.mountPaths.ociDir()))
+	}
+	return flags, layoutOpt, layoutEnv
 }

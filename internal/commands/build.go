@@ -36,6 +36,7 @@ type BuildFlags struct {
 	DescriptorPath     string
 	DefaultProcessType string
 	LifecycleImage     string
+	OCIPath			   string
 	Env                []string
 	EnvFiles           []string
 	Buildpacks         []string
@@ -159,6 +160,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				PreviousImage:            flags.PreviousImage,
 				Interactive:              flags.Interactive,
 				UseLayout:                flags.UseLayout,
+				OCIPath: 				  flags.OCIPath,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -204,6 +206,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("interactive")
 	}
+	cmd.Flags().StringVarP(&buildFlags.OCIPath, "oci-path", "", "", "Path to export the oci layout image (only valid if layout is used).\nIf unset it defaults to 'oci' folder in current working directory.")
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
@@ -221,6 +224,10 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 
 	if flags.Interactive && !cfg.Experimental {
 		return client.NewExperimentError("Interactive mode is currently experimental.")
+	}
+
+	if !flags.UseLayout && flags.OCIPath != "" {
+		return errors.New("oci-path flag requires the layout flag")
 	}
 
 	return nil

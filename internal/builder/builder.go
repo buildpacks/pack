@@ -46,6 +46,7 @@ const (
 
 	EnvUID = "CNB_USER_ID"
 	EnvGID = "CNB_GROUP_ID"
+	EnvLayoutDir = "CNB_LAYOUT_DIR"
 
 	BuildpackOnBuilderMessage = `buildpack %s already exists on builder and will be overwritten
   - existing diffID: %s

@@ -88,6 +88,11 @@ type BuildOptions struct {
 	// built atop.
 	RunImage string
 
+	// Option only valid if UseLayout is true
+	// OCIPath is the path to export the oci layout image
+	// If unset it defaults to "oci" folder in current working directory.
+	OCIPath string
+
 	// Address of docker daemon exposed to build container
 	// e.g. tcp://example.com:1234, unix:///run/user/1000/podman/podman.sock
 	DockerHost string
@@ -121,7 +126,7 @@ type BuildOptions struct {
 	// Launch a terminal UI to depict the build process
 	Interactive bool
 
-	// Export to OIC layout
+	// Export to OCI layout
 	UseLayout bool
 
 	// List of buildpack images or archives to add to a builder.
@@ -293,6 +298,11 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "getting builder OS")
 	}
 
+	ociPath, err := c.processOCIPath(opts.OCIPath, opts.UseLayout)
+	if err != nil {
+		return errors.Wrapf(err, "invalid oci path '%s'", opts.OCIPath)
+	}
+
 	processedVolumes, warnings, err := processVolumes(imgOS, opts.ContainerConfig.Volumes)
 	if err != nil {
 		return err
@@ -357,6 +367,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Interactive:        opts.Interactive,
 		Termui:             termui.NewTermui(),
 		UseLayout:          opts.UseLayout,
+		OCIPath: 			ociPath,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
@@ -571,6 +582,30 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 	})
 
 	return all, nil
+}
+
+func (c *Client) processOCIPath(ociPath string, useLayout bool) (string, error) {
+	var (
+		resolvedOCIPath string
+		err 			error
+	)
+	if !useLayout {
+		return "", nil
+	}
+
+	if ociPath == "" {
+		if ociPath, err = mkDirAtWorkingDirectory("oci"); err != nil {
+			return "", errors.Wrap(err, "could not create oci output dir in working dir")
+		}
+	}
+	if resolvedOCIPath, err = filepath.EvalSymlinks(ociPath); err != nil {
+		return "", errors.Wrap(err, "evaluate symlink")
+	}
+
+	if resolvedOCIPath, err = filepath.Abs(resolvedOCIPath); err != nil {
+		return "", errors.Wrap(err, "resolve absolute path")
+	}
+	return resolvedOCIPath, nil
 }
 
 func (c *Client) processAppPath(appPath string) (string, error) {
@@ -932,4 +967,30 @@ exit 0
 	}
 
 	return pathToInlineBuilpack, nil
+}
+
+// Creates the folder given in the working directory if it doesn't exist
+func mkDirAtWorkingDirectory(folder string) (string, error) {
+	var (
+		workingDir string
+		err error
+	)
+	if workingDir, err = os.Getwd(); err != nil {
+		return "", errors.Wrap(err, "get working dir")
+	}
+	workingDir  = filepath.Join(workingDir, folder)
+	if err = mkDir(workingDir); err != nil {
+		return "", errors.Wrap(err, "could not create oci output dir in working dir")
+	}
+	return workingDir, nil
+}
+
+// Creates the path directory if it doesn't exist
+func mkDir(path string) error {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err = os.Mkdir(path, os.ModePerm); err != nil {
+			return errors.Wrapf(err, "could not create dir in %s", path)
+		}
+	}
+	return nil
 }
