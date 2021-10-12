@@ -50,15 +50,10 @@ func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient,
 		return nil, err
 	}
 
-	layersVolumeName := paths.FilterReservedNames("pack-layers-" + randString(10))
-	if opts.UseLayout {
-		layersVolumeName = paths.FilterReservedNames("pack-layers-" + opts.Image.String())
-	}
-
 	exec := &LifecycleExecution{
 		logger:       logger,
 		docker:       docker,
-		layersVolume: layersVolumeName,
+		layersVolume: paths.FilterReservedNames("pack-layers-" + randString(10)),
 		appVolume:    paths.FilterReservedNames("pack-app-" + randString(10)),
 		platformAPI:  latestSupportedPlatformAPI,
 		opts:         opts,
@@ -135,7 +130,6 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		}
 		buildCache = cache.NewImageCache(cacheImage, l.docker)
 	} else {
-		l.logger.Debugf("Creating a new cache volumne for image %s", l.opts.Image.Name())
 		buildCache = cache.NewVolumeCache(l.opts.Image, "build", l.docker)
 	}
 
@@ -177,17 +171,13 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 		return l.Export(ctx, l.opts.Image.String(), l.opts.RunImage, l.opts.Publish, l.opts.DockerHost, l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, phaseFactory)
 	}
 
-	return l.Create(ctx, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.UseLayout, l.opts.RunImage, l.opts.Image.String(), l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, l.opts.Volumes, phaseFactory)
+	return l.Create(ctx, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.RunImage, l.opts.Image.String(), l.opts.Network, buildCache, launchCache, l.opts.AdditionalTags, l.opts.Volumes, phaseFactory)
 }
 
 func (l *LifecycleExecution) Cleanup() error {
 	var reterr error
-	if !l.opts.UseLayout {
-		if err := l.docker.VolumeRemove(context.Background(), l.layersVolume, true); err != nil {
-			reterr = errors.Wrapf(err, "failed to clean up layers volume %s", l.layersVolume)
-		}
-	} else {
-		l.logger.Debugf("Skipping volume %s clean up because -layer flag is enabled", l.layersVolume)
+	if err := l.docker.VolumeRemove(context.Background(), l.layersVolume, true); err != nil {
+		reterr = errors.Wrapf(err, "failed to clean up layers volume %s", l.layersVolume)
 	}
 	if err := l.docker.VolumeRemove(context.Background(), l.appVolume, true); err != nil {
 		reterr = errors.Wrapf(err, "failed to clean up app volume %s", l.appVolume)
@@ -195,7 +185,7 @@ func (l *LifecycleExecution) Cleanup() error {
 	return reterr
 }
 
-func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHost string, clearCache, useLayout bool, runImage, repoName, networkMode string, buildCache, launchCache Cache, additionalTags, volumes []string, phaseFactory PhaseFactory) error {
+func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHost string, clearCache bool, runImage, repoName, networkMode string, buildCache, launchCache Cache, additionalTags, volumes []string, phaseFactory PhaseFactory) error {
 	flags := addTags([]string{
 		"-app", l.mountPaths.appDir(),
 		"-cache-dir", l.mountPaths.cacheDir(),
@@ -204,10 +194,6 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 
 	if clearCache {
 		flags = append(flags, "-skip-restore")
-	}
-
-	if useLayout {
-		flags = append(flags, "-layout")
 	}
 
 	if l.opts.GID >= overrideGID {
@@ -501,9 +487,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 	if l.opts.GID >= overrideGID {
 		flags = append(flags, "-gid", strconv.Itoa(l.opts.GID))
 	}
-	if l.opts.UseLayout {
-		flags = append(flags, "-layout")
-	}
+
 	cacheOpt := NullOp()
 	switch buildCache.Type() {
 	case cache.Image:

@@ -126,7 +126,7 @@ type BuildOptions struct {
 	// Launch a terminal UI to depict the build process
 	Interactive bool
 
-	// Export to OIC layout
+	// Export to OCI layout
 	UseLayout bool
 
 	// List of buildpack images or archives to add to a builder.

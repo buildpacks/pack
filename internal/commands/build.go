@@ -36,6 +36,7 @@ type BuildFlags struct {
 	DescriptorPath     string
 	DefaultProcessType string
 	LifecycleImage     string
+	OCIPath			   string
 	Env                []string
 	EnvFiles           []string
 	Buildpacks         []string
@@ -205,7 +206,6 @@ This option may set DOCKER_HOST environment variable for the build container if 
 		cmd.Flags().MarkHidden("interactive")
 		cmd.Flags().MarkHidden("oci-dir")
 	}
-
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
