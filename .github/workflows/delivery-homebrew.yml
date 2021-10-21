@@ -35,7 +35,7 @@ jobs:
             }
             let tag_name = tag.replace(/^v/, '');
 
-            var release = payload.release || await github.repos.listReleases(context.repo)
+            var release = payload.release || await github.rest.repos.listReleases(context.repo)
                   .then(result => result.data.find(r => r.tag_name === tag_name))
                   .catch(err => {throw "ERROR: " + err.message});
 
