@@ -112,6 +112,14 @@ func (l *LifecycleExecution) PlatformAPI() *api.Version {
 	return l.platformAPI
 }
 
+func (l *LifecycleExecution) ImageName() name.Reference {
+	return l.opts.Image
+}
+
+func (l *LifecycleExecution) PrevImageName() string {
+	return l.opts.PreviousImage
+}
+
 func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
 	phaseFactory := phaseFactoryCreator(l)
 	var buildCache Cache
@@ -350,6 +358,31 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 
 	if l.opts.GID >= overrideGID {
 		flagsOpt = WithFlags("-gid", strconv.Itoa(l.opts.GID))
+	}
+
+	if l.opts.PreviousImage != "" {
+		if l.opts.Image == nil {
+			return nil, errors.New("image can't be nil")
+		}
+
+		image, err := name.ParseReference(l.opts.Image.Name(), name.WeakValidation)
+		if err != nil {
+			return nil, fmt.Errorf("invalid image name: %s", err)
+		}
+
+		prevImage, err := name.ParseReference(l.opts.PreviousImage, name.WeakValidation)
+		if err != nil {
+			return nil, fmt.Errorf("invalid previous image name: %s", err)
+		}
+		if publish {
+			if image.Context().RegistryStr() != prevImage.Context().RegistryStr() {
+				return nil, fmt.Errorf(`when --publish is used, <previous-image> must be in the same image registry as <image>
+	            image registry = %s
+	            previous-image registry = %s`, image.Context().RegistryStr(), prevImage.Context().RegistryStr())
+			}
+		}
+
+		l.opts.Image = prevImage
 	}
 
 	if publish {
