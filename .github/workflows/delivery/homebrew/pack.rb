@@ -16,8 +16,6 @@ class Pack < Formula
     sha256 "{{LINUX_SHA}}"
   end
 
-  bottle :unneeded
-
   def install
     bin.install "pack"
   end
