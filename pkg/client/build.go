@@ -41,6 +41,7 @@ const (
 	minLifecycleVersionSupportingCreator = "0.7.4"
 	prevLifecycleVersionSupportingImage  = "0.6.1"
 	minLifecycleVersionSupportingImage   = "0.7.5"
+	defaultOCIFolder = "oci"
 )
 
 // LifecycleExecutor executes the lifecycle which satisfies the Cloud Native Buildpacks Lifecycle specification.
@@ -88,7 +89,6 @@ type BuildOptions struct {
 	// built atop.
 	RunImage string
 
-	// Option only valid if UseLayout is true
 	// OCIPath is the path to export the oci layout image
 	// If unset it defaults to "oci" folder in current working directory.
 	OCIPath string
@@ -125,9 +125,6 @@ type BuildOptions struct {
 
 	// Launch a terminal UI to depict the build process
 	Interactive bool
-
-	// Export to OCI layout
-	UseLayout bool
 
 	// List of buildpack images or archives to add to a builder.
 	// These buildpacks may overwrite those on the builder if they
@@ -298,7 +295,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		return errors.Wrapf(err, "getting builder OS")
 	}
 
-	ociPath, err := c.processOCIPath(opts.OCIPath, opts.UseLayout)
+	ociPath, err := c.processOCIPath(opts.OCIPath)
 	if err != nil {
 		return errors.Wrapf(err, "invalid oci path '%s'", opts.OCIPath)
 	}
@@ -366,7 +363,6 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		PreviousImage:      opts.PreviousImage,
 		Interactive:        opts.Interactive,
 		Termui:             termui.NewTermui(),
-		UseLayout:          opts.UseLayout,
 		OCIPath: 			ociPath,
 	}
 
@@ -584,27 +580,29 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 	return all, nil
 }
 
-func (c *Client) processOCIPath(ociPath string, useLayout bool) (string, error) {
+func (c *Client) processOCIPath(ociPath string) (string, error) {
 	var (
 		resolvedOCIPath string
-		err 			error
+		isWorkingDir    bool
+		err             error
 	)
-	if !useLayout {
-		return "", nil
-	}
-
 	if ociPath == "" {
-		if ociPath, err = mkDirAtWorkingDirectory("oci"); err != nil {
-			return "", errors.Wrap(err, "could not create oci output dir in working dir")
-		}
+		return "", nil
 	}
 	if resolvedOCIPath, err = filepath.EvalSymlinks(ociPath); err != nil {
 		return "", errors.Wrap(err, "evaluate symlink")
 	}
-
 	if resolvedOCIPath, err = filepath.Abs(resolvedOCIPath); err != nil {
 		return "", errors.Wrap(err, "resolve absolute path")
 	}
+	if isWorkingDir, err = matchWorkingDir(resolvedOCIPath); isWorkingDir {
+		if resolvedOCIPath, err = mkDirAt(resolvedOCIPath, defaultOCIFolder); err != nil {
+			return "", errors.Wrapf(err, "could not create %s directory at %s", defaultOCIFolder, resolvedOCIPath)
+		}
+	} else if err != nil {
+		return "", err
+	}
+	c.logger.Debugf("OCI Path to save the image: %s", resolvedOCIPath)
 	return resolvedOCIPath, nil
 }
 
@@ -970,19 +968,16 @@ exit 0
 }
 
 // Creates the folder given in the working directory if it doesn't exist
-func mkDirAtWorkingDirectory(folder string) (string, error) {
+func mkDirAt(path string, folder string) (string, error) {
 	var (
-		workingDir string
+		newDir string
 		err error
 	)
-	if workingDir, err = os.Getwd(); err != nil {
-		return "", errors.Wrap(err, "get working dir")
+	newDir  = filepath.Join(path, folder)
+	if err = mkDir(newDir); err != nil {
+		return "", errors.Wrapf(err, "could not create oci output dir at %s", path)
 	}
-	workingDir  = filepath.Join(workingDir, folder)
-	if err = mkDir(workingDir); err != nil {
-		return "", errors.Wrap(err, "could not create oci output dir in working dir")
-	}
-	return workingDir, nil
+	return newDir, nil
 }
 
 // Creates the path directory if it doesn't exist
@@ -993,4 +988,19 @@ func mkDir(path string) error {
 		}
 	}
 	return nil
+}
+
+// Verifies if the path given is equal to current directory
+func matchWorkingDir(path string) (bool, error) {
+	var (
+		currentDir		string
+		err 			error
+	)
+	if currentDir, err = os.Getwd(); err != nil {
+		return false, errors.Wrap(err, "get working dir")
+	}
+	if currentDir == path {
+		return true, nil
+	}
+	return false, nil
 }

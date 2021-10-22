@@ -24,7 +24,7 @@ type BuildFlags struct {
 	ClearCache         bool
 	TrustBuilder       bool
 	Interactive        bool
-	UseLayout          bool
+	OCIPath            string
 	DockerHost         string
 	CacheImage         string
 	AppPath            string
@@ -36,7 +36,6 @@ type BuildFlags struct {
 	DescriptorPath     string
 	DefaultProcessType string
 	LifecycleImage     string
-	OCIPath			   string
 	Env                []string
 	EnvFiles           []string
 	Buildpacks         []string
@@ -159,8 +158,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				GroupID:                  gid,
 				PreviousImage:            flags.PreviousImage,
 				Interactive:              flags.Interactive,
-				UseLayout:                flags.UseLayout,
-				OCIPath: 				  flags.OCIPath,
+				OCIPath:                  flags.OCIPath,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -202,11 +200,12 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
 	cmd.Flags().StringVar(&buildFlags.PreviousImage, "previous-image", "", "Set previous image to a particular tag reference, digest reference, or (when performing a daemon build) image ID")
 	cmd.Flags().BoolVar(&buildFlags.Interactive, "interactive", false, "Launch a terminal UI to depict the build process")
-	cmd.Flags().BoolVar(&buildFlags.UseLayout, "layout", false, "export to OIC layout")
+	cmd.Flags().StringVar(&buildFlags.OCIPath, "oci-dir", "", "Path to export the image in OCI layout format.\n It defaults export to 'oci' folder in current working directory.")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("interactive")
+		cmd.Flags().MarkHidden("oci-dir")
 	}
-	cmd.Flags().StringVarP(&buildFlags.OCIPath, "oci-path", "", "", "Path to export the oci layout image (only valid if layout is used).\nIf unset it defaults to 'oci' folder in current working directory.")
+
 }
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
@@ -226,10 +225,9 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 		return client.NewExperimentError("Interactive mode is currently experimental.")
 	}
 
-	if !flags.UseLayout && flags.OCIPath != "" {
-		return errors.New("oci-path flag requires the layout flag")
+	if flags.OCIPath != "" && !cfg.Experimental {
+		return pack.NewExperimentError("Exporting to OCI layout is currently experimental.")
 	}
-
 	return nil
 }
 

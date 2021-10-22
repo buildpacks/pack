@@ -388,7 +388,7 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 		l.opts.Image = prevImage
 	}
 
-	if l.opts.UseLayout {
+	if l.opts.OCIPath != "" {
 		flagsOpt = WithFlags("-layout")
 	}
 	_, layoutOpt, layoutEnv := l.configureLayout([]string{})
@@ -570,7 +570,7 @@ func (l *LifecycleExecution) configureLayout(flags []string) ([]string, PhaseCon
 	layoutOpt := NullOp()
 	layoutEnv := NullOp()
 
-	if l.opts.UseLayout {
+	if l.opts.OCIPath != "" {
 		flags = append(flags, "-layout")
 		layoutOpt = WithBinds(fmt.Sprintf("%s:%s:%s", l.opts.OCIPath, l.mountPaths.ociDir(), "rw"))
 		layoutEnv = WithEnv(fmt.Sprintf("%s=%s", builder.EnvLayoutDir, l.mountPaths.ociDir()))
