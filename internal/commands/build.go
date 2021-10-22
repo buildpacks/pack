@@ -36,7 +36,6 @@ type BuildFlags struct {
 	DescriptorPath     string
 	DefaultProcessType string
 	LifecycleImage     string
-	OCIPath			   string
 	Env                []string
 	EnvFiles           []string
 	Buildpacks         []string
