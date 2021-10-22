@@ -2471,6 +2471,75 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, fakeLifecycle.Opts.Interactive, true)
 			})
 		})
+
+		when("oci-dir option", func() {
+			var (
+				ociPath string
+				err error
+			)
+
+			when("flag is not set", func() {
+				it("empty path is passthroughs to lifecycle", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Workspace: "app",
+						Builder:   defaultBuilderName,
+						Image:     "example.com/some/repo:tag",
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.OCIPath, "")
+				})
+			})
+			when("set to current directory", func() {
+				it.Before(func() {
+					ociPath, err = getPathAtWorkingDir(defaultOCIFolder)
+					h.AssertNil(t, err)
+					os.Remove(ociPath)
+				})
+
+				it.After(func() {
+					os.Remove(ociPath)
+				})
+
+				it("creates a default folder at current directory", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: defaultBuilderName,
+						OCIPath: ".",
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.OCIPath, ociPath)
+				})
+			})
+			when("set to an existing directory", func() {
+				it.Before(func() {
+					ociPath, err = getPathAtWorkingDir("oci-dir")
+					h.AssertNil(t, err)
+					err = os.Mkdir(ociPath, os.ModePerm)
+					h.AssertNil(t, err)
+				})
+
+				it.After(func() {
+					os.Remove(ociPath)
+				})
+
+				it("absolute path is passthroughs to lifecycle", func() {
+					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: defaultBuilderName,
+						OCIPath: "oci-dir",
+					}))
+					h.AssertEq(t, fakeLifecycle.Opts.OCIPath, ociPath)
+				})
+			})
+			when("set to non existing directory", func() {
+				it("error is expected", func() {
+					err := subject.Build(context.TODO(), BuildOptions{
+						Image:   "some/app",
+						Builder: defaultBuilderName,
+						OCIPath: "does/not/exist",
+					})
+					h.AssertError(t, err, "no such file or directory")
+				})
+			})
+		})
 	})
 }
 
@@ -2586,4 +2655,17 @@ type executeFailsLifecycle struct {
 func (f *executeFailsLifecycle) Execute(_ context.Context, opts build.LifecycleOptions) error {
 	f.Opts = opts
 	return errors.New("")
+}
+
+func getPathAtWorkingDir(folder string) (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	resolvedWd, err := filepath.EvalSymlinks(wd)
+	if err != nil {
+		return "", err
+	}
+	resolvedWd = filepath.Join(resolvedWd, folder)
+	return resolvedWd, nil
 }
