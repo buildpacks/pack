@@ -225,7 +225,7 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 	}
 
 	if flags.OCIPath != "" && !cfg.Experimental {
-		return pack.NewExperimentError("Exporting to OCI layout is currently experimental.")
+		return client.NewExperimentError("Exporting to OCI layout is currently experimental.")
 	}
 	return nil
 }

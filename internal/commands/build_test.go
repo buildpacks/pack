@@ -772,6 +772,46 @@ builder = "my-builder"
 				h.AssertError(t, err, "Interactive mode is currently experimental.")
 			})
 		})
+
+		when("--oci-dir flag", func() {
+			when("is not provided", func() {
+				it.Before(func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithOCIDir("")).
+						Return(nil)
+				})
+
+				it("oci-path build option should be set to empty string", func() {
+					command.SetArgs([]string{"--builder", "my-builder", "image"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("is provided but experimental isn't set in the config", func() {
+				it("errors with a descriptive message", func() {
+					command.SetArgs([]string{"image", "--oci-dir", "."})
+					err := command.Execute()
+					h.AssertNotNil(t, err)
+					h.AssertError(t, err, "OCI layout is currently experimental")
+				})
+			})
+
+			when("is provided and experimental is set in the config", func() {
+				it.Before(func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithOCIDir("/my/oci/folder")).
+						Return(nil)
+					cfg = config.Config{
+						Experimental: true,
+					}
+					command = commands.Build(logger, cfg, mockClient)
+				})
+				it("forwards oci path to lifecycle", func() {
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--oci-dir", "/my/oci/folder"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+		})
 	})
 }
 
@@ -907,6 +947,15 @@ func EqBuildOptionsWithPreviousImage(prevImage string) gomock.Matcher {
 		description: fmt.Sprintf("Previous image=%s", prevImage),
 		equals: func(o client.BuildOptions) bool {
 			return o.PreviousImage == prevImage
+		},
+	}
+}
+
+func EqBuildOptionsWithOCIDir(path string) gomock.Matcher {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("oci-path=%s", path),
+		equals: func(o client.BuildOptions) bool {
+			return o.OCIPath == path
 		},
 	}
 }

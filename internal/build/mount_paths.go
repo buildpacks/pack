@@ -59,5 +59,5 @@ func (m mountPaths) launchCacheDir() string {
 }
 
 func (m mountPaths) ociDir() string {
-	return m.join(m.volume, "oci")
+	return m.join(m.layersDir(), "oci")
 }

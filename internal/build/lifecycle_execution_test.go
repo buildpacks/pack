@@ -932,6 +932,56 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("oci-dir", func() {
+			var (
+				lifecycle        *build.LifecycleExecution
+				fakePhaseFactory *fakes.FakePhaseFactory
+			)
+			fakePhase := &fakes.FakePhase{}
+			fakePhaseFactory = fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
+
+			when("OCIPath is provided", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OCIPath = "/path/to/oci"
+					})
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					err := lifecycle.Create(context.Background(), false, "", true, "test", "test", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertEq(t, configProvider.Name(), "creator")
+					assertValidOCIConfiguration(t, configProvider, "/path/to/oci")
+				})
+			})
+
+			when("OCIPath is not provided", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OCIPath = ""
+					})
+				})
+
+				it("layout is not added to the expected arguments", func() {
+					err := lifecycle.Create(context.Background(), false, "", true, "test", "test", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertEq(t, configProvider.Name(), "creator")
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-layout")
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Env, "CNB_LAYOUT_DIR=/oci")
+				})
+			})
+		})
 	})
 
 	when("#Detect", func() {
@@ -1496,6 +1546,56 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						err = lifecycle.Analyze(context.Background(), "test", "test", true, "", false, fakeCache, fakePhaseFactory)
 						h.AssertError(t, err, fmt.Sprintf("%s", err))
 					})
+				})
+			})
+		})
+
+		when("oci-dir", func() {
+			var (
+				lifecycle        *build.LifecycleExecution
+				fakePhaseFactory *fakes.FakePhaseFactory
+			)
+			fakePhase := &fakes.FakePhase{}
+			fakePhaseFactory = fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
+
+			when("OCIPath is provided", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OCIPath = "/path/to/oci"
+					})
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					err := lifecycle.Analyze(context.Background(), "test", "test", false, "", false, fakeCache, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertEq(t, configProvider.Name(), "analyzer")
+					assertValidOCIConfiguration(t, configProvider, "/path/to/oci")
+				})
+			})
+
+			when("OCIPath is not provided", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OCIPath = ""
+					})
+				})
+
+				it("layout is not added to the expected arguments", func() {
+					err := lifecycle.Analyze(context.Background(), "test", "test", false, "", false, fakeCache, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertEq(t, configProvider.Name(), "analyzer")
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-layout")
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Env, "CNB_LAYOUT_DIR=/oci")
 				})
 			})
 		})
@@ -2324,6 +2424,56 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("oci-dir", func() {
+			var (
+				lifecycle        *build.LifecycleExecution
+				fakePhaseFactory *fakes.FakePhaseFactory
+			)
+			fakePhase := &fakes.FakePhase{}
+			fakePhaseFactory = fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
+
+			when("OCIPath is provided", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OCIPath = "/path/to/oci"
+					})
+				})
+
+				it("configures the phase with the expected arguments", func() {
+					err := lifecycle.Export(context.Background(), "test", "test", false, "", "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertEq(t, configProvider.Name(), "exporter")
+					assertValidOCIConfiguration(t, configProvider, "/path/to/oci")
+				})
+			})
+
+			when("OCIPath is not provided", func() {
+				it.Before(func() {
+					lifecycle = newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
+						options.OCIPath = ""
+					})
+				})
+
+				it("layout is not added to the expected arguments", func() {
+					err := lifecycle.Export(context.Background(), "test", "test", false, "", "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertEq(t, configProvider.Name(), "exporter")
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Cmd, "-layout")
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Env, "CNB_LAYOUT_DIR=/oci")
+				})
+			})
+		})
 	})
 }
 
@@ -2361,4 +2511,15 @@ func newTestLifecycleExec(t *testing.T, logVerbose bool, ops ...func(*build.Life
 	lifecycleExec, err := newTestLifecycleExecErr(t, logVerbose, ops...)
 	h.AssertNil(t, err)
 	return lifecycleExec
+}
+
+func assertValidOCIConfiguration(t *testing.T, configProvider *build.PhaseConfigProvider, path string) {
+	h.AssertIncludeAllExpectedPatterns(t,
+		configProvider.ContainerConfig().Cmd,
+		[]string{"-layout"},
+	)
+	h.AssertIncludeAllExpectedPatterns(t,
+		configProvider.ContainerConfig().Env,
+		[]string{"CNB_LAYOUT_DIR=/layers/oci"},
+	)
 }

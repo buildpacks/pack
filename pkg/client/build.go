@@ -41,7 +41,6 @@ const (
 	minLifecycleVersionSupportingCreator = "0.7.4"
 	prevLifecycleVersionSupportingImage  = "0.6.1"
 	minLifecycleVersionSupportingImage   = "0.7.5"
-	defaultOCIFolder = "oci"
 )
 
 // LifecycleExecutor executes the lifecycle which satisfies the Cloud Native Buildpacks Lifecycle specification.
@@ -583,7 +582,6 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 func (c *Client) processOCIPath(ociPath string) (string, error) {
 	var (
 		resolvedOCIPath string
-		isWorkingDir    bool
 		err             error
 	)
 	if ociPath == "" {
@@ -595,12 +593,8 @@ func (c *Client) processOCIPath(ociPath string) (string, error) {
 	if resolvedOCIPath, err = filepath.Abs(resolvedOCIPath); err != nil {
 		return "", errors.Wrap(err, "resolve absolute path")
 	}
-	if isWorkingDir, err = matchWorkingDir(resolvedOCIPath); isWorkingDir {
-		if resolvedOCIPath, err = mkDirAt(resolvedOCIPath, defaultOCIFolder); err != nil {
-			return "", errors.Wrapf(err, "could not create %s directory at %s", defaultOCIFolder, resolvedOCIPath)
-		}
-	} else if err != nil {
-		return "", err
+	if err = os.MkdirAll(resolvedOCIPath, os.ModePerm); err != nil {
+		return "", errors.Wrapf(err, "could not create the directory %s", resolvedOCIPath)
 	}
 	c.logger.Debugf("OCI Path to save the image: %s", resolvedOCIPath)
 	return resolvedOCIPath, nil
@@ -965,42 +959,4 @@ exit 0
 	}
 
 	return pathToInlineBuilpack, nil
-}
-
-// Creates the folder given in the working directory if it doesn't exist
-func mkDirAt(path string, folder string) (string, error) {
-	var (
-		newDir string
-		err error
-	)
-	newDir  = filepath.Join(path, folder)
-	if err = mkDir(newDir); err != nil {
-		return "", errors.Wrapf(err, "could not create oci output dir at %s", path)
-	}
-	return newDir, nil
-}
-
-// Creates the path directory if it doesn't exist
-func mkDir(path string) error {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if err = os.Mkdir(path, os.ModePerm); err != nil {
-			return errors.Wrapf(err, "could not create dir in %s", path)
-		}
-	}
-	return nil
-}
-
-// Verifies if the path given is equal to current directory
-func matchWorkingDir(path string) (bool, error) {
-	var (
-		currentDir		string
-		err 			error
-	)
-	if currentDir, err = os.Getwd(); err != nil {
-		return false, errors.Wrap(err, "get working dir")
-	}
-	if currentDir == path {
-		return true, nil
-	}
-	return false, nil
 }

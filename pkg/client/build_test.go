@@ -2475,7 +2475,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		when("oci-dir option", func() {
 			var (
 				ociPath string
-				err error
+				err     error
 			)
 
 			when("flag is not set", func() {
@@ -2490,7 +2490,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			})
 			when("set to current directory", func() {
 				it.Before(func() {
-					ociPath, err = getPathAtWorkingDir(defaultOCIFolder)
+					ociPath, err = getPathAtWorkingDir("")
 					h.AssertNil(t, err)
 					os.Remove(ociPath)
 				})
@@ -2512,7 +2512,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					ociPath, err = getPathAtWorkingDir("oci-dir")
 					h.AssertNil(t, err)
-					err = os.Mkdir(ociPath, os.ModePerm)
+					err = os.MkdirAll(ociPath, os.ModePerm)
 					h.AssertNil(t, err)
 				})
 
@@ -2520,13 +2520,13 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					os.Remove(ociPath)
 				})
 
-				it("absolute path is passthroughs to lifecycle", func() {
+				it("default folder is appended to the absolute path and pass through to the lifecycle", func() {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:   "some/app",
 						Builder: defaultBuilderName,
 						OCIPath: "oci-dir",
 					}))
-					h.AssertEq(t, fakeLifecycle.Opts.OCIPath, ociPath)
+					h.AssertEq(t, fakeLifecycle.Opts.OCIPath, filepath.Join(ociPath, ""))
 				})
 			})
 			when("set to non existing directory", func() {
