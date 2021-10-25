@@ -363,7 +363,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		PreviousImage:      opts.PreviousImage,
 		Interactive:        opts.Interactive,
 		Termui:             termui.NewTermui(),
-		OCIPath: 			ociPath,
+		OCIPath:            ociPath,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version

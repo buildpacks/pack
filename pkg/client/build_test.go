@@ -2537,6 +2537,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						OCIPath: "does/not/exist",
 					})
 					h.AssertError(t, err, "no such file or directory")
+					h.AssertError(t, err, "invalid oci path")
 				})
 			})
 		})
