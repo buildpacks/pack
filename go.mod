@@ -6,6 +6,7 @@ require (
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20211001201950-cf7ae41c3771
 	github.com/buildpacks/lifecycle v0.12.0
+	github.com/docker/cli v20.10.7+incompatible
 	github.com/docker/docker v20.10.9+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/gdamore/tcell/v2 v2.4.0
@@ -14,6 +15,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/google/go-containerregistry v0.6.0
 	github.com/google/go-github/v30 v30.1.0
+	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/heroku/color v0.0.6
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
 	github.com/moby/sys/mount v0.2.0 // indirect

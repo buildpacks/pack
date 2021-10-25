@@ -133,7 +133,11 @@ func initConfig() (config.Config, string, error) {
 }
 
 func initClient(logger logging.Logger, cfg config.Config) (pack.Client, error) {
-	client, err := pack.NewClient(pack.WithLogger(logger), pack.WithExperimental(cfg.Experimental), pack.WithRegistryMirrors(cfg.RegistryMirrors))
+	dc, err := tryInitSSHDockerClient()
+	if err != nil {
+		return pack.Client{}, err
+	}
+	client, err := pack.NewClient(pack.WithLogger(logger), pack.WithExperimental(cfg.Experimental), pack.WithRegistryMirrors(cfg.RegistryMirrors), pack.WithDockerClient(dc))
 	if err != nil {
 		return pack.Client{}, err
 	}
