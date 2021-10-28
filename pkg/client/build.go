@@ -282,7 +282,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	)
 
 	if !supportsPlatformAPI(builderPlatformAPIs) {
-		c.logger.Debugf("pack %s supports Platform API(s): %s", Version, strings.Join(build.SupportedPlatformAPIVersions.AsStrings(), ", "))
+		c.logger.Debugf("pack %s supports Platform API(s): %s", c.version, strings.Join(build.SupportedPlatformAPIVersions.AsStrings(), ", "))
 		c.logger.Debugf("Builder %s supports Platform API(s): %s", style.Symbol(opts.Builder), strings.Join(builderPlatformAPIs.AsStrings(), ", "))
 		return errors.Errorf("Builder %s is incompatible with this version of pack", style.Symbol(opts.Builder))
 	}
@@ -796,7 +796,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 		bldr.SetOrder(order)
 	}
 
-	if err := bldr.Save(c.logger, builder.CreatorMetadata{Version: Version}); err != nil {
+	if err := bldr.Save(c.logger, builder.CreatorMetadata{Version: c.version}); err != nil {
 		return nil, err
 	}
 	return bldr, nil

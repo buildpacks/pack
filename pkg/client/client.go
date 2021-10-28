@@ -1,3 +1,17 @@
+/*
+Package client provides all the functionally provided by pack as a library through a go api.
+
+Prerequisites
+
+In order to use most functionality, you will need an OCI runtime such as Docker or podman installed.
+
+References
+
+This package provides functionality to create and manipulate all artifacts outlined in the Cloud Native Buildpacks specification.
+An introduction to these artifacts and their usage can be found at https://buildpacks.io/docs/.
+
+The formal specification of the pack platform provides can be found at: https://github.com/buildpacks/spec.
+*/
 package client
 
 import (
@@ -6,6 +20,7 @@ import (
 	"path/filepath"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/pack"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
@@ -77,6 +92,7 @@ type Client struct {
 	buildpackDownloader BuildpackDownloader
 	experimental        bool
 	registryMirrors     map[string]string
+	version             string
 }
 
 // ClientOption is a type of function that mutate settings on the client.
@@ -155,10 +171,12 @@ const DockerAPIVersion = "1.38"
 
 // NewClient allocates and returns a Client configured with the specified options.
 func NewClient(opts ...ClientOption) (*Client, error) {
-	var client Client
+	client := &Client{
+		version: pack.Version,
+	}
 
 	for _, opt := range opts {
-		opt(&client)
+		opt(client)
 	}
 
 	if client.logger == nil {
@@ -205,7 +223,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 
 	client.lifecycleExecutor = build.NewLifecycleExecutor(client.logger, client.docker)
 
-	return &client, nil
+	return client, nil
 }
 
 type registryResolver struct {
