@@ -3,15 +3,15 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
 )
 
 type BuilderInspector interface {
-	InspectBuilder(name string, daemon bool, modifiers ...pack.BuilderInspectionModifier) (*pack.BuilderInfo, error)
+	InspectBuilder(name string, daemon bool, modifiers ...client.BuilderInspectionModifier) (*client.BuilderInfo, error)
 }
 
 type BuilderInspectFlags struct {
@@ -40,7 +40,7 @@ func BuilderInspect(logger logging.Logger,
 
 			if imageName == "" {
 				suggestSettingBuilder(logger, inspector)
-				return pack.NewSoftError()
+				return client.NewSoftError()
 			}
 
 			return inspectBuilder(logger, imageName, flags, cfg, inspector, writerFactory)
@@ -67,8 +67,8 @@ func inspectBuilder(
 		Trusted:   isTrustedBuilder(cfg, imageName),
 	}
 
-	localInfo, localErr := inspector.InspectBuilder(imageName, true, pack.WithDetectionOrderDepth(flags.Depth))
-	remoteInfo, remoteErr := inspector.InspectBuilder(imageName, false, pack.WithDetectionOrderDepth(flags.Depth))
+	localInfo, localErr := inspector.InspectBuilder(imageName, true, client.WithDetectionOrderDepth(flags.Depth))
+	remoteInfo, remoteErr := inspector.InspectBuilder(imageName, false, client.WithDetectionOrderDepth(flags.Depth))
 
 	writer, err := writerFactory.Writer(flags.OutputFormat)
 	if err != nil {

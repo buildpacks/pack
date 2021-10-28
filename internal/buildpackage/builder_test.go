@@ -25,8 +25,8 @@ import (
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
+	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
-	"github.com/buildpacks/pack/testmocks"
 )
 
 func TestPackageBuilder(t *testing.T) {

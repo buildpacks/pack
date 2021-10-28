@@ -3,9 +3,9 @@ package writer
 import (
 	"fmt"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
 
 	"github.com/buildpacks/pack/internal/style"
 )
@@ -16,7 +16,7 @@ type BuilderWriter interface {
 	Print(
 		logger logging.Logger,
 		localRunImages []config.RunImage,
-		local, remote *pack.BuilderInfo,
+		local, remote *client.BuilderInfo,
 		localErr, remoteErr error,
 		builderInfo SharedBuilderInfo,
 	) error

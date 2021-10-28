@@ -5,9 +5,9 @@ import (
 	"github.com/buildpacks/lifecycle/launch"
 	"github.com/buildpacks/lifecycle/platform"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/client"
 )
 
 type GeneralInfo struct {
@@ -52,7 +52,7 @@ type InspectOutput struct {
 	Local     *InfoDisplay `json:"local_info" yaml:"local_info" toml:"local_info"`
 }
 
-func NewInfoDisplay(info *pack.ImageInfo, generalInfo GeneralInfo) *InfoDisplay {
+func NewInfoDisplay(info *client.ImageInfo, generalInfo GeneralInfo) *InfoDisplay {
 	if info == nil {
 		return nil
 	}
@@ -69,7 +69,7 @@ func NewInfoDisplay(info *pack.ImageInfo, generalInfo GeneralInfo) *InfoDisplay 
 // private functions
 //
 
-func getConfigMirrors(info *pack.ImageInfo, imageMirrors []config.RunImage) []string {
+func getConfigMirrors(info *client.ImageInfo, imageMirrors []config.RunImage) []string {
 	var runImage string
 	if info != nil {
 		runImage = info.Stack.RunImage.Image
@@ -90,7 +90,7 @@ func displayBase(base platform.RunImageMetadata) BaseDisplay {
 	}
 }
 
-func displayMirrors(info *pack.ImageInfo, generalInfo GeneralInfo) []RunImageMirrorDisplay {
+func displayMirrors(info *client.ImageInfo, generalInfo GeneralInfo) []RunImageMirrorDisplay {
 	// add all user configured run images, then add run images provided by info
 	var result []RunImageMirrorDisplay
 	if info == nil {
@@ -139,7 +139,7 @@ func displayBuildpacks(buildpacks []buildpack.GroupBuildpack) []dist.BuildpackIn
 	return result
 }
 
-func displayProcesses(details pack.ProcessDetails) []ProcessDisplay {
+func displayProcesses(details client.ProcessDetails) []ProcessDisplay {
 	var result []ProcessDisplay
 	detailsArray := details.OtherProcesses
 	if details.DefaultProcess != nil {

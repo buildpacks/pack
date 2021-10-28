@@ -3,9 +3,9 @@ package fakes
 import (
 	"context"
 
-	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 )
 
 type FakeInspectableFetcher struct {

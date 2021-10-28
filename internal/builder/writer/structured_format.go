@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/client"
 
-	"github.com/buildpacks/pack"
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/config"
@@ -52,7 +52,7 @@ type StructuredFormat struct {
 func (w *StructuredFormat) Print(
 	logger logging.Logger,
 	localRunImages []config.RunImage,
-	local, remote *pack.BuilderInfo,
+	local, remote *client.BuilderInfo,
 	localErr, remoteErr error,
 	builderInfo SharedBuilderInfo,
 ) error {

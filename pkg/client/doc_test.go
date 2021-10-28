@@ -1,0 +1,55 @@
+package client_test
+
+import (
+	"context"
+	"fmt"
+	"math/rand"
+
+	"github.com/buildpacks/pack/pkg/client"
+)
+
+// This example shows the basic usage of the package: Create a client,
+// call a configuration object, call the client's Build function.
+func Example_build() {
+	// create a context object
+	context := context.Background()
+
+	// initialize a pack client
+	pack, err := client.NewClient()
+	if err != nil {
+		panic(err)
+	}
+
+	// replace this with the location of a sample application
+	// For a list of prepared samples see the 'apps' folder at
+	// https://github.com/buildpacks/samples.
+	appPath := "local/path/to/application/root"
+
+	// randomly select a builder to use from among the following
+	builderList := []string{
+		"gcr.io/buildpacks/builder:v1",
+		"heroku/buildpacks:20",
+		"gcr.io/paketo-buildpacks/builder:base",
+	}
+
+	randomIndex := rand.Intn(len(builderList))
+	randomBuilder := builderList[randomIndex]
+
+	// initialize our options
+	buildOpts := client.BuildOptions{
+		Image:        "pack-lib-test-image:0.0.1",
+		Builder:      randomBuilder,
+		AppPath:      appPath,
+		TrustBuilder: func(string) bool { return true },
+	}
+
+	fmt.Println("building application image")
+
+	// build an image
+	err = pack.Build(context, buildOpts)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("build completed")
+}

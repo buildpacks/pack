@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	pubbldr "github.com/buildpacks/pack/builder"
-	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 )
 
 type Info struct {

@@ -17,12 +17,12 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
-	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	pubcfg "github.com/buildpacks/pack/pkg/config"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -58,12 +58,12 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			it("returns a soft error", func() {
 				mockClient.EXPECT().
 					InspectBuilder(gomock.Any(), false).
-					Return(&pack.BuilderInfo{Description: ""}, nil).
+					Return(&client.BuilderInfo{Description: ""}, nil).
 					AnyTimes()
 
 				command.SetArgs([]string{"image"})
 				err := command.Execute()
-				h.AssertError(t, err, pack.NewSoftError().Error())
+				h.AssertError(t, err, client.NewSoftError().Error())
 			})
 		})
 
@@ -778,7 +778,7 @@ builder = "my-builder"
 func EqBuildOptionsWithImage(builder, image string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Builder=%s and Image=%s", builder, image),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return o.Builder == builder && o.Image == image
 		},
 	}
@@ -787,7 +787,7 @@ func EqBuildOptionsWithImage(builder, image string) gomock.Matcher {
 func EqBuildOptionsDefaultProcess(defaultProc string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Default Process Type=%s", defaultProc),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return o.DefaultProcessType == defaultProc
 		},
 	}
@@ -796,7 +796,7 @@ func EqBuildOptionsDefaultProcess(defaultProc string) gomock.Matcher {
 func EqBuildOptionsWithPullPolicy(policy pubcfg.PullPolicy) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("PullPolicy=%s", policy),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return o.PullPolicy == policy
 		},
 	}
@@ -805,7 +805,7 @@ func EqBuildOptionsWithPullPolicy(policy pubcfg.PullPolicy) gomock.Matcher {
 func EqBuildOptionsWithCacheImage(cacheImage string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("CacheImage=%s", cacheImage),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return o.CacheImage == cacheImage
 		},
 	}
@@ -814,7 +814,7 @@ func EqBuildOptionsWithCacheImage(cacheImage string) gomock.Matcher {
 func EqBuildOptionsWithLifecycleImage(lifecycleImage string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("LifecycleImage=%s", lifecycleImage),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return o.LifecycleImage == lifecycleImage
 		},
 	}
@@ -823,7 +823,7 @@ func EqBuildOptionsWithLifecycleImage(lifecycleImage string) gomock.Matcher {
 func EqBuildOptionsWithNetwork(network string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Network=%s", network),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return o.ContainerConfig.Network == network
 		},
 	}
@@ -832,7 +832,7 @@ func EqBuildOptionsWithNetwork(network string) gomock.Matcher {
 func EqBuildOptionsWithBuilder(builder string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Builder=%s", builder),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return o.Builder == builder
 		},
 	}
@@ -841,7 +841,7 @@ func EqBuildOptionsWithBuilder(builder string) gomock.Matcher {
 func EqBuildOptionsWithTrustedBuilder(trustBuilder bool) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Trust Builder=%t", trustBuilder),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return o.TrustBuilder(o.Builder)
 		},
 	}
@@ -850,7 +850,7 @@ func EqBuildOptionsWithTrustedBuilder(trustBuilder bool) gomock.Matcher {
 func EqBuildOptionsWithVolumes(volumes []string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Volumes=%s", volumes),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return reflect.DeepEqual(o.ContainerConfig.Volumes, volumes)
 		},
 	}
@@ -859,7 +859,7 @@ func EqBuildOptionsWithVolumes(volumes []string) gomock.Matcher {
 func EqBuildOptionsWithAdditionalTags(additionalTags []string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("AdditionalTags=%s", additionalTags),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return reflect.DeepEqual(o.AdditionalTags, additionalTags)
 		},
 	}
@@ -868,7 +868,7 @@ func EqBuildOptionsWithAdditionalTags(additionalTags []string) gomock.Matcher {
 func EqBuildOptionsWithProjectDescriptor(descriptor projectTypes.Descriptor) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Descriptor=%s", descriptor),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return reflect.DeepEqual(o.ProjectDescriptor, descriptor)
 		},
 	}
@@ -877,7 +877,7 @@ func EqBuildOptionsWithProjectDescriptor(descriptor projectTypes.Descriptor) gom
 func EqBuildOptionsWithEnv(env map[string]string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Env=%+v", env),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			for k, v := range o.Env {
 				if env[k] != v {
 					return false
@@ -896,7 +896,7 @@ func EqBuildOptionsWithEnv(env map[string]string) gomock.Matcher {
 func EqBuildOptionsWithOverrideGroupID(gid int) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("GID=%d", gid),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return o.GroupID == gid
 		},
 	}
@@ -905,19 +905,19 @@ func EqBuildOptionsWithOverrideGroupID(gid int) gomock.Matcher {
 func EqBuildOptionsWithPreviousImage(prevImage string) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("Previous image=%s", prevImage),
-		equals: func(o pack.BuildOptions) bool {
+		equals: func(o client.BuildOptions) bool {
 			return o.PreviousImage == prevImage
 		},
 	}
 }
 
 type buildOptionsMatcher struct {
-	equals      func(pack.BuildOptions) bool
+	equals      func(client.BuildOptions) bool
 	description string
 }
 
 func (m buildOptionsMatcher) Matches(x interface{}) bool {
-	if b, ok := x.(pack.BuildOptions); ok {
+	if b, ok := x.(client.BuildOptions); ok {
 		return m.equals(b)
 	}
 	return false

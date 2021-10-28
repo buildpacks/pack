@@ -7,16 +7,14 @@ import (
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
-
-	pubcfg "github.com/buildpacks/pack/config"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	pubcfg "github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/project"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 )
@@ -86,7 +84,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 
 			if builder == "" {
 				suggestSettingBuilder(logger, packClient)
-				return pack.NewSoftError()
+				return client.NewSoftError()
 			}
 
 			buildpacks := flags.Buildpacks
@@ -129,7 +127,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if cmd.Flags().Changed("gid") {
 				gid = flags.GID
 			}
-			if err := packClient.Build(cmd.Context(), pack.BuildOptions{
+			if err := packClient.Build(cmd.Context(), client.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           builder,
 				Registry:          flags.Registry,
@@ -146,7 +144,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 					return trustBuilder
 				},
 				Buildpacks: buildpacks,
-				ContainerConfig: pack.ContainerConfig{
+				ContainerConfig: client.ContainerConfig{
 					Network: flags.Network,
 					Volumes: flags.Volumes,
 				},
@@ -207,7 +205,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
 	if flags.Registry != "" && !cfg.Experimental {
-		return pack.NewExperimentError("Support for buildpack registries is currently experimental.")
+		return client.NewExperimentError("Support for buildpack registries is currently experimental.")
 	}
 
 	if flags.CacheImage != "" && !flags.Publish {
@@ -219,7 +217,7 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 	}
 
 	if flags.Interactive && !cfg.Experimental {
-		return pack.NewExperimentError("Interactive mode is currently experimental.")
+		return client.NewExperimentError("Interactive mode is currently experimental.")
 	}
 
 	return nil

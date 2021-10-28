@@ -8,19 +8,18 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
-
-	"github.com/buildpacks/pack"
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/client"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -160,8 +159,8 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo *pack.BuilderInfo
-		localInfo  *pack.BuilderInfo
+		remoteInfo *client.BuilderInfo
+		localInfo  *client.BuilderInfo
 
 		expectedRemoteInfo = fmt.Sprintf(`"remote_info": {
     "description": "Some remote description",
@@ -241,7 +240,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 
 	when("Print", func() {
 		it.Before(func() {
-			remoteInfo = &pack.BuilderInfo{
+			remoteInfo = &client.BuilderInfo{
 				Description:     "Some remote description",
 				Stack:           "test.stack.id",
 				Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
@@ -273,7 +272,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 
-			localInfo = &pack.BuilderInfo{
+			localInfo = &client.BuilderInfo{
 				Description:     "Some local description",
 				Stack:           "test.stack.id",
 				Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},

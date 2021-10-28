@@ -5,16 +5,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	pubcfg "github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/pkg/client"
+	pubcfg "github.com/buildpacks/pack/pkg/config"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
 
-func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
-	var opts pack.RebaseOptions
+func Rebase(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Command {
+	var opts client.RebaseOptions
 	var policy string
 
 	cmd := &cobra.Command{
@@ -38,7 +38,7 @@ func Rebase(logger logging.Logger, cfg config.Config, client PackClient) *cobra.
 				return errors.Wrapf(err, "parsing pull policy %s", stringPolicy)
 			}
 
-			if err := client.Rebase(cmd.Context(), opts); err != nil {
+			if err := pack.Rebase(cmd.Context(), opts); err != nil {
 				return err
 			}
 			logger.Infof("Successfully rebased image %s", style.Symbol(opts.RepoName))

@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	strs "github.com/buildpacks/pack/internal/strings"
+	"github.com/buildpacks/pack/pkg/client"
 
 	"github.com/buildpacks/pack/internal/style"
 
@@ -18,7 +19,6 @@ import (
 
 	"github.com/buildpacks/pack/internal/config"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/logging"
 )
@@ -71,7 +71,7 @@ func NewHumanReadable() *HumanReadable {
 func (h *HumanReadable) Print(
 	logger logging.Logger,
 	localRunImages []config.RunImage,
-	local, remote *pack.BuilderInfo,
+	local, remote *client.BuilderInfo,
 	localErr, remoteErr error,
 	builderInfo SharedBuilderInfo,
 ) error {
@@ -102,7 +102,7 @@ func (h *HumanReadable) Print(
 func writeBuilderInfo(
 	logger logging.Logger,
 	localRunImages []config.RunImage,
-	info *pack.BuilderInfo,
+	info *client.BuilderInfo,
 	err error,
 	sharedInfo SharedBuilderInfo,
 ) error {
@@ -141,7 +141,7 @@ func writeBuilderInfo(
 	err = outputTemplate.Execute(
 		logger.Writer(),
 		&struct {
-			Info       pack.BuilderInfo
+			Info       client.BuilderInfo
 			Verbose    bool
 			Buildpacks string
 			RunImages  string

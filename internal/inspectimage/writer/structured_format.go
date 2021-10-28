@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/pack/internal/inspectimage"
+	"github.com/buildpacks/pack/pkg/client"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 )
@@ -17,7 +17,7 @@ type StructuredFormat struct {
 func (w *StructuredFormat) Print(
 	logger logging.Logger,
 	generalInfo inspectimage.GeneralInfo,
-	local, remote *pack.ImageInfo,
+	local, remote *client.ImageInfo,
 	localErr, remoteErr error,
 ) error {
 	// synthesize all objects here using methods

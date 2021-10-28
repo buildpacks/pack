@@ -1,4 +1,4 @@
-// Package logging defines the minimal interface that loggers must support to be used by pack.
+// Package logging defines the minimal interface that loggers must support to be used by client.
 package logging
 
 import (

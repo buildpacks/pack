@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	pubcfg "github.com/buildpacks/pack/config"
+	pubcfg "github.com/buildpacks/pack/pkg/config"
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"

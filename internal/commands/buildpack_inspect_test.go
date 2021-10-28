@@ -5,18 +5,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pkg/errors"
-
-	"github.com/buildpacks/pack/internal/image"
-
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/commands"
@@ -25,6 +21,8 @@ import (
 	"github.com/buildpacks/pack/internal/dist"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/image"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -127,8 +125,8 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController *gomock.Controller
 		mockClient     *testmocks.MockPackClient
 		cfg            config.Config
-		complexInfo    *pack.BuildpackInfo
-		simpleInfo     *pack.BuildpackInfo
+		complexInfo    *client.BuildpackInfo
+		simpleInfo     *client.BuildpackInfo
 		assert         = h.NewAssertionManager(t)
 	)
 
@@ -141,7 +139,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 			DefaultRegistryName: "default-registry",
 		}
 
-		complexInfo = &pack.BuildpackInfo{
+		complexInfo = &client.BuildpackInfo{
 			BuildpackMetadata: buildpackage.Metadata{
 				BuildpackInfo: dist.BuildpackInfo{
 					ID:       "some/top-buildpack",
@@ -299,7 +297,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 			},
 		}
 
-		simpleInfo = &pack.BuildpackInfo{
+		simpleInfo = &client.BuildpackInfo{
 			BuildpackMetadata: buildpackage.Metadata{
 				BuildpackInfo: dist.BuildpackInfo{
 					ID:       "some/single-buildpack",
@@ -364,13 +362,13 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 					complexInfo.Location = buildpack.PackageLocator
 					simpleInfo.Location = buildpack.PackageLocator
 
-					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "test/buildpack",
 						Daemon:        true,
 						Registry:      "default-registry",
 					}).Return(complexInfo, nil)
 
-					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "test/buildpack",
 						Daemon:        false,
 						Registry:      "default-registry",
@@ -400,13 +398,13 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 					complexInfo.Location = buildpack.PackageLocator
 					simpleInfo.Location = buildpack.PackageLocator
 
-					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "only-local-test/buildpack",
 						Daemon:        true,
 						Registry:      "default-registry",
 					}).Return(complexInfo, nil)
 
-					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "only-local-test/buildpack",
 						Daemon:        false,
 						Registry:      "default-registry",
@@ -431,13 +429,13 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 					complexInfo.Location = buildpack.PackageLocator
 					simpleInfo.Location = buildpack.PackageLocator
 
-					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "only-remote-test/buildpack",
 						Daemon:        false,
 						Registry:      "default-registry",
 					}).Return(complexInfo, nil)
 
-					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "only-remote-test/buildpack",
 						Daemon:        true,
 						Registry:      "default-registry",
@@ -465,7 +463,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 
 			when("uri is a local path", func() {
 				it.Before(func() {
-					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "/path/to/test/buildpack",
 						Daemon:        true,
 						Registry:      "default-registry",
@@ -491,7 +489,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 				when("uri is a local path", func() {
 					it.Before(func() {
-						mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+						mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 							BuildpackName: "https://path/to/test/buildpack",
 							Daemon:        true,
 							Registry:      "default-registry",
@@ -520,7 +518,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 
 			when("using the default registry", func() {
 				it.Before(func() {
-					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "urn:cnb:registry:test/buildpack",
 						Daemon:        true,
 						Registry:      "default-registry",
@@ -541,7 +539,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 
 			when("using a user provided registry", func() {
 				it.Before(func() {
-					mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+					mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 						BuildpackName: "urn:cnb:registry:test/buildpack",
 						Daemon:        true,
 						Registry:      "some-registry",
@@ -566,7 +564,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 			it.Before(func() {
 				complexInfo.Location = buildpack.URILocator
 
-				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+				mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 					BuildpackName: "/other/path/to/test/buildpack",
 					Daemon:        true,
 					Registry:      "default-registry",
@@ -585,7 +583,7 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 	when("verbose flag is passed", func() {
 		it.Before(func() {
 			simpleInfo.Location = buildpack.URILocator
-			mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+			mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 				BuildpackName: "/another/path/to/test/buildpack",
 				Daemon:        true,
 				Registry:      "default-registry",
@@ -603,17 +601,17 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 	when("failure cases", func() {
 		when("unable to inspect buildpack image", func() {
 			it.Before(func() {
-				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+				mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 					BuildpackName: "failure-case/buildpack",
 					Daemon:        true,
 					Registry:      "default-registry",
-				}).Return(&pack.BuildpackInfo{}, errors.Wrap(image.ErrNotFound, "unable to inspect local failure-case/buildpack"))
+				}).Return(&client.BuildpackInfo{}, errors.Wrap(image.ErrNotFound, "unable to inspect local failure-case/buildpack"))
 
-				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+				mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 					BuildpackName: "failure-case/buildpack",
 					Daemon:        false,
 					Registry:      "default-registry",
-				}).Return(&pack.BuildpackInfo{}, errors.Wrap(image.ErrNotFound, "unable to inspect remote failure-case/buildpack"))
+				}).Return(&client.BuildpackInfo{}, errors.Wrap(image.ErrNotFound, "unable to inspect remote failure-case/buildpack"))
 			})
 
 			it("errors", func() {
@@ -624,11 +622,11 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 		when("unable to inspect buildpack archive", func() {
 			it.Before(func() {
-				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+				mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 					BuildpackName: "http://path/to/failure-case/buildpack",
 					Daemon:        true,
 					Registry:      "default-registry",
-				}).Return(&pack.BuildpackInfo{}, errors.New("error inspecting local archive"))
+				}).Return(&client.BuildpackInfo{}, errors.New("error inspecting local archive"))
 
 				it("errors", func() {
 					command.SetArgs([]string{"http://path/to/failure-case/buildpack"})
@@ -641,17 +639,17 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 		when("unable to inspect both remote and local images", func() {
 			it.Before(func() {
-				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+				mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 					BuildpackName: "image-failure-case/buildpack",
 					Daemon:        true,
 					Registry:      "default-registry",
-				}).Return(&pack.BuildpackInfo{}, errors.Wrap(image.ErrNotFound, "error inspecting local archive"))
+				}).Return(&client.BuildpackInfo{}, errors.Wrap(image.ErrNotFound, "error inspecting local archive"))
 
-				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+				mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 					BuildpackName: "image-failure-case/buildpack",
 					Daemon:        false,
 					Registry:      "default-registry",
-				}).Return(&pack.BuildpackInfo{}, errors.Wrap(image.ErrNotFound, "error inspecting remote archive"))
+				}).Return(&client.BuildpackInfo{}, errors.Wrap(image.ErrNotFound, "error inspecting remote archive"))
 			})
 
 			it("errors", func() {
@@ -665,17 +663,17 @@ func testBuildpackInspectCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("unable to inspect buildpack on registry", func() {
 			it.Before(func() {
-				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+				mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 					BuildpackName: "urn:cnb:registry:registry-failure/buildpack",
 					Daemon:        true,
 					Registry:      "some-registry",
-				}).Return(&pack.BuildpackInfo{}, errors.New("error inspecting registry image"))
+				}).Return(&client.BuildpackInfo{}, errors.New("error inspecting registry image"))
 
-				mockClient.EXPECT().InspectBuildpack(pack.InspectBuildpackOptions{
+				mockClient.EXPECT().InspectBuildpack(client.InspectBuildpackOptions{
 					BuildpackName: "urn:cnb:registry:registry-failure/buildpack",
 					Daemon:        false,
 					Registry:      "some-registry",
-				}).Return(&pack.BuildpackInfo{}, errors.New("error inspecting registry image"))
+				}).Return(&client.BuildpackInfo{}, errors.New("error inspecting registry image"))
 			})
 
 			it("errors", func() {

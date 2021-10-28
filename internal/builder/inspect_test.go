@@ -7,10 +7,10 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 
 	pubbldr "github.com/buildpacks/pack/builder"
-	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/builder/fakes"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/config"
 	h "github.com/buildpacks/pack/testhelpers"
 
 	"github.com/heroku/color"

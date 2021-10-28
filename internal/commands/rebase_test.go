@@ -6,14 +6,14 @@ import (
 
 	"github.com/heroku/color"
 
-	pubcfg "github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/pkg/client"
+	pubcfg "github.com/buildpacks/pack/pkg/config"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
@@ -59,7 +59,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 		when("image name is provided", func() {
 			var (
 				repoName string
-				opts     pack.RebaseOptions
+				opts     client.RebaseOptions
 			)
 			it.Before(func() {
 				runImage := "test/image"
@@ -73,7 +73,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 				command = commands.Rebase(logger, cfg, mockClient)
 
 				repoName = "test/repo-image"
-				opts = pack.RebaseOptions{
+				opts = client.RebaseOptions{
 					RepoName:   repoName,
 					Publish:    false,
 					PullPolicy: pubcfg.PullAlways,

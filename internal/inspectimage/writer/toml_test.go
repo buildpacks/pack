@@ -11,11 +11,11 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/client"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -30,8 +30,8 @@ func testTOML(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo *pack.ImageInfo
-		localInfo  *pack.ImageInfo
+		remoteInfo *client.ImageInfo
+		localInfo  *client.ImageInfo
 
 		expectedLocalOutput = `[local_info]
 stack = 'test.stack.id.local'
@@ -152,7 +152,7 @@ args = [
 				}
 			}
 
-			remoteInfo = &pack.ImageInfo{
+			remoteInfo = &client.ImageInfo{
 				StackID: "test.stack.id.remote",
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
@@ -187,7 +187,7 @@ args = [
 					},
 					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
-				Processes: pack.ProcessDetails{
+				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
 						Type:    "some-remote-type",
 						Command: "/some/remote command",
@@ -205,7 +205,7 @@ args = [
 				},
 			}
 
-			localInfo = &pack.ImageInfo{
+			localInfo = &client.ImageInfo{
 				StackID: "test.stack.id.local",
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
@@ -234,7 +234,7 @@ args = [
 					},
 					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
-				Processes: pack.ProcessDetails{
+				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
 						Type:    "some-local-type",
 						Command: "/some/local command",

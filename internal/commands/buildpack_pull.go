@@ -3,10 +3,10 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
 )
 
 // BuildpackPullFlags consist of flags applicable to the `buildpack pull` command
@@ -16,7 +16,7 @@ type BuildpackPullFlags struct {
 }
 
 // BuildpackPull pulls a buildpack and stores it locally
-func BuildpackPull(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+func BuildpackPull(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Command {
 	var flags BuildpackPullFlags
 
 	cmd := &cobra.Command{
@@ -30,12 +30,12 @@ func BuildpackPull(logger logging.Logger, cfg config.Config, client PackClient) 
 				return err
 			}
 
-			opts := pack.PullBuildpackOptions{
+			opts := client.PullBuildpackOptions{
 				URI:          args[0],
 				RegistryName: registry.Name,
 			}
 
-			if err := client.PullBuildpack(cmd.Context(), opts); err != nil {
+			if err := pack.PullBuildpack(cmd.Context(), opts); err != nil {
 				return err
 			}
 			logger.Infof("Successfully pulled %s", style.Symbol(opts.URI))

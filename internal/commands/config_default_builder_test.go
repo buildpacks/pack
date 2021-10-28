@@ -14,13 +14,13 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -110,7 +110,7 @@ func testConfigDefaultBuilder(t *testing.T, when spec.G, it spec.S) {
 					var imageName = "some/image"
 
 					it("sets default builder", func() {
-						mockClient.EXPECT().InspectBuilder(imageName, true).Return(&pack.BuilderInfo{
+						mockClient.EXPECT().InspectBuilder(imageName, true).Return(&client.BuilderInfo{
 							Stack: "test.stack.id",
 						}, nil)
 
@@ -125,7 +125,7 @@ func testConfigDefaultBuilder(t *testing.T, when spec.G, it spec.S) {
 
 					it("gives clear error if unable to write to config", func() {
 						h.AssertNil(t, ioutil.WriteFile(configPath, []byte("some-data"), 0001))
-						mockClient.EXPECT().InspectBuilder(imageName, true).Return(&pack.BuilderInfo{
+						mockClient.EXPECT().InspectBuilder(imageName, true).Return(&client.BuilderInfo{
 							Stack: "test.stack.id",
 						}, nil)
 						cmd = commands.ConfigDefaultBuilder(logger, config.Config{}, configPath, mockClient)
@@ -141,7 +141,7 @@ func testConfigDefaultBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						localCall := mockClient.EXPECT().InspectBuilder(imageName, true).Return(nil, nil)
 
-						mockClient.EXPECT().InspectBuilder(imageName, false).Return(&pack.BuilderInfo{
+						mockClient.EXPECT().InspectBuilder(imageName, false).Return(&client.BuilderInfo{
 							Stack: "test.stack.id",
 						}, nil).After(localCall)
 
@@ -155,9 +155,9 @@ func testConfigDefaultBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						localCall := mockClient.EXPECT().InspectBuilder(imageName, true).Return(nil, nil)
 
-						mockClient.EXPECT().InspectBuilder(imageName, false).Return(&pack.BuilderInfo{
+						mockClient.EXPECT().InspectBuilder(imageName, false).Return(&client.BuilderInfo{
 							Stack: "test.stack.id",
-						}, pack.SoftError{}).After(localCall)
+						}, client.SoftError{}).After(localCall)
 
 						cmd.SetArgs([]string{imageName})
 						err := cmd.Execute()

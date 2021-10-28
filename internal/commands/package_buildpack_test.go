@@ -12,12 +12,12 @@ import (
 	"github.com/spf13/cobra"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
-	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	pubcfg "github.com/buildpacks/pack/pkg/config"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

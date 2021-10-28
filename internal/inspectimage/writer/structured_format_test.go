@@ -6,17 +6,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/inspectimage"
-
-	"github.com/buildpacks/pack/internal/inspectimage/writer"
-
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
+	"github.com/buildpacks/pack/internal/inspectimage"
+	"github.com/buildpacks/pack/internal/inspectimage/writer"
 	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/client"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -31,14 +29,14 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo *pack.ImageInfo
-		localInfo  *pack.ImageInfo
+		remoteInfo *client.ImageInfo
+		localInfo  *client.ImageInfo
 	)
 
 	when("Print", func() {
 		it.Before(func() {
-			remoteInfo = &pack.ImageInfo{}
-			localInfo = &pack.ImageInfo{}
+			remoteInfo = &client.ImageInfo{}
+			localInfo = &client.ImageInfo{}
 			outBuf = bytes.Buffer{}
 		})
 

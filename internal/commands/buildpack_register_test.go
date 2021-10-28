@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/pkg/client"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
@@ -56,7 +56,7 @@ func testRegisterCommand(t *testing.T, when spec.G, it spec.S) {
 			var buildpackImage = "buildpack/image"
 
 			it("should work for required args", func() {
-				opts := pack.RegisterBuildpackOptions{
+				opts := client.RegisterBuildpackOptions{
 					ImageName: buildpackImage,
 					Type:      "github",
 					URL:       "https://github.com/buildpacks/registry-index",
@@ -84,7 +84,7 @@ func testRegisterCommand(t *testing.T, when spec.G, it spec.S) {
 						},
 					}
 					cmd = commands.BuildpackRegister(logger, cfg, mockClient)
-					opts := pack.RegisterBuildpackOptions{
+					opts := client.RegisterBuildpackOptions{
 						ImageName: buildpackImage,
 						Type:      "github",
 						URL:       "https://github.com/berneuse/buildpack-registry",
@@ -128,7 +128,7 @@ func testRegisterCommand(t *testing.T, when spec.G, it spec.S) {
 						},
 					},
 				}
-				opts := pack.RegisterBuildpackOptions{
+				opts := client.RegisterBuildpackOptions{
 					ImageName: buildpackImage,
 					Type:      "github",
 					URL:       "https://github.com/override/buildpack-registry",

@@ -11,11 +11,11 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 
-	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/blob"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/client"
 
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -56,7 +56,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 
 	when("BuildpackNew#Execute", func() {
 		it("uses the args to generate artifacts", func() {
-			mockClient.EXPECT().NewBuildpack(gomock.Any(), pack.NewBuildpackOptions{
+			mockClient.EXPECT().NewBuildpack(gomock.Any(), client.NewBuildpackOptions{
 				API:     "0.6",
 				ID:      "example/some-cnb",
 				Path:    filepath.Join(tmpDir, "some-cnb"),

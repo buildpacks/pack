@@ -7,20 +7,18 @@ import (
 	"testing"
 
 	"github.com/buildpacks/lifecycle/api"
-
-	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/builder/writer"
-
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/internal/builder"
+	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -36,13 +34,13 @@ var (
 	expectedLocalRunImages = []config.RunImage{
 		{Image: "some/run-image", Mirrors: []string{"first/local", "second/local"}},
 	}
-	expectedLocalInfo = &pack.BuilderInfo{
+	expectedLocalInfo = &client.BuilderInfo{
 		Description: "test-local-builder",
 		Stack:       "local-stack",
 		RunImage:    "local/image",
 		Lifecycle:   minimalLifecycleDescriptor,
 	}
-	expectedRemoteInfo = &pack.BuilderInfo{
+	expectedRemoteInfo = &client.BuilderInfo{
 		Description: "test-remote-builder",
 		Stack:       "remote-stack",
 		RunImage:    "remote/image",
@@ -245,8 +243,8 @@ func testBuilderInspectCommand(t *testing.T, when spec.G, it spec.S) {
 
 				err := command.Execute()
 				assert.Error(err)
-				if !errors.Is(err, pack.SoftError{}) {
-					t.Fatalf("expect a pack.SoftError, got: %s", err)
+				if !errors.Is(err, client.SoftError{}) {
+					t.Fatalf("expect a client.SoftError, got: %s", err)
 				}
 
 				assert.Contains(outBuf.String(), `Please select a default builder with:

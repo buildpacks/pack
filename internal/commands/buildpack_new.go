@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
 )
 
 // BuildpackNewFlags define flags provided to the BuildpackNew command
@@ -26,11 +26,11 @@ type BuildpackNewFlags struct {
 
 // BuildpackCreator creates buildpacks
 type BuildpackCreator interface {
-	NewBuildpack(ctx context.Context, options pack.NewBuildpackOptions) error
+	NewBuildpack(ctx context.Context, options client.NewBuildpackOptions) error
 }
 
 // BuildpackNew generates the scaffolding of a buildpack
-func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command {
+func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Command {
 	var flags BuildpackNewFlags
 	cmd := &cobra.Command{
 		Use:     "new <id>",
@@ -67,7 +67,7 @@ func BuildpackNew(logger logging.Logger, client BuildpackCreator) *cobra.Command
 				})
 			}
 
-			if err := client.NewBuildpack(cmd.Context(), pack.NewBuildpackOptions{
+			if err := creator.NewBuildpack(cmd.Context(), client.NewBuildpackOptions{
 				API:     flags.API,
 				ID:      id,
 				Path:    path,

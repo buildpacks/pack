@@ -7,17 +7,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/builder"
-	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	pubcfg "github.com/buildpacks/pack/pkg/config"
 )
 
 // Deprecated: Use 'builder create' instead.
 // CreateBuilder creates a builder image, based on a builder config
-func CreateBuilder(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+func CreateBuilder(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Command {
 	var flags BuilderCreateFlags
 
 	cmd := &cobra.Command{
@@ -62,7 +62,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 			}
 
 			imageName := args[0]
-			if err := client.CreateBuilder(cmd.Context(), pack.CreateBuilderOptions{
+			if err := pack.CreateBuilder(cmd.Context(), client.CreateBuilderOptions{
 				RelativeBaseDir: relativeBaseDir,
 				BuilderName:     imageName,
 				Config:          builderConfig,
