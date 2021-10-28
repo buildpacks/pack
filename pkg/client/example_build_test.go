@@ -3,7 +3,7 @@ package client_test
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"path/filepath"
 
 	"github.com/buildpacks/pack/pkg/client"
 )
@@ -23,27 +23,15 @@ func Example_build() {
 	// replace this with the location of a sample application
 	// For a list of prepared samples see the 'apps' folder at
 	// https://github.com/buildpacks/samples.
-	appPath := "local/path/to/application/root"
-
-	// randomly select a builder to use from among the following
-	builderList := []string{
-		"gcr.io/buildpacks/builder:v1",
-		"heroku/buildpacks:20",
-		"gcr.io/paketo-buildpacks/builder:base",
-	}
-
-	randomIndex := rand.Intn(len(builderList))
-	randomBuilder := builderList[randomIndex]
+	appPath := filepath.Join("testdata", "some-app")
 
 	// initialize our options
 	buildOpts := client.BuildOptions{
 		Image:        "pack-lib-test-image:0.0.1",
-		Builder:      randomBuilder,
+		Builder:      "cnbs/sample-builder:bionic",
 		AppPath:      appPath,
 		TrustBuilder: func(string) bool { return true },
 	}
-
-	fmt.Println("building application image")
 
 	// build an image
 	err = pack.Build(context, buildOpts)
@@ -52,4 +40,5 @@ func Example_build() {
 	}
 
 	fmt.Println("build completed")
+	// Output: build completed
 }
