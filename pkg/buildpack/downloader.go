@@ -1,4 +1,4 @@
-package downloader
+package buildpack
 
 import (
 	"context"
@@ -27,7 +27,7 @@ type Downloader interface {
 	Download(ctx context.Context, pathOrURI string) (blob.Blob, error)
 }
 
-//go:generate mockgen -package testmocks -destination ../../testmocks/mock_registry_resolver.go github.com/buildpacks/pack/pkg/buildpack/downloader RegistryResolver
+//go:generate mockgen -package testmocks -destination ../../testmocks/mock_registry_resolver.go github.com/buildpacks/pack/pkg/buildpack RegistryResolver
 
 type RegistryResolver interface {
 	Resolve(registryName, bpURI string) (string, error)
@@ -40,7 +40,7 @@ type buildpackDownloader struct {
 	registryResolver RegistryResolver
 }
 
-func NewBuildpackDownloader(logger logging.Logger, imageFetcher ImageFetcher, downloader Downloader, registryResolver RegistryResolver) *buildpackDownloader { //nolint:golint,gosimple
+func NewDownloader(logger logging.Logger, imageFetcher ImageFetcher, downloader Downloader, registryResolver RegistryResolver) *buildpackDownloader { //nolint:golint,gosimple
 	return &buildpackDownloader{
 		logger:           logger,
 		imageFetcher:     imageFetcher,
@@ -49,7 +49,7 @@ func NewBuildpackDownloader(logger logging.Logger, imageFetcher ImageFetcher, do
 	}
 }
 
-type BuildpackDownloadOptions struct {
+type DownloadOptions struct {
 	// Buildpack registry name. Defines where all registry buildpacks will be pulled from.
 	RegistryName string
 
@@ -67,7 +67,7 @@ type BuildpackDownloadOptions struct {
 	PullPolicy config.PullPolicy
 }
 
-func (c *buildpackDownloader) Download(ctx context.Context, buildpackURI string, opts BuildpackDownloadOptions) (dist.Buildpack, []dist.Buildpack, error) {
+func (c *buildpackDownloader) Download(ctx context.Context, buildpackURI string, opts DownloadOptions) (dist.Buildpack, []dist.Buildpack, error) {
 	var err error
 	var locatorType buildpack.LocatorType
 	if buildpackURI == "" && opts.ImageName != "" {

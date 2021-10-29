@@ -24,19 +24,19 @@ const (
 	cacheVersion   = "2"
 )
 
-type downloader struct {
+type Downloader struct {
 	logger       logging.Logger
 	baseCacheDir string
 }
 
-func NewDownloader(logger logging.Logger, baseCacheDir string) *downloader { //nolint:golint,gosimple
-	return &downloader{
+func NewDownloader(logger logging.Logger, baseCacheDir string) *Downloader { //nolint:golint,gosimple
+	return &Downloader{
 		logger:       logger,
 		baseCacheDir: baseCacheDir,
 	}
 }
 
-func (d *downloader) Download(ctx context.Context, pathOrURI string) (Blob, error) {
+func (d *Downloader) Download(ctx context.Context, pathOrURI string) (Blob, error) {
 	if paths.IsURI(pathOrURI) {
 		parsedURL, err := url.Parse(pathOrURI)
 		if err != nil {
@@ -64,7 +64,7 @@ func (d *downloader) Download(ctx context.Context, pathOrURI string) (Blob, erro
 	return &blob{path: path}, nil
 }
 
-func (d *downloader) handleFile(path string) string {
+func (d *Downloader) handleFile(path string) string {
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return ""
@@ -73,7 +73,7 @@ func (d *downloader) handleFile(path string) string {
 	return path
 }
 
-func (d *downloader) handleHTTP(ctx context.Context, uri string) (string, error) {
+func (d *Downloader) handleHTTP(ctx context.Context, uri string) (string, error) {
 	cacheDir := d.versionedCacheDir()
 
 	if err := os.MkdirAll(cacheDir, 0750); err != nil {
@@ -123,7 +123,7 @@ func (d *downloader) handleHTTP(ctx context.Context, uri string) (string, error)
 	return cachePath, nil
 }
 
-func (d *downloader) downloadAsStream(ctx context.Context, uri string, etag string) (io.ReadCloser, string, error) {
+func (d *Downloader) downloadAsStream(ctx context.Context, uri string, etag string) (io.ReadCloser, string, error) {
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		return nil, "", err
@@ -171,7 +171,7 @@ type progressReader struct {
 	io.Closer
 }
 
-func (d *downloader) versionedCacheDir() string {
+func (d *Downloader) versionedCacheDir() string {
 	return filepath.Join(d.baseCacheDir, cacheDirPrefix+cacheVersion)
 }
 

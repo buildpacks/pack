@@ -162,7 +162,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 		buildpackImage   *fakes.Image
 		apiVersion       *api.Version
 		expectedInfo     *client.BuildpackInfo
-		mockDownloader   *testmocks.MockDownloader
+		mockDownloader   *testmocks.MockBlobDownloader
 
 		tmpDir        string
 		buildpackPath string
@@ -171,7 +171,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
-		mockDownloader = testmocks.NewMockDownloader(mockController)
+		mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 
 		subject = &client.Client{}
 		client.WithLogger(logging.NewLogWithWriters(&out, &out))(subject)

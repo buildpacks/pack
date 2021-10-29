@@ -17,7 +17,6 @@ import (
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/client"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -32,7 +31,7 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 		var (
 			cacheDir string
 			err      error
-			subject  client.Downloader
+			subject  *blob.Downloader
 		)
 
 		it.Before(func() {

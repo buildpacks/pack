@@ -1,4 +1,4 @@
-package downloader_test
+package buildpack_test
 
 import (
 	"bytes"
@@ -25,7 +25,7 @@ import (
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildpack/downloader"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/config"
 	image "github.com/buildpacks/pack/pkg/image"
@@ -42,7 +42,7 @@ func TestBuildpackDownloader(t *testing.T) {
 func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 	var (
 		mockController       *gomock.Controller
-		mockDownloader       *testmocks.MockDownloader
+		mockDownloader       *testmocks.MockBlobDownloader
 		mockImageFactory     *testmocks.MockImageFactory
 		mockImageFetcher     *testmocks.MockImageFetcher
 		mockRegistryResolver *testmocks.MockRegistryResolver
@@ -93,7 +93,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		logger = ilogging.NewLogWithWriters(&out, &out, ilogging.WithVerbose())
 		mockController = gomock.NewController(t)
-		mockDownloader = testmocks.NewMockDownloader(mockController)
+		mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 		mockRegistryResolver = testmocks.NewMockRegistryResolver(mockController)
 		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
@@ -101,7 +101,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 		mockDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
 		mockDownloader.EXPECT().Download(gomock.Any(), "some/buildpack/dir").Return(blob.NewBlob(filepath.Join("testdata", "buildpack")), nil).AnyTimes()
 
-		buildpackDownloader = downloader.NewBuildpackDownloader(logger, mockImageFetcher, mockDownloader, mockRegistryResolver)
+		buildpackDownloader = buildpack.NewDownloader(logger, mockImageFetcher, mockDownloader, mockRegistryResolver)
 
 		mockDockerClient.EXPECT().Info(context.TODO()).Return(types.Info{OSType: "linux"}, nil).AnyTimes()
 
@@ -117,34 +117,17 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 		var err error
 		tmpDir, err = ioutil.TempDir("", "buildpack-downloader-test")
 		h.AssertNil(t, err)
-
-		// registryFixture := h.CreateRegistryFixture(t, tmpDir, filepath.Join("testdata", "registry"))
-
-		// packHome := filepath.Join(tmpDir, ".pack")
-		// configPath := filepath.Join(packHome, "config.toml")
-
-		// h.AssertNil(t, cfg.Write(cfg.Config{
-		// 	Registries: []cfg.Registry{
-		// 		{
-		// 			Name: "some-registry",
-		// 			Type: "github",
-		// 			URL:  registryFixture,
-		// 		},
-		// 	},
-		// }, configPath))
-		// h.AssertNil(t, err)
 	})
 
 	it.After(func() {
 		mockController.Finish()
 		h.AssertNil(t, os.RemoveAll(tmpDir))
-		// os.Unsetenv("PACK_HOME")
 	})
 
 	when("#DownloadBuildpack", func() {
 		var (
 			packageImage             *fakes.Image
-			buildpackDownloadOptions = downloader.BuildpackDownloadOptions{ImageOS: "linux"}
+			buildpackDownloadOptions = buildpack.DownloadOptions{ImageOS: "linux"}
 		)
 
 		shouldFetchPackageImageWith := func(demon bool, pull config.PullPolicy) {
@@ -158,7 +141,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 
 			when("daemon=true and pull-policy=always", func() {
 				it("should pull and use local package image", func() {
-					buildpackDownloadOptions = downloader.BuildpackDownloadOptions{
+					buildpackDownloadOptions = buildpack.DownloadOptions{
 						RegistryName: "some-registry",
 						ImageOS:      "linux",
 						Daemon:       true,
@@ -174,7 +157,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 
 			when("ambigious URI provided", func() {
 				it("should find package in registry", func() {
-					buildpackDownloadOptions = downloader.BuildpackDownloadOptions{
+					buildpackDownloadOptions = buildpack.DownloadOptions{
 						RegistryName: "some-registry",
 						ImageOS:      "linux",
 						Daemon:       true,
@@ -201,7 +184,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			when("image key is provided", func() {
 				it("should succeed", func() {
 					packageImage = createPackage("some/package:tag")
-					buildpackDownloadOptions = downloader.BuildpackDownloadOptions{
+					buildpackDownloadOptions = buildpack.DownloadOptions{
 						Daemon:     true,
 						PullPolicy: config.PullAlways,
 						ImageOS:    "linux",
@@ -217,7 +200,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 
 			when("daemon=true and pull-policy=always", func() {
 				it("should pull and use local package image", func() {
-					buildpackDownloadOptions = downloader.BuildpackDownloadOptions{
+					buildpackDownloadOptions = buildpack.DownloadOptions{
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     true,
@@ -233,7 +216,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 
 			when("daemon=false and pull-policy=always", func() {
 				it("should use remote package image", func() {
-					buildpackDownloadOptions = downloader.BuildpackDownloadOptions{
+					buildpackDownloadOptions = buildpack.DownloadOptions{
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     false,
@@ -249,7 +232,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 
 			when("daemon=false and pull-policy=always", func() {
 				it("should use remote package URI", func() {
-					buildpackDownloadOptions = downloader.BuildpackDownloadOptions{
+					buildpackDownloadOptions = buildpack.DownloadOptions{
 						ImageOS:    "linux",
 						Daemon:     false,
 						PullPolicy: config.PullAlways,
@@ -263,7 +246,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 
 			when("publish=true and pull-policy=never", func() {
 				it("should push to registry and not pull package image", func() {
-					buildpackDownloadOptions = downloader.BuildpackDownloadOptions{
+					buildpackDownloadOptions = buildpack.DownloadOptions{
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     false,
@@ -279,7 +262,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 
 			when("daemon=true pull-policy=never and there is no local package image", func() {
 				it("should fail without trying to retrieve package image from registry", func() {
-					buildpackDownloadOptions = downloader.BuildpackDownloadOptions{
+					buildpackDownloadOptions = buildpack.DownloadOptions{
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     true,
@@ -304,7 +287,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 				buildpackPath := filepath.Join("testdata", "buildpack")
 				buildpackURI, _ := paths.FilePathToURI(buildpackPath, "")
 				mockDownloader.EXPECT().Download(gomock.Any(), buildpackURI).Return(blob.NewBlob(buildpackPath), nil).AnyTimes()
-				buildpackDownloadOptions = downloader.BuildpackDownloadOptions{
+				buildpackDownloadOptions = buildpack.DownloadOptions{
 					ImageOS:         "linux",
 					RelativeBaseDir: "testdata",
 				}

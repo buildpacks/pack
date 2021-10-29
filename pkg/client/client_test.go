@@ -78,7 +78,7 @@ func testClient(t *testing.T, when spec.G, it spec.S) {
 	when("#WithDownloader", func() {
 		it("uses image factory provided", func() {
 			mockController := gomock.NewController(t)
-			mockDownloader := testmocks.NewMockDownloader(mockController)
+			mockDownloader := testmocks.NewMockBlobDownloader(mockController)
 			cl, err := NewClient(WithDownloader(mockDownloader))
 			h.AssertNil(t, err)
 			h.AssertSameInstance(t, cl.downloader, mockDownloader)

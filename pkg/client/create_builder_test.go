@@ -30,7 +30,7 @@ import (
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildpack/downloader"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
@@ -48,7 +48,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 	when("#CreateBuilder", func() {
 		var (
 			mockController          *gomock.Controller
-			mockDownloader          *testmocks.MockDownloader
+			mockDownloader          *testmocks.MockBlobDownloader
 			mockBuildpackDownloader *testmocks.MockBuildpackDownloader
 			mockImageFactory        *testmocks.MockImageFactory
 			mockImageFetcher        *testmocks.MockImageFetcher
@@ -76,7 +76,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, err)
 			return buildpack
 		}
-		var shouldCallBuildpackDownloaderWith = func(uri string, buildpackDownloadOptions downloader.BuildpackDownloadOptions) {
+		var shouldCallBuildpackDownloaderWith = func(uri string, buildpackDownloadOptions buildpack.DownloadOptions) {
 			buildpack := createBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.3"),
 				Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
@@ -88,7 +88,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			logger = ilogging.NewLogWithWriters(&out, &out, ilogging.WithVerbose())
 			mockController = gomock.NewController(t)
-			mockDownloader = testmocks.NewMockDownloader(mockController)
+			mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 			mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 			mockImageFactory = testmocks.NewMockImageFactory(mockController)
 			mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)
@@ -725,7 +725,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 							},
 						)
 
-						shouldCallBuildpackDownloaderWith("urn:cnb:registry:example/foo@1.1.0", downloader.BuildpackDownloadOptions{Daemon: true, PullPolicy: config.PullAlways, RegistryName: "some-"})
+						shouldCallBuildpackDownloaderWith("urn:cnb:registry:example/foo@1.1.0", buildpack.DownloadOptions{Daemon: true, PullPolicy: config.PullAlways, RegistryName: "some-"})
 						h.AssertNil(t, subject.CreateBuilder(context.TODO(), opts))
 					})
 				})

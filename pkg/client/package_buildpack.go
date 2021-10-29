@@ -12,7 +12,7 @@ import (
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildpack/downloader"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/config"
 )
 
@@ -95,7 +95,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 
 	for _, dep := range opts.Config.Dependencies {
 		var depBPs []dist.Buildpack
-		mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, downloader.BuildpackDownloadOptions{
+		mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
 			RegistryName:    opts.Registry,
 			RelativeBaseDir: opts.RelativeBaseDir,
 			ImageOS:         "linux",

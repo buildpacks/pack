@@ -7,7 +7,7 @@ package testmocks
 import (
 	context "context"
 	dist "github.com/buildpacks/pack/internal/dist"
-	downloader "github.com/buildpacks/pack/pkg/buildpack/downloader"
+	buildpack "github.com/buildpacks/pack/pkg/buildpack"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )
@@ -36,7 +36,7 @@ func (m *MockBuildpackDownloader) EXPECT() *MockBuildpackDownloaderMockRecorder 
 }
 
 // Download mocks base method
-func (m *MockBuildpackDownloader) Download(arg0 context.Context, arg1 string, arg2 downloader.BuildpackDownloadOptions) (dist.Buildpack, []dist.Buildpack, error) {
+func (m *MockBuildpackDownloader) Download(arg0 context.Context, arg1 string, arg2 buildpack.DownloadOptions) (dist.Buildpack, []dist.Buildpack, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Download", arg0, arg1, arg2)
 	ret0, _ := ret[0].(dist.Buildpack)

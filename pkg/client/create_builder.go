@@ -13,7 +13,7 @@ import (
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/pkg/buildpack/downloader"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 )
@@ -210,7 +210,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 			return errors.Wrapf(err, "getting OS from %s", style.Symbol(bldr.Image().Name()))
 		}
 
-		mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, b.URI, downloader.BuildpackDownloadOptions{
+		mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, b.URI, buildpack.DownloadOptions{
 			RegistryName:    opts.Registry,
 			ImageOS:         imageOS,
 			RelativeBaseDir: opts.RelativeBaseDir,

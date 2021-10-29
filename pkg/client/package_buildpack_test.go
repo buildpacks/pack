@@ -43,7 +43,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 	var (
 		subject          *client.Client
 		mockController   *gomock.Controller
-		mockDownloader   *testmocks.MockDownloader
+		mockDownloader   *testmocks.MockBlobDownloader
 		mockImageFactory *testmocks.MockImageFactory
 		mockImageFetcher *testmocks.MockImageFetcher
 		mockDockerClient *testmocks.MockCommonAPIClient
@@ -52,7 +52,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		mockController = gomock.NewController(t)
-		mockDownloader = testmocks.NewMockDownloader(mockController)
+		mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 		mockImageFactory = testmocks.NewMockImageFactory(mockController)
 		mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
 		mockDockerClient = testmocks.NewMockCommonAPIClient(mockController)

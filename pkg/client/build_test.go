@@ -42,7 +42,7 @@ import (
 	rg "github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildpack/downloader"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/config"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -126,7 +126,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		blobDownloader := blob.NewDownloader(logger, dlCacheDir)
-		buildpackDownloader := downloader.NewBuildpackDownloader(logger, fakeImageFetcher, blobDownloader, &registryResolver{logger: logger})
+		buildpackDownloader := buildpack.NewDownloader(logger, fakeImageFetcher, blobDownloader, &registryResolver{logger: logger})
 		subject = &Client{
 			logger:              logger,
 			imageFetcher:        fakeImageFetcher,

@@ -23,7 +23,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/buildpack"
+	ibuildpack "github.com/buildpacks/pack/internal/buildpack"
 	internalConfig "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	pname "github.com/buildpacks/pack/internal/name"
@@ -33,7 +33,7 @@ import (
 	"github.com/buildpacks/pack/internal/termui"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
-	"github.com/buildpacks/pack/pkg/buildpack/downloader"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
@@ -713,13 +713,13 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 
 	order = dist.Order{{Group: []dist.BuildpackRef{}}}
 	for _, bp := range declaredBPs {
-		locatorType, err := buildpack.GetLocatorType(bp, relativeBaseDir, builderBPs)
+		locatorType, err := ibuildpack.GetLocatorType(bp, relativeBaseDir, builderBPs)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		switch locatorType {
-		case buildpack.FromBuilderLocator:
+		case ibuildpack.FromBuilderLocator:
 			switch {
 			case len(order) == 0 || len(order[0].Group) == 0:
 				order = builderOrder
@@ -736,8 +736,8 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 
 				order = newOrder
 			}
-		case buildpack.IDLocator:
-			id, version := buildpack.ParseIDLocator(bp)
+		case ibuildpack.IDLocator:
+			id, version := ibuildpack.ParseIDLocator(bp)
 			order = appendBuildpackToOrder(order, dist.BuildpackInfo{
 				ID:      id,
 				Version: version,
@@ -747,7 +747,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			if err != nil {
 				return fetchedBPs, order, errors.Wrapf(err, "getting OS from %s", style.Symbol(builderImage.Name()))
 			}
-			mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, bp, downloader.BuildpackDownloadOptions{
+			mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, bp, buildpack.DownloadOptions{
 				RegistryName:    registry,
 				ImageOS:         imageOS,
 				RelativeBaseDir: relativeBaseDir,

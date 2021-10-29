@@ -85,7 +85,7 @@ func metadataFromRegistry(client *Client, name, registry string) (buildpackMd bu
 	return buildpackMd, layersMd, nil
 }
 
-func metadataFromArchive(downloader Downloader, path string) (buildpackMd buildpackage.Metadata, layersMd dist.BuildpackLayers, err error) {
+func metadataFromArchive(downloader BlobDownloader, path string) (buildpackMd buildpackage.Metadata, layersMd dist.BuildpackLayers, err error) {
 	imgBlob, err := downloader.Download(context.Background(), path)
 	if err != nil {
 		return buildpackage.Metadata{}, dist.BuildpackLayers{}, fmt.Errorf("unable to download archive: %q", err)

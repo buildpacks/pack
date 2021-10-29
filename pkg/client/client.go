@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 
 	"github.com/buildpacks/imgutil"
+	"github.com/buildpacks/imgutil/local"
+	"github.com/buildpacks/imgutil/remote"
 	"github.com/buildpacks/pack"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -31,7 +33,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/buildpack/downloader"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -53,10 +55,10 @@ type ImageFetcher interface {
 	Fetch(ctx context.Context, name string, options image.FetchOptions) (imgutil.Image, error)
 }
 
-//go:generate mockgen -package testmocks -destination ../testmocks/mock_downloader.go github.com/buildpacks/pack/pkg/client Downloader
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_blob_downloader.go github.com/buildpacks/pack/pkg/client BlobDownloader
 
-// Downloader is an interface for collecting both remote and local assets.
-type Downloader interface {
+// BlobDownloader is an interface for collecting both remote and local assets as blobs.
+type BlobDownloader interface {
 	// Download collects both local and remote assets and provides a blob object
 	// used to read asset contents.
 	Download(ctx context.Context, pathOrURI string) (blob.Blob, error)
@@ -76,23 +78,26 @@ type ImageFactory interface {
 // BuildpackDownloader is an interface for downloading and extracting buildpacks from various sources
 type BuildpackDownloader interface {
 	// Download parses a buildpack URI and downloads the buildpack and any dependencies buildpacks from the appropriate source
-	Download(ctx context.Context, buildpackURI string, opts downloader.BuildpackDownloadOptions) (dist.Buildpack, []dist.Buildpack, error)
+	Download(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (dist.Buildpack, []dist.Buildpack, error)
 }
 
 // Client is an orchestration object, it contains all parameters needed to
 // build an app image using Cloud Native Buildpacks.
 // All settings on this object should be changed through ClientOption functions.
 type Client struct {
-	logger              logging.Logger
-	imageFetcher        ImageFetcher
-	downloader          Downloader
-	lifecycleExecutor   LifecycleExecutor
-	docker              dockerClient.CommonAPIClient
+	logger logging.Logger
+	docker dockerClient.CommonAPIClient
+
+	keychain            authn.Keychain
 	imageFactory        ImageFactory
+	imageFetcher        ImageFetcher
+	downloader          BlobDownloader
+	lifecycleExecutor   LifecycleExecutor
 	buildpackDownloader BuildpackDownloader
-	experimental        bool
-	registryMirrors     map[string]string
-	version             string
+
+	experimental    bool
+	registryMirrors map[string]string
+	version         string
 }
 
 // ClientOption is a type of function that mutate settings on the client.
@@ -123,7 +128,7 @@ func WithFetcher(f ImageFetcher) ClientOption {
 
 // WithDownloader supply your own downloader.
 // A Downloader is used to gather buildpacks from both remote urls, or local sources.
-func WithDownloader(d Downloader) ClientOption {
+func WithDownloader(d BlobDownloader) ClientOption {
 	return func(c *Client) {
 		c.downloader = d
 	}
@@ -167,12 +172,20 @@ func WithRegistryMirrors(registryMirrors map[string]string) ClientOption {
 	}
 }
 
+// WithKeychain sets keychain of credentials to image registries
+func WithKeychain(keychain authn.Keychain) ClientOption {
+	return func(c *Client) {
+		c.keychain = keychain
+	}
+}
+
 const DockerAPIVersion = "1.38"
 
 // NewClient allocates and returns a Client configured with the specified options.
 func NewClient(opts ...ClientOption) (*Client, error) {
 	client := &Client{
-		version: pack.Version,
+		version:  pack.Version,
+		keychain: authn.DefaultKeychain,
 	}
 
 	for _, opt := range opts {
@@ -207,11 +220,14 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	}
 
 	if client.imageFactory == nil {
-		client.imageFactory = image.NewFactory(client.docker, authn.DefaultKeychain)
+		client.imageFactory = &imageFactory{
+			dockerClient: client.docker,
+			keychain:     client.keychain,
+		}
 	}
 
 	if client.buildpackDownloader == nil {
-		client.buildpackDownloader = downloader.NewBuildpackDownloader(
+		client.buildpackDownloader = buildpack.NewDownloader(
 			client.logger,
 			client.imageFetcher,
 			client.downloader,
@@ -242,4 +258,19 @@ func (r *registryResolver) Resolve(registryName, bpName string) (string, error) 
 	}
 
 	return regBuildpack.Address, nil
+}
+
+type imageFactory struct {
+	dockerClient dockerClient.CommonAPIClient
+	keychain     authn.Keychain
+}
+
+func (f *imageFactory) NewImage(repoName string, daemon bool, imageOS string) (imgutil.Image, error) {
+	platform := imgutil.Platform{OS: imageOS}
+
+	if daemon {
+		return local.NewImage(repoName, f.dockerClient, local.WithDefaultPlatform(platform))
+	}
+
+	return remote.NewImage(repoName, f.keychain, remote.WithDefaultPlatform(platform))
 }
