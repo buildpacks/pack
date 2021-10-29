@@ -12,7 +12,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/client"
-	pubcfg "github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 )
 
 // Deprecated: Use 'builder create' instead.
@@ -43,7 +43,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err := pubcfg.ParsePullPolicy(stringPolicy)
+			pullPolicy, err := image.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}

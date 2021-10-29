@@ -7,7 +7,7 @@ import (
 	"github.com/heroku/color"
 
 	"github.com/buildpacks/pack/pkg/client"
-	pubcfg "github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
@@ -76,7 +76,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 				opts = client.RebaseOptions{
 					RepoName:   repoName,
 					Publish:    false,
-					PullPolicy: pubcfg.PullAlways,
+					PullPolicy: image.PullAlways,
 					RunImage:   "",
 					AdditionalMirrors: map[string][]string{
 						runImage: {testMirror1, testMirror2},
@@ -95,7 +95,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 
 			when("--pull-policy never", func() {
 				it("works", func() {
-					opts.PullPolicy = pubcfg.PullNever
+					opts.PullPolicy = image.PullNever
 					mockClient.EXPECT().
 						Rebase(gomock.Any(), opts).
 						Return(nil)
@@ -104,7 +104,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, command.Execute())
 				})
 				it("takes precedence over config policy", func() {
-					opts.PullPolicy = pubcfg.PullNever
+					opts.PullPolicy = image.PullNever
 					mockClient.EXPECT().
 						Rebase(gomock.Any(), opts).
 						Return(nil)
@@ -126,7 +126,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 			when("--pull-policy not set", func() {
 				when("no policy set in config", func() {
 					it("uses the default policy", func() {
-						opts.PullPolicy = pubcfg.PullAlways
+						opts.PullPolicy = image.PullAlways
 						mockClient.EXPECT().
 							Rebase(gomock.Any(), opts).
 							Return(nil)
@@ -137,7 +137,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 				when("policy is set in config", func() {
 					it("uses set policy", func() {
-						opts.PullPolicy = pubcfg.PullIfNotPresent
+						opts.PullPolicy = image.PullIfNotPresent
 						mockClient.EXPECT().
 							Rebase(gomock.Any(), opts).
 							Return(nil)

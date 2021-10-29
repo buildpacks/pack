@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -86,7 +85,7 @@ const (
 // If daemon is true, first the local registry will be searched for the image.
 // Otherwise it assumes the image is remote.
 func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
-	img, err := c.imageFetcher.Fetch(context.Background(), name, image.FetchOptions{Daemon: daemon, PullPolicy: config.PullNever})
+	img, err := c.imageFetcher.Fetch(context.Background(), name, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever})
 	if err != nil {
 		if errors.Cause(err) == image.ErrNotFound {
 			return nil, nil

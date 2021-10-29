@@ -14,7 +14,6 @@ import (
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/buildpack"
-	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -38,7 +37,7 @@ type CreateBuilderOptions struct {
 	Registry string
 
 	// Strategy for updating images before a build.
-	PullPolicy config.PullPolicy
+	PullPolicy image.PullPolicy
 }
 
 // CreateBuilder creates and saves a builder image to a registry with the provided options.

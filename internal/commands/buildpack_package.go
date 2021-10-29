@@ -12,7 +12,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/client"
-	pubcfg "github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 )
 
 // BuildpackPackageFlags define flags provided to the BuildpackPackage command
@@ -58,7 +58,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err := pubcfg.ParsePullPolicy(stringPolicy)
+			pullPolicy, err := image.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}
@@ -126,7 +126,7 @@ func BuildpackPackage(logger logging.Logger, cfg config.Config, packager Buildpa
 }
 
 func validateBuildpackPackageFlags(p *BuildpackPackageFlags) error {
-	if p.Publish && p.Policy == pubcfg.PullNever.String() {
+	if p.Publish && p.Policy == image.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
 	}
 	if p.PackageTomlPath != "" && p.Path != "" {

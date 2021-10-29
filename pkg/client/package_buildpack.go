@@ -13,7 +13,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
-	"github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 )
 
 const (
@@ -47,7 +47,7 @@ type PackageBuildpackOptions struct {
 	Publish bool
 
 	// Strategy for updating images before packaging.
-	PullPolicy config.PullPolicy
+	PullPolicy image.PullPolicy
 
 	// Name of the buildpack registry. Used to
 	// add buildpacks to a package.

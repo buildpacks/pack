@@ -1,4 +1,4 @@
-package config_test
+package image_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -17,40 +17,40 @@ func TestPullPolicy(t *testing.T) {
 func testPullPolicy(t *testing.T, when spec.G, it spec.S) {
 	when("#ParsePullPolicy", func() {
 		it("returns PullNever for never", func() {
-			policy, err := config.ParsePullPolicy("never")
+			policy, err := image.ParsePullPolicy("never")
 			h.AssertNil(t, err)
-			h.AssertEq(t, policy, config.PullNever)
+			h.AssertEq(t, policy, image.PullNever)
 		})
 
 		it("returns PullAlways for always", func() {
-			policy, err := config.ParsePullPolicy("always")
+			policy, err := image.ParsePullPolicy("always")
 			h.AssertNil(t, err)
-			h.AssertEq(t, policy, config.PullAlways)
+			h.AssertEq(t, policy, image.PullAlways)
 		})
 
 		it("returns PullIfNotPresent for if-not-present", func() {
-			policy, err := config.ParsePullPolicy("if-not-present")
+			policy, err := image.ParsePullPolicy("if-not-present")
 			h.AssertNil(t, err)
-			h.AssertEq(t, policy, config.PullIfNotPresent)
+			h.AssertEq(t, policy, image.PullIfNotPresent)
 		})
 
 		it("defaults to PullAlways, if empty string", func() {
-			policy, err := config.ParsePullPolicy("")
+			policy, err := image.ParsePullPolicy("")
 			h.AssertNil(t, err)
-			h.AssertEq(t, policy, config.PullAlways)
+			h.AssertEq(t, policy, image.PullAlways)
 		})
 
 		it("returns error for unknown string", func() {
-			_, err := config.ParsePullPolicy("fake-policy-here")
+			_, err := image.ParsePullPolicy("fake-policy-here")
 			h.AssertError(t, err, "invalid pull policy")
 		})
 	})
 
 	when("#String", func() {
 		it("returns the right String value", func() {
-			h.AssertEq(t, config.PullAlways.String(), "always")
-			h.AssertEq(t, config.PullNever.String(), "never")
-			h.AssertEq(t, config.PullIfNotPresent.String(), "if-not-present")
+			h.AssertEq(t, image.PullAlways.String(), "always")
+			h.AssertEq(t, image.PullNever.String(), "never")
+			h.AssertEq(t, image.PullIfNotPresent.String(), "if-not-present")
 		})
 	})
 }

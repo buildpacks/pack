@@ -17,7 +17,7 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	ilogging "github.com/buildpacks/pack/internal/logging"
-	pubcfg "github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -116,7 +116,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullNever)
 				})
 
 				it("pull-policy=always sets policy", func() {
@@ -127,7 +127,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullAlways)
 				})
 				it("takes precedence over a configured pull policy", func() {
 					logger := ilogging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
@@ -147,7 +147,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := buildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullNever)
 				})
 			})
 			when("configured pull policy", func() {
@@ -167,7 +167,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := buildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullNever)
 				})
 			})
 		})

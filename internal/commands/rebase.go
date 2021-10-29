@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/pkg/client"
-	pubcfg "github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
@@ -33,7 +33,7 @@ func Rebase(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Co
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			opts.PullPolicy, err = pubcfg.ParsePullPolicy(stringPolicy)
+			opts.PullPolicy, err = image.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", stringPolicy)
 			}

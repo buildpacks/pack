@@ -34,7 +34,6 @@ import (
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/buildpack"
-	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 )
@@ -143,7 +142,7 @@ type BuildOptions struct {
 	DefaultProcessType string
 
 	// Strategy for updating local images before a build.
-	PullPolicy config.PullPolicy
+	PullPolicy image.PullPolicy
 
 	// ProjectDescriptorBaseDir is the base directory to find relative resources referenced by the ProjectDescriptor
 	ProjectDescriptorBaseDir string
@@ -470,7 +469,7 @@ func (c *Client) getBuilder(img imgutil.Image) (*builder.Builder, error) {
 	return bldr, nil
 }
 
-func (c *Client) validateRunImage(context context.Context, name string, pullPolicy config.PullPolicy, publish bool, expectedStack string) (imgutil.Image, error) {
+func (c *Client) validateRunImage(context context.Context, name string, pullPolicy image.PullPolicy, publish bool, expectedStack string) (imgutil.Image, error) {
 	if name == "" {
 		return nil, errors.New("run image must be specified")
 	}
@@ -856,7 +855,7 @@ func (c *Client) logImageNameAndSha(ctx context.Context, publish bool, imageRef 
 		return nil
 	}
 
-	img, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: !publish, PullPolicy: config.PullNever})
+	img, err := c.imageFetcher.Fetch(ctx, imageRef.Name(), image.FetchOptions{Daemon: !publish, PullPolicy: image.PullNever})
 	if err != nil {
 		return errors.Wrap(err, "fetching built image")
 	}

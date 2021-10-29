@@ -12,10 +12,10 @@ import (
 	"testing"
 
 	acceptanceOS "github.com/buildpacks/pack/acceptance/os"
-	"github.com/buildpacks/pack/internal/blob"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/blob"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

@@ -12,7 +12,7 @@ import (
 
 	ifakes "github.com/buildpacks/pack/internal/fakes"
 	"github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -179,7 +179,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						it("updates the local image", func() {
 							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName:   "some/app",
-								PullPolicy: config.PullAlways,
+								PullPolicy: image.PullAlways,
 							}))
 							h.AssertEq(t, fakeAppImage.Base(), "some/run")
 							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")
@@ -191,7 +191,7 @@ func testRebase(t *testing.T, when spec.G, it spec.S) {
 						it("uses local image", func() {
 							h.AssertNil(t, subject.Rebase(context.TODO(), RebaseOptions{
 								RepoName:   "some/app",
-								PullPolicy: config.PullNever,
+								PullPolicy: image.PullNever,
 							}))
 							h.AssertEq(t, fakeAppImage.Base(), "some/run")
 							lbl, _ := fakeAppImage.Label("io.buildpacks.lifecycle.metadata")

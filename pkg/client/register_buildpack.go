@@ -10,7 +10,6 @@ import (
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/registry"
-	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -26,7 +25,7 @@ type RegisterBuildpackOptions struct {
 // RegisterBuildpack updates the Buildpack Registry with to include a new buildpack specified in
 // the opts argument
 func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOptions) error {
-	appImage, err := c.imageFetcher.Fetch(ctx, opts.ImageName, image.FetchOptions{Daemon: false, PullPolicy: config.PullAlways})
+	appImage, err := c.imageFetcher.Fetch(ctx, opts.ImageName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways})
 	if err != nil {
 		return err
 	}

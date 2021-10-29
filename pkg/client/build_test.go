@@ -43,7 +43,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
-	"github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -1667,7 +1667,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
 							h.AssertEq(t, args.Daemon, true)
-							h.AssertEq(t, args.PullPolicy, config.PullAlways)
+							h.AssertEq(t, args.PullPolicy, image.PullAlways)
 							h.AssertEq(t, args.Platform, "linux/amd64")
 						})
 					})
@@ -1730,11 +1730,11 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					args := fakeImageFetcher.FetchCalls["default/run"]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.PullPolicy, config.PullAlways)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
 
 					args = fakeImageFetcher.FetchCalls[defaultBuilderName]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.PullPolicy, config.PullAlways)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
 				})
 
 				when("builder is untrusted", func() {
@@ -1751,7 +1751,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 							args := fakeImageFetcher.FetchCalls[fakeLifecycleImage.Name()]
 							h.AssertEq(t, args.Daemon, true)
-							h.AssertEq(t, args.PullPolicy, config.PullAlways)
+							h.AssertEq(t, args.PullPolicy, image.PullAlways)
 							h.AssertEq(t, args.Platform, "linux/amd64")
 						})
 
@@ -1822,20 +1822,20 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:      "some/app",
 						Builder:    defaultBuilderName,
-						PullPolicy: config.PullNever,
+						PullPolicy: image.PullNever,
 					}))
 
 					args := fakeImageFetcher.FetchCalls["default/run"]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.PullPolicy, config.PullNever)
+					h.AssertEq(t, args.PullPolicy, image.PullNever)
 
 					args = fakeImageFetcher.FetchCalls[defaultBuilderName]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.PullPolicy, config.PullNever)
+					h.AssertEq(t, args.PullPolicy, image.PullNever)
 
 					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.11.3"]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.PullPolicy, config.PullNever)
+					h.AssertEq(t, args.PullPolicy, image.PullNever)
 					h.AssertEq(t, args.Platform, "linux/amd64")
 				})
 			})
@@ -1845,16 +1845,16 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
 						Image:      "some/app",
 						Builder:    defaultBuilderName,
-						PullPolicy: config.PullAlways,
+						PullPolicy: image.PullAlways,
 					}))
 
 					args := fakeImageFetcher.FetchCalls["default/run"]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.PullPolicy, config.PullAlways)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
 
 					args = fakeImageFetcher.FetchCalls[defaultBuilderName]
 					h.AssertEq(t, args.Daemon, true)
-					h.AssertEq(t, args.PullPolicy, config.PullAlways)
+					h.AssertEq(t, args.PullPolicy, image.PullAlways)
 				})
 			})
 		})

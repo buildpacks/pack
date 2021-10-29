@@ -18,7 +18,6 @@ import (
 	"github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/pkg/client"
-	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -92,7 +91,7 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 			packageImage := fakes.NewImage("example.com/some/package:1.0.0", "", nil)
 			h.AssertNil(t, packageImage.SetLabel("io.buildpacks.buildpackage.metadata", `{}`))
 			h.AssertNil(t, packageImage.SetLabel("io.buildpacks.buildpack.layers", `{}`))
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: config.PullAlways}).Return(packageImage, nil)
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(packageImage, nil)
 
 			h.AssertNil(t, subject.PullBuildpack(context.TODO(), client.PullBuildpackOptions{
 				URI: "example.com/some/package:1.0.0",
@@ -122,7 +121,7 @@ func testPullBuildpack(t *testing.T, when spec.G, it spec.S) {
 			packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
 			packageImage.SetLabel("io.buildpacks.buildpackage.metadata", `{}`)
 			packageImage.SetLabel("io.buildpacks.buildpack.layers", `{}`)
-			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: config.PullAlways}).Return(packageImage, nil)
+			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways}).Return(packageImage, nil)
 
 			packHome := filepath.Join(tmpDir, "packHome")
 			h.AssertNil(t, os.Setenv("PACK_HOME", packHome))

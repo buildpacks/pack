@@ -11,7 +11,6 @@ import (
 	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -109,7 +108,7 @@ func metadataFromArchive(downloader BlobDownloader, path string) (buildpackMd bu
 
 func metadataFromImage(client *Client, name string, daemon bool) (buildpackMd buildpackage.Metadata, layersMd dist.BuildpackLayers, err error) {
 	imageName := buildpack.ParsePackageLocator(name)
-	img, err := client.imageFetcher.Fetch(context.Background(), imageName, image.FetchOptions{Daemon: daemon, PullPolicy: config.PullNever})
+	img, err := client.imageFetcher.Fetch(context.Background(), imageName, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever})
 	if err != nil {
 		return buildpackage.Metadata{}, dist.BuildpackLayers{}, err
 	}

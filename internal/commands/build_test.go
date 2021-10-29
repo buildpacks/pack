@@ -22,7 +22,7 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/pkg/client"
-	pubcfg "github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -141,7 +141,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 		when("--pull-policy", func() {
 			it("sets pull-policy=never", func() {
 				mockClient.EXPECT().
-					Build(gomock.Any(), EqBuildOptionsWithPullPolicy(pubcfg.PullNever)).
+					Build(gomock.Any(), EqBuildOptionsWithPullPolicy(image.PullNever)).
 					Return(nil)
 
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--pull-policy", "never"})
@@ -154,7 +154,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 			it("takes precedence over a configured pull policy", func() {
 				mockClient.EXPECT().
-					Build(gomock.Any(), EqBuildOptionsWithPullPolicy(pubcfg.PullNever)).
+					Build(gomock.Any(), EqBuildOptionsWithPullPolicy(image.PullNever)).
 					Return(nil)
 
 				cfg := config.Config{PullPolicy: "if-not-present"}
@@ -170,7 +170,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			when("no pull policy set in config", func() {
 				it("uses the default policy", func() {
 					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithPullPolicy(pubcfg.PullAlways)).
+						Build(gomock.Any(), EqBuildOptionsWithPullPolicy(image.PullAlways)).
 						Return(nil)
 
 					command.SetArgs([]string{"image", "--builder", "my-builder"})
@@ -180,7 +180,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 			when("pull policy is set in config", func() {
 				it("uses the set policy", func() {
 					mockClient.EXPECT().
-						Build(gomock.Any(), EqBuildOptionsWithPullPolicy(pubcfg.PullNever)).
+						Build(gomock.Any(), EqBuildOptionsWithPullPolicy(image.PullNever)).
 						Return(nil)
 
 					cfg := config.Config{PullPolicy: "never"}
@@ -793,7 +793,7 @@ func EqBuildOptionsDefaultProcess(defaultProc string) gomock.Matcher {
 	}
 }
 
-func EqBuildOptionsWithPullPolicy(policy pubcfg.PullPolicy) gomock.Matcher {
+func EqBuildOptionsWithPullPolicy(policy image.PullPolicy) gomock.Matcher {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("PullPolicy=%s", policy),
 		equals: func(o client.BuildOptions) bool {

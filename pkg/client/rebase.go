@@ -11,7 +11,6 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -24,7 +23,7 @@ type RebaseOptions struct {
 	Publish bool
 
 	// Strategy for pulling images during rebase.
-	PullPolicy config.PullPolicy
+	PullPolicy image.PullPolicy
 
 	// Image to rebase against. This image must have
 	// the same StackID as the previous run image.

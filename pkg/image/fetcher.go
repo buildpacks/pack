@@ -21,7 +21,6 @@ import (
 	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
-	"github.com/buildpacks/pack/pkg/config"
 )
 
 // FetcherOption is a type of function that mutate settings on the client.
@@ -44,7 +43,7 @@ type Fetcher struct {
 type FetchOptions struct {
 	Daemon     bool
 	Platform   string
-	PullPolicy config.PullPolicy
+	PullPolicy PullPolicy
 }
 
 func NewFetcher(logger logging.Logger, docker client.CommonAPIClient, opts ...FetcherOption) *Fetcher {
@@ -73,10 +72,10 @@ func (f *Fetcher) Fetch(ctx context.Context, name string, options FetchOptions) 
 	}
 
 	switch options.PullPolicy {
-	case config.PullNever:
+	case PullNever:
 		img, err := f.fetchDaemonImage(name)
 		return img, err
-	case config.PullIfNotPresent:
+	case PullIfNotPresent:
 		img, err := f.fetchDaemonImage(name)
 		if err == nil || !errors.Is(err, ErrNotFound) {
 			return img, err

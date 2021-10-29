@@ -27,8 +27,7 @@ import (
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
-	"github.com/buildpacks/pack/pkg/config"
-	image "github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/image"
 	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -130,7 +129,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			buildpackDownloadOptions = buildpack.DownloadOptions{ImageOS: "linux"}
 		)
 
-		shouldFetchPackageImageWith := func(demon bool, pull config.PullPolicy) {
+		shouldFetchPackageImageWith := func(demon bool, pull image.PullPolicy) {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: demon, PullPolicy: pull}).Return(packageImage, nil)
 		}
 
@@ -145,10 +144,10 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						RegistryName: "some-registry",
 						ImageOS:      "linux",
 						Daemon:       true,
-						PullPolicy:   config.PullAlways,
+						PullPolicy:   image.PullAlways,
 					}
 
-					shouldFetchPackageImageWith(true, config.PullAlways)
+					shouldFetchPackageImageWith(true, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "urn:cnb:registry:example/foo@1.1.0", buildpackDownloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
@@ -161,10 +160,10 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						RegistryName: "some-registry",
 						ImageOS:      "linux",
 						Daemon:       true,
-						PullPolicy:   config.PullAlways,
+						PullPolicy:   image.PullAlways,
 					}
 
-					shouldFetchPackageImageWith(true, config.PullAlways)
+					shouldFetchPackageImageWith(true, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "example/foo@1.1.0", buildpackDownloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
@@ -186,12 +185,12 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					packageImage = createPackage("some/package:tag")
 					buildpackDownloadOptions = buildpack.DownloadOptions{
 						Daemon:     true,
-						PullPolicy: config.PullAlways,
+						PullPolicy: image.PullAlways,
 						ImageOS:    "linux",
 						ImageName:  "some/package:tag",
 					}
 
-					shouldFetchPackageImageWith(true, config.PullAlways)
+					shouldFetchPackageImageWith(true, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
@@ -204,10 +203,10 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     true,
-						PullPolicy: config.PullAlways,
+						PullPolicy: image.PullAlways,
 					}
 
-					shouldFetchPackageImageWith(true, config.PullAlways)
+					shouldFetchPackageImageWith(true, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
@@ -220,10 +219,10 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     false,
-						PullPolicy: config.PullAlways,
+						PullPolicy: image.PullAlways,
 					}
 
-					shouldFetchPackageImageWith(false, config.PullAlways)
+					shouldFetchPackageImageWith(false, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
@@ -235,9 +234,9 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					buildpackDownloadOptions = buildpack.DownloadOptions{
 						ImageOS:    "linux",
 						Daemon:     false,
-						PullPolicy: config.PullAlways,
+						PullPolicy: image.PullAlways,
 					}
-					shouldFetchPackageImageWith(false, config.PullAlways)
+					shouldFetchPackageImageWith(false, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), packageImage.Name(), buildpackDownloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
@@ -250,10 +249,10 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     false,
-						PullPolicy: config.PullNever,
+						PullPolicy: image.PullNever,
 					}
 
-					shouldFetchPackageImageWith(false, config.PullNever)
+					shouldFetchPackageImageWith(false, image.PullNever)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
 					h.AssertNil(t, err)
 					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
@@ -266,7 +265,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 						ImageOS:    "linux",
 						ImageName:  packageImage.Name(),
 						Daemon:     true,
-						PullPolicy: config.PullNever,
+						PullPolicy: image.PullNever,
 					}
 					prepareFetcherWithMissingPackageImage()
 					_, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
@@ -340,7 +339,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 			when("can't download image from registry", func() {
 				it("errors", func() {
 					packageImage := fakes.NewImage("example.com/some/package@sha256:74eb48882e835d8767f62940d453eb96ed2737de3a16573881dcea7dea769df7", "", nil)
-					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: false, PullPolicy: config.PullAlways}).Return(nil, errors.New("failed to pull"))
+					mockImageFetcher.EXPECT().Fetch(gomock.Any(), packageImage.Name(), image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways}).Return(nil, errors.New("failed to pull"))
 
 					buildpackDownloadOptions.RegistryName = "some-registry"
 					_, _, err := buildpackDownloader.Download(context.TODO(), "urn:cnb:registry:example/foo@1.1.0", buildpackDownloadOptions)

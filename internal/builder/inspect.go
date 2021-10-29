@@ -8,7 +8,6 @@ import (
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -64,7 +63,7 @@ func NewInspector(fetcher InspectableFetcher, factory LabelManagerFactory, calcu
 }
 
 func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (Info, error) {
-	inspectable, err := i.imageFetcher.Fetch(context.Background(), name, image.FetchOptions{Daemon: daemon, PullPolicy: config.PullNever})
+	inspectable, err := i.imageFetcher.Fetch(context.Background(), name, image.FetchOptions{Daemon: daemon, PullPolicy: image.PullNever})
 	if err != nil {
 		return Info{}, fmt.Errorf("fetching builder image: %w", err)
 	}

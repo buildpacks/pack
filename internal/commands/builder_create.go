@@ -12,7 +12,7 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/client"
-	pubcfg "github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 )
 
 // BuilderCreateFlags define flags provided to the CreateBuilder command
@@ -47,7 +47,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err := pubcfg.ParsePullPolicy(stringPolicy)
+			pullPolicy, err := image.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrapf(err, "parsing pull policy %s", flags.Policy)
 			}
@@ -95,7 +95,7 @@ Creating a custom builder allows you to control what buildpacks are used and wha
 }
 
 func validateCreateFlags(flags *BuilderCreateFlags, cfg config.Config) error {
-	if flags.Publish && flags.Policy == pubcfg.PullNever.String() {
+	if flags.Publish && flags.Policy == image.PullNever.String() {
 		return errors.Errorf("--publish and --pull-policy never cannot be used together. The --publish flag requires the use of remote images.")
 	}
 

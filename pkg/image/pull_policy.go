@@ -1,4 +1,4 @@
-package config
+package image
 
 import (
 	"github.com/pkg/errors"

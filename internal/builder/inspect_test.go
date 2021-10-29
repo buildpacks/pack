@@ -10,7 +10,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/builder/fakes"
 	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 	h "github.com/buildpacks/pack/testhelpers"
 
 	"github.com/heroku/color"
@@ -164,7 +164,7 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 			assert.Equal(fetcher.CallCount, 1)
 			assert.Equal(fetcher.ReceivedName, testBuilderName)
 			assert.Equal(fetcher.ReceivedDaemon, true)
-			assert.Equal(fetcher.ReceivedPullPolicy, config.PullNever)
+			assert.Equal(fetcher.ReceivedPullPolicy, image.PullNever)
 		})
 
 		it("instantiates a builder label manager with the correct inspectable", func() {

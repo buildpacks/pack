@@ -18,7 +18,7 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/dist"
 	ilogging "github.com/buildpacks/pack/internal/logging"
-	pubcfg "github.com/buildpacks/pack/pkg/config"
+	"github.com/buildpacks/pack/pkg/image"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -151,7 +151,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, cmd.Execute())
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullNever)
 				})
 
 				it("pull-policy=always sets policy", func() {
@@ -160,7 +160,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, cmd.Execute())
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullAlways)
 				})
 			})
 			when("no --pull-policy", func() {
@@ -175,7 +175,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, cmd.Execute())
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullAlways)
 				})
 				it("uses the configured pull policy when policy configured", func() {
 					cmd := packageCommand(
@@ -192,7 +192,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullNever)
 				})
 			})
 		})

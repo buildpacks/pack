@@ -15,7 +15,6 @@ import (
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/blob"
-	"github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -64,7 +63,7 @@ type DownloadOptions struct {
 
 	Daemon bool
 
-	PullPolicy config.PullPolicy
+	PullPolicy image.PullPolicy
 }
 
 func (c *buildpackDownloader) Download(ctx context.Context, buildpackURI string, opts DownloadOptions) (dist.Buildpack, []dist.Buildpack, error) {

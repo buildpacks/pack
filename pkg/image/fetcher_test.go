@@ -18,7 +18,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/logging"
-	pubcfg "github.com/buildpacks/pack/pkg/config"
 	"github.com/buildpacks/pack/pkg/image"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -72,14 +71,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("returns the remote image", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: pubcfg.PullAlways})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways})
 						h.AssertNil(t, err)
 					})
 				})
 
 				when("there is no remote image", func() {
 					it("returns an error", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: pubcfg.PullAlways})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullAlways})
 						h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist in registry", repoName))
 					})
 				})
@@ -95,14 +94,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("returns the remote image", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: pubcfg.PullIfNotPresent})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullIfNotPresent})
 						h.AssertNil(t, err)
 					})
 				})
 
 				when("there is no remote image", func() {
 					it("returns an error", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: pubcfg.PullIfNotPresent})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: false, PullPolicy: image.PullIfNotPresent})
 						h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist in registry", repoName))
 					})
 				})
@@ -129,14 +128,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("returns the local image", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullNever})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullNever})
 						h.AssertNil(t, err)
 					})
 				})
 
 				when("there is no local image", func() {
 					it("returns an error", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullNever})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullNever})
 						h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
 					})
 				})
@@ -172,14 +171,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("pull the image and return the local copy", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullAlways})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways})
 						h.AssertNil(t, err)
 						h.AssertNotEq(t, output(), "")
 					})
 
 					it("doesn't log anything in quiet mode", func() {
 						logger.WantQuiet(true)
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullAlways})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways})
 						h.AssertNil(t, err)
 						h.AssertEq(t, output(), "")
 					})
@@ -199,14 +198,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("returns the local image", func() {
-							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullAlways})
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways})
 							h.AssertNil(t, err)
 						})
 					})
 
 					when("there is no local image", func() {
 						it("returns an error", func() {
-							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullAlways})
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways})
 							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
 						})
 					})
@@ -214,7 +213,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 				when("image platform is specified", func() {
 					it("passes the platform argument to the daemon", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullAlways, Platform: "some-unsupported-platform"})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullAlways, Platform: "some-unsupported-platform"})
 						h.AssertError(t, err, "unknown operating system or architecture")
 					})
 				})
@@ -267,7 +266,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("returns the local image", func() {
-							fetchedImg, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullIfNotPresent})
+							fetchedImg, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent})
 							h.AssertNil(t, err)
 							h.AssertNotContains(t, outBuf.String(), "Pulling image")
 
@@ -281,7 +280,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 					when("there is no local image", func() {
 						it("returns the remote image", func() {
-							fetchedImg, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullIfNotPresent})
+							fetchedImg, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent})
 							h.AssertNil(t, err)
 
 							fetchedImgLabel, err := fetchedImg.Label(label)
@@ -305,14 +304,14 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 						})
 
 						it("returns the local image", func() {
-							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullIfNotPresent})
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent})
 							h.AssertNil(t, err)
 						})
 					})
 
 					when("there is no local image", func() {
 						it("returns an error", func() {
-							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullIfNotPresent})
+							_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent})
 							h.AssertError(t, err, fmt.Sprintf("image '%s' does not exist on the daemon", repoName))
 						})
 					})
@@ -320,7 +319,7 @@ func testFetcher(t *testing.T, when spec.G, it spec.S) {
 
 				when("image platform is specified", func() {
 					it("passes the platform argument to the daemon", func() {
-						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: pubcfg.PullIfNotPresent, Platform: "some-unsupported-platform"})
+						_, err := imageFetcher.Fetch(context.TODO(), repoName, image.FetchOptions{Daemon: true, PullPolicy: image.PullIfNotPresent, Platform: "some-unsupported-platform"})
 						h.AssertError(t, err, "unknown operating system or architecture")
 					})
 				})
