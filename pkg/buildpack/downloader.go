@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/imgutil"
+
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
@@ -150,7 +151,7 @@ func decomposeBuildpack(blob blob.Blob, imageOS string) (mainBP Buildpack, depBP
 			return mainBP, depBPs, errors.Wrapf(err, "get tar writer factory for OS %s", style.Symbol(imageOS))
 		}
 
-		mainBP, err = BuildpackFromRootBlob(blob, layerWriterFactory)
+		mainBP, err = FromRootBlob(blob, layerWriterFactory)
 		if err != nil {
 			return mainBP, depBPs, errors.Wrap(err, "reading buildpack")
 		}

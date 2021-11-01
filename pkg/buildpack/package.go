@@ -68,9 +68,9 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 			}
 
 			if desc.Info.Match(md.BuildpackInfo) { // This is the order buildpack of the package
-				mainBP = BuildpackFromBlob(desc, b)
+				mainBP = FromBlob(desc, b)
 			} else {
-				depBPs = append(depBPs, BuildpackFromBlob(desc, b))
+				depBPs = append(depBPs, FromBlob(desc, b))
 			}
 		}
 	}

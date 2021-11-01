@@ -92,7 +92,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 
 	bpLayers := dist.BuildpackLayers{}
 	for _, bp := range append(b.dependencies, b.buildpack) {
-		bpLayerTar, err := BuildpackToLayerTar(tmpDir, bp)
+		bpLayerTar, err := ToLayerTar(tmpDir, bp)
 		if err != nil {
 			return err
 		}

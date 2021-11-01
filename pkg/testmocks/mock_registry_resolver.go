@@ -5,8 +5,9 @@
 package testmocks
 
 import (
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockRegistryResolver is a mock of RegistryResolver interface

@@ -41,19 +41,19 @@ func (b *buildpack) Descriptor() dist.BuildpackDescriptor {
 	return b.descriptor
 }
 
-// BuildpackFromBlob constructs a buildpack from a blob. It is assumed that the buildpack
+// FromBlob constructs a buildpack from a blob. It is assumed that the buildpack
 // contents are structured as per the distribution spec (currently '/cnbs/buildpacks/{ID}/{version}/*').
-func BuildpackFromBlob(bpd dist.BuildpackDescriptor, blob Blob) Buildpack {
+func FromBlob(bpd dist.BuildpackDescriptor, blob Blob) Buildpack {
 	return &buildpack{
 		Blob:       blob,
 		descriptor: bpd,
 	}
 }
 
-// BuildpackFromRootBlob constructs a buildpack from a blob. It is assumed that the buildpack contents reside at the
+// FromRootBlob constructs a buildpack from a blob. It is assumed that the buildpack contents reside at the
 // root of the blob. The constructed buildpack contents will be structured as per the distribution spec (currently
 // a tar with contents under '/cnbs/buildpacks/{ID}/{version}/*').
-func BuildpackFromRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (Buildpack, error) {
+func FromRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (Buildpack, error) {
 	bpd := dist.BuildpackDescriptor{}
 	rc, err := blob.Open()
 	if err != nil {
@@ -219,7 +219,7 @@ func validateDescriptor(bpd dist.BuildpackDescriptor) error {
 	return nil
 }
 
-func BuildpackToLayerTar(dest string, bp Buildpack) (string, error) {
+func ToLayerTar(dest string, bp Buildpack) (string, error) {
 	bpd := bp.Descriptor()
 	bpReader, err := bp.Open()
 	if err != nil {

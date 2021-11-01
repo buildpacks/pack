@@ -22,11 +22,11 @@ import (
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/local"
 	"github.com/buildpacks/imgutil/remote"
-	"github.com/buildpacks/pack"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
+	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/build"
 	iconfig "github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
@@ -99,19 +99,19 @@ type Client struct {
 	version         string
 }
 
-// ClientOption is a type of function that mutate settings on the client.
+// Option is a type of function that mutate settings on the client.
 // Values in these functions are set through currying.
-type ClientOption func(c *Client)
+type Option func(c *Client)
 
 // WithLogger supply your own logger.
-func WithLogger(l logging.Logger) ClientOption {
+func WithLogger(l logging.Logger) Option {
 	return func(c *Client) {
 		c.logger = l
 	}
 }
 
 // WithImageFactory supply your own image factory.
-func WithImageFactory(f ImageFactory) ClientOption {
+func WithImageFactory(f ImageFactory) Option {
 	return func(c *Client) {
 		c.imageFactory = f
 	}
@@ -119,7 +119,7 @@ func WithImageFactory(f ImageFactory) ClientOption {
 
 // WithFetcher supply your own Fetcher.
 // A Fetcher retrieves both local and remote images to make them available.
-func WithFetcher(f ImageFetcher) ClientOption {
+func WithFetcher(f ImageFetcher) Option {
 	return func(c *Client) {
 		c.imageFetcher = f
 	}
@@ -127,7 +127,7 @@ func WithFetcher(f ImageFetcher) ClientOption {
 
 // WithDownloader supply your own downloader.
 // A Downloader is used to gather buildpacks from both remote urls, or local sources.
-func WithDownloader(d BlobDownloader) ClientOption {
+func WithDownloader(d BlobDownloader) Option {
 	return func(c *Client) {
 		c.downloader = d
 	}
@@ -135,7 +135,7 @@ func WithDownloader(d BlobDownloader) ClientOption {
 
 // WithBuildpackDownloader supply your own BuildpackDownloader.
 // A BuildpackDownloader is used to gather buildpacks from both remote urls, or local sources.
-func WithBuildpackDownloader(d BuildpackDownloader) ClientOption {
+func WithBuildpackDownloader(d BuildpackDownloader) Option {
 	return func(c *Client) {
 		c.buildpackDownloader = d
 	}
@@ -144,35 +144,35 @@ func WithBuildpackDownloader(d BuildpackDownloader) ClientOption {
 // Deprecated: use WithDownloader instead.
 //
 // WithCacheDir supply your own cache directory.
-func WithCacheDir(path string) ClientOption {
+func WithCacheDir(path string) Option {
 	return func(c *Client) {
 		c.downloader = blob.NewDownloader(c.logger, path)
 	}
 }
 
 // WithDockerClient supply your own docker client.
-func WithDockerClient(docker dockerClient.CommonAPIClient) ClientOption {
+func WithDockerClient(docker dockerClient.CommonAPIClient) Option {
 	return func(c *Client) {
 		c.docker = docker
 	}
 }
 
 // WithExperimental sets whether experimental features should be enabled.
-func WithExperimental(experimental bool) ClientOption {
+func WithExperimental(experimental bool) Option {
 	return func(c *Client) {
 		c.experimental = experimental
 	}
 }
 
 // WithRegistryMirrors sets mirrors to pull images from.
-func WithRegistryMirrors(registryMirrors map[string]string) ClientOption {
+func WithRegistryMirrors(registryMirrors map[string]string) Option {
 	return func(c *Client) {
 		c.registryMirrors = registryMirrors
 	}
 }
 
 // WithKeychain sets keychain of credentials to image registries
-func WithKeychain(keychain authn.Keychain) ClientOption {
+func WithKeychain(keychain authn.Keychain) Option {
 	return func(c *Client) {
 		c.keychain = keychain
 	}
@@ -181,7 +181,7 @@ func WithKeychain(keychain authn.Keychain) ClientOption {
 const DockerAPIVersion = "1.38"
 
 // NewClient allocates and returns a Client configured with the specified options.
-func NewClient(opts ...ClientOption) (*Client, error) {
+func NewClient(opts ...Option) (*Client, error) {
 	client := &Client{
 		version:  pack.Version,
 		keychain: authn.DefaultKeychain,

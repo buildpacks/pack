@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/buildpacks/imgutil"
+
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
 )

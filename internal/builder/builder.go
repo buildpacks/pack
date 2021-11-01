@@ -392,7 +392,7 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 		}
 
 		// create tar file
-		bpLayerTar, err := buildpack.BuildpackToLayerTar(bpTmpDir, bp)
+		bpLayerTar, err := buildpack.ToLayerTar(bpTmpDir, bp)
 		if err != nil {
 			return err
 		}

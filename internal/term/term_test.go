@@ -12,16 +12,11 @@ import (
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
-const (
-	testTime = "2019/05/15 01:01:01.000000"
-)
-
 func TestTerm(t *testing.T) {
 	spec.Run(t, "Term", testTerm, spec.Parallel(), spec.Report(report.Terminal{}))
 }
 
 func testTerm(t *testing.T, when spec.G, it spec.S) {
-
 	when("#IsTerminal", func() {
 		it("returns false for a pipe", func() {
 			r, _, _ := os.Pipe()
