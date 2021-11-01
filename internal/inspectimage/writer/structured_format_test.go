@@ -13,8 +13,8 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -53,7 +53,7 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 						MarshalFunc: testMarshalFunc,
 					}
 
-					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 					err := structuredWriter.Print(logger, sharedImageInfo, nil, nil, nil, nil)
 					assert.ErrorWithMessage(err, fmt.Sprintf("unable to find image '%s' locally or remotely", "missing-image"))
 				})
@@ -70,7 +70,7 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 
 					localErr := errors.New("a local error occurred")
 
-					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 					err := structuredWriter.Print(logger, sharedImageInfo, nil, remoteInfo, localErr, nil)
 					assert.ErrorWithMessage(err, "preparing output for 'localErr-image': a local error occurred")
 				})
@@ -88,7 +88,7 @@ func testStructuredFormat(t *testing.T, when spec.G, it spec.S) {
 
 					remoteErr := errors.New("a remote error occurred")
 
-					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 					err := structuredWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, remoteErr)
 					assert.ErrorWithMessage(err, "preparing output for 'remoteErr-image': a remote error occurred")
 				})

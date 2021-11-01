@@ -17,9 +17,9 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )

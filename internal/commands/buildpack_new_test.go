@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -31,7 +31,7 @@ func TestBuildpackNewCommand(t *testing.T) {
 func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command        *cobra.Command
-		logger         *ilogging.LogWithWriters
+		logger         *logging.LogWithWriters
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
 		mockClient     *testmocks.MockPackClient
@@ -43,7 +43,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 		tmpDir, err = ioutil.TempDir("", "build-test")
 		h.AssertNil(t, err)
 
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 

@@ -7,7 +7,7 @@ import (
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 
 	"github.com/heroku/color"

@@ -1,7 +1,7 @@
 package builder
 
 import (
-	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 type DetectionOrderEntry struct {

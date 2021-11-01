@@ -16,9 +16,8 @@ import (
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -68,7 +67,7 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 		cfg = config.Config{}
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 	})
 
 	it.After(func() {

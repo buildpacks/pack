@@ -17,9 +17,8 @@ import (
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -42,7 +41,7 @@ func testSetDefaultBuilderCommand(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
 		var err error
 		tempPackHome, err = ioutil.TempDir("", "pack-home")

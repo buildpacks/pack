@@ -29,12 +29,11 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	iconfig "github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 //go:generate mockgen -package testmocks -destination ../testmocks/mock_docker_client.go github.com/docker/docker/client CommonAPIClient
@@ -78,7 +77,7 @@ type ImageFactory interface {
 // BuildpackDownloader is an interface for downloading and extracting buildpacks from various sources
 type BuildpackDownloader interface {
 	// Download parses a buildpack URI and downloads the buildpack and any dependencies buildpacks from the appropriate source
-	Download(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (dist.Buildpack, []dist.Buildpack, error)
+	Download(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.Buildpack, []buildpack.Buildpack, error)
 }
 
 // Client is an orchestration object, it contains all parameters needed to
@@ -193,7 +192,7 @@ func NewClient(opts ...ClientOption) (*Client, error) {
 	}
 
 	if client.logger == nil {
-		client.logger = logging.New(os.Stderr)
+		client.logger = logging.NewSimpleLogger(os.Stderr)
 	}
 
 	if client.docker == nil {

@@ -21,18 +21,16 @@ import (
 	pubbldr "github.com/buildpacks/pack/builder"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/buildpackage"
-	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -70,7 +68,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeBuildImage, nil)
 		}
 
-		var createBuildpack = func(descriptor dist.BuildpackDescriptor) dist.Buildpack {
+		var createBuildpack = func(descriptor dist.BuildpackDescriptor) buildpack.Buildpack {
 			buildpack, err := ifakes.NewFakeBuildpack(descriptor, 0644)
 			h.AssertNil(t, err)
 			return buildpack
@@ -85,7 +83,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		it.Before(func() {
-			logger = ilogging.NewLogWithWriters(&out, &out, ilogging.WithVerbose())
+			logger = logging.NewLogWithWriters(&out, &out, logging.WithVerbose())
 			mockController = gomock.NewController(t)
 			mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 			mockImageFetcher = testmocks.NewMockImageFetcher(mockController)
@@ -111,11 +109,9 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle", "platform-0.4")), nil).AnyTimes()
 			mockDownloader.EXPECT().Download(gomock.Any(), "file:///some-lifecycle-platform-0-1").Return(blob.NewBlob(filepath.Join("testdata", "lifecycle-platform-0.1")), nil).AnyTimes()
 
-			var buildpack dist.Buildpack
-			var err error
-			buildpack, err = dist.BuildpackFromRootBlob(exampleBuildpackBlob, archive.DefaultTarWriterFactory())
+			bp, err := buildpack.BuildpackFromRootBlob(exampleBuildpackBlob, archive.DefaultTarWriterFactory())
 			h.AssertNil(t, err)
-			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz", gomock.Any()).Return(buildpack, nil, nil).AnyTimes()
+			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one.tgz", gomock.Any()).Return(bp, nil, nil).AnyTimes()
 
 			subject, err = client.NewClient(
 				client.WithLogger(logger),
@@ -626,7 +622,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				opts.Config.Buildpacks[0].URI = "https://example.fake/bp-one-with-api-4.tgz"
 
 				buildpackBlob := blob.NewBlob(filepath.Join("testdata", "buildpack-api-0.4"))
-				buildpack, err := dist.BuildpackFromRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
+				buildpack, err := buildpack.BuildpackFromRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
 				h.AssertNil(t, err)
 				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), "https://example.fake/bp-one-with-api-4.tgz", gomock.Any()).Return(buildpack, nil, nil)
 
@@ -645,7 +641,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			opts.Config.Buildpacks[0].URI = directoryPath
 
 			buildpackBlob := blob.NewBlob(directoryPath)
-			buildpack, err := dist.BuildpackFromRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
+			buildpack, err := buildpack.BuildpackFromRootBlob(buildpackBlob, archive.DefaultTarWriterFactory())
 			h.AssertNil(t, err)
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), directoryPath, gomock.Any()).Return(buildpack, nil, nil)
 
@@ -674,7 +670,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Format: "file",
 				}))
 
-				buildpack, _, err := buildpackage.BuildpacksFromOCILayoutBlob(blob.NewBlob(cnbFile))
+				buildpack, _, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(cnbFile))
 				h.AssertNil(t, err)
 				mockBuildpackDownloader.EXPECT().Download(gomock.Any(), cnbFile, gomock.Any()).Return(buildpack, nil, nil).AnyTimes()
 				opts.Config.Buildpacks = []pubbldr.BuildpackConfig{{

@@ -2,6 +2,8 @@ package blob_test
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -14,7 +16,6 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/paths"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/blob"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -31,13 +32,13 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 		var (
 			cacheDir string
 			err      error
-			subject  *blob.Downloader
+			subject  blob.Downloader
 		)
 
 		it.Before(func() {
 			cacheDir, err = ioutil.TempDir("", "cache")
 			h.AssertNil(t, err)
-			subject = blob.NewDownloader(logging.New(ioutil.Discard), cacheDir)
+			subject = blob.NewDownloader(&logger{io.Discard}, cacheDir)
 		})
 
 		it.After(func() {
@@ -171,4 +172,20 @@ func assertBlob(t *testing.T, b blob.Blob) {
 	h.AssertNil(t, err)
 
 	h.AssertEq(t, string(bytes), "contents")
+}
+
+type logger struct {
+	writer io.Writer
+}
+
+func (l *logger) Debugf(format string, v ...interface{}) {
+	fmt.Fprintln(l.writer, format, v)
+}
+
+func (l *logger) Infof(format string, v ...interface{}) {
+	fmt.Fprintln(l.writer, format, v)
+}
+
+func (l *logger) Writer() io.Writer {
+	return l.writer
 }

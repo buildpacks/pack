@@ -10,9 +10,9 @@ import (
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	imagewriter "github.com/buildpacks/pack/internal/inspectimage/writer"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/internal/term"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // ConfigurableLogger defines behavior required by the PackCommand
@@ -46,7 +46,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 					color.Disable(flag)
 				}
 
-				_, canDisplayColor := ilogging.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
+				_, canDisplayColor := term.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
 				if !canDisplayColor {
 					color.Disable(true)
 				}

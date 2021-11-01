@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // Deprecated: Use config registries list instead

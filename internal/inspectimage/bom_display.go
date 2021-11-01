@@ -3,8 +3,8 @@ package inspectimage
 import (
 	"github.com/buildpacks/lifecycle/buildpack"
 
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 type BOMDisplay struct {

@@ -10,7 +10,7 @@ import (
 
 	bldr "github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // Deprecated: Use `builder suggest` instead.

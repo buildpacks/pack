@@ -9,8 +9,8 @@ import (
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 type InspectOutput struct {

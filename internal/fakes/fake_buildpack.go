@@ -8,8 +8,9 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 type fakeBuildpack struct {
@@ -52,7 +53,7 @@ func WithOpenError(err error) FakeBuildpackOption {
 //  	build-contents
 // 	\_ /cnbs/buildpacks/{ID}/{version}/bin/detect
 //  	detect-contents
-func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options ...FakeBuildpackOption) (dist.Buildpack, error) {
+func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options ...FakeBuildpackOption) (buildpack.Buildpack, error) {
 	return &fakeBuildpack{
 		descriptor: descriptor,
 		chmod:      chmod,

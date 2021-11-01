@@ -18,9 +18,9 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
 
-	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 const DefaultRegistryURL = "https://github.com/buildpacks/registry-index"

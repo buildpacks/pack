@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/buildpacks/pack/internal/buildpackage"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/registry"
+	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 )
 
@@ -31,7 +31,7 @@ func (c *Client) RegisterBuildpack(ctx context.Context, opts RegisterBuildpackOp
 	}
 
 	var buildpackInfo dist.BuildpackInfo
-	if _, err := dist.GetLabel(appImage, buildpackage.MetadataLabel, &buildpackInfo); err != nil {
+	if _, err := dist.GetLabel(appImage, buildpack.MetadataLabel, &buildpackInfo); err != nil {
 		return err
 	}
 

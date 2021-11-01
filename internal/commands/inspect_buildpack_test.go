@@ -13,16 +13,14 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/buildpack"
-	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -53,14 +51,14 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
 		cfg = config.Config{
 			DefaultRegistry: "default-registry",
 		}
 
 		complexInfo = &client.BuildpackInfo{
-			BuildpackMetadata: buildpackage.Metadata{
+			BuildpackMetadata: buildpack.Metadata{
 				BuildpackInfo: dist.BuildpackInfo{
 					ID:       "some/top-buildpack",
 					Version:  "0.0.1",
@@ -215,7 +213,7 @@ func testInspectBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		}
 
 		simpleInfo = &client.BuildpackInfo{
-			BuildpackMetadata: buildpackage.Metadata{
+			BuildpackMetadata: buildpack.Metadata{
 				BuildpackInfo: dist.BuildpackInfo{
 					ID:       "some/single-buildpack",
 					Version:  "0.0.1",

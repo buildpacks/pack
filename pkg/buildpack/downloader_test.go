@@ -19,15 +19,14 @@ import (
 	"github.com/sclevine/spec/report"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
-	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/paths"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -90,7 +89,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 	}
 
 	it.Before(func() {
-		logger = ilogging.NewLogWithWriters(&out, &out, ilogging.WithVerbose())
+		logger = logging.NewLogWithWriters(&out, &out, logging.WithVerbose())
 		mockController = gomock.NewController(t)
 		mockDownloader = testmocks.NewMockBlobDownloader(mockController)
 		mockRegistryResolver = testmocks.NewMockRegistryResolver(mockController)

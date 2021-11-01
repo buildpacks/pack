@@ -6,8 +6,8 @@ import (
 	"github.com/buildpacks/lifecycle/platform"
 
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 type GeneralInfo struct {

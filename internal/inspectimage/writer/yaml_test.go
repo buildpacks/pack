@@ -14,8 +14,8 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -245,7 +245,7 @@ remote_info:
 				}
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil)
 				assert.Nil(err)
 
@@ -277,7 +277,7 @@ remote_info:
 				}
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil)
 				assert.Nil(err)
 
@@ -311,7 +311,7 @@ remote_info:
 				}
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
 				assert.Nil(err)
 

@@ -34,16 +34,15 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/buildpackage"
 	cfg "github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	rg "github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/blob"
 	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -74,7 +73,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		fakeMirror2                  *fakes.Image
 		tmpDir                       string
 		outBuf                       bytes.Buffer
-		logger                       *ilogging.LogWithWriters
+		logger                       *logging.LogWithWriters
 		fakeLifecycleImage           *fakes.Image
 	)
 	it.Before(func() {
@@ -120,7 +119,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 		docker, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithVersion("1.38"))
 		h.AssertNil(t, err)
 
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
 		dlCacheDir, err := ioutil.TempDir(tmpDir, "dl-cache")
 		h.AssertNil(t, err)
@@ -1043,7 +1042,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 						},
 					}
 
-					md := buildpackage.Metadata{
+					md := buildpack.Metadata{
 						BuildpackInfo: dist.BuildpackInfo{
 							ID:      "meta.buildpack.id",
 							Version: "meta.buildpack.version",
@@ -1474,7 +1473,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 							},
 						}
 
-						md := buildpackage.Metadata{
+						md := buildpack.Metadata{
 							BuildpackInfo: dist.BuildpackInfo{
 								ID:      "example/foo",
 								Version: "1.0.0",

@@ -11,8 +11,8 @@ import (
 
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -117,7 +117,7 @@ remote:
 			it("prints both local and remote image info in a YAML format", func() {
 				yamlBOMWriter := writer.NewYAMLBOM()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, remoteInfo, nil, nil)
 				assert.Nil(err)
 
@@ -130,7 +130,7 @@ remote:
 			it("prints local image info in YAML format", func() {
 				yamlBOMWriter := writer.NewYAMLBOM()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, nil, nil, nil)
 				assert.Nil(err)
 
@@ -145,7 +145,7 @@ remote:
 			it("prints remote image info in YAML format", func() {
 				yamlBOMWriter := writer.NewYAMLBOM()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, nil, remoteInfo, nil, nil)
 				assert.Nil(err)
 

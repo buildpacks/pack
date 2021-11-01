@@ -16,7 +16,6 @@ import (
 
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
 )
 
 const (
@@ -24,19 +23,29 @@ const (
 	cacheVersion   = "2"
 )
 
-type Downloader struct {
-	logger       logging.Logger
+type Logger interface {
+	Debugf(fmt string, v ...interface{})
+	Infof(fmt string, v ...interface{})
+	Writer() io.Writer
+}
+
+type Downloader interface {
+	Download(ctx context.Context, pathOrURI string) (Blob, error)
+}
+
+type downloader struct {
+	logger       Logger
 	baseCacheDir string
 }
 
-func NewDownloader(logger logging.Logger, baseCacheDir string) *Downloader { //nolint:golint,gosimple
-	return &Downloader{
+func NewDownloader(logger Logger, baseCacheDir string) Downloader {
+	return &downloader{
 		logger:       logger,
 		baseCacheDir: baseCacheDir,
 	}
 }
 
-func (d *Downloader) Download(ctx context.Context, pathOrURI string) (Blob, error) {
+func (d *downloader) Download(ctx context.Context, pathOrURI string) (Blob, error) {
 	if paths.IsURI(pathOrURI) {
 		parsedURL, err := url.Parse(pathOrURI)
 		if err != nil {
@@ -64,7 +73,7 @@ func (d *Downloader) Download(ctx context.Context, pathOrURI string) (Blob, erro
 	return &blob{path: path}, nil
 }
 
-func (d *Downloader) handleFile(path string) string {
+func (d *downloader) handleFile(path string) string {
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return ""
@@ -73,7 +82,7 @@ func (d *Downloader) handleFile(path string) string {
 	return path
 }
 
-func (d *Downloader) handleHTTP(ctx context.Context, uri string) (string, error) {
+func (d *downloader) handleHTTP(ctx context.Context, uri string) (string, error) {
 	cacheDir := d.versionedCacheDir()
 
 	if err := os.MkdirAll(cacheDir, 0750); err != nil {
@@ -123,7 +132,7 @@ func (d *Downloader) handleHTTP(ctx context.Context, uri string) (string, error)
 	return cachePath, nil
 }
 
-func (d *Downloader) downloadAsStream(ctx context.Context, uri string, etag string) (io.ReadCloser, string, error) {
+func (d *downloader) downloadAsStream(ctx context.Context, uri string, etag string) (io.ReadCloser, string, error) {
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		return nil, "", err
@@ -141,7 +150,7 @@ func (d *Downloader) downloadAsStream(ctx context.Context, uri string, etag stri
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		d.logger.Infof("Downloading from %s", style.Symbol(uri))
-		return withProgress(logging.GetWriterForLevel(d.logger, logging.InfoLevel), resp.Body, resp.ContentLength), resp.Header.Get("Etag"), nil
+		return withProgress(d.logger.Writer(), resp.Body, resp.ContentLength), resp.Header.Get("Etag"), nil
 	}
 
 	if resp.StatusCode == 304 {
@@ -171,7 +180,7 @@ type progressReader struct {
 	io.Closer
 }
 
-func (d *Downloader) versionedCacheDir() string {
+func (d *downloader) versionedCacheDir() string {
 	return filepath.Join(d.baseCacheDir, cacheDirPrefix+cacheVersion)
 }
 

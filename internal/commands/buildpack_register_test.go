@@ -14,8 +14,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -34,7 +33,7 @@ func testRegisterCommand(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		cfg = config.Config{}

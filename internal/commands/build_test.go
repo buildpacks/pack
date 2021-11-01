@@ -20,9 +20,9 @@ import (
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 	projectTypes "github.com/buildpacks/pack/pkg/project/types"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -37,7 +37,7 @@ func TestBuildCommand(t *testing.T) {
 func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
 		command        *cobra.Command
-		logger         *ilogging.LogWithWriters
+		logger         *logging.LogWithWriters
 		outBuf         bytes.Buffer
 		mockController *gomock.Controller
 		mockClient     *testmocks.MockPackClient
@@ -45,7 +45,7 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		cfg = config.Config{}
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)

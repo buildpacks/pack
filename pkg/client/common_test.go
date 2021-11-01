@@ -9,8 +9,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/builder"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -36,7 +35,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 		)
 
 		it.Before(func() {
-			logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+			logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
 			var err error
 			subject, err = NewClient(WithLogger(logger))
@@ -73,7 +72,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 
 			it("prefers config defined run image mirror to stack defined run image mirror", func() {
 				configMirrors := map[string][]string{
-					runImageName: []string{defaultRegistry + "/unique-run-img"},
+					runImageName: {defaultRegistry + "/unique-run-img"},
 				}
 				runImageName := subject.resolveRunImage("", defaultRegistry, "", stackInfo, configMirrors, true)
 				assert.NotEqual(runImageName, defaultMirror)
@@ -82,7 +81,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 
 			it("returns a config mirror if no match to target registry", func() {
 				configMirrors := map[string][]string{
-					runImageName: []string{defaultRegistry + "/unique-run-img"},
+					runImageName: {defaultRegistry + "/unique-run-img"},
 				}
 				runImageName := subject.resolveRunImage("", "test.registry.io", "", stackInfo, configMirrors, true)
 				assert.NotEqual(runImageName, defaultMirror)
@@ -100,7 +99,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 
 			it("prefers config defined run image mirror to stack defined run image mirror", func() {
 				configMirrors := map[string][]string{
-					runImageName: []string{defaultRegistry + "/unique-run-img"},
+					runImageName: {defaultRegistry + "/unique-run-img"},
 				}
 				runImageName := subject.resolveRunImage("", gcrRegistry, defaultRegistry, stackInfo, configMirrors, false)
 				assert.NotEqual(runImageName, defaultMirror)
@@ -109,7 +108,7 @@ func testCommon(t *testing.T, when spec.G, it spec.S) {
 
 			it("returns a config mirror if no match to target registry", func() {
 				configMirrors := map[string][]string{
-					runImageName: []string{defaultRegistry + "/unique-run-img"},
+					runImageName: {defaultRegistry + "/unique-run-img"},
 				}
 				runImageName := subject.resolveRunImage("", defaultRegistry, "test.registry.io", stackInfo, configMirrors, false)
 				assert.NotEqual(runImageName, defaultMirror)

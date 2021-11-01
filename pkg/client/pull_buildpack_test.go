@@ -15,10 +15,10 @@ import (
 	"github.com/sclevine/spec/report"
 
 	cfg "github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )

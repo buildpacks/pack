@@ -15,9 +15,8 @@ import (
 
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -39,7 +38,7 @@ func testConfigExperimental(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")

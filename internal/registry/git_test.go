@@ -11,9 +11,8 @@ import (
 	"github.com/sclevine/spec/report"
 	"gopkg.in/src-d/go-git.v4"
 
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/registry"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -33,7 +32,7 @@ func testGit(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
 		tmpDir, err = ioutil.TempDir("", "registry")
 		h.AssertNil(t, err)

@@ -11,13 +11,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/buildpack"
-	"github.com/buildpacks/pack/internal/buildpackage"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
 	strs "github.com/buildpacks/pack/internal/strings"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 const inspectBuildpackTemplate = `
@@ -132,7 +131,7 @@ func inspectBuildpackOutput(info *client.BuildpackInfo, prefix string, flags Bui
 
 	err = tpl.Execute(buf, &struct {
 		Location   string
-		Metadata   buildpackage.Metadata
+		Metadata   buildpack.Metadata
 		ListMixins bool
 		Buildpacks string
 		Order      string

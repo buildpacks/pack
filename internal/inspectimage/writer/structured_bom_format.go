@@ -8,7 +8,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/inspectimage"
 
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 type StructuredBOMFormat struct {

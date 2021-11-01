@@ -12,8 +12,8 @@ import (
 
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_pack_client.go github.com/buildpacks/pack/internal/commands PackClient

@@ -10,9 +10,9 @@ import (
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // BuildpackPackageFlags define flags provided to the BuildpackPackage command

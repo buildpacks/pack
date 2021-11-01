@@ -14,8 +14,8 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -291,7 +291,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				}
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil)
 				assert.Nil(err)
 
@@ -323,7 +323,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				}
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil)
 				assert.Nil(err)
 
@@ -357,7 +357,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				}
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
 				assert.Nil(err)
 

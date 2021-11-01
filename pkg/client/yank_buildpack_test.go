@@ -10,7 +10,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	ifakes "github.com/buildpacks/pack/internal/fakes"
-	"github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

@@ -18,9 +18,9 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -232,7 +232,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 		it("prints both local remote builders as valid YAML", func() {
 			yamlWriter := writer.NewYAML()
 
-			logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+			logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 			err := yamlWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 			assert.Nil(err)
 
@@ -246,7 +246,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 			it("returns an error", func() {
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlWriter.Print(logger, localRunImages, nil, nil, nil, nil, sharedBuilderInfo)
 				assert.ErrorWithMessage(err, "unable to find builder 'test-builder' locally or remotely")
 			})
@@ -256,7 +256,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 			it("shows null for local builder, and normal output for remote", func() {
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlWriter.Print(logger, localRunImages, nil, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -272,7 +272,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 			it("shows null for remote builder, and normal output for local", func() {
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlWriter.Print(logger, localRunImages, localInfo, nil, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -290,7 +290,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlWriter.Print(logger, localRunImages, localInfo, remoteInfo, expectedErr, nil, sharedBuilderInfo)
 				assert.ErrorWithMessage(err, "preparing output for 'test-builder': failed to retrieve local info")
 
@@ -304,7 +304,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, expectedErr, sharedBuilderInfo)
 				assert.ErrorWithMessage(err, "preparing output for 'test-builder': failed to retrieve remote info")
 
@@ -316,7 +316,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 			it("displays mixins associated with the stack", func() {
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 				err := yamlWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -337,7 +337,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 				err := yamlWriter.Print(logger, emptyLocalRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -355,7 +355,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 				err := yamlWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -373,7 +373,7 @@ func testYAML(t *testing.T, when spec.G, it spec.S) {
 
 				yamlWriter := writer.NewYAML()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 				err := yamlWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 

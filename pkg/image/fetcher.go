@@ -17,10 +17,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/pkg/errors"
 
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	pname "github.com/buildpacks/pack/internal/name"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/internal/term"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // FetcherOption is a type of function that mutate settings on the client.
@@ -133,7 +133,7 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string, platform string
 	}
 
 	writer := logging.GetWriterForLevel(f.logger, logging.InfoLevel)
-	termFd, isTerm := ilogging.IsTerminal(writer)
+	termFd, isTerm := term.IsTerminal(writer)
 
 	err = jsonmessage.DisplayJSONMessagesStream(rc, &colorizedWriter{writer}, termFd, isTerm, nil)
 	if err != nil {

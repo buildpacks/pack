@@ -9,8 +9,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 // Config is a builder configuration file

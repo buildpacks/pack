@@ -11,8 +11,8 @@ import (
 
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
-	ilogging "github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -131,7 +131,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 			it("prints both local and remote image info in a JSON format", func() {
 				jsonBOMWriter := writer.NewJSONBOM()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, remoteInfo, nil, nil)
 				assert.Nil(err)
 
@@ -144,7 +144,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 			it("prints local image info in JSON format", func() {
 				jsonBOMWriter := writer.NewJSONBOM()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, nil, nil, nil)
 				assert.Nil(err)
 
@@ -159,7 +159,7 @@ func testJSONBOM(t *testing.T, when spec.G, it spec.S) {
 			it("prints remote image info in JSON format", func() {
 				jsonBOMWriter := writer.NewJSONBOM()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonBOMWriter.Print(logger, inspectimage.GeneralInfo{}, nil, remoteInfo, nil, nil)
 				assert.Nil(err)
 

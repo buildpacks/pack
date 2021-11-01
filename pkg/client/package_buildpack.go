@@ -6,8 +6,6 @@ import (
 	"github.com/pkg/errors"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
-	"github.com/buildpacks/pack/internal/buildpackage"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
@@ -74,7 +72,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return errors.Wrap(err, "creating layer writer factory")
 	}
 
-	packageBuilder := buildpackage.NewBuilder(c.imageFactory)
+	packageBuilder := buildpack.NewBuilder(c.imageFactory)
 
 	bpURI := opts.Config.Buildpack.URI
 	if bpURI == "" {
@@ -86,7 +84,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		return err
 	}
 
-	bp, err := dist.BuildpackFromRootBlob(mainBlob, writerFactory)
+	bp, err := buildpack.BuildpackFromRootBlob(mainBlob, writerFactory)
 	if err != nil {
 		return errors.Wrapf(err, "creating buildpack from %s", style.Symbol(bpURI))
 	}
@@ -94,7 +92,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	packageBuilder.SetBuildpack(bp)
 
 	for _, dep := range opts.Config.Dependencies {
-		var depBPs []dist.Buildpack
+		var depBPs []buildpack.Buildpack
 		mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
 			RegistryName:    opts.Registry,
 			RelativeBaseDir: opts.RelativeBaseDir,
@@ -108,7 +106,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 			return errors.Wrapf(err, "packaging dependencies (uri=%s,image=%s)", style.Symbol(dep.URI), style.Symbol(dep.ImageName))
 		}
 
-		depBPs = append([]dist.Buildpack{mainBP}, deps...)
+		depBPs = append([]buildpack.Buildpack{mainBP}, deps...)
 		for _, depBP := range depBPs {
 			packageBuilder.AddDependency(depBP)
 		}

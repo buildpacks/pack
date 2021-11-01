@@ -13,9 +13,8 @@ import (
 	bldr "github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -36,7 +35,7 @@ func testSuggestCommand(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 	})
 
 	when("#WriteSuggestedBuilder", func() {

@@ -18,8 +18,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -299,7 +298,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 		when("verbose", func() {
 			it("prints debug information about the phase", func() {
 				var outBuf bytes.Buffer
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 
 				docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 				h.AssertNil(t, err)

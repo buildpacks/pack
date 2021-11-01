@@ -10,7 +10,7 @@ import (
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/registry"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 func (c *Client) parseTagReference(imageName string) (name.Reference, error) {

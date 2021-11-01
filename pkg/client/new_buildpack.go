@@ -10,8 +10,8 @@ import (
 
 	"github.com/buildpacks/lifecycle/api"
 
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 var (

@@ -10,7 +10,6 @@ import (
 
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/buildpack"
@@ -234,7 +233,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 			}
 		}
 
-		for _, bp := range append([]dist.Buildpack{mainBP}, depBPs...) {
+		for _, bp := range append([]buildpack.Buildpack{mainBP}, depBPs...) {
 			bldr.AddBuildpack(bp)
 		}
 	}
@@ -242,7 +241,7 @@ func (c *Client) addBuildpacksToBuilder(ctx context.Context, opts CreateBuilderO
 	return nil
 }
 
-func validateBuildpack(bp dist.Buildpack, source, expectedID, expectedBPVersion string) error {
+func validateBuildpack(bp buildpack.Buildpack, source, expectedID, expectedBPVersion string) error {
 	if expectedID != "" && bp.Descriptor().Info.ID != expectedID {
 		return fmt.Errorf(
 			"buildpack from URI %s has ID %s which does not match ID %s from builder config",

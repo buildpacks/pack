@@ -19,15 +19,15 @@ import (
 	"github.com/sclevine/spec/report"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
-	"github.com/buildpacks/pack/internal/buildpackage"
 	cfg "github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
-	"github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/internal/paths"
 	"github.com/buildpacks/pack/pkg/blob"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -799,7 +799,7 @@ func testPackageBuildpack(t *testing.T, when spec.G, it spec.S) {
 
 func assertPackageBPFileHasBuildpacks(t *testing.T, path string, descriptors []dist.BuildpackDescriptor) {
 	packageBlob := blob.NewBlob(path)
-	mainBP, depBPs, err := buildpackage.BuildpacksFromOCILayoutBlob(packageBlob)
+	mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(packageBlob)
 	h.AssertNil(t, err)
-	h.AssertBuildpacksHaveDescriptors(t, append([]dist.Buildpack{mainBP}, depBPs...), descriptors)
+	h.AssertBuildpacksHaveDescriptors(t, append([]buildpack.Buildpack{mainBP}, depBPs...), descriptors)
 }

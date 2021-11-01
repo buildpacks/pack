@@ -10,7 +10,7 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -48,7 +48,7 @@ func testClient(t *testing.T, when spec.G, it spec.S) {
 	when("#WithLogger", func() {
 		it("uses logger provided", func() {
 			var w bytes.Buffer
-			logger := logging.New(&w)
+			logger := logging.NewSimpleLogger(&w)
 			cl, err := NewClient(WithLogger(logger))
 			h.AssertNil(t, err)
 			h.AssertSameInstance(t, cl.logger, logger)

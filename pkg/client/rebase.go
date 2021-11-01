@@ -9,8 +9,8 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
 )
 

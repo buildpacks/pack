@@ -20,15 +20,14 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack/internal/buildpack"
-	"github.com/buildpacks/pack/internal/buildpackage"
 	cfg "github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
-	"github.com/buildpacks/pack/internal/logging"
 	"github.com/buildpacks/pack/pkg/archive"
 	"github.com/buildpacks/pack/pkg/blob"
+	"github.com/buildpacks/pack/pkg/buildpack"
 	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/pkg/testmocks"
 	h "github.com/buildpacks/pack/testhelpers"
 )
@@ -178,7 +177,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 		client.WithDownloader(mockDownloader)(subject)
 
 		buildpackImage = fakes.NewImage("some/buildpack", "", nil)
-		h.AssertNil(t, buildpackImage.SetLabel(buildpackage.MetadataLabel, buildpackageMetadataTag))
+		h.AssertNil(t, buildpackImage.SetLabel(buildpack.MetadataLabel, buildpackageMetadataTag))
 		h.AssertNil(t, buildpackImage.SetLabel(dist.BuildpackLayersLabel, buildpackLayersTag))
 
 		var err error
@@ -191,7 +190,7 @@ func testInspectBuildpack(t *testing.T, when spec.G, it spec.S) {
 		buildpackPath = filepath.Join(tmpDir, "buildpackTarFile.tar")
 
 		expectedInfo = &client.BuildpackInfo{
-			BuildpackMetadata: buildpackage.Metadata{
+			BuildpackMetadata: buildpack.Metadata{
 				BuildpackInfo: dist.BuildpackInfo{
 					ID:       "some/top-buildpack",
 					Version:  "0.0.1",
@@ -627,7 +626,7 @@ func writeBuildpackArchive(buildpackPath, tmpDir string, assert h.AssertionManag
 	assert.Nil(err)
 
 	c.Config.Labels = map[string]string{}
-	c.Config.Labels[buildpackage.MetadataLabel] = buildpackageMetadataTag
+	c.Config.Labels[buildpack.MetadataLabel] = buildpackageMetadataTag
 	c.Config.Labels[dist.BuildpackLayersLabel] = buildpackLayersTag
 	img, err = mutate.Config(img, c.Config)
 	assert.Nil(err)

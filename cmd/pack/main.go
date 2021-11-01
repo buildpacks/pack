@@ -9,12 +9,12 @@ import (
 	"github.com/buildpacks/pack/pkg/client"
 
 	"github.com/buildpacks/pack/internal/commands"
-	clilogger "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 func main() {
 	// create logger with defaults
-	logger := clilogger.NewLogWithWriters(color.Stdout(), color.Stderr())
+	logger := logging.NewLogWithWriters(color.Stdout(), color.Stderr())
 
 	rootCmd, err := cmd.NewPackCommand(logger)
 	if err != nil {
