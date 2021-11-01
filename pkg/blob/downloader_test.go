@@ -38,7 +38,7 @@ func testDownloader(t *testing.T, when spec.G, it spec.S) {
 		it.Before(func() {
 			cacheDir, err = ioutil.TempDir("", "cache")
 			h.AssertNil(t, err)
-			subject = blob.NewDownloader(&logger{io.Discard}, cacheDir)
+			subject = blob.NewDownloader(&logger{ioutil.Discard}, cacheDir)
 		})
 
 		it.After(func() {
