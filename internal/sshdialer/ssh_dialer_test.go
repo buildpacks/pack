@@ -395,12 +395,8 @@ func TestCreateDialer(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if (u.Port() == "" || u.Port() == "22") && runtime.GOOS != "linux" {
-				t.Skip("skipping test against standard portIPv4 (22) on non-linux platform")
-			}
-
 			if net.ParseIP(u.Hostname()).To4() == nil && connConfig.hostIPv6 == "" {
-				t.Skip("skipping hostIPv6 test since test environment doesn't support hostIPv6 connection")
+				t.Skip("skipping ipv6 test since test environment doesn't support ipv6 connection")
 			}
 
 			if tt.skipOnWin && runtime.GOOS == "windows" {
@@ -468,13 +464,6 @@ type ConnectionConfig struct {
 func prepareSSHServer(t *testing.T) (connConfig *ConnectionConfig, cleanUp func(), err error) {
 	th.RequireDocker(t)
 
-	connConfig = &ConnectionConfig{
-		hostIPv4: "127.0.0.1",
-		hostIPv6: "::1",
-		portIPv4: 0,
-		portIPv6: 0,
-	}
-
 	var cleanUps []func()
 	cleanUp = func() {
 		for i := range cleanUps {
@@ -506,10 +495,26 @@ func prepareSSHServer(t *testing.T) (connConfig *ConnectionConfig, cleanUp func(
 		Image: imageName,
 	}
 
+	connConfig = &ConnectionConfig{
+		hostIPv4: "127.0.0.1",
+		hostIPv6: "",
+		portIPv4: 0,
+		portIPv6: 0,
+	}
+
+	portBindings := []nat.PortBinding{
+		{HostIP: connConfig.hostIPv4},
+	}
+
+	// lcow doesn't support ipv6 port bindings
+	// see https://github.com/docker/for-win/issues/8211
+	if !(runtime.GOOS == "windows" && info.OSType == "linux") {
+		connConfig.hostIPv6 = "::1"
+		portBindings = append(portBindings, nat.PortBinding{HostIP: connConfig.hostIPv6})
+	}
+
 	hostConfig := &container.HostConfig{
-		PortBindings: map[nat.Port][]nat.PortBinding{
-			sshPort: {nat.PortBinding{HostIP: connConfig.hostIPv4}, nat.PortBinding{HostIP: connConfig.hostIPv6}},
-		},
+		PortBindings: map[nat.Port][]nat.PortBinding{sshPort: portBindings},
 	}
 
 	// just in case the container has not been cleaned up
@@ -559,10 +564,12 @@ func prepareSSHServer(t *testing.T) (connConfig *ConnectionConfig, cleanUp func(
 		return
 	}
 
-	connConfig.portIPv6, found = portForHost(sshPortBinds, connConfig.hostIPv6)
-	if !found {
-		err = errors.Errorf("SSH port for %s not found", connConfig.hostIPv6)
-		return
+	if connConfig.hostIPv6 != "" {
+		connConfig.portIPv6, found = portForHost(sshPortBinds, connConfig.hostIPv6)
+		if !found {
+			err = errors.Errorf("SSH port for %s not found", connConfig.hostIPv6)
+			return
+		}
 	}
 
 	// wait for ssh container to start serving ssh
