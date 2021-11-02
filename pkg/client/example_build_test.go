@@ -1,11 +1,10 @@
-//+build !windows
+//+build !windows, example
 
 package client_test
 
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/buildpacks/pack/pkg/client"
@@ -14,11 +13,6 @@ import (
 // This example shows the basic usage of the package: Create a client,
 // call a configuration object, call the client's Build function.
 func Example_build() {
-	// extra: skip when docker is not available
-	if os.Getenv("NO_DOCKER") == "true" {
-		return
-	}
-
 	// create a context object
 	context := context.Background()
 

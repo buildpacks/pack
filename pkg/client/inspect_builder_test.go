@@ -1,3 +1,5 @@
+//+build !windows, example
+
 package client
 
 import (

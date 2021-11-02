@@ -1,4 +1,4 @@
-//+build !windows
+//+build !windows, example
 
 package client_test
 
@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/buildpacks/imgutil"
@@ -17,11 +16,6 @@ import (
 
 // This example shows how to replace the image fetcher component
 func Example_fetcher() {
-	// extra: skip when docker is not available
-	if os.Getenv("NO_DOCKER") == "true" {
-		return
-	}
-
 	// create a context object
 	context := context.Background()
 

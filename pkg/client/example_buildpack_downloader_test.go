@@ -1,4 +1,4 @@
-//+build !windows
+//+build !windows, example
 
 package client_test
 
@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/buildpacks/pack/pkg/buildpack"
@@ -15,11 +14,6 @@ import (
 
 // This example shows how to replace the buildpack downloader component
 func Example_buildpack_downloader() {
-	// extra: skip when docker is not available
-	if os.Getenv("NO_DOCKER") == "true" {
-		return
-	}
-
 	// create a context object
 	context := context.Background()
 

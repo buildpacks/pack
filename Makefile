@@ -31,6 +31,7 @@ PACK_GITSHA1=$(shell git rev-parse --short=7 HEAD)
 PACK_VERSION?=0.0.0
 TEST_TIMEOUT?=1200s
 UNIT_TIMEOUT?=$(TEST_TIMEOUT)
+NO_DOCKER?=
 
 clean_build := $(strip ${PACK_BUILD})
 clean_sha := $(strip ${PACK_GITSHA1})
@@ -98,6 +99,9 @@ test: unit acceptance
 # append coverage arguments
 ifeq ($(TEST_COVERAGE), 1)
 unit: GOTESTFLAGS:=$(GOTESTFLAGS) -coverprofile=./out/tests/coverage-unit.txt -covermode=atomic
+endif
+ifeq ($(NO_DOCKER),)
+unit: GOTESTFLAGS:=$(GOTESTFLAGS) --tags=example
 endif
 unit: out
 	@echo "> Running unit/integration tests..."
