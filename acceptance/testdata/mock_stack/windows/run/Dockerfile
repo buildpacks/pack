@@ -1,4 +1,4 @@
-FROM golang:1.14-nanoserver-1809 AS gobuild
+FROM golang:1.17-nanoserver-1809 AS gobuild
 
 # bake in a simple server util
 WORKDIR /util

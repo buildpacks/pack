@@ -1,3 +1,4 @@
+//go:build acceptance
 // +build acceptance
 
 package acceptance
@@ -655,7 +656,7 @@ func testAcceptance(
 			runImageMirror  string
 			stackBaseImages = map[string][]string{
 				"linux":   {"ubuntu:bionic"},
-				"windows": {"mcr.microsoft.com/windows/nanoserver:1809", "golang:1.14-nanoserver-1809"},
+				"windows": {"mcr.microsoft.com/windows/nanoserver:1809", "golang:1.17-nanoserver-1809"},
 			}
 		)
 

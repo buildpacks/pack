@@ -1,4 +1,5 @@
-//+build !windows, example
+//go:build (!windows && ignore) || example
+// +build !windows,ignore example
 
 package client_test
 
