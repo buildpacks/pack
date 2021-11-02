@@ -96,7 +96,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 		mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
 			RegistryName:    opts.Registry,
 			RelativeBaseDir: opts.RelativeBaseDir,
-			ImageOS:         "linux",
+			ImageOS:         opts.Config.Platform.OS,
 			ImageName:       dep.ImageName,
 			Daemon:          !opts.Publish,
 			PullPolicy:      opts.PullPolicy,
