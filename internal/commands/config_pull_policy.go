@@ -6,11 +6,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	pubcfg "github.com/buildpacks/pack/config"
-
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) *cobra.Command {
@@ -37,7 +36,7 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 					return errors.Wrapf(err, "writing config to %s", cfgPath)
 				}
 
-				pullPolicy, err := pubcfg.ParsePullPolicy(cfg.PullPolicy)
+				pullPolicy, err := image.ParsePullPolicy(cfg.PullPolicy)
 				if err != nil {
 					return err
 				}
@@ -45,7 +44,7 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 				logger.Infof("Successfully unset pull policy %s", style.Symbol(oldPullPolicy))
 				logger.Infof("Pull policy has been set to %s", style.Symbol(pullPolicy.String()))
 			case len(args) == 0: // list
-				pullPolicy, err := pubcfg.ParsePullPolicy(cfg.PullPolicy)
+				pullPolicy, err := image.ParsePullPolicy(cfg.PullPolicy)
 				if err != nil {
 					return err
 				}
@@ -59,7 +58,7 @@ func ConfigPullPolicy(logger logging.Logger, cfg config.Config, cfgPath string) 
 					return nil
 				}
 
-				pullPolicy, err := pubcfg.ParsePullPolicy(newPullPolicy)
+				pullPolicy, err := image.ParsePullPolicy(newPullPolicy)
 				if err != nil {
 					return err
 				}

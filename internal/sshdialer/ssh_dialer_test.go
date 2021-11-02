@@ -2,7 +2,6 @@ package sshdialer_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -12,172 +11,31 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"text/template"
 	"time"
 
-	"github.com/buildpacks/pack/internal/sshdialer"
-	th "github.com/buildpacks/pack/testhelpers"
-
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/homedir"
 	"github.com/docker/go-connections/nat"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+
+	"github.com/buildpacks/pack/internal/sshdialer"
+	th "github.com/buildpacks/pack/testhelpers"
 )
 
 const (
 	imageName     = "buildpacks/sshdialer-test-img"
 	containerName = "sshdialer-test-ctr"
+	sshPort       = "22/tcp"
 )
-
-var containerIP4 = ""
-var containerIP6 = ""
-
-// We need to set up the test container running sshd against which we will run tests.
-// This will return IPv4 and IPv6 of the container,
-// cleanUp procedure to remove the test container and possibly error.
-func prepareSSHServer(t *testing.T) (cleanUp func(), err error) {
-	t.Helper()
-
-	th.RequireDocker(t)
-
-	containerIP4 = "127.0.0.1"
-	containerIP6 = "::1"
-
-	var cleanUps []func()
-	cleanUp = func() {
-		for i := range cleanUps {
-			cleanUps[i]()
-		}
-	}
-
-	ctx := context.Background()
-
-	cli, err := client.NewClientWithOpts(
-		client.FromEnv,
-		client.WithAPIVersionNegotiation(),
-	)
-	if err != nil {
-		return
-	}
-
-	info, err := cli.Info(ctx)
-	th.SkipIf(t, info.OSType == "windows", "These tests are not yet compatible with Windows-based containers")
-
-	wd, err := os.Getwd()
-	if err != nil {
-		return
-	}
-
-	th.CreateImageFromDir(t, cli, imageName, filepath.Join(wd, "testdata"))
-
-	config := container.Config{
-		Image: imageName,
-	}
-
-	var hostConfig *container.HostConfig
-	if runtime.GOOS != "linux" {
-		hostConfig = &container.HostConfig{
-			PortBindings: map[nat.Port][]nat.PortBinding{
-				"22/tcp":   {nat.PortBinding{HostIP: "localhost", HostPort: "22"}},
-				"2222/tcp": {nat.PortBinding{HostIP: "localhost", HostPort: "2222"}},
-			},
-		}
-	}
-
-	// just in case the container has not been cleaned up
-	_ = cli.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{Force: true})
-
-	ctr, err := cli.ContainerCreate(ctx, &config, hostConfig, nil, nil, containerName)
-	if err != nil {
-		return
-	}
-
-	defer func() {
-		f := func() { cli.ContainerRemove(ctx, ctr.ID, types.ContainerRemoveOptions{Force: true}) }
-		if err != nil {
-			f()
-		} else {
-			cleanUps = append(cleanUps, f)
-		}
-	}()
-
-	ctrStartOpts := types.ContainerStartOptions{}
-	err = cli.ContainerStart(ctx, ctr.ID, ctrStartOpts)
-	if err != nil {
-		return
-	}
-
-	defer func() {
-		f := func() { cli.ContainerKill(ctx, ctr.ID, "SIGKILL") }
-		if err != nil {
-			f()
-		} else {
-			cleanUps = append(cleanUps, f)
-		}
-	}()
-
-	var ctrJSON types.ContainerJSON
-	if runtime.GOOS == "linux" {
-		ctrJSON, err = cli.ContainerInspect(ctx, ctr.ID)
-		if err != nil {
-			return
-		}
-
-		containerIP4 = ctrJSON.NetworkSettings.IPAddress
-		containerIP6 = ctrJSON.NetworkSettings.GlobalIPv6Address
-	}
-
-	// wait for ssh container to start serving ssh
-	timeoutChan := time.After(time.Second * 10)
-	for {
-		select {
-		case <-timeoutChan:
-			err = fmt.Errorf("test container failed to start serving ssh")
-			return
-		case <-time.After(time.Millisecond * 500):
-		}
-
-		conn, err := net.Dial("tcp", net.JoinHostPort(containerIP4, "2222"))
-		if err != nil {
-			continue
-		}
-		conn.Close()
-
-		break
-	}
-
-	return cleanUp, err
-}
-
-// function that prepares testing environment and returns clean up function
-// this should be used in conjunction with defer: `defer fn()()`
-// e.g. sets environment variables or starts mock up services
-// it returns clean up procedure that restores old values of environment variables
-// or shuts down mock up services
-type setUpEnvFn func(t *testing.T) func()
-
-// combines multiple setUp routines into one setUp routine
-func all(fns ...setUpEnvFn) setUpEnvFn {
-	return func(t *testing.T) func() {
-		t.Helper()
-		var cleanUps []func()
-		for _, fn := range fns {
-			cleanUps = append(cleanUps, fn(t))
-		}
-
-		return func() {
-			for i := len(cleanUps) - 1; i >= 0; i-- {
-				cleanUps[i]()
-			}
-		}
-	}
-}
 
 func TestCreateDialer(t *testing.T) {
 	for _, privateKey := range []string{"id_ed25519", "id_rsa", "id_dsa"} {
@@ -188,7 +46,7 @@ func TestCreateDialer(t *testing.T) {
 	defer withoutSSHAgent(t)()
 	defer withCleanHome(t)()
 
-	cleanUp, err := prepareSSHServer(t)
+	connConfig, cleanUp, err := prepareSSHServer(t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,39 +68,49 @@ func TestCreateDialer(t *testing.T) {
 		{
 			name: "read password from input",
 			args: args{
-				connStr: fmt.Sprintf("ssh://testuser@%s:2222/home/testuser/test.sock", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d/home/testuser/test.sock",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{PasswordCallback: func() (string, error) {
 					return "idkfa", nil
 				}},
 			},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts),
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig)),
 		},
 		{
-			name:     "password in url",
-			args:     args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4)},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts),
+			name: "password in url",
+			args: args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+				connConfig.hostIPv4,
+				connConfig.portIPv4,
+			)},
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig)),
 		},
 		{
-			name:     "password in url standard ssh port",
-			args:     args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s/home/testuser/test.sock", containerIP4)},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts),
-		},
-		{
-			name:        "server key is not in known_hosts (the file doesn't exists)",
-			args:        args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4)},
+			name: "server key is not in known_hosts (the file doesn't exists)",
+			args: args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+				connConfig.hostIPv4,
+				connConfig.portIPv4,
+			)},
 			setUpEnv:    all(withoutSSHAgent, withCleanHome),
 			CreateError: sshdialer.ErrKeyUnknownMsg,
 		},
 		{
-			name:        "server key is not in known_hosts (the file exists)",
-			args:        args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4)},
+			name: "server key is not in known_hosts (the file exists)",
+			args: args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+				connConfig.hostIPv4,
+				connConfig.portIPv4,
+			)},
 			setUpEnv:    all(withoutSSHAgent, withCleanHome, withEmptyKnownHosts),
 			CreateError: sshdialer.ErrKeyUnknownMsg,
 		},
 		{
 			name: "server key is not in known_hosts (the filed doesn't exists) - user force trust",
 			args: args{
-				connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{HostKeyCallback: func(hostPort string, pubKey ssh.PublicKey) error {
 					return nil
 				}},
@@ -252,7 +120,10 @@ func TestCreateDialer(t *testing.T) {
 		{
 			name: "server key is not in known_hosts (the file exists) - user force trust",
 			args: args{
-				connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{HostKeyCallback: func(hostPort string, pubKey ssh.PublicKey) error {
 					return nil
 				}},
@@ -260,66 +131,88 @@ func TestCreateDialer(t *testing.T) {
 			setUpEnv: all(withoutSSHAgent, withCleanHome, withEmptyKnownHosts),
 		},
 		{
-			name:        "server key does not match the respective key in known_host",
-			args:        args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4)},
-			setUpEnv:    all(withoutSSHAgent, withCleanHome, withBadKnownHosts),
+			name: "server key does not match the respective key in known_host",
+			args: args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+				connConfig.hostIPv4,
+				connConfig.portIPv4,
+			)},
+			setUpEnv:    all(withoutSSHAgent, withCleanHome, withBadKnownHosts(connConfig)),
 			CreateError: sshdialer.ErrKeyMismatchMsg,
 		},
 		{
 			name: "key from identity parameter",
 			args: args{
-				connStr:          fmt.Sprintf("ssh://testuser@%s:2222/home/testuser/test.sock", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d/home/testuser/test.sock",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{Identity: filepath.Join("testdata", "id_ed25519")},
 			},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts),
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig)),
 		},
 		{
 			name: "key at standard location with need to read passphrase",
 			args: args{
-				connStr: fmt.Sprintf("ssh://testuser@%s:2222/home/testuser/test.sock", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d/home/testuser/test.sock",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{PassPhraseCallback: func() (string, error) {
 					return "idfa", nil
 				}},
 			},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKey(t, "id_rsa"), withKnowHosts),
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKey(t, "id_rsa"), withKnowHosts(connConfig)),
 		},
 		{
 			name: "key at standard location with explicitly set passphrase",
 			args: args{
-				connStr:          fmt.Sprintf("ssh://testuser@%s:2222/home/testuser/test.sock", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d/home/testuser/test.sock",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{PassPhrase: "idfa"},
 			},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKey(t, "id_rsa"), withKnowHosts),
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKey(t, "id_rsa"), withKnowHosts(connConfig)),
 		},
 		{
-			name:     "key at standard location with no passphrase",
-			args:     args{connStr: fmt.Sprintf("ssh://testuser@%s:2222/home/testuser/test.sock", containerIP4)},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKey(t, "id_ed25519"), withKnowHosts),
+			name: "key at standard location with no passphrase",
+			args: args{connStr: fmt.Sprintf("ssh://testuser@%s:%d/home/testuser/test.sock",
+				connConfig.hostIPv4,
+				connConfig.portIPv4,
+			)},
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKey(t, "id_ed25519"), withKnowHosts(connConfig)),
 		},
 		{
-			name:     "key from ssh-agent",
-			args:     args{connStr: fmt.Sprintf("ssh://testuser@%s:2222/home/testuser/test.sock", containerIP4)},
-			setUpEnv: all(withGoodSSHAgent, withCleanHome, withKnowHosts),
+			name: "key from ssh-agent",
+			args: args{connStr: fmt.Sprintf("ssh://testuser@%s:%d/home/testuser/test.sock",
+				connConfig.hostIPv4,
+				connConfig.portIPv4,
+			)},
+			setUpEnv: all(withGoodSSHAgent, withCleanHome, withKnowHosts(connConfig)),
 		},
 		{
-			name:     "password in url with IPv6",
-			args:     args{connStr: fmt.Sprintf("ssh://testuser:idkfa@[%s]:2222/home/testuser/test.sock", containerIP6)},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts),
+			name: "password in url with IPv6",
+			args: args{connStr: fmt.Sprintf("ssh://testuser:idkfa@[%s]:%d/home/testuser/test.sock",
+				connConfig.hostIPv6,
+				connConfig.portIPv6,
+			)},
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig)),
 		},
 		{
-			name:     "password in url with IPv6 standard port",
-			args:     args{connStr: fmt.Sprintf("ssh://testuser:idkfa@[%s]/home/testuser/test.sock", containerIP6)},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts),
-		},
-		{
-			name:        "broken known host",
-			args:        args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4)},
+			name: "broken known host",
+			args: args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+				connConfig.hostIPv4,
+				connConfig.portIPv4,
+			)},
 			setUpEnv:    all(withoutSSHAgent, withCleanHome, withBrokenKnownHosts),
 			CreateError: "missing host pattern",
 		},
 		{
-			name:        "inaccessible known host",
-			args:        args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4)},
+			name: "inaccessible known host",
+			args: args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+				connConfig.hostIPv4,
+				connConfig.portIPv4,
+			)},
 			setUpEnv:    all(withoutSSHAgent, withCleanHome, withInaccessibleKnownHosts),
 			skipOnWin:   true,
 			CreateError: "permission denied",
@@ -327,126 +220,168 @@ func TestCreateDialer(t *testing.T) {
 		{
 			name: "failing pass phrase cbk",
 			args: args{
-				connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{PassPhraseCallback: func() (string, error) {
 					return "", errors.New("test_error_msg")
 				}},
 			},
-			setUpEnv:    all(withoutSSHAgent, withCleanHome, withKey(t, "id_rsa"), withKnowHosts),
+			setUpEnv:    all(withoutSSHAgent, withCleanHome, withKey(t, "id_rsa"), withKnowHosts(connConfig)),
 			CreateError: "test_error_msg",
 		},
 		{
-			name:        "with broken key at default location",
-			args:        args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4)},
-			setUpEnv:    all(withoutSSHAgent, withCleanHome, withKey(t, "id_dsa"), withKnowHosts),
+			name: "with broken key at default location",
+			args: args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+				connConfig.hostIPv4,
+				connConfig.portIPv4,
+			)},
+			setUpEnv:    all(withoutSSHAgent, withCleanHome, withKey(t, "id_dsa"), withKnowHosts(connConfig)),
 			CreateError: "failed to parse private key",
 		},
 		{
 			name: "with broken key explicit",
 			args: args{
-				connStr:          fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{Identity: filepath.Join("testdata", "id_dsa")},
 			},
-			setUpEnv:    all(withoutSSHAgent, withCleanHome, withKnowHosts),
+			setUpEnv:    all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig)),
 			CreateError: "failed to parse private key",
 		},
 		{
-			name:        "with inaccessible key",
-			args:        args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:2222/home/testuser/test.sock", containerIP4)},
-			setUpEnv:    all(withoutSSHAgent, withCleanHome, withInaccessibleKey("id_rsa"), withKnowHosts),
+			name: "with inaccessible key",
+			args: args{connStr: fmt.Sprintf("ssh://testuser:idkfa@%s:%d/home/testuser/test.sock",
+				connConfig.hostIPv4,
+				connConfig.portIPv4,
+			)},
+			setUpEnv:    all(withoutSSHAgent, withCleanHome, withInaccessibleKey("id_rsa"), withKnowHosts(connConfig)),
 			skipOnWin:   true,
 			CreateError: "failed to read key file",
 		},
 		{
 			name: "socket doesn't exist in remote",
 			args: args{
-				connStr: fmt.Sprintf("ssh://testuser@%s:2222/does/not/exist/test.sock", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d/does/not/exist/test.sock",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{PasswordCallback: func() (string, error) {
 					return "idkfa", nil
 				}},
 			},
-			setUpEnv:  all(withoutSSHAgent, withCleanHome, withKnowHosts),
+			setUpEnv:  all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig)),
 			DialError: "failed to dial unix socket in the remote",
 		},
 		{
 			name: "ssh agent non-existent socket",
 			args: args{
-				connStr: fmt.Sprintf("ssh://testuser@%s:2222/does/not/exist/test.sock", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d/does/not/exist/test.sock",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 			},
-			setUpEnv:    all(withBadSSHAgentSocket, withCleanHome, withKnowHosts),
+			setUpEnv:    all(withBadSSHAgentSocket, withCleanHome, withKnowHosts(connConfig)),
 			CreateError: "failed to connect to ssh-agent's socket",
 		},
 		{
 			name: "bad ssh agent",
 			args: args{
-				connStr: fmt.Sprintf("ssh://testuser@%s:2222/does/not/exist/test.sock", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d/does/not/exist/test.sock",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 			},
-			setUpEnv:    all(withBadSSHAgent, withCleanHome, withKnowHosts),
+			setUpEnv:    all(withBadSSHAgent, withCleanHome, withKnowHosts(connConfig)),
 			CreateError: "failed to get signers from ssh-agent",
 		},
 		{
 			name: "use docker host from remote unix",
 			args: args{
-				connStr:          fmt.Sprintf("ssh://testuser@%s:2222", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{Identity: filepath.Join("testdata", "id_ed25519")},
 			},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts,
-				withRemoteDockerHost("unix:///home/testuser/test.sock")),
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig),
+				withRemoteDockerHost("unix:///home/testuser/test.sock", connConfig)),
 		},
 		{
 			name: "use docker host from remote tcp",
 			args: args{
-				connStr:          fmt.Sprintf("ssh://testuser@%s:2222", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{Identity: filepath.Join("testdata", "id_ed25519")},
 			},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts,
-				withRemoteDockerHost("tcp://localhost:1234")),
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig),
+				withRemoteDockerHost("tcp://localhost:1234", connConfig)),
 		},
 		{
 			name: "use docker host from remote fd",
 			args: args{
-				connStr:          fmt.Sprintf("ssh://testuser@%s:2222", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{Identity: filepath.Join("testdata", "id_ed25519")},
 			},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts,
-				withRemoteDockerHost("fd://localhost:1234")),
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig),
+				withRemoteDockerHost("fd://localhost:1234", connConfig)),
 		},
 		{
 			name: "use docker host from remote npipe",
 			args: args{
-				connStr:          fmt.Sprintf("ssh://testuser@%s:2222", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{Identity: filepath.Join("testdata", "id_ed25519")},
 			},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts,
-				withRemoteDockerHost("npipe:////./pipe/docker_engine")),
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig),
+				withRemoteDockerHost("npipe:////./pipe/docker_engine", connConfig)),
 			CreateError: "not supported",
 		},
 		{
 			name: "use emulated windows with default docker host",
 			args: args{
-				connStr:          fmt.Sprintf("ssh://testuser@%s:2222", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{Identity: filepath.Join("testdata", "id_ed25519")},
 			},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts,
-				withEmulatingWindows),
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig),
+				withEmulatingWindows(connConfig)),
 			CreateError: "not supported",
 		},
 		{
 			name: "use emulated windows with tcp docker host",
 			args: args{
-				connStr:          fmt.Sprintf("ssh://testuser@%s:2222", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{Identity: filepath.Join("testdata", "id_ed25519")},
 			},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts, withEmulatingWindows,
-				withRemoteDockerHost("tcp://localhost:1234")),
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig), withEmulatingWindows(connConfig),
+				withRemoteDockerHost("tcp://localhost:1234", connConfig)),
 		},
 		{
 			name: "use docker system dial-stdio",
 			args: args{
-				connStr:          fmt.Sprintf("ssh://testuser@%s:2222", containerIP4),
+				connStr: fmt.Sprintf("ssh://testuser@%s:%d",
+					connConfig.hostIPv4,
+					connConfig.portIPv4,
+				),
 				credentialConfig: sshdialer.Config{Identity: filepath.Join("testdata", "id_ed25519")},
 			},
-			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts, withEmulatedDockerSystemDialStdio, withFixedUpSSHCLI),
+			setUpEnv: all(withoutSSHAgent, withCleanHome, withKnowHosts(connConfig), withEmulatedDockerSystemDialStdio(connConfig), withFixedUpSSHCLI),
 		},
 	}
 
@@ -460,11 +395,7 @@ func TestCreateDialer(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if (u.Port() == "" || u.Port() == "22") && runtime.GOOS != "linux" {
-				t.Skip("skipping test against standard port (22) on non-linux platform")
-			}
-
-			if net.ParseIP(u.Hostname()).To4() == nil && containerIP6 == "" {
+			if net.ParseIP(u.Hostname()).To4() == nil && connConfig.hostIPv6 == "" {
 				t.Skip("skipping ipv6 test since test environment doesn't support ipv6 connection")
 			}
 
@@ -520,6 +451,185 @@ func TestCreateDialer(t *testing.T) {
 	}
 }
 
+type ConnectionConfig struct {
+	hostIPv4 string
+	hostIPv6 string
+	portIPv4 int
+	portIPv6 int
+}
+
+// We need to set up the test container running sshd against which we will run tests.
+// This will return IPv4 and IPv6 of the container,
+// cleanUp procedure to remove the test container and possibly error.
+func prepareSSHServer(t *testing.T) (connConfig *ConnectionConfig, cleanUp func(), err error) {
+	th.RequireDocker(t)
+
+	var cleanUps []func()
+	cleanUp = func() {
+		for i := range cleanUps {
+			cleanUps[i]()
+		}
+	}
+
+	ctx := context.Background()
+
+	cli, err := client.NewClientWithOpts(
+		client.FromEnv,
+		client.WithAPIVersionNegotiation(),
+	)
+	if err != nil {
+		return
+	}
+
+	info, err := cli.Info(ctx)
+	th.SkipIf(t, info.OSType == "windows", "These tests are not yet compatible with Windows-based containers")
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return
+	}
+
+	th.CreateImageFromDir(t, cli, imageName, filepath.Join(wd, "testdata"))
+
+	config := container.Config{
+		Image: imageName,
+	}
+
+	connConfig = &ConnectionConfig{
+		hostIPv4: "127.0.0.1",
+		hostIPv6: "",
+		portIPv4: 0,
+		portIPv6: 0,
+	}
+
+	portBindings := []nat.PortBinding{
+		{HostIP: connConfig.hostIPv4},
+	}
+
+	// lcow doesn't support ipv6 port bindings
+	// see https://github.com/docker/for-win/issues/8211
+	if !(runtime.GOOS == "windows" && info.OSType == "linux") {
+		connConfig.hostIPv6 = "::1"
+		portBindings = append(portBindings, nat.PortBinding{HostIP: connConfig.hostIPv6})
+	}
+
+	hostConfig := &container.HostConfig{
+		PortBindings: map[nat.Port][]nat.PortBinding{sshPort: portBindings},
+	}
+
+	// just in case the container has not been cleaned up
+	_ = cli.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{Force: true})
+
+	ctr, err := cli.ContainerCreate(ctx, &config, hostConfig, nil, nil, containerName)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		f := func() { cli.ContainerRemove(ctx, ctr.ID, types.ContainerRemoveOptions{Force: true}) }
+		if err != nil {
+			f()
+		} else {
+			cleanUps = append(cleanUps, f)
+		}
+	}()
+
+	ctrStartOpts := types.ContainerStartOptions{}
+	err = cli.ContainerStart(ctx, ctr.ID, ctrStartOpts)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		f := func() { cli.ContainerKill(ctx, ctr.ID, "SIGKILL") }
+		if err != nil {
+			f()
+		} else {
+			cleanUps = append(cleanUps, f)
+		}
+	}()
+
+	var ctrJSON types.ContainerJSON
+	ctrJSON, err = cli.ContainerInspect(ctx, ctr.ID)
+	if err != nil {
+		return
+	}
+
+	sshPortBinds := ctrJSON.NetworkSettings.Ports[sshPort]
+
+	var found bool
+	connConfig.portIPv4, found = portForHost(sshPortBinds, connConfig.hostIPv4)
+	if !found {
+		err = errors.Errorf("SSH port for %s not found", connConfig.hostIPv4)
+		return
+	}
+
+	if connConfig.hostIPv6 != "" {
+		connConfig.portIPv6, found = portForHost(sshPortBinds, connConfig.hostIPv6)
+		if !found {
+			err = errors.Errorf("SSH port for %s not found", connConfig.hostIPv6)
+			return
+		}
+	}
+
+	// wait for ssh container to start serving ssh
+	for {
+		select {
+		case <-time.After(time.Second * 20):
+			err = fmt.Errorf("test container failed to start serving ssh")
+			return
+		case <-time.After(time.Second * 2):
+		}
+
+		t.Logf("connecting to ssh: %s:%d", connConfig.hostIPv4, connConfig.portIPv4)
+		conn, err := net.Dial("tcp", net.JoinHostPort(connConfig.hostIPv4, strconv.Itoa(connConfig.portIPv4)))
+		if err != nil {
+			continue
+		}
+		conn.Close()
+
+		break
+	}
+
+	return connConfig, cleanUp, err
+}
+
+func portForHost(bindings []nat.PortBinding, host string) (int, bool) {
+	for _, pb := range bindings {
+		if pb.HostIP == host {
+			if port, err := strconv.Atoi(pb.HostPort); err == nil {
+				return port, true
+			}
+		}
+	}
+
+	return 0, false
+}
+
+// function that prepares testing environment and returns clean up function
+// this should be used in conjunction with defer: `defer fn()()`
+// e.g. sets environment variables or starts mock up services
+// it returns clean up procedure that restores old values of environment variables
+// or shuts down mock up services
+type setUpEnvFn func(t *testing.T) func()
+
+// combines multiple setUp routines into one setUp routine
+func all(fns ...setUpEnvFn) setUpEnvFn {
+	return func(t *testing.T) func() {
+		t.Helper()
+		var cleanUps []func()
+		for _, fn := range fns {
+			cleanUps = append(cleanUps, fn(t))
+		}
+
+		return func() {
+			for i := len(cleanUps) - 1; i >= 0; i-- {
+				cleanUps[i]()
+			}
+		}
+	}
+}
+
 func cp(src, dest string) error {
 	srcFs, err := os.Stat(src)
 	if err != nil {
@@ -541,7 +651,7 @@ func cp(src, dest string) error {
 
 // puts key from ./testdata/{keyName} to $HOME/.ssh/{keyName}
 // those keys are authorized by the testing ssh server
-func withKey(t *testing.T, keyName string) func(t *testing.T) func() {
+func withKey(t *testing.T, keyName string) setUpEnvFn {
 	t.Helper()
 
 	return func(t *testing.T) func() {
@@ -572,7 +682,7 @@ func withKey(t *testing.T, keyName string) func(t *testing.T) func() {
 }
 
 // withInaccessibleKey creates inaccessible key of give type (specified by keyName)
-func withInaccessibleKey(keyName string) func(t *testing.T) func() {
+func withInaccessibleKey(keyName string) setUpEnvFn {
 	return func(t *testing.T) func() {
 		t.Helper()
 		var err error
@@ -625,96 +735,101 @@ func withCleanHome(t *testing.T) func() {
 }
 
 // withKnowHosts creates $HOME/.ssh/known_hosts with correct entries
-func withKnowHosts(t *testing.T) func() {
-	t.Helper()
-	knownHosts := filepath.Join(homedir.Get(), ".ssh", "known_hosts")
+func withKnowHosts(connConfig *ConnectionConfig) setUpEnvFn {
+	return func(t *testing.T) func() {
+		t.Helper()
 
-	err := os.MkdirAll(filepath.Join(homedir.Get(), ".ssh"), 0700)
-	if err != nil {
-		t.Fatal(err)
-	}
+		knownHosts := filepath.Join(homedir.Get(), ".ssh", "known_hosts")
 
-	_, err = os.Stat(knownHosts)
-	if err == nil || !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("known_hosts already exists")
-	}
-
-	f, err := os.OpenFile(knownHosts, os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-
-	// generate known_hosts
-	serverKeysDir := filepath.Join("testdata", "etc", "ssh")
-	for _, k := range []string{"ecdsa"} {
-		keyPath := filepath.Join(serverKeysDir, fmt.Sprintf("ssh_host_%s_key.pub", k))
-		key, err := ioutil.ReadFile(keyPath)
+		err := os.MkdirAll(filepath.Join(homedir.Get(), ".ssh"), 0700)
 		if err != nil {
-			t.Fatal(t)
+			t.Fatal(err)
 		}
 
-		fmt.Fprintf(f, "%s %s", containerIP4, string(key))
-		fmt.Fprintf(f, "[%s]:2222 %s", containerIP4, string(key))
-
-		if containerIP6 != "" {
-			fmt.Fprintf(f, "%s %s", containerIP6, string(key))
-			fmt.Fprintf(f, "[%s]:2222 %s", containerIP6, string(key))
+		_, err = os.Stat(knownHosts)
+		if err == nil || !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("known_hosts already exists")
 		}
-	}
 
-	return func() {
-		os.Remove(knownHosts)
+		f, err := os.OpenFile(knownHosts, os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+
+		// generate known_hosts
+		serverKeysDir := filepath.Join("testdata", "etc", "ssh")
+		for _, k := range []string{"ecdsa"} {
+			keyPath := filepath.Join(serverKeysDir, fmt.Sprintf("ssh_host_%s_key.pub", k))
+			key, err := ioutil.ReadFile(keyPath)
+			if err != nil {
+				t.Fatal(t)
+			}
+
+			fmt.Fprintf(f, "%s %s", connConfig.hostIPv4, string(key))
+			fmt.Fprintf(f, "[%s]:%d %s", connConfig.hostIPv4, connConfig.portIPv4, string(key))
+
+			if connConfig.hostIPv6 != "" {
+				fmt.Fprintf(f, "%s %s", connConfig.hostIPv6, string(key))
+				fmt.Fprintf(f, "[%s]:%d %s", connConfig.hostIPv6, connConfig.portIPv6, string(key))
+			}
+		}
+
+		return func() {
+			os.Remove(knownHosts)
+		}
 	}
 }
 
 // withBadKnownHosts creates $HOME/.ssh/known_hosts with incorrect entries
-func withBadKnownHosts(t *testing.T) func() {
-	t.Helper()
+func withBadKnownHosts(connConfig *ConnectionConfig) setUpEnvFn {
+	return func(t *testing.T) func() {
+		t.Helper()
 
-	knownHosts := filepath.Join(homedir.Get(), ".ssh", "known_hosts")
+		knownHosts := filepath.Join(homedir.Get(), ".ssh", "known_hosts")
 
-	err := os.MkdirAll(filepath.Join(homedir.Get(), ".ssh"), 0700)
-	if err != nil {
-		t.Fatal(err)
-	}
+		err := os.MkdirAll(filepath.Join(homedir.Get(), ".ssh"), 0700)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	_, err = os.Stat(knownHosts)
-	if err == nil || !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("known_hosts already exists")
-	}
+		_, err = os.Stat(knownHosts)
+		if err == nil || !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("known_hosts already exists")
+		}
 
-	f, err := os.OpenFile(knownHosts, os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
+		f, err := os.OpenFile(knownHosts, os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
 
-	knownHostTemplate := `{{range $host := .}}{{$host}} ssh-dss AAAAB3NzaC1kc3MAAACBAKH4ufS3ABVb780oTgEL1eu+pI1p6YOq/1KJn5s3zm+L3cXXq76r5OM/roGEYrXWUDGRtfVpzYTAKoMWuqcVc0AZ2zOdYkoy1fSjJ3MqDGF53QEO3TXIUt3gUzmLOewwmZWle0RgMa9GHccv7XVVIZB36RR68ZEUswLaTnlVhXQ1AAAAFQCl4t/LnY7kuUI+tL2qT2XmxmiyqwAAAIB72XaO+LfyIiqBOaTkQf+5rvH1i6y6LDO1QD9pzGWUYw3y03AEveHJMjW0EjnYBKJjK39wcZNTieRyU54lhH/HWeWABn9NcQ3duEf1WSO/s7SPsFO2R6quqVSsStkqf2Yfdy4fl24mH41olwtNA6ft5nkVfkqrIa51si4jU8fBVAAAAIB8SSvyYBcyMGLUlQjzQqhhhAHer9x/1YbknVz+y5PHJLLjHjMC4ZRfLgNEojvMKQW46Te9Pwnudcwv19ho4F+kkCOfss7xjyH70gQm6Sj76DxClmnnPoSRq3qEAOMy5Oh+7vyzxm68KHqd/aOmUaiT1LgqgViS9+kNdCoVMGAMOg== mvasek@bellatrix
+		knownHostTemplate := `{{range $host := .}}{{$host}} ssh-dss AAAAB3NzaC1kc3MAAACBAKH4ufS3ABVb780oTgEL1eu+pI1p6YOq/1KJn5s3zm+L3cXXq76r5OM/roGEYrXWUDGRtfVpzYTAKoMWuqcVc0AZ2zOdYkoy1fSjJ3MqDGF53QEO3TXIUt3gUzmLOewwmZWle0RgMa9GHccv7XVVIZB36RR68ZEUswLaTnlVhXQ1AAAAFQCl4t/LnY7kuUI+tL2qT2XmxmiyqwAAAIB72XaO+LfyIiqBOaTkQf+5rvH1i6y6LDO1QD9pzGWUYw3y03AEveHJMjW0EjnYBKJjK39wcZNTieRyU54lhH/HWeWABn9NcQ3duEf1WSO/s7SPsFO2R6quqVSsStkqf2Yfdy4fl24mH41olwtNA6ft5nkVfkqrIa51si4jU8fBVAAAAIB8SSvyYBcyMGLUlQjzQqhhhAHer9x/1YbknVz+y5PHJLLjHjMC4ZRfLgNEojvMKQW46Te9Pwnudcwv19ho4F+kkCOfss7xjyH70gQm6Sj76DxClmnnPoSRq3qEAOMy5Oh+7vyzxm68KHqd/aOmUaiT1LgqgViS9+kNdCoVMGAMOg== mvasek@bellatrix
 {{$host}} ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBLTxVVaQ93ReqHNlbjg5/nBRpuRuG6JIgNeJXWT1V4Dl+dMMrnad3uJBfyrNpvn8rv2qnn6gMTZVtTbLdo96pG0= mvasek@bellatrix
 {{$host}} ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOKymJNQszrxetVffPZRfZGKWK786r0mNcg/Wah4+2wn mvasek@bellatrix
 {{$host}} ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC/1/OCwec2Gyv5goNYYvos4iOA+a0NolOGsZA/93jmSArPY1zZS1UWeJ6dDTmxGoL/e7jm9lM6NJY7a/zM0C/GqCNRGR/aCUHBJTIgGtH+79FDKO/LWY6ClGY7Lw8qNgZpugbBw3N3HqTtyb2lELhFLT0FEb+le4WUbryooLK2zsz6DnqV4JvTYyyHcanS0h68iSXC7XbkZchvL99l5LT0gD1oDteBPKKFdNOwIjpMkk/IrbFM24xoNkaTDXN87EpQPQzYDfsoGymprc5OZZ8kzrtErQR+yfuunHfzzqDHWi7ga5pbgkuxNt10djWgCfBRsy07FTEgV0JirS0TCfwTBbqRzdjf3dgi8AP+WtkW3mcv4a1XYeqoBo2o9TbfyiA9kERs79UBN0mCe3KNX3Ns0PvutsRLaHmdJ49eaKWkJ6GgL37aqSlIwTixz2xY3eoDSkqHoZpx6Q1MdpSIl5gGVzlaobM/PNM1jqVdyUj+xpjHyiXwHQMKc3eJna7s8Jc= mvasek@bellatrix
 {{end}}`
 
-	tmpl := template.New(knownHostTemplate)
-	tmpl, err = tmpl.Parse(knownHostTemplate)
-	if err != nil {
-		t.Fatal(err)
-	}
+		tmpl := template.New(knownHostTemplate)
+		tmpl, err = tmpl.Parse(knownHostTemplate)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	hosts := make([]string, 0, 4)
-	hosts = append(hosts, containerIP4, fmt.Sprintf("[%s]:2222", containerIP4))
-	if containerIP6 != "" {
-		hosts = append(hosts, containerIP6, fmt.Sprintf("[%s]:2222", containerIP6))
-	}
+		hosts := make([]string, 0, 4)
+		hosts = append(hosts, connConfig.hostIPv4, fmt.Sprintf("[%s]:%d", connConfig.hostIPv4, connConfig.portIPv4))
+		if connConfig.hostIPv6 != "" {
+			hosts = append(hosts, connConfig.hostIPv6, fmt.Sprintf("[%s]:%d", connConfig.hostIPv6, connConfig.portIPv4))
+		}
 
-	err = tmpl.Execute(f, hosts)
-	if err != nil {
-		t.Fatal(err)
-	}
+		err = tmpl.Execute(f, hosts)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	return func() {
-		os.Remove(knownHosts)
+		return func() {
+			os.Remove(knownHosts)
+		}
 	}
 }
 
@@ -1059,65 +1174,73 @@ SSH_BIN -o PasswordAuthentication=no -o ConnectTimeout=3 -o UserKnownHostsFile=%
 
 // withEmulatedDockerSystemDialStdio makes `docker system dial-stdio` viable in the testing ssh server.
 // It does so by appending definition of shell function named `docker` into .bashrc .
-func withEmulatedDockerSystemDialStdio(t *testing.T) func() {
-	t.Helper()
+func withEmulatedDockerSystemDialStdio(connConfig *ConnectionConfig) setUpEnvFn {
+	return func(t *testing.T) func() {
+		t.Helper()
 
-	_, err := runRemote(`echo 'docker () {
-  if [ "$1" = "system" ] && [ "$2" = "dial-stdio" ]; then
-  	if [ "$3" = "--help" ]; then
-  	  echo "\nProxy the stdio stream to the daemon connection.";
-  	else
-      socat - /home/testuser/test.sock;
-	fi
-  fi
-}' >> ~/.bashrc`)
-	if err != nil {
-		t.Fatal(err)
-	}
+		_, err := runRemote(`echo 'docker () {
+			if [ "$1" = "system" ] && [ "$2" = "dial-stdio" ]; then
+				if [ "$3" = "--help" ]; then
+				  echo "\nProxy the stdio stream to the daemon connection.";
+				else
+				socat - /home/testuser/test.sock;
+			  fi
+			fi
+		  }' >> ~/.bashrc`, connConfig)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	return func() {
-		_, _ = runRemote(`echo 'unset -f docker' >> ~/.bashrc`)
+		return func() {
+			_, _ = runRemote(`echo 'unset -f docker' >> ~/.bashrc`, connConfig)
+		}
 	}
 }
 
 // withEmulatingWindows makes changes to the testing ssh server such that
 // the server appears to be Windows server for simple check done calling the `systeminfo` command
-func withEmulatingWindows(t *testing.T) func() {
-	t.Helper()
+func withEmulatingWindows(connConfig *ConnectionConfig) setUpEnvFn {
+	return func(t *testing.T) func() {
+		t.Helper()
 
-	_, err := runRemote(`echo 'systeminfo () {
-  echo '\nWindows\n'
-}' >> ~/.bashrc`)
-	if err != nil {
-		t.Fatal(err)
-	}
+		_, err := runRemote(`echo 'systeminfo () {
+		echo '\nWindows\n'
+	  }' >> ~/.bashrc`, connConfig)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	return func() {
-		_, _ = runRemote(`echo 'unset -f systeminfo' >> ~/.bashrc`)
+		return func() {
+			_, _ = runRemote(`echo 'unset -f systeminfo' >> ~/.bashrc`, connConfig)
+		}
 	}
 }
 
 // withRemoteDockerHost sets the DOCKER_HOST environment variable in the testing ssh server.
 // It does so by appending export statement to .bashrc .
-func withRemoteDockerHost(host string) setUpEnvFn {
+func withRemoteDockerHost(host string, connConfig *ConnectionConfig) setUpEnvFn {
 	return func(t *testing.T) func() {
 		t.Helper()
-		_, err := runRemote(fmt.Sprintf(`echo 'export DOCKER_HOST=%s' >> ~/.bashrc`, host))
+		_, err := runRemote(fmt.Sprintf(`echo 'export DOCKER_HOST=%s' >> ~/.bashrc`, host), connConfig)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return func() {
-			runRemote(`echo 'unset DOCKER_HOST' >> ~/.bashrc`)
+			runRemote(`echo 'unset DOCKER_HOST' >> ~/.bashrc`, connConfig)
 		}
 	}
 }
 
 // runRemote runs command it the testing ssh server
-func runRemote(cmd string) ([]byte, error) {
-	u, err := url.Parse(fmt.Sprintf("ssh://testuser@%s:2222", containerIP4))
+func runRemote(cmd string, connConfig *ConnectionConfig) ([]byte, error) {
+	u, err := url.Parse(fmt.Sprintf("ssh://testuser@%s:%d",
+		connConfig.hostIPv4,
+		connConfig.portIPv4,
+	))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "parsing url")
 	}
+
 	sshClientConfig, err := sshdialer.NewSSHClientConfig(u, sshdialer.Config{
 		HostKeyCallback: func(hostPort string, pubKey ssh.PublicKey) error {
 			return nil
@@ -1127,18 +1250,18 @@ func runRemote(cmd string) ([]byte, error) {
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "creating ssh config")
 	}
 
 	sshClient, err := ssh.Dial("tcp", u.Host, sshClientConfig)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "connecting")
 	}
 	defer sshClient.Close()
 
 	session, err := sshClient.NewSession()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "starting session")
 	}
 	defer session.Close()
 

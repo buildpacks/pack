@@ -32,11 +32,11 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/src-d/go-git.v4"
 
-	"github.com/buildpacks/pack/internal/dist"
-
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 func RandString(n int) string {
@@ -786,7 +786,7 @@ func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
 	return false
 }
 
-func AssertBuildpacksHaveDescriptors(t *testing.T, bps []dist.Buildpack, descriptors []dist.BuildpackDescriptor) {
+func AssertBuildpacksHaveDescriptors(t *testing.T, bps []buildpack.Buildpack, descriptors []dist.BuildpackDescriptor) {
 	AssertEq(t, len(bps), len(descriptors))
 	for _, bp := range bps {
 		found := false

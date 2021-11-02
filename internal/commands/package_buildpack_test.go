@@ -12,12 +12,12 @@ import (
 	"github.com/spf13/cobra"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
-	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
-	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -32,7 +32,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		when("valid package config", func() {
 			it("prints deprecation warning", func() {
 				var outBuf bytes.Buffer
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				cmd := packageBuildpackCommand(withLogger(logger))
 				h.AssertNil(t, cmd.Execute())
 				h.AssertContains(t, outBuf.String(), "Warning: Command 'pack package-buildpack' has been deprecated, please use 'pack buildpack package' instead")
@@ -98,7 +98,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				)
 
 				it.Before(func() {
-					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 					fakeBuildpackPackager = &fakes.FakeBuildpackPackager{}
 
 					cmd = packageBuildpackCommand(withLogger(logger), withBuildpackPackager(fakeBuildpackPackager))
@@ -116,7 +116,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullNever)
 				})
 
 				it("pull-policy=always sets policy", func() {
@@ -127,10 +127,10 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullAlways)
 				})
 				it("takes precedence over a configured pull policy", func() {
-					logger := ilogging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
+					logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
 					configReader := fakes.NewFakePackageConfigReader()
 					buildpackPackager := &fakes.FakeBuildpackPackager{}
 					clientConfig := config.Config{PullPolicy: "if-not-present"}
@@ -147,12 +147,12 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := buildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullNever)
 				})
 			})
 			when("configured pull policy", func() {
 				it("uses the configured pull policy", func() {
-					logger := ilogging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
+					logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
 					configReader := fakes.NewFakePackageConfigReader()
 					buildpackPackager := &fakes.FakeBuildpackPackager{}
 					clientConfig := config.Config{PullPolicy: "never"}
@@ -167,7 +167,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := buildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullNever)
 				})
 			})
 		})
@@ -176,7 +176,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 	when("invalid flags", func() {
 		when("both --publish and --pull-policy never flags are specified", func() {
 			it("errors with a descriptive message", func() {
-				logger := ilogging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
+				logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
 				configReader := fakes.NewFakePackageConfigReader()
 				buildpackPackager := &fakes.FakeBuildpackPackager{}
 				clientConfig := config.Config{}
@@ -201,7 +201,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			expectedErr := errors.New("it went wrong")
 
 			packageBuildpackCommand := packageBuildpackCommand(
-				withLogger(ilogging.NewLogWithWriters(outBuf, outBuf)),
+				withLogger(logging.NewLogWithWriters(outBuf, outBuf)),
 				withPackageConfigReader(
 					fakes.NewFakePackageConfigReader(whereReadReturns(pubbldpkg.Config{}, expectedErr)),
 				),
@@ -218,7 +218,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 				outBuf := &bytes.Buffer{}
 
 				config := &packageCommandConfig{
-					logger:              ilogging.NewLogWithWriters(outBuf, outBuf),
+					logger:              logging.NewLogWithWriters(outBuf, outBuf),
 					packageConfigReader: fakes.NewFakePackageConfigReader(),
 					buildpackPackager:   &fakes.FakeBuildpackPackager{},
 
@@ -237,7 +237,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		when("no config path is specified", func() {
 			it("creates a default config", func() {
 				config := &packageCommandConfig{
-					logger:              ilogging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
+					logger:              logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
 					packageConfigReader: fakes.NewFakePackageConfigReader(),
 					buildpackPackager:   &fakes.FakeBuildpackPackager{},
 
@@ -257,7 +257,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("--pull-policy unknown-policy", func() {
 			it("fails to run", func() {
-				logger := ilogging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
+				logger := logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{})
 				configReader := fakes.NewFakePackageConfigReader()
 				buildpackPackager := &fakes.FakeBuildpackPackager{}
 				clientConfig := config.Config{}
@@ -278,7 +278,7 @@ func testPackageBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 
 func packageBuildpackCommand(ops ...packageCommandOption) *cobra.Command {
 	config := &packageCommandConfig{
-		logger:              ilogging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
+		logger:              logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
 		packageConfigReader: fakes.NewFakePackageConfigReader(),
 		buildpackPackager:   &fakes.FakeBuildpackPackager{},
 		clientConfig:        config.Config{},

@@ -3,17 +3,15 @@ package fakes
 import (
 	"context"
 
-	"github.com/buildpacks/pack/config"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/pkg/image"
 )
 
 type FetchArgs struct {
 	Daemon     bool
-	PullPolicy config.PullPolicy
+	PullPolicy image.PullPolicy
 	Platform   string
 }
 
@@ -56,10 +54,10 @@ func (f *FakeImageFetcher) Fetch(ctx context.Context, name string, options image
 	return ri, nil
 }
 
-func shouldPull(localFound, remoteFound bool, policy config.PullPolicy) bool {
-	if remoteFound && !localFound && policy == config.PullIfNotPresent {
+func shouldPull(localFound, remoteFound bool, policy image.PullPolicy) bool {
+	if remoteFound && !localFound && policy == image.PullIfNotPresent {
 		return true
 	}
 
-	return remoteFound && policy == config.PullAlways
+	return remoteFound && policy == image.PullAlways
 }

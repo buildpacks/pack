@@ -6,10 +6,10 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
 
-	"github.com/buildpacks/pack/internal/buildpack"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 const defaultOS = "linux"

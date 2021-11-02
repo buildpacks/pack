@@ -6,19 +6,18 @@ import (
 
 	"github.com/heroku/color"
 
-	pubcfg "github.com/buildpacks/pack/config"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/image"
 
 	"github.com/golang/mock/gomock"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -40,7 +39,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		cfg = config.Config{}
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
@@ -59,7 +58,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 		when("image name is provided", func() {
 			var (
 				repoName string
-				opts     pack.RebaseOptions
+				opts     client.RebaseOptions
 			)
 			it.Before(func() {
 				runImage := "test/image"
@@ -73,10 +72,10 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 				command = commands.Rebase(logger, cfg, mockClient)
 
 				repoName = "test/repo-image"
-				opts = pack.RebaseOptions{
+				opts = client.RebaseOptions{
 					RepoName:   repoName,
 					Publish:    false,
-					PullPolicy: pubcfg.PullAlways,
+					PullPolicy: image.PullAlways,
 					RunImage:   "",
 					AdditionalMirrors: map[string][]string{
 						runImage: {testMirror1, testMirror2},
@@ -95,7 +94,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 
 			when("--pull-policy never", func() {
 				it("works", func() {
-					opts.PullPolicy = pubcfg.PullNever
+					opts.PullPolicy = image.PullNever
 					mockClient.EXPECT().
 						Rebase(gomock.Any(), opts).
 						Return(nil)
@@ -104,7 +103,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, command.Execute())
 				})
 				it("takes precedence over config policy", func() {
-					opts.PullPolicy = pubcfg.PullNever
+					opts.PullPolicy = image.PullNever
 					mockClient.EXPECT().
 						Rebase(gomock.Any(), opts).
 						Return(nil)
@@ -126,7 +125,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 			when("--pull-policy not set", func() {
 				when("no policy set in config", func() {
 					it("uses the default policy", func() {
-						opts.PullPolicy = pubcfg.PullAlways
+						opts.PullPolicy = image.PullAlways
 						mockClient.EXPECT().
 							Rebase(gomock.Any(), opts).
 							Return(nil)
@@ -137,7 +136,7 @@ func testRebaseCommand(t *testing.T, when spec.G, it spec.S) {
 				})
 				when("policy is set in config", func() {
 					it("uses set policy", func() {
-						opts.PullPolicy = pubcfg.PullIfNotPresent
+						opts.PullPolicy = image.PullIfNotPresent
 						mockClient.EXPECT().
 							Rebase(gomock.Any(), opts).
 							Return(nil)

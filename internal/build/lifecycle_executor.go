@@ -14,7 +14,7 @@ import (
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/container"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 var (

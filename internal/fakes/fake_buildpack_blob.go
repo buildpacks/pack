@@ -7,8 +7,9 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/blob"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 type fakeBuildpackBlob struct {
@@ -24,7 +25,7 @@ type fakeBuildpackBlob struct {
 //  	build-contents
 // 	\_ bin/detect
 //  	detect-contents
-func NewFakeBuildpackBlob(descriptor dist.BuildpackDescriptor, chmod int64) (dist.Blob, error) {
+func NewFakeBuildpackBlob(descriptor dist.BuildpackDescriptor, chmod int64) (blob.Blob, error) {
 	return &fakeBuildpackBlob{
 		descriptor: descriptor,
 		chmod:      chmod,

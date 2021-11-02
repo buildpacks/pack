@@ -5,10 +5,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 type BuildpackInspectFlags struct {
@@ -42,18 +42,18 @@ func BuildpackInspect(logger logging.Logger, cfg config.Config, client PackClien
 	return cmd
 }
 
-func buildpackInspect(logger logging.Logger, buildpackName, registryName string, flags BuildpackInspectFlags, cfg config.Config, client PackClient) error {
+func buildpackInspect(logger logging.Logger, buildpackName, registryName string, flags BuildpackInspectFlags, cfg config.Config, pack PackClient) error {
 	logger.Infof("Inspecting buildpack: %s\n", style.Symbol(buildpackName))
 
 	inspectedBuildpacksOutput, err := inspectAllBuildpacks(
-		client,
+		pack,
 		flags,
-		pack.InspectBuildpackOptions{
+		client.InspectBuildpackOptions{
 			BuildpackName: buildpackName,
 			Daemon:        true,
 			Registry:      registryName,
 		},
-		pack.InspectBuildpackOptions{
+		client.InspectBuildpackOptions{
 			BuildpackName: buildpackName,
 			Daemon:        false,
 			Registry:      registryName,

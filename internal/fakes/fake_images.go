@@ -11,8 +11,8 @@ import (
 	"github.com/buildpacks/imgutil/fakes"
 
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/dist"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 

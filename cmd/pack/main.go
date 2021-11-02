@@ -6,15 +6,15 @@ import (
 	"github.com/heroku/color"
 
 	"github.com/buildpacks/pack/cmd"
+	"github.com/buildpacks/pack/pkg/client"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
-	clilogger "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 func main() {
 	// create logger with defaults
-	logger := clilogger.NewLogWithWriters(color.Stdout(), color.Stderr())
+	logger := logging.NewLogWithWriters(color.Stdout(), color.Stderr())
 
 	rootCmd, err := cmd.NewPackCommand(logger)
 	if err != nil {
@@ -24,7 +24,7 @@ func main() {
 
 	ctx := commands.CreateCancellableContext()
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
-		if _, isSoftError := err.(pack.SoftError); isSoftError {
+		if _, isSoftError := err.(client.SoftError); isSoftError {
 			os.Exit(2)
 		}
 		os.Exit(1)

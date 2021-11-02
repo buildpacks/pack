@@ -2,7 +2,7 @@ package builder
 
 import (
 	pubbldr "github.com/buildpacks/pack/builder"
-	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 type DetectionOrderCalculator struct{}

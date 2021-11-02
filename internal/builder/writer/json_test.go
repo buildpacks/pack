@@ -8,19 +8,18 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
-
-	"github.com/buildpacks/pack"
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
-	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -160,8 +159,8 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo *pack.BuilderInfo
-		localInfo  *pack.BuilderInfo
+		remoteInfo *client.BuilderInfo
+		localInfo  *client.BuilderInfo
 
 		expectedRemoteInfo = fmt.Sprintf(`"remote_info": {
     "description": "Some remote description",
@@ -241,7 +240,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 
 	when("Print", func() {
 		it.Before(func() {
-			remoteInfo = &pack.BuilderInfo{
+			remoteInfo = &client.BuilderInfo{
 				Description:     "Some remote description",
 				Stack:           "test.stack.id",
 				Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
@@ -273,7 +272,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 
-			localInfo = &pack.BuilderInfo{
+			localInfo = &client.BuilderInfo{
 				Description:     "Some local description",
 				Stack:           "test.stack.id",
 				Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
@@ -309,7 +308,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 		it("prints both local remote builders as valid JSON", func() {
 			jsonWriter := writer.NewJSON()
 
-			logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+			logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 			err := jsonWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 			assert.Nil(err)
 
@@ -323,7 +322,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 			it("returns an error", func() {
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonWriter.Print(logger, localRunImages, nil, nil, nil, nil, sharedBuilderInfo)
 				assert.ErrorWithMessage(err, "unable to find builder 'test-builder' locally or remotely")
 			})
@@ -333,7 +332,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 			it("shows null for local builder, and normal output for remote", func() {
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonWriter.Print(logger, localRunImages, nil, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -349,7 +348,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 			it("shows null for remote builder, and normal output for local", func() {
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonWriter.Print(logger, localRunImages, localInfo, nil, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -367,7 +366,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonWriter.Print(logger, localRunImages, localInfo, remoteInfo, expectedErr, nil, sharedBuilderInfo)
 				assert.ErrorWithMessage(err, "preparing output for 'test-builder': failed to retrieve local info")
 
@@ -381,7 +380,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, expectedErr, sharedBuilderInfo)
 				assert.ErrorWithMessage(err, "preparing output for 'test-builder': failed to retrieve remote info")
 
@@ -393,7 +392,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 			it("displays mixins associated with the stack", func() {
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 				err := jsonWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -414,7 +413,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 				err := jsonWriter.Print(logger, emptyLocalRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -432,7 +431,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 				err := jsonWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -450,7 +449,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 				err := jsonWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 

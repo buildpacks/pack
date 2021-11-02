@@ -1,6 +1,6 @@
 package builder
 
-import "github.com/buildpacks/pack/internal/dist"
+import "github.com/buildpacks/pack/pkg/dist"
 
 const (
 	OrderLabel = "io.buildpacks.buildpack.order"

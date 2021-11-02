@@ -8,11 +8,11 @@ import (
 	"text/template"
 
 	"github.com/buildpacks/pack/internal/inspectimage"
+	"github.com/buildpacks/pack/pkg/client"
 
-	"github.com/buildpacks/pack"
 	strs "github.com/buildpacks/pack/internal/strings"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 type HumanReadable struct{}
@@ -24,7 +24,7 @@ func NewHumanReadable() *HumanReadable {
 func (h *HumanReadable) Print(
 	logger logging.Logger,
 	generalInfo inspectimage.GeneralInfo,
-	local, remote *pack.ImageInfo,
+	local, remote *client.ImageInfo,
 	localErr, remoteErr error,
 ) error {
 	if local == nil && remote == nil {

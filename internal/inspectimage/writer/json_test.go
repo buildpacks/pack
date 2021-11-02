@@ -11,11 +11,11 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
-	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -30,8 +30,8 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo *pack.ImageInfo
-		localInfo  *pack.ImageInfo
+		remoteInfo *client.ImageInfo
+		localInfo  *client.ImageInfo
 
 		expectedLocalOutput = `{
   "local_info": {
@@ -166,7 +166,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				}
 			}
 
-			remoteInfo = &pack.ImageInfo{
+			remoteInfo = &client.ImageInfo{
 				StackID: "test.stack.id.remote",
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
@@ -201,7 +201,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 					},
 					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
-				Processes: pack.ProcessDetails{
+				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
 						Type:    "some-remote-type",
 						Command: "/some/remote command",
@@ -219,7 +219,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				},
 			}
 
-			localInfo = &pack.ImageInfo{
+			localInfo = &client.ImageInfo{
 				StackID: "test.stack.id.local",
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
@@ -248,7 +248,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 					},
 					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
 				}},
-				Processes: pack.ProcessDetails{
+				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
 						Type:    "some-local-type",
 						Command: "/some/local command",
@@ -291,7 +291,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				}
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil)
 				assert.Nil(err)
 
@@ -323,7 +323,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				}
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil)
 				assert.Nil(err)
 
@@ -357,7 +357,7 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 				}
 				jsonWriter := writer.NewJSON()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := jsonWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
 				assert.Nil(err)
 

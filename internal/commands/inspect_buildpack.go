@@ -8,21 +8,15 @@ import (
 	"text/tabwriter"
 	"text/template"
 
-	strs "github.com/buildpacks/pack/internal/strings"
-
-	"github.com/buildpacks/pack/internal/dist"
-
 	"github.com/pkg/errors"
-
-	"github.com/buildpacks/pack/internal/buildpack"
-
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/buildpackage"
-
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/logging"
+	strs "github.com/buildpacks/pack/internal/strings"
+	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 const inspectBuildpackTemplate = `
@@ -92,7 +86,7 @@ func InspectBuildpack(logger logging.Logger, cfg config.Config, client PackClien
 	return cmd
 }
 
-func inspectAllBuildpacks(client PackClient, flags BuildpackInspectFlags, options ...pack.InspectBuildpackOptions) (string, error) {
+func inspectAllBuildpacks(client PackClient, flags BuildpackInspectFlags, options ...client.InspectBuildpackOptions) (string, error) {
 	buf := bytes.NewBuffer(nil)
 	errArray := []error{}
 	for _, option := range options {
@@ -123,7 +117,7 @@ func inspectAllBuildpacks(client PackClient, flags BuildpackInspectFlags, option
 	return buf.String(), nil
 }
 
-func inspectBuildpackOutput(info *pack.BuildpackInfo, prefix string, flags BuildpackInspectFlags) (output []byte, err error) {
+func inspectBuildpackOutput(info *client.BuildpackInfo, prefix string, flags BuildpackInspectFlags) (output []byte, err error) {
 	tpl := template.Must(template.New("inspect-buildpack").Parse(inspectBuildpackTemplate))
 	bpOutput, err := buildpacksOutput(info.Buildpacks)
 	if err != nil {
@@ -137,7 +131,7 @@ func inspectBuildpackOutput(info *pack.BuildpackInfo, prefix string, flags Build
 
 	err = tpl.Execute(buf, &struct {
 		Location   string
-		Metadata   buildpackage.Metadata
+		Metadata   buildpack.Metadata
 		ListMixins bool
 		Buildpacks string
 		Order      string
@@ -198,7 +192,7 @@ func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
 func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDepth int) (string, error) {
 	buf := strings.Builder{}
 	tabWriter := new(tabwriter.Writer).Init(&buf, writerMinWidth, writerTabWidth, defaultTabWidth, writerPadChar, writerFlags)
-	buildpackSet := map[pack.BuildpackInfoKey]bool{}
+	buildpackSet := map[client.BuildpackInfoKey]bool{}
 
 	if err := orderOutputRecurrence(tabWriter, "", order, layers, buildpackSet, 0, maxDepth); err != nil {
 		return "", err
@@ -210,7 +204,7 @@ func detectionOrderOutput(order dist.Order, layers dist.BuildpackLayers, maxDept
 }
 
 // Recursively generate output for every buildpack in an order.
-func orderOutputRecurrence(w io.Writer, prefix string, order dist.Order, layers dist.BuildpackLayers, buildpackSet map[pack.BuildpackInfoKey]bool, curDepth, maxDepth int) error {
+func orderOutputRecurrence(w io.Writer, prefix string, order dist.Order, layers dist.BuildpackLayers, buildpackSet map[client.BuildpackInfoKey]bool, curDepth, maxDepth int) error {
 	// exit if maxDepth is exceeded
 	if validMaxDepth(maxDepth) && maxDepth <= curDepth {
 		return nil
@@ -225,7 +219,7 @@ func orderOutputRecurrence(w io.Writer, prefix string, order dist.Order, layers 
 		for bpIndex, buildpackEntry := range group.Group {
 			lastBuildpack := bpIndex == len(group.Group)-1
 
-			key := pack.BuildpackInfoKey{
+			key := client.BuildpackInfoKey{
 				ID:      buildpackEntry.ID,
 				Version: buildpackEntry.Version,
 			}

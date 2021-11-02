@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/buildpacks/pack/internal/inspectimage"
+	"github.com/buildpacks/pack/pkg/client"
 
-	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 
 	"github.com/buildpacks/pack/internal/style"
 )
@@ -17,7 +17,7 @@ type InspectImageWriter interface {
 	Print(
 		logger logging.Logger,
 		sharedInfo inspectimage.GeneralInfo,
-		local, remote *pack.ImageInfo,
+		local, remote *client.ImageInfo,
 		localErr, remoteErr error,
 	) error
 }

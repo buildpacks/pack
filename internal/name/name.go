@@ -6,10 +6,13 @@ import (
 	gname "github.com/google/go-containerregistry/pkg/name"
 
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
 )
 
-func TranslateRegistry(name string, registryMirrors map[string]string, logger logging.Logger) (string, error) {
+type Logger interface {
+	Infof(fmt string, v ...interface{})
+}
+
+func TranslateRegistry(name string, registryMirrors map[string]string, logger Logger) (string, error) {
 	if registryMirrors == nil {
 		return name, nil
 	}

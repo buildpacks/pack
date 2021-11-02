@@ -16,8 +16,7 @@ import (
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -43,7 +42,7 @@ func testConfigCommand(t *testing.T, when spec.G, it spec.S) {
 		mockController := gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)
 		configPath = filepath.Join(tempPackHome, "config.toml")

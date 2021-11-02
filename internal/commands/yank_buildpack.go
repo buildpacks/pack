@@ -3,15 +3,14 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/style"
-
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/internal/style"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // Deprecated: Use yank instead
-func YankBuildpack(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
+func YankBuildpack(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Command {
 	var flags BuildpackYankFlags
 
 	cmd := &cobra.Command{
@@ -33,7 +32,7 @@ func YankBuildpack(logger logging.Logger, cfg config.Config, client PackClient) 
 				return err
 			}
 
-			opts := pack.YankBuildpackOptions{
+			opts := client.YankBuildpackOptions{
 				ID:      id,
 				Version: version,
 				Type:    "github",
@@ -41,7 +40,7 @@ func YankBuildpack(logger logging.Logger, cfg config.Config, client PackClient) 
 				Yank:    !flags.Undo,
 			}
 
-			if err := client.YankBuildpack(opts); err != nil {
+			if err := pack.YankBuildpack(opts); err != nil {
 				return err
 			}
 			logger.Infof("Successfully yanked %s", style.Symbol(buildpackIDVersion))

@@ -6,19 +6,18 @@ import (
 	"testing"
 
 	"github.com/Masterminds/semver"
+	"github.com/buildpacks/lifecycle/api"
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/lifecycle/api"
-
-	"github.com/buildpacks/pack"
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
-	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -33,8 +32,8 @@ func testHumanReadable(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo *pack.BuilderInfo
-		localInfo  *pack.BuilderInfo
+		remoteInfo *client.BuilderInfo
+		localInfo  *client.BuilderInfo
 
 		expectedRemoteOutput = `
 REMOTE:
@@ -178,7 +177,7 @@ REMOTE:
 
 	when("Print", func() {
 		it.Before(func() {
-			remoteInfo = &pack.BuilderInfo{
+			remoteInfo = &client.BuilderInfo{
 				Description:     "Some remote description",
 				Stack:           "test.stack.id",
 				Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
@@ -210,7 +209,7 @@ REMOTE:
 				},
 			}
 
-			localInfo = &pack.BuilderInfo{
+			localInfo = &client.BuilderInfo{
 				Description:     "Some local description",
 				Stack:           "test.stack.id",
 				Mixins:          []string{"mixin1", "mixin2", "build:mixin3", "build:mixin4"},
@@ -248,7 +247,7 @@ REMOTE:
 		it("prints both local and remote builders in a human readable format", func() {
 			humanReadableWriter := writer.NewHumanReadable()
 
-			logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+			logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 			err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 			assert.Nil(err)
 
@@ -264,7 +263,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, defaultSharedBuildInfo)
 				assert.Nil(err)
 
@@ -279,7 +278,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.ErrorWithMessage(err, "unable to find builder 'test-builder' locally or remotely")
 			})
@@ -291,7 +290,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -306,7 +305,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -321,7 +320,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, errors.New(errorMessage), nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -337,7 +336,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, errors.New(errorMessage), sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -354,7 +353,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -369,7 +368,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -381,7 +380,7 @@ REMOTE:
 			it("displays mixins associated with the stack", func() {
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -396,7 +395,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -412,7 +411,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -427,7 +426,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -445,7 +444,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, emptyLocalRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -462,7 +461,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 
@@ -485,7 +484,7 @@ REMOTE:
 
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, localRunImages, localInfo, remoteInfo, nil, nil, sharedBuilderInfo)
 				assert.Nil(err)
 

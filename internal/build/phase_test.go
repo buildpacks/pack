@@ -30,9 +30,8 @@ import (
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
 	"github.com/buildpacks/pack/internal/container"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -80,7 +79,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
 		var err error
 		docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
@@ -238,7 +237,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("returns an error", func() {
-						logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+						logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 						lifecycleExec, err = CreateFakeLifecycleExecution(logger, docker, tmpFakeAppDir, repoName)
 						h.AssertNil(t, err)
 						phaseFactory = build.NewDefaultPhaseFactory(lifecycleExec)

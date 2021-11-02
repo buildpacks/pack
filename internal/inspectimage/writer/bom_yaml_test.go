@@ -9,10 +9,10 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
-	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -27,8 +27,8 @@ func testYAMLBOM(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo *pack.ImageInfo
-		localInfo  *pack.ImageInfo
+		remoteInfo *client.ImageInfo
+		localInfo  *client.ImageInfo
 
 		expectedLocalOutput = `---
 local:
@@ -73,7 +73,7 @@ remote:
 				}
 			}
 
-			remoteInfo = &pack.ImageInfo{
+			remoteInfo = &client.ImageInfo{
 				BOM: []buildpack.BOMEntry{{
 					Require: buildpack.Require{
 						Name:    "name-1",
@@ -94,7 +94,7 @@ remote:
 					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage"},
 				}}}
 
-			localInfo = &pack.ImageInfo{
+			localInfo = &client.ImageInfo{
 				BOM: []buildpack.BOMEntry{{
 					Require: buildpack.Require{
 						Name:    "name-1",
@@ -117,7 +117,7 @@ remote:
 			it("prints both local and remote image info in a YAML format", func() {
 				yamlBOMWriter := writer.NewYAMLBOM()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, remoteInfo, nil, nil)
 				assert.Nil(err)
 
@@ -130,7 +130,7 @@ remote:
 			it("prints local image info in YAML format", func() {
 				yamlBOMWriter := writer.NewYAMLBOM()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, localInfo, nil, nil, nil)
 				assert.Nil(err)
 
@@ -145,7 +145,7 @@ remote:
 			it("prints remote image info in YAML format", func() {
 				yamlBOMWriter := writer.NewYAMLBOM()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := yamlBOMWriter.Print(logger, inspectimage.GeneralInfo{}, nil, remoteInfo, nil, nil)
 				assert.Nil(err)
 

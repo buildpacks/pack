@@ -3,18 +3,18 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 type BuildpackRegisterFlags struct {
 	BuildpackRegistry string
 }
 
-func BuildpackRegister(logger logging.Logger, cfg config.Config, client PackClient) *cobra.Command {
-	var opts pack.RegisterBuildpackOptions
+func BuildpackRegister(logger logging.Logger, cfg config.Config, pack PackClient) *cobra.Command {
+	var opts client.RegisterBuildpackOptions
 	var flags BuildpackRegisterFlags
 
 	cmd := &cobra.Command{
@@ -32,7 +32,7 @@ func BuildpackRegister(logger logging.Logger, cfg config.Config, client PackClie
 			opts.URL = registry.URL
 			opts.Name = registry.Name
 
-			if err := client.RegisterBuildpack(cmd.Context(), opts); err != nil {
+			if err := pack.RegisterBuildpack(cmd.Context(), opts); err != nil {
 				return err
 			}
 			logger.Infof("Successfully registered %s", style.Symbol(opts.ImageName))

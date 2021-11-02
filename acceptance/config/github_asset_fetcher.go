@@ -26,8 +26,8 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
-	"github.com/buildpacks/pack/internal/blob"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/blob"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 const (
@@ -376,7 +376,7 @@ func (f *GithubAssetFetcher) writeCacheManifest(owner, repo string, op func(cach
 func (f *GithubAssetFetcher) downloadAndSave(assetURI, destPath string) error {
 	f.testObject.Helper()
 
-	downloader := blob.NewDownloader(logging.New(&testWriter{t: f.testObject}), f.cacheDir)
+	downloader := blob.NewDownloader(logging.NewSimpleLogger(&testWriter{t: f.testObject}), f.cacheDir)
 
 	assetBlob, err := downloader.Download(f.ctx, assetURI)
 	if err != nil {
@@ -405,7 +405,7 @@ func (f *GithubAssetFetcher) downloadAndSave(assetURI, destPath string) error {
 func (f *GithubAssetFetcher) downloadAndExtractTgz(assetURI, destDir string) error {
 	f.testObject.Helper()
 
-	downloader := blob.NewDownloader(logging.New(&testWriter{t: f.testObject}), f.cacheDir)
+	downloader := blob.NewDownloader(logging.NewSimpleLogger(&testWriter{t: f.testObject}), f.cacheDir)
 
 	assetBlob, err := downloader.Download(f.ctx, assetURI)
 	if err != nil {

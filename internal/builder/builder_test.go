@@ -26,11 +26,11 @@ import (
 	pubbldr "github.com/buildpacks/pack/builder"
 	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/builder/testmocks"
-	"github.com/buildpacks/pack/internal/dist"
 	ifakes "github.com/buildpacks/pack/internal/fakes"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -46,16 +46,16 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		subject        *builder.Builder
 		mockController *gomock.Controller
 		mockLifecycle  *testmocks.MockLifecycle
-		bp1v1          dist.Buildpack
-		bp1v2          dist.Buildpack
-		bp2v1          dist.Buildpack
-		bpOrder        dist.Buildpack
+		bp1v1          buildpack.Buildpack
+		bp1v2          buildpack.Buildpack
+		bp2v1          buildpack.Buildpack
+		bpOrder        buildpack.Buildpack
 		outBuf         bytes.Buffer
 		logger         logging.Logger
 	)
 
 	it.Before(func() {
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		baseImage = fakes.NewImage("base/image", "", nil)
 		mockController = gomock.NewController(t)
 
@@ -657,7 +657,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("duplicated buildpack, has different contents", func() {
-					var bp1v1Alt dist.Buildpack
+					var bp1v1Alt buildpack.Buildpack
 					it.Before(func() {
 						var err error
 						bp1v1Alt, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -675,7 +675,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					})
 
 					it("uses the last buildpack", func() {
-						logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+						logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 
 						subject.AddBuildpack(bp1v1)
 						subject.AddBuildpack(bp1v1Alt)
@@ -719,11 +719,11 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("adding buildpack that already exists on the image", func() {
 					it("skips adding buildpack that already exists", func() {
-						logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+						logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 						diffID := "4dc0072c61fc2bd7118bbc93a432eae0012082de094455cf0a9fed20e3c44789"
 						bpLayer := dist.BuildpackLayers{
 							"buildpack-1-id": map[string]dist.BuildpackLayerInfo{
-								"buildpack-1-version-1": dist.BuildpackLayerInfo{
+								"buildpack-1-version-1": {
 									API:         api.MustParse("0.2"),
 									Stacks:      nil,
 									Order:       nil,
@@ -753,7 +753,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("error adding buildpacks to builder", func() {
 				when("unable to convert buildpack to layer tar", func() {
-					var bp1v1Err dist.Buildpack
+					var bp1v1Err buildpack.Buildpack
 					it.Before(func() {
 						var err error
 						bp1v1Err, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -999,7 +999,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				it("informs when overriding existing buildpack, and log level is DEBUG", func() {
-					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 
 					h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 					h.AssertEq(t, baseImage.IsSaved(), true)
@@ -1330,7 +1330,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp dist.Buildpack) {
+func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp buildpack.Buildpack) {
 	t.Helper()
 
 	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().Info.ID, bp.Descriptor().Info.Version)
@@ -1354,7 +1354,7 @@ func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp dist.Buildpack) 
 	)
 }
 
-func assertImageHasOrderBpLayer(t *testing.T, image *fakes.Image, bp dist.Buildpack) {
+func assertImageHasOrderBpLayer(t *testing.T, image *fakes.Image, bp buildpack.Buildpack) {
 	t.Helper()
 
 	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().Info.ID, bp.Descriptor().Info.Version)

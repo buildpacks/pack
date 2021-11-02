@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/dist"
 
 	"github.com/buildpacks/pack/internal/stack"
 )

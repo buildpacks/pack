@@ -13,8 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/commands"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -35,7 +34,7 @@ func testReportCommand(t *testing.T, when spec.G, it spec.S) {
 
 	it.Before(func() {
 		var err error
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		h.AssertNil(t, err)

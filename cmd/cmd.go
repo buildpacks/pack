@@ -5,14 +5,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/buildpackage"
 	builderwriter "github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
 	imagewriter "github.com/buildpacks/pack/internal/inspectimage/writer"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/internal/term"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // ConfigurableLogger defines behavior required by the PackCommand
@@ -46,7 +46,7 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 					color.Disable(flag)
 				}
 
-				_, canDisplayColor := ilogging.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
+				_, canDisplayColor := term.IsTerminal(logging.GetWriterForLevel(logger, logging.InfoLevel))
 				if !canDisplayColor {
 					color.Disable(true)
 				}
@@ -72,34 +72,34 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 
 	commands.AddHelpFlag(rootCmd, "pack")
 
-	rootCmd.AddCommand(commands.Build(logger, cfg, &packClient))
-	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, &packClient))
-	rootCmd.AddCommand(commands.NewBuildpackCommand(logger, cfg, &packClient, buildpackage.NewConfigReader()))
-	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath, &packClient))
-	rootCmd.AddCommand(commands.InspectImage(logger, imagewriter.NewFactory(), cfg, &packClient))
+	rootCmd.AddCommand(commands.Build(logger, cfg, packClient))
+	rootCmd.AddCommand(commands.NewBuilderCommand(logger, cfg, packClient))
+	rootCmd.AddCommand(commands.NewBuildpackCommand(logger, cfg, packClient, buildpackage.NewConfigReader()))
+	rootCmd.AddCommand(commands.NewConfigCommand(logger, cfg, cfgPath, packClient))
+	rootCmd.AddCommand(commands.InspectImage(logger, imagewriter.NewFactory(), cfg, packClient))
 	rootCmd.AddCommand(commands.NewStackCommand(logger))
-	rootCmd.AddCommand(commands.Rebase(logger, cfg, &packClient))
+	rootCmd.AddCommand(commands.Rebase(logger, cfg, packClient))
 
-	rootCmd.AddCommand(commands.InspectBuildpack(logger, cfg, &packClient))
-	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, &packClient, builderwriter.NewFactory()))
+	rootCmd.AddCommand(commands.InspectBuildpack(logger, cfg, packClient))
+	rootCmd.AddCommand(commands.InspectBuilder(logger, cfg, packClient, builderwriter.NewFactory()))
 
-	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, cfgPath, &packClient))
+	rootCmd.AddCommand(commands.SetDefaultBuilder(logger, cfg, cfgPath, packClient))
 	rootCmd.AddCommand(commands.SetRunImagesMirrors(logger, cfg, cfgPath))
-	rootCmd.AddCommand(commands.SuggestBuilders(logger, &packClient))
+	rootCmd.AddCommand(commands.SuggestBuilders(logger, packClient))
 	rootCmd.AddCommand(commands.TrustBuilder(logger, cfg, cfgPath))
 	rootCmd.AddCommand(commands.UntrustBuilder(logger, cfg, cfgPath))
 	rootCmd.AddCommand(commands.ListTrustedBuilders(logger, cfg))
-	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, &packClient))
-	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, &packClient, buildpackage.NewConfigReader()))
+	rootCmd.AddCommand(commands.CreateBuilder(logger, cfg, packClient))
+	rootCmd.AddCommand(commands.PackageBuildpack(logger, cfg, packClient, buildpackage.NewConfigReader()))
 	rootCmd.AddCommand(commands.SuggestStacks(logger))
 
 	if cfg.Experimental {
 		rootCmd.AddCommand(commands.AddBuildpackRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.ListBuildpackRegistries(logger, cfg))
-		rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, &packClient))
+		rootCmd.AddCommand(commands.RegisterBuildpack(logger, cfg, packClient))
 		rootCmd.AddCommand(commands.SetDefaultRegistry(logger, cfg, cfgPath))
 		rootCmd.AddCommand(commands.RemoveRegistry(logger, cfg, cfgPath))
-		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, &packClient))
+		rootCmd.AddCommand(commands.YankBuildpack(logger, cfg, packClient))
 	}
 
 	packHome, err := config.PackHome()
@@ -108,10 +108,10 @@ func NewPackCommand(logger ConfigurableLogger) (*cobra.Command, error) {
 	}
 
 	rootCmd.AddCommand(commands.CompletionCommand(logger, packHome))
-	rootCmd.AddCommand(commands.Report(logger, pack.Version, cfgPath))
-	rootCmd.AddCommand(commands.Version(logger, pack.Version))
+	rootCmd.AddCommand(commands.Report(logger, packClient.Version(), cfgPath))
+	rootCmd.AddCommand(commands.Version(logger, packClient.Version()))
 
-	rootCmd.Version = pack.Version
+	rootCmd.Version = packClient.Version()
 	rootCmd.SetVersionTemplate(`{{.Version}}{{"\n"}}`)
 	rootCmd.SetOut(logging.GetWriterForLevel(logger, logging.InfoLevel))
 	rootCmd.SetErr(logging.GetWriterForLevel(logger, logging.ErrorLevel))
@@ -132,15 +132,10 @@ func initConfig() (config.Config, string, error) {
 	return cfg, path, nil
 }
 
-func initClient(logger logging.Logger, cfg config.Config) (pack.Client, error) {
+func initClient(logger logging.Logger, cfg config.Config) (*client.Client, error) {
 	dc, err := tryInitSSHDockerClient()
 	if err != nil {
-		return pack.Client{}, err
+		return nil, err
 	}
-	client, err := pack.NewClient(pack.WithLogger(logger), pack.WithExperimental(cfg.Experimental), pack.WithRegistryMirrors(cfg.RegistryMirrors), pack.WithDockerClient(dc))
-	if err != nil {
-		return pack.Client{}, err
-	}
-
-	return *client, nil
+	return client.NewClient(client.WithLogger(logger), client.WithExperimental(cfg.Experimental), client.WithRegistryMirrors(cfg.RegistryMirrors), client.WithDockerClient(dc))
 }

@@ -25,7 +25,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/build/fakes"
-	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -105,7 +105,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			imageName        name.Tag
 			fakeBuilder      *fakes.FakeBuilder
 			outBuf           bytes.Buffer
-			logger           *ilogging.LogWithWriters
+			logger           *logging.LogWithWriters
 			docker           *client.Client
 			fakePhaseFactory *fakes.FakePhaseFactory
 		)
@@ -117,7 +117,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 			fakeBuilder, err = fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.3")}))
 			h.AssertNil(t, err)
-			logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+			logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 			docker, err = client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
 			h.AssertNil(t, err)
 			fakePhaseFactory = fakes.NewFakePhaseFactory()
@@ -2332,7 +2332,7 @@ func newTestLifecycleExecErr(t *testing.T, logVerbose bool, ops ...func(*build.L
 	h.AssertNil(t, err)
 
 	var outBuf bytes.Buffer
-	logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+	logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 	if logVerbose {
 		logger.Level = log.DebugLevel
 	}
