@@ -3,9 +3,8 @@ package fakes
 import (
 	"context"
 
-	"github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/image"
+	"github.com/buildpacks/pack/pkg/image"
 )
 
 type FakeInspectableFetcher struct {
@@ -16,7 +15,7 @@ type FakeInspectableFetcher struct {
 
 	ReceivedName       string
 	ReceivedDaemon     bool
-	ReceivedPullPolicy config.PullPolicy
+	ReceivedPullPolicy image.PullPolicy
 }
 
 func (f *FakeInspectableFetcher) Fetch(ctx context.Context, name string, options image.FetchOptions) (builder.Inspectable, error) {

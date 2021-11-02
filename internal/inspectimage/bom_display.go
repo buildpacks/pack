@@ -3,8 +3,8 @@ package inspectimage
 import (
 	"github.com/buildpacks/lifecycle/buildpack"
 
-	"github.com/buildpacks/pack"
-	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 type BOMDisplay struct {
@@ -21,7 +21,7 @@ type BOMEntryDisplay struct {
 	Buildpack dist.BuildpackRef      `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
 }
 
-func NewBOMDisplay(info *pack.ImageInfo) []BOMEntryDisplay {
+func NewBOMDisplay(info *client.ImageInfo) []BOMEntryDisplay {
 	if info == nil {
 		return nil
 	}

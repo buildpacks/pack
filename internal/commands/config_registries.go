@@ -11,7 +11,7 @@ import (
 	"github.com/buildpacks/pack/internal/slices"
 	"github.com/buildpacks/pack/internal/stringset"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	"github.com/buildpacks/pack/registry"
 )
 

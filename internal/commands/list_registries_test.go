@@ -14,8 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/buildpacks/pack/internal/config"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 func TestListRegistries(t *testing.T) {
@@ -34,7 +33,7 @@ func testListRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		cfg = config.Config{
 			DefaultRegistryName: "private registry",
 			Registries: []config.Registry{
@@ -70,7 +69,7 @@ func testListRegistriesCommand(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should list registries in verbose mode", func() {
-			logger = ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+			logger = logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 			command = commands.ListBuildpackRegistries(logger, cfg)
 			command.SetArgs([]string{})
 

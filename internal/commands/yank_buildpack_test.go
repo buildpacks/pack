@@ -11,13 +11,12 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
+	"github.com/buildpacks/pack/pkg/client"
 
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -38,7 +37,7 @@ func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		cfg = config.Config{}
@@ -64,7 +63,7 @@ func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should work for required args", func() {
-				opts := pack.YankBuildpackOptions{
+				opts := client.YankBuildpackOptions{
 					ID:      "heroku/rust",
 					Version: "0.0.1",
 					Type:    "github",
@@ -99,7 +98,7 @@ func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 					},
 				}
 				command = commands.YankBuildpack(logger, cfg, mockClient)
-				opts := pack.YankBuildpackOptions{
+				opts := client.YankBuildpackOptions{
 					ID:      "heroku/rust",
 					Version: "0.0.1",
 					Type:    "github",
@@ -116,7 +115,7 @@ func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("should undo", func() {
-				opts := pack.YankBuildpackOptions{
+				opts := client.YankBuildpackOptions{
 					ID:      "heroku/rust",
 					Version: "0.0.1",
 					Type:    "github",
@@ -150,7 +149,7 @@ func testYankBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 							},
 						},
 					}
-					opts := pack.YankBuildpackOptions{
+					opts := client.YankBuildpackOptions{
 						ID:      "heroku/rust",
 						Version: "0.0.1",
 						Type:    "github",

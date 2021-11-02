@@ -6,17 +6,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
-	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 // Deprecated: use BuildpackPackage instead
 // PackageBuildpack packages (a) buildpack(s) into OCI format, based on a package config
-func PackageBuildpack(logger logging.Logger, cfg config.Config, client BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
+func PackageBuildpack(logger logging.Logger, cfg config.Config, packager BuildpackPackager, packageConfigReader PackageConfigReader) *cobra.Command {
 	var flags BuildpackPackageFlags
 
 	cmd := &cobra.Command{
@@ -41,7 +41,7 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 			if stringPolicy == "" {
 				stringPolicy = cfg.PullPolicy
 			}
-			pullPolicy, err := pubcfg.ParsePullPolicy(stringPolicy)
+			pullPolicy, err := image.ParsePullPolicy(stringPolicy)
 			if err != nil {
 				return errors.Wrap(err, "parsing pull policy")
 			}
@@ -61,7 +61,7 @@ func PackageBuildpack(logger logging.Logger, cfg config.Config, client Buildpack
 			}
 
 			name := args[0]
-			if err := client.PackageBuildpack(cmd.Context(), pack.PackageBuildpackOptions{
+			if err := packager.PackageBuildpack(cmd.Context(), client.PackageBuildpackOptions{
 				RelativeBaseDir: relativeBaseDir,
 				Name:            name,
 				Format:          flags.Format,

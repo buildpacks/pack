@@ -8,7 +8,7 @@ import (
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
 
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_inspect_image_writer_factory.go github.com/buildpacks/pack/internal/commands InspectImageWriterFactory

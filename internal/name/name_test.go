@@ -8,7 +8,7 @@ import (
 	"github.com/sclevine/spec/report"
 
 	"github.com/buildpacks/pack/internal/name"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -19,7 +19,7 @@ func TestTranslateRegistry(t *testing.T) {
 func testTranslateRegistry(t *testing.T, when spec.G, it spec.S) {
 	var (
 		assert = h.NewAssertionManager(t)
-		logger = logging.New(ioutil.Discard)
+		logger = logging.NewSimpleLogger(ioutil.Discard)
 	)
 
 	when("#TranslateRegistry", func() {

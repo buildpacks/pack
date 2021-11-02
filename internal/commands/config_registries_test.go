@@ -14,8 +14,7 @@ import (
 
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/config"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -39,7 +38,7 @@ func testConfigRegistries(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		var err error
 
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		tempPackHome, err = ioutil.TempDir("", "pack-home")
 		assert.Nil(err)
 		configPath = filepath.Join(tempPackHome, "config.toml")
@@ -87,7 +86,7 @@ func testConfigRegistries(t *testing.T, when spec.G, it spec.S) {
 
 	when("no args", func() {
 		it("calls list", func() {
-			logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+			logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 			cfgWithRegistries = config.Config{
 				DefaultRegistryName: "private registry",
 				Registries: []config.Registry{
@@ -121,7 +120,7 @@ func testConfigRegistries(t *testing.T, when spec.G, it spec.S) {
 	when("list", func() {
 		var args = []string{"list"}
 		it.Before(func() {
-			logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+			logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 			cmd = commands.ConfigRegistries(logger, cfgWithRegistries, configPath)
 			cmd.SetArgs(args)
 		})
@@ -135,7 +134,7 @@ func testConfigRegistries(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("should list registries in verbose mode", func() {
-			logger = ilogging.NewLogWithWriters(&outBuf, &outBuf, ilogging.WithVerbose())
+			logger = logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
 			cmd = commands.ConfigRegistries(logger, cfgWithRegistries, configPath)
 			cmd.SetArgs(args)
 			assert.Nil(cmd.Execute())

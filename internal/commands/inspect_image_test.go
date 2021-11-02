@@ -11,14 +11,13 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -30,22 +29,22 @@ var (
 		Name: "some/image",
 	}
 
-	expectedLocalImageInfo = &pack.ImageInfo{
+	expectedLocalImageInfo = &client.ImageInfo{
 		StackID:    "local.image.stack",
 		Buildpacks: nil,
 		Base:       platform.RunImageMetadata{},
 		BOM:        nil,
 		Stack:      platform.StackMetadata{},
-		Processes:  pack.ProcessDetails{},
+		Processes:  client.ProcessDetails{},
 	}
 
-	expectedRemoteImageInfo = &pack.ImageInfo{
+	expectedRemoteImageInfo = &client.ImageInfo{
 		StackID:    "remote.image.stack",
 		Buildpacks: nil,
 		Base:       platform.RunImageMetadata{},
 		BOM:        nil,
 		Stack:      platform.StackMetadata{},
-		Processes:  pack.ProcessDetails{},
+		Processes:  client.ProcessDetails{},
 	}
 )
 
@@ -68,7 +67,7 @@ func testInspectImageCommand(t *testing.T, when spec.G, it spec.S) {
 		cfg = config.Config{}
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 	})
 
 	it.After(func() {

@@ -19,12 +19,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/builder"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/layer"
 	"github.com/buildpacks/pack/internal/stack"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
 	"github.com/buildpacks/pack/pkg/archive"
+	"github.com/buildpacks/pack/pkg/buildpack"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 const (
@@ -62,7 +63,7 @@ type Builder struct {
 	layerWriterFactory   archive.TarWriterFactory
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
-	additionalBuildpacks []dist.Buildpack
+	additionalBuildpacks []buildpack.Buildpack
 	metadata             Metadata
 	mixins               []string
 	env                  map[string]string
@@ -222,7 +223,7 @@ func (b *Builder) GID() int {
 // Setters
 
 // AddBuildpack adds a buildpack to the builder
-func (b *Builder) AddBuildpack(bp dist.Buildpack) {
+func (b *Builder) AddBuildpack(bp buildpack.Buildpack) {
 	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
 	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().Info)
 }
@@ -375,11 +376,11 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 // Helpers
 
-func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, additionalBuildpacks []dist.Buildpack, bpLayers dist.BuildpackLayers) error {
+func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, additionalBuildpacks []buildpack.Buildpack, bpLayers dist.BuildpackLayers) error {
 	type buildpackToAdd struct {
 		tarPath   string
 		diffID    string
-		buildpack dist.Buildpack
+		buildpack buildpack.Buildpack
 	}
 
 	buildpacksToAdd := map[string]buildpackToAdd{}
@@ -391,7 +392,7 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 		}
 
 		// create tar file
-		bpLayerTar, err := dist.BuildpackToLayerTar(bpTmpDir, bp)
+		bpLayerTar, err := buildpack.ToLayerTar(bpTmpDir, bp)
 		if err != nil {
 			return err
 		}
@@ -495,7 +496,7 @@ func hasBuildpackWithVersion(bps []dist.BuildpackInfo, version string) bool {
 	return false
 }
 
-func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.BuildpackInfo, bpsToValidate []dist.Buildpack) error {
+func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.BuildpackInfo, bpsToValidate []buildpack.Buildpack) error {
 	bpLookup := map[string]interface{}{}
 
 	for _, bp := range allBuildpacks {

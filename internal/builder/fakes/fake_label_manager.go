@@ -2,7 +2,7 @@ package fakes
 
 import (
 	"github.com/buildpacks/pack/internal/builder"
-	"github.com/buildpacks/pack/internal/dist"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 type FakeLabelManager struct {

@@ -10,12 +10,11 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack"
 	bldr "github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -36,13 +35,13 @@ func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 	it.Before(func() {
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 	})
 
 	when("#WriteSuggestedBuilder", func() {
 		when("description metadata exists", func() {
 			it.Before(func() {
-				mockClient.EXPECT().InspectBuilder("gcr.io/some/builder:latest", false).Return(&pack.BuilderInfo{
+				mockClient.EXPECT().InspectBuilder("gcr.io/some/builder:latest", false).Return(&client.BuilderInfo{
 					Description: "Remote description",
 				}, nil)
 			})
@@ -60,7 +59,7 @@ func testSuggestBuildersCommand(t *testing.T, when spec.G, it spec.S) {
 
 		when("description metadata does not exist", func() {
 			it.Before(func() {
-				mockClient.EXPECT().InspectBuilder(gomock.Any(), false).Return(&pack.BuilderInfo{
+				mockClient.EXPECT().InspectBuilder(gomock.Any(), false).Return(&client.BuilderInfo{
 					Description: "",
 				}, nil).AnyTimes()
 			})

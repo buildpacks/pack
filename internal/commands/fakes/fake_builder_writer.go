@@ -1,10 +1,10 @@
 package fakes
 
 import (
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/builder/writer"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 type FakeBuilderWriter struct {
@@ -12,8 +12,8 @@ type FakeBuilderWriter struct {
 	PrintForRemote string
 	ErrorForPrint  error
 
-	ReceivedInfoForLocal   *pack.BuilderInfo
-	ReceivedInfoForRemote  *pack.BuilderInfo
+	ReceivedInfoForLocal   *client.BuilderInfo
+	ReceivedInfoForRemote  *client.BuilderInfo
 	ReceivedErrorForLocal  error
 	ReceivedErrorForRemote error
 	ReceivedBuilderInfo    writer.SharedBuilderInfo
@@ -23,7 +23,7 @@ type FakeBuilderWriter struct {
 func (w *FakeBuilderWriter) Print(
 	logger logging.Logger,
 	localRunImages []config.RunImage,
-	local, remote *pack.BuilderInfo,
+	local, remote *client.BuilderInfo,
 	localErr, remoteErr error,
 	builderInfo writer.SharedBuilderInfo,
 ) error {

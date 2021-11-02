@@ -13,11 +13,11 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
-	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -32,8 +32,8 @@ func testHumanReadable(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf bytes.Buffer
 
-		remoteInfo *pack.ImageInfo
-		localInfo  *pack.ImageInfo
+		remoteInfo *client.ImageInfo
+		localInfo  *client.ImageInfo
 
 		expectedRemoteOutput = `REMOTE:
 
@@ -97,7 +97,7 @@ Processes:
 				}
 			}
 
-			remoteInfo = &pack.ImageInfo{
+			remoteInfo = &client.ImageInfo{
 				StackID: "test.stack.id.remote",
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "test.bp.one.remote", Version: "1.0.0", Homepage: "https://some-homepage-one"},
@@ -133,7 +133,7 @@ Processes:
 					},
 					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 				}},
-				Processes: pack.ProcessDetails{
+				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
 						Type:    "some-remote-type",
 						Command: "/some/remote command",
@@ -151,7 +151,7 @@ Processes:
 				},
 			}
 
-			localInfo = &pack.ImageInfo{
+			localInfo = &client.ImageInfo{
 				StackID: "test.stack.id.local",
 				Buildpacks: []buildpack.GroupBuildpack{
 					{ID: "test.bp.one.local", Version: "1.0.0", Homepage: "https://some-homepage-one"},
@@ -181,7 +181,7 @@ Processes:
 					},
 					Buildpack: buildpack.GroupBuildpack{ID: "test.bp.one.remote", Version: "1.0.0"},
 				}},
-				Processes: pack.ProcessDetails{
+				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
 						Type:    "some-local-type",
 						Command: "/some/local command",
@@ -224,7 +224,7 @@ Processes:
 				}
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, nil)
 				assert.Nil(err)
 
@@ -255,7 +255,7 @@ Processes:
 				}
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, nil, nil, nil)
 				assert.Nil(err)
 
@@ -286,7 +286,7 @@ Processes:
 				}
 				humanReadableWriter := writer.NewHumanReadable()
 
-				logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+				logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 				err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
 				assert.Nil(err)
 
@@ -306,7 +306,7 @@ Processes:
 
 					humanReadableWriter := writer.NewHumanReadable()
 
-					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
 					assert.Nil(err)
 
@@ -326,7 +326,7 @@ Processes:
 
 					humanReadableWriter := writer.NewHumanReadable()
 
-					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 					err := humanReadableWriter.Print(logger, sharedImageInfo, nil, remoteInfo, nil, nil)
 					assert.Nil(err)
 
@@ -362,7 +362,7 @@ Processes:
 					}
 					humanReadableWriter := writer.NewHumanReadable()
 
-					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 					err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, nil, remoteErr)
 					assert.Nil(err)
 
@@ -397,7 +397,7 @@ Processes:
 					}
 					humanReadableWriter := writer.NewHumanReadable()
 
-					logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 					err := humanReadableWriter.Print(logger, sharedImageInfo, localInfo, remoteInfo, localErr, nil)
 					assert.Nil(err)
 
@@ -411,7 +411,7 @@ Processes:
 					it("displays a 'missing image' error message", func() {
 						humanReadableWriter := writer.NewHumanReadable()
 
-						logger := ilogging.NewLogWithWriters(&outBuf, &outBuf)
+						logger := logging.NewLogWithWriters(&outBuf, &outBuf)
 						err := humanReadableWriter.Print(logger, inspectimage.GeneralInfo{Name: "missing-image"}, nil, nil, nil, nil)
 						assert.ErrorWithMessage(err, fmt.Sprintf("unable to find image '%s' locally or remotely", "missing-image"))
 					})

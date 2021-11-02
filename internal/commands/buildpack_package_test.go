@@ -13,12 +13,12 @@ import (
 	"github.com/spf13/cobra"
 
 	pubbldpkg "github.com/buildpacks/pack/buildpackage"
-	pubcfg "github.com/buildpacks/pack/config"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/fakes"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
-	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/image"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -30,12 +30,12 @@ func TestPackageCommand(t *testing.T) {
 
 func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 	var (
-		logger *ilogging.LogWithWriters
+		logger *logging.LogWithWriters
 		outBuf bytes.Buffer
 	)
 
 	it.Before(func() {
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 	})
 
 	when("Package#Execute", func() {
@@ -151,7 +151,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, cmd.Execute())
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullNever)
 				})
 
 				it("pull-policy=always sets policy", func() {
@@ -160,7 +160,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, cmd.Execute())
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullAlways)
 				})
 			})
 			when("no --pull-policy", func() {
@@ -175,7 +175,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, cmd.Execute())
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullAlways)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullAlways)
 				})
 				it("uses the configured pull policy when policy configured", func() {
 					cmd := packageCommand(
@@ -192,7 +192,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 					h.AssertNil(t, err)
 
 					receivedOptions := fakeBuildpackPackager.CreateCalledWithOptions
-					h.AssertEq(t, receivedOptions.PullPolicy, pubcfg.PullNever)
+					h.AssertEq(t, receivedOptions.PullPolicy, image.PullNever)
 				})
 			})
 		})
@@ -280,7 +280,7 @@ func testPackageCommand(t *testing.T, when spec.G, it spec.S) {
 }
 
 type packageCommandConfig struct {
-	logger              *ilogging.LogWithWriters
+	logger              *logging.LogWithWriters
 	packageConfigReader *fakes.FakePackageConfigReader
 	buildpackPackager   *fakes.FakeBuildpackPackager
 	clientConfig        config.Config
@@ -293,7 +293,7 @@ type packageCommandOption func(config *packageCommandConfig)
 
 func packageCommand(ops ...packageCommandOption) *cobra.Command {
 	config := &packageCommandConfig{
-		logger:              ilogging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
+		logger:              logging.NewLogWithWriters(&bytes.Buffer{}, &bytes.Buffer{}),
 		packageConfigReader: fakes.NewFakePackageConfigReader(),
 		buildpackPackager:   &fakes.FakeBuildpackPackager{},
 		clientConfig:        config.Config{},
@@ -311,7 +311,7 @@ func packageCommand(ops ...packageCommandOption) *cobra.Command {
 	return cmd
 }
 
-func withLogger(logger *ilogging.LogWithWriters) packageCommandOption {
+func withLogger(logger *logging.LogWithWriters) packageCommandOption {
 	return func(config *packageCommandConfig) {
 		config.logger = logger
 	}

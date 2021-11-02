@@ -9,12 +9,11 @@ import (
 	"github.com/sclevine/spec/report"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/commands"
 	"github.com/buildpacks/pack/internal/commands/testmocks"
 	"github.com/buildpacks/pack/internal/config"
-	ilogging "github.com/buildpacks/pack/internal/logging"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -33,7 +32,7 @@ func testPullBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 	)
 
 	it.Before(func() {
-		logger = ilogging.NewLogWithWriters(&outBuf, &outBuf)
+		logger = logging.NewLogWithWriters(&outBuf, &outBuf)
 		mockController = gomock.NewController(t)
 		mockClient = testmocks.NewMockPackClient(mockController)
 		cfg = config.Config{}
@@ -52,7 +51,7 @@ func testPullBuildpackCommand(t *testing.T, when spec.G, it spec.S) {
 		when("buildpack uri is provided", func() {
 			it("should work for required args", func() {
 				buildpackImage := "buildpack/image"
-				opts := pack.PullBuildpackOptions{
+				opts := client.PullBuildpackOptions{
 					URI:          buildpackImage,
 					RegistryName: "official",
 				}

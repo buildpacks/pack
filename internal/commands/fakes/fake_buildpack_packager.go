@@ -3,14 +3,14 @@ package fakes
 import (
 	"context"
 
-	"github.com/buildpacks/pack"
+	"github.com/buildpacks/pack/pkg/client"
 )
 
 type FakeBuildpackPackager struct {
-	CreateCalledWithOptions pack.PackageBuildpackOptions
+	CreateCalledWithOptions client.PackageBuildpackOptions
 }
 
-func (c *FakeBuildpackPackager) PackageBuildpack(ctx context.Context, opts pack.PackageBuildpackOptions) error {
+func (c *FakeBuildpackPackager) PackageBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error {
 	c.CreateCalledWithOptions = opts
 
 	return nil

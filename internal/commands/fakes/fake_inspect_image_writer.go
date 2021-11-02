@@ -1,9 +1,9 @@
 package fakes
 
 import (
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/inspectimage"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 type FakeInspectImageWriter struct {
@@ -11,8 +11,8 @@ type FakeInspectImageWriter struct {
 	PrintForRemote string
 	ErrorForPrint  error
 
-	ReceivedInfoForLocal   *pack.ImageInfo
-	ReceivedInfoForRemote  *pack.ImageInfo
+	ReceivedInfoForLocal   *client.ImageInfo
+	ReceivedInfoForRemote  *client.ImageInfo
 	RecievedGeneralInfo    inspectimage.GeneralInfo
 	ReceivedErrorForLocal  error
 	ReceivedErrorForRemote error
@@ -21,7 +21,7 @@ type FakeInspectImageWriter struct {
 func (w *FakeInspectImageWriter) Print(
 	logger logging.Logger,
 	sharedInfo inspectimage.GeneralInfo,
-	local, remote *pack.ImageInfo,
+	local, remote *client.ImageInfo,
 	localErr, remoteErr error,
 ) error {
 	w.ReceivedInfoForLocal = local

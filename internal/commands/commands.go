@@ -10,25 +10,25 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
-	"github.com/buildpacks/pack/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/logging"
 )
 
 //go:generate mockgen -package testmocks -destination testmocks/mock_pack_client.go github.com/buildpacks/pack/internal/commands PackClient
 type PackClient interface {
-	InspectBuilder(string, bool, ...pack.BuilderInspectionModifier) (*pack.BuilderInfo, error)
-	InspectImage(string, bool) (*pack.ImageInfo, error)
-	Rebase(context.Context, pack.RebaseOptions) error
-	CreateBuilder(context.Context, pack.CreateBuilderOptions) error
-	NewBuildpack(context.Context, pack.NewBuildpackOptions) error
-	PackageBuildpack(ctx context.Context, opts pack.PackageBuildpackOptions) error
-	Build(context.Context, pack.BuildOptions) error
-	RegisterBuildpack(context.Context, pack.RegisterBuildpackOptions) error
-	YankBuildpack(pack.YankBuildpackOptions) error
-	InspectBuildpack(pack.InspectBuildpackOptions) (*pack.BuildpackInfo, error)
-	PullBuildpack(context.Context, pack.PullBuildpackOptions) error
+	InspectBuilder(string, bool, ...client.BuilderInspectionModifier) (*client.BuilderInfo, error)
+	InspectImage(string, bool) (*client.ImageInfo, error)
+	Rebase(context.Context, client.RebaseOptions) error
+	CreateBuilder(context.Context, client.CreateBuilderOptions) error
+	NewBuildpack(context.Context, client.NewBuildpackOptions) error
+	PackageBuildpack(ctx context.Context, opts client.PackageBuildpackOptions) error
+	Build(context.Context, client.BuildOptions) error
+	RegisterBuildpack(context.Context, client.RegisterBuildpackOptions) error
+	YankBuildpack(client.YankBuildpackOptions) error
+	InspectBuildpack(client.InspectBuildpackOptions) (*client.BuildpackInfo, error)
+	PullBuildpack(context.Context, client.PullBuildpackOptions) error
 }
 
 func AddHelpFlag(cmd *cobra.Command, commandName string) {
@@ -54,11 +54,11 @@ func logError(logger logging.Logger, f func(cmd *cobra.Command, args []string) e
 		cmd.SilenceUsage = true
 		err := f(cmd, args)
 		if err != nil {
-			if _, isSoftError := errors.Cause(err).(pack.SoftError); !isSoftError {
+			if _, isSoftError := errors.Cause(err).(client.SoftError); !isSoftError {
 				logger.Error(err.Error())
 			}
 
-			if _, isExpError := errors.Cause(err).(pack.ExperimentError); isExpError {
+			if _, isExpError := errors.Cause(err).(client.ExperimentError); isExpError {
 				configPath, err := config.DefaultConfigPath()
 				if err != nil {
 					return err

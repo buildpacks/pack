@@ -1,26 +1,28 @@
 package fakes
 
-import "github.com/buildpacks/pack"
+import (
+	"github.com/buildpacks/pack/pkg/client"
+)
 
 type FakeBuilderInspector struct {
-	InfoForLocal   *pack.BuilderInfo
-	InfoForRemote  *pack.BuilderInfo
+	InfoForLocal   *client.BuilderInfo
+	InfoForRemote  *client.BuilderInfo
 	ErrorForLocal  error
 	ErrorForRemote error
 
 	ReceivedForLocalName      string
 	ReceivedForRemoteName     string
-	CalculatedConfigForLocal  pack.BuilderInspectionConfig
-	CalculatedConfigForRemote pack.BuilderInspectionConfig
+	CalculatedConfigForLocal  client.BuilderInspectionConfig
+	CalculatedConfigForRemote client.BuilderInspectionConfig
 }
 
 func (i *FakeBuilderInspector) InspectBuilder(
 	name string,
 	daemon bool,
-	modifiers ...pack.BuilderInspectionModifier,
-) (*pack.BuilderInfo, error) {
+	modifiers ...client.BuilderInspectionModifier,
+) (*client.BuilderInfo, error) {
 	if daemon {
-		i.CalculatedConfigForLocal = pack.BuilderInspectionConfig{}
+		i.CalculatedConfigForLocal = client.BuilderInspectionConfig{}
 		for _, mod := range modifiers {
 			mod(&i.CalculatedConfigForLocal)
 		}
@@ -28,7 +30,7 @@ func (i *FakeBuilderInspector) InspectBuilder(
 		return i.InfoForLocal, i.ErrorForLocal
 	}
 
-	i.CalculatedConfigForRemote = pack.BuilderInspectionConfig{}
+	i.CalculatedConfigForRemote = client.BuilderInspectionConfig{}
 	for _, mod := range modifiers {
 		mod(&i.CalculatedConfigForRemote)
 	}

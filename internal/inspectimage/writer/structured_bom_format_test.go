@@ -11,12 +11,12 @@ import (
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
-	"github.com/buildpacks/pack"
 	"github.com/buildpacks/pack/internal/config"
-	"github.com/buildpacks/pack/internal/dist"
 	"github.com/buildpacks/pack/internal/inspectimage"
 	"github.com/buildpacks/pack/internal/inspectimage/writer"
-	ilogging "github.com/buildpacks/pack/internal/logging"
+	"github.com/buildpacks/pack/pkg/client"
+	"github.com/buildpacks/pack/pkg/dist"
+	"github.com/buildpacks/pack/pkg/logging"
 	h "github.com/buildpacks/pack/testhelpers"
 )
 
@@ -31,17 +31,17 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 		assert = h.NewAssertionManager(t)
 		outBuf *bytes.Buffer
 
-		remoteInfo  *pack.ImageInfo
-		localInfo   *pack.ImageInfo
+		remoteInfo  *client.ImageInfo
+		localInfo   *client.ImageInfo
 		generalInfo inspectimage.GeneralInfo
-		logger      *ilogging.LogWithWriters
+		logger      *logging.LogWithWriters
 	)
 
 	when("Print", func() {
 		it.Before(func() {
 			outBuf = bytes.NewBuffer(nil)
-			logger = ilogging.NewLogWithWriters(outBuf, outBuf)
-			remoteInfo = &pack.ImageInfo{
+			logger = logging.NewLogWithWriters(outBuf, outBuf)
+			remoteInfo = &client.ImageInfo{
 				BOM: []buildpack.BOMEntry{
 					{
 						Require: buildpack.Require{
@@ -58,7 +58,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					},
 				},
 			}
-			localInfo = &pack.ImageInfo{
+			localInfo = &client.ImageInfo{
 				BOM: []buildpack.BOMEntry{
 					{
 						Require: buildpack.Require{
