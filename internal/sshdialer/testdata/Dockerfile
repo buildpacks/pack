@@ -27,6 +27,5 @@ RUN cat /tmp/id_ed25519.pub /tmp/id_rsa.pub >> /home/testuser/.ssh/authorized_ke
 COPY --from=builder /workspace/serve-socket /usr/local/bin
 
 EXPOSE 22
-EXPOSE 2222
 
 CMD ["/usr/local/bin/entrypoint.sh"]
