@@ -573,12 +573,16 @@ func prepareSSHServer(t *testing.T) (connConfig *ConnectionConfig, cleanUp func(
 	}
 
 	// wait for ssh container to start serving ssh
+	// overall timeout before giving up on connecting
+	timeout := time.After(20 * time.Second)
+	// wait this amount between retries
+	waitTicker := time.Tick(2 * time.Second)
 	for {
 		select {
-		case <-time.After(time.Second * 20):
+		case <-timeout:
 			err = fmt.Errorf("test container failed to start serving ssh")
 			return
-		case <-time.After(time.Second * 2):
+		case <-waitTicker:
 		}
 
 		t.Logf("connecting to ssh: %s:%d", connConfig.hostIPv4, connConfig.portIPv4)
