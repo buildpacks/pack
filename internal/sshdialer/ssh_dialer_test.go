@@ -506,9 +506,10 @@ func prepareSSHServer(t *testing.T) (connConfig *ConnectionConfig, cleanUp func(
 		{HostIP: connConfig.hostIPv4},
 	}
 
-	// lcow doesn't support ipv6 port bindings
+	// docker desktop doesn't support ipv6 port bindings
 	// see https://github.com/docker/for-win/issues/8211
-	if !(runtime.GOOS == "windows" && info.OSType == "linux") {
+	// and https://github.com/docker/for-mac/issues/1432
+	if runtime.GOOS == "linux" {
 		connConfig.hostIPv6 = "::1"
 		portBindings = append(portBindings, nat.PortBinding{HostIP: connConfig.hostIPv6})
 	}
@@ -560,14 +561,14 @@ func prepareSSHServer(t *testing.T) (connConfig *ConnectionConfig, cleanUp func(
 	var found bool
 	connConfig.portIPv4, found = portForHost(sshPortBinds, connConfig.hostIPv4)
 	if !found {
-		err = errors.Errorf("SSH port for %s not found", connConfig.hostIPv4)
+		err = errors.Errorf("SSH port for %s not found in %+v", connConfig.hostIPv4, sshPortBinds)
 		return
 	}
 
 	if connConfig.hostIPv6 != "" {
 		connConfig.portIPv6, found = portForHost(sshPortBinds, connConfig.hostIPv6)
 		if !found {
-			err = errors.Errorf("SSH port for %s not found", connConfig.hostIPv6)
+			err = errors.Errorf("SSH port for %s not found in %+v", connConfig.hostIPv6, sshPortBinds)
 			return
 		}
 	}
