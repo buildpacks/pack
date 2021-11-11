@@ -1,9 +1,9 @@
 FROM golang:1.17-nanoserver-1809 AS gobuild
 
 # bake in a simple server util
-WORKDIR /util
 COPY server.go /util/server.go
-RUN go build /util/server.go
+WORKDIR /util
+RUN go build server.go
 
 FROM mcr.microsoft.com/windows/nanoserver:1809
 
