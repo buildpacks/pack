@@ -1,5 +1,5 @@
-// +build acceptance
-// +build !windows
+//go:build acceptance && !windows
+// +build acceptance,!windows
 
 package os
 

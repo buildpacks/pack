@@ -1,3 +1,4 @@
+//go:build acceptance
 // +build acceptance
 
 package acceptance
@@ -9,7 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -655,7 +655,7 @@ func testAcceptance(
 			runImageMirror  string
 			stackBaseImages = map[string][]string{
 				"linux":   {"ubuntu:bionic"},
-				"windows": {"mcr.microsoft.com/windows/nanoserver:1809", "golang:1.14-nanoserver-1809"},
+				"windows": {"mcr.microsoft.com/windows/nanoserver:1809", "golang:1.17-nanoserver-1809"},
 			}
 		)
 
@@ -2771,21 +2771,11 @@ func createStackImage(dockerCli client.CommonAPIClient, repoName string, dir str
 	ctx := context.Background()
 	buildContext := archive.ReadDirAsTar(dir, "/", 0, 0, -1, true, false, defaultFilterFunc)
 
-	res, err := dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
+	return h.CheckImageBuildResult(dockerCli.ImageBuild(ctx, buildContext, dockertypes.ImageBuildOptions{
 		Tags:        []string{repoName},
 		Remove:      true,
 		ForceRemove: true,
-	})
-	if err != nil {
-		return err
-	}
-
-	_, err = io.Copy(ioutil.Discard, res.Body)
-	if err != nil {
-		return err
-	}
-
-	return res.Body.Close()
+	}))
 }
 
 // taskKey creates a key from the prefix and all arguments to be unique

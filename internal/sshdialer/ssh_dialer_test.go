@@ -1013,9 +1013,7 @@ func withSSHAgent(t *testing.T, ag agent.Agent) func() {
 				}()
 				err := agent.ServeAgent(ag, conn)
 				if err != nil {
-					// we can use this once we use go 1.16
-					// if !errors.Is(err, net.ErrClosed) {
-					if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+					if !errors.Is(err, net.ErrClosed) {
 						fmt.Fprintf(os.Stderr, "agent.ServeAgent() failed: %v\n", err)
 					}
 				}
@@ -1032,9 +1030,7 @@ func withSSHAgent(t *testing.T, ag agent.Agent) func() {
 		}
 		err = <-errChan
 
-		// we can use this once we use go 1.16
-		// if !errors.Is(err, net.ErrClosed) {
-		if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+		if !errors.Is(err, net.ErrClosed) {
 			t.Fatal(err)
 		}
 		cancel()

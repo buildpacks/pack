@@ -371,6 +371,15 @@ func CreateImageFromDir(t *testing.T, dockerCli client.CommonAPIClient, repoName
 	AssertNil(t, errors.Wrapf(err, "building image %s", style.Symbol(repoName)))
 }
 
+func CheckImageBuildResult(response dockertypes.ImageBuildResponse, err error) error {
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+	return checkResponse(response.Body)
+}
+
 func checkResponse(responseBody io.Reader) error {
 	body, err := ioutil.ReadAll(responseBody)
 	if err != nil {
