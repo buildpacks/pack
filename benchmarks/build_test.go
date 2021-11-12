@@ -1,3 +1,4 @@
+//go:build benchmarks
 // +build benchmarks
 
 package benchmarks

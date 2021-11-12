@@ -1,4 +1,5 @@
-//+build !windows, example
+//go:build !windows && example
+// +build !windows,example
 
 package client_test
 
