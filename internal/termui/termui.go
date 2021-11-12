@@ -11,7 +11,9 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
+	"github.com/buildpacks/pack/internal/builder"
 	"github.com/buildpacks/pack/internal/container"
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 var (
@@ -21,34 +23,56 @@ var (
 type app interface {
 	SetRoot(root tview.Primitive, fullscreen bool) *tview.Application
 	Draw() *tview.Application
+	QueueUpdateDraw(f func()) *tview.Application
 	Run() error
 }
 
+type buildr interface {
+	BaseImageName() string
+	Buildpacks() []dist.BuildpackInfo
+	LifecycleDescriptor() builder.LifecycleDescriptor
+	Stack() builder.StackMetadata
+}
+
 type page interface {
+	Handle(txt string)
 	Stop()
 }
 
 type Termui struct {
 	app         app
+	bldr        buildr
 	currentPage page
-	textChan    chan string
+
+	appName       string
+	runImageName  string
+	exitCode      int64
+	textChan      chan string
+	buildpackChan chan dist.BuildpackInfo
 }
 
-func NewTermui() *Termui {
+func NewTermui(appName string, bldr *builder.Builder, runImageName string) *Termui {
 	return &Termui{
-		app:      tview.NewApplication(),
-		textChan: make(chan string, 10),
+		appName:       appName,
+		bldr:          bldr,
+		runImageName:  runImageName,
+		app:           tview.NewApplication(),
+		buildpackChan: make(chan dist.BuildpackInfo, 50),
+		textChan:      make(chan string, 50),
 	}
 }
 
 // Run starts the terminal UI process in the foreground
 // and the passed in function in the background
 func (s *Termui) Run(funk func()) error {
-	go funk()
+	go func() {
+		funk()
+		s.showBuildStatus()
+	}()
 	go s.handle()
 	defer s.stop()
 
-	s.currentPage = NewDetect(s.app)
+	s.currentPage = NewDetect(s.app, s.buildpackChan, s.bldr)
 	return s.app.Run()
 }
 
@@ -61,8 +85,11 @@ func (s *Termui) handle() {
 		switch {
 		case strings.Contains(txt, "===> ANALYZING"):
 			s.currentPage.Stop()
+
+			s.currentPage = NewDashboard(s.app, s.appName, s.bldr, s.runImageName, collect(s.buildpackChan))
+			s.currentPage.Handle(txt)
 		default:
-			// no-op
+			s.currentPage.Handle(txt)
 		}
 	}
 }
@@ -93,18 +120,39 @@ func (s *Termui) Handler() container.Handler {
 				return err
 			case err := <-errChan:
 				return err
+			case body := <-bodyChan:
+				s.exitCode = body.StatusCode
+				return nil
 			default:
-				if !scanner.Scan() {
-					err := scanner.Err()
-					if err != nil {
-						return err
-					}
-
-					return nil
+				if scanner.Scan() {
+					s.textChan <- scanner.Text()
+					continue
 				}
 
-				s.textChan <- scanner.Text()
+				if err := scanner.Err(); err != nil {
+					return err
+				}
 			}
 		}
 	}
+}
+
+func (s *Termui) showBuildStatus() {
+	if s.exitCode == 0 {
+		s.textChan <- "[green::b]\n\nBUILD SUCCEEDED"
+		return
+	}
+
+	s.textChan <- "[red::b]\n\nBUILD FAILED"
+}
+
+func collect(buildpackChan chan dist.BuildpackInfo) []dist.BuildpackInfo {
+	close(buildpackChan)
+
+	var result []dist.BuildpackInfo
+	for txt := range buildpackChan {
+		result = append(result, txt)
+	}
+
+	return result
 }

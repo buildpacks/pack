@@ -1,28 +1,45 @@
 package termui
 
 import (
+	"regexp"
 	"time"
 
 	"github.com/rivo/tview"
+
+	"github.com/buildpacks/pack/pkg/dist"
 )
 
 type Detect struct {
-	app      app
-	textView *tview.TextView
-	doneChan chan bool
+	app  app
+	bldr buildr
+
+	textView       *tview.TextView
+	buildpackRegex *regexp.Regexp
+	buildpackChan  chan dist.BuildpackInfo
+	doneChan       chan bool
 }
 
-func NewDetect(app app) *Detect {
+func NewDetect(app app, buildpackChan chan dist.BuildpackInfo, bldr buildr) *Detect {
 	d := &Detect{
-		app:      app,
-		textView: detectStatusTV(app),
-		doneChan: make(chan bool, 1),
+		app:            app,
+		textView:       detectStatusTV(),
+		buildpackRegex: regexp.MustCompile(`^(\S+)\s+([\d\.]+)$`),
+		buildpackChan:  buildpackChan,
+		doneChan:       make(chan bool, 1),
+		bldr:           bldr,
 	}
 
 	go d.start()
 	grid := centered(d.textView)
 	d.app.SetRoot(grid, true)
 	return d
+}
+
+func (d *Detect) Handle(txt string) {
+	m := d.buildpackRegex.FindStringSubmatch(txt)
+	if len(m) == 3 {
+		d.buildpackChan <- d.find(m[1], m[2])
+	}
 }
 
 func (d *Detect) Stop() {
@@ -45,7 +62,9 @@ func (d *Detect) start() {
 	for {
 		select {
 		case <-ticker.C:
-			d.textView.SetText(texts[i])
+			d.app.QueueUpdateDraw(func() {
+				d.textView.SetText(texts[i])
+			})
 
 			i++
 			if i == len(texts) {
@@ -53,16 +72,28 @@ func (d *Detect) start() {
 			}
 		case <-d.doneChan:
 			ticker.Stop()
-			d.textView.SetText(doneText)
+
+			d.app.QueueUpdateDraw(func() {
+				d.textView.SetText(doneText)
+			})
 			return
 		}
 	}
 }
 
-func detectStatusTV(app app) *tview.TextView {
+func (d *Detect) find(buildpackID, buildpackVersion string) dist.BuildpackInfo {
+	for _, buildpack := range d.bldr.Buildpacks() {
+		if buildpack.ID == buildpackID && buildpack.Version == buildpackVersion {
+			return buildpack
+		}
+	}
+
+	return dist.BuildpackInfo{}
+}
+
+func detectStatusTV() *tview.TextView {
 	tv := tview.NewTextView()
 	tv.SetBackgroundColor(backgroundColor)
-	tv.SetChangedFunc(func() { app.Draw() })
 	return tv
 }
 

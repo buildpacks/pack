@@ -27,6 +27,12 @@ func (a *App) Draw() *tview.Application {
 	return nil
 }
 
+func (a *App) QueueUpdateDraw(f func()) *tview.Application {
+	f()
+	a.DrawCallCount++
+	return nil
+}
+
 func (a *App) Run() error {
 	<-a.doneChan
 	return nil
@@ -34,4 +40,8 @@ func (a *App) Run() error {
 
 func (a *App) StopRunning() {
 	a.doneChan <- true
+}
+
+func (a *App) ResetDrawCount() {
+	a.DrawCallCount = 0
 }
