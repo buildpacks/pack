@@ -352,7 +352,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		GID:                opts.GroupID,
 		PreviousImage:      opts.PreviousImage,
 		Interactive:        opts.Interactive,
-		Termui:             termui.NewTermui(),
+		Termui:             termui.NewTermui(imageRef.Name(), bldr, runImageName),
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version

@@ -1326,6 +1326,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, bldr.GID(), 4321)
 				})
 			})
+
+			when("#BaseImageName", func() {
+				it("return name of base image", func() {
+					h.AssertEq(t, bldr.BaseImageName(), "base/image")
+				})
+			})
 		})
 	})
 }

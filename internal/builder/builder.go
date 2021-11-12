@@ -190,6 +190,11 @@ func (b *Builder) Order() dist.Order {
 	return b.order
 }
 
+// BaseImageName returns the name of the builder base image
+func (b *Builder) BaseImageName() string {
+	return b.baseImageName
+}
+
 // Name returns the name of the builder
 func (b *Builder) Name() string {
 	return b.image.Name()
