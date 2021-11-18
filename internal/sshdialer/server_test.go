@@ -214,10 +214,13 @@ func prepareSSHServer(t *testing.T) (sshServer *SSHServer, stopSSH func(), err e
 	go func() {
 		var err error
 		for {
-			err = sshServer.handleConnection(ctx, <-connChan)
-			if err != nil {
-				t.Log(err)
-			}
+			conn := <-connChan
+			go func(conn net.Conn) {
+				err = sshServer.handleConnection(ctx, conn)
+				if err != nil {
+					t.Log(err)
+				}
+			}(conn)
 		}
 	}()
 
@@ -299,13 +302,23 @@ func (s *SSHServer) handleConnection(ctx context.Context, conn net.Conn) error {
 		}
 	}()
 
-	go ssh.DiscardRequests(reqs)
+	var wg sync.WaitGroup
 
+	wg.Add(1)
 	go func() {
-		for newChannel := range newChannels {
-			go s.handleChannel(newChannel)
-		}
+		defer wg.Done()
+		ssh.DiscardRequests(reqs)
 	}()
+
+	for newChannel := range newChannels {
+		wg.Add(1)
+		go func(newChannel ssh.NewChannel) {
+			defer wg.Done()
+			s.handleChannel(newChannel)
+		}(newChannel)
+	}
+
+	wg.Wait()
 
 	return nil
 }
@@ -331,15 +344,14 @@ func (s *SSHServer) handleSession(newChannel ssh.NewChannel) {
 		s.t.Error(err)
 		return
 	}
-	go func() {
-		defer ch.Close()
-		for req := range reqs {
-			if req.Type == "exec" {
-				s.handleExec(ch, req)
-				return
-			}
+
+	defer ch.Close()
+	for req := range reqs {
+		if req.Type == "exec" {
+			s.handleExec(ch, req)
+			break
 		}
-	}()
+	}
 }
 
 func (s *SSHServer) handleExec(ch ssh.Channel, req *ssh.Request) {
@@ -500,7 +512,7 @@ func (s *SSHServer) handleTunnel(newChannel ssh.NewChannel) {
 		}
 	}
 
-	ch, reqs, err := newChannel.Accept()
+	ch, _, err := newChannel.Accept()
 	if err != nil {
 		s.t.Error(err)
 	}
@@ -514,8 +526,6 @@ func (s *SSHServer) handleTunnel(newChannel ssh.NewChannel) {
 		}
 		return
 	}
-
-	ssh.DiscardRequests(reqs)
 }
 
 type listener chan net.Conn
