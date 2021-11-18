@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/buildpacks/pack/internal/build"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"
 	"github.com/buildpacks/pack/pkg/dist"
@@ -82,7 +81,7 @@ func BuildpackNew(logger logging.Logger, creator BuildpackCreator) *cobra.Comman
 		}),
 	}
 
-	cmd.Flags().StringVarP(&flags.API, "api", "a", build.SupportedPlatformAPIVersions.Latest().String(), "Buildpack API compatibility of the generated buildpack")
+	cmd.Flags().StringVarP(&flags.API, "api", "a", "0.5", "Buildpack API compatibility of the generated buildpack")
 	cmd.Flags().StringVarP(&flags.Path, "path", "p", "", "Path to generate the buildpack")
 	cmd.Flags().StringVarP(&flags.Version, "version", "V", "1.0.0", "Version of the generated buildpack")
 	cmd.Flags().StringSliceVarP(&flags.Stacks, "stacks", "s", []string{"io.buildpacks.stacks.bionic"}, "Stack(s) this buildpack will be compatible with"+multiValueHelp("stack"))
