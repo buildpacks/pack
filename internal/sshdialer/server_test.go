@@ -96,10 +96,11 @@ func prepareSSHServer(t *testing.T) (sshServer *SSHServer, stopSSH func(), err e
 	})
 
 	sshServer = &SSHServer{
+		t: t,
 		dockerServer: http.Server{
 			Handler: handlePing,
 		},
-		dockerListener: make(chan io.ReadWriteCloser, 64),
+		dockerListener: make(chan net.Conn, 1024),
 		lock:           &sync.Mutex{},
 	}
 
@@ -376,11 +377,12 @@ func (s *SSHServer) handleExec(ch ssh.Channel, req *ssh.Request) {
 		_, _ = fmt.Fprintln(ch, "something Windows something")
 		ret = 0
 	case execData.Command == "docker system dial-stdio" && s.HasDialStdio():
-		pr, pw, rwc := newPipeConn()
+		pr, pw, conn := newPipeConn()
 
 		select {
-		case s.dockerListener <- rwc:
+		case s.dockerListener <- conn:
 		default:
+			s.t.Log("listener queue full")
 			err = ch.Close()
 			if err != nil {
 				s.t.Log(err)
@@ -412,7 +414,7 @@ func (s *SSHServer) handleExec(ch ssh.Channel, req *ssh.Request) {
 
 		<-cpDone
 
-		err = rwc.Close()
+		err = conn.Close()
 		if err != nil {
 			s.t.Log(err)
 		}
@@ -425,11 +427,11 @@ func (s *SSHServer) handleExec(ch ssh.Channel, req *ssh.Request) {
 	sendExitCode(ret)
 }
 
-func newPipeConn() (*io.PipeReader, *io.PipeWriter, io.ReadWriteCloser) {
+func newPipeConn() (*io.PipeReader, *io.PipeWriter, net.Conn) {
 	pr0, pw0 := io.Pipe()
 	pr1, pw1 := io.Pipe()
 	rwc := pipeReaderWriterCloser{r: pr0, w: pw1}
-	return pr1, pw0, rwc
+	return pr1, pw0, rwcConn{rwc}
 }
 
 type pipeReaderWriterCloser struct {
@@ -503,8 +505,9 @@ func (s *SSHServer) handleTunnel(newChannel ssh.NewChannel) {
 		s.t.Error(err)
 	}
 	select {
-	case s.dockerListener <- ch:
+	case s.dockerListener <- rwcConn{ch}:
 	default:
+		s.t.Log("listener queue full")
 		err = ch.Close()
 		if err != nil {
 			s.t.Log(err)
@@ -515,14 +518,14 @@ func (s *SSHServer) handleTunnel(newChannel ssh.NewChannel) {
 	ssh.DiscardRequests(reqs)
 }
 
-type listener chan io.ReadWriteCloser
+type listener chan net.Conn
 
 func (l listener) Accept() (net.Conn, error) {
-	rwc, ok := <-l
+	conn, ok := <-l
 	if !ok {
 		return nil, errors.New("listener closed")
 	}
-	return rwcConn{rwc}, nil
+	return conn, nil
 }
 
 func (l listener) Close() error {
