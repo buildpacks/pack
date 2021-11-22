@@ -187,6 +187,69 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 		when("Run without using creator", func() {
+			when("platform < 0.7", func() {
+				it("calls the phases with the right order", func() {
+					opts := build.LifecycleOptions{
+						Publish:      false,
+						ClearCache:   false,
+						RunImage:     "test",
+						Image:        imageName,
+						Builder:      fakeBuilder,
+						TrustBuilder: false,
+						UseCreator:   false,
+					}
+
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					h.AssertNil(t, err)
+
+					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+						return fakePhaseFactory
+					})
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+					expectedPhases := []string{
+						"detector", "analyzer", "restorer", "builder", "exporter",
+					}
+					for i, entry := range fakePhaseFactory.NewCalledWithProvider {
+						h.AssertEq(t, entry.Name(), expectedPhases[i])
+					}
+				})
+			})
+
+			when("platform >= 0.7", func() {
+				it("calls the phases with the right order", func() {
+					fakeBuilder, err := fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.7")}))
+					h.AssertNil(t, err)
+
+					opts := build.LifecycleOptions{
+						Publish:      false,
+						ClearCache:   false,
+						RunImage:     "test",
+						Image:        imageName,
+						Builder:      fakeBuilder,
+						TrustBuilder: false,
+						UseCreator:   false,
+					}
+
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					h.AssertNil(t, err)
+
+					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+						return fakePhaseFactory
+					})
+					h.AssertNil(t, err)
+
+					h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider), 5)
+					expectedPhases := []string{
+						"analyzer", "detector", "restorer", "builder", "exporter",
+					}
+					for i, entry := range fakePhaseFactory.NewCalledWithProvider {
+						h.AssertEq(t, entry.Name(), expectedPhases[i])
+					}
+				})
+			})
+
 			it("succeeds", func() {
 				opts := build.LifecycleOptions{
 					Publish:      false,
