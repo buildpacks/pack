@@ -5,7 +5,7 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/apex/log v1.9.0
 	github.com/buildpacks/imgutil v0.0.0-20211001201950-cf7ae41c3771
-	github.com/buildpacks/lifecycle v0.12.0
+	github.com/buildpacks/lifecycle v0.13.0
 	github.com/docker/cli v20.10.10+incompatible
 	github.com/docker/docker v20.10.10+incompatible
 	github.com/docker/go-connections v0.4.0
