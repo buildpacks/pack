@@ -941,7 +941,9 @@ func testAcceptance(
 						assertOutput = assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
 						assertLifecycleOutput = assertions.NewLifecycleOutputAssertionManager(t, output)
-						assertLifecycleOutput.ReportsSkippingBuildpackLayerAnalysis()
+						if !pack.SupportsFeature(invoke.AnalysisFirst) {
+							assertLifecycleOutput.ReportsSkippingBuildpackLayerAnalysis()
+						}
 						assertLifecycleOutput.ReportsExporterReusingUnchangedLayer(cachedLaunchLayer)
 						assertLifecycleOutput.ReportsCacheCreation(cachedLaunchLayer)
 

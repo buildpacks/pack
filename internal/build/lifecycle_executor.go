@@ -24,6 +24,8 @@ var (
 		api.MustParse("0.4"),
 		api.MustParse("0.5"),
 		api.MustParse("0.6"),
+		api.MustParse("0.7"),
+		api.MustParse("0.8"),
 	}
 )
 
