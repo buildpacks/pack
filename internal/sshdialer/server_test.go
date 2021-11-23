@@ -207,8 +207,7 @@ func prepareSSHServer(t *testing.T) (sshServer *SSHServer, stopSSH func(), err e
 		for {
 			conn := <-connChan
 			go func(conn net.Conn) {
-				var err error
-				err = sshServer.handleConnection(ctx, conn)
+				err := sshServer.handleConnection(ctx, conn)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "err: %v\n", err)
 				}
