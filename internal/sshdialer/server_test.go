@@ -22,9 +22,7 @@ import (
 )
 
 type SSHServer struct {
-	t              *testing.T
 	lock           sync.Locker
-	config         ssh.ServerConfig
 	dockerServer   http.Server
 	dockerListener listener
 	dockerHost     string
@@ -96,17 +94,11 @@ func prepareSSHServer(t *testing.T) (sshServer *SSHServer, stopSSH func(), err e
 	})
 
 	sshServer = &SSHServer{
-		t: t,
 		dockerServer: http.Server{
 			Handler: handlePing,
 		},
 		dockerListener: listener{conns: make(chan net.Conn), closed: make(chan struct{})},
 		lock:           &sync.Mutex{},
-	}
-
-	err = setupServerAuth(&sshServer.config)
-	if err != nil {
-		return nil, nil, err
 	}
 
 	sshTCPListener, err := net.Listen("tcp4", "localhost:0")
@@ -212,13 +204,13 @@ func prepareSSHServer(t *testing.T) (sshServer *SSHServer, stopSSH func(), err e
 	}
 
 	go func() {
-		var err error
 		for {
 			conn := <-connChan
 			go func(conn net.Conn) {
+				var err error
 				err = sshServer.handleConnection(ctx, conn)
 				if err != nil {
-					t.Log(err)
+					fmt.Fprintf(os.Stderr, "err: %v\n", err)
 				}
 			}(conn)
 		}
@@ -289,7 +281,9 @@ func setupServerAuth(conf *ssh.ServerConfig) (err error) {
 }
 
 func (s *SSHServer) handleConnection(ctx context.Context, conn net.Conn) error {
-	sshConn, newChannels, reqs, err := ssh.NewServerConn(conn, &s.config)
+	var config ssh.ServerConfig
+	setupServerAuth(&config)
+	sshConn, newChannels, reqs, err := ssh.NewServerConn(conn, &config)
 	if err != nil {
 		return err
 	}
@@ -298,7 +292,7 @@ func (s *SSHServer) handleConnection(ctx context.Context, conn net.Conn) error {
 		<-ctx.Done()
 		err = sshConn.Close()
 		if err != nil && !errors.Is(err, net.ErrClosed) {
-			s.t.Log(err)
+			fmt.Fprintf(os.Stderr, "err: %v\n", err)
 		}
 	}()
 
@@ -333,7 +327,7 @@ func (s *SSHServer) handleChannel(newChannel ssh.NewChannel) {
 	default:
 		err = newChannel.Reject(ssh.UnknownChannelType, fmt.Sprintf("type of channel %q is not supported", newChannel.ChannelType()))
 		if err != nil {
-			s.t.Error(err)
+			fmt.Fprintf(os.Stderr, "err: %v\n", err)
 		}
 	}
 }
@@ -341,7 +335,7 @@ func (s *SSHServer) handleChannel(newChannel ssh.NewChannel) {
 func (s *SSHServer) handleSession(newChannel ssh.NewChannel) {
 	ch, reqs, err := newChannel.Accept()
 	if err != nil {
-		s.t.Error(err)
+		fmt.Fprintf(os.Stderr, "err: %v\n", err)
 		return
 	}
 
@@ -358,14 +352,16 @@ func (s *SSHServer) handleExec(ch ssh.Channel, req *ssh.Request) {
 	var err error
 	err = req.Reply(true, nil)
 	if err != nil {
-		s.t.Error(err)
+		fmt.Fprintf(os.Stderr, "err: %v\n", err)
+		return
 	}
 	execData := struct {
 		Command string
 	}{}
 	err = ssh.Unmarshal(req.Payload, &execData)
 	if err != nil {
-		s.t.Error(err)
+		fmt.Fprintf(os.Stderr, "err: %v\n", err)
+		return
 	}
 
 	sendExitCode := func(ret uint32) {
@@ -373,7 +369,7 @@ func (s *SSHServer) handleExec(ch ssh.Channel, req *ssh.Request) {
 		binary.BigEndian.PutUint32(msg, ret)
 		_, err = ch.SendRequest("exit-status", false, msg)
 		if err != nil && !errors.Is(err, io.EOF) {
-			s.t.Log(err)
+			fmt.Fprintf(os.Stderr, "err: %v\n", err)
 		}
 	}
 
@@ -394,10 +390,9 @@ func (s *SSHServer) handleExec(ch ssh.Channel, req *ssh.Request) {
 		select {
 		case s.dockerListener.conns <- conn:
 		case <-s.dockerListener.closed:
-			s.t.Log("listener closed")
 			err = ch.Close()
 			if err != nil {
-				s.t.Log(err)
+				fmt.Fprintf(os.Stderr, "err: %v\n", err)
 			}
 		}
 
@@ -406,29 +401,29 @@ func (s *SSHServer) handleExec(ch ssh.Channel, req *ssh.Request) {
 			var err error
 			_, err = io.Copy(pw, ch)
 			if err != nil {
-				s.t.Log(err)
+				fmt.Fprintf(os.Stderr, "err: %v\n", err)
 			}
 			err = pw.Close()
 			if err != nil {
-				s.t.Log(err)
+				fmt.Fprintf(os.Stderr, "err: %v\n", err)
 			}
 			cpDone <- struct{}{}
 		}()
 
 		_, err = io.Copy(ch, pr)
 		if err != nil {
-			s.t.Log(err)
+			fmt.Fprintf(os.Stderr, "err: %v\n", err)
 		}
 		err = pr.Close()
 		if err != nil {
-			s.t.Log(err)
+			fmt.Fprintf(os.Stderr, "err: %v\n", err)
 		}
 
 		<-cpDone
 
 		<-conn.closed
 		if err != nil {
-			s.t.Log(err)
+			fmt.Fprintf(os.Stderr, "err: %v\n", err)
 		}
 
 		ret = 0
@@ -480,12 +475,13 @@ func (s *SSHServer) handleTunnel(newChannel ssh.NewChannel) {
 		}{}
 		err = ssh.Unmarshal(bs, &unixExtraData)
 		if err != nil {
-			s.t.Error(err)
+			fmt.Fprintf(os.Stderr, "err: %v\n", err)
+			return
 		}
 		if unixExtraData.SocketPath != dockerUnixSocket {
 			err = newChannel.Reject(ssh.ConnectionFailed, fmt.Sprintf("bad socket: %q", unixExtraData.SocketPath))
 			if err != nil {
-				s.t.Error(err)
+				fmt.Fprintf(os.Stderr, "err: %v\n", err)
 			}
 			return
 		}
@@ -499,14 +495,15 @@ func (s *SSHServer) handleTunnel(newChannel ssh.NewChannel) {
 		}{}
 		err = ssh.Unmarshal(bs, &tcpExtraData)
 		if err != nil {
-			s.t.Error(err)
+			fmt.Fprintf(os.Stderr, "err: %v\n", err)
+			return
 		}
 
 		hostPort := fmt.Sprintf("%s:%d", tcpExtraData.HostLocal, tcpExtraData.PortLocal)
 		if hostPort != dockerTCPSocket {
 			err = newChannel.Reject(ssh.ConnectionFailed, fmt.Sprintf("bad socket: '%s:%d'", tcpExtraData.HostLocal, tcpExtraData.PortLocal))
 			if err != nil {
-				s.t.Error(err)
+				fmt.Fprintf(os.Stderr, "err: %v\n", err)
 			}
 			return
 		}
@@ -514,16 +511,16 @@ func (s *SSHServer) handleTunnel(newChannel ssh.NewChannel) {
 
 	ch, _, err := newChannel.Accept()
 	if err != nil {
-		s.t.Error(err)
+		fmt.Fprintf(os.Stderr, "err: %v\n", err)
+		return
 	}
 	conn := newRWCConn(ch)
 	select {
 	case s.dockerListener.conns <- conn:
 	case <-s.dockerListener.closed:
-		s.t.Log("listener closed")
 		err = ch.Close()
 		if err != nil {
-			s.t.Log(err)
+			fmt.Fprintf(os.Stderr, "err: %v\n", err)
 		}
 		return
 	}
