@@ -100,7 +100,7 @@ func prepareSSHServer(t *testing.T) (sshServer *SSHServer, stopSSH func(), err e
 		dockerServer: http.Server{
 			Handler: handlePing,
 		},
-		dockerListener: make(chan net.Conn, 1024),
+		dockerListener: listener{conns: make(chan net.Conn), closed: make(chan struct{})},
 		lock:           &sync.Mutex{},
 	}
 
@@ -151,7 +151,7 @@ func prepareSSHServer(t *testing.T) (sshServer *SSHServer, stopSSH func(), err e
 	}
 
 	go func() {
-		httpServerErrChan <- sshServer.dockerServer.Serve(sshServer.dockerListener)
+		httpServerErrChan <- sshServer.dockerServer.Serve(&sshServer.dockerListener)
 	}()
 
 	stopSSH = func() {
@@ -392,9 +392,9 @@ func (s *SSHServer) handleExec(ch ssh.Channel, req *ssh.Request) {
 		pr, pw, conn := newPipeConn()
 
 		select {
-		case s.dockerListener <- conn:
-		default:
-			s.t.Log("listener queue full")
+		case s.dockerListener.conns <- conn:
+		case <-s.dockerListener.closed:
+			s.t.Log("listener closed")
 			err = ch.Close()
 			if err != nil {
 				s.t.Log(err)
@@ -426,7 +426,7 @@ func (s *SSHServer) handleExec(ch ssh.Channel, req *ssh.Request) {
 
 		<-cpDone
 
-		err = conn.Close()
+		<-conn.closed
 		if err != nil {
 			s.t.Log(err)
 		}
@@ -439,11 +439,11 @@ func (s *SSHServer) handleExec(ch ssh.Channel, req *ssh.Request) {
 	sendExitCode(ret)
 }
 
-func newPipeConn() (*io.PipeReader, *io.PipeWriter, net.Conn) {
+func newPipeConn() (*io.PipeReader, *io.PipeWriter, *rwcConn) {
 	pr0, pw0 := io.Pipe()
 	pr1, pw1 := io.Pipe()
 	rwc := pipeReaderWriterCloser{r: pr0, w: pw1}
-	return pr1, pw0, rwcConn{rwc}
+	return pr1, pw0, newRWCConn(rwc)
 }
 
 type pipeReaderWriterCloser struct {
@@ -516,63 +516,81 @@ func (s *SSHServer) handleTunnel(newChannel ssh.NewChannel) {
 	if err != nil {
 		s.t.Error(err)
 	}
+	conn := newRWCConn(ch)
 	select {
-	case s.dockerListener <- rwcConn{ch}:
-	default:
-		s.t.Log("listener queue full")
+	case s.dockerListener.conns <- conn:
+	case <-s.dockerListener.closed:
+		s.t.Log("listener closed")
 		err = ch.Close()
 		if err != nil {
 			s.t.Log(err)
 		}
 		return
 	}
+	<-conn.closed
 }
 
-type listener chan net.Conn
+type listener struct {
+	conns  chan net.Conn
+	closed chan struct{}
+	o      sync.Once
+}
 
-func (l listener) Accept() (net.Conn, error) {
-	conn, ok := <-l
-	if !ok {
-		return nil, errors.New("listener closed")
+func (l *listener) Accept() (net.Conn, error) {
+	select {
+	case <-l.closed:
+		return nil, net.ErrClosed
+	case conn := <-l.conns:
+		return conn, nil
 	}
-	return conn, nil
 }
 
-func (l listener) Close() error {
-	close(l)
+func (l *listener) Close() error {
+	l.o.Do(func() {
+		close(l.closed)
+	})
 	return nil
 }
 
-func (l listener) Addr() net.Addr {
+func (l *listener) Addr() net.Addr {
 	return &net.UnixAddr{Name: dockerUnixSocket, Net: "unix"}
+}
+
+func newRWCConn(rwc io.ReadWriteCloser) *rwcConn {
+	return &rwcConn{rwc: rwc, closed: make(chan struct{})}
 }
 
 type rwcConn struct {
-	ch io.ReadWriteCloser
+	rwc    io.ReadWriteCloser
+	closed chan struct{}
+	o      sync.Once
 }
 
-func (c rwcConn) Read(b []byte) (n int, err error) {
-	return c.ch.Read(b)
+func (c *rwcConn) Read(b []byte) (n int, err error) {
+	return c.rwc.Read(b)
 }
 
-func (c rwcConn) Write(b []byte) (n int, err error) {
-	return c.ch.Write(b)
+func (c *rwcConn) Write(b []byte) (n int, err error) {
+	return c.rwc.Write(b)
 }
 
-func (c rwcConn) Close() error {
-	return c.ch.Close()
+func (c *rwcConn) Close() error {
+	c.o.Do(func() {
+		close(c.closed)
+	})
+	return c.rwc.Close()
 }
 
-func (c rwcConn) LocalAddr() net.Addr {
+func (c *rwcConn) LocalAddr() net.Addr {
 	return &net.UnixAddr{Name: dockerUnixSocket, Net: "unix"}
 }
 
-func (c rwcConn) RemoteAddr() net.Addr {
+func (c *rwcConn) RemoteAddr() net.Addr {
 	return &net.UnixAddr{Name: "@", Net: "unix"}
 }
 
-func (c rwcConn) SetDeadline(t time.Time) error { return nil }
+func (c *rwcConn) SetDeadline(t time.Time) error { return nil }
 
-func (c rwcConn) SetReadDeadline(t time.Time) error { return nil }
+func (c *rwcConn) SetReadDeadline(t time.Time) error { return nil }
 
-func (c rwcConn) SetWriteDeadline(t time.Time) error { return nil }
+func (c *rwcConn) SetWriteDeadline(t time.Time) error { return nil }
