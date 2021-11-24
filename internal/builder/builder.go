@@ -417,6 +417,37 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 			if existingBPInfo.LayerDiffID == diffID.String() {
 				logger.Debugf("Buildpack %s already exists on builder with same contents, skipping...", style.Symbol(bpInfo.FullName()))
 				continue
+			} else {
+
+				bpWhiteoutsTmpDir := filepath.Join(tmpDir, strconv.Itoa(i)+"_whiteouts")
+				if err := os.MkdirAll(bpWhiteoutsTmpDir, os.ModePerm); err != nil {
+					return errors.Wrap(err, "creating buildpack whiteouts temp dir")
+				}
+
+				deletedMaps := map[string][]byte{
+					filepath.Join(
+						cnbDir,
+						"buildpacks",
+						strings.ReplaceAll(bpInfo.ID, "/", "_"),
+						".wh."+bpInfo.Version,
+					): {},
+				}
+				whiteoutsTarFile := filepath.Join(bpWhiteoutsTmpDir, "whiteouts.tar")
+
+				if err := createTarball(whiteoutsTarFile, deletedMaps); err != nil {
+					return errors.Wrapf(err,
+						"creating whiteout layers' tarfile for buildpack %s",
+						style.Symbol(bp.Descriptor().Info.FullName()),
+					)
+				}
+
+				if err := image.AddLayer(whiteoutsTarFile); err != nil {
+					return errors.Wrapf(err,
+						"adding whiteout layer tar for buildpack %s",
+						style.Symbol(bpInfo.FullName()),
+					)
+				}
+
 			}
 
 			logger.Debugf(BuildpackOnBuilderMessage, style.Symbol(bpInfo.FullName()), style.Symbol(existingBPInfo.LayerDiffID), style.Symbol(diffID.String()))
@@ -452,6 +483,34 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 		dist.AddBuildpackToLayersMD(bpLayers, bp.buildpack.Descriptor(), bp.diffID)
 	}
 
+	return nil
+}
+
+func createTarball(tarPath string, data map[string][]byte) error {
+
+	tarFile, err := os.Create(tarPath)
+	if err != nil {
+		return err
+	}
+
+	defer tarFile.Close()
+
+	tw := tar.NewWriter(tarFile)
+	defer tw.Close()
+
+	for name, content := range data {
+		hdr := &tar.Header{
+			Name: name,
+			Mode: 0600,
+			Size: int64(len(content)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			return err
+		}
+		if _, err := tw.Write(content); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
