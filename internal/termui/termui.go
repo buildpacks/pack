@@ -87,14 +87,21 @@ func (s *Termui) stop() {
 }
 
 func (s *Termui) handle() {
+	var detectLogs []string
+
 	for txt := range s.textChan {
 		switch {
-		case strings.Contains(txt, "===> ANALYZING"):
+		// We need a line that signals when detect phase is completed.
+		// Since the phase order is: analyze -> detect -> restore -> build -> ...
+		// "===> RESTORING" would be the best option. But since restore is optional,
+		// "===> BUILDING" serves as the next best option.
+		case strings.Contains(txt, "===> BUILDING"):
 			s.currentPage.Stop()
 
-			s.currentPage = NewDashboard(s.app, s.appName, s.bldr, s.runImageName, collect(s.buildpackChan))
+			s.currentPage = NewDashboard(s.app, s.appName, s.bldr, s.runImageName, collect(s.buildpackChan), detectLogs)
 			s.currentPage.Handle(txt)
 		default:
+			detectLogs = append(detectLogs, txt)
 			s.currentPage.Handle(txt)
 		}
 	}

@@ -220,7 +220,7 @@ func initMenu(buildpackInfos []dist.BuildpackInfo) *tview.Table {
 		SetBackgroundColor(backgroundColor)
 
 	var i int
-	for _, phase := range []string{"DETECT", "ANALYZE", "RESTORE", "BUILD"} {
+	for _, phase := range []string{"ANALYZE", "DETECT", "RESTORE", "BUILD"} {
 		table.SetCell(i, 0,
 			tview.NewTableCell(phase).
 				SetTextColor(tcell.ColorDarkGray).

@@ -90,7 +90,9 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 
 		fakeDockerStdWriter.WriteStdoutln(`1 of 2 buildpacks participating`)
 		fakeDockerStdWriter.WriteStdoutln(`some/buildpack-1 0.0.1`)
-		fakeDockerStdWriter.WriteStdoutln(`===> ANALYZING`)
+
+		//move to next screen
+		fakeDockerStdWriter.WriteStdoutln(`===> BUILDING`)
 		h.Eventually(t, func() bool {
 			return strings.Contains(detectPage.textView.GetText(true), "Detected!")
 		}, eventuallyInterval, eventuallyDuration)
@@ -203,7 +205,8 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 			return strings.Contains(currentPage.textView.GetText(true), "Detecting")
 		}, eventuallyInterval, eventuallyDuration)
 
-		s.Info(`===> ANALYZING`)
+		//move to next screen
+		s.Info(`===> BUILDING`)
 		h.Eventually(t, func() bool {
 			return strings.Contains(currentPage.textView.GetText(true), "Detected!")
 		}, eventuallyInterval, eventuallyDuration)

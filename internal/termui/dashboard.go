@@ -23,7 +23,7 @@ type Dashboard struct {
 	logs string
 }
 
-func NewDashboard(app app, appName string, bldr buildr, runImageName string, buildpackInfo []dist.BuildpackInfo) *Dashboard {
+func NewDashboard(app app, appName string, bldr buildr, runImageName string, buildpackInfo []dist.BuildpackInfo, logs []string) *Dashboard {
 	d := &Dashboard{}
 
 	appTree, builderTree := initTrees(appName, bldr, runImageName)
@@ -59,6 +59,10 @@ func NewDashboard(app app, appName string, bldr buildr, runImageName string, bui
 	d.leftPane = leftPane
 	d.logsView = logsView
 	d.screen = screen
+
+	for _, txt := range logs {
+		d.logs = d.logs + txt + "\n"
+	}
 
 	d.handleToggle()
 	d.setScreen()
