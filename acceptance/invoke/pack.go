@@ -222,6 +222,7 @@ const (
 	InspectRemoteImage = iota
 	BuilderNoDuplicateLayers
 	SourceMetadataFromProjectTOML
+	AnalysisFirst
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
@@ -233,6 +234,9 @@ var featureTests = map[Feature]func(i *PackInvoker) bool{
 	},
 	SourceMetadataFromProjectTOML: func(i *PackInvoker) bool {
 		return i.laterThan("0.20.0")
+	},
+	AnalysisFirst: func(i *PackInvoker) bool {
+		return i.atLeast("0.23.0")
 	},
 }
 
