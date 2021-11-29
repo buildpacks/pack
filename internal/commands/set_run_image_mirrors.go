@@ -36,7 +36,7 @@ func SetRunImagesMirrors(logger logging.Logger, cfg config.Config, cfgPath strin
 			return nil
 		}),
 	}
-	cmd.Flags().StringSliceVarP(&mirrors, "mirror", "m", nil, "Run image mirror"+multiValueHelp("mirror"))
+	cmd.Flags().StringSliceVarP(&mirrors, "mirror", "m", nil, "Run image mirror"+stringSliceHelp("mirror"))
 	AddHelpFlag(cmd, "set-run-image-mirrors")
 	return cmd
 }

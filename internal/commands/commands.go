@@ -75,7 +75,11 @@ func enableExperimentalTip(logger logging.Logger, configPath string) {
 	logging.Tip(logger, "To enable experimental features, run `pack config experimental true` to add %s to %s.", style.Symbol("experimental = true"), style.Symbol(configPath))
 }
 
-func multiValueHelp(name string) string {
+func stringArrayHelp(name string) string {
+	return fmt.Sprintf("\nRepeat for each %s in order (comma-separated lists not accepted)", name)
+}
+
+func stringSliceHelp(name string) string {
 	return fmt.Sprintf("\nRepeat for each %s in order, or supply once by comma-separated list", name)
 }
 
