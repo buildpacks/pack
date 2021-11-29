@@ -144,16 +144,27 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 	launchCache := cache.NewVolumeCache(l.opts.Image, "launch", l.docker)
 
 	if !l.opts.UseCreator {
-		l.logger.Info(style.Step("DETECTING"))
-		if err := l.Detect(ctx, l.opts.Network, l.opts.Volumes, phaseFactory); err != nil {
-			return err
-		}
+		if l.platformAPI.LessThan("0.7") {
+			l.logger.Info(style.Step("DETECTING"))
+			if err := l.Detect(ctx, l.opts.Network, l.opts.Volumes, phaseFactory); err != nil {
+				return err
+			}
 
-		l.logger.Info(style.Step("ANALYZING"))
-		if err := l.Analyze(ctx, l.opts.Image.String(), l.opts.Network, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, buildCache, phaseFactory); err != nil {
-			return err
-		}
+			l.logger.Info(style.Step("ANALYZING"))
+			if err := l.Analyze(ctx, l.opts.Image.String(), l.opts.Network, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.RunImage, l.opts.AdditionalTags, buildCache, phaseFactory); err != nil {
+				return err
+			}
+		} else {
+			l.logger.Info(style.Step("ANALYZING"))
+			if err := l.Analyze(ctx, l.opts.Image.String(), l.opts.Network, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.RunImage, l.opts.AdditionalTags, buildCache, phaseFactory); err != nil {
+				return err
+			}
 
+			l.logger.Info(style.Step("DETECTING"))
+			if err := l.Detect(ctx, l.opts.Network, l.opts.Volumes, phaseFactory); err != nil {
+				return err
+			}
+		}
 		l.logger.Info(style.Step("RESTORING"))
 		if l.opts.ClearCache {
 			l.logger.Info("Skipping 'restore' due to clearing cache")
@@ -326,8 +337,8 @@ func (l *LifecycleExecution) Restore(ctx context.Context, networkMode string, bu
 	return restore.Run(ctx)
 }
 
-func (l *LifecycleExecution) Analyze(ctx context.Context, repoName, networkMode string, publish bool, dockerHost string, clearCache bool, cache Cache, phaseFactory PhaseFactory) error {
-	analyze, err := l.newAnalyze(repoName, networkMode, publish, dockerHost, clearCache, cache, phaseFactory)
+func (l *LifecycleExecution) Analyze(ctx context.Context, repoName, networkMode string, publish bool, dockerHost string, clearCache bool, runImage string, additionalTags []string, cache Cache, phaseFactory PhaseFactory) error {
+	analyze, err := l.newAnalyze(repoName, networkMode, publish, dockerHost, clearCache, runImage, additionalTags, cache, phaseFactory)
 	if err != nil {
 		return err
 	}
@@ -335,14 +346,17 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, repoName, networkMode 
 	return analyze.Run(ctx)
 }
 
-func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bool, dockerHost string, clearCache bool, buildCache Cache, phaseFactory PhaseFactory) (RunnerCleaner, error) {
+func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bool, dockerHost string, clearCache bool, runImage string, additionalTags []string, buildCache Cache, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	args := []string{
 		repoName,
 	}
-	if clearCache {
-		args = prependArg("-skip-layers", args)
-	} else {
-		args = append([]string{"-cache-dir", l.mountPaths.cacheDir()}, args...)
+	platformAPILessThan07 := l.platformAPI.LessThan("0.7")
+	if platformAPILessThan07 {
+		if clearCache {
+			args = prependArg("-skip-layers", args)
+		} else {
+			args = append([]string{"-cache-dir", l.mountPaths.cacheDir()}, args...)
+		}
 	}
 
 	cacheOpt := NullOp()
@@ -353,7 +367,9 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 			flagsOpt = WithFlags("-cache-image", buildCache.Name())
 		}
 	case cache.Volume:
-		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
+		if platformAPILessThan07 {
+			cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
+		}
 	}
 
 	if l.opts.GID >= overrideGID {
@@ -381,8 +397,22 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 	            previous-image registry = %s`, image.Context().RegistryStr(), prevImage.Context().RegistryStr())
 			}
 		}
-
-		l.opts.Image = prevImage
+		if platformAPILessThan07 {
+			l.opts.Image = prevImage
+		} else {
+			args = append([]string{"-previous-image", l.opts.PreviousImage}, args...)
+		}
+	}
+	stackOpts := NullOp()
+	if !platformAPILessThan07 {
+		for _, tag := range additionalTags {
+			args = append([]string{"-tag", tag}, args...)
+		}
+		if runImage != "" {
+			args = append([]string{"-run-image", runImage}, args...)
+		}
+		args = append([]string{"-stack", l.mountPaths.stackPath()}, args...)
+		stackOpts = WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os))
 	}
 
 	if publish {
@@ -403,6 +433,7 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 			WithNetwork(networkMode),
 			flagsOpt,
 			cacheOpt,
+			stackOpts,
 		)
 
 		return phaseFactory.New(configProvider), nil
@@ -430,6 +461,7 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 		flagsOpt,
 		WithNetwork(networkMode),
 		cacheOpt,
+		stackOpts,
 	)
 
 	return phaseFactory.New(configProvider), nil
@@ -467,9 +499,13 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		"-app", l.mountPaths.appDir(),
 		"-cache-dir", l.mountPaths.cacheDir(),
 		"-stack", l.mountPaths.stackPath(),
-		"-run-image", runImage,
 	}
 
+	if l.platformAPI.LessThan("0.7") {
+		flags = append(flags,
+			"-run-image", runImage,
+		)
+	}
 	processType := determineDefaultProcessType(l.platformAPI, l.opts.DefaultProcessType)
 	if processType != "" {
 		flags = append(flags, "-process-type", processType)
