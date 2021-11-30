@@ -297,6 +297,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					it.Before(func() {
 						h.SkipIf(t, runtime.GOOS != "linux", "Skipped on non-linux")
 					})
+
 					it("allows daemon access inside the container", func() {
 						tmp, err := ioutil.TempDir("", "testSocketDir")
 						if err != nil {
@@ -320,7 +321,12 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 				when("with TCP docker-host", func() {
 					it.Before(func() {
 						h.SkipIf(t, runtime.GOOS != "linux", "Skipped on non-linux")
+
+						// this test is problematic in GitPod due to the special networking used
+						// see: https://github.com/gitpod-io/gitpod/issues/6446
+						h.SkipIf(t, os.Getenv("GITPOD_WORKSPACE_ID") != "", "Skipped on GitPod")
 					})
+
 					it("allows daemon access inside the container", func() {
 						forwardCtx, cancelForward := context.WithCancel(context.Background())
 						defer cancelForward()
@@ -331,6 +337,7 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 							forwardUnix2TCP(forwardCtx, t, portChan)
 							forwardExited <- struct{}{}
 						}()
+
 						dockerHost := fmt.Sprintf("tcp://127.0.0.1:%d", <-portChan)
 						configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec,
 							build.WithArgs("daemon"),
