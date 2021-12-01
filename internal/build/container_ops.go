@@ -159,7 +159,7 @@ func findMount(info types.ContainerJSON, dst string) (types.MountPoint, error) {
 	return types.MountPoint{}, fmt.Errorf("no matching mount found for %s", dst)
 }
 
-//WriteProjectMetadata
+// WriteProjectMetadata
 func WriteProjectMetadata(p string, metadata platform.ProjectMetadata, os string) ContainerOperation {
 	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
 		buf := &bytes.Buffer{}

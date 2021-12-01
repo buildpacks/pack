@@ -91,7 +91,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 		fakeDockerStdWriter.WriteStdoutln(`1 of 2 buildpacks participating`)
 		fakeDockerStdWriter.WriteStdoutln(`some/buildpack-1 0.0.1`)
 
-		//move to next screen
+		// move to next screen
 		fakeDockerStdWriter.WriteStdoutln(`===> BUILDING`)
 		h.Eventually(t, func() bool {
 			return strings.Contains(detectPage.textView.GetText(true), "Detected!")
@@ -122,7 +122,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 			return strings.Contains(dashboardPage.logsView.GetText(true), "some-build-logs")
 		}, eventuallyInterval, eventuallyDuration)
 
-		//extract /layers from build and provide to termui
+		// extract /layers from build and provide to termui
 		f, err := os.Open("./testdata/fake-layers.tar")
 		h.AssertNil(t, err)
 		h.AssertNil(t, s.ReadLayers(f))
@@ -141,7 +141,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 		h.AssertEq(t, bpChildren2[0].GetChildren()[0].GetText(), "some-file-2.txt")
 		h.AssertFalse(t, bpChildren2[0].GetChildren()[0].GetReference().(*tar.Header).FileInfo().IsDir())
 
-		//finish build
+		// finish build
 		fakeBodyChan <- dcontainer.ContainerWaitOKBody{StatusCode: 0}
 		w.Close()
 		time.Sleep(500 * time.Millisecond)
@@ -205,7 +205,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 			return strings.Contains(currentPage.textView.GetText(true), "Detecting")
 		}, eventuallyInterval, eventuallyDuration)
 
-		//move to next screen
+		// move to next screen
 		s.Info(`===> BUILDING`)
 		h.Eventually(t, func() bool {
 			return strings.Contains(currentPage.textView.GetText(true), "Detected!")
@@ -225,7 +225,7 @@ func testTermui(t *testing.T, when spec.G, it spec.S) {
 			return strings.Contains(dashboardPage.logsView.GetText(true), "some-build-logs")
 		}, eventuallyInterval, eventuallyDuration)
 
-		//finish build
+		// finish build
 		fakeBodyChan <- dcontainer.ContainerWaitOKBody{StatusCode: 1}
 		w.Close()
 		time.Sleep(500 * time.Millisecond)

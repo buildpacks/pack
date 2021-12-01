@@ -108,7 +108,11 @@ func contains(slc []string, v string) bool {
 }
 
 func getBestRunMirror(registry string, runImage string, mirrors []string, preferredMirrors []string) string {
-	runImageList := append(preferredMirrors, append([]string{runImage}, mirrors...)...)
+	var runImageList []string
+	runImageList = append(runImageList, preferredMirrors...)
+	runImageList = append(runImageList, runImage)
+	runImageList = append(runImageList, mirrors...)
+
 	for _, img := range runImageList {
 		ref, err := name.ParseReference(img, name.WeakValidation)
 		if err != nil {

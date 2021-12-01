@@ -543,6 +543,7 @@ func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPI
 // where PORT is picked automatically and returned via outPort parameter
 func forwardUnix2TCP(ctx context.Context, t *testing.T, outPort chan<- int) {
 	wg := sync.WaitGroup{}
+	errChan := make(chan error, 1)
 
 	forwardCon := func(tcpCon net.Conn) {
 		defer wg.Done()
@@ -555,7 +556,8 @@ func forwardUnix2TCP(ctx context.Context, t *testing.T, outPort chan<- int) {
 
 		unixCon, err := net.Dial("unix", "/var/run/docker.sock")
 		if err != nil {
-			t.Fatal(err)
+			errChan <- err
+			return
 		}
 		defer unixCon.Close()
 		go func() {
@@ -581,6 +583,8 @@ func forwardUnix2TCP(ctx context.Context, t *testing.T, outPort chan<- int) {
 		select {
 		case <-ctx.Done():
 			goto out
+		case err = <-errChan:
+			t.Fatal(err)
 		default:
 			c, err := listener.Accept()
 			if err != nil {
