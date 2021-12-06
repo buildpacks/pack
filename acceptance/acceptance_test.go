@@ -1664,6 +1664,8 @@ func testAcceptance(
 								format.compareFunc(output, expectedOutput)
 							}
 
+							imageManager.PullImage(repoName, registryConfig.RegistryAuth())
+
 							t.Log("app is runnable")
 							assertImage.RunsWithOutput(
 								repoName,

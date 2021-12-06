@@ -48,6 +48,9 @@ The [release manager](#release-manager) will:
 - Send out release notifications, if deemed necessary, on
   - The [cncf-buildpacks mailing list](https://lists.cncf.io/g/cncf-buildpacks)
   - Twitter
+- Post release, you should be able to remove any acceptance test constraints (in [acceptance/invoke/pack.go](acceptance/invoke/pack.go)) in the `featureTests` struct. Create a PR removing them, in order to ensure our acceptance tests are clean.
+
+And with that, you're done!
 
 ## Manual Releasing
 
