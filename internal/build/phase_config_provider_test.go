@@ -85,7 +85,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 					return errors.New("i was called")
 				}
 
-				fakeTermui := fakes.NewFakeTermui(handler)
+				fakeTermui := &fakes.FakeTermui{HandlerFunc: handler}
 				lifecycle := newTestLifecycleExec(t, false, fakes.WithTermui(fakeTermui))
 				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
 

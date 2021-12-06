@@ -22,7 +22,7 @@ func testTerm(t *testing.T, when spec.G, it spec.S) {
 			r, _, _ := os.Pipe()
 			fd, isTerm := term.IsTerminal(r)
 			h.AssertFalse(t, isTerm)
-			h.AssertNotEq(t, fd, term.InvalidFileDescriptor) //The mock writer is a pipe, and therefore has a file descriptor
+			h.AssertNotEq(t, fd, term.InvalidFileDescriptor) // The mock writer is a pipe, and therefore has a file descriptor
 		})
 
 		it("returns InvalidFileDescriptor if passed a normal Writer", func() {

@@ -423,6 +423,33 @@ func testPhase(t *testing.T, when spec.G, it spec.S) {
 					h.AssertContains(t, outBuf.String(), `error connecting to internet:`)
 				})
 			})
+
+			when("#WithPostContainerRunOperations", func() {
+				it("runs the operation after the container command", func() {
+					tarDestinationPath, err := ioutil.TempFile("", "pack.phase.test.")
+					h.AssertNil(t, err)
+					defer os.RemoveAll(tarDestinationPath.Name())
+
+					handler := func(reader io.ReadCloser) error {
+						defer reader.Close()
+
+						contents, err := ioutil.ReadAll(reader)
+						h.AssertNil(t, err)
+
+						err = ioutil.WriteFile(tarDestinationPath.Name(), contents, 0600)
+						h.AssertNil(t, err)
+						return nil
+					}
+
+					configProvider := build.NewPhaseConfigProvider(phaseName, lifecycleExec,
+						build.WithArgs("write", "/workspace/test.txt", "test-app"),
+						build.WithPostContainerRunOperations(build.CopyOut(handler, "/workspace/test.txt")))
+					phase := phaseFactory.New(configProvider)
+					assertRunSucceeds(t, phase, &outBuf, &errBuf)
+
+					h.AssertTarFileContents(t, tarDestinationPath.Name(), "test.txt", "test-app")
+				})
+			})
 		})
 	})
 
@@ -505,7 +532,7 @@ func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPI
 
 	if len(handler) != 0 {
 		interactive = true
-		termui = fakes.NewFakeTermui(handler[0])
+		termui = &fakes.FakeTermui{HandlerFunc: handler[0]}
 	}
 
 	return build.NewLifecycleExecution(logger, docker, build.LifecycleOptions{
@@ -523,6 +550,7 @@ func CreateFakeLifecycleExecution(logger logging.Logger, docker client.CommonAPI
 // where PORT is picked automatically and returned via outPort parameter
 func forwardUnix2TCP(ctx context.Context, t *testing.T, outPort chan<- int) {
 	wg := sync.WaitGroup{}
+	errChan := make(chan error, 1)
 
 	forwardCon := func(tcpCon net.Conn) {
 		defer wg.Done()
@@ -535,7 +563,8 @@ func forwardUnix2TCP(ctx context.Context, t *testing.T, outPort chan<- int) {
 
 		unixCon, err := net.Dial("unix", "/var/run/docker.sock")
 		if err != nil {
-			t.Fatal(err)
+			errChan <- err
+			return
 		}
 		defer unixCon.Close()
 		go func() {
@@ -561,6 +590,8 @@ func forwardUnix2TCP(ctx context.Context, t *testing.T, outPort chan<- int) {
 		select {
 		case <-ctx.Done():
 			goto out
+		case err = <-errChan:
+			t.Fatal(err)
 		default:
 			c, err := listener.Accept()
 			if err != nil {

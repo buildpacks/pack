@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -110,12 +111,15 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			logger           *logging.LogWithWriters
 			docker           *client.Client
 			fakePhaseFactory *fakes.FakePhaseFactory
+			fakeTermui       *fakes.FakeTermui
 		)
 
 		it.Before(func() {
 			var err error
 			imageName, err = name.NewTag("/some/image", name.WeakValidation)
 			h.AssertNil(t, err)
+
+			fakeTermui = &fakes.FakeTermui{}
 
 			fakeBuilder, err = fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.3")}))
 			h.AssertNil(t, err)
@@ -135,6 +139,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					Builder:      fakeBuilder,
 					TrustBuilder: false,
 					UseCreator:   true,
+					Termui:       fakeTermui,
 				}
 
 				lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
@@ -165,6 +170,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						TrustBuilder: true,
 						Workspace:    "app",
 						UseCreator:   true,
+						Termui:       fakeTermui,
 					}
 
 					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
@@ -197,6 +203,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Builder:      fakeBuilder,
 						TrustBuilder: false,
 						UseCreator:   false,
+						Termui:       fakeTermui,
 					}
 
 					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
@@ -230,6 +237,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						Builder:      fakeBuilder,
 						TrustBuilder: false,
 						UseCreator:   false,
+						Termui:       fakeTermui,
 					}
 
 					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
@@ -259,6 +267,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					Builder:      fakeBuilder,
 					TrustBuilder: false,
 					UseCreator:   false,
+					Termui:       fakeTermui,
 				}
 
 				lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
@@ -291,6 +300,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						TrustBuilder: false,
 						Workspace:    "app",
 						UseCreator:   false,
+						Termui:       fakeTermui,
 					}
 
 					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
@@ -329,6 +339,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						TrustBuilder: false,
 						UseCreator:   false,
 						CacheImage:   "%%%",
+						Termui:       fakeTermui,
 					}
 
 					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
@@ -995,6 +1006,26 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						h.AssertError(t, err, fmt.Sprintf("%s", err))
 					})
 				})
+			})
+		})
+
+		when("interactive mode", func() {
+			it("provides the termui readLayersFunc as a post container operation", func() {
+				lifecycle := newTestLifecycleExec(t, false, func(opts *build.LifecycleOptions) {
+					opts.Interactive = true
+					opts.Termui = &fakes.FakeTermui{ReadLayersFunc: func(_ io.ReadCloser) {
+						// no-op
+					}}
+				})
+				fakePhase := &fakes.FakePhase{}
+				fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
+
+				err := lifecycle.Create(context.Background(), false, "", false, "test", "test", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, fakePhase.CleanupCallCount, 1)
+				h.AssertEq(t, fakePhase.RunCallCount, 1)
+				h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider[0].PostContainerRunOps()), 2)
 			})
 		})
 	})
@@ -2517,6 +2548,26 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				})
 			})
 		})
+
+		when("interactive mode", func() {
+			it("provides the termui readLayersFunc as a post container operation", func() {
+				lifecycle := newTestLifecycleExec(t, false, func(opts *build.LifecycleOptions) {
+					opts.Interactive = true
+					opts.Termui = &fakes.FakeTermui{ReadLayersFunc: func(_ io.ReadCloser) {
+						// no-op
+					}}
+				})
+
+				fakePhase := &fakes.FakePhase{}
+				fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
+				err := lifecycle.Export(context.Background(), "test", "test", false, "", "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, fakePhase.CleanupCallCount, 1)
+				h.AssertEq(t, fakePhase.RunCallCount, 1)
+				h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider[0].PostContainerRunOps()), 2)
+			})
+		})
 	})
 }
 
@@ -2539,6 +2590,7 @@ func newTestLifecycleExecErr(t *testing.T, logVerbose bool, ops ...func(*build.L
 		HTTPProxy:  "some-http-proxy",
 		HTTPSProxy: "some-https-proxy",
 		NoProxy:    "some-no-proxy",
+		Termui:     &fakes.FakeTermui{},
 	}
 
 	for _, op := range ops {

@@ -67,7 +67,7 @@ type DownloadOptions struct {
 	// The OS of the builder image
 	ImageOS string
 
-	// Deprecated, the older alternative to buildpack URI
+	// Deprecated: the older alternative to buildpack URI
 	ImageName string
 
 	Daemon bool

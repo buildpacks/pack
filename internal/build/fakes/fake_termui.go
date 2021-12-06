@@ -8,13 +8,8 @@ import (
 )
 
 type FakeTermui struct {
-	handler container.Handler
-}
-
-func NewFakeTermui(handler container.Handler) *FakeTermui {
-	return &FakeTermui{
-		handler: handler,
-	}
+	HandlerFunc    container.Handler
+	ReadLayersFunc func(reader io.ReadCloser)
 }
 
 func (f *FakeTermui) Run(funk func()) error {
@@ -22,7 +17,12 @@ func (f *FakeTermui) Run(funk func()) error {
 }
 
 func (f *FakeTermui) Handler() container.Handler {
-	return f.handler
+	return f.HandlerFunc
+}
+
+func (f *FakeTermui) ReadLayers(reader io.ReadCloser) error {
+	f.ReadLayersFunc(reader)
+	return nil
 }
 
 func WithTermui(screen build.Termui) func(*build.LifecycleOptions) {

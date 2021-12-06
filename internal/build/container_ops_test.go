@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -241,6 +244,64 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 -rw-r--r--    1 123      456 (.*) fake-app-file
 `)
 			}
+		})
+	})
+
+	when("#CopyOut", func() {
+		it("reads the contents of a container directory", func() {
+			h.SkipIf(t, osType == "windows", "copying directories out of windows containers not yet supported")
+
+			containerDir := "/some-vol"
+			if osType == "windows" {
+				containerDir = `c:\some-vol`
+			}
+
+			ctrCmd := []string{"ls", "-al", "/some-vol"}
+			if osType == "windows" {
+				ctrCmd = []string{"cmd", "/c", `dir /q /s c:\some-vol`}
+			}
+
+			ctx := context.Background()
+			ctr, err := createContainer(ctx, imageName, containerDir, osType, ctrCmd...)
+			h.AssertNil(t, err)
+			defer cleanupContainer(ctx, ctr.ID)
+
+			copyDirOp := build.CopyDir(filepath.Join("testdata", "fake-app"), containerDir, 123, 456, osType, false, nil)
+			err = copyDirOp(ctrClient, ctx, ctr.ID, ioutil.Discard, ioutil.Discard)
+			h.AssertNil(t, err)
+
+			tarDestination, err := ioutil.TempFile("", "pack.container.ops.test.")
+			h.AssertNil(t, err)
+			defer os.RemoveAll(tarDestination.Name())
+
+			handler := func(reader io.ReadCloser) error {
+				defer reader.Close()
+
+				contents, err := ioutil.ReadAll(reader)
+				h.AssertNil(t, err)
+
+				err = ioutil.WriteFile(tarDestination.Name(), contents, 0600)
+				h.AssertNil(t, err)
+
+				return nil
+			}
+
+			copyOutDirsOp := build.CopyOut(handler, containerDir)
+			err = copyOutDirsOp(ctrClient, ctx, ctr.ID, ioutil.Discard, ioutil.Discard)
+			h.AssertNil(t, err)
+
+			err = container.RunWithHandler(ctx, ctrClient, ctr.ID, container.DefaultHandler(ioutil.Discard, ioutil.Discard))
+			h.AssertNil(t, err)
+
+			separator := "/"
+			if osType == "windows" {
+				separator = `\`
+			}
+
+			h.AssertTarball(t, tarDestination.Name())
+			h.AssertTarHasFile(t, tarDestination.Name(), fmt.Sprintf("some-vol%sfake-app-file", separator))
+			h.AssertTarHasFile(t, tarDestination.Name(), fmt.Sprintf("some-vol%sfake-app-symlink", separator))
+			h.AssertTarHasFile(t, tarDestination.Name(), fmt.Sprintf("some-vol%sfile-to-ignore", separator))
 		})
 	})
 

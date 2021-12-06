@@ -36,7 +36,7 @@ func AddHelpFlag(cmd *cobra.Command, commandName string) {
 }
 
 func CreateCancellableContext() context.Context {
-	signals := make(chan os.Signal)
+	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	ctx, cancel := context.WithCancel(context.Background())
 

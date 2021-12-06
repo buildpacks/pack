@@ -28,7 +28,7 @@ func testGit(t *testing.T, when spec.G, it spec.S) {
 		registryFixture string
 		outBuf          bytes.Buffer
 		logger          logging.Logger
-		username        string = "supra08"
+		username        = "supra08"
 	)
 
 	it.Before(func() {

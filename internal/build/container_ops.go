@@ -24,6 +24,25 @@ import (
 
 type ContainerOperation func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error
 
+// CopyOut copies container directories to a handler function. The handler is responsible for closing the Reader.
+func CopyOut(handler func(closer io.ReadCloser) error, srcs ...string) ContainerOperation {
+	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
+		for _, src := range srcs {
+			reader, _, err := ctrClient.CopyFromContainer(ctx, containerID, src)
+			if err != nil {
+				return err
+			}
+
+			err = handler(reader)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
 // CopyDir copies a local directory (src) to the destination on the container while filtering files and changing it's UID/GID.
 // if includeRoot is set the UID/GID will be set on the dst directory.
 func CopyDir(src, dst string, uid, gid int, os string, includeRoot bool, fileFilter func(string) bool) ContainerOperation {
@@ -140,7 +159,7 @@ func findMount(info types.ContainerJSON, dst string) (types.MountPoint, error) {
 	return types.MountPoint{}, fmt.Errorf("no matching mount found for %s", dst)
 }
 
-//WriteProjectMetadata
+// WriteProjectMetadata
 func WriteProjectMetadata(p string, metadata platform.ProjectMetadata, os string) ContainerOperation {
 	return func(ctrClient client.CommonAPIClient, ctx context.Context, containerID string, stdout, stderr io.Writer) error {
 		buf := &bytes.Buffer{}
