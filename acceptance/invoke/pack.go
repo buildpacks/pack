@@ -185,7 +185,7 @@ func (i *PackInvoker) EnableExperimental() {
 	i.JustRunSuccessfully("config", "experimental", "true")
 }
 
-// supports returns whether or not the executor's pack binary supports a
+// Supports returns whether or not the executor's pack binary supports a
 // given command string. The command string can take one of four forms:
 //   - "<command>" (e.g. "create-builder")
 //   - "<flag>" (e.g. "--verbose")
@@ -219,22 +219,10 @@ func (i *PackInvoker) Supports(command string) bool {
 type Feature int
 
 const (
-	InspectRemoteImage = iota
-	BuilderNoDuplicateLayers
-	SourceMetadataFromProjectTOML
-	AnalysisFirst
+	AnalysisFirst = iota
 )
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
-	InspectRemoteImage: func(i *PackInvoker) bool {
-		return i.laterThan("0.17.0")
-	},
-	BuilderNoDuplicateLayers: func(i *PackInvoker) bool {
-		return i.laterThan("0.18.0")
-	},
-	SourceMetadataFromProjectTOML: func(i *PackInvoker) bool {
-		return i.laterThan("0.20.0")
-	},
 	AnalysisFirst: func(i *PackInvoker) bool {
 		return i.atLeast("0.23.0")
 	},
