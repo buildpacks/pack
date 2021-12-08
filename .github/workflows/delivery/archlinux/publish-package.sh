@@ -40,7 +40,9 @@ echo '> Cloning aur...'
 git clone "ssh://aur@aur.archlinux.org/${PACKAGE_NAME}.git" "${PACKAGE_AUR_DIR}"
 chown -R archie "${PACKAGE_AUR_DIR}"
 pushd "${PACKAGE_AUR_DIR}" > /dev/null
-  
+  echo '> Checking out master...'
+  git checkout master
+
   echo '> Applying changes...'
   rm -rf ./*
   cp -R "${PACKAGE_DIR}"/* ./
@@ -53,6 +55,6 @@ pushd "${PACKAGE_AUR_DIR}" > /dev/null
   git diff --color | cat
   git add .
   git commit -m "Version ${PACK_VERSION}"
-  git push
+  git push -f
 
 popd > /dev/null
