@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/strslice"
+	"github.com/docker/go-connections/nat"
 
 	pcontainer "github.com/buildpacks/pack/internal/container"
 	"github.com/buildpacks/pack/internal/style"
@@ -50,6 +52,16 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 		provider.hostConf.Isolation = container.IsolationProcess
 	}
 
+	provider.ctrConf.ExposedPorts = nat.PortSet{}
+	provider.hostConf.PortBindings = nat.PortMap{}
+	for _, port := range lifecycleExec.opts.Ports {
+		provider.ctrConf.ExposedPorts[nat.Port(port+"/tcp")] = struct{}{}
+		provider.hostConf.PortBindings[nat.Port(port+"/tcp")] = []nat.PortBinding{{
+			HostIP:   "0.0.0.0",
+			HostPort: port,
+		}}
+	}
+
 	ops = append(ops,
 		WithEnv(fmt.Sprintf("%s=%s", platformAPIEnvVar, lifecycleExec.platformAPI.String())),
 		WithLifecycleProxy(lifecycleExec),
@@ -64,6 +76,10 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	}
 
 	provider.ctrConf.Cmd = append([]string{"/cnb/lifecycle/" + name}, provider.ctrConf.Cmd...)
+
+	// `–security-opt=”apparmor=unconfined” –cap-add=SYS_PTRACE`
+	provider.hostConf.CapAdd = strslice.StrSlice{"SYS_PTRACE"}
+	provider.hostConf.SecurityOpt = []string{"apparmor=unconfined"}
 
 	lifecycleExec.logger.Debugf("Running the %s on OS %s with:", style.Symbol(provider.Name()), style.Symbol(provider.os))
 	lifecycleExec.logger.Debug("Container Settings:")

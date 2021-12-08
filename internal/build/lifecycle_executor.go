@@ -88,6 +88,7 @@ type LifecycleOptions struct {
 	Workspace          string
 	GID                int
 	PreviousImage      string
+	Ports              []string
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker client.CommonAPIClient) *LifecycleExecutor {

@@ -167,6 +167,10 @@ type BuildOptions struct {
 	// This places registry credentials on the builder's build image.
 	// Only trust builders from reputable sources.
 	TrustBuilder IsTrustedBuilder
+
+	// Ports to expose from build containers
+	// e.g. "40000"
+	Ports []string
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -352,6 +356,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		PreviousImage:      opts.PreviousImage,
 		Interactive:        opts.Interactive,
 		Termui:             termui.NewTermui(imageRef.Name(), bldr, runImageName),
+		Ports:              opts.Ports,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version
