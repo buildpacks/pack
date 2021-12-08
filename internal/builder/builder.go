@@ -31,7 +31,8 @@ import (
 const (
 	packName = "Pack CLI"
 
-	cnbDir = "/cnb"
+	cnbDir        = "/cnb"
+	buildpacksDir = "/cnb/buildpacks"
 
 	orderPath          = "/cnb/order.toml"
 	stackPath          = "/cnb/stack.toml"
@@ -418,7 +419,6 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 				logger.Debugf("Buildpack %s already exists on builder with same contents, skipping...", style.Symbol(bpInfo.FullName()))
 				continue
 			} else {
-
 				bpWhiteoutsTmpDir := filepath.Join(tmpDir, strconv.Itoa(i)+"_whiteouts")
 				if err := os.MkdirAll(bpWhiteoutsTmpDir, os.ModePerm); err != nil {
 					return errors.Wrap(err, "creating buildpack whiteouts temp dir")
@@ -426,8 +426,7 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 
 				deletedMaps := map[string][]byte{
 					filepath.Join(
-						cnbDir,
-						"buildpacks",
+						buildpacksDir,
 						strings.ReplaceAll(bpInfo.ID, "/", "_"),
 						".wh."+bpInfo.Version,
 					): {},
@@ -442,12 +441,8 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 				}
 
 				if err := image.AddLayer(whiteoutsTarFile); err != nil {
-					return errors.Wrapf(err,
-						"adding whiteout layer tar for buildpack %s",
-						style.Symbol(bpInfo.FullName()),
-					)
+					return errors.Wrap(err, "adding whiteout layer tar")
 				}
-
 			}
 
 			logger.Debugf(BuildpackOnBuilderMessage, style.Symbol(bpInfo.FullName()), style.Symbol(existingBPInfo.LayerDiffID), style.Symbol(diffID.String()))
@@ -487,7 +482,6 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 }
 
 func createTarball(tarPath string, data map[string][]byte) error {
-
 	tarFile, err := os.Create(tarPath)
 	if err != nil {
 		return err
