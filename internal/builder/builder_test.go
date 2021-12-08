@@ -658,6 +658,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				when("duplicated buildpack, has different contents", func() {
 					var bp1v1Alt buildpack.Buildpack
+					var bp1v1AltWithNewContent buildpack.Buildpack
 					it.Before(func() {
 						var err error
 						bp1v1Alt, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -671,6 +672,45 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 								Mixins: []string{"mixinX", "mixinY"},
 							}},
 						}, 0644, ifakes.WithExtraBuildpackContents("coolbeans", "a file cool as beans"))
+
+						h.AssertNil(t, err)
+
+						bp1v1AltWithNewContent, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+							API: api.MustParse("0.2"),
+							Info: dist.BuildpackInfo{
+								ID:      "buildpack-1-id",
+								Version: "buildpack-1-version-1",
+							},
+							Stacks: []dist.Stack{{
+								ID:     "some.stack.id",
+								Mixins: []string{"mixinX", "mixinY"},
+							}},
+						}, 0644, ifakes.WithExtraBuildpackContents("coolwatermelon", "a file cool as watermelon"))
+
+						h.AssertNil(t, err)
+					})
+
+					it("uses the whiteout layers", func() {
+						logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
+
+						subject.AddBuildpack(bp1v1Alt)
+						subject.AddBuildpack(bp1v1AltWithNewContent)
+
+						err := subject.Save(logger, builder.CreatorMetadata{})
+						h.AssertNil(t, err)
+
+						h.AssertEq(t, baseImage.IsSaved(), true)
+
+						oldPath := filepath.Join("/cnb", "buildpacks", "buildpack-1-id", "buildpack-1-version-1", "coolbeans")
+						layer, err := baseImage.FindLayerWithPath(oldPath)
+
+						h.AssertEq(t, layer, "")
+						h.AssertError(t, err, fmt.Sprintf("could not find '%s' in any layer", oldPath))
+
+						newPath := filepath.Join("/cnb", "buildpacks", "buildpack-1-id", "buildpack-1-version-1", "coolwatermelon")
+						layer, err = baseImage.FindLayerWithPath(newPath)
+
+						h.AssertNotEq(t, layer, "")
 						h.AssertNil(t, err)
 					})
 
