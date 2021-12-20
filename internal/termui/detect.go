@@ -95,7 +95,10 @@ func (d *Detect) find(buildpackID, buildpackVersion string) dist.BuildpackInfo {
 		}
 	}
 
-	return dist.BuildpackInfo{}
+	return dist.BuildpackInfo{
+		ID:      buildpackID,
+		Version: buildpackVersion,
+	}
 }
 
 func detectStatusTV() *tview.TextView {

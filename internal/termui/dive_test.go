@@ -61,5 +61,17 @@ func testDive(t *testing.T, when spec.G, it spec.S) {
 		h.AssertContains(t, screen.fileExplorerTable.GetCell(2, 1).Text, "501:20")
 		h.AssertContains(t, screen.fileExplorerTable.GetCell(2, 2).Text, "14 B  ")
 		h.AssertContains(t, screen.fileExplorerTable.GetCell(2, 3).Text, "    └── some-file-2.txt")
+
+		// select SBOM
+		lastRow := screen.menuTable.GetRowCount() - 1
+		screen.menuTable.Select(lastRow, 0)
+		h.AssertContains(t, screen.fileExplorerTable.GetCell(1, 0).Text, "drwxr-xr-x")
+		h.AssertContains(t, screen.fileExplorerTable.GetCell(1, 1).Text, "501:20")
+		h.AssertContains(t, screen.fileExplorerTable.GetCell(1, 2).Text, "-  ")
+		h.AssertContainsMatch(t, screen.fileExplorerTable.GetCell(1, 3).Text, "└── .*launch")
+		h.AssertContains(t, screen.fileExplorerTable.GetCell(2, 0).Text, "-rw-r--r--")
+		h.AssertContains(t, screen.fileExplorerTable.GetCell(2, 1).Text, "501:20")
+		h.AssertContains(t, screen.fileExplorerTable.GetCell(2, 2).Text, "32 B  ")
+		h.AssertContains(t, screen.fileExplorerTable.GetCell(2, 3).Text, "    └── sbom.cdx.json")
 	})
 }
