@@ -4,12 +4,12 @@
 package sshdialer_test
 
 import (
-	"gopkg.in/natefinch/npipe.v2"
 	"net"
 	"os/user"
 	"strings"
 
 	"github.com/hectane/go-acl"
+	"gopkg.in/natefinch/npipe.v2"
 )
 
 func fixupPrivateKeyMod(path string) {
