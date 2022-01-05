@@ -2,9 +2,9 @@ Pack:
   Version:  {{ .Version }}
   OS/Arch:  {{ .OS }}/{{ .Arch }}
 
-Default Lifecycle Version:  0.11.3
+Default Lifecycle Version:  0.13.2
 
-Supported Platform APIs:  0.3, 0.4, 0.5, 0.6
+Supported Platform APIs:  0.3, 0.4, 0.5, 0.6, 0.7, 0.8
 
 Config:
   default-builder-image = "{{ .DefaultBuilder }}"

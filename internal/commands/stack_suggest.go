@@ -20,13 +20,6 @@ type suggestedStack struct {
 
 var suggestedStacks = []suggestedStack{
 	{
-		ID:          "heroku-18",
-		Description: "The official Heroku stack based on Ubuntu 18.04",
-		Maintainer:  "Heroku",
-		BuildImage:  "heroku/pack:18-build",
-		RunImage:    "heroku/pack:18",
-	},
-	{
 		ID:          "heroku-20",
 		Description: "The official Heroku stack based on Ubuntu 20.04",
 		Maintainer:  "Heroku",

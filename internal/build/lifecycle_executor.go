@@ -2,6 +2,7 @@ package build
 
 import (
 	"context"
+	"io"
 	"math/rand"
 	"time"
 
@@ -24,6 +25,8 @@ var (
 		api.MustParse("0.4"),
 		api.MustParse("0.5"),
 		api.MustParse("0.6"),
+		api.MustParse("0.7"),
+		api.MustParse("0.8"),
 	}
 )
 
@@ -52,6 +55,7 @@ type Termui interface {
 
 	Run(funk func()) error
 	Handler() container.Handler
+	ReadLayers(reader io.ReadCloser) error
 }
 
 func init() {

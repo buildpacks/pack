@@ -23,17 +23,18 @@ func NewDefaultPhaseFactory(lifecycleExec *LifecycleExecution) PhaseFactory {
 
 func (m *DefaultPhaseFactory) New(provider *PhaseConfigProvider) RunnerCleaner {
 	return &Phase{
-		ctrConf:      provider.ContainerConfig(),
-		hostConf:     provider.HostConfig(),
-		name:         provider.Name(),
-		docker:       m.lifecycleExec.docker,
-		infoWriter:   provider.InfoWriter(),
-		errorWriter:  provider.ErrorWriter(),
-		handler:      provider.handler,
-		uid:          m.lifecycleExec.opts.Builder.UID(),
-		gid:          m.lifecycleExec.opts.Builder.GID(),
-		appPath:      m.lifecycleExec.opts.AppPath,
-		containerOps: provider.containerOps,
-		fileFilter:   m.lifecycleExec.opts.FileFilter,
+		ctrConf:             provider.ContainerConfig(),
+		hostConf:            provider.HostConfig(),
+		name:                provider.Name(),
+		docker:              m.lifecycleExec.docker,
+		infoWriter:          provider.InfoWriter(),
+		errorWriter:         provider.ErrorWriter(),
+		handler:             provider.handler,
+		uid:                 m.lifecycleExec.opts.Builder.UID(),
+		gid:                 m.lifecycleExec.opts.Builder.GID(),
+		appPath:             m.lifecycleExec.opts.AppPath,
+		containerOps:        provider.containerOps,
+		postContainerRunOps: provider.postContainerRunOps,
+		fileFilter:          m.lifecycleExec.opts.FileFilter,
 	}
 }

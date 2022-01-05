@@ -274,10 +274,9 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 	}
 	defer c.docker.ImageRemove(context.Background(), ephemeralBuilder.Name(), types.ImageRemoveOptions{Force: true})
 
-	builderPlatformAPIs := append(
-		ephemeralBuilder.LifecycleDescriptor().APIs.Platform.Deprecated,
-		ephemeralBuilder.LifecycleDescriptor().APIs.Platform.Supported...,
-	)
+	var builderPlatformAPIs builder.APISet
+	builderPlatformAPIs = append(builderPlatformAPIs, ephemeralBuilder.LifecycleDescriptor().APIs.Platform.Deprecated...)
+	builderPlatformAPIs = append(builderPlatformAPIs, ephemeralBuilder.LifecycleDescriptor().APIs.Platform.Supported...)
 
 	if !supportsPlatformAPI(builderPlatformAPIs) {
 		c.logger.Debugf("pack %s supports Platform API(s): %s", c.version, strings.Join(build.SupportedPlatformAPIVersions.AsStrings(), ", "))

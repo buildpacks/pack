@@ -10,26 +10,25 @@ import (
 )
 
 type Dashboard struct {
-	app         app
-	appTree     *tview.TreeView
-	builderTree *tview.TreeView
-	planList    *tview.List
-	logsView    *tview.TextView
-	logs        string
+	app           app
+	buildpackInfo []dist.BuildpackInfo
+	appTree       *tview.TreeView
+	builderTree   *tview.TreeView
+	planList      *tview.List
+	logsView      *tview.TextView
+	screen        *tview.Flex
+	leftPane      *tview.Flex
+	nodes         map[string]*tview.TreeNode
+
+	logs string
 }
 
-func NewDashboard(app app, appName string, bldr buildr, runImageName string, buildpackInfo []dist.BuildpackInfo) *Dashboard {
+func NewDashboard(app app, appName string, bldr buildr, runImageName string, buildpackInfo []dist.BuildpackInfo, logs []string) *Dashboard {
+	d := &Dashboard{}
+
 	appTree, builderTree := initTrees(appName, bldr, runImageName)
 
-	planList, logsView := initDashboard(buildpackInfo)
-
-	d := &Dashboard{
-		app:         app,
-		appTree:     appTree,
-		builderTree: builderTree,
-		planList:    planList,
-		logsView:    logsView,
-	}
+	planList, logsView := d.initDashboard(buildpackInfo)
 
 	imagesView := tview.NewFlex().
 		SetDirection(tview.FlexRow).
@@ -52,7 +51,21 @@ func NewDashboard(app app, appName string, bldr buildr, runImageName string, bui
 		AddItem(leftPane, 0, 1, true).
 		AddItem(logsView, 0, 1, false)
 
-	d.app.SetRoot(screen, true)
+	d.app = app
+	d.buildpackInfo = buildpackInfo
+	d.appTree = appTree
+	d.builderTree = builderTree
+	d.planList = planList
+	d.leftPane = leftPane
+	d.logsView = logsView
+	d.screen = screen
+
+	for _, txt := range logs {
+		d.logs = d.logs + txt + "\n"
+	}
+
+	d.handleToggle()
+	d.setScreen()
 	return d
 }
 
@@ -65,12 +78,64 @@ func (d *Dashboard) Handle(txt string) {
 
 func (d *Dashboard) Stop() {
 	// no-op
+	// This method is a side effect of the ill-fitting 'page interface'
+	// Trying to create a cleaner interface between the main termui controller
+	// and child pages like this one is currently a work-in-progress
 }
 
-func initDashboard(buildpackInfos []dist.BuildpackInfo) (*tview.List, *tview.TextView) {
+func (d *Dashboard) SetNodes(nodes map[string]*tview.TreeNode) {
+	d.nodes = nodes
+
+	// activate plan list buttons
+	d.planList.SetMainTextColor(tcell.ColorMediumTurquoise).
+		SetSelectedTextColor(tcell.ColorMediumTurquoise)
+
+	idx := d.planList.GetCurrentItem()
+	d.planList.Clear()
+	for _, buildpackInfo := range d.buildpackInfo {
+		bp := buildpackInfo
+
+		d.planList.AddItem(
+			bp.FullName(),
+			info(bp),
+			'✔',
+			func() {
+				NewDive(d.app, d.buildpackInfo, bp, d.nodes, func() {
+					d.setScreen()
+				})
+			},
+		)
+	}
+	d.planList.SetCurrentItem(idx)
+	d.app.Draw()
+}
+
+func (d *Dashboard) handleToggle() {
+	d.planList.SetDoneFunc(func() {
+		screen := tview.NewFlex().
+			SetDirection(tview.FlexColumn).
+			AddItem(d.leftPane, 0, 1, false).
+			AddItem(d.logsView, 0, 1, true)
+		d.app.SetRoot(screen, true)
+	})
+
+	d.logsView.SetDoneFunc(func(key tcell.Key) {
+		screen := tview.NewFlex().
+			SetDirection(tview.FlexColumn).
+			AddItem(d.leftPane, 0, 1, true).
+			AddItem(d.logsView, 0, 1, false)
+		d.app.SetRoot(screen, true)
+	})
+}
+
+func (d *Dashboard) setScreen() {
+	d.app.SetRoot(d.screen, true)
+}
+
+func (d *Dashboard) initDashboard(buildpackInfos []dist.BuildpackInfo) (*tview.List, *tview.TextView) {
 	planList := tview.NewList()
-	planList.SetMainTextColor(tcell.ColorMediumTurquoise).
-		SetSelectedTextColor(tcell.ColorMediumTurquoise).
+	planList.SetMainTextColor(tcell.ColorDarkGrey).
+		SetSelectedTextColor(tcell.ColorDarkGrey).
 		SetSelectedBackgroundColor(tcell.ColorDarkSlateGray).
 		SetSecondaryTextColor(tcell.ColorDimGray).
 		SetBorder(true).
@@ -80,10 +145,12 @@ func initDashboard(buildpackInfos []dist.BuildpackInfo) (*tview.List, *tview.Tex
 		SetBackgroundColor(backgroundColor)
 
 	for _, buildpackInfo := range buildpackInfos {
+		bp := buildpackInfo
+
 		planList.AddItem(
-			buildpackInfo.FullName(),
-			info(buildpackInfo),
-			'✔',
+			bp.FullName(),
+			info(bp),
+			' ',
 			func() {},
 		)
 	}
@@ -118,7 +185,6 @@ func initTrees(appName string, bldr buildr, runImageName string) (*tview.TreeVie
 		SetRoot(appImage).
 		SetGraphics(true).
 		SetGraphicsColor(tcell.ColorMediumTurquoise).
-		SetTitleAlign(tview.AlignLeft).
 		SetBorderPadding(1, 0, 4, 0).
 		SetBackgroundColor(backgroundColor)
 
@@ -127,7 +193,6 @@ func initTrees(appName string, bldr buildr, runImageName string) (*tview.TreeVie
 		SetRoot(builderImage).
 		SetGraphics(true).
 		SetGraphicsColor(tcell.ColorMediumTurquoise).
-		SetTitleAlign(tview.AlignLeft).
 		SetBorderPadding(0, 0, 4, 0).
 		SetBackgroundColor(backgroundColor)
 

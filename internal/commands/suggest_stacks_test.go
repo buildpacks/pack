@@ -37,12 +37,6 @@ func testSuggestStacksCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, outBuf.String(), `Warning: Command 'pack suggest-stacks' has been deprecated, please use 'pack stack suggest' instead
 Stacks maintained by the community:
 
-    Stack ID: heroku-18
-    Description: The official Heroku stack based on Ubuntu 18.04
-    Maintainer: Heroku
-    Build Image: heroku/pack:18-build
-    Run Image: heroku/pack:18
-
     Stack ID: heroku-20
     Description: The official Heroku stack based on Ubuntu 20.04
     Maintainer: Heroku

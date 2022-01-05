@@ -709,7 +709,6 @@ func testAcceptance(
 				it.Before(func() {
 					// create our nested builder
 					h.SkipIf(t, imageManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
-					h.SkipIf(t, !createBuilderPack.SupportsFeature(invoke.BuilderNoDuplicateLayers), "bug fixed in 0.18.0")
 
 					// create a task, handled by a 'task manager' which executes our pack commands during tests.
 					// looks like this is used to de-dup tasks
@@ -904,9 +903,7 @@ func testAcceptance(
 						assertImage.HasLabelWithData(repoName, "io.buildpacks.lifecycle.metadata", fmt.Sprintf(`"stack":{"runImage":{"image":"%s","mirrors":["%s"]}}}`, runImage, runImageMirror))
 
 						t.Log("sets the source metadata")
-						if pack.SupportsFeature(invoke.SourceMetadataFromProjectTOML) {
-							assertImage.HasLabelWithData(repoName, "io.buildpacks.project.metadata", (`{"source":{"type":"project","version":{"declared":"1.0.2"},"metadata":{"url":"https://github.com/buildpacks/pack"}}}`))
-						}
+						assertImage.HasLabelWithData(repoName, "io.buildpacks.project.metadata", (`{"source":{"type":"project","version":{"declared":"1.0.2"},"metadata":{"url":"https://github.com/buildpacks/pack"}}}`))
 
 						t.Log("registry is empty")
 						assertImage.NotExistsInRegistry(repo)
@@ -941,7 +938,9 @@ func testAcceptance(
 						assertOutput = assertions.NewOutputAssertionManager(t, output)
 						assertOutput.ReportsSuccessfulImageBuild(repoName)
 						assertLifecycleOutput = assertions.NewLifecycleOutputAssertionManager(t, output)
-						assertLifecycleOutput.ReportsSkippingBuildpackLayerAnalysis()
+						if !pack.SupportsFeature(invoke.AnalysisFirst) {
+							assertLifecycleOutput.ReportsSkippingBuildpackLayerAnalysis()
+						}
 						assertLifecycleOutput.ReportsExporterReusingUnchangedLayer(cachedLaunchLayer)
 						assertLifecycleOutput.ReportsCacheCreation(cachedLaunchLayer)
 
@@ -1597,11 +1596,6 @@ func testAcceptance(
 							t.Log("checking that registry has contents")
 							assertImage.ExistsInRegistryCatalog(repo)
 
-							// TODO: remove this if block after pack 0.18.0 is released
-							if !pack.SupportsFeature(invoke.InspectRemoteImage) {
-								imageManager.PullImage(repoName, registryConfig.RegistryAuth())
-							}
-
 							cmdName := "inspect"
 							if !pack.Supports("inspect") {
 								cmdName = "inspect-image"
@@ -1670,10 +1664,7 @@ func testAcceptance(
 								format.compareFunc(output, expectedOutput)
 							}
 
-							// TODO: remove this if block after pack 0.18.0 is released
-							if pack.SupportsFeature(invoke.InspectRemoteImage) {
-								imageManager.PullImage(repoName, registryConfig.RegistryAuth())
-							}
+							imageManager.PullImage(repoName, registryConfig.RegistryAuth())
 
 							t.Log("app is runnable")
 							assertImage.RunsWithOutput(
@@ -1761,7 +1752,7 @@ func testAcceptance(
 							if imageManager.HostOS() == "windows" {
 								// Cache images are automatically Linux container images, and therefore can't be pulled
 								// and inspected correctly on WCOW systems
-								//https://github.com/buildpacks/lifecycle/issues/529
+								// https://github.com/buildpacks/lifecycle/issues/529
 								imageManager.PullImage(cacheImageRef.Name(), registryConfig.RegistryAuth())
 							} else {
 								assertImage.CanBePulledFromRegistry(cacheImageRef.Name())
@@ -1994,7 +1985,6 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					it.Before(func() {
 						// create our nested builder
 						h.SkipIf(t, imageManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
-						h.SkipIf(t, !pack.SupportsFeature(invoke.BuilderNoDuplicateLayers), "bug fixed in 0.18.0")
 
 						// create a task, handled by a 'task manager' which executes our pack commands during tests.
 						// looks like this is used to de-dup tasks

@@ -1,9 +1,12 @@
 package termui
 
 import (
+	"archive/tar"
 	"bufio"
 	"io"
 	"io/ioutil"
+	"path"
+	"path/filepath"
 	"strings"
 
 	dcontainer "github.com/docker/docker/api/types/container"
@@ -37,6 +40,7 @@ type buildr interface {
 type page interface {
 	Handle(txt string)
 	Stop()
+	SetNodes(nodes map[string]*tview.TreeNode)
 }
 
 type Termui struct {
@@ -49,6 +53,7 @@ type Termui struct {
 	exitCode      int64
 	textChan      chan string
 	buildpackChan chan dist.BuildpackInfo
+	nodes         map[string]*tview.TreeNode
 }
 
 func NewTermui(appName string, bldr *builder.Builder, runImageName string) *Termui {
@@ -59,6 +64,7 @@ func NewTermui(appName string, bldr *builder.Builder, runImageName string) *Term
 		app:           tview.NewApplication(),
 		buildpackChan: make(chan dist.BuildpackInfo, 50),
 		textChan:      make(chan string, 50),
+		nodes:         map[string]*tview.TreeNode{},
 	}
 }
 
@@ -81,14 +87,21 @@ func (s *Termui) stop() {
 }
 
 func (s *Termui) handle() {
+	var detectLogs []string
+
 	for txt := range s.textChan {
 		switch {
-		case strings.Contains(txt, "===> ANALYZING"):
+		// We need a line that signals when detect phase is completed.
+		// Since the phase order is: analyze -> detect -> restore -> build -> ...
+		// "===> RESTORING" would be the best option. But since restore is optional,
+		// "===> BUILDING" serves as the next best option.
+		case strings.Contains(txt, "===> BUILDING"):
 			s.currentPage.Stop()
 
-			s.currentPage = NewDashboard(s.app, s.appName, s.bldr, s.runImageName, collect(s.buildpackChan))
+			s.currentPage = NewDashboard(s.app, s.appName, s.bldr, s.runImageName, collect(s.buildpackChan), detectLogs)
 			s.currentPage.Handle(txt)
 		default:
+			detectLogs = append(detectLogs, txt)
 			s.currentPage.Handle(txt)
 		}
 	}
@@ -133,6 +146,46 @@ func (s *Termui) Handler() container.Handler {
 					return err
 				}
 			}
+		}
+	}
+}
+
+func (s *Termui) ReadLayers(reader io.ReadCloser) error {
+	defer reader.Close()
+
+	tr := tar.NewReader(reader)
+
+	for {
+		header, err := tr.Next()
+
+		switch {
+		// if no more files are found return
+		case err == io.EOF:
+			if s.currentPage != nil {
+				s.currentPage.SetNodes(s.nodes)
+			}
+			return nil
+
+		// return any other error
+		case err != nil:
+			return err
+
+		// if the header is nil, just skip it (not sure how this happens)
+		case header == nil:
+			continue
+
+		default:
+			name := path.Clean(header.Name)
+			dir, base := filepath.Split(name)
+			dir = strings.TrimSuffix(dir, "/")
+
+			if s.nodes[dir] == nil {
+				s.nodes[dir] = tview.NewTreeNode(dir)
+			}
+
+			node := tview.NewTreeNode(base).SetReference(header)
+			s.nodes[name] = node
+			s.nodes[dir].AddChild(node)
 		}
 	}
 }

@@ -37,7 +37,7 @@ func ConfigRunImagesMirrors(logger logging.Logger, cfg config.Config, cfgPath st
 	addCmd.Use = "add <image> [-m <mirror...]"
 	addCmd.Long = "Set mirrors to other repositories for a given run image"
 	addCmd.Example = "pack config run-image-mirrors add cnbs/sample-stack-run:bionic --mirror index.docker.io/cnbs/sample-stack-run:bionic --mirror gcr.io/cnbs/sample-stack-run:bionic"
-	addCmd.Flags().StringSliceVarP(&mirrors, "mirror", "m", nil, "Run image mirror"+multiValueHelp("mirror"))
+	addCmd.Flags().StringSliceVarP(&mirrors, "mirror", "m", nil, "Run image mirror"+stringSliceHelp("mirror"))
 	cmd.AddCommand(addCmd)
 
 	rmCmd := generateRemove("mirror for a run image", logger, cfg, cfgPath, removeRunImageMirror)
@@ -45,7 +45,7 @@ func ConfigRunImagesMirrors(logger logging.Logger, cfg config.Config, cfgPath st
 	rmCmd.Long = "Remove mirrors for a given run image. If specific mirrors are passed, they will be removed. " +
 		"If no mirrors are provided, all mirrors for the given run image will be removed from the config."
 	rmCmd.Example = "pack config run-image-mirrors remove cnbs/sample-stack-run:bionic"
-	rmCmd.Flags().StringSliceVarP(&mirrors, "mirror", "m", nil, "Run image mirror"+multiValueHelp("mirror"))
+	rmCmd.Flags().StringSliceVarP(&mirrors, "mirror", "m", nil, "Run image mirror"+stringSliceHelp("mirror"))
 	cmd.AddCommand(rmCmd)
 
 	AddHelpFlag(cmd, "run-image-mirrors")
