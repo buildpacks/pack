@@ -4,6 +4,7 @@
 package sshdialer_test
 
 import (
+	"errors"
 	"net"
 	"os/user"
 	"strings"
@@ -34,4 +35,8 @@ func listen(addr string) (net.Listener, error) {
 		return npipe.Listen(addr)
 	}
 	return net.Listen("unix", addr)
+}
+
+func isErrClosed(err error) bool {
+	return errors.Is(err, net.ErrClosed) || errors.Is(err, npipe.ErrClosed)
 }

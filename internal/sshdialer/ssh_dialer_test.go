@@ -811,7 +811,7 @@ func withSSHAgent(t *testing.T, ag agent.Agent) func() {
 				}()
 				err := agent.ServeAgent(ag, conn)
 				if err != nil {
-					if !errors.Is(err, net.ErrClosed) {
+					if !isErrClosed(err) {
 						fmt.Fprintf(os.Stderr, "agent.ServeAgent() failed: %v\n", err)
 					}
 				}
@@ -827,7 +827,7 @@ func withSSHAgent(t *testing.T, ag agent.Agent) func() {
 
 		err = <-errChan
 
-		if !errors.Is(err, net.ErrClosed) {
+		if !isErrClosed(err) {
 			t.Fatal(err)
 		}
 		cancel()

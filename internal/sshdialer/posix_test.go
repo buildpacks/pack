@@ -4,6 +4,7 @@
 package sshdialer_test
 
 import (
+	"errors"
 	"net"
 	"os"
 )
@@ -17,4 +18,8 @@ func fixupPrivateKeyMod(path string) {
 
 func listen(addr string) (net.Listener, error) {
 	return net.Listen("unix", addr)
+}
+
+func isErrClosed(err error) bool {
+	return errors.Is(err, net.ErrClosed)
 }
