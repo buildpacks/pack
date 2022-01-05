@@ -32,7 +32,6 @@ func fixupPrivateKeyMod(path string) {
 func listen(addr string) (net.Listener, error) {
 	if strings.Contains(addr, "\\pipe\\") {
 		return npipe.Listen(addr)
-	} else {
-		return net.Listen("unix", addr)
 	}
+	return net.Listen("unix", addr)
 }
