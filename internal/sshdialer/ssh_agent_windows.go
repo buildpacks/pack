@@ -10,7 +10,6 @@ import (
 func dialSSHAgent(addr string) (net.Conn, error) {
 	if strings.Contains(addr, "\\pipe\\") {
 		return npipe.Dial(addr)
-	} else {
-		return net.Dial("unix", addr)
 	}
+	return net.Dial("unix", addr)
 }
