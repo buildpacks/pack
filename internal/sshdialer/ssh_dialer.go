@@ -284,7 +284,7 @@ func getSignersFromAgent() ([]ssh.Signer, error) {
 		var err error
 		var agentSigners []ssh.Signer
 		var agentConn net.Conn
-		agentConn, err = net.Dial("unix", sock)
+		agentConn, err = dialSSHAgent(sock)
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect to ssh-agent's socket: %w", err)
 		}
