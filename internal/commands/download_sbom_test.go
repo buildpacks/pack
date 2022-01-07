@@ -84,15 +84,6 @@ func testDownloadSBOMCommand(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("both --local and --remote are specified", func() {
-			it("returns a user-friendly message", func() {
-				command.SetArgs([]string{"some/image", "--local", "--remote"})
-
-				err := command.Execute()
-				h.AssertError(t, err, "expected either '--local' or '--remote', not both")
-			})
-		})
-
 		when("the client returns an error", func() {
 			it("returns the error", func() {
 				mockClient.EXPECT().DownloadSBOM("some/image", cpkg.DownloadSBOMOptions{
