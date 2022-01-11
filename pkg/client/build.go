@@ -391,6 +391,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 			}
 
 			lifecycleOpts.LifecycleImage = lifecycleImage
+			} else {
 			return errors.Errorf("Lifecycle %s does not have an associated lifecycle image. Builder must be trusted.", lifecycleVersion.String())
 		}
 	}
