@@ -1,6 +1,7 @@
 package build
 
 import (
+	"github.com/buildpacks/pack/pkg/dist"
 	"context"
 	"fmt"
 	"math/rand"
@@ -37,6 +38,10 @@ type LifecycleExecution struct {
 }
 
 func NewLifecycleExecution(logger logging.Logger, docker client.CommonAPIClient, opts LifecycleOptions) (*LifecycleExecution, error) {
+	var lifecycleApi []string
+    if _, err := dist.GetLabel(LifecycleImage,LifecycleImage.platform.supported, &lifecycleApi); err != nil {
+        return err
+    }
 	latestSupportedPlatformAPI, err := findLatestSupported(append(
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Deprecated,
 		opts.Builder.LifecycleDescriptor().APIs.Platform.Supported...,
