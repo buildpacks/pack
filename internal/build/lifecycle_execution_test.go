@@ -1025,7 +1025,32 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, fakePhase.CleanupCallCount, 1)
 				h.AssertEq(t, fakePhase.RunCallCount, 1)
-				h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider[0].PostContainerRunOps()), 2)
+
+				provider := fakePhaseFactory.NewCalledWithProvider[0]
+				h.AssertEq(t, len(provider.PostContainerRunOps()), 2)
+				h.AssertFunctionName(t, provider.PostContainerRunOps()[0], "EnsureVolumeAccess")
+				h.AssertFunctionName(t, provider.PostContainerRunOps()[1], "CopyOut")
+			})
+		})
+
+		when("sbom destination directory is provided", func() {
+			it("provides copy-sbom-func as a post container operation", func() {
+				lifecycle := newTestLifecycleExec(t, false, func(opts *build.LifecycleOptions) {
+					opts.SBOMDestinationDir = "some-destination-dir"
+				})
+				fakePhase := &fakes.FakePhase{}
+				fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
+
+				err := lifecycle.Create(context.Background(), false, "", false, "test", "test", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, fakePhase.CleanupCallCount, 1)
+				h.AssertEq(t, fakePhase.RunCallCount, 1)
+
+				provider := fakePhaseFactory.NewCalledWithProvider[0]
+				h.AssertEq(t, len(provider.PostContainerRunOps()), 2)
+				h.AssertFunctionName(t, provider.PostContainerRunOps()[0], "EnsureVolumeAccess")
+				h.AssertFunctionName(t, provider.PostContainerRunOps()[1], "CopyOut")
 			})
 		})
 	})
@@ -2565,7 +2590,32 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 
 				h.AssertEq(t, fakePhase.CleanupCallCount, 1)
 				h.AssertEq(t, fakePhase.RunCallCount, 1)
-				h.AssertEq(t, len(fakePhaseFactory.NewCalledWithProvider[0].PostContainerRunOps()), 2)
+
+				provider := fakePhaseFactory.NewCalledWithProvider[0]
+				h.AssertEq(t, len(provider.PostContainerRunOps()), 2)
+				h.AssertFunctionName(t, provider.PostContainerRunOps()[0], "EnsureVolumeAccess")
+				h.AssertFunctionName(t, provider.PostContainerRunOps()[1], "CopyOut")
+			})
+		})
+
+		when("sbom destination directory is provided", func() {
+			it("provides copy-sbom-func as a post container operation", func() {
+				lifecycle := newTestLifecycleExec(t, false, func(opts *build.LifecycleOptions) {
+					opts.SBOMDestinationDir = "some-destination-dir"
+				})
+				fakePhase := &fakes.FakePhase{}
+				fakePhaseFactory := fakes.NewFakePhaseFactory(fakes.WhichReturnsForNew(fakePhase))
+
+				err := lifecycle.Create(context.Background(), false, "", false, "test", "test", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+				h.AssertNil(t, err)
+
+				h.AssertEq(t, fakePhase.CleanupCallCount, 1)
+				h.AssertEq(t, fakePhase.RunCallCount, 1)
+
+				provider := fakePhaseFactory.NewCalledWithProvider[0]
+				h.AssertEq(t, len(provider.PostContainerRunOps()), 2)
+				h.AssertFunctionName(t, provider.PostContainerRunOps()[0], "EnsureVolumeAccess")
+				h.AssertFunctionName(t, provider.PostContainerRunOps()[1], "CopyOut")
 			})
 		})
 	})

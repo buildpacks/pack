@@ -43,6 +43,7 @@ type BuildFlags struct {
 	Workspace          string
 	GID                int
 	PreviousImage      string
+	SBOMDestinationDir string
 }
 
 // Build an image from source code
@@ -157,6 +158,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				GroupID:                  gid,
 				PreviousImage:            flags.PreviousImage,
 				Interactive:              flags.Interactive,
+				SBOMDestinationDir:       flags.SBOMDestinationDir,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -197,6 +199,7 @@ This option may set DOCKER_HOST environment variable for the build container if 
 	cmd.Flags().StringVar(&buildFlags.Workspace, "workspace", "", "Location at which to mount the app dir in the build image")
 	cmd.Flags().IntVar(&buildFlags.GID, "gid", 0, `Override GID of user's group in the stack's build and run images. The provided value must be a positive number`)
 	cmd.Flags().StringVar(&buildFlags.PreviousImage, "previous-image", "", "Set previous image to a particular tag reference, digest reference, or (when performing a daemon build) image ID")
+	cmd.Flags().StringVar(&buildFlags.SBOMDestinationDir, "sbom-output-dir", "", "Path to export SBoM contents.\nOmitting the flag will yield no SBoM content.")
 	cmd.Flags().BoolVar(&buildFlags.Interactive, "interactive", false, "Launch a terminal UI to depict the build process")
 	if !cfg.Experimental {
 		cmd.Flags().MarkHidden("interactive")

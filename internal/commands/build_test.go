@@ -772,6 +772,17 @@ builder = "my-builder"
 				h.AssertError(t, err, "Interactive mode is currently experimental.")
 			})
 		})
+
+		when("sbom destination directory is provided", func() {
+			it("forwards the network onto the client", func() {
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithSBOMOutputDir("some-output-dir")).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--sbom-output-dir", "some-output-dir"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
 	})
 }
 
@@ -907,6 +918,15 @@ func EqBuildOptionsWithPreviousImage(prevImage string) gomock.Matcher {
 		description: fmt.Sprintf("Previous image=%s", prevImage),
 		equals: func(o client.BuildOptions) bool {
 			return o.PreviousImage == prevImage
+		},
+	}
+}
+
+func EqBuildOptionsWithSBOMOutputDir(s string) interface{} {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("sbom-destination-dir=%s", s),
+		equals: func(o client.BuildOptions) bool {
+			return o.SBOMDestinationDir == s
 		},
 	}
 }

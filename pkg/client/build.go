@@ -167,6 +167,9 @@ type BuildOptions struct {
 	// This places registry credentials on the builder's build image.
 	// Only trust builders from reputable sources.
 	TrustBuilder IsTrustedBuilder
+
+	// Directory to output any SBOM artifacts
+	SBOMDestinationDir string
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -352,6 +355,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		PreviousImage:      opts.PreviousImage,
 		Interactive:        opts.Interactive,
 		Termui:             termui.NewTermui(imageRef.Name(), ephemeralBuilder, runImageName),
+		SBOMDestinationDir: opts.SBOMDestinationDir,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version

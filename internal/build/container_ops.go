@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types"
 	dcontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	darchive "github.com/docker/docker/pkg/archive"
 	"github.com/pkg/errors"
 
 	"github.com/buildpacks/pack/internal/builder"
@@ -41,6 +42,18 @@ func CopyOut(handler func(closer io.ReadCloser) error, srcs ...string) Container
 
 		return nil
 	}
+}
+
+func CopyOutTo(src, dest string) ContainerOperation {
+	return CopyOut(func(reader io.ReadCloser) error {
+		info := darchive.CopyInfo{
+			Path:  src,
+			IsDir: true,
+		}
+
+		defer reader.Close()
+		return darchive.CopyTo(reader, info, dest)
+	}, src)
 }
 
 // CopyDir copies a local directory (src) to the destination on the container while filtering files and changing it's UID/GID.
