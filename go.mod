@@ -13,7 +13,7 @@ require (
 	github.com/gdamore/tcell/v2 v2.4.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/mock v1.6.0
-	github.com/google/go-cmp v0.5.6
+	github.com/google/go-cmp v0.5.7
 	github.com/google/go-containerregistry v0.7.0
 	github.com/google/go-github/v30 v30.1.0
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
