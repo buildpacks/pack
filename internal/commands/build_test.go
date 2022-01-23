@@ -714,7 +714,7 @@ builder = "my-builder"
 			})
 		})
 
-		when.Focus("previous-image flag is provided", func() {
+		when("previous-image flag is provided", func() {
 			when("image is invalid", func() {
 				it("error must be thrown", func() {
 					mockClient.EXPECT().
