@@ -17,13 +17,12 @@ type Dive struct {
 	menuTable         *tview.Table
 	fileExplorerTable *tview.Table
 	buildpackInfo     []dist.BuildpackInfo
-	selectedBuildpack dist.BuildpackInfo
 	buildpacksTreeMap map[string]*tview.TreeNode
 	escHandler        func()
 }
 
 func NewDive(app app, buildpackInfo []dist.BuildpackInfo, selectedBuildpack dist.BuildpackInfo, nodes map[string]*tview.TreeNode, escHandler func()) *Dive {
-	menu := initMenu(buildpackInfo)
+	menu := initMenu(buildpackInfo, nodes)
 	fileExplorerTable := initFileExplorer()
 
 	screen := tview.NewFlex().
@@ -53,33 +52,51 @@ func NewDive(app app, buildpackInfo []dist.BuildpackInfo, selectedBuildpack dist
 }
 
 func (d *Dive) handle() {
+	selectionFunc := func(nodeKey string) func(row, column int) {
+		return func(row, column int) {
+			node := d.fileExplorerTable.GetCell(row, 3).GetReference().(*tview.TreeNode)
+
+			if !node.GetReference().(*tar.Header).FileInfo().IsDir() {
+				return
+			}
+
+			if node.IsExpanded() {
+				node.Collapse()
+			} else {
+				node.Expand()
+			}
+
+			d.loadFileExplorerData(nodeKey)
+		}
+	}
+
 	d.menuTable.SetSelectionChangedFunc(func(row, column int) {
 		// protect from panic
 		if row < 0 {
 			return
 		}
 
-		d.selectedBuildpack = d.buildpackInfo[row-4]
+		// if SBOM
+		if row == d.menuTable.GetRowCount()-1 {
+			nodeKey := "layers/sbom"
 
-		d.loadFileExplorerData()
+			d.loadFileExplorerData(nodeKey)
 
-		d.fileExplorerTable.ScrollToBeginning()
-	})
+			d.fileExplorerTable.ScrollToBeginning()
 
-	d.fileExplorerTable.SetSelectedFunc(func(row, column int) {
-		node := d.fileExplorerTable.GetCell(row, 3).GetReference().(*tview.TreeNode)
-
-		if !node.GetReference().(*tar.Header).FileInfo().IsDir() {
+			d.fileExplorerTable.SetSelectedFunc(selectionFunc(nodeKey))
 			return
 		}
 
-		if node.IsExpanded() {
-			node.Collapse()
-		} else {
-			node.Expand()
-		}
+		// if buildpack
+		selectedBuildpack := d.buildpackInfo[row-4]
+		nodeKey := "layers/" + strings.ReplaceAll(selectedBuildpack.ID, "/", "_")
 
-		d.loadFileExplorerData()
+		d.loadFileExplorerData(nodeKey)
+
+		d.fileExplorerTable.ScrollToBeginning()
+
+		d.fileExplorerTable.SetSelectedFunc(selectionFunc(nodeKey))
 	})
 
 	d.menuTable.SetDoneFunc(func(key tcell.Key) {
@@ -109,10 +126,10 @@ func (d *Dive) handle() {
 	})
 }
 
-func (d *Dive) loadFileExplorerData() {
+func (d *Dive) loadFileExplorerData(nodeKey string) {
 	// Configure tree
 	root := tview.NewTreeNode("[::b]Filetree[::-]")
-	for _, child := range d.buildpacksTreeMap["layers/"+strings.ReplaceAll(d.selectedBuildpack.ID, "/", "_")].GetChildren() {
+	for _, child := range d.buildpacksTreeMap[nodeKey].GetChildren() {
 		root.AddChild(child)
 	}
 
@@ -203,7 +220,7 @@ func (d *Dive) loadFileExplorerData() {
 	})
 }
 
-func initMenu(buildpackInfos []dist.BuildpackInfo) *tview.Table {
+func initMenu(buildpackInfos []dist.BuildpackInfo, nodes map[string]*tview.TreeNode) *tview.Table {
 	style := tcell.StyleDefault.
 		Foreground(tcell.ColorMediumTurquoise).
 		Background(tcell.ColorDarkSlateGray).
@@ -240,6 +257,21 @@ func initMenu(buildpackInfos []dist.BuildpackInfo) *tview.Table {
 		tview.NewTableCell("EXPORT").
 			SetTextColor(tcell.ColorDarkGray).
 			SetSelectable(false))
+
+	// set spacing
+	i++
+	i++
+	sbomTextColor := tcell.ColorMediumTurquoise
+	sbomSelectable := true
+	if _, ok := nodes["layers/sbom"]; !ok {
+		sbomTextColor = tcell.ColorDarkGray
+		sbomSelectable = false
+	}
+
+	table.SetCell(i, 0,
+		tview.NewTableCell("SBOM").
+			SetTextColor(sbomTextColor).
+			SetSelectable(sbomSelectable))
 	return table
 }
 

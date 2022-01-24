@@ -193,11 +193,11 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 					}
 
 					err := structuredBOMWriter.Print(logger, generalInfo, nil, nil, nil, nil)
-					assert.ErrorWithMessage(err, fmt.Sprintf("unable to find image '%s' locally or remotely", "missing-image"))
+					assert.ErrorWithMessage(err, fmt.Sprintf("unable to find image '%s' locally or remotely", "some-image-name"))
 				})
 			})
 			when("fetching local and remote info errors", func() {
-				it.Focus("returns an error", func() {
+				it("returns an error", func() {
 					structuredBOMWriter := writer.StructuredBOMFormat{
 						MarshalFunc: func(i interface{}) ([]byte, error) {
 							return []byte("cool"), nil
