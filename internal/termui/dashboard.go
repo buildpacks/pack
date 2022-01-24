@@ -204,5 +204,9 @@ func info(buildpackInfo dist.BuildpackInfo) string {
 		return buildpackInfo.Description
 	}
 
-	return buildpackInfo.Homepage
+	if buildpackInfo.Homepage != "" {
+		return buildpackInfo.Homepage
+	}
+
+	return "-"
 }
