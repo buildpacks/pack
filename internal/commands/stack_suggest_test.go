@@ -32,12 +32,6 @@ func testStacksSuggestCommand(t *testing.T, when spec.G, it spec.S) {
 			h.AssertNil(t, command.Execute())
 			h.AssertEq(t, outBuf.String(), `Stacks maintained by the community:
 
-    Stack ID: heroku-18
-    Description: The official Heroku stack based on Ubuntu 18.04
-    Maintainer: Heroku
-    Build Image: heroku/pack:18-build
-    Run Image: heroku/pack:18
-
     Stack ID: heroku-20
     Description: The official Heroku stack based on Ubuntu 20.04
     Maintainer: Heroku

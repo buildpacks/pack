@@ -111,9 +111,9 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 						Return(nil)
 
 					logger.WantVerbose(true)
-					command.SetArgs([]string{"image", "--builder", "heroku/buildpacks:18"})
+					command.SetArgs([]string{"image", "--builder", "heroku/buildpacks:20"})
 					h.AssertNil(t, command.Execute())
-					h.AssertContains(t, outBuf.String(), "Builder 'heroku/buildpacks:18' is trusted")
+					h.AssertContains(t, outBuf.String(), "Builder 'heroku/buildpacks:20' is trusted")
 				})
 			})
 		})
@@ -714,7 +714,7 @@ builder = "my-builder"
 			})
 		})
 
-		when.Focus("previous-image flag is provided", func() {
+		when("previous-image flag is provided", func() {
 			when("image is invalid", func() {
 				it("error must be thrown", func() {
 					mockClient.EXPECT().

@@ -14,11 +14,6 @@ var SuggestedBuilders = []SuggestedBuilder{
 	},
 	{
 		Vendor:             "Heroku",
-		Image:              "heroku/buildpacks:18",
-		DefaultDescription: "heroku-18 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP",
-	},
-	{
-		Vendor:             "Heroku",
 		Image:              "heroku/buildpacks:20",
 		DefaultDescription: "heroku-20 base image with buildpacks for Ruby, Java, Node.js, Python, Golang, & PHP",
 	},
