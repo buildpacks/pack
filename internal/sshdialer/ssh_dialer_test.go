@@ -770,12 +770,21 @@ func withBadSSHAgent(t *testing.T) func() {
 }
 
 func withSSHAgent(t *testing.T, ag agent.Agent) func() {
+	var err error
 	t.Helper()
-	tmpDirForSocket, err := ioutil.TempDir("", "forAuthSock")
-	th.AssertNil(t, err)
 
-	agentSocketPath := filepath.Join(tmpDirForSocket, "agent.sock")
-	unixListener, err := net.Listen("unix", agentSocketPath)
+	var tmpDirForSocket string
+	var agentSocketPath string
+	if runtime.GOOS == "windows" {
+		agentSocketPath = `\\.\pipe\openssh-ssh-agent-test`
+	} else {
+		tmpDirForSocket, err = ioutil.TempDir("", "forAuthSock")
+		th.AssertNil(t, err)
+
+		agentSocketPath = filepath.Join(tmpDirForSocket, "agent.sock")
+	}
+
+	unixListener, err := listen(agentSocketPath)
 	th.AssertNil(t, err)
 
 	os.Setenv("SSH_AUTH_SOCK", agentSocketPath)
@@ -802,7 +811,7 @@ func withSSHAgent(t *testing.T, ag agent.Agent) func() {
 				}()
 				err := agent.ServeAgent(ag, conn)
 				if err != nil {
-					if !errors.Is(err, net.ErrClosed) {
+					if !isErrClosed(err) {
 						fmt.Fprintf(os.Stderr, "agent.ServeAgent() failed: %v\n", err)
 					}
 				}
@@ -818,12 +827,14 @@ func withSSHAgent(t *testing.T, ag agent.Agent) func() {
 
 		err = <-errChan
 
-		if !errors.Is(err, net.ErrClosed) {
+		if !isErrClosed(err) {
 			t.Fatal(err)
 		}
 		cancel()
 		wg.Wait()
-		os.RemoveAll(tmpDirForSocket)
+		if tmpDirForSocket != "" {
+			os.RemoveAll(tmpDirForSocket)
+		}
 	}
 }
 

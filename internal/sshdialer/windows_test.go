@@ -4,9 +4,13 @@
 package sshdialer_test
 
 import (
+	"errors"
+	"net"
 	"os/user"
+	"strings"
 
 	"github.com/hectane/go-acl"
+	"gopkg.in/natefinch/npipe.v2"
 )
 
 func fixupPrivateKeyMod(path string) {
@@ -24,4 +28,15 @@ func fixupPrivateKeyMod(path string) {
 	if err != nil && err.Error() != "The operation completed successfully." {
 		panic(err)
 	}
+}
+
+func listen(addr string) (net.Listener, error) {
+	if strings.Contains(addr, "\\pipe\\") {
+		return npipe.Listen(addr)
+	}
+	return net.Listen("unix", addr)
+}
+
+func isErrClosed(err error) bool {
+	return errors.Is(err, net.ErrClosed) || errors.Is(err, npipe.ErrClosed)
 }
