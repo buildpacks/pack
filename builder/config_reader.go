@@ -94,7 +94,7 @@ func ValidateConfig(c Config) error {
 // parseConfig reads a builder configuration from file
 func parseConfig(file *os.File) (Config, error) {
 	builderConfig := Config{}
-	tomlMetadata, err := toml.DecodeReader(file, &builderConfig)
+	tomlMetadata, err := toml.NewDecoder(file).Decode(&builderConfig)
 	if err != nil {
 		return Config{}, errors.Wrap(err, "decoding toml contents")
 	}
