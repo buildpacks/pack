@@ -14,7 +14,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.7
-	github.com/google/go-containerregistry v0.7.0
+	github.com/google/go-containerregistry v0.8.0
 	github.com/google/go-github/v30 v30.1.0
 	github.com/hectane/go-acl v0.0.0-20190604041725-da78bae5fc95
 	github.com/heroku/color v0.0.6
@@ -74,13 +74,13 @@ require (
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
-	golang.org/x/net v0.0.0-20211203184738-4852103109b8 // indirect
+	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
-	google.golang.org/grpc v1.42.0 // indirect
+	google.golang.org/grpc v1.43.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect

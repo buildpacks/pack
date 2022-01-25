@@ -921,7 +921,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				it("errors", func() {
 					var imageName name.Tag
 					imageName, err := name.NewTag("/x/y/?!z", name.WeakValidation)
-					h.AssertError(t, err, "repository can only contain the runes `abcdefghijklmnopqrstuvwxyz0123456789_-./`")
+					h.AssertError(t, err, "repository can only contain the characters `abcdefghijklmnopqrstuvwxyz0123456789_-./`")
 					lifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
 						options.Image = imageName
 						options.PreviousImage = "previous-image"
@@ -1601,7 +1601,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				it("errors", func() {
 					var imageName name.Tag
 					imageName, err := name.NewTag("/x/y/?!z", name.WeakValidation)
-					h.AssertError(t, err, "repository can only contain the runes `abcdefghijklmnopqrstuvwxyz0123456789_-./`")
+					h.AssertError(t, err, "repository can only contain the characters `abcdefghijklmnopqrstuvwxyz0123456789_-./`")
 					lifecycle := newTestLifecycleExec(t, true, func(options *build.LifecycleOptions) {
 						options.Image = imageName
 						options.PreviousImage = "previous-image"
