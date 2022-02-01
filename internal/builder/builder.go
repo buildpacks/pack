@@ -425,11 +425,7 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 				}
 
 				deletedMaps := map[string][]byte{
-					filepath.Join(
-						buildpacksDir,
-						strings.ReplaceAll(bpInfo.ID, "/", "_"),
-						".wh."+bpInfo.Version,
-					): {},
+					fmt.Sprintf("%s/%s/.wh.%s", buildpacksDir, strings.ReplaceAll(bpInfo.ID, "/", "_"), bpInfo.Version): {},
 				}
 				whiteoutsTarFile := filepath.Join(bpWhiteoutsTmpDir, "whiteouts.tar")
 
