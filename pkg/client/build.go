@@ -688,7 +688,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 
 		for _, bp := range opts.ProjectDescriptor.Build.Buildpacks {
 			switch {
-			case bp.ID != "" && bp.Script.Inline != "" && bp.Version == "" && bp.URI == "":
+			case bp.ID != "" && bp.Script.Inline != "" && bp.URI == "":
 				if bp.Script.API == "" {
 					return nil, nil, errors.New("Missing API version for inline buildpack")
 				}
@@ -891,7 +891,11 @@ func createInlineBuildpack(bp projectTypes.Buildpack, stackID string) (string, e
 		return pathToInlineBuilpack, err
 	}
 
-	if err = createBuildpackTOML(pathToInlineBuilpack, bp.ID, "0.0.0", bp.Script.API, []dist.Stack{{ID: stackID}}, nil); err != nil {
+	if bp.Version == "" {
+		bp.Version = "0.0.0"
+	}
+
+	if err = createBuildpackTOML(pathToInlineBuilpack, bp.ID, bp.Version, bp.Script.API, []dist.Stack{{ID: stackID}}, nil); err != nil {
 		return pathToInlineBuilpack, err
 	}
 
