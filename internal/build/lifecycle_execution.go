@@ -257,6 +257,9 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		cacheOpts,
 		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
 		WithContainerOperations(CopyDir(l.opts.AppPath, l.mountPaths.appDir(), l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, true, l.opts.FileFilter)),
+		If(l.opts.SBOMDestinationDir != "", WithPostContainerRunOperations(
+			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
+			CopyOutTo(l.mountPaths.sbomDir(), l.opts.SBOMDestinationDir))),
 		If(l.opts.Interactive, WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
 			CopyOut(l.opts.Termui.ReadLayers, l.mountPaths.layersDir(), l.mountPaths.appDir()))),
@@ -541,6 +544,9 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		cacheOpt,
 		WithContainerOperations(WriteStackToml(l.mountPaths.stackPath(), l.opts.Builder.Stack(), l.os)),
 		WithContainerOperations(WriteProjectMetadata(l.mountPaths.projectPath(), l.opts.ProjectMetadata, l.os)),
+		If(l.opts.SBOMDestinationDir != "", WithPostContainerRunOperations(
+			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
+			CopyOutTo(l.mountPaths.sbomDir(), l.opts.SBOMDestinationDir))),
 		If(l.opts.Interactive, WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
 			CopyOut(l.opts.Termui.ReadLayers, l.mountPaths.layersDir(), l.mountPaths.appDir()))),

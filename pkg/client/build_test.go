@@ -2496,6 +2496,17 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, fakeLifecycle.Opts.Interactive, true)
 			})
 		})
+
+		when("sbom destination dir option", func() {
+			it("passthroughs to lifecycle", func() {
+				h.AssertNil(t, subject.Build(context.TODO(), BuildOptions{
+					Builder:            defaultBuilderName,
+					Image:              "example.com/some/repo:tag",
+					SBOMDestinationDir: "some-destination-dir",
+				}))
+				h.AssertEq(t, fakeLifecycle.Opts.SBOMDestinationDir, "some-destination-dir")
+			})
+		})
 	})
 }
 
