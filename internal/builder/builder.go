@@ -424,8 +424,22 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 					return errors.Wrap(err, "creating buildpack whiteouts temp dir")
 				}
 
+				osPrefix := ""
+				os, _ := image.OS()
+				if os == "windows" {
+					osPrefix = "c:"
+				}
+				path := filepath.Join(
+					osPrefix,
+					buildpacksDir,
+					strings.ReplaceAll(bpInfo.ID, "/", "_"),
+					".wh."+bpInfo.Version,
+				)
+				if os == "windows" {
+					path = strings.ReplaceAll(path, "/", `\`)
+				}
 				deletedMaps := map[string][]byte{
-					fmt.Sprintf("%s/%s/.wh.%s", buildpacksDir, strings.ReplaceAll(bpInfo.ID, "/", "_"), bpInfo.Version): {},
+					path: {},
 				}
 				whiteoutsTarFile := filepath.Join(bpWhiteoutsTmpDir, "whiteouts.tar")
 
