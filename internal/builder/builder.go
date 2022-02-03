@@ -31,7 +31,8 @@ import (
 const (
 	packName = "Pack CLI"
 
-	cnbDir = "/cnb"
+	cnbDir        = "/cnb"
+	buildpacksDir = "/cnb/buildpacks"
 
 	orderPath          = "/cnb/order.toml"
 	stackPath          = "/cnb/stack.toml"
@@ -314,7 +315,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		return errors.Wrapf(err, "getting label %s", dist.BuildpackLayersLabel)
 	}
 
-	err = addBuildpacks(logger, tmpDir, b.image, b.additionalBuildpacks, bpLayers)
+	err = b.addBuildpacks(logger, tmpDir, b.image, b.additionalBuildpacks, bpLayers)
 	if err != nil {
 		return err
 	}
@@ -381,7 +382,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 // Helpers
 
-func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, additionalBuildpacks []buildpack.Buildpack, bpLayers dist.BuildpackLayers) error {
+func (b *Builder) addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, additionalBuildpacks []buildpack.Buildpack, bpLayers dist.BuildpackLayers) error {
 	type buildpackToAdd struct {
 		tarPath   string
 		diffID    string
@@ -417,6 +418,15 @@ func addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, ad
 			if existingBPInfo.LayerDiffID == diffID.String() {
 				logger.Debugf("Buildpack %s already exists on builder with same contents, skipping...", style.Symbol(bpInfo.FullName()))
 				continue
+			} else {
+				whiteoutsTar, err := b.whiteoutLayer(tmpDir, i, bpInfo)
+				if err != nil {
+					return err
+				}
+
+				if err := image.AddLayer(whiteoutsTar); err != nil {
+					return errors.Wrap(err, "adding whiteout layer tar")
+				}
 			}
 
 			logger.Debugf(BuildpackOnBuilderMessage, style.Symbol(bpInfo.FullName()), style.Symbol(existingBPInfo.LayerDiffID), style.Symbol(diffID.String()))
@@ -784,6 +794,38 @@ func (b *Builder) envLayer(dest string, env map[string]string) (string, error) {
 		if _, err := lw.Write([]byte(v)); err != nil {
 			return "", err
 		}
+	}
+
+	return fh.Name(), nil
+}
+
+func (b *Builder) whiteoutLayer(tmpDir string, i int, bpInfo dist.BuildpackInfo) (string, error) {
+	bpWhiteoutsTmpDir := filepath.Join(tmpDir, strconv.Itoa(i)+"_whiteouts")
+	if err := os.MkdirAll(bpWhiteoutsTmpDir, os.ModePerm); err != nil {
+		return "", errors.Wrap(err, "creating buildpack whiteouts temp dir")
+	}
+
+	fh, err := os.Create(filepath.Join(bpWhiteoutsTmpDir, "whiteouts.tar"))
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+
+	lw := b.layerWriterFactory.NewWriter(fh)
+	defer lw.Close()
+
+	if err := lw.WriteHeader(&tar.Header{
+		Name: path.Join(buildpacksDir, strings.ReplaceAll(bpInfo.ID, "/", "_"), fmt.Sprintf(".wh.%s", bpInfo.Version)),
+		Size: int64(0),
+		Mode: 0644,
+	}); err != nil {
+		return "", err
+	}
+	if _, err := lw.Write([]byte("")); err != nil {
+		return "", errors.Wrapf(err,
+			"creating whiteout layers' tarfile for buildpack %s",
+			style.Symbol(bpInfo.FullName()),
+		)
 	}
 
 	return fh.Name(), nil
