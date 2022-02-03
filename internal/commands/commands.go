@@ -29,6 +29,7 @@ type PackClient interface {
 	YankBuildpack(client.YankBuildpackOptions) error
 	InspectBuildpack(client.InspectBuildpackOptions) (*client.BuildpackInfo, error)
 	PullBuildpack(context.Context, client.PullBuildpackOptions) error
+	DownloadSBOM(name string, options client.DownloadSBOMOptions) error
 }
 
 func AddHelpFlag(cmd *cobra.Command, commandName string) {

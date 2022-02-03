@@ -50,6 +50,10 @@ func InspectImage(
 			remote, remoteErr := client.InspectImage(img, false)
 			local, localErr := client.InspectImage(img, true)
 
+			if flags.BOM {
+				logger.Warn("Using the '--bom' flag with 'pack inspect-image <image-name>' is deprecated. Users are encouraged to use 'pack sbom download <image-name>'.")
+			}
+
 			if err := w.Print(logger, sharedImageInfo, local, remote, localErr, remoteErr); err != nil {
 				return err
 			}
