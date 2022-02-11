@@ -57,7 +57,7 @@ jobs:
       - name: Derive pack version from branch name Unix
         if: runner.os != 'Windows'
         run: |
-          [[ $GITHUB_REF =~ ^refs\/heads\/release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
+          [[ $GITHUB_REF_NAME =~ ^release/(.*)$ ]] && version=${BASH_REMATCH[1]} || version=0.0.0
           echo "PACK_VERSION=${version}" >> $GITHUB_ENV
         shell: bash
       - name: Derive pack version from branch name Windows
