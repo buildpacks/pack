@@ -218,15 +218,7 @@ func (i *PackInvoker) Supports(command string) bool {
 
 type Feature int
 
-const (
-	AnalysisFirst = iota
-)
-
-var featureTests = map[Feature]func(i *PackInvoker) bool{
-	AnalysisFirst: func(i *PackInvoker) bool {
-		return i.atLeast("0.23.0")
-	},
-}
+var featureTests = map[Feature]func(i *PackInvoker) bool{}
 
 func (i *PackInvoker) SupportsFeature(f Feature) bool {
 	return featureTests[f](i)
