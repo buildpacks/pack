@@ -14,9 +14,9 @@ jobs:
   update-tap:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Checkout tap
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: buildpack/homebrew-tap
           path: homebrew-tap
