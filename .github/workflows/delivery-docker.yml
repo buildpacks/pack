@@ -46,6 +46,7 @@ jobs:
         shell: bash
         run: |
           cp head/.github/workflows/delivery/docker/project.toml project.toml
+          rm buildpack.yml
       - name: Determine App Name
         run: 'echo "IMG_NAME=${{ env.USERNAME }}/${{ env.IMG_NAME }}" >> $GITHUB_ENV'
       - name: Login to Dockerhub
