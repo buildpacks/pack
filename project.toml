@@ -8,4 +8,4 @@ value = "./cmd/pack"
 
 [[build.env]]
 name = "BP_GO_BUILD_LDFLAGS"
-value = "-s -w -X 'github.com/buildpacks/pack.Version=#{PACK_VERSION}#'"
+value = "-s -w -X 'github.com/buildpacks/pack.Version=0.0.0'"
