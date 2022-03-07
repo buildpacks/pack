@@ -45,6 +45,9 @@ The [release manager](#release-manager) will:
         - **release notes**
         - **migration guide** (if necessary)
 - Merge the release branch into `main`.
+- Create a new [milestone](https://github.com/buildpacks/pack/milestones) for the next version, and set the delivery time in 6 weeks.
+- Move all still open PRs/issues in the delivered milestone to the new milestone
+- Close the delivered milestone
 - Send out release notifications, if deemed necessary, on
   - The [cncf-buildpacks mailing list](https://lists.cncf.io/g/cncf-buildpacks)
   - Twitter
