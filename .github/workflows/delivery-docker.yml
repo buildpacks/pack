@@ -37,21 +37,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: v${{ steps.version.outputs.result }}
-      # This has to come after the first checkout, so it isn't clobbered
-      - name: Checkout delivery configuration
-        uses: actions/checkout@v3
-        with:
-          path: ./head
-      - name: Setup Working Dir
-        shell: bash
-        run: |
-          cp head/.github/workflows/delivery/docker/buildpack.yml buildpack.yml
-      - name: Fill buildpack.yml
-        uses: cschleiden/replace-tokens@v1
-        env:
-          PACK_VERSION: ${{ steps.version.outputs.result }}
-        with:
-          files: buildpack.yml
       - name: Determine App Name
         run: 'echo "IMG_NAME=${{ env.USERNAME }}/${{ env.IMG_NAME }}" >> $GITHUB_ENV'
       - name: Login to Dockerhub
@@ -60,7 +45,10 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Pack Build/Publish
-        uses: dfreilich/pack-action@v2.0.15
+        uses: dfreilich/pack-action@v2.1.1
+        env:
+          BP_GO_BUILD_LDFLAGS: "-s -w -X 'github.com/buildpacks/pack.Version=${{ steps.version.outputs.result }}'"
+          BP_GO_TARGETS: "./cmd/pack"
         with:
           args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} --builder ${{ env.BUILDER }} --publish'
       - name: Tag Image as Latest
