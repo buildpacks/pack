@@ -49,7 +49,7 @@ pushd "${PACKAGE_AUR_DIR}" > /dev/null
   
   su archie -c "makepkg --printsrcinfo" > .SRCINFO  
   
-  echo '> Commiting changes...'
+  echo '> Committing changes...'
   git config --global user.name "github-bot"
   git config --global user.email "action@github.com"
   git diff --color | cat
