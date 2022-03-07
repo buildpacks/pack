@@ -50,7 +50,7 @@ export CGO_ENABLED=0
 
 BINDIR:=/usr/bin/
 
-# this target must be listed first in order for it to be a defualt target,
+# this target must be listed first in order for it to be a default target,
 # so that ubuntu_ppa's may be constructed using default build tools.
 build: out
 	@echo "> Building..."
