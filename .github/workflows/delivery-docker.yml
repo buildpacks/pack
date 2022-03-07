@@ -9,6 +9,10 @@ on:
       tag_name:
         description: The release tag to distribute
         required: true
+      skip_latest:
+        description: Skip tagging as latest
+        required: false
+        type: boolean
 
 env:
   BUILDER: "paketobuildpacks/builder:tiny"
@@ -65,6 +69,7 @@ jobs:
         with:
           args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} --builder ${{ env.BUILDER }} --publish'
       - name: Tag Image as Latest
+        if: ${{ !github.event.inputs.skip_latest }}
         run: |
           docker pull ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}
           docker tag ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} ${{ env.IMG_NAME }}:latest
