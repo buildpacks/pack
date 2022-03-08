@@ -66,7 +66,7 @@ jobs:
         with:
           args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} --builder ${{ env.BUILDER }} --env BP_GO_BUILD_LDFLAGS --publish'
       - name: Tag Image as Latest
-        if: ${{ context.payload.release != '' || github.event.inputs.skip_latest }}
+        if: ${{ github.event.release != '' || github.event.inputs.skip_latest }}
         run: |
           docker pull ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}
           docker tag ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} ${{ env.IMG_NAME }}:latest
