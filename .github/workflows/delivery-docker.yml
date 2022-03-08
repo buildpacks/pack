@@ -9,10 +9,11 @@ on:
       tag_name:
         description: The release tag to distribute
         required: true
-      skip_latest:
-        description: Skip tagging as latest
+      tag_latest:
+        description: Tag as latest
         required: false
         type: boolean
+        default: true
 
 env:
   BUILDER: "paketobuildpacks/builder:tiny"
@@ -51,12 +52,6 @@ jobs:
         run: |
           cp head/.github/workflows/delivery/docker/project.toml project.toml
           rm buildpack.yml
-      - name: Fill project.toml
-        uses: cschleiden/replace-tokens@v1
-        env:
-          PACK_VERSION: ${{ steps.version.outputs.result }}
-        with:
-          files: project.toml
       - name: Determine App Name
         run: 'echo "IMG_NAME=${{ env.USERNAME }}/${{ env.IMG_NAME }}" >> $GITHUB_ENV'
       - name: Login to Dockerhub
@@ -66,10 +61,12 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Pack Build/Publish
         uses: dfreilich/pack-action@v2.1.1
+        env:
+          - BP_GO_BUILD_LDFLAGS: "-s -w -X 'github.com/buildpacks/pack.Version=${{ steps.version.outputs.result }}'"
         with:
-          args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} --builder ${{ env.BUILDER }} --publish'
+          args: 'build ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} --builder ${{ env.BUILDER }} --env BP_GO_BUILD_LDFLAGS --publish'
       - name: Tag Image as Latest
-        if: ${{ !github.event.inputs.skip_latest }}
+        if: ${{ github.event.inputs.tag_latest }}
         run: |
           docker pull ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }}
           docker tag ${{ env.IMG_NAME }}:${{ steps.version.outputs.result }} ${{ env.IMG_NAME }}:latest
