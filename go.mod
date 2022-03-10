@@ -26,7 +26,7 @@ require (
 	github.com/rivo/tview v0.0.0-20210624165335-29d673af0ce2
 	github.com/sabhiram/go-gitignore v0.0.0-20201211074657-223ce5d391b0
 	github.com/sclevine/spec v1.4.0
-	github.com/spf13/cobra v1.3.0
+	github.com/spf13/cobra v1.4.0
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/mod v0.5.1
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
