@@ -142,8 +142,8 @@ github.com/bugsnag/osext v0.0.0-20130617224835-0dd3f918b21b/go.mod h1:obH5gd0Bsq
 github.com/bugsnag/panicwrap v0.0.0-20151223152923-e2c28503fcd0/go.mod h1:D/8v3kj0zr8ZAKg1AQ6crr+5VwKN5eIywRkfhyM/+dE=
 github.com/buildpacks/imgutil v0.0.0-20211203200417-76206845baac h1:XrKr6axRUBHEQdyyo7uffYDwWurOdeyH8MpNRJuBdIw=
 github.com/buildpacks/imgutil v0.0.0-20211203200417-76206845baac/go.mod h1:YZReWjuSxwyvuN92Vlcul+WgaCXylpecgFn7T3rNang=
-github.com/buildpacks/lifecycle v0.13.3 h1:vV2DGTPVQOELtrCSYpop8W9OF0m+l5gwxWDPmL9ZcOw=
-github.com/buildpacks/lifecycle v0.13.3/go.mod h1:4Kv6HljeDJ1ibUcRijvvC1/AHXMCpNddIqH2KYnboks=
+github.com/buildpacks/lifecycle v0.13.5 h1:8sreGjrBu6CJDZqc6Opi+VJSqVcS1hiEqzJEhn7bqBY=
+github.com/buildpacks/lifecycle v0.13.5/go.mod h1:+X6d6xoEhNitwvSbpTcnw/mvKNTYAx2ZeR9GDPbbsds=
 github.com/cenkalti/backoff/v4 v4.1.1/go.mod h1:scbssz8iZGpm3xbr14ovlUdkxfGXNInqkPWOWmG2CLw=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/census-instrumentation/opencensus-proto v0.3.0/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
