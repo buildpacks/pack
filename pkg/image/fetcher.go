@@ -34,10 +34,17 @@ func WithRegistryMirrors(registryMirrors map[string]string) FetcherOption {
 	}
 }
 
+func WithKeychain(keychain authn.Keychain) FetcherOption {
+	return func(c *Fetcher) {
+		c.keychain = keychain
+	}
+}
+
 type Fetcher struct {
 	docker          client.CommonAPIClient
 	logger          logging.Logger
 	registryMirrors map[string]string
+	keychain        authn.Keychain
 }
 
 type FetchOptions struct {
@@ -47,9 +54,10 @@ type FetchOptions struct {
 }
 
 func NewFetcher(logger logging.Logger, docker client.CommonAPIClient, opts ...FetcherOption) *Fetcher {
-	var fetcher = &Fetcher{
-		logger: logger,
-		docker: docker,
+	fetcher := &Fetcher{
+		logger:   logger,
+		docker:   docker,
+		keychain: authn.DefaultKeychain,
 	}
 
 	for _, opt := range opts {
@@ -105,7 +113,7 @@ func (f *Fetcher) fetchDaemonImage(name string) (imgutil.Image, error) {
 }
 
 func (f *Fetcher) fetchRemoteImage(name string) (imgutil.Image, error) {
-	image, err := remote.NewImage(name, authn.DefaultKeychain, remote.FromBaseImage(name))
+	image, err := remote.NewImage(name, f.keychain, remote.FromBaseImage(name))
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +126,7 @@ func (f *Fetcher) fetchRemoteImage(name string) (imgutil.Image, error) {
 }
 
 func (f *Fetcher) pullImage(ctx context.Context, imageID string, platform string) error {
-	regAuth, err := registryAuth(imageID)
+	regAuth, err := f.registryAuth(imageID)
 	if err != nil {
 		return err
 	}
@@ -143,8 +151,8 @@ func (f *Fetcher) pullImage(ctx context.Context, imageID string, platform string
 	return rc.Close()
 }
 
-func registryAuth(ref string) (string, error) {
-	_, a, err := auth.ReferenceForRepoName(authn.DefaultKeychain, ref)
+func (f *Fetcher) registryAuth(ref string) (string, error) {
+	_, a, err := auth.ReferenceForRepoName(f.keychain, ref)
 	if err != nil {
 		return "", errors.Wrapf(err, "resolve auth for ref %s", ref)
 	}
