@@ -138,7 +138,7 @@ func copyDirWindows(ctx context.Context, ctrClient client.CommonAPIClient, conta
 		},
 		&dcontainer.HostConfig{
 			Binds:     []string{fmt.Sprintf("%s:%s", mnt.Name, mnt.Destination)},
-			Isolation: dcontainer.IsolationProcess,
+			Isolation: dcontainer.IsolationDefault,
 		},
 		nil, nil, "",
 	)
@@ -293,7 +293,7 @@ func EnsureVolumeAccess(uid, gid int, os string, volumeNames ...string) Containe
 			},
 			&dcontainer.HostConfig{
 				Binds:     binds,
-				Isolation: dcontainer.IsolationProcess,
+				Isolation: dcontainer.IsolationDefault,
 			},
 			nil, nil, "",
 		)

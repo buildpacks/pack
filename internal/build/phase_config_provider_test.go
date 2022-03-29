@@ -75,7 +75,7 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 
 				phaseConfigProvider := build.NewPhaseConfigProvider("some-name", lifecycle)
 
-				h.AssertEq(t, phaseConfigProvider.HostConfig().Isolation, container.IsolationProcess)
+				h.AssertEq(t, phaseConfigProvider.HostConfig().Isolation, container.IsolationDefault)
 			})
 		})
 

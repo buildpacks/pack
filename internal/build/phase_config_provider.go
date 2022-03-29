@@ -47,7 +47,7 @@ func NewPhaseConfigProvider(name string, lifecycleExec *LifecycleExecution, ops 
 	provider.ctrConf.Labels = map[string]string{"author": "pack"}
 
 	if lifecycleExec.os == "windows" {
-		provider.hostConf.Isolation = container.IsolationProcess
+		provider.hostConf.Isolation = container.IsolationDefault
 	}
 
 	ops = append(ops,

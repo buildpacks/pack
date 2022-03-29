@@ -530,10 +530,6 @@ drwsrwsrwt    2 123      456 (.*) some-vol
 
 func createContainer(ctx context.Context, imageName, containerDir, osType string, cmd ...string) (dcontainer.ContainerCreateCreatedBody, error) {
 	isolationType := dcontainer.IsolationDefault
-	if osType == "windows" {
-		isolationType = dcontainer.IsolationProcess
-	}
-
 	return ctrClient.ContainerCreate(ctx,
 		&dcontainer.Config{
 			Image: imageName,
