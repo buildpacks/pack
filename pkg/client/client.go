@@ -215,7 +215,7 @@ func NewClient(opts ...Option) (*Client, error) {
 	}
 
 	if client.imageFetcher == nil {
-		client.imageFetcher = image.NewFetcher(client.logger, client.docker, image.WithRegistryMirrors(client.registryMirrors))
+		client.imageFetcher = image.NewFetcher(client.logger, client.docker, image.WithRegistryMirrors(client.registryMirrors), image.WithKeychain(client.keychain))
 	}
 
 	if client.imageFactory == nil {
