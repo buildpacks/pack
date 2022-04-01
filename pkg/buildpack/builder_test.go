@@ -364,6 +364,68 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							})
 						})
 
+						when("dependency has wildcard stacks", func() {
+							it("should support all the possible stacks", func() {
+								bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.1.id",
+										Version: "bp.1.version",
+									},
+									Order: dist.Order{{
+										Group: []dist.BuildpackRef{{
+											BuildpackInfo: dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
+											Optional:      false,
+										}, {
+											BuildpackInfo: dist.BuildpackInfo{ID: "bp.3.id", Version: "bp.3.version"},
+											Optional:      false,
+										}},
+									}},
+								}, 0644)
+								h.AssertNil(t, err)
+
+								builder := buildpack.NewBuilder(mockImageFactory(expectedImageOS))
+								builder.SetBuildpack(bp)
+
+								dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.2.id",
+										Version: "bp.2.version",
+									},
+									Stacks: []dist.Stack{
+										{ID: "*", Mixins: []string{"Mixin-A"}},
+									},
+									Order: nil,
+								}, 0644)
+								h.AssertNil(t, err)
+								builder.AddDependency(dependency1)
+
+								dependency2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
+									API: api.MustParse("0.2"),
+									Info: dist.BuildpackInfo{
+										ID:      "bp.3.id",
+										Version: "bp.3.version",
+									},
+									Stacks: []dist.Stack{
+										{ID: "stack.id.1", Mixins: []string{"Mixin-A"}},
+									},
+									Order: nil,
+								}, 0644)
+								h.AssertNil(t, err)
+								builder.AddDependency(dependency2)
+
+								img, err := builder.SaveAsImage("some/package", false, expectedImageOS)
+								h.AssertNil(t, err)
+
+								metadata := buildpack.Metadata{}
+								_, err = dist.GetLabel(img, "io.buildpacks.buildpackage.metadata", &metadata)
+								h.AssertNil(t, err)
+
+								h.AssertEq(t, metadata.Stacks, []dist.Stack{{ID: "stack.id.1", Mixins: []string{"Mixin-A"}}})
+							})
+						})
+
 						when("dependency is meta-buildpack", func() {
 							it("should succeed and compute common stacks", func() {
 								bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{

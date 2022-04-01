@@ -54,5 +54,59 @@ func testMerge(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, result, []dist.Stack{{ID: "stack1"}})
 			})
 		})
+
+		when("a set has a wildcard stack", func() {
+			it("returns the other set of stacks", func() {
+				result := stack.MergeCompatible(
+					[]dist.Stack{{ID: "*"}},
+					[]dist.Stack{
+						{ID: "stack1"},
+						{ID: "stack2"},
+					},
+				)
+
+				h.AssertEq(t, len(result), 2)
+				h.AssertEq(t, result, []dist.Stack{
+					{ID: "stack1"},
+					{ID: "stack2"},
+				})
+			})
+
+			it("returns the other set of stacks", func() {
+				result := stack.MergeCompatible(
+					[]dist.Stack{
+						{ID: "stack1"},
+						{ID: "stack2"},
+					},
+					[]dist.Stack{{ID: "*"}},
+				)
+
+				h.AssertEq(t, len(result), 2)
+				h.AssertEq(t, result, []dist.Stack{
+					{ID: "stack1"},
+					{ID: "stack2"},
+				})
+			})
+
+			it("returns the wildcard stack", func() {
+				result := stack.MergeCompatible(
+					[]dist.Stack{
+						{ID: "stack1"},
+						{ID: "stack2"},
+						{ID: "*"},
+					},
+					[]dist.Stack{
+						{ID: "*"},
+						{ID: "stack3"},
+						{ID: "stack1"},
+					},
+				)
+
+				h.AssertEq(t, len(result), 1)
+				h.AssertEq(t, result, []dist.Stack{
+					{ID: "*"},
+				})
+			})
+		})
 	})
 }
