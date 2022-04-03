@@ -29,11 +29,12 @@ jobs:
         with:
           script: |
             let payload = context.payload;
-            let tag = (payload.release && payload.release.tag_name) || (payload.inputs && payload.inputs.tag_name);
-            if (!tag) {
+            let tag_name = (payload.release && payload.release.tag_name) || (payload.inputs && payload.inputs.tag_name);
+            if (!tag_name) {
               throw "ERROR: unable to determine tag"
             }
-            let tag_name = tag.replace(/^v/, '');
+
+            core.setOutput("pack_version", tag_name.replace(/^v/, ''));
 
             var release = payload.release || await github.rest.repos.listReleases(context.repo)
                   .then(result => result.data.find(r => r.tag_name === tag_name))
@@ -86,6 +87,7 @@ jobs:
           MACOS_SHA: ${{ steps.checksums.outputs.macos_sha256 }}
           MACOS_ARM64_URL: ${{ steps.assets.outputs.macos_arm64_url }}
           MACOS_ARM64_SHA:  ${{ steps.checksums.outputs.macos_arm64_sha256 }}
+          PACK_VERSION: ${{ pack_version }}
       - run: cat homebrew-tap/Formula/pack.rb
       - name: Commit changes
         run: |

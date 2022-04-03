@@ -5,6 +5,9 @@
 class Pack < Formula
   desc "A CLI for building apps using Cloud Native Buildpacks"
   homepage "https://github.com/buildpacks/pack"
+  version "{{PACK_VERSION}}"
+  version_scheme 1
+
   if OS.mac? && Hardware::CPU.arm?
     url "{{MACOS_ARM64_URL}}"
     sha256 "{{MACOS_ARM64_SHA}}"
