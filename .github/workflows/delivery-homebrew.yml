@@ -87,7 +87,7 @@ jobs:
           MACOS_SHA: ${{ steps.checksums.outputs.macos_sha256 }}
           MACOS_ARM64_URL: ${{ steps.assets.outputs.macos_arm64_url }}
           MACOS_ARM64_SHA:  ${{ steps.checksums.outputs.macos_arm64_sha256 }}
-          PACK_VERSION: ${{ pack_version }}
+          PACK_VERSION: ${{ steps.assets.outputs.pack_version }}
       - run: cat homebrew-tap/Formula/pack.rb
       - name: Commit changes
         run: |
