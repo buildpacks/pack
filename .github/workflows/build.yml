@@ -184,7 +184,7 @@ jobs:
 
           echo "PACK_MILESTONE=${milestone}" >> $GITHUB_ENV
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack
