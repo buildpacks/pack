@@ -123,7 +123,7 @@ jobs:
         env:
           PACK_BUILD: ${{ github.run_number }}
         shell: powershell
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: matrix.config != 'windows-wcow'
         with:
           name: pack-${{ matrix.os }}
@@ -155,7 +155,7 @@ jobs:
           env PACK_VERSION=${version} GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} make build
         env:
           PACK_BUILD: ${{ github.run_number }}
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: pack-${{ matrix.name }}
           path: out/${{ env.PACK_BIN }}
