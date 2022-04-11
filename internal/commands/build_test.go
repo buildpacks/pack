@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
@@ -147,7 +148,6 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--pull-policy", "never"})
 				h.AssertNil(t, command.Execute())
 			})
-
 			it("returns error for unknown policy", func() {
 				command.SetArgs([]string{"image", "--builder", "my-builder", "--pull-policy", "unknown-policy"})
 				h.AssertError(t, command.Execute(), "parsing pull policy")
@@ -783,6 +783,19 @@ builder = "my-builder"
 				h.AssertNil(t, command.Execute())
 			})
 		})
+
+		when("--date-time", func() {
+			it("passes it to the builder", func() {
+				expectedTime, err := time.Parse("2006-01-02T03:04:05Z", "2019-08-19T00:00:01Z")
+				h.AssertNil(t, err)
+				mockClient.EXPECT().
+					Build(gomock.Any(), EqBuildOptionsWithDateTime(&expectedTime)).
+					Return(nil)
+
+				command.SetArgs([]string{"image", "--builder", "my-builder", "--date-time", "1566172801"})
+				h.AssertNil(t, command.Execute())
+			})
+		})
 	})
 }
 
@@ -927,6 +940,15 @@ func EqBuildOptionsWithSBOMOutputDir(s string) interface{} {
 		description: fmt.Sprintf("sbom-destination-dir=%s", s),
 		equals: func(o client.BuildOptions) bool {
 			return o.SBOMDestinationDir == s
+		},
+	}
+}
+
+func EqBuildOptionsWithDateTime(t *time.Time) interface{} {
+	return buildOptionsMatcher{
+		description: fmt.Sprintf("DateTime=%s", t),
+		equals: func(o client.BuildOptions) bool {
+			return *(o.DateTime) == *t
 		},
 	}
 }

@@ -1974,6 +1974,45 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 							})
 						})
 					})
+
+					when("--date-time", func() {
+						when("provided as 'now'", func() {
+							it("image has create time of the current time", func() {
+								expectedTime := time.Now()
+								pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--date-time", "now",
+								)
+								assertImage.HasCreateTime(repoName, expectedTime)
+							})
+						})
+
+						when("provided as unix timestamp", func() {
+							it("image has create time of the time that was provided", func() {
+								pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--date-time", "1566172801",
+								)
+								expectedTime, err := time.Parse("2006-01-02T03:04:05Z", "2019-08-19T00:00:01Z")
+								h.AssertNil(t, err)
+								assertImage.HasCreateTime(repoName, expectedTime)
+							})
+						})
+
+						when("not provided", func() {
+							it("image has create time of Jan 1, 1980", func() {
+								pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+								)
+								expectedTime, err := time.Parse("2006-01-02T03:04:05Z", "1980-01-01T00:00:01Z")
+								h.AssertNil(t, err)
+								assertImage.HasCreateTime(repoName, expectedTime)
+							})
+						})
+					})
 				})
 			})
 

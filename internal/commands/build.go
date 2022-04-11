@@ -4,7 +4,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/pkg/errors"
@@ -44,6 +46,7 @@ type BuildFlags struct {
 	GID                int
 	PreviousImage      string
 	SBOMDestinationDir string
+	DateTime           string
 }
 
 // Build an image from source code
@@ -128,6 +131,10 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 			if cmd.Flags().Changed("gid") {
 				gid = flags.GID
 			}
+			dateTime, err := parseTime(flags.DateTime)
+			if err != nil {
+				return errors.Wrapf(err, "parsing date-time %s", flags.DateTime)
+			}
 			if err := packClient.Build(cmd.Context(), client.BuildOptions{
 				AppPath:           flags.AppPath,
 				Builder:           builder,
@@ -159,6 +166,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				PreviousImage:            flags.PreviousImage,
 				Interactive:              flags.Interactive,
 				SBOMDestinationDir:       flags.SBOMDestinationDir,
+				DateTime:                 dateTime,
 			}); err != nil {
 				return errors.Wrap(err, "failed to build")
 			}
@@ -171,12 +179,30 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 	return cmd
 }
 
+func parseTime(providedTime string) (*time.Time, error) {
+	var parsedTime time.Time
+	switch providedTime {
+	case "":
+		return nil, nil
+	case "now":
+		parsedTime = time.Now().UTC()
+	default:
+		intTime, err := strconv.ParseInt(providedTime, 10, 64)
+		if err != nil {
+			return nil, errors.Wrap(err, "parsing unix timestamp")
+		}
+		parsedTime = time.Unix(intTime, 0).UTC()
+	}
+	return &parsedTime, nil
+}
+
 func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Config) {
 	cmd.Flags().StringVarP(&buildFlags.AppPath, "path", "p", "", "Path to app dir or zip-formatted file (defaults to current working directory)")
 	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack to use. One of:\n  a buildpack by id and version in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  a packaged buildpack image name in the form of '<hostname>/<repo>[:<tag>]'"+stringSliceHelp("buildpack"))
 	cmd.Flags().StringVarP(&buildFlags.Builder, "builder", "B", cfg.DefaultBuilder, "Builder image")
 	cmd.Flags().StringVar(&buildFlags.CacheImage, "cache-image", "", `Cache build layers in remote registry. Requires --publish`)
 	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
+	cmd.Flags().StringVar(&buildFlags.DateTime, "date-time", "", "Desired create time in the output image config")
 	cmd.Flags().StringVarP(&buildFlags.DescriptorPath, "descriptor", "d", "", "Path to the project descriptor file")
 	cmd.Flags().StringVarP(&buildFlags.DefaultProcessType, "default-process", "D", "", `Set the default process type. (default "web")`)
 	cmd.Flags().StringArrayVarP(&buildFlags.Env, "env", "e", []string{}, "Build-time environment variable, in the form 'VAR=VALUE' or 'VAR'.\nWhen using latter value-less form, value will be taken from current\n  environment at the time this command is executed.\nThis flag may be specified multiple times and will override\n  individual values defined by --env-file."+stringArrayHelp("env")+"\nNOTE: These are NOT available at image runtime.")
