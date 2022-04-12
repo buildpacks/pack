@@ -1977,7 +1977,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 
 					when("--creation-time", func() {
 						it.Before(func() {
-							h.SkipIf(t, !pack.Supports("--creation-time"), "")
+							h.SkipIf(t, !pack.SupportsFeature(invoke.CreationTime), "")
 						})
 
 						when("provided as 'now'", func() {
