@@ -1975,9 +1975,9 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 						})
 					})
 
-					when("--date-time", func() {
+					when("--creation-time", func() {
 						it.Before(func() {
-							h.SkipIf(t, !pack.Supports("--date-time"), "")
+							h.SkipIf(t, !pack.Supports("--creation-time"), "")
 						})
 
 						when("provided as 'now'", func() {
@@ -1986,7 +1986,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 								pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--date-time", "now",
+									"--creation-time", "now",
 								)
 								assertImage.HasCreateTime(repoName, expectedTime)
 							})
@@ -1997,7 +1997,7 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 								pack.RunSuccessfully(
 									"build", repoName,
 									"-p", filepath.Join("testdata", "mock_app"),
-									"--date-time", "1566172801",
+									"--creation-time", "1566172801",
 								)
 								expectedTime, err := time.Parse("2006-01-02T03:04:05Z", "2019-08-19T00:00:01Z")
 								h.AssertNil(t, err)

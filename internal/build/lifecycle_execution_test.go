@@ -1055,7 +1055,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("--date-time", func() {
+		when("--creation-time", func() {
 			when("provided", func() {
 				it("configures the phase with env SOURCE_DATE_EPOCH", func() {
 					intTime, err := strconv.ParseInt("1234567890", 10, 64)
@@ -2656,7 +2656,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		when("--date-time", func() {
+		when("--creation-time", func() {
 			when("provided", func() {
 				it("configures the phase with env SOURCE_DATE_EPOCH", func() {
 					intTime, err := strconv.ParseInt("1234567890", 10, 64)

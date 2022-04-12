@@ -784,7 +784,7 @@ builder = "my-builder"
 			})
 		})
 
-		when("--date-time", func() {
+		when("--creation-time", func() {
 			when("provided as 'now'", func() {
 				it("passes it to the builder", func() {
 					expectedTime := time.Now().UTC()
@@ -792,7 +792,7 @@ builder = "my-builder"
 						Build(gomock.Any(), EqBuildOptionsWithDateTime(&expectedTime)).
 						Return(nil)
 
-					command.SetArgs([]string{"image", "--builder", "my-builder", "--date-time", "now"})
+					command.SetArgs([]string{"image", "--builder", "my-builder", "--creation-time", "now"})
 					h.AssertNil(t, command.Execute())
 				})
 			})
@@ -805,7 +805,7 @@ builder = "my-builder"
 						Build(gomock.Any(), EqBuildOptionsWithDateTime(&expectedTime)).
 						Return(nil)
 
-					command.SetArgs([]string{"image", "--builder", "my-builder", "--date-time", "1566172801"})
+					command.SetArgs([]string{"image", "--builder", "my-builder", "--creation-time", "1566172801"})
 					h.AssertNil(t, command.Execute())
 				})
 			})
@@ -976,7 +976,7 @@ func EqBuildOptionsWithDateTime(t *time.Time) interface{} {
 			if t == nil {
 				return o.DateTime == nil
 			}
-			return (*o.DateTime).Sub(*t) < 5*time.Second
+			return o.DateTime.Sub(*t) < 5*time.Second
 		},
 	}
 }
