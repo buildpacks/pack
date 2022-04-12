@@ -1976,6 +1976,10 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 					})
 
 					when("--date-time", func() {
+						it.Before(func() {
+							h.SkipIf(t, !pack.Supports("--date-time"), "")
+						})
+
 						when("provided as 'now'", func() {
 							it("image has create time of the current time", func() {
 								expectedTime := time.Now()

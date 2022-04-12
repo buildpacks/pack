@@ -785,15 +785,40 @@ builder = "my-builder"
 		})
 
 		when("--date-time", func() {
-			it("passes it to the builder", func() {
-				expectedTime, err := time.Parse("2006-01-02T03:04:05Z", "2019-08-19T00:00:01Z")
-				h.AssertNil(t, err)
-				mockClient.EXPECT().
-					Build(gomock.Any(), EqBuildOptionsWithDateTime(&expectedTime)).
-					Return(nil)
+			when("provided as 'now'", func() {
+				it("passes it to the builder", func() {
+					expectedTime := time.Now().UTC()
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithDateTime(&expectedTime)).
+						Return(nil)
 
-				command.SetArgs([]string{"image", "--builder", "my-builder", "--date-time", "1566172801"})
-				h.AssertNil(t, command.Execute())
+					command.SetArgs([]string{"image", "--builder", "my-builder", "--date-time", "now"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("provided as unix timestamp", func() {
+				it("passes it to the builder", func() {
+					expectedTime, err := time.Parse("2006-01-02T03:04:05Z", "2019-08-19T00:00:01Z")
+					h.AssertNil(t, err)
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithDateTime(&expectedTime)).
+						Return(nil)
+
+					command.SetArgs([]string{"image", "--builder", "my-builder", "--date-time", "1566172801"})
+					h.AssertNil(t, command.Execute())
+				})
+			})
+
+			when("not provided", func() {
+				it("is nil", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithDateTime(nil)).
+						Return(nil)
+
+					command.SetArgs([]string{"image", "--builder", "my-builder"})
+					h.AssertNil(t, command.Execute())
+				})
 			})
 		})
 	})
@@ -948,7 +973,10 @@ func EqBuildOptionsWithDateTime(t *time.Time) interface{} {
 	return buildOptionsMatcher{
 		description: fmt.Sprintf("DateTime=%s", t),
 		equals: func(o client.BuildOptions) bool {
-			return *(o.DateTime) == *t
+			if t == nil {
+				return o.DateTime == nil
+			}
+			return (*o.DateTime).Sub(*t) < 5*time.Second
 		},
 	}
 }
