@@ -976,7 +976,7 @@ func EqBuildOptionsWithDateTime(t *time.Time) interface{} {
 			if t == nil {
 				return o.CreationTime == nil
 			}
-			return o.CreationTime.Sub(*t) < 5*time.Second
+			return o.CreationTime.Sub(*t) < 5*time.Second && t.Sub(*o.CreationTime) < 5*time.Second
 		},
 	}
 }
