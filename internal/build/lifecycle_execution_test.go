@@ -1063,7 +1063,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					providedTime := time.Unix(intTime, 0).UTC()
 
 					lifecycle := newTestLifecycleExec(t, false, func(baseOpts *build.LifecycleOptions) {
-						baseOpts.DateTime = &providedTime
+						baseOpts.CreationTime = &providedTime
 					})
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
@@ -1081,7 +1081,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			when("not provided", func() {
 				it("does not panic", func() {
 					lifecycle := newTestLifecycleExec(t, false, func(baseOpts *build.LifecycleOptions) {
-						baseOpts.DateTime = nil
+						baseOpts.CreationTime = nil
 					})
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
@@ -2664,7 +2664,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 					providedTime := time.Unix(intTime, 0).UTC()
 
 					lifecycle := newTestLifecycleExec(t, false, func(baseOpts *build.LifecycleOptions) {
-						baseOpts.DateTime = &providedTime
+						baseOpts.CreationTime = &providedTime
 					})
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 
@@ -2682,7 +2682,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 			when("not provided", func() {
 				it("does not panic", func() {
 					lifecycle := newTestLifecycleExec(t, false, func(baseOpts *build.LifecycleOptions) {
-						baseOpts.DateTime = nil
+						baseOpts.CreationTime = nil
 					})
 					fakePhaseFactory := fakes.NewFakePhaseFactory()
 

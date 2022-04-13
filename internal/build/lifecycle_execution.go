@@ -252,8 +252,8 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 	}
 
 	withEnv := NullOp()
-	if l.opts.DateTime != nil {
-		withEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.DateTime.Unix()))))
+	if l.opts.CreationTime != nil {
+		withEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.CreationTime.Unix()))))
 	}
 
 	opts := []PhaseConfigProviderOperation{
@@ -536,8 +536,8 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 	}
 
 	withEnv := NullOp()
-	if l.opts.DateTime != nil {
-		withEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.DateTime.Unix()))))
+	if l.opts.CreationTime != nil {
+		withEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.CreationTime.Unix()))))
 	}
 
 	opts := []PhaseConfigProviderOperation{

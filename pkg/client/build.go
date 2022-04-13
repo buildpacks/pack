@@ -173,7 +173,7 @@ type BuildOptions struct {
 	SBOMDestinationDir string
 
 	// Desired create time in the output image config
-	DateTime *time.Time
+	CreationTime *time.Time
 }
 
 // ProxyConfig specifies proxy setting to be set as environment variables in a container.
@@ -360,7 +360,7 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 		Interactive:        opts.Interactive,
 		Termui:             termui.NewTermui(imageRef.Name(), ephemeralBuilder, runImageName),
 		SBOMDestinationDir: opts.SBOMDestinationDir,
-		DateTime:           opts.DateTime,
+		CreationTime:       opts.CreationTime,
 	}
 
 	lifecycleVersion := ephemeralBuilder.LifecycleDescriptor().Info.Version

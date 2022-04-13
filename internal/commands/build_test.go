@@ -971,12 +971,12 @@ func EqBuildOptionsWithSBOMOutputDir(s string) interface{} {
 
 func EqBuildOptionsWithDateTime(t *time.Time) interface{} {
 	return buildOptionsMatcher{
-		description: fmt.Sprintf("DateTime=%s", t),
+		description: fmt.Sprintf("CreationTime=%s", t),
 		equals: func(o client.BuildOptions) bool {
 			if t == nil {
-				return o.DateTime == nil
+				return o.CreationTime == nil
 			}
-			return o.DateTime.Sub(*t) < 5*time.Second
+			return o.CreationTime.Sub(*t) < 5*time.Second
 		},
 	}
 }
