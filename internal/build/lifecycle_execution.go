@@ -252,7 +252,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 	}
 
 	withEnv := NullOp()
-	if l.opts.CreationTime != nil {
+	if l.opts.CreationTime != nil && l.platformAPI.AtLeast("0.9") {
 		withEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.CreationTime.Unix()))))
 	}
 
@@ -536,7 +536,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 	}
 
 	withEnv := NullOp()
-	if l.opts.CreationTime != nil {
+	if l.opts.CreationTime != nil && l.platformAPI.AtLeast("0.9") {
 		withEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.CreationTime.Unix()))))
 	}
 
