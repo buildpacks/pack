@@ -955,18 +955,21 @@ func testAcceptance(
 							helloCommand    string
 							helloArgs       []string
 							helloArgsPrefix string
+							helloWorkdir    string
 						)
 						if imageManager.HostOS() == "windows" {
 							webCommand = ".\\run"
 							helloCommand = "cmd"
 							helloArgs = []string{"/c", "echo hello world"}
 							helloArgsPrefix = " "
+							helloWorkdir = "/hello_workdir"
 
 						} else {
 							webCommand = "./run"
 							helloCommand = "echo"
 							helloArgs = []string{"hello", "world"}
 							helloArgsPrefix = ""
+							helloWorkdir = "/hello_workdir"
 						}
 
 						formats := []compareFormat{
@@ -1008,6 +1011,7 @@ func testAcceptance(
 									"hello_command":          helloCommand,
 									"hello_args":             helloArgs,
 									"hello_args_prefix":      helloArgsPrefix,
+									"hello_workdir":          helloWorkdir,
 								},
 							)
 
@@ -1604,17 +1608,20 @@ func testAcceptance(
 								helloCommand    string
 								helloArgs       []string
 								helloArgsPrefix string
+								helloWorkdir    string
 							)
 							if imageManager.HostOS() == "windows" {
 								webCommand = ".\\run"
 								helloCommand = "cmd"
 								helloArgs = []string{"/c", "echo hello world"}
 								helloArgsPrefix = " "
+								helloWorkdir = "/hello_workdir"
 							} else {
 								webCommand = "./run"
 								helloCommand = "echo"
 								helloArgs = []string{"hello", "world"}
 								helloArgsPrefix = ""
+								helloWorkdir = "/hello_workdir"
 							}
 							formats := []compareFormat{
 								{
@@ -1655,6 +1662,7 @@ func testAcceptance(
 										"hello_command":        helloCommand,
 										"hello_args":           helloArgs,
 										"hello_args_prefix":    helloArgsPrefix,
+										"hello_workdir":        helloWorkdir,
 									},
 								)
 

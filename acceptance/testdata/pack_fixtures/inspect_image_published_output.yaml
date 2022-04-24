@@ -19,8 +19,10 @@ remote_info:
       default: true
       args:
         - '8080'
+      working-dir: /workspace
     - type: hello
       shell: ''
       command: "{{.hello_command}}"
       default: false
       args: [ {{ ( StringsJoin (StringsDoubleQuote .hello_args) "," ) }} ]
+      working-dir: "{{.hello_workdir}}"

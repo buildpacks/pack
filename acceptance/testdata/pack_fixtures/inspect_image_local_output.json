@@ -33,7 +33,8 @@
         "default": true,
         "args": [
           "8080"
-        ]
+        ],
+        "working-dir": "/workspace"
       },
       {
         "type": "hello",
@@ -42,7 +43,8 @@
         "default": false,
         "args": [
           {{ ( StringsJoin (StringsDoubleQuote .hello_args) "," ) }}
-        ]
+        ],
+        "working-dir": "{{.hello_workdir}}"
       }
     ]
   }

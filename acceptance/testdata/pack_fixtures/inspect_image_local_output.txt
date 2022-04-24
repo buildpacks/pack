@@ -21,6 +21,6 @@ Buildpacks:
   simple/layers        simple-layers-version        -
 
 Processes:
-  TYPE                 SHELL        COMMAND        ARGS
-  web (default)        bash         {{.web_command}}          8080
-  hello                             {{.hello_command}}           {{ .hello_args_prefix }}{{ StringsJoin .hello_args " "}}
+  TYPE                 SHELL        COMMAND        ARGS               WORK DIR
+  web (default)        bash         {{.web_command}}          8080               /workspace
+  hello                             {{.hello_command}}           {{ .hello_args_prefix }}{{ StringsJoin .hello_args " "}}        {{.hello_workdir}}

@@ -31,6 +31,7 @@ type ProcessDisplay struct {
 	Command string   `json:"command" yaml:"command" toml:"command"`
 	Default bool     `json:"default" yaml:"default" toml:"default"`
 	Args    []string `json:"args" yaml:"args" toml:"args"`
+	WorkDir string   `json:"working-dir" yaml:"working-dir" toml:"working-dir"`
 }
 
 type BaseDisplay struct {
@@ -166,6 +167,7 @@ func convertToDisplay(proc launch.Process, isDefault bool) ProcessDisplay {
 		Command: proc.Command,
 		Default: isDefault,
 		Args:    proc.Args,
+		WorkDir: proc.WorkingDirectory,
 	}
 
 	return result

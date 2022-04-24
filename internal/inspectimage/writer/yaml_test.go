@@ -61,6 +61,7 @@ local_info:
     - some
     - local
     - args
+    working-dir: /some-test-work-dir
   - type: other-local-type
     shell: ''
     command: "/other/local/command"
@@ -69,6 +70,7 @@ local_info:
     - other
     - local
     - args
+    working-dir: /other-test-work-dir
 `
 		expectedRemoteOutput = `---
 remote_info:
@@ -98,6 +100,7 @@ remote_info:
     - some
     - remote
     - args
+    working-dir: /some-test-work-dir
   - type: other-remote-type
     shell: ''
     command: "/other/remote/command"
@@ -106,6 +109,7 @@ remote_info:
     - other
     - remote
     - args
+    working-dir: /other-test-work-dir
 `
 	)
 
@@ -157,17 +161,19 @@ remote_info:
 				}},
 				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
-						Type:    "some-remote-type",
-						Command: "/some/remote command",
-						Args:    []string{"some", "remote", "args"},
-						Direct:  false,
+						Type:             "some-remote-type",
+						Command:          "/some/remote command",
+						Args:             []string{"some", "remote", "args"},
+						Direct:           false,
+						WorkingDirectory: "/some-test-work-dir",
 					},
 					OtherProcesses: []launch.Process{
 						{
-							Type:    "other-remote-type",
-							Command: "/other/remote/command",
-							Args:    []string{"other", "remote", "args"},
-							Direct:  true,
+							Type:             "other-remote-type",
+							Command:          "/other/remote/command",
+							Args:             []string{"other", "remote", "args"},
+							Direct:           true,
+							WorkingDirectory: "/other-test-work-dir",
 						},
 					},
 				},
@@ -204,17 +210,19 @@ remote_info:
 				}},
 				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
-						Type:    "some-local-type",
-						Command: "/some/local command",
-						Args:    []string{"some", "local", "args"},
-						Direct:  false,
+						Type:             "some-local-type",
+						Command:          "/some/local command",
+						Args:             []string{"some", "local", "args"},
+						Direct:           false,
+						WorkingDirectory: "/some-test-work-dir",
 					},
 					OtherProcesses: []launch.Process{
 						{
-							Type:    "other-local-type",
-							Command: "/other/local/command",
-							Args:    []string{"other", "local", "args"},
-							Direct:  true,
+							Type:             "other-local-type",
+							Command:          "/other/local/command",
+							Args:             []string{"other", "local", "args"},
+							Direct:           true,
+							WorkingDirectory: "/other-test-work-dir",
 						},
 					},
 				},
