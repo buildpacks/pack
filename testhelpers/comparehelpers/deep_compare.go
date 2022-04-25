@@ -72,8 +72,8 @@ func mapContains(v1, v2 reflect.Value, depth int) bool {
 		}
 	}
 	for _, k := range v1.MapKeys() {
-		kVal := v1.MapIndex(k)
-		if deepContains(kVal, v2, depth+1) {
+		val := v1.MapIndex(k)
+		if deepContains(val, v2, depth+1) {
 			return true
 		}
 	}
