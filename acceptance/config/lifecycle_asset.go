@@ -181,7 +181,23 @@ func (l *LifecycleAsset) JSONOutputForAPIs(baseIndentationWidth int) (
 
 type LifecycleFeature int
 
-var lifecycleFeatureTests = map[LifecycleFeature]func(l *LifecycleAsset) bool{}
+const CreationTime = iota
+
+var lifecycleFeatureTests = map[LifecycleFeature]func(l *LifecycleAsset) bool{
+	CreationTime: func(i *LifecycleAsset) bool {
+		for _, platformAPI := range i.descriptor.APIs.Platform.Supported {
+			if platformAPI.AtLeast("0.9") {
+				return true
+			}
+		}
+		for _, platformAPI := range i.descriptor.APIs.Platform.Deprecated {
+			if platformAPI.AtLeast("0.9") {
+				return true
+			}
+		}
+		return false
+	},
+}
 
 func (l *LifecycleAsset) SupportsFeature(f LifecycleFeature) bool {
 	return lifecycleFeatureTests[f](l)

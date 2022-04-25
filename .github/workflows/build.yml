@@ -72,7 +72,7 @@ jobs:
           }
         shell: powershell
       - name: Set up go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: '1.17'
       - name: Set up go env for Unix
@@ -123,7 +123,7 @@ jobs:
         env:
           PACK_BUILD: ${{ github.run_number }}
         shell: powershell
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: matrix.config != 'windows-wcow'
         with:
           name: pack-${{ matrix.os }}
@@ -145,7 +145,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           stable: false
           go-version: '1.16.2'
@@ -155,7 +155,7 @@ jobs:
           env PACK_VERSION=${version} GOARCH=${{ matrix.goarch }} GOOS=${{ matrix.goos }} make build
         env:
           PACK_BUILD: ${{ github.run_number }}
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: pack-${{ matrix.name }}
           path: out/${{ env.PACK_BIN }}
@@ -184,7 +184,7 @@ jobs:
 
           echo "PACK_MILESTONE=${milestone}" >> $GITHUB_ENV
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
       - name: Package artifacts - macos
         run: |
           chmod +x pack-macos/pack
