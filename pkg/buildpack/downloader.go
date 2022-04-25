@@ -48,7 +48,7 @@ type buildpackDownloader struct {
 	registryResolver RegistryResolver
 }
 
-func NewDownloader(logger Logger, imageFetcher ImageFetcher, downloader Downloader, registryResolver RegistryResolver) *buildpackDownloader { //nolint:golint,gosimple
+func NewDownloader(logger Logger, imageFetcher ImageFetcher, downloader Downloader, registryResolver RegistryResolver) *buildpackDownloader { //nolint:revive,gosimple
 	return &buildpackDownloader{
 		logger:           logger,
 		imageFetcher:     imageFetcher,

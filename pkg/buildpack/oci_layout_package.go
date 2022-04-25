@@ -72,7 +72,7 @@ func newOCILayoutPackage(blob Blob) (*ociLayoutPackage, error) {
 	var manifestDescriptor *v1.Descriptor
 	for _, m := range index.Manifests {
 		if m.MediaType == "application/vnd.docker.distribution.manifest.v2+json" {
-			manifestDescriptor = &m // nolint:scopelint
+			manifestDescriptor = &m // nolint:exportloopref
 			break
 		}
 	}

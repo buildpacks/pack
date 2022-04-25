@@ -330,7 +330,7 @@ func WriteZipToTar(tw TarWriter, srcZip, basePath string, uid, gid int, mode int
 
 func isFatFile(header zip.FileHeader) bool {
 	var (
-		creatorFAT  uint16 = 0
+		creatorFAT  uint16 = 0 // nolint:revive
 		creatorVFAT uint16 = 14
 	)
 
