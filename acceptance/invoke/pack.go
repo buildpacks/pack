@@ -222,7 +222,7 @@ const CreationTime = iota
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
 	CreationTime: func(i *PackInvoker) bool {
-		return i.laterThan("0.24.1")
+		return i.Supports("build --creation-time")
 	},
 }
 
