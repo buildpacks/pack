@@ -21,7 +21,7 @@ require (
 	github.com/mitchellh/ioprogress v0.0.0-20180201004757-6a23b12fa88e
 	github.com/onsi/gomega v1.19.0
 	github.com/opencontainers/image-spec v1.0.2
-	github.com/pelletier/go-toml v1.9.4
+	github.com/pelletier/go-toml v1.9.5
 	github.com/pkg/errors v0.9.1
 	github.com/rivo/tview v0.0.0-20210624165335-29d673af0ce2
 	github.com/sabhiram/go-gitignore v0.0.0-20201211074657-223ce5d391b0
