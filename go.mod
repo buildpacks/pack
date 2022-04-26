@@ -4,8 +4,8 @@ require (
 	github.com/BurntSushi/toml v1.1.0
 	github.com/Masterminds/semver v1.5.0
 	github.com/apex/log v1.9.0
-	github.com/buildpacks/imgutil v0.0.0-20211203200417-76206845baac
-	github.com/buildpacks/lifecycle v0.13.5
+	github.com/buildpacks/imgutil v0.0.0-20220310160537-4dd8bc60eaff
+	github.com/buildpacks/lifecycle v0.14.0
 	github.com/docker/cli v20.10.14+incompatible
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/docker/go-connections v0.4.0
