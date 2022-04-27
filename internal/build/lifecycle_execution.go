@@ -273,7 +273,7 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 	}
 
 	if publish {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName, runImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
 		}
@@ -429,7 +429,7 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 	}
 
 	if publish {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName, runImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return nil, err
 		}
@@ -566,7 +566,7 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 	}
 
 	if publish {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName, runImage)
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName, runImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return nil, err
 		}
