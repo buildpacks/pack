@@ -955,26 +955,24 @@ func testAcceptance(
 							helloCommand    string
 							helloArgs       []string
 							helloArgsPrefix string
+							imageWorkdir    string
 						)
 						if imageManager.HostOS() == "windows" {
 							webCommand = ".\\run"
 							helloCommand = "cmd"
 							helloArgs = []string{"/c", "echo hello world"}
 							helloArgsPrefix = " "
+							imageWorkdir = "c:\\workspace"
 
 						} else {
 							webCommand = "./run"
 							helloCommand = "echo"
 							helloArgs = []string{"hello", "world"}
 							helloArgsPrefix = ""
+							imageWorkdir = "/workspace"
 						}
 
 						formats := []compareFormat{
-							{
-								extension:   "txt",
-								compareFunc: assert.TrimmedEq,
-								outputArg:   "human-readable",
-							},
 							{
 								extension:   "json",
 								compareFunc: assert.EqualJSON,
@@ -995,7 +993,6 @@ func testAcceptance(
 							t.Logf("inspecting image %s format", format.outputArg)
 
 							output = pack.RunSuccessfully(inspectCmd, repoName, "--output", format.outputArg)
-
 							expectedOutput := pack.FixtureManager().TemplateFixture(
 								fmt.Sprintf("inspect_image_local_output.%s", format.extension),
 								map[string]interface{}{
@@ -1008,6 +1005,7 @@ func testAcceptance(
 									"hello_command":          helloCommand,
 									"hello_args":             helloArgs,
 									"hello_args_prefix":      helloArgsPrefix,
+									"image_workdir":          imageWorkdir,
 								},
 							)
 
@@ -1604,24 +1602,22 @@ func testAcceptance(
 								helloCommand    string
 								helloArgs       []string
 								helloArgsPrefix string
+								imageWorkdir    string
 							)
 							if imageManager.HostOS() == "windows" {
 								webCommand = ".\\run"
 								helloCommand = "cmd"
 								helloArgs = []string{"/c", "echo hello world"}
 								helloArgsPrefix = " "
+								imageWorkdir = "c:\\workspace"
 							} else {
 								webCommand = "./run"
 								helloCommand = "echo"
 								helloArgs = []string{"hello", "world"}
 								helloArgsPrefix = ""
+								imageWorkdir = "/workspace"
 							}
 							formats := []compareFormat{
-								{
-									extension:   "txt",
-									compareFunc: assert.TrimmedEq,
-									outputArg:   "human-readable",
-								},
 								{
 									extension:   "json",
 									compareFunc: assert.EqualJSON,
@@ -1655,6 +1651,7 @@ func testAcceptance(
 										"hello_command":        helloCommand,
 										"hello_args":           helloArgs,
 										"hello_args_prefix":    helloArgsPrefix,
+										"image_workdir":        imageWorkdir,
 									},
 								)
 

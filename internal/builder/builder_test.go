@@ -392,7 +392,9 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				h.AssertNil(t, subject.Save(logger, builder.CreatorMetadata{}))
 				h.AssertEq(t, baseImage.IsSaved(), true)
 
-				h.AssertEq(t, baseImage.WorkingDir(), "/layers")
+				workingDir, err := baseImage.WorkingDir()
+				h.AssertNil(t, err)
+				h.AssertEq(t, workingDir, "/layers")
 			})
 
 			it("does not overwrite the order layer when SetOrder has not been called", func() {

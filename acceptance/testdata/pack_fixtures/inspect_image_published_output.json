@@ -29,7 +29,8 @@
         "default": true,
         "args": [
           "8080"
-        ]
+        ],
+        "working-dir": "{{ ( StringsEscapeBackslash .image_workdir ) }}"
       },
       {
         "type": "hello",
@@ -38,7 +39,8 @@
         "default": false,
         "args": [
           {{ ( StringsJoin (StringsDoubleQuote .hello_args) "," ) }}
-        ]
+        ],
+        "working-dir": "{{ ( StringsEscapeBackslash .image_workdir ) }}"
       }
     ]
   }
