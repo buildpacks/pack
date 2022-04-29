@@ -23,7 +23,7 @@ stack = "pack.test.stack"
   command = "{{( StringsEscapeBackslash .web_command )}}"
   default = true
   args = [ "8080" ]
-  working-dir = "/workspace"
+  working-dir = "{{ ( StringsEscapeBackslash .image_workdir ) }}"
 
   [[remote_info.processes]]
   type = "hello"
@@ -31,5 +31,5 @@ stack = "pack.test.stack"
   command = "{{.hello_command}}"
   default = false
   args = [ {{ ( StringsJoin (StringsDoubleQuote .hello_args) "," ) }} ]
-  working-dir = "{{.hello_workdir}}"
+  working-dir = "{{ ( StringsEscapeBackslash .image_workdir ) }}"
 

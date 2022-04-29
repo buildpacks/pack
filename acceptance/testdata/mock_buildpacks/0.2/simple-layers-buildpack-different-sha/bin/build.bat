@@ -35,7 +35,6 @@ echo   type = "hello"
 echo   command = "cmd"
 echo   args = ["/c", "echo hello world"]
 echo   direct = true
-echo   working-dir = "/hello_workdir"
 ) > %launch_dir%\launch.toml
 
 echo --- Done

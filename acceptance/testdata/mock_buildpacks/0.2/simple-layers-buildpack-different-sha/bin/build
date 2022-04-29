@@ -44,7 +44,6 @@ cat <<EOF > "$launch_dir/launch.toml"
   command = "echo"
   args = ["hello", "world"]
   direct = true
-  working-dir = "/hello_workdir"
 EOF
 
 echo "---> Done"

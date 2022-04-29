@@ -30,7 +30,7 @@
         "args": [
           "8080"
         ],
-        "working-dir": "/workspace"
+        "working-dir": "{{ ( StringsEscapeBackslash .image_workdir ) }}"
       },
       {
         "type": "hello",
@@ -40,7 +40,7 @@
         "args": [
           {{ ( StringsJoin (StringsDoubleQuote .hello_args) "," ) }}
         ],
-        "working-dir": "{{.hello_workdir}}"
+        "working-dir": "{{ ( StringsEscapeBackslash .image_workdir ) }}"
       }
     ]
   }
