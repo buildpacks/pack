@@ -329,6 +329,37 @@ func testPhaseConfigProvider(t *testing.T, when spec.G, it spec.S) {
 				h.AssertContainsMatch(t, outBuf.String(), `Binds: \'\S+:\S+layers \S+:\S+workspace'`)
 				h.AssertContains(t, outBuf.String(), "Network Mode: ''")
 			})
+
+			when("there is registry auth", func() {
+				it("sanitizes the output", func() {
+					authConfig := "some-auth-config"
+
+					var outBuf bytes.Buffer
+					logger := logging.NewLogWithWriters(&outBuf, &outBuf, logging.WithVerbose())
+
+					docker, err := client.NewClientWithOpts(client.FromEnv, client.WithVersion("1.38"))
+					h.AssertNil(t, err)
+
+					defaultBuilder, err := fakes.NewFakeBuilder()
+					h.AssertNil(t, err)
+
+					opts := build.LifecycleOptions{
+						AppPath: "some-app-path",
+						Builder: defaultBuilder,
+					}
+
+					lifecycleExec, err := build.NewLifecycleExecution(logger, docker, opts)
+					h.AssertNil(t, err)
+
+					_ = build.NewPhaseConfigProvider(
+						"some-name",
+						lifecycleExec,
+						build.WithRegistryAccess(authConfig),
+					)
+
+					h.AssertContains(t, outBuf.String(), "System Envs: 'CNB_REGISTRY_AUTH=<redacted> CNB_PLATFORM_API=0.4'")
+				})
+			})
 		})
 	})
 }
