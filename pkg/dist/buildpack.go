@@ -1,5 +1,11 @@
 package dist
 
+import (
+	"github.com/pkg/errors"
+
+	"github.com/buildpacks/pack/internal/style"
+)
+
 const AssumedBuildpackAPIVersion = "0.1"
 const BuildpacksDir = "/cnb/buildpacks"
 
@@ -18,6 +24,13 @@ func (b BuildpackInfo) FullName() string {
 		return b.ID + "@" + b.Version
 	}
 	return b.ID
+}
+
+func (b BuildpackInfo) FullNameWithVersion() (string, error) {
+	if b.Version == "" {
+		return b.ID, errors.Errorf("buildpack %s does not have a version defined", style.Symbol(b.ID))
+	}
+	return b.ID + "@" + b.Version, nil
 }
 
 // Satisfy stringer
