@@ -40,6 +40,9 @@ echo '> Cloning aur...'
 git clone "ssh://aur@aur.archlinux.org/${PACKAGE_NAME}.git" "${PACKAGE_AUR_DIR}"
 chown -R archie "${PACKAGE_AUR_DIR}"
 pushd "${PACKAGE_AUR_DIR}" > /dev/null
+  echo '> Declare directory ${PACKAGE_AUR_DIR} as safe'
+  git config --global --add safe.directory "${PACKAGE_AUR_DIR}"
+
   echo '> Checking out master...'
   git checkout master
 
