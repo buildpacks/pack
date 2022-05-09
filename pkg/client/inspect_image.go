@@ -154,9 +154,17 @@ func (c *Client) InspectImage(name string, daemon bool) (*ImageInfo, error) {
 		}
 	}
 
+	workingDir, err := img.WorkingDir()
+	if err != nil {
+		return nil, errors.Wrap(err, "reading WorkingDir")
+	}
+
 	var processDetails ProcessDetails
 	for _, proc := range buildMD.Processes {
 		proc := proc
+		if proc.WorkingDirectory == "" {
+			proc.WorkingDirectory = workingDir
+		}
 		if proc.Type == defaultProcessType {
 			processDetails.DefaultProcess = &proc
 			continue

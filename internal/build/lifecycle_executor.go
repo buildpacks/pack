@@ -90,6 +90,7 @@ type LifecycleOptions struct {
 	GID                int
 	PreviousImage      string
 	SBOMDestinationDir string
+	CreationTime       *time.Time
 }
 
 func NewLifecycleExecutor(logger logging.Logger, docker client.CommonAPIClient) *LifecycleExecutor {

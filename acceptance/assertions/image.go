@@ -6,6 +6,7 @@ package assertions
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/buildpacks/pack/acceptance/managers"
 	h "github.com/buildpacks/pack/testhelpers"
@@ -48,6 +49,15 @@ func (a ImageAssertionManager) HasBaseImage(image, base string) {
 	for i, layer := range baseInspect.RootFS.Layers {
 		a.assert.Equal(imageInspect.RootFS.Layers[i], layer)
 	}
+}
+
+func (a ImageAssertionManager) HasCreateTime(image string, expectedTime time.Time) {
+	a.testObject.Helper()
+	inspect, err := a.imageManager.InspectLocal(image)
+	a.assert.Nil(err)
+	actualTime, err := time.Parse("2006-01-02T15:04:05Z", inspect.Created)
+	a.assert.Nil(err)
+	a.assert.TrueWithMessage(actualTime.Sub(expectedTime) < 5*time.Second && expectedTime.Sub(actualTime) < 5*time.Second, fmt.Sprintf("expected image create time %s to match expected time %s", actualTime, expectedTime))
 }
 
 func (a ImageAssertionManager) HasLabelWithData(image, label, data string) {

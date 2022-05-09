@@ -47,6 +47,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 		h.AssertNil(t, err)
 
 		mockImage = testmocks.NewImage("some/image", "", nil)
+		h.AssertNil(t, mockImage.SetWorkingDir("/test-workdir"))
 		h.AssertNil(t, mockImage.SetLabel("io.buildpacks.stack.id", "test.stack.id"))
 		h.AssertNil(t, mockImage.SetLabel(
 			"io.buildpacks.lifecycle.metadata",
@@ -181,17 +182,19 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, info.Processes,
 						ProcessDetails{
 							DefaultProcess: &launch.Process{
-								Type:    "web",
-								Command: "/start/web-process",
-								Args:    []string{"-p", "1234"},
-								Direct:  false,
+								Type:             "web",
+								Command:          "/start/web-process",
+								Args:             []string{"-p", "1234"},
+								Direct:           false,
+								WorkingDirectory: "/test-workdir",
 							},
 							OtherProcesses: []launch.Process{
 								{
-									Type:    "other-process",
-									Command: "/other/process",
-									Args:    []string{"opt", "1"},
-									Direct:  true,
+									Type:             "other-process",
+									Command:          "/other/process",
+									Args:             []string{"opt", "1"},
+									Direct:           true,
+									WorkingDirectory: "/test-workdir",
 								},
 							},
 						},
@@ -211,17 +214,19 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, info.Processes,
 								ProcessDetails{
 									DefaultProcess: &launch.Process{
-										Type:    "other-process",
-										Command: "/other/process",
-										Args:    []string{"opt", "1"},
-										Direct:  true,
+										Type:             "other-process",
+										Command:          "/other/process",
+										Args:             []string{"opt", "1"},
+										Direct:           true,
+										WorkingDirectory: "/test-workdir",
 									},
 									OtherProcesses: []launch.Process{
 										{
-											Type:    "web",
-											Command: "/start/web-process",
-											Args:    []string{"-p", "1234"},
-											Direct:  false,
+											Type:             "web",
+											Command:          "/start/web-process",
+											Args:             []string{"-p", "1234"},
+											Direct:           false,
+											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
@@ -243,16 +248,18 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									DefaultProcess: nil,
 									OtherProcesses: []launch.Process{
 										{
-											Type:    "other-process",
-											Command: "/other/process",
-											Args:    []string{"opt", "1"},
-											Direct:  true,
+											Type:             "other-process",
+											Command:          "/other/process",
+											Args:             []string{"opt", "1"},
+											Direct:           true,
+											WorkingDirectory: "/test-workdir",
 										},
 										{
-											Type:    "web",
-											Command: "/start/web-process",
-											Args:    []string{"-p", "1234"},
-											Direct:  false,
+											Type:             "web",
+											Command:          "/start/web-process",
+											Args:             []string{"-p", "1234"},
+											Direct:           false,
+											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
@@ -283,10 +290,11 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 								DefaultProcess: nil,
 								OtherProcesses: []launch.Process{
 									{
-										Type:    "other-process",
-										Command: "/other/process",
-										Args:    []string{"opt", "1"},
-										Direct:  true,
+										Type:             "other-process",
+										Command:          "/other/process",
+										Args:             []string{"opt", "1"},
+										Direct:           true,
+										WorkingDirectory: "/test-workdir",
 									},
 								},
 							},
@@ -294,7 +302,7 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 					})
 				})
 
-				when("Platform API >= 0.4", func() {
+				when("Platform API >= 0.4 and <= 0.8", func() {
 					it.Before(func() {
 						h.AssertNil(t, mockImage.SetEnv("CNB_PLATFORM_API", "0.4"))
 					})
@@ -326,16 +334,18 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									DefaultProcess: nil,
 									OtherProcesses: []launch.Process{
 										{
-											Type:    "other-process",
-											Command: "/other/process",
-											Args:    []string{"opt", "1"},
-											Direct:  true,
+											Type:             "other-process",
+											Command:          "/other/process",
+											Args:             []string{"opt", "1"},
+											Direct:           true,
+											WorkingDirectory: "/test-workdir",
 										},
 										{
-											Type:    "web",
-											Command: "/start/web-process",
-											Args:    []string{"-p", "1234"},
-											Direct:  false,
+											Type:             "web",
+											Command:          "/start/web-process",
+											Args:             []string{"-p", "1234"},
+											Direct:           false,
+											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
@@ -357,17 +367,19 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 							h.AssertEq(t, info.Processes,
 								ProcessDetails{
 									DefaultProcess: &launch.Process{
-										Type:    "web",
-										Command: "/start/web-process",
-										Args:    []string{"-p", "1234"},
-										Direct:  false,
+										Type:             "web",
+										Command:          "/start/web-process",
+										Args:             []string{"-p", "1234"},
+										Direct:           false,
+										WorkingDirectory: "/test-workdir",
 									},
 									OtherProcesses: []launch.Process{
 										{
-											Type:    "other-process",
-											Command: "/other/process",
-											Args:    []string{"opt", "1"},
-											Direct:  true,
+											Type:             "other-process",
+											Command:          "/other/process",
+											Args:             []string{"opt", "1"},
+											Direct:           true,
+											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
@@ -389,16 +401,18 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									DefaultProcess: nil,
 									OtherProcesses: []launch.Process{
 										{
-											Type:    "other-process",
-											Command: "/other/process",
-											Args:    []string{"opt", "1"},
-											Direct:  true,
+											Type:             "other-process",
+											Command:          "/other/process",
+											Args:             []string{"opt", "1"},
+											Direct:           true,
+											WorkingDirectory: "/test-workdir",
 										},
 										{
-											Type:    "web",
-											Command: "/start/web-process",
-											Args:    []string{"-p", "1234"},
-											Direct:  false,
+											Type:             "web",
+											Command:          "/start/web-process",
+											Args:             []string{"-p", "1234"},
+											Direct:           false,
+											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
@@ -432,10 +446,11 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 									DefaultProcess: nil,
 									OtherProcesses: []launch.Process{
 										{
-											Type:    "other-process",
-											Command: "/other/process",
-											Args:    []string{"opt", "1"},
-											Direct:  true,
+											Type:             "other-process",
+											Command:          "/other/process",
+											Args:             []string{"opt", "1"},
+											Direct:           true,
+											WorkingDirectory: "/test-workdir",
 										},
 									},
 								},
@@ -456,16 +471,18 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 										DefaultProcess: nil,
 										OtherProcesses: []launch.Process{
 											{
-												Type:    "other-process",
-												Command: "/other/process",
-												Args:    []string{"opt", "1"},
-												Direct:  true,
+												Type:             "other-process",
+												Command:          "/other/process",
+												Args:             []string{"opt", "1"},
+												Direct:           true,
+												WorkingDirectory: "/test-workdir",
 											},
 											{
-												Type:    "web",
-												Command: "/start/web-process",
-												Args:    []string{"-p", "1234"},
-												Direct:  false,
+												Type:             "web",
+												Command:          "/start/web-process",
+												Args:             []string{"-p", "1234"},
+												Direct:           false,
+												WorkingDirectory: "/test-workdir",
 											},
 										},
 									},
@@ -485,16 +502,18 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 										DefaultProcess: nil,
 										OtherProcesses: []launch.Process{
 											{
-												Type:    "other-process",
-												Command: "/other/process",
-												Args:    []string{"opt", "1"},
-												Direct:  true,
+												Type:             "other-process",
+												Command:          "/other/process",
+												Args:             []string{"opt", "1"},
+												Direct:           true,
+												WorkingDirectory: "/test-workdir",
 											},
 											{
-												Type:    "web",
-												Command: "/start/web-process",
-												Args:    []string{"-p", "1234"},
-												Direct:  false,
+												Type:             "web",
+												Command:          "/start/web-process",
+												Args:             []string{"-p", "1234"},
+												Direct:           false,
+												WorkingDirectory: "/test-workdir",
 											},
 										},
 									},
@@ -512,22 +531,92 @@ func testInspectImage(t *testing.T, when spec.G, it spec.S) {
 								h.AssertEq(t, info.Processes,
 									ProcessDetails{
 										DefaultProcess: &launch.Process{
-											Type:    "other-process",
-											Command: "/other/process",
-											Args:    []string{"opt", "1"},
-											Direct:  true,
+											Type:             "other-process",
+											Command:          "/other/process",
+											Args:             []string{"opt", "1"},
+											Direct:           true,
+											WorkingDirectory: "/test-workdir",
 										},
 										OtherProcesses: []launch.Process{
 											{
-												Type:    "web",
-												Command: "/start/web-process",
-												Args:    []string{"-p", "1234"},
-												Direct:  false,
+												Type:             "web",
+												Command:          "/start/web-process",
+												Args:             []string{"-p", "1234"},
+												Direct:           false,
+												WorkingDirectory: "/test-workdir",
 											},
 										},
 									},
 								)
 							})
+						})
+					})
+				})
+
+				when("Platform API > 0.8", func() {
+					when("working-dir is set", func() {
+						it("returns process with working directory if available", func() {
+							h.AssertNil(t, mockImage.SetLabel(
+								"io.buildpacks.build.metadata",
+								`{
+					 "processes": [
+					   {
+					     "type": "other-process",
+					     "command": "/other/process",
+					     "args": ["opt", "1"],
+					     "direct": true,
+						 "working-dir": "/other-workdir"
+					   }
+					 ]
+					}`,
+							))
+
+							info, err := subject.InspectImage("some/image", useDaemon)
+							h.AssertNil(t, err)
+							fmt.Print(info)
+
+							h.AssertEq(t, info.Processes,
+								ProcessDetails{
+									DefaultProcess: nil,
+									OtherProcesses: []launch.Process{
+										{
+											Type:             "other-process",
+											Command:          "/other/process",
+											Args:             []string{"opt", "1"},
+											Direct:           true,
+											WorkingDirectory: "/other-workdir",
+										},
+									},
+								},
+							)
+						})
+					})
+
+					when("working-dir is not set", func() {
+						it("returns process with working directory from image", func() {
+							info, err := subject.InspectImage("some/image", useDaemon)
+							h.AssertNil(t, err)
+
+							h.AssertEq(t, info.Processes,
+								ProcessDetails{
+									DefaultProcess: &launch.Process{
+										Type:             "web",
+										Command:          "/start/web-process",
+										Args:             []string{"-p", "1234"},
+										Direct:           false,
+										WorkingDirectory: "/test-workdir",
+									},
+									OtherProcesses: []launch.Process{
+										{
+											Type:             "other-process",
+											Command:          "/other/process",
+											Args:             []string{"opt", "1"},
+											Direct:           true,
+											WorkingDirectory: "/test-workdir",
+										},
+									},
+								},
+							)
 						})
 					})
 				})

@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -1053,6 +1054,80 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(provider.PostContainerRunOps()), 2)
 				h.AssertFunctionName(t, provider.PostContainerRunOps()[0], "EnsureVolumeAccess")
 				h.AssertFunctionName(t, provider.PostContainerRunOps()[1], "CopyOut")
+			})
+		})
+
+		when("--creation-time", func() {
+			var fakeBuilder *fakes.FakeBuilder
+
+			when("platform < 0.9", func() {
+				it.Before(func() {
+					var err error
+					fakeBuilder, err = fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.8")}))
+					h.AssertNil(t, err)
+				})
+
+				it("is ignored", func() {
+					intTime, err := strconv.ParseInt("1234567890", 10, 64)
+					h.AssertNil(t, err)
+					providedTime := time.Unix(intTime, 0).UTC()
+
+					lifecycle := newTestLifecycleExec(t, false, func(baseOpts *build.LifecycleOptions) {
+						baseOpts.CreationTime = &providedTime
+					}, fakes.WithBuilder(fakeBuilder))
+					fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+					err = lifecycle.Create(context.Background(), false, "", false, "some-run-image", "some-repo-name", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Env, "SOURCE_DATE_EPOCH=1234567890")
+				})
+			})
+
+			when("platform >= 0.9", func() {
+				it.Before(func() {
+					var err error
+					fakeBuilder, err = fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.9")}))
+					h.AssertNil(t, err)
+				})
+
+				when("provided", func() {
+					it("configures the phase with env SOURCE_DATE_EPOCH", func() {
+						intTime, err := strconv.ParseInt("1234567890", 10, 64)
+						h.AssertNil(t, err)
+						providedTime := time.Unix(intTime, 0).UTC()
+
+						lifecycle := newTestLifecycleExec(t, false, func(baseOpts *build.LifecycleOptions) {
+							baseOpts.CreationTime = &providedTime
+						}, fakes.WithBuilder(fakeBuilder))
+						fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+						err = lifecycle.Create(context.Background(), false, "", false, "some-run-image", "some-repo-name", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+						h.AssertNil(t, err)
+
+						lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+						h.AssertNotEq(t, lastCallIndex, -1)
+
+						configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+						h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "SOURCE_DATE_EPOCH=1234567890")
+					})
+				})
+
+				when("not provided", func() {
+					it("does not panic", func() {
+						lifecycle := newTestLifecycleExec(t, false, func(baseOpts *build.LifecycleOptions) {
+							baseOpts.CreationTime = nil
+						}, fakes.WithBuilder(fakeBuilder))
+						fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+						err := lifecycle.Create(context.Background(), false, "", false, "some-run-image", "some-repo-name", "test", fakeBuildCache, fakeLaunchCache, []string{}, []string{}, fakePhaseFactory)
+						h.AssertNil(t, err)
+					})
+				})
 			})
 		})
 	})
@@ -2654,6 +2729,80 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 				h.AssertEq(t, len(provider.PostContainerRunOps()), 2)
 				h.AssertFunctionName(t, provider.PostContainerRunOps()[0], "EnsureVolumeAccess")
 				h.AssertFunctionName(t, provider.PostContainerRunOps()[1], "CopyOut")
+			})
+		})
+
+		when("--creation-time", func() {
+			var fakeBuilder *fakes.FakeBuilder
+
+			when("platform < 0.9", func() {
+				it.Before(func() {
+					var err error
+					fakeBuilder, err = fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.8")}))
+					h.AssertNil(t, err)
+				})
+
+				it("is ignored", func() {
+					intTime, err := strconv.ParseInt("1234567890", 10, 64)
+					h.AssertNil(t, err)
+					providedTime := time.Unix(intTime, 0).UTC()
+
+					lifecycle := newTestLifecycleExec(t, false, func(baseOpts *build.LifecycleOptions) {
+						baseOpts.CreationTime = &providedTime
+					}, fakes.WithBuilder(fakeBuilder))
+					fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+					err = lifecycle.Export(context.Background(), "test", "test", false, "", "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+					h.AssertNil(t, err)
+
+					lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+					h.AssertNotEq(t, lastCallIndex, -1)
+
+					configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+					h.AssertSliceNotContains(t, configProvider.ContainerConfig().Env, "SOURCE_DATE_EPOCH=1234567890")
+				})
+			})
+
+			when("platform >= 0.9", func() {
+				it.Before(func() {
+					var err error
+					fakeBuilder, err = fakes.NewFakeBuilder(fakes.WithSupportedPlatformAPIs([]*api.Version{api.MustParse("0.9")}))
+					h.AssertNil(t, err)
+				})
+
+				when("provided", func() {
+					it("configures the phase with env SOURCE_DATE_EPOCH", func() {
+						intTime, err := strconv.ParseInt("1234567890", 10, 64)
+						h.AssertNil(t, err)
+						providedTime := time.Unix(intTime, 0).UTC()
+
+						lifecycle := newTestLifecycleExec(t, false, func(baseOpts *build.LifecycleOptions) {
+							baseOpts.CreationTime = &providedTime
+						}, fakes.WithBuilder(fakeBuilder))
+						fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+						err = lifecycle.Export(context.Background(), "test", "test", false, "", "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+						h.AssertNil(t, err)
+
+						lastCallIndex := len(fakePhaseFactory.NewCalledWithProvider) - 1
+						h.AssertNotEq(t, lastCallIndex, -1)
+
+						configProvider := fakePhaseFactory.NewCalledWithProvider[lastCallIndex]
+						h.AssertSliceContains(t, configProvider.ContainerConfig().Env, "SOURCE_DATE_EPOCH=1234567890")
+					})
+				})
+
+				when("not provided", func() {
+					it("does not panic", func() {
+						lifecycle := newTestLifecycleExec(t, false, func(baseOpts *build.LifecycleOptions) {
+							baseOpts.CreationTime = nil
+						}, fakes.WithBuilder(fakeBuilder))
+						fakePhaseFactory := fakes.NewFakePhaseFactory()
+
+						err := lifecycle.Export(context.Background(), "test", "test", false, "", "test", fakeBuildCache, fakeLaunchCache, []string{}, fakePhaseFactory)
+						h.AssertNil(t, err)
+					})
+				})
 			})
 		})
 	})

@@ -23,6 +23,7 @@ import (
 const (
 	defaultProcessType = "web"
 	overrideGID        = 0
+	sourceDateEpochEnv = "SOURCE_DATE_EPOCH"
 )
 
 type LifecycleExecution struct {
@@ -250,6 +251,11 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		cacheOpts = WithBinds(append(volumes, fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))...)
 	}
 
+	withEnv := NullOp()
+	if l.opts.CreationTime != nil && l.platformAPI.AtLeast("0.9") {
+		withEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.CreationTime.Unix()))))
+	}
+
 	opts := []PhaseConfigProviderOperation{
 		WithFlags(l.withLogLevel(flags...)...),
 		WithArgs(repoName),
@@ -263,10 +269,11 @@ func (l *LifecycleExecution) Create(ctx context.Context, publish bool, dockerHos
 		If(l.opts.Interactive, WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
 			CopyOut(l.opts.Termui.ReadLayers, l.mountPaths.layersDir(), l.mountPaths.appDir()))),
+		withEnv,
 	}
 
 	if publish {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName, runImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return err
 		}
@@ -433,7 +440,7 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 	}
 
 	if publish {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName)
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName, runImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return nil, err
 		}
@@ -533,6 +540,11 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		cacheOpt = WithBinds(fmt.Sprintf("%s:%s", buildCache.Name(), l.mountPaths.cacheDir()))
 	}
 
+	withEnv := NullOp()
+	if l.opts.CreationTime != nil && l.platformAPI.AtLeast("0.9") {
+		withEnv = WithEnv(fmt.Sprintf("%s=%s", sourceDateEpochEnv, strconv.Itoa(int(l.opts.CreationTime.Unix()))))
+	}
+
 	opts := []PhaseConfigProviderOperation{
 		WithLogPrefix("exporter"),
 		WithImage(l.opts.LifecycleImage),
@@ -555,10 +567,11 @@ func (l *LifecycleExecution) newExport(repoName, runImage string, publish bool, 
 		If(l.opts.Interactive, WithPostContainerRunOperations(
 			EnsureVolumeAccess(l.opts.Builder.UID(), l.opts.Builder.GID(), l.os, l.layersVolume, l.appVolume),
 			CopyOut(l.opts.Termui.ReadLayers, l.mountPaths.layersDir(), l.mountPaths.appDir()))),
+		withEnv,
 	}
 
 	if publish {
-		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName, runImage)
+		authConfig, err := auth.BuildEnvVar(authn.DefaultKeychain, repoName, runImage, l.opts.CacheImage, l.opts.PreviousImage)
 		if err != nil {
 			return nil, err
 		}

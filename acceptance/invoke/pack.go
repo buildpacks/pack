@@ -218,7 +218,13 @@ func (i *PackInvoker) Supports(command string) bool {
 
 type Feature int
 
-var featureTests = map[Feature]func(i *PackInvoker) bool{}
+const CreationTime = iota
+
+var featureTests = map[Feature]func(i *PackInvoker) bool{
+	CreationTime: func(i *PackInvoker) bool {
+		return i.Supports("build --creation-time")
+	},
+}
 
 func (i *PackInvoker) SupportsFeature(f Feature) bool {
 	return featureTests[f](i)

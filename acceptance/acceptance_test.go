@@ -955,26 +955,24 @@ func testAcceptance(
 							helloCommand    string
 							helloArgs       []string
 							helloArgsPrefix string
+							imageWorkdir    string
 						)
 						if imageManager.HostOS() == "windows" {
 							webCommand = ".\\run"
 							helloCommand = "cmd"
 							helloArgs = []string{"/c", "echo hello world"}
 							helloArgsPrefix = " "
+							imageWorkdir = "c:\\workspace"
 
 						} else {
 							webCommand = "./run"
 							helloCommand = "echo"
 							helloArgs = []string{"hello", "world"}
 							helloArgsPrefix = ""
+							imageWorkdir = "/workspace"
 						}
 
 						formats := []compareFormat{
-							{
-								extension:   "txt",
-								compareFunc: assert.TrimmedEq,
-								outputArg:   "human-readable",
-							},
 							{
 								extension:   "json",
 								compareFunc: assert.EqualJSON,
@@ -995,7 +993,6 @@ func testAcceptance(
 							t.Logf("inspecting image %s format", format.outputArg)
 
 							output = pack.RunSuccessfully(inspectCmd, repoName, "--output", format.outputArg)
-
 							expectedOutput := pack.FixtureManager().TemplateFixture(
 								fmt.Sprintf("inspect_image_local_output.%s", format.extension),
 								map[string]interface{}{
@@ -1008,6 +1005,7 @@ func testAcceptance(
 									"hello_command":          helloCommand,
 									"hello_args":             helloArgs,
 									"hello_args_prefix":      helloArgsPrefix,
+									"image_workdir":          imageWorkdir,
 								},
 							)
 
@@ -1604,24 +1602,22 @@ func testAcceptance(
 								helloCommand    string
 								helloArgs       []string
 								helloArgsPrefix string
+								imageWorkdir    string
 							)
 							if imageManager.HostOS() == "windows" {
 								webCommand = ".\\run"
 								helloCommand = "cmd"
 								helloArgs = []string{"/c", "echo hello world"}
 								helloArgsPrefix = " "
+								imageWorkdir = "c:\\workspace"
 							} else {
 								webCommand = "./run"
 								helloCommand = "echo"
 								helloArgs = []string{"hello", "world"}
 								helloArgsPrefix = ""
+								imageWorkdir = "/workspace"
 							}
 							formats := []compareFormat{
-								{
-									extension:   "txt",
-									compareFunc: assert.TrimmedEq,
-									outputArg:   "human-readable",
-								},
 								{
 									extension:   "json",
 									compareFunc: assert.EqualJSON,
@@ -1655,6 +1651,7 @@ func testAcceptance(
 										"hello_command":        helloCommand,
 										"hello_args":           helloArgs,
 										"hello_args_prefix":    helloArgsPrefix,
+										"image_workdir":        imageWorkdir,
 									},
 								)
 
@@ -1971,6 +1968,50 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 								assert.Contains(output, "cookie.jar")
 								assert.Contains(output, "mountain.jpg")
 								assert.Contains(output, "person.png")
+							})
+						})
+					})
+
+					when("--creation-time", func() {
+						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.CreationTime), "")
+							h.SkipIf(t, !lifecycle.SupportsFeature(config.CreationTime), "")
+						})
+
+						when("provided as 'now'", func() {
+							it("image has create time of the current time", func() {
+								expectedTime := time.Now()
+								pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--creation-time", "now",
+								)
+								assertImage.HasCreateTime(repoName, expectedTime)
+							})
+						})
+
+						when("provided as unix timestamp", func() {
+							it("image has create time of the time that was provided", func() {
+								pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+									"--creation-time", "1566172801",
+								)
+								expectedTime, err := time.Parse("2006-01-02T03:04:05Z", "2019-08-19T00:00:01Z")
+								h.AssertNil(t, err)
+								assertImage.HasCreateTime(repoName, expectedTime)
+							})
+						})
+
+						when("not provided", func() {
+							it("image has create time of Jan 1, 1980", func() {
+								pack.RunSuccessfully(
+									"build", repoName,
+									"-p", filepath.Join("testdata", "mock_app"),
+								)
+								expectedTime, err := time.Parse("2006-01-02T03:04:05Z", "1980-01-01T00:00:01Z")
+								h.AssertNil(t, err)
+								assertImage.HasCreateTime(repoName, expectedTime)
 							})
 						})
 					})

@@ -131,12 +131,12 @@ var processesTemplate = `
 {{- if .Info.Processes }}
 
 Processes:
-  TYPE	SHELL	COMMAND	ARGS	
+  TYPE	SHELL	COMMAND	ARGS	WORK DIR
   {{- range $_, $p := .Info.Processes }}
     {{- if $p.Default }}
-  {{ (printf "%s %s" $p.Type "(default)") }}	{{ $p.Shell }}	{{ $p.Command }}	{{ StringsJoin $p.Args " "  }}	
+  {{ (printf "%s %s" $p.Type "(default)") }}	{{ $p.Shell }}	{{ $p.Command }}	{{ StringsJoin $p.Args " "  }}	{{ $p.WorkDir }}
     {{- else }}
-  {{ $p.Type }}	{{ $p.Shell }}	{{ $p.Command }}	{{ StringsJoin $p.Args " " }}	
+  {{ $p.Type }}	{{ $p.Shell }}	{{ $p.Command }}	{{ StringsJoin $p.Args " " }}	{{ $p.WorkDir }}
     {{- end }}
   {{- end }}
 {{- end }}`

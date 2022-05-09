@@ -56,9 +56,9 @@ Buildpacks:
   test.bp.three.remote        3.0.0          -
 
 Processes:
-  TYPE                              SHELL        COMMAND                      ARGS
-  some-remote-type (default)        bash         /some/remote command         some remote args
-  other-remote-type                              /other/remote/command        other remote args`
+  TYPE                              SHELL        COMMAND                      ARGS                     WORK DIR
+  some-remote-type (default)        bash         /some/remote command         some remote args         /some-test-work-dir
+  other-remote-type                              /other/remote/command        other remote args        /other-test-work-dir`
 
 		expectedLocalOutput = `LOCAL:
 
@@ -81,9 +81,9 @@ Buildpacks:
   test.bp.three.local        3.0.0          -
 
 Processes:
-  TYPE                             SHELL        COMMAND                     ARGS
-  some-local-type (default)        bash         /some/local command         some local args
-  other-local-type                              /other/local/command        other local args`
+  TYPE                             SHELL        COMMAND                     ARGS                    WORK DIR
+  some-local-type (default)        bash         /some/local command         some local args         /some-test-work-dir
+  other-local-type                              /other/local/command        other local args        /other-test-work-dir`
 	)
 
 	when("Print", func() {
@@ -135,17 +135,19 @@ Processes:
 				}},
 				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
-						Type:    "some-remote-type",
-						Command: "/some/remote command",
-						Args:    []string{"some", "remote", "args"},
-						Direct:  false,
+						Type:             "some-remote-type",
+						Command:          "/some/remote command",
+						Args:             []string{"some", "remote", "args"},
+						Direct:           false,
+						WorkingDirectory: "/some-test-work-dir",
 					},
 					OtherProcesses: []launch.Process{
 						{
-							Type:    "other-remote-type",
-							Command: "/other/remote/command",
-							Args:    []string{"other", "remote", "args"},
-							Direct:  true,
+							Type:             "other-remote-type",
+							Command:          "/other/remote/command",
+							Args:             []string{"other", "remote", "args"},
+							Direct:           true,
+							WorkingDirectory: "/other-test-work-dir",
 						},
 					},
 				},
@@ -183,17 +185,19 @@ Processes:
 				}},
 				Processes: client.ProcessDetails{
 					DefaultProcess: &launch.Process{
-						Type:    "some-local-type",
-						Command: "/some/local command",
-						Args:    []string{"some", "local", "args"},
-						Direct:  false,
+						Type:             "some-local-type",
+						Command:          "/some/local command",
+						Args:             []string{"some", "local", "args"},
+						Direct:           false,
+						WorkingDirectory: "/some-test-work-dir",
 					},
 					OtherProcesses: []launch.Process{
 						{
-							Type:    "other-local-type",
-							Command: "/other/local/command",
-							Args:    []string{"other", "local", "args"},
-							Direct:  true,
+							Type:             "other-local-type",
+							Command:          "/other/local/command",
+							Args:             []string{"other", "local", "args"},
+							Direct:           true,
+							WorkingDirectory: "/other-test-work-dir",
 						},
 					},
 				},
