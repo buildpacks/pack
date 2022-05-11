@@ -1969,6 +1969,43 @@ include = [ "*.jar", "media/mountain.jpg", "/media/person.png", ]
 								assert.Contains(output, "mountain.jpg")
 								assert.Contains(output, "person.png")
 							})
+
+							it("should assign correct permissions to all directories and files", func() {
+								h.SkipIf(t, imageManager.HostOS() == "windows", "These tests are not yet compatible with Windows-based containers")
+
+								projectToml := `
+[project]
+name = "permission test"
+[[project.licenses]]
+type = "MIT"
+
+[build]
+include = [ "nested/nested-cookie.jar", "media/person.png", ]
+
+[[build.buildpacks]]
+id = "testing/workspace-info"
+  [build.buildpacks.script]
+  api = "0.7"
+  # prints the files and their owners
+  inline = "ls -alHR | awk '{print $3, $9}' && exit 1"
+`
+								projectDescriptorPath := filepath.Join(tempAppDir, "project.toml")
+								err := ioutil.WriteFile(projectDescriptorPath, []byte(projectToml), 0755)
+								assert.Nil(err)
+
+								output, err := pack.Run(
+									"build",
+									repoName,
+									"-p", tempAppDir,
+									"--descriptor", projectDescriptorPath,
+								)
+								assert.Error(err)
+								assert.Contains(output, "pack media")
+								assert.Contains(output, "pack nested")
+								assert.Contains(output, "pack mountain.jpg")
+								assert.Contains(output, "pack person.png")
+								assert.Contains(output, "pack nested-cookie.jar")
+							})
 						})
 					})
 

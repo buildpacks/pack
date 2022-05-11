@@ -420,11 +420,36 @@ func getFileFilter(descriptor projectTypes.Descriptor) (func(string) bool, error
 		}, nil
 	}
 	if len(descriptor.Build.Include) > 0 {
-		includes := ignore.CompileIgnoreLines(descriptor.Build.Include...)
+		includePatterns := []string{}
+		for _, entry := range descriptor.Build.Include {
+			if !strings.Contains(entry, "*") && !strings.Contains(entry, "!") {
+				parentFolders, err := getParentDirs(entry)
+				for _, folder := range parentFolders {
+					includePatterns = append(includePatterns, "!"+folder+"/*")
+					includePatterns = append(includePatterns, folder)
+				}
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		includePatterns = append(includePatterns, descriptor.Build.Include...)
+		includes := ignore.CompileIgnoreLines(includePatterns...)
 		return includes.MatchesPath, nil
 	}
-
 	return nil, nil
+}
+
+func getParentDirs(file string) ([]string, error) {
+	parent := filepath.Dir(file)
+	if parent == filepath.VolumeName(file)+`\` || parent == "/" || parent == "." {
+		return []string{}, nil
+	}
+	parentDirs, err := getParentDirs(parent)
+	if err != nil {
+		return nil, err
+	}
+	return append(parentDirs, parent), nil
 }
 
 func lifecycleImageSupported(builderOS string, lifecycleVersion *builder.Version) bool {
