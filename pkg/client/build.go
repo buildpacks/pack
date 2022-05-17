@@ -325,6 +325,8 @@ func (c *Client) Build(ctx context.Context, opts BuildOptions) error {
 				Version:  map[string]interface{}{"declared": version},
 				Metadata: map[string]interface{}{"url": sourceURL},
 			}
+		} else {
+			projectMetadata.Source = GitMetadata(opts.AppPath)
 		}
 	}
 
