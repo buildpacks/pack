@@ -106,6 +106,7 @@ func parseGitDescribe(repo *git.Repository, headRef *plumbing.Reference, commitT
 		if err == nil {
 			if refs, exists := commitTagMap[commitInfo.Hash.String()]; exists {
 				latestTag = refs[0].Name
+				break
 			}
 		} else {
 			break
@@ -126,7 +127,8 @@ func parseGitRefs(repo *git.Repository, headRef *plumbing.Reference, commitTagMa
 }
 
 func getRefName(ref string) string {
-	if refSplit := strings.Split(ref, "/"); len(refSplit) == 3 {
+	// refs/tags/v0.1/testing
+	if refSplit := strings.SplitN(ref, "/", 3); len(refSplit) == 3 {
 		return refSplit[2]
 	}
 	return ""
