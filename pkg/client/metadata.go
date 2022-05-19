@@ -19,7 +19,6 @@ type TagInfo struct {
 }
 
 func GitMetadata(appPath string) *platform.ProjectSource {
-	// appPath2 := "/Users/nitish/OSS/pack"
 	repo, err := git.PlainOpen(appPath)
 	if err != nil {
 		print("unable to open git repo")
@@ -32,6 +31,7 @@ func GitMetadata(appPath string) *platform.ProjectSource {
 
 	describe := parseGitDescribe(repo, headRef, commitTagMap)
 	refs := parseGitRefs(repo, headRef, commitTagMap)
+	remote := parseGitRemote(repo)
 
 	projectSource := &platform.ProjectSource{
 		Type: "git",
@@ -41,7 +41,7 @@ func GitMetadata(appPath string) *platform.ProjectSource {
 		},
 		Metadata: map[string]interface{}{
 			"refs": refs,
-			"url":  "nitis",
+			"url":  remote,
 		},
 	}
 	return projectSource
@@ -90,6 +90,7 @@ func generateTagsMap(repo *git.Repository) map[string][]TagInfo {
 	return commitTagMap
 }
 
+// `git describe --tags --always`
 func parseGitDescribe(repo *git.Repository, headRef *plumbing.Reference, commitTagMap map[string][]TagInfo) string {
 	logOpts := &git.LogOptions{
 		From:  headRef.Hash(),
@@ -126,8 +127,22 @@ func parseGitRefs(repo *git.Repository, headRef *plumbing.Reference, commitTagMa
 	return parsedRefs
 }
 
+func parseGitRemote(repo *git.Repository) string {
+	remotes, err := repo.Remotes()
+	if err != nil || len(remotes) == 0 {
+		return ""
+	}
+
+	for _, remote := range remotes {
+		if remote.Config().Name == "origin" {
+			return remote.Config().URLs[0]
+		}
+	}
+	return remotes[0].Config().URLs[0]
+}
+
+// Parse ref name from refs/tags/<ref_name>
 func getRefName(ref string) string {
-	// refs/tags/v0.1/testing
 	if refSplit := strings.SplitN(ref, "/", 3); len(refSplit) == 3 {
 		return refSplit[2]
 	}
