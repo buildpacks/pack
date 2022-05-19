@@ -12,6 +12,7 @@ import (
 
 	h "github.com/buildpacks/pack/testhelpers"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/heroku/color"
@@ -168,157 +169,351 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#parseGitDescribe", func() {
-		when("repository has no tags", func() {
-			it("returns latest commit hash", func() {
-				commitTagsMap := generateTagsMap(repo)
-				headRef, err := repo.Head()
-				h.AssertNil(t, err)
-
-				output := parseGitDescribe(repo, headRef, commitTagsMap)
-				h.AssertEq(t, output, commits[len(commits)-1].String())
-			})
-		})
-
-		when("repository has only unannotated tags", func() {
-			it("returns first tag encountered from HEAD", func() {
-				for i := 0; i < 3; i++ {
-					tagName := fmt.Sprintf("v0.%d-lw", i+1)
-					createUnannotatedTag(t, repo, commits[i], tagName)
-				}
-
-				commitTagsMap := generateTagsMap(repo)
-				headRef, err := repo.Head()
-				h.AssertNil(t, err)
-				output := parseGitDescribe(repo, headRef, commitTagsMap)
-				h.AssertEq(t, output, "v0.3-lw")
-			})
-
-			it("returns proper tag name for tags containing `/`", func() {
-				tagName := "v0.1/testing"
-				t.Logf("Checking output for tag name: %s", tagName)
-				createUnannotatedTag(t, repo, commits[0], tagName)
-
-				commitTagsMap := generateTagsMap(repo)
-				headRef, err := repo.Head()
-				h.AssertNil(t, err)
-				output := parseGitDescribe(repo, headRef, commitTagsMap)
-				h.AssertContains(t, output, "v0.1/testing")
-			})
-		})
-
-		when("repository has only annotated tags", func() {
-			it("returns first tag encountered from HEAD", func() {
-				for i := 0; i < 3; i++ {
-					tagName := fmt.Sprintf("v0.%d", i+1)
-					createAnnotatedTag(t, repo, commits[i], tagName)
-				}
-
-				commitTagsMap := generateTagsMap(repo)
-				headRef, err := repo.Head()
-				h.AssertNil(t, err)
-				output := parseGitDescribe(repo, headRef, commitTagsMap)
-				h.AssertEq(t, output, "v0.3")
-			})
-		})
-
-		when("repository has both annotated and unannotated tags", func() {
-			when("each commit has only one tag", func() {
-				it("returns the first tag encountered from HEAD if unannotated tag comes first", func() {
-					createAnnotatedTag(t, repo, commits[0], "ann-tag-at-commit-0")
-					createUnannotatedTag(t, repo, commits[1], "unann-tag-at-commit-1")
-					createAnnotatedTag(t, repo, commits[2], "ann-tag-at-commit-2")
-					createUnannotatedTag(t, repo, commits[3], "unann-tag-at-commit-3")
-					createUnannotatedTag(t, repo, commits[4], "unann-tag-at-commit-4")
-
+		when("tags are defined only in single branch", func() {
+			when("repository has no tags", func() {
+				it("returns latest commit hash", func() {
 					commitTagsMap := generateTagsMap(repo)
 					headRef, err := repo.Head()
 					h.AssertNil(t, err)
+
 					output := parseGitDescribe(repo, headRef, commitTagsMap)
-					h.AssertEq(t, output, "unann-tag-at-commit-4")
-				})
-
-				it("returns the first tag encountered from HEAD if annotated tag comes first", func() {
-					createAnnotatedTag(t, repo, commits[0], "ann-tag-at-commit-0")
-					createUnannotatedTag(t, repo, commits[1], "unann-tag-at-commit-1")
-					createAnnotatedTag(t, repo, commits[2], "ann-tag-at-commit-2")
-					createAnnotatedTag(t, repo, commits[3], "ann-tag-at-commit-3")
-
-					commitTagsMap := generateTagsMap(repo)
-					headRef, err := repo.Head()
-					h.AssertNil(t, err)
-					output := parseGitDescribe(repo, headRef, commitTagsMap)
-					h.AssertEq(t, output, "ann-tag-at-commit-3")
-				})
-
-				it("returns the tag at HEAD if annotated tag exists at HEAD", func() {
-					createAnnotatedTag(t, repo, commits[4], "ann-tag-at-HEAD")
-
-					commitTagsMap := generateTagsMap(repo)
-					headRef, err := repo.Head()
-					h.AssertNil(t, err)
-					output := parseGitDescribe(repo, headRef, commitTagsMap)
-					h.AssertEq(t, output, "ann-tag-at-HEAD")
-				})
-
-				it("returns the tag at HEAD if unannotated tag exists at HEAD", func() {
-					createUnannotatedTag(t, repo, commits[4], "unann-tag-at-HEAD")
-
-					commitTagsMap := generateTagsMap(repo)
-					headRef, err := repo.Head()
-					h.AssertNil(t, err)
-					output := parseGitDescribe(repo, headRef, commitTagsMap)
-					h.AssertEq(t, output, "unann-tag-at-HEAD")
+					h.AssertEq(t, output, commits[len(commits)-1].String())
 				})
 			})
 
-			when("commits have multiple tags", func() {
-				it("returns most recently created tag if a commit has multiple annotated tags", func() {
-					createAnnotatedTag(t, repo, commits[1], "ann-tag-1-at-commit-1")
-					createAnnotatedTag(t, repo, commits[2], "ann-tag-1-at-commit-2")
-					createAnnotatedTag(t, repo, commits[2], "ann-tag-2-at-commit-2")
-					createAnnotatedTag(t, repo, commits[2], "ann-tag-3-at-commit-2")
-
-					commitTagsMap := generateTagsMap(repo)
-					headRef, err := repo.Head()
-					h.AssertNil(t, err)
-
-					output := parseGitDescribe(repo, headRef, commitTagsMap)
-					tagsAtCommit := commitTagsMap[commits[2].String()]
-					h.AssertEq(t, output, tagsAtCommit[0].Name)
-					for i := 1; i < len(tagsAtCommit); i++ {
-						h.AssertEq(t, tagsAtCommit[i].TagTime.Before(tagsAtCommit[0].TagTime), true)
+			when("repository has only unannotated tags", func() {
+				it("returns first tag encountered from HEAD", func() {
+					for i := 0; i < 3; i++ {
+						tagName := fmt.Sprintf("v0.%d-lw", i+1)
+						createUnannotatedTag(t, repo, commits[i], tagName)
 					}
-				})
-
-				it("returns the tag name that comes first when sorted alphabetically if a commit has multiple unannotated tags", func() {
-					createUnannotatedTag(t, repo, commits[1], "ann-tag-1-at-commit-1")
-					createUnannotatedTag(t, repo, commits[2], "v0.000002-lw")
-					createUnannotatedTag(t, repo, commits[2], "v0.0002-lw")
-					createUnannotatedTag(t, repo, commits[2], "v1.0002-lw")
 
 					commitTagsMap := generateTagsMap(repo)
 					headRef, err := repo.Head()
 					h.AssertNil(t, err)
-
 					output := parseGitDescribe(repo, headRef, commitTagsMap)
-					h.AssertEq(t, output, "v0.000002-lw")
+					h.AssertEq(t, output, "v0.3-lw")
 				})
 
-				it("returns annotated tag is a commit has both annotated and unannotated tags", func() {
-					createAnnotatedTag(t, repo, commits[1], "ann-tag-1-at-commit-1")
-					createAnnotatedTag(t, repo, commits[2], "ann-tag-1-at-commit-2")
-					createUnannotatedTag(t, repo, commits[2], "unann-tag-1-at-commit-2")
+				it("returns proper tag name for tags containing `/`", func() {
+					tagName := "v0.1/testing"
+					t.Logf("Checking output for tag name: %s", tagName)
+					createUnannotatedTag(t, repo, commits[0], tagName)
 
 					commitTagsMap := generateTagsMap(repo)
 					headRef, err := repo.Head()
 					h.AssertNil(t, err)
-
 					output := parseGitDescribe(repo, headRef, commitTagsMap)
-					h.AssertEq(t, output, "ann-tag-1-at-commit-2")
+					h.AssertContains(t, output, "v0.1/testing")
 				})
+			})
+
+			when("repository has only annotated tags", func() {
+				it("returns first tag encountered from HEAD", func() {
+					for i := 0; i < 3; i++ {
+						tagName := fmt.Sprintf("v0.%d", i+1)
+						createAnnotatedTag(t, repo, commits[i], tagName)
+					}
+
+					commitTagsMap := generateTagsMap(repo)
+					headRef, err := repo.Head()
+					h.AssertNil(t, err)
+					output := parseGitDescribe(repo, headRef, commitTagsMap)
+					h.AssertEq(t, output, "v0.3")
+				})
+			})
+
+			when("repository has both annotated and unannotated tags", func() {
+				when("each commit has only one tag", func() {
+					it("returns the first tag encountered from HEAD if unannotated tag comes first", func() {
+						createAnnotatedTag(t, repo, commits[0], "ann-tag-at-commit-0")
+						createUnannotatedTag(t, repo, commits[1], "unann-tag-at-commit-1")
+						createAnnotatedTag(t, repo, commits[2], "ann-tag-at-commit-2")
+						createUnannotatedTag(t, repo, commits[3], "unann-tag-at-commit-3")
+						createUnannotatedTag(t, repo, commits[4], "unann-tag-at-commit-4")
+
+						commitTagsMap := generateTagsMap(repo)
+						headRef, err := repo.Head()
+						h.AssertNil(t, err)
+						output := parseGitDescribe(repo, headRef, commitTagsMap)
+						h.AssertEq(t, output, "unann-tag-at-commit-4")
+					})
+
+					it("returns the first tag encountered from HEAD if annotated tag comes first", func() {
+						createAnnotatedTag(t, repo, commits[0], "ann-tag-at-commit-0")
+						createUnannotatedTag(t, repo, commits[1], "unann-tag-at-commit-1")
+						createAnnotatedTag(t, repo, commits[2], "ann-tag-at-commit-2")
+						createAnnotatedTag(t, repo, commits[3], "ann-tag-at-commit-3")
+
+						commitTagsMap := generateTagsMap(repo)
+						headRef, err := repo.Head()
+						h.AssertNil(t, err)
+						output := parseGitDescribe(repo, headRef, commitTagsMap)
+						h.AssertEq(t, output, "ann-tag-at-commit-3")
+					})
+
+					it("returns the tag at HEAD if annotated tag exists at HEAD", func() {
+						createAnnotatedTag(t, repo, commits[4], "ann-tag-at-HEAD")
+
+						commitTagsMap := generateTagsMap(repo)
+						headRef, err := repo.Head()
+						h.AssertNil(t, err)
+						output := parseGitDescribe(repo, headRef, commitTagsMap)
+						h.AssertEq(t, output, "ann-tag-at-HEAD")
+					})
+
+					it("returns the tag at HEAD if unannotated tag exists at HEAD", func() {
+						createUnannotatedTag(t, repo, commits[4], "unann-tag-at-HEAD")
+
+						commitTagsMap := generateTagsMap(repo)
+						headRef, err := repo.Head()
+						h.AssertNil(t, err)
+						output := parseGitDescribe(repo, headRef, commitTagsMap)
+						h.AssertEq(t, output, "unann-tag-at-HEAD")
+					})
+				})
+
+				when("commits have multiple tags", func() {
+					it("returns most recently created tag if a commit has multiple annotated tags", func() {
+						createAnnotatedTag(t, repo, commits[1], "ann-tag-1-at-commit-1")
+						createAnnotatedTag(t, repo, commits[2], "ann-tag-1-at-commit-2")
+						createAnnotatedTag(t, repo, commits[2], "ann-tag-2-at-commit-2")
+						createAnnotatedTag(t, repo, commits[2], "ann-tag-3-at-commit-2")
+
+						commitTagsMap := generateTagsMap(repo)
+						headRef, err := repo.Head()
+						h.AssertNil(t, err)
+
+						output := parseGitDescribe(repo, headRef, commitTagsMap)
+						tagsAtCommit := commitTagsMap[commits[2].String()]
+						h.AssertEq(t, output, tagsAtCommit[0].Name)
+						for i := 1; i < len(tagsAtCommit); i++ {
+							h.AssertEq(t, tagsAtCommit[i].TagTime.Before(tagsAtCommit[0].TagTime), true)
+						}
+					})
+
+					it("returns the tag name that comes first when sorted alphabetically if a commit has multiple unannotated tags", func() {
+						createUnannotatedTag(t, repo, commits[1], "ann-tag-1-at-commit-1")
+						createUnannotatedTag(t, repo, commits[2], "v0.000002-lw")
+						createUnannotatedTag(t, repo, commits[2], "v0.0002-lw")
+						createUnannotatedTag(t, repo, commits[2], "v1.0002-lw")
+
+						commitTagsMap := generateTagsMap(repo)
+						headRef, err := repo.Head()
+						h.AssertNil(t, err)
+
+						output := parseGitDescribe(repo, headRef, commitTagsMap)
+						h.AssertEq(t, output, "v0.000002-lw")
+					})
+
+					it("returns annotated tag is a commit has both annotated and unannotated tags", func() {
+						createAnnotatedTag(t, repo, commits[1], "ann-tag-1-at-commit-1")
+						createAnnotatedTag(t, repo, commits[2], "ann-tag-1-at-commit-2")
+						createUnannotatedTag(t, repo, commits[2], "unann-tag-1-at-commit-2")
+
+						commitTagsMap := generateTagsMap(repo)
+						headRef, err := repo.Head()
+						h.AssertNil(t, err)
+
+						output := parseGitDescribe(repo, headRef, commitTagsMap)
+						h.AssertEq(t, output, "ann-tag-1-at-commit-2")
+					})
+				})
+			})
+		})
+
+		// TODO: tests for tags in different branches
+	})
+
+	when("#parseGitRefs", func() {
+		when("HEAD is not at a tag", func() {
+			it("returns branch name if checked out branch is `master`", func() {
+				commitTagsMap := generateTagsMap(repo)
+				headRef, err := repo.Head()
+				h.AssertNil(t, err)
+				output := parseGitRefs(repo, headRef, commitTagsMap)
+				expectedOutput := []string{"master"}
+				h.AssertEq(t, output, expectedOutput)
+			})
+
+			it("returns branch name if checked out branch is not `master`", func() {
+				worktree, err := repo.Worktree()
+				h.AssertNil(t, err)
+				checkoutOpts := &git.CheckoutOptions{
+					Branch: plumbing.ReferenceName("refs/heads/tests/05-05/test-branch"),
+					Create: true,
+				}
+				err = worktree.Checkout(checkoutOpts)
+				h.AssertNil(t, err)
+				createCommits(t, repo, tmpDir, 1)
+
+				commitTagsMap := generateTagsMap(repo)
+				headRef, err := repo.Head()
+				h.AssertNil(t, err)
+				output := parseGitRefs(repo, headRef, commitTagsMap)
+				expectedOutput := []string{"tests/05-05/test-branch"}
+				h.AssertEq(t, output, expectedOutput)
+			})
+		})
+
+		when("HEAD is at a commit with single tag", func() {
+			it("returns annotated tag and branch name", func() {
+				createAnnotatedTag(t, repo, commits[len(commits)-1], "test-tag")
+				commitTagsMap := generateTagsMap(repo)
+				headRef, err := repo.Head()
+				h.AssertNil(t, err)
+				output := parseGitRefs(repo, headRef, commitTagsMap)
+				expectedOutput := []string{"master", "test-tag"}
+				h.AssertEq(t, output, expectedOutput)
+			})
+
+			it("returns unannotated tag and branch name", func() {
+				createUnannotatedTag(t, repo, commits[len(commits)-1], "test-tag")
+				commitTagsMap := generateTagsMap(repo)
+				headRef, err := repo.Head()
+				h.AssertNil(t, err)
+				output := parseGitRefs(repo, headRef, commitTagsMap)
+				expectedOutput := []string{"master", "test-tag"}
+				h.AssertEq(t, output, expectedOutput)
+			})
+		})
+
+		when("HEAD is at a commit with multiple tags", func() {
+			it("returns correct tag names if all tags are unannotated", func() {
+				createUnannotatedTag(t, repo, commits[len(commits)-2], "v0.01-testtag-lw")
+				createUnannotatedTag(t, repo, commits[len(commits)-1], "v0.02-testtag-lw-1")
+				createUnannotatedTag(t, repo, commits[len(commits)-1], "v0.02-testtag-lw-2")
+				commitTagsMap := generateTagsMap(repo)
+				headRef, err := repo.Head()
+				h.AssertNil(t, err)
+				output := parseGitRefs(repo, headRef, commitTagsMap)
+				expectedOutput := []string{"master", "v0.02-testtag-lw-1", "v0.02-testtag-lw-2"}
+				h.AssertEq(t, output, expectedOutput)
+			})
+
+			it("returns correct tag names if all tags are annotated", func() {
+				createAnnotatedTag(t, repo, commits[len(commits)-2], "v0.01-testtag")
+				createAnnotatedTag(t, repo, commits[len(commits)-1], "v0.02-testtag")
+				createAnnotatedTag(t, repo, commits[len(commits)-1], "v0.03-testtag")
+				commitTagsMap := generateTagsMap(repo)
+				headRef, err := repo.Head()
+				h.AssertNil(t, err)
+				output := parseGitRefs(repo, headRef, commitTagsMap)
+				expectedOutput := []string{"master", "v0.02-testtag", "v0.03-testtag"}
+				sort.Strings(output)
+				sort.Strings(expectedOutput)
+				h.AssertEq(t, output, expectedOutput)
+			})
+
+			it("returns correct tag names for both tag types", func() {
+				createUnannotatedTag(t, repo, commits[len(commits)-3], "v0.001-testtag-lw")
+				createAnnotatedTag(t, repo, commits[len(commits)-2], "v0.01-testtag")
+				createUnannotatedTag(t, repo, commits[len(commits)-1], "v0.02-testtag-lw-1")
+				createUnannotatedTag(t, repo, commits[len(commits)-1], "v0.02-testtag-lw-2")
+				createAnnotatedTag(t, repo, commits[len(commits)-1], "v0.02-testtag-1")
+
+				commitTagsMap := generateTagsMap(repo)
+				headRef, err := repo.Head()
+				h.AssertNil(t, err)
+				output := parseGitRefs(repo, headRef, commitTagsMap)
+				expectedOutput := []string{"master", "v0.02-testtag-1", "v0.02-testtag-lw-1", "v0.02-testtag-lw-2"}
+				h.AssertEq(t, output, expectedOutput)
+			})
+
+			it("returns correct tag names for both tag types when branch is not `master`", func() {
+				worktree, err := repo.Worktree()
+				h.AssertNil(t, err)
+				checkoutOpts := &git.CheckoutOptions{
+					Branch: plumbing.ReferenceName("refs/heads/test-branch"),
+					Create: true,
+				}
+				err = worktree.Checkout(checkoutOpts)
+				h.AssertNil(t, err)
+
+				createUnannotatedTag(t, repo, commits[len(commits)-3], "v0.001-testtag-lw")
+				createAnnotatedTag(t, repo, commits[len(commits)-2], "v0.01-testtag")
+				createUnannotatedTag(t, repo, commits[len(commits)-1], "v0.02-testtag-lw-1")
+				createUnannotatedTag(t, repo, commits[len(commits)-1], "v0.02-testtag-lw-2")
+				createAnnotatedTag(t, repo, commits[len(commits)-1], "v0.02-testtag-1")
+				createAnnotatedTag(t, repo, commits[len(commits)-1], "v0.02-testtag-2")
+
+				commitTagsMap := generateTagsMap(repo)
+				headRef, err := repo.Head()
+				h.AssertNil(t, err)
+				output := parseGitRefs(repo, headRef, commitTagsMap)
+				expectedOutput := []string{"test-branch", "v0.02-testtag-1", "v0.02-testtag-2", "v0.02-testtag-lw-1", "v0.02-testtag-lw-2"}
+				sort.Strings(output)
+				sort.Strings(expectedOutput)
+				h.AssertEq(t, output, expectedOutput)
 			})
 		})
 	})
+
+	when("#parseGitRemote", func() {
+		it("returns fetch url if remote `origin` exists", func() {
+			remoteOpts := &config.RemoteConfig{
+				Name: "origin",
+				URLs: []string{"git@github.com:testorg/testproj.git", "git@github.com:testorg/testproj.git"},
+			}
+			repo.CreateRemote(remoteOpts)
+
+			output := parseGitRemote(repo)
+			h.AssertEq(t, output, "git@github.com:testorg/testproj.git")
+		})
+
+		it("returns first remote's fetch url if remote `origin` does not exists", func() {
+			remoteOpts1 := &config.RemoteConfig{
+				Name: "not-origin",
+				URLs: []string{"git@gitlab.com:testorg/testproj.git", "git@gitlab.com:testorg/testproj.git"},
+			}
+			repo.CreateRemote(remoteOpts1)
+			remoteOpts2 := &config.RemoteConfig{
+				Name: "not-at-all-origin",
+				URLs: []string{"git@github.com:testorg/testproj.git", "git@github.com:testorg/testproj.git"},
+			}
+			repo.CreateRemote(remoteOpts2)
+
+			output := parseGitRemote(repo)
+			h.AssertEq(t, output, "git@gitlab.com:testorg/testproj.git")
+		})
+
+		it("returns empty string if no remote exists", func() {
+			output := parseGitRemote(repo)
+			h.AssertEq(t, output, "")
+		})
+
+		it("returns fetch url if fetch and push URLs are different", func() {
+			remoteOpts := &config.RemoteConfig{
+				Name: "origin",
+				URLs: []string{"git@fetch.com:testorg/testproj.git", "git@pushing-p-github.com:testorg/testproj.git"},
+			}
+			repo.CreateRemote(remoteOpts)
+
+			output := parseGitRemote(repo)
+			h.AssertEq(t, output, "git@fetch.com:testorg/testproj.git")
+		})
+	})
+}
+
+func createCommits(t *testing.T, repo *git.Repository, repoPath string, numberOfCommits int) []plumbing.Hash {
+	worktree, err := repo.Worktree()
+	h.AssertNil(t, err)
+
+	var commitHashes []plumbing.Hash
+	for i := 0; i < numberOfCommits; i++ {
+		file, err := ioutil.TempFile(repoPath, h.RandString(10))
+		h.AssertNil(t, err)
+
+		_, err = worktree.Add(filepath.Base(file.Name()))
+		h.AssertNil(t, err)
+
+		commitMsg := fmt.Sprintf("%s %d", "test commit number", i)
+		commitOpts := git.CommitOptions{}
+		commitHash, err := worktree.Commit(commitMsg, &commitOpts)
+		h.AssertNil(t, err)
+		commitHashes = append(commitHashes, commitHash)
+	}
+	return commitHashes
 }
 
 func createUnannotatedTag(t *testing.T, repo *git.Repository, commitHash plumbing.Hash, tagName string) {
@@ -346,25 +541,4 @@ func createAnnotatedTag(t *testing.T, repo *git.Repository, commitHash plumbing.
 	}
 	_, err := repo.CreateTag(tagName, commitHash, tagOpts)
 	h.AssertNil(t, err)
-}
-
-func createCommits(t *testing.T, repo *git.Repository, repoPath string, numberOfCommits int) []plumbing.Hash {
-	worktree, err := repo.Worktree()
-	h.AssertNil(t, err)
-
-	var commitHashes []plumbing.Hash
-	for i := 0; i < numberOfCommits; i++ {
-		file, err := ioutil.TempFile(repoPath, h.RandString(10))
-		h.AssertNil(t, err)
-
-		_, err = worktree.Add(filepath.Base(file.Name()))
-		h.AssertNil(t, err)
-
-		commitMsg := fmt.Sprintf("%s %d", "test commit number", i)
-		commitOpts := git.CommitOptions{}
-		commitHash, err := worktree.Commit(commitMsg, &commitOpts)
-		h.AssertNil(t, err)
-		commitHashes = append(commitHashes, commitHash)
-	}
-	return commitHashes
 }
