@@ -28,25 +28,25 @@ func TestMetadata(t *testing.T) {
 
 func testMetadata(t *testing.T, when spec.G, it spec.S) {
 	var (
-		tmpDir  string
-		repo    *git.Repository
-		commits []plumbing.Hash
+		repoPath string
+		repo     *git.Repository
+		commits  []plumbing.Hash
 	)
 
 	it.Before(func() {
 		var err error
 
-		tmpDir, err = ioutil.TempDir("", "test-repo")
+		repoPath, err = ioutil.TempDir("", "test-repo")
 		h.AssertNil(t, err)
 
-		repo, err = git.PlainInit(tmpDir, false)
+		repo, err = git.PlainInit(repoPath, false)
 		h.AssertNil(t, err)
 
-		commits = createCommits(t, repo, tmpDir, 5)
+		commits = createCommits(t, repo, repoPath, 5)
 	})
 
 	it.After(func() {
-		h.AssertNil(t, os.RemoveAll(tmpDir))
+		h.AssertNil(t, os.RemoveAll(repoPath))
 	})
 
 	when("#generateTagsMap", func() {
@@ -168,8 +168,27 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 		})
 	})
 
+	when("#generateBranchMap", func() {
+		it("returns map with latest commit of the `master` branch", func() {
+			branchMap := generateBranchMap(repo)
+			h.AssertEq(t, branchMap[commits[len(commits)-1].String()][0], "master")
+		})
+
+		it("returns map with latest commit all the branches", func() {
+			checkoutBranch(t, repo, "newbranch-1", true)
+			newBranchCommits := createCommits(t, repo, repoPath, 3)
+			checkoutBranch(t, repo, "master", false)
+			checkoutBranch(t, repo, "newbranch-2", true)
+
+			branchMap := generateBranchMap(repo)
+			h.AssertEq(t, branchMap[commits[len(commits)-1].String()][0], "master")
+			h.AssertEq(t, branchMap[commits[len(commits)-1].String()][1], "newbranch-2")
+			h.AssertEq(t, branchMap[newBranchCommits[len(newBranchCommits)-1].String()][0], "newbranch-1")
+		})
+	})
+
 	when("#parseGitDescribe", func() {
-		when("tags are defined only in single branch", func() {
+		when("all tags are defined in a single branch", func() {
 			when("repository has no tags", func() {
 				it("returns latest commit hash", func() {
 					commitTagsMap := generateTagsMap(repo)
@@ -322,7 +341,64 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 			})
 		})
 
-		// TODO: tests for tags in different branches
+		when("tags are defined in multiple branches", func() {
+			when("tag is defined in the latest commit of `master` branch and HEAD is at a different branch", func() {
+				it("returns the tag if HEAD, master and different branch is at tags", func() {
+					checkoutBranch(t, repo, "new-branch", true)
+					createAnnotatedTag(t, repo, commits[len(commits)-1], "ann-tag-at-HEAD")
+
+					headRef, err := repo.Head()
+					h.AssertNil(t, err)
+					commitTagsMap := generateTagsMap(repo)
+					output := parseGitDescribe(repo, headRef, commitTagsMap)
+					h.AssertEq(t, output, "ann-tag-at-HEAD")
+				})
+
+				when("branch is multiple commits ahead of master", func() {
+					it("returns git generated version of annotated tag if branch is 2 commits ahead of `master`", func() {
+						createAnnotatedTag(t, repo, commits[len(commits)-1], "testTag")
+						checkoutBranch(t, repo, "new-branch", true)
+						newCommits := createCommits(t, repo, repoPath, 2)
+
+						headRef, err := repo.Head()
+						h.AssertNil(t, err)
+						commitTagsMap := generateTagsMap(repo)
+						output := parseGitDescribe(repo, headRef, commitTagsMap)
+						expectedOutput := fmt.Sprintf("testTag-2-g%s", newCommits[len(newCommits)-1].String())
+						h.AssertEq(t, output, expectedOutput)
+					})
+
+					it("returns git generated version of unannotated tag if branch is 5 commits ahead of `master`", func() {
+						createUnannotatedTag(t, repo, commits[len(commits)-1], "testTag")
+						checkoutBranch(t, repo, "new-branch", true)
+						newCommits := createCommits(t, repo, repoPath, 5)
+
+						headRef, err := repo.Head()
+						h.AssertNil(t, err)
+						commitTagsMap := generateTagsMap(repo)
+						output := parseGitDescribe(repo, headRef, commitTagsMap)
+						expectedOutput := fmt.Sprintf("testTag-5-g%s", newCommits[len(newCommits)-1].String())
+						h.AssertEq(t, output, expectedOutput)
+					})
+
+					it("returns the commit hash if only the diverged tree of `master` branch has a tag", func() {
+						checkoutBranch(t, repo, "new-branch", true)
+						checkoutBranch(t, repo, "master", false)
+						newCommits := createCommits(t, repo, repoPath, 3)
+						createUnannotatedTag(t, repo, newCommits[len(newCommits)-1], "testTagAtMaster")
+						checkoutBranch(t, repo, "new-branch", false)
+
+						headRef, err := repo.Head()
+						h.AssertNil(t, err)
+						commitTagsMap := generateTagsMap(repo)
+						output := parseGitDescribe(repo, headRef, commitTagsMap)
+						expectedOutput := commits[len(commits)-1].String()
+						h.AssertEq(t, output, expectedOutput)
+					})
+				})
+
+			})
+		})
 	})
 
 	when("#parseGitRefs", func() {
@@ -337,15 +413,8 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns branch name if checked out branch is not `master`", func() {
-				worktree, err := repo.Worktree()
-				h.AssertNil(t, err)
-				checkoutOpts := &git.CheckoutOptions{
-					Branch: plumbing.ReferenceName("refs/heads/tests/05-05/test-branch"),
-					Create: true,
-				}
-				err = worktree.Checkout(checkoutOpts)
-				h.AssertNil(t, err)
-				createCommits(t, repo, tmpDir, 1)
+				checkoutBranch(t, repo, "tests/05-05/test-branch", true)
+				createCommits(t, repo, repoPath, 1)
 
 				commitTagsMap := generateTagsMap(repo)
 				headRef, err := repo.Head()
@@ -421,15 +490,7 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 			})
 
 			it("returns correct tag names for both tag types when branch is not `master`", func() {
-				worktree, err := repo.Worktree()
-				h.AssertNil(t, err)
-				checkoutOpts := &git.CheckoutOptions{
-					Branch: plumbing.ReferenceName("refs/heads/test-branch"),
-					Create: true,
-				}
-				err = worktree.Checkout(checkoutOpts)
-				h.AssertNil(t, err)
-
+				checkoutBranch(t, repo, "test-branch", true)
 				createUnannotatedTag(t, repo, commits[len(commits)-3], "v0.001-testtag-lw")
 				createAnnotatedTag(t, repo, commits[len(commits)-2], "v0.01-testtag")
 				createUnannotatedTag(t, repo, commits[len(commits)-1], "v0.02-testtag-lw-1")
@@ -540,5 +601,24 @@ func createAnnotatedTag(t *testing.T, repo *git.Repository, commitHash plumbing.
 		},
 	}
 	_, err := repo.CreateTag(tagName, commitHash, tagOpts)
+	h.AssertNil(t, err)
+}
+
+func checkoutBranch(t *testing.T, repo *git.Repository, branchName string, newBranch bool) {
+	worktree, err := repo.Worktree()
+	h.AssertNil(t, err)
+
+	var fullBranchName string
+	if branchName == "" {
+		fullBranchName = "refs/heads/" + h.RandString(10)
+	} else {
+		fullBranchName = "refs/heads/" + branchName
+	}
+
+	checkoutOpts := &git.CheckoutOptions{
+		Branch: plumbing.ReferenceName(fullBranchName),
+		Create: newBranch,
+	}
+	err = worktree.Checkout(checkoutOpts)
 	h.AssertNil(t, err)
 }

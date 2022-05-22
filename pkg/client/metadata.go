@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -90,6 +91,19 @@ func generateTagsMap(repo *git.Repository) map[string][]TagInfo {
 	return commitTagMap
 }
 
+func generateBranchMap(repo *git.Repository) map[string][]string {
+	commitBranchMap := make(map[string][]string)
+	branches, err := repo.Branches()
+	if err != nil {
+		return commitBranchMap
+	}
+	branches.ForEach(func(ref *plumbing.Reference) error {
+		commitBranchMap[ref.Hash().String()] = append(commitBranchMap[ref.Hash().String()], getRefName(ref.Name().String()))
+		return nil
+	})
+	return commitBranchMap
+}
+
 // `git describe --tags --always`
 func parseGitDescribe(repo *git.Repository, headRef *plumbing.Reference, commitTagMap map[string][]TagInfo) string {
 	logOpts := &git.LogOptions{
@@ -102,16 +116,29 @@ func parseGitDescribe(repo *git.Repository, headRef *plumbing.Reference, commitT
 	}
 
 	latestTag := headRef.Hash().String()
+	commitsFromHEAD := 0
+	commitBranchMap := generateBranchMap(repo)
+	branchAtHEAD := getRefName(headRef.String())
+	currentBranch := branchAtHEAD
 	for {
 		commitInfo, err := commits.Next()
-		if err == nil {
-			if refs, exists := commitTagMap[commitInfo.Hash.String()]; exists {
-				latestTag = refs[0].Name
-				break
-			}
-		} else {
+		if err != nil {
 			break
 		}
+
+		if branchesAtCommit, exists := commitBranchMap[commitInfo.Hash.String()]; exists {
+			currentBranch = branchesAtCommit[0]
+		}
+		if refs, exists := commitTagMap[commitInfo.Hash.String()]; exists {
+			if branchAtHEAD != currentBranch && commitsFromHEAD != 0 {
+				// https://git-scm.com/docs/git-describe#_examples
+				latestTag = fmt.Sprintf("%s-%d-g%s", refs[0].Name, commitsFromHEAD, headRef.Hash().String())
+			} else {
+				latestTag = refs[0].Name
+			}
+			break
+		}
+		commitsFromHEAD += 1
 	}
 	return latestTag
 }
