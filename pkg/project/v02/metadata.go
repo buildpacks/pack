@@ -1,4 +1,4 @@
-package client
+package v02
 
 import (
 	"fmt"
@@ -22,11 +22,11 @@ type TagInfo struct {
 func GitMetadata(appPath string) *platform.ProjectSource {
 	repo, err := git.PlainOpen(appPath)
 	if err != nil {
-		print("unable to open git repo")
+		return nil
 	}
 	headRef, err := repo.Head()
 	if err != nil {
-		print("unable to parse head")
+		return nil
 	}
 	commitTagMap := generateTagsMap(repo)
 
@@ -112,7 +112,7 @@ func parseGitDescribe(repo *git.Repository, headRef *plumbing.Reference, commitT
 	}
 	commits, err := repo.Log(logOpts)
 	if err != nil {
-		print("no commits found")
+		return ""
 	}
 
 	latestTag := headRef.Hash().String()

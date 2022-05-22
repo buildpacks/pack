@@ -1,4 +1,4 @@
-package client
+package v02
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	h "github.com/buildpacks/pack/testhelpers"
+	"github.com/buildpacks/lifecycle/platform"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -18,12 +18,14 @@ import (
 	"github.com/heroku/color"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
+
+	h "github.com/buildpacks/pack/testhelpers"
 )
 
 func TestMetadata(t *testing.T) {
 	color.Disable(true)
 	defer color.Disable(false)
-	spec.Run(t, "Metadata", testMetadata, spec.Parallel(), spec.Report(report.Terminal{}))
+	spec.Run(t, "Metadata", testMetadata, spec.Sequential(), spec.Report(report.Terminal{}))
 }
 
 func testMetadata(t *testing.T, when spec.G, it spec.S) {
@@ -47,6 +49,37 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 
 	it.After(func() {
 		h.AssertNil(t, os.RemoveAll(repoPath))
+	})
+
+	when("#GitMetadata", func() {
+		it("returns proper metadata format", func() {
+			assert := h.NewAssertionManager(t)
+			remoteOpts := &config.RemoteConfig{
+				Name: "origin",
+				URLs: []string{"git@github.com:testorg/testproj.git", "git@github.com:testorg/testproj.git"},
+			}
+			repo.CreateRemote(remoteOpts)
+			createUnannotatedTag(t, repo, commits[len(commits)-1], "testTag")
+
+			output := GitMetadata(repoPath)
+			expectedOutput := &platform.ProjectSource{
+				Type: "git",
+				Version: map[string]interface{}{
+					"commit":   commits[len(commits)-1].String(),
+					"describe": "testTag",
+				},
+				Metadata: map[string]interface{}{
+					"refs": []string{"master", "testTag"},
+					"url":  "git@github.com:testorg/testproj.git",
+				},
+			}
+			assert.Equal(output, expectedOutput)
+		})
+
+		it("returns nil if error occurs while fetching metadata", func() {
+			output := GitMetadata("/git-path-not-found-ok")
+			h.AssertNil(t, output)
+		})
 	})
 
 	when("#generateTagsMap", func() {
@@ -396,7 +429,6 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 						h.AssertEq(t, output, expectedOutput)
 					})
 				})
-
 			})
 		})
 	})
@@ -522,22 +554,6 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, output, "git@github.com:testorg/testproj.git")
 		})
 
-		it("returns first remote's fetch url if remote `origin` does not exists", func() {
-			remoteOpts1 := &config.RemoteConfig{
-				Name: "not-origin",
-				URLs: []string{"git@gitlab.com:testorg/testproj.git", "git@gitlab.com:testorg/testproj.git"},
-			}
-			repo.CreateRemote(remoteOpts1)
-			remoteOpts2 := &config.RemoteConfig{
-				Name: "not-at-all-origin",
-				URLs: []string{"git@github.com:testorg/testproj.git", "git@github.com:testorg/testproj.git"},
-			}
-			repo.CreateRemote(remoteOpts2)
-
-			output := parseGitRemote(repo)
-			h.AssertEq(t, output, "git@gitlab.com:testorg/testproj.git")
-		})
-
 		it("returns empty string if no remote exists", func() {
 			output := parseGitRemote(repo)
 			h.AssertEq(t, output, "")
@@ -554,6 +570,13 @@ func testMetadata(t *testing.T, when spec.G, it spec.S) {
 			h.AssertEq(t, output, "git@fetch.com:testorg/testproj.git")
 		})
 	})
+
+	when("#getRefName", func() {
+		it("return proper ref for refs with `/`", func() {
+			output := getRefName("refs/tags/this/is/a/tag/with/slashes")
+			h.AssertEq(t, output, "this/is/a/tag/with/slashes")
+		})
+	})
 }
 
 func createCommits(t *testing.T, repo *git.Repository, repoPath string, numberOfCommits int) []plumbing.Hash {
@@ -564,12 +587,25 @@ func createCommits(t *testing.T, repo *git.Repository, repoPath string, numberOf
 	for i := 0; i < numberOfCommits; i++ {
 		file, err := ioutil.TempFile(repoPath, h.RandString(10))
 		h.AssertNil(t, err)
+		defer file.Close()
 
 		_, err = worktree.Add(filepath.Base(file.Name()))
 		h.AssertNil(t, err)
 
 		commitMsg := fmt.Sprintf("%s %d", "test commit number", i)
-		commitOpts := git.CommitOptions{}
+		commitOpts := git.CommitOptions{
+			All: true,
+			Author: &object.Signature{
+				Name:  "Test Author",
+				Email: "testauthor@test.com",
+				When:  time.Now(),
+			},
+			Committer: &object.Signature{
+				Name:  "Test Committer",
+				Email: "testcommitter@test.com",
+				When:  time.Now(),
+			},
+		}
 		commitHash, err := worktree.Commit(commitMsg, &commitOpts)
 		h.AssertNil(t, err)
 		commitHashes = append(commitHashes, commitHash)
