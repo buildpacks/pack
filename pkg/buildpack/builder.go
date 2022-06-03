@@ -3,6 +3,7 @@ package buildpack
 import (
 	"archive/tar"
 	"compress/gzip"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -211,12 +212,12 @@ func newLayoutImage(imageOS string) (*layoutImage, error) {
 	}
 
 	if imageOS == "windows" {
-		baseLayerReader, err := layer.WindowsBaseLayer()
-		if err != nil {
-			return nil, err
+		opener := func() (io.ReadCloser, error) {
+			reader, err := layer.WindowsBaseLayer()
+			return io.NopCloser(reader), err
 		}
 
-		baseLayer, err := tarball.LayerFromReader(baseLayerReader, tarball.WithCompressionLevel(gzip.DefaultCompression))
+		baseLayer, err := tarball.LayerFromOpener(opener, tarball.WithCompressionLevel(gzip.DefaultCompression))
 		if err != nil {
 			return nil, err
 		}
