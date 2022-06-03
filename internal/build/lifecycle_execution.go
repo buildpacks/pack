@@ -152,12 +152,12 @@ func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseF
 			}
 
 			l.logger.Info(style.Step("ANALYZING"))
-			if err := l.Analyze(ctx, l.opts.Image.String(), l.opts.Network, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.RunImage, l.opts.AdditionalTags, buildCache, phaseFactory); err != nil {
+			if err := l.Analyze(ctx, l.opts.Image.String(), l.opts.Network, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.RunImage, l.opts.AdditionalTags, buildCache, launchCache, phaseFactory); err != nil {
 				return err
 			}
 		} else {
 			l.logger.Info(style.Step("ANALYZING"))
-			if err := l.Analyze(ctx, l.opts.Image.String(), l.opts.Network, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.RunImage, l.opts.AdditionalTags, buildCache, phaseFactory); err != nil {
+			if err := l.Analyze(ctx, l.opts.Image.String(), l.opts.Network, l.opts.Publish, l.opts.DockerHost, l.opts.ClearCache, l.opts.RunImage, l.opts.AdditionalTags, buildCache, launchCache, phaseFactory); err != nil {
 				return err
 			}
 
@@ -350,8 +350,8 @@ func (l *LifecycleExecution) Restore(ctx context.Context, networkMode string, bu
 	return restore.Run(ctx)
 }
 
-func (l *LifecycleExecution) Analyze(ctx context.Context, repoName, networkMode string, publish bool, dockerHost string, clearCache bool, runImage string, additionalTags []string, cache Cache, phaseFactory PhaseFactory) error {
-	analyze, err := l.newAnalyze(repoName, networkMode, publish, dockerHost, clearCache, runImage, additionalTags, cache, phaseFactory)
+func (l *LifecycleExecution) Analyze(ctx context.Context, repoName, networkMode string, publish bool, dockerHost string, clearCache bool, runImage string, additionalTags []string, buildCache, launchCache Cache, phaseFactory PhaseFactory) error {
+	analyze, err := l.newAnalyze(repoName, networkMode, publish, dockerHost, clearCache, runImage, additionalTags, buildCache, launchCache, phaseFactory)
 	if err != nil {
 		return err
 	}
@@ -359,7 +359,7 @@ func (l *LifecycleExecution) Analyze(ctx context.Context, repoName, networkMode 
 	return analyze.Run(ctx)
 }
 
-func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bool, dockerHost string, clearCache bool, runImage string, additionalTags []string, buildCache Cache, phaseFactory PhaseFactory) (RunnerCleaner, error) {
+func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bool, dockerHost string, clearCache bool, runImage string, additionalTags []string, buildCache, launchCache Cache, phaseFactory PhaseFactory) (RunnerCleaner, error) {
 	args := []string{
 		repoName,
 	}
@@ -369,6 +369,17 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 			args = prependArg("-skip-layers", args)
 		} else {
 			args = append([]string{"-cache-dir", l.mountPaths.cacheDir()}, args...)
+		}
+	}
+
+	launchCacheOpt := NullOp()
+	if l.platformAPI.AtLeast("0.9") {
+		if clearCache {
+			args = prependArg("-skip-layers", args)
+		}
+		if !publish {
+			args = append([]string{"-launch-cache", l.mountPaths.launchCacheDir()}, args...)
+			launchCacheOpt = WithBinds(fmt.Sprintf("%s:%s", launchCache.Name(), l.mountPaths.launchCacheDir()))
 		}
 	}
 
@@ -452,7 +463,6 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 		return phaseFactory.New(configProvider), nil
 	}
 
-	// TODO: when platform API 0.2 is no longer supported we can delete this code: https://github.com/buildpacks/pack/issues/629.
 	configProvider := NewPhaseConfigProvider(
 		"analyzer",
 		l,
@@ -463,14 +473,9 @@ func (l *LifecycleExecution) newAnalyze(repoName, networkMode string, publish bo
 			fmt.Sprintf("%s=%d", builder.EnvGID, l.opts.Builder.GID()),
 		),
 		WithDaemonAccess(dockerHost),
-		WithArgs(
-			l.withLogLevel(
-				prependArg(
-					"-daemon",
-					args,
-				)...,
-			)...,
-		),
+		launchCacheOpt,
+		WithFlags(l.withLogLevel("-daemon")...),
+		WithArgs(args...),
 		flagsOpt,
 		WithNetwork(networkMode),
 		cacheOpt,

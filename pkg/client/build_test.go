@@ -1857,7 +1857,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.PullPolicy, image.PullNever)
 
-					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.14.0"]
+					args = fakeImageFetcher.FetchCalls["buildpacksio/lifecycle:0.14.1"]
 					h.AssertEq(t, args.Daemon, true)
 					h.AssertEq(t, args.PullPolicy, image.PullNever)
 					h.AssertEq(t, args.Platform, "linux/amd64")
