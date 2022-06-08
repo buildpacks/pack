@@ -248,23 +248,41 @@ jobs:
           prerelease: true
           files: pack-v${{ env.PACK_VERSION }}-*
           body: |
-            # pack v${{ env.PACK_VERSION }}
-            > This is a **beta** pre-release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice. Note that pack is intended for local image builds, and thus requires a Docker daemon. The [lifecycle](https://github.com/buildpack/lifecycle) should be used directly when building on cloud platforms.
+            > This is a **beta** pre-release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice.
 
             ## Prerequisites
 
-            - The [Docker daemon](https://www.docker.com/get-started) must be installed on your workstation or accessible over the network.
+            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/getting-started/) must be available to execute builds.
 
             ## Install
 
             #### Linux
 
-            ##### Command
+            ##### AMD64
 
             ```bash
             (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
             ```
 
+            ##### ARM64
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-linux-arm64.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
+
+            #### MacOS
+
+            ##### Intel
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-macos.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
+
+            ##### Apple Silicon
+
+            ```bash
+            (curl -sSL "https://github.com/buildpacks/pack/releases/download/v${{ env.PACK_VERSION }}/pack-v${{ env.PACK_VERSION }}-macos-arm64.tgz" | sudo tar -C /usr/local/bin/ --no-same-owner -xzv pack)
+            ```
             #### Manually
 
             1. Download the `.tgz` or `.zip` file for your platform
@@ -300,12 +318,11 @@ jobs:
           draft: true
           files: pack-v${{ env.PACK_VERSION }}-*
           body: |
-            # pack v${{ env.PACK_VERSION }}
-            > This is a **beta** release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice. Note that pack is intended for local image builds, and thus requires a Docker daemon. The [lifecycle](https://github.com/buildpack/lifecycle) should be used directly when building on cloud platforms.
+            > This is a **beta** release of the Cloud Native Buildpack local CLI. This platform implementation should be relatively stable and reliable, but breaking changes in the underlying [specification](https://github.com/buildpack/spec) may be implemented without notice.
 
             ## Prerequisites
 
-            - The [Docker daemon](https://www.docker.com/get-started) must be installed on your workstation or accessible over the network.
+            - A container runtime such as [Docker](https://www.docker.com/get-started) or [podman](https://podman.io/getting-started/) must be available to execute builds.
 
             ## Install
 
