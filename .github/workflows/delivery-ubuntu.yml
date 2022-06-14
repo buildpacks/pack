@@ -71,7 +71,7 @@ jobs:
 
             ###
             # NOTE: 'uses' does not suport interpolation so we have to manually define the
-            # followins steps per variant.
+            # following steps per variant.
             ###
 
             ###
