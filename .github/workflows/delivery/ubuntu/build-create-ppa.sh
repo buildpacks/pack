@@ -11,13 +11,14 @@ readonly MAINTANER_EMAIL="cncf-buildpacks-maintainers@lists.cncf.io"
 # verify the following are set.
 : "$PACKAGE_VERSION"
 : "$GITHUB_WORKSPACE"
+: "$GO_DEP_PACKAGE_NAME"
 
 function dependencies() {
     apt-get update
     apt-get install software-properties-common -y
     add-apt-repository ppa:longsleep/golang-backports -y
     apt-get update
-    apt-get install gnupg dput dh-make devscripts lintian golang -y
+    apt-get install gnupg dput dh-make devscripts lintian $GO_DEP_PACKAGE_NAME -y
 }
 
 function main() {
@@ -39,30 +40,36 @@ function main() {
     # copy our templated configuration files.
     cp "$PROG_DIR/debian/"* debian/
 
+    echo "======="
     echo "compat"
+    echo "======="
     cat debian/compat
     echo
-
+    echo "======="
     echo "changelog"
+    echo "======="
     cat debian/changelog
     echo
-
+    echo "======="
     echo "control"
+    echo "======="
     cat debian/control
     echo
-
+    echo "======="
     echo "rules"
+    echo "======="
     cat debian/rules
     echo
-
+    echo "======="
     echo "copyright"
+    echo "======="
     cat debian/copyright
     echo
 
     # Remove empty default files created by dh_make
-    rm debian/*.ex
-    rm debian/*.EX
-    rm debian/README.*
+    rm -f debian/*.ex
+    rm -f debian/*.EX
+    rm -f debian/README.*
 
     # build a source based debian package, Ubuntu ONLY accepts source packages.
     debuild -S
@@ -74,6 +81,7 @@ function import_gpg() {
   : "$GPG_PUBLIC_KEY"
   : "$GPG_PRIVATE_KEY"
 
+  echo "Importing GPG keys..."
   gpg --import <(echo "$GPG_PUBLIC_KEY")
   gpg --allow-secret-key-import --import <(echo "$GPG_PRIVATE_KEY")
 }

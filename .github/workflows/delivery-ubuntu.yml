@@ -58,6 +58,7 @@ jobs:
             env:
               ARCH: "any"
               GO_DEP_ENTRY: ${{matrix.go-dep-entry}}
+              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
               PACKAGE_NAME: "pack-cli"
               UBUNTU_VERSION:  ${{ matrix.target }}
               HOMEPAGE: "https://buildpacks.io"
@@ -82,9 +83,10 @@ jobs:
             with:
               entrypoint: .github/workflows/delivery/ubuntu/build-create-ppa.sh
             env:
-              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
+              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
               GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
 
           - name: Create PPA focal
             if: matrix.target == 'focal'
@@ -92,9 +94,10 @@ jobs:
             with:
               entrypoint: .github/workflows/delivery/ubuntu/build-create-ppa.sh
             env:
-              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
+              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
               GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
 
           - name: Create PPA jammy
             if: matrix.target == 'jammy'
@@ -102,9 +105,10 @@ jobs:
             with:
               entrypoint: .github/workflows/delivery/ubuntu/build-create-ppa.sh
             env:
-              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
+              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
               GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
 
             ###
             # TEST
@@ -115,7 +119,7 @@ jobs:
             with:
               entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
             env:
-              GO_DEP_PACKAGE_NAME: ${{matrix.go-dep-package-name}}
+              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
 
           - name: Test focal
             if: matrix.target == 'focal'
@@ -123,7 +127,7 @@ jobs:
             with:
               entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
             env:
-              GO_DEP_PACKAGE_NAME: ${{matrix.go-dep-package-name}}
+              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
 
           - name: Test jammy
             if: matrix.target == 'jammy'
@@ -131,7 +135,7 @@ jobs:
             with:
               entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
             env:
-              GO_DEP_PACKAGE_NAME: ${{matrix.go-dep-package-name}}
+              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
 
           - name: Upload
             run: |

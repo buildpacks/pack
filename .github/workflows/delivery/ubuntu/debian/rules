@@ -10,12 +10,5 @@ override_dh_auto_test:
 
 override_dh_auto_build:
 	mkdir -p /tmp/.cache/go-build
-	GOCACHE=/tmp/.cache/go-build GOFLAGS="-mod=vendor" LDFLAGS="" PACK_VERSION='{{PACK_VERSION}}' PATH="${PATH}:/usr/lib/go-{{I386_GO_VERSION}}/bin" dh_auto_build -- build
+	GOCACHE=/tmp/.cache/go-build GOFLAGS="-mod=vendor" LDFLAGS="" PACK_VERSION='{{PACK_VERSION}}' PATH="${PATH}:/usr/lib/{{GO_DEP_PACKAGE_NAME}}/bin" dh_auto_build -- build
 	rm -r /tmp/.cache/go-build
-
-
-
-# dh_make generated override targets
-# This is example for Cmake (See https://bugs.debian.org/641051 )
-#override_dh_auto_configure:
-#	dh_auto_configure -- #	-DCMAKE_LIBRARY_PATH=$(DEB_HOST_MULTIARCH)
