@@ -1,0 +1,138 @@
+name: delivery / ubuntu
+
+on:
+  release:
+    types:
+      - released
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: The release tag to distribute
+        required: true
+
+jobs:
+    create-ppa:
+      strategy:
+        fail-fast: false
+        matrix:
+          include:
+            - target: bionic
+              go-dep-entry: golang (>=1.16)
+              go-dep-package-name: golang
+            - target: focal
+              go-dep-entry: golang (>=1.16)
+              go-dep-package-name: golang
+            - target: jammy
+              go-dep-entry: golang (>=1.16)
+              go-dep-package-name: golang
+      name: create-ppa
+      runs-on: ubuntu-20.04
+      steps:
+          - name: Checkout code
+            uses: actions/checkout@v3
+
+          - name: Metadata
+            id: metadata
+            run: |
+                echo "::set-output name=date::$(date +"%a, %d %b %Y %T %z")"
+
+          - name: Determine version
+            uses: actions/github-script@v6
+            id: version
+            with:
+              result-encoding: string
+              script: |
+                let payload = context.payload;
+                let tag = (payload.release && payload.release.tag_name) || (payload.inputs && payload.inputs.tag_name);
+                if (!tag) {
+                  throw "ERROR: unable to determine tag"
+                }
+                return tag.replace(/^v/, '');
+
+          - name: Fill debian/*
+            uses: cschleiden/replace-tokens@v1
+            with:
+              files: '[".github/workflows/delivery/ubuntu/debian/*"]'
+              tokenPrefix: '{{'
+              tokenSuffix: '}}'
+            env:
+              ARCH: "any"
+              GO_DEP_ENTRY: ${{matrix.go-dep-entry}}
+              PACKAGE_NAME: "pack-cli"
+              UBUNTU_VERSION:  ${{ matrix.target }}
+              HOMEPAGE: "https://buildpacks.io"
+              PACK_VERSION: ${{ steps.version.outputs.result }}
+              REPO: "buildpacks/pack"
+              DESCRIPTION: "CLI for building apps using Cloud Native Buildpacks"
+              DATE_TIME: ${{ steps.metadata.outputs.date }}
+              MAINTAINER_NAME: "cncf-buildpacks"
+              MAINTAINER_EMAIL: "cncf-buildpacks-maintainers@lists.cncf.io"
+
+            ###
+            # NOTE: 'uses' does not suport interpolation so we have to manually define the
+            # followins steps per variant.
+            ###
+
+            ###
+            # CREATE
+            ###
+          - name: Create PPA bionic
+            if: matrix.target == 'bionic'
+            uses: docker://ubuntu:bionic
+            with:
+              entrypoint: .github/workflows/delivery/ubuntu/build-create-ppa.sh
+            env:
+              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
+              GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+              GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+
+          - name: Create PPA focal
+            if: matrix.target == 'focal'
+            uses: docker://ubuntu:focal
+            with:
+              entrypoint: .github/workflows/delivery/ubuntu/build-create-ppa.sh
+            env:
+              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
+              GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+              GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+
+          - name: Create PPA jammy
+            if: matrix.target == 'jammy'
+            uses: docker://ubuntu:jammy
+            with:
+              entrypoint: .github/workflows/delivery/ubuntu/build-create-ppa.sh
+            env:
+              PACKAGE_VERSION: ${{ steps.version.outputs.result }}
+              GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+              GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
+
+            ###
+            # TEST
+            ###
+          - name: Test bionic
+            if: matrix.target == 'bionic'
+            uses: docker://ubuntu:bionic
+            with:
+              entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
+            env:
+              GO_DEP_PACKAGE_NAME: ${{matrix.go-dep-package-name}}
+
+          - name: Test focal
+            if: matrix.target == 'focal'
+            uses: docker://ubuntu:focal
+            with:
+              entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
+            env:
+              GO_DEP_PACKAGE_NAME: ${{matrix.go-dep-package-name}}
+
+          - name: Test jammy
+            if: matrix.target == 'jammy'
+            uses: docker://ubuntu:jammy
+            with:
+              entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
+            env:
+              GO_DEP_PACKAGE_NAME: ${{matrix.go-dep-package-name}}
+
+          - name: Upload
+            run: |
+              dput "ppa:cncf-buildpacks/pack-cli" ./../*.changes

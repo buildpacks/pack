@@ -4,15 +4,23 @@ set -e
 set -o pipefail
 
 readonly PROG_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PACK_DIR="$(cd "${PROG_DIR}/../../.." && pwd)"
+readonly PACKAGE_NAME="pack-cli"
+readonly MAINTAINER="cncf-buildpacks"
+readonly MAINTANER_EMAIL="cncf-buildpacks-maintainers@lists.cncf.io"
 
 # verify the following are set.
 : "$PACKAGE_VERSION"
-: "$PACKAGE_NAME"
 : "$GITHUB_WORKSPACE"
 
-function main() {
+function dependencies() {
+    apt-get update
+    apt-get install software-properties-common -y
+    add-apt-repository ppa:longsleep/golang-backports -y
+    apt-get update
+    apt-get install gnupg dput dh-make devscripts lintian golang -y
+}
 
+function main() {
     # import secrets needed to sign packages we build with debuild
     import_gpg
 
@@ -29,7 +37,7 @@ function main() {
     dh_make -p "${PACKAGE_NAME}_${PACKAGE_VERSION}" --single --native --copyright apache --email "${MAINTAINER_EMAIL}" -y
 
     # copy our templated configuration files.
-    cp "$PACK_DIR/.github/workflows/delivery/ubuntu/debian/"* debian/
+    cp "$PROG_DIR/debian/"* debian/
 
     echo "compat"
     cat debian/compat
@@ -58,7 +66,6 @@ function main() {
 
     # build a source based debian package, Ubuntu ONLY accepts source packages.
     debuild -S
-
 }
 
 # import gpg keys from env
@@ -71,4 +78,5 @@ function import_gpg() {
   gpg --allow-secret-key-import --import <(echo "$GPG_PRIVATE_KEY")
 }
 
+dependencies
 main

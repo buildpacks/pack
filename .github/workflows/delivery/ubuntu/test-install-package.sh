@@ -2,7 +2,11 @@
 set -e
 set -o pipefail
 
+# verify the following are set.
+: "$GO_DEP_PACKAGE_NAME"
+
 apt-get update
+
 # install neede packaging utilities
 DEBIAN_FRONTEND=noninteractive apt-get install git devscripts debhelper software-properties-common -y
 
@@ -18,7 +22,7 @@ pushd $testdir
 # install golang using ppa
 add-apt-repository ppa:longsleep/golang-backports -y
 apt-get update
-apt-get install golang -y
+apt-get install $GO_DEP_PACKAGE_NAME -y
 
 # build a debian binary package
 debuild -b -us -uc
@@ -27,6 +31,6 @@ debuild -b -us -uc
 dpkg -i ../*.deb
 
 # list contents installed by the build debain package
-dpkg -L ${PACKAGE_NAME}
+dpkg -L pack-cli
 
 popd
