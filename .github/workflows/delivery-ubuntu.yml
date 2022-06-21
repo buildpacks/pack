@@ -10,22 +10,17 @@ on:
         description: The release tag to distribute
         required: true
 
+env:
+  MAINTAINER: "cncf-buildpacks"
+  MAINTANER_EMAIL: "cncf-buildpacks-maintainers@lists.cncf.io"
+  PACKAGE_NAME: "pack-cli"
+
 jobs:
-    create-ppa:
+    deliver-ppa:
       strategy:
         fail-fast: false
         matrix:
-          include:
-            - target: bionic
-              go-dep-entry: golang (>=1.16)
-              go-dep-package-name: golang
-            - target: focal
-              go-dep-entry: golang (>=1.16)
-              go-dep-package-name: golang
-            - target: jammy
-              go-dep-entry: golang (>=1.16)
-              go-dep-package-name: golang
-      name: create-ppa
+          target: [bionic, focal, jammy]
       runs-on: ubuntu-20.04
       steps:
           - name: Checkout code
@@ -57,86 +52,50 @@ jobs:
               tokenSuffix: '}}'
             env:
               ARCH: "any"
-              GO_DEP_ENTRY: ${{matrix.go-dep-entry}}
-              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
-              PACKAGE_NAME: "pack-cli"
-              UBUNTU_VERSION:  ${{ matrix.target }}
+              DATE_TIME: ${{ steps.metadata.outputs.date }}
+              DESCRIPTION: "CLI for building apps using Cloud Native Buildpacks"
+              GO_DEP_ENTRY: golang (>=1.16)
+              GO_DEP_PACKAGE_NAME: golang
+              GO_DEP_LIB_PATH: /usr/lib/go
               HOMEPAGE: "https://buildpacks.io"
               PACK_VERSION: ${{ steps.version.outputs.result }}
               REPO: "buildpacks/pack"
-              DESCRIPTION: "CLI for building apps using Cloud Native Buildpacks"
-              DATE_TIME: ${{ steps.metadata.outputs.date }}
-              MAINTAINER_NAME: "cncf-buildpacks"
-              MAINTAINER_EMAIL: "cncf-buildpacks-maintainers@lists.cncf.io"
+              UBUNTU_VERSION:  ${{ matrix.target }}
 
             ###
             # NOTE: 'uses' does not suport interpolation so we have to manually define the
             # following steps per variant.
             ###
 
-            ###
-            # CREATE
-            ###
-          - name: Create PPA bionic
+          - name: Deliver bionic
             if: matrix.target == 'bionic'
             uses: docker://ubuntu:bionic
             with:
-              entrypoint: .github/workflows/delivery/ubuntu/build-create-ppa.sh
+              entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
             env:
-              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
+              GO_DEP_PACKAGE_NAME: golang
               GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
               PACKAGE_VERSION: ${{ steps.version.outputs.result }}
 
-          - name: Create PPA focal
+          - name: Deliver focal
             if: matrix.target == 'focal'
             uses: docker://ubuntu:focal
             with:
-              entrypoint: .github/workflows/delivery/ubuntu/build-create-ppa.sh
+              entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
             env:
-              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
+              GO_DEP_PACKAGE_NAME: golang
               GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
               PACKAGE_VERSION: ${{ steps.version.outputs.result }}
 
-          - name: Create PPA jammy
+          - name: Deliver jammy
             if: matrix.target == 'jammy'
             uses: docker://ubuntu:jammy
             with:
-              entrypoint: .github/workflows/delivery/ubuntu/build-create-ppa.sh
+              entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
             env:
-              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
+              GO_DEP_PACKAGE_NAME: golang
               GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
               PACKAGE_VERSION: ${{ steps.version.outputs.result }}
-
-            ###
-            # TEST
-            ###
-          - name: Test bionic
-            if: matrix.target == 'bionic'
-            uses: docker://ubuntu:bionic
-            with:
-              entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
-            env:
-              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
-
-          - name: Test focal
-            if: matrix.target == 'focal'
-            uses: docker://ubuntu:focal
-            with:
-              entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
-            env:
-              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
-
-          - name: Test jammy
-            if: matrix.target == 'jammy'
-            uses: docker://ubuntu:jammy
-            with:
-              entrypoint: .github/workflows/delivery/ubuntu/test-install-package.sh
-            env:
-              GO_DEP_PACKAGE_NAME: ${{ matrix.go-dep-package-name }}
-
-          - name: Upload
-            run: |
-              dput "ppa:cncf-buildpacks/pack-cli" ./../*.changes
