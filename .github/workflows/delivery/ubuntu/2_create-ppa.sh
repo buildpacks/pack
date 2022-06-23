@@ -4,8 +4,8 @@ function create_ppa() {
   : "$GPG_PRIVATE_KEY"
   : "$PACKAGE_VERSION"
   : "$PACKAGE_NAME"
-  : "$MAINTAINER"
-  : "$MAINTANER_EMAIL"
+  : "$MAINTAINER_NAME"
+  : "$MAINTAINER_EMAIL"
   : "$SCRIPT_DIR"
 
   echo "> Importing GPG keys..."
@@ -19,7 +19,7 @@ function create_ppa() {
   echo "> Creating package: ${PACKAGE_NAME}_${PACKAGE_VERSION}"
   echo "> Generating skeleton of a debian package..."
   export DEBEMAIL=$MAINTAINER_EMAIL
-  export DEBFULLNAME=$MAINTAINER
+  export DEBFULLNAME=$MAINTAINER_NAME
   dh_make -p "${PACKAGE_NAME}_${PACKAGE_VERSION}" --single --native --copyright apache --email "${MAINTAINER_EMAIL}" -y
 
   echo "> Copying templated configuration files..."

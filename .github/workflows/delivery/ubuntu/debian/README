@@ -7,4 +7,4 @@ For extensive documentation see: https://buildpacks.io/docs/tools/pack/cli/pack/
 
 Please file issues and bugs at https://github.com/buildpacks/pack/
 
- -- {{MAINTAINER_NAME}} <{{MAINTAINER_EMAIL}}>  Mon, 05 Oct 2020 21:46:51 +0000
+ -- {{MAINTAINER_NAME}} <{{MAINTAINER_EMAIL}}>  {{DATE_TIME}}
