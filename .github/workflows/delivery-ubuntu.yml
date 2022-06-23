@@ -55,8 +55,8 @@ jobs:
               DATE_TIME: ${{ steps.metadata.outputs.date }}
               DESCRIPTION: "CLI for building apps using Cloud Native Buildpacks"
               GO_DEP_ENTRY: golang (>=1.16)
-              GO_DEP_PACKAGE_NAME: golang
               GO_DEP_LIB_PATH: /usr/lib/go
+              GO_DEP_PACKAGE_NAME: golang
               HOMEPAGE: "https://buildpacks.io"
               PACK_VERSION: ${{ steps.version.outputs.result }}
               REPO: "buildpacks/pack"
@@ -73,6 +73,7 @@ jobs:
             with:
               entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
             env:
+              DEBIAN_FRONTEND: "noninteractive"
               GO_DEP_PACKAGE_NAME: golang
               GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
@@ -84,6 +85,7 @@ jobs:
             with:
               entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
             env:
+              DEBIAN_FRONTEND: "noninteractive"
               GO_DEP_PACKAGE_NAME: golang
               GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
@@ -95,6 +97,7 @@ jobs:
             with:
               entrypoint: .github/workflows/delivery/ubuntu/deliver.sh
             env:
+              DEBIAN_FRONTEND: "noninteractive"
               GO_DEP_PACKAGE_NAME: golang
               GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
               GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
