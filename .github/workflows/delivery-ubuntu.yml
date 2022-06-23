@@ -11,8 +11,8 @@ on:
         required: true
 
 env:
-  MAINTAINER: "cncf-buildpacks"
-  MAINTANER_EMAIL: "cncf-buildpacks-maintainers@lists.cncf.io"
+  MAINTAINER_NAME: "cncf-buildpacks"
+  MAINTAINER_EMAIL: "cncf-buildpacks-maintainers@lists.cncf.io"
   PACKAGE_NAME: "pack-cli"
 
 jobs:
