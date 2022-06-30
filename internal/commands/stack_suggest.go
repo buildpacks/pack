@@ -23,8 +23,8 @@ var suggestedStacks = []suggestedStack{
 		ID:          "heroku-20",
 		Description: "The official Heroku stack based on Ubuntu 20.04",
 		Maintainer:  "Heroku",
-		BuildImage:  "heroku/pack:20-build",
-		RunImage:    "heroku/pack:20",
+		BuildImage:  "heroku/heroku:20-cnb-build",
+		RunImage:    "heroku/heroku:20-cnb",
 	},
 	{
 		ID:          "io.buildpacks.stacks.bionic",

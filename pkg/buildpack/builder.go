@@ -3,6 +3,7 @@ package buildpack
 import (
 	"archive/tar"
 	"compress/gzip"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -211,12 +212,12 @@ func newLayoutImage(imageOS string) (*layoutImage, error) {
 	}
 
 	if imageOS == "windows" {
-		baseLayerReader, err := layer.WindowsBaseLayer()
-		if err != nil {
-			return nil, err
+		opener := func() (io.ReadCloser, error) {
+			reader, err := layer.WindowsBaseLayer()
+			return io.NopCloser(reader), err
 		}
 
-		baseLayer, err := tarball.LayerFromReader(baseLayerReader, tarball.WithCompressionLevel(gzip.DefaultCompression))
+		baseLayer, err := tarball.LayerFromOpener(opener, tarball.WithCompressionLevel(gzip.DefaultCompression))
 		if err != nil {
 			return nil, err
 		}
@@ -268,15 +269,24 @@ func validateBuildpacks(mainBP Buildpack, depBPs []Buildpack) error {
 		bpd := bp.Descriptor()
 		for _, orderEntry := range bpd.Order {
 			for _, groupEntry := range orderEntry.Group {
-				if _, ok := depsWithRefs[groupEntry.BuildpackInfo.FullName()]; !ok {
+				bpFullName, err := groupEntry.BuildpackInfo.FullNameWithVersion()
+				if err != nil {
+					return errors.Wrapf(
+						err,
+						"buildpack %s must specify a version when referencing buildpack %s",
+						style.Symbol(bpd.Info.FullName()),
+						style.Symbol(bpFullName),
+					)
+				}
+				if _, ok := depsWithRefs[bpFullName]; !ok {
 					return errors.Errorf(
 						"buildpack %s references buildpack %s which is not present",
 						style.Symbol(bpd.Info.FullName()),
-						style.Symbol(groupEntry.FullName()),
+						style.Symbol(bpFullName),
 					)
 				}
 
-				depsWithRefs[groupEntry.BuildpackInfo.FullName()] = append(depsWithRefs[groupEntry.BuildpackInfo.FullName()], bpd.Info)
+				depsWithRefs[bpFullName] = append(depsWithRefs[bpFullName], bpd.Info)
 			}
 		}
 	}

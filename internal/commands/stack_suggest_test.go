@@ -35,8 +35,8 @@ func testStacksSuggestCommand(t *testing.T, when spec.G, it spec.S) {
     Stack ID: heroku-20
     Description: The official Heroku stack based on Ubuntu 20.04
     Maintainer: Heroku
-    Build Image: heroku/pack:20-build
-    Run Image: heroku/pack:20
+    Build Image: heroku/heroku:20-cnb-build
+    Run Image: heroku/heroku:20-cnb
 
     Stack ID: io.buildpacks.stacks.bionic
     Description: A minimal Paketo stack based on Ubuntu 18.04
