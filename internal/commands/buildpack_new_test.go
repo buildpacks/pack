@@ -57,7 +57,7 @@ func testBuildpackNewCommand(t *testing.T, when spec.G, it spec.S) {
 	when("BuildpackNew#Execute", func() {
 		it("uses the args to generate artifacts", func() {
 			mockClient.EXPECT().NewBuildpack(gomock.Any(), client.NewBuildpackOptions{
-				API:     "0.5",
+				API:     "0.8",
 				ID:      "example/some-cnb",
 				Path:    filepath.Join(tmpDir, "some-cnb"),
 				Version: "1.0.0",
