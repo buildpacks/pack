@@ -124,8 +124,12 @@ func (l *LifecycleExecution) PrevImageName() string {
 func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
 	phaseFactory := phaseFactoryCreator(l)
 	var buildCache Cache
-	if l.opts.CacheImage != "" {
-		cacheImage, err := name.ParseReference(l.opts.CacheImage, name.WeakValidation)
+	if l.opts.CacheImage != "" || l.opts.Cache.CacheType == "image" {
+		cacheImageName := l.opts.CacheImage
+		if cacheImageName == "" {
+			cacheImageName = l.opts.Cache.Source
+		}
+		cacheImage, err := name.ParseReference(cacheImageName, name.WeakValidation)
 		if err != nil {
 			return fmt.Errorf("invalid cache image name: %s", err)
 		}

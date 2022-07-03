@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/buildpacks/pack/internal/cache"
 	"github.com/buildpacks/pack/internal/config"
 	"github.com/buildpacks/pack/internal/style"
 	"github.com/buildpacks/pack/pkg/client"
@@ -28,6 +29,7 @@ type BuildFlags struct {
 	Interactive        bool
 	DockerHost         string
 	CacheImage         string
+	Cache              cache.CacheOpts
 	AppPath            string
 	Builder            string
 	Registry           string
@@ -159,6 +161,7 @@ func Build(logger logging.Logger, cfg config.Config, packClient PackClient) *cob
 				DefaultProcessType:       flags.DefaultProcessType,
 				ProjectDescriptorBaseDir: filepath.Dir(actualDescriptorPath),
 				ProjectDescriptor:        descriptor,
+				Cache:                    flags.Cache,
 				CacheImage:               flags.CacheImage,
 				Workspace:                flags.Workspace,
 				LifecycleImage:           lifecycleImage,
@@ -200,6 +203,7 @@ func buildCommandFlags(cmd *cobra.Command, buildFlags *BuildFlags, cfg config.Co
 	cmd.Flags().StringVarP(&buildFlags.AppPath, "path", "p", "", "Path to app dir or zip-formatted file (defaults to current working directory)")
 	cmd.Flags().StringSliceVarP(&buildFlags.Buildpacks, "buildpack", "b", nil, "Buildpack to use. One of:\n  a buildpack by id and version in the form of '<buildpack>@<version>',\n  path to a buildpack directory (not supported on Windows),\n  path/URL to a buildpack .tar or .tgz file, or\n  a packaged buildpack image name in the form of '<hostname>/<repo>[:<tag>]'"+stringSliceHelp("buildpack"))
 	cmd.Flags().StringVarP(&buildFlags.Builder, "builder", "B", cfg.DefaultBuilder, "Builder image")
+	cmd.Flags().Var(&buildFlags.Cache, "cache", "Cache used to define different cache options.")
 	cmd.Flags().StringVar(&buildFlags.CacheImage, "cache-image", "", `Cache build layers in remote registry. Requires --publish`)
 	cmd.Flags().BoolVar(&buildFlags.ClearCache, "clear-cache", false, "Clear image's associated cache before building")
 	cmd.Flags().StringVar(&buildFlags.DateTime, "creation-time", "", "Desired create time in the output image config. Accepted values are Unix timestamps (e.g., '1641013200'), or 'now'. Platform API version must be at least 0.9 to use this feature.")
@@ -235,6 +239,14 @@ This option may set DOCKER_HOST environment variable for the build container if 
 func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackClient, logger logging.Logger) error {
 	if flags.Registry != "" && !cfg.Experimental {
 		return client.NewExperimentError("Support for buildpack registries is currently experimental.")
+	}
+
+	if flags.Cache.String() != "" && flags.CacheImage != "" {
+		return errors.New("'cache' flag cannot be used with 'cache-image' flag.")
+	}
+
+	if flags.Cache.Format == "image" && !flags.Publish {
+		return errors.New("image cache format requires the 'publish' flag.")
 	}
 
 	if flags.CacheImage != "" && !flags.Publish {
