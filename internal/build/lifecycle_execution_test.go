@@ -331,8 +331,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		when("Error cases", func() {
-			when("passed invalid cache-image", func() {
-				it("fails", func() {
+			when("passed invalid", func() {
+				it("fails for cache-image", func() {
 					opts := build.LifecycleOptions{
 						Publish:      false,
 						ClearCache:   false,
@@ -343,6 +343,33 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						UseCreator:   false,
 						CacheImage:   "%%%",
 						Termui:       fakeTermui,
+					}
+
+					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)
+					h.AssertNil(t, err)
+
+					err = lifecycle.Run(context.Background(), func(execution *build.LifecycleExecution) build.PhaseFactory {
+						return fakePhaseFactory
+					})
+
+					h.AssertError(t, err, fmt.Sprintf("invalid cache image name: %s", "could not parse reference: %%!(NOVERB)"))
+				})
+
+				it("fails for cache flags", func() {
+					opts := build.LifecycleOptions{
+						Publish:      false,
+						ClearCache:   false,
+						RunImage:     "test",
+						Image:        imageName,
+						Builder:      fakeBuilder,
+						TrustBuilder: false,
+						UseCreator:   false,
+						Cache: cache.CacheOpts{
+							CacheType: "build",
+							Format:    "image",
+							Source:    "%%%",
+						},
+						Termui: fakeTermui,
 					}
 
 					lifecycle, err := build.NewLifecycleExecution(logger, docker, opts)

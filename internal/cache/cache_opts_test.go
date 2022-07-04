@@ -32,6 +32,11 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 					input:  "type=build;format=image;name=io.test.io/myorg/my-cache:build",
 					output: "type=build;format=image;name=io.test.io/myorg/my-cache:build",
 				},
+				{
+					name:   "Launch cache as Image",
+					input:  "type=launch;format=image;name=io.test.io/myorg/my-cache:build",
+					output: "type=launch;format=image;name=io.test.io/myorg/my-cache:build",
+				},
 			}
 
 			for _, testcase := range testcases {
@@ -75,6 +80,12 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 				{
 					name:       "Build cache as Image missing: type, name",
 					input:      "format=image",
+					output:     "cache 'name' is required",
+					shouldFail: true,
+				},
+				{
+					name:       "Launch cache as Image missing: name",
+					input:      "type=launch;format=image",
 					output:     "cache 'name' is required",
 					shouldFail: true,
 				},

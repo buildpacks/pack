@@ -30,7 +30,7 @@ func (c *CacheOpts) Set(value string) error {
 			value := strings.ToLower(parts[1])
 			switch key {
 			case "type":
-				if value != "build" {
+				if value != "build" && value != "launch" {
 					return errors.Errorf("invalid cache type '%s'", value)
 				}
 				c.CacheType = value
