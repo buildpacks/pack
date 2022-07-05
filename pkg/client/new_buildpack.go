@@ -104,7 +104,7 @@ func createBuildpackTOML(path, id, version, apiStr string, stacks []dist.Stack, 
 	buildpackTOML := dist.BuildpackDescriptor{
 		API:    api,
 		Stacks: stacks,
-		Info: dist.BuildpackInfo{
+		BpInfo: dist.BuildpackInfo{
 			ID:      id,
 			Version: version,
 		},

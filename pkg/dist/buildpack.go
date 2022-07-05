@@ -8,6 +8,7 @@ import (
 
 const AssumedBuildpackAPIVersion = "0.1"
 const BuildpacksDir = "/cnb/buildpacks"
+const ExtensionsDir = "/cnb/extensions"
 
 type BuildpackInfo struct {
 	ID          string    `toml:"id,omitempty" json:"id,omitempty" yaml:"id,omitempty"`

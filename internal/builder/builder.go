@@ -65,6 +65,7 @@ type Builder struct {
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
 	additionalBuildpacks []buildpack.Buildpack
+	additionalExtensions []buildpack.Buildpack
 	metadata             Metadata
 	mixins               []string
 	env                  map[string]string
@@ -72,6 +73,7 @@ type Builder struct {
 	StackID              string
 	replaceOrder         bool
 	order                dist.Order
+	orderExtensions      dist.Order
 }
 
 type orderTOML struct {
@@ -161,6 +163,10 @@ func addImgLabelsToBuildr(bldr *Builder) error {
 		return errors.Wrapf(err, "getting label %s", OrderLabel)
 	}
 
+	if _, err = dist.GetLabel(bldr.image, OrderExtensionsLabel, &bldr.orderExtensions); err != nil {
+		return errors.Wrapf(err, "getting label %s", OrderExtensionsLabel)
+	}
+
 	return nil
 }
 
@@ -181,6 +187,11 @@ func (b *Builder) Buildpacks() []dist.BuildpackInfo {
 	return b.metadata.Buildpacks
 }
 
+// Extensions returns the extensions list
+func (b *Builder) Extensions() []dist.BuildpackInfo {
+	return b.metadata.Extensions
+}
+
 // CreatedBy returns metadata around the creation of the builder
 func (b *Builder) CreatedBy() CreatorMetadata {
 	return b.metadata.CreatedBy
@@ -189,6 +200,11 @@ func (b *Builder) CreatedBy() CreatorMetadata {
 // Order returns the order
 func (b *Builder) Order() dist.Order {
 	return b.order
+}
+
+// OrderExtensions returns the order for extensions
+func (b *Builder) OrderExtensions() dist.Order {
+	return b.orderExtensions
 }
 
 // BaseImageName returns the name of the builder base image
@@ -231,7 +247,13 @@ func (b *Builder) GID() int {
 // AddBuildpack adds a buildpack to the builder
 func (b *Builder) AddBuildpack(bp buildpack.Buildpack) {
 	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
-	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().Info)
+	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().BpInfo)
+}
+
+// AddExtension adds an extension to the builder
+func (b *Builder) AddExtension(bp buildpack.Buildpack) {
+	b.additionalExtensions = append(b.additionalExtensions, bp)
+	b.metadata.Extensions = append(b.metadata.Extensions, bp.Descriptor().ExtInfo)
 }
 
 // SetLifecycle sets the lifecycle of the builder
@@ -248,6 +270,12 @@ func (b *Builder) SetEnv(env map[string]string) {
 // SetOrder sets the order of the builder
 func (b *Builder) SetOrder(order dist.Order) {
 	b.order = order
+	b.replaceOrder = true
+}
+
+// SetOrderExtensions sets the order of the builder
+func (b *Builder) SetOrderExtensions(order dist.Order) {
+	b.orderExtensions = order
 	b.replaceOrder = true
 }
 
@@ -273,7 +301,7 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		logger.Debugf("-> %s", style.Symbol(bpInfo.FullName()))
 	}
 
-	resolvedOrder, err := processOrder(b.metadata.Buildpacks, b.order)
+	resolvedOrder, err := processOrder(b.metadata.Buildpacks, b.order) // TODO: should this include the order for extensions?
 	if err != nil {
 		return errors.Wrap(err, "processing order")
 	}
@@ -332,8 +360,10 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		if err := b.image.AddLayer(orderTar); err != nil {
 			return errors.Wrap(err, "adding order.tar layer")
 		}
-
 		if err := dist.SetLabel(b.image, OrderLabel, b.order); err != nil {
+			return err
+		}
+		if err := dist.SetLabel(b.image, OrderExtensionsLabel, b.orderExtensions); err != nil {
 			return err
 		}
 	}
@@ -408,11 +438,11 @@ func (b *Builder) addBuildpacks(logger logging.Logger, tmpDir string, image imgu
 		if err != nil {
 			return errors.Wrapf(err,
 				"getting content hashes for buildpack %s",
-				style.Symbol(bp.Descriptor().Info.FullName()),
+				style.Symbol(bp.Descriptor().BpInfo.FullName()),
 			)
 		}
 
-		bpInfo := bp.Descriptor().Info
+		bpInfo := bp.Descriptor().BpInfo
 		// check against builder layers
 		if existingBPInfo, ok := bpLayers[bpInfo.ID][bpInfo.Version]; ok {
 			if existingBPInfo.LayerDiffID == diffID.String() {
@@ -433,7 +463,7 @@ func (b *Builder) addBuildpacks(logger logging.Logger, tmpDir string, image imgu
 		}
 
 		// check against other buildpacks to be added
-		if otherAdditionalBP, ok := buildpacksToAdd[bp.Descriptor().Info.FullName()]; ok {
+		if otherAdditionalBP, ok := buildpacksToAdd[bp.Descriptor().BpInfo.FullName()]; ok {
 			if otherAdditionalBP.diffID == diffID.String() {
 				logger.Debugf("Buildpack %s with same contents is already being added, skipping...", style.Symbol(bpInfo.FullName()))
 				continue
@@ -443,7 +473,7 @@ func (b *Builder) addBuildpacks(logger logging.Logger, tmpDir string, image imgu
 		}
 
 		// note: if same id@version is in additionalBuildpacks, last one wins (see warnings above)
-		buildpacksToAdd[bp.Descriptor().Info.FullName()] = buildpackToAdd{
+		buildpacksToAdd[bp.Descriptor().BpInfo.FullName()] = buildpackToAdd{
 			tarPath:   bpLayerTar,
 			diffID:    diffID.String(),
 			buildpack: bp,
@@ -451,11 +481,11 @@ func (b *Builder) addBuildpacks(logger logging.Logger, tmpDir string, image imgu
 	}
 
 	for _, bp := range buildpacksToAdd {
-		logger.Debugf("Adding buildpack %s (diffID=%s)", style.Symbol(bp.buildpack.Descriptor().Info.FullName()), bp.diffID)
+		logger.Debugf("Adding buildpack %s (diffID=%s)", style.Symbol(bp.buildpack.Descriptor().BpInfo.FullName()), bp.diffID)
 		if err := image.AddLayerWithDiffID(bp.tarPath, bp.diffID); err != nil {
 			return errors.Wrapf(err,
 				"adding layer tar for buildpack %s",
-				style.Symbol(bp.buildpack.Descriptor().Info.FullName()),
+				style.Symbol(bp.buildpack.Descriptor().BpInfo.FullName()),
 			)
 		}
 
@@ -533,7 +563,7 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 		if !compatible {
 			return fmt.Errorf(
 				"buildpack %s (Buildpack API %s) is incompatible with lifecycle %s (Buildpack API(s) %s)",
-				style.Symbol(bpd.Info.FullName()),
+				style.Symbol(bpd.BpInfo.FullName()),
 				bpd.API.String(),
 				style.Symbol(lifecycleDescriptor.Info.Version.String()),
 				strings.Join(lifecycleDescriptor.APIs.Buildpack.Supported.AsStrings(), ", "),

@@ -85,7 +85,7 @@ func (b *PackageBuilder) AddDependency(buildpack Buildpack) {
 
 func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error {
 	if err := dist.SetLabel(image, MetadataLabel, &Metadata{
-		BuildpackInfo: b.buildpack.Descriptor().Info,
+		BuildpackInfo: b.buildpack.Descriptor().BpInfo,
 		Stacks:        b.resolvedStacks(),
 	}); err != nil {
 		return err
@@ -102,12 +102,12 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 		if err != nil {
 			return errors.Wrapf(err,
 				"getting content hashes for buildpack %s",
-				style.Symbol(bp.Descriptor().Info.FullName()),
+				style.Symbol(bp.Descriptor().BpInfo.FullName()),
 			)
 		}
 
 		if err := image.AddLayerWithDiffID(bpLayerTar, diffID.String()); err != nil {
-			return errors.Wrapf(err, "adding layer tar for buildpack %s", style.Symbol(bp.Descriptor().Info.FullName()))
+			return errors.Wrapf(err, "adding layer tar for buildpack %s", style.Symbol(bp.Descriptor().BpInfo.FullName()))
 		}
 
 		dist.AddBuildpackToLayersMD(bpLayers, bp.Descriptor(), diffID.String())
@@ -262,7 +262,7 @@ func validateBuildpacks(mainBP Buildpack, depBPs []Buildpack) error {
 	depsWithRefs := map[string][]dist.BuildpackInfo{}
 
 	for _, bp := range depBPs {
-		depsWithRefs[bp.Descriptor().Info.FullName()] = nil
+		depsWithRefs[bp.Descriptor().BpInfo.FullName()] = nil
 	}
 
 	for _, bp := range append([]Buildpack{mainBP}, depBPs...) { // List of everything
@@ -274,19 +274,19 @@ func validateBuildpacks(mainBP Buildpack, depBPs []Buildpack) error {
 					return errors.Wrapf(
 						err,
 						"buildpack %s must specify a version when referencing buildpack %s",
-						style.Symbol(bpd.Info.FullName()),
+						style.Symbol(bpd.BpInfo.FullName()),
 						style.Symbol(bpFullName),
 					)
 				}
 				if _, ok := depsWithRefs[bpFullName]; !ok {
 					return errors.Errorf(
 						"buildpack %s references buildpack %s which is not present",
-						style.Symbol(bpd.Info.FullName()),
+						style.Symbol(bpd.BpInfo.FullName()),
 						style.Symbol(bpFullName),
 					)
 				}
 
-				depsWithRefs[bpFullName] = append(depsWithRefs[bpFullName], bpd.Info)
+				depsWithRefs[bpFullName] = append(depsWithRefs[bpFullName], bpd.BpInfo)
 			}
 		}
 	}
@@ -296,7 +296,7 @@ func validateBuildpacks(mainBP Buildpack, depBPs []Buildpack) error {
 			return errors.Errorf(
 				"buildpack %s is not used by buildpack %s",
 				style.Symbol(bp),
-				style.Symbol(mainBP.Descriptor().Info.FullName()),
+				style.Symbol(mainBP.Descriptor().BpInfo.FullName()),
 			)
 		}
 	}

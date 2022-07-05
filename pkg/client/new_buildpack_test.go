@@ -134,5 +134,5 @@ func assertBuildpackToml(t *testing.T, path string, id string) {
 	defer f.Close()
 
 	fmt.Printf("%s\n", buildpackDescriptor)
-	h.AssertEq(t, buildpackDescriptor.Info.ID, "example/my-cnb")
+	h.AssertEq(t, buildpackDescriptor.BpInfo.ID, "example/my-cnb")
 }

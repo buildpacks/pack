@@ -553,7 +553,7 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 	for id, bps := range bpLayers {
 		for ver, bp := range bps {
 			desc := dist.BuildpackDescriptor{
-				Info: dist.BuildpackInfo{
+				BpInfo: dist.BuildpackInfo{
 					ID:      id,
 					Version: ver,
 				},
@@ -568,10 +568,10 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 	}
 
 	sort.Slice(all, func(i, j int) bool {
-		if all[i].Info.ID != all[j].Info.ID {
-			return all[i].Info.ID < all[j].Info.ID
+		if all[i].BpInfo.ID != all[j].BpInfo.ID {
+			return all[i].BpInfo.ID < all[j].BpInfo.ID
 		}
-		return all[i].Info.Version < all[j].Info.Version
+		return all[i].BpInfo.Version < all[j].BpInfo.Version
 	})
 
 	return all, nil
@@ -764,7 +764,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				return fetchedBPs, order, errors.Wrap(err, "downloading buildpack")
 			}
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
-			order = appendBuildpackToOrder(order, mainBP.Descriptor().Info)
+			order = appendBuildpackToOrder(order, mainBP.Descriptor().BpInfo)
 		}
 	}
 
@@ -793,7 +793,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {
-		bpInfo := bp.Descriptor().Info
+		bpInfo := bp.Descriptor().BpInfo
 		c.logger.Debugf("Adding buildpack %s version %s to builder", style.Symbol(bpInfo.ID), style.Symbol(bpInfo.Version))
 		bldr.AddBuildpack(bp)
 	}

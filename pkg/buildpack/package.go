@@ -42,7 +42,7 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 		for bpVersion, bpInfo := range v {
 			desc := dist.BuildpackDescriptor{
 				API: bpInfo.API,
-				Info: dist.BuildpackInfo{
+				BpInfo: dist.BuildpackInfo{
 					ID:       bpID,
 					Version:  bpVersion,
 					Homepage: bpInfo.Homepage,
@@ -59,7 +59,7 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 					if err != nil {
 						return nil, errors.Wrapf(err,
 							"extracting buildpack %s layer (diffID %s)",
-							style.Symbol(desc.Info.FullName()),
+							style.Symbol(desc.BpInfo.FullName()),
 							style.Symbol(diffID),
 						)
 					}
@@ -67,7 +67,7 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 				},
 			}
 
-			if desc.Info.Match(md.BuildpackInfo) { // This is the order buildpack of the package
+			if desc.BpInfo.Match(md.BuildpackInfo) { // This is the order buildpack of the package
 				mainBP = FromBlob(desc, b)
 			} else {
 				depBPs = append(depBPs, FromBlob(desc, b))

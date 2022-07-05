@@ -151,7 +151,7 @@ func decomposeBuildpack(blob blob.Blob, imageOS string) (mainBP Buildpack, depBP
 			return mainBP, depBPs, errors.Wrapf(err, "get tar writer factory for OS %s", style.Symbol(imageOS))
 		}
 
-		mainBP, err = FromRootBlob(blob, layerWriterFactory)
+		mainBP, err = FromBuildpackRootBlob(blob, layerWriterFactory)
 		if err != nil {
 			return mainBP, depBPs, errors.Wrap(err, "reading buildpack")
 		}

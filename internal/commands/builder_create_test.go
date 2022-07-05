@@ -23,9 +23,16 @@ const validConfig = `
 [[buildpacks]]
   id = "some.buildpack"
 
+[[extensions]]
+  id = "some.extension"
+
 [[order]]
 	[[order.group]]
 		id = "some.buildpack"
+
+[[order-extensions]]
+	[[order-extensions.group]]
+		id = "some.extension"
 
 `
 

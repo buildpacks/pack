@@ -37,7 +37,7 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 
 			buildpackDescriptor := dist.BuildpackDescriptor{
 				API:    bpLayerInfo.API,
-				Info:   bpInfo,
+				BpInfo: bpInfo,
 				Stacks: bpLayerInfo.Stacks,
 				Order:  bpLayerInfo.Order,
 			}

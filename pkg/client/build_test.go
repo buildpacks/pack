@@ -685,7 +685,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 			it("builder order is overwritten", func() {
 				additionalBP := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 					API: api.MustParse("0.3"),
-					Info: dist.BuildpackInfo{
+					BpInfo: dist.BuildpackInfo{
 						ID:      "buildpack.add.1.id",
 						Version: "buildpack.add.1.version",
 					},
@@ -753,7 +753,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it("builder order is prepended", func() {
 					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
-						Info: dist.BuildpackInfo{
+						BpInfo: dist.BuildpackInfo{
 							ID:      "buildpack.add.1.id",
 							Version: "buildpack.add.1.version",
 						},
@@ -763,7 +763,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
-						Info: dist.BuildpackInfo{
+						BpInfo: dist.BuildpackInfo{
 							ID:      "buildpack.add.2.id",
 							Version: "buildpack.add.2.version",
 						},
@@ -817,7 +817,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it("builder order is appended", func() {
 					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
-						Info: dist.BuildpackInfo{
+						BpInfo: dist.BuildpackInfo{
 							ID:      "buildpack.add.1.id",
 							Version: "buildpack.add.1.version",
 						},
@@ -827,7 +827,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
-						Info: dist.BuildpackInfo{
+						BpInfo: dist.BuildpackInfo{
 							ID:      "buildpack.add.2.id",
 							Version: "buildpack.add.2.version",
 						},
@@ -882,7 +882,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it("builder order is appended", func() {
 					additionalBP1 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
-						Info: dist.BuildpackInfo{
+						BpInfo: dist.BuildpackInfo{
 							ID:      "buildpack.add.1.id",
 							Version: "buildpack.add.1.version",
 						},
@@ -892,7 +892,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					additionalBP2 := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
-						Info: dist.BuildpackInfo{
+						BpInfo: dist.BuildpackInfo{
 							ID:      "buildpack.add.2.id",
 							Version: "buildpack.add.2.version",
 						},
@@ -947,7 +947,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it("resolves buildpack from builder", func() {
 					buildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
-						Info: dist.BuildpackInfo{
+						BpInfo: dist.BuildpackInfo{
 							ID:      "metabuildpack.id",
 							Version: "metabuildpack.version",
 						},
@@ -986,7 +986,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 				it.Before(func() {
 					metaBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
-						Info: dist.BuildpackInfo{
+						BpInfo: dist.BuildpackInfo{
 							ID:       "meta.buildpack.id",
 							Version:  "meta.buildpack.version",
 							Homepage: "http://meta.buildpack",
@@ -1005,7 +1005,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 					childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 						API: api.MustParse("0.3"),
-						Info: dist.BuildpackInfo{
+						BpInfo: dist.BuildpackInfo{
 							ID:       "child.buildpack.id",
 							Version:  "child.buildpack.version",
 							Homepage: "http://child.buildpack",
@@ -1477,7 +1477,7 @@ func testBuild(t *testing.T, when spec.G, it spec.S) {
 
 						childBuildpackTar := ifakes.CreateBuildpackTar(t, tmpDir, dist.BuildpackDescriptor{
 							API: api.MustParse("0.3"),
-							Info: dist.BuildpackInfo{
+							BpInfo: dist.BuildpackInfo{
 								ID:      "example/foo",
 								Version: "1.0.0",
 							},

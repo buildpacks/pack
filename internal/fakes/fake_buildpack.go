@@ -45,13 +45,13 @@ func WithOpenError(err error) FakeBuildpackOption {
 
 // NewFakeBuildpack creates a fake buildpacks with contents:
 //
-// 	\_ /cnbs/buildpacks/{ID}
-// 	\_ /cnbs/buildpacks/{ID}/{version}
-// 	\_ /cnbs/buildpacks/{ID}/{version}/buildpack.toml
-// 	\_ /cnbs/buildpacks/{ID}/{version}/bin
-// 	\_ /cnbs/buildpacks/{ID}/{version}/bin/build
+// 	\_ /cnb/buildpacks/{ID}
+// 	\_ /cnb/buildpacks/{ID}/{version}
+// 	\_ /cnb/buildpacks/{ID}/{version}/buildpack.toml
+// 	\_ /cnb/buildpacks/{ID}/{version}/bin
+// 	\_ /cnb/buildpacks/{ID}/{version}/bin/build
 //  	build-contents
-// 	\_ /cnbs/buildpacks/{ID}/{version}/bin/detect
+// 	\_ /cnb/buildpacks/{ID}/{version}/bin/detect
 //  	detect-contents
 func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options ...FakeBuildpackOption) (buildpack.Buildpack, error) {
 	return &fakeBuildpack{
@@ -83,7 +83,7 @@ func (b *fakeBuildpack) Open() (io.ReadCloser, error) {
 	tarBuilder := archive.TarBuilder{}
 	ts := archive.NormalizedDateTime
 	tarBuilder.AddDir(fmt.Sprintf("/cnb/buildpacks/%s", b.descriptor.EscapedID()), b.chmod, ts)
-	bpDir := fmt.Sprintf("/cnb/buildpacks/%s/%s", b.descriptor.EscapedID(), b.descriptor.Info.Version)
+	bpDir := fmt.Sprintf("/cnb/buildpacks/%s/%s", b.descriptor.EscapedID(), b.descriptor.BpInfo.Version)
 	tarBuilder.AddDir(bpDir, b.chmod, ts)
 	tarBuilder.AddFile(bpDir+"/buildpack.toml", b.chmod, ts, buf.Bytes())
 

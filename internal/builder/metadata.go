@@ -3,12 +3,14 @@ package builder
 import "github.com/buildpacks/pack/pkg/dist"
 
 const (
-	OrderLabel = "io.buildpacks.buildpack.order"
+	OrderLabel           = "io.buildpacks.buildpack.order"
+	OrderExtensionsLabel = "io.buildpacks.buildpack.order-extensions"
 )
 
 type Metadata struct {
 	Description string               `json:"description"`
 	Buildpacks  []dist.BuildpackInfo `json:"buildpacks"`
+	Extensions  []dist.BuildpackInfo `json:"extensions"`
 	Stack       StackMetadata        `json:"stack"`
 	Lifecycle   LifecycleMetadata    `json:"lifecycle"`
 	CreatedBy   CreatorMetadata      `json:"createdBy"`

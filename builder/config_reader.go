@@ -15,11 +15,13 @@ import (
 
 // Config is a builder configuration file
 type Config struct {
-	Description string              `toml:"description"`
-	Buildpacks  BuildpackCollection `toml:"buildpacks"`
-	Order       dist.Order          `toml:"order"`
-	Stack       StackConfig         `toml:"stack"`
-	Lifecycle   LifecycleConfig     `toml:"lifecycle"`
+	Description     string              `toml:"description"`
+	Buildpacks      BuildpackCollection `toml:"buildpacks"`
+	Extensions      BuildpackCollection `toml:"extensions"`
+	Order           dist.Order          `toml:"order"`
+	OrderExtensions dist.Order          `toml:"order-extensions"`
+	Stack           StackConfig         `toml:"stack"`
+	Lifecycle       LifecycleConfig     `toml:"lifecycle"`
 }
 
 // BuildpackCollection is a list of BuildpackConfigs

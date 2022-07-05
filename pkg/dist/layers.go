@@ -30,7 +30,7 @@ func LayerDiffID(layerTarPath string) (v1.Hash, error) {
 }
 
 func AddBuildpackToLayersMD(layerMD BuildpackLayers, descriptor BuildpackDescriptor, diffID string) {
-	bpInfo := descriptor.Info
+	bpInfo := descriptor.BpInfo
 	if _, ok := layerMD[bpInfo.ID]; !ok {
 		layerMD[bpInfo.ID] = map[string]BuildpackLayerInfo{}
 	}

@@ -78,7 +78,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 				Platform: dist.Platform{OS: "linux"},
 				Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 					API:    api.MustParse("0.3"),
-					Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
+					BpInfo: dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
 					Stacks: []dist.Stack{{ID: "some.stack.id"}},
 				})},
 			},
@@ -149,7 +149,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					shouldFetchPackageImageWith(true, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "urn:cnb:registry:example/foo@1.1.0", buildpackDownloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().BpInfo.ID, "example/foo")
 				})
 			})
 
@@ -165,7 +165,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					shouldFetchPackageImageWith(true, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "example/foo@1.1.0", buildpackDownloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().BpInfo.ID, "example/foo")
 				})
 			})
 		})
@@ -192,7 +192,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					shouldFetchPackageImageWith(true, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().BpInfo.ID, "example/foo")
 				})
 			})
 
@@ -208,7 +208,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					shouldFetchPackageImageWith(true, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().BpInfo.ID, "example/foo")
 				})
 			})
 
@@ -224,7 +224,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					shouldFetchPackageImageWith(false, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().BpInfo.ID, "example/foo")
 				})
 			})
 
@@ -238,7 +238,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					shouldFetchPackageImageWith(false, image.PullAlways)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), packageImage.Name(), buildpackDownloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().BpInfo.ID, "example/foo")
 				})
 			})
 
@@ -254,7 +254,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 					shouldFetchPackageImageWith(false, image.PullNever)
 					mainBP, _, err := buildpackDownloader.Download(context.TODO(), "", buildpackDownloadOptions)
 					h.AssertNil(t, err)
-					h.AssertEq(t, mainBP.Descriptor().Info.ID, "example/foo")
+					h.AssertEq(t, mainBP.Descriptor().BpInfo.ID, "example/foo")
 				})
 			})
 
@@ -279,7 +279,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 				mockDownloader.EXPECT().Download(gomock.Any(), buildpackURI).Return(blob.NewBlob(buildpackPath), nil).AnyTimes()
 				mainBP, _, err := buildpackDownloader.Download(context.TODO(), buildpackURI, buildpackDownloadOptions)
 				h.AssertNil(t, err)
-				h.AssertEq(t, mainBP.Descriptor().Info.ID, "bp.one")
+				h.AssertEq(t, mainBP.Descriptor().BpInfo.ID, "bp.one")
 			})
 			it("should successfully retrieve package from relative path", func() {
 				buildpackPath := filepath.Join("testdata", "buildpack")
@@ -291,7 +291,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 				}
 				mainBP, _, err := buildpackDownloader.Download(context.TODO(), "buildpack", buildpackDownloadOptions)
 				h.AssertNil(t, err)
-				h.AssertEq(t, mainBP.Descriptor().Info.ID, "bp.one")
+				h.AssertEq(t, mainBP.Descriptor().BpInfo.ID, "bp.one")
 			})
 		})
 		when("package image is not a valid package", func() {

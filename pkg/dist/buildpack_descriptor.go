@@ -12,14 +12,15 @@ import (
 )
 
 type BuildpackDescriptor struct {
-	API    *api.Version  `toml:"api"`
-	Info   BuildpackInfo `toml:"buildpack"`
-	Stacks []Stack       `toml:"stacks"`
-	Order  Order         `toml:"order"`
+	API     *api.Version  `toml:"api"`
+	BpInfo  BuildpackInfo `toml:"buildpack"`
+	ExtInfo BuildpackInfo `toml:"extension"`
+	Stacks  []Stack       `toml:"stacks"`
+	Order   Order         `toml:"order"`
 }
 
 func (b *BuildpackDescriptor) EscapedID() string {
-	return strings.ReplaceAll(b.Info.ID, "/", "_")
+	return strings.ReplaceAll(b.BpInfo.ID, "/", "_")
 }
 
 func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins []string, validateRunStageMixins bool) error {
@@ -45,9 +46,24 @@ func (b *BuildpackDescriptor) EnsureStackSupport(stackID string, providedMixins 
 	_, missing, _ := stringset.Compare(providedMixins, bpMixins)
 	if len(missing) > 0 {
 		sort.Strings(missing)
-		return fmt.Errorf("buildpack %s requires missing mixin(s): %s", style.Symbol(b.Info.FullName()), strings.Join(missing, ", "))
+		return fmt.Errorf("buildpack %s requires missing mixin(s): %s", style.Symbol(b.BpInfo.FullName()), strings.Join(missing, ", "))
 	}
 	return nil
+}
+
+func (b *BuildpackDescriptor) Info() BuildpackInfo {
+	if b.IsExtension() {
+		return b.ExtInfo
+	}
+	return b.BpInfo
+}
+
+func (b *BuildpackDescriptor) IsBuildpack() bool {
+	return b.BpInfo.ID != ""
+}
+
+func (b *BuildpackDescriptor) IsExtension() bool {
+	return b.ExtInfo.ID != ""
 }
 
 func (b *BuildpackDescriptor) findMixinsForStack(stackID string) ([]string, error) {
@@ -56,5 +72,5 @@ func (b *BuildpackDescriptor) findMixinsForStack(stackID string) ([]string, erro
 			return s.Mixins, nil
 		}
 	}
-	return nil, fmt.Errorf("buildpack %s does not support stack %s", style.Symbol(b.Info.FullName()), style.Symbol(stackID))
+	return nil, fmt.Errorf("buildpack %s does not support stack %s", style.Symbol(b.BpInfo.FullName()), style.Symbol(stackID))
 }

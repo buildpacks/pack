@@ -30,8 +30,8 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 			mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 			h.AssertNil(t, err)
 
-			h.AssertEq(t, mainBP.Descriptor().Info.ID, "io.buildpacks.samples.hello-universe")
-			h.AssertEq(t, mainBP.Descriptor().Info.Version, "0.0.1")
+			h.AssertEq(t, mainBP.Descriptor().BpInfo.ID, "io.buildpacks.samples.hello-universe")
+			h.AssertEq(t, mainBP.Descriptor().BpInfo.Version, "0.0.1")
 			h.AssertEq(t, len(depBPs), 2)
 		})
 
@@ -46,13 +46,13 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 				_, contents, err := archive.ReadTarEntry(
 					reader,
 					fmt.Sprintf("/cnb/buildpacks/%s/%s/buildpack.toml",
-						bp.Descriptor().Info.ID,
-						bp.Descriptor().Info.Version,
+						bp.Descriptor().BpInfo.ID,
+						bp.Descriptor().BpInfo.Version,
 					),
 				)
 				h.AssertNil(t, err)
-				h.AssertContains(t, string(contents), bp.Descriptor().Info.ID)
-				h.AssertContains(t, string(contents), bp.Descriptor().Info.Version)
+				h.AssertContains(t, string(contents), bp.Descriptor().BpInfo.ID)
+				h.AssertContains(t, string(contents), bp.Descriptor().BpInfo.Version)
 			}
 		})
 	})
@@ -70,7 +70,7 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 			it("returns false", func() {
 				buildpackBlob, err := fakes.NewFakeBuildpackBlob(dist.BuildpackDescriptor{
 					API: api.MustParse("0.3"),
-					Info: dist.BuildpackInfo{
+					BpInfo: dist.BuildpackInfo{
 						ID:      "bp.id",
 						Version: "bp.version",
 					},
