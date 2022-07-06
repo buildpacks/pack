@@ -124,7 +124,7 @@ func (l *LifecycleExecution) PrevImageName() string {
 func (l *LifecycleExecution) Run(ctx context.Context, phaseFactoryCreator PhaseFactoryCreator) error {
 	phaseFactory := phaseFactoryCreator(l)
 	var buildCache Cache
-	if l.opts.CacheImage != "" || (l.opts.Cache.CacheType == "build" && l.opts.Cache.Format == "image") {
+	if l.opts.CacheImage != "" || (l.opts.Cache.CacheType == cache.Build && l.opts.Cache.Format == cache.CacheImage) {
 		cacheImageName := l.opts.CacheImage
 		if cacheImageName == "" {
 			cacheImageName = l.opts.Cache.Source

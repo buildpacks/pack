@@ -105,5 +105,41 @@ func testCacheOpts(t *testing.T, when spec.G, it spec.S) {
 				}
 			}
 		})
+
+		it("image cache format with invalid options", func() {
+			testcases := []CacheOptTestCase{
+				{
+					name:       "Invalid cache type",
+					input:      "type=invalid_cache;format=image;name=io.test.io/myorg/my-cache:build",
+					output:     "invalid cache type 'invalid_cache'",
+					shouldFail: true,
+				},
+				{
+					name:       "Invalid cache format",
+					input:      "type=launch;format=invalid_format;name=io.test.io/myorg/my-cache:build",
+					output:     "invalid cache format 'invalid_format'",
+					shouldFail: true,
+				},
+				{
+					name:       "Not a key=value pair",
+					input:      "launch;format=image;name=io.test.io/myorg/my-cache:build",
+					output:     "invalid field 'launch' must be a key=value pair",
+					shouldFail: true,
+				},
+				{
+					name:       "Extra semicolon",
+					input:      "type=launch;format=image;name=io.test.io/myorg/my-cache:build;",
+					output:     "invalid field '' must be a key=value pair",
+					shouldFail: true,
+				},
+			}
+
+			for _, testcase := range testcases {
+				var cacheFlags CacheOpts
+				t.Logf("Testing cache type: %s", testcase.name)
+				err := cacheFlags.Set(testcase.input)
+				h.AssertError(t, err, testcase.output)
+			}
+		})
 	})
 }

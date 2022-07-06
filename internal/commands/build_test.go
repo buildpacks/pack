@@ -369,7 +369,18 @@ func testBuildCommand(t *testing.T, when spec.G, it spec.S) {
 				it("errors", func() {
 					command.SetArgs([]string{"--builder", "my-builder", "image", "--cache-image", "some-cache-image", "--cache", "type=build;format=image;name=myorg/myimage:cache"})
 					err := command.Execute()
-					h.AssertError(t, err, "'cache' flag cannot be used with 'cache-image' flag.")
+					h.AssertError(t, err, "'cache' flag with 'image' format cannot be used with 'cache-image' flag")
+				})
+			})
+			when("''type=launch;format=image' is used", func() {
+				it("warns", func() {
+					mockClient.EXPECT().
+						Build(gomock.Any(), EqBuildOptionsWithCacheFlags("type=launch;format=image;name=myorg/myimage:cache")).
+						Return(nil)
+
+					command.SetArgs([]string{"--builder", "my-builder", "image", "--cache", "type=launch;format=image;name=myorg/myimage:cache", "--publish"})
+					h.AssertNil(t, command.Execute())
+					h.AssertContains(t, outBuf.String(), "Warning: cache definition: 'launch' cache in format 'image' is not supported.")
 				})
 			})
 		})

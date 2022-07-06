@@ -352,7 +352,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						return fakePhaseFactory
 					})
 
-					h.AssertError(t, err, fmt.Sprintf("invalid cache image name: %s", "could not parse reference: %%!(NOVERB)"))
+					h.AssertError(t, err, fmt.Sprintf("invalid cache image name: %s", "could not parse reference: %%"))
 				})
 
 				it("fails for cache flags", func() {
@@ -365,8 +365,8 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						TrustBuilder: false,
 						UseCreator:   false,
 						Cache: cache.CacheOpts{
-							CacheType: "build",
-							Format:    "image",
+							CacheType: cache.Build,
+							Format:    cache.CacheImage,
 							Source:    "%%%",
 						},
 						Termui: fakeTermui,
@@ -379,7 +379,7 @@ func testLifecycleExecution(t *testing.T, when spec.G, it spec.S) {
 						return fakePhaseFactory
 					})
 
-					h.AssertError(t, err, fmt.Sprintf("invalid cache image name: %s", "could not parse reference: %%!(NOVERB)"))
+					h.AssertError(t, err, fmt.Sprintf("invalid cache image name: %s", "could not parse reference: %%"))
 				})
 			})
 		})

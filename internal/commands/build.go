@@ -241,15 +241,15 @@ func validateBuildFlags(flags *BuildFlags, cfg config.Config, packClient PackCli
 		return client.NewExperimentError("Support for buildpack registries is currently experimental.")
 	}
 
-	if flags.Cache.CacheType == "launch" && flags.Cache.Format == "image" {
+	if flags.Cache.CacheType == cache.Launch && flags.Cache.Format == cache.CacheImage {
 		logger.Warn("cache definition: 'launch' cache in format 'image' is not supported.")
 	}
 
-	if flags.Cache.String() != "" && flags.CacheImage != "" {
-		return errors.New("'cache' flag cannot be used with 'cache-image' flag.")
+	if flags.Cache.Format == cache.CacheImage && flags.CacheImage != "" {
+		return errors.New("'cache' flag with 'image' format cannot be used with 'cache-image' flag.")
 	}
 
-	if flags.Cache.Format == "image" && !flags.Publish {
+	if flags.Cache.Format == cache.CacheImage && !flags.Publish {
 		return errors.New("image cache format requires the 'publish' flag")
 	}
 

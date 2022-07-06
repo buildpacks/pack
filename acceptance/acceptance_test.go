@@ -1759,6 +1759,7 @@ func testAcceptance(
 					when("--cache with options for build cache as image", func() {
 						var cacheImageName, cacheFlags string
 						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.Cache), "")
 							cacheImageName = fmt.Sprintf("%s-cache", repoName)
 							cacheFlags = fmt.Sprintf("type=build;format=image;name=%s", cacheImageName)
 						})
