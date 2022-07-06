@@ -11,12 +11,12 @@ type Buildpacks struct {
 	Include []string          `toml:"include"`
 	Exclude []string          `toml:"exclude"`
 	Group   []types.Buildpack `toml:"group"`
-	Env     Env               `toml:"env"`
+	Build   Build             `toml:"build"`
 	Builder string            `toml:"builder"`
 }
 
-type Env struct {
-	Build []types.EnvVar `toml:"build"`
+type Build struct {
+	Env []types.EnvVar `toml:"env"`
 }
 
 type Project struct {
@@ -51,7 +51,7 @@ func NewDescriptor(projectTomlContents string) (types.Descriptor, error) {
 			Include:    versionedDescriptor.IO.Buildpacks.Include,
 			Exclude:    versionedDescriptor.IO.Buildpacks.Exclude,
 			Buildpacks: versionedDescriptor.IO.Buildpacks.Group,
-			Env:        versionedDescriptor.IO.Buildpacks.Env.Build,
+			Env:        versionedDescriptor.IO.Buildpacks.Build.Env,
 			Builder:    versionedDescriptor.IO.Buildpacks.Builder,
 		},
 		Metadata:      versionedDescriptor.Project.Metadata,

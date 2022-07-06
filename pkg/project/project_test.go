@@ -44,7 +44,7 @@ id = "example/lua"
 version = "1.0"
 [[io.buildpacks.group]]
 uri = "https://example.com/buildpack"
-[[io.buildpacks.env.build]]
+[[io.buildpacks.build.env]]
 name = "JAVA_OPTS"
 value = "-Xmx300m"
 `
