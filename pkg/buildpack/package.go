@@ -25,8 +25,8 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 		)
 	}
 
-	bpLayers := dist.BuildpackLayers{}
-	ok, err := dist.GetLabel(pkg, dist.BuildpackLayersLabel, &bpLayers)
+	pkgLayers := dist.BuildpackLayers{}
+	ok, err := dist.GetLabel(pkg, dist.BuildpackLayersLabel, &pkgLayers)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -38,7 +38,7 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 		)
 	}
 
-	for bpID, v := range bpLayers {
+	for bpID, v := range pkgLayers {
 		for bpVersion, bpInfo := range v {
 			desc := dist.BuildpackDescriptor{
 				API: bpInfo.API,
@@ -76,6 +76,55 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 	}
 
 	return mainBP, depBPs, nil
+}
+
+func ExtractExtensions(pkg Package) (mainBP Buildpack, err error) {
+	pkgLayers := dist.BuildpackLayers{}
+	ok, err := dist.GetLabel(pkg, dist.BuildpackLayersLabel, &pkgLayers)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ok {
+		return nil, errors.Errorf(
+			"could not find label %s",
+			style.Symbol(dist.BuildpackLayersLabel),
+		)
+	}
+
+	for extID, v := range pkgLayers {
+		for extVersion, extInfo := range v {
+			desc := dist.BuildpackDescriptor{
+				API: extInfo.API,
+				ExtInfo: dist.BuildpackInfo{
+					ID:       extID,
+					Version:  extVersion,
+					Homepage: extInfo.Homepage,
+					Name:     extInfo.Name,
+				},
+				Stacks: extInfo.Stacks,
+			}
+
+			diffID := extInfo.LayerDiffID // Allow use in closure
+			b := &openerBlob{
+				opener: func() (io.ReadCloser, error) {
+					rc, err := pkg.GetLayer(diffID)
+					if err != nil {
+						return nil, errors.Wrapf(err,
+							"extracting extension %s layer (diffID %s)",
+							style.Symbol(desc.ExtInfo.FullName()),
+							style.Symbol(diffID),
+						)
+					}
+					return rc, nil
+				},
+			}
+
+			mainBP = FromBlob(desc, b)
+		}
+	}
+
+	return mainBP, nil
 }
 
 type openerBlob struct {

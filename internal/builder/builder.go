@@ -48,11 +48,11 @@ const (
 	EnvUID = "CNB_USER_ID"
 	EnvGID = "CNB_GROUP_ID"
 
-	BuildpackOnBuilderMessage = `buildpack %s already exists on builder and will be overwritten
+	ModuleOnBuilderMessage = `%s %s already exists on builder and will be overwritten
   - existing diffID: %s
   - new diffID: %s`
 
-	BuildpackPreviouslyDefinedMessage = `buildpack %s was previously defined with different contents and will be overwritten
+	ModulePreviouslyDefinedMessage = `%s %s was previously defined with different contents and will be overwritten
   - previous diffID: %s
   - using diffID: %s`
 )
@@ -337,18 +337,29 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	if err := validateBuildpacks(b.StackID, b.Mixins(), b.LifecycleDescriptor(), b.Buildpacks(), b.additionalBuildpacks); err != nil {
 		return errors.Wrap(err, "validating buildpacks")
 	}
+	// TODO: validateExtensions
 
 	bpLayers := dist.BuildpackLayers{}
 	if _, err := dist.GetLabel(b.image, dist.BuildpackLayersLabel, &bpLayers); err != nil {
 		return errors.Wrapf(err, "getting label %s", dist.BuildpackLayersLabel)
 	}
-
-	err = b.addBuildpacks(logger, tmpDir, b.image, b.additionalBuildpacks, bpLayers)
+	err = b.addModules("buildpack", logger, tmpDir, b.image, b.additionalBuildpacks, bpLayers)
 	if err != nil {
 		return err
 	}
-
 	if err := dist.SetLabel(b.image, dist.BuildpackLayersLabel, bpLayers); err != nil {
+		return err
+	}
+
+	extLayers := dist.BuildpackLayers{}
+	if _, err := dist.GetLabel(b.image, dist.ExtensionLayersLabel, &extLayers); err != nil {
+		return errors.Wrapf(err, "getting label %s", dist.ExtensionLayersLabel)
+	}
+	err = b.addModules("extension", logger, tmpDir, b.image, b.additionalExtensions, extLayers)
+	if err != nil {
+		return err
+	}
+	if err := dist.SetLabel(b.image, dist.ExtensionLayersLabel, extLayers); err != nil {
 		return err
 	}
 
@@ -412,44 +423,46 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 // Helpers
 
-func (b *Builder) addBuildpacks(logger logging.Logger, tmpDir string, image imgutil.Image, additionalBuildpacks []buildpack.Buildpack, bpLayers dist.BuildpackLayers) error {
-	type buildpackToAdd struct {
-		tarPath   string
-		diffID    string
-		buildpack buildpack.Buildpack
+func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.Buildpack, layers dist.BuildpackLayers) error {
+	type toAdd struct {
+		tarPath string
+		diffID  string
+		module  buildpack.Buildpack
 	}
 
-	buildpacksToAdd := map[string]buildpackToAdd{}
-	for i, bp := range additionalBuildpacks {
-		// create buildpack directory
-		bpTmpDir := filepath.Join(tmpDir, strconv.Itoa(i))
-		if err := os.MkdirAll(bpTmpDir, os.ModePerm); err != nil {
-			return errors.Wrap(err, "creating buildpack temp dir")
+	collectionToAdd := map[string]toAdd{}
+	for i, module := range additionalModules {
+		// create directory
+		modTmpDir := filepath.Join(tmpDir, strconv.Itoa(i))
+		if err := os.MkdirAll(modTmpDir, os.ModePerm); err != nil {
+			return errors.Wrapf(err, "creating %s temp dir", kind)
 		}
 
 		// create tar file
-		bpLayerTar, err := buildpack.ToLayerTar(bpTmpDir, bp)
+		layerTar, err := buildpack.ToLayerTar(modTmpDir, module)
 		if err != nil {
 			return err
 		}
 
 		// generate diff id
-		diffID, err := dist.LayerDiffID(bpLayerTar)
+		diffID, err := dist.LayerDiffID(layerTar)
+		descriptor := module.Descriptor()
+		info := (&descriptor).Info()
 		if err != nil {
 			return errors.Wrapf(err,
-				"getting content hashes for buildpack %s",
-				style.Symbol(bp.Descriptor().BpInfo.FullName()),
+				"getting content hashes for %s %s",
+				kind,
+				style.Symbol(info.FullName()),
 			)
 		}
 
-		bpInfo := bp.Descriptor().BpInfo
 		// check against builder layers
-		if existingBPInfo, ok := bpLayers[bpInfo.ID][bpInfo.Version]; ok {
-			if existingBPInfo.LayerDiffID == diffID.String() {
-				logger.Debugf("Buildpack %s already exists on builder with same contents, skipping...", style.Symbol(bpInfo.FullName()))
+		if existingInfo, ok := layers[info.ID][info.Version]; ok {
+			if existingInfo.LayerDiffID == diffID.String() {
+				logger.Debugf("%s %s already exists on builder with same contents, skipping...", strings.Title(kind), style.Symbol(info.FullName()))
 				continue
 			} else {
-				whiteoutsTar, err := b.whiteoutLayer(tmpDir, i, bpInfo)
+				whiteoutsTar, err := b.whiteoutLayer(tmpDir, i, info)
 				if err != nil {
 					return err
 				}
@@ -459,37 +472,39 @@ func (b *Builder) addBuildpacks(logger logging.Logger, tmpDir string, image imgu
 				}
 			}
 
-			logger.Debugf(BuildpackOnBuilderMessage, style.Symbol(bpInfo.FullName()), style.Symbol(existingBPInfo.LayerDiffID), style.Symbol(diffID.String()))
+			logger.Debugf(ModuleOnBuilderMessage, kind, style.Symbol(info.FullName()), style.Symbol(existingInfo.LayerDiffID), style.Symbol(diffID.String()))
 		}
 
 		// check against other buildpacks to be added
-		if otherAdditionalBP, ok := buildpacksToAdd[bp.Descriptor().BpInfo.FullName()]; ok {
-			if otherAdditionalBP.diffID == diffID.String() {
-				logger.Debugf("Buildpack %s with same contents is already being added, skipping...", style.Symbol(bpInfo.FullName()))
+		if otherAdditionalMod, ok := collectionToAdd[info.FullName()]; ok {
+			if otherAdditionalMod.diffID == diffID.String() {
+				logger.Debugf("%s %s with same contents is already being added, skipping...", strings.Title(kind), style.Symbol(info.FullName()))
 				continue
 			}
 
-			logger.Debugf(BuildpackPreviouslyDefinedMessage, style.Symbol(bpInfo.FullName()), style.Symbol(otherAdditionalBP.diffID), style.Symbol(diffID.String()))
+			logger.Debugf(ModulePreviouslyDefinedMessage, kind, style.Symbol(info.FullName()), style.Symbol(otherAdditionalMod.diffID), style.Symbol(diffID.String()))
 		}
 
-		// note: if same id@version is in additionalBuildpacks, last one wins (see warnings above)
-		buildpacksToAdd[bp.Descriptor().BpInfo.FullName()] = buildpackToAdd{
-			tarPath:   bpLayerTar,
-			diffID:    diffID.String(),
-			buildpack: bp,
+		// note: if same id@version is in additionalModules, last one wins (see warnings above)
+		collectionToAdd[info.FullName()] = toAdd{
+			tarPath: layerTar,
+			diffID:  diffID.String(),
+			module:  module,
 		}
 	}
 
-	for _, bp := range buildpacksToAdd {
-		logger.Debugf("Adding buildpack %s (diffID=%s)", style.Symbol(bp.buildpack.Descriptor().BpInfo.FullName()), bp.diffID)
-		if err := image.AddLayerWithDiffID(bp.tarPath, bp.diffID); err != nil {
+	for _, module := range collectionToAdd {
+		descriptor := module.module.Descriptor()
+		logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol((&descriptor).Info().FullName()), module.diffID)
+		if err := image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
 			return errors.Wrapf(err,
-				"adding layer tar for buildpack %s",
-				style.Symbol(bp.buildpack.Descriptor().BpInfo.FullName()),
+				"adding layer tar for %s %s",
+				kind,
+				style.Symbol(module.module.Descriptor().BpInfo.FullName()),
 			)
 		}
 
-		dist.AddBuildpackToLayersMD(bpLayers, bp.buildpack.Descriptor(), bp.diffID)
+		dist.AddToLayersMD(layers, module.module.Descriptor(), module.diffID)
 	}
 
 	return nil

@@ -92,7 +92,7 @@ func testDist(t *testing.T, when spec.G, it spec.S) {
 					layers := dist.BuildpackLayers{}
 					apiVersion, _ := api.NewVersion("0.0")
 					descriptor := dist.BuildpackDescriptor{API: apiVersion, BpInfo: dist.BuildpackInfo{ID: "test", Name: "test", Version: "1.0"}}
-					dist.AddBuildpackToLayersMD(layers, descriptor, "")
+					dist.AddToLayersMD(layers, descriptor, "")
 					layerInfo, ok := layers.Get(descriptor.BpInfo.ID, descriptor.BpInfo.Version)
 					h.AssertEq(t, ok, true)
 					h.AssertEq(t, layerInfo.Name, descriptor.BpInfo.Name)

@@ -110,7 +110,7 @@ func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error
 			return errors.Wrapf(err, "adding layer tar for buildpack %s", style.Symbol(bp.Descriptor().BpInfo.FullName()))
 		}
 
-		dist.AddBuildpackToLayersMD(bpLayers, bp.Descriptor(), diffID.String())
+		dist.AddToLayersMD(bpLayers, bp.Descriptor(), diffID.String())
 	}
 
 	if err := dist.SetLabel(image, dist.BuildpackLayersLabel, bpLayers); err != nil {

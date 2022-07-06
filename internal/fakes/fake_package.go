@@ -54,7 +54,7 @@ func NewPackage(tmpDir string, name string, buildpacks []buildpack.Buildpack) (P
 			return nil, err
 		}
 		bpTarFiles[diffID] = tarFile
-		dist.AddBuildpackToLayersMD(bpLayers, bp.Descriptor(), diffID)
+		dist.AddToLayersMD(bpLayers, bp.Descriptor(), diffID)
 	}
 
 	return &fakePackage{

@@ -232,12 +232,13 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Buil
 	}
 
 	mainBP, depBPs, err := c.buildpackDownloader.Download(ctx, config.URI, buildpack.DownloadOptions{
-		RegistryName:    opts.Registry,
-		ImageOS:         imageOS,
-		RelativeBaseDir: opts.RelativeBaseDir,
 		Daemon:          !opts.Publish,
-		PullPolicy:      opts.PullPolicy,
 		ImageName:       config.ImageName,
+		ImageOS:         imageOS,
+		ModuleKind:      kind,
+		PullPolicy:      opts.PullPolicy,
+		RegistryName:    opts.Registry,
+		RelativeBaseDir: opts.RelativeBaseDir,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "downloading %s", kind)

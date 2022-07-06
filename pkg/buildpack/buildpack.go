@@ -65,7 +65,7 @@ func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 	return fromRootBlob("extension", blob, layerWriterFactory)
 }
 
-func fromRootBlob(kind string, blob Blob, layerWriterFactory archive.TarWriterFactory) (Buildpack, error) {
+func fromRootBlob(kind string, blob Blob, layerWriterFactory archive.TarWriterFactory) (Buildpack, error) { // TODO: order arguments consistently
 	descriptor := dist.BuildpackDescriptor{}
 	rc, err := blob.Open()
 	if err != nil {

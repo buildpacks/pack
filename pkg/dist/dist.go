@@ -4,7 +4,10 @@ import (
 	"github.com/buildpacks/lifecycle/api"
 )
 
-const BuildpackLayersLabel = "io.buildpacks.buildpack.layers"
+const (
+	BuildpackLayersLabel = "io.buildpacks.buildpack.layers"
+	ExtensionLayersLabel = "io.buildpacks.extension.layers"
+)
 
 type BuildpackURI struct {
 	URI string `toml:"uri"`

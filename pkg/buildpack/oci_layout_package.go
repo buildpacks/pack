@@ -38,7 +38,7 @@ func IsOCILayoutBlob(blob blob2.Blob) (bool, error) {
 	return true, nil
 }
 
-// BuildpackFromOCILayoutBlob constructs buildpacks from a blob in OCI layout format.
+// BuildpacksFromOCILayoutBlob constructs buildpacks from a blob in OCI layout format.
 func BuildpacksFromOCILayoutBlob(blob Blob) (mainBP Buildpack, dependencies []Buildpack, err error) {
 	layoutPackage, err := newOCILayoutPackage(blob)
 	if err != nil {
@@ -46,6 +46,16 @@ func BuildpacksFromOCILayoutBlob(blob Blob) (mainBP Buildpack, dependencies []Bu
 	}
 
 	return ExtractBuildpacks(layoutPackage)
+}
+
+// ExtensionsFromOCILayoutBlob constructs extensions from a blob in OCI layout format.
+func ExtensionsFromOCILayoutBlob(blob Blob) (mainExt Buildpack, err error) {
+	layoutPackage, err := newOCILayoutPackage(blob)
+	if err != nil {
+		return nil, err
+	}
+
+	return ExtractExtensions(layoutPackage)
 }
 
 func ConfigFromOCILayoutBlob(blob Blob) (config v1.ImageConfig, err error) {

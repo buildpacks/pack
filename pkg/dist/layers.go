@@ -29,17 +29,17 @@ func LayerDiffID(layerTarPath string) (v1.Hash, error) {
 	return hash, nil
 }
 
-func AddBuildpackToLayersMD(layerMD BuildpackLayers, descriptor BuildpackDescriptor, diffID string) {
-	bpInfo := descriptor.BpInfo
-	if _, ok := layerMD[bpInfo.ID]; !ok {
-		layerMD[bpInfo.ID] = map[string]BuildpackLayerInfo{}
+func AddToLayersMD(layerMD BuildpackLayers, descriptor BuildpackDescriptor, diffID string) {
+	info := descriptor.Info()
+	if _, ok := layerMD[info.ID]; !ok {
+		layerMD[info.ID] = map[string]BuildpackLayerInfo{}
 	}
-	layerMD[bpInfo.ID][bpInfo.Version] = BuildpackLayerInfo{
+	layerMD[info.ID][info.Version] = BuildpackLayerInfo{
 		API:         descriptor.API,
 		Stacks:      descriptor.Stacks,
 		Order:       descriptor.Order,
 		LayerDiffID: diffID,
-		Homepage:    bpInfo.Homepage,
-		Name:        bpInfo.Name,
+		Homepage:    info.Homepage,
+		Name:        info.Name,
 	}
 }

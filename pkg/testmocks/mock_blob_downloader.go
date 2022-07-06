@@ -13,30 +13,30 @@ import (
 	blob "github.com/buildpacks/pack/pkg/blob"
 )
 
-// MockBlobDownloader is a mock of BlobDownloader interface
+// MockBlobDownloader is a mock of BlobDownloader interface.
 type MockBlobDownloader struct {
 	ctrl     *gomock.Controller
 	recorder *MockBlobDownloaderMockRecorder
 }
 
-// MockBlobDownloaderMockRecorder is the mock recorder for MockBlobDownloader
+// MockBlobDownloaderMockRecorder is the mock recorder for MockBlobDownloader.
 type MockBlobDownloaderMockRecorder struct {
 	mock *MockBlobDownloader
 }
 
-// NewMockBlobDownloader creates a new mock instance
+// NewMockBlobDownloader creates a new mock instance.
 func NewMockBlobDownloader(ctrl *gomock.Controller) *MockBlobDownloader {
 	mock := &MockBlobDownloader{ctrl: ctrl}
 	mock.recorder = &MockBlobDownloaderMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockBlobDownloader) EXPECT() *MockBlobDownloaderMockRecorder {
 	return m.recorder
 }
 
-// Download mocks base method
+// Download mocks base method.
 func (m *MockBlobDownloader) Download(arg0 context.Context, arg1 string) (blob.Blob, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Download", arg0, arg1)
@@ -45,7 +45,7 @@ func (m *MockBlobDownloader) Download(arg0 context.Context, arg1 string) (blob.B
 	return ret0, ret1
 }
 
-// Download indicates an expected call of Download
+// Download indicates an expected call of Download.
 func (mr *MockBlobDownloaderMockRecorder) Download(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Download", reflect.TypeOf((*MockBlobDownloader)(nil).Download), arg0, arg1)
