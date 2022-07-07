@@ -159,7 +159,11 @@ func decomposeBlob(blob blob.Blob, kind string, imageOS string) (mainModule Buil
 			return mainModule, depModules, errors.Wrapf(err, "get tar writer factory for OS %s", style.Symbol(imageOS))
 		}
 
-		mainModule, err = fromRootBlob(kind, blob, layerWriterFactory)
+		if kind == "extension" {
+			mainModule, err = FromExtensionRootBlob(blob, layerWriterFactory)
+		} else {
+			mainModule, err = FromBuildpackRootBlob(blob, layerWriterFactory)
+		}
 		if err != nil {
 			return mainModule, depModules, errors.Wrapf(err, "reading %s", kind)
 		}

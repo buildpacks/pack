@@ -22,7 +22,7 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 		when("not validating against run image mixins", func() {
 			it("ignores run-only mixins", func() {
 				bp := dist.BuildpackDescriptor{
-					BpInfo: dist.BuildpackInfo{
+					Info: dist.BuildpackInfo{
 						ID:      "some.buildpack.id",
 						Version: "some.buildpack.version",
 					},
@@ -38,7 +38,7 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 
 			it("works with wildcard stack", func() {
 				bp := dist.BuildpackDescriptor{
-					BpInfo: dist.BuildpackInfo{
+					Info: dist.BuildpackInfo{
 						ID:      "some.buildpack.id",
 						Version: "some.buildpack.version",
 					},
@@ -54,7 +54,7 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 
 			it("returns an error with any missing (and non-ignored) mixins", func() {
 				bp := dist.BuildpackDescriptor{
-					BpInfo: dist.BuildpackInfo{
+					Info: dist.BuildpackInfo{
 						ID:      "some.buildpack.id",
 						Version: "some.buildpack.version",
 					},
@@ -74,7 +74,7 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 		when("validating against run image mixins", func() {
 			it("requires run-only mixins", func() {
 				bp := dist.BuildpackDescriptor{
-					BpInfo: dist.BuildpackInfo{
+					Info: dist.BuildpackInfo{
 						ID:      "some.buildpack.id",
 						Version: "some.buildpack.version",
 					},
@@ -91,7 +91,7 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 
 			it("returns an error with any missing mixins", func() {
 				bp := dist.BuildpackDescriptor{
-					BpInfo: dist.BuildpackInfo{
+					Info: dist.BuildpackInfo{
 						ID:      "some.buildpack.id",
 						Version: "some.buildpack.version",
 					},
@@ -111,7 +111,7 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 
 		it("returns an error when buildpack does not support stack", func() {
 			bp := dist.BuildpackDescriptor{
-				BpInfo: dist.BuildpackInfo{
+				Info: dist.BuildpackInfo{
 					ID:      "some.buildpack.id",
 					Version: "some.buildpack.version",
 				},
@@ -128,7 +128,7 @@ func testBuildpackDescriptor(t *testing.T, when spec.G, it spec.S) {
 
 		it("skips validating order buildpack", func() {
 			bp := dist.BuildpackDescriptor{
-				BpInfo: dist.BuildpackInfo{
+				Info: dist.BuildpackInfo{
 					ID:      "some.buildpack.id",
 					Version: "some.buildpack.version",
 				},

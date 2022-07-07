@@ -76,7 +76,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		var shouldCallBuildpackDownloaderWith = func(uri string, buildpackDownloadOptions buildpack.DownloadOptions) {
 			buildpack := createBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.3"),
-				BpInfo: dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
+				Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
 				Stacks: []dist.Stack{{ID: "some.stack.id"}},
 			})
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), uri, gomock.Any()).Return(buildpack, nil, nil)

@@ -544,8 +544,8 @@ func assembleAvailableMixins(buildMixins, runMixins []string) []string {
 
 // allBuildpacks aggregates all buildpacks declared on the image with additional buildpacks passed in. They are sorted
 // by ID then Version.
-func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.Buildpack) ([]dist.BuildpackDescriptor, error) {
-	var all []dist.BuildpackDescriptor
+func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.Buildpack) ([]buildpack.Descriptor, error) {
+	var all []buildpack.Descriptor
 	var bpLayers dist.BuildpackLayers
 	if _, err := dist.GetLabel(builderImage, dist.BuildpackLayersLabel, &bpLayers); err != nil {
 		return nil, err
@@ -553,14 +553,14 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 	for id, bps := range bpLayers {
 		for ver, bp := range bps {
 			desc := dist.BuildpackDescriptor{
-				BpInfo: dist.BuildpackInfo{
+				Info: dist.BuildpackInfo{
 					ID:      id,
 					Version: ver,
 				},
 				Stacks: bp.Stacks,
 				Order:  bp.Order,
 			}
-			all = append(all, desc)
+			all = append(all, &desc)
 		}
 	}
 	for _, bp := range additionalBuildpacks {
@@ -568,10 +568,10 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 	}
 
 	sort.Slice(all, func(i, j int) bool {
-		if all[i].BpInfo.ID != all[j].BpInfo.ID {
-			return all[i].BpInfo.ID < all[j].BpInfo.ID
+		if all[i].ModuleInfo().ID != all[j].ModuleInfo().ID {
+			return all[i].ModuleInfo().ID < all[j].ModuleInfo().ID
 		}
-		return all[i].BpInfo.Version < all[j].BpInfo.Version
+		return all[i].ModuleInfo().Version < all[j].ModuleInfo().Version
 	})
 
 	return all, nil
@@ -764,7 +764,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 				return fetchedBPs, order, errors.Wrap(err, "downloading buildpack")
 			}
 			fetchedBPs = append(append(fetchedBPs, mainBP), depBPs...)
-			order = appendBuildpackToOrder(order, mainBP.Descriptor().BpInfo)
+			order = appendBuildpackToOrder(order, mainBP.Descriptor().ModuleInfo())
 		}
 	}
 
@@ -793,7 +793,7 @@ func (c *Client) createEphemeralBuilder(rawBuilderImage imgutil.Image, env map[s
 
 	bldr.SetEnv(env)
 	for _, bp := range buildpacks {
-		bpInfo := bp.Descriptor().BpInfo
+		bpInfo := bp.Descriptor().ModuleInfo()
 		c.logger.Debugf("Adding buildpack %s version %s to builder", style.Symbol(bpInfo.ID), style.Symbol(bpInfo.Version))
 		bldr.AddBuildpack(bp)
 	}

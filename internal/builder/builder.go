@@ -247,13 +247,13 @@ func (b *Builder) GID() int {
 // AddBuildpack adds a buildpack to the builder
 func (b *Builder) AddBuildpack(bp buildpack.Buildpack) {
 	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
-	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().BpInfo)
+	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().ModuleInfo())
 }
 
 // AddExtension adds an extension to the builder
 func (b *Builder) AddExtension(bp buildpack.Buildpack) {
 	b.additionalExtensions = append(b.additionalExtensions, bp)
-	b.metadata.Extensions = append(b.metadata.Extensions, bp.Descriptor().ExtInfo)
+	b.metadata.Extensions = append(b.metadata.Extensions, bp.Descriptor().ModuleInfo())
 }
 
 // SetLifecycle sets the lifecycle of the builder
@@ -446,8 +446,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 
 		// generate diff id
 		diffID, err := dist.LayerDiffID(layerTar)
-		descriptor := module.Descriptor()
-		info := (&descriptor).Info()
+		info := module.Descriptor().ModuleInfo()
 		if err != nil {
 			return errors.Wrapf(err,
 				"getting content hashes for %s %s",
@@ -494,13 +493,12 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 	}
 
 	for _, module := range collectionToAdd {
-		descriptor := module.module.Descriptor()
-		logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol((&descriptor).Info().FullName()), module.diffID)
+		logger.Debugf("Adding %s %s (diffID=%s)", kind, style.Symbol(module.module.Descriptor().ModuleInfo().FullName()), module.diffID)
 		if err := image.AddLayerWithDiffID(module.tarPath, module.diffID); err != nil {
 			return errors.Wrapf(err,
 				"adding layer tar for %s %s",
 				kind,
-				style.Symbol(module.module.Descriptor().BpInfo.FullName()),
+				style.Symbol(module.module.Descriptor().ModuleInfo().FullName()),
 			)
 		}
 
@@ -569,7 +567,7 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 		// TODO: Warn when Buildpack API is deprecated - https://github.com/buildpacks/pack/issues/788
 		compatible := false
 		for _, version := range append(lifecycleDescriptor.APIs.Buildpack.Supported, lifecycleDescriptor.APIs.Buildpack.Deprecated...) {
-			compatible = version.Compare(bpd.API) == 0
+			compatible = version.Compare(bpd.ModuleAPI()) == 0
 			if compatible {
 				break
 			}
@@ -578,19 +576,19 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 		if !compatible {
 			return fmt.Errorf(
 				"buildpack %s (Buildpack API %s) is incompatible with lifecycle %s (Buildpack API(s) %s)",
-				style.Symbol(bpd.BpInfo.FullName()),
-				bpd.API.String(),
+				style.Symbol(bpd.ModuleInfo().FullName()),
+				bpd.ModuleAPI().String(),
 				style.Symbol(lifecycleDescriptor.Info.Version.String()),
 				strings.Join(lifecycleDescriptor.APIs.Buildpack.Supported.AsStrings(), ", "),
 			)
 		}
 
-		if len(bpd.Stacks) >= 1 { // standard buildpack
+		if len(bpd.ModuleStacks()) >= 1 { // standard buildpack
 			if err := bpd.EnsureStackSupport(stackID, mixins, false); err != nil {
 				return err
 			}
 		} else { // order buildpack
-			for _, g := range bpd.Order {
+			for _, g := range bpd.ModuleOrder() {
 				for _, r := range g.Group {
 					if _, ok := bpLookup[r.FullName()]; !ok {
 						return fmt.Errorf(

@@ -76,7 +76,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		bp1v1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			BpInfo: dist.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-1",
 			},
@@ -89,7 +89,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		bp1v2, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			BpInfo: dist.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-2",
 			},
@@ -102,7 +102,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		bp2v1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			BpInfo: dist.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "buildpack-2-id",
 				Version: "buildpack-2-version-1",
 			},
@@ -115,18 +115,18 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		bpOrder, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			BpInfo: dist.BuildpackInfo{
+			Info: dist.BuildpackInfo{
 				ID:      "order-buildpack-id",
 				Version: "order-buildpack-version",
 			},
 			Order: []dist.OrderEntry{{
 				Group: []dist.BuildpackRef{
 					{
-						BuildpackInfo: bp1v1.Descriptor().BpInfo,
+						BuildpackInfo: bp1v1.Descriptor().ModuleInfo(),
 						Optional:      true,
 					},
 					{
-						BuildpackInfo: bp2v1.Descriptor().BpInfo,
+						BuildpackInfo: bp2v1.Descriptor().ModuleInfo(),
 						Optional:      false,
 					},
 				},
@@ -430,7 +430,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					it("should resolve unset version (to legacy label and order.toml)", func() {
 						subject.SetOrder(dist.Order{{
 							Group: []dist.BuildpackRef{
-								{BuildpackInfo: dist.BuildpackInfo{ID: bp1v1.Descriptor().BpInfo.ID}}},
+								{BuildpackInfo: dist.BuildpackInfo{ID: bp1v1.Descriptor().ModuleInfo().ID}}},
 						}})
 
 						err := subject.Save(logger, builder.CreatorMetadata{})
@@ -484,14 +484,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 							subject.SetOrder(dist.Order{
 								{Group: []dist.BuildpackRef{{
 									BuildpackInfo: dist.BuildpackInfo{
-										ID:       bp1v1.Descriptor().BpInfo.ID,
-										Homepage: bp1v1.Descriptor().BpInfo.Homepage,
+										ID:       bp1v1.Descriptor().ModuleInfo().ID,
+										Homepage: bp1v1.Descriptor().ModuleInfo().Homepage,
 									}}},
 								},
 								{Group: []dist.BuildpackRef{{
 									BuildpackInfo: dist.BuildpackInfo{
-										ID:       bp1v1.Descriptor().BpInfo.ID,
-										Homepage: bp1v1.Descriptor().BpInfo.Homepage,
+										ID:       bp1v1.Descriptor().ModuleInfo().ID,
+										Homepage: bp1v1.Descriptor().ModuleInfo().Homepage,
 									}}},
 								},
 							})
@@ -512,7 +512,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						it("should keep order version", func() {
 							subject.SetOrder(dist.Order{{
 								Group: []dist.BuildpackRef{
-									{BuildpackInfo: bp1v1.Descriptor().BpInfo}},
+									{BuildpackInfo: bp1v1.Descriptor().ModuleInfo()}},
 							}})
 
 							err := subject.Save(logger, builder.CreatorMetadata{})
@@ -576,7 +576,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					it("returns an error", func() {
 						bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 							API:    api.MustParse("0.2"),
-							BpInfo: bp1v1.Descriptor().BpInfo,
+							Info:   bp1v1.Descriptor().ModuleInfo(),
 							Stacks: []dist.Stack{{ID: "other.stack.id"}},
 						}, 0644)
 						h.AssertNil(t, err)
@@ -592,7 +592,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					it("returns an error", func() {
 						bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 							API:    api.MustParse("0.1"),
-							BpInfo: bp1v1.Descriptor().BpInfo,
+							Info:   bp1v1.Descriptor().ModuleInfo(),
 							Stacks: []dist.Stack{{ID: "some.stack.id"}},
 						}, 0644)
 						h.AssertNil(t, err)
@@ -609,8 +609,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				when("buildpack mixins are not satisfied", func() {
 					it("returns an error", func() {
 						bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
-							API:    api.MustParse("0.2"),
-							BpInfo: bp1v1.Descriptor().BpInfo,
+							API:  api.MustParse("0.2"),
+							Info: bp1v1.Descriptor().ModuleInfo(),
 							Stacks: []dist.Stack{{
 								ID:     "some.stack.id",
 								Mixins: []string{"missing"},
@@ -665,7 +665,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						var err error
 						bp1v1Alt, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 							API: api.MustParse("0.2"),
-							BpInfo: dist.BuildpackInfo{
+							Info: dist.BuildpackInfo{
 								ID:      "buildpack-1-id",
 								Version: "buildpack-1-version-1",
 							},
@@ -679,7 +679,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						bp1v1AltWithNewContent, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 							API: api.MustParse("0.2"),
-							BpInfo: dist.BuildpackInfo{
+							Info: dist.BuildpackInfo{
 								ID:      "buildpack-1-id",
 								Version: "buildpack-1-version-1",
 							},
@@ -800,7 +800,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						var err error
 						bp1v1Err, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 							API: api.MustParse("0.2"),
-							BpInfo: dist.BuildpackInfo{
+							Info: dist.BuildpackInfo{
 								ID:      "buildpack-1-id",
 								Version: "buildpack-1-version-1",
 							},
@@ -1128,12 +1128,12 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						{Group: []dist.BuildpackRef{
 							{
 								BuildpackInfo: dist.BuildpackInfo{
-									ID: bp1v1.Descriptor().BpInfo.ID,
+									ID: bp1v1.Descriptor().ModuleInfo().ID,
 									// Version excluded intentionally
 								},
 							},
 							{
-								BuildpackInfo: bp2v1.Descriptor().BpInfo,
+								BuildpackInfo: bp2v1.Descriptor().ModuleInfo(),
 								Optional:      true,
 							},
 						}},
@@ -1381,7 +1381,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp buildpack.Buildpack) {
 	t.Helper()
 
-	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().BpInfo.ID, bp.Descriptor().BpInfo.Version)
+	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().ModuleInfo().ID, bp.Descriptor().ModuleInfo().Version)
 	layerTar, err := image.FindLayerWithPath(dirPath)
 	h.AssertNil(t, err)
 
@@ -1405,7 +1405,7 @@ func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp buildpack.Buildp
 func assertImageHasOrderBpLayer(t *testing.T, image *fakes.Image, bp buildpack.Buildpack) {
 	t.Helper()
 
-	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().BpInfo.ID, bp.Descriptor().BpInfo.Version)
+	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().ModuleInfo().ID, bp.Descriptor().ModuleInfo().Version)
 	layerTar, err := image.FindLayerWithPath(dirPath)
 	h.AssertNil(t, err)
 

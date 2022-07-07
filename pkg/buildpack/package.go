@@ -42,7 +42,7 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 		for bpVersion, bpInfo := range v {
 			desc := dist.BuildpackDescriptor{
 				API: bpInfo.API,
-				BpInfo: dist.BuildpackInfo{
+				Info: dist.BuildpackInfo{
 					ID:       bpID,
 					Version:  bpVersion,
 					Homepage: bpInfo.Homepage,
@@ -59,7 +59,7 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 					if err != nil {
 						return nil, errors.Wrapf(err,
 							"extracting buildpack %s layer (diffID %s)",
-							style.Symbol(desc.BpInfo.FullName()),
+							style.Symbol(desc.Info.FullName()),
 							style.Symbol(diffID),
 						)
 					}
@@ -67,10 +67,10 @@ func ExtractBuildpacks(pkg Package) (mainBP Buildpack, depBPs []Buildpack, err e
 				},
 			}
 
-			if desc.BpInfo.Match(md.BuildpackInfo) { // This is the order buildpack of the package
-				mainBP = FromBlob(desc, b)
+			if desc.Info.Match(md.BuildpackInfo) { // This is the order buildpack of the package
+				mainBP = FromBlob(&desc, b)
 			} else {
-				depBPs = append(depBPs, FromBlob(desc, b))
+				depBPs = append(depBPs, FromBlob(&desc, b))
 			}
 		}
 	}
@@ -94,15 +94,14 @@ func ExtractExtensions(pkg Package) (mainBP Buildpack, err error) {
 
 	for extID, v := range pkgLayers {
 		for extVersion, extInfo := range v {
-			desc := dist.BuildpackDescriptor{
+			desc := dist.ExtensionDescriptor{
 				API: extInfo.API,
-				ExtInfo: dist.BuildpackInfo{
+				Info: dist.BuildpackInfo{
 					ID:       extID,
 					Version:  extVersion,
 					Homepage: extInfo.Homepage,
 					Name:     extInfo.Name,
 				},
-				Stacks: extInfo.Stacks,
 			}
 
 			diffID := extInfo.LayerDiffID // Allow use in closure
@@ -112,7 +111,7 @@ func ExtractExtensions(pkg Package) (mainBP Buildpack, err error) {
 					if err != nil {
 						return nil, errors.Wrapf(err,
 							"extracting extension %s layer (diffID %s)",
-							style.Symbol(desc.ExtInfo.FullName()),
+							style.Symbol(desc.Info.FullName()),
 							style.Symbol(diffID),
 						)
 					}
@@ -120,7 +119,7 @@ func ExtractExtensions(pkg Package) (mainBP Buildpack, err error) {
 				},
 			}
 
-			mainBP = FromBlob(desc, b)
+			mainBP = FromBlob(&desc, b)
 		}
 	}
 

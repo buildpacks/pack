@@ -4,10 +4,18 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/buildpacks/lifecycle/api"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/pkg/errors"
 )
+
+type Descriptor interface {
+	ModuleAPI() *api.Version
+	ModuleInfo() BuildpackInfo
+	ModuleOrder() Order
+	ModuleStacks() []Stack
+}
 
 func LayerDiffID(layerTarPath string) (v1.Hash, error) {
 	fh, err := os.Open(filepath.Clean(layerTarPath))
@@ -29,15 +37,15 @@ func LayerDiffID(layerTarPath string) (v1.Hash, error) {
 	return hash, nil
 }
 
-func AddToLayersMD(layerMD BuildpackLayers, descriptor BuildpackDescriptor, diffID string) {
-	info := descriptor.Info()
+func AddToLayersMD(layerMD BuildpackLayers, descriptor Descriptor, diffID string) {
+	info := descriptor.ModuleInfo()
 	if _, ok := layerMD[info.ID]; !ok {
 		layerMD[info.ID] = map[string]BuildpackLayerInfo{}
 	}
 	layerMD[info.ID][info.Version] = BuildpackLayerInfo{
-		API:         descriptor.API,
-		Stacks:      descriptor.Stacks,
-		Order:       descriptor.Order,
+		API:         descriptor.ModuleAPI(),
+		Stacks:      descriptor.ModuleStacks(),
+		Order:       descriptor.ModuleOrder(),
 		LayerDiffID: diffID,
 		Homepage:    info.Homepage,
 		Name:        info.Name,

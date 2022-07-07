@@ -61,8 +61,8 @@ func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options 
 	}, nil
 }
 
-func (b *fakeBuildpack) Descriptor() dist.BuildpackDescriptor {
-	return b.descriptor
+func (b *fakeBuildpack) Descriptor() buildpack.Descriptor {
+	return &b.descriptor
 }
 
 func (b *fakeBuildpack) Open() (io.ReadCloser, error) {
@@ -83,7 +83,7 @@ func (b *fakeBuildpack) Open() (io.ReadCloser, error) {
 	tarBuilder := archive.TarBuilder{}
 	ts := archive.NormalizedDateTime
 	tarBuilder.AddDir(fmt.Sprintf("/cnb/buildpacks/%s", b.descriptor.EscapedID()), b.chmod, ts)
-	bpDir := fmt.Sprintf("/cnb/buildpacks/%s/%s", b.descriptor.EscapedID(), b.descriptor.BpInfo.Version)
+	bpDir := fmt.Sprintf("/cnb/buildpacks/%s/%s", b.descriptor.EscapedID(), b.descriptor.Info.Version)
 	tarBuilder.AddDir(bpDir, b.chmod, ts)
 	tarBuilder.AddFile(bpDir+"/buildpack.toml", b.chmod, ts, buf.Bytes())
 

@@ -251,12 +251,12 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Buil
 
 	bpDesc := mainBP.Descriptor()
 	for _, deprecatedAPI := range bldr.LifecycleDescriptor().APIs.Buildpack.Deprecated {
-		if deprecatedAPI.Equal(bpDesc.API) {
+		if deprecatedAPI.Equal(bpDesc.ModuleAPI()) {
 			c.logger.Warnf(
 				"%s %s is using deprecated Buildpacks API version %s",
 				strings.Title(kind),
-				style.Symbol(bpDesc.BpInfo.FullName()),
-				style.Symbol(bpDesc.API.String()),
+				style.Symbol(bpDesc.ModuleInfo().FullName()),
+				style.Symbol(bpDesc.ModuleAPI().String()),
 			)
 			break
 		}
@@ -276,8 +276,7 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Buil
 }
 
 func validateModule(kind string, module buildpack.Buildpack, source, expectedID, expectedVersion string) error {
-	descriptor := module.Descriptor()
-	info := (&descriptor).Info()
+	info := module.Descriptor().ModuleInfo()
 	if expectedID != "" && info.ID != expectedID {
 		return fmt.Errorf(
 			"%s from URI %s has ID %s which does not match ID %s from builder config",
