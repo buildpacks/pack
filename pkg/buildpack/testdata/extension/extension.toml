@@ -4,6 +4,3 @@ api = "0.9"
 id = "ext.one"
 version = "1.2.3"
 homepage = "http://one.extension"
-
-[[stacks]]
-id = "*"
