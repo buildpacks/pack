@@ -5,6 +5,7 @@ package invoke
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -210,19 +211,26 @@ func (i *PackInvoker) Supports(command string) bool {
 		search = command
 	}
 
+	re := regexp.MustCompile(fmt.Sprint(`\b%s\b`, search))
 	output, err := i.baseCmd(cmdParts...).CombinedOutput()
 	i.assert.Nil(err)
 
-	return strings.Contains(string(output), search) && !strings.Contains(string(output), "Unknown help topic")
+	return re.MatchString(string(output)) && !strings.Contains(string(output), "Unknown help topic")
 }
 
 type Feature int
 
-const CreationTime = iota
+const (
+	CreationTime = iota
+	Cache
+)
 
 var featureTests = map[Feature]func(i *PackInvoker) bool{
 	CreationTime: func(i *PackInvoker) bool {
 		return i.Supports("build --creation-time")
+	},
+	Cache: func(i *PackInvoker) bool {
+		return i.Supports("build --cache")
 	},
 }
 

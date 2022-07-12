@@ -1756,6 +1756,47 @@ func testAcceptance(
 						})
 					})
 
+					when("--cache with options for build cache as image", func() {
+						var cacheImageName, cacheFlags string
+						it.Before(func() {
+							h.SkipIf(t, !pack.SupportsFeature(invoke.Cache), "")
+							cacheImageName = fmt.Sprintf("%s-cache", repoName)
+							cacheFlags = fmt.Sprintf("type=build;format=image;name=%s", cacheImageName)
+						})
+
+						it("creates image and cache image on the registry", func() {
+							buildArgs := []string{
+								repoName,
+								"-p", filepath.Join("testdata", "mock_app"),
+								"--publish",
+								"--cache",
+								cacheFlags,
+							}
+							if imageManager.HostOS() != "windows" {
+								buildArgs = append(buildArgs, "--network", "host")
+							}
+
+							output := pack.RunSuccessfully("build", buildArgs...)
+							assertions.NewOutputAssertionManager(t, output).ReportsSuccessfulImageBuild(repoName)
+
+							cacheImageRef, err := name.ParseReference(cacheImageName, name.WeakValidation)
+							assert.Nil(err)
+
+							t.Log("checking that registry has contents")
+							assertImage.CanBePulledFromRegistry(repoName)
+							if imageManager.HostOS() == "windows" {
+								// Cache images are automatically Linux container images, and therefore can't be pulled
+								// and inspected correctly on WCOW systems
+								// https://github.com/buildpacks/lifecycle/issues/529
+								imageManager.PullImage(cacheImageRef.Name(), registryConfig.RegistryAuth())
+							} else {
+								assertImage.CanBePulledFromRegistry(cacheImageRef.Name())
+							}
+
+							defer imageManager.CleanupImages(cacheImageRef.Name())
+						})
+					})
+
 					when("ctrl+c", func() {
 						it("stops the execution", func() {
 							var buf = new(bytes.Buffer)
