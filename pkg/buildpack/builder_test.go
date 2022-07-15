@@ -674,7 +674,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 
 	when("#SaveAsFile", func() {
-		it.Pend("sets metadata", func() { // TODO: understand why the SHAs changed
+		it("sets metadata", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
 				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
