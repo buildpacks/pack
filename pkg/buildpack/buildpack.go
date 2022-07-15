@@ -17,9 +17,9 @@ import (
 	"github.com/buildpacks/pack/pkg/dist"
 )
 
-//go:generate mockgen -package testmocks -destination ../testmocks/mock_buildpack.go github.com/buildpacks/pack/pkg/buildpack Buildpack
+//go:generate mockgen -package testmocks -destination ../testmocks/mock_build_module.go github.com/buildpacks/pack/pkg/buildpack BuildModule
 
-type Buildpack interface { // TODO: this should ideally have a more generic name since it could be a buildpack OR an extension
+type BuildModule interface {
 	// Open returns a reader to a tar with contents structured as per the distribution spec
 	// (currently '/cnb/buildpacks/{ID}/{version}/*', all entries with a zeroed-out
 	// timestamp and root UID/GID).
@@ -54,7 +54,7 @@ func (b *buildModule) Descriptor() Descriptor {
 // FromBlob constructs a buildpack or extension from a blob. It is assumed that the buildpack
 // contents are structured as per the distribution spec (currently '/cnb/buildpacks/{ID}/{version}/*' or
 // '/cnb/extensions/{ID}/{version}/*').
-func FromBlob(descriptor Descriptor, blob Blob) Buildpack {
+func FromBlob(descriptor Descriptor, blob Blob) BuildModule {
 	return &buildModule{
 		Blob:       blob,
 		descriptor: descriptor,
@@ -64,7 +64,7 @@ func FromBlob(descriptor Descriptor, blob Blob) Buildpack {
 // FromBuildpackRootBlob constructs a buildpack from a blob. It is assumed that the buildpack contents reside at the
 // root of the blob. The constructed buildpack contents will be structured as per the distribution spec (currently
 // a tar with contents under '/cnb/buildpacks/{ID}/{version}/*').
-func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (Buildpack, error) {
+func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
 	descriptor := dist.BuildpackDescriptor{}
 	descriptor.API = api.MustParse(dist.AssumedBuildpackAPIVersion)
 	if err := readDescriptor("buildpack", &descriptor, blob); err != nil {
@@ -79,7 +79,7 @@ func FromBuildpackRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactor
 // FromExtensionRootBlob constructs an extension from a blob. It is assumed that the extension contents reside at the
 // root of the blob. The constructed extension contents will be structured as per the distribution spec (currently
 // a tar with contents under '/cnb/extensions/{ID}/{version}/*').
-func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (Buildpack, error) {
+func FromExtensionRootBlob(blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
 	descriptor := dist.ExtensionDescriptor{}
 	descriptor.API = api.MustParse(dist.AssumedBuildpackAPIVersion)
 	if err := readDescriptor("extension", &descriptor, blob); err != nil {
@@ -113,7 +113,7 @@ func readDescriptor(kind string, descriptor interface{}, blob Blob) error {
 	return nil
 }
 
-func buildpackFrom(descriptor Descriptor, blob Blob, layerWriterFactory archive.TarWriterFactory) (Buildpack, error) {
+func buildpackFrom(descriptor Descriptor, blob Blob, layerWriterFactory archive.TarWriterFactory) (BuildModule, error) {
 	return &buildModule{
 		descriptor: descriptor,
 		Blob: &distBlob{
@@ -273,7 +273,7 @@ func validateExtensionDescriptor(extd dist.ExtensionDescriptor) error {
 	return nil
 }
 
-func ToLayerTar(dest string, module Buildpack) (string, error) {
+func ToLayerTar(dest string, module BuildModule) (string, error) {
 	descriptor := module.Descriptor()
 	modReader, err := module.Open()
 	if err != nil {

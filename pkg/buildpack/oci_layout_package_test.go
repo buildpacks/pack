@@ -39,7 +39,7 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 			mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(blob.NewBlob(filepath.Join("testdata", "hello-universe.cnb")))
 			h.AssertNil(t, err)
 
-			for _, bp := range append([]buildpack.Buildpack{mainBP}, depBPs...) {
+			for _, bp := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
 				reader, err := bp.Open()
 				h.AssertNil(t, err)
 

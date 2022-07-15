@@ -262,7 +262,7 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Buil
 		}
 	}
 
-	for _, module := range append([]buildpack.Buildpack{mainBP}, depBPs...) {
+	for _, module := range append([]buildpack.BuildModule{mainBP}, depBPs...) {
 		switch kind {
 		case "buildpack":
 			bldr.AddBuildpack(module)
@@ -275,7 +275,7 @@ func (c *Client) addConfig(ctx context.Context, kind string, config pubbldr.Buil
 	return nil
 }
 
-func validateModule(kind string, module buildpack.Buildpack, source, expectedID, expectedVersion string) error {
+func validateModule(kind string, module buildpack.BuildModule, source, expectedID, expectedVersion string) error {
 	info := module.Descriptor().ModuleInfo()
 	if expectedID != "" && info.ID != expectedID {
 		return fmt.Errorf(

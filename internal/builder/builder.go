@@ -64,8 +64,8 @@ type Builder struct {
 	layerWriterFactory   archive.TarWriterFactory
 	lifecycle            Lifecycle
 	lifecycleDescriptor  LifecycleDescriptor
-	additionalBuildpacks []buildpack.Buildpack
-	additionalExtensions []buildpack.Buildpack
+	additionalBuildpacks []buildpack.BuildModule
+	additionalExtensions []buildpack.BuildModule
 	metadata             Metadata
 	mixins               []string
 	env                  map[string]string
@@ -245,13 +245,13 @@ func (b *Builder) GID() int {
 // Setters
 
 // AddBuildpack adds a buildpack to the builder
-func (b *Builder) AddBuildpack(bp buildpack.Buildpack) {
+func (b *Builder) AddBuildpack(bp buildpack.BuildModule) {
 	b.additionalBuildpacks = append(b.additionalBuildpacks, bp)
 	b.metadata.Buildpacks = append(b.metadata.Buildpacks, bp.Descriptor().ModuleInfo())
 }
 
 // AddExtension adds an extension to the builder
-func (b *Builder) AddExtension(bp buildpack.Buildpack) {
+func (b *Builder) AddExtension(bp buildpack.BuildModule) {
 	b.additionalExtensions = append(b.additionalExtensions, bp)
 	b.metadata.Extensions = append(b.metadata.Extensions, bp.Descriptor().ModuleInfo())
 }
@@ -423,11 +423,11 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 
 // Helpers
 
-func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.Buildpack, layers dist.BuildpackLayers) error {
+func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, image imgutil.Image, additionalModules []buildpack.BuildModule, layers dist.BuildpackLayers) error {
 	type toAdd struct {
 		tarPath string
 		diffID  string
-		module  buildpack.Buildpack
+		module  buildpack.BuildModule
 	}
 
 	collectionToAdd := map[string]toAdd{}
@@ -554,7 +554,7 @@ func hasBuildpackWithVersion(bps []dist.BuildpackInfo, version string) bool {
 	return false
 }
 
-func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.BuildpackInfo, bpsToValidate []buildpack.Buildpack) error {
+func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.BuildpackInfo, bpsToValidate []buildpack.BuildModule) error {
 	bpLookup := map[string]interface{}{}
 
 	for _, bp := range allBuildpacks {

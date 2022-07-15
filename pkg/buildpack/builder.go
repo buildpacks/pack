@@ -63,8 +63,8 @@ func (i *layoutImage) AddLayerWithDiffID(path, _ string) error {
 }
 
 type PackageBuilder struct {
-	buildpack    Buildpack
-	dependencies []Buildpack
+	buildpack    BuildModule
+	dependencies []BuildModule
 	imageFactory ImageFactory
 }
 
@@ -75,11 +75,11 @@ func NewBuilder(imageFactory ImageFactory) *PackageBuilder {
 	}
 }
 
-func (b *PackageBuilder) SetBuildpack(buildpack Buildpack) {
+func (b *PackageBuilder) SetBuildpack(buildpack BuildModule) {
 	b.buildpack = buildpack
 }
 
-func (b *PackageBuilder) AddDependency(buildpack Buildpack) {
+func (b *PackageBuilder) AddDependency(buildpack BuildModule) {
 	b.dependencies = append(b.dependencies, buildpack)
 }
 
@@ -258,14 +258,14 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS stri
 	return image, nil
 }
 
-func validateBuildpacks(mainBP Buildpack, depBPs []Buildpack) error {
+func validateBuildpacks(mainBP BuildModule, depBPs []BuildModule) error {
 	depsWithRefs := map[string][]dist.BuildpackInfo{}
 
 	for _, bp := range depBPs {
 		depsWithRefs[bp.Descriptor().ModuleInfo().FullName()] = nil
 	}
 
-	for _, bp := range append([]Buildpack{mainBP}, depBPs...) { // List of everything
+	for _, bp := range append([]BuildModule{mainBP}, depBPs...) { // List of everything
 		bpd := bp.Descriptor()
 		for _, orderEntry := range bpd.ModuleOrder() {
 			for _, groupEntry := range orderEntry.Group {

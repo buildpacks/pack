@@ -78,7 +78,7 @@ type DownloadOptions struct {
 	PullPolicy image.PullPolicy
 }
 
-func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, opts DownloadOptions) (Buildpack, []Buildpack, error) {
+func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, opts DownloadOptions) (BuildModule, []BuildModule, error) {
 	kind := "buildpack"
 	if opts.ModuleKind == "extension" {
 		kind = "extension"
@@ -97,8 +97,8 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 		}
 	}
 
-	var mainBP Buildpack
-	var depBPs []Buildpack
+	var mainBP BuildModule
+	var depBPs []BuildModule
 	switch locatorType {
 	case PackageLocator:
 		imageName := ParsePackageLocator(moduleURI)
@@ -142,7 +142,7 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 }
 
 // decomposeBlob decomposes a buildpack blob into the main builder (order buildpack) and its dependent buildpacks.
-func decomposeBlob(blob blob.Blob, kind string, imageOS string) (mainModule Buildpack, depModules []Buildpack, err error) {
+func decomposeBlob(blob blob.Blob, kind string, imageOS string) (mainModule BuildModule, depModules []BuildModule, err error) {
 	isOCILayout, err := IsOCILayoutBlob(blob)
 	if err != nil {
 		return mainModule, depModules, errors.Wrapf(err, "inspecting %s blob", kind)
@@ -172,7 +172,7 @@ func decomposeBlob(blob blob.Blob, kind string, imageOS string) (mainModule Buil
 	return mainModule, depModules, nil
 }
 
-func fromOCILayoutBlob(blob blob.Blob, kind string) (mainModule Buildpack, depModules []Buildpack, err error) {
+func fromOCILayoutBlob(blob blob.Blob, kind string) (mainModule BuildModule, depModules []BuildModule, err error) {
 	switch kind {
 	case "buildpack":
 		mainModule, depModules, err = BuildpacksFromOCILayoutBlob(blob)
@@ -187,7 +187,7 @@ func fromOCILayoutBlob(blob blob.Blob, kind string) (mainModule Buildpack, depMo
 	return mainModule, depModules, nil
 }
 
-func extractPackaged(ctx context.Context, kind string, pkgImageRef string, fetcher ImageFetcher, fetchOptions image.FetchOptions) (mainModule Buildpack, depModules []Buildpack, err error) {
+func extractPackaged(ctx context.Context, kind string, pkgImageRef string, fetcher ImageFetcher, fetchOptions image.FetchOptions) (mainModule BuildModule, depModules []BuildModule, err error) {
 	pkgImage, err := fetcher.Fetch(ctx, pkgImageRef, fetchOptions)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "fetching image")

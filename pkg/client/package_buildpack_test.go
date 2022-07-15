@@ -801,5 +801,5 @@ func assertPackageBPFileHasBuildpacks(t *testing.T, path string, descriptors []d
 	packageBlob := blob.NewBlob(path)
 	mainBP, depBPs, err := buildpack.BuildpacksFromOCILayoutBlob(packageBlob)
 	h.AssertNil(t, err)
-	h.AssertBuildpacksHaveDescriptors(t, append([]buildpack.Buildpack{mainBP}, depBPs...), descriptors)
+	h.AssertBuildpacksHaveDescriptors(t, append([]buildpack.BuildModule{mainBP}, depBPs...), descriptors)
 }

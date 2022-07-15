@@ -68,7 +68,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 			mockImageFetcher.EXPECT().Fetch(gomock.Any(), "some/build-image", gomock.Any()).Return(fakeBuildImage, nil)
 		}
 
-		var createBuildpack = func(descriptor dist.BuildpackDescriptor) buildpack.Buildpack {
+		var createBuildpack = func(descriptor dist.BuildpackDescriptor) buildpack.BuildModule {
 			buildpack, err := ifakes.NewFakeBuildpack(descriptor, 0644)
 			h.AssertNil(t, err)
 			return buildpack

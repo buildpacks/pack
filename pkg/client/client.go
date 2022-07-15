@@ -77,7 +77,7 @@ type ImageFactory interface {
 // BuildpackDownloader is an interface for downloading and extracting buildpacks from various sources
 type BuildpackDownloader interface {
 	// Download parses a buildpack URI and downloads the buildpack and any dependencies buildpacks from the appropriate source
-	Download(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.Buildpack, []buildpack.Buildpack, error)
+	Download(ctx context.Context, buildpackURI string, opts buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error)
 }
 
 // Client is an orchestration object, it contains all parameters needed to

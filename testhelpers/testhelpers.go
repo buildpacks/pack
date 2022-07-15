@@ -795,7 +795,7 @@ func tarHasFile(t *testing.T, tarFile, path string) (exist bool) {
 	return false
 }
 
-func AssertBuildpacksHaveDescriptors(t *testing.T, modules []buildpack.Buildpack, descriptors []dist.BuildpackDescriptor) {
+func AssertBuildpacksHaveDescriptors(t *testing.T, modules []buildpack.BuildModule, descriptors []dist.BuildpackDescriptor) {
 	AssertEq(t, len(modules), len(descriptors))
 	for _, mod := range modules {
 		found := false

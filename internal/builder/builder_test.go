@@ -13,13 +13,12 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/pkg/errors"
-
 	"github.com/buildpacks/imgutil"
 	"github.com/buildpacks/imgutil/fakes"
 	"github.com/buildpacks/lifecycle/api"
 	"github.com/golang/mock/gomock"
 	"github.com/heroku/color"
+	"github.com/pkg/errors"
 	"github.com/sclevine/spec"
 	"github.com/sclevine/spec/report"
 
@@ -46,10 +45,10 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 		subject        *builder.Builder
 		mockController *gomock.Controller
 		mockLifecycle  *testmocks.MockLifecycle
-		bp1v1          buildpack.Buildpack
-		bp1v2          buildpack.Buildpack
-		bp2v1          buildpack.Buildpack
-		bpOrder        buildpack.Buildpack
+		bp1v1          buildpack.BuildModule
+		bp1v2          buildpack.BuildModule
+		bp2v1          buildpack.BuildModule
+		bpOrder        buildpack.BuildModule
 		outBuf         bytes.Buffer
 		logger         logging.Logger
 	)
@@ -659,8 +658,8 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 				})
 
 				when("duplicated buildpack, has different contents", func() {
-					var bp1v1Alt buildpack.Buildpack
-					var bp1v1AltWithNewContent buildpack.Buildpack
+					var bp1v1Alt buildpack.BuildModule
+					var bp1v1AltWithNewContent buildpack.BuildModule
 					it.Before(func() {
 						var err error
 						bp1v1Alt, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -795,7 +794,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 			when("error adding buildpacks to builder", func() {
 				when("unable to convert buildpack to layer tar", func() {
-					var bp1v1Err buildpack.Buildpack
+					var bp1v1Err buildpack.BuildModule
 					it.Before(func() {
 						var err error
 						bp1v1Err, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
@@ -1378,7 +1377,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 	})
 }
 
-func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp buildpack.Buildpack) {
+func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp buildpack.BuildModule) {
 	t.Helper()
 
 	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().ModuleInfo().ID, bp.Descriptor().ModuleInfo().Version)
@@ -1402,7 +1401,7 @@ func assertImageHasBPLayer(t *testing.T, image *fakes.Image, bp buildpack.Buildp
 	)
 }
 
-func assertImageHasOrderBpLayer(t *testing.T, image *fakes.Image, bp buildpack.Buildpack) {
+func assertImageHasOrderBpLayer(t *testing.T, image *fakes.Image, bp buildpack.BuildModule) {
 	t.Helper()
 
 	dirPath := fmt.Sprintf("/cnb/buildpacks/%s/%s", bp.Descriptor().ModuleInfo().ID, bp.Descriptor().ModuleInfo().Version)

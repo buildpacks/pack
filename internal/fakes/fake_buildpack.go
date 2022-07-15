@@ -53,7 +53,7 @@ func WithOpenError(err error) FakeBuildpackOption {
 //  	build-contents
 // 	\_ /cnb/buildpacks/{ID}/{version}/bin/detect
 //  	detect-contents
-func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options ...FakeBuildpackOption) (buildpack.Buildpack, error) {
+func NewFakeBuildpack(descriptor dist.BuildpackDescriptor, chmod int64, options ...FakeBuildpackOption) (buildpack.BuildModule, error) {
 	return &fakeBuildpack{
 		descriptor: descriptor,
 		chmod:      chmod,

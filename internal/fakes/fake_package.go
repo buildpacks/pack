@@ -26,8 +26,8 @@ type fakePackage struct {
 	bpLayers   dist.BuildpackLayers
 }
 
-func NewPackage(tmpDir string, name string, buildpacks []buildpack.Buildpack) (Package, error) {
-	processBuildpack := func(bp buildpack.Buildpack) (tarFile string, diffID string, err error) {
+func NewPackage(tmpDir string, name string, buildpacks []buildpack.BuildModule) (Package, error) {
+	processBuildpack := func(bp buildpack.BuildModule) (tarFile string, diffID string, err error) {
 		tarFile, err = buildpack.ToLayerTar(tmpDir, bp)
 		if err != nil {
 			return "", "", err

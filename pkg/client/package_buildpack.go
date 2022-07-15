@@ -92,7 +92,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 	packageBuilder.SetBuildpack(bp)
 
 	for _, dep := range opts.Config.Dependencies {
-		var depBPs []buildpack.Buildpack
+		var depBPs []buildpack.BuildModule
 		mainBP, deps, err := c.buildpackDownloader.Download(ctx, dep.URI, buildpack.DownloadOptions{
 			RegistryName:    opts.Registry,
 			RelativeBaseDir: opts.RelativeBaseDir,
@@ -106,7 +106,7 @@ func (c *Client) PackageBuildpack(ctx context.Context, opts PackageBuildpackOpti
 			return errors.Wrapf(err, "packaging dependencies (uri=%s,image=%s)", style.Symbol(dep.URI), style.Symbol(dep.ImageName))
 		}
 
-		depBPs = append([]buildpack.Buildpack{mainBP}, deps...)
+		depBPs = append([]buildpack.BuildModule{mainBP}, deps...)
 		for _, depBP := range depBPs {
 			packageBuilder.AddDependency(depBP)
 		}

@@ -37,11 +37,11 @@ func (m *MockBuildpackDownloader) EXPECT() *MockBuildpackDownloaderMockRecorder 
 }
 
 // Download mocks base method.
-func (m *MockBuildpackDownloader) Download(arg0 context.Context, arg1 string, arg2 buildpack.DownloadOptions) (buildpack.Buildpack, []buildpack.Buildpack, error) {
+func (m *MockBuildpackDownloader) Download(arg0 context.Context, arg1 string, arg2 buildpack.DownloadOptions) (buildpack.BuildModule, []buildpack.BuildModule, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Download", arg0, arg1, arg2)
-	ret0, _ := ret[0].(buildpack.Buildpack)
-	ret1, _ := ret[1].([]buildpack.Buildpack)
+	ret0, _ := ret[0].(buildpack.BuildModule)
+	ret1, _ := ret[1].([]buildpack.BuildModule)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }

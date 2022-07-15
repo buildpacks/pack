@@ -26,7 +26,7 @@ func TestBuildpack(t *testing.T) {
 }
 
 func testBuildpack(t *testing.T, when spec.G, it spec.S) {
-	var writeBlobToFile = func(bp buildpack.Buildpack) string {
+	var writeBlobToFile = func(bp buildpack.BuildModule) string {
 		t.Helper()
 
 		bpReader, err := bp.Open()
