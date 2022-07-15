@@ -337,7 +337,10 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	if err := validateBuildpacks(b.StackID, b.Mixins(), b.LifecycleDescriptor(), b.Buildpacks(), b.additionalBuildpacks); err != nil {
 		return errors.Wrap(err, "validating buildpacks")
 	}
-	// TODO: validateExtensions
+
+	if err := validateExtensions(b.lifecycleDescriptor, b.Extensions(), b.additionalExtensions); err != nil {
+		return errors.Wrap(err, "validating extensions")
+	}
 
 	bpLayers := dist.BuildpackLayers{}
 	if _, err := dist.GetLabel(b.image, dist.BuildpackLayersLabel, &bpLayers); err != nil {
@@ -563,24 +566,8 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 
 	for _, bp := range bpsToValidate {
 		bpd := bp.Descriptor()
-
-		// TODO: Warn when Buildpack API is deprecated - https://github.com/buildpacks/pack/issues/788
-		compatible := false
-		for _, version := range append(lifecycleDescriptor.APIs.Buildpack.Supported, lifecycleDescriptor.APIs.Buildpack.Deprecated...) {
-			compatible = version.Compare(bpd.ModuleAPI()) == 0
-			if compatible {
-				break
-			}
-		}
-
-		if !compatible {
-			return fmt.Errorf(
-				"buildpack %s (Buildpack API %s) is incompatible with lifecycle %s (Buildpack API(s) %s)",
-				style.Symbol(bpd.ModuleInfo().FullName()),
-				bpd.ModuleAPI().String(),
-				style.Symbol(lifecycleDescriptor.Info.Version.String()),
-				strings.Join(lifecycleDescriptor.APIs.Buildpack.Supported.AsStrings(), ", "),
-			)
+		if err := validateLifecycleCompat(bpd, lifecycleDescriptor); err != nil {
+			return err
 		}
 
 		if len(bpd.ModuleStacks()) >= 1 { // standard buildpack
@@ -599,6 +586,47 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 				}
 			}
 		}
+	}
+
+	return nil
+}
+
+func validateExtensions(lifecycleDescriptor LifecycleDescriptor, allExtensions []dist.BuildpackInfo, extsToValidate []buildpack.BuildModule) error {
+	extLookup := map[string]interface{}{}
+
+	for _, ext := range allExtensions {
+		extLookup[ext.FullName()] = nil
+	}
+
+	for _, ext := range extsToValidate {
+		extd := ext.Descriptor()
+		if err := validateLifecycleCompat(extd, lifecycleDescriptor); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func validateLifecycleCompat(descriptor buildpack.Descriptor, lifecycleDescriptor LifecycleDescriptor) error {
+	// TODO: Warn when Buildpack API is deprecated - https://github.com/buildpacks/pack/issues/788
+	compatible := false
+	for _, version := range append(lifecycleDescriptor.APIs.Buildpack.Supported, lifecycleDescriptor.APIs.Buildpack.Deprecated...) {
+		compatible = version.Compare(descriptor.ModuleAPI()) == 0
+		if compatible {
+			break
+		}
+	}
+
+	if !compatible {
+		return fmt.Errorf(
+			"%s %s (Buildpack API %s) is incompatible with lifecycle %s (Buildpack API(s) %s)",
+			descriptor.Kind(),
+			style.Symbol(descriptor.ModuleInfo().FullName()),
+			descriptor.ModuleAPI().String(),
+			style.Symbol(lifecycleDescriptor.Info.Version.String()),
+			strings.Join(lifecycleDescriptor.APIs.Buildpack.Supported.AsStrings(), ", "),
+		)
 	}
 
 	return nil
