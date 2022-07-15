@@ -70,7 +70,7 @@ func testOCILayoutPackage(t *testing.T, when spec.G, it spec.S) {
 			it("returns false", func() {
 				buildpackBlob, err := fakes.NewFakeBuildpackBlob(&dist.BuildpackDescriptor{
 					API: api.MustParse("0.3"),
-					Info: dist.BuildpackInfo{
+					Info: dist.ModuleInfo{
 						ID:      "bp.id",
 						Version: "bp.version",
 					},

@@ -85,8 +85,8 @@ func (b *PackageBuilder) AddDependency(buildpack BuildModule) {
 
 func (b *PackageBuilder) finalizeImage(image WorkableImage, tmpDir string) error {
 	if err := dist.SetLabel(image, MetadataLabel, &Metadata{
-		BuildpackInfo: b.buildpack.Descriptor().ModuleInfo(),
-		Stacks:        b.resolvedStacks(),
+		ModuleInfo: b.buildpack.Descriptor().ModuleInfo(),
+		Stacks:     b.resolvedStacks(),
 	}); err != nil {
 		return err
 	}
@@ -259,7 +259,7 @@ func (b *PackageBuilder) SaveAsImage(repoName string, publish bool, imageOS stri
 }
 
 func validateBuildpacks(mainBP BuildModule, depBPs []BuildModule) error {
-	depsWithRefs := map[string][]dist.BuildpackInfo{}
+	depsWithRefs := map[string][]dist.ModuleInfo{}
 
 	for _, bp := range depBPs {
 		depsWithRefs[bp.Descriptor().ModuleInfo().FullName()] = nil
@@ -269,7 +269,7 @@ func validateBuildpacks(mainBP BuildModule, depBPs []BuildModule) error {
 		bpd := bp.Descriptor()
 		for _, orderEntry := range bpd.ModuleOrder() {
 			for _, groupEntry := range orderEntry.Group {
-				bpFullName, err := groupEntry.BuildpackInfo.FullNameWithVersion()
+				bpFullName, err := groupEntry.ModuleInfo.FullNameWithVersion()
 				if err != nil {
 					return errors.Wrapf(
 						err,

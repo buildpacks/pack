@@ -184,12 +184,12 @@ func (b *Builder) LifecycleDescriptor() LifecycleDescriptor {
 }
 
 // Buildpacks returns the buildpack list
-func (b *Builder) Buildpacks() []dist.BuildpackInfo {
+func (b *Builder) Buildpacks() []dist.ModuleInfo {
 	return b.metadata.Buildpacks
 }
 
 // Extensions returns the extensions list
-func (b *Builder) Extensions() []dist.BuildpackInfo {
+func (b *Builder) Extensions() []dist.ModuleInfo {
 	return b.metadata.Extensions
 }
 
@@ -516,7 +516,7 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 	return nil
 }
 
-func processOrder(modulesOnBuilder []dist.BuildpackInfo, order dist.Order, kind string) (dist.Order, error) {
+func processOrder(modulesOnBuilder []dist.ModuleInfo, order dist.Order, kind string) (dist.Order, error) {
 	resolved := dist.Order{}
 	for idx, g := range order {
 		resolved = append(resolved, dist.OrderEntry{})
@@ -531,8 +531,8 @@ func processOrder(modulesOnBuilder []dist.BuildpackInfo, order dist.Order, kind 
 	return resolved, nil
 }
 
-func resolveRef(moduleList []dist.BuildpackInfo, ref dist.BuildpackRef, kind string) (dist.BuildpackRef, error) {
-	var matching []dist.BuildpackInfo
+func resolveRef(moduleList []dist.ModuleInfo, ref dist.BuildpackRef, kind string) (dist.BuildpackRef, error) {
+	var matching []dist.ModuleInfo
 	for _, bp := range moduleList {
 		if ref.ID == bp.ID {
 			matching = append(matching, bp)
@@ -561,7 +561,7 @@ func resolveRef(moduleList []dist.BuildpackInfo, ref dist.BuildpackRef, kind str
 	return ref, nil
 }
 
-func hasElementWithVersion(moduleList []dist.BuildpackInfo, version string) bool {
+func hasElementWithVersion(moduleList []dist.ModuleInfo, version string) bool {
 	for _, el := range moduleList {
 		if el.Version == version {
 			return true
@@ -570,7 +570,7 @@ func hasElementWithVersion(moduleList []dist.BuildpackInfo, version string) bool
 	return false
 }
 
-func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.BuildpackInfo, bpsToValidate []buildpack.BuildModule) error {
+func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor LifecycleDescriptor, allBuildpacks []dist.ModuleInfo, bpsToValidate []buildpack.BuildModule) error {
 	bpLookup := map[string]interface{}{}
 
 	for _, bp := range allBuildpacks {
@@ -604,7 +604,7 @@ func validateBuildpacks(stackID string, mixins []string, lifecycleDescriptor Lif
 	return nil
 }
 
-func validateExtensions(lifecycleDescriptor LifecycleDescriptor, allExtensions []dist.BuildpackInfo, extsToValidate []buildpack.BuildModule) error {
+func validateExtensions(lifecycleDescriptor LifecycleDescriptor, allExtensions []dist.ModuleInfo, extsToValidate []buildpack.BuildModule) error {
 	extLookup := map[string]interface{}{}
 
 	for _, ext := range allExtensions {
@@ -674,7 +674,7 @@ func userAndGroupIDs(img imgutil.Image) (int, int, error) {
 	return uid, gid, nil
 }
 
-func uniqueVersions(buildpacks []dist.BuildpackInfo) []string {
+func uniqueVersions(buildpacks []dist.ModuleInfo) []string {
 	results := []string{}
 	set := map[string]interface{}{}
 	for _, bpInfo := range buildpacks {
@@ -883,7 +883,7 @@ func (b *Builder) envLayer(dest string, env map[string]string) (string, error) {
 	return fh.Name(), nil
 }
 
-func (b *Builder) whiteoutLayer(tmpDir string, i int, bpInfo dist.BuildpackInfo) (string, error) {
+func (b *Builder) whiteoutLayer(tmpDir string, i int, bpInfo dist.ModuleInfo) (string, error) {
 	bpWhiteoutsTmpDir := filepath.Join(tmpDir, strconv.Itoa(i)+"_whiteouts")
 	if err := os.MkdirAll(bpWhiteoutsTmpDir, os.ModePerm); err != nil {
 		return "", errors.Wrap(err, "creating buildpack whiteouts temp dir")

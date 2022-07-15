@@ -23,7 +23,7 @@ func TestGetLocatorType(t *testing.T) {
 func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 	type testCase struct {
 		locator      string
-		builderBPs   []dist.BuildpackInfo
+		builderBPs   []dist.ModuleInfo
 		expectedType buildpack.LocatorType
 		expectedErr  string
 	}
@@ -39,7 +39,7 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		},
 		{
 			locator:      "from=builder:some-bp",
-			builderBPs:   []dist.BuildpackInfo{{ID: "some-bp", Version: "some-version"}},
+			builderBPs:   []dist.ModuleInfo{{ID: "some-bp", Version: "some-version"}},
 			expectedType: buildpack.IDLocator,
 		},
 		{
@@ -48,12 +48,12 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		},
 		{
 			locator:     "from=builder:some-bp@some-other-version",
-			builderBPs:  []dist.BuildpackInfo{{ID: "some-bp", Version: "some-version"}},
+			builderBPs:  []dist.ModuleInfo{{ID: "some-bp", Version: "some-version"}},
 			expectedErr: "'from=builder:some-bp@some-other-version' is not a valid identifier",
 		},
 		{
 			locator:      "urn:cnb:builder:some-bp",
-			builderBPs:   []dist.BuildpackInfo{{ID: "some-bp", Version: "some-version"}},
+			builderBPs:   []dist.ModuleInfo{{ID: "some-bp", Version: "some-version"}},
 			expectedType: buildpack.IDLocator,
 		},
 		{
@@ -62,17 +62,17 @@ func testGetLocatorType(t *testing.T, when spec.G, it spec.S) {
 		},
 		{
 			locator:     "urn:cnb:builder:some-bp@some-other-version",
-			builderBPs:  []dist.BuildpackInfo{{ID: "some-bp", Version: "some-version"}},
+			builderBPs:  []dist.ModuleInfo{{ID: "some-bp", Version: "some-version"}},
 			expectedErr: "'urn:cnb:builder:some-bp@some-other-version' is not a valid identifier",
 		},
 		{
 			locator:      "some-bp",
-			builderBPs:   []dist.BuildpackInfo{{ID: "some-bp", Version: "any-version"}},
+			builderBPs:   []dist.ModuleInfo{{ID: "some-bp", Version: "any-version"}},
 			expectedType: buildpack.IDLocator,
 		},
 		{
 			locator:      localPath("buildpack"),
-			builderBPs:   []dist.BuildpackInfo{{ID: "bp.one", Version: "1.2.3"}},
+			builderBPs:   []dist.ModuleInfo{{ID: "bp.one", Version: "1.2.3"}},
 			expectedType: buildpack.URILocator,
 		},
 		{

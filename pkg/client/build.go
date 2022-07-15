@@ -553,7 +553,7 @@ func allBuildpacks(builderImage imgutil.Image, additionalBuildpacks []buildpack.
 	for id, bps := range bpLayers {
 		for ver, bp := range bps {
 			desc := dist.BuildpackDescriptor{
-				Info: dist.BuildpackInfo{
+				Info: dist.ModuleInfo{
 					ID:      id,
 					Version: ver,
 				},
@@ -684,7 +684,7 @@ func (c *Client) processProxyConfig(config *ProxyConfig) ProxyConfig {
 // 	----------
 // 	- group:
 //		- A
-func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.BuildpackInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
+func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Image, builderBPs []dist.ModuleInfo, builderOrder dist.Order, stackID string, opts BuildOptions) (fetchedBPs []buildpack.BuildModule, order dist.Order, err error) {
 	pullPolicy := opts.PullPolicy
 	publish := opts.Publish
 	registry := opts.Registry
@@ -744,7 +744,7 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 			}
 		case buildpack.IDLocator:
 			id, version := buildpack.ParseIDLocator(bp)
-			order = appendBuildpackToOrder(order, dist.BuildpackInfo{
+			order = appendBuildpackToOrder(order, dist.ModuleInfo{
 				ID:      id,
 				Version: version,
 			})
@@ -771,12 +771,12 @@ func (c *Client) processBuildpacks(ctx context.Context, builderImage imgutil.Ima
 	return fetchedBPs, order, nil
 }
 
-func appendBuildpackToOrder(order dist.Order, bpInfo dist.BuildpackInfo) (newOrder dist.Order) {
+func appendBuildpackToOrder(order dist.Order, bpInfo dist.ModuleInfo) (newOrder dist.Order) {
 	for _, orderEntry := range order {
 		newEntry := orderEntry
 		newEntry.Group = append(newEntry.Group, dist.BuildpackRef{
-			BuildpackInfo: bpInfo,
-			Optional:      false,
+			ModuleInfo: bpInfo,
+			Optional:   false,
 		})
 		newOrder = append(newOrder, newEntry)
 	}

@@ -29,7 +29,7 @@ type BuilderInfo struct {
 	RunImageMirrors []string
 
 	// All buildpacks included within the builder.
-	Buildpacks []dist.BuildpackInfo
+	Buildpacks []dist.ModuleInfo
 
 	// Detailed ordering of buildpacks and nested buildpacks where depth is specified.
 	Order pubbldr.DetectionOrder

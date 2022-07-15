@@ -450,8 +450,8 @@ default = false
 
 		when("no buildpacks are specified", func() {
 			it("omits buildpacks from output", func() {
-				localInfo.Buildpacks = []dist.BuildpackInfo{}
-				remoteInfo.Buildpacks = []dist.BuildpackInfo{}
+				localInfo.Buildpacks = []dist.ModuleInfo{}
+				remoteInfo.Buildpacks = []dist.ModuleInfo{}
 
 				tomlWriter := writer.NewTOML()
 

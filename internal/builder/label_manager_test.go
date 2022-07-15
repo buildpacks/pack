@@ -65,7 +65,7 @@ func testLabelManager(t *testing.T, when spec.G, it spec.S) {
 			expectedDescription    = "Test image description"
 			expectedRunImage       = "some/run-image"
 			expectedRunImageMirror = "gcr.io/some/default"
-			expectedBuildpacks     = []dist.BuildpackInfo{
+			expectedBuildpacks     = []dist.ModuleInfo{
 				{
 					ID:       "test.buildpack",
 					Version:  "test.buildpack.version",
@@ -327,12 +327,12 @@ func testLabelManager(t *testing.T, when spec.G, it spec.S) {
 				{
 					Group: []dist.BuildpackRef{
 						{
-							BuildpackInfo: dist.BuildpackInfo{
+							ModuleInfo: dist.ModuleInfo{
 								ID: "buildpack-1-id",
 							},
 						},
 						{
-							BuildpackInfo: dist.BuildpackInfo{
+							ModuleInfo: dist.ModuleInfo{
 								ID:      "buildpack-2-id",
 								Version: "buildpack-2-version-1",
 							},

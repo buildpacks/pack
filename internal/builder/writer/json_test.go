@@ -426,8 +426,8 @@ func testJSON(t *testing.T, when spec.G, it spec.S) {
 
 		when("no buildpacks are specified", func() {
 			it("displays buildpacks as empty list", func() {
-				localInfo.Buildpacks = []dist.BuildpackInfo{}
-				remoteInfo.Buildpacks = []dist.BuildpackInfo{}
+				localInfo.Buildpacks = []dist.ModuleInfo{}
+				remoteInfo.Buildpacks = []dist.ModuleInfo{}
 
 				jsonWriter := writer.NewJSON()
 

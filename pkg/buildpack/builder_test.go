@@ -108,7 +108,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							it("should error", func() {
 								bp1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.1.id",
 										Version: "bp.1.version",
 									},
@@ -121,7 +121,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								bp2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API:    api.MustParse("0.2"),
-									Info:   dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
+									Info:   dist.ModuleInfo{ID: "bp.2.id", Version: "bp.2.version"},
 									Stacks: []dist.Stack{{ID: "some.stack"}},
 									Order:  nil,
 								}, 0644)
@@ -137,14 +137,14 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							it("should error", func() {
 								mainBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.1.id",
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
 										Group: []dist.BuildpackRef{
-											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"}},
-											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
+											{ModuleInfo: dist.ModuleInfo{ID: "bp.present.id", Version: "bp.present.version"}},
+											{ModuleInfo: dist.ModuleInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
 										},
 									}},
 								}, 0644)
@@ -155,7 +155,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API:    api.MustParse("0.2"),
-									Info:   dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"},
+									Info:   dist.ModuleInfo{ID: "bp.present.id", Version: "bp.present.version"},
 									Stacks: []dist.Stack{{ID: "some.stack"}},
 									Order:  nil,
 								}, 0644)
@@ -171,13 +171,13 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							it("should error", func() {
 								mainBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.1.id",
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
 										Group: []dist.BuildpackRef{
-											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"}},
+											{ModuleInfo: dist.ModuleInfo{ID: "bp.present.id", Version: "bp.present.version"}},
 										},
 									}},
 								}, 0644)
@@ -187,10 +187,10 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API:  api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"},
+									Info: dist.ModuleInfo{ID: "bp.present.id", Version: "bp.present.version"},
 									Order: dist.Order{{
 										Group: []dist.BuildpackRef{
-											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
+											{ModuleInfo: dist.ModuleInfo{ID: "bp.missing.id", Version: "bp.missing.version"}},
 										},
 									}},
 								}, 0644)
@@ -206,13 +206,13 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							it("should error", func() {
 								mainBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.1.id",
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
 										Group: []dist.BuildpackRef{
-											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"}},
+											{ModuleInfo: dist.ModuleInfo{ID: "bp.present.id", Version: "bp.present.version"}},
 										},
 									}},
 								}, 0644)
@@ -222,10 +222,10 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								presentBP, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API:  api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{ID: "bp.present.id", Version: "bp.present.version"},
+									Info: dist.ModuleInfo{ID: "bp.present.id", Version: "bp.present.version"},
 									Order: dist.Order{{
 										Group: []dist.BuildpackRef{
-											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.missing.id"}},
+											{ModuleInfo: dist.ModuleInfo{ID: "bp.missing.id"}},
 										},
 									}},
 								}, 0644)
@@ -243,14 +243,14 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							it("should succeed", func() {
 								bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.1.id",
 										Version: "bp.1.version",
 									},
 									Stacks: nil,
 									Order: dist.Order{{
 										Group: []dist.BuildpackRef{
-											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
+											{ModuleInfo: dist.ModuleInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
 										},
 									}},
 								}, 0644)
@@ -261,7 +261,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								dependency, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.nested.id",
 										Version: "bp.nested.version",
 									},
@@ -283,17 +283,17 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							it("should error", func() {
 								bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.1.id",
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
 										Group: []dist.BuildpackRef{{
-											BuildpackInfo: dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
-											Optional:      false,
+											ModuleInfo: dist.ModuleInfo{ID: "bp.2.id", Version: "bp.2.version"},
+											Optional:   false,
 										}, {
-											BuildpackInfo: dist.BuildpackInfo{ID: "bp.3.id", Version: "bp.3.version"},
-											Optional:      false,
+											ModuleInfo: dist.ModuleInfo{ID: "bp.3.id", Version: "bp.3.version"},
+											Optional:   false,
 										}},
 									}},
 								}, 0644)
@@ -304,7 +304,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.2.id",
 										Version: "bp.2.version",
 									},
@@ -319,7 +319,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								dependency2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.3.id",
 										Version: "bp.3.version",
 									},
@@ -340,17 +340,17 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							it("should only support common stacks", func() {
 								bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.1.id",
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
 										Group: []dist.BuildpackRef{{
-											BuildpackInfo: dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
-											Optional:      false,
+											ModuleInfo: dist.ModuleInfo{ID: "bp.2.id", Version: "bp.2.version"},
+											Optional:   false,
 										}, {
-											BuildpackInfo: dist.BuildpackInfo{ID: "bp.3.id", Version: "bp.3.version"},
-											Optional:      false,
+											ModuleInfo: dist.ModuleInfo{ID: "bp.3.id", Version: "bp.3.version"},
+											Optional:   false,
 										}},
 									}},
 								}, 0644)
@@ -361,7 +361,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.2.id",
 										Version: "bp.2.version",
 									},
@@ -376,7 +376,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								dependency2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.3.id",
 										Version: "bp.3.version",
 									},
@@ -403,17 +403,17 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							it("should support all the possible stacks", func() {
 								bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.1.id",
 										Version: "bp.1.version",
 									},
 									Order: dist.Order{{
 										Group: []dist.BuildpackRef{{
-											BuildpackInfo: dist.BuildpackInfo{ID: "bp.2.id", Version: "bp.2.version"},
-											Optional:      false,
+											ModuleInfo: dist.ModuleInfo{ID: "bp.2.id", Version: "bp.2.version"},
+											Optional:   false,
 										}, {
-											BuildpackInfo: dist.BuildpackInfo{ID: "bp.3.id", Version: "bp.3.version"},
-											Optional:      false,
+											ModuleInfo: dist.ModuleInfo{ID: "bp.3.id", Version: "bp.3.version"},
+											Optional:   false,
 										}},
 									}},
 								}, 0644)
@@ -424,7 +424,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								dependency1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.2.id",
 										Version: "bp.2.version",
 									},
@@ -438,7 +438,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								dependency2, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.3.id",
 										Version: "bp.3.version",
 									},
@@ -465,14 +465,14 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 							it("should succeed and compute common stacks", func() {
 								bp, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.1.id",
 										Version: "bp.1.version",
 									},
 									Stacks: nil,
 									Order: dist.Order{{
 										Group: []dist.BuildpackRef{
-											{BuildpackInfo: dist.BuildpackInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
+											{ModuleInfo: dist.ModuleInfo{ID: "bp.nested.id", Version: "bp.nested.version"}},
 										},
 									}},
 								}, 0644)
@@ -483,13 +483,13 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								dependencyOrder, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.nested.id",
 										Version: "bp.nested.version",
 									},
 									Order: dist.Order{{
 										Group: []dist.BuildpackRef{
-											{BuildpackInfo: dist.BuildpackInfo{
+											{ModuleInfo: dist.ModuleInfo{
 												ID:      "bp.nested.nested.id",
 												Version: "bp.nested.nested.version",
 											}},
@@ -502,7 +502,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 
 								dependencyNestedNested, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 									API: api.MustParse("0.2"),
-									Info: dist.BuildpackInfo{
+									Info: dist.ModuleInfo{
 										ID:      "bp.nested.nested.id",
 										Version: "bp.nested.nested.version",
 									},
@@ -535,7 +535,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		it("sets metadata", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API: api.MustParse("0.2"),
-				Info: dist.BuildpackInfo{
+				Info: dist.ModuleInfo{
 					ID:          "bp.1.id",
 					Version:     "bp.1.version",
 					Name:        "One",
@@ -588,7 +588,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		it("sets buildpack layers label", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
-				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+				Info:   dist.ModuleInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
 				Order:  nil,
 			}, 0644)
@@ -612,7 +612,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		it("adds buildpack layers for linux", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
-				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+				Info:   dist.ModuleInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
 				Order:  nil,
 			}, 0644)
@@ -659,7 +659,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		it("adds baselayer + buildpack layers for windows", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
-				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+				Info:   dist.ModuleInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
 				Order:  nil,
 			}, 0644)
@@ -677,7 +677,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		it("sets metadata", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
-				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+				Info:   dist.ModuleInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
 				Order:  nil,
 			}, 0644)
@@ -734,7 +734,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		it("adds buildpack layers", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
-				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+				Info:   dist.ModuleInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
 				Order:  nil,
 			}, 0644)
@@ -784,7 +784,7 @@ func testPackageBuilder(t *testing.T, when spec.G, it spec.S) {
 		it("adds baselayer + buildpack layers for windows", func() {
 			buildpack1, err := ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.2"),
-				Info:   dist.BuildpackInfo{ID: "bp.1.id", Version: "bp.1.version"},
+				Info:   dist.ModuleInfo{ID: "bp.1.id", Version: "bp.1.version"},
 				Stacks: []dist.Stack{{ID: "stack.id.1"}, {ID: "stack.id.2"}},
 				Order:  nil,
 			}, 0644)

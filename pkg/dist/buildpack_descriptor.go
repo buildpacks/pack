@@ -12,10 +12,10 @@ import (
 )
 
 type BuildpackDescriptor struct {
-	API    *api.Version  `toml:"api"`
-	Info   BuildpackInfo `toml:"buildpack"`
-	Stacks []Stack       `toml:"stacks"`
-	Order  Order         `toml:"order"`
+	API    *api.Version `toml:"api"`
+	Info   ModuleInfo   `toml:"buildpack"`
+	Stacks []Stack      `toml:"stacks"`
+	Order  Order        `toml:"order"`
 }
 
 func (b *BuildpackDescriptor) EscapedID() string {
@@ -58,7 +58,7 @@ func (b *BuildpackDescriptor) ModuleAPI() *api.Version {
 	return b.API
 }
 
-func (b *BuildpackDescriptor) ModuleInfo() BuildpackInfo {
+func (b *BuildpackDescriptor) ModuleInfo() ModuleInfo {
 	return b.Info
 }
 

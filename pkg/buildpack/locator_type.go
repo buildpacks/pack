@@ -53,7 +53,7 @@ func (l LocatorType) String() string {
 // GetLocatorType determines which type of locator is designated by the given input.
 // If a type cannot be determined, `INVALID_LOCATOR` will be returned. If an error
 // is encountered, it will be returned.
-func GetLocatorType(locator string, relativeBaseDir string, buildpacksFromBuilder []dist.BuildpackInfo) (LocatorType, error) {
+func GetLocatorType(locator string, relativeBaseDir string, buildpacksFromBuilder []dist.ModuleInfo) (LocatorType, error) {
 	if locator == deprecatedFromBuilderPrefix {
 		return FromBuilderLocator, nil
 	}
@@ -85,7 +85,7 @@ func HasDockerLocator(locator string) bool {
 	return strings.HasPrefix(locator, fromDockerPrefix)
 }
 
-func parseNakedLocator(locator, relativeBaseDir string, buildpacksFromBuilder []dist.BuildpackInfo) LocatorType {
+func parseNakedLocator(locator, relativeBaseDir string, buildpacksFromBuilder []dist.ModuleInfo) LocatorType {
 	// from here on, we're dealing with a naked locator, and we try to figure out what it is. To do this we check
 	// the following characteristics in order:
 	//   1. Does it match a path on the file system
@@ -124,7 +124,7 @@ func canBeRegistryRef(locator string) bool {
 	return registryPattern.MatchString(locator)
 }
 
-func isFoundInBuilder(locator string, candidates []dist.BuildpackInfo) bool {
+func isFoundInBuilder(locator string, candidates []dist.ModuleInfo) bool {
 	id, version := ParseIDLocator(locator)
 	for _, c := range candidates {
 		if id == c.ID && (version == "" || version == c.Version) {

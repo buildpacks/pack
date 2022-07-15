@@ -15,7 +15,7 @@ import (
 
 type BuildpackInfo struct {
 	BuildpackMetadata buildpack.Metadata
-	Buildpacks        []dist.BuildpackInfo
+	Buildpacks        []dist.ModuleInfo
 	Order             dist.Order
 	BuildpackLayers   dist.BuildpackLayers
 	Location          buildpack.LocatorType
@@ -36,7 +36,7 @@ func (iw ImgWrapper) Label(name string) (string, error) {
 }
 
 func (c *Client) InspectBuildpack(opts InspectBuildpackOptions) (*BuildpackInfo, error) {
-	locatorType, err := buildpack.GetLocatorType(opts.BuildpackName, "", []dist.BuildpackInfo{})
+	locatorType, err := buildpack.GetLocatorType(opts.BuildpackName, "", []dist.ModuleInfo{})
 	if err != nil {
 		return nil, err
 	}
@@ -126,20 +126,20 @@ func extractOrder(buildpackMd buildpack.Metadata) dist.Order {
 		{
 			Group: []dist.BuildpackRef{
 				{
-					BuildpackInfo: buildpackMd.BuildpackInfo,
+					ModuleInfo: buildpackMd.ModuleInfo,
 				},
 			},
 		},
 	}
 }
 
-func extractBuildpacks(layersMd dist.BuildpackLayers) []dist.BuildpackInfo {
-	result := []dist.BuildpackInfo{}
-	buildpackSet := map[*dist.BuildpackInfo]bool{}
+func extractBuildpacks(layersMd dist.BuildpackLayers) []dist.ModuleInfo {
+	result := []dist.ModuleInfo{}
+	buildpackSet := map[*dist.ModuleInfo]bool{}
 
 	for buildpackID, buildpackMap := range layersMd {
 		for version, layerInfo := range buildpackMap {
-			bp := dist.BuildpackInfo{
+			bp := dist.ModuleInfo{
 				ID:       buildpackID,
 				Name:     layerInfo.Name,
 				Version:  version,

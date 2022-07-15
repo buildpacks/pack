@@ -76,7 +76,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 		var shouldCallBuildpackDownloaderWith = func(uri string, buildpackDownloadOptions buildpack.DownloadOptions) {
 			buildpack := createBuildpack(dist.BuildpackDescriptor{
 				API:    api.MustParse("0.3"),
-				Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
+				Info:   dist.ModuleInfo{ID: "example/foo", Version: "1.1.0"},
 				Stacks: []dist.Stack{{ID: "some.stack.id"}},
 			})
 			mockBuildpackDownloader.EXPECT().Download(gomock.Any(), uri, gomock.Any()).Return(buildpack, nil, nil)
@@ -137,7 +137,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					Description: "Some description",
 					Buildpacks: []pubbldr.BuildpackConfig{
 						{
-							BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"},
+							ModuleInfo: dist.ModuleInfo{ID: "bp.one", Version: "1.2.3", Homepage: "http://one.buildpack"},
 							ImageOrURI: dist.ImageOrURI{
 								BuildpackURI: dist.BuildpackURI{
 									URI: "https://example.fake/bp-one.tgz",
@@ -147,7 +147,7 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					},
 					Extensions: []pubbldr.BuildpackConfig{
 						{
-							BuildpackInfo: dist.BuildpackInfo{ID: "ext.one", Version: "1.2.3", Homepage: "http://one.extension"},
+							ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3", Homepage: "http://one.extension"},
 							ImageOrURI: dist.ImageOrURI{
 								BuildpackURI: dist.BuildpackURI{
 									URI: "https://example.fake/ext-one.tgz",
@@ -157,12 +157,12 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 					},
 					Order: []dist.OrderEntry{{
 						Group: []dist.BuildpackRef{
-							{BuildpackInfo: dist.BuildpackInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
+							{ModuleInfo: dist.ModuleInfo{ID: "bp.one", Version: "1.2.3"}, Optional: false},
 						}},
 					},
 					OrderExtensions: []dist.OrderEntry{{
 						Group: []dist.BuildpackRef{
-							{BuildpackInfo: dist.BuildpackInfo{ID: "ext.one", Version: "1.2.3"}, Optional: true}, // TODO: extensions are always optional
+							{ModuleInfo: dist.ModuleInfo{ID: "ext.one", Version: "1.2.3"}, Optional: true}, // TODO: extensions are always optional
 						}},
 					},
 					Stack: pubbldr.StackConfig{
@@ -587,17 +587,17 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				bldr := successfullyCreateBuilder()
 
-				bpInfo := dist.BuildpackInfo{
+				bpInfo := dist.ModuleInfo{
 					ID:       "bp.one",
 					Version:  "1.2.3",
 					Homepage: "http://one.buildpack",
 				}
-				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
+				h.AssertEq(t, bldr.Buildpacks(), []dist.ModuleInfo{bpInfo})
 				bpInfo.Homepage = ""
 				h.AssertEq(t, bldr.Order(), dist.Order{{
 					Group: []dist.BuildpackRef{{
-						BuildpackInfo: bpInfo,
-						Optional:      false,
+						ModuleInfo: bpInfo,
+						Optional:   false,
 					}},
 				}})
 			})
@@ -608,17 +608,17 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 
 				bldr := successfullyCreateBuilder()
 
-				extInfo := dist.BuildpackInfo{
+				extInfo := dist.ModuleInfo{
 					ID:       "ext.one",
 					Version:  "1.2.3",
 					Homepage: "http://one.extension",
 				}
-				h.AssertEq(t, bldr.Extensions(), []dist.BuildpackInfo{extInfo})
+				h.AssertEq(t, bldr.Extensions(), []dist.ModuleInfo{extInfo})
 				extInfo.Homepage = ""
 				h.AssertEq(t, bldr.OrderExtensions(), dist.Order{{
 					Group: []dist.BuildpackRef{{
-						BuildpackInfo: extInfo,
-						Optional:      true,
+						ModuleInfo: extInfo,
+						Optional:   true,
 					}},
 				}})
 			})
@@ -730,17 +730,17 @@ func testCreateBuilder(t *testing.T, when spec.G, it spec.S) {
 				prepareFetcherWithRunImages()
 				bldr := successfullyCreateBuilder()
 
-				bpInfo := dist.BuildpackInfo{
+				bpInfo := dist.ModuleInfo{
 					ID:       "bp.one",
 					Version:  "1.2.3",
 					Homepage: "http://one.buildpack",
 				}
-				h.AssertEq(t, bldr.Buildpacks(), []dist.BuildpackInfo{bpInfo})
+				h.AssertEq(t, bldr.Buildpacks(), []dist.ModuleInfo{bpInfo})
 				bpInfo.Homepage = ""
 				h.AssertEq(t, bldr.Order(), dist.Order{{
 					Group: []dist.BuildpackRef{{
-						BuildpackInfo: bpInfo,
-						Optional:      false,
+						ModuleInfo: bpInfo,
+						Optional:   false,
 					}},
 				}})
 			})

@@ -42,7 +42,7 @@ func ExtractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 		for bpVersion, bpInfo := range v {
 			desc := dist.BuildpackDescriptor{
 				API: bpInfo.API,
-				Info: dist.BuildpackInfo{
+				Info: dist.ModuleInfo{
 					ID:       bpID,
 					Version:  bpVersion,
 					Homepage: bpInfo.Homepage,
@@ -67,7 +67,7 @@ func ExtractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 				},
 			}
 
-			if desc.Info.Match(md.BuildpackInfo) { // This is the order buildpack of the package
+			if desc.Info.Match(md.ModuleInfo) { // This is the order buildpack of the package
 				mainBP = FromBlob(&desc, b)
 			} else {
 				depBPs = append(depBPs, FromBlob(&desc, b))
@@ -96,7 +96,7 @@ func ExtractExtensions(pkg Package) (mainBP BuildModule, err error) {
 		for extVersion, extInfo := range v {
 			desc := dist.ExtensionDescriptor{
 				API: extInfo.API,
-				Info: dist.BuildpackInfo{
+				Info: dist.ModuleInfo{
 					ID:       extID,
 					Version:  extVersion,
 					Homepage: extInfo.Homepage,

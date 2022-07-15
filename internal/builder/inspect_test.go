@@ -26,24 +26,24 @@ const (
 )
 
 var (
-	testTopNestedBuildpack = dist.BuildpackInfo{
+	testTopNestedBuildpack = dist.ModuleInfo{
 		ID:      "test.top.nested",
 		Version: "test.top.nested.version",
 	}
-	testNestedBuildpack = dist.BuildpackInfo{
+	testNestedBuildpack = dist.ModuleInfo{
 		ID:       "test.nested",
 		Version:  "test.nested.version",
 		Homepage: "http://geocities.com/top-bp",
 	}
-	testBuildpack = dist.BuildpackInfo{
+	testBuildpack = dist.ModuleInfo{
 		ID:      "test.bp.two",
 		Version: "test.bp.two.version",
 	}
-	testBuildpackVersionTwo = dist.BuildpackInfo{
+	testBuildpackVersionTwo = dist.ModuleInfo{
 		ID:      "test.bp.two",
 		Version: "test.bp.two.version-2",
 	}
-	testBuildpacks = []dist.BuildpackInfo{
+	testBuildpacks = []dist.ModuleInfo{
 		testBuildpack,
 		testNestedBuildpack,
 		testTopNestedBuildpack,
@@ -87,11 +87,11 @@ var (
 	}
 	testOrder = dist.Order{
 		dist.OrderEntry{Group: []dist.BuildpackRef{
-			{BuildpackInfo: testBuildpack, Optional: false},
+			{ModuleInfo: testBuildpack, Optional: false},
 		}},
 		dist.OrderEntry{Group: []dist.BuildpackRef{
-			{BuildpackInfo: testNestedBuildpack, Optional: false},
-			{BuildpackInfo: testTopNestedBuildpack, Optional: true},
+			{ModuleInfo: testNestedBuildpack, Optional: false},
+			{ModuleInfo: testTopNestedBuildpack, Optional: true},
 		}},
 	}
 	testLayers = dist.BuildpackLayers{
@@ -126,17 +126,17 @@ var (
 	expectedDetectionTestOrder = pubbldr.DetectionOrder{
 		{
 			BuildpackRef: dist.BuildpackRef{
-				BuildpackInfo: testBuildpack,
+				ModuleInfo: testBuildpack,
 			},
 		},
 		{
 			BuildpackRef: dist.BuildpackRef{
-				BuildpackInfo: testTopNestedBuildpack,
+				ModuleInfo: testTopNestedBuildpack,
 			},
 			GroupDetectionOrder: pubbldr.DetectionOrder{
 				{
 					BuildpackRef: dist.BuildpackRef{
-						BuildpackInfo: testNestedBuildpack,
+						ModuleInfo: testNestedBuildpack,
 					},
 				},
 			},
@@ -221,7 +221,7 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 		it("sorts buildPacks by ID then Version", func() {
 			metadata := builder.Metadata{
 				Description: testBuilderDescription,
-				Buildpacks: []dist.BuildpackInfo{
+				Buildpacks: []dist.ModuleInfo{
 					testNestedBuildpack,
 					testBuildpackVersionTwo,
 					testBuildpack,
@@ -238,14 +238,14 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 			info, err := inspector.Inspect(testBuilderName, true, pubbldr.OrderDetectionNone)
 
 			assert.Nil(err)
-			assert.Equal(info.Buildpacks, []dist.BuildpackInfo{testBuildpack, testBuildpackVersionTwo, testNestedBuildpack})
+			assert.Equal(info.Buildpacks, []dist.ModuleInfo{testBuildpack, testBuildpackVersionTwo, testNestedBuildpack})
 		})
 
 		when("there are duplicated buildpacks in metadata", func() {
 			it("returns deduplicated buildpacks", func() {
 				metadata := builder.Metadata{
 					Description: testBuilderDescription,
-					Buildpacks: []dist.BuildpackInfo{
+					Buildpacks: []dist.ModuleInfo{
 						testTopNestedBuildpack,
 						testNestedBuildpack,
 						testTopNestedBuildpack,
@@ -261,7 +261,7 @@ func testInspect(t *testing.T, when spec.G, it spec.S) {
 				info, err := inspector.Inspect(testBuilderName, true, pubbldr.OrderDetectionNone)
 
 				assert.Nil(err)
-				assert.Equal(info.Buildpacks, []dist.BuildpackInfo{testNestedBuildpack, testTopNestedBuildpack})
+				assert.Equal(info.Buildpacks, []dist.ModuleInfo{testNestedBuildpack, testTopNestedBuildpack})
 			})
 		})
 

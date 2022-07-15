@@ -29,13 +29,13 @@ type BuildpackCollection []BuildpackConfig
 
 // BuildpackConfig details the configuration of a Buildpack
 type BuildpackConfig struct {
-	dist.BuildpackInfo
+	dist.ModuleInfo
 	dist.ImageOrURI
 }
 
 func (c *BuildpackConfig) DisplayString() string {
-	if c.BuildpackInfo.FullName() != "" {
-		return c.BuildpackInfo.FullName()
+	if c.ModuleInfo.FullName() != "" {
+		return c.ModuleInfo.FullName()
 	}
 
 	return c.ImageOrURI.DisplayString()

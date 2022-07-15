@@ -32,7 +32,7 @@ type Descriptor interface {
 	EscapedID() string
 	Kind() string
 	ModuleAPI() *api.Version
-	ModuleInfo() dist.BuildpackInfo
+	ModuleInfo() dist.ModuleInfo
 	ModuleOrder() dist.Order
 	ModuleStacks() []dist.Stack
 }

@@ -41,7 +41,7 @@ type BuilderInfo struct {
 	Stack                  Stack                   `json:"stack" yaml:"stack" toml:"stack"`
 	Lifecycle              Lifecycle               `json:"lifecycle" yaml:"lifecycle" toml:"lifecycle"`
 	RunImages              []RunImage              `json:"run_images" yaml:"run_images" toml:"run_images"`
-	Buildpacks             []dist.BuildpackInfo    `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
+	Buildpacks             []dist.ModuleInfo       `json:"buildpacks" yaml:"buildpacks" toml:"buildpacks"`
 	pubbldr.DetectionOrder `json:"detection_order" yaml:"detection_order" toml:"detection_order"`
 }
 

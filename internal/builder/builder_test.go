@@ -75,7 +75,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		bp1v1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			Info: dist.BuildpackInfo{
+			Info: dist.ModuleInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-1",
 			},
@@ -88,7 +88,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		bp1v2, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			Info: dist.BuildpackInfo{
+			Info: dist.ModuleInfo{
 				ID:      "buildpack-1-id",
 				Version: "buildpack-1-version-2",
 			},
@@ -101,7 +101,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		bp2v1, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			Info: dist.BuildpackInfo{
+			Info: dist.ModuleInfo{
 				ID:      "buildpack-2-id",
 				Version: "buildpack-2-version-1",
 			},
@@ -114,19 +114,19 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 		bpOrder, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 			API: api.MustParse("0.2"),
-			Info: dist.BuildpackInfo{
+			Info: dist.ModuleInfo{
 				ID:      "order-buildpack-id",
 				Version: "order-buildpack-version",
 			},
 			Order: []dist.OrderEntry{{
 				Group: []dist.BuildpackRef{
 					{
-						BuildpackInfo: bp1v1.Descriptor().ModuleInfo(),
-						Optional:      true,
+						ModuleInfo: bp1v1.Descriptor().ModuleInfo(),
+						Optional:   true,
 					},
 					{
-						BuildpackInfo: bp2v1.Descriptor().ModuleInfo(),
-						Optional:      false,
+						ModuleInfo: bp2v1.Descriptor().ModuleInfo(),
+						Optional:   false,
 					},
 				},
 			}},
@@ -429,7 +429,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					it("should resolve unset version (to legacy label and order.toml)", func() {
 						subject.SetOrder(dist.Order{{
 							Group: []dist.BuildpackRef{
-								{BuildpackInfo: dist.BuildpackInfo{ID: bp1v1.Descriptor().ModuleInfo().ID}}},
+								{ModuleInfo: dist.ModuleInfo{ID: bp1v1.Descriptor().ModuleInfo().ID}}},
 						}})
 
 						err := subject.Save(logger, builder.CreatorMetadata{})
@@ -449,7 +449,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						it("should error", func() {
 							subject.SetOrder(dist.Order{{
 								Group: []dist.BuildpackRef{
-									{BuildpackInfo: dist.BuildpackInfo{ID: "missing-buildpack-id"}}},
+									{ModuleInfo: dist.ModuleInfo{ID: "missing-buildpack-id"}}},
 							}})
 
 							err := subject.Save(logger, builder.CreatorMetadata{})
@@ -462,7 +462,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						it("should error", func() {
 							subject.SetOrder(dist.Order{{
 								Group: []dist.BuildpackRef{
-									{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack-1-id", Version: "missing-buildpack-version"}}},
+									{ModuleInfo: dist.ModuleInfo{ID: "buildpack-1-id", Version: "missing-buildpack-version"}}},
 							}})
 
 							err := subject.Save(logger, builder.CreatorMetadata{})
@@ -482,13 +482,13 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						it("should de-duplicate identical buildpacks", func() {
 							subject.SetOrder(dist.Order{
 								{Group: []dist.BuildpackRef{{
-									BuildpackInfo: dist.BuildpackInfo{
+									ModuleInfo: dist.ModuleInfo{
 										ID:       bp1v1.Descriptor().ModuleInfo().ID,
 										Homepage: bp1v1.Descriptor().ModuleInfo().Homepage,
 									}}},
 								},
 								{Group: []dist.BuildpackRef{{
-									BuildpackInfo: dist.BuildpackInfo{
+									ModuleInfo: dist.ModuleInfo{
 										ID:       bp1v1.Descriptor().ModuleInfo().ID,
 										Homepage: bp1v1.Descriptor().ModuleInfo().Homepage,
 									}}},
@@ -511,7 +511,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						it("should keep order version", func() {
 							subject.SetOrder(dist.Order{{
 								Group: []dist.BuildpackRef{
-									{BuildpackInfo: bp1v1.Descriptor().ModuleInfo()}},
+									{ModuleInfo: bp1v1.Descriptor().ModuleInfo()}},
 							}})
 
 							err := subject.Save(logger, builder.CreatorMetadata{})
@@ -532,7 +532,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						it("return error", func() {
 							subject.SetOrder(dist.Order{{
 								Group: []dist.BuildpackRef{
-									{BuildpackInfo: dist.BuildpackInfo{ID: "buildpack-1-id"}}},
+									{ModuleInfo: dist.ModuleInfo{ID: "buildpack-1-id"}}},
 							}})
 
 							err := subject.Save(logger, builder.CreatorMetadata{})
@@ -664,7 +664,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						var err error
 						bp1v1Alt, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 							API: api.MustParse("0.2"),
-							Info: dist.BuildpackInfo{
+							Info: dist.ModuleInfo{
 								ID:      "buildpack-1-id",
 								Version: "buildpack-1-version-1",
 							},
@@ -678,7 +678,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 
 						bp1v1AltWithNewContent, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 							API: api.MustParse("0.2"),
-							Info: dist.BuildpackInfo{
+							Info: dist.ModuleInfo{
 								ID:      "buildpack-1-id",
 								Version: "buildpack-1-version-1",
 							},
@@ -799,7 +799,7 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 						var err error
 						bp1v1Err, err = ifakes.NewFakeBuildpack(dist.BuildpackDescriptor{
 							API: api.MustParse("0.2"),
-							Info: dist.BuildpackInfo{
+							Info: dist.ModuleInfo{
 								ID:      "buildpack-1-id",
 								Version: "buildpack-1-version-1",
 							},
@@ -1126,14 +1126,14 @@ func testBuilder(t *testing.T, when spec.G, it spec.S) {
 					subject.SetOrder(dist.Order{
 						{Group: []dist.BuildpackRef{
 							{
-								BuildpackInfo: dist.BuildpackInfo{
+								ModuleInfo: dist.ModuleInfo{
 									ID: bp1v1.Descriptor().ModuleInfo().ID,
 									// Version excluded intentionally
 								},
 							},
 							{
-								BuildpackInfo: bp2v1.Descriptor().ModuleInfo(),
-								Optional:      true,
+								ModuleInfo: bp2v1.Descriptor().ModuleInfo(),
+								Optional:   true,
 							},
 						}},
 					})

@@ -456,8 +456,8 @@ REMOTE:
 
 		when("no buildpacks are specified", func() {
 			it("displays buildpacks as (none) and prints warnings", func() {
-				localInfo.Buildpacks = []dist.BuildpackInfo{}
-				remoteInfo.Buildpacks = []dist.BuildpackInfo{}
+				localInfo.Buildpacks = []dist.ModuleInfo{}
+				remoteInfo.Buildpacks = []dist.ModuleInfo{}
 
 				humanReadableWriter := writer.NewHumanReadable()
 

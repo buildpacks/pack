@@ -167,7 +167,7 @@ func determinePrefix(name string, locator buildpack.LocatorType, daemon bool) st
 	return "UNKNOWN SOURCE"
 }
 
-func buildpacksOutput(bps []dist.BuildpackInfo) (string, error) {
+func buildpacksOutput(bps []dist.ModuleInfo) (string, error) {
 	buf := &bytes.Buffer{}
 
 	tabWriter := new(tabwriter.Writer).Init(buf, writerMinWidth, writerPadChar, buildpacksTabWidth, writerPadChar, writerFlags)

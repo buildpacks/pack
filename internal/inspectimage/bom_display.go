@@ -37,7 +37,7 @@ func displayBOM(bom []buildpack.BOMEntry) []BOMEntryDisplay {
 			Metadata: entry.Metadata,
 
 			Buildpack: dist.BuildpackRef{
-				BuildpackInfo: dist.BuildpackInfo{
+				ModuleInfo: dist.ModuleInfo{
 					ID:      entry.Buildpack.ID,
 					Version: entry.Buildpack.Version,
 				},

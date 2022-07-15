@@ -7,12 +7,12 @@ import (
 
 type Builder struct {
 	baseImageName       string
-	buildpacks          []dist.BuildpackInfo
+	buildpacks          []dist.ModuleInfo
 	lifecycleDescriptor builder.LifecycleDescriptor
 	stack               builder.StackMetadata
 }
 
-func NewBuilder(baseImageName string, buildpacks []dist.BuildpackInfo, lifecycleDescriptor builder.LifecycleDescriptor, stack builder.StackMetadata) *Builder {
+func NewBuilder(baseImageName string, buildpacks []dist.ModuleInfo, lifecycleDescriptor builder.LifecycleDescriptor, stack builder.StackMetadata) *Builder {
 	return &Builder{
 		baseImageName:       baseImageName,
 		buildpacks:          buildpacks,
@@ -25,7 +25,7 @@ func (b *Builder) BaseImageName() string {
 	return b.baseImageName
 }
 
-func (b *Builder) Buildpacks() []dist.BuildpackInfo {
+func (b *Builder) Buildpacks() []dist.ModuleInfo {
 	return b.buildpacks
 }
 

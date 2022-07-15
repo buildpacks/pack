@@ -78,7 +78,7 @@ func testBuildpackDownloader(t *testing.T, when spec.G, it spec.S) {
 				Platform: dist.Platform{OS: "linux"},
 				Buildpack: dist.BuildpackURI{URI: createBuildpack(dist.BuildpackDescriptor{
 					API:    api.MustParse("0.3"),
-					Info:   dist.BuildpackInfo{ID: "example/foo", Version: "1.1.0"},
+					Info:   dist.ModuleInfo{ID: "example/foo", Version: "1.1.0"},
 					Stacks: []dist.Stack{{ID: "some.stack.id"}},
 				})},
 			},

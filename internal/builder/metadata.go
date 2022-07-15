@@ -8,12 +8,12 @@ const (
 )
 
 type Metadata struct {
-	Description string               `json:"description"`
-	Buildpacks  []dist.BuildpackInfo `json:"buildpacks"`
-	Extensions  []dist.BuildpackInfo `json:"extensions"`
-	Stack       StackMetadata        `json:"stack"`
-	Lifecycle   LifecycleMetadata    `json:"lifecycle"`
-	CreatedBy   CreatorMetadata      `json:"createdBy"`
+	Description string            `json:"description"`
+	Buildpacks  []dist.ModuleInfo `json:"buildpacks"`
+	Extensions  []dist.ModuleInfo `json:"extensions"`
+	Stack       StackMetadata     `json:"stack"`
+	Lifecycle   LifecycleMetadata `json:"lifecycle"`
+	CreatedBy   CreatorMetadata   `json:"createdBy"`
 }
 
 type CreatorMetadata struct {

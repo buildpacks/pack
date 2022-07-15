@@ -91,7 +91,7 @@ func (c *buildpackDownloader) Download(ctx context.Context, moduleURI string, op
 		moduleURI = opts.ImageName
 		locatorType = PackageLocator
 	} else {
-		locatorType, err = GetLocatorType(moduleURI, opts.RelativeBaseDir, []dist.BuildpackInfo{})
+		locatorType, err = GetLocatorType(moduleURI, opts.RelativeBaseDir, []dist.ModuleInfo{})
 		if err != nil {
 			return nil, nil, err
 		}

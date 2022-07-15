@@ -12,7 +12,7 @@ import (
 
 type Descriptor interface {
 	ModuleAPI() *api.Version
-	ModuleInfo() BuildpackInfo
+	ModuleInfo() ModuleInfo
 	ModuleOrder() Order
 	ModuleStacks() []Stack
 }

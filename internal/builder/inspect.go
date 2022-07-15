@@ -17,7 +17,7 @@ type Info struct {
 	Mixins          []string
 	RunImage        string
 	RunImageMirrors []string
-	Buildpacks      []dist.BuildpackInfo
+	Buildpacks      []dist.ModuleInfo
 	Order           pubbldr.DetectionOrder
 	BuildpackLayers dist.BuildpackLayers
 	Lifecycle       LifecycleDescriptor
@@ -130,9 +130,9 @@ func (i *Inspector) Inspect(name string, daemon bool, orderDetectionDepth int) (
 	}, nil
 }
 
-func uniqueBuildpacks(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
+func uniqueBuildpacks(buildpacks []dist.ModuleInfo) []dist.ModuleInfo {
 	foundBuildpacks := map[string]interface{}{}
-	var uniqueBuildpacks []dist.BuildpackInfo
+	var uniqueBuildpacks []dist.ModuleInfo
 
 	for _, bp := range buildpacks {
 		_, ok := foundBuildpacks[bp.FullName()]
@@ -145,7 +145,7 @@ func uniqueBuildpacks(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
 	return uniqueBuildpacks
 }
 
-func sortBuildPacksByID(buildpacks []dist.BuildpackInfo) []dist.BuildpackInfo {
+func sortBuildPacksByID(buildpacks []dist.ModuleInfo) []dist.ModuleInfo {
 	sort.Slice(buildpacks, func(i int, j int) bool {
 		if buildpacks[i].ID == buildpacks[j].ID {
 			return buildpacks[i].Version < buildpacks[j].Version

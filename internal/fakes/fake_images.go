@@ -30,7 +30,7 @@ func NewFakeBuilderImage(t *testing.T, tmpDir, name string, stackID, uid, gid st
 
 	for bpID, v := range bpLayers {
 		for bpVersion, bpLayerInfo := range v {
-			bpInfo := dist.BuildpackInfo{
+			bpInfo := dist.ModuleInfo{
 				ID:      bpID,
 				Version: bpVersion,
 			}

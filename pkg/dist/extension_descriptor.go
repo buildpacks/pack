@@ -7,8 +7,8 @@ import (
 )
 
 type ExtensionDescriptor struct {
-	API  *api.Version  `toml:"api"`
-	Info BuildpackInfo `toml:"extension"`
+	API  *api.Version `toml:"api"`
+	Info ModuleInfo   `toml:"extension"`
 }
 
 func (e *ExtensionDescriptor) EnsureStackSupport(_ string, _ []string, _ bool) error {
@@ -27,7 +27,7 @@ func (e *ExtensionDescriptor) ModuleAPI() *api.Version {
 	return e.API
 }
 
-func (e *ExtensionDescriptor) ModuleInfo() BuildpackInfo {
+func (e *ExtensionDescriptor) ModuleInfo() ModuleInfo {
 	return e.Info
 }
 

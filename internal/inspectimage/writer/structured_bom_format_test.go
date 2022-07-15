@@ -99,7 +99,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 						"cool-local": "beans",
 					},
 					Buildpack: dist.BuildpackRef{
-						BuildpackInfo: dist.BuildpackInfo{
+						ModuleInfo: dist.ModuleInfo{
 							ID:      "local-buildpack",
 							Version: "local-buildpack-version",
 						},
@@ -112,7 +112,7 @@ func testStructuredBOMFormat(t *testing.T, when spec.G, it spec.S) {
 						"cool-remote": "beans",
 					},
 					Buildpack: dist.BuildpackRef{
-						BuildpackInfo: dist.BuildpackInfo{
+						ModuleInfo: dist.ModuleInfo{
 							ID:      "remote-buildpack",
 							Version: "remote-buildpack-version",
 						},

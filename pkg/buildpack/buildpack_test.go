@@ -429,7 +429,7 @@ version = "1.2.3"
 
 	when("#Match", func() {
 		it("compares, using only the id and version", func() {
-			other := dist.BuildpackInfo{
+			other := dist.ModuleInfo{
 				ID:          "same",
 				Version:     "1.2.3",
 				Description: "something else",
@@ -443,7 +443,7 @@ version = "1.2.3"
 				},
 			}
 
-			self := dist.BuildpackInfo{
+			self := dist.ModuleInfo{
 				ID:      "same",
 				Version: "1.2.3",
 			}
