@@ -77,7 +77,8 @@ type Builder struct {
 }
 
 type orderTOML struct {
-	Order dist.Order `toml:"order"`
+	Order    dist.Order `toml:"order"`
+	OrderExt dist.Order `toml:"order-extensions,omitempty"`
 }
 
 // FromImage constructs a builder from a builder image
@@ -301,11 +302,6 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 		logger.Debugf("-> %s", style.Symbol(bpInfo.FullName()))
 	}
 
-	resolvedOrder, err := processOrder(b.metadata.Buildpacks, b.order) // TODO: should this include the order for extensions?
-	if err != nil {
-		return errors.Wrap(err, "processing order")
-	}
-
 	tmpDir, err := ioutil.TempDir("", "create-builder-scratch")
 	if err != nil {
 		return err
@@ -367,7 +363,16 @@ func (b *Builder) Save(logger logging.Logger, creatorMetadata CreatorMetadata) e
 	}
 
 	if b.replaceOrder {
-		orderTar, err := b.orderLayer(resolvedOrder, tmpDir)
+		resolvedOrderBp, err := processOrder(b.metadata.Buildpacks, b.order, "buildpack")
+		if err != nil {
+			return errors.Wrap(err, "processing buildpacks order")
+		}
+		resolvedOrderExt, err := processOrder(b.metadata.Extensions, b.orderExtensions, "extension")
+		if err != nil {
+			return errors.Wrap(err, "processing extensions order")
+		}
+
+		orderTar, err := b.orderLayer(resolvedOrderBp, resolvedOrderExt, tmpDir)
 		if err != nil {
 			return err
 		}
@@ -511,46 +516,54 @@ func (b *Builder) addModules(kind string, logger logging.Logger, tmpDir string, 
 	return nil
 }
 
-func processOrder(buildpacks []dist.BuildpackInfo, order dist.Order) (dist.Order, error) {
-	resolvedOrder := dist.Order{}
-
-	for gi, g := range order {
-		resolvedOrder = append(resolvedOrder, dist.OrderEntry{})
-
-		for _, bpRef := range g.Group {
-			var matchingBps []dist.BuildpackInfo
-			for _, bp := range buildpacks {
-				if bpRef.ID == bp.ID {
-					matchingBps = append(matchingBps, bp)
-				}
+func processOrder(modulesOnBuilder []dist.BuildpackInfo, order dist.Order, kind string) (dist.Order, error) {
+	resolved := dist.Order{}
+	for idx, g := range order {
+		resolved = append(resolved, dist.OrderEntry{})
+		for _, ref := range g.Group {
+			var err error
+			if ref, err = resolveRef(modulesOnBuilder, ref, kind); err != nil {
+				return dist.Order{}, err
 			}
+			resolved[idx].Group = append(resolved[idx].Group, ref)
+		}
+	}
+	return resolved, nil
+}
 
-			if len(matchingBps) == 0 {
-				return dist.Order{}, fmt.Errorf("no versions of buildpack %s were found on the builder", style.Symbol(bpRef.ID))
-			}
-
-			if bpRef.Version == "" {
-				if len(uniqueVersions(matchingBps)) > 1 {
-					return dist.Order{}, fmt.Errorf("unable to resolve version: multiple versions of %s - must specify an explicit version", style.Symbol(bpRef.ID))
-				}
-
-				bpRef.Version = matchingBps[0].Version
-			}
-
-			if !hasBuildpackWithVersion(matchingBps, bpRef.Version) {
-				return dist.Order{}, fmt.Errorf("buildpack %s with version %s was not found on the builder", style.Symbol(bpRef.ID), style.Symbol(bpRef.Version))
-			}
-
-			resolvedOrder[gi].Group = append(resolvedOrder[gi].Group, bpRef)
+func resolveRef(moduleList []dist.BuildpackInfo, ref dist.BuildpackRef, kind string) (dist.BuildpackRef, error) {
+	var matching []dist.BuildpackInfo
+	for _, bp := range moduleList {
+		if ref.ID == bp.ID {
+			matching = append(matching, bp)
 		}
 	}
 
-	return resolvedOrder, nil
+	if len(matching) == 0 {
+		return dist.BuildpackRef{},
+			fmt.Errorf("no versions of %s %s were found on the builder", kind, style.Symbol(ref.ID))
+	}
+
+	if ref.Version == "" {
+		if len(uniqueVersions(matching)) > 1 {
+			return dist.BuildpackRef{},
+				fmt.Errorf("unable to resolve version: multiple versions of %s - must specify an explicit version", style.Symbol(ref.ID))
+		}
+
+		ref.Version = matching[0].Version
+	}
+
+	if !hasElementWithVersion(matching, ref.Version) {
+		return dist.BuildpackRef{},
+			fmt.Errorf("%s %s with version %s was not found on the builder", kind, style.Symbol(ref.ID), style.Symbol(ref.Version))
+	}
+
+	return ref, nil
 }
 
-func hasBuildpackWithVersion(bps []dist.BuildpackInfo, version string) bool {
-	for _, bp := range bps {
-		if bp.Version == version {
+func hasElementWithVersion(moduleList []dist.BuildpackInfo, version string) bool {
+	for _, el := range moduleList {
+		if el.Version == version {
 			return true
 		}
 	}
@@ -802,8 +815,8 @@ func (b *Builder) embedLifecycleTar(tw archive.TarWriter) error {
 	return nil
 }
 
-func (b *Builder) orderLayer(order dist.Order, dest string) (string, error) {
-	contents, err := orderFileContents(order)
+func (b *Builder) orderLayer(order dist.Order, orderExt dist.Order, dest string) (string, error) {
+	contents, err := orderFileContents(order, orderExt)
 	if err != nil {
 		return "", err
 	}
@@ -817,10 +830,10 @@ func (b *Builder) orderLayer(order dist.Order, dest string) (string, error) {
 	return layerTar, nil
 }
 
-func orderFileContents(order dist.Order) (string, error) {
+func orderFileContents(order dist.Order, orderExt dist.Order) (string, error) {
 	buf := &bytes.Buffer{}
 
-	tomlData := orderTOML{Order: order}
+	tomlData := orderTOML{Order: order, OrderExt: orderExt}
 	if err := toml.NewEncoder(buf).Encode(tomlData); err != nil {
 		return "", errors.Wrapf(err, "failed to marshal order.toml")
 	}
