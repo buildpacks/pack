@@ -77,7 +77,7 @@ type Builder struct {
 }
 
 type orderTOML struct {
-	Order    dist.Order `toml:"order"`
+	Order    dist.Order `toml:"order,omitempty"`
 	OrderExt dist.Order `toml:"order-extensions,omitempty"`
 }
 

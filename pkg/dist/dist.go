@@ -40,12 +40,12 @@ type OrderEntry struct {
 	Group []BuildpackRef `toml:"group" json:"group"`
 }
 
-type BuildpackRef struct {
+type BuildpackRef struct { // TODO: rename
 	ModuleInfo `yaml:"buildpackinfo,inline"`
 	Optional   bool `toml:"optional,omitempty" json:"optional,omitempty" yaml:"optional,omitempty"`
 }
 
-type BuildpackLayers map[string]map[string]BuildpackLayerInfo
+type BuildpackLayers map[string]map[string]BuildpackLayerInfo // TODO: rename or duplicate
 
 type BuildpackLayerInfo struct {
 	API         *api.Version `json:"api"`

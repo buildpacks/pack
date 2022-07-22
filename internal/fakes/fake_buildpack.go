@@ -37,13 +37,13 @@ func WithExtraBuildpackContents(filename, contents string) FakeBuildpackOption {
 	}
 }
 
-func WithOpenError(err error) FakeBuildpackOption {
+func WithBpOpenError(err error) FakeBuildpackOption {
 	return func(f *fakeBuildpackConfig) {
 		f.OpenError = err
 	}
 }
 
-// NewFakeBuildpack creates a fake buildpacks with contents:
+// NewFakeBuildpack creates a fake buildpack with contents:
 //
 // 	\_ /cnb/buildpacks/{ID}
 // 	\_ /cnb/buildpacks/{ID}/{version}
