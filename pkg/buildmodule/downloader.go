@@ -195,9 +195,9 @@ func extractPackaged(ctx context.Context, kind string, pkgImageRef string, fetch
 
 	switch kind {
 	case "buildpack":
-		mainModule, depModules, err = ExtractBuildpacks(pkgImage)
+		mainModule, depModules, err = extractBuildpacks(pkgImage)
 	case "extension":
-		mainModule, err = ExtractExtensions(pkgImage)
+		mainModule, err = extractExtensions(pkgImage)
 	default:
 		return nil, nil, fmt.Errorf("unknown module kind: %s", kind)
 	}

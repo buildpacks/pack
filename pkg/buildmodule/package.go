@@ -14,7 +14,7 @@ type Package interface {
 	GetLayer(diffID string) (io.ReadCloser, error)
 }
 
-func ExtractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, err error) {
+func extractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, err error) {
 	md := &Metadata{}
 	if found, err := dist.GetLabel(pkg, MetadataLabel, md); err != nil {
 		return nil, nil, err
@@ -78,7 +78,7 @@ func ExtractBuildpacks(pkg Package) (mainBP BuildModule, depBPs []BuildModule, e
 	return mainBP, depBPs, nil
 }
 
-func ExtractExtensions(pkg Package) (mainBP BuildModule, err error) {
+func extractExtensions(pkg Package) (mainBP BuildModule, err error) {
 	pkgLayers := dist.ModuleLayers{}
 	ok, err := dist.GetLabel(pkg, dist.BuildpackLayersLabel, &pkgLayers)
 	if err != nil {
